@@ -15,6 +15,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Inert runtime boundary for Start-BetaHub/Run-BetaHub; never starts a service.
         return Ok(());
     }
+    if args.first().is_some_and(|arg| arg == "--session") {
+        if args.get(1).is_none_or(|arg| arg != "-Root") {
+            return Err("session root flag required".into());
+        }
+        let root = PathBuf::from(args.get(2).ok_or("session root required")?);
+        let prefix = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").ok_or("RUNNER_TEMP required")?)
+        } else {
+            PathBuf::from("D:/VantareServer/qa")
+        };
+        if !root.canonicalize()?.starts_with(prefix.canonicalize()?) {
+            return Err("QA root rejected".into());
+        }
+        std::fs::write(root.join("hub-ready"), std::process::id().to_string())?;
+        std::fs::write(root.join("app-open"), b"fixture window available")?;
+        let deadline = Instant::now() + std::time::Duration::from_secs(45);
+        while root.join("boot-pending.json").exists() {
+            if Instant::now() >= deadline {
+                return Err("root ACK timed out".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        std::fs::write(root.join("confirmation-complete"), b"confirmed")?;
+        while !root.join("allow-exit").exists() {
+            if Instant::now() >= deadline {
+                return Err("root session exit timed out".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        return Ok(());
+    }
     let root = if args.first().is_some_and(|arg| arg == "--pipe") {
         PathBuf::from(std::env::var_os("VANTARE_BETA_ROOT").ok_or("explicit QA root required")?)
     } else {

@@ -156,6 +156,15 @@ pub fn lock(root: &Path, name: &str) -> Result<fs::File> {
     Ok(file)
 }
 pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
+    binary_guard_except(root, None)
+}
+/// The applying session cannot exclusively open its own executable image.
+/// Only that exact OS-reported image is omitted; every other installed EXE
+/// retains the exclusive guard.
+pub fn binary_guard_running(root: &Path) -> Result<Vec<fs::File>> {
+    binary_guard_except(root, Some(&std::env::current_exe()?))
+}
+fn binary_guard_except(root: &Path, running: Option<&PathBuf>) -> Result<Vec<fs::File>> {
     let generations = root.join("generations");
     if !generations.try_exists()? {
         return Ok(Vec::new());
@@ -168,6 +177,9 @@ pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
         if file
             .extension()
             .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
+            && !running
+                .as_ref()
+                .is_some_and(|image| super::context::same_path(image, &file).unwrap_or(false))
         {
             let mut options = fs::OpenOptions::new();
             options.read(true).write(true);
@@ -192,6 +204,14 @@ pub fn replace_temporary(source: &Path, target: &Path) -> Result<()> {
     let result = replace(source, target);
     if result.is_err() {
         let _ = remove_file(source);
+    }
+    result
+}
+pub fn publish_json(target: &Path, value: &impl Serialize) -> Result<()> {
+    let temporary = target.with_extension(format!("{}.tmp", id()?));
+    let result = write_json(&temporary, value).and_then(|()| replace_temporary(&temporary, target));
+    if result.is_err() {
+        let _ = remove_file(&temporary);
     }
     result
 }

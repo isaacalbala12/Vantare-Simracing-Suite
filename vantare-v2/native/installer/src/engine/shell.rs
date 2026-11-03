@@ -35,16 +35,19 @@ fn argument_root(root: &Path) -> String {
 fn owned(link: &Link, root: &Path) -> Result<bool> {
     let root_arg = argument_root(root);
     let ps = same(&link.target, &powershell()?);
-    Ok(same(&link.target, &root.join("Uninstall.exe"))
+    Ok((same(&link.target, &root.join("Vantare.exe"))
+        && [
+            format!("--root {}", root_arg),
+            format!("--root {root_arg} --background"),
+        ]
+        .contains(&link.arguments))
+        || same(&link.target, &root.join("Uninstall.exe"))
         || (ps
             && link.arguments.contains(&root_arg)
-            && (link
-                .arguments
-                .contains(&format!("-File \"{}\"", root.join("beta.ps1").display()))
-                || (link.arguments.contains(&format!(
-                    "-File \"{}\"",
-                    root.join("uninstall-vantare.ps1").display()
-                )) && link.arguments.contains("-Operation UninstallInstalled"))))
+            && ["beta.ps1", "candidate.ps1"].iter().any(|name| {
+                link.arguments
+                    .contains(&format!("-File \"{}\"", root.join(name).display()))
+            }))
         || (link
             .target
             .ancestors()
@@ -60,57 +63,17 @@ fn owned(link: &Link, root: &Path) -> Result<bool> {
             ]
             .contains(&link.arguments)))
 }
-fn background(path: &Path) -> bool {
-    use std::io::Read;
-    let read = || -> std::io::Result<bool> {
-        let mut bytes = [0; 128];
-        let count = fs::File::open(path)?.read(&mut bytes)?;
-        Ok(String::from_utf8_lossy(&bytes[..count])
-            .trim_start_matches('\u{feff}')
-            .lines()
-            .next()
-            == Some("# vantare-launch-capabilities: background-v1"))
-    };
-    read().unwrap_or(false)
-}
-fn launch(root: &Path, state: Option<&State>, startup: bool) -> Result<Link> {
-    let state = if startup && !background(&root.join("candidate.ps1")) {
-        None
-    } else {
-        state
-    };
-    let target = state
-        .map(|state| {
-            root.join("generations")
-                .join(&state.active.generation)
-                .join("bin/vantare.exe")
-        })
-        .filter(|p| p.is_file());
-    if let Some(target) = target {
-        let candidate = target
-            .parent()
-            .and_then(Path::parent)
-            .expect("generation")
-            .join("candidate.ps1");
-        let extra = if startup && background(&candidate) {
-            " --background"
-        } else {
-            ""
-        };
-        return Ok(Link {
-            arguments: format!("--beta {}{extra}", argument_root(root)),
-            icon: target.clone(),
-            target,
-        });
-    }
+fn launch(root: &Path, _state: Option<&State>, startup: bool) -> Result<Link> {
+    let target = root.join("Vantare.exe");
+    ensure(target.is_file(), "Falta el lanzador raíz")?;
     Ok(Link {
-        target: powershell()?,
         arguments: format!(
-            "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{}\" {}",
-            root.join("beta.ps1").display(),
-            argument_root(root)
+            "--root {}{}",
+            argument_root(root),
+            if startup { " --background" } else { "" }
         ),
-        icon: PathBuf::new(),
+        icon: target.clone(),
+        target,
     })
 }
 fn folder(context: &Context, name: &str) -> Result<PathBuf> {
@@ -217,49 +180,10 @@ fn legacy_run(context: &Context, root: &Path) -> Result<Option<(String, String)>
     let value = super::windows::registry_string(&context.registry_prefix, RUN, &name, false)?;
     Ok(value
         .filter(|command| {
-            // The legacy PowerShell regex accepts ASCII flag case variants.
-            // Keep the stored command unchanged for a failed Run migration.
             let normalized = command.to_ascii_lowercase();
-            let command = normalized.as_str();
-            if let Some((exe, rest)) = command
-                .strip_prefix('"')
-                .and_then(|value| value.split_once('"'))
-                && let Some(tail) = rest.strip_prefix(
-                    " -noprofile -executionpolicy bypass -windowstyle hidden -file \"",
-                )
-                && let Some((script, tail)) = tail.split_once("\" -root \"")
-                && let Some(directory) = tail.strip_suffix('"')
-                && same(Path::new(exe), &powershell().unwrap_or_default())
-                && same(Path::new(script), &root.join("beta.ps1"))
-                && same(Path::new(directory), root)
-            {
-                return true;
-            }
-            if let Some(path) = command.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-                let path = Path::new(path);
-                return same(path, &root.join("bin/vantare-hub.exe"))
-                    || path
-                        .parent()
-                        .filter(|bin| {
-                            bin.file_name()
-                                .is_some_and(|name| name.eq_ignore_ascii_case("bin"))
-                        })
-                        .and_then(Path::parent)
-                        .is_some_and(|generation| {
-                            path.file_name()
-                                .is_some_and(|name| name.eq_ignore_ascii_case("vantare-hub.exe"))
-                                && generation.file_name().is_some_and(|id| {
-                                    super::validation::hex(
-                                        &id.to_string_lossy().to_ascii_lowercase(),
-                                        32,
-                                    )
-                                })
-                                && generation
-                                    .parent()
-                                    .is_some_and(|parent| same(parent, &root.join("generations")))
-                        });
-            }
-            false
+            let root = root.to_string_lossy().to_ascii_lowercase();
+            normalized.contains(&root)
+                && (normalized.contains("beta.ps1") || normalized.contains("vantare-hub.exe"))
         })
         .map(|value| (name, value)))
 }
@@ -314,18 +238,86 @@ pub fn sync(
         progress(crate::model::Progress::step("register", 93, false));
     }
     project_links(root, &programs, state, warning)?;
-    write_registration_values(root, version, |name, value| {
-        os::set(
-            &context.registry_prefix,
-            context::UNINSTALL_KEY,
-            name,
-            value,
-        )
-    })?;
-    for name in ["NoModify", "NoRepair"] {
-        os::dword(&context.registry_prefix, context::UNINSTALL_KEY, name, 1)?;
+    project_registration(root, context, version)?;
+    project_preferences(
+        root,
+        context,
+        state,
+        options.previous,
+        ui.desktop,
+        ui.autostart,
+        run,
+        warning,
+    )
+}
+
+/// Maintenance after a confirmed boot, or an explicit Startup preference
+/// change. This is the same projection and ownership contract as Setup, with
+/// no payload copy and no second PowerShell implementation.
+pub fn sync_running(root: &Path, startup: Option<bool>) -> Result<()> {
+    sync_running_with_context(root, &Context::system()?, startup)
+}
+
+pub fn sync_running_with_context(
+    root: &Path,
+    context: &Context,
+    startup: Option<bool>,
+) -> Result<()> {
+    context.validate_root(root)?;
+    let root = disk::open_root(root, false)?;
+    let _lock = disk::lock(&root, ".operation.lock")?;
+    let view = super::Installation::read(&root)?;
+    let state = view
+        .state
+        .as_ref()
+        .ok_or_else(|| super::WriteError::new(1, "Falta instalación activa"))?;
+    let manifest = view
+        .manifest
+        .as_ref()
+        .ok_or_else(|| super::WriteError::new(1, "Falta manifiesto activo"))?;
+    ensure(
+        state.channel == "beta" && manifest.engine() == 2,
+        "Registro requiere motor 2 beta",
+    )?;
+    if context.has_registration()? {
+        ensure(
+            context
+                .install_location()?
+                .as_deref()
+                .is_some_and(|path| same(Path::new(path), &root)),
+            "El registro pertenece a otra instalación",
+        )?;
     }
-    project_preferences(root, context, state, options, &ui, run, warning)
+    let ui = context::options(&root, true)?;
+    let autostart = startup.unwrap_or_else(|| context::startup(&root).unwrap_or(false));
+    let _apartment = os::Apartment::new()?;
+    let programs = folder(context, "Programs")?;
+    let mut warning = |message: &str| eprintln!("Registro: {message}");
+    project_links(&root, &programs, state, &mut warning)?;
+    project_registration(&root, context, &manifest.version)?;
+    let run = legacy_run(context, &root)?;
+    project_preferences(
+        &root,
+        context,
+        state,
+        None,
+        ui.as_ref().is_some_and(|ui| ui.desktop),
+        autostart,
+        run,
+        &mut warning,
+    )?;
+    if let Some(startup) = startup {
+        if let Some(mut ui) = ui {
+            ui.autostart = startup;
+            disk::publish_json(&root.join("installer-ui.json"), &ui)?;
+        } else {
+            disk::publish_json(
+                &root.join("startup-options.json"),
+                &json!({"schema":1,"autostart":startup}),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn remove_projection(
@@ -365,6 +357,8 @@ fn remove_projection(
     ] {
         disk::remove_file(&root.join(name))?;
     }
+    disk::remove_file(&root.join("Vantare.exe"))?;
+    disk::remove_file(&root.join("launcher-image.json"))?;
     if options.restoring {
         disk::remove_file(&root.join("Uninstall.exe"))?;
     }
@@ -424,16 +418,7 @@ fn prepare_projection(
         desktop,
         autostart,
     };
-    let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
-    disk::write_json(&temporary, &ui)?;
-    disk::replace_temporary(&temporary, &root.join("installer-ui.json"))?;
-    // Root templates come from this Setup; rollback restores state/preferences,
-    // not previous candidate.ps1/beta.ps1 bytes. Retire this bootstrap in p7.
-    let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
-    disk::write_new(&temporary, crate::payload::CANDIDATE).inspect_err(|_| {
-        let _ = disk::remove_file(&temporary);
-    })?;
-    disk::replace_temporary(&temporary, &root.join("uninstall-vantare.ps1"))?;
+    disk::publish_json(&root.join("installer-ui.json"), &ui)?;
     Ok(ui)
 }
 fn project_links(
@@ -491,18 +476,31 @@ fn write_registration_values(
     }
     Ok(())
 }
+fn project_registration(root: &Path, context: &Context, version: &str) -> Result<()> {
+    write_registration_values(root, version, |name, value| {
+        os::set(
+            &context.registry_prefix,
+            context::UNINSTALL_KEY,
+            name,
+            value,
+        )
+    })?;
+    for name in ["NoModify", "NoRepair"] {
+        os::dword(&context.registry_prefix, context::UNINSTALL_KEY, name, 1)?;
+    }
+    Ok(())
+}
+#[allow(clippy::too_many_arguments)] // Inputs are the persisted options and two independent shell projections.
 fn project_preferences(
     root: &Path,
     context: &Context,
     state: &State,
-    options: &Options<'_>,
-    ui: &context::Options,
+    previous: Option<&context::Options>,
+    desktop: bool,
+    autostart: bool,
     run: Option<(String, String)>,
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
-    let previous = options.previous;
-    let desktop = ui.desktop;
-    let autostart = ui.autostart;
     let suppress = run.as_ref().is_some_and(|(name, _)| {
         if let Err(cause) = os::delete_value(&context.registry_prefix, RUN, name) {
             warning(&cause.to_string());
@@ -529,15 +527,15 @@ fn project_preferences(
     ] {
         optional(context, root, kind, action, Some(state), warning);
     }
-    if let Some((name, command)) = run.filter(|_| !suppress && autostart) {
-        let path = folder(context, "Startup")?.join("Vantare.lnk");
-        if !owned_at(&path, root)? {
+    let startup_owned = owned_at(&folder(context, "Startup")?.join("Vantare.lnk"), root)?;
+    if startup_owned != (autostart && !suppress) {
+        if let Some((name, command)) = run.filter(|_| autostart) {
             os::set(&context.registry_prefix, RUN, &name, &command)?;
-            return Err(super::WriteError::new(
-                1,
-                "No se creó Startup; se conserva Run. Vuelve a intentarlo",
-            ));
         }
+        return Err(super::WriteError::new(
+            1,
+            "No se pudo aplicar la preferencia de inicio",
+        ));
     }
     Ok(())
 }

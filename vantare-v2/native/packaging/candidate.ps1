@@ -1330,7 +1330,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     $dependencies = @($metadata.packages | Sort-Object name, version | ForEach-Object { [ordered]@{ name = $_.name; version = $_.version; license = $_.license; source = $_.source } })
     Write-NativeJson (Join-Path $payload 'dependencies.json') $dependencies
     $files = @((Get-NativeMembers $CandidateChannel) | ForEach-Object { $file = Get-Item -LiteralPath (Join-Path $payload $_); [ordered]@{ path = $_; size = $file.Length; sha256 = (Get-NativeHash $file.FullName) } })
-    $manifest = [ordered]@{ schema = 1; product = 'vantare-native'; candidate = $true; channel = $CandidateChannel; version = $CandidateVersion; source_sha = $sourceSha; source_dirty = $dirty; build_profile = $Profile; architecture = 'windows-x64'; data_schema = 'opaque-v1'; files = $files }
+    $manifest = [ordered]@{ schema = 1; product = 'vantare-native'; candidate = $true; channel = $CandidateChannel; version = $CandidateVersion; source_sha = $sourceSha; source_dirty = $dirty; build_profile = $Profile; architecture = 'windows-x64'; data_schema = 'opaque-v1'; engine = 2; files = $files }
     Write-NativeJson (Join-Path $payload 'manifest.json') $manifest
     $package = Join-Path $destination 'vantare-native-amd64-package.zip'
     New-NativeZip $payload $package

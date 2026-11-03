@@ -7,6 +7,10 @@ pub(super) struct Workers {
     pub resident: Option<super::resident::Resident>,
     #[cfg(windows)]
     pub host: Option<vantare_runtime::services::Host>,
+    #[cfg(windows)]
+    pub feed: Option<Feed>,
+    #[cfg(windows)]
+    pub open_hub: Option<super::win::OpenHub>,
     #[cfg(test)]
     pub fixture: Option<TestWorker>,
 }
@@ -15,6 +19,39 @@ pub(super) struct Workers {
 pub(super) struct TestWorker {
     pub cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
     pub thread: std::thread::JoinHandle<()>,
+}
+
+#[cfg(windows)]
+pub(super) struct Feed {
+    cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    thread: std::thread::JoinHandle<()>,
+}
+
+#[cfg(windows)]
+impl Feed {
+    pub fn start(root: std::path::PathBuf) -> io::Result<Self> {
+        let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let token = cancel.clone();
+        let thread = std::thread::Builder::new()
+            .name("vantare-beta-feed".into())
+            .spawn(move || {
+                loop {
+                    if token.load(std::sync::atomic::Ordering::Acquire) {
+                        break;
+                    }
+                    if let Err(error) = super::installed::stage(&root, &token) {
+                        super::log(format_args!("feed beta: {error}"));
+                    }
+                    std::thread::park_timeout(std::time::Duration::from_secs(6 * 60 * 60));
+                }
+            })?;
+        Ok(Self { cancel, thread })
+    }
+    fn request_shutdown(&self) {
+        self.cancel
+            .store(true, std::sync::atomic::Ordering::Release);
+        self.thread.thread().unpark();
+    }
 }
 
 impl Workers {
@@ -32,6 +69,9 @@ impl Workers {
             }
             if let Some(host) = &self.host {
                 host.request_shutdown();
+            }
+            if let Some(feed) = &self.feed {
+                feed.request_shutdown();
             }
         }
     }
@@ -56,6 +96,20 @@ impl Workers {
                 } else {
                     done = false;
                 }
+            }
+            if self
+                .feed
+                .as_ref()
+                .is_some_and(|feed| feed.thread.is_finished())
+            {
+                self.feed
+                    .take()
+                    .expect("feed finished")
+                    .thread
+                    .join()
+                    .map_err(|_| io::Error::other("Feed terminó con panic"))?;
+            } else if self.feed.is_some() {
+                done = false;
             }
         }
         #[cfg(test)]
@@ -92,6 +146,10 @@ impl Workers {
                 // ocupado: último intento idempotente antes de salir.
                 host.request_shutdown();
                 std::mem::forget(host);
+            }
+            if let Some(feed) = self.feed.take() {
+                feed.request_shutdown();
+                std::mem::forget(feed);
             }
         }
         #[cfg(test)]

@@ -19,7 +19,7 @@ function New-MatrixPayload([string]$Destination,[string]$Version,[string]$Verifi
     Write-NativeJson (Join-Path $Destination 'manifest.json') @{
         schema=1; product='vantare-native'; candidate=$true; architecture='windows-x64';
         data_schema='opaque-v1'; source_sha=('a'*40); source_dirty=$false;
-        build_profile='Debug'; version=$Version; channel='beta'; files=$files
+        build_profile='Debug'; version=$Version; channel='beta'; engine=$(if($Version -in @('0.0.988','0.0.989','0.0.990')){2}else{1}); files=$files
     }
 }
 

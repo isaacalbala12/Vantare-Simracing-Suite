@@ -23,6 +23,7 @@ pub mod write_fs;
 
 #[cfg(all(windows, feature = "write-engine"))]
 pub use host::{Operation, Request, Session, headless, log_path};
+pub use installation::hash_file;
 pub use installation::{Generation, Installation, Manifest, ReadError, Rejection, State};
 #[cfg(all(windows, feature = "write-engine"))]
 pub use write_fs::WriteError;

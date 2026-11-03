@@ -2,6 +2,16 @@
 use vantare_domain::Snapshot;
 pub use vantare_domain::is_live;
 
+/// A paused/stale live session still owns its overlays after the Hub closes.
+pub fn connected(snapshot: &Snapshot) -> bool {
+    use vantare_domain::{SourceKind, SourceState};
+    snapshot.origin.source.kind == SourceKind::Live
+        && !matches!(
+            snapshot.state.source_state,
+            SourceState::Waiting | SourceState::Lost
+        )
+}
+
 /// La primera foto, incluso Live, establece la referencia y no cierra el Hub.
 /// Un acceso a medias o la pantalla de acceso tampoco: cerrar perdería el
 /// inicio de sesión (#1464).

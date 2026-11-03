@@ -20,6 +20,18 @@ struct Driver<'a> {
     primary: Option<io::Error>,
     closed: Option<io::Error>,
     grace: Duration,
+    #[cfg(windows)]
+    hub_index: Option<usize>,
+}
+fn finished_event(name: &str, code: Option<i32>, success: bool, index: usize) -> Event {
+    match (name, code) {
+        ("Hub", Some(10)) => Event::Stop(Reason::Stopped),
+        ("Hub", Some(11)) => Event::Detached(index),
+        _ => Event::Exited {
+            child: index,
+            success,
+        },
+    }
 }
 
 impl Driver<'_> {
@@ -154,13 +166,8 @@ impl Driver<'_> {
                     } else if !status.success() {
                         log(format_args!("{name} cayó: {status}"));
                     }
-                    let actions = self.machine.paso(
-                        Event::Exited {
-                            child: index,
-                            success: status.success(),
-                        },
-                        Instant::now(),
-                    );
+                    let event = finished_event(name, status.code(), status.success(), index);
+                    let actions = self.machine.paso(event, Instant::now());
                     self.actions(actions);
                 }
                 Ok(None) => {}
@@ -207,6 +214,8 @@ fn run_with_error(
     workers: &mut Workers,
     primary: Option<io::Error>,
 ) -> io::Result<ExitCode> {
+    #[cfg(windows)]
+    let hub_index = services.iter().position(|service| service.name == "Hub");
     let machine = Session::new(
         services.iter().map(|service| service.policy),
         grace,
@@ -219,6 +228,8 @@ fn run_with_error(
         primary,
         closed: None,
         grace,
+        #[cfg(windows)]
+        hub_index,
     };
     if driver.primary.is_some() {
         let actions = driver
@@ -227,6 +238,22 @@ fn run_with_error(
         driver.actions(actions);
     }
     loop {
+        #[cfg(windows)]
+        if let Some((open, index)) = driver.workers.open_hub.as_ref().zip(driver.hub_index)
+            && !driver.machine.stopping()
+        {
+            match open.signaled() {
+                Ok(true) => {
+                    let actions = driver.machine.paso(Event::OpenHub(index), Instant::now());
+                    driver.actions(actions);
+                }
+                Ok(false) => {}
+                Err(error) => {
+                    let actions = driver.error(error);
+                    driver.actions(actions);
+                }
+            }
+        }
         // Conserva la prioridad de Stop frente a salidas simultáneas de hijos.
         if !driver.machine.stopping() {
             driver.wait(stop, instance, Duration::ZERO);
@@ -273,5 +300,28 @@ fn run_with_error(
         }
         let timeout = driver.machine.wait_for(Instant::now());
         driver.wait(stop, instance, timeout);
+    }
+}
+
+#[cfg(test)]
+mod installed_exit_tests {
+    use super::*;
+    #[test]
+    fn hub_restart_exits_the_session_before_apply() {
+        assert_eq!(
+            finished_event("Hub", Some(10), false, 2),
+            Event::Stop(Reason::Stopped)
+        );
+        assert_eq!(
+            finished_event("Hub", Some(11), false, 2),
+            Event::Detached(2)
+        );
+        assert_eq!(
+            finished_event("núcleo", Some(10), false, 0),
+            Event::Exited {
+                child: 0,
+                success: false
+            }
+        );
     }
 }

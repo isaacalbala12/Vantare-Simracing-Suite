@@ -515,12 +515,12 @@ impl Hub {
     }
 
     fn settings_restart(&mut self, cx: &mut Context<Self>) {
-        match updates::request_restart() {
-            Ok(()) => self.close(cx),
-            Err(error) => {
-                self.settings.status = Some(error);
-                cx.notify();
-            }
+        if std::env::var_os("VANTARE_BETA_ROOT").is_some() {
+            self.restart_requested = true;
+            self.close(cx);
+        } else {
+            self.settings.status = Some("Instalación beta no disponible".into());
+            cx.notify();
         }
     }
     fn settings_action(&mut self, action: Action, cx: &mut Context<Self>) {
@@ -626,9 +626,7 @@ impl Hub {
         cx.notify();
     }
     pub(super) fn cancel_beta_restart(&mut self) {
-        if let Err(error) = updates::cancel_restart() {
-            self.settings.status = Some(error);
-        }
+        self.restart_requested = false;
     }
     pub(super) fn poll_beta_update(&mut self, cx: &mut Context<Self>) {
         if self.capture.is_some()

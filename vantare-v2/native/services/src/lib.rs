@@ -43,6 +43,7 @@ pub mod storage;
 mod testing;
 #[cfg(feature = "network")]
 pub(crate) mod triage;
+#[cfg(feature = "network")]
 pub mod update_manifest;
 
 pub use error::{Error, Result};

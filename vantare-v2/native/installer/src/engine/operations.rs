@@ -16,8 +16,6 @@ pub struct Package<'a> {
     pub archive: &'a Path,
     pub sha256: &'a str,
     pub version: &'a str,
-    pub candidate: &'a [u8],
-    pub beta: &'a [u8],
 }
 impl Package<'_> {
     fn expand(&self, destination: &Path, channel: &str) -> Result<super::Manifest> {
@@ -54,6 +52,21 @@ const METADATA: &[&str] = &[
     "boot-pending.json",
     "update-status.json",
 ];
+fn renew_launcher(root: &Path, state: &State) -> Result<bool> {
+    let source = root
+        .join("generations")
+        .join(&state.active.generation)
+        .join("bin/vantare.exe");
+    let target = root.join("Vantare.exe");
+    let existed = target.try_exists()?;
+    if existed && installation::hash_file(&source)? == installation::hash_file(&target)? {
+        return Ok(false);
+    }
+    let temporary = root.join(format!("launcher-{}.tmp", disk::id()?));
+    fs::copy(source, &temporary)?;
+    disk::replace_temporary(&temporary, &target)?;
+    Ok(!existed)
+}
 struct Before {
     state: Option<serde_json::Value>,
     files: BTreeMap<&'static str, Option<serde_json::Value>>,
@@ -202,6 +215,7 @@ fn previous_generation(
 
 /// Explicit Setup owns both locks through generation and shell completion.
 /// The finalizer receives the cached projection, including after rollback.
+#[allow(clippy::too_many_lines)] // One transaction keeps its rollback state in scope.
 pub fn install(
     root: &Path,
     package: &Package<'_>,
@@ -226,6 +240,7 @@ pub fn install(
     let stage = root.join("staging").join(format!("setup-{}", disk::id()?));
     let mut changed = false;
     let mut projected = false;
+    let mut created_launcher = false;
     let result = (|| {
         let incoming = package.expand(&stage, "beta")?;
         let source;
@@ -274,23 +289,21 @@ pub fn install(
             previous,
             control,
         )?;
+        if incoming.engine() == 2 {
+            created_launcher = renew_launcher(&root, &next)?;
+        }
         if updating {
-            let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
-            disk::write_json(
-                &temporary,
+            disk::publish_json(
+                &root.join("update-status.json"),
                 &json!({"schema":1,"state":"applied","message":"Instalación aplicada; comprobando el arranque","version":incoming.version,"notes":""}),
             )?;
-            disk::replace_temporary(&temporary, &root.join("update-status.json"))?;
         }
-        fs::write(root.join("candidate.ps1"), package.candidate)?;
-        fs::write(root.join("beta.ps1"), package.beta)?;
         disk::remove_file(&root.join("retained-data.json"))?;
         projected = true;
         finalize(control, false, Some((&next, &incoming.version)))
     })();
-    if result.is_err()
-        && changed
-        && before.restore(&root, control)
+    let restored = result.is_err() && changed && before.restore(&root, control);
+    if restored
         && projected
         && let Err(cause) = finalize(
             control,
@@ -300,6 +313,14 @@ pub fn install(
     {
         (control.warning)(&format!(
             "No se pudo resincronizar Windows tras restaurar el estado: {cause}"
+        ));
+    }
+    if restored
+        && created_launcher
+        && let Err(error) = disk::remove_file(&root.join("Vantare.exe"))
+    {
+        (control.warning)(&format!(
+            "No se pudo retirar el lanzador tras rollback: {error}"
         ));
     }
     // A failed authentication or cancellation cannot leave a partial staging tree.
@@ -344,7 +365,8 @@ fn apply_generation(
     Ok(next)
 }
 
-/// Feed stays a PowerShell consumer until p6; this is the same native writer.
+/// The session applies a staged, previously authenticated feed package only
+/// after all children have exited. Setup's explicit Update uses the same path.
 pub fn update(
     root: &Path,
     package: &Package<'_>,
@@ -355,8 +377,19 @@ pub fn update(
     let _lock = disk::lock(&root, ".operation.lock")?;
     let mut view = Installation::read(&root)?;
     ensure(view.state.is_some(), "No hay instalación activa")?;
+    ensure(
+        view.state
+            .as_ref()
+            .is_some_and(|state| state.channel == "beta"),
+        "El actualizador no cambia de canal",
+    )?;
+    ensure(
+        !root.join("boot-pending.json").try_exists()?,
+        "Hay un arranque pendiente",
+    )?;
+    let before = Before::capture(&root, &view)?;
     let previous = previous_generation(&mut view, &root, repair)?;
-    let _handles = disk::binary_guard(&root)?;
+    let _handles = disk::binary_guard_running(&root)?;
     let stage = root.join("staging").join(format!("update-{}", disk::id()?));
     let result = (|| {
         let incoming =
@@ -365,7 +398,23 @@ pub fn update(
             !repair || Some(incoming.version.as_str()) == view.installed_version(),
             "La reparación exige la misma versión",
         )?;
-        apply_generation(
+        ensure(
+            repair
+                || view
+                    .manifest
+                    .as_ref()
+                    .is_some_and(|current| incoming.version_parts > current.version_parts),
+            "La actualización exige una versión mayor",
+        )?;
+        ensure(incoming.engine() == 2, "El feed exige motor 2")?;
+        let old = previous
+            .as_ref()
+            .map_or("", |reference| reference.generation.as_str());
+        disk::write_json(
+            &root.join("boot-pending.json"),
+            &json!({"schema":1,"previous":old,"version":incoming.version}),
+        )?;
+        let next = apply_generation(
             &root,
             &stage,
             &incoming,
@@ -373,10 +422,121 @@ pub fn update(
             previous,
             control,
         )?;
+        renew_launcher(&root, &next)?;
+        status(
+            &root,
+            "applied",
+            "Instalación aplicada; comprobando el arranque",
+            &incoming.version,
+        )?;
         Ok(())
     })();
+    if result.is_err() {
+        before.restore(&root, control);
+    }
     let cleanup = disk::remove_owned_tree(&root, &stage);
     result.and(cleanup)
+}
+
+/// Caller holds .operation.lock when a concurrent session can be staging.
+pub fn status(root: &Path, state: &str, message: &str, version: &str) -> Result<()> {
+    disk::publish_json(
+        &root.join("update-status.json"),
+        &json!({"schema":1,"state":state,"message":message,"version":version,"notes":""}),
+    )
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BootRecovery {
+    Restored,
+    RepairRequired,
+}
+
+/// A window from the active generation has acknowledged readiness. The
+/// launcher has already checked that its session is alive before calling.
+pub fn confirm(root: &Path) -> Result<()> {
+    let root = disk::open_root(root, false)?;
+    let _operation = disk::lock(&root, ".operation.lock")?;
+    let marker = disk::read_json(&root.join("boot-pending.json"), Some(4096))?;
+    let view = Installation::read(&root)?;
+    let manifest = view
+        .manifest
+        .as_ref()
+        .ok_or_else(|| WriteError::new(1, "Falta generación activa"))?;
+    ensure(
+        marker["schema"] == 1 && marker["version"] == manifest.version && manifest.engine() == 2,
+        "Confirmación de generación inválida",
+    )?;
+    disk::remove_file(&root.join("boot-pending.json"))?;
+    status(
+        &root,
+        "current",
+        "Versión actualizada y arranque confirmado",
+        &manifest.version,
+    )
+}
+
+/// Called by the root launcher after the failed session has exited. Motor 1
+/// remains readable for migration but is never run again as automatic rollback.
+pub fn rollback(root: &Path) -> Result<BootRecovery> {
+    let root = disk::open_root(root, false)?;
+    let _session = disk::lock(&root, "beta-session.lock")?;
+    let _operation = disk::lock(&root, ".operation.lock")?;
+    let marker = disk::read_json(&root.join("boot-pending.json"), Some(4096))?;
+    let view = Installation::read_for_rollback(&root)?;
+    let mut state = view
+        .state
+        .ok_or_else(|| WriteError::new(1, "Falta estado para rollback"))?;
+    ensure(
+        state.channel == "beta" && marker["schema"] == 1,
+        "Rollback inválido",
+    )?;
+    let active = view
+        .manifest
+        .ok_or_else(|| WriteError::new(1, "Falta manifiesto activo"))?;
+    ensure(
+        marker["version"] == active.version,
+        "Marker de arranque ajeno",
+    )?;
+    let previous = state
+        .previous
+        .as_ref()
+        .zip(view.previous_manifest)
+        .and_then(|(reference, manifest)| {
+            manifest
+                .installed(&root.join("generations").join(&reference.generation), true)
+                .ok()?;
+            Some(manifest)
+        });
+    let expected = state
+        .previous
+        .as_ref()
+        .map_or("", |reference| reference.generation.as_str());
+    ensure(marker["previous"] == expected, "Marker de arranque ajeno")?;
+    if previous
+        .as_ref()
+        .is_none_or(|manifest| manifest.engine() != 2)
+    {
+        status(
+            &root,
+            "repair",
+            "Falló el arranque; ejecuta Reparar. Tus datos anteriores se conservan.",
+            &active.version,
+        )?;
+        disk::remove_file(&root.join("boot-pending.json"))?;
+        return Ok(BootRecovery::RepairRequired);
+    }
+    let prior = state.previous.take().expect("previous authenticated");
+    state.previous = Some(std::mem::replace(&mut state.active, prior));
+    disk::commit_raw(&root, &serde_json::to_vec_pretty(&state)?, &mut |_| Ok(()))?;
+    status(
+        &root,
+        "rollback",
+        "Se restauró la versión anterior",
+        &previous.expect("checked").version,
+    )?;
+    disk::remove_file(&root.join("boot-pending.json"))?;
+    Ok(BootRecovery::Restored)
 }
 
 pub fn uninstall(
@@ -393,7 +553,8 @@ pub fn uninstall(
     };
     let state = document.state;
     ensure(
-        document.previous_present
+        state.channel == "beta"
+            && document.previous_present
             && document.warning.is_none()
             && state.active.valid()
             && state.previous.as_ref().is_none_or(Generation::valid),

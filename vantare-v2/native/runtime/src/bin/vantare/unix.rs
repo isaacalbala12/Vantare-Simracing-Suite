@@ -490,6 +490,7 @@ mod tests {
             stop_only: false,
             launcher_file: None,
             launch: None,
+            installation: None,
         };
         configure(&mut config).expect("configurar canales");
         let pipe = config

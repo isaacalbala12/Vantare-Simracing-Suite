@@ -699,20 +699,22 @@ Sin merge/release del worker.
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
 
-### Paso 5b · poda lista para PR draft (3-nov-2026)
+### Paso 5b integrado; paso 6 en curso (3-nov-2026)
 
 - Código del instalador 63fad3ff3, base nightly 7e92e1a9e tras rebase limpio. Producción simétrica actual: 14180 → 12771 (Rust10662 + PowerShell2109), 29 líneas bajo el tope12800. Los cortes originales 5→3→1→4→2→6 y las519 líneas reclasificadas se informan aparte.
 - Gates por la cola y target exclusivo: fmt/check, Clippy lector/Installer/TEST -D warnings, check Linux all-targets y builds lector/escritor/parity/Uninstall público/Setup payload PASS. Nextest lector17, Installer65 y TEST67 PASS; Hub627 PASS sobre nightly actual (4 omisiones previas). Un helper por perfil Installer se ejecuta desde su padre.
 - Reparar sin activa vuelve a rechazar con3 antes de preparar Cleanup, sin tocar marcador/datos. Uninstall conserva la lectura informativa parcial, pero exige referencias válidas antes de borrar; su versión solo procede del manifiesto ligado por SHA. Prueba CLI RED→GREEN: manifiesto válido pero SHA distinto ya no muestra versión; estado/manifiesto intactos.
 - Matriz05 completa bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados, sin Record: 88/88 filas, 45 rechazos por motivo, 48 Startup, 52 inventario, 42 Register/arranque y 39 frontera PASS; campaña879,40s, salida0. Matrices01–04 fallidas conservadas: precedencia de Repair, Apply sin pendiente y dos fallos de ACL en la prueba QA; se corrigieron sin bajar aserciones. Histórico14+156, workflow45 y calidad468 PASS. Baseline/candidate/beta/normalizador intactos.
-- PR draft [#1892](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1892) a nightly, rama `vantareapp/isa-1840-paso5b-poda`, código publicado `b421b08a9`; CI remota pendiente de comprobar. Plane permanece En curso; sin merge, promoción, release ni instalación/registro reales.
+- [#1892](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1892) integrado por el orquestador en `origin/nightly@fd9f616d8184547113af32b008dfbf0241b213e4`; CI 5/5 verde verificada. Paso 6 en worktree propio `D:/VantareServer/worktrees/isa-1840-paso6`, rama `vantareapp/isa-1840-paso6-lanzador-sesion`, base ese SHA. Incluye el paso 4 de #1860 según su diseño; paso 5 de #1860 queda con el paso 7 del instalador. Tope de producción 12200. Plane sigue En curso; sin promoción a testers/master ni release.
 
 
 Rama/worktree y target propios: `vantareapp/isa-1840-paso5b-poda`,
 `D:/VantareServer/worktrees/isa-1840-paso5b`,
 `D:/VantareServer/targets/isa-1840-p5b`. Evidencia en
 [evidence-1840-p5b.md](../../../native/packaging/matrix/evidence-1840-p5b.md).
-No se empieza paso6. LegacyRunner y consumidores Feed/Register/SetStartup siguen.
+Isaac autorizó retirar LegacyRunner en los pasos 6–7. La VM con el Setup distribuido sobre raíces reales 975 y 988 sigue siendo gate obligatorio de **publicación**, no de programación. El WIP de paso 6 contiene lanzador y sesión Rust, matriz QA adaptada a Run/Check/Apply/Confirm con 45 rechazos, los 19 cambios de poda A y las correcciones pedidas para Feed, reinicio, tests de texto y renovación del lanzador raíz.
+
+**Medición release y decisión vigente (3-nov):** Hub release compilado mediante `compilar.ps1` en target propio y copiado con sus fixtures a QA aislada. Cinco aperturas desde inicio de proceso hasta ventana visible: 2402,4 / 343,7 / 331,4 / 329,9 / 342,7 ms; mediana **342,7 ms**, dentro de 1,5 s. Se retiró el indicador B. Evidencia `D:/VantareServer/qa/isa-1840/p6-logs/hub-open-80a11162af4e43c4823c0a28640fd5f3/results.json`. La proyección fija del script da **11724** líneas; los cambios de producción fuera de ese perímetro suman **710**, total completo **12434**. Se excluyeron del saldo externo los ejemplos y archivos de tests QA (+37). Isaac aceptó **12434 como tope de cierre del paso 6** y traslada las 124 líneas al paso 7, cuyo tope queda en **10106**; final ≤10110. Regla vigente: un exceso intermedio de hasta 150 líneas se registra y traslada al tope siguiente sin detener el trabajo; se para si supera 150 o el objetivo final ya no cabe. La compilación all-targets quedó PASS tras corregir tres errores de migración Feed/supervisor; faltan Clippy, tests y matriz completa. Plane sigue En curso; WIP sin commit ni PR, sin merge/release ni instalación/registro reales.
 
 <details>
 <summary>Antecedentes del WIP y de la poda adicional</summary>

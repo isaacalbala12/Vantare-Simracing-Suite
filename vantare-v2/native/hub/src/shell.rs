@@ -40,6 +40,16 @@ pub(crate) use settings::releases::news_for_channel;
 mod shortcuts;
 mod sidebar;
 
+fn close_code(restart: bool, connected: bool) -> u8 {
+    if restart {
+        10
+    } else if connected {
+        11
+    } else {
+        0
+    }
+}
+
 #[derive(Clone)]
 pub struct Options {
     pub controlled: bool,
@@ -84,8 +94,11 @@ pub(crate) struct Hub {
     status: Option<crate::files::Failure>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
+    connected_source: bool,
     connection_incompatible: bool,
     close_requested: bool,
+    restart_requested: bool,
+    exit_code: std::rc::Rc<std::cell::Cell<u8>>,
     boot_confirmation:
         std::rc::Rc<std::cell::RefCell<Option<crate::installation::BootConfirmation>>>,
 }
@@ -153,6 +166,7 @@ impl Hub {
             let signing_in = self.remote.read(cx).holds_hub_in_game();
             let close = crate::lifecycle::should_close(self.previous_source, &snapshot, signing_in);
             let observed = Some(crate::lifecycle::is_live(&snapshot));
+            self.connected_source = crate::lifecycle::connected(&snapshot);
             let changed = self.previous_source != observed;
             self.previous_source = observed;
             if changed {
@@ -254,7 +268,6 @@ impl Hub {
                 for handle in cx.windows() {
                     let _ = handle.update(cx, |_, window, _| {
                         vantare_ui::window_activation::hide(window);
-                        vantare_ui::window_activation::finish_startup();
                     });
                 }
             });
@@ -264,7 +277,7 @@ impl Hub {
         match self.save(cx) {
             Ok(()) => {
                 if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
-                    let state = if self.previous_source == Some(true) {
+                    let state = if self.connected_source {
                         "live"
                     } else {
                         "idle"
@@ -278,6 +291,8 @@ impl Hub {
                         return false;
                     }
                 }
+                self.exit_code
+                    .set(close_code(self.restart_requested, self.connected_source));
                 true
             }
             Err(error) => {
@@ -1258,6 +1273,7 @@ impl Hub {
         section: Section,
         access: navigation::Access,
         failure_on_quit: std::rc::Rc<std::cell::RefCell<Option<String>>>,
+        exit_code: std::rc::Rc<std::cell::Cell<u8>>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -1460,8 +1476,11 @@ impl Hub {
             status: None,
             subscriber,
             previous_source: None,
+            connected_source: false,
             connection_incompatible: false,
             close_requested: false,
+            restart_requested: false,
+            exit_code,
             boot_confirmation: std::rc::Rc::default(),
         }
     }
@@ -1604,17 +1623,17 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
     })
 }
 
-pub fn run(options: Options) -> Result<(), String> {
+pub fn run(options: Options) -> Result<u8, String> {
     run_with_access(options, navigation::Access::default())
 }
 
 /// La integración de cuenta entrega derechos ya resueltos. Esta shell no
 /// autentica el plan; sin integración deja el acceso monetizado sin verificar.
 #[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
-pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<u8, String> {
     #[cfg(feature = "parity-capture")]
     if options.capture.is_some() && options.capture_output.is_some() {
-        return crate::capture::run_many(vec![options]);
+        return crate::capture::run_many(vec![options]).map(|_| 0);
     }
     #[cfg(not(feature = "parity-capture"))]
     if options.capture.is_some() {
@@ -1632,6 +1651,8 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
+    let exit_code = std::rc::Rc::new(std::cell::Cell::new(0));
+    let exit_result = exit_code.clone();
     gpui_platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
@@ -1696,8 +1717,15 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             let initial_section = options.section;
             let window = cx.open_window(window_options, |window, cx| {
                 let hub = cx.new(|cx: &mut Context<Hub>| {
-                    let mut hub =
-                        Hub::build(loaded, initial_section, access, failure_on_quit, window, cx);
+                    let mut hub = Hub::build(
+                        loaded,
+                        initial_section,
+                        access,
+                        failure_on_quit,
+                        exit_code.clone(),
+                        window,
+                        cx,
+                    );
                     hub.settings_zoom_restore(window);
                     hub
                 });
@@ -1724,7 +1752,6 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                                             "Hub: Windows no concedió primer plano\n".as_bytes(),
                                         );
                                     }
-                                    vantare_ui::window_activation::finish_startup();
                                 });
                             });
                         });
@@ -1819,7 +1846,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         });
     match result.borrow_mut().take() {
         Some(error) => Err(error),
-        None => Ok(()),
+        None => Ok(exit_result.get()),
     }
 }
 
@@ -1853,6 +1880,13 @@ fn start_session_alerts(cx: &mut Context<Hub>) {
 #[cfg(test)]
 mod presentation_tests {
     use super::*;
+
+    #[test]
+    fn restart_to_apply_wins_over_connected_detach() {
+        assert_eq!(close_code(true, true), 10);
+        assert_eq!(close_code(false, true), 11);
+        assert_eq!(close_code(false, false), 0);
+    }
 
     #[test]
     fn only_workshop_occupies_the_whole_window() {

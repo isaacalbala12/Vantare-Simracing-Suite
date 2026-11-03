@@ -477,3 +477,25 @@ fn exit_after_revocation_kill_during_stop_is_reaped_without_rescheduling() {
         assert!(pulse(&mut session, at + grace, true, true).is_empty());
     }
 }
+
+#[test]
+fn connected_hub_close_keeps_session_and_second_open_restarts_only_hub() {
+    let now = Instant::now();
+    let mut session = Session::new(
+        [Policy::core(1), Policy::consumer(1)],
+        Duration::from_secs(3),
+        now,
+    );
+    assert_eq!(
+        pulse(&mut session, now, false, false),
+        vec![Action::Spawn(0), Action::Spawn(1)]
+    );
+    session.paso(Event::Started(0), now);
+    session.paso(Event::Started(1), now);
+    assert!(session.paso(Event::Detached(1), now).is_empty());
+    assert!(!session.stopping());
+    assert_eq!(session.children[0].state, ChildState::Alive(now));
+    assert_eq!(session.children[1].state, ChildState::Reaped);
+    assert_eq!(session.paso(Event::OpenHub(1), now), vec![Action::Spawn(1)]);
+    assert_eq!(session.children[0].state, ChildState::Alive(now));
+}

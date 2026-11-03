@@ -210,20 +210,14 @@ rechazo explícito, sin presuponer compatibilidad futura. Un motor antiguo debe 
 forma segura un paquete que no pueda validar y pedir reinstalar con Setup.
 
 La 0.0.975 pública y las RC 980–988 pasan una vez por Setup: se lee state v1,
-se conserva la anterior para rollback y se migran las formas conocidas de
-registro/accesos. Una generación motor 1 se arranca mediante **LegacyRunner**:
-`generations/<id>/bin/vantare.exe --beta -Root <raíz>`, con scripts congelados
-de la raíz que **Setup conserva mientras alguna referencia sea motor 1**.
-Es la única excepción temporal a retirar PowerShell del producto. Se retiran
-esos scripts cuando **ninguna referencia active/previous sea motor 1**; una
-previous ausente no impide la retirada. El test de migración debe comprobar
-ambos lados de esa condición. Su prueba usa la
-975 real sin ejecutar sus binarios en la matriz. La prueba live requiere VM
-o cuenta aislada. Su Register puede volver a apuntar accesos a la generación
-antigua, limitación heredada aceptada hasta salir de LegacyRunner.
+se conserva la anterior y sus datos, y se migran las formas conocidas de
+registro/accesos. El lanzador nuevo solo ejecuta motor 2; una primera versión
+que no arranca ofrece Reparar sin activar motor 1. La validación de ambas
+raíces reales mediante los bytes distribuidos del Setup es gate de publicación,
+según la enmienda del paso 6 más abajo.
 
-El paso 7 retira PowerShell del producto nuevo, salvo Cleanup permanente y la raíz LegacyRunner
-condicionada anterior, NSIS y operaciones Wails, incluidas ImportProfiles,
+El paso 7 retira PowerShell del producto nuevo, salvo Cleanup permanente,
+NSIS y operaciones Wails, incluidas ImportProfiles,
 ImportLayout y Start. Retira canales muertos, `_?=` y tests que leen scripts;
 reescribe README de packaging como contrato vigente. Build queda en tooling. MSIX
 se conserva como documento histórico, sin ruta de distribución activa.
@@ -282,11 +276,34 @@ ImportLayout, Start y variantes antiguas de estado; se conservan migraciones
 baratas que protegen datos o preferencias. Lo ilegible se presenta como Dañada
 con Reparar, sin sobrescribir ni elegir datos arbitrariamente.
 
-LegacyRunner no se retira en5b: será el último corte, condicionado a la VM con
-Setup real sobre975/988 que hará Isaac y a otra enmienda de este ADR. Su retirada
-se diseña como borrado limpio. El indicador de arranque solo desaparece si la
+LegacyRunner no se retira en5b. El indicador de arranque solo desaparece si la
 ventana del Hub se mide en≤1,5s; en otro caso se conserva. No se autoriza paso6
 por cerrar esta poda ni se altera el presupuesto único del supervisor (#1816).
+
+**Resultado del paso 6 (3-nov-2026):** la build release del Hub, con fixtures
+distribuidos en QA aislada, abrió la ventana en 2402/344/331/330/343 ms;
+mediana 343 ms. Se retiró el indicador. Isaac aceptó 12434 líneas de producción
+para cerrar el paso 6; el tope del 7 es 10106 y el objetivo final sigue en
+10110. Los excesos intermedios de hasta 150 líneas se trasladan al paso
+siguiente; solo se detiene la entrega si exceden 150 o el final no cabe.
+
+### Enmienda del paso 6: fin de LegacyRunner
+
+Se retira la ruta de ejecución de generaciones de motor 1 en los pasos 6–7.
+Setup puede leer y migrar sus manifiestos y datos, pero el lanzador nuevo solo
+arranca motor 2. Si el primer motor 2 no confirma el arranque, no se vuelve a
+ejecutar el motor 1: se muestra un aviso que ofrece **Reparar**. La `data/` de
+la generación anterior se conserva intacta; ninguna elección automática de
+datos sustituye esa recuperación explícita. Las referencias de motor 1 pueden
+seguir en `state.json` para proteger sus datos hasta la retención del paso 8.
+
+La prueba sobre las instalaciones reales 0.0.975 y 0.0.988 deja de bloquear la
+programación. **Bloquea la publicación** de cualquier release que contenga
+motor 2 sin LegacyRunner: Isaac debe ejecutar el Setup de bytes distribuidos
+en una VM o cuenta aislada sobre ambas raíces reales, comprobar migración,
+arranque/fallo, aviso Reparar y conservación de `data/`, y dejar la evidencia
+en #1840 y el handoff. CI, matriz sintética o un PR verde no sustituyen esa
+prueba. No se publica ni promociona una release que no tenga el acta de Isaac.
 
 ## Consecuencias y verificación
 
@@ -302,7 +319,7 @@ HKCU y carpetas inyectados. #1848 sigue el aislamiento de suites históricas;
 de este corte. No se confunde un arnés con una instalación interactiva real.
 
 El lanzador es una pieza crítica y deliberadamente pequeña. La transición
-mantiene un LegacyRunner explícito, con prueba exigida y retirada definida. Los
+lee las generaciones anteriores sin ejecutarlas. Los
 anclajes pueden requerir volver a anclarse una vez; se avisará en las notas.
 Setup/Uninstall siguen sin Authenticode, conforme al riesgo ya aceptado.
 

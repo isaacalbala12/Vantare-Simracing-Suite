@@ -8,6 +8,15 @@
 
 ## Contrato canónico
 
+### Gate de publicación del motor 2 (#1840)
+
+Ninguna release que incluya motor 2 sin LegacyRunner se publica hasta que Isaac
+pruebe el Setup **con los bytes distribuidos** sobre raíces reales 0.0.975 y
+0.0.988, en VM o cuenta aislada. La evidencia de ambas migraciones, del
+arranque o aviso Reparar y de la conservación exacta de `data/` se registra
+en [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840)
+y en el handoff de plataforma. Los tests sintéticos y la CI no levantan este gate.
+
 ```text
 rama de issue
     ↓ aprobación inicial de Isaac

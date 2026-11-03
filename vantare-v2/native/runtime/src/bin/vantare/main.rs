@@ -26,6 +26,8 @@
 
 mod background;
 mod child_shutdown;
+#[cfg(windows)]
+mod installed;
 mod session;
 mod supervisor;
 #[cfg(test)]
@@ -44,13 +46,12 @@ use std::io::Write;
 #[cfg(windows)]
 use vantare_launcher as launcher;
 #[cfg(windows)]
-mod beta;
-#[cfg(windows)]
-mod beta_indicator;
 #[cfg(windows)]
 mod resident;
 #[cfg(windows)]
 mod triggers_win;
+#[cfg(windows)]
+mod update_feed;
 
 use vantare_ipc::product;
 
@@ -94,6 +95,7 @@ struct Config {
     stop_only: bool,
     launcher_file: Option<PathBuf>,
     launch: Option<String>,
+    installation: Option<PathBuf>,
 }
 
 fn value<'a>(
@@ -120,6 +122,7 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
         stop_only: false,
         launcher_file: None,
         launch: None,
+        installation: None,
     };
     let mut args = args.iter();
     let mut engineer_bin = bin_dir.join(binary_name("vantare-engineer"));
@@ -412,6 +415,10 @@ fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
 #[cfg(windows)]
 fn run(mut config: Config) -> io::Result<ExitCode> {
     let Some(instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
+        if config.installation.is_some() {
+            let _ = Stop::signal(&object_name("launcher-open-hub", &config.instance));
+            return Ok(ExitCode::SUCCESS);
+        }
         if let Some(profile) = config.launch {
             let path = resident_settings(config.launcher_file)?;
             let request = vantare_ipc::launcher::Request::Launch { profile };
@@ -423,9 +430,23 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
+    let mut workers = background::Workers::default();
+    workers.open_hub = config
+        .installation
+        .as_ref()
+        .map(|_| win::OpenHub::create(&object_name("launcher-open-hub", &config.instance)))
+        .transpose()?;
+    let _session_lock = config
+        .installation
+        .as_ref()
+        .map(|root| {
+            vantare_installer::engine::write_fs::lock(root, "beta-session.lock")
+                .map_err(|error| io::Error::other(error.to_string()))
+        })
+        .transpose()?;
     win::adopt_self_in_job()?;
     let grace = config.grace;
-    let mut workers = background::Workers::default();
+    let installation = config.installation.clone();
     let setup = (|| -> io::Result<_> {
         workers.resident = if config.instance.is_empty() || config.launcher_file.is_some() {
             let path = resident_settings(config.launcher_file.clone())?;
@@ -457,6 +478,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             .as_ref()
             .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
             .transpose()?;
+        let hub_image = config.core.path.with_file_name("vantare-hub.exe");
         let mut core = Service::new("núcleo", config.core, config.restarts)
             .with_policy(session::Policy::core(config.restarts));
         core.bootstrap = Some(remote.1);
@@ -481,9 +503,33 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
                     .with_policy(session::Policy::permitted(config.restarts)),
             );
         }
+        if let Some(root) = &config.installation {
+            let data = vantare_ipc::paths::Root::from_env()?.base().to_path_buf();
+            let mut hub_args = vec!["--control-stdin".into(), "--pipe".into(), photo.clone()];
+            for (flag, path) in [
+                ("--data-dir", data.join("hub")),
+                ("--layout", data.join("Vantare/native/layout.json")),
+                (
+                    "--engineer-settings",
+                    data.join("Vantare/native/engineer.json"),
+                ),
+                ("--launcher-file", data.join("Vantare/native/launcher.json")),
+            ] {
+                hub_args.extend([flag.into(), path.to_string_lossy().into_owned()]);
+            }
+            services.push(Service::new(
+                "Hub",
+                Program {
+                    path: hub_image,
+                    args: hub_args,
+                },
+                config.restarts,
+            ));
+            workers.feed = Some(background::Feed::start(root.clone())?);
+        }
         Ok((services, rights))
     })();
-    match setup {
+    let result = match setup {
         Ok((mut services, rights)) => supervisor::run(
             &mut services,
             &stop,
@@ -493,7 +539,14 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             &mut workers,
         ),
         Err(error) => supervisor::fail_setup(&stop, &instance, grace, &mut workers, error),
+    }?;
+    if let Some(root) = &installation
+        && result == ExitCode::SUCCESS
+        && root.join("staging/pending.json").try_exists()?
+    {
+        return installed::apply(root);
     }
+    Ok(result)
 }
 
 #[cfg(unix)]
@@ -518,14 +571,21 @@ fn main() -> ExitCode {
     vantare_services::diagnostics::install_panic_hook("vantare");
     let args: Vec<String> = env::args().skip(1).collect();
     #[cfg(windows)]
-    if args.first().is_some_and(|arg| arg == "--beta") {
-        return beta::start(&args).map_or_else(
-            |error| {
-                log(error);
-                ExitCode::FAILURE
-            },
-            |()| ExitCode::SUCCESS,
-        );
+    let installed = match args.first().map(String::as_str) {
+        Some("--root") => Some(installed::root(&args)),
+        Some("--session") => Some(installed::session(&args)),
+        Some("--open-hub") if args.len() == 1 => Some(
+            Stop::signal(&object_name("launcher-open-hub", "native-beta"))
+                .map(|()| ExitCode::SUCCESS),
+        ),
+        _ => None,
+    };
+    #[cfg(windows)]
+    if let Some(result) = installed {
+        return result.unwrap_or_else(|error| {
+            log(error);
+            ExitCode::FAILURE
+        });
     }
     let bin_dir = env::current_exe()
         .ok()

@@ -173,6 +173,9 @@ impl Manifest {
     pub fn sha256(&self) -> &str {
         &self.sha256
     }
+    pub fn engine(&self) -> u32 {
+        self.engine.unwrap_or(1)
+    }
     pub(super) fn bound(
         root: &Path,
         reference: &Generation,
@@ -345,7 +348,7 @@ pub(super) fn read_state(root: &Path) -> Result<Option<StateDocument>, ReadError
     }))
 }
 
-pub(super) fn hash_file(path: &Path) -> Result<String, ReadError> {
+pub fn hash_file(path: &Path) -> Result<String, ReadError> {
     reject_links(path).map_err(|_| ReadError::Invalid("Ruta de instalación no válida"))?;
     let mut hash = Sha256::new();
     io::copy(&mut fs::File::open(path)?, &mut hash)?;
@@ -373,29 +376,31 @@ pub(super) fn verify_pe(path: &Path) -> Result<(), ReadError> {
 }
 
 pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>, ReadError> {
-    let mut pending = vec![root.to_path_buf()];
+    let mut pending = vec![(root.to_path_buf(), false)];
     let mut files = Vec::new();
-    while let Some(directory) = pending.pop() {
+    while let Some((directory, in_data)) = pending.pop() {
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
             let path = entry.path();
-            require(
-                !entry
-                    .file_name()
-                    .to_string_lossy()
-                    .to_ascii_lowercase()
-                    .starts_with(".env"),
-                "Árbol .env rechazado antes de leerlo",
-            )?;
-            reject_links(&path).map_err(|_| ReadError::Invalid("Árbol con reparse point"))?;
-            if skip_data && path == root.join("data") {
-                continue;
+            if !in_data {
+                require(
+                    !entry
+                        .file_name()
+                        .to_string_lossy()
+                        .to_ascii_lowercase()
+                        .starts_with(".env"),
+                    "Árbol .env rechazado antes de leerlo",
+                )?;
             }
+            reject_links(&path).map_err(|_| ReadError::Invalid("Árbol con reparse point"))?;
+            let in_data = in_data || skip_data && path == root.join("data");
             let is_directory = entry.file_type()?.is_dir();
             if is_directory {
-                pending.push(path.clone());
+                pending.push((path.clone(), in_data));
             }
-            files.push((path, is_directory));
+            if !in_data {
+                files.push((path, is_directory));
+            }
         }
     }
     Ok(files)
@@ -403,6 +408,12 @@ pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>,
 
 impl Installation {
     pub fn read(root: &Path) -> Result<Self, ReadError> {
+        Self::read_inner(root, true)
+    }
+    pub fn read_for_rollback(root: &Path) -> Result<Self, ReadError> {
+        Self::read_inner(root, false)
+    }
+    fn read_inner(root: &Path, inspect_active: bool) -> Result<Self, ReadError> {
         let mut view = Self {
             state: None,
             manifest: None,
@@ -452,7 +463,9 @@ impl Installation {
         }
         view.original_state = Some(document.original);
         view.state = Some(state);
-        view.check_files(root, false)?;
+        if inspect_active {
+            view.check_files(root, false)?;
+        }
         Ok(view)
     }
     /// Reuses decoded/bound manifests. A repair may inspect the active failure

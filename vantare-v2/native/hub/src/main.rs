@@ -467,7 +467,7 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
         }
     }
     match vantare_hub::shell::run(options) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => ExitCode::from(code),
         Err(error) => {
             let _written = writeln!(std::io::stderr(), "vantare-hub: {error}");
             ExitCode::FAILURE
@@ -718,52 +718,19 @@ mod tests {
 
     #[test]
     fn calendar_writer_and_reader_share_beta_layout_path() {
-        let beta = include_str!("../../packaging/beta.ps1");
-        let hub = beta
-            .lines()
-            .find(|line| line.trim_start().starts_with("$hubArgs ="))
-            .expect("argumentos reales de Start-BetaHub");
-        let beta_path = |flag| {
-            hub.split_once(flag)
-                .expect("flag beta")
-                .1
-                .split_once("(Join-Path $generation '")
-                .expect("ruta beta")
-                .1
-                .split_once('\'')
-                .expect("fin ruta beta")
-                .0
-        };
-        assert_eq!(beta_path("--data-dir"), "data/hub");
-        assert_eq!(beta_path("--layout"), "data/Vantare/native/layout.json");
-        let native_root = beta
-            .lines()
-            .find(|line| {
-                line.trim_start()
-                    .starts_with("$env:VANTARE_NATIVE_DATA_ROOT =")
-            })
-            .expect("raíz heredada por el overlay")
-            .split_once("Join-Path $generation '")
-            .expect("raíz beta")
-            .1
-            .split_once('\'')
-            .expect("fin raíz beta")
-            .0;
-        assert_eq!(native_root, "data");
         let root = std::env::temp_dir().join("vantare-calendar-beta-contract");
+        let data = root.join("data");
         let options = parse(&[
             "--data-dir".into(),
-            root.join(beta_path("--data-dir"))
-                .to_string_lossy()
-                .into_owned(),
+            data.join("hub").to_string_lossy().into_owned(),
             "--layout".into(),
-            root.join(beta_path("--layout"))
+            data.join("Vantare/native/layout.json")
                 .to_string_lossy()
                 .into_owned(),
         ])
-        .expect("argumentos beta");
+        .expect("argumentos de la generación Rust");
         // El overlay no recibe --layout: lo resuelve desde la raíz heredada.
-        let overlay_layout = root.join(native_root).join("Vantare/native/layout.json");
+        let overlay_layout = data.join("Vantare/native/layout.json");
         let expected = root.join("data/Vantare/native/session-alerts-feed.json");
         assert_eq!(
             vantare_hub::calendar::Calendar::alert_path(&options.layout),

@@ -22,11 +22,37 @@ use windows_sys::Win32::System::Threading::{
     CreateEventW, CreateMutexW, EVENT_MODIFY_STATE, GetCurrentProcess, OpenEventW, SetEvent,
     WaitForMultipleObjects,
 };
+use windows_sys::Win32::UI::WindowsAndMessaging::{IDYES, MB_ICONERROR, MB_YESNO, MessageBoxW};
 
 const INFINITE: u32 = u32::MAX;
 
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain([0]).collect()
+}
+
+pub fn offer_repair() -> io::Result<()> {
+    let title = wide("Vantare · Reparar");
+    let message = wide(
+        "Vantare no ha podido abrir esta versión. Tus datos anteriores siguen en disco. ¿Abrir la página de descargas para ejecutar Reparar con el Setup nuevo?",
+    );
+    // SAFETY: punteros a cadenas UTF-16 terminadas en NUL, válidos durante la llamada.
+    let choice = unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            message.as_ptr(),
+            title.as_ptr(),
+            MB_ICONERROR | MB_YESNO,
+        )
+    };
+    if choice == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if choice == IDYES {
+        std::process::Command::new("explorer.exe")
+            .arg("https://github.com/isaacalbala12/Vantare-Downloads/releases")
+            .spawn()?;
+    }
+    Ok(())
 }
 
 fn millis(d: Duration) -> u32 {
@@ -97,6 +123,22 @@ impl Instance {
 /// cierre de la consola y `vantare --parar`.
 pub struct Stop(OwnedHandle);
 
+pub struct OpenHub(OwnedHandle);
+fn named_event(name: &str, manual: bool) -> io::Result<OwnedHandle> {
+    let name = wide(name);
+    // SAFETY: NUL-terminated name; the caller owns the returned event.
+    owned(unsafe { CreateEventW(null(), i32::from(manual), 0, name.as_ptr()) })
+}
+
+impl OpenHub {
+    pub fn create(name: &str) -> io::Result<Self> {
+        Ok(Self(named_event(name, false)?))
+    }
+    pub fn signaled(&self) -> io::Result<bool> {
+        Ok(wait_any(&[self.0.as_raw_handle()], Some(Duration::ZERO))?.is_some())
+    }
+}
+
 /// El manejador de consola corre en un hilo del sistema y solo ve esto.
 static CONSOLE_STOP: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
 
@@ -112,9 +154,7 @@ unsafe extern "system" fn on_console_event(_kind: u32) -> i32 {
 impl Stop {
     /// Crea el evento y hace que Ctrl+C, Ctrl+Break y el cierre de la consola lo activen.
     pub fn create(name: &str) -> io::Result<Self> {
-        let name = wide(name);
-        // SAFETY: `name` termina en NUL; evento manual, no señalado.
-        let event = owned(unsafe { CreateEventW(null(), 1, 0, name.as_ptr()) })?;
+        let event = named_event(name, true)?;
         // El evento no se libera antes de acabar el proceso: `Stop` vive en `main`
         // y el manejador solo se ejecuta mientras el proceso vive.
         CONSOLE_STOP.store(event.as_raw_handle(), Ordering::Release);

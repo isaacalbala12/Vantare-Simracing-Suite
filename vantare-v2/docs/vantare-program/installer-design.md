@@ -15,8 +15,10 @@
   y driver retirado. La matriz conserva invariantes y45 rechazos por motivo,
   no la igualdad de bytes con PS. Presupuestos ampliados:5b≤12800,6≤12200,
   7≤10080,8≤10110; se para si no cabe. windows-registry0.6.1 solo con ahorro
-  medido. LegacyRunner se conserva hasta VM975/988 de Isaac y enmienda ADR;
-  indicador hasta medir Hub≤1,5s. Las demás retiradas legacy van en6–7 y se
+  medido. Isaac autorizó retirar LegacyRunner en los pasos 6–7; la prueba
+  de las raíces reales 975/988 con Setup distribuido bloquea la release;
+  indicador retirado tras mediana Hub release de 343 ms en cinco arranques QA.
+  Cierre6 aceptado en 12434 líneas; tope7≤10106 y final≤10110. Las demás retiradas legacy van en6–7 y se
   mantienen migraciones baratas de datos/preferencias. Véase enmienda ADR0103.
 
 - §4.5, pasos5/7: decisión posterior permanente. Solo Cleanup conserva un script
@@ -65,9 +67,10 @@
   actualizador. startup-options.json de 1d también es contrato vigente; el
   recuento original de señales de §5 no los incluía y no es una medida actual.
 - §4.5, paso 5 conserva destinos existentes; el paso 6 cambia los accesos al
-  lanzador una vez instalado. El inventario sin PS del paso 7 se refiere al
-  producto nuevo: Setup conserva los scripts congelados necesarios para
-  LegacyRunner mientras alguna referencia sea motor 1, incluso tras ese paso.
+  lanzador una vez instalado. El motor 1 se lee para migración y protección de
+  datos, pero el lanzador no lo ejecuta ni conserva LegacyRunner. Si falla el
+  primer motor 2, se ofrece Reparar. Esta nota sustituye las filas históricas
+  de §4.4–4.5 que describen rollback automático a motor 1.
 - La dependencia sha2 se adelanta al paso 3 por autorización del orquestador.
   Cambian solo aristas installer/Hub del lock, sin nuevas resoluciones; la frase
   histórica «no añaden nada al lock» no implica identidad byte a byte.

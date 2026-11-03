@@ -304,22 +304,6 @@ pub(super) fn beta_status() -> Option<BetaStatus> {
         && status.notes.len() <= 8192)
         .then_some(status)
 }
-pub(super) fn request_restart() -> Result<(), String> {
-    let root = std::env::var_os("VANTARE_BETA_ROOT").ok_or("Instalación beta no disponible")?;
-    fs::write(Path::new(&root).join("restart-request"), b"restart")
-        .map_err(|error| format!("solicitar reinicio: {error}"))
-}
-pub(super) fn cancel_restart() -> Result<(), String> {
-    let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") else {
-        return Ok(());
-    };
-    match fs::remove_file(Path::new(&root).join("restart-request")) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(format!("cancelar reinicio beta: {error}")),
-    }
-}
-
 /// Cosmetic registration is intentionally independent of the updater/toasts.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

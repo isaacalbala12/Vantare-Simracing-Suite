@@ -1516,12 +1516,9 @@ fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
     .detach();
 }
 
-pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
-    if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
-        demo.apply_capture(capture)?;
-    }
+fn load_settings(options: &Options, layout_preexisted: bool) -> settings::store::Store {
     let mut settings_store =
-        settings::store::Store::load(&options.data_dir, options.layout.exists());
+        settings::store::Store::load(&options.data_dir, layout_preexisted);
     if let Some(enabled) = settings::windows::installed_startup() {
         settings_store.value.general.startup = enabled;
     }
@@ -1531,6 +1528,14 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
     if let Some(zoom) = options.capture.as_ref().and(options.capture_zoom) {
         settings_store.value.zoom = zoom;
     }
+    settings_store
+}
+
+pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
+    if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
+        demo.apply_capture(capture)?;
+    }
+    let layout_preexisted = options.layout.exists();
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),
@@ -1558,7 +1563,6 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
             .as_ref()
             .map(|_| foundations::capture_photos())
             .transpose()?,
-        settings_store,
         analysis: prepare_analysis(options)?,
         prepared: Prepared::load(&options.data_dir, options.scene.clone())?,
         studio: {
@@ -1595,6 +1599,8 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
             &options.data_dir,
             options.demo.is_some() || options.capture.is_some(),
         ),
+        // Publicar la migración solo tras validar todas las entradas fallibles.
+        settings_store: load_settings(options, layout_preexisted),
     })
 }
 

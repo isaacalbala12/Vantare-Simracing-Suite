@@ -1,6 +1,6 @@
 //! Generation mutations. One bound installation snapshot per operation.
 use super::{
-    Generation, Installation, State, WriteError, installation, package, validation,
+    Generation, Installation, State, WriteError, installation, package, validation, windows,
     write_fs::{self as disk, Result, ensure},
 };
 use crate::model::{Mode, Progress};
@@ -53,32 +53,74 @@ const METADATA: &[&str] = &[
     "update-status.json",
 ];
 fn renew_launcher(root: &Path, state: &State) -> Result<bool> {
-    let source = root
-        .join("generations")
-        .join(&state.active.generation)
-        .join("bin/vantare.exe");
+    let source = launcher_source(root, state);
+    renew_launcher_from(root, &source)
+}
+fn renew_launcher_from(root: &Path, source: &Path) -> Result<bool> {
     let target = root.join("Vantare.exe");
     let existed = target.try_exists()?;
-    if existed && installation::hash_file(&source)? == installation::hash_file(&target)? {
+    let expected = installation::hash_file(source)?;
+    if existed && expected == installation::hash_file(&target)? {
         return Ok(false);
     }
     let temporary = root.join(format!("launcher-{}.tmp", disk::id()?));
     fs::copy(source, &temporary)?;
+    fs::OpenOptions::new()
+        .write(true)
+        .open(&temporary)?
+        .sync_all()?;
     let old = if root.join("Vantare.exe.old").try_exists()? {
         root.join(format!("Vantare-{}.old", disk::id()?))
     } else {
         root.join("Vantare.exe.old")
     };
+    if existed && windows::replace_backed_up(&temporary, &target, &old).is_ok() {
+        ensure(
+            installation::hash_file(&target)? == expected,
+            "Lanzador renovado alterado",
+        )?;
+        return Ok(false);
+    }
     if existed {
         fs::rename(&target, &old)?;
     }
     if let Err(error) = disk::replace_temporary(&temporary, &target) {
-        if existed {
+        if existed && !target.try_exists()? {
             let _ = fs::rename(&old, &target);
         }
         return Err(error);
     }
+    ensure(
+        installation::hash_file(&target)? == expected,
+        "Lanzador renovado alterado",
+    )?;
     Ok(!existed)
+}
+fn launcher_source(root: &Path, state: &State) -> PathBuf {
+    root.join("generations")
+        .join(&state.active.generation)
+        .join("bin/vantare.exe")
+}
+pub fn recover_launcher(root: &Path, state: &State) -> Result<()> {
+    let expected = installation::hash_file(&launcher_source(root, state))?;
+    let target = root.join("Vantare.exe");
+    if target.try_exists()? && installation::hash_file(&target)? == expected {
+        return Ok(());
+    }
+    let old = root.join("Vantare.exe.old");
+    if old.try_exists()? && installation::hash_file(&old)? == expected {
+        if target.try_exists()? {
+            let _ = renew_launcher_from(root, &old)?;
+        } else {
+            fs::rename(&old, &target)?;
+        }
+    } else {
+        let _ = renew_launcher(root, state)?;
+    }
+    ensure(
+        installation::hash_file(&target)? == expected,
+        "Lanzador raíz inválido",
+    )
 }
 #[cfg(all(test, windows))]
 mod launcher_tests {
@@ -120,6 +162,69 @@ mod launcher_tests {
         assert!(root.join("Vantare.exe.old").is_file());
         child.kill().unwrap();
         child.wait().unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn interrupted_rename_restores_the_old_launcher_before_cleanup() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("interrupted-launcher-{}", std::process::id()));
+        super::super::context::qa_path(&root).unwrap();
+        let id = "a".repeat(32);
+        let bin = root.join("generations").join(&id).join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let original = b"active launcher";
+        fs::write(bin.join("vantare.exe"), original).unwrap();
+        let target = root.join("Vantare.exe");
+        fs::write(&target, original).unwrap();
+        let state = State {
+            schema: 1,
+            product: "vantare-native".into(),
+            channel: "beta".into(),
+            active: Generation {
+                generation: id,
+                manifest_sha256: Some("b".repeat(64)),
+            },
+            previous: None,
+        };
+        fs::rename(&target, root.join("Vantare.exe.old")).unwrap();
+        fs::write(
+            root.join(format!("launcher-{}.tmp", "c".repeat(32))),
+            b"partial",
+        )
+        .unwrap();
+        recover_launcher(&root, &state).unwrap();
+        assert_eq!(fs::read(&target).unwrap(), original);
+        assert!(!root.join("Vantare.exe.old").exists());
+        fs::write(&target, b"altered root launcher").unwrap();
+        fs::write(root.join("Vantare.exe.old"), original).unwrap();
+        recover_launcher(&root, &state).unwrap();
+        assert_eq!(fs::read(&target).unwrap(), original);
+        assert!(root.join("Vantare.exe.old").exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn failed_renewal_after_state_commit_clears_marker_and_allows_retry() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("rollback-launcher-error-{}", std::process::id()));
+        super::super::context::qa_path(&root).unwrap();
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("boot-pending.json"), b"{}").unwrap();
+        finish_rollback(&root, "0.0.989", false, || {
+            Err(WriteError::new(1, "simulated rename failure"))
+        })
+        .unwrap();
+        assert!(!root.join("boot-pending.json").exists());
+        let status = disk::read_json(&root.join("update-status.json"), None).unwrap();
+        assert_eq!(status["state"], "rollback");
+        assert!(status["rejectedVersion"].is_null());
         fs::remove_dir_all(root).unwrap();
     }
 }
@@ -508,6 +613,15 @@ pub fn status(root: &Path, state: &str, message: &str, version: &str) -> Result<
         disk::read_optional(&root.join("update-status.json"), Some(65536))?
             .and_then(|old| old["rejectedVersion"].as_str().map(str::to_owned))
     };
+    publish_status(root, state, message, version, rejected.as_deref())
+}
+fn publish_status(
+    root: &Path,
+    state: &str,
+    message: &str,
+    version: &str,
+    rejected: Option<&str>,
+) -> Result<()> {
     disk::publish_json(
         &root.join("update-status.json"),
         &json!({"schema":1,"state":state,"message":message,"version":version,"notes":"","rejectedVersion":rejected}),
@@ -547,6 +661,12 @@ pub fn confirm(root: &Path) -> Result<()> {
 /// Called by the root launcher after the failed session has exited. Motor 1
 /// remains readable for migration but is never run again as automatic rollback.
 pub fn rollback(root: &Path) -> Result<BootRecovery> {
+    rollback_with_policy(root, true)
+}
+pub fn rollback_retryable(root: &Path) -> Result<BootRecovery> {
+    rollback_with_policy(root, false)
+}
+fn rollback_with_policy(root: &Path, reject_version: bool) -> Result<BootRecovery> {
     let root = disk::open_root(root, false)?;
     let _session = disk::lock(&root, "beta-session.lock")?;
     let _operation = disk::lock(&root, ".operation.lock")?;
@@ -585,11 +705,12 @@ pub fn rollback(root: &Path) -> Result<BootRecovery> {
         .as_ref()
         .is_none_or(|manifest| manifest.engine() != 2)
     {
-        status(
+        publish_status(
             &root,
             "repair",
             "Falló el arranque; ejecuta Reparar. Tus datos anteriores se conservan.",
             &active.version,
+            reject_version.then_some(active.version.as_str()),
         )?;
         disk::remove_file(&root.join("boot-pending.json"))?;
         return Ok(BootRecovery::RepairRequired);
@@ -597,15 +718,35 @@ pub fn rollback(root: &Path) -> Result<BootRecovery> {
     let prior = state.previous.take().expect("previous authenticated");
     state.previous = Some(std::mem::replace(&mut state.active, prior));
     disk::commit_raw(&root, &serde_json::to_vec_pretty(&state)?, &mut |_| Ok(()))?;
-    renew_launcher(&root, &state)?;
-    status(
-        &root,
-        "rollback",
-        "Se restauró la versión anterior",
-        &active.version,
-    )?;
-    disk::remove_file(&root.join("boot-pending.json"))?;
+    finish_rollback(&root, &active.version, reject_version, || {
+        renew_launcher(&root, &state)
+    })?;
     Ok(BootRecovery::Restored)
+}
+fn finish_rollback(
+    root: &Path,
+    failed_version: &str,
+    reject_version: bool,
+    renew: impl FnOnce() -> Result<bool>,
+) -> Result<()> {
+    disk::remove_file(&root.join("boot-pending.json"))?;
+    let renewed = renew();
+    let message = if renewed.is_ok() {
+        "Se restauró la versión anterior"
+    } else {
+        "Se restauró la versión anterior; el lanzador requiere Reparar"
+    };
+    publish_status(
+        root,
+        "rollback",
+        message,
+        failed_version,
+        reject_version.then_some(failed_version),
+    )?;
+    if let Err(error) = renewed {
+        eprintln!("Rollback: no se pudo renovar Vantare.exe: {error}");
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_lines)] // The ownership checks and deletion share one transaction.

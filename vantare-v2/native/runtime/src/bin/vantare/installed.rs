@@ -59,19 +59,6 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
         let _ = Stop::signal(&object_name("launcher-open-hub", "native-beta"));
         return Ok(ExitCode::SUCCESS);
     };
-    for entry in fs::read_dir(&root)? {
-        let entry = entry?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let generated = name
-            .strip_prefix("Vantare-")
-            .and_then(|n| n.strip_suffix(".old"));
-        if name == "Vantare.exe.old"
-            || generated
-                .is_some_and(|id| id.len() == 32 && id.bytes().all(|byte| byte.is_ascii_hexdigit()))
-        {
-            let _ = fs::remove_file(entry.path());
-        }
-    }
     for _ in 0..3 {
         if root.join("staging/pending.json").try_exists()?
             && let Err(error) = apply(&root)
@@ -79,11 +66,17 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
             log(format_args!("actualización pendiente: {error}"));
             let _ = fs::remove_file(root.join("staging/pending.json"));
         }
-        let (_, generation) = active(&root).inspect_err(|_| {
+        let (view, generation) = active(&root).inspect_err(|_| {
             let _ = super::win::offer_repair();
         })?;
+        operations::recover_launcher(&root, view.state.as_ref().expect("active state"))
+            .map_err(io_error)
+            .inspect_err(|_| {
+                let _ = super::win::offer_repair();
+            })?;
+        cleanup_launcher_artifacts(&root)?;
         let image = generation.join("bin/vantare.exe");
-        let _ = fs::remove_file(root.join("hub-ready"));
+        clear_ready(&root)?;
         let mut session = Command::new(&image);
         session.args(["--session", "-Root"]).arg(&root);
         if background {
@@ -107,13 +100,13 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
             Ok(child) => child,
             Err(error) if pending => {
                 log(format_args!("sesión nueva: {error}"));
-                recover_boot(&root, &context)?;
+                recover_boot(&root, &context, true)?;
                 continue;
             }
             Err(error) => return Err(error),
         };
         let opened = if pending {
-            ready(&root, &mut child, Duration::from_secs(45)).unwrap_or_else(|error| {
+            ready(&root, &mut child, Duration::from_mins(1)).unwrap_or_else(|error| {
                 log(format_args!("confirmar ventana: {error}"));
                 false
             })
@@ -128,12 +121,13 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
                     })
                     .is_ok();
             if !confirmed {
+                let rejected = !opened && child.try_wait()?.is_some();
                 let _ = Stop::signal(&object_name("launcher-stop", "native-beta"));
                 if !wait_for_exit(&mut child, Duration::from_secs(15)).unwrap_or(false) {
                     let _ = child.kill();
                     let _ = child.wait();
                 }
-                recover_boot(&root, &context)?;
+                recover_boot(&root, &context, rejected)?;
                 continue;
             }
         }
@@ -153,8 +147,47 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
     ))
 }
 
-fn recover_boot(root: &Path, context: &Context) -> io::Result<()> {
-    let recovery = operations::rollback(root).map_err(|error| {
+fn cleanup_launcher_artifacts(root: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let generated_old = name
+            .strip_prefix("Vantare-")
+            .and_then(|n| n.strip_suffix(".old"));
+        let temporary = name
+            .strip_prefix("launcher-")
+            .and_then(|n| n.strip_suffix(".tmp"));
+        let id = generated_old.or(temporary);
+        if name == "Vantare.exe.old"
+            || id
+                .is_some_and(|id| id.len() == 32 && id.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
+    Ok(())
+}
+
+fn clear_ready(root: &Path) -> io::Result<()> {
+    match fs::remove_file(root.join("hub-ready")) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+fn ready_pid_matches(root: &Path, child_id: u32) -> bool {
+    fs::read_to_string(root.join("hub-ready"))
+        .is_ok_and(|pid| pid.trim().parse::<u32>() == Ok(child_id))
+}
+
+fn recover_boot(root: &Path, context: &Context, reject_version: bool) -> io::Result<()> {
+    let rollback = if reject_version {
+        operations::rollback
+    } else {
+        operations::rollback_retryable
+    };
+    let recovery = rollback(root).map_err(|error| {
         let _ = super::win::offer_repair();
         io_error(error)
     })?;
@@ -217,9 +250,7 @@ fn ready(root: &Path, child: &mut std::process::Child, limit: Duration) -> io::R
         if child.try_wait()?.is_some() {
             return Ok(false);
         }
-        if fs::read_to_string(root.join("hub-ready"))
-            .is_ok_and(|pid| pid.trim().parse::<u32>().is_ok())
-        {
+        if ready_pid_matches(root, child.id()) {
             return Ok(true);
         }
         if Instant::now() >= deadline {
@@ -389,5 +420,29 @@ mod tests {
         assert!(!wait_for_exit(&mut child, Duration::from_millis(1)).unwrap());
         child.kill().unwrap();
         assert!(wait_for_exit(&mut child, Duration::from_secs(5)).unwrap());
+    }
+    #[test]
+    fn ready_marker_must_belong_to_child_and_clear_before_spawn() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("ready-marker-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("hub-ready"), b"999").unwrap();
+        assert!(!ready_pid_matches(&root, 1000));
+        assert!(ready_pid_matches(&root, 999));
+        clear_ready(&root).unwrap();
+        assert!(!ready_pid_matches(&root, 999));
+        fs::create_dir(root.join("hub-ready")).unwrap();
+        assert!(clear_ready(&root).is_err());
+        fs::remove_dir(root.join("hub-ready")).unwrap();
+        let temporary = root.join(format!("launcher-{}.tmp", "a".repeat(32)));
+        fs::write(&temporary, b"orphan").unwrap();
+        cleanup_launcher_artifacts(&root).unwrap();
+        assert!(!temporary.exists());
+        fs::remove_dir_all(root).unwrap();
     }
 }

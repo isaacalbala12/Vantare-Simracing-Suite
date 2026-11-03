@@ -276,6 +276,22 @@ pub fn replace(source: &Path, target: &Path) -> Result<()> {
     }
     .map_err(|cause| error(&cause))
 }
+pub fn replace_backed_up(source: &Path, target: &Path, backup: &Path) -> Result<()> {
+    let source = wide(source.as_os_str())?;
+    let target = wide(target.as_os_str())?;
+    let backup = wide(backup.as_os_str())?;
+    unsafe {
+        ReplaceFileW(
+            PCWSTR(target.as_ptr()),
+            PCWSTR(source.as_ptr()),
+            PCWSTR(backup.as_ptr()),
+            REPLACE_FILE_FLAGS(0),
+            None,
+            None,
+        )
+    }
+    .map_err(|cause| error(&cause))
+}
 pub fn copy_new(source: &Path, target: &Path) -> Result<()> {
     let source = wide(source.as_os_str())?;
     let target = wide(target.as_os_str())?;

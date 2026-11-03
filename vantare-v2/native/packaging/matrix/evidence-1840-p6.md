@@ -90,3 +90,33 @@ producción); **12 608 total**, exactamente +150 sobre el cierre anterior.
 El paso 7 absorbe esas 150 líneas: tope compensado **9 932**; objetivo final
 ≤ 10 110. Tests Rust +94 frente a la base del PR; tests/tooling QA −1 737;
 se informan por separado de producción.
+
+## Segunda revisión de seguridad de #1908
+
+`Vantare.exe` se copia a un temporal sincronizado y se intenta sustituir con
+`ReplaceFileW` y backup. La ruta compatible con el ejecutable en uso conserva
+`.old` y comprueba el hash tras colocar el nuevo. En el arranque se recupera
+`.old` si falta el lanzador o su hash no coincide con la generación activa;
+solo después de validar el lanzador se limpian `.old` y `launcher-*.tmp`
+propios. Un test simula el corte entre renombrar y colocar.
+
+Tras confirmar el estado de rollback se quita `boot-pending.json` antes de
+renovar el lanzador. Si esa renovación falla, queda un aviso y el siguiente
+arranque no repite el rollback; hay un test con fallo inyectado. El plazo de
+readiness del lanzador es 60 s como el Hub. Un timeout con el hijo aún vivo
+permite reofrecer la versión; solo un fallo determinista conserva
+`rejectedVersion`. El marker `hub-ready` debe contener el PID del hijo y el
+lanzador aborta si no puede retirarlo antes de spawn; ambos casos tienen test.
+
+Producción proyectada: 11 884 líneas del perímetro fijo y 849 fuera
+(corrección de una línea de test clasificada como producción por el script
+externo): **12 733 total**, +125 sobre la revisión anterior. El paso 7 absorbe
+125 líneas y queda con tope **9 807**; objetivo final ≤ 10 110. Tests Rust
++194 líneas netas; tooling/tests QA −1 737, separados de producción.
+
+Verificación final de esta revisión: tres tests de lanzador/rollback, tres de
+readiness y limpieza, Installer integration 29 PASS (uno ignorado), lifecycle
+`cargo test --workspace --test lifecycle` PASS, fmt y Clippy de los cinco
+crates con `-D warnings` PASS. Matriz repetida con binarios QA recompilados:
+**88 filas PASS**, incluidos 45 rechazos, 9 checks de lanzador y 38 de escritura.
+Evidencia `D:/VantareServer/qa/isa-1840/p6-matrix-safety2-20261103-01`.

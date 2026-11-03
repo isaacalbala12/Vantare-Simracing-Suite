@@ -1,4 +1,5 @@
 import { executeMail, type MailDeps, validateMail } from "./mail.ts";
+import { createLocalOAuthVerifier } from "./local-auth.ts";
 import { cleanupDeletedObjects } from "../clerk-webhook/index.ts";
 import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
@@ -40,6 +41,15 @@ const statuses = [
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
+  adminAuth?: { enabled: boolean; clientId: string };
+  verifyLocal?: ReturnType<typeof createLocalOAuthVerifier>;
+  preOwner?: (issuer: string, subject: string) => Promise<string>;
+  gateRpc?: {
+    rpc: (
+      name: "native_admin_gate",
+    ) => PromiseLike<{ data: unknown; error: unknown }>;
+  };
+  gate?: () => Promise<boolean>;
   mail?: MailDeps;
   mailExecute?: (
     actor: string,
@@ -184,6 +194,29 @@ export function validateAdminRequest(
   })();
   if (!valid) throw new NativeError(400, "invalid_request");
   return { action, params };
+}
+
+async function preOwner(issuer: string, subject: string): Promise<string> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "native_admin_preflight",
+    {
+      p_issuer: issuer,
+      p_subject: subject,
+    },
+  );
+  if (error) throw error;
+  if (!isUuid(data)) throw new NativeError(503, "bridge_unavailable");
+  return data;
+}
+
+export async function gate(
+  rpc: NonNullable<AdminDeps["gateRpc"]> = getSupabaseAdmin(),
+): Promise<boolean> {
+  const { data, error } = await rpc.rpc("native_admin_gate");
+  if (error || typeof data !== "boolean") {
+    throw new NativeError(503, "bridge_unavailable");
+  }
+  return data;
 }
 
 async function begin(actor: string): Promise<boolean> {
@@ -407,17 +440,57 @@ export async function handleNativeAdmin(
     }
     const { action, params } = validateAdminRequest(parsed.value);
     timingAction = action;
+    const adminAuth = deps.adminAuth ?? {
+      enabled: Deno.env.get("CLERK_ADMIN_AUTH_ENABLED") === "true",
+      clientId: Deno.env.get("CLERK_ADMIN_CLIENT_ID") ?? "",
+    };
+    let oauthDeps = deps;
+    let existingActor: string | undefined;
+    let localSubject: string | undefined;
+    if (adminAuth.enabled) {
+      const config = nativeConfig(deps);
+      if (
+        !adminAuth.clientId || /\s/.test(adminAuth.clientId) ||
+        adminAuth.clientId.length > 256 ||
+        adminAuth.clientId === config.clientId
+      ) throw new NativeError(503, "bridge_unavailable");
+      oauthDeps = {
+        ...deps,
+        config: { ...config, clientId: adminAuth.clientId },
+      };
+      const local = await timed(
+        "verify_local",
+        () =>
+          (deps.verifyLocal ?? createLocalOAuthVerifier())(token, oauthDeps),
+      );
+      existingActor = await timed(
+        "owner_preflight",
+        () => (deps.preOwner ?? preOwner)(local.issuer, local.subject),
+      );
+      localSubject = local.subject;
+    }
+    if (
+      !(await timed(
+        "global_budget",
+        () => (deps.gate ?? (() => gate(deps.gateRpc)))(),
+      ))
+    ) {
+      throw new NativeError(429, "rate_limited");
+    }
     let identity;
     try {
       identity = await timed(
         "verify_oauth",
-        () => verifyNativeOAuth(token, deps),
+        () => verifyNativeOAuth(token, oauthDeps),
       );
     } catch (error) {
       if (error instanceof NativeError && error.status === 403) {
         throw new NativeError(401, "unauthorized");
       }
       throw error;
+    }
+    if (localSubject !== undefined && identity.subject !== localSubject) {
+      throw new NativeError(401, "unauthorized");
     }
     const actorUser = await timed("actor_profile", async () =>
       clerkUser(
@@ -429,7 +502,7 @@ export async function handleNativeAdmin(
     if (actorUser.banned || actorUser.locked) {
       throw new NativeError(403, "forbidden");
     }
-    const actor = await timed(
+    const actor = existingActor ?? await timed(
       "resolve_account",
       () =>
         (deps.resolve ?? resolveNativeAccount)(
@@ -778,4 +851,7 @@ export async function handleNativeAdmin(
   }
 }
 
-if (import.meta.main) Deno.serve((request) => handleNativeAdmin(request));
+if (import.meta.main) {
+  const verifyLocal = createLocalOAuthVerifier();
+  Deno.serve((request) => handleNativeAdmin(request, { verifyLocal }));
+}

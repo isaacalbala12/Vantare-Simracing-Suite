@@ -21,6 +21,7 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
   const execute = overrides.execute ?? (() => Promise.resolve({}));
   return {
     ...authDeps(),
+    gate: () => Promise.resolve(true),
     environment: "production",
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),

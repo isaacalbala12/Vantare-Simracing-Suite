@@ -7227,3 +7227,56 @@ Sin merge del worker, release, instalación, producción ni datos reales. No se 
 prueba física de pausa del simulador. Siguiente: revisar #1834 rebasado sobre
 esta integración y su CI; sin autorizar promoción ni publicación.
 <!-- /isa1827-paso6b -->
+
+## VANTA-132 / #1910 — Paso 3: freno previo a Clerk (2026-11-03)
+
+- PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912),
+  rama `vantareapp/isa-1910-paso3-freno-clerk`, worktree
+  `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly `51797395b` (incluye #1911 y R6 #1902/#1903/#1906).
+  HEAD/CI vigentes en #1910. Project Vantare / area:plataforma; Plane En curso.
+- Review del orquestador: mantener el Hub opaco mientras Gestión no esté activa.
+  `CLERK_ADMIN_AUTH_ENABLED=true` exige su cliente distinto, JWT OAuth RS256,
+  issuer/client_id/aud o azp/exp/nbf y JWKS válido ANTES de contador/Clerk.
+  Caché del handler 5 min, carga compartida, backoff 15 s, 64 KiB/20 claves;
+  desconocer kid no fuerza recarga. Introspección posterior conservada; un access JWT emitido vive hasta exp. Isaac configurará TTL de cinco minutos; sin registro de revocación/jti.
+  Sin dependencias nuevas ni cambios en _shared. Activación reservada a Isaac.
+- Caracterización previa `3735502a2`: cuatro casos PASS; expectativas nuevas
+  RED 4/4 antes del primer cambio. Modo JWT: RED 11 antes de implementar.
+  Deno final 131 PASS (dos modos, firma real, cache, no-owner/caducado,
+  RPC real con true/false/no-booleano/error); typecheck/fmt/lint PASS.
+- Edge→SQL local 2/2 PASS: firma real, gate, resolve, owner y acción SQL reales;
+  JWKS/Clerk son dobles. Tras 200 tokens basura/falsificados/Hub/opacos, contador
+  1→1 y Clerk sin llamadas nuevas; el owner válido vuelve a pasar, 1→2.
+  El modo legado conserva introspección opaca y contador, como pidió el orquestador.
+- PostgreSQL 16.15 local: 34 suites / 978 pgTAP PASS (gate 10, rollback/up 4).
+  Carrera real RED: waiter antiguo regalaba cupo (contador 120→1). GREEN:
+  greatest y comparación monotónica conservan ventana, 120→121, denegado.
+  Carreras existentes 131 rutas / 778 checks y borrado/aliases 4 / 40 PASS.
+  Servidores detenidos; evidencia `D:/VantareServer/evidence/isa-1910-paso3`.
+- README incluye emergencia SQL de reset para Isaac y orden migración→Edge /
+  retirada Edge→rollback. No se ejecutó nada contra proyectos reales. El modo
+  legado conserva el riesgo de agotar el cupo con basura hasta activar Gestión.
+- Calidad 468 huellas PASS. Deno fmt sobre copia LF y lint 14 archivos PASS; el primer intento sin permisos de variables públicas queda en evidencia. Rust/lifecycle/telemetría no aplican a este paso.
+  Sin producción, cambios SaaS, merge ni release; billing/licencias intactos.
+- Rebase completado tras integrar #1911 (70b2f2753) y R6 #1902, #1903 y #1906. Las dos últimas integraciones no cambian SQL ni native de admin; Deno 131 PASS repetidos, evidencia SQL conservada.
+  P1/P2 de caracterización nombrados como compatibilidad explícita del legado;
+  el rechazo de Gestión activa se prueba en local-auth.test.ts. #1913 se rebasa
+  encima para revisión de seguridad. Reserva de native-auth.ts liberada sin
+  modificar ningún _shared. Paso 4 espera R6/8; 11 pertenece a R6/12.
+### VANTA-132 · Review de seguridad de #1912 (2026-11-03)
+
+- Decisión explícita del orquestador: en Hub inactivo se acepta agotar el cupo
+  global de admin con basura para proteger el cupo Clerk de todo el producto.
+- Gestión: firma JWT → owner SQL existente → contador → Clerk → autorización
+  final SQL. native_admin_preflight solo busca identidad no borrada de issuer
+  habilitado y reutiliza native_admin_require_owner; nunca crea cuentas. El modo
+  activo omite por completo native_resolve_account. Migración y rollback incluyen
+  la nueva RPC, cerrada a anon/authenticated y abierta solo a service_role.
+- Reloj: 60 s de tolerancia exp/nbf, con tests de fronteras. Kid desconocido:
+  una recarga JWKS coalescida antes de 401, limitada globalmente a una por 15 s
+  para no abrir otro DoS; rotación concurrente probada con firma real.
+- Activación reservada a Isaac: comprobar con token real typ=at+jwt antes de
+  activar. No se ha usado ningún token/servicio real ni tocado _shared.
+- Caracterización previa ccc35c51d: 8 fallos nuevos reproducidos antes del cambio;
+  Deno 142 PASS después. SQL/E2E y métricas finales en #1910 y el PR.
+- Corrección CI de tipos del fixture (run 41691373731): init tipado RequestInit y lib dom.iterable local al test. Reproducido TS2339 con Deno 2.7.13/TS5.9.2; deno check con y sin config, fmt y lint PASS en esa versión. Producto sin cambios.

@@ -1,4 +1,5 @@
-// VANTA-132 step 0: these assertions deliberately describe the existing risks.
+// Step 0 compatibility retained only for inactive Gestión (legacy Hub mode).
+// P1/P2 rejection before quota/Clerk in active Gestión is in local-auth.test.ts.
 // No network permissions: every SaaS/SQL boundary is a test double.
 import { type AdminDeps, handleNativeAdmin } from "./index.ts";
 import {
@@ -14,6 +15,7 @@ import {
 function deps(overrides: AdminDeps = {}): AdminDeps {
   return {
     ...authDeps(),
+    adminAuth: { enabled: false, clientId: "" },
     ...{ gate: () => Promise.resolve(true) },
     environment: "sandbox",
     resolve: () => Promise.resolve(account),
@@ -24,7 +26,7 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
 }
 const rollout = () => request({ version: 1, action: "get_rollout" });
 
-Deno.test("R10 P1 characterization: owner Hub OAuth grants admin access", async () => {
+Deno.test("R10 P1 legacy compatibility: owner Hub OAuth grants admin access", async () => {
   let authorized = false;
   const response = await handleNativeAdmin(
     rollout(),
@@ -40,7 +42,7 @@ Deno.test("R10 P1 characterization: owner Hub OAuth grants admin access", async 
   assert((await response.json()).ok === true);
 });
 
-Deno.test("R10 P2 characterization: garbage bearer reaches Clerk before owner SQL budget", async () => {
+Deno.test("R10 P2 legacy compatibility: garbage reaches Clerk within the global budget", async () => {
   const calls: string[] = [];
   const response = await handleNativeAdmin(
     request({ version: 1, action: "get_rollout" }, {
@@ -66,7 +68,7 @@ Deno.test("R10 P2 characterization: garbage bearer reaches Clerk before owner SQ
 });
 
 for (const role of ["non-owner", "expired owner"]) {
-  Deno.test(`R10 P2 characterization: ${role} costs two Clerk calls and resolve`, async () => {
+  Deno.test(`R10 P2 legacy compatibility: ${role} costs two Clerk calls and resolve`, async () => {
     const calls: string[] = [];
     const response = await handleNativeAdmin(
       rollout(),

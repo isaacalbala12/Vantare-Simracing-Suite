@@ -705,7 +705,7 @@ Sin merge/release del worker.
 - Gates por la cola y target exclusivo: fmt/check, Clippy lector/Installer/TEST -D warnings, check Linux all-targets y builds lector/escritor/parity/Uninstall público/Setup payload PASS. Nextest lector17, Installer65 y TEST67 PASS; Hub627 PASS sobre nightly actual (4 omisiones previas). Un helper por perfil Installer se ejecuta desde su padre.
 - Reparar sin activa vuelve a rechazar con3 antes de preparar Cleanup, sin tocar marcador/datos. Uninstall conserva la lectura informativa parcial, pero exige referencias válidas antes de borrar; su versión solo procede del manifiesto ligado por SHA. Prueba CLI RED→GREEN: manifiesto válido pero SHA distinto ya no muestra versión; estado/manifiesto intactos.
 - Matriz05 completa bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados, sin Record: 88/88 filas, 45 rechazos por motivo, 48 Startup, 52 inventario, 42 Register/arranque y 39 frontera PASS; campaña879,40s, salida0. Matrices01–04 fallidas conservadas: precedencia de Repair, Apply sin pendiente y dos fallos de ACL en la prueba QA; se corrigieron sin bajar aserciones. Histórico14+156, workflow45 y calidad468 PASS. Baseline/candidate/beta/normalizador intactos.
-- Pendiente solo publicar PR draft y enlaces de seguimiento. Plane permanece En curso; sin merge, promoción, release ni instalación/registro reales.
+- PR draft [#1892](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1892) a nightly, rama `vantareapp/isa-1840-paso5b-poda`, código publicado `b421b08a9`; CI remota pendiente de comprobar. Plane permanece En curso; sin merge, promoción, release ni instalación/registro reales.
 
 
 Rama/worktree y target propios: `vantareapp/isa-1840-paso5b-poda`,

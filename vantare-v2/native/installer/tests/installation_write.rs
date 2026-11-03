@@ -11,7 +11,7 @@ use std::{
 };
 use vantare_installer::{
     engine::{
-        self, Installation, ReadProfile,
+        self, Installation,
         context::qa_path,
         operations::{self, Control},
         write_fs as disk,
@@ -67,6 +67,9 @@ impl Fixture {
         }
     }
     fn package(&self, version: &str) -> Package {
+        self.package_with_resource(version, None)
+    }
+    fn package_with_resource(&self, version: &str, extra: Option<(&str, &[u8])>) -> Package {
         let executable = fs::read(
             PathBuf::from(std::env::var_os("WINDIR").expect("Windows root"))
                 .join("System32/cmd.exe"),
@@ -74,8 +77,8 @@ impl Fixture {
         .expect("inert PE fixture");
         let executable_hash = format!("{:x}", Sha256::digest(&executable));
         let mut entries = Vec::new();
-        for name in engine::current_members("beta") {
-            let bytes = if Path::new(name)
+        for name in test_members() {
+            let bytes = if Path::new(&name)
                 .extension()
                 .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
             {
@@ -94,7 +97,10 @@ impl Fixture {
             } else {
                 b"fixture".to_vec()
             };
-            entries.push((name.to_owned(), bytes));
+            entries.push((name.clone(), bytes));
+        }
+        if let Some((name, bytes)) = extra {
+            entries.push((name.to_owned(), bytes.to_vec()));
         }
         let files: Vec<_> = entries.iter().map(|(name, bytes)| json!({"path":name,"size":bytes.len(),"sha256":format!("{:x}",Sha256::digest(bytes))})).collect();
         let manifest = json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","files":files});
@@ -160,7 +166,7 @@ impl Fixture {
             &package.borrowed(),
             mode,
             &mut control,
-            |_, restoring| {
+            |_, restoring, _| {
                 restored |= restoring;
                 if fail_finalize && !restoring {
                     Err(engine::WriteError::new(1, "injected finalizer failure"))
@@ -179,7 +185,7 @@ impl Fixture {
         result
     }
     fn active(&self) -> PathBuf {
-        let state = Installation::read(&self.root, ReadProfile::Verified)
+        let state = verified(&self.root)
             .expect("verified installation")
             .state
             .expect("state");
@@ -207,7 +213,7 @@ fn update_copies_exact_opaque_data_and_preserves_both_old_generations() {
     fixture
         .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
         .expect("update");
-    let view = Installation::read(&fixture.root, ReadProfile::Verified).expect("verified update");
+    let view = verified(&fixture.root).expect("verified update");
     assert_eq!(view.installed_version(), Some("1.0.1"));
     assert_eq!(disk::data_index(&fixture.data()).expect("new data"), before);
     assert_eq!(
@@ -412,7 +418,7 @@ fn uninstall_probe_uses_manifest_or_a_neutral_absence_never_a_retained_version()
             uninstall: true,
             ..Default::default()
         },
-        "Probe",
+        vantare_installer::engine::Operation::Probe,
     );
     assert_eq!(
         context
@@ -422,8 +428,14 @@ fn uninstall_probe_uses_manifest_or_a_neutral_absence_never_a_retained_version()
             .as_deref(),
         Some("1.0.0")
     );
-    fs::remove_file(fixture.active().join("manifest.json"))
-        .expect("simulate already removed manifest");
+    let manifest_path = fixture.active().join("manifest.json");
+    let bound = fs::read(&manifest_path).unwrap();
+    let mut unbound = bound.clone();
+    unbound.push(b' ');
+    fs::write(&manifest_path, unbound).unwrap();
+    assert_eq!(context.probe(&request).unwrap().installed_version, None);
+    fs::write(&manifest_path, bound).unwrap();
+    fs::remove_file(manifest_path).expect("simulate already removed manifest");
     fs::write(
         fixture.root.join("retained-data.json"),
         serde_json::to_vec(&json!({"schema":1,"generation":"a".repeat(32),"version":"9.9.9"}))
@@ -556,7 +568,7 @@ try{
         .expect("feed diagnostics");
     assert!(status.success(), "{stderr}");
     assert_eq!(
-        Installation::read(&fixture.root, ReadProfile::Verified)
+        verified(&fixture.root)
             .expect("Rust reads PS state")
             .installed_version(),
         Some("1.0.1")
@@ -580,11 +592,11 @@ fn repair_replaces_corrupt_active_without_referencing_it_for_rollback() {
     fixture.write_data();
     let old = fixture.active();
     fs::write(old.join("bin/vantare.exe"), b"corrupt PE").expect("damage only QA binary");
-    assert!(Installation::read(&fixture.root, ReadProfile::Verified).is_err());
+    assert!(verified(&fixture.root).is_err());
     fixture
         .install(&package, Mode::Repair, false, false)
         .expect("repair");
-    let view = Installation::read(&fixture.root, ReadProfile::Verified).expect("repaired");
+    let view = verified(&fixture.root).expect("repaired");
     assert_eq!(view.installed_version(), Some("1.0.0"));
     assert!(view.state.expect("state").previous.is_none());
     assert_eq!(
@@ -609,37 +621,38 @@ fn retirement_uses_the_shared_reader_and_rejects_invalid_references_before_delet
     let path = fixture.root.join("state.json");
     let before = disk::read_json(&path, None).expect("original state");
     for fault in [
+        "schema",
+        "active-reference",
+        "active-hash",
         "previous-missing",
         "previous-hash",
-        "active-hash",
         "channel",
     ] {
         let mut value = before.clone();
         match fault {
             "previous-missing" => {
-                let _ = value
-                    .as_object_mut()
-                    .expect("state object")
-                    .remove("previous");
+                value.as_object_mut().unwrap().remove("previous");
             }
             "previous-hash" => {
                 value["previous"] = value["active"].clone();
                 value["previous"]["manifest_sha256"] = json!("invalid");
             }
-            "active-hash" => {
-                value["active"]["manifest_sha256"] = json!("invalid");
-            }
-            "channel" => {
-                value["channel"] = json!("nightly");
-            }
+            "schema" => value["schema"] = json!(2),
+            "active-reference" => value["active"]["generation"] = json!("../outside"),
+            "active-hash" => value["active"]["manifest_sha256"] = json!("invalid"),
+            "channel" => value["channel"] = json!("nightly"),
             _ => unreachable!(),
         }
         let bytes = serde_json::to_vec(&value).expect("invalid fixture");
         fs::write(&path, &bytes).expect("isolated state fault");
-        assert!(
-            Installation::read(&fixture.root, ReadProfile::Retire).is_err(),
-            "{fault}"
-        );
+        if fault == "previous-hash" {
+            assert_eq!(
+                Installation::read(&fixture.root).unwrap().previous_warning,
+                Some("previous-corrupt")
+            );
+        } else {
+            assert!(Installation::read(&fixture.root).is_err(), "{fault}");
+        }
         let cancel = AtomicBool::new(false);
         let mut control = Control {
             cancel: &cancel,
@@ -961,8 +974,7 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
     let sha = format!("{:x}", Sha256::digest(&bytes));
     let destination = fixture.path.join("partial");
     assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
-    let written = fs::metadata(destination.join(engine::current_members("beta")[0]))
-        .expect("streaming started");
+    let written = fs::metadata(destination.join(&test_members()[0])).expect("streaming started");
     assert!(
         written.len() <= 2,
         "declared one byte, wrote {} bytes",
@@ -1008,8 +1020,7 @@ fn abrupt_process_exit_on_both_sides_of_commit_never_leaves_torn_state() {
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
-        let view = Installation::read(&fixture.root, ReadProfile::Verified)
-            .expect("fully valid state after abrupt exit");
+        let view = verified(&fixture.root).expect("fully valid state after abrupt exit");
         assert_eq!(
             view.installed_version(),
             Some(if point == "before-commit" {
@@ -1069,4 +1080,243 @@ fn checkpoint_process_worker() {
     };
     operations::update(&root, &package, false, &mut control).expect("update reaches checkpoint");
     panic!("requested checkpoint was not reached");
+}
+
+// Captured package metadata from the guarded p5a campaign; this fixture is
+// not a production allowlist. Keeping the real inventory also exercises the
+// still-live PS feed with its current package, until that consumer moves in p6.
+fn test_members() -> Vec<String> {
+    let manifest: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../fixtures/manifest-full.json"))
+            .expect("full QA manifest");
+    manifest["files"]
+        .as_array()
+        .expect("manifest files")
+        .iter()
+        .map(|file| file["path"].as_str().expect("manifest path").to_owned())
+        .collect()
+}
+
+#[test]
+fn authenticated_package_accepts_a_resource_unknown_to_the_installed_engine() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let grown = fixture.package_with_resource(
+        "1.0.1",
+        Some(("assets/future-resource.bin", b"future resource")),
+    );
+    fixture.install(&grown, Mode::Auto, false, false).unwrap();
+    assert_eq!(
+        fs::read(fixture.active().join("assets/future-resource.bin")).unwrap(),
+        b"future resource"
+    );
+}
+
+#[test]
+fn uninstall_keeps_unreferenced_binaries_with_their_path_and_reason_in_the_log() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_data();
+    let active = fixture.active();
+    let before = disk::data_index(&active.join("data")).unwrap();
+    let orphan = disk::path(&fixture.root.join("generations").join("d".repeat(32))).unwrap();
+    fs::create_dir_all(orphan.join("bin")).unwrap();
+    fs::create_dir_all(orphan.join("data/empty")).unwrap();
+    let executable = orphan.join("bin/orphan.exe");
+    fs::write(&executable, b"unreferenced own bytes").unwrap();
+    fs::write(
+        orphan.join("manifest.json"),
+        include_bytes!("../fixtures/manifest-rc.json"),
+    )
+    .unwrap();
+    fs::write(active.join("bin/foreign.dll"), b"foreign bytes").unwrap();
+    let cancel = AtomicBool::new(false);
+    let mut diagnostics = Vec::new();
+    let mut warning = |message: &str| diagnostics.push(message.to_owned());
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut warning,
+    };
+    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).unwrap();
+    assert!(!fixture.root.join("state.json").exists());
+    assert_eq!(fs::read(&executable).unwrap(), b"unreferenced own bytes");
+    assert!(orphan.join("manifest.json").is_file());
+    assert!(orphan.join("data/empty").is_dir());
+    assert_eq!(
+        fs::read(active.join("bin/foreign.dll")).unwrap(),
+        b"foreign bytes"
+    );
+    assert_eq!(disk::data_index(&active.join("data")).unwrap(), before);
+    assert!(
+        diagnostics
+            .iter()
+            .any(|message| message.contains(&orphan.display().to_string())
+                && message.contains("sin referencia SHA")
+                && message.contains("paso 8"))
+    );
+}
+
+#[test]
+fn activation_passes_cached_metadata_without_reopening_the_old_manifest() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let old_manifest = fixture.active().join("manifest.json");
+    let incoming = fixture.package("1.0.1");
+    let mut held = None;
+    let mut checkpoint = |point: &str| {
+        if point == "staged" {
+            held = Some(
+                fs::OpenOptions::new()
+                    .read(true)
+                    .share_mode(0)
+                    .open(&old_manifest)?,
+            );
+        }
+        Ok(())
+    };
+    let cancel = AtomicBool::new(false);
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut checkpoint,
+        warning: &mut |_| {},
+    };
+    operations::install(
+        &fixture.root,
+        &incoming.borrowed(),
+        Mode::Auto,
+        &mut control,
+        |_, restoring, projection| {
+            assert!(!restoring);
+            assert_eq!(projection.unwrap().1, "1.0.1");
+            Ok(())
+        },
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(held.is_some());
+    drop(held);
+    assert_eq!(
+        verified(&fixture.root).unwrap().installed_version(),
+        Some("1.0.1")
+    );
+}
+
+fn verified(root: &Path) -> Result<Installation, engine::ReadError> {
+    let mut view = Installation::read(root)?;
+    view.verify(root)?;
+    Ok(view)
+}
+
+#[test]
+fn denied_state_restoration_preserves_committed_state_and_does_not_project_an_old_snapshot() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let incoming = fixture.package("1.0.1");
+    let mut state_lock = None;
+    let mut projected_old = false;
+    let cancel = AtomicBool::new(false);
+    let mut warnings = Vec::new();
+    let mut warning = |message: &str| warnings.push(message.to_owned());
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut warning,
+    };
+    let result = operations::install(
+        &fixture.root,
+        &incoming.borrowed(),
+        Mode::Auto,
+        &mut control,
+        |_, restoring, _| {
+            projected_old |= restoring;
+            if !restoring {
+                state_lock = Some(
+                    fs::OpenOptions::new()
+                        .read(true)
+                        .share_mode(1)
+                        .open(fixture.root.join("state.json"))?,
+                );
+            }
+            Err(engine::WriteError::new(1, "injected projection failure"))
+        },
+        || Ok(()),
+    );
+    assert!(result.is_err());
+    assert!(!projected_old);
+    drop(state_lock);
+    assert_eq!(
+        verified(&fixture.root).unwrap().installed_version(),
+        Some("1.0.1")
+    );
+    assert!(fixture.root.join("boot-pending.json").is_file());
+    assert!(!warnings.is_empty());
+}
+
+#[test]
+fn integrity_checks_reject_a_sidecar_reparse_before_attempting_to_read_it() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let mut view = Installation::read(&fixture.root).unwrap();
+    let sidecar = fixture.active().join("bin/vantare.exe.sha256");
+    let canary = fixture.path.join("unread-canary.bin");
+    fs::write(&canary, b"must not be opened").unwrap();
+    let _held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&canary)
+        .unwrap();
+    fs::remove_file(&sidecar).unwrap();
+    std::os::windows::fs::symlink_file(&canary, &sidecar).unwrap();
+    assert!(matches!(
+        view.verify(&fixture.root),
+        Err(engine::ReadError::Invalid(_))
+    ));
+}
+
+#[test]
+fn repair_without_active_state_rejects_before_touching_a_pending_cleanup() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    fixture.install(&package, Mode::Auto, false, false).unwrap();
+    fixture.write_data();
+    let data = fixture.data();
+    let before = disk::data_index(&data).unwrap();
+    let cancel = AtomicBool::new(false);
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut |_| {},
+    };
+    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).unwrap();
+    let marker = fixture.root.join("installer-cleanup.json");
+    fs::write(&marker, b"pending cleanup sentinel").unwrap();
+    let error = operations::install(
+        &fixture.root,
+        &package.borrowed(),
+        Mode::Repair,
+        &mut control,
+        |_, _, _| panic!("invalid repair cannot finalize"),
+        || panic!("invalid repair cannot prepare or mutate pending cleanup"),
+    )
+    .expect_err("repair needs active state before pending-cleanup handling");
+    assert_eq!(error.code, 3);
+    assert_eq!(fs::read(&marker).unwrap(), b"pending cleanup sentinel");
+    assert_eq!(disk::data_index(&data).unwrap(), before);
+    assert!(!fixture.root.join("state.json").exists());
 }

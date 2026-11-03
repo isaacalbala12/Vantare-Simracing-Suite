@@ -156,37 +156,8 @@ try {
     $dataUnchanged=(Get-NativeDataIndex (Join-Path $oldGeneration 'data')) -ceq $before -and (Get-NativeDataIndex (Join-Path $newGeneration 'data')) -ceq $before -and (Get-NativeDataIndex (Join-Path $withdrawnGeneration 'data')) -ceq $before
     Assert-Growth $dataUnchanged 'Uninstall retains all three generations of data'
     Assert-Growth (-not(Test-Path -LiteralPath (Join-Path $oldGeneration $retired)) -and -not(Test-Path -LiteralPath (Join-Path $newGeneration $retired))) 'Uninstall removes retired program resources, never user data'
-    # Actual installer-driver boundary: a foreign program file must not turn a
-    # successful uninstall into the misleading "close Vantare" error path.
-    $driverInstall=Open-NativeRoot (Join-Path $qaGrowthRoot 'driver-install') -Initialize
-    $driverReference=Add-MatrixGeneration $driverInstall ('c'*32) $old
-    Set-NativeState $driverInstall @{schema=1;product='vantare-native';channel='beta';active=$driverReference;previous=$null}
-    foreach($name in @('candidate.ps1','beta.ps1')){Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $driverInstall}
-    Set-MatrixRegistration $driverInstall '1.0.0'
-    $driverForeign=Join-Path $driverInstall ('generations/'+$driverReference.generation+'/bin/foreign.keep')
-    [IO.File]::WriteAllText($driverForeign,'driver foreign file')
-    $driverForeignHash=Get-NativeHash $driverForeign
-    $driverDataBefore=Get-MatrixData $driverInstall|ConvertTo-Json -Depth 10 -Compress
-    $driverEngine=Join-Path $qaGrowthRoot 'driver-engine'
-    [IO.Directory]::CreateDirectory($driverEngine)|Out-Null
-    foreach($name in @('candidate.ps1','beta.ps1')){Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $driverEngine}
-    $driver=[IO.File]::ReadAllText((Join-Path $script:Packaging 'installer-driver.ps1'))
-    $library=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library"
-    $import=$library+' -Root $PSScriptRoot'
-    $boundary="Remove-PSDrive HKCU`nNew-PSDrive HKCU Registry '"+$qaHive+"' -Scope Global|Out-Null`n"+
-        ". '"+(Join-Path $MatrixDirectory 'guard.ps1')+"'`n"+'$null=Assert-MatrixRoot (([IO.File]::ReadAllText($RequestFile)|ConvertFrom-Json).root)'+"`n"+
-        $library+" -Root '"+$driverInstall+"'`n"+
-        'function Get-NativeShortcutFolder([string]$Name){if($Name -cnotin @(''Programs'',''Startup'',''DesktopDirectory'')){throw ''Unexpected folder''};Join-Path '''+(Join-Path $qaGrowthRoot 'shell')+''' $Name}'
-    if(-not $driver.Contains($import)){throw 'Growth driver import changed'}
-    $driverPath=Join-Path $driverEngine 'installer-driver.ps1'
-    [IO.File]::WriteAllText($driverPath,$driver.Replace($import,$boundary),[Text.UTF8Encoding]::new($true))
-    $request=Join-Path $driverEngine 'request.json'
-    Write-NativeJson $request @{operation='Uninstall';root=$driverInstall;qa=$false;silent=$true;uninstall=$true;version='1.0.0';size=1}
-    $driverResult=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-File',$driverPath,'-RequestFile',$request) -TimeoutMilliseconds 30000 -LogPath (Join-Path $qaGrowthRoot 'uninstall-driver.log')
-    Assert-Growth ($driverResult.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $driverInstall 'state.json')) -and -not(Test-Path 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBeta')) 'Driver completes nonempty-folder uninstall without a false close-Vantare error'
-    $driverDataUnchanged=(Get-MatrixData $driverInstall|ConvertTo-Json -Depth 10 -Compress) -ceq $driverDataBefore
-    Assert-Growth ($driverDataUnchanged -and (Get-NativeHash $driverForeign) -ceq $driverForeignHash) 'Driver preserves foreign program file and all user data'
-    $dataUnchanged=$dataUnchanged -and $driverDataUnchanged
+    # The former driver's duplicate boundary is retired in 5b. Product Rust
+    # coverage preserves foreign files and proves orphan residue + diagnostics.
     Write-NativeJson (Join-Path $qaGrowthRoot 'result.json') @{checks=$passed;old_members=$oldMembers.Count;grown_members=($oldMembers.Count+1);withdrawn_members=$script:GrowthMembers.Count;data_unchanged=$dataUnchanged}
 } finally {
     Remove-PSDrive HKCU

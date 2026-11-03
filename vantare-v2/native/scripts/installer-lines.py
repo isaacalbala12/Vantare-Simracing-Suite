@@ -25,6 +25,8 @@ def git(*args):
 
 
 def category(path, projection=False):
+    if path.startswith(PREFIX + "native/installer/tooling/") and path.endswith(".rs"):
+        return "rust_qa_tooling"
     if projection and path in {
         PREFIX + "native/hub/src/installation.rs",
         PREFIX + "native/hub/src/settings/windows.rs",
@@ -47,6 +49,8 @@ def category(path, projection=False):
         return "rust_tests"
     if path == PREFIX + "native/installer/build.rs":
         return "rust_build_tooling"
+    if path.startswith(PREFIX + "native/packaging/matrix/") and path.endswith(".ps1"):
+        return "ps_tests_and_tooling"
     if path.startswith(PREFIX + "native/packaging/") and path.endswith(".ps1"):
         return "ps_product" if path.rsplit("/", 1)[1] in {
             "candidate.ps1", "beta.ps1", "installer-driver.ps1", "installer-shell.ps1", "installer-cleanup.ps1"} else "ps_tests_and_tooling"
@@ -58,6 +62,7 @@ def category(path, projection=False):
                 PREFIX + "native/packaging/matrix/evidence-1840-p3.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p4.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p5.md",
+                PREFIX + "native/packaging/matrix/evidence-1840-p5b.md",
                 PREFIX + "docs/adr/0103-instalacion-nativa.md",
                 PREFIX + "docs/vantare-program/handoffs/platform-commercial.md",
                 PREFIX + "docs/vantare-program/installer-design.md",

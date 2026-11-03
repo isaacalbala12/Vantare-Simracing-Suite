@@ -81,7 +81,7 @@ impl LocalUpdate {
         }
     }
     fn package(package: &Path) -> Result<Self, ()> {
-        use vantare_installer::engine::{Installation, Manifest, ReadProfile};
+        use vantare_installer::engine::{Installation, Manifest};
         let (manifest, previous) = if let Some(generations) = package
             .parent()
             .filter(|parent| parent.file_name().is_some_and(|name| name == "generations"))
@@ -90,22 +90,20 @@ impl LocalUpdate {
             if !crate::testing::diagnostic::local_path(root) {
                 return Err(());
             }
-            let installation = Installation::read(root, ReadProfile::Hub).map_err(|_| ())?;
-            let state = installation.state.ok_or(())?;
+            let installation = Installation::read(root).map_err(|_| ())?;
+            let state = installation.state.as_ref().ok_or(())?;
             if package.file_name().and_then(|name| name.to_str()) != Some(&state.active.generation)
             {
                 return Err(());
             }
-            (installation.manifest.ok_or(())?, state.previous.is_some())
+            let previous = installation.usable_previous().is_some();
+            (installation.manifest.ok_or(())?, previous)
         } else {
             let path = package.join("manifest.json");
             if !crate::testing::diagnostic::local_path(&path) {
                 return Err(());
             }
-            (
-                Manifest::read(&path, ReadProfile::Hub).map_err(|_| ())?,
-                false,
-            )
+            (Manifest::read(&path).map_err(|_| ())?, false)
         };
         Ok(Self::Package {
             version: manifest.version,
@@ -118,15 +116,17 @@ impl LocalUpdate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vantare_installer::engine::validation::{channel, hex, hub_version as valid_version};
+    use vantare_installer::engine::validation::{channel, hex, version as valid_version};
     #[test]
     fn validates_only_packaging_versions_and_closed_channels() {
         assert_eq!(LocalUpdate::default(), LocalUpdate::Unread);
-        for value in ["0.0.0-local", "1.2.3", "1.2.3.4-nightly.11"] {
-            assert!(valid_version(value));
+        for value in ["0.0.0", "1.2.3", "65535.0.0"] {
+            assert!(valid_version(value).is_ok());
         }
         for value in [
             "",
+            "0.0.0-local",
+            "1.2.3.4-nightly.11",
             "1.2",
             "1.2.3-",
             "1.2.3--local",
@@ -135,7 +135,7 @@ mod tests {
             "1.2.3-TEST",
             "1..3",
         ] {
-            assert!(!valid_version(value));
+            assert!(valid_version(value).is_err());
         }
         assert!(!channel("stable"));
         assert!(!hex("../manifest.json", 32));
@@ -152,13 +152,20 @@ mod tests {
         fs::create_dir_all(package.join("bin")).expect("directorio");
         let exe = package.join("bin/vantare-hub.exe");
         assert_eq!(LocalUpdate::at(&exe), LocalUpdate::Invalid);
-        fs::write(package.join("manifest.json"), r#"{"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","version":"1.2.3-local","channel":"nightly"}"#).expect("manifiesto");
-        let state = serde_json::json!({"schema":1,"product":"vantare-native","channel":"nightly","active":{"generation":id,"manifest_sha256":"b".repeat(64)},"previous":null});
+        fs::create_dir(package.join("data")).expect("data");
+        let manifest = serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,
+            "architecture":"windows-x64","version":"1.2.3","channel":"nightly","data_schema":"opaque-v1",
+            "source_sha":"a".repeat(40),"source_dirty":false,"build_profile":"Debug",
+            "files":[{"path":"bin/vantare-hub.exe","size":0,"sha256":"b".repeat(64)}]});
+        let raw = manifest.to_string();
+        fs::write(package.join("manifest.json"), &raw).expect("manifiesto");
+        let state = serde_json::json!({"schema":1,"product":"vantare-native","channel":"nightly",
+            "active":{"generation":id,"manifest_sha256":vantare_installer::engine::Manifest::read(&package.join("manifest.json")).unwrap().sha256()},"previous":null});
         fs::write(root.join("state.json"), state.to_string()).expect("estado");
         assert_eq!(
             LocalUpdate::at(&exe),
             LocalUpdate::Package {
-                version: "1.2.3-local".into(),
+                version: "1.2.3".into(),
                 channel: "nightly".into(),
                 previous: false
             }
@@ -167,12 +174,12 @@ mod tests {
         // Normal case is identical. A mismatched running binary cannot replace
         // the installed version/channel or suppress its staged update.
         assert_eq!(
-            installed.presentation("1.2.3-local", "nightly"),
-            Some(("1.2.3-local", "nightly"))
+            installed.presentation("1.2.3", "nightly"),
+            Some(("1.2.3", "nightly"))
         );
         assert_eq!(
             installed.presentation("9.9.9", "master"),
-            Some(("1.2.3-local", "nightly"))
+            Some(("1.2.3", "nightly"))
         );
         let offer = BetaStatus {
             schema: 1,
@@ -187,9 +194,15 @@ mod tests {
                 .is_some_and(|(version, _)| offer.ready_for(version))
         );
         let mut rollback = state.clone();
-        rollback["previous"] =
-            serde_json::json!({"generation":"c".repeat(32), "manifest_sha256":"d".repeat(64)});
-        fs::write(root.join("state.json"), rollback.to_string()).expect("rollback disponible");
+        rollback["previous"] = serde_json::json!({"generation":"c".repeat(32), "manifest_sha256":state["active"]["manifest_sha256"]});
+        let previous = root.join("generations").join("c".repeat(32));
+        fs::create_dir_all(previous.join("data")).unwrap();
+        fs::copy(
+            package.join("manifest.json"),
+            previous.join("manifest.json"),
+        )
+        .unwrap();
+        fs::write(root.join("state.json"), rollback.to_string()).unwrap();
         assert!(matches!(
             LocalUpdate::at(&exe),
             LocalUpdate::Package { previous: true, .. }

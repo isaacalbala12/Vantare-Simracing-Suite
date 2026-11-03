@@ -324,6 +324,8 @@ jobs:
           python -m unittest discover -s ../tools/ci-runners -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           # Windows PowerShell 5.1, el mismo host que ejecuta beta.ps1 instalado.
+          # Retired driver assertions are covered by native Installer tests and
+          # the guarded matrix below; do not run its old real-shell QA harnesses.
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/publish-installer-tests.ps1
@@ -331,10 +333,6 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/run-historical-tests.ps1 -Root "$env:RUNNER_TEMP/historical-inventory"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installer-registration-tests.ps1
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installer-shell-tests.ps1 -EvidenceDirectory C:/tmp/ola2/1591-qa/ci-installer-shell
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
@@ -443,11 +441,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --example probe-read-matrix --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix read probe build failed' }
-          $env:VANTARE_INSTALLER_QA_IDENTITY='VantareMatrixWriter'
-          $env:VANTARE_INSTALLER_QA_SHORTCUT_FOLDER='Vantare Matrix Writer'
-          $env:VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER='Vantare Matrix Legacy'
-          $env:VANTARE_INSTALLER_QA_PREFIX="$env:RUNNER_TEMP/"
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --features transport,test-installer --example installer-write-matrix --locked --offline -j 4
+          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --features write-engine,test-installer --example installer-write-matrix --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix writer build failed' }
             pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-hub --example boot-confirmation-matrix --locked --offline -j 4
             if ($LASTEXITCODE) { throw 'matrix boot confirmation fixture build failed' }

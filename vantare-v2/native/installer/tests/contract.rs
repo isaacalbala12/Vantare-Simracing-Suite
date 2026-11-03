@@ -8,28 +8,28 @@ fn parse(values: &[&str], uninstall: bool) -> Result<Args, String> {
     Args::parse(values.iter().map(OsString::from), uninstall)
 }
 
+#[cfg(windows)]
 #[test]
-fn qa_identity_is_present_only_in_the_explicit_test_build_protocol() {
-    let request = vantare_installer::engine::Request::new(&Args::default(), "Probe");
-    let value = serde_json::to_value(request).expect("request wire protocol");
-    assert_eq!(value["qa"], vantare_installer::QA);
-    for (field, expected) in [
-        ("qaIdentity", env!("VANTARE_INSTALLER_QA_IDENTITY")),
-        (
+fn qa_uses_the_product_identity_only_with_injected_os_roots() {
+    let request = vantare_installer::engine::Request::new(
+        &Args::default(),
+        vantare_installer::engine::Operation::Probe,
+    );
+    assert_eq!(request.qa, vantare_installer::QA);
+    #[cfg(feature = "test-installer")]
+    {
+        let value = serde_json::to_value(request).expect("QA tooling contract");
+        assert_eq!(value["qa"], vantare_installer::QA);
+        for field in [
+            "qaIdentity",
             "qaShortcutFolder",
-            env!("VANTARE_INSTALLER_QA_SHORTCUT_FOLDER"),
-        ),
-        (
             "qaLegacyShortcutFolder",
-            env!("VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER"),
-        ),
-        ("qaPrefix", env!("VANTARE_INSTALLER_QA_PREFIX")),
-    ] {
-        if vantare_installer::QA {
-            assert!(!expected.is_empty());
-            assert_eq!(value[field], expected);
-        } else {
-            assert!(value.get(field).is_none(), "public request leaked {field}");
+            "qaPrefix",
+        ] {
+            assert!(
+                value.get(field).is_none(),
+                "parallel identity leaked {field}"
+            );
         }
     }
 }

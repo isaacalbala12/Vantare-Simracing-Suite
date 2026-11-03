@@ -260,9 +260,9 @@ impl Installer {
         let mut request = Request::new(
             &self.args,
             if mode == Mode::Remove {
-                "Uninstall"
+                crate::engine::Operation::Uninstall
             } else {
-                "Install"
+                crate::engine::Operation::Install
             },
         );
         request.root = Some(self.info.root.clone());
@@ -369,7 +369,7 @@ impl Installer {
     fn refresh_info(&self, cx: &mut Context<Self>) {
         let mut args = self.args.clone();
         args.root = Some(self.info.root.clone());
-        let request = Request::new(&args, "Probe");
+        let request = Request::new(&args, crate::engine::Operation::Probe);
         let task = cx
             .background_executor()
             .spawn(async move { Session::new().and_then(|session| session.probe(&request)) });
@@ -616,7 +616,9 @@ fn initial_info(args: &Args, capture: bool) -> Result<(Info, Option<String>), St
             return Err("Captura no disponible".into());
         }
     } else {
-        match Session::new().and_then(|session| session.probe(&Request::new(args, "Probe"))) {
+        match Session::new()
+            .and_then(|session| session.probe(&Request::new(args, crate::engine::Operation::Probe)))
+        {
             Ok(info) => info,
             Err(error) => {
                 probe_error = Some(error);

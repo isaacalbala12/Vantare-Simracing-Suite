@@ -1,6 +1,7 @@
+//! Shared metadata and authenticated generations. No GPUI or mutation.
 use super::{
     reject_links,
-    validation::{channel, hex, hub_version, package_version},
+    validation::{channel, hex, version},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -12,26 +13,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReadProfile {
-    /// Existing Hub display checks, without byte authentication.
-    Hub,
-    /// Setup Probe: bind manifest, check installed inventory; no active rehash.
-    Probe,
-    /// Mutations authenticate the active binaries before copying or updating.
-    Verified,
-    /// Legacy interrupted uninstall may have already removed manifest/bin.
-    /// Surviving bound manifest may inform display; never uses registry fallback.
-    Uninstall,
-    /// Writer retirement: legacy structural checks, including both SHA references.
-    Retire,
-}
-
 #[derive(Debug)]
 pub enum ReadError {
     Io(io::Error),
     Invalid(&'static str),
-    Json(serde_json::Error),
     Rejected(Rejection),
 }
 
@@ -47,23 +32,22 @@ pub enum Rejection {
 }
 impl Rejection {
     pub fn code(self) -> &'static str {
-        match self {
-            Self::State => "state-contract",
-            Self::Manifest => "manifest-contract",
-            Self::Reference => "generation-reference",
-            Self::Binding => "generation-binding",
-            Self::Inventory => "inventory",
-            Self::MissingPrevious => "previous-missing",
-        }
+        self.description().0
     }
-    fn message(self) -> &'static str {
+    fn description(self) -> (&'static str, &'static str) {
         match self {
-            Self::State => "Estado de instalación inválido",
-            Self::Manifest => "Manifiesto, esquema o canal incompatible",
-            Self::Reference => "Referencia de generación inválida",
-            Self::Binding => "Generación activa/anterior incompleta",
-            Self::Inventory => "Lista de archivos inválida o duplicada",
-            Self::MissingPrevious => "Falta referencia anterior",
+            Self::State => ("state-contract", "Estado de instalación inválido"),
+            Self::Manifest => (
+                "manifest-contract",
+                "Manifiesto, esquema o canal incompatible",
+            ),
+            Self::Reference => ("generation-reference", "Referencia de generación inválida"),
+            Self::Binding => (
+                "generation-binding",
+                "Generación activa/anterior incompleta",
+            ),
+            Self::Inventory => ("inventory", "Lista de archivos inválida o duplicada"),
+            Self::MissingPrevious => ("previous-missing", "Falta referencia anterior"),
         }
     }
 }
@@ -81,9 +65,8 @@ impl fmt::Display for ReadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(error) => error.fmt(f),
-            Self::Json(error) => error.fmt(f),
             Self::Invalid(reason) => f.write_str(reason),
-            Self::Rejected(reason) => f.write_str(reason.message()),
+            Self::Rejected(reason) => f.write_str(reason.description().1),
         }
     }
 }
@@ -93,21 +76,14 @@ impl From<io::Error> for ReadError {
         Self::Io(error)
     }
 }
-impl From<serde_json::Error> for ReadError {
-    fn from(error: serde_json::Error) -> Self {
-        Self::Json(error)
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Generation {
     pub generation: String,
-    /// Absent only in legacy partial-uninstall reads; never invent a binding.
     pub manifest_sha256: Option<String>,
 }
 impl Generation {
-    fn valid(&self) -> bool {
+    pub(super) fn valid(&self) -> bool {
         hex(&self.generation, 32)
             && self
                 .manifest_sha256
@@ -126,252 +102,247 @@ pub struct State {
     pub previous: Option<Generation>,
 }
 impl State {
-    fn validate(&self, profile: ReadProfile) -> Result<(), ReadError> {
-        let structural = matches!(profile, ReadProfile::Uninstall | ReadProfile::Retire);
-        let active_valid = if profile == ReadProfile::Uninstall {
-            hex(&self.active.generation, 32)
-        } else {
-            self.active.valid()
-        };
-        require(
-            self.schema == 1
-                && self.product == "vantare-native"
-                && channel(&self.channel)
-                && (!structural || (self.channel == "beta" && active_valid)),
-            Rejection::State,
-        )?;
-        require(
-            profile == ReadProfile::Uninstall || active_valid,
-            Rejection::Reference,
-        )?;
-        if profile == ReadProfile::Retire {
-            require(
-                self.previous.as_ref().is_none_or(Generation::valid),
-                Rejection::Reference,
-            )?;
-        }
-        Ok(())
+    /// Informational state remains readable after an interrupted legacy retirement.
+    /// Mutations validate references from the same decoder before deleting files.
+    pub fn read(root: &Path) -> Result<Option<Self>, ReadError> {
+        Ok(read_state(root)?.map(|document| document.state))
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Member {
+    pub path: String,
+    pub size: u64,
+    pub sha256: String,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Manifest {
-    pub schema: u32,
-    pub product: String,
-    pub candidate: bool,
-    pub architecture: String,
+    schema: u32,
+    product: String,
+    candidate: bool,
+    architecture: String,
     pub version: String,
     pub channel: String,
-    #[serde(flatten)]
-    fields: serde_json::Map<String, Value>,
+    data_schema: String,
+    source_sha: String,
+    pub source_dirty: bool,
+    build_profile: String,
+    pub files: Vec<Member>,
+    #[serde(default)]
+    pub engine: Option<u32>,
+    #[serde(skip)]
+    sha256: String,
+    #[serde(skip)]
+    pub version_parts: [u16; 3],
 }
-
-#[derive(Debug)]
-pub struct Installation {
-    pub state: Option<State>,
-    pub manifest: Option<Manifest>,
-    pub data_path: PathBuf,
-    /// Optional previous failures never rewrite state or block a valid active.
-    pub previous_warning: Option<&'static str>,
-}
-
-fn require(valid: bool, reason: impl Into<ReadError>) -> Result<(), ReadError> {
-    if valid { Ok(()) } else { Err(reason.into()) }
-}
-
-fn bytes(path: &Path, limit: Option<u64>, profile: ReadProfile) -> Result<Vec<u8>, ReadError> {
-    if profile != ReadProfile::Hub {
-        reject_links(path).map_err(|_| ReadError::Invalid("Ruta de instalación no válida"))?;
-    }
-    let meta = fs::symlink_metadata(path)?;
-    require(meta.is_file(), "Se requiere un archivo regular")?;
-    if let Some(limit) = limit {
-        require(meta.len() <= limit, "Documento demasiado grande")?;
-    }
-    let mut result = Vec::new();
-    fs::File::open(path)?
-        .take(limit.map_or(u64::MAX, |n| n + 1))
-        .read_to_end(&mut result)?;
-    if let Some(limit) = limit {
-        require(result.len() as u64 <= limit, "Documento demasiado grande")?;
-    }
-    // PS ReadAllText and the old Hub both consume UTF-8, but only PS accepts BOM.
-    Ok(result)
-}
-
-fn json(raw: &[u8], profile: ReadProfile) -> Result<Value, ReadError> {
-    let raw = if profile == ReadProfile::Hub {
-        raw
-    } else {
-        raw.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(raw)
-    };
-    Ok(serde_json::from_slice(raw)?)
-}
-
 impl Manifest {
-    pub fn read(path: &Path, profile: ReadProfile) -> Result<Self, ReadError> {
-        let limit = if profile == ReadProfile::Hub {
-            1024 * 1024
-        } else {
-            65536
-        };
-        let raw = bytes(path, Some(limit), profile)?;
-        Self::decode(&raw, profile)
+    pub fn read(path: &Path) -> Result<Self, ReadError> {
+        Self::decode(&bytes(path)?)
     }
-
-    fn decode(raw: &[u8], profile: ReadProfile) -> Result<Self, ReadError> {
-        let manifest: Self = if profile == ReadProfile::Hub {
-            serde_json::from_slice(raw)?
-        } else {
-            serde_json::from_value(json(raw, profile)?)?
-        };
+    pub(super) fn decode(raw: &[u8]) -> Result<Self, ReadError> {
+        let mut manifest: Self =
+            serde_json::from_slice(utf8(raw)).map_err(|_| Rejection::Manifest)?;
+        manifest.version_parts = version(&manifest.version).map_err(|_| Rejection::Manifest)?;
         require(
             manifest.schema == 1
                 && manifest.product == "vantare-native"
                 && manifest.candidate
                 && manifest.architecture == "windows-x64"
                 && channel(&manifest.channel)
-                && if profile == ReadProfile::Hub {
-                    hub_version(&manifest.version)
-                } else {
-                    package_version(&manifest.version)
-                },
+                && manifest.data_schema == "opaque-v1"
+                && hex(&manifest.source_sha, 40)
+                && matches!(manifest.build_profile.as_str(), "Debug" | "Release")
+                && matches!(manifest.engine, None | Some(1 | 2)),
             Rejection::Manifest,
         )?;
-        Ok(manifest)
-    }
-
-    pub(super) fn installed(&self, directory: &Path, verify_files: bool) -> Result<(), ReadError> {
-        validate_catalogue()?;
-        let fields = &self.fields;
-        require(
-            fields.get("data_schema").and_then(Value::as_str) == Some("opaque-v1")
-                && fields
-                    .get("source_sha")
-                    .and_then(Value::as_str)
-                    .is_some_and(|s| hex(s, 40))
-                && fields.get("source_dirty").is_some_and(Value::is_boolean)
-                && matches!(
-                    fields.get("build_profile").and_then(Value::as_str),
-                    Some("Debug" | "Release")
-                ),
-            Rejection::Manifest,
-        )?;
-        let files = fields
-            .get("files")
-            .and_then(Value::as_array)
-            .ok_or(ReadError::Invalid("Inventario instalado vacío"))?;
-        require(!files.is_empty(), "Inventario instalado vacío")?;
-        let mut members = HashSet::new();
-        for file in files {
-            let path = file
-                .get("path")
-                .and_then(Value::as_str)
-                .ok_or(ReadError::Invalid("Ruta de inventario inválida"))?;
+        let mut names = HashSet::new();
+        require(!manifest.files.is_empty(), Rejection::Inventory)?;
+        for file in &manifest.files {
             require(
-                known_member(path, &self.channel) && members.insert(path),
+                safe_member(&file.path)
+                    && names.insert(file.path.to_ascii_lowercase())
+                    && hex(&file.sha256, 64),
                 Rejection::Inventory,
             )?;
+        }
+        manifest.sha256 = format!("{:x}", Sha256::digest(raw));
+        Ok(manifest)
+    }
+    pub fn sha256(&self) -> &str {
+        &self.sha256
+    }
+    pub(super) fn bound(
+        root: &Path,
+        reference: &Generation,
+        expected: &str,
+    ) -> Result<Self, ReadError> {
+        let directory = root.join("generations").join(&reference.generation);
+        let manifest = Self::authenticated(&directory, reference, expected)?;
+        reject_links(&directory.join("data"))
+            .map_err(|_| ReadError::Invalid("Ruta de datos no válida"))?;
+        require(directory.join("data").is_dir(), Rejection::Binding)?;
+        Ok(manifest)
+    }
+    pub(super) fn authenticated(
+        directory: &Path,
+        reference: &Generation,
+        expected: &str,
+    ) -> Result<Self, ReadError> {
+        require(reference.valid(), Rejection::Reference)?;
+        let manifest = Self::read(&directory.join("manifest.json"))?;
+        require(
+            reference.manifest_sha256.as_deref() == Some(manifest.sha256()),
+            Rejection::Binding,
+        )?;
+        require(manifest.channel == expected, Rejection::Manifest)?;
+        Ok(manifest)
+    }
+    pub(super) fn installed(&self, directory: &Path, verify_files: bool) -> Result<(), ReadError> {
+        let members: HashSet<_> = self
+            .files
+            .iter()
+            .map(|file| file.path.to_ascii_lowercase())
+            .collect();
+        for (path, is_directory) in walk(directory, true)? {
+            if is_directory {
+                continue;
+            }
+            let relative = path
+                .strip_prefix(directory)
+                .map_err(|_| ReadError::Invalid("Ruta ajena"))?
+                .to_string_lossy()
+                .replace('\\', "/")
+                .to_ascii_lowercase();
             require(
-                file.get("sha256")
-                    .and_then(Value::as_str)
-                    .is_some_and(|s| hex(s, 64)),
-                "SHA de archivo inválido",
+                relative == "manifest.json" || members.contains(&relative),
+                "Archivo instalado no enumerado en el manifiesto",
             )?;
-            if verify_files {
-                let target = directory.join(path);
-                let expected = file["sha256"]
-                    .as_str()
-                    .ok_or(ReadError::Invalid("SHA inválido"))?;
+        }
+        if verify_files {
+            for file in &self.files {
+                let target = directory.join(&file.path);
                 require(
-                    fs::metadata(&target)?.len()
-                        == file["size"]
-                            .as_u64()
-                            .ok_or(ReadError::Invalid("Tamaño inválido"))?
-                        && hash_file(&target)? == expected,
+                    fs::metadata(&target)?.len() == file.size && hash_file(&target)? == file.sha256,
                     "Integridad incorrecta",
                 )?;
-                if Path::new(path).extension() == Some(std::ffi::OsStr::new("exe")) {
+                if Path::new(&file.path)
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
+                {
                     verify_pe(&target)?;
-                    let sidecar = fs::read_to_string(directory.join(format!("{path}.sha256")))?;
                     let name = target
                         .file_name()
-                        .and_then(|s| s.to_str())
+                        .and_then(|name| name.to_str())
                         .ok_or(ReadError::Invalid("Nombre inválido"))?;
                     require(
-                        sidecar == format!("{expected}  {name}\n"),
+                        fs::read_to_string(directory.join(format!("{}.sha256", file.path)))?
+                            == format!("{}  {name}\n", file.sha256),
                         "Sidecar incorrecto",
                     )?;
                 }
             }
         }
-        for path in tree(directory)? {
-            let relative = path
-                .strip_prefix(directory)
-                .map_err(|_| ReadError::Invalid("Ruta ajena"))?
-                .to_string_lossy()
-                .replace('\\', "/");
-            require(
-                relative.starts_with("data/")
-                    || relative == "manifest.json"
-                    || members.contains(relative.as_str()),
-                "Archivo instalado no enumerado en el manifiesto",
-            )?;
-        }
         Ok(())
     }
 }
 
-// Rust owns the catalogue from step 4. The matrix keeps the legacy PS catalogue
-// byte-compatible until its product consumers retire in steps 6/7.
-include!("members.rs");
-fn known_member(path: &str, channel: &str) -> bool {
-    (CURRENT_MEMBERS.contains(&path) || RETIRED_MEMBERS.contains(&path))
-        && (channel != "beta"
-            || !matches!(
-                path,
-                "bin/vantare-workshop.exe" | "bin/vantare-workshop.exe.sha256"
-            ))
-}
-
-/// Rust-owned closed inventory. Legacy PS catalogues remain differential
-/// oracles until their consumers migrate and product PowerShell retires in p7.
-pub fn known_members(channel: &str) -> Vec<&'static str> {
-    CURRENT_MEMBERS
-        .iter()
-        .chain(RETIRED_MEMBERS.iter())
-        .copied()
-        .filter(|path| known_member(path, channel))
-        .collect()
-}
-pub fn current_members(channel: &str) -> Vec<&'static str> {
-    CURRENT_MEMBERS
-        .iter()
-        .copied()
-        .filter(|path| known_member(path, channel))
-        .collect()
-}
-pub fn validate_catalogue() -> Result<(), ReadError> {
-    validate_catalogue_paths(CURRENT_MEMBERS, RETIRED_MEMBERS)
-}
-fn validate_catalogue_paths(current: &[&str], retired: &[&str]) -> Result<(), ReadError> {
-    let mut seen = HashSet::new();
-    for path in current.iter().chain(retired) {
-        let valid = path.split('/').all(|segment| {
+/// Names are authorized by the bound manifest, never by an installer catalogue.
+pub fn safe_member(path: &str) -> bool {
+    !path.eq_ignore_ascii_case("manifest.json")
+        && path.split('/').all(|segment| {
+            let stem = segment.split('.').next().unwrap_or("").to_ascii_uppercase();
+            let device = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+                || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+                    && stem.len() == 4
+                    && matches!(stem.as_bytes()[3], b'1'..=b'9'));
+            if device {
+                return false;
+            }
             !segment.eq_ignore_ascii_case("data")
                 && segment.split('.').all(|part| {
                     !part.is_empty()
                         && part
                             .bytes()
-                            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'))
+                            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
                 })
-        });
-        require(
-            valid && seen.insert(path.to_ascii_lowercase()),
-            "Catálogo de rutas retiradas inválido o duplicado",
-        )?;
+        })
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct Retained {
+    schema: u32,
+    pub generation: String,
+    pub version: String,
+    #[serde(skip)]
+    pub version_parts: [u16; 3],
+}
+#[derive(Debug)]
+pub struct Installation {
+    pub state: Option<State>,
+    pub manifest: Option<Manifest>,
+    pub data_path: PathBuf,
+    pub previous_warning: Option<&'static str>,
+    pub previous_manifest: Option<Manifest>,
+    pub(super) original_state: Option<Value>,
+    pub(super) retained: Option<Retained>,
+}
+pub(super) struct StateDocument {
+    pub(super) state: State,
+    original: Value,
+    pub(super) previous_present: bool,
+    pub(super) warning: Option<&'static str>,
+}
+fn require(valid: bool, reason: impl Into<ReadError>) -> Result<(), ReadError> {
+    if valid { Ok(()) } else { Err(reason.into()) }
+}
+fn bytes(path: &Path) -> Result<Vec<u8>, ReadError> {
+    reject_links(path).map_err(|_| ReadError::Invalid("Ruta de instalación no válida"))?;
+    let file = fs::File::open(path)?;
+    require(file.metadata()?.is_file(), "Se requiere un archivo regular")?;
+    let mut raw = Vec::new();
+    file.take(65537).read_to_end(&mut raw)?;
+    require(raw.len() <= 65536, "Documento demasiado grande")?;
+    Ok(raw)
+}
+fn utf8(raw: &[u8]) -> &[u8] {
+    raw.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(raw)
+}
+pub(super) fn read_state(root: &Path) -> Result<Option<StateDocument>, ReadError> {
+    let raw = match bytes(&root.join("state.json")) {
+        Ok(raw) => raw,
+        Err(ReadError::Io(error)) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let original: Value = serde_json::from_slice(utf8(&raw)).map_err(|_| Rejection::State)?;
+    require(
+        original.is_object() && original["active"].is_object(),
+        Rejection::State,
+    )?;
+    let mut active = original.clone();
+    let previous = active["previous"].take();
+    let mut state: State = serde_json::from_value(active).map_err(|_| Rejection::State)?;
+    require(
+        state.schema == 1 && state.product == "vantare-native" && channel(&state.channel),
+        Rejection::State,
+    )?;
+    require(hex(&state.active.generation, 32), Rejection::Reference)?;
+    let mut warning = None;
+    if !previous.is_null() {
+        match serde_json::from_value(previous) {
+            Ok(reference) => state.previous = Some(reference),
+            Err(_) => warning = Some("previous-corrupt"),
+        }
     }
-    Ok(())
+    Ok(Some(StateDocument {
+        state,
+        previous_present: original.get("previous").is_some(),
+        original,
+        warning,
+    }))
 }
 
 pub(super) fn hash_file(path: &Path) -> Result<String, ReadError> {
@@ -401,7 +372,7 @@ pub(super) fn verify_pe(path: &Path) -> Result<(), ReadError> {
     )
 }
 
-pub(super) fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
+pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>, ReadError> {
     let mut pending = vec![root.to_path_buf()];
     let mut files = Vec::new();
     while let Some(directory) = pending.pop() {
@@ -417,246 +388,136 @@ pub(super) fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
                 "Árbol .env rechazado antes de leerlo",
             )?;
             reject_links(&path).map_err(|_| ReadError::Invalid("Árbol con reparse point"))?;
-            if entry.file_type()?.is_dir() {
-                pending.push(path);
-            } else {
-                files.push(path);
+            if skip_data && path == root.join("data") {
+                continue;
             }
+            let is_directory = entry.file_type()?.is_dir();
+            if is_directory {
+                pending.push(path.clone());
+            }
+            files.push((path, is_directory));
         }
     }
     Ok(files)
 }
 
 impl Installation {
-    /// Logical rollback snapshot before a mutation. Validated/Uninstall profiles
-    /// may discard optional references and cannot preserve this document.
-    #[cfg(feature = "write-engine")]
-    pub(super) fn state_document(root: &Path) -> Result<Value, ReadError> {
-        json(
-            &bytes(&root.join("state.json"), None, ReadProfile::Uninstall)?,
-            ReadProfile::Uninstall,
-        )
-    }
-
-    pub fn read(root: &Path, profile: ReadProfile) -> Result<Self, ReadError> {
-        let path = root.join("state.json");
-        let mut installation = Self {
+    pub fn read(root: &Path) -> Result<Self, ReadError> {
+        let mut view = Self {
             state: None,
             manifest: None,
             data_path: root.join("generations"),
             previous_warning: None,
+            previous_manifest: None,
+            original_state: None,
+            retained: None,
         };
-        if profile != ReadProfile::Hub && root.try_exists()? {
-            tree(root)?;
-        }
-        let raw = match bytes(
-            &path,
-            (profile == ReadProfile::Hub).then_some(16 * 1024),
-            profile,
-        ) {
-            Ok(raw) => raw,
-            Err(ReadError::Io(error))
-                if error.kind() == io::ErrorKind::NotFound && profile != ReadProfile::Hub =>
-            {
-                let retained = root.join("retained-data.json");
-                if retained.try_exists()? {
-                    let value = json(&bytes(&retained, None, profile)?, profile)?;
-                    let id = value["generation"].as_str().ok_or(ReadError::Invalid(
-                        "Referencia de datos conservados inválida",
-                    ))?;
-                    require(
-                        value["schema"] == 1 && hex(id, 32),
-                        "Referencia de datos conservados inválida",
-                    )?;
-                    installation.data_path = root.join("generations").join(id).join("data");
-                }
-                return Ok(installation);
+        let Some(document) = read_state(root)? else {
+            let path = root.join("retained-data.json");
+            if path.try_exists()? {
+                let mut saved: Retained = serde_json::from_slice(utf8(&bytes(&path)?))
+                    .map_err(|_| ReadError::Invalid("Referencia de datos conservados inválida"))?;
+                saved.version_parts = version(&saved.version)
+                    .map_err(|_| ReadError::Invalid("Versión conservada inválida"))?;
+                require(
+                    saved.schema == 1 && hex(&saved.generation, 32),
+                    "Referencia de datos conservados inválida",
+                )?;
+                view.data_path = root
+                    .join("generations")
+                    .join(&saved.generation)
+                    .join("data");
+                view.retained = Some(saved);
             }
-            Err(error) => return Err(error),
+            return Ok(view);
         };
-        let (mut state, warning) = decode_state(&raw, profile)?;
-        installation.previous_warning = warning;
-        state.validate(profile)?;
-        installation.data_path = root
+        require(document.previous_present, Rejection::MissingPrevious)?;
+        let state = document.state;
+        view.data_path = root
             .join("generations")
             .join(&state.active.generation)
             .join("data");
-        if matches!(profile, ReadProfile::Uninstall | ReadProfile::Retire) {
-            // Missing/damaged program members never block uninstall. Only a
-            // surviving hash-bound manifest may supply its displayed version.
-            installation.manifest = uninstall_manifest(root, &state).ok();
-        } else {
-            let manifest = read_generation(
-                root,
-                &state.active,
-                &state.channel,
-                profile,
-                profile == ReadProfile::Verified,
-            )?;
-            if profile == ReadProfile::Hub {
-                require(
-                    state.previous.as_ref().is_none_or(Generation::valid),
-                    "Referencia anterior inválida",
-                )?;
-            } else if let Some(previous) = &state.previous
-                && let Err(error) = read_generation(root, previous, &state.channel, profile, true)
-            {
-                installation.previous_warning = Some(if matches!(error, ReadError::Io(_)) {
-                    "previous-unreadable"
-                } else {
-                    "previous-corrupt"
-                });
-                state.previous = None;
+        view.manifest = Some(Manifest::bound(root, &state.active, &state.channel)?);
+        view.previous_warning = document.warning;
+        if let Some(previous) = &state.previous {
+            if previous.generation == state.active.generation {
+                view.previous_warning = Some("previous-corrupt");
+            } else {
+                let cached = Manifest::bound(root, previous, &state.channel);
+                match cached {
+                    Ok(manifest) => view.previous_manifest = Some(manifest),
+                    Err(error) => view.previous_warning = Some(previous_failure(&error)),
+                }
             }
-            installation.manifest = Some(manifest);
         }
-        installation.state = Some(state);
-        Ok(installation)
+        view.original_state = Some(document.original);
+        view.state = Some(state);
+        view.check_files(root, false)?;
+        Ok(view)
     }
-
+    /// Reuses decoded/bound manifests. A repair may inspect the active failure
+    /// while retaining a verified previous; neither generation is re-read.
+    pub fn verify(&mut self, root: &Path) -> Result<(), ReadError> {
+        self.check_files(root, true)
+    }
+    fn check_files(&mut self, root: &Path, verify_files: bool) -> Result<(), ReadError> {
+        let Some(state) = &self.state else {
+            return Ok(());
+        };
+        let active = self
+            .manifest
+            .as_ref()
+            .ok_or(ReadError::Invalid("Falta manifiesto activo"))?
+            .installed(
+                &root.join("generations").join(&state.active.generation),
+                verify_files,
+            );
+        if let (Some(reference), Some(manifest)) = (&state.previous, &self.previous_manifest)
+            && let Err(error) = manifest.installed(
+                &root.join("generations").join(&reference.generation),
+                verify_files,
+            )
+        {
+            self.previous_warning = Some(previous_failure(&error));
+            self.previous_manifest = None;
+        }
+        active
+    }
+    pub fn usable_previous(&self) -> Option<&Generation> {
+        self.previous_manifest.as_ref()?;
+        self.state.as_ref()?.previous.as_ref()
+    }
     pub fn installed_version(&self) -> Option<&str> {
-        self.manifest.as_ref().map(|m| m.version.as_str())
+        self.manifest
+            .as_ref()
+            .map(|manifest| manifest.version.as_str())
     }
 }
-
-fn uninstall_manifest(root: &Path, state: &State) -> Result<Manifest, ReadError> {
-    require(state.active.valid(), Rejection::Reference)?;
-    let path = root
-        .join("generations")
-        .join(&state.active.generation)
-        .join("manifest.json");
-    let raw = bytes(&path, Some(65536), ReadProfile::Uninstall)?;
-    require(
-        state.active.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw))),
-        Rejection::Binding,
-    )?;
-    let manifest = Manifest::decode(&raw, ReadProfile::Uninstall)?;
-    require(manifest.channel == state.channel, Rejection::Manifest)?;
-    Ok(manifest)
-}
-
-// Preserve Uninstall-Beta's retention marker contract: only the numeric version
-// is required here, even if other manifest fields were damaged. This value never
-// supplies installed-version display or authorizes activation.
-#[cfg(feature = "write-engine")]
-pub(super) fn retention_version(root: &Path, state: &State) -> Result<String, ReadError> {
-    let path = root
-        .join("generations")
-        .join(&state.active.generation)
-        .join("manifest.json");
-    let value = json(
-        &bytes(&path, None, ReadProfile::Uninstall)?,
-        ReadProfile::Uninstall,
-    )?;
-    let version = value["version"]
-        .as_str()
-        .ok_or(ReadError::Invalid("Versión activa inválida"))?;
-    super::validation::setup_version(version)
-        .map_err(|_| ReadError::Invalid("Versión activa inválida"))?;
-    Ok(version.to_owned())
-}
-
-fn decode_state(
-    raw: &[u8],
-    profile: ReadProfile,
-) -> Result<(State, Option<&'static str>), ReadError> {
-    if profile == ReadProfile::Hub {
-        return Ok((serde_json::from_slice(raw)?, None));
+fn previous_failure(error: &ReadError) -> &'static str {
+    if matches!(error, ReadError::Io(_)) {
+        "previous-unreadable"
+    } else {
+        "previous-corrupt"
     }
-    let mut value = json(raw, profile)?;
-    require(
-        value.is_object() && value["active"].is_object(),
-        Rejection::State,
-    )?;
-    if matches!(
-        profile,
-        ReadProfile::Probe | ReadProfile::Verified | ReadProfile::Retire
-    ) {
-        require(value.get("previous").is_some(), Rejection::MissingPrevious)?;
-    }
-    if let Some(map) = value.as_object_mut() {
-        map.retain(|key, _| {
-            ["schema", "product", "channel", "active", "previous"].contains(&key.as_str())
-        });
-    }
-    for key in ["active", "previous"] {
-        if let Some(map) = value[key].as_object_mut() {
-            map.retain(|key, _| ["generation", "manifest_sha256"].contains(&key.as_str()));
-        }
-    }
-    let previous = value["previous"].take();
-    if profile == ReadProfile::Uninstall {
-        // The legacy structural reader ignores missing/invalid manifest hashes.
-        // Keep a real string if present; represent absence rather than fake SHA.
-        if !value["active"]["manifest_sha256"].is_string() {
-            value["active"]["manifest_sha256"] = Value::Null;
-        }
-    }
-    let mut state: State = serde_json::from_value(value)?;
-    let mut warning = None;
-    if profile == ReadProfile::Retire {
-        state.previous = serde_json::from_value(previous)?;
-    } else if matches!(profile, ReadProfile::Probe | ReadProfile::Verified) && !previous.is_null() {
-        match serde_json::from_value(previous) {
-            Ok(reference) => state.previous = Some(reference),
-            Err(_) => warning = Some("previous-corrupt"),
-        }
-    }
-    Ok((state, warning))
-}
-
-fn read_generation(
-    root: &Path,
-    reference: &Generation,
-    expected: &str,
-    profile: ReadProfile,
-    verify_files: bool,
-) -> Result<Manifest, ReadError> {
-    require(reference.valid(), Rejection::Reference)?;
-    let directory = root.join("generations").join(&reference.generation);
-    let path = directory.join("manifest.json");
-    let raw = bytes(
-        &path,
-        Some(if profile == ReadProfile::Hub {
-            1024 * 1024
-        } else {
-            65536
-        }),
-        profile,
-    )?;
-    if profile != ReadProfile::Hub {
-        require(
-            reference.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw)))
-                && directory.join("data").is_dir(),
-            Rejection::Binding,
-        )?;
-    }
-    let manifest = Manifest::decode(&raw, profile)?;
-    require(manifest.channel == expected, Rejection::Manifest)?;
-    if profile != ReadProfile::Hub {
-        manifest.installed(&directory, verify_files)?;
-    }
-    Ok(manifest)
 }
 
 #[cfg(test)]
-mod catalogue_tests {
+mod member_tests {
     #[test]
-    fn current_and_retired_paths_both_require_safe_unique_catalogue_members() {
-        for invalid in [
+    fn arbitrary_safe_members_are_allowed_but_data_and_escapes_are_not() {
+        assert!(super::safe_member("assets/new-resource.bin"));
+        for path in [
             "data/user.json",
             "../outside",
             "/rooted",
             "C:/rooted",
             ".env",
             "bin//a.exe",
+            "manifest.json",
+            "bin/CON.txt",
+            "bin/LPT1.exe",
         ] {
-            assert!(super::validate_catalogue_paths(&[invalid], &[]).is_err());
-            assert!(super::validate_catalogue_paths(&[], &[invalid]).is_err());
+            assert!(!super::safe_member(path), "{path}");
         }
-        assert!(super::validate_catalogue_paths(&["bin/a.exe", "BIN/A.EXE"], &[]).is_err());
-        assert!(super::validate_catalogue_paths(&["bin/a.exe"], &["BIN/A.EXE"]).is_err());
-        super::validate_catalogue_paths(&["bin/a.exe"], &["bin/retired.exe"])
-            .expect("valid catalogue");
     }
 }

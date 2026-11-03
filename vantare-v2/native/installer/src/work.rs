@@ -63,8 +63,7 @@ pub fn open(root: PathBuf) -> Result<(), String> {
             "No se encuentra el lanzador de Vantare. Vuelve a ejecutar el instalador.".into(),
         );
     }
-    let windows = std::env::var_os("WINDIR").ok_or("Windows no está disponible")?;
-    let host = PathBuf::from(windows).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    let host = crate::engine::powershell()?;
     if crate::QA {
         let owner = env!("VANTARE_INSTALLER_QA_OWNER_SID");
         let mut probe = std::process::Command::new(&host);

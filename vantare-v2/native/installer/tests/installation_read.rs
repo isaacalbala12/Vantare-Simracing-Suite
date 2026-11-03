@@ -1,12 +1,10 @@
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::atomic::{AtomicU64, Ordering},
 };
-use vantare_installer::engine::{
-    Installation, ReadError, ReadProfile, Rejection, complete_probe, validation,
-};
+use vantare_installer::engine::{Installation, ReadError, Rejection, State, validation};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
@@ -53,38 +51,7 @@ const RC: &[u8] = include_bytes!("../fixtures/manifest-rc.json");
 const STATE_RC: &[u8] = include_bytes!("../fixtures/state-rc.json");
 
 #[test]
-fn common_probe_accepts_non_beta_channels_but_setup_keeps_its_beta_policy() {
-    for channel in ["nightly", "testers", "master"] {
-        let fixture = Fixture::new();
-        fixture.load(STATE_RC, RC);
-        fixture.change_manifest(|manifest| manifest["channel"] = channel.into());
-        let path = fixture.0.join("state.json");
-        let mut state: serde_json::Value =
-            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        state["channel"] = channel.into();
-        fs::write(path, state.to_string()).unwrap();
-        let read = Installation::read(&fixture.0, ReadProfile::Probe).expect("closed channel");
-        assert_eq!(read.manifest.as_ref().unwrap().channel, channel);
-        assert_eq!(read.installed_version(), Some("0.0.988"));
-        let info = vantare_installer::model::Info {
-            root: fixture.0.clone(),
-            version: "0.0.989".into(),
-            installed_version: None,
-            data_path: PathBuf::new(),
-            desktop: false,
-            autostart: false,
-            size: 1,
-            reduced_motion: false,
-        };
-        assert!(matches!(
-            complete_probe(info, false),
-            Err(ReadError::Rejected(Rejection::Manifest))
-        ));
-    }
-}
-
-#[test]
-fn public_975_and_rc_use_the_active_manifest_without_writing_anything() {
+fn real_975_and_rc_metadata_share_one_reader_and_preserve_bytes() {
     for (state, manifest, expected) in [
         (
             include_bytes!("../fixtures/state-975.json").as_slice(),
@@ -95,211 +62,179 @@ fn public_975_and_rc_use_the_active_manifest_without_writing_anything() {
     ] {
         let fixture = Fixture::new();
         fixture.load(state, manifest);
-        for profile in [ReadProfile::Probe, ReadProfile::Hub] {
-            let view = Installation::read(&fixture.0, profile).expect("installed");
-            assert_eq!(view.installed_version(), Some(expected));
-            assert_eq!(view.data_path, fixture.generation().join("data"));
-            assert_eq!(
-                fs::read(fixture.0.join("state.json")).expect("state unchanged"),
-                state
-            );
-            assert_eq!(
-                fs::read(fixture.generation().join("manifest.json")).expect("manifest unchanged"),
-                manifest
-            );
-            assert_eq!(
-                fs::read(view.data_path.join("user.bin")).expect("data unchanged"),
-                b"opaque user data"
-            );
-        }
-    }
-}
-
-#[test]
-fn absent_corrupt_and_future_schema_are_distinct_and_preserve_their_bytes() {
-    let fixture = Fixture::new();
-    assert!(
-        Installation::read(&fixture.0, ReadProfile::Probe)
-            .expect("absent")
-            .state
-            .is_none()
-    );
-    assert!(
-        matches!(Installation::read(&fixture.0, ReadProfile::Hub), Err(ReadError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound)
-    );
-    for state in [
-        include_bytes!("../fixtures/state-corrupt.json").as_slice(),
-        include_bytes!("../fixtures/state-future.json").as_slice(),
-    ] {
-        fixture.load(state, RC);
-        for profile in [ReadProfile::Probe, ReadProfile::Hub] {
-            assert!(Installation::read(&fixture.0, profile).is_err());
-            assert_eq!(
-                fs::read(fixture.0.join("state.json")).expect("unchanged"),
-                state
-            );
-        }
-    }
-}
-
-#[test]
-fn probe_authenticates_manifest_but_keeps_the_existing_no_active_rehash_profile() {
-    let fixture = Fixture::new();
-    fixture.load(STATE_RC, RC);
-    // The declared script need not exist in a read-only Probe, exactly as before.
-    assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
-    fs::write(fixture.generation().join("candidate.ps1"), b"modified")
-        .expect("changed program bytes");
-    assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
-    let mut changed = RC.to_vec();
-    changed.push(b' ');
-    fs::write(fixture.generation().join("manifest.json"), changed)
-        .expect("different manifest bytes");
-    assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_err());
-    assert_eq!(
-        Installation::read(&fixture.0, ReadProfile::Hub)
-            .expect("informational")
-            .installed_version(),
-        Some("0.0.988")
-    );
-}
-
-#[test]
-fn optional_previous_is_fully_validated_for_probe_and_only_structural_for_hub() {
-    let fixture = Fixture::new();
-    fixture.load(STATE_RC, RC);
-    let previous = fixture.0.join("generations").join("b".repeat(32));
-    fs::create_dir_all(previous.join("data")).expect("previous data");
-    fs::write(previous.join("manifest.json"), RC).expect("previous manifest");
-    fs::write(previous.join("candidate.ps1"), b"fixture").expect("previous bytes");
-    let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).expect("state");
-    state["previous"] = serde_json::json!({"generation":"b".repeat(32),"manifest_sha256":format!("{:x}",Sha256::digest(RC))});
-    let raw = serde_json::to_vec(&state).expect("raw");
-    fs::write(fixture.0.join("state.json"), &raw).expect("previous reference");
-    assert!(
-        Installation::read(&fixture.0, ReadProfile::Probe)
-            .expect("complete previous")
-            .state
-            .expect("state")
-            .previous
-            .is_some()
-    );
-    fs::write(previous.join("candidate.ps1"), b"damaged").expect("damage previous");
-    let view = Installation::read(&fixture.0, ReadProfile::Probe).expect("active survives");
-    assert_eq!(view.previous_warning, Some("previous-corrupt"));
-    assert!(view.state.expect("state").previous.is_none());
-    assert!(
-        Installation::read(&fixture.0, ReadProfile::Hub)
-            .expect("structural previous")
-            .state
-            .expect("state")
-            .previous
-            .is_some()
-    );
-    fs::remove_file(previous.join("candidate.ps1")).expect("missing previous");
-    assert_eq!(
-        Installation::read(&fixture.0, ReadProfile::Probe)
-            .expect("active survives missing")
-            .previous_warning,
-        Some("previous-unreadable")
-    );
-    assert_eq!(
-        fs::read(fixture.0.join("state.json")).expect("no rewrite"),
-        raw
-    );
-}
-
-#[test]
-fn probe_rejects_unknown_disk_members_bad_inventory_hash_and_missing_data() {
-    for mutation in ["unknown", "duplicate", "traversal", "hash", "data"] {
-        let fixture = Fixture::new();
-        fixture.load(STATE_RC, RC);
-        match mutation {
-            "unknown" => fs::write(fixture.generation().join("unlisted.txt"), b"foreign")
-                .expect("foreign file"),
-            "duplicate" => fixture.change_manifest(|v| {
-                let f = v["files"][0].clone();
-                v["files"].as_array_mut().expect("files").push(f);
-            }),
-            "traversal" => fixture.change_manifest(|v| v["files"][0]["path"] = "../outside".into()),
-            "hash" => fixture.change_manifest(|v| v["files"][0]["sha256"] = "INVALID".into()),
-            "data" => {
-                fs::remove_dir_all(fixture.generation().join("data")).expect("remove fixture data");
-            }
-            _ => unreachable!(),
-        }
-        assert!(
-            Installation::read(&fixture.0, ReadProfile::Probe).is_err(),
-            "{mutation}"
+        let view = Installation::read(&fixture.0).expect("bound metadata");
+        assert_eq!(view.installed_version(), Some(expected));
+        assert_eq!(view.data_path, fixture.generation().join("data"));
+        assert_eq!(fs::read(fixture.0.join("state.json")).unwrap(), state);
+        assert_eq!(
+            fs::read(fixture.generation().join("manifest.json")).unwrap(),
+            manifest
+        );
+        assert_eq!(
+            fs::read(view.data_path.join("user.bin")).unwrap(),
+            b"opaque user data"
         );
     }
 }
 
 #[test]
-fn profiles_preserve_unknown_fields_and_version_rules() {
+fn absent_corrupt_and_future_schema_do_not_mutate_the_installation() {
     let fixture = Fixture::new();
-    fixture.load(STATE_RC, RC);
-    let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).expect("state");
-    state["future"] = true.into();
-    fs::write(
-        fixture.0.join("state.json"),
-        serde_json::to_vec(&state).expect("state bytes"),
-    )
-    .expect("state write");
-    assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
-    assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_err());
-    state
-        .as_object_mut()
-        .expect("state object")
-        .remove("future");
-    state
-        .as_object_mut()
-        .expect("state object")
-        .remove("previous");
-    fs::write(fixture.0.join("state.json"), state.to_string()).expect("missing previous");
-    assert!(matches!(
-        Installation::read(&fixture.0, ReadProfile::Probe),
-        Err(ReadError::Rejected(Rejection::MissingPrevious))
-    ));
-    assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_ok());
-    for value in [
-        "1.2.3",
-        "0.0.975",
-        "1.2.3.4-nightly.11",
-        "01.2.3",
-        "99999.0.0",
+    for profile in [false, true] {
+        assert!(read(&fixture.0, profile).unwrap().state.is_none());
+    }
+    for raw in [
+        include_bytes!("../fixtures/state-corrupt.json").as_slice(),
+        include_bytes!("../fixtures/state-future.json").as_slice(),
+        b"[]",
+        b"null",
+        b"true",
+        b"{}",
+        b"{\"active\":null}",
+        b"{\"active\":[]}",
     ] {
-        assert!(validation::package_version(value));
+        fixture.load(raw, RC);
+        for profile in [false, true] {
+            assert!(read(&fixture.0, profile).is_err());
+            assert_eq!(fs::read(fixture.0.join("state.json")).unwrap(), raw);
+        }
+        assert!(State::read(&fixture.0).is_err());
     }
-    for value in [
-        "",
-        "1.2",
-        "1.2.3-",
-        "1.2.3-.local",
-        "1.2.3--local",
-        "1.2.3-TEST",
-    ] {
-        assert!(!validation::package_version(value));
-    }
-    for value in ["01.2.3", "99999.0.0", "1.2.3.4", "1.2.3-local"] {
-        assert!(validation::setup_version(value).is_err());
-    }
-    assert!(validation::setup_version("65535.0.0").is_ok());
-    assert!(!validation::hub_version(&format!(
-        "{}1.2.3",
-        "0".repeat(101)
-    )));
 }
 
 #[test]
-fn retained_and_interrupted_uninstall_keep_their_existing_presentation() {
+fn display_authenticates_metadata_and_verified_also_checks_binary_bytes() {
+    let fixture = Fixture::new();
+    fixture.load(STATE_RC, RC);
+    // Metadata can be displayed before program files are available.
+    assert!(Installation::read(&fixture.0).is_ok());
+    assert!(verified(&fixture.0).is_err());
+    fs::write(fixture.generation().join("candidate.ps1"), b"fixture").unwrap();
+    assert!(Installation::read(&fixture.0).is_ok());
+    assert!(verified(&fixture.0).is_ok());
+    fs::write(fixture.generation().join("candidate.ps1"), b"damaged").unwrap();
+    assert!(Installation::read(&fixture.0).is_ok());
+    assert!(verified(&fixture.0).is_err());
+    let mut changed = RC.to_vec();
+    changed.push(b' ');
+    fs::write(fixture.generation().join("manifest.json"), changed).unwrap();
+    for profile in [false, true] {
+        assert!(matches!(
+            read(&fixture.0, profile),
+            Err(ReadError::Rejected(Rejection::Binding))
+        ));
+    }
+}
+
+#[test]
+fn both_profiles_use_bom_support_strict_fields_and_the_same_document_bound() {
+    let fixture = Fixture::new();
+    let mut bom = vec![0xef, 0xbb, 0xbf];
+    bom.extend_from_slice(RC);
+    let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).unwrap();
+    state["active"]["manifest_sha256"] = format!("{:x}", Sha256::digest(&bom)).into();
+    fixture.load(state.to_string().as_bytes(), &bom);
+    fs::write(fixture.generation().join("candidate.ps1"), b"fixture").unwrap();
+    for profile in [false, true] {
+        assert!(read(&fixture.0, profile).is_ok());
+    }
+    for fault in [
+        "unknown-state",
+        "unknown-reference",
+        "unknown-manifest",
+        "oversized-state",
+        "oversized-manifest",
+    ] {
+        fixture.load(STATE_RC, RC);
+        let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).unwrap();
+        match fault {
+            "unknown-state" => state["future"] = true.into(),
+            "unknown-reference" => state["active"]["future"] = true.into(),
+            "unknown-manifest" => {
+                fixture.change_manifest(|manifest| manifest["future"] = true.into());
+            }
+            "oversized-state" => {
+                let mut raw = STATE_RC.to_vec();
+                raw.extend(vec![b' '; 65536]);
+                fs::write(fixture.0.join("state.json"), raw).unwrap();
+            }
+            "oversized-manifest" => {
+                let mut raw = RC.to_vec();
+                raw.extend(vec![b' '; 65536]);
+                fs::write(fixture.generation().join("manifest.json"), raw).unwrap();
+            }
+            _ => unreachable!(),
+        }
+        if fault.starts_with("unknown-") && fault != "unknown-manifest" {
+            fs::write(fixture.0.join("state.json"), state.to_string()).unwrap();
+        }
+        for profile in [false, true] {
+            assert!(read(&fixture.0, profile).is_err(), "{fault}");
+        }
+    }
+}
+
+#[test]
+fn inventory_paths_duplicates_and_data_binding_are_not_optional() {
+    for fault in [
+        "foreign",
+        "duplicate",
+        "traversal",
+        "hash",
+        "data",
+        "previous",
+    ] {
+        let fixture = Fixture::new();
+        fixture.load(STATE_RC, RC);
+        match fault {
+            "foreign" => fs::write(fixture.generation().join("unlisted.txt"), b"foreign").unwrap(),
+            "duplicate" => fixture.change_manifest(|manifest| {
+                let file = manifest["files"][0].clone();
+                manifest["files"].as_array_mut().unwrap().push(file);
+            }),
+            "traversal" => fixture
+                .change_manifest(|manifest| manifest["files"][0]["path"] = "../outside".into()),
+            "hash" => fixture
+                .change_manifest(|manifest| manifest["files"][0]["sha256"] = "INVALID".into()),
+            "data" => fs::remove_dir_all(fixture.generation().join("data")).unwrap(),
+            "previous" => {
+                let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).unwrap();
+                state.as_object_mut().unwrap().remove("previous");
+                fs::write(fixture.0.join("state.json"), state.to_string()).unwrap();
+            }
+            _ => unreachable!(),
+        }
+        assert!(Installation::read(&fixture.0).is_err(), "{fault}");
+    }
+}
+
+#[test]
+fn version_has_one_numeric_contract_for_display_and_operations() {
+    for version in ["0.0.975", "0.0.988", "1.2.3", "65535.0.0"] {
+        assert!(validation::version(version).is_ok());
+    }
+    for version in [
+        "",
+        "1.2",
+        "01.2.3",
+        "99999.0.0",
+        "1.2.3.4",
+        "1.2.3-local",
+        "1.2.3-A1",
+    ] {
+        assert!(validation::version(version).is_err());
+    }
+}
+
+#[test]
+fn retained_data_and_structural_retirement_share_the_state_decoder() {
     let fixture = Fixture::new();
     fs::write(
         fixture.0.join("retained-data.json"),
         serde_json::json!({"schema":1,"generation":"c".repeat(32),"version":"0.0.975"}).to_string(),
     )
-    .expect("retained");
-    let view = Installation::read(&fixture.0, ReadProfile::Probe).expect("retained data");
+    .unwrap();
+    let view = Installation::read(&fixture.0).unwrap();
     assert!(view.installed_version().is_none());
     assert_eq!(
         view.data_path,
@@ -309,117 +244,17 @@ fn retained_and_interrupted_uninstall_keep_their_existing_presentation() {
             .join("c".repeat(32))
             .join("data")
     );
-    // No manifest/hash/previous is required after a partial uninstall.
-    let partial = include_bytes!("../fixtures/state-partial-uninstall.json");
-    fs::write(fixture.0.join("state.json"), partial).expect("partial");
-    let partial_view =
-        Installation::read(&fixture.0, ReadProfile::Uninstall).expect("partial state");
-    assert!(
-        partial_view
-            .state
-            .expect("structural state")
-            .active
-            .manifest_sha256
-            .is_none()
-    );
-    assert_eq!(
-        fs::read(fixture.0.join("state.json")).expect("unchanged partial state"),
-        partial
-    );
-    let info = vantare_installer::model::Info {
-        root: fixture.0.clone(),
-        version: "0.0.989".into(),
-        installed_version: Some("0.0.988".into()),
-        data_path: Path::new("unused").into(),
-        desktop: false,
-        autostart: false,
-        size: 1,
-        reduced_motion: false,
-    };
-    assert_eq!(
-        complete_probe(info.clone(), true)
-            .expect("partial recovery")
-            .installed_version,
-        Some("0.0.988".into())
-    );
-    assert!(complete_probe(info, false).is_err());
-    // A real binding remains unchanged even if manifest/bin have been removed.
-    fs::write(fixture.0.join("state.json"), STATE_RC).expect("bound partial state");
-    let original: serde_json::Value = serde_json::from_slice(STATE_RC).expect("original state");
-    let partial_view =
-        Installation::read(&fixture.0, ReadProfile::Uninstall).expect("real binding");
-    assert_eq!(
-        partial_view
-            .state
-            .expect("state")
-            .active
-            .manifest_sha256
-            .as_deref(),
-        original["active"]["manifest_sha256"].as_str()
-    );
-    assert_eq!(
-        fs::read(fixture.0.join("state.json")).expect("unchanged bound state"),
-        STATE_RC
-    );
-}
-
-#[test]
-fn hub_state_remains_bounded_while_probe_preserves_legacy_unbounded_state() {
-    let fixture = Fixture::new();
-    fixture.load(STATE_RC, RC);
-    let mut raw = STATE_RC.to_vec();
-    raw.extend(vec![b' '; 16 * 1024]);
-    fs::write(fixture.0.join("state.json"), &raw).expect("large state");
-    assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
-    assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_err());
-}
-
-#[test]
-fn malformed_state_shapes_are_errors_and_never_panic_or_write() {
-    let fixture = Fixture::new();
     for raw in [
-        b"[]".as_slice(),
-        b"null",
-        b"true",
-        b"{}",
-        b"{\"active\":null}",
-        b"{\"active\":[]}",
+        include_bytes!("../fixtures/state-partial-uninstall.json").as_slice(),
+        STATE_RC,
     ] {
-        fixture.load(raw, RC);
-        for profile in [ReadProfile::Hub, ReadProfile::Probe, ReadProfile::Uninstall] {
-            assert!(Installation::read(&fixture.0, profile).is_err());
-            assert_eq!(
-                fs::read(fixture.0.join("state.json")).expect("unchanged"),
-                raw
-            );
-        }
-    }
-}
-
-#[test]
-fn probe_ignores_unknown_reference_fields_but_disables_malformed_previous() {
-    let fixture = Fixture::new();
-    fixture.load(STATE_RC, RC);
-    let previous = fixture.0.join("generations").join("b".repeat(32));
-    fs::create_dir_all(previous.join("data")).expect("previous data");
-    fs::write(previous.join("manifest.json"), RC).expect("previous manifest");
-    fs::write(previous.join("candidate.ps1"), b"fixture").expect("previous bytes");
-    let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).expect("state");
-    state["active"]["ignored"] = true.into();
-    state["previous"] = serde_json::json!({"generation":"b".repeat(32),"manifest_sha256":format!("{:x}",Sha256::digest(RC)),"ignored":true});
-    fs::write(fixture.0.join("state.json"), state.to_string()).expect("state");
-    let view =
-        Installation::read(&fixture.0, ReadProfile::Probe).expect("unknown fields tolerated");
-    assert!(view.state.expect("state").previous.is_some());
-    assert_eq!(view.previous_warning, None);
-    state["previous"] = false.into();
-    fs::write(fixture.0.join("state.json"), state.to_string()).expect("state");
-    let view = Installation::read(&fixture.0, ReadProfile::Probe)
-        .expect("active survives malformed previous");
-    assert_eq!(view.previous_warning, Some("previous-corrupt"));
-    assert!(view.state.expect("state").previous.is_none());
-    for version in ["1.2.3-A1", "1.2.3-Ab", "1.2.3-aB"] {
-        assert!(!validation::package_version(version));
+        fs::write(fixture.0.join("state.json"), raw).unwrap();
+        assert_eq!(
+            State::read(&fixture.0).unwrap().unwrap().active.generation,
+            "a".repeat(32)
+        );
+        assert_eq!(fs::read(fixture.0.join("state.json")).unwrap(), raw);
+        assert!(Installation::read(&fixture.0).is_err());
     }
 }
 
@@ -428,6 +263,7 @@ fn previous_requires_pe_x64_and_exact_sidecar_even_with_matching_hashes() {
     for fault in ["none", "mz", "machine", "sidecar"] {
         let fixture = Fixture::new();
         fixture.load(STATE_RC, RC);
+        fs::write(fixture.generation().join("candidate.ps1"), b"fixture").unwrap();
         let previous = fixture.0.join("generations").join("b".repeat(32));
         fs::create_dir_all(previous.join("bin")).expect("bin");
         fs::create_dir(previous.join("data")).expect("data");
@@ -459,13 +295,8 @@ fn previous_requires_pe_x64_and_exact_sidecar_even_with_matching_hashes() {
         let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).expect("state");
         state["previous"] = serde_json::json!({"generation":"b".repeat(32),"manifest_sha256":format!("{:x}",Sha256::digest(raw))});
         fs::write(fixture.0.join("state.json"), state.to_string()).expect("state");
-        let view =
-            Installation::read(&fixture.0, ReadProfile::Probe).expect("active remains valid");
-        assert_eq!(
-            view.state.expect("state").previous.is_some(),
-            fault == "none",
-            "{fault}"
-        );
+        let view = verified(&fixture.0).expect("active remains valid");
+        assert_eq!(view.usable_previous().is_some(), fault == "none", "{fault}");
         assert_eq!(
             view.previous_warning,
             if fault == "none" {
@@ -476,4 +307,28 @@ fn previous_requires_pe_x64_and_exact_sidecar_even_with_matching_hashes() {
             "{fault}"
         );
     }
+}
+
+fn read(root: &std::path::Path, verify: bool) -> Result<Installation, ReadError> {
+    let mut view = Installation::read(root)?;
+    if verify {
+        view.verify(root)?;
+    }
+    Ok(view)
+}
+fn verified(root: &std::path::Path) -> Result<Installation, ReadError> {
+    read(root, true)
+}
+
+#[test]
+fn previous_equal_to_active_is_corrupt_and_never_an_actionable_rollback() {
+    let fixture = Fixture::new();
+    fixture.load(STATE_RC, RC);
+    let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).unwrap();
+    state["previous"] = state["active"].clone();
+    fs::write(fixture.0.join("state.json"), state.to_string()).unwrap();
+    let view = Installation::read(&fixture.0).unwrap();
+    assert_eq!(view.previous_warning, Some("previous-corrupt"));
+    assert!(view.usable_previous().is_none());
+    assert_eq!(view.installed_version(), Some("0.0.988"));
 }

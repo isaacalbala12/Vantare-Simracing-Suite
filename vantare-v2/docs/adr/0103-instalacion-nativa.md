@@ -245,6 +245,49 @@ este paso documental ni se autorizan otras versiones.
 Se permite actualizar únicamente las listas de dependencias de installer y Hub
 en Cargo.lock al conectar el lector: ningún paquete, versión o checksum nuevo.
 
+## Enmienda aprobada: poda 5b antes del paso 6
+
+El replanteo del 2-nov-2026 simplifica lo ya escrito: dos fases Rust,
+read (manifiesto ligado por SHA, sin rehash de binarios) y verify
+(verificación de binarios), un único contrato de versión y lectura por operación.
+El estado y los manifiestos leídos se pasan a las operaciones y a shell::sync;
+no se vuelven a abrir para reconstruir una verdad ya validada en esa operación.
+El inventario autorizado del ZIP procede de su manifiesto, autenticado por el
+SHA externo, con miembros exactos, rutas seguras y límites; no de un catálogo
+manual de91/109/111 nombres. Se conserva el rechazo de duplicados ZIP crudos.
+
+La identidad de producto también se usa en QA, siempre dentro del Context con
+HKCU y carpetas inyectados y guard activo. Se retira la identidad QA paralela.
+Se centralizan el marcador de limpieza y la frontera Windows. Cleanup mantiene
+su comprobación independiente al ejecutarse fuera del proceso y después del
+padre: sigue siendo la excepción permanente anterior, no un nuevo perfil Rust.
+`batch.rs`, que nunca se distribuyó, pasa a tooling; su reclasificación se informa
+separada de las líneas borradas. Se elimina installer-driver.ps1 sin introducir
+puentes ni migrar Feed/Register/SetStartup antes de sus pasos previstos.
+
+La matriz pasa de igualdad de bytes con PowerShell a invariantes: datos existentes
+y carpetas vacías intactos; escrituras solo en raíz/HKCU/carpetas inyectados;
+estado coherente con generaciones completas; paquete autenticado y acotado;
+rutas sin escapes, enlaces o .env; integración Windows propia e idempotente;
+rollback desde el estado anterior; interrupciones reanudables y procesos propios
+recogidos. Se conservan los45 rechazos por motivo, sin comparar textos de error.
+Los archivos ajenos se conservan: retirar el catálogo no autoriza borrarlos.
+
+Presupuesto de producción ampliada, medido con installer-lines.py --projection:
+5b≤12800,6≤12200,7≤10080,8≤10110. Si un paso no cabe, se para antes de entregar.
+Se permite windows-registry0.6.1 ya fijada solo si reduce líneas frente al SDK;
+el PR muestra el ahorro y el diff de dependencias, sin otros paquetes/versiones.
+Las retiradas legacy6–7 incluyen inventarios, NSIS, _?=, ImportProfiles,
+ImportLayout, Start y variantes antiguas de estado; se conservan migraciones
+baratas que protegen datos o preferencias. Lo ilegible se presenta como Dañada
+con Reparar, sin sobrescribir ni elegir datos arbitrariamente.
+
+LegacyRunner no se retira en5b: será el último corte, condicionado a la VM con
+Setup real sobre975/988 que hará Isaac y a otra enmienda de este ADR. Su retirada
+se diseña como borrado limpio. El indicador de arranque solo desaparece si la
+ventana del Hub se mide en≤1,5s; en otro caso se conserva. No se autoriza paso6
+por cerrar esta poda ni se altera el presupuesto único del supervisor (#1816).
+
 ## Consecuencias y verificación
 
 La matriz de caracterización fija lo observable antes de migrar cada operación.
@@ -269,3 +312,43 @@ Complementa ADR 0099 en instalación y ciclo de vida; conserva ADR 0102 y los
 protocolos de acceso. Sustituye progresivamente la autoridad del recorrido
 PowerShell descrito en los README de packaging/installer. Hasta cada paso,
 esos README y su evidencia describen el producto que realmente se ejecuta.
+
+
+### Decisión 5b: inventario de retirada y generaciones huérfanas
+
+Uninstall solo retira miembros de los manifiestos ligados por SHA a `active` o
+`previous` en el estado leído bajo bloqueo. Conserva los archivos ajenos de
+`bin/`. Una generación sin referencia SHA queda intacta, incluidos sus binarios:
+el log identifica su ruta y el motivo. No se añade ningún inventario ni marcador.
+Este residuo está autorizado y pendiente del paso 8; allí se decidirá si un
+manifiesto autoconsistente basta para retirar binarios de una generación huérfana.
+Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
+residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
+
+
+### Poda adicional 5b autorizada
+
+Se aplica la propuesta `D:/VantareServer/evidence/revision-general/instalador-PODA-5b.md`
+en el orden 5 → 3 → 1 → 4 → 2, midiendo producción tras cada bloque. El techo
+12800 no cambia. Las cifras válidas son las del script tras fmt, no las estimaciones.
+
+Cambios observables autorizados y sujetos a regresiones:
+
+- Una referencia previous igual a active se considera previous-corrupt y no
+  habilita una vuelta atrás a la misma generación.
+- REG_EXPAND_SZ deja de expandirse. Se rechaza explícitamente al leerlo; la raíz
+  y Run se comprueban antes de mutar, conservando la instalación si aparece.
+- Cleanup programado guarda también stdout en su log, como el modo síncrono.
+  Su código de salida sigue siendo la autoridad y el script sigue siendo la
+  excepción permanente mínima que valida propiedad después del padre.
+
+La API de lectura expresa las dos fases sin un enum de perfiles:
+`Installation::read(root)` liga y valida los metadatos; `verify(root)` añade
+integridad de binarios sobre lo ya leído. No introduce un tercer lector.
+La identidad del directorio temporal propio pasa a GUID; el script mantiene
+una regla cerrada del mismo nombre y conserva raíz, contenido, hash y bloqueo.
+
+Los jobs Linux actuales de policy/quality ejecutan tooling Python, no Cargo.
+La compatibilidad del crate en Linux se verifica expresamente con el target
+x86_64-unknown-linux-gnu antes de usar la reserva Windows del bloque 6 y se vuelve
+a comprobar en la tanda final; no se atribuye esa compilación a un job inexistente.

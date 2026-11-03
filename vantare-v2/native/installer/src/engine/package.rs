@@ -1,8 +1,5 @@
 //! Authenticated, closed ZIP extraction. The same handle binds hash and bytes.
-use super::{
-    current_members, installation,
-    write_fs::{self, Result, ensure},
-};
+use super::write_fs::{self, Result, ensure};
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashSet,
@@ -17,7 +14,6 @@ pub fn expand(
     destination: &Path,
     channel: &str,
 ) -> Result<super::Manifest> {
-    super::validate_catalogue()?;
     write_fs::path(zip_path)?;
     write_fs::path(destination)?;
     ensure(
@@ -43,8 +39,26 @@ pub fn expand(
         "SHA-256 externo incorrecto",
     )?;
     input.rewind()?;
-    let archive = zip::ZipArchive::new(input)?;
-    let mut allowed = current_members(channel);
+    let mut archive = zip::ZipArchive::new(input)?;
+    // The external digest authenticates this archive before its manifest can
+    // authorize names. Keep the same non-writable handle through extraction.
+    let manifest = {
+        let member = archive.by_name("manifest.json")?;
+        ensure(member.size() <= 65536, "Manifiesto demasiado grande")?;
+        let mut raw = Vec::new();
+        member.take(65537).read_to_end(&mut raw)?;
+        ensure(raw.len() <= 65536, "Manifiesto demasiado grande")?;
+        super::Manifest::decode(&raw)?
+    };
+    ensure(
+        manifest.channel == channel,
+        "Canal del paquete incompatible",
+    )?;
+    let mut allowed: Vec<_> = manifest
+        .files
+        .iter()
+        .map(|file| file.path.as_str())
+        .collect();
     allowed.push("manifest.json");
     // Inspect raw records before an indexed archive can hide a duplicate or
     // reject its count for a different reason.
@@ -105,18 +119,8 @@ pub fn expand(
         ensure(copied == declared, "Tamaño ZIP extraído incorrecto")?;
         output.sync_all()?;
     }
-    let manifest = super::Manifest::read(
-        &destination.join("manifest.json"),
-        super::ReadProfile::Probe,
-    )?;
-    ensure(
-        manifest.channel == channel,
-        "Canal del paquete incompatible",
-    )?;
-    // Incoming packages require the entire current catalogue, while installed
-    // manifests retain their own historical subset.
+    // Binary integrity is checked once, against the authenticated inventory.
     manifest.installed(destination, true)?;
-    installation::tree(destination)?;
     Ok(manifest)
 }
 
@@ -159,7 +163,7 @@ fn validate_central(input: &mut fs::File, offset: u64, allowed: &[&str]) -> Resu
     ensure(seen.len() == allowed.len(), "ZIP incompleto")
 }
 
-#[cfg(all(test, windows, feature = "transport"))]
+#[cfg(all(test, windows, feature = "write-engine"))]
 mod central_tests {
     use std::{
         fs,

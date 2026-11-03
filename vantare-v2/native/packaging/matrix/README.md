@@ -1,5 +1,22 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Vigencia 5b: el producto no incluye ni ejecuta installer-driver.ps1. El lector
+actual usa read/verify, sin perfiles, y `probe-invariants.ps1` conserva los 45
+rechazos por motivo. Los snapshots históricos permanecen como diagnóstico;
+la campaña exige resultados, datos intactos y enlaces estado/manifiesto coherentes.
+Las descripciones de paridad de los pasos anteriores son historia.
+
+El driver de `matrix/legacy/` es el oráculo exacto de e8637bb68, SHA-256
+b102e9226eef7bd1e12005ec362c44677aaccefad01229929390facc6030e7f3.
+Solo los arneses históricos lo copian a una raíz QA; no se distribuye. El
+catálogo histórico conserva contexto HKCU/carpetas inyectado. Las invocaciones
+CI de los dos arneses antiguos del driver se sustituyen por los gates nativos y
+la matriz actual, con la correspondencia de invariantes en evidence-1840-p5b.md.
+Sus aserciones originales siguen en Git, sin cambios; no usar sus entrypoints
+sueltos contra el árbol actual ni ejecutarlos en el servidor. Los scripts
+candidate/beta conservan sus bytes y sus consumidores siguen probados por
+registration-boot y startup-tests.
+
 El seguimiento 5a añade `cleanup-tests.ps1` al gate con o sin `-WriteEngine`: diez
 comprobaciones de rechazo, espera de un padre propio y renovación bajo bloqueo.
 La regresión nativa del ACK fuerza delete-pending con error5 real y exige la
@@ -193,9 +210,26 @@ La demostración del driver exige salida correcta, registro retirado y datos
 intactos. data_unchanged se calcula de los índices realmente comparados.
 
 Paso 4: `-WriteEngine` recibe el ejemplo QA `installer-write-matrix.exe`,
-compilado con `--no-default-features --features transport,test-installer`. Usa las operaciones
+compilado con `--no-default-features --features write-engine,test-installer`. Usa las operaciones
 Rust de producto con contexto explícito de registro y carpetas. Conserva las
 88 instantáneas y el contraste del lector; Feed/Register siguen heredados.
 `writer-boundary-tests.ps1` fuerza fallos de la finalización Windows, comprueba
 la restauración por bytes, la retirada reanudable y las guardas de Cleanup.
 No se distribuye el ejemplo ni se modifica el baseline para aceptar diferencias.
+
+
+Desde el paso 5b, el criterio es conservar invariantes, no los bytes del snapshot
+PowerShell. Los snapshots históricos se guardan como evidencia; se mantienen los
+resultados de las operaciones y la conservación de todas las data/. Los 45 casos
+negativos (9 motivos en 5 raíces instaladas) prueban los errores tipados de Rust,
+sin driver ni comparación de mensajes localizados. La falta de inventario fijo se
+prueba con un recurso nuevo; rutas inseguras, duplicados, SHA, esquema, vínculo,
+referencias y manifiesto ausente siguen siendo rechazos. El antiguo caso de nombre
+fuera del catálogo se sustituye por una ruta que escapa de la generación.
+
+Además se comprueban: estado activo ligado al manifiesto tras éxito; retirada del
+estado al desinstalar; accesos/registro propios e idempotentes; preservación de
+objetos ajenos; restauración lógica y sincronización tras fallo; cortes reales;
+cancelación; procesos poseídos; bloqueo y renovación de Cleanup; guard e inyección
+HKCU/carpetas. Los binarios huérfanos sin referencia SHA se conservan con diagnóstico
+explícito, pendiente de la política del paso 8. Ninguna data/ se borra.

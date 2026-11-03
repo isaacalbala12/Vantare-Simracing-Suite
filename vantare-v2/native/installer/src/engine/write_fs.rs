@@ -57,19 +57,22 @@ pub fn ensure(condition: bool, message: &str) -> Result<()> {
 }
 
 pub fn path(value: &Path) -> Result<PathBuf> {
+    local_path(value, false)
+}
+fn local_path(value: &Path, require_ntfs: bool) -> Result<PathBuf> {
     ensure(
         !value.as_os_str().to_string_lossy().trim().is_empty(),
         "Se necesita una ruta local explícita",
     )?;
     let absolute = std::path::absolute(value)?;
-    #[cfg(windows)]
     {
-        use std::path::{Component, Prefix};
-        ensure(
-            matches!(absolute.components().next(), Some(Component::Prefix(prefix)) if matches!(prefix.kind(), Prefix::Disk(_))),
-            "Se requiere un volumen local",
-        )?;
-        super::platform::local_volume(&absolute, false)?;
+        let Some(std::path::Component::Prefix(prefix)) = absolute.components().next() else {
+            return Err(WriteError::new(1, "Se requiere un volumen local"));
+        };
+        let std::path::Prefix::Disk(drive) = prefix.kind() else {
+            return Err(WriteError::new(1, "Se requiere un volumen local"));
+        };
+        super::windows::local_volume(drive, require_ntfs)?;
     }
     ensure(
         absolute.parent().is_some(),
@@ -90,9 +93,7 @@ pub fn path(value: &Path) -> Result<PathBuf> {
 }
 
 pub fn open_root(root: &Path, initialize: bool) -> Result<PathBuf> {
-    let root = path(root)?;
-    #[cfg(windows)]
-    super::platform::local_volume(&root, true)?;
+    let root = local_path(root, true)?;
     let marker = root.join(".vantare-native");
     if !marker.try_exists()? {
         ensure(initialize, "No es una instalación nativa candidata")?;
@@ -103,7 +104,7 @@ pub fn open_root(root: &Path, initialize: bool) -> Result<PathBuf> {
         fs::create_dir_all(&root)?;
         write_new(&marker, b"offline-candidate-v1")?;
     }
-    installation::tree(&root)?;
+    installation::walk(&root, false)?;
     ensure(
         fs::read(&marker)? == b"offline-candidate-v1",
         "Marcador de instalación desconocido",
@@ -111,14 +112,14 @@ pub fn open_root(root: &Path, initialize: bool) -> Result<PathBuf> {
     Ok(root)
 }
 
+fn exclusive(options: &mut fs::OpenOptions) {
+    use std::os::windows::fs::OpenOptionsExt;
+    options.share_mode(0);
+}
 pub fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut options = fs::OpenOptions::new();
     options.write(true).create_new(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::OpenOptionsExt;
-        options.share_mode(0);
-    }
+    exclusive(&mut options);
     let mut file = options.open(path)?;
     file.write_all(bytes)?;
     file.sync_all()?;
@@ -140,18 +141,18 @@ pub fn read_json(path: &Path, limit: Option<u64>) -> Result<serde_json::Value> {
         raw.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&raw),
     )?)
 }
+pub fn read_optional(path: &Path, limit: Option<u64>) -> Result<Option<serde_json::Value>> {
+    if path.try_exists()? {
+        read_json(path, limit).map(Some)
+    } else {
+        Ok(None)
+    }
+}
 pub fn lock(root: &Path, name: &str) -> Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.read(true).write(true).create(true).truncate(false);
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::OpenOptionsExt;
-        options.share_mode(0);
-    }
+    exclusive(&mut options);
     let file = options.open(root.join(name))?;
-    #[cfg(not(windows))]
-    file.try_lock()
-        .map_err(|error| WriteError::new(2, error.to_string()))?;
     Ok(file)
 }
 pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
@@ -160,18 +161,17 @@ pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
         return Ok(Vec::new());
     }
     let mut handles = Vec::new();
-    for file in installation::tree(&generations)? {
+    for (file, is_directory) in installation::walk(&generations, false)? {
+        if is_directory {
+            continue;
+        }
         if file
             .extension()
             .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
         {
             let mut options = fs::OpenOptions::new();
             options.read(true).write(true);
-            #[cfg(windows)]
-            {
-                use std::os::windows::fs::OpenOptionsExt;
-                options.share_mode(0);
-            }
+            exclusive(&mut options);
             handles.push(options.open(file).map_err(|_| {
                 WriteError::new(
                     2,
@@ -183,40 +183,11 @@ pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
     Ok(handles)
 }
 pub fn id() -> Result<String> {
-    #[cfg(windows)]
-    {
-        super::platform::new_id()
-    }
-    #[cfg(not(windows))]
-    {
-        Ok(format!(
-            "{:032x}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_err(|error| WriteError::new(1, error.to_string()))?
-                .as_nanos()
-        ))
-    }
+    super::windows::new_id()
 }
 pub fn replace(source: &Path, target: &Path) -> Result<()> {
-    #[cfg(windows)]
-    {
-        super::platform::replace(source, target)
-    }
-    #[cfg(not(windows))]
-    {
-        fs::rename(source, target)?;
-        Ok(())
-    }
+    super::windows::replace(source, target)
 }
-pub fn commit(
-    root: &Path,
-    state: &super::State,
-    checkpoint: &mut dyn FnMut(&str) -> Result<()>,
-) -> Result<()> {
-    commit_raw(root, &serde_json::to_vec_pretty(state)?, checkpoint)
-}
-/// Consume an owned temporary, including when the atomic replacement fails.
 pub fn replace_temporary(source: &Path, target: &Path) -> Result<()> {
     let result = replace(source, target);
     if result.is_err() {
@@ -250,7 +221,7 @@ pub fn remove_owned_tree(root: &Path, owned: &Path) -> Result<()> {
         "Limpieza fuera de su raíz poseída",
     )?;
     if owned.try_exists()? {
-        installation::tree(&owned)?;
+        installation::walk(&owned, false)?;
         fs::remove_dir_all(&owned)?;
     }
     Ok(())
@@ -260,27 +231,18 @@ pub fn remove_owned_tree(root: &Path, owned: &Path) -> Result<()> {
 pub fn data_index(root: &Path) -> Result<BTreeMap<PathBuf, Option<(u64, String)>>> {
     path(root)?;
     ensure(root.is_dir(), "No se encuentran los datos conservados")?;
-    installation::tree(root)?;
     let mut index = BTreeMap::new();
-    let mut pending = vec![root.to_path_buf()];
-    while let Some(directory) = pending.pop() {
-        for entry in fs::read_dir(directory)? {
-            let entry = entry?;
-            let file = entry.path();
-            let relative = file
-                .strip_prefix(root)
-                .map_err(|error| WriteError::new(1, error.to_string()))?
-                .to_path_buf();
-            if entry.file_type()?.is_dir() {
-                index.insert(relative, None);
-                pending.push(file);
-            } else {
-                index.insert(
-                    relative,
-                    Some((entry.metadata()?.len(), installation::hash_file(&file)?)),
-                );
-            }
-        }
+    for (file, is_directory) in installation::walk(root, false)? {
+        let relative = file
+            .strip_prefix(root)
+            .map_err(|error| WriteError::new(1, error.to_string()))?
+            .to_path_buf();
+        let entry = if is_directory {
+            None
+        } else {
+            Some((fs::metadata(&file)?.len(), installation::hash_file(&file)?))
+        };
+        index.insert(relative, entry);
     }
     Ok(index)
 }
@@ -295,17 +257,7 @@ pub fn copy_data(source: &Path, destination: &Path) -> Result<()> {
             if let Some(parent) = target.parent() {
                 fs::create_dir_all(parent)?;
             }
-            #[cfg(windows)]
-            super::platform::copy_new(&source.join(relative), &target)?;
-            #[cfg(not(windows))]
-            {
-                let mut output = fs::OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(&target)?;
-                io::copy(&mut fs::File::open(source.join(relative))?, &mut output)?;
-                output.sync_all()?;
-            }
+            super::windows::copy_new(&source.join(relative), &target)?;
         }
     }
     ensure(

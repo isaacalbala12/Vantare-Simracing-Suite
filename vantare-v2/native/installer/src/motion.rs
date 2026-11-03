@@ -3,9 +3,9 @@
 //! never goes back, and the label only reads 100 once the engine reports it.
 use std::time::{Duration, Instant};
 
-/// Percentages reported by installer-driver.ps1 for install/update/repair.
+/// Percentages reported by the native engine for install/update/repair.
 pub const INSTALL_MILESTONES: [u8; 6] = [6, 40, 54, 84, 93, 100];
-/// Percentages reported by installer-driver.ps1 for uninstall.
+/// Percentages reported by the native engine for uninstall.
 pub const REMOVE_MILESTONES: [u8; 4] = [12, 72, 88, 100];
 
 /// Share of the gap to the next milestone that the creep may cover.

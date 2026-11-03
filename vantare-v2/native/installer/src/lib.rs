@@ -2,6 +2,7 @@
 //! Shared installation reads and in-process mutations; GPUI only presents them.
 pub mod args;
 #[cfg(all(windows, feature = "parity-capture"))]
+#[path = "../tooling/batch.rs"]
 mod batch;
 #[cfg(windows)]
 mod command_line;
@@ -12,7 +13,7 @@ pub mod engine;
 mod foreground;
 pub mod model;
 pub mod motion;
-#[cfg(feature = "transport")]
+#[cfg(all(windows, feature = "write-engine"))]
 pub mod payload;
 #[cfg(all(windows, feature = "ui"))]
 mod screens;
@@ -26,7 +27,7 @@ mod work;
 pub const VERSION: &str = env!("VANTARE_INSTALLER_VERSION");
 pub const QA: bool = cfg!(feature = "test-installer");
 
-#[cfg(feature = "transport")]
+#[cfg(all(windows, feature = "write-engine"))]
 pub fn entry(uninstall: bool) -> u8 {
     let mut args = match args::Args::from_process(uninstall) {
         Ok(args) => args,

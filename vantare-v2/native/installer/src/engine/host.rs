@@ -1,4 +1,4 @@
-//! Setup transport. Mutations run in-process; only shell finalization uses PS until p5.
+//! In-process Setup/Uninstall host; only deferred Cleanup uses PowerShell.
 use super::{
     context::Context,
     operations, reject_links,
@@ -10,7 +10,9 @@ use crate::{
     model::{Info, Mode, Progress},
     payload,
 };
+#[cfg(feature = "test-installer")]
 use serde::{Deserialize, Serialize};
+use std::os::windows::process::CommandExt;
 use std::{
     fs,
     io::Write,
@@ -20,24 +22,28 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
-    time::{SystemTime, UNIX_EPOCH},
 };
 
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "test-installer", derive(Serialize, Deserialize))]
+pub enum Operation {
+    Probe,
+    Install,
+    Update,
+    Uninstall,
+    Cleanup,
+    #[cfg(feature = "test-installer")]
+    Sync,
+}
+
+#[derive(Clone)]
+#[cfg_attr(feature = "test-installer", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "test-installer", serde(rename_all = "camelCase"))]
 #[allow(clippy::struct_excessive_bools)] // Independent serialized identity/launch/options flags.
 pub struct Request {
-    pub operation: String,
+    pub operation: Operation,
     pub root: Option<PathBuf>,
     pub qa: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub qa_identity: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub qa_shortcut_folder: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub qa_legacy_shortcut_folder: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub qa_prefix: Option<String>,
     pub silent: bool,
     pub uninstall: bool,
     pub version: String,
@@ -47,26 +53,16 @@ pub struct Request {
     pub desktop: bool,
     pub autostart: bool,
     pub process_id: u32,
-    #[serde(default)]
+    #[cfg_attr(feature = "test-installer", serde(default))]
     pub log_file: PathBuf,
 }
 
-fn qa_value(value: &str) -> Option<String> {
-    QA.then(|| value.to_owned())
-}
-
 impl Request {
-    pub fn new(args: &Args, operation: &str) -> Self {
+    pub fn new(args: &Args, operation: Operation) -> Self {
         Self {
-            operation: operation.into(),
+            operation,
             root: args.root.clone(),
             qa: QA,
-            qa_identity: qa_value(env!("VANTARE_INSTALLER_QA_IDENTITY")),
-            qa_shortcut_folder: qa_value(env!("VANTARE_INSTALLER_QA_SHORTCUT_FOLDER")),
-            qa_legacy_shortcut_folder: qa_value(env!(
-                "VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER"
-            )),
-            qa_prefix: qa_value(env!("VANTARE_INSTALLER_QA_PREFIX")),
             silent: args.silent,
             uninstall: args.uninstall,
             version: VERSION.into(),
@@ -81,6 +77,13 @@ impl Request {
             }),
         }
     }
+}
+
+pub struct ShellOptions<'a> {
+    pub request: &'a Request,
+    pub previous: Option<&'a super::context::Options>,
+    pub payload: &'a Path,
+    pub restoring: bool,
 }
 
 pub struct Session {
@@ -101,39 +104,23 @@ impl Session {
         if context.is_isolated() {
             super::context::qa_path(&parent).map_err(|error| error.to_string())?;
         }
-        for counter in 0..10 {
-            let stamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|error| error.to_string())?
-                .as_nanos();
-            let directory = parent.join(format!(
-                "VantareSetup-{}-{stamp}-{counter}",
-                std::process::id()
-            ));
-            match fs::create_dir(&directory) {
-                Ok(()) => {
-                    let session = Self {
-                        directory,
-                        context,
-                        transferred: false,
-                    };
-                    for (name, bytes) in [
-                        ("installer-cleanup.ps1", payload::CLEANUP),
-                        ("installer-notices.txt", payload::FONT_LICENSES.as_bytes()),
-                    ] {
-                        session.write(name, bytes)?;
-                    }
-                    #[cfg(feature = "test-installer")]
-                    if session.context.is_isolated() {
-                        session.write("qa-guard.ps1", payload::QA_GUARD)?;
-                    }
-                    return Ok(session);
-                }
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-                Err(error) => return Err(error.to_string()),
-            }
+        let directory = parent.join(format!(
+            "VantareSetup-{}",
+            disk::id().map_err(|error| error.to_string())?
+        ));
+        fs::create_dir(&directory).map_err(|error| error.to_string())?;
+        let session = Self {
+            directory,
+            context,
+            transferred: false,
+        };
+        session.write("installer-cleanup.ps1", payload::CLEANUP)?;
+        session.write("installer-notices.txt", payload::FONT_LICENSES.as_bytes())?;
+        #[cfg(feature = "test-installer")]
+        if session.context.is_isolated() {
+            session.write("qa-guard.ps1", payload::QA_GUARD)?;
         }
-        Err("No se pudo crear un temporal exclusivo".into())
+        Ok(session)
     }
     fn write(&self, name: &str, bytes: &[u8]) -> Result<(), String> {
         disk::write_new(&self.directory.join(name), bytes).map_err(|error| error.to_string())
@@ -144,52 +131,25 @@ impl Session {
             .map_err(|error| error.to_string())
     }
     fn command(&self) -> Result<Command, String> {
-        let windows = std::env::var_os("WINDIR").ok_or("Windows no está disponible")?;
-        let mut command = Command::new(
-            Path::new(&windows).join("System32/WindowsPowerShell/v1.0/powershell.exe"),
-        );
+        let mut command = Command::new(super::powershell()?);
         command
             .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
             .arg(self.directory.join("installer-cleanup.ps1"))
             .arg("-RequestFile")
             .arg(self.directory.join("shell.json"));
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            command.creation_flags(0x0800_0000);
-        }
+        command.creation_flags(0x0800_0000);
         Ok(command)
     }
-    fn cleanup_contract(&self, request: &Request) -> WriteResult<bool> {
-        let root = request
-            .root
-            .as_deref()
-            .ok_or_else(|| WriteError::new(1, "Falta raíz Cleanup"))?;
+    fn cleanup_contract(&self, root: &Path, request: &Request) -> WriteResult<bool> {
         self.context.validate_root(root)?;
         // Observe renewal and the marker under the same exclusion as Cleanup.
         let _session = disk::lock(root, "beta-session.lock")?;
         disk::ensure(
-            !root.join("state.json").try_exists()? && !self.context.has_registration(request)?,
+            !root.join("state.json").try_exists()? && !self.context.has_registration()?,
             "La instalación se ha renovado; se conserva el desinstalador",
         )?;
-        let marker_path = root.join("installer-cleanup.json");
-        if !marker_path.try_exists()? {
-            return Ok(false); // Legacy uninstall cannot prove ownership: retain its residue.
-        }
-        let marker = disk::read_json(&marker_path, Some(1024))?;
-        disk::ensure(
-            marker["schema"] == 1
-                && marker["sha256"]
-                    .as_str()
-                    .is_some_and(|hash| super::validation::hex(hash, 64)),
-            "Marker de limpieza inválido",
-        )?;
-        let exe = root.join("Uninstall.exe");
-        if exe.try_exists()? {
-            disk::ensure(
-                marker["sha256"] == super::installation::hash_file(&exe)?,
-                "El desinstalador cambió; se conserva",
-            )?;
+        if super::context::cleanup_marker(root, None)?.is_none() {
+            return Ok(false); // A legacy image without ownership proof is retained.
         }
         disk::write_json(
             &self.directory.join("shell.json"),
@@ -197,35 +157,36 @@ impl Session {
         )?;
         Ok(true)
     }
-    /// Permanent, file-only exception. The exit code is the authority; all output is diagnostic.
-    fn cleanup(&self, request: &Request) -> WriteResult<()> {
-        let needed = self.cleanup_contract(request)?;
-        let mut log = fs::OpenOptions::new()
-            .append(true)
-            .open(&request.log_file)?;
-        if !needed {
+    /// Permanent, file-only exception. Both modes log stdout/stderr; exit status
+    /// remains authoritative. Scheduled cleanup owns its external process lifetime.
+    fn start_cleanup(
+        &self,
+        root: &Path,
+        request: &Request,
+        mut log: &fs::File,
+        wait: bool,
+    ) -> WriteResult<bool> {
+        if !self.cleanup_contract(root, request)? {
             writeln!(
                 log,
                 "Cleanup sin marcador; residuo conservado: {}",
-                request
-                    .root
-                    .as_ref()
-                    .expect("validated root")
-                    .join("Uninstall.exe")
-                    .display()
+                root.join("Uninstall.exe").display()
             )?;
-            return Ok(());
+            return Ok(false);
         }
-        let status = self
+        let mut child = self
             .command()
-            .map_err(|cause| WriteError::new(1, cause))?
+            .map_err(|error| WriteError::new(1, error))?
             .stdout(Stdio::from(log.try_clone()?))
-            .stderr(Stdio::from(log))
-            .status()?;
-        disk::ensure(
-            status.success(),
-            "No se pudo completar Cleanup; consulta el registro",
-        )
+            .stderr(Stdio::from(log.try_clone()?))
+            .spawn()?;
+        if wait {
+            disk::ensure(
+                child.wait()?.success(),
+                "No se pudo completar Cleanup; consulta el registro",
+            )?;
+        }
+        Ok(!wait)
     }
     fn extract(
         &self,
@@ -267,7 +228,9 @@ impl Session {
         cancel: &AtomicBool,
         mut progress: impl FnMut(Progress),
     ) -> Result<u8, String> {
-        if request.operation == "Install" && self.extract(request, cancel, &mut progress)? == 5 {
+        if request.operation == Operation::Install
+            && self.extract(request, cancel, &mut progress)? == 5
+        {
             return Ok(5);
         }
         self.run_files(request, &self.directory, cancel, &mut progress, &mut |_| {
@@ -303,36 +266,21 @@ impl Session {
                 "Payload externo solo en contexto QA",
             )?;
         }
-        let info = self.context.probe(request)?;
-        let root = info.root;
-        let mut resolved = request.clone();
-        resolved.root = Some(root.clone());
-        if resolved.log_file.as_os_str().is_empty() {
-            resolved.log_file = log_path().map_err(|error| WriteError::new(1, error))?;
-        }
+        let root = self.context.resolve_root(request)?;
+        let _ = super::windows::registry_string(
+            &self.context.registry_prefix,
+            super::shell::RUN,
+            "VantareNative.Hub",
+            false,
+        )?;
         if self.context.is_isolated() {
-            super::context::qa_path(&resolved.log_file)?;
+            super::context::qa_path(&request.log_file)?;
         }
-        let mut log = fs::OpenOptions::new()
+        let log = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(&resolved.log_file)?;
-        if request.mode == Mode::Repair
-            && info.installed_version.as_deref() != Some(request.version.as_str())
-        {
-            return Ok(3);
-        }
+            .open(&request.log_file)?;
         let previous = super::context::options(&root, request.uninstall)?;
-        if request.operation == "Install" && payload_directory != self.directory {
-            fs::copy(
-                payload_directory.join("Uninstall.exe"),
-                self.directory.join("Uninstall.exe"),
-            )?;
-            fs::copy(
-                payload_directory.join("installer-notices.txt"),
-                self.directory.join("installer-notices.txt"),
-            )?;
-        }
         let archive = payload_directory.join("package.zip");
         let package = operations::Package {
             archive: &archive,
@@ -342,7 +290,7 @@ impl Session {
             beta: payload::BETA,
         };
         let mut warning = |message: &str| {
-            let _ = writeln!(log, "{message}");
+            let _ = writeln!(&log, "{message}");
         };
         let mut control = operations::Control {
             cancel,
@@ -350,23 +298,26 @@ impl Session {
             checkpoint,
             warning: &mut warning,
         };
-        (control.progress)(Progress {
-            step: "prepare".into(),
-            percent: 0,
-            done: 0,
-            total: 0,
-            can_cancel: request.operation == "Install",
-        });
-        let result = self.execute(&resolved, &package, previous.as_ref(), &mut control);
+        (control.progress)(Progress::step(
+            "prepare",
+            0,
+            request.operation == Operation::Install,
+        ));
+        let result = if request.operation == Operation::Cleanup {
+            self.start_cleanup(&root, request, &log, true).map(|_| ())
+        } else {
+            self.execute(
+                &root,
+                request,
+                &package,
+                previous.as_ref(),
+                payload_directory,
+                &mut control,
+            )
+        };
         match result {
             Ok(()) => {
-                (control.progress)(Progress {
-                    step: "done".into(),
-                    percent: 100,
-                    done: 0,
-                    total: 0,
-                    can_cancel: false,
-                });
+                (control.progress)(Progress::step("done", 100, false));
                 Ok(0)
             }
             Err(error) => {
@@ -377,120 +328,80 @@ impl Session {
     }
     fn execute(
         &self,
+        root: &Path,
         request: &Request,
         package: &operations::Package<'_>,
         previous: Option<&super::context::Options>,
+        payload: &Path,
         control: &mut operations::Control<'_>,
     ) -> WriteResult<()> {
-        let root = request
-            .root
-            .as_deref()
-            .ok_or_else(|| WriteError::new(1, "NATIVE_ROOT_REQUIRED"))?;
-        match request.operation.as_str() {
-            "Install" => {
-                (control.progress)(Progress {
-                    step: "verify".into(),
-                    percent: 40,
-                    done: 0,
-                    total: 0,
-                    can_cancel: true,
-                });
+        let options = ShellOptions {
+            request,
+            previous,
+            payload,
+            restoring: false,
+        };
+        match request.operation {
+            Operation::Install => {
+                (control.progress)(Progress::step("verify", 40, true));
                 operations::install(
                     root,
                     package,
                     request.mode,
                     control,
-                    |control, restoring| {
+                    |control, restoring, projection| {
                         self.sync(
-                            request,
-                            previous,
-                            restoring,
-                            control.progress,
-                            control.warning,
+                            root,
+                            &ShellOptions {
+                                restoring,
+                                ..options
+                            },
+                            projection,
+                            control,
                         )
                     },
-                    || self.prepare_orphan(root, request),
+                    || self.prepare_orphan(root),
                 )
             }
-            "Update" => operations::update(root, package, false, control),
-            "Uninstall" => {
-                if !self.context.has_registration(request)?
+            Operation::Update => operations::update(root, package, false, control),
+            Operation::Uninstall => {
+                if !self.context.has_registration()?
                     && !root.join("installer-cleanup.json").try_exists()?
                 {
                     return Err(WriteError::new(1, "La instalación no está registrada"));
                 }
-                (control.progress)(Progress {
-                    step: "copy".into(),
-                    percent: 12,
-                    done: 0,
-                    total: 0,
-                    can_cancel: false,
-                });
+                (control.progress)(Progress::step("copy", 12, false));
                 operations::uninstall(root, control, |control| {
-                    self.sync(request, previous, false, control.progress, control.warning)
+                    self.sync(root, &options, None, control)
                 })
             }
-            "Cleanup" => self.cleanup(request),
             _ => Err(WriteError::new(1, "Operación del instalador no permitida")),
         }
     }
     fn sync(
         &self,
-        request: &Request,
-        previous: Option<&super::context::Options>,
-        restoring: bool,
-        progress: &mut dyn FnMut(Progress),
-        warning: &mut dyn FnMut(&str),
+        root: &Path,
+        options: &ShellOptions<'_>,
+        projection: Option<(&super::State, &str)>,
+        control: &mut operations::Control<'_>,
     ) -> WriteResult<()> {
-        let root = request
-            .root
-            .as_deref()
-            .ok_or_else(|| WriteError::new(1, "Falta raíz"))?;
-        #[cfg(windows)]
-        {
-            // Uninstall already owns the operation lock through its callback.
-            // Setup reacquires it after generation activation, as the old finalizer did.
-            let _operation = if request.uninstall {
-                None
-            } else {
-                Some(disk::lock(root, ".operation.lock")?)
-            };
-            let view = super::Installation::read(
-                root,
-                if request.uninstall {
-                    super::ReadProfile::Uninstall
-                } else {
-                    super::ReadProfile::Probe
-                },
-            )?;
-            super::shell::sync(
-                root,
-                &self.context,
-                view.state.as_ref(),
-                &super::shell::Options {
-                    request,
-                    previous,
-                    payload: &self.directory,
-                    restoring,
-                },
-                progress,
-                warning,
-            )
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = (root, previous, restoring, progress, warning);
-            Err(WriteError::new(1, "Shell requiere Windows"))
-        }
+        super::shell::sync(
+            root,
+            &self.context,
+            projection,
+            options,
+            control.progress,
+            control.warning,
+        )
     }
-    fn prepare_orphan(&self, root: &Path, request: &Request) -> WriteResult<()> {
+    fn prepare_orphan(&self, root: &Path) -> WriteResult<()> {
         let marker = root.join("installer-cleanup.json");
         if !marker.try_exists()? {
             return Ok(());
         }
         if root.join("Uninstall.exe").try_exists()?
             || root.join("state.json").try_exists()?
-            || self.context.has_registration(request)?
+            || self.context.has_registration()?
         {
             return Err(WriteError::new(
                 2,
@@ -498,57 +409,25 @@ impl Session {
             ));
         }
         disk::open_root(root, false)?;
-        let identity = root.join("registration-identity.txt");
-        if identity.try_exists()? {
-            disk::ensure(
-                fs::read_to_string(identity)?.trim() == super::context::identity(request)?,
-                "La identidad de desinstalación no coincide",
-            )?;
-        }
-        let cleanup = disk::read_json(&marker, Some(1024))?;
-        disk::ensure(
-            cleanup["schema"] == 1
-                && cleanup["sha256"]
-                    .as_str()
-                    .is_some_and(|hash| super::validation::hex(hash, 64)),
-            "Marker de limpieza inválido",
-        )?;
+        super::context::cleanup_marker(root, None)?;
         disk::remove_file(&marker)
     }
     /// Permanent, guarded PowerShell cleanup; no native self-delete workaround.
     pub fn schedule_cleanup(args: &Args) -> Result<(), String> {
         let mut session = Self::new()?;
-        let mut request = Request::new(args, "Cleanup");
-        request.root = Some(session.probe(&request)?.root);
-        let needed = session
-            .cleanup_contract(&request)
+        let request = Request::new(args, crate::engine::Operation::Cleanup);
+        let root = session
+            .context
+            .resolve_root(&request)
             .map_err(|error| error.to_string())?;
-        let mut log = fs::OpenOptions::new()
+        let log = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(log_path()?)
+            .open(&request.log_file)
             .map_err(|error| error.to_string())?;
-        if !needed {
-            writeln!(
-                log,
-                "Cleanup sin marcador; residuo conservado: {}",
-                request
-                    .root
-                    .as_ref()
-                    .expect("validated root")
-                    .join("Uninstall.exe")
-                    .display()
-            )
+        session.transferred = session
+            .start_cleanup(&root, &request, &log, false)
             .map_err(|error| error.to_string())?;
-            return Ok(());
-        }
-        session
-            .command()?
-            .stdout(Stdio::null())
-            .stderr(Stdio::from(log))
-            .spawn()
-            .map_err(|error| error.to_string())?;
-        session.transferred = true;
         Ok(())
     }
 }
@@ -560,29 +439,35 @@ impl Drop for Session {
     }
 }
 pub fn log_path() -> Result<PathBuf, String> {
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| error.to_string())?
-        .as_nanos();
-    Ok(std::env::temp_dir().join(format!("VantareSetup-{}-{stamp}.log", std::process::id())))
+    Ok(std::env::temp_dir().join(format!(
+        "VantareSetup-{}.log",
+        disk::id().map_err(|error| error.to_string())?
+    )))
 }
 pub fn headless(args: &Args) -> Result<u8, String> {
     if !args.silent {
         return Err("La interfaz interactiva todavía no está conectada".into());
     }
     let session = Session::new()?;
-    let info = session.probe(&Request::new(args, "Probe"))?;
+    // The silent path needs discovery/preferences, not an extra state/manifest
+    // Probe before the operation acquires its locks and reads them once.
+    let probe = Request::new(args, Operation::Probe);
+    let root = session
+        .context
+        .resolve_root(&probe)
+        .map_err(|error| error.to_string())?;
     let mut request = Request::new(
         args,
         if args.uninstall {
-            "Uninstall"
+            Operation::Uninstall
         } else {
-            "Install"
+            Operation::Install
         },
     );
-    request.root = Some(info.root);
-    request.desktop = info.desktop;
-    request.autostart = info.autostart;
+    (request.desktop, request.autostart) =
+        super::context::preferences(&root, args.uninstall, args.silent)
+            .map_err(|error| error.to_string())?;
+    request.root = Some(root);
     let code = session.run(&request, &Arc::new(AtomicBool::new(false)), |_| {})?;
     if code == 0 && args.uninstall {
         Session::schedule_cleanup(&Args {
@@ -597,6 +482,8 @@ pub fn headless(args: &Args) -> Result<u8, String> {
 
 #[cfg(all(test, windows))]
 mod tests {
+    #[cfg(feature = "test-installer")]
+    use super::Operation;
     use super::{Request, Session};
     use crate::{
         args::Args,
@@ -618,7 +505,7 @@ mod tests {
             let id = disk::id().expect("ID");
             let root = parent.join("p5a-cleanup-tests").join(&id);
             qa_path(&root).expect("QA guard");
-            let directory = root.join("transport");
+            let directory = root.join("write-engine");
             fs::create_dir_all(&directory).expect("owned transport");
             let context = Context::isolated(
                 root.join("LocalAppData"),
@@ -646,7 +533,7 @@ exit EXIT_CODE
                     root: Some(root.join("install")),
                     ..Args::default()
                 },
-                "Cleanup",
+                crate::engine::Operation::Cleanup,
             );
             request.log_file = root.join("diagnostics.log");
             fs::write(&request.log_file, []).expect("owned log");
@@ -659,25 +546,154 @@ exit EXIT_CODE
                 &serde_json::json!({"schema":1,"sha256":hash}),
             )
             .expect("marker");
-            let result = session.cleanup(&request);
+            let root = request.root.as_deref().unwrap();
+            let log_file = fs::OpenOptions::new()
+                .append(true)
+                .open(&request.log_file)
+                .unwrap();
+            let result = session.start_cleanup(root, &request, &log_file, true);
             assert_eq!(result.is_ok(), code == 0);
             let log = fs::read_to_string(&request.log_file).expect("diagnostics");
             assert!(log.contains("injected cosmetic warning"));
             assert!(log.contains("\"percent\":255"));
-            fs::remove_file(root.join("install/installer-cleanup.json"))
-                .expect("legacy marker absent");
+            fs::remove_file(root.join("installer-cleanup.json")).expect("legacy marker absent");
             fs::write(&request.log_file, []).expect("clear log");
-            assert!(session.cleanup(&request).is_ok());
-            assert!(root.join("install/Uninstall.exe").is_file());
+            assert!(
+                session
+                    .start_cleanup(root, &request, &log_file, true)
+                    .is_ok()
+            );
+            assert!(root.join("Uninstall.exe").is_file());
             assert!(
                 fs::metadata(&request.log_file)
                     .expect("residue diagnostic")
                     .len()
                     > 0
             );
-            fs::write(root.join("install/state.json"), b"{}").expect("renewed installation");
-            assert!(session.cleanup_contract(&request).is_err());
-            assert!(root.join("install/Uninstall.exe").is_file());
+            fs::write(root.join("state.json"), b"{}").expect("renewed installation");
+            assert!(session.cleanup_contract(root, &request).is_err());
+            assert!(root.join("Uninstall.exe").is_file());
         }
+    }
+    #[cfg(feature = "test-installer")]
+    #[test]
+    fn expand_string_in_root_or_run_fails_before_installation_mutation() {
+        let id = disk::id().unwrap();
+        let root = std::env::temp_dir().join(format!("p5b-expand-{id}"));
+        qa_path(&root).unwrap();
+        fs::create_dir_all(root.join("install")).unwrap();
+        fs::write(root.join("install/sentinel"), b"preserve").unwrap();
+        let prefix = format!("Software\\VantareInstallerMatrix\\{id}");
+        let context =
+            Context::isolated(root.join("local"), prefix.clone(), root.join("shell")).unwrap();
+        let session = Session::with_context(context).unwrap();
+        let mut request = Request::new(
+            &Args {
+                root: Some(root.join("install")),
+                ..Args::default()
+            },
+            Operation::Install,
+        );
+        request.log_file = root.join("operation.log");
+        let uninstall = format!("{prefix}\\{}", super::super::context::UNINSTALL_KEY);
+        let key = windows_registry::CURRENT_USER.create(&uninstall).unwrap();
+        let run = windows_registry::CURRENT_USER
+            .create(format!("{prefix}\\{}", super::super::shell::RUN))
+            .unwrap();
+        for root_value in [true, false] {
+            if root_value {
+                key.set_expand_string("InstallLocation", root.join("install").to_str().unwrap())
+                    .unwrap();
+            } else {
+                key.set_string("InstallLocation", root.join("install").to_str().unwrap())
+                    .unwrap();
+                run.set_expand_string("VantareNative.Hub", "%LOCALAPPDATA%\\foreign.exe")
+                    .unwrap();
+            }
+            let result = session.run_files(
+                &request,
+                &root.join("payload"),
+                &std::sync::atomic::AtomicBool::new(false),
+                &mut |_| {},
+                &mut |_| Ok(()),
+            );
+            assert!(result.is_err());
+            assert_eq!(
+                fs::read(root.join("install/sentinel")).unwrap(),
+                b"preserve"
+            );
+            assert_eq!(fs::read_dir(root.join("install")).unwrap().count(), 1);
+            assert!(!request.log_file.exists());
+        }
+        drop(key);
+        drop(run);
+        windows_registry::CURRENT_USER.remove_tree(prefix).unwrap();
+    }
+
+    #[cfg(feature = "test-installer")]
+    #[test]
+    #[allow(unsafe_code)] // Own the named event; it acknowledges flushed child stdout.
+    fn scheduled_cleanup_records_normal_stdout_in_its_log() {
+        use std::os::windows::io::{FromRawHandle, OwnedHandle};
+        use windows::{
+            Win32::{
+                Foundation::WAIT_OBJECT_0,
+                System::Threading::{CreateEventW, WaitForSingleObject},
+            },
+            core::PCWSTR,
+        };
+        let id = disk::id().unwrap();
+        let root = std::env::temp_dir().join(format!("p5b-cleanup-output-{id}"));
+        qa_path(&root).unwrap();
+        fs::create_dir_all(root.join("install")).unwrap();
+        let context = Context::isolated(
+            root.join("local"),
+            format!("Software\\VantareInstallerMatrix\\{id}"),
+            root.join("shell"),
+        )
+        .unwrap();
+        let mut session = Session::with_context(context).unwrap();
+        let name = format!("Local\\VantareCleanupOutput{id}");
+        let wide: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
+        let event = unsafe { CreateEventW(None, true, false, PCWSTR(wide.as_ptr())) }.unwrap();
+        let _owned = unsafe { OwnedHandle::from_raw_handle(event.0) };
+        let script = format!(
+            "param($RequestFile)\n$ErrorActionPreference='Stop'\n[Console]::Out.WriteLine('normal cleanup output')\n[Console]::Out.Flush()\n$event=[Threading.EventWaitHandle]::OpenExisting('{name}')\n$null=$event.Set()\n$event.Dispose()\n"
+        );
+        fs::write(session.directory.join("installer-cleanup.ps1"), script).unwrap();
+        fs::write(root.join("install/Uninstall.exe"), b"owned fixture").unwrap();
+        let hash =
+            super::super::installation::hash_file(&root.join("install/Uninstall.exe")).unwrap();
+        disk::write_json(
+            &root.join("install/installer-cleanup.json"),
+            &serde_json::json!({"schema":1,"sha256":hash}),
+        )
+        .unwrap();
+        let request = Request::new(
+            &Args {
+                root: Some(root.join("install")),
+                ..Args::default()
+            },
+            Operation::Cleanup,
+        );
+        let log = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(root.join("cleanup.log"))
+            .unwrap();
+        session.transferred = session
+            .start_cleanup(&root.join("install"), &request, &log, false)
+            .unwrap();
+        assert!(session.transferred);
+        assert_eq!(
+            unsafe { WaitForSingleObject(event, 30000) },
+            WAIT_OBJECT_0,
+            "flushed stdout acknowledgement"
+        );
+        assert!(
+            fs::read_to_string(root.join("cleanup.log"))
+                .unwrap()
+                .contains("normal cleanup output")
+        );
     }
 }

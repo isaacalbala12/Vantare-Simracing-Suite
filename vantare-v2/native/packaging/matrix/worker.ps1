@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot,[string]$ReadProbe,[string]$WriteEngine)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -18,7 +18,7 @@ $Operation=$qaRequestedOperation
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 . (Join-Path $PSScriptRoot 'fixtures.ps1')
-. (Join-Path $PSScriptRoot 'probe-parity.ps1')
+. (Join-Path $PSScriptRoot 'probe-invariants.ps1')
 function Get-NativeShortcutFolder([string]$Name) {
     if ($Name -cnotin @('Programs','Startup','DesktopDirectory')) { throw 'MATRIX_FOLDER_REJECTED' }
     Join-Path $qaCaseRoot $Name
@@ -54,53 +54,23 @@ try {
                 size=1;desktop=$true;autostart=$true;processId=2147483647;
                 packageSha=(Get-NativeHash (Join-Path $engine 'package.zip'))
             }
-            # The p3 comparator toggles this existing property on a PSObject.
-            # Writer contrast first runs the complete legacy oracle (false).
-            if($Operation -ceq 'Probe' -and $ReadProbe){$requestValue.readContext=(-not [bool]$WriteEngine)}
-            Write-NativeJson $request $requestValue
-            # Inject only OS folder resolution and explicit library root in a TEST
-            # copy. The driver's operations/transactions remain byte-for-byte.
-            $driver=Get-Content -LiteralPath (Join-Path $script:Packaging 'installer-driver.ps1') -Raw
-            $import=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library -Root `$PSScriptRoot"
-            if (-not $driver.Contains($import)) { throw 'MATRIX_DRIVER_IMPORT_CHANGED' }
-            $injection=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library -Root `$qaInstallRoot"+"`n"+'$script:MatrixNativePath=${function:Assert-NativePath}'+"`n"+${function:Get-NativeShortcutFolder}.ToString().Insert(0,'function Get-NativeShortcutFolder {')+"`n}"+
-                "`n"+${function:Assert-NativePath}.ToString().Insert(0,'function Assert-NativePath {')+"`n}"
-            $driver=$driver.Replace($import,$injection)
-            $driverPath=Join-Path $engine 'installer-driver.ps1'
-            # PS 5.1 needs the source BOM to preserve localized string literals.
-            [IO.File]::WriteAllText($driverPath,$driver,[Text.UTF8Encoding]::new($true))
-            # Cleanup validates this exact temporary naming convention.
-            $env:TEMP=$qaCaseRoot
-            [Console]::SetIn([IO.StringReader]::new("continue`n"))
-            if($WriteEngine){
-                [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
-                $OutputEncoding=[Text.UTF8Encoding]::new($false)
-                $contract=Join-Path $qaCaseRoot 'writer.json'
-                $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
-                Write-NativeJson $contract @{request=$requestValue;context=$context;payloadDirectory=$engine}
-                if($Operation -ceq 'Probe'){
-                    $expected=& $driverPath -RequestFile $request
-                    if($LASTEXITCODE){throw 'MATRIX_LEGACY_PROBE_FAILED'}
-                    $actual=& $WriteEngine $contract
-                    if($LASTEXITCODE){throw 'MATRIX_WRITER_PROBE_FAILED'}
-                    $old=$expected|ConvertFrom-Json;$new=$actual|ConvertFrom-Json
-                    foreach($field in $old.PSObject.Properties){if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_WRITER_CONTEXT_CHANGED: '+$field.Name)}}
-                    if($ReadProbe){
-                        Compare-MatrixProbe $driverPath $request $ReadProbe | Out-Null
-                        Compare-MatrixProbe $driverPath $request $ReadProbe $true | Out-Null
-                        Test-MatrixProbeRejections $qaInstallRoot $driverPath $request $ReadProbe
-                    }
-                    $actual
-                    exit 0
-                }
-                & $WriteEngine $contract
-                exit $LASTEXITCODE
-            }elseif($Operation -ceq 'Probe' -and $ReadProbe){
-                $actual=Compare-MatrixProbe $driverPath $request $ReadProbe
-                Compare-MatrixProbe $driverPath $request $ReadProbe $true | Out-Null
-                Test-MatrixProbeRejections $qaInstallRoot $driverPath $request $ReadProbe
+            if(-not $WriteEngine){throw 'MATRIX_NATIVE_WRITER_REQUIRED'}
+            $env:TEMP=$qaCaseRoot;$env:TMP=$qaCaseRoot
+            [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+            $OutputEncoding=[Text.UTF8Encoding]::new($false)
+            $contract=Join-Path $qaCaseRoot 'writer.json'
+            $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
+            Write-NativeJson $contract @{request=$requestValue;context=$context;payloadDirectory=$engine}
+            if($Operation -ceq 'Probe'){
+                $actual=& $WriteEngine $contract
+                if($LASTEXITCODE){throw 'MATRIX_WRITER_PROBE_FAILED'}
+                $probe=$actual|ConvertFrom-Json
+                if($probe.root -cne $qaInstallRoot){throw 'MATRIX_PROBE_ROOT_CHANGED'}
+                if($ReadProbe){Test-MatrixProbeRejections $qaInstallRoot $ReadProbe $probe}
                 $actual
-            }else{& $driverPath -RequestFile $request}
+                exit 0
+            }
+            & $WriteEngine $contract
             exit $LASTEXITCODE
         }
         'Update' { $null=Update-NativeCandidate $qaInstallRoot (Join-Path $Assets 'v989.zip') (Get-NativeHash (Join-Path $Assets 'v989.zip')) }
@@ -112,7 +82,12 @@ try {
             $local=Join-Path $qaCaseRoot 'offer.json';[IO.File]::WriteAllText($local,$signed.Stdout)
             $null=Stage-BetaUpdate $qaInstallRoot $local
         }
-        'Apply' { $null=Apply-BetaUpdate $qaInstallRoot }
+        'Apply' {
+            $statePath=Join-Path $qaInstallRoot 'state.json'
+            $beforeState=if(Test-Path -LiteralPath $statePath){Get-NativeHash $statePath}else{$null}
+            $applied=Apply-BetaUpdate $qaInstallRoot
+            Write-NativeJson (Join-Path $qaCaseRoot 'apply-result.json') @{applied=[bool]$applied;beforeState=$beforeState}
+        }
         {$_ -in @('Confirm','Timeout')} {
             $info=[Diagnostics.ProcessStartInfo]::new()
             $info.FileName="$env:WINDIR/System32/cmd.exe"

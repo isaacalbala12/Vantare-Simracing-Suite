@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([string]$Root)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -55,7 +55,7 @@ foreach($name in @('candidate.ps1','beta.ps1')){
     } $source $name $qaLibraryRoot
 }
 Assert-Library ([IO.File]::ReadAllText($sentinel) -ceq 'no import writes' -and @(Get-ChildItem -LiteralPath $qaLibraryRoot -Force).Count -eq 1) 'all imports and rejections leave the QA tree unchanged'
-foreach($name in @('candidate.ps1','beta.ps1','installer-driver.ps1')){
+foreach($name in @('candidate.ps1','beta.ps1')){
     $text=[IO.File]::ReadAllText((Join-Path (Split-Path $PSScriptRoot -Parent) $name))
     Assert-Library ($text -notmatch 'QA1492|1591-qa') "$name contains no fixed QA identity or prefix"
 }

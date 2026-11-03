@@ -4,32 +4,27 @@
 //! the permanent minimal PowerShell exception in ADR0103. Read-NativeState and beta
 //! Uninstall-Beta retire as their consumers migrate in steps 4–6, with product
 //! PowerShell removed in step 7. No global five-to-one claim before that cut.
-#[cfg(feature = "transport")]
+#[cfg(all(windows, feature = "write-engine"))]
 pub mod context;
-#[cfg(feature = "transport")]
+#[cfg(all(windows, feature = "write-engine"))]
 mod host;
 mod installation;
-#[cfg(feature = "write-engine")]
+#[cfg(all(windows, feature = "write-engine"))]
 pub mod operations;
-#[cfg(feature = "write-engine")]
+#[cfg(all(windows, feature = "write-engine"))]
 pub mod package;
 #[cfg(all(windows, feature = "write-engine"))]
-mod platform;
-#[cfg(all(windows, feature = "transport"))]
 pub mod shell;
-#[cfg(all(windows, feature = "transport"))]
-mod shell_windows;
 pub mod validation;
-#[cfg(feature = "write-engine")]
+#[cfg(all(windows, feature = "write-engine"))]
+mod windows;
+#[cfg(all(windows, feature = "write-engine"))]
 pub mod write_fs;
 
-#[cfg(feature = "transport")]
-pub use host::{Request, Session, headless, log_path};
-pub use installation::{
-    Generation, Installation, Manifest, ReadError, ReadProfile, Rejection, State, current_members,
-    known_members, validate_catalogue,
-};
-#[cfg(feature = "write-engine")]
+#[cfg(all(windows, feature = "write-engine"))]
+pub use host::{Operation, Request, Session, headless, log_path};
+pub use installation::{Generation, Installation, Manifest, ReadError, Rejection, State};
+#[cfg(all(windows, feature = "write-engine"))]
 pub use write_fs::WriteError;
 
 pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
@@ -50,37 +45,10 @@ pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Legacy p3 contrast adapter. Production Setup uses `Context::probe` from p4;
-/// the matrix keeps this adapter until product PowerShell retires in p7.
-pub fn complete_probe(
-    mut info: crate::model::Info,
-    uninstall: bool,
-) -> Result<crate::model::Info, ReadError> {
-    let profile = if uninstall {
-        ReadProfile::Uninstall
-    } else {
-        ReadProfile::Probe
-    };
-    let installation = Installation::read(&info.root, profile)?;
-    // The shared reader accepts every closed channel. Setup's legacy driver
-    // additionally calls Read-NativeManifest with ExpectedChannel='beta'.
-    validate_setup_channel(installation.manifest.as_ref(), uninstall)?;
-    if !uninstall || installation.state.is_none() {
-        info.installed_version = installation.installed_version().map(str::to_owned);
-    }
-    info.data_path = installation.data_path;
-    // Session::probe historically discarded successful driver stderr. Keep
-    // warnings available on Installation without adding console output here.
-    Ok(info)
-}
-
-pub(super) fn validate_setup_channel(
-    manifest: Option<&Manifest>,
-    uninstall: bool,
-) -> Result<(), ReadError> {
-    if !uninstall && manifest.is_some_and(|manifest| manifest.channel != "beta") {
-        Err(Rejection::Manifest.into())
-    } else {
-        Ok(())
-    }
+#[cfg(all(windows, feature = "write-engine"))]
+pub fn powershell() -> Result<std::path::PathBuf, String> {
+    Ok(
+        std::path::PathBuf::from(std::env::var_os("WINDIR").ok_or("Windows no está disponible")?)
+            .join("System32/WindowsPowerShell/v1.0/powershell.exe"),
+    )
 }

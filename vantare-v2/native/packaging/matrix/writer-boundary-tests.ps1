@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([string]$Root,[string]$Assets,[string]$WriteEngine)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -73,7 +73,7 @@ try{
     $identityFile=Join-Path $install 'registration-identity.txt'
     [IO.File]::WriteAllText($identityFile,'ForeignIdentity')
     try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{Remove-Item -LiteralPath $identityFile}
-    Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell refuses a mismatched registration identity'
+    Assert-Boundary ($blocked.ExitCode -eq 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Retired identity marker cannot redirect the product identity inside injected HKCU'
     $operation=[IO.File]::Open((Join-Path $install '.operation.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
     try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$operation.Dispose()}
     Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell sync respects the operation owner'

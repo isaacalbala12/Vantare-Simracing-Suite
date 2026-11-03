@@ -4,6 +4,7 @@
   "type": "fix",
   "summary": "Setup y Uninstall comparten el motor Rust y conservan los datos; Ajustes muestra la versión de la generación activa.",
   "technicalNotes": [
+    "Vigencia del paso 5b: las notas numeradas anteriores describen cortes históricos. El inventario Rust actual procede solo del manifiesto autenticado; no hay catálogo manual ni identidad QA paralela ni installer-driver.ps1. Feed/Register/SetStartup siguen heredados hasta sus pasos previstos.",
     "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
     "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
     "Las rutas retiradas se conservan en un catálogo explícito de nombres conocidos, vacío hoy, para poder leer y restaurar versiones antiguas y retirar sus binarios sin tocar datos.",
@@ -29,7 +30,8 @@
     "La frontera transitoria conserva una llamada PowerShell por FinalizeInstall, FinalizeUninstall y Cleanup, con sus guardas, propiedad de accesos, Run y restauración por bytes; se retira en el paso 5. Feed, Register y lanzamiento heredados siguen en sus pasos previstos.",
     "El contexto de Windows y el catálogo pertenecen a Rust; build.rs deja de interpretar PowerShell. La versión de una retirada interrumpida sale del manifiesto ligado por SHA si sobrevive, o queda ausente, sin DisplayVersion.",
     "Paso 5: Setup y Uninstall proyectan Windows mediante shell::sync Rust; ante un fallo restauran el estado y vuelven a sincronizar, sin copias de deshacer por bytes. Solo Cleanup conserva PowerShell como excepcion permanente minima, con marcador y hash; Feed/Register/SetStartup siguen pendientes.",
-    "Paso 5a: la limpieza vuelve a comprobar la renovación después de esperar al padre; conserva claves ajenas y restos heredados sin marcador. Un registro interrumpido conserva su ubicación para reintentar. El Hub reconoce el ACK durante el borrado solo con confirmación del kernel, sin ampliar plazos."
+    "Paso 5a: la limpieza vuelve a comprobar la renovación después de esperar al padre; conserva claves ajenas y restos heredados sin marcador. Un registro interrumpido conserva su ubicación para reintentar. El Hub reconoce el ACK durante el borrado solo con confirmación del kernel, sin ampliar plazos.",
+    "Paso 5b: unifica la lectura del estado y reutiliza los manifiestos durante cada operación. Conserva datos y archivos ajenos; los binarios sin referencia quedan con un diagnóstico de ruta y motivo para decidir su limpieza en el paso 8."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
@@ -41,13 +43,15 @@
     "En QA aislada, probar migración con ON/OFF o sin preferencia, bootstrap congelado, comandos ajenos, dos carreras con Register, desinstalación fallida y borrado Run denegado. Datos y carpetas vacías deben quedar intactos.",
     "En QA aislada, comparar Probe antiguo y lector Rust (también Uninstall) para 975, RC, pendientes y datos conservados. Con manifiesto y binario discrepantes, Ajustes debe mostrar el manifiesto y no ocultar la oferta; el caso normal queda igual.",
     "En QA aislada, repetir shell::sync sin duplicados ni cambios de destino/version, comprobar AppID y descripcion conservada, rechazar acceso ajeno y lock ocupado, restaurar la proyeccion tras fallo y comprobar datos exactos y retirada del temporal Cleanup.",
-    "Paso 5a: probar Cleanup con padre propio vivo y renovación durante la espera, conservación de la clave ajena y del bootstrap bloqueado, reutilización de MTA, acceso con variable de entorno y corte del registro tras guardar su ubicación, y ACK con error 5 real durante delete-pending. Un error de permisos sin prueba de borrado debe seguir fallando."
+    "Paso 5a: probar Cleanup con padre propio vivo y renovación durante la espera, conservación de la clave ajena y del bootstrap bloqueado, reutilización de MTA, acceso con variable de entorno y corte del registro tras guardar su ubicación, y ACK con error 5 real durante delete-pending. Un error de permisos sin prueba de borrado debe seguir fallando.",
+    "Paso 5b: repetir la matriz completa con los mismos invariantes y sus 45 rechazos por motivo. Probar previous igual a active, registro expandible rechazado antes de escribir, salida de Cleanup en el log, recurso nuevo autenticado, residuo huérfano y rollback cuyo estado no se puede restaurar."
   ],
   "knownLimitations": [
     "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",
     "Si Windows impide retirar la Run propia al desinstalar, queda apuntando al beta.ps1 ya eliminado y puede mostrar un error en el siguiente inicio de sesión hasta retirar ese valor.",
     "No se incluye el seguimiento de previous-unreadable de #1795 ni se publica una candidata o release.",
     "Los scripts ya instalados en la raíz se renuevan mediante Setup. No se publica una candidata con este PR.",
-    "El paso 5 lleva la integración Windows de Setup y Uninstall a Rust. Feed, Register, SetStartup y lanzamiento siguen pendientes de los pasos 6-7. Solo la limpieza final del desinstalador conserva un script PowerShell mínimo como excepción permanente. No se modifica la instalación real durante esta entrega."
+    "El paso 5 lleva la integración Windows de Setup y Uninstall a Rust. Feed, Register, SetStartup y lanzamiento siguen pendientes de los pasos 6-7. Solo la limpieza final del desinstalador conserva un script PowerShell mínimo como excepción permanente. No se modifica la instalación real durante esta entrega.",
+    "Los pasos 6–8 siguen pendientes con topes obligatorios. LegacyRunner permanece hasta la prueba del Setup real sobre 975 y 988 en VM y la decisión posterior de Isaac; Cleanup PowerShell sigue siendo la excepción permanente mínima."
   ]
 }

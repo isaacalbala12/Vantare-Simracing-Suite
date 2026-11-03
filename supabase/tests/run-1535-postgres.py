@@ -83,7 +83,7 @@ def main():
                 raise RuntimeError('real LOGIN private draft denial failed')
             denied = run('psql', *connection, '-At', '-c',
                          f"set role authenticated; set request.jwt.claim.sub='{owner}'; select source_text from public.race_schedule_my_draft();",
-                         name='authenticated-draft-denied.log', expected=3)
+                         name='authenticated-draft-denied.log', expected=1)
             if 'permission denied for function race_schedule_my_draft' not in denied:
                 raise RuntimeError('authenticated owner retained uncalled draft RPC')
             triggered = run('psql', *connection, '-At', '-c', """

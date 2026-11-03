@@ -9,12 +9,11 @@ select ok(public.testing_report_admit('ip',repeat('a',64),date_trunc('week',cloc
 select ok(public.testing_report_admit('account','16100000-0000-0000-0000-000000000001',date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'account first five across IPs') from generate_series(1,5);
 select ok(not public.testing_report_admit('account','16100000-0000-0000-0000-000000000001',date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'sixth from a different IP cannot reset account');
 select lives_ok($$select public.testing_report_submit_admitted('16100000-0000-0000-0000-000000000002','16100000-0000-0000-0000-000000000021','master','Synthetic','Synthetic',true)$$,'server verified account can submit');
--- Characterize the simple report route before restricting candidate channels.
--- This account has no testing_center_memberships row.
-select lives_ok($$select public.testing_report_submit_admitted('16100000-0000-0000-0000-000000000002','16100000-0000-0000-0000-000000000022','nightly','Synthetic','Synthetic',true)$$,'nonmember currently submits a simple nightly report');
+-- A verified account without candidate membership can still submit to master.
+select throws_ok($$select public.testing_report_submit_admitted('16100000-0000-0000-0000-000000000002','16100000-0000-0000-0000-000000000022','nightly','Synthetic','Synthetic',true)$$,'42501',null,'nonmember cannot submit a simple nightly report');
 reset role;
-select is((select count(*)::integer from public.testing_contributions where account_id='16100000-0000-0000-0000-000000000002'),2,'server identity preserved');
-select is((select count(*)::integer from public.testing_contributions where account_id='16100000-0000-0000-0000-000000000002' and channel='nightly'),1,'nonmember nightly row persisted');
+select is((select count(*)::integer from public.testing_contributions where account_id='16100000-0000-0000-0000-000000000002'),1,'server identity preserved');
+select is((select count(*)::integer from public.testing_contributions where account_id='16100000-0000-0000-0000-000000000002' and channel='nightly'),0,'nonmember nightly row rejected');
 select ok(not has_function_privilege('authenticated','public.testing_report_submit_admitted(uuid,uuid,text,text,text,boolean)','execute'),'client cannot bypass Edge');
 select ok(not has_table_privilege('authenticated','private.testing_report_attempts','select'),'hash counters are private');
 select is((select sum(attempts)::integer from private.testing_report_attempts where scope='ip' and subject=repeat('a',64)),6,'six shared-IP attempts remain durable');

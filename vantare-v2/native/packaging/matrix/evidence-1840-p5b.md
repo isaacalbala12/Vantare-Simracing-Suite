@@ -160,7 +160,7 @@ registrada fue de1032s. El slot quedó liberado antes de empezar la matriz.
 - Catálogo histórico con contexto inyectado:14 checks de build y156 históricos
   PASS, raíz `D:/VantareServer/qa/isa-1840/history-p5b-relevo-01`.
 
-Logs `gates-relevo10.log (lector/Installer/TEST/builds finales), relevo5-nextest-product-01.log (Hub), gates-relevo*.log (intentos previos)` y `relevo-rust-proof.json`. Los fallos heredados de
+Logs `gates-relevo10.log (lector/Installer/TEST/builds finales), relevo5-nextest-product-01.log (Hub), gates-relevo*.log (intentos previos)` y `relevo-rust-proof.json`, `rebase2-clippy.log` y `rebase2-hub-nextest.log` (base final). Los fallos heredados de
 contrato, sha2 sin dependencia, longitud del test Hub, aserciones read/verify
 invertidas, fixture Cleanup con install/install y separadores de la ruta de
 residuo se conservan. Sus arreglos mantienen o refuerzan las aserciones.

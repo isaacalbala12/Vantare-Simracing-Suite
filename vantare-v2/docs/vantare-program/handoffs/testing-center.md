@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: fixture Edge real
+
+- Segunda CI del rebase: comercial-report.ts todavia suponia que un reintento exacto agotaba la cuota. Se verifica ahora reintento permitido, dos informes nuevos hasta cinco y sexto rechazado.
+- HEAD de codigo a9944ca61. Deno check/fmt/lint PASS; Deno de admision 24 PASS, PostgreSQL local F1IP 28, admision v2 20 e identidad comercial PASS. CI del nuevo HEAD pendiente.
+- Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: CI y prueba historica
 
 - El primer CI del rebase detecto dos expectativas IP antiguas de #1897 en F1IP. Test actualizado al tope grueso de 60/dia; runner comercial ahora ejecuta tambien la admision v2.

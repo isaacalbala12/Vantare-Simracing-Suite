@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: CI final
+
+- PR draft #1900: el test comercial encontro la barrera de borrado de cuenta ausente en las claves de admision. Se agrego trigger y carrera real con cuenta borrada.
+- HEAD 66b1660f9, base 71a12cc09. PostgreSQL LF/CRLF, marketing, promocion, calidad, GitGuardian y gates bloqueantes PASS.
+- PostgreSQL local ACL/reintento/cuota/rollback PASS. Produccion +153/-47, tests +244/-18, docs +7/-0 antes de esta nota. Sin merge, despliegue ni release.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: admision justa
 
 - PR draft #1900 contra nightly, rama vantareapp/isa-1896-paso2-admision; base 71a12cc09, HEAD 112c5feb2.

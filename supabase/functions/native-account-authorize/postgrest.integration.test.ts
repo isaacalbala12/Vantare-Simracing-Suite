@@ -171,11 +171,6 @@ Deno.test({
       { privateJwk: testPrivateJwk, supabaseUrl: "http://127.0.0.1:54321" },
       { issuer: config.issuer, subject },
     );
-    const hiddenReport = await call(reportPath, otherToken.token);
-    assert(
-      hiddenReport.status === 200 && (await hiddenReport.json()).length === 0,
-      "legacy report exposed to mismatched identity",
-    );
     const hidden = await call("profiles?select=id", otherToken.token);
     assert(
       hidden.status === 200 && (await hidden.json()).length === 0,

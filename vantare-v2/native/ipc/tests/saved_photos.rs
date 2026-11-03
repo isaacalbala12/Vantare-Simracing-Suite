@@ -35,6 +35,8 @@ fn frozen_v7_and_v10_documents_keep_values_and_are_not_live_peers() {
             snapshot_from_json(&snapshot_to_json(&snapshot).unwrap()).unwrap(),
             snapshot
         );
-        assert!(matches!(snapshot_from_json(text), Err(Error::Version { got }) if got == version));
+        // En estos documentos reales faltan señales v11: la hidratación live
+        // los rechaza antes de comprobar la versión. El lector guardado sí migra.
+        assert!(matches!(snapshot_from_json(text), Err(Error::Protocol(_))));
     }
 }

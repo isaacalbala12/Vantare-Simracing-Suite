@@ -25,6 +25,7 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
     environment: "production",
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),
+    recordEffect: () => Promise.resolve(true),
     ...overrides,
     execute: (...args) =>
       args[2] === "get_payment_sync"

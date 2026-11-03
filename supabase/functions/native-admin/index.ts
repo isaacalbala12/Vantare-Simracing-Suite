@@ -1,5 +1,6 @@
 import { executeMail, type MailDeps, validateMail } from "./mail.ts";
 import { createLocalOAuthVerifier } from "./local-auth.ts";
+import { effectAudit, type EffectRecorder, recordEffect } from "./effects.ts";
 import { cleanupDeletedObjects } from "../clerk-webhook/index.ts";
 import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
@@ -41,6 +42,7 @@ const statuses = [
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
+  recordEffect?: EffectRecorder;
   adminAuth?: { enabled: boolean; clientId: string };
   verifyLocal?: ReturnType<typeof createLocalOAuthVerifier>;
   preOwner?: (issuer: string, subject: string) => Promise<string>;
@@ -384,9 +386,11 @@ export async function handleNativeAdmin(
   request: Request,
   deps: AdminDeps = {},
 ): Promise<Response> {
+  const requestId = crypto.randomUUID();
   const respond = (value: ObjectValue, status = 200) =>
     jsonResponse({ version: 1, ...value }, status, {
       "Cache-Control": "no-store",
+      "X-Request-ID": requestId,
     });
   const started = performance.now();
   const phases: Record<string, number> = {};
@@ -541,6 +545,11 @@ export async function handleNativeAdmin(
     // Adding it before subjects would incorrectly return the owner in every search.
     users.set(actorUser.id, actorUser);
     const environment = deps.environment ?? requirePolarEnvironment();
+    const effect = effectAudit(
+      actor,
+      requestId,
+      deps.recordEffect ?? recordEffect,
+    );
     if (action.startsWith("mail_")) {
       const runMail = (command: string, arguments_: ObjectValue) =>
         (deps.mailExecute ?? (async (actor, command, params, environment) => {
@@ -701,24 +710,32 @@ export async function handleNativeAdmin(
           environment,
           deps.polar,
         );
-        const response = await (deps.fetch ?? fetch)(
-          `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${nativeConfig(deps).secretKey}`,
+        await effect(action, "clerk_delete", subject, async () => {
+          const response = await (deps.fetch ?? fetch)(
+            `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${nativeConfig(deps).secretKey}`,
+              },
+              redirect: "error",
+              signal: AbortSignal.timeout(4000),
             },
-            redirect: "error",
-            signal: AbortSignal.timeout(4000),
-          },
-        );
-        // 404 is safe only AFTER our durable, email-confirmed deletion request.
-        if (!response.ok && response.status !== 404) {
-          throw new NativeError(503, "account_change_incomplete");
-        }
-        await (deps.cleanupDeletion ?? cleanupDeletedObjects)(
-          nativeConfig(deps).issuer,
+          );
+          // 404 is safe only AFTER our durable, email-confirmed deletion request.
+          if (!response.ok && response.status !== 404) {
+            throw new NativeError(503, "account_change_incomplete");
+          }
+        });
+        await effect(
+          action,
+          "storage_cleanup",
           subject,
+          () =>
+            (deps.cleanupDeletion ?? cleanupDeletedObjects)(
+              nativeConfig(deps).issuer,
+              subject,
+            ),
         );
         return respond({
           ok: true,
@@ -730,18 +747,30 @@ export async function handleNativeAdmin(
         await run("set_blocked", params);
         partialChange = true;
       }
-      const response = await (deps.fetch ?? fetch)(
-        `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}/${
-          params.blocked ? "ban" : "unban"
-        }`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${nativeConfig(deps).secretKey}` },
-          redirect: "error",
-          signal: AbortSignal.timeout(4000),
+      await effect(
+        "set_blocked",
+        params.blocked ? "clerk_ban" : "clerk_unban",
+        subject,
+        async () => {
+          const response = await (deps.fetch ?? fetch)(
+            `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}/${
+              params.blocked ? "ban" : "unban"
+            }`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${nativeConfig(deps).secretKey}`,
+              },
+              redirect: "error",
+              signal: AbortSignal.timeout(4000),
+            },
+          );
+          if (!response.ok) {
+            throw new NativeError(503, "account_change_incomplete");
+          }
+          partialChange = true;
         },
       );
-      if (!response.ok) throw new NativeError(503, "account_change_incomplete");
       if (params.blocked === true) {
         await cancelSubscriptions(
           current.subscriptions,
@@ -843,6 +872,7 @@ export async function handleNativeAdmin(
     console.info(
       JSON.stringify({
         event: "native_admin_timing",
+        request_id: requestId,
         action: timingAction,
         total_ms: Math.round(performance.now() - started),
         phases,

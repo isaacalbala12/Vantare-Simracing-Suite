@@ -7337,3 +7337,33 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 
 - Base final origin/nightly 5f440c094 (#1912 integrado por el orquestador). Worktree isa-1910-paso1; rama vantareapp/isa-1910-paso1-identidad-admin. Todos los gates Rust por compilar.ps1 y target propio; cola cedida entre gates. Telemetría no aplica: no hay cambios runtime/domain/ipc/testdata. CI remota nueva pendiente; HEAD publicado en #1910/#1913.
+## VANTA-132 · Paso 5a, auditoría Clerk y Storage (2026-11-03)
+
+- #1913 integrado por el orquestador en nightly 6e80ae71a, CI verde. Pasos 0–3
+  integrados. Rama nueva vantareapp/isa-1910-paso5-auditoria y worktree propio
+  D:/VantareServer/worktrees/isa-1910-paso5 desde esa base.
+- Caracterización previa c46aa4913: 4 RED y 3 PASS antes de producción.
+  Intención y resultado separados para ban/unban/borrado Clerk y drenaje Storage;
+  request UUID de respuesta/log y hash de identidad, sin cuerpos ni IDs externos.
+  Sin intención confirmada no se llama al proveedor. Resultado perdido queda
+  pendiente; error externo queda unknown. Sin reintento automático.
+- Intención/resultados persisten aunque falle la posterior escritura SQL de
+  desbloqueo; respuesta account_change_incomplete. Journal privado append-only,
+  RPC service-only que exige owner y campos cerrados. Rollback conserva evidencia;
+  consulta manual/orden de despliegue y rollback en README native-admin.
+- Añadido pendiente R6/VANTA-131 7b: migrar funciones admin de
+  20261015010000_native_admin_review_r3.sql:92 y siguientes desde
+  testing_center_reports a testing_contributions. Contrato PR #1918
+  (testing.report.v2, R6/7a); no empezar hasta integración y aviso de SHA por el
+  orquestador, único canal de coordinación. No se edita el checkout de R6.
+- Paso 4 sigue esperando R6/8; paso 11 pertenece a R6/base de migraciones.
+  Auditoría Polar/Brevo y paso 10 pendientes. Sin billing/licencias ni cambios
+  _shared/clerk-webhook. Sin secretos, Store real, servicios de producción,
+  configuración externa, despliegue, merge del worker ni release.
+- Gates y HEAD/PR se cierran en #1910. Rust/lifecycle/telemetría omitidos:
+  este grupo solo cambia Edge/SQL y tests locales, ningún crate nativo.
+- Verificado: Deno 2.7.13 (CI) 154 PASS, check/lint/fmt PASS; PostgreSQL
+  16.15 desechable 36 planes/1016 pgTAP PASS, rollback/reaplicación con evidencia
+  retenida, carreras 131 rutas/778 checks y borrado/aliases 4/40 PASS.
+  Edge→SQL 4/4 PASS, incluida intención/resultados reales antes de fallo de estado
+  tras unban. Calidad 468 huellas y diff PASS. Instancias locales detenidas.

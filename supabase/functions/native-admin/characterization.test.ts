@@ -20,6 +20,7 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
     environment: "sandbox",
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),
+    recordEffect: () => Promise.resolve(true),
     execute: () => Promise.resolve({}),
     ...overrides,
   };
@@ -123,7 +124,7 @@ for (
   });
 }
 
-Deno.test("R10 P4 characterization: unban precedes failed SQL audit transaction", async () => {
+Deno.test("R10 P4 regression: durable intent and result precede unban state transaction failure", async () => {
   const calls: string[] = [];
   const target = "00000000-0000-4000-8000-000000001999";
   const response = await handleNativeAdmin(
@@ -134,6 +135,10 @@ Deno.test("R10 P4 characterization: unban precedes failed SQL audit transaction"
       blocked: false,
     }),
     deps({
+      recordEffect: (_actor, event) => {
+        calls.push(event.outcome);
+        return Promise.resolve(true);
+      },
       fetch: (url, init) => {
         if (String(url).endsWith("/unban")) {
           calls.push("unban");
@@ -162,7 +167,8 @@ Deno.test("R10 P4 characterization: unban precedes failed SQL audit transaction"
   );
   assert(response.status === 503);
   assert(
-    JSON.stringify(calls) === JSON.stringify(["unban", "sql-audit-failure"]),
+    JSON.stringify(calls) ===
+      JSON.stringify(["started", "unban", "succeeded", "sql-audit-failure"]),
   );
   // SQL rollback on audit failure is verified by native_admin.test.sql.
 });

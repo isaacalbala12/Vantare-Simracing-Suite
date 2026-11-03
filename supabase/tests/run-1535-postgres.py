@@ -56,6 +56,14 @@ def main():
                 output = file(root / f'supabase/tests/{suite}.test.sql', suite + '.log')
                 if 'not ok ' in output or f'1..{count}' not in output or f'ok {count} ' not in output:
                     raise RuntimeError(f'{suite} pgTAP failed')
+            file(root / 'supabase/rollbacks/20261103114000_isa_1896_calendar_acl.down.sql',
+                 'testing_step3_acl.down.log')
+            output = file(root / 'supabase/tests/testing_step3_acl_rollback.test.sql',
+                          'testing_step3_acl_rollback.log')
+            if 'not ok ' in output or '1..16' not in output or 'ok 16 ' not in output:
+                raise RuntimeError('calendar ACL rollback test failed')
+            file(root / 'supabase/migrations/20261103114000_isa_1896_calendar_acl.sql',
+                 'testing_step3_acl.reapply.log')
 
             # A REAL dedicated LOGIN, no SET ROLE authenticated, forged owner claims.
             owner = '15350000-0000-0000-0000-000000000099'

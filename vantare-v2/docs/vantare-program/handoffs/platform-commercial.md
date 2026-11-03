@@ -7449,35 +7449,44 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Python y diff PASS. Rollback/reaplicación incluidos; instancia local detenida.
   Evidencia review-r2 dentro de isa-1910-paso5b. CI del HEAD nuevo pendiente.
 
-## VANTA-126 / #1916 — vía QA E2E, implementación aislada
+## VANTA-126 / #1916 — vía QA E2E validada (2026-11-03)
 
-- Encargo del orquestador tras la revisión parcial #1915; diseño comunicado
-  antes de código y registrado en [#1916](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1916).
-  Project Vantare / area:licencias. Plane sigue Por testear, sin cambio de estado.
-- Base inicial `ddebd895a388e7600eba87eea39b8be31a84cf7c`; incorporado
-  `origin/nightly@5f440c0945f82d427ff56b769d4a7fa0e5156d10` en nuestra rama
-  para conservar el harness/admin y el handoff vigentes. Rama
-  `vantareapp/isa-1916-qa-e2e-licencias`; checkout, targets y datos bajo
-  `D:/VantareServer/qa/licencias-e2e`. Sin cuentas ni instalación reales.
-- Feature opt-in qa-e2e en runtime/services/ipc: raíz con marcador, endpoints
-  sólo loopback, reloj compartido, replay de fixture y conductor real de
-  supervisor/helper/núcleo. PKCE usa copiar enlace y el IdP local; no hay
-  sesiones prefabricadas ni excepciones a Ed25519/binding/ACK.
-- PR draft [#1917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1917); sin merge.
-- Control de distribución en curso: grafo de features y marcador de los EXE
-  copiados al paquete; gate distribution/CI construye el paquete release real
-  y rechaza como control negativo los tres EXE QA.
-- Primeros builds QA compilan; Deno valida el servidor de test con config
-  propia dom.iterable. Arranque local en depuración: sockets Unix demasiado
-  largos resueltos con TCP exclusivamente; warm-up de import dinámico sigue CI.
-  Dos pasadas 10/10 PASA, incluida e2e-1916-2d178117f94c46fe80728ee4d58cf691
-  sobre el backend actualizado: TCP cortado, compra por Feed y metadatos reales
-  intactos. Informe y evidencia sanitizada en D:/VantareServer/evidence/licencias-e2e/INFORME.md.
-  Batería histórica del empaquetador, 45 tests de ramas, Deno fmt/lint/check y
-  Clippy QA all-targets -D warnings PASS. Tres avisos QA corregidos sin silenciar
-  lints (conversiones comprobadas y punto y coma); logs previos conservados.
-  Endpoints negativos, build final y gates sin feature/distribución pendientes. Logs en
-  `D:/VantareServer/evidence/licencias-e2e/isa-1916` y raíces e2e-1916-*.
-- Siguiente: repetir diez escenarios sobre backend actualizado,
-  registrar bugs de producto sin arreglarlos y completar exclusión release,
-  regresiones sin feature, telemetría y lifecycle. Sin merge/release/promoción.
+- Issue [#1916](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1916),
+  Project Vantare / area:licencias; PR draft [#1917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1917)
+  contra nightly. VANTA-126 permanece Por testear por instrucción de Isaac.
+- Base inicial ddebd895a; incorporado nightly 5f440c094 sólo en nuestra rama
+  `vantareapp/isa-1916-qa-e2e-licencias`. Código validado ffda1768d; build QA
+  del árbol Rust a0b9c9599 (después sólo cambió un fixture CRT y documentación).
+  Worktree, targets, binarios y datos manuales bajo D:/VantareServer/qa/licencias-e2e.
+- Feature qa-e2e opt-in en runtime/services/ipc: raíz con marcador y tres
+  overrides obligatorios, endpoints HTTP literales 127.0.0.1, reloj compartido,
+  IdP falso con PKCE, replay y conductor de los tres procesos reales. Sin
+  excepciones a Ed25519, binding, autoridad ni TLS fuera de la feature.
+- **10/10 PASA**, repetido tres veces. Última ejecución con builds finales:
+  e2e-1916-afdfc9ebe3eb4cc8b23fe08a7ae60ab3. PostgreSQL/PostgREST/Edge reales
+  locales, webhook HMAC real, corte TCP, Feed real y Store/DPAPI sintético.
+  No renderer Hub ni simulador físico. Pro vence a Gratis/Active en v1, que no
+  tiene caducidad global del sobre. Checkout/IdP son dobles, sin proveedores reales.
+- Informe con esperado/observado y evidencia sanitizada:
+  D:/VantareServer/evidence/licencias-e2e/INFORME.md. Incluye SHA de EXE, PID,
+  Policy, hashes de binding y ficheros. Los 16 elementos del native real
+  mantienen todos sus metadatos; no se leyó su contenido.
+- PASS: fmt; Clippy QA all-targets -D warnings; endpoint negativo; check y
+  Clippy del workspace sin feature; Nextest ci 2480/2480, telemetría incluida,
+  5 lentos/25 omitidos por runner. Calidad 468 huellas; ramas 45; Deno 197 y
+  fmt/lint/check; empaquetador histórico y CRT. Fallos previos de tooling y
+  tres lints QA conservados en evidencia, corregidos sin silenciar checks.
+- Distribución **PASS en CI** de ffda1768d, run 41704119009/job 126156591192:
+  tres controles QA optimizados rechazados y paquete release real construido
+  sin QA (20:19:06 UTC). Guard en grafo resuelto y bytes del payload. No se
+  distribuye ni instala ese candidato de comprobación.
+- Coordinación posterior: terminó la tanda completa ya en marcha (~22 min),
+  salida 0, se liberó la cola y se paró el conductor antes del siguiente lifecycle.
+  No más gates completos locales; sólo crates tocados (runtime/services/IPC,
+  núcleo dentro de runtime) y distribución si hace falta. Completo/lifecycle
+  queda en CI. El resto de checks de CI no se atribuye aún como verde.
+- No bug nuevo de producto/P0/P1 confirmado. Sigue #1914: comentario Plane sin
+  estado no funciona en la CLI; usar cliente existente con POST de comentario
+  y lectura posterior, sin PATCH de estado. Resultado final en comentario VANTA-126.
+- Siguiente: revisión del draft y cierre del resto de CI por el orquestador.
+  Sin merge a nightly, promoción, release, despliegue ni cuentas/instalación reales.

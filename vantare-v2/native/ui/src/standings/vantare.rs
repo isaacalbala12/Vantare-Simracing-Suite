@@ -2246,6 +2246,37 @@ mod tests {
     }
 
     #[test]
+    fn leader_and_qualifying_gap_content_is_the_same_in_spanish_and_english() {
+        use vantare_domain::{CarId, Class, ClassId, Quality, SessionKind};
+        for language in [Language::Es, Language::En] {
+            let mut photo = scene();
+            photo.state.source_state = SourceState::Live;
+            photo.state.session.kind = Quality::Reliable(SessionKind::Race);
+            let leader = photo.state.cars.first_mut().expect("parrilla real");
+            leader.id = CarId(9001);
+            leader.class = Some(Class { id: ClassId(9001), name: "LMGT3".into() });
+            leader.position = Quality::Reliable(1);
+            leader.class_position = Quality::Reliable(1);
+            let prefs = Preferences { language, ..Preferences::default() };
+            let board = vantare_domain::standings::project(&photo, prefs);
+            let row = board.row(CarId(9001)).expect("líder proyectado");
+            crate::paint_tests::with_kit(520.0, language, |kit| {
+                let painted = crate::paint_tests::observe(|draw| {
+                    paint_gap_text(is_leader(row).then_some(row.class.as_ref()), &row.gap,
+                        508.0, 0.0, 24.0, kit.style.colors.value.hsla(), kit, draw);
+                });
+                assert_eq!(painted[0].value, "1º GT3", "{language:?}");
+            });
+            photo.state.session.kind = Quality::Reliable(SessionKind::Qualifying);
+            let mut board = vantare_domain::standings::project(&photo, prefs);
+            board.gap_to_best_lap = true;
+            let mut row = (**board.row(CarId(9001)).unwrap()).clone();
+            row.classification_gap_s = Some(0.0);
+            assert_eq!(gap_text(&board, &row), "Pole", "{language:?}");
+        }
+    }
+
+    #[test]
     fn catalogue_scene_reproduces_the_r10b_marks() {
         use vantare_domain::standings::project;
         let scene: serde_json::Value =

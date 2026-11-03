@@ -13,7 +13,6 @@ $supabaseRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $guard = Join-Path $PSScriptRoot "verify-deploy-surface.ps1"
 $projectGuard = Join-Path $PSScriptRoot "assert-testing-center-pilot-project.ps1"
 $approved = @(
-  "testing-center-feedback",
   "testing-center-linear-webhook",
   "testing-center-linear-worker"
 )

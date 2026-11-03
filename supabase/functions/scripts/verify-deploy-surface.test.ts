@@ -154,7 +154,6 @@ Deno.test("native license is guarded and deployable in isolation", () => {
 
 Deno.test("testing pilot functions are recognized but remain outside production wrapper", () => {
   const entries = [
-    { name: "testing-center-feedback", isDirectory: true },
     { name: "testing-center-linear-webhook", isDirectory: true },
     { name: "testing-center-linear-worker", isDirectory: true },
   ] as Deno.DirEntry[];

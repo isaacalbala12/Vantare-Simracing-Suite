@@ -229,3 +229,19 @@ fn r10_admin_diagnosis_logs_in_interactively_and_logout_revokes_once() {
         std::fs::remove_dir_all(root).expect("cleanup");
     }
 }
+
+#[test]
+fn r10_inactive_gestion_restores_disk_session_and_logout_does_not_revoke() {
+    let server = Server::start_observed(vec![]);
+    let root = prepare(&server.base, false, false);
+    let opened = open(&root, &server, false);
+    let restored = if let Ok(mut session) = opened {
+        let ready = matches!(session.handle(Command::Restore), Ok(Reply::Ready));
+        let logged_out = matches!(session.handle(Command::Logout), Ok(Reply::LoggedOut));
+        ready && logged_out
+    } else { false };
+    let requests = server.finish_observed();
+    std::fs::remove_dir_all(root).expect("cleanup");
+    assert!(restored, "inactive Gestión must preserve the persistent legacy path");
+    assert!(requests.is_empty(), "inactive legacy restore/logout makes no revocation request");
+}

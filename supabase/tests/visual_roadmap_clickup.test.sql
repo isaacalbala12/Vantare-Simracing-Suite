@@ -11,7 +11,8 @@ select ok(not has_schema_privilege('vantare_roadmap_publisher','public','CREATE'
 select ok(not exists(select 1 from pg_auth_members m join pg_roles r on r.oid=m.member where r.rolname='vantare_roadmap_publisher'),'no memberships');
 select ok(not has_function_privilege('vantare_roadmap_publisher','public.race_schedule_my_draft()','EXECUTE'),'private draft inaccessible');
 select ok(not has_function_privilege('authenticated','public.race_schedule_my_draft()','EXECUTE'),'authenticated draft RPC closed after step 3');
-select ok(not has_function_privilege('vantare_roadmap_publisher','public.is_active_owner(uuid)','EXECUTE'),'owner oracle closed');
+select ok(coalesce(not has_function_privilege('vantare_roadmap_publisher',
+ to_regprocedure('public.is_active_owner(uuid)'),'EXECUTE'),true),'owner oracle closed or retired');
 create schema internal_ci_fixture;
 revoke all on schema internal_ci_fixture from public;
 create function internal_ci_fixture.hidden() returns integer language sql security definer as $$select 1$$;

@@ -12,6 +12,13 @@ create table private.testing_report_v2_keys (
 alter table private.testing_report_v2_keys enable row level security;
 alter table private.testing_report_v2_keys force row level security;
 revoke all on private.testing_report_v2_keys from public,anon,authenticated,service_role;
+create trigger a_account_write_barrier before insert or update or delete
+  on private.testing_report_v2_keys for each row
+  execute function private.guard_account_write(
+    'select array_remove(array[($1->>''account_id'')::uuid,
+      (select account_id from public.testing_contributions where id=($1->>''report_id'')::uuid)],null)',
+    'select $1->>''report_id'' is not null and not exists
+      (select 1 from public.testing_contributions where id=($1->>''report_id'')::uuid)');
 
 alter table public.testing_report_followup add column report_metadata jsonb
   check (report_metadata is null or (jsonb_typeof(report_metadata)='object'

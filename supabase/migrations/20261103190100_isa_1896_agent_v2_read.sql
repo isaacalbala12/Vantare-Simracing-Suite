@@ -6,6 +6,17 @@ alter table public.testing_center_technical_issues
   add column contribution_id uuid unique references public.testing_contributions(id) on delete restrict;
 alter table public.testing_center_technical_issues
   add constraint testing_center_issue_one_report check ((report_id is null) <> (contribution_id is null));
+drop trigger a_account_write_barrier on public.testing_center_technical_issues;
+create trigger a_account_write_barrier before insert or update or delete
+  on public.testing_center_technical_issues for each row
+  execute function private.guard_account_write(
+    'select array_remove(array[
+      (select reporter_user_id from public.testing_center_reports where report_id=$1->>''report_id''),
+      (select account_id from public.testing_contributions where id=($1->>''contribution_id'')::uuid)],null)',
+    'select ($1->>''report_id'' is not null and not exists
+      (select 1 from public.testing_center_reports where report_id=$1->>''report_id''))
+      or ($1->>''contribution_id'' is not null and not exists
+      (select 1 from public.testing_contributions where id=($1->>''contribution_id'')::uuid))');
 
 create or replace function public.testing_center_get_agent_job_state(p_report_id text)
 returns table(state text,updated_at timestamptz)

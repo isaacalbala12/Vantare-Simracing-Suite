@@ -843,6 +843,14 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
     );
 }
 
+fn assert_v2_diagnostic_sent(request: &str, key: &str) {
+    let sent: serde_json::Value =
+        serde_json::from_str(request.split("\r\n\r\n").nth(1).expect("body")).expect("JSON");
+    assert_eq!(sent["contract_version"], "testing.report.v2");
+    assert_eq!(sent["variant"], "diagnostic");
+    assert_eq!(sent["idempotency_key"], key);
+}
+
 #[test]
 fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure() {
     let report_id = "18960000-0000-4000-8000-000000000072";
@@ -898,11 +906,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("first submit");
     assert!(first.starts_with("POST /functions/v1/testing-report-submit "));
-    let sent: serde_json::Value =
-        serde_json::from_str(first.split("\r\n\r\n").nth(1).unwrap()).unwrap();
-    assert_eq!(sent["contract_version"], "testing.report.v2");
-    assert_eq!(sent["variant"], "diagnostic");
-    assert_eq!(sent["idempotency_key"], expected_key);
+    assert_v2_diagnostic_sent(&first, &expected_key);
     assert!(matches!(
         store
             .fixture::<Attempt>("report-attempt")
@@ -941,7 +945,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("retry submit");
     assert_text_only_retry(&first, &second, &retry);
-    assert_durable_receipt(&store, &report_id);
+    assert_durable_receipt(&store, report_id);
     server.finish();
     drop(store);
     crate::cleanup_store(

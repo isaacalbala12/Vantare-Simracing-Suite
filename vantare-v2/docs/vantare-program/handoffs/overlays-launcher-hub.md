@@ -3,7 +3,7 @@
 Rama vantareapp/isa-1869-paso8-compatibilidad; worktree
 D:/VantareServer/worktrees/isa-1869-paso8; base origin/nightly actualizado
 7e92e1a9e52d57db17263234ec62efc5774794cb. Código final
-b6713442cd51e2fb8f40baf12fc260be532603ea. PR draft a nightly pendiente de abrir.
+b6713442cd51e2fb8f40baf12fc260be532603ea. [PR draft #1893](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1893) a nightly, CI remota pendiente.
 Lector puente layout v1/v2 y Store v2/v3, sin promover documentos actuales;
 normalización estructural en UI y movimiento explícito conservado al volver
 al puente. Espejo protegido con aviso/Diagnóstico, zoom aislado con copia .bak,
@@ -28,6 +28,7 @@ publicada con 8A. Formatos actuales, espejo y lectura de Apariencia conservados.
 Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos
 reales por el worker. Evidencia D:/VantareServer/evidence/isa-1869/paso8 y paso9.
 Cola de 8A cedida. Plane En curso hasta terminar la entrega del 9.
+Líneas físicas 8A: producción +389/-85; tests +439/-1; docs +371/-4; tooling 0.
 
 ## VANTA-130 · 8A autorizado; 8B espera release del puente (3-nov-2026)
 

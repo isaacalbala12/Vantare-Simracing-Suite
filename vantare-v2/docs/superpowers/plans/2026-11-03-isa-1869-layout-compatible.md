@@ -1,4 +1,4 @@
-# VANTA-130 · Propuesta concreta para pasos 8 + 7 y continuación 9
+# VANTA-130 · Diseño aprobado: puente 8A, activación 8B y paso 9
 
 Estado: APROBADO por el orquestador el 3-nov-2026, con ajustes siguientes.
 8A se ejecuta ahora: lector puente, normalización, P3 y espejo protegido.
@@ -36,18 +36,15 @@ cubre binarios lanzados manualmente sobre la misma raíz externa. No se deduce
 que una ruta sea segura por su nombre, una variable de entorno o su ubicación.
 No se modificará installer, packaging, runtime ni installation.rs para imponerlo.
 
-Recomendación: dos cortes, con activación posterior explícita. 8A prepara lectores
-compatibles sin emitir formatos nuevos. 8B activa 7 y los formatos nuevos SOLO
-cuando el orquestador certifique una versión mínima compatible para lectores y
-escritores que puedan compartir esa raíz. Una raíz con rollback a binarios
-anteriores mantiene formato v1 y espejo. No habrá flag que salte esta condición
-ni detección automática de «seguro» por ruta. No se promete la retirada completa
-del espejo en la entrega 8A.
+Decisión aprobada: 8A prepara lectores compatibles sin promover los formatos
+actuales. 8B se activa únicamente cuando una release publicada incluya el lector
+puente 8A y la generación anterior recuperable por el instalador pueda leer los
+formatos nuevos. La versión mínima compatible será ese tag publicado y su SHA;
+no existe todavía y no se sustituye por una rama nightly o una CI verde.
 
-Decisión solicitada: aprobar esta secuencia y fijar la condición de activación
-8B. Si se necesita 7 inmediatamente, hace falta aceptar y demostrar primero que
-ningún binario viejo puede recibir los datos nuevos (por ejemplo, rollback con
-su copia anterior por generación). Sin esa evidencia no se emiten campos nuevos.
+No hay flag de activación en 8A. Ni una ruta ni una variable de entorno certifican
+la condición. Para desarrollo sobre una misma raíz, volver a un binario anterior
+al puente sigue requiriendo su copia anterior de datos. No se cambia el instalador.
 
 ## 2. Formatos y política compatible
 
@@ -102,14 +99,12 @@ su recarga actual. Se elimina el sondeo periódico de VANTARE_APPEARANCE_FILE.
 Se retira el escritor del espejo cuando 8B sea seguro; los archivos antiguos se
 conservan, sin borrarlos. La migración inicial sigue conservando sus originales.
 
-Hay otra condición explícita: un overlay puede abrirse sin haber arrancado el
+Condición resuelta por el orquestador: un overlay puede abrirse sin haber arrancado el
 Hub. Para no convertir un reducedMotion:true legado en false, v1 necesita una
 importación de compatibilidad de una sola vez antes de publicar v2. Se propone
 conservar SOLO esa lectura de migración para v1 (aprovechando la ruta explícita
-existente), sin polling ni autoridad posterior. Si se exige retirar también ese
-importador, habrá que garantizar antes que todos los layouts fueron migrados;
-no basta con suponer que siempre se abre el Hub primero. Esto requiere decisión
-junto con la activación, no una nueva dependencia de runtime.
+existente), sin polling ni autoridad posterior. Se conserva en 8A y se retirará en 8B, conforme a la decisión recibida; no se
+supone que siempre se abre el Hub primero ni se introduce una dependencia de runtime.
 
 ## 4. Normalización de avisos: conservar intención y regla estructural
 
@@ -206,10 +201,25 @@ pueden mencionar el nombre y no se borran para hacer pasar un test textual.
 
 Paso 10 excluido (#1840); #1870/#1871/#1872/#1888 siguen sin implementar.
 
-## Entrega de esta propuesta
+## Estado de ejecución
 
-Solo documentación, pendiente de decisión de formato/rollback. No se ejecuta
-compilación ni se ocupa la cola porque no cambia código ni fixtures. No hay PR
-de implementación, merge, release o promoción del worker. Issue y handoff se
-actualizan con #1890 integrado, base nueva y los dos puntos de decisión: versión
-mínima para 8B e importador de una sola vez para layouts v1 sin Hub previo.
+Diseño aprobado, implementación 8A en rama propia y gates en curso. En 8A:
+lector de layout v1/v2 y Store v2/v3, sin promover documentos actuales; movimiento
+explícito de v2 tiene prioridad y sigue editable al volver al puente. Normalizar
+un v1 que ya trae los campos exclusivos de v2 lo protege, no los publica.
+
+P3 implementados: aviso de Store independiente de navegación y estado transitorio;
+limpieza tras guardar; salto de espejo protegido con aviso/Diagnóstico; zoom v2
+inválido usa 100 conservando General/Apariencia y el original hasta que el primer
+guardado crea .bak; CAS relee, conserva borrador y ofrece Reintentar guardado,
+reaplicando solo las claves editadas. P2 por sección sigue íntegro en 8B.
+
+Ningún proceso crea Store v3, migrationPending o layout v2 en producción en 8A.
+El lector conserva esos formatos si ya existen; las fixtures futuras son QA
+sintéticas. El corpus publicado nativo se congela desde native-beta-v0.0.975,
+SHA f49d71f4f1ab9d1a424d2bba18895ddcdf87b601. La prueba del lector estricto
+anterior conserva su DTO original y el resultado observado antes del cambio.
+
+Paso 9 en rama separada desde nightly actualizado. No hay merge, release,
+promoción, instalación ni uso de datos reales por este worker. Los resultados
+finales, PRs y SHAs se registran en #1869 y el único handoff vivo.

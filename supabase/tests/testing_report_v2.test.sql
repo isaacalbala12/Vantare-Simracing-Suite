@@ -1,6 +1,6 @@
 -- VANTA-131 7a: one report root, idempotent receipt, candidate membership and closed ACL.
 begin;
-select plan(17);
+select plan(18);
 insert into public.profiles(id) values
  ('18960000-0000-4000-8000-000000000071'),
  ('18960000-0000-4000-8000-000000000073');
@@ -52,6 +52,9 @@ select is((select count(*)::integer from public.testing_contributions where id i
  ('18960000-0000-4000-8000-000000000072','18960000-0000-4000-8000-000000000077')),2,'one contribution per accepted report');
 select is((select count(*)::integer from public.testing_center_reports where reporter_user_id='18960000-0000-4000-8000-000000000071'),0,'v2 never writes legacy reports');
 select is((select count(*)::integer from private.testing_report_v2_keys where account_id='18960000-0000-4000-8000-000000000071'),2,'exact retry did not add a third key');
+select is((select count(*)::integer from private.native_admin_reports('https://v2-fixture.clerk.invalid')
+  where item->>'report_id'='18960000-0000-4000-8000-000000000072'),1,
+  'admin report read already includes new contributions');
 insert into private.clerk_issuers(issuer,authorized_parties,enabled) values
  ('https://v2-fixture.clerk.invalid',array['https://app.invalid'],true);
 insert into public.account_identities(issuer,subject,account_id,deleted_at) values

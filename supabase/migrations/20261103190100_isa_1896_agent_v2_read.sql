@@ -15,6 +15,6 @@ language sql stable security definer set search_path='' as $$
   join public.testing_center_technical_issues issue on issue.contribution_id=contribution.id
   join public.testing_center_agent_jobs job on job.technical_issue_id=issue.technical_issue_id
   where contribution.id::text=p_report_id
-    and (contribution.account_id=auth.uid() or public.testing_center_current_role()='owner')
+    and (contribution.account_id=private.current_account() or public.testing_center_current_role()='owner')
 $$;
 commit;

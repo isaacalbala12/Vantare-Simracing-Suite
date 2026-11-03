@@ -1217,15 +1217,22 @@ promoción a testers/master, release, instalación ni operaciones de este corte 
 
 Rama vantareapp/isa-1869-paso9-retirar-importaciones, worktree
 D:/VantareServer/worktrees/isa-1869-paso9, base origin/nightly actualizado
-7e92e1a9e52d57db17263234ec62efc5774794cb. Caracterización 4d709d72e:
-procedencia de perfiles guardados 1 PASS, ausencia de importaciones 2 RED antes
-de producción. Código 1a2aac149 retira búsqueda/importación Wails y lectura de
-consentimiento del instalador. legacy::Import conserva exactamente su DTO; se
-mantienen perfiles, procedencia y metadatos guardados. Limpieza cancelable de
-colas y protección contra respuesta tardía siguen activas. Ningún archivo real
-Wails o de consentimiento se toca. No se modifica installer, packaging, runtime,
-licencias, auth ni policy. Gates por compilar.ps1 con tres raíces QA, target
-propio, fmt/check/Clippy/regresiones/suite/lifecycle/telemetría en una tanda.
-Resultados y PR pendientes de cierre, sin afirmar PASS. Evidencia
-D:/VantareServer/evidence/isa-1869/paso9. 8A se valida en su rama independiente;
+7e92e1a9e52d57db17263234ec62efc5774794cb. Código 79aa00dda3478e6c41f9564f97c7267b82a29112.
+Caracterización 4d709d72e: procedencia de perfiles guardados 1 PASS y ausencia de
+importaciones 2 RED antes de producción. Retirados búsqueda/importación Wails y
+consentimiento del instalador. legacy::Import conserva exactamente su DTO;
+se mantienen perfiles, procedencia y metadatos guardados. Limpieza cancelable de
+colas y protección contra respuesta tardía siguen activas. No se toca ningún
+archivo real Wails ni de consentimiento. Installer/packaging/runtime/licencias,
+auth/policy intactos. Sin nuevas dependencias ni cambios de confianza.
+
+Por compilar.ps1, tres raíces QA y target propio: fmt/check/Clippy/captura PASS;
+6/6 regresiones y suite 935/935 PASS (4 slow, 9 skips). La fixture adicional
+carecía del catálogo obligatorio: corregida en 79aa00dda sin debilitar aserciones
+de original, procedencia ni metadatos. Logs anteriores conservados. Integridad
+468 y fragmento válido. Lifecycle/telemetría en cola tras ceder la tanda de 8A.
+Sin PR del 9 todavía; no se afirma CI remota. Evidencia
+D:/VantareServer/evidence/isa-1869/paso9. 8A entregado en PR draft #1893;
 8B y protección por sección esperan release publicada del puente. Paso 10 fuera.
+Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos
+reales por este worker. Windows headless/FS probados; sin GUI ni Linux/macOS.

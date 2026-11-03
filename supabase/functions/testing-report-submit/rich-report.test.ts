@@ -141,7 +141,6 @@ Deno.test("1709: stable SQL failures preserve pending evidence, membership and c
     const [code, status, error] of [
       ["55000", 400, "evidence_not_ready"],
       ["42501", 403, "submit_failed"],
-      ["28000", 401, "submit_failed"],
       ["23505", 409, "submit_failed"],
       ["22023", 400, "submit_failed"],
       ["54000", 429, "submit_failed"],
@@ -157,6 +156,16 @@ Deno.test("1709: stable SQL failures preserve pending evidence, membership and c
     eq(response.status, status);
     eq(await response.json(), { error });
   }
+});
+Deno.test("deleted account SQLSTATE 28000 returns 401 on the rich route", async () => {
+  const f = fixture();
+  f.deps.rpc = () => Promise.resolve({ error: { code: "28000" } });
+  const response = await handleTestingReportSubmit(
+    request({ ...body, p_batch_id: batch }),
+    f.deps,
+  );
+  eq(response.status, 401);
+  eq(await response.json(), { error: "submit_failed" });
 });
 Deno.test("1709: malformed or expanded SQL receipt fails closed without forwarding data", async () => {
   for (

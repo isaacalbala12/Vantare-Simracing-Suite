@@ -109,7 +109,7 @@ Deno.test("F1: 60 accounts share IP; spoofed XFF cannot reset coarse budget", as
   eq(f.reports.length, 60);
 });
 
-Deno.test("unauthenticated flood cannot spend a tester's five reports on a shared IP", async () => {
+Deno.test("61 requests without a bearer cannot block a tester on the same IP", async () => {
   const f = fixture();
   const auth = {
     ...f.deps,
@@ -119,12 +119,19 @@ Deno.test("unauthenticated flood cannot spend a tester's five reports on a share
       return Promise.resolve(bearer.slice(7));
     },
   };
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 61; i++) {
     const attack = request("attacker");
     attack.headers.delete("authorization");
-    eq((await handleTestingReportSubmit(attack, auth)).status, 401);
+    eq(
+      (await handleTestingReportSubmit(attack, auth)).status,
+      i < 60 ? 401 : 429,
+    );
   }
   eq((await handleTestingReportSubmit(request("tester"), auth)).status, 200);
+  eq(
+    f.counts.get([...f.counts.keys()].find((key) => key.startsWith("ip"))!),
+    61,
+  );
   eq(f.counts.get("accounttester"), 1);
 });
 

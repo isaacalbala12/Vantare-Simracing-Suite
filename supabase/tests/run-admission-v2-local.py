@@ -105,9 +105,14 @@ def main():
                   where account_id=a and report_key='draft_1';
                 perform public.testing_report_admit_account(
                   '16100000-0000-0000-0000-000000000092','fresh-key',repeat('a',64),w);
+                if not exists(select 1 from private.testing_report_admitted_keys
+                  where account_id=a and report_key='draft_1') then
+                  raise exception 'other account admission purged an unrelated key';
+                end if;
+                perform public.testing_report_admit_account(a,'post_expiry',repeat('a',64),w);
                 if exists(select 1 from private.testing_report_admitted_keys
                   where account_id=a and report_key='draft_1') then
-                  raise exception 'admission key outlived attempt retention';
+                  raise exception 'own expired admission key survived';
                 end if;
                 insert into public.account_identities(account_id) values(a);
                 update public.account_identities set deleted_at=clock_timestamp() where account_id=a;
@@ -116,17 +121,15 @@ def main():
                 end if;
               end $$;
             ''')
-            denied_ip = run('psql', *connection, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql', expected=3)
-            if 'testing_ip_counter_rollback_requires_data_preservation' not in denied_ip:
-                raise RuntimeError('rollback did not protect coarse IP counters')
-            run('psql', *connection, '-c', "delete from private.testing_report_attempts where scope='ip';")
-            denied = run('psql', *connection, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql', expected=3)
-            if 'testing_admission_v2_rollback_requires_data_preservation' not in denied:
-                raise RuntimeError('rollback did not protect active admission keys')
-            run('psql', *connection, '-c', 'delete from private.testing_report_admitted_keys;')
+            if run('psql', *connection, '-c', 'select count(*)>0 from private.testing_report_admitted_keys;').strip() != 't':
+                raise RuntimeError('rollback fixture did not retain a retry exemption')
             run('psql', *connection, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql')
-            if run('psql', *connection, '-c', "select to_regprocedure('public.testing_report_admit_account(uuid,text,text,date)') is null;").strip() != 't':
-                raise RuntimeError('rollback left admission v2 function')
+            restored = run('psql', *connection, '-c', '''select
+              (select max(attempts) from private.testing_report_attempts where scope='ip')<=21,
+              to_regclass('private.testing_report_admitted_keys') is null,
+              to_regprocedure('public.testing_report_admit_account(uuid,text,text,date)') is null;''').strip()
+            if restored != 't|t|t':
+                raise RuntimeError('rollback did not clamp IP counts and discard retry exemptions')
             print('PASS: local ACL, exact retry, changed body, account quota and rollback')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop')

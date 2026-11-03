@@ -1,9 +1,10 @@
 ## 2026-11-03 - #1896 / VANTA-131 paso 3: ACL y canales
 
-- PR draft #1901 contra nightly; rama vantareapp/isa-1896-paso3-acl-canal; base 8066d1c8e, HEAD ea0135bd2 antes de este handoff.
-- Los RPC privados del calendario quedan cerrados a anon/authenticated; la lectura publica sigue disponible. El servicio conserva acceso de confianza.
-- Informe simple: nightly/testers requieren membresia activa; master sigue abierto a cuenta verificada.
-- PostgreSQL comercial LF/CRLF y los demas checks remotos PASS; compilacion Python y diff PASS. Migraciones con rollback. Sin merge, despliegue ni release.
+- Draft PR #1901 contra nightly, rama vantareapp/isa-1896-paso3-acl-canal; base ec7e4b550 (paso 2 integrado).
+- Los RPC privados del calendario quedan cerrados a anon/authenticated; la lectura publica y el acceso de servicio continuan. El rollback restaura solo anon, authenticated y service_role, nunca PUBLIC.
+- Los informes simples de nightly/testers exigen membresia activa; master admite cualquier cuenta verificada. 42501 se traduce a HTTP 403 en ambas rutas.
+- Evidencia local: PostgreSQL comercial con testing-identity PASS (7 suites, incluidos los rollbacks); PostgreSQL 1535 PASS (ACL y rollback); Deno 27 PASS/1 ignored; Deno lint, Python py_compile y diff check PASS.
+- Medida frente a ec7e4b550: produccion +92/-0; tests +150/-20; docs +7/-0 antes de esta actualizacion. CI del nuevo HEAD pendiente. Sin merge, despliegue ni release.
 
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: bearer demasiado largo
 

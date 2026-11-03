@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: arnes Edge real
+
+- Tercera CI encontro que el arnes comercial aun llamaba testing_report_admit para la cuenta, aunque la Edge real usa testing_report_admit_account. El arnes usa ya la misma RPC y comprueba cinco informes nuevos y reintento gratuito.
+- HEAD de codigo 12de94738; Deno check/fmt/lint PASS. La prueba integrada completa queda en la nueva CI.
+- Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: fixture Edge real
 
 - Segunda CI del rebase: comercial-report.ts todavia suponia que un reintento exacto agotaba la cuota. Se verifica ahora reintento permitido, dos informes nuevos hasta cinco y sexto rechazado.

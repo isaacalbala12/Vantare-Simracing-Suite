@@ -790,7 +790,10 @@ mod tests {
     fn metadata_quality_changes_preserve_pause_and_situation_confirmation() {
         use vantare_domain::DrivingSituation;
         for (track, kind) in [
-            (Quality::Stale("same".into()), Quality::Stale(SessionKind::Race)),
+            (
+                Quality::Stale("same".into()),
+                Quality::Stale(SessionKind::Race),
+            ),
             (Quality::Unavailable, Quality::Unavailable),
         ] {
             let mut first = observation(ms(0), ms(0), 0.5);
@@ -801,7 +804,7 @@ mod tests {
             changed.origin.source_time = Some(ms(200));
             changed.state.session.track_name = track;
             changed.state.session.kind = kind;
-    
+
             let mut core = Core::new(1);
             core.observe(first.clone()).unwrap();
             let mut paused = changed.clone();
@@ -819,7 +822,7 @@ mod tests {
                 Quality::Reliable(0.5),
                 "el cambio de calidad no pierde la última foto viva"
             );
-    
+
             let mut core = Core::new(1);
             first.state.driving_situation = DrivingSituation::Garage;
             changed.state.driving_situation = DrivingSituation::Garage;

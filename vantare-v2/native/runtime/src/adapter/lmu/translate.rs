@@ -886,16 +886,28 @@ mod tests {
         let mut t = translator();
         let initial = with_time(1000.0);
         let first = observe(&mut t, &initial, ms(0));
-        assert_eq!(observe(&mut t, &initial, ms(500)).state.source_state,
-            vantare_domain::SourceState::Stale);
+        assert_eq!(
+            observe(&mut t, &initial, ms(500)).state.source_state,
+            vantare_domain::SourceState::Stale
+        );
         let mut changed = initial;
         changed[1_632..1_696].fill(0);
         changed[1_632..1_636].copy_from_slice(b"Otro");
-        for (at, clock, fresh) in [(600, 1000.0_f64, false), (650, 1000.1, false), (700, 1000.2, true)] {
+        for (at, clock, fresh) in [
+            (600, 1000.0_f64, false),
+            (650, 1000.1, false),
+            (700, 1000.2, true),
+        ] {
             changed[1_700..1_708].copy_from_slice(&clock.to_le_bytes());
             let next = observe(&mut t, &changed, ms(at));
-            assert_eq!(next.state.session.track_name,
-                if fresh { Quality::Reliable("Otro".into()) } else { Quality::Stale("Otro".into()) });
+            assert_eq!(
+                next.state.session.track_name,
+                if fresh {
+                    Quality::Reliable("Otro".into())
+                } else {
+                    Quality::Stale("Otro".into())
+                }
+            );
             assert_eq!(next.state.session.id != first.state.session.id, fresh);
             assert_eq!(ids(&next).iter().all(|id| !ids(&first).contains(id)), fresh);
         }
@@ -909,11 +921,16 @@ mod tests {
         let mut changed = initial;
         changed[1_632..1_696].fill(0);
         changed[1_632..1_636].copy_from_slice(b"Otro");
-        t.rest.accept_session(br#"{"session":"PRACTICE1","trackName":"Otro"}"#, ms(500)).unwrap();
+        t.rest
+            .accept_session(br#"{"session":"PRACTICE1","trackName":"Otro"}"#, ms(500))
+            .unwrap();
         let next = observe(&mut t, &changed, ms(500));
         assert_eq!(next.state.session.id, first.state.session.id);
-        assert_eq!(next.state.source_state, vantare_domain::SourceState::Stale,
-            "REST de otro circuito no confirma una pausa de la sesión anterior");
+        assert_eq!(
+            next.state.source_state,
+            vantare_domain::SourceState::Stale,
+            "REST de otro circuito no confirma una pausa de la sesión anterior"
+        );
         assert_eq!(next.state.session.track_name, Quality::Stale("Otro".into()));
     }
 

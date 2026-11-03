@@ -14,7 +14,11 @@ struct Pair {
 }
 
 fn photo(text: &str, saved: bool) -> Result<Snapshot> {
-    Ok(if saved { snapshot_from_saved_json(text)? } else { snapshot_from_json(text)? })
+    Ok(if saved {
+        snapshot_from_saved_json(text)?
+    } else {
+        snapshot_from_json(text)?
+    })
 }
 
 fn collect(value: &Value, saved: bool, out: &mut Vec<Snapshot>) -> Result<()> {
@@ -23,10 +27,14 @@ fn collect(value: &Value, saved: bool, out: &mut Vec<Snapshot>) -> Result<()> {
     } else {
         match value {
             Value::Object(map) => {
-                for child in map.values() { collect(child, saved, out)?; }
+                for child in map.values() {
+                    collect(child, saved, out)?;
+                }
             }
             Value::Array(list) => {
-                for child in list { collect(child, saved, out)?; }
+                for child in list {
+                    collect(child, saved, out)?;
+                }
             }
             _ => {}
         }
@@ -52,18 +60,27 @@ fn main() -> Result<()> {
     if !matches!(mode.as_str(), "--check" | "--apply") {
         return Err("modo desconocido".into());
     }
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui").canonicalize()?;
-    let proposal_root = Path::new(manifest).parent().ok_or("directorio de propuestas")?
-        .join("proposals").canonicalize()?;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../ui")
+        .canonicalize()?;
+    let proposal_root = Path::new(manifest)
+        .parent()
+        .ok_or("directorio de propuestas")?
+        .join("proposals")
+        .canonicalize()?;
     let pairs: Vec<Pair> = serde_json::from_slice(&fs::read(manifest)?)?;
-    if pairs.is_empty() { return Err("manifiesto vacío".into()); }
+    if pairs.is_empty() {
+        return Err("manifiesto vacío".into());
+    }
     let (mut photos, mut changed_files) = (0, 0);
     for pair in &pairs {
         let relative = Path::new(&pair.source).strip_prefix("native/ui")?;
         let path = root.join(relative).canonicalize()?;
         let candidate = Path::new(&pair.candidate).canonicalize()?;
-        if !path.starts_with(&root) || !candidate.starts_with(&proposal_root)
-            || path.extension().is_none_or(|e| e != "json") {
+        if !path.starts_with(&root)
+            || !candidate.starts_with(&proposal_root)
+            || path.extension().is_none_or(|e| e != "json")
+        {
             return Err("solo fixtures UI y propuestas del manifiesto".into());
         }
         let original = fs::read_to_string(&path)?;
@@ -79,7 +96,10 @@ fn main() -> Result<()> {
         photos += before.len();
         changed_files += usize::from(original != proposed);
     }
-    println!("files={} photos={photos} changed_files={changed_files} applied={}",
-        pairs.len(), mode == "--apply");
+    println!(
+        "files={} photos={photos} changed_files={changed_files} applied={}",
+        pairs.len(),
+        mode == "--apply"
+    );
     Ok(())
 }

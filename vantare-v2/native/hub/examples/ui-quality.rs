@@ -321,7 +321,8 @@ fn main() -> Result<(), String> {
             tester: true,
             ..Default::default()
         },
-    );
+    )
+    .map(|_| ());
     stop.set();
     let telemetry_result = telemetry.map_or(Ok(()), |thread| {
         thread

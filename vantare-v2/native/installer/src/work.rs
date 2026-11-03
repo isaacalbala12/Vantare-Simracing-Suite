@@ -56,15 +56,13 @@ impl Drop for Work {
 }
 
 pub fn open(root: PathBuf) -> Result<(), String> {
-    // CreateProcess can accept PowerShell even when its -File does not exist.
-    // Keep Setup open for that launch error instead of reporting a false success.
-    if !root.join("beta.ps1").is_file() {
+    if !root.join("Vantare.exe").is_file() {
         return Err(
             "No se encuentra el lanzador de Vantare. Vuelve a ejecutar el instalador.".into(),
         );
     }
-    let host = crate::engine::powershell()?;
     if crate::QA {
+        let host = crate::engine::powershell()?;
         let owner = env!("VANTARE_INSTALLER_QA_OWNER_SID");
         let mut probe = std::process::Command::new(&host);
         probe.args([
@@ -90,19 +88,8 @@ pub fn open(root: PathBuf) -> Result<(), String> {
             );
         }
     }
-    let mut command = std::process::Command::new(host);
-    command
-        .args([
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-WindowStyle",
-            "Hidden",
-            "-File",
-        ])
-        .arg(root.join("beta.ps1"))
-        .arg("-Root")
-        .arg(root);
+    let mut command = std::process::Command::new(root.join("Vantare.exe"));
+    command.args(["--root", "-Root"]).arg(root);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

@@ -1,5 +1,19 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Vigencia del paso 6: Check, Apply, Confirm y timeout invocan el ejemplo Rust
+`installer-write-matrix` con raíz QA, HKCU y carpetas inyectadas. `Check` usa
+el firmante/verificador TEST, valida el ZIP con el motor y prepara staging;
+`Apply` llama a `operations::update`; `Confirm` y timeout llaman a
+`operations::confirm/rollback`. `launcher-tests.ps1` ejecuta `Vantare.exe`
+compilado con la feature QA aislada y una sesión inerte para comprobar Run,
+confirmación, Register y SetStartup. Se retiraron `registration-boot-tests.ps1`
+y `startup-tests.ps1`, que ejercitaban únicamente el host PowerShell antiguo.
+Las 45 clases de rechazo del lector permanecen en el gate. El saldo de líneas
+de tests y tooling se mide aparte de la producción.
+En `boot-update`, el motor Rust devuelve 1 por arranque pendiente; el
+PowerShell antiguo devolvía 0 sin actualizar. El baseline
+comprueba el rechazo y la conservación de datos.
+
 Vigencia 5b: el producto no incluye ni ejecuta installer-driver.ps1. El lector
 actual usa read/verify, sin perfiles, y `probe-invariants.ps1` conserva los 45
 rechazos por motivo. Los snapshots históricos permanecen como diagnóstico;
@@ -14,8 +28,8 @@ CI de los dos arneses antiguos del driver se sustituyen por los gates nativos y
 la matriz actual, con la correspondencia de invariantes en evidence-1840-p5b.md.
 Sus aserciones originales siguen en Git, sin cambios; no usar sus entrypoints
 sueltos contra el árbol actual ni ejecutarlos en el servidor. Los scripts
-candidate/beta conservan sus bytes y sus consumidores siguen probados por
-registration-boot y startup-tests.
+candidate/beta se conservan solo hasta el paso 7; `beta.ps1` ya no hospeda Run,
+Check, Apply ni Confirm.
 
 El seguimiento 5a añade `cleanup-tests.ps1` al gate con o sin `-WriteEngine`: diez
 comprobaciones de rechazo, espera de un padre propio y renovación bajo bloqueo.
@@ -172,17 +186,22 @@ Normalizar el archivo de trabajo a la política del repo, no el snapshot.
 
 ## Reproducir y revisar cambios
 
-Desde `vantare-v2/`, construir `matrix-verifier`, `probe-read-matrix` y `boot-confirmation-matrix` con `compilar.ps1`, target propio
-y jobs autorizados; descargar el ZIP del tag `native-beta-v0.0.975` del repositorio
+Desde `vantare-v2/`, construir `matrix-verifier`, `probe-read-matrix`, `installer-write-matrix`,
+`boot-confirmation-matrix` y el launcher `vantare` con feature `installer-qa` mediante
+`compilar.ps1`, target propio
+y jobs autorizados. `installer-write-matrix` requiere además `vantare-installer/test-installer`;
+descargar el ZIP del tag `native-beta-v0.0.975` del repositorio
 de código (no Downloads). El arnés exige su SHA-256 público fijado antes de extraer.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 `
   -Root D:/VantareServer/qa/isa-1840/run-nuevo `
   -LegacyPackage D:/VantareServer/qa/isa-1840/vantare-native-amd64-package.zip `
-  -TestVerifier D:/VantareServer/targets/isa-1840/debug/examples/matrix-verifier.exe `
-  -BootProbe D:/VantareServer/targets/isa-1840/debug/examples/boot-confirmation-matrix.exe `
-  -ReadProbe D:/VantareServer/targets/isa-1840-p3/debug/examples/probe-read-matrix.exe
+  -TestVerifier D:/VantareServer/targets/isa-1840-p6/debug/examples/matrix-verifier.exe `
+  -BootProbe D:/VantareServer/targets/isa-1840-p6/debug/examples/boot-confirmation-matrix.exe `
+  -ReadProbe D:/VantareServer/targets/isa-1840-p6/debug/examples/probe-read-matrix.exe `
+  -WriteEngine D:/VantareServer/targets/isa-1840-p6/debug/examples/installer-write-matrix.exe `
+  -RootLauncher D:/VantareServer/targets/isa-1840-p6/debug/vantare.exe
 ```
 
 `-Record` escribe un candidato **solo en QA**, nunca sobrescribe el baseline.

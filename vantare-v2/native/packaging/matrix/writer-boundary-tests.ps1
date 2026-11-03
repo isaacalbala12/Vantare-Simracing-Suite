@@ -32,7 +32,7 @@ function Invoke-BoundaryWriter([string]$Operation,[string]$Version){
     $request=@{operation=$Operation;root=$install;qa=$false;silent=$true;uninstall=($Operation -in @('Uninstall','Cleanup'));
         version=$Version;mode='auto';desktop=$false;autostart=$false;size=1;processId=2147483647;packageSha=(Get-NativeHash $archive)}
     $contractPath=Join-Path $qaBoundaryRoot ('writer-'+[guid]::NewGuid().ToString('N')+'.json')
-    Write-NativeJson $contractPath @{request=$request;context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$hiveSuffix;shellRoot=$qaBoundaryRoot};payloadDirectory=$engine}
+    Write-NativeJson $contractPath @{request=$request;context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$hiveSuffix;shellRoot=(Join-Path $qaBoundaryRoot 'shell')};payloadDirectory=$engine}
     Invoke-NativeProcess -Executable $WriteEngine -Arguments @($contractPath) -TimeoutMilliseconds 120000 -LogPath ($contractPath+'.log')
 }
 try{
@@ -40,7 +40,7 @@ try{
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Setup finalizes the legacy Windows projection'
     $phases=@($result.Stdout -split "`r?`n"|Where-Object {$_}|ForEach-Object {$_|ConvertFrom-Json})
     Assert-Boundary (@($phases|Where-Object {$_.step -ceq 'shortcuts' -and $_.percent -eq 84}).Count -eq 1 -and @($phases|Where-Object {$_.step -ceq 'register' -and $_.percent -eq 93}).Count -eq 1) 'Native Setup preserves its UI progress phases'
-    $appLink=Join-Path $qaBoundaryRoot 'Programs/Vantare/Vantare Simracing Suite.lnk'
+    $appLink=Join-Path $qaBoundaryRoot 'shell/Programs/Vantare/Vantare Simracing Suite.lnk'
     $shell=New-Object -ComObject WScript.Shell
     $explorer=New-Object -ComObject Shell.Application
     $before=$shell.CreateShortcut($appLink)
@@ -60,11 +60,6 @@ try{
     Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).Foreign -ceq 'preserve' -and $null -eq (Get-ItemProperty -LiteralPath $key).PSObject.Properties['InstallLocation']) 'A registration without InstallLocation is foreign and remains untouched'
     Remove-ItemProperty -LiteralPath $key -Name Foreign
     Set-ItemProperty -LiteralPath $key -Name InstallLocation -Value $install
-    $bootstrap=Join-Path $install 'uninstall-vantare.ps1'
-    $bootstrapBytes=[IO.File]::ReadAllBytes($bootstrap)
-    $bootstrapLock=[IO.File]::Open($bootstrap,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
-    try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$bootstrapLock.Dispose()}
-    Assert-Boundary ($blocked.ExitCode -ne 0 -and [Convert]::ToBase64String([IO.File]::ReadAllBytes($bootstrap)) -ceq [Convert]::ToBase64String($bootstrapBytes) -and @(Get-ChildItem -LiteralPath $install -Filter 'beta-*.tmp').Count -eq 0) 'Locked bootstrap replacement preserves its bytes and removes the temporary'
     New-Item -Path $run -Force|Out-Null
     $lowerRun=('"'+$env:WINDIR+'\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $install 'beta.ps1')+'" -Root "'+$install+'"').ToLowerInvariant()
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $lowerRun
@@ -99,7 +94,7 @@ try{
     [IO.Directory]::CreateDirectory((Join-Path $data 'empty/child'))|Out-Null
     [IO.File]::WriteAllBytes((Join-Path $data 'opaque.bin'),[byte[]]@(0,255,7,0))
     $dataBefore=Get-NativeDataIndex $data
-    $appLink=Join-Path $qaBoundaryRoot 'Programs/Vantare/Vantare Simracing Suite.lnk'
+    $appLink=Join-Path $qaBoundaryRoot 'shell/Programs/Vantare/Vantare Simracing Suite.lnk'
     $linkBytes=[IO.File]::ReadAllBytes($appLink)
     $handle=[IO.File]::Open($appLink,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
     try{$result=Invoke-BoundaryWriter 'Install' '0.0.989'}finally{$handle.Dispose()}

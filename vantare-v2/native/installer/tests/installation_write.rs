@@ -17,8 +17,8 @@ use vantare_installer::{
         write_fs as disk,
     },
     model::Mode,
-    payload,
 };
+const CANDIDATE: &[u8] = include_bytes!("../../packaging/candidate.ps1");
 
 struct Fixture {
     path: PathBuf,
@@ -44,8 +44,6 @@ impl Package {
             archive: &self.path,
             sha256: &self.sha,
             version: &self.version,
-            candidate: payload::CANDIDATE,
-            beta: payload::BETA,
         }
     }
 }
@@ -70,6 +68,14 @@ impl Fixture {
         self.package_with_resource(version, None)
     }
     fn package_with_resource(&self, version: &str, extra: Option<(&str, &[u8])>) -> Package {
+        self.package_with_engine(version, extra, 2)
+    }
+    fn package_with_engine(
+        &self,
+        version: &str,
+        extra: Option<(&str, &[u8])>,
+        engine: u32,
+    ) -> Package {
         let executable = fs::read(
             PathBuf::from(std::env::var_os("WINDIR").expect("Windows root"))
                 .join("System32/cmd.exe"),
@@ -93,7 +99,7 @@ impl Fixture {
                 )
                 .into_bytes()
             } else if name == "candidate.ps1" {
-                payload::CANDIDATE.to_vec()
+                CANDIDATE.to_vec()
             } else {
                 b"fixture".to_vec()
             };
@@ -103,7 +109,7 @@ impl Fixture {
             entries.push((name.to_owned(), bytes.to_vec()));
         }
         let files: Vec<_> = entries.iter().map(|(name, bytes)| json!({"path":name,"size":bytes.len(),"sha256":format!("{:x}",Sha256::digest(bytes))})).collect();
-        let manifest = json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","files":files});
+        let manifest = json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","engine":engine,"files":files});
         entries.push((
             "manifest.json".into(),
             serde_json::to_vec(&manifest).expect("manifest"),
@@ -199,6 +205,139 @@ impl Fixture {
         fs::create_dir_all(data.join("empty/child")).expect("empty user folders");
         fs::write(data.join("opaque.bin"), b"opaque\0user\xffbytes").expect("user bytes");
     }
+}
+
+#[test]
+fn first_motor_two_failure_requires_repair_and_keeps_motor_one_data() {
+    let fixture = Fixture::new();
+    fixture
+        .install(
+            &fixture.package_with_engine("1.0.0", None, 1),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    fixture.write_data();
+    let old = fixture.active();
+    let before = disk::data_index(&old.join("data")).unwrap();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let new = fixture.active();
+    assert_ne!(old, new);
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::RepairRequired
+    );
+    assert_eq!(fixture.active(), new);
+    assert_eq!(disk::data_index(&old.join("data")).unwrap(), before);
+    assert!(!fixture.root.join("boot-pending.json").exists());
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["state"], "repair");
+}
+
+#[test]
+fn motor_two_boot_confirmation_and_rollback_are_bound_to_the_active_version() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let old = fixture.active();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let marker = fixture.root.join("boot-pending.json");
+    let mut changed = disk::read_json(&marker, None).unwrap();
+    changed["version"] = "9.9.9".into();
+    fs::write(&marker, changed.to_string()).unwrap();
+    assert!(operations::confirm(&fixture.root).is_err());
+    assert!(operations::rollback(&fixture.root).is_err());
+    changed["version"] = "1.0.1".into();
+    fs::write(&marker, changed.to_string()).unwrap();
+    fs::write(fixture.root.join("Vantare.exe"), b"bad launcher").unwrap();
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.active(), old);
+    assert_eq!(
+        fs::read(fixture.root.join("Vantare.exe")).unwrap(),
+        fs::read(old.join("bin/vantare.exe")).unwrap()
+    );
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["version"], "1.0.1");
+    assert_eq!(status["rejectedVersion"], "1.0.1");
+    operations::status(&fixture.root, "current", "retry query", "1.0.0").unwrap();
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["rejectedVersion"], "1.0.1");
+    assert!(!marker.exists());
+    fixture
+        .install(&fixture.package("1.0.2"), Mode::Auto, false, false)
+        .unwrap();
+    operations::confirm(&fixture.root).unwrap();
+    assert!(!marker.exists());
+    assert!(operations::confirm(&fixture.root).is_err());
+}
+
+#[test]
+fn stale_boot_marker_after_committed_rollback_is_removed_without_a_second_rollback() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let marker = fixture.root.join("boot-pending.json");
+    let bytes = fs::read(&marker).unwrap();
+    assert!(!operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert!(marker.exists());
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    let restored = fixture.active();
+    fs::write(&marker, &bytes).unwrap();
+    assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert!(!marker.exists());
+    assert_eq!(fixture.active(), restored);
+    assert!(!operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    let state = disk::read_json(&fixture.root.join("state.json"), None).unwrap();
+    let failed_generation = state["previous"]["generation"].as_str().unwrap();
+    fs::write(
+        fixture
+            .root
+            .join("generations")
+            .join(failed_generation)
+            .join("manifest.json"),
+        b"corrupt",
+    )
+    .unwrap();
+    fs::write(&marker, &bytes).unwrap();
+    assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert!(!marker.exists());
+}
+
+#[test]
+fn rollback_restores_state_even_when_status_cannot_be_published() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let previous = fixture.active();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let status = fixture.root.join("update-status.json");
+    fs::remove_file(&status).unwrap();
+    fs::create_dir(&status).unwrap();
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.active(), previous);
+    assert!(!fixture.root.join("boot-pending.json").exists());
 }
 
 #[test]
@@ -484,6 +623,30 @@ fn qa_context_cannot_fall_back_to_product_registry_or_escape_its_folders() {
         )
         .is_err()
     );
+    let key = format!(
+        "Software\\VantareInstallerMatrix\\{}",
+        disk::id().expect("hive ID")
+    );
+    assert!(
+        engine::context::Context::isolated(
+            fixture.path.join("LocalAppData"),
+            key.clone(),
+            fixture.path.join("LocalAppData/child"),
+        )
+        .is_err()
+    );
+    let context = engine::context::Context::isolated(
+        fixture.path.join("LocalAppData"),
+        key,
+        fixture.path.join("shell"),
+    )
+    .unwrap();
+    assert!(
+        context
+            .validate_root(&fixture.path.join("LocalAppData/installation"))
+            .is_err()
+    );
+    assert!(context.validate_root(&fixture.root).is_ok());
 }
 
 #[test]
@@ -607,6 +770,73 @@ fn repair_replaces_corrupt_active_without_referencing_it_for_rollback() {
         disk::read_json(&fixture.root.join("boot-pending.json"), None).expect("boot marker")["previous"],
         ""
     );
+}
+
+#[test]
+fn repair_and_update_renew_stale_root_launcher() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let launcher = fixture.root.join("Vantare.exe");
+    fs::write(&launcher, b"stale root image").unwrap();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Repair, false, false)
+        .unwrap();
+    assert_eq!(
+        fs::read(&launcher).unwrap(),
+        fs::read(fixture.active().join("bin/vantare.exe")).unwrap()
+    );
+    operations::confirm(&fixture.root).unwrap();
+
+    fs::write(&launcher, b"stale after repair").unwrap();
+    let package = fixture.package("1.0.1");
+    let cancel = AtomicBool::new(false);
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut |_| {},
+    };
+    operations::update(&fixture.root, &package.borrowed(), false, &mut control).unwrap();
+    assert_eq!(
+        fs::read(&launcher).unwrap(),
+        fs::read(fixture.active().join("bin/vantare.exe")).unwrap()
+    );
+}
+
+#[test]
+fn user_junction_is_readable_for_start_but_blocks_data_copy() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let target = fixture.path.join("junction-target");
+    fs::create_dir_all(&target).unwrap();
+    let link = fixture.data().join("user-junction");
+    std::os::windows::fs::symlink_dir(&target, &link).unwrap();
+    assert_eq!(
+        Installation::read(&fixture.root)
+            .unwrap()
+            .installed_version(),
+        Some("1.0.0")
+    );
+    let package = fixture.package("1.0.1");
+    let cancel = AtomicBool::new(false);
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut |_| {},
+    };
+    assert!(operations::update(&fixture.root, &package.borrowed(), false, &mut control).is_err());
+    assert_eq!(
+        Installation::read(&fixture.root)
+            .unwrap()
+            .installed_version(),
+        Some("1.0.0")
+    );
+    fs::remove_dir(&link).unwrap();
 }
 
 #[test]
@@ -1075,8 +1305,6 @@ fn checkpoint_process_worker() {
         archive: &archive,
         sha256: value["sha256"].as_str().expect("sha"),
         version: value["version"].as_str().expect("version"),
-        candidate: payload::CANDIDATE,
-        beta: payload::BETA,
     };
     operations::update(&root, &package, false, &mut control).expect("update reaches checkpoint");
     panic!("requested checkpoint was not reached");

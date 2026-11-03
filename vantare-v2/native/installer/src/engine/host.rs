@@ -286,8 +286,6 @@ impl Session {
             archive: &archive,
             sha256: &request.package_sha,
             version: &request.version,
-            candidate: payload::CANDIDATE,
-            beta: payload::BETA,
         };
         let mut warning = |message: &str| {
             let _ = writeln!(&log, "{message}");

@@ -187,6 +187,7 @@ mod tests {
             message: String::new(),
             version: "9.9.9".into(),
             notes: String::new(),
+            rejected_version: None,
         };
         assert!(
             installed
@@ -257,7 +258,6 @@ mod tests {
         assert_eq!(LocalUpdate::Unread.presentation("0.0.988", "beta"), None);
     }
 }
-
 #[derive(Clone, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct BetaStatus {
@@ -267,22 +267,35 @@ pub(super) struct BetaStatus {
     pub version: String,
     #[serde(default)]
     pub notes: String,
+    #[serde(default, rename = "rejectedVersion")]
+    pub rejected_version: Option<String>,
 }
 impl BetaStatus {
     pub(super) fn ready_for(&self, installed: &str) -> bool {
         self.state == "ready" && !self.version.trim().is_empty() && self.version != installed
     }
 }
-
 #[cfg(test)]
 #[test]
 fn install_requires_a_staged_different_version() {
+    let remembered: BetaStatus = serde_json::from_value(serde_json::json!({
+        "schema":1,"state":"rollback","message":"repair","version":"0.0.989",
+        "notes":"","rejectedVersion":"0.0.989"}))
+    .unwrap();
+    assert_eq!(remembered.rejected_version.as_deref(), Some("0.0.989"));
+    assert!(
+        serde_json::from_value::<BetaStatus>(serde_json::json!({
+        "schema":1,"state":"current","message":"","version":"0.0.988",
+        "unexpected":true}))
+        .is_err()
+    );
     let mut status = BetaStatus {
         schema: 1,
         state: "ready".into(),
         message: String::new(),
         version: "0.1.1".into(),
         notes: String::new(),
+        rejected_version: None,
     };
     assert!(status.ready_for("0.1.0"));
     assert!(!status.ready_for("0.1.1"));
@@ -304,22 +317,6 @@ pub(super) fn beta_status() -> Option<BetaStatus> {
         && status.notes.len() <= 8192)
         .then_some(status)
 }
-pub(super) fn request_restart() -> Result<(), String> {
-    let root = std::env::var_os("VANTARE_BETA_ROOT").ok_or("Instalación beta no disponible")?;
-    fs::write(Path::new(&root).join("restart-request"), b"restart")
-        .map_err(|error| format!("solicitar reinicio: {error}"))
-}
-pub(super) fn cancel_restart() -> Result<(), String> {
-    let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") else {
-        return Ok(());
-    };
-    match fs::remove_file(Path::new(&root).join("restart-request")) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(format!("cancelar reinicio beta: {error}")),
-    }
-}
-
 /// Cosmetic registration is intentionally independent of the updater/toasts.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

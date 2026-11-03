@@ -70,6 +70,7 @@ fn open_after_load(
                 crate::Section::Home,
                 Access::default(),
                 std::rc::Rc::default(),
+                std::rc::Rc::new(std::cell::Cell::new(0)),
                 window,
                 cx,
             );

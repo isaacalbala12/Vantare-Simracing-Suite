@@ -110,12 +110,14 @@ struct Child {
     restarts: Restarts,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Event {
     Tick { permitted: bool, workers_done: bool },
     Started(usize),
     SpawnFailed(usize),
     Exited { child: usize, success: bool },
+    Detached(usize),
+    OpenHub(usize),
     Killed { child: usize, reaped: bool },
     Stop(Reason),
 }
@@ -193,6 +195,17 @@ impl Session {
             }
             Event::Started(index) => self.children[index].state = ChildState::Alive(now),
             Event::SpawnFailed(index) => self.failed(index, Duration::ZERO, now, &mut actions),
+            Event::Detached(index) => {
+                if !self.stopping() {
+                    self.children[index].state = ChildState::Reaped;
+                }
+            }
+            Event::OpenHub(index) => {
+                if !self.stopping() && self.children[index].state == ChildState::Reaped {
+                    self.children[index].state = ChildState::Waiting(now);
+                    self.children[index].restarts.attempts = 0;
+                }
+            }
             Event::Exited {
                 child: index,
                 success,
@@ -413,4 +426,5 @@ impl Session {
 }
 
 #[cfg(test)]
+#[path = "session/tests.rs"]
 mod tests;

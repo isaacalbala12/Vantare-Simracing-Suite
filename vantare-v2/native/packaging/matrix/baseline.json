@@ -287,7 +287,7 @@
     "boot-update":  {
                         "sha256":  "0ba013c787b1434621978df583c45ee758d5bdda8ab3d4924811e4c8f1287a6e",
                         "existing_data_files":  2,
-                        "exit":  0
+                        "exit":  1
                     },
     "boot-repair":  {
                         "sha256":  "fcae874b2697812cddd47405145566bd10f8a91b0db109ab4295934daf740d22",

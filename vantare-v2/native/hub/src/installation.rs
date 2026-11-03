@@ -1,16 +1,56 @@
-//! Sincroniza el nombre visible incluso con el bootstrap del feed anterior.
-use std::path::Path;
+//! The Hub announces its window; the root launcher owns confirmation and
+//! rollback. No Register child or PowerShell runs during a normal boot.
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 pub(crate) fn initial_window(minimized: bool, interactive: bool, background: bool) -> (bool, bool) {
     let minimized = minimized && (!interactive || background);
     (minimized, !minimized && !background)
 }
 
-#[cfg(windows)]
-pub(crate) fn installed_script(
-    executable: &Path,
-    root: &Path,
-) -> Result<std::path::PathBuf, String> {
+pub(crate) struct BootConfirmation {
+    root: std::path::PathBuf,
+    deadline: Instant,
+}
+
+impl BootConfirmation {
+    pub(crate) fn start(root: &Path) -> Result<Self, String> {
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        installed_hub(&executable, root)?;
+        let token = std::env::var("VANTARE_BOOT_TOKEN")
+            .map_err(|_| "falta token de arranque".to_owned())?;
+        if token.len() != 32
+            || !token
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err("token de arranque inválido".into());
+        }
+        std::fs::write(root.join("hub-ready"), token)
+            .map_err(|error| format!("confirmar arranque: {error}"))?;
+        Ok(Self {
+            root: root.into(),
+            deadline: Instant::now() + Duration::from_mins(1),
+        })
+    }
+
+    pub(crate) fn poll(&mut self) -> Result<bool, String> {
+        self.poll_at(Instant::now())
+    }
+
+    fn poll_at(&self, now: Instant) -> Result<bool, String> {
+        match self.root.join("boot-pending.json").try_exists() {
+            Ok(false) => Ok(true),
+            Ok(true) if now < self.deadline => Ok(false),
+            Ok(true) => Err("el lanzador no confirmó el arranque dentro del plazo".into()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+}
+
+fn installed_hub(executable: &Path, root: &Path) -> Result<(), String> {
     let bin = executable.parent().ok_or("falta la carpeta bin")?;
     let generation = bin.parent().ok_or("falta la generación")?;
     let generations = generation.parent().ok_or("faltan las generaciones")?;
@@ -27,253 +67,9 @@ pub(crate) fn installed_script(
     {
         return Err("el Hub no pertenece a esta instalación".into());
     }
-    Ok(generation.join("candidate.ps1"))
+    Ok(())
 }
 
-/// Readiness precede al mantenimiento de registro. El hijo sigue poseído y
-/// acotado, pero su fallo nunca invalida un arranque confirmado.
-pub(crate) struct BootConfirmation {
-    child: Option<std::process::Child>,
-    root: std::path::PathBuf,
-    registration_deadline: std::time::Instant,
-    ack_deadline: std::time::Instant,
-    warning: Option<String>,
-    ack_marker: Option<std::fs::File>,
-}
-
-#[cfg(windows)]
-fn open_ack_marker(root: &Path) -> std::io::Result<Option<std::fs::File>> {
-    use std::os::windows::fs::OpenOptionsExt;
-    // Capture precedes hub-ready. An unreadable marker fails boot here; unlike
-    // registration warnings, ownership/query errors are not cosmetic failures.
-    match std::fs::OpenOptions::new()
-        .access_mode(0x80)
-        .share_mode(7)
-        .custom_flags(0x0020_0000) // Open the marker itself, not a reparse target.
-        .open(root.join("boot-pending.json"))
-    {
-        Ok(file) => Ok(Some(file)),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error),
-    }
-}
-
-#[cfg(windows)]
-#[allow(unsafe_code)] // SDK FILE_STANDARD_INFO on an owned, borrowed file handle.
-fn delete_pending(file: &std::fs::File) -> std::io::Result<bool> {
-    use std::os::windows::io::AsRawHandle;
-    #[repr(C)]
-    #[derive(Default)]
-    struct StandardInfo {
-        _allocation_size: i64,
-        _end_of_file: i64,
-        _links: u32,
-        deleting: u8,
-        _directory: u8,
-    }
-    #[link(name = "kernel32")]
-    unsafe extern "system" {
-        #[link_name = "GetFileInformationByHandleEx"]
-        fn get_file_information_by_handle_ex(
-            handle: *mut std::ffi::c_void,
-            class: i32,
-            info: *mut std::ffi::c_void,
-            size: u32,
-        ) -> i32;
-    }
-    let mut info = StandardInfo::default();
-    // SAFETY: valid owned handle, FileStandardInfo=1 and a correctly sized SDK layout.
-    if unsafe {
-        get_file_information_by_handle_ex(
-            file.as_raw_handle(),
-            1,
-            (&raw mut info).cast(),
-            u32::try_from(std::mem::size_of::<StandardInfo>()).expect("SDK struct size"),
-        )
-    } == 0
-    {
-        return Err(std::io::Error::last_os_error());
-    }
-    Ok(info.deleting != 0)
-}
-
-fn ack_pending(
-    marker: &mut Option<std::fs::File>,
-    observed: std::io::Result<bool>,
-) -> std::io::Result<bool> {
-    #[cfg(windows)]
-    if (matches!(&observed, Ok(true))
-        || observed
-            .as_ref()
-            .is_err_and(|error| error.raw_os_error() == Some(5)))
-        && let Some(file) = marker.as_ref()
-        && delete_pending(file)?
-    // A failed kernel query remains an error, even for Ok(true).
-    {
-        // Windows has committed the deletion request: the ACK is logically gone.
-        // Release our reference; never infer deletion from AccessDenied alone.
-        marker.take();
-        return Ok(false);
-    }
-    if matches!(&observed, Ok(false)) {
-        marker.take();
-    }
-    observed
-}
-
-impl BootConfirmation {
-    pub(crate) fn start(root: &Path) -> Result<Self, String> {
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-            let script = installed_script(&executable, root)?;
-            let Some(windows) = std::env::var_os("WINDIR") else {
-                let marker = open_ack_marker(root).map_err(|error| error.to_string())?;
-                std::fs::write(root.join("hub-ready"), std::process::id().to_string())
-                    .map_err(|error| format!("confirmar arranque: {error}"))?;
-                return Ok(Self::ready(
-                    root,
-                    None,
-                    Some("No se pudo actualizar el registro de Vantare: falta WINDIR".into()),
-                    marker,
-                ));
-            };
-            let mut command = std::process::Command::new(
-                Path::new(&windows).join("System32/WindowsPowerShell/v1.0/powershell.exe"),
-            );
-            command
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                ])
-                .arg(script)
-                .args(["-Operation", "Register", "-Root"])
-                .arg(root)
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
-                .creation_flags(0x0800_0000);
-            Self::spawn(root, &mut command)
-        }
-        #[cfg(not(windows))]
-        {
-            std::fs::write(root.join("hub-ready"), std::process::id().to_string())
-                .map_err(|error| format!("confirmar arranque: {error}"))?;
-            Ok(Self::ready(root, None, None, None))
-        }
-    }
-
-    fn ready(
-        root: &Path,
-        child: Option<std::process::Child>,
-        warning: Option<String>,
-        ack_marker: Option<std::fs::File>,
-    ) -> Self {
-        Self {
-            child,
-            root: root.into(),
-            registration_deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
-            ack_deadline: std::time::Instant::now() + std::time::Duration::from_secs(10),
-            warning,
-            ack_marker,
-        }
-    }
-
-    #[cfg(windows)]
-    fn spawn(root: &Path, command: &mut std::process::Command) -> Result<Self, String> {
-        let marker = open_ack_marker(root).map_err(|error| error.to_string())?;
-        // This must finish before even creating Register: its exit/latency is cosmetic.
-        std::fs::write(root.join("hub-ready"), std::process::id().to_string())
-            .map_err(|error| format!("confirmar arranque: {error}"))?;
-        let (child, warning) = match command.spawn() {
-            Ok(child) => (Some(child), None),
-            Err(error) => (
-                None,
-                Some(format!(
-                    "No se pudo actualizar el registro de Vantare: {error}"
-                )),
-            ),
-        };
-        Ok(Self::ready(root, child, warning, marker))
-    }
-
-    pub(crate) fn poll(&mut self) -> Result<bool, String> {
-        if let Some(child) = self.child.as_mut() {
-            let failure = match child.try_wait() {
-                Ok(Some(status)) if status.success() => {
-                    self.child = None;
-                    None
-                }
-                Ok(Some(_)) => Some("No se pudo actualizar el registro de Vantare".to_owned()),
-                Ok(None) if std::time::Instant::now() >= self.registration_deadline => {
-                    Some("El registro de Vantare agotó su plazo".to_owned())
-                }
-                Ok(None) => None,
-                Err(error) => Some(format!(
-                    "No se pudo comprobar el registro de Vantare: {error}"
-                )),
-            };
-            if let Some(warning) = failure {
-                if let Some(mut child) = self.child.take() {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                }
-                self.warning = Some(warning);
-            }
-        }
-        // ACK still bounds real boot confirmation; registration owns a separate file.
-        // Recheck the path on every poll, including after releasing ack_marker.
-        // We do not cache ACK for the rest of Register: a reappearing marker or
-        // later AccessDenied without the retained handle's proof still fails.
-        if ack_pending(
-            &mut self.ack_marker,
-            self.root.join("boot-pending.json").try_exists(),
-        )
-        .map_err(|error| error.to_string())?
-        {
-            if std::time::Instant::now() >= self.ack_deadline {
-                return Err("el supervisor no confirmó el arranque dentro del plazo".into());
-            }
-            return Ok(false);
-        }
-        if self.child.is_some() {
-            return Ok(false);
-        }
-        if let Err(error) = write_registration_status(&self.root, self.warning.as_deref()) {
-            // Maintenance cannot invalidate readiness, even when its status cannot be saved.
-            eprintln!("No se pudo guardar el estado del registro: {error}");
-        }
-        Ok(true)
-    }
-}
-
-fn write_registration_status(root: &Path, warning: Option<&str>) -> std::io::Result<()> {
-    use std::io::Write;
-    let path = root.join("registration-status.json");
-    // This writer never reads or modifies update-status.json. In particular a
-    // Stage running concurrently keeps its ready/error and update notification.
-    let status = serde_json::json!({"schema":1,
-        "state":if warning.is_some() {"warning"} else {"current"},
-        "message":warning.unwrap_or("")});
-    let temporary = root.join(format!("registration-{}.tmp", std::process::id()));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)?;
-    let result = (|| {
-        file.write_all(&serde_json::to_vec(&status)?)?;
-        file.sync_all()?;
-        drop(file);
-        std::fs::rename(&temporary, &path)
-    })();
-    let _ = std::fs::remove_file(temporary);
-    result
-}
-
-/// La ventana desaparece, pero el hijo sigue poseído hasta terminar o vencer.
 pub(crate) fn defer_close(
     confirmation: &std::cell::RefCell<Option<BootConfirmation>>,
     hide: impl FnOnce(),
@@ -285,357 +81,30 @@ pub(crate) fn defer_close(
     true
 }
 
-impl Drop for BootConfirmation {
-    fn drop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
-    }
-}
-
-#[cfg(all(test, windows))]
+#[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
-
-    #[allow(unsafe_code)] // Force classic delete-pending, independently of POSIX unlink support.
-    fn request_classic_delete(path: &Path) -> std::fs::File {
-        use std::os::windows::fs::OpenOptionsExt;
-        #[link(name = "kernel32")]
-        unsafe extern "system" {
-            #[link_name = "SetFileInformationByHandle"]
-            fn set_file_information(
-                handle: *mut std::ffi::c_void,
-                class: i32,
-                info: *const std::ffi::c_void,
-                size: u32,
-            ) -> i32;
-        }
-        let file = std::fs::OpenOptions::new()
-            .access_mode(0x8001_0000)
-            .share_mode(7)
-            .open(path)
-            .expect("open owned classic-delete fixture");
-        let deleting: i32 = 1; // FileDispositionInfo=4; BOOLEAN true plus zero padding.
-        // SAFETY: owned DELETE/read handle; initialized buffer starts with SDK BOOLEAN.
-        assert_ne!(
-            unsafe {
-                set_file_information(file.as_raw_handle(), 4, (&raw const deleting).cast(), 4)
-            },
-            0,
-            "{}",
-            std::io::Error::last_os_error()
-        );
-        file
-    }
-
     #[test]
-    fn deleting_ack_is_confirmed_only_with_kernel_evidence() {
-        let root = root();
-        let path = root.join("boot-pending.json");
-        std::fs::write(&path, b"pending").unwrap();
-        let mut marker = open_ack_marker(&root).unwrap();
-        assert!(!delete_pending(marker.as_ref().unwrap()).unwrap());
-        // An unrelated permission failure must remain an error, even with a valid handle.
-        assert_eq!(
-            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(5)))
-                .unwrap_err()
-                .raw_os_error(),
-            Some(5)
-        );
-        let deleting = request_classic_delete(&path);
-        assert!(delete_pending(marker.as_ref().unwrap()).unwrap());
-        let error = path
-            .try_exists()
-            .expect_err("reproduce Windows delete-pending race");
-        assert_eq!(error.raw_os_error(), Some(5));
-        assert_eq!(
-            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(32)))
-                .unwrap_err()
-                .raw_os_error(),
-            Some(32)
-        );
-        assert!(!ack_pending(&mut marker, Err(error)).unwrap());
-        assert!(marker.is_none());
-        drop(deleting);
-        assert!(!ack_pending(&mut marker, path.try_exists()).unwrap());
-        assert_eq!(
-            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(5)))
-                .unwrap_err()
-                .raw_os_error(),
-            Some(5)
-        );
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    fn root() -> std::path::PathBuf {
-        let root = std::env::temp_dir().join(format!("vantare-boot-{}-{}", std::process::id(), {
-            static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-            SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-        }));
-        std::fs::create_dir_all(&root).expect("isolated boot root");
-        root
-    }
-
-    fn waiting(root: &Path) -> BootConfirmation {
-        use std::{
-            os::windows::process::CommandExt,
-            process::{Command, Stdio},
+    fn marker_ack_has_one_injected_deadline_and_no_register_child() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))
+        } else {
+            std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
         };
-        // more espera EOF en un pipe propio: sincronización explícita, sin sleeps.
-        let mut command = Command::new("cmd.exe");
-        command
-            .args(["/D", "/C", "more > nul"])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .creation_flags(0x0800_0000);
-        BootConfirmation::spawn(root, &mut command).expect("registration fixture")
-    }
-
-    #[allow(unsafe_code)] // Test-only Win32 boundary: query the owned process object.
-    fn process_exited(handle: BorrowedHandle<'_>) -> std::io::Result<bool> {
-        #[link(name = "kernel32")]
-        // SAFETY: DWORD WaitForSingleObject(HANDLE, DWORD), Windows SDK signature.
-        unsafe extern "system" {
-            #[link_name = "WaitForSingleObject"]
-            fn wait_for_single_object(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
-        }
-        // SAFETY: the borrowed duplicate stays owned for this call. Zero checks
-        // immediately: production kill/wait must already have reaped this child.
-        match unsafe { wait_for_single_object(handle.as_raw_handle(), 0) } {
-            0 => Ok(true),                                    // WAIT_OBJECT_0
-            0x102 => Ok(false), // WAIT_TIMEOUT: the same process is still running.
-            u32::MAX => Err(std::io::Error::last_os_error()), // WAIT_FAILED
-            _ => Err(std::io::Error::other("unexpected process wait result")),
-        }
-    }
-
-    #[test]
-    fn dropping_confirmation_reaps_the_blocked_registration_child() {
-        let root = root();
-        let confirmation = waiting(&root);
-        let handle = confirmation
-            .child
-            .as_ref()
-            .unwrap()
-            .as_handle()
-            .try_clone_to_owned()
-            .expect("retain owned registration process");
-        assert!(!process_exited(handle.as_handle()).expect("blocked child"));
-        drop(confirmation);
-        assert!(process_exited(handle.as_handle()).expect("reaped child"));
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn slow_registration_claims_readiness_before_finishing() {
-        let root = root();
-        let mut confirmation = waiting(&root);
-        assert!(!confirmation.poll().expect("UI remains available"));
-        assert!(root.join("hub-ready").exists());
-        drop(confirmation.child.as_mut().unwrap().stdin.take());
-        assert!(
-            confirmation
-                .child
-                .as_mut()
-                .unwrap()
-                .wait()
-                .unwrap()
-                .success()
-        );
-        assert!(confirmation.poll().expect("finished registration"));
-        assert_eq!(
-            std::fs::read_to_string(root.join("hub-ready")).unwrap(),
-            std::process::id().to_string()
-        );
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn failed_or_timed_out_registration_warns_without_rejecting_boot() {
-        use std::{
-            os::windows::process::CommandExt,
-            process::{Command, Stdio},
+        let root = parent.join(format!("boot-confirmation-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("boot-pending.json"), b"{}").unwrap();
+        let now = Instant::now();
+        let confirmation = BootConfirmation {
+            root: root.clone(),
+            deadline: now + Duration::from_mins(1),
         };
-        let root = root();
-        let mut command = Command::new("cmd.exe");
-        command
-            .args(["/D", "/C", "exit /B 7"])
-            .stdout(Stdio::null())
-            .creation_flags(0x0800_0000);
-        let mut confirmation = BootConfirmation::spawn(&root, &mut command).unwrap();
-        assert!(
-            !confirmation
-                .child
-                .as_mut()
-                .unwrap()
-                .wait()
-                .unwrap()
-                .success()
-        );
-        assert!(confirmation.poll().expect("registration is cosmetic"));
-        assert!(
-            std::fs::read_to_string(root.join("registration-status.json"))
-                .unwrap()
-                .contains("warning")
-        );
-        assert!(root.join("hub-ready").exists());
-        let mut confirmation = waiting(&root);
-        let handle = confirmation
-            .child
-            .as_ref()
-            .unwrap()
-            .as_handle()
-            .try_clone_to_owned()
-            .expect("retain owned registration process");
-        assert!(!process_exited(handle.as_handle()).expect("blocked child"));
-        confirmation.registration_deadline = std::time::Instant::now();
-        assert!(confirmation.poll().expect("registration is cosmetic"));
-        assert!(confirmation.child.is_none());
-        assert!(process_exited(handle.as_handle()).expect("reaped child"));
-        assert!(
-            std::fs::read_to_string(root.join("registration-status.json"))
-                .unwrap()
-                .contains("warning")
-        );
-        drop(confirmation); // cancela y recoge el hijo todavía bloqueado.
-        assert!(root.join("hub-ready").exists());
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn closing_early_hides_but_waits_for_registration_and_the_supervisor_ack() {
-        use std::os::windows::fs::OpenOptionsExt;
-        let root = root();
-        std::fs::write(root.join("boot-pending.json"), "pending").unwrap();
-        let confirmation = std::cell::RefCell::new(Some(waiting(&root)));
-        let mut hidden = false;
-        assert!(defer_close(&confirmation, || hidden = true));
-        assert!(hidden);
-        assert!(!confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
-        assert!(root.join("hub-ready").exists());
-        {
-            let mut value = confirmation.borrow_mut();
-            let child = value.as_mut().unwrap().child.as_mut().unwrap();
-            drop(child.stdin.take());
-            assert!(child.wait().unwrap().success());
-        }
-        assert!(!confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
-        // An exclusive handle proves further polls never rewrite readiness.
-        let marker = std::fs::OpenOptions::new()
-            .read(true)
-            .share_mode(0)
-            .open(root.join("hub-ready"))
-            .unwrap();
-        assert!(!confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
+        assert!(!confirmation.poll_at(now).unwrap());
+        assert!(!confirmation.poll_at(now + Duration::from_secs(10)).unwrap());
+        assert!(confirmation.poll_at(now + Duration::from_mins(1)).is_err());
         std::fs::remove_file(root.join("boot-pending.json")).unwrap();
-        assert!(confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
-        drop(marker);
-        confirmation.borrow_mut().take();
-        assert!(!defer_close(&confirmation, || panic!("already confirmed")));
-        assert_eq!(
-            std::fs::read_to_string(root.join("hub-ready")).unwrap(),
-            std::process::id().to_string()
-        );
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn readiness_precedes_the_registration_process_and_spawn_failure_is_a_warning() {
-        use std::{os::windows::process::CommandExt, process::Command};
-        let root = root();
-        let mut command = Command::new("cmd.exe");
-        command
-            .args([
-                "/D",
-                "/C",
-                "if not exist hub-ready (exit /B 9) else (exit /B 0)",
-            ])
-            .current_dir(&root)
-            .creation_flags(0x0800_0000);
-        let mut confirmation = BootConfirmation::spawn(&root, &mut command).unwrap();
-        assert!(
-            confirmation
-                .child
-                .as_mut()
-                .unwrap()
-                .wait()
-                .unwrap()
-                .success()
-        );
-        assert!(confirmation.poll().unwrap());
-        let mut confirmation =
-            BootConfirmation::spawn(&root, &mut Command::new(root.join("missing.exe"))).unwrap();
-        assert!(confirmation.poll().unwrap());
-        assert!(
-            std::fs::read_to_string(root.join("registration-status.json"))
-                .unwrap()
-                .contains("warning")
-        );
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn registration_document_waits_for_ack_and_never_modifies_update_status() {
-        let root = root();
-        std::fs::write(root.join("boot-pending.json"), "pending").unwrap();
-        let mut confirmation = waiting(&root);
-        confirmation.registration_deadline = std::time::Instant::now();
-        assert!(!confirmation.poll().unwrap());
-        assert!(!root.join("registration-status.json").exists());
-        let ready = br#"{"schema":1,"state":"ready","message":"update","version":"0.0.990","notes":"next release"}"#;
-        std::fs::write(root.join("update-status.json"), ready).unwrap();
-        std::fs::remove_file(root.join("boot-pending.json")).unwrap();
-        assert!(confirmation.poll().unwrap());
-        assert_eq!(
-            std::fs::read(root.join("update-status.json")).unwrap(),
-            ready
-        );
-        let status: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(root.join("registration-status.json")).unwrap())
-                .unwrap();
-        assert_eq!(status["state"], "warning");
-        write_registration_status(&root, None).unwrap();
-        let status: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(root.join("registration-status.json")).unwrap())
-                .unwrap();
-        assert_eq!(status["state"], "current");
-        assert_eq!(
-            std::fs::read(root.join("update-status.json")).unwrap(),
-            ready
-        );
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn feed_uses_its_generation_and_rejects_another_installation() {
-        let root = Path::new("C:/qa/Vantare Native Beta");
-        let generation = root.join("generations/0123456789abcdef0123456789abcdef");
-        let executable = generation.join("bin/vantare-hub.exe");
-        assert_eq!(
-            installed_script(&executable, root).unwrap(),
-            generation.join("candidate.ps1")
-        );
-        assert!(installed_script(&executable, Path::new("C:/another installation")).is_err());
-        assert!(installed_script(&root.join("bin/vantare-hub.exe"), root).is_err());
-        assert!(installed_script(&generation.join("bin/another.exe"), root).is_err());
-        assert!(
-            installed_script(&root.join("generations/invalid/bin/vantare-hub.exe"), root).is_err()
-        );
-    }
-}
-
-#[cfg(test)]
-mod identity_tests {
-    use super::*;
-    #[test]
-    fn background_preserves_minimized_and_never_activates_the_hub() {
-        assert_eq!(initial_window(true, false, true), (true, false));
-        assert_eq!(initial_window(true, true, true), (true, false));
-        assert_eq!(initial_window(false, false, true), (false, false));
-        assert_eq!(initial_window(true, false, false), (true, false));
-        assert_eq!(initial_window(true, true, false), (false, true));
+        assert!(confirmation.poll_at(now).unwrap());
+        std::fs::remove_dir(root).unwrap();
     }
 }

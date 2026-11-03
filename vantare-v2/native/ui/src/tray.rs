@@ -199,6 +199,14 @@ fn open_hub() {
     let hub = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
     if hub.is_null() {
         let spawned = std::env::current_exe().and_then(|exe| {
+            if std::env::var_os("VANTARE_BETA_ROOT").is_some() {
+                // The installed Hub belongs to the supervisor's Job. A tray
+                // click asks that owner to reopen it instead of spawning one.
+                return std::process::Command::new(exe.with_file_name("vantare.exe"))
+                    .arg("--open-hub")
+                    .creation_flags(0x0800_0000)
+                    .spawn();
+            }
             let args: Vec<_> = std::env::args().skip(1).collect();
             let mut command = std::process::Command::new(exe.with_file_name("vantare-hub.exe"));
             command.args(crate::hub_launch::arguments(
@@ -210,9 +218,7 @@ fn open_hub() {
             // Esta apertura procede del clic de bandeja, aunque overlays naciera en Startup.
             command
                 .env_remove("VANTARE_BACKGROUND_STARTUP")
-                .env("VANTARE_INTERACTIVE_STARTUP", "1")
-                .env_remove("VANTARE_STARTUP_WINDOW")
-                .env_remove("VANTARE_STARTUP_PID");
+                .env("VANTARE_INTERACTIVE_STARTUP", "1");
             command.creation_flags(0x0800_0000 | 0x0100_0000); // Sin consola y fuera del Job de overlays.
             command.spawn()
         });

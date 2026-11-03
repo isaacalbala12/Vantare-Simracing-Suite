@@ -72,4 +72,5 @@ fn main() -> Result<(), String> {
             ..Default::default()
         },
     )
+    .map(|_| ())
 }

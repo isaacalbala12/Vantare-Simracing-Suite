@@ -1,5 +1,10 @@
 # installer — Setup y Uninstall (#1591)
 
+Paso 6 de #1840: `Vantare.exe` ejecuta Run, Apply, Confirm y Register en Rust;
+Feed usa la oferta firmada en services y SetStartup llama a `shell::sync`.
+La matriz QA ejerce esos caminos con raíces, HKCU y carpetas inyectadas.
+Los apartados de campaña de los pasos 4–5 de abajo describen su estado histórico.
+
 Dos binarios x64 independientes, `vantare-setup` y `vantare-uninstall`, publicados
 como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa el mismo commit fijado que la
 aplicación. No se añade ninguna dependencia externa al lock.

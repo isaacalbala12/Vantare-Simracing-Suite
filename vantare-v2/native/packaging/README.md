@@ -1,5 +1,18 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+**Paso 6 de #1840 en desarrollo.** El Setup y Uninstall usan el motor Rust;
+`Vantare.exe` en la raíz inicia la generación activa y su sesión. Feed, Apply,
+confirmación y rollback viven en Rust. Register y SetStartup llaman a
+`engine::shell::sync` dentro del proceso. Si el primer motor 2 no arranca, la
+interfaz ofrece Reparar y conserva la `data/` anterior; no ejecuta motor 1.
+`beta.ps1` ya no es host de Run/Check/Apply. El Hub release abrió en QA con
+mediana de 343 ms en cinco arranques; el indicador se retiró. El resto de esta guía describe el recorrido
+PowerShell histórico, cuyo retiro de producto termina en el paso 7.
+
+**Gate de release:** Isaac debe probar el Setup con bytes distribuidos sobre
+raíces 0.0.975 y 0.0.988 reales en una VM o cuenta aislada, y registrar evidencia
+en #1840 antes de publicar cualquier release con motor 2 sin LegacyRunner.
+
 Paso5 de #1840: Setup/Uninstall usan el motor Rust para estado, ZIP, generaciones,
 datos y shell::sync nativo. Context resuelve raíz, HKCU y opciones. El driver
 queda como oráculo/adaptador heredado; Feed/Register/SetStartup y lanzamiento
@@ -133,6 +146,10 @@ Instalador sin firma: SmartScreen puede pedir «Más información → Ejecutar d
 
 ## Instalar y desinstalar
 
+La descripción siguiente documenta el host PowerShell histórico de #1726.
+El recorrido vigente del paso 6 usa `Vantare.exe` raíz y sesión Rust como se
+describe al principio de esta página.
+
 Desde #1726, los accesos Inicio/Escritorio/Startup apuntan al supervisor GUI
 `vantare.exe --beta -Root <raíz>` de la generación activa. Este crea el motor
 PowerShell con `CREATE_NO_WINDOW`; no depende de una consola interactiva.
@@ -260,19 +277,15 @@ activa conservada en `retained-data.json`. Desinstaladores antiguos sin esa
 referencia permiten recuperar una copia única (o copias idénticas); si quedan
 copias distintas, se rechaza sin elegir datos arbitrariamente.
 
-QA aislada: `build-installer.ps1 -TestInstaller` (alias `/DTEST_INSTALLER`)
-y ejecutar `VantareSetup.exe /S "/D=C:\tmp\ola2\1591-qa\installed"`.
-Esta build exige ruta explícita y usa registro `VantareNativeBetaQA1492` y
-accesos «Vantare QA1492», separados de la instalación de Isaac.
-Solo este instalador escribe `registration-identity.txt` en la raíz y lo retira
-al desinstalar; el bootstrap lee esa identidad validada para sincronizar el
-registro tras confirmar o restaurar. Sin ese archivo usa `VantareNativeBeta`.
-No distribuir esta build. `installer-tests.ps1` conserva el ensayo de marca
-beta antigua; `-FirstBrand Current` compara NSIS actual con el propio sin
-inventar una marca anterior. `installer-qa.ps1` añade propio A→B, locks,
-repair, rollback headless, índices de todos los data, feed TEST y reinstalación.
-`beta-tests.ps1` requiere verificador y semilla de TEST
-para probar el feed firmado, nunca la clave privada productiva.
+QA aislada del paso 6: ejecutar `installation-matrix-tests.ps1` con raíz nueva
+bajo `D:/VantareServer/qa`, guard, HKCU y carpetas inyectadas. El ejemplo Rust
+`installer-write-matrix` ejercita Check, Apply, Confirm y rollback; el launcher
+QA y `boot-confirmation-matrix` ejercitan Run, Register y SetStartup. Los scripts
+manuales `installer-tests.ps1`, `installer-qa.ps1` y los cinco arneses que aún
+llamaban al retirado `installer-driver.ps1` se eliminaron: solo probaban el host
+PowerShell y podían resolver accesos reales. Las aserciones vigentes están en la
+matriz y los tests nativos. El oráculo histórico permanece exclusivamente en
+`matrix/legacy/`, copiado a una raíz QA por su arnés.
 
 `/S` y la UI comparten el motor y los códigos 0/1/2/3/4; cancelar antes de la
 transacción devuelve 5. La UI muestra extracción con bytes reales y etapas del

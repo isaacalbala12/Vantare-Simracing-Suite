@@ -35,21 +35,19 @@ el manejador de producto busca el título global y puede restaurar su ventana.
 
 El núcleo sintético existente publica fotos/derechos por pipes reales y se
 copia como imagen hermana para conservar la comprobación de identidad de UI.
-El Hub falso simula los códigos/marcadores actuales; no guarda cuenta ni lanza
-Register. `beta-session.ps1` ejecuta el cuerpo **original** de `Run-BetaHub`,
-extraído por AST, sustituyendo únicamente arranque/confirmación y operaciones
-de instalación, registro o red. Stop llega al supervisor real por su evento.
-No se reproduce la condición que decide parar en un segundo decisor de test.
+El Hub falso comprueba las interacciones de bandeja. Las tres filas de beta
+usan directamente `session.rs` y `restart.rs`, los mismos módulos Rust que
+ejecuta el lanzador. `beta-session.ps1` queda como test huérfano para retirar
+en el paso 7. Stop llega al supervisor real por su evento.
 
 | Fila actual | Evidencia de test | Cambio previsto |
 | --- | --- | --- |
 | Stop del supervisor: sólo EOF a overlays, gancho una vez y exit 0 sin kill, tres ciclos con layout guardado | `real_overlays_stop_exits_cleanly_on_eof_before_deadline` | Pasos 1 y 2 implementados; presupuesto único de toda la sesión |
-| X Hub beta en Waiting/Paused/Stale/Lost escribe idle y para overlays limpiamente | `real_overlays_hub_idle_live_and_paused_characterization` ejecuta `Run-BetaHub`; los tests de `hub::lifecycle` fijan también Paused | Paso 1 retira kill; paso 4 conservará sesión durante pausa |
+| Cerrar el Hub en Waiting/Paused/Stale/Lost inicia el cierre; Live lo desprende y se puede reabrir | `rust_session_hub_close_respects_live_state` usa la máquina de sesión Rust | La sesión posee todos los hijos |
 | Primera foto Live no cierra; flanco no-Live→Live cierra Hub; marcador live conserva overlays | Tests de `hub::lifecycle` en su crate y matriz de procesos con Hub falso | Paso 4: decide sesión con política del núcleo |
 | X Hub de bandeja no para overlays; restart-request queda sin consumidor | `real_overlays_tray_hub_is_unowned_and_restart_is_unconsumed`; manejador Abrir Hub y X del Hub falso en `real_overlays_tray_open_and_quit_leave_the_hub_alive` | Paso 4: un dueño para ambos caminos |
-| El siguiente arranque beta borra restart-request antiguo | Matriz Hub, antes de cerrar cada caso | Paso 4 retira ese canal |
-| Reiniciar el Hub beta con marcador live consume restart-request, abre otro Hub y llama Apply sin parar overlays | `beta_restart_live_reopens_hub_without_stopping_real_overlays`, bucle original; Apply es inerte | Paso 4: cierre y Apply con dueño único |
-| Caer el Hub beta antes de escribir hub-exit conserva overlays y el bucle beta sale con 0 | `crashed_beta_hub_without_marker_leaves_real_overlays_running` | Paso 4: política explícita de fallo del Hub |
+| Reiniciar consume una sola vez restart-request tras el cierre y abre otra sesión | `rust_session_restart_request_starts_a_new_session` usa `restart.rs` y `session.rs` | El lanzador devuelve código 10 a la raíz |
+| Caer el Hub conserva overlays y programa su reintento | `rust_session_crashed_hub_retries_without_stopping_overlays` | El presupuesto de reinicios gobierna al Hub |
 | Cerrar ventana de bandeja retira icono sin `cx.quit()`; EOF posterior sale limpiamente aun sin ese HWND | `real_overlays_tray_close_does_not_quit_gpui` | Pasos 1 y 2 implementados; sin WM_CLOSE a ningún hijo |
 | Abrir Hub del menú crea Hub fuera del Job; abrir otra vez lo enfoca sin duplicarlo | `real_overlays_tray_open_and_quit_leave_the_hub_alive` | Paso 4: Hub hijo de sesión |
 | Manejador «Salir» real sale con 0, cierra núcleo y deja el Hub vivo | Misma prueba, invocación QA al mismo manejador que usa el menú | Paso 4: se recoge también Hub |

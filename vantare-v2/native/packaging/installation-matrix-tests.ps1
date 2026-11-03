@@ -1,6 +1,6 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[switch]$Record,
+param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[string]$RootLauncher,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
       [string[]]$Cases=@('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker'),
       [ValidateSet('Probe','Install','Update','Repair','Check','Apply','Confirm','Timeout','Rollback','Uninstall','Cleanup')]
@@ -10,8 +10,8 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
 $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
-if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe) { throw 'MATRIX_FIXTURES_REQUIRED' }
 Assert-MatrixSourceBytes $PSScriptRoot
+if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe -or -not $WriteEngine -or -not $RootLauncher) { throw 'MATRIX_FIXTURES_REQUIRED' }
 $script:Packaging=$PSScriptRoot
 $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
@@ -113,11 +113,12 @@ try {
             }
             $links=[ordered]@{}
             $shell=New-Object -ComObject WScript.Shell
+            $shellRoot=Join-Path $caseRoot 'shell'
             foreach ($folder in @('Programs','Startup','DesktopDirectory')) {
-                $path=Join-Path $caseRoot $folder
+                $path=Join-Path $shellRoot $folder
                 foreach ($file in @(Get-ChildItem -LiteralPath $path -Filter '*.lnk' -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName)) {
                     $link=$shell.CreateShortcut($file.FullName)
-                    $links[$file.FullName.Substring($caseRoot.Length+1)]=@{target=$link.TargetPath;arguments=$link.Arguments;icon=$link.IconLocation}
+                    $links[$file.FullName.Substring($shellRoot.Length+1)]=@{target=$link.TargetPath;arguments=$link.Arguments;icon=$link.IconLocation}
                 }
             }
             $registry=[ordered]@{}
@@ -128,6 +129,10 @@ try {
             }
             $probe=if($operation -ceq 'Probe'){$stdout.Result | ConvertFrom-Json}else{$null}
             if ($operation -ceq 'Probe' -and $probe.root -cne $install) { throw 'MATRIX_PROBE_ROOT_CHANGED' }
+            if($operation -ceq 'Check' -and $case -ceq 'rc-options' -and $exitCode -eq 0){
+                $ready=Get-Content -LiteralPath (Join-Path $install 'update-status.json') -Raw|ConvertFrom-Json
+                if($ready.state -cne 'ready' -or $ready.notes -cne 'matrix offer' -or -not(Test-Path -LiteralPath (Join-Path $install 'staging/pending.json'))){throw 'MATRIX_SIGNED_CHECK_NOT_STAGED'}
+            }
             Write-NativeJson (Join-Path $caseRoot 'shell.json') @{links=$links;registry=$registry;probe=$probe}
             $snapshot=Join-Path $caseRoot 'snapshot.json'
             & python (Join-Path $PSScriptRoot 'matrix/snapshot.py') --root $caseRoot --assets $assets --output $snapshot
@@ -168,29 +173,17 @@ try {
         if($growth.ExitCode -ne 0){throw ('MATRIX_INVENTORY_GROWTH_FAILED: '+$growth.Stderr)}
         $growth.Stdout
     } finally { $env:TEMP=$savedGrowthTemp;$env:TMP=$savedGrowthTmp;$env:LOCALAPPDATA=$savedGrowthLocal }
-    $savedBootTemp=$env:TEMP;$savedBootTmp=$env:TMP;$savedBootLocal=$env:LOCALAPPDATA
-    try {
-        $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
-        $boot=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/registration-boot-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'registration-boot'),'-TestVerifier',$TestVerifier,'-BootProbe',$BootProbe
-        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'registration-boot.log')
-        if($boot.ExitCode -ne 0){throw ('MATRIX_REGISTRATION_BOOT_FAILED: '+$boot.Stderr)}
-        $boot.Stdout
-    } finally { $env:TEMP=$savedBootTemp;$env:TMP=$savedBootTmp;$env:LOCALAPPDATA=$savedBootLocal }
-    $savedStartupTemp=$env:TEMP;$savedStartupTmp=$env:TMP;$savedStartupLocal=$env:LOCALAPPDATA
+    $savedLaunchTemp=$env:TEMP;$savedLaunchTmp=$env:TMP;$savedLaunchLocal=$env:LOCALAPPDATA
     try{
         $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
-        $startupClock=[Diagnostics.Stopwatch]::StartNew()
-        $startup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/startup-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'startup'),'-TestVerifier',$TestVerifier,'-WriteEngine',$WriteEngine
-        ) -TimeoutMilliseconds 480000 -LogPath (Join-Path $qaMatrixRoot 'startup.log')
-        $startupClock.Stop()
-        "Startup elapsed-seconds=$($startupClock.Elapsed.TotalSeconds)"
-        if($startup.ExitCode -ne 0){throw ('MATRIX_STARTUP_FAILED: '+$startup.Stderr)}
-        $startup.Stdout
-    }finally{$env:TEMP=$savedStartupTemp;$env:TMP=$savedStartupTmp;$env:LOCALAPPDATA=$savedStartupLocal}
+        $launcher=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/launcher-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'launcher'),'-TestVerifier',$TestVerifier,
+            '-BootProbe',$BootProbe,'-WriteEngine',$WriteEngine,'-RootLauncher',$RootLauncher
+        ) -TimeoutMilliseconds 180000 -LogPath (Join-Path $qaMatrixRoot 'launcher.log')
+    }finally{$env:TEMP=$savedLaunchTemp;$env:TMP=$savedLaunchTmp;$env:LOCALAPPDATA=$savedLaunchLocal}
+    if($launcher.ExitCode -ne 0){throw ('MATRIX_LAUNCHER_FAILED: '+$launcher.Stderr)}
+    $launcher.Stdout
     if($WriteEngine){
         $savedBoundaryTemp=$env:TEMP;$savedBoundaryTmp=$env:TMP;$savedBoundaryLocal=$env:LOCALAPPDATA
         try{

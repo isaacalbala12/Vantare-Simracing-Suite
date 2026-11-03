@@ -208,6 +208,20 @@ fn inventory_paths_duplicates_and_data_binding_are_not_optional() {
     }
 }
 
+#[cfg(windows)]
+#[test]
+fn read_only_probe_allows_a_link_nested_in_user_data_without_following_it() {
+    let fixture = Fixture::new();
+    fixture.load(STATE_RC, RC);
+    let canary = fixture.0.join("canary.txt");
+    fs::write(&canary, b"outside stays intact").unwrap();
+    let nested = fixture.generation().join("data/nested");
+    fs::create_dir(&nested).unwrap();
+    std::os::windows::fs::symlink_file(&canary, nested.join("pointer.txt")).unwrap();
+    assert!(Installation::read(&fixture.0).unwrap().state.is_some());
+    assert_eq!(fs::read(canary).unwrap(), b"outside stays intact");
+}
+
 #[test]
 fn version_has_one_numeric_contract_for_display_and_operations() {
     for version in ["0.0.975", "0.0.988", "1.2.3", "65535.0.0"] {

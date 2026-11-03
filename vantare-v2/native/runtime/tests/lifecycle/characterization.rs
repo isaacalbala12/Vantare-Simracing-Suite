@@ -1,7 +1,7 @@
-//! Matriz previa a la sesión única (#1860, paso 0).
+//! Matriz del lanzador y las decisiones de sesión Rust (#1860).
 //! Overlays GPUI de producto, layout vacío guardado y pipes/raíces exclusivos.
 //! El Hub sintético solo publica los marcadores actuales; el decisor de cierre
-//! es Run-BetaHub extraído sin cambios de beta.ps1. No ejecuta instalación.
+//! no ejecuta instalación.
 use super::{LONG, Launcher, Process, Scenario, alive, creation_time, kill, note, opt};
 use std::os::windows::process::CommandExt;
 use std::{
@@ -32,10 +32,7 @@ pub(super) fn scenarios() -> Vec<(&'static str, fn())> {
             "real_overlays_stop_exits_cleanly_on_eof_before_deadline",
             real_stop,
         ),
-        (
-            "real_overlays_hub_idle_live_and_paused_characterization",
-            hub_matrix,
-        ),
+        ("rust_session_hub_close_respects_live_state", hub_matrix),
         (
             "real_overlays_tray_hub_is_unowned_and_restart_is_unconsumed",
             tray_hub,
@@ -58,11 +55,11 @@ pub(super) fn scenarios() -> Vec<(&'static str, fn())> {
             normal_ignores_qa,
         ),
         (
-            "beta_restart_live_reopens_hub_without_stopping_real_overlays",
+            "rust_session_restart_request_starts_a_new_session",
             beta_restart_live,
         ),
         (
-            "crashed_beta_hub_without_marker_leaves_real_overlays_running",
+            "rust_session_crashed_hub_retries_without_stopping_overlays",
             beta_hub_crash,
         ),
     ]
@@ -203,35 +200,6 @@ impl Real {
         )
     }
 
-    fn beta(&self, hub: &Launcher, next: Option<&Launcher>) -> Launcher {
-        let script =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/lifecycle/beta-session.ps1");
-        let mut command = Command::new("pwsh");
-        command.args(["-NoProfile", "-File"]).arg(script);
-        if let Some(next) = next {
-            command.args(["-NextHubPid", &next.0.id().to_string()]);
-        }
-        Launcher(
-            command
-                .arg("-Root")
-                .arg(&self.scenario.dir)
-                .args([
-                    "-HubPid",
-                    &hub.0.id().to_string(),
-                    "-SupervisorPid",
-                    &self.launcher.0.id().to_string(),
-                    "-Supervisor",
-                    env!("CARGO_BIN_EXE_vantare"),
-                    "-Instance",
-                    &self.scenario.instance,
-                ])
-                .stderr(File::create(self.scenario.file("beta.log")).unwrap())
-                .creation_flags(0x0800_0000)
-                .spawn()
-                .unwrap(),
-        )
-    }
-
     fn stop(&mut self) {
         let began = Instant::now();
         self.scenario.stop();
@@ -308,64 +276,57 @@ fn real_stop() {
 }
 
 fn hub_matrix() {
+    use super::session::{Action, Event, Policy, Reason, Session};
     use vantare_domain::SourceState;
-    // CAMBIA EN PASO 4: Paused/Stale de una carrera ya no deberán parar overlays.
-    for (state, marker, stops) in [
-        (SourceState::Waiting, "idle", true),
-        (SourceState::Live, "live", false),
-        (SourceState::Paused, "idle", true),
-        (SourceState::Stale, "idle", true),
-        (SourceState::Lost, "idle", true),
+    for state in [
+        SourceState::Waiting,
+        SourceState::Live,
+        SourceState::Paused,
+        SourceState::Stale,
+        SourceState::Lost,
     ] {
-        // Son las salidas actuales del Hub falso. El predicado real y su
-        // flanco se prueban en hub::lifecycle, sin importar fuente entre crates.
-        let mut real = Real::start(&format!("hub-{state:?}"));
-        let process = real.ready();
-        let mut hub = real.hub(marker, false);
-        // Un reinicio que dejó un Hub de bandeja se descarta al arrancar beta.
-        fs::write(real.scenario.file("restart-request"), "1").unwrap();
-        let mut beta = real.beta(&hub, None);
-        real.scenario
-            .wait_for("bucle de producto observa Hub", LONG, || {
-                real.scenario
-                    .lines("beta-actions")
-                    .contains(&"stage".into())
-                    .then_some(())
-            });
-        assert!(!real.scenario.dir.join("restart-request").exists());
-        if state == SourceState::Waiting {
-            let mut second = real.beta(&hub, None);
-            assert_ne!(real.scenario.exit_code(&mut second, LONG), 0);
-            assert_eq!(
-                real.scenario
-                    .lines("beta-actions")
-                    .iter()
-                    .filter(|line| *line == "hub")
-                    .count(),
-                1,
-                "el segundo arranque choca con beta-session.lock, no abre ni enfoca otro Hub"
-            );
-            assert!(alive(process));
+        let now = Instant::now();
+        let mut session = Session::new(
+            [Policy::core(2), Policy::consumer(2), Policy::consumer(2)],
+            Duration::from_secs(5),
+            now,
+        );
+        assert_eq!(
+            session.paso(
+                Event::Tick {
+                    permitted: true,
+                    workers_done: false
+                },
+                now
+            ),
+            vec![Action::Spawn(0), Action::Spawn(1), Action::Spawn(2)]
+        );
+        for child in 0..3 {
+            session.paso(Event::Started(child), now);
         }
-        drop(hub.0.stdin.take());
-        assert!(hub.0.wait().unwrap().success());
-        assert_eq!(
-            real.scenario.exit_code(&mut beta, LONG),
-            0,
-            "{:?}",
-            real.scenario.lines("beta.log")
-        );
-        assert_eq!(
-            real.scenario.lines("beta-actions").contains(&"stop".into()),
-            stops
-        );
-        if stops {
-            assert_eq!(real.scenario.exit_code(&mut real.launcher, LONG), 0);
-            assert!(!alive(process));
-            real.assert_clean_shutdown();
+        let event = if state == SourceState::Live {
+            Event::Detached(2)
         } else {
-            assert!(alive(process));
-            real.stop();
+            Event::Exited {
+                child: 2,
+                success: true,
+            }
+        };
+        let actions = session.paso(event, now);
+        if state == SourceState::Live {
+            assert!(actions.is_empty());
+            assert!(!session.stopping());
+            assert_eq!(session.paso(Event::OpenHub(2), now), vec![Action::Spawn(2)]);
+        } else {
+            assert!(actions.contains(&Action::StopWorkers), "{state:?}");
+            assert!(actions.contains(&Action::Close(1)), "{state:?}");
+            assert!(matches!(
+                session.phase,
+                super::session::Phase::Stopping {
+                    reason: Reason::Finished(2),
+                    ..
+                }
+            ));
         }
     }
 }
@@ -539,74 +500,87 @@ fn normal_ignores_qa() {
 }
 
 fn beta_restart_live() {
-    let mut real = Real::start("beta-restart-live");
-    let overlay = real.ready();
-    let mut first = real.hub("live", true);
-    let mut next = real.hub("live", false);
-    let mut beta = real.beta(&first, Some(&next));
-    real.scenario
-        .wait_for("primer Hub beta observado", LONG, || {
-            real.scenario
-                .lines("beta-actions")
-                .contains(&"stage".into())
-                .then_some(())
-        });
-    drop(first.0.stdin.take());
-    assert!(first.0.wait().unwrap().success());
-    real.scenario.wait_for(
-        "reinicio abre segundo Hub y consume su petición",
-        LONG,
-        || {
-            (real
-                .scenario
-                .lines("beta-actions")
-                .iter()
-                .filter(|line| *line == "stage")
-                .count()
-                == 2)
-                .then_some(())
-        },
+    use super::session::{Action, Event, Policy, Session};
+    let scenario = Scenario::new("rust-restart-live");
+    let now = Instant::now();
+    let mut session = Session::new(
+        [Policy::core(2), Policy::consumer(2), Policy::consumer(2)],
+        Duration::from_secs(5),
+        now,
     );
-    assert!(!real.scenario.dir.join("restart-request").exists());
-    assert_eq!(real.ready(), overlay);
-    assert!(alive(overlay));
-    assert!(next.0.try_wait().unwrap().is_none());
-    let actions = real.scenario.lines("beta-actions");
-    assert_eq!(actions.iter().filter(|line| *line == "apply").count(), 2);
-    assert!(!actions.contains(&"stop".into()));
-    drop(next.0.stdin.take());
-    assert!(next.0.wait().unwrap().success());
-    assert_eq!(real.scenario.exit_code(&mut beta, LONG), 0);
-    let actions = real.scenario.lines("beta-actions");
-    assert_eq!(actions.iter().filter(|line| *line == "hub").count(), 2);
-    assert_eq!(actions.iter().filter(|line| *line == "apply").count(), 3);
-    assert!(!actions.contains(&"stop".into()));
-    // CAMBIA EN PASO 4: hoy beta intenta Apply sin parar la sesión Live.
-    // Sólo se observa la llamada: el stub nunca instala ni modifica registro.
-    assert!(alive(overlay));
-    real.stop();
+    session.paso(
+        Event::Tick {
+            permitted: true,
+            workers_done: false,
+        },
+        now,
+    );
+    for child in 0..3 {
+        session.paso(Event::Started(child), now);
+    }
+    fs::write(scenario.file("restart-request"), b"1").unwrap();
+    assert!(
+        session
+            .paso(
+                Event::Exited {
+                    child: 2,
+                    success: true
+                },
+                now
+            )
+            .contains(&Action::Close(1))
+    );
+    assert!(super::restart::take(&scenario.dir).unwrap());
+    assert!(!super::restart::take(&scenario.dir).unwrap());
+    let mut restarted = Session::new(
+        [Policy::core(2), Policy::consumer(2), Policy::consumer(2)],
+        Duration::from_secs(5),
+        now,
+    );
+    assert_eq!(
+        restarted.paso(
+            Event::Tick {
+                permitted: true,
+                workers_done: false
+            },
+            now
+        ),
+        vec![Action::Spawn(0), Action::Spawn(1), Action::Spawn(2)]
+    );
 }
 
 fn beta_hub_crash() {
-    let mut real = Real::start("beta-hub-crash");
-    let overlay = real.ready();
-    let mut hub = real.hub("idle", false);
-    let mut beta = real.beta(&hub, None);
-    real.scenario
-        .wait_for("Hub beta observado antes de caer", LONG, || {
-            real.scenario
-                .lines("beta-actions")
-                .contains(&"stage".into())
-                .then_some(())
-        });
-    hub.0.kill().unwrap();
-    assert!(!hub.0.wait().unwrap().success());
-    assert!(!real.scenario.dir.join("hub-exit").exists());
-    assert_eq!(real.scenario.exit_code(&mut beta, LONG), 0);
-    assert!(!real.scenario.lines("beta-actions").contains(&"stop".into()));
-    assert!(alive(overlay));
-    // CAMBIA EN PASO 4: hoy no hay política de fallo para el Hub de beta.
-    real.stop();
+    use super::session::{Action, Event, Policy, Session};
+    let now = Instant::now();
+    let mut session = Session::new(
+        [Policy::core(2), Policy::consumer(2), Policy::consumer(2)],
+        Duration::from_secs(5),
+        now,
+    );
+    session.paso(
+        Event::Tick {
+            permitted: true,
+            workers_done: false,
+        },
+        now,
+    );
+    for child in 0..3 {
+        session.paso(Event::Started(child), now);
+    }
+    let actions = session.paso(
+        Event::Exited {
+            child: 2,
+            success: false,
+        },
+        now,
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|action| matches!(action, Action::Backoff { child: 2, .. }))
+    );
+    assert!(!actions.contains(&Action::Close(1)));
+    assert!(!session.stopping());
 }
 
 /// Prueba opt-in para Isaac: nunca se ejecuta por el gate automático.

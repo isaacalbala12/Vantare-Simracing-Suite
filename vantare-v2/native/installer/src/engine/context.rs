@@ -46,10 +46,14 @@ impl Context {
             "Subclave QA inválida",
         )?;
         qa_path(&self.local_app_data)?;
-        qa_path(
-            self.shell_root
-                .as_ref()
-                .ok_or_else(|| WriteError::new(1, "Carpetas QA no inyectadas"))?,
+        let shell_root = self
+            .shell_root
+            .as_ref()
+            .ok_or_else(|| WriteError::new(1, "Carpetas QA no inyectadas"))?;
+        qa_path(shell_root)?;
+        ensure(
+            !overlap(&self.local_app_data, shell_root)?,
+            "Raíces QA solapadas",
         )?;
         Ok(())
     }
@@ -78,10 +82,32 @@ impl Context {
     pub fn is_isolated(&self) -> bool {
         !self.registry_prefix.is_empty()
     }
+    #[cfg(feature = "test-installer")]
+    pub fn from_qa_env(root: &Path) -> Result<Self> {
+        let required =
+            |name| std::env::var_os(name).ok_or_else(|| WriteError::new(1, "Falta contexto QA"));
+        qa_path(root)?;
+        let registry = required("VANTARE_QA_REGISTRY_PREFIX")?
+            .into_string()
+            .map_err(|_| WriteError::new(1, "Registro QA inválido"))?;
+        Self::isolated(
+            required("VANTARE_QA_LOCAL_APP_DATA")?.into(),
+            registry,
+            required("VANTARE_QA_SHELL_ROOT")?.into(),
+        )
+    }
     pub fn validate_root(&self, root: &Path) -> Result<()> {
         self.validate_context()?;
         if self.is_isolated() {
             qa_path(root)?;
+            let shell_root = self
+                .shell_root
+                .as_ref()
+                .ok_or_else(|| WriteError::new(1, "Carpetas QA no inyectadas"))?;
+            ensure(
+                !overlap(root, &self.local_app_data)? && !overlap(root, shell_root)?,
+                "Raíz de instalación QA solapada",
+            )?;
         }
         disk::path(root)?;
         Ok(())
@@ -208,10 +234,25 @@ impl Context {
 }
 
 // Legacy root ownership compares normalized Windows paths without case sensitivity.
-pub(crate) fn same_path(left: &Path, right: &Path) -> Result<bool> {
+pub fn same_path(left: &Path, right: &Path) -> Result<bool> {
     let left: PathBuf = disk::path(left)?.components().collect();
     let right: PathBuf = disk::path(right)?.components().collect();
     super::windows::paths_equal(&left, &right)
+}
+
+fn overlap(left: &Path, right: &Path) -> Result<bool> {
+    let normalize = |path: &Path| -> Result<String> {
+        Ok(disk::path(path)?
+            .to_string_lossy()
+            .replace('\\', "/")
+            .trim_end_matches('/')
+            .to_lowercase())
+    };
+    let left = normalize(left)?;
+    let right = normalize(right)?;
+    Ok(left == right
+        || left.starts_with(&format!("{right}/"))
+        || right.starts_with(&format!("{left}/")))
 }
 
 pub fn qa_path(path: &Path) -> Result<()> {
@@ -284,10 +325,17 @@ pub(crate) fn startup_preference(root: &Path) -> Option<bool> {
         .filter(|value| value.as_object().is_some_and(|map| map.len() == 2) && value["schema"] == 1)
         .and_then(|value| value["autostart"].as_bool())
 }
+pub fn startup(root: &Path) -> Option<bool> {
+    match options(root, false) {
+        Ok(Some(ui)) => Some(ui.autostart),
+        Ok(None) => startup_preference(root),
+        Err(_) => None,
+    }
+}
 
-/// One Rust cleanup-marker contract. A cached hash is only supplied after the
-/// operation has verified installer-ui.json against its own image. PowerShell
-/// independently rechecks ownership after the parent exits (permanent boundary).
+/// One Rust cleanup-marker contract. The caller may pass the hash from its
+/// previously checked UI options; otherwise we hash the uninstaller image here.
+/// PowerShell rechecks ownership after the parent exits (permanent boundary).
 pub(crate) fn cleanup_marker(root: &Path, verified_image: Option<&str>) -> Result<Option<String>> {
     let Some(value) = disk::read_optional(&root.join("installer-cleanup.json"), Some(1024))? else {
         return Ok(None);

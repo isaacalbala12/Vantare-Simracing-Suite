@@ -6625,6 +6625,7 @@ dependencies = [
  "ureq",
  "vantare-build-support",
  "vantare-domain",
+ "vantare-installer",
  "vantare-ipc",
  "vantare-launcher",
  "vantare-profiling",

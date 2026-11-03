@@ -7,6 +7,7 @@ $qaCaseRoot=Assert-MatrixRoot $Root
 $env:LOCALAPPDATA=Join-Path $qaCaseRoot 'LocalAppData'
 $script:Packaging=Split-Path $PSScriptRoot -Parent
 $qaInstallRoot=Join-Path $qaCaseRoot 'install'
+$qaShellRoot=Join-Path $qaCaseRoot 'shell'
 $qaRequestedOperation=$Operation
 # Remap the drive in THIS PROCESS before any product code is loaded.
 if ($RegistryRoot -cnotmatch '^HKEY_CURRENT_USER\\Software\\VantareInstallerMatrix\\[a-f0-9]{32}\\[a-z0-9-]+$') { throw 'MATRIX_REGISTRY_REJECTED' }
@@ -37,6 +38,21 @@ Initialize-MatrixCase $Case $qaInstallRoot $Assets
 Write-NativeJson (Join-Path $qaCaseRoot 'before-data.json') (Get-MatrixData $qaInstallRoot)
 $null=Assert-MatrixRoot $qaInstallRoot
 try {
+    if($Operation -in @('Check','Apply','Confirm','Timeout')){
+        if(-not $WriteEngine){throw 'MATRIX_NATIVE_WRITER_REQUIRED'}
+        $beforeState=if(Test-Path -LiteralPath (Join-Path $qaInstallRoot 'state.json')){Get-NativeHash (Join-Path $qaInstallRoot 'state.json')}else{$null}
+        $applied=Test-Path -LiteralPath (Join-Path $qaInstallRoot 'staging/pending.json')
+        $contract=Join-Path $qaCaseRoot 'qa-action.json'
+        Write-NativeJson $contract @{
+            qaAction=$Operation;verifier=(Join-Path $Assets 'verifier.exe');payloadDirectory=$Assets
+            request=@{operation='Probe';root=$qaInstallRoot;qa=$false;silent=$true;uninstall=$false;version='0.0.989';size=1;mode='auto';desktop=$false;autostart=$false;processId=2147483647;packageSha=('0'*64);logFile=(Join-Path $qaCaseRoot 'writer.log')}
+            context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaShellRoot}
+        }
+        & $WriteEngine $contract
+        $code=$LASTEXITCODE
+        if($Operation -ceq 'Apply' -and $code -eq 0){Write-NativeJson (Join-Path $qaCaseRoot 'apply-result.json') @{applied=[bool]$applied;beforeState=$beforeState}}
+        exit $code
+    }
     switch ($Operation) {
         {$_ -in @('Probe','Install','Repair','Uninstall','Cleanup') -or ($_ -ceq 'Update' -and $WriteEngine)} {
             $engine=Join-Path $qaCaseRoot ('VantareSetup-'+$PID+'-1-1')
@@ -59,7 +75,7 @@ try {
             [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
             $OutputEncoding=[Text.UTF8Encoding]::new($false)
             $contract=Join-Path $qaCaseRoot 'writer.json'
-            $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
+            $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaShellRoot}
             Write-NativeJson $contract @{request=$requestValue;context=$context;payloadDirectory=$engine}
             if($Operation -ceq 'Probe'){
                 $actual=& $WriteEngine $contract
@@ -75,40 +91,6 @@ try {
         }
         'Update' { $null=Update-NativeCandidate $qaInstallRoot (Join-Path $Assets 'v989.zip') (Get-NativeHash (Join-Path $Assets 'v989.zip')) }
         'Rollback' { $null=Restore-NativeCandidate $qaInstallRoot }
-        'Check' {
-            $payload=Get-Content -LiteralPath (Join-Path $Assets 'offer.json') -Raw
-            $signed=Invoke-NativeProcess -Executable (Join-Path $Assets 'verifier.exe') -Arguments @('--matrix-sign') -InputText $payload
-            if ($signed.ExitCode) { throw 'Fixture signing failed' }
-            $local=Join-Path $qaCaseRoot 'offer.json';[IO.File]::WriteAllText($local,$signed.Stdout)
-            $null=Stage-BetaUpdate $qaInstallRoot $local
-        }
-        'Apply' {
-            $statePath=Join-Path $qaInstallRoot 'state.json'
-            $beforeState=if(Test-Path -LiteralPath $statePath){Get-NativeHash $statePath}else{$null}
-            $applied=Apply-BetaUpdate $qaInstallRoot
-            Write-NativeJson (Join-Path $qaCaseRoot 'apply-result.json') @{applied=[bool]$applied;beforeState=$beforeState}
-        }
-        {$_ -in @('Confirm','Timeout')} {
-            $info=[Diagnostics.ProcessStartInfo]::new()
-            $info.FileName="$env:WINDIR/System32/cmd.exe"
-            $info.Arguments='/D /C exit 0'
-            if ($Operation -ceq 'Timeout') {
-                $info.FileName="$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
-                $info.Arguments='-NoProfile -NonInteractive -Command "[Console]::ReadLine() | Out-Null"'
-            }
-            $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.RedirectStandardInput=$true
-            $process=[Diagnostics.Process]::Start($info)
-            try {
-                if ($Operation -ceq 'Confirm') {
-                    $process.WaitForExit()
-                    [IO.File]::WriteAllText((Join-Path $qaInstallRoot 'hub-ready'),$process.Id.ToString())
-                }
-                $null=Confirm-BetaBoot $qaInstallRoot $process 0
-            } finally {
-                if (-not $process.HasExited) { $process.Kill();$process.WaitForExit() }
-                $process.Dispose()
-            }
-        }
         default { throw 'MATRIX_OPERATION_REJECTED' }
     }
     exit 0

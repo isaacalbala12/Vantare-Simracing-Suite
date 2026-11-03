@@ -122,6 +122,7 @@ impl Editor {
         .map_err(Into::into)
     }
     pub(crate) fn persist(&mut self) -> Result<(), String> {
+        if let Some(warning) = &self.warning && !self.document.exists() { return Err(warning.clone()); }
         self.document
             .save(&self.layout().clone())
             .map_err(|error| error.to_string())
@@ -237,6 +238,9 @@ impl Editor {
         &mut self,
         edit: impl FnOnce(&mut Layout) -> Result<(), E>,
     ) -> Result<(), vantare_ipc::files::Error> {
+        if let Some(warning) = &self.warning && !self.document.exists() {
+            return Err(vantare_ipc::files::Error::Unsupported(warning.clone()));
+        }
         let previous = self.layout().clone();
         let mut next = previous.clone();
         edit(&mut next).map_err(Into::into)?;

@@ -429,6 +429,7 @@ fn step8a_bad_zoom_preserves_other_v2_sections() {
         assert!(store.warning.is_some());
         assert_eq!(root.read(FILE), original);
         store.save_zoom(110).unwrap();
+        assert_eq!(root.read("hub-settings.json.bak"), original);
         assert!(store.warning.is_none());
         assert!(root.load().value.general.minimized);
         assert_eq!(root.load().value.appearance.palette, Palette::Ocean);

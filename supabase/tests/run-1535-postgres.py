@@ -48,10 +48,11 @@ def main():
                               '20260924000000_visual_roadmap.sql',
                               '20261009000000_visual_roadmap_later.sql',
                               '20261010000000_testing_participation.sql',
-                              '20261010001000_visual_roadmap_clickup.sql'):
+                              '20261010001000_visual_roadmap_clickup.sql',
+                              '20261103114000_isa_1896_calendar_acl.sql'):
                 file(root / 'supabase/migrations' / migration, migration + '.log')
             for suite, count in [('testing_participation', 20), ('visual_roadmap_clickup', 31),
-                                 ('hub_server_acl_characterization', 39)]:
+                                 ('hub_server_acl_characterization', 39), ('testing_step3_acl', 15)]:
                 output = file(root / f'supabase/tests/{suite}.test.sql', suite + '.log')
                 if 'not ok ' in output or f'1..{count}' not in output or f'ok {count} ' not in output:
                     raise RuntimeError(f'{suite} pgTAP failed')
@@ -72,11 +73,11 @@ def main():
             (args.output / 'real-login-adversarial.log').write_text(denial.stdout + denial.stderr, encoding='utf-8')
             if denial.returncode == 0 or 'permission denied for function race_schedule_my_draft' not in denial.stderr:
                 raise RuntimeError('real LOGIN private draft denial failed')
-            allowed = run('psql', *connection, '-At', '-c',
-                          f"set role authenticated; set request.jwt.claim.sub='{owner}'; select source_text from public.race_schedule_my_draft();",
-                          name='authenticated-draft.log')
-            if 'LOCAL PRIVATE DRAFT' not in allowed:
-                raise RuntimeError('authenticated owner lost private draft read')
+            denied = run('psql', *connection, '-At', '-c',
+                         f"set role authenticated; set request.jwt.claim.sub='{owner}'; select source_text from public.race_schedule_my_draft();",
+                         name='authenticated-draft-denied.log', expected=3)
+            if 'permission denied for function race_schedule_my_draft' not in denied:
+                raise RuntimeError('authenticated owner retained uncalled draft RPC')
             triggered = run('psql', *connection, '-At', '-c', """
                 grant insert on auth.users to service_role;
                 set role service_role;

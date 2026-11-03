@@ -251,7 +251,7 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if args.testing_identity:
-   for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
+   for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
     (OUT/(name+'.log')).write_text(result)
     if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
@@ -490,7 +490,7 @@ $$;
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
-  for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
+  for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   if not (args.baseline or args.before_write_barrier or args.before_testing_identity):
    suites.append('testing_report_admission_v2.test.sql')

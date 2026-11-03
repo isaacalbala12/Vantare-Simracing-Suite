@@ -1,4 +1,4 @@
--- VANTA-131 step 0. This records the current managed-role RPC surface.
+-- VANTA-131 step 0 matrix, updated after the explicit step 3 ACL.
 -- Run only against the disposable PostgreSQL bootstrap with Supabase defaults.
 begin;
 select plan(39);
@@ -8,11 +8,11 @@ select is(
   actor || ' EXECUTE ' || signature
 )
 from (values
-  ('public.race_schedule_draft_save(text,jsonb,timestamptz,integer)', true, true, true),
-  ('public.race_schedule_publish(uuid)', true, true, true),
+  ('public.race_schedule_draft_save(text,jsonb,timestamptz,integer)', false, false, false),
+  ('public.race_schedule_publish(uuid)', false, false, false),
   ('public.race_schedule_current()', true, true, true),
-  ('public.race_schedule_my_draft()', true, true, true),
-  ('public.is_active_owner(uuid)', true, true, true),
+  ('public.race_schedule_my_draft()', false, false, false),
+  ('public.is_active_owner(uuid)', false, false, false),
   ('public.visual_roadmap_valid(jsonb)', false, false, false),
   ('public.visual_roadmap_publish(jsonb)', false, false, false),
   ('public.visual_roadmap_current()', true, true, false),

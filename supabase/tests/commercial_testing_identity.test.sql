@@ -66,6 +66,8 @@ set local role authenticated;
 select lives_ok($$select public.testing_contribution_review('16090000-0000-0000-0000-000000000011','accepted','Reviewed',pg_temp.proposal())$$,'Owner reviews triage with validated Clerk identity');
 select lives_ok($$select public.testing_report_fixed('16090000-0000-0000-0000-000000000011','1.2.3','Reviewed','Summary')$$,'Owner fixes report');
 select is(jsonb_array_length(public.testing_report_patch_candidates('1.2.3')),1,'Owner lists one patch candidate');
+reset role;
+set local role service_role;
 select lives_ok($$select public.race_schedule_draft_save('Fixture','{}',now(),1)$$,'Owner saves calendar draft with validated identity');
 select is((select count(*)::integer from public.race_schedule_my_draft()),1,'Owner loads calendar draft');
 select lives_ok($$select public.race_schedule_publish((select id from public.race_schedule_my_draft()))$$,'Owner publishes own calendar draft');

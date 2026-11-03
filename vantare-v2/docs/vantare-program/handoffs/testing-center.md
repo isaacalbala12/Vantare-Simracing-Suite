@@ -13,9 +13,9 @@
 
 ## 2026-11-03 - #1896 / VANTA-131 paso 8: autoridad owner
 
-- Rama vantareapp/isa-1896-paso8-owner, base origin/nightly@cef0ec16c. Test de caracterizacion de la divergencia owner en commits anteriores al cambio de produccion. La migracion usa private.is_owner con asignacion operativa activa, policy_version 1 y caducidad; el calendario y el rol de Testing Center consultan esa autoridad. El viejo oraculo publico is_active_owner se retira.
+- Draft PR #1925, rama vantareapp/isa-1896-paso8-owner, base origin/nightly@cef0ec16c. Test de caracterizacion de la divergencia owner en commits anteriores al cambio de produccion. La migracion usa private.is_owner con asignacion operativa activa, policy_version 1 y caducidad; el calendario y el rol de Testing Center consultan esa autoridad. El viejo oraculo publico is_active_owner se retira.
 - Las membresias owner sin ninguna decision operativa se pasan a asignaciones auditadas. Una asignacion revocada, caducada o de otro rol tiene prioridad y no se reabre. Rollback restaura la superficie anterior y revoca solo grants de esta migracion; el runner ejecuta down y reapply.
-- La RPC testing_contribution_review sigue con su chequeo directo de membresia en SQL admin. Su cambio se ha consultado para VANTA-132; este PR no edita SQL admin y no se integra como owner unico hasta cerrar esa dependencia. Sin despliegue ni merge.
+- La RPC testing_contribution_review sigue con su chequeo directo de membresia en SQL admin. Su cambio se ha consultado para VANTA-132; este PR no edita SQL admin y no se integra como owner unico hasta cerrar esa dependencia. SQL: produccion +75/-0, rollback +61/-0, tests +146/-0, docs +7/-0. CI pendiente; sin despliegue ni merge.
 - Contrato 7b recibido: archivar padre e hijas completos en privado, mapear report_<hash> a testing_contributions, verificar recuentos/hashes y vaciar con LOCK; despues #1924 admin y por ultimo borrar tablas y archivo.
 
 ## 2026-11-03 - #1896 / VANTA-131 paso 6a: validacion de capturas JPEG

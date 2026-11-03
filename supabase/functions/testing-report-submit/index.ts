@@ -235,7 +235,9 @@ export async function handleTestingReportSubmit(
       // A valid account never spends the shared-IP flood allowance.
       user = await (deps.account ?? ((r) => account(r, now)))(request);
     } catch (error) {
-      if (error instanceof NativeError && [401, 403].includes(error.status)) {
+      if (
+        error instanceof NativeError && [401, 403, 413].includes(error.status)
+      ) {
         const hash = await ipDigest(
           request.headers.get("cf-connecting-ip") ?? "",
           deps.salt ?? Deno.env.get("TESTING_REPORT_IP_SALT") ?? "",

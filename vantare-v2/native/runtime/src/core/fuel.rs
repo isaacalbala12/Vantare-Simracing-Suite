@@ -12,7 +12,7 @@ use vantare_domain::{Car, Player, Quality};
 const WINDOW_LAPS: usize = 3;
 const HISTORY_LAPS: usize = 10;
 /// Subida de nivel que delata un repostaje (epsilon del original).
-const REFUEL_EPSILON_L: f64 = 0.05;
+pub(super) const REFUEL_EPSILON_L: f64 = 0.05;
 
 /// Estado entre fotos del combustible del jugador. Vive en el núcleo, no en
 /// `domain`: no es una señal, es memoria de la derivación.

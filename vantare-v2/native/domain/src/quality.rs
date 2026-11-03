@@ -20,6 +20,33 @@ impl<T> Default for Quality<T> {
 }
 
 impl<T> Quality<T> {
+    /// La fuente aporta un valor medido; el adaptador declara su vigencia.
+    pub fn from_source(value: Option<T>, stale: bool) -> Self {
+        match value {
+            Some(value) if stale => Self::Stale(value),
+            Some(value) => Self::Reliable(value),
+            None => Self::Unavailable,
+        }
+    }
+
+    /// Valor derivado; la caducidad tiene prioridad sobre su estimación.
+    pub fn from_estimate(value: Option<T>, stale: bool) -> Self {
+        match value {
+            Some(value) if stale => Self::Stale(value),
+            Some(value) => Self::Estimated(value),
+            None => Self::Unavailable,
+        }
+    }
+
+    /// Caduca solo lo fiable. No cambia la autoridad de una estimación previa.
+    #[must_use]
+    pub fn stale_if(self, stale: bool) -> Self {
+        match self {
+            Self::Reliable(value) if stale => Self::Stale(value),
+            other => other,
+        }
+    }
+
     /// El valor que se puede mostrar como actual: fiable o estimado. Un dato
     /// obsoleto o ausente devuelve `None`.
     pub fn current(&self) -> Option<&T> {

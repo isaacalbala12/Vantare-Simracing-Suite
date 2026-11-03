@@ -1606,14 +1606,50 @@ mod demand_tests {
     }
 
     #[test]
-    fn by_reference_decode_matches_owned_decode_without_cloning_the_dto() {
+    #[ignore = "opt-in: mide conversión DTO del Hub, sin JSON ni descarte de Snapshot"]
+    fn measure_hub_owned_snapshot_decode() {
+        const SAMPLES: u32 = 128;
+        let source =
+            crate::snapshot_from_saved_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
+                .expect("foto real");
+        let dto = SnapshotDto::from(&source);
+        let mut timings = Vec::new();
+        for round in 0..10 {
+            let inputs: Vec<_> = (0..SAMPLES).map(|_| dto.clone()).collect();
+            let mut outputs = Vec::with_capacity(inputs.len());
+            let began = std::time::Instant::now();
+            for input in inputs {
+                outputs.push(std::hint::black_box(
+                    d::Snapshot::try_from(std::hint::black_box(input))
+                        .expect("conversión por valor"),
+                ));
+            }
+            let per_photo = began.elapsed() / SAMPLES;
+            assert_eq!(outputs[0], source);
+            std::hint::black_box(&outputs);
+            if round > 0 {
+                timings.push(per_photo);
+            }
+        }
+        timings.sort_unstable();
+        eprintln!(
+            "hub_owned_decode cars={} samples_per_round={} measured_rounds={} ns_per_photo_min={} ns_per_photo_median={} ns_per_photo_max={} profile=test; includes DTO release and payload clones; excludes JSON and Snapshot drop; shared server, no before/after baseline",
+            source.state.cars.len(),
+            SAMPLES,
+            timings.len(),
+            timings[0].as_nanos(),
+            timings[timings.len() / 2].as_nanos(),
+            timings[timings.len() - 1].as_nanos()
+        );
+    }
+
+    #[test]
+    fn reference_decode_preserves_all_fields_and_qualities() {
         for shift in 0..4 {
             let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
             let dto = SnapshotDto::from(&source);
             let by_ref = d::Snapshot::try_from(&dto).expect("decodificación por referencia");
-            let owned = d::Snapshot::try_from(dto).expect("decodificación por valor");
             assert_eq!(by_ref, source, "referencia, pasada {shift}");
-            assert_eq!(owned, source, "valor, pasada {shift}");
         }
     }
 

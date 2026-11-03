@@ -165,7 +165,7 @@ impl Translator {
             && let Some(g) = &self.pages[1]
         {
             let spline = f32_at(&g.bytes, 248);
-            if self.player_laps.is_none() || (0.07..=0.93).contains(&spline) {
+            if self.player_laps.is_none() || outside_lap_line(spline) {
                 self.player_laps = u32::try_from(i32_at(&g.bytes, 132)).ok().map(|laps| {
                     (
                         laps,
@@ -249,8 +249,7 @@ impl Translator {
                 {
                     return Ok(false);
                 }
-                let outside_line =
-                    update.spline.is_finite() && (0.07..=0.93).contains(&update.spline);
+                let outside_line = outside_lap_line(update.spline);
                 let stable = if outside_line || !self.cars.contains_key(&update.index) {
                     Some((update.laps, update.best.clone(), update.last.clone()))
                 } else {
@@ -460,9 +459,11 @@ impl Translator {
                     car.velocity_mps = Quality::Unavailable;
                 }
                 if let Some((laps, best, last)) = self.player_laps {
-                    car.laps = prefer(quality(Some(laps), gs || paused), car.laps);
-                    car.best_lap_s = prefer(quality(best, gs || paused), car.best_lap_s);
-                    car.last_lap_s = prefer(quality(last, gs || paused), car.last_lap_s);
+                    car.laps = prefer(Quality::from_source(Some(laps), gs || paused), car.laps);
+                    car.best_lap_s =
+                        prefer(Quality::from_source(best, gs || paused), car.best_lap_s);
+                    car.last_lap_s =
+                        prefer(Quality::from_source(last, gs || paused), car.last_lap_s);
                 }
             }
         }
@@ -653,7 +654,10 @@ impl Translator {
                 (Some(u32::from(*n)), b.time, l.time)
             });
         let sectors = rival.stable.as_ref().map_or_else(Vec::new, |(_, _, l)| {
-            l.splits.iter().map(|s| quality(*s, stale)).collect()
+            l.splits
+                .iter()
+                .map(|s| Quality::from_source(*s, stale))
+                .collect()
         });
         let current_sector = update
             .current
@@ -672,24 +676,24 @@ impl Translator {
                 .filter(|e| e.number >= 0)
                 .map_or_else(String::new, |e| e.number.to_string()),
             class,
-            position: quality(
+            position: Quality::from_source(
                 (update.position > 0).then(|| u32::from(update.position)),
                 stale,
             ),
-            class_position: quality(
+            class_position: Quality::from_source(
                 (update.cup_position > 0).then(|| u32::from(update.cup_position)),
                 stale,
             ),
-            laps: quality(laps, stale),
-            best_lap_s: quality(best, stale),
-            last_lap_s: quality(last, stale),
+            laps: Quality::from_source(laps, stale),
+            best_lap_s: Quality::from_source(best, stale),
+            last_lap_s: Quality::from_source(last, stale),
             last_sectors_s: sectors,
-            in_pits: quality(location(update.location), stale),
-            pose: quality(pose, stale),
+            in_pits: Quality::from_source(location(update.location), stale),
+            pose: Quality::from_source(pose, stale),
             velocity_mps: rival.velocity.quality(now),
-            lap_distance_m: estimated(distance, stale),
-            lap_elapsed_s: quality(update.current.time, stale),
-            current_sector: estimated(current_sector, stale),
+            lap_distance_m: Quality::from_estimate(distance, stale),
+            lap_elapsed_s: Quality::from_source(update.current.time, stale),
+            current_sector: Quality::from_estimate(current_sector, stale),
             ..Car::default()
         };
         Car {
@@ -710,22 +714,22 @@ impl Translator {
         if let Some((p, stale)) = self.page(0, now) {
             let stale = stale || gs || self.physics_zero;
             // SDK physics.pitLimiterOn @248: bool nativo, reloj de physics.
-            player.pit_limiter_active = quality(boolean(i32_at(p, 248)), stale);
+            player.pit_limiter_active = Quality::from_source(boolean(i32_at(p, 248)), stale);
             player.telemetry = Telemetry {
-                throttle: quality(fraction(f32_at(p, 4)), stale),
-                brake: quality(fraction(f32_at(p, 8)), stale),
-                clutch: quality(fraction(f32_at(p, 364)), stale),
+                throttle: Quality::from_source(fraction(f32_at(p, 4)), stale),
+                brake: Quality::from_source(fraction(f32_at(p, 8)), stale),
+                clutch: Quality::from_source(fraction(f32_at(p, 364)), stale),
                 // Physics.steerAngle @24: -1..1 (izquierda a derecha), no radianes.
-                steering: quality(steering(f32_at(p, 24)), stale),
-                gear: quality(
+                steering: Quality::from_source(steering(f32_at(p, 24)), stale),
+                gear: Quality::from_source(
                     i32_at(p, 16)
                         .checked_sub(1)
                         .and_then(|v| i8::try_from(v).ok())
                         .filter(|v| (-1..=8).contains(v)),
                     stale,
                 ),
-                speed_mps: quality(nonnegative(f32_at(p, 28) / 3.6), stale),
-                engine_speed_rad_s: quality(
+                speed_mps: Quality::from_source(nonnegative(f32_at(p, 28) / 3.6), stale),
+                engine_speed_rad_s: Quality::from_source(
                     nonnegative(f64::from(i32_at(p, 20)) * TAU / 60.0),
                     stale,
                 ),
@@ -734,13 +738,13 @@ impl Translator {
         // SDK SHM: physics.fuel está documentado en kg; maxFuel no fija unidad.
         // No asumir litros ni densidad. Graphics sí documenta fuelXLap en litros.
         player.fuel = Fuel {
-            per_lap_l: quality(positive(f32_at(g, 1284)), gs),
-            laps_left: estimated(positive(f32_at(g, 1412)), gs),
+            per_lap_l: Quality::from_source(positive(f32_at(g, 1284)), gs),
+            laps_left: Quality::from_estimate(positive(f32_at(g, 1412)), gs),
             ..Fuel::default()
         };
         let delta = i32_at(g, 1360);
         let signed = f64::from(delta) / 1000.0 * if i32_at(g, 1400) == 1 { 1.0 } else { -1.0 };
-        player.delta_best_s = quality(
+        player.delta_best_s = Quality::from_source(
             (delta != i32::MAX && signed.abs() < 10_000.0).then_some(signed),
             gs,
         );
@@ -751,7 +755,7 @@ impl Translator {
         if !g.is_empty() && i32_at(g, 4) == 0 {
             return Session {
                 id: SessionId(self.epoch),
-                track_name: quality(Some(wide_at(s, 134, 66)), false),
+                track_name: Quality::from_source(Some(wide_at(s, 134, 66)), false),
                 ..Session::default()
             };
         }
@@ -760,14 +764,18 @@ impl Translator {
         let kind = if g.is_empty() {
             Quality::Unavailable
         } else {
-            quality(Some(shm_kind(i32_at(g, 8))), gs)
+            Quality::from_source(Some(shm_kind(i32_at(g, 8))), gs)
         };
         let kind = if kind.current().is_some() {
             kind
         } else {
-            udp.map_or(kind, |u| quality(Some(udp_kind(u.value.kind)), us))
+            udp.map_or(kind, |u| {
+                Quality::from_source(Some(udp_kind(u.value.kind)), us)
+            })
         };
-        let mut state = udp.map_or(Quality::Unavailable, |u| quality(phase(u.value.phase), us));
+        let mut state = udp.map_or(Quality::Unavailable, |u| {
+            Quality::from_source(phase(u.value.phase), us)
+        });
         if !g.is_empty() {
             let status = i32_at(g, 4);
             let inferred = if i32_at(g, 1528) == 1 || status == 3 {
@@ -780,7 +788,7 @@ impl Translator {
                 None
             };
             if (inferred == Some(SessionState::Interrupted) && !gs) || state.current().is_none() {
-                state = estimated(inferred, gs);
+                state = Quality::from_estimate(inferred, gs);
             }
         }
         let elapsed = udp.and_then(|u| nonnegative(u.value.elapsed));
@@ -788,9 +796,9 @@ impl Translator {
             // En el corpus ambos relojes suman 3600 s: el SDK llama
             // SessionEndTime al tiempo RESTANTE, no al instante de final.
             .and_then(|u| nonnegative(u.value.end))
-            .map_or(Quality::Unavailable, |v| quality(Some(v), us));
+            .map_or(Quality::Unavailable, |v| Quality::from_source(Some(v), us));
         if !g.is_empty() && !gs {
-            remaining = quality(nonnegative(f32_at(g, 152) / 1000.0), false);
+            remaining = Quality::from_source(nonnegative(f32_at(g, 152) / 1000.0), false);
         }
         let track = self.track.as_ref();
         let name = wide_at(s, 134, 66);
@@ -798,15 +806,18 @@ impl Translator {
             id: SessionId(self.epoch),
             kind,
             state,
-            elapsed_s: quality(elapsed, us),
+            elapsed_s: Quality::from_source(elapsed, us),
             remaining_s: remaining,
-            track_name: quality(
+            track_name: Quality::from_source(
                 (!name.is_empty())
                     .then_some(name)
                     .or_else(|| track.map(|t| t.1.clone())),
                 false,
             ),
-            track_length_m: quality(track.and_then(|t| (t.2 > 0.0).then_some(t.2)), false),
+            track_length_m: Quality::from_source(
+                track.and_then(|t| (t.2 > 0.0).then_some(t.2)),
+                false,
+            ),
             weather: self.weather(g, gs, now),
             // numberOfLaps ambiguo en ACC: no declarar una duración sin evidencia.
             ..Session::default()
@@ -819,16 +830,19 @@ impl Translator {
         if let Some((p, stale)) = self.page(0, now) {
             let stale = stale || paused || self.physics_zero;
             // physics.airTemp/roadTemp son °C; SI = °C + 273.15, sin ceros de relleno.
-            weather.air_temperature_k = quality(nonnegative(f32_at(p, 288) + 273.15), stale);
-            weather.track_temperature_k = quality(nonnegative(f32_at(p, 292) + 273.15), stale);
+            weather.air_temperature_k =
+                Quality::from_source(nonnegative(f32_at(p, 288) + 273.15), stale);
+            weather.track_temperature_k =
+                Quality::from_source(nonnegative(f32_at(p, 292) + 273.15), stale);
         }
         if !g.is_empty() {
             // graphics.windSpeed ya está en m/s (SDK SHM 1.8.12).
-            weather.wind_speed_mps = quality(nonnegative(f32_at(g, 1248)), gs || paused);
+            weather.wind_speed_mps =
+                Quality::from_source(nonnegative(f32_at(g, 1248)), gs || paused);
             // rainIntensity es ordinal 0..5, NO una fracción: solo NO_RAIN (0)
             // tiene equivalencia exacta. No dividir por 5 ni usar los pronósticos.
             if i32_at(g, 1560) == 0 {
-                weather.rain = quality(Some(0.0), gs || paused);
+                weather.rain = Quality::from_source(Some(0.0), gs || paused);
             }
         }
         if let Some(u) = &self.session {
@@ -836,18 +850,18 @@ impl Translator {
             // Physics tiene más precisión; un UDP actual gana a physics obsoleta.
             weather.air_temperature_k = prefer(
                 weather.air_temperature_k,
-                quality(Some(u.value.air_temperature_k), stale),
+                Quality::from_source(Some(u.value.air_temperature_k), stale),
             );
             weather.track_temperature_k = prefer(
                 weather.track_temperature_k,
-                quality(Some(u.value.track_temperature_k), stale),
+                Quality::from_source(Some(u.value.track_temperature_k), stale),
             );
             // Fracciones nativas del SDK UDP; su reloj no refresca physics/graphics.
-            let rain = quality(fraction(u.value.rain), stale);
+            let rain = Quality::from_source(fraction(u.value.rain), stale);
             if rain.current().is_some() || weather.rain.current().is_none() {
                 weather.rain = rain;
             }
-            weather.track_wetness = quality(fraction(u.value.wetness), stale);
+            weather.track_wetness = Quality::from_source(fraction(u.value.wetness), stale);
         }
         // windDirection (@1252) está en radianes, pero el SDK no fija norte,
         // sentido ni procedencia: no prometer la convención meteorológica común.
@@ -884,32 +898,41 @@ fn player_car(
     // Broadcasting solo ofrece km/h escalar. Ni velocidad vectorial de
     // rivales ni contador de sanciones: permanecen Unavailable.
     car.position = prefer(
-        quality(u32::try_from(i32_at(g, 136)).ok().filter(|p| *p > 0), stale),
+        Quality::from_source(u32::try_from(i32_at(g, 136)).ok().filter(|p| *p > 0), stale),
         car.position,
     );
     car.in_pits = prefer(
-        quality(Some(i32_at(g, 160) == 1 || i32_at(g, 1236) == 1), stale),
+        Quality::from_source(Some(i32_at(g, 160) == 1 || i32_at(g, 1236) == 1), stale),
         car.in_pits,
     );
-    car.laps = prefer(quality(u32::try_from(i32_at(g, 132)).ok(), stale), car.laps);
-    car.last_lap_s = prefer(quality(lap_ms(i32_at(g, 144)), stale), car.last_lap_s);
-    car.best_lap_s = prefer(quality(lap_ms(i32_at(g, 148)), stale), car.best_lap_s);
+    car.laps = prefer(
+        Quality::from_source(u32::try_from(i32_at(g, 132)).ok(), stale),
+        car.laps,
+    );
+    car.last_lap_s = prefer(
+        Quality::from_source(lap_ms(i32_at(g, 144)), stale),
+        car.last_lap_s,
+    );
+    car.best_lap_s = prefer(
+        Quality::from_source(lap_ms(i32_at(g, 148)), stale),
+        car.best_lap_s,
+    );
     car.lap_elapsed_s = prefer(
-        quality(
+        Quality::from_source(
             nonnegative(f64::from(i32_at(g, 140)) / 1000.0).filter(|_| i32_at(g, 140) != i32::MAX),
             stale,
         ),
         car.lap_elapsed_s,
     );
     // iEstimatedLapTime @1396: ms; MAX/0/negativos son marcadores.
-    car.estimated_lap_s = estimated(lap_ms(i32_at(g, 1396)), stale);
+    car.estimated_lap_s = Quality::from_estimate(lap_ms(i32_at(g, 1396)), stale);
     car.current_sector = prefer(
-        quality(u8::try_from(i32_at(g, 164)).ok().filter(|s| *s < 3), stale),
+        Quality::from_source(u8::try_from(i32_at(g, 164)).ok().filter(|s| *s < 3), stale),
         car.current_sector,
     );
     let gap = i32_at(g, 1580);
     car.gap_ahead = prefer(
-        quality(
+        Quality::from_source(
             (gap >= 0
                 && gap != i32::MAX
                 && i32_at(g, 136) > 1
@@ -922,12 +945,12 @@ fn player_car(
         car.gap_ahead,
     );
     car.lap_distance_m = prefer(
-        estimated(track.and_then(|t| distance(f32_at(g, 248), t.2)), stale),
+        Quality::from_estimate(track.and_then(|t| distance(f32_at(g, 248), t.2)), stale),
         car.lap_distance_m,
     );
     // No indexar por playerCarID: es un ID, no un hueco (especialmente online).
     if let (Some([x, y]), Some((p, ps))) = (graphics_position(g, car.id), physics) {
-        let shm_pose = quality(pose(x, y, f32_at(p, 208)), stale || ps);
+        let shm_pose = Quality::from_source(pose(x, y, f32_at(p, 208)), stale || ps);
         let current = shm_pose.current().is_some();
         car.pose = prefer(shm_pose, car.pose);
         current
@@ -971,6 +994,11 @@ fn prefer<T>(shm: Quality<T>, udp: Quality<T>) -> Quality<T> {
 fn fraction(v: f64) -> Option<f64> {
     (v.is_finite() && (0.0..=1.0).contains(&v)).then_some(v)
 }
+/// Evita aceptar contadores parciales en el cruce de meta, tanto SHM como UDP.
+fn outside_lap_line(spline: f64) -> bool {
+    spline.is_finite() && (0.07..=0.93).contains(&spline)
+}
+
 fn distance(spline: f64, meters: f64) -> Option<f64> {
     (spline.is_finite() && (0.0..=1.0).contains(&spline) && meters.is_finite() && meters > 0.0)
         .then_some(spline * meters)
@@ -989,20 +1017,7 @@ fn location(v: u8) -> Option<bool> {
         _ => None,
     }
 }
-fn quality<T>(v: Option<T>, stale: bool) -> Quality<T> {
-    match v {
-        Some(v) if stale => Quality::Stale(v),
-        Some(v) => Quality::Reliable(v),
-        None => Quality::Unavailable,
-    }
-}
-fn estimated<T>(v: Option<T>, stale: bool) -> Quality<T> {
-    match v {
-        Some(v) if stale => Quality::Stale(v),
-        Some(v) => Quality::Estimated(v),
-        None => Quality::Unavailable,
-    }
-}
+
 fn cup_name(cup: u8) -> String {
     match cup {
         0 => "Pro".into(),
@@ -1080,7 +1095,7 @@ fn flags(g: &[u8], player: Option<CarId>, stale: bool) -> Quality<Vec<Flag>> {
             scope: FlagScope::Car(id),
         });
     }
-    quality(Some(flags), stale)
+    Quality::from_source(Some(flags), stale)
 }
 
 fn capability<T>(values: impl IntoIterator<Item = Quality<T>>) -> Capability {

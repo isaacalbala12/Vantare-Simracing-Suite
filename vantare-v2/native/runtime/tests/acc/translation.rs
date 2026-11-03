@@ -2,6 +2,36 @@
 use super::*;
 
 #[test]
+fn quality_constructor_characterization() {
+    for stale in [false, true] {
+        assert_eq!(
+            Quality::from_source(Some(7), stale),
+            if stale {
+                Quality::Stale(7)
+            } else {
+                Quality::Reliable(7)
+            }
+        );
+        assert_eq!(
+            Quality::from_estimate(Some(7), stale),
+            if stale {
+                Quality::Stale(7)
+            } else {
+                Quality::Estimated(7)
+            }
+        );
+        assert_eq!(
+            Quality::<u8>::from_source(None, stale),
+            Quality::Unavailable
+        );
+        assert_eq!(
+            Quality::<u8>::from_estimate(None, stale),
+            Quality::Unavailable
+        );
+    }
+}
+
+#[test]
 fn split_overtakes_keep_the_last_coherent_table_estimated_until_complete() {
     let mut t = setup();
     let mut second = car(2, 0.5, 1, 90000);

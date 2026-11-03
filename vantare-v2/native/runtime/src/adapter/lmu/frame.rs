@@ -6,6 +6,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use vantare_domain::freshness::STALL_LIMIT;
 use vantare_domain::{Damage, Pose, Quality, Weather};
 
 pub(super) const OBJECT_OUT_SIZE: usize = 324_820;
@@ -25,9 +26,6 @@ const SUPPORTED_BUILDS: &[&str] = &["1.3.0.0", "1.4.0.0", "1.4.1.3", "1.4.2.0"];
 const MAX_SESSION_LAPS: u32 = 10_000;
 /// Cotas del delta nativo: fuera de ±10 000 s el valor es un marcador, no un delta.
 const DELTA_LIMIT_S: f64 = 10_000.0;
-/// Presupuesto de alineación igual al de frescura LMU; también en la grabadora,
-/// que admite frames con este módulo sin el reloj de frescura del adaptador.
-use vantare_domain::freshness::STALL_LIMIT;
 
 pub(super) fn supports_build(build: &str) -> bool {
     SUPPORTED_BUILDS.contains(&build)
@@ -169,21 +167,25 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
     }
     let mut vehicles = Vec::with_capacity(count);
     let mut player = None;
+    let mut scoring_lag = 0.0;
     for index in 0..count {
-        let vehicle = vehicle(buffer, SCORING_BASE + index * SCORING_STRIDE, &telemetry)?;
+        let (vehicle, lag_s) = vehicle(buffer, SCORING_BASE + index * SCORING_STRIDE, &telemetry)?;
         if vehicles
             .iter()
             .any(|seen: &Vehicle| seen.slot == vehicle.slot || seen.position == vehicle.position)
         {
             return Err(Rejection::InvalidActiveGrid);
         }
-        if vehicle.inputs.is_some() && player.replace(index).is_some() {
-            return Err(Rejection::InvalidActiveGrid);
+        if vehicle.inputs.is_some() {
+            if player.replace(index).is_some() {
+                return Err(Rejection::InvalidActiveGrid);
+            }
+            scoring_lag = lag_s;
         }
         vehicles.push(vehicle);
     }
     normalize_lap_progress(&mut vehicles);
-    align_scoring_poses(buffer, &mut vehicles, player, &telemetry);
+    align_scoring_poses(&mut vehicles, player, scoring_lag);
     Ok(Frame {
         track: track.trim().to_owned(),
         session_number: read_i32(buffer, 1_696),
@@ -228,7 +230,11 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
     })
 }
 
-fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Vehicle, Rejection> {
+fn vehicle(
+    buffer: &[u8],
+    base: usize,
+    telemetry: &[(i32, usize)],
+) -> Result<(Vehicle, f64), Rejection> {
     let slot = read_i32(buffer, base);
     let invalid = Rejection::InvalidActiveGrid;
     // El nombre del piloto se muestra tal cual: un byte no UTF-8 no debe
@@ -287,16 +293,14 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         return Err(invalid);
     }
     let scoring_pose = pose(buffer, base + 264, base + 336);
-    let (pose, inputs) = if is_player == 1 {
+    let (pose, inputs, lag_s) = if is_player == 1 {
         let base = *telemetry_base;
-        (
-            pose(buffer, base + 160, base + 232).or(scoring_pose),
-            Some(inputs(buffer, base)),
-        )
+        let (pose, lag_s) = player_pose_and_lag(buffer, base, scoring_pose);
+        (pose, Some(inputs(buffer, base)), lag_s)
     } else {
-        (scoring_pose, None)
+        (scoring_pose, None, 0.0)
     };
-    Ok(Vehicle {
+    let vehicle = Vehicle {
         slot,
         driver,
         name,
@@ -338,7 +342,8 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         velocity_mps: world_velocity(buffer, base + 288, base + 336),
         pending_penalties: u32::try_from(read_i16(buffer, base + 194)).map_err(|_| invalid)?,
         inputs,
-    })
+    };
+    Ok((vehicle, lag_s))
 }
 
 // SDK pack(4), scoring +507. Los fixtures legacy borraron este byte:
@@ -519,37 +524,26 @@ fn ratio(value: f64) -> Option<f64> {
 ///
 /// Las poses de los rivales solo existen en `scoring`, cuyo reloj va unos
 /// 0,2 s por detrás de la telemetría; sin corregirlo, el radar mezcla relojes.
+fn player_pose_and_lag(buffer: &[u8], base: usize, scoring: Option<Pose>) -> (Option<Pose>, f64) {
+    let telemetry = pose(buffer, base + 160, base + 232);
+    let lag_s = scoring.zip(telemetry).map_or(0.0, |(scoring, telemetry)| {
+        scoring_lag_s(
+            scoring,
+            telemetry,
+            world_velocity(buffer, base + 184, base + 232),
+        )
+    });
+    (telemetry.or(scoring), lag_s)
+}
+
 /// El desfase se estima con el jugador, que está en ambos flujos:
 /// `Δt = dot(pos_tel − pos_scoring, v) / |v|²`, con `v` su velocidad en el
 /// mundo. Cada rival avanza después `v_rival · Δt`; el jugador ya publica su
 /// pose de telemetría.
-fn align_scoring_poses(
-    buffer: &[u8],
-    vehicles: &mut [Vehicle],
-    player: Option<usize>,
-    telemetry: &[(i32, usize)],
-) {
+fn align_scoring_poses(vehicles: &mut [Vehicle], player: Option<usize>, lag_s: f64) {
     let Some(index) = player else {
         return;
     };
-    let scoring_base = SCORING_BASE + index * SCORING_STRIDE;
-    let Some((_, telemetry_base)) = telemetry
-        .iter()
-        .find(|(slot, _)| *slot == read_i32(buffer, scoring_base))
-    else {
-        return;
-    };
-    let (Some(scoring), Some(telemetry_pose)) = (
-        pose(buffer, scoring_base + 264, scoring_base + 336),
-        pose(buffer, telemetry_base + 160, telemetry_base + 232),
-    ) else {
-        return;
-    };
-    let lag_s = scoring_lag_s(
-        scoring,
-        telemetry_pose,
-        world_velocity(buffer, telemetry_base + 184, telemetry_base + 232),
-    );
     if lag_s == 0.0 {
         return;
     }
@@ -557,8 +551,7 @@ fn align_scoring_poses(
         if position == index {
             continue;
         }
-        let base = SCORING_BASE + position * SCORING_STRIDE;
-        let Some(velocity) = world_velocity(buffer, base + 288, base + 336) else {
+        let Some(velocity) = vehicle.velocity_mps else {
             continue;
         };
         if let Some(current) = &mut vehicle.pose {
@@ -582,6 +575,7 @@ fn scoring_lag_s(scoring: Pose, telemetry: Pose, velocity: Option<[f64; 2]>) -> 
     let dx = telemetry.x_m - scoring.x_m;
     let dy = telemetry.y_m - scoring.y_m;
     let lag = (dx * x + dy * y) / squared;
+    // Presupuesto común, también en la grabadora sin Gate del adaptador.
     // No extrapolar más allá del presupuesto de frescura de LMU (500 ms).
     // Un salto no compatible conserva las poses scoring originales, sin clamp
     // que invente movimiento para todos los rivales.

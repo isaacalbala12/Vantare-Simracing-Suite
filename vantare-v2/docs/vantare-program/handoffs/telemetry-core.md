@@ -1,735 +1,117 @@
-> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
-> Plane es la única fuente del roadmap; ver [mantenimiento vigente](../../roadmap-maintenance.md).
-
 # Handoff vivo — Telemetry Core
 
-**Estado vigente de VANTA-129:** ver [paso 5](#vanta-129--paso-5-2026-11-02).
-Los estados anteriores describen el momento de cada corte.
-
-Estado de la base indicada; releer la issue antes de ejecutar.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
-
-## VANTA-129 / #1868 · Recorrido telemetría → overlay (2026-11-02)
-
-Grupo 0–1 integrado por el orquestador en `nightly@bc239c063541e9f641aafa3b846aae53e85635cf`,
-CI 5/5 SUCCESS verificada; [PR #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873)
-contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
-Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
-`D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
-El encargo completo tiene pasos 0–10: **0–2 integrados; paso 3 en PR #1882 para revisión; 4–10 pendientes**.
-
-Paso 0, commit previo `01dff4c81`: RED con pipe real, 2 conexiones al pasar
-OnTrack→Garage, esperada 1 (0,301 s de test; RETRY=250 ms, sin medir pintado).
-Paso 1, `848bb1007`: Boundary compartida, entrega completa al cambiar
-situación; regresión activada, GREEN 4/4. Se caracterizan retención/situación,
-trackers, journal e hidratación. La pausa llega por pipe hasta la función
-común de proyección llamada desde Overlay::ingest; no abre una ventana GPUI.
-`0e77c9aef` añade recepción +100 ms durante pausa para vigilar historias.
-
-Validación: CI completa de `eaf29c878` PASS, 2375/2375 tests (24 skips),
-incluidos 33/33 de telemetría; lifecycle runtime 25/25 y Engineer 5/5.
-[Run 41444548451](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41444548451), job 125274576259.
-Única diferencia nativa posterior: esa línea del test. Sobre `46bd15db6`,
-árbol native `fb7fbaa4c3ef66c621d52b047527e872c5f6e9cc`, check/Clippy
-locales PASS y focal final 3/3 PASS (Nextest `90301dd8-842d-46b7-9dc9-6539ec084e66`).
-Incluye los dos tests de proceso que fallaron inicialmente por faltar services;
-auxiliar construido, sin tocar aserciones. CI anterior detectó tres puntos y
-coma de closures, corregidos en `eaf29c878`. Ambos fallos y sus logs se conservan.
-Integridad/quality: 468/468 PASS; goldens/corpus sin regenerar ni modificar.
-Evidencia y contador separado de líneas: `D:/VantareServer/evidence/isa-1868-paso0`.
-Últimos HEAD/CI y estados de revisión se releen en #1868 tras publicar este hito.
-
-ACC experimental con golden, lectores v7–v10 y delta por Look se conservan.
-Fuera: DTO v12, capacidades en núcleo y conectar ACC. Sin installer/packaging/Hub.
-Coordinación VANTA-130: sus líneas de raíz/carpeta de datos en ipc/freshness,
-ipc/engineer_control, runtime/bin/vantare/main, runtime/rights/owner y
-services/app quedan reservadas; frescura/500 ms siguen en VANTA-129.
-Sus exports en ipc/lib preceden al paso 4; pasos 7–8 tras la ola P4.
-
-Reanudado VANTA-129 En curso para pasos 2–10 y P3 de revisión de #1873.
-Grupo integrado 2 + P3, rama `vantareapp/isa-1868-paso2-oraculo-p3`,
-worktree `D:/VantareServer/worktrees/isa-1868-paso2`, base `bc239c063`.
-P3: barrera explícita en pipe; parcial tras rehidratación con señal lenta
-retenida; pausa con hidratación parcial real; altura desde constante de banner.
-Paso 2: vista de oráculo estructurada; mismos bytes/hashes, sin regeneración.
-Caracterización previa `e3e694558`: 3857 fotos congeladas byte a byte PASS;
-regresión sintética RED por recorte de un valor next_kind anidado con coma.
-Run `208b82de-c7c6-44c2-9a6b-429f277e0a61`, log de antes conservado.
-Implementado paso 2 con DTO→Value (sin texto intermedio), claves en orden y
-retirada por campo. Features dev de dependencias ya existentes; ningún paquete,
-versión o lock nuevo. P3 preparados con recepción por revisión y emisor de
-máscaras controladas, cancelación/cierre; pausa conserva datos lentos distintos
-del productor mientras el reloj nuevo sí llega. Altura única del banner.
-[PR draft #1877](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1877)
-integrado por el orquestador en `nightly@da4c2af08c3d5f34e9634f670e9eb2dcdde0dc49`;
-CI 5/5 SUCCESS verificada. Código validado `c45dd614c`, base `bc239c063`.
-GREEN focal 2/2, run `bda8e0d8-96c3-4d29-8cf3-9042974af6ed`: 3857 fotos
-byte a byte y regresión anidada PASS. Tanda final por `compilar.ps1`, target
-privado `native/target/gates`, jobs 4: fmt/check/Clippy `-D warnings` PASS;
-Nextest `ac178d0f-035d-447a-90ac-0a8d61ce982c`, 1261/1261 PASS (14 skips
-preexistentes), incluidos 34/34 de telemetría. Lifecycle runtime 25/25 PASS,
-binarios reales de overlays normal/QA; cola cedida al terminar.
-ACC mantiene sus hashes sobre 190471 lecturas (194,912 s en esta tanda).
-Integridad/quality 468/468 PASS; datos, hashes, fixtures y lock intactos.
-Fallos iniciales conservados: quality rechazó editar el README congelado
-(restaurado byte a byte; explicación en runtime/README); Clippy pidió un
-diagnóstico en vez de unwrap; el helper asumía una foto, pero existe una
-secuencia de doce: corrige la vista por foto y conserva los saltos de línea.
-Este último falló antes de comparar bytes; la comparación original ahora pasa.
-P3 comprobados: revisión exacta sin sondeos de 16 ms, completa→parcial con
-señal lenta rehidratada retenida, pausa con datos del productor distintos y
-reloj nuevo recibido; altura desde la constante del banner.
-Recuento respecto a base: producción +13/−3; tests +316/−61;
-docs +60/−4; configuración exclusiva de tests +8/−0.
-El helper test-support queda fuera de builds de producto. Evidencia, logs,
-SHA, contador y revisión del diff: `D:/VantareServer/evidence/isa-1868-paso2`.
-La revisión opcional DeepSeek no arrancó por saldo del proveedor; no se
-atribuye evidencia al subagente. Diff revisado en este worker.
-CI final y HEAD documental: consultar #1868 y #1877; no inferir checks de otro SHA.
-VANTA-130 reserva también ui/layout::default_path; no se ha editado.
-Reanudado VANTA-129 En curso para el paso 3, desde origin/nightly actualizado
-`da4c2af08`: rama `vantareapp/isa-1868-paso3-dto`, worktree
-`D:/VantareServer/worktrees/isa-1868-paso3`. Un codificador y decodificador,
-tabla señal→campos única; DTO v11 y bytes existentes intactos. Caracterización
-antes del refactor: tests de codificación completa/selectiva, ambas lecturas
-contra las cuatro calidades originales, cada parcial rehidratado sin perder
-otras calidades, y codec existente. Logs en `D:/VantareServer/evidence/isa-1868-paso3`.
-El primer fallo de CI anterior por Instant::checked_sub pertenece a #1878;
-lo corrige el orquestador aparte; no se toca aquí. Se reservan también las zonas
-de persist/show/backup de ui/layout y el escritor de ui/workshop/state (VANTA-130).
-Caracterización previa 101/101 IPC PASS, cero skips, run `2831df1d-b1a5-41e5-8e9f-0675ece8d417`.
-Primero commits de tests `69c0e0664` y formato; después consolidación productiva.
-La tabla signal_fields de 88 campos genera selección, restauración y clasificación
-car_data/player_data. Un codificador; el completo pide toda la demanda. La entrada
-por valor delega al decodificador prestado; tipos y atributos serde v11 intactos.
-Se retira el test que vigilaba los tres mapas: ahora el compilador impide
-campos omitidos/repetidos. La antigua comparación de dos codificadores se
-sustituye por JSON live contra las cuatro calidades originales, para no hacer
-una comparación tautológica una vez comparten camino. Se conservan pruebas
-por ID, máscaras parciales, omisión frente a Unavailable y codec existentes.
-[PR draft #1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882)
-listo para revisión del paso 3, código `f306cc601`, base `da4c2af08`.
-Gates locales en una tanda por compilar.ps1, target privado native/target/gates,
-jobs 4 y raíces QA aisladas: fmt/check/Clippy -D warnings PASS; Nextest
-`5a679bcd-7861-41d1-a1e2-9445e67758e7`, 1261/1261 PASS (14 skips preexistentes),
-incluidos 34/34 de telemetría; lifecycle runtime 25/25 PASS con overlays normal/QA.
-Cola liberada. ACC conserva sus hashes sobre 190471 lecturas; las 3857 fotos
-congeladas conservan sus bytes. Ninguna regeneración o cambio de datos/lock.
-CI del código f306cc601 5/5 SUCCESS: [run 41490639741](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41490639741),
-job 125432756522, suite 2400/2400 PASS (24 skips), lifecycle runtime 25/25 y
-Engineer 5/5. Logs y SHA conservados. El último commit solo cierra este handoff;
-árbol native idéntico al validado. CI de ese HEAD documental: consultar #1882.
-Quality/integridad 468/468 PASS. Revisión del diff y comprobación mecánica:
-88 expresiones con la misma señal; serde/Boundary, conversores, decodificador
-prestado, enum/ALL y cadencias de demanda intactos. Sin dependencias nuevas.
-Líneas frente a da4c2af08: producción +373/−846 (neto −473), tests +39/−78;
-docs +55/−5. Evidencia y contador en D:/VantareServer/evidence/isa-1868-paso3.
-Plane Por revisar para este corte. Siguiente: revisión/integración por el
-orquestador y nuevo corte desde origin/nightly actualizado.
-Pasos 4–10 pendientes.
-Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
-no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
-por esta sesión; no se ha supuesto high. El texto inferior conserva historia,
-no fija la versión de fotos vigente (v11).
-
-## 1. Resultado
-
-Adquisición neutral LMU/ACC, calidad/frescura, fusión y derivaciones, publicación de fotos y journal. El núcleo entrega hechos: no pinta UI ni recomienda estrategia.
-
-## 2. Autoridad y lectura verificada
-
-Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1562), [#1527](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1527), [#1474](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1474) y [#1498](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1498); GitHub/Project Vantare gobierna estado. Entradas: [contratos nativos](../../../native/README.md), [reglas](../../../native/AGENTS.md), [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md). Escritura de esta compactación verificada en #1561.
-
-## 3. Estado real y canal
-
-### #1750 / VANTA-105 — tests IPC latest y REST LMU
-
-Rama `vantareapp/isa-1750-test-ipc-latest`, base `nightly@3136f0acb` y worktree propio.
-Se sustituyen los dos sleeps del test de despertar/cierre por señal de espera
-bajo el mutex, ACK del valor, señal de segunda espera y ACK de liberación al cerrar.
-La observación es exclusivamente `cfg(test)`; la lógica y prioridad de cierre
-de producción no cambian, tampoco la aserción `(true, true)`.
-Código en commits separados: IPC `018693959`, HTTP `096f3c78d`.
-[PR #1755 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1755),
-creado en draft mientras se completaban gates. Evidencia verificable en
-`C:/VantareServer/evidence/ipc-latest/INFORME.md` y sus logs.
-Originales aislados: IPC y HTTP 500/500 PASS cada uno, retries=0; no se afirma
-reproducción espontánea. Corregidos: IPC y HTTP 500/500 PASS cada uno, retries=0.
-Control IPC original con lector retenido: FAIL101 `(false,true)`; corregido PASS,
-sin notify de put o close: FAIL101 a los 5 s. El test detecta ambos despertares.
-Otros cuatro sleeps de IPC inventariados en [la issue](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1750)
-sin corregirlos. Sin merge, publicación ni cambios a RC4. El estado operativo,
-HEAD final, fmt/Clippy/Nextest con telemetría y los resultados de cada check CI
-se registran en esa issue: consultar el SHA exacto, no inferir CI verde de este
-registro de las repeticiones funcionales.
-
-Ampliación del mismo encargo en commit separado: el banco HTTP LMU de endpoint
-y cuerpo usa un cliente solo de test sin el deadline live de 750 ms; mantiene
-proxy/redirecciones/status y todas las aserciones de endpoint, 404, cuerpo vacío
-y tamaño. El listener ya estaba enlazado antes del hilo; no era una carrera de
-bind. La carga puede consumir el deadline antes de que responda el servidor de
-test. Una regresión retiene la respuesta por canal más de dos deadlines, luego
-exige `[]`. `Client::new`, el transporte y el test específico de timeout de
-producción permanecen idénticos. Respuesta retenida 10/10 PASS; al usar el
-cliente live en el mismo banco, FAIL100 antes de liberar el servidor. El único
-ajuste posterior a las repeticiones fue el formato de una aserción requerido por
-fmt; se conserva ese fallo inicial y se verifica la revisión final en los gates.
-
-### #1638 / VANTA-33 — pulido M-1…M-6 tras integración de #1664
-
-Rama `vantareapp/isa-1638-pulido`, base `nightly@bcaa0e3f2` verificada; #1664
-ya integrada por el orquestador. [Alcance y regresiones](../../telemetria/pulido-1638-2026-10-16.md).
-M-1 exige dos avances cercanos tras un stall, sin ventana de 2 s; M-2 reconoce
-alias Hypercar sin asignar por frame; M-3 delimita los goldens; M-4 Flags+Cars
-omite sanciones; M-5 limita a 64 MiB agregados el historial del lector ajeno.
-M-6 repite el archivo íntegro por Core/DTO y los 18 widgets, scope practice-only.
-[Resultado íntegro actualizado](../../telemetria/imola-practica-pulido-2026-10-16.md):
-código `8d53d2cf1`, PR draft #1679 a nightly; **287.495 fotos por cada widget,
-cero rechazos, ambos procesos exit 0**, footer/hashes/CRC válidos.
-196.376 Live / 91.119 Stale (31,6941 %); dos avances conservan 17.955 fotos más
-caducadas que el fix previo, sin ampliar 500 ms ni volver a 2 s. 37 rivales
-en movimiento fiable; jugador parado, cero vueltas/inputs. Fastest-lap sin aviso
-nuevo; mapa no acreditado. Artefactos privados `logs/1638-imola-pulido-01/`.
-Los resultados anteriores de abajo son históricos.
-
-Lifecycle Engineer: se fuerza la llegada tardía de derechos con barrera y se
-distingue el clear de fuente stale de la base autorizada. Mutación sin barrera
-reproduce `assertion failed: lap`; cinco tandas completas 25/25 PASS sin cambiar
-permisos, plazos, concurrencia ni Engineer productivo. Gates por cola MIN_GB=0.
-Clippy workspace/all-targets -D warnings, fmt/diff, Nextest con telemetría
-935/935 PASS. CI del código [run38904835599](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/38904835599)
-verde: Windows 1870/1870 Nextest y Engineer lifecycle 5/5. El cierre de M-6
-solo añade documentación; consultar los checks del SHA final en #1679.
-VANTA-33 sigue En curso: conducción/A-B, qualy/carrera/formación/salida y agenda
-de siguiente sesión no quedan cubiertas por la práctica estática de Imola.
-
-### #1638 / VANTA-33 — CI Engineer y contraste de jugador (16-oct)
-
-[Investigación y límites](../../telemetria/ci-y-jugador-2026-10-16.md).
-`08f52be56` sí tuvo CI, roja en run38847620638: cierre del hijo por derechos
-tras HELLO, no timeout ACK. El banco no pasa por LMU/Gate. Aislado antes del
-cambio Engineer46/46 PASS; se aísla `engineer::recovery` en Nextest, prioridad100,
-sin tocar TTL/plazos/permisos/retries/aserciones. El log previo no conserva edad
-de la política: contención/TTL compatible, sin afirmar una medición ausente.
-Base actualizada por merge de `nightly@8166277cb`.
-
-SDK y Imola contrastan `mIsPlayer → mID → fila telemetry`, junto al índice de
-cabecera; velocidad norma local en m/s, scoring independiente como contraste.
-La auditoría streaming completa guarda resultados sin nombres en
-`C:/VantareServer/logs/1638-player-imola-audit.json`; resultados/cierre/checks/SHA
-en #1638 y PR draft #1664. Nueva regresión permuta filas de una captura real
-con jugador a15,5922m/s, sin cambiar la lectura productiva. Los diagnostic A/B
-solo tienen índice/velocidad: faltan IDs y mIsPlayer para certificar aquellos
-dos intentos. No asumir si Isaac conducía ni retirar el requisito de movimiento.
-Kit/ZIP sin cambios; VANTA-118 y prueba física siguen pendientes. Plane En curso.
-
-Clippy workspace/all-targets `-D warnings`, fmt/diff PASS; Nextest CI workspace
-Engineer/runtime/domain/ipc/services y telemetría **915/915 PASS**, 9 skips,
-135,737 s. Recovery primero/seis PASS, incluida pérdida de autoridad.
-UI completa/lifecycle locales omitidos por alcance/RAM; CI remota por SHA
-se registra en #1664, no se confunde con estos gates locales.
-
-### #1638 / VANTA-33 — kit A/B preparado para VANTA-118 (16-oct)
-
-**Kit corregido:** no usar el ZIP inicial `f2851e…`. La regresión adicional
-reprodujo `ExitCode` nulo en PS5; `01d05fa1a` conserva handles de los hijos y
-prueba salidas reales 0/7. El ZIP actual tiene el nuevo SHA de abajo, Python7/7
-y se ha vuelto a comprobar su tarea/autoeliminación. Extraer en carpeta nueva.
-
-[Protocolo y comandos](../../telemetria/ab-lmu-2026-10-16.md). Fuente
-`21bbe9401432d9646668f7a259ed082939ad1cd8`, kit privado listo en
-`C:/VantareServer/share/kit-ab-lmu/kit-ab-lmu.zip` (**995962 bytes**), SHA-256
-`39bfa69266b08ff18d532c235f67aac2a655316b9e50f946ad386022febd57f1`.
-Grabadora release CRT estático + PresentMon 2.6.0 portátil/licencia + scripts PS5
-con hashes, tarea interactiva efímera oculta, STOP y análisis offline streaming.
-No compilación/instalación en PC de juego, sin juego en servidor ni capturas de app.
-
-Espera práctica/SHM usable, jugador >1 m/s y reloj avanzando; después **C0 60 s
-solo SHM + A/B/A/B 180 s cada tramo**, total **13 min**, A/B seis minutos cada uno.
-Mismos dos GET/orden/backoff que producción; B solo añade `/rest/race/car` cada
-≥2 s. Primeros 10 s excluidos. Ancla QPC relaciona peticiones, publicación y
-PresentMon. Mide FrameTime CPU/DisplayedTime separados; ausencia no es cero.
-Control C permite revisar el efecto conjunto de los GET productivos; si A corta
-no atribuir a un endpoint individual sin controles separados. B sin efecto no
-descarta otras rutas/interacciones del inventario original.
-
-Inventario productivo revisado: únicamente `standings` y `sessionInfo`, GET a
-127.0.0.1:6397, secuenciales, 250 ms después de ronda correcta; errores esperan
-500/1000/2000 ms, deadline750 ms/GET, cuerpo4 MiB, TTL auxiliar2 s. El kit registra
-la cadencia efectiva. No se cambian esos endpoints ni el adapter.
-
-Clippy/fmt PASS, Nextest CI workspace runtime/domain/ipc+telemetría **676/676 PASS**,
-7 skips; Python **7/7 PASS**, release/CRT y CLI/captura vacía comprobados. PS5,
-hashes, espacios/apóstrofe y **tarea interactiva negativa real con autoeliminación** PASS.
-Verificador QA release actualizado; `Verificar-AB.ps1 -Widgets` ejecuta después
-los cuatro archivos A/B por las 18 proyecciones en serie, scope practice-only.
-Logs `1638-ab-*`. Falta ejecutar con Isaac; no hay resultado físico ni CI remoto
-certificado por estos checks locales. Plane VANTA-33 En curso, PR draft #1664.
-VANTA-118 no se mueve desde este worker; conduce Isaac. Conducción/carrera y
-Avisos de inicio/fin/formación/salida siguen sin certificación hasta sus capturas.
-
-### #1638 / VANTA-33 — investigación prioritaria de frescura (16-oct)
-
-Código corregido **`2264bcd20af0b922213af4b2e66cd0342f0cd2db`**, base
-`nightly@354c207aa` contenida. PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664),
-Plane En curso. [Informe corto de causa y evidencia](../../telemetria/imola-frescura-2026-10-16.md).
-El replay usa tiempo grabado, sin retrocesos. Lecturas SHM p50 17,209 ms,
-ninguna separación >=500 ms; sí hay 2.245 huecos del reloj scoring y 2.233 del
-jugador. No es el coche parado: el reloj del jugador cambia 146.741 veces.
-La recuperación heredada de 2 s quedaba reiniciada por esos huecos; ahora cada
-bloque vuelve a fresco al avanzar su propio reloj. Se conservan stall de 500 ms,
-ausencias y TTL REST; no se reescriben goldens ni datos de la grabación.
-
-Replay/Core completo tras arreglo: **214.331 Live, 73.164 Stale / 287.495 fotos**,
-**99,9833 % → 25,4488 % Stale**, cero rechazos, footer completo. Los restantes
-son caducidad real de `origin.source_time` >=500 ms. La captura no acredita aún
-continuidad: los 2.233 huecos del jugador se solapan uno a uno con 2.233 GET
-sin respuesta a `/rest/race/car` del grabador, ajeno al adapter productivo.
-Asociación fuerte; falta A/B en PC de juego con dos GET vs inventario completo
-para atribución causal. No se ha abierto LMU ni cambiado el grabador para esta entrega.
-
-Gates en serie por cola MIN_GB=0: **Clippy workspace/all-targets -D warnings PASS,
-Nextest CI workspace runtime/domain/ipc con telemetría 674/674 PASS, 7 skips,
-fmt/diff PASS**. Dos opt-in sobre el archivo íntegro PASS (400,18 s conjuntos);
-regresión de 582 filas reales saneadas incluida en Nextest. Primer Clippy detectó
-nombres similares en el auditor; corregido y log conservado. Logs
-`C:/VantareServer/logs/1638-freshness-final-*` y `1638-cadence-*`.
-UI completa/lifecycle no repetidos por alcance/RAM; este turno verifica el
-productor completo, no otra ingestión de los 18 widgets. El informe siguiente
-conserva la ejecución UI inicial. Conducción, qualy/carrera/formación/salida/final
-siguen pendientes. Sin promoción ni release.
-
-### #1638 / VANTA-33 — práctica de Imola offline (16-oct)
-
-**Canal real:** Plane En curso, PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)
-a nightly. Rust evaluado `acf7d09dc`; sincronización local posterior
-`6db5879f5` con `nightly@354c207aa`, autorizada por el encargo inicial.
-La PR remota dd029a9be detectó conflicto de README: se resolvió conservando
-DTO v11 / Services v10 / derechos v5. Tras sync: Clippy PASS, Nextest CI
-runtime/domain/ipc con workspace **673/673 PASS**, 5 skips (incluye los 32
-tests de telemetría), fmt PASS. Logs `C:/VantareServer/logs/1638-postsync-*`.
-No es una
-promoción a nightly; no hay release ni cambios en la rama #1653/#1660.
-
-Recibida `C:/VantareServer/evidence/grabacion-lmu-imola/sesion.lmu.gz`,
-3.006.324.579 bytes, LMU 1.4.2.0, 77 min 18 s de práctica Imola. SHM cuenta
-38 coches totales; Alpine #35 del jugador parado fuera del garaje y sin vueltas,
-IA en movimiento. Datos crudos privados con nombres/paths: no versionar.
-[Informe vivo por widget, fuentes y pendientes](../../telemetria/imola-practica-2026-10-16.md).
-
-El arnés completo terminó con `--recording-scope practice-only` en
-`C:/VantareServer/logs/1638-imola-final-01`: productor/consumidor exit 0,
-**287.495 fotos por cada widget**, **0 rechazos**, **261.546 SHM estables**.
-REST: 61 endpoints, 159.083 respuestas, 51 con 200. **48 fotos Live y
-287.447 Stale (99,9833 %)**: no es cobertura continua. Una sola práctica id 1.
-Movimiento fiable: 26 rivales, máximo 82,7065 m/s. Jugador: 53 fotos fiables
-con ruido de velocidad <=1,81e-7 m/s, cero inputs y cero vueltas. Solo estructura.
-Calma/seco: 45 fotos Reliable con cero; se preservan las calidades restantes.
-RSS observado tras >=240k fotos: ~26,24 MiB total, sin descomprimir a disco.
-Fastest-lap no emitió aviso nuevo; ingest=false no significa no recibir datos.
-La clasificación legible se regenera desde los agregados sin cambiar números
-ni repetir el replay; Python cubre el ruido numérico real y casos no estáticos.
-Recorre Reader/Replay/Translator/Core,
-DTO estricto y los 18 Widget::ingest, más los 7 campos de Avisos. Streaming,
-hashes por cuerpo, footer/CRC; sin juego, HTTP, ventanas ni capturas de app.
-Métricas nuevas separan velocidad/inputs/vueltas del jugador y movimiento fiable
-IA. No contar Stale/Estimated como evidencia de movimiento. La preliminar se
-canceló deliberadamente tras 41.555 fotos: no es resultado final.
-
-La captura confirma ceros explícitos REST de viento en calma y pista seca:
-se respaldan solo con respuesta vigente de esta misma sesión/circuito, sin
-rejuvenecer SHM. Fixture saneada y tests de ausencia, identidad y TTL. Daños
-por componente, geometría productiva de pista y estrategias por nombre no
-se inventan con REST ambiguo; ver informe.
-
-Gates del código nuevo: Clippy workspace/all-targets -D warnings **PASS**,
-Nextest runtime/domain/ipc con workspace **646/646 PASS**, 5 skips (incluidos
-los tests de proceso Services), telemetría **32/32 PASS**, 1 skip, regresión
-UI de movimiento **1/1 PASS**, Python **7/7 PASS**. En serie por la cola,
-MIN_GB=0. Logs `C:/VantareServer/logs/1638-imola-final-*`. Los fallos iniciales
-y su justificación se conservan en el informe. UI completa y lifecycle no
-repetidos por alcance/RAM; no se ha capturado Vantare (#1655).
-
-Sigue pendiente conducción real del jugador, varias vueltas y servicio;
-además inicio/fin de sesión, clasificación/carrera, formación/salida y agenda
-fiable de próxima sesión. Una práctica parcial no cubre esas situaciones.
-No relajar frescura ante pausas SHM observadas. El supervisor live 16280 fue
-cancelado con STOP y terminó cancelled; **no abrir LMU en el servidor**.
-[Kit y comando offline](../../telemetria/grabacion-completa-lmu.md), ZIP release
-en `C:/VantareServer/share/kit-grabacion-lmu/`; procedimiento live histórico
-queda sustituido por grabación desde el PC de juego.
-
-### #1638 / VANTA-33 — revisión de gates del servidor (R2)
-
-El orquestador probó `25885bf5b`; log original
-`C:/VantareServer/logs/gates-1638.log`: 3 doc_markdown, un fallo real del test
-de distancia y cuatro tests de Services sin binario al seleccionar con `-p`.
-Diagnóstico de la captura outlap sin modificar: longitud @1720 **0 m**, distancia
-de vuelta **159,606201171875 m**, in_pit **false**. El adapter debe conservar
-la distancia a meta ausente; el test era incorrecto al exigirla sin longitud.
-La regresión ahora fija longitud, pits y resultado esperados por cada fixture:
-**3586,8802490234375 m** estimados en 1.3; ausencia en outlap sin geometría y en
-las dos capturas 1.4 con jugador en boxes. No se reescribe ninguna captura.
-
-Corrección de los 3 comentarios Rustdoc; `StartPhaseDto` pasa a Copy y se extrae
-el saneado de SessionTiming para resolver los avisos nuevos que aparecieron al
-avanzar Clippy (sin permitir lints ni cambiar el saneado). Autorización nueva:
-gates Windows imprescindibles en serie, `VANTARE_CARGO_MIN_GB=0`, target propio,
-cola y jobs de la máquina (2 en esta tanda). Código de corrección `aa14ffa89`.
-
-Resultados finales del código corregido:
-
-- Clippy `--workspace --all-targets -- -D warnings` **PASS**, exit 0, 51,36 s
-  en la repetición tras reinicio. Defaults conservados excepto DuckDB bundled,
-  con biblioteca oficial de desarrollo como en gates.ps1. Log
-  `C:/VantareServer/logs/1638-r2-clippy-4.log`.
-- Nextest **640/640 PASS**, 5 skips, ejecución 43,877 s (build 2 min 06 s),
-  exit 0. `--workspace`, filtro `package(vantare-runtime) |
-  package(vantare-domain) | package(vantare-ipc)`, manteniendo Services en la
-  selección de compilación para su ejecutable y excluyendo de la compilación
-  de tests los demás miembros. Log `C:/VantareServer/logs/1638-r2-nextest-2.log`.
-- La regresión `real_frames_expose_only_demonstrable_session_timing` pasa, igual
-  que los cuatro tests de proceso Services que fallaban con `-p`.
-- Fmt y diff --check **PASS**. No se repite lifecycle, UI ni el perfil largo de
-  telemetría: el encargo de revisión pide solo estos gates imprescindibles.
-  Los opt-ins físicos siguen sin ejecutar.
-
-Fallos previos conservados en `1638-r2-clippy.log` y `1638-r2-clippy-2.log`; clippy-3 quedó interrumpido por el
-reinicio de T3 sin resultado final y se comprobó que no quedaba proceso suyo.
-El primer setup Nextest con todos los miembros se canceló antes de tests para
-limitar la compilación a los crates solicitados más el ejecutable Services;
-no se cuenta como PASS. Todos los logs originales se conservan.
-No quedan gates de esta tanda activos.
-Fase B sigue pendiente de la instalación de LMU y de sesión cargada por Isaac.
-
-### #1638 / VANTA-33 — continuación servidor, 15-oct-2026
-
-Encargo vigente reemplaza las excepciones del relevo: Plane **En curso**,
-PR draft a nightly autorizado, sin promoción ni optimización/A/B en esta fase.
-Worktree `C:/VantareServer/wt/isa-1638`, target
-`C:/VantareServer/targets/isa-1638`, buzón `C:/tmp/buzon/telemetria-1638.md`.
-Partida `f192ce4ed`; merge local de `origin/nightly@28800654c` sin conflictos
-(`320ea57c6`). La rama sigue siendo `vantareapp/isa-1638-telemetria-lanzamiento`.
-Issue OPEN, `area:telemetria-core`, GitHub Project Vantare verificados; no hay
-milestone de versión de lanzamiento asignado.
-
-Contrato DTO **v11** de Avisos: `Session.timing` entrega instantes de inicio y
-fin reales, fin programado, fase, distancia longitudinal a salida/meta y tipo/
-inicio de próxima sesión, cada uno con calidad. Productores demostrables:
-fin programado SHM válido y distancia estimada fuera de boxes. Inicio/fin real,
-fase y próxima sesión quedan **Unavailable**: las capturas no prueban esas
-señales. No se declara cerrada esa parte del objetivo. Guía para el dueño del
-widget: [contrato](../../telemetria/session-alerts-contract.md); no se modifica
-la rama #1653. DTO live rechaza v10; lectores guardados migran v7–v10 sin tocar
-originales. Callers de fixtures UI pasan al lector explícito de datos guardados.
-
-Además: identidad nueva entre dos sesiones del mismo tipo con número nativo
-distinto aunque no retroceda el reloj; el REST anterior no cruza esa barrera.
-Regresiones escritas sobre capturas reales y mutaciones controladas para
-negativos antes de la línea, pits, geometría inválida, cambio entre prácticas,
-transporte completo/selectivo, ausencia estricta, migración y obsolescencia.
-Pendientes de ejecutar mientras falta RAM; no son evidencia PASS todavía.
-
-Fmt **PASS** por la cola (mínimo 0,5 GB solo para el formateador, que no compila).
-Integridad y anti-slop **456/456 PASS** en esta continuación. Los gates Rust
-están bloqueados por la cola: ~1–2 GB libres, mínimo 5 GB. No se reduce el
-umbral ni se cierran procesos ajenos. Los PASS del relevo no validan este diff.
-No se inicia LMU ni se abre/captura Vantare (#1655). La QA física anterior
-«LMU sin sesión usable» sigue pendiente. Comando preparado:
-`python -I native/scripts/verify-lmu-widget-coverage.py --target-dir C:\VantareServer\targets\isa-1638`.
-Primero práctica con jugador en boxes basta para transporte; luego conducir
-formación/salida y las transiciones práctica→qualy→carrera para fuentes nuevas.
-La prueba de proyecciones no graba ni certifica esas transiciones.
-
-Código de esta continuación `9a0163e60` y `794dd0a03` (saneado exhaustivo).
-[PR draft #1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)
-a nightly, registrado en T3. Push y HEAD final documental se verifican en el
-buzón. La CI de `9a0163e60` pasó formato, ratchet y ruta de promoción; Linux
-seguía compilando al consultar. No se extrapola a los commits posteriores.
-Se canceló únicamente la espera local de check sin arrancar compilador
-(RAM llegó a <1 GB); no quedan gates locales activos. Fmt final PASS.
-Plane conserva En curso con PR, comentario y resumen verificados.
-
-Siguiente: liberar RAM y ejecutar check/Clippy/Nextest/lifecycle/telemetría;
-comprobar la CI del HEAD final. La fase A sigue incompleta por esos gates. Después coordinar fase B
-con Isaac. Daño estructural exacto, forecast 15 min, ABS/TC/FFB y sanciones
-con tipo/plazo siguen sin fuente demostrada; presentación de #1629 está fuera
-de esta rama. No se inventan señales para completar la tabla.
-
-### Histórico del relevo #1638 / VANTA-33 — lanzamiento y optimización incorporada
-
-14-oct-2026, worktree `C:/tmp/wt-1638`, rama
-`vantareapp/isa-1638-telemetria-lanzamiento`, base `nightly@79a1ace6`.
-Excepción expresa: seguimiento por orquestador/buzón, sin Plane/Notion ni
-subagentes; push al finalizar, sin PR/merge. Auditoría `98482e92`; implementación
-`7ae70eeb`; demanda/host QA `6dab6930`. [Tabla de cobertura y límites](../../telemetria/cobertura-lanzamiento.md).
-
-REST LMU añade flags locales/personales y paradas, SHM entrega el modelo que
-antes se omitía; energía virtual Hypercar y media estimada por vueltas limpias.
-Identidad slot+etiqueta, TTL, barrera de sesión y calidad conservados. Sin nueva
-dependencia/campo DTO/version. Regresión RED→GREEN sobre captura sanitizada de
-37 coches y fuentes existentes; 3839 fotos LMU47 verifican modelos/paradas.
-Oráculos congelados íntegros; vista de comparación histórica solo retira esos
-dos campos recién entregados, con verificación separada contra originales.
-
-Gates locales: build/fmt/Clippy PASS; Nextest runtime/domain/ipc **630/630**, 5
-skips; lifecycle runtime **13/13**; telemetría **30/30**, 1 skip físico opt-in,
-ACC completo 999,416 s. Integridad/anti-slop **456/456**. Logs `C:/tmp/1638-*.log`.
-Target exclusivo `C:/tmp/target-1638`, cola y jobs=2. No build/QA Hub/storage.
-Smoke físico productivo: **Paused, 37 coches, jugador, 0 avances**. La primera
-prueba de conducción falló; el orquestador corrigió a «sesión válida basta sin
-IA/movimiento», y ese smoke pasa. No acredita conducción/18 diseños/ACC físico.
-
-En seguimiento: el pipe selectivo de un layout con solo Banderas omitía el
-jugador; nueva regresión real de pipe reproduce «—» frente a «DESCALIFICADO».
-Se añade Penalties a la demanda de ese widget para obtener identidad y contador,
-sin alterar contrato IPC ni pedir pedales. GREEN por pipe real; gates UI finales
-**321/321**, 4 skips, Clippy/fmt y Release PASS.
-
-El buzón incorpora fase 4 de #1630/VANTA-20. Arnés QA copiado a esta rama;
-scripts/resultados `C:/tmp/1638-perf`, worktree #1630 intacto. Release y Clippy UI
-PASS; 321 tests UI PASS tras la regresión de demanda. Cuatro tomas basales
-invalidadas por compilaciones/QA ajenas y una por nuestro cargo fmt. El 15-oct
-local, al quedar el PC libre, terminó la campaña: **6 válidas, 0 intentos de
-optimización completos, 0 mejoras**. Mediana CPU 4,746961 % de un núcleo
-(ruido 1,556382 puntos), residente 94,366391 MiB (ruido 0,334759), privada
-89,129430 MiB (ruido 0,320356). Mismo control, seis tomas 60 s + 180 s,
-PRACTICE1/37/fase SHM 5/reloj fijo. Diagnostic-03 validó lectura/pintores y árbol de cuatro procesos,
-incluido conhost.exe de System32, cuyo coste se incluye; 10 s con profiling
-no son baseline ni prueba de mejora. No se cerró ningún proceso ajeno.
-Se liberaron todos los slots/locks/marcadores propios y no queda campaña activa.
-Campaña basal completada; candidato REST sin commit pasó Nextest 631/631,
-Clippy/fmt/Release y LMU (11 captura/oráculo + 10 conformidad) antes del apagado.
-Los pares A/B, B/A, A/B se interrumpieron: a1 no contiene `result.json`, así que
-siguen siendo 0 pares completos, 0 intentos evaluados y 0 mejoras. No contar
-controles, preparación ni una toma cortada como intentos.
-Baseline seis tomas; tres pares por candidato, ruido medido, diez sin mejora
-consecutivos para terminar; cada mejora necesita su commit y antes/después.
-
-DUDA ya comunicada: daños exactos/zonas/reparación, forecast actual 15 min,
-ABS/TC/FFB y tipos/plazos DT/SG no tienen fuente/equivalencia acreditada. Dents
-ordinales no son integridad porcentual; presets weather no son forecast live.
-El orquestador asigna PenaltyKind a #1629; no existe en esta base. Conectar
-su tipo cuando esté disponible y haya fuente real positiva, sin redefinirlo.
-Entrega global **parcial** hasta resolverlos. Push remoto confirmado `13fea744`,
-sin runs CI de la rama; sin PR, merge, promoción ni release. Siguiente: cerrar
-gates del candidato REST y ejecutar `campaign_pair.py` con su build hasheada
-cuando LMU ofrezca una sesión y el Hub/QA de #1634 deje el PC libre.
-Scripts compilados con py_compile; reservas por la cola y pantalla
-se liberan al salir. Nunca contar las tomas inválidas como diez sin mejora.
-Después, profiling separado y tres pares por candidato. Scripts/CSV/JSON y
-binarios de control hasheados: `C:/tmp/1638-perf`, control `baseline-6dab6930`.
-Entrega parcial en la rama de issue; remoto/CI se verifican en
-el buzón, sin PR/merge ni promoción. Mantener issue abierta hasta resolver
-fuentes/decisiones y mediciones, con seguimiento del orquestador.
-
-Continuación 15-oct tras reinicio: fuentes/binarios del candidato
-`a49d9d9d8e92` verificados contra su manifiesto; es digest, no SHA de commit.
-Código guardado en `9eff05cb`; candidato A/B, sin mejora medida todavía.
-Nextest runtime/domain/ipc **631/631**, 5 skips, y fmt pasan de nuevo;
-build y Clippy con todos los targets PASS en `C:/tmp/1638-resume-*.log`.
-Disco agotado interrumpe compilación UI/lifecycle antes de ejecutar sus tests;
-logs de fallo conservados. Se recupera espacio solo con `cargo clean` sobre
-target-1638 (runtime/UI y Release), sin borrar evidencias. Repetición en
-`C:/tmp/1638-recovered-*.log`: fmt PASS, UI **321/321** (5 skips), lifecycle
-**13/13**; telemetría completa **30/30**, 1 skip físico opt-in, exit 0 en
-1038,911 s; ACC completo **974,046 s**. No quedan gates locales en curso.
-Anti-slop/retirement **456/456** PASS de nuevo. `tasklist` no encuentra LMU y
-el sondeo de solo lectura no abre `LMU_Data`; además el Hub de #1634 vuelve a
-estar abierto. Fases físicas 3/4 pendientes, sin cerrar apps ajenas ni adquirir
-locks de medida. Recalibrar ruido después del reinicio en el mismo contexto LMU.
-Prueba física por widget preparada: `native/scripts/verify-lmu-widget-coverage.py`
-arranca solo Core QA con datos/pipe aislados y usa el test UI opt-in para comparar
-las 18 proyecciones y cuatro configuraciones con su demanda por pipe. Rechaza
-replay y acepta sesión pausada/parada/garaje; no abre ventanas ni guarda fotos.
-No se afirma QA física hasta ejecutarla con LMU. Esenciales: **13 OK/condicionados,
-4 parciales, 1 falta**, con fuentes/decisiones pendientes en la tabla de cobertura.
-Guarda opt-in comprobada con Core replay aislado: rechaza `Replay != Live`,
-exit 101 esperado. El script físico respeta el `pc-medicion.lock` heredado de
-rest-discard-01-a1-01 y termina sin arrancar Core. Ese lock (PID 13928) y
-pantalla-ocupada (PID 25728) siguen en disco; ambos PID ausentes. Comunicado al
-orquestador sin modificarlos en ese momento. Después el orquestador autoriza
-retirarlos por el buzón: comprobados ambos PID con tasklist y propietarios JSON,
-se retiran únicamente esos archivos. No quedan reservas antiguas #1638.
-
-Hitos nuevos: REST `9eff05cb`, QA/documentación `99b5963c`, más cierre documental
-de gates. Binarios/fuentes de control y candidato A/B verificados otra vez tras
-la limpieza: intactos. 0 pares completos, 0 intentos evaluados, 0 mejoras.
-Issue #1638 OPEN verificada, updatedAt `2026-10-14T19:41:08Z`, sin labels,
-milestone ni Project; seguimiento del orquestador sin escrituras al tracker.
-Push y SHA remoto final se releen al terminar y se registran en el buzón.
-Sin PR/merge/CI de aceptación/promoción/release; estado de lanzamiento parcial.
-Último chequeo: LMU ahora abierto (PID 20388), pero SHM sin parrilla activa y
-REST sin JSON de sesión admitible. Fases 3/4 esperan **sesión usable**, sin
-exigir movimiento. El Hub de #1634 ya no aparece en ese chequeo. No se cuentan
-intentos ni se mide sin fuente válida.
-Opt-in físico completo tras liberar reservas: Core QA arranca y se cierra por
-EOF; test exit 101 «LMU sin sesión usable en el pipe QA», log
-`C:/tmp/1638-live-coverage-final.log`. No es PASS físico ni mejora. Gates
-ordinarios verdes; QA física y A/B pendientes de cargar sesión.
-
-### Evidencia anterior de #1606 conservada
-
-#1606 / VANTA-46 Por revisar verificado, ronda 2 por Codex CLI sin subagentes.
-Rama `vantareapp/isa-1606-review-pipeline-telemetria`, base original
-`nightly@69fa2d65`; fetch observa `0807fbd0`, sin incorporar otra entrega.
-Los ocho P2 originales y sus commits se conservan; review Sol completa de
-`cdf2e631` confirma siete suficientes y F5 parcial en la proyección de huecos.
-N1 `bb377104` recupera series tras retroceso de distancia con reloj creciente;
-el contador retrasado sigue protegido. N2 `93230224` descarta candidata delta
-al retroceder y conserva referencia previa válida. N3 `5a399f4b` aísla los
-puntos fiables de chunks con gap; v1 no localiza el corte. RED exactos en Rust
-y DuckDB→plot-page→Reader→gráficos, GREEN 43/43 focales. Once P2 en ambas rondas,
-sin P1 confirmado. Informe vivo: [revisión](../../analysis/review-pipeline-telemetria-2026-10.md).
-
-Código local probado `5a399f4b`, árbol native
-`567bbc347c7308a2c5892cdeac5dc0dae6791dfb`: fmt/check/Clippy PASS,
-Nextest 1660/1660 PASS (7 skips heredados), lifecycle 18/18 PASS;
-telemetría 25/25 PASS, 0 skips (ACC completo 901,336 s). Integridad/retirement 456/456 PASS.
-Logs `C:/tmp/1606-evidence/r2-*`, por cola, jobs=2 y target propio.
-[PR draft #1616](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1616)
-a nightly actualizado y push de los tres fixes releído. Project Vantare In Review.
-HEAD final/CI tras el hito documental se verifican en #1606 y el buzón;
-CI remota completa y QA física pendientes.
-Sin mediciones, datos reales, merge, promoción ni release.
-
-Base incorporada: `origin/nightly@acff350d740d33ae8901291b63d69da004912fbc`, con #1562/PR #1576 integrada. Resolución de merge de #1564/PR #1577 en `vantareapp/isa-1564-widgets-por-sesion-impl`, validación local completada: fmt/Clippy, Nextest 1613/1613 (7 skips), lifecycle 18/18 y telemetría 25/25 PASS. #1562 introduce situación neutral y DTO live v10; #1573 conserva admisión de acceso frente al cierre por juego. Sin promoción ni release. Evidencia anterior #1562: Nextest 1590/1590, lifecycle 18/18 y telemetría 25/25; el resultado post-merge se acredita con logs merge-*.log en C:/tmp/ola2/evidence-1564, separado del resultado anterior.
-
-## 4. Decisiones cerradas
-
-- `Adapter::poll` no bloquea y recibe reloj; Origin conserva tiempo de origen/recepción. Capacidades y calidad explícitas, sin fallbacks sintéticos.
-- Live negocia solo DTO v10 en esta base; versiones guardadas anteriores pasan por lectores explícitos, nunca por el lector live.
-- Fotos latest-wins no sustituyen journal/cursor/ACK de eventos. Época nueva invalida estado previo.
-- Demand no autoriza inventar datos ni poner reglas del simulador en widgets; adapters privados y ViewModels puros.
-- Catálogo de señales único descartado en #1561: no habría ahorrado ficheros en los cambios observados. Reconsiderar ante un adapter/señal nuevos con coste medido.
-
-## 5. Arquitectura y ownership
-
-[Adapter](../../../native/domain/src/adapter.rs), [merge](../../../native/runtime/src/core/merge.rs), [DTO](../../../native/ipc/src/dto.rs) y [codec](../../../native/ipc/src/codec.rs). Runtime posee adquisición/adapters y supervisión; domain es puro; IPC posee wire. No hay dependencia transitiva domain/UI→runtime ni lectores del juego en Engineer/widgets.
-
-## 6. Evidencia y límites
-
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. #1474 conserva informe `C:/tmp/fase2/informe-1473-integracion.md` y goldens ACC/LMU; su issue sigue abierta pendiente aceptación. Huellas de retirada y fixtures conservan procedencia; no alterar oráculos para pasar gates. #1562 reporta retirement 456/456 e inversión exacta de pins; la validación del merge #1564 queda separada: Nextest 1613/1613, lifecycle 18/18, telemetría 25/25 y retirement 456/456 PASS, sin QA física nueva.
-
-## 7. Riesgos y deuda
-
-- P1: #1562/#1527 comparten contrato neutral; decidir VERSION sobre la base integrada y mantener compatibilidad de archivos.
-- P2: señales ausentes/replay LMU no verificados no autorizan ocultación ni referencias Delta inventadas.
-- Pendientes físicos/plataforma: LMU/ACC live, macOS y otros simuladores; tests de corpus no equivalen a esos gates.
-- Mantener fallos de golden/plataforma y tests de concurrencia registrados (#1471/#1478), sin relajar aserciones.
-
-## 8. Issues terminadas, activas y pendientes
-
-Cerradas en la base: #1530 (DTO), #1532 (contratos de catálogo/disk), #1534 (crates), #1536 y arreglos dependientes. Abiertas: #1474/#1498; activas de feature #1562 y #1527. Los IDs TC/ISA históricos se conservan en el archivo por SHA; el maestro V2 antiguo es contexto y no otra cola de ejecución.
-
-## 9. Siguiente acción exacta
-
-El orquestador revisa los tres nuevos commits y el diff completo del PR
-draft #1616 antes de cualquier integración autorizada. VANTA-46 está Por revisar,
-con gates locales completos y push de ronda 2 verificados.
-QA física LMU/ACC pendiente.
-El seguimiento previo #1564/#1527 se consulta en sus issues: esta revisión no
-autoriza ejecutar esas features ni sustituye señales independientes para
-última vuelta/sesión. Conservar DTO live v10 y compatibilidad de archivos.
-
-## 10. Última actualización
-
-2026-10-14 · GitHub #1606 / Plane VANTA-46 · Codex CLI. Ronda 2: N1/N2/N3 con RED→GREEN y commits propios; todos los gates locales verdes, push/PR draft y trackers de revisión verificados. QA física y CI remota completa pendientes. HEAD/CI finales se releen en la issue y el buzón. El estado anterior #1564 se conserva en sus párrafos; no ejecutar otras issues desde este handoff.
-
-
-## VANTA-129 · Complemento REST #1881 (2026-11-02)
-
-Encargo explícito del orquestador: el siguiente PR incluye #1881, servidor
-LISTEN sin cliente y accept/join sin plazo. Se ejecuta como corte 3b independiente
-del DTO #1882, que sigue abierto para revisión, desde origin/nightly actualizado
-83716fe934ebb3abfaa4248112093086ecc4d654. Rama vantareapp/isa-1868-paso3b-rest-deadline,
-worktree D:/VantareServer/worktrees/isa-1868-paso3b. VANTA-129 En curso.
-Primero se extrae sin alterar el accept bloqueante y se caracteriza la ausencia
-de conexión, con despertar TCP explícito para que el RED no bloquee la cola.
-Después se acotan accept, E/S y join del arnés, conservando Client::new y sus
-750 ms de producción y las aserciones de respuesta. Solo tests; sin cambiar
-runtime productivo, goldens o corpus. Evidencia D:/VantareServer/evidence/isa-1868-paso3b.
-Caracterización previa 4447da6cb y formato: RED acotado en 5,015 s,
-run 3bf46faa-9127-48c6-a488-4eeceda3d652, con despertar TCP y join tras finalización.
-Arreglo: accept no bloqueante con deadline; sockets de test con E/S acotada;
-join solo tras is_finished y espera finita. Todos los servidores HTTP comparten
-las guardas. El servidor parado exige petición GET recibida y liberación
-explícita tras el resultado del cliente: la guarda no puede producir un falso PASS.
-Client::new y DEADLINE=750 ms productivos, y las aserciones previas, intactos.
-Nextest ejecuta ese deadline solo y primero, antes de los corpus. Producción
-sin diferencias. [PR draft #1885](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1885)
-listo para revisión del complemento #1881, código validado 645538a1f.
-Local, una tanda compilar.ps1 con target privado, jobs 4 y raíces QA aisladas:
-fmt/check/Clippy -D warnings PASS; 584/584 runtime PASS (8 skips preexistentes),
-incluidos 34/34 de telemetría, run 4c14cd7b-e621-4665-a137-5ae542512a5f.
-Sin cliente: RED previo 5,015 s → PASS 37 ms; deadline real PASS 773 ms.
-CI del código 5/5 SUCCESS, [run 41506258795](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41506258795),
-job 125486553214: 2412/2412 PASS (24 skips), lifecycle runtime 25/25 y Engineer 5/5.
-Lifecycle no se duplicó localmente con builds GPUI: cambio solo del arnés,
-producto idéntico y cobertura completa del mismo código en CI. Cola local libre.
-Prefijo productivo anterior a cfg(test) idéntico a 83716fe93; un único accept
-bajo deadline y un único join tras finalización acotada. Ninguna aserción previa
-retirada; el servidor debe haber recibido GET y seguir esperando release tras None.
-Quality/integridad 468/468 PASS; sin dependencias, datos, goldens o corpus nuevos.
-Líneas frente a base: producción +0/−0; tests +95/−17; configuración tests +6/−0;
-docs +53/−0. Evidencia, logs y contador D:/VantareServer/evidence/isa-1868-paso3b.
-Último commit solo de handoff; árbol native idéntico al código validado. Para
-HEAD/CI documental y estado operativo final, consultar #1885/#1881 y Plane.
-Estado del programa: 0–2 integrados; #1882 (paso 3) sigue abierto para revisión.
-Este complemento no adelanta pasos del diseño. VANTA-130 conserva ui/layout
-(persistencia/lectura, incluido error de tamaño) y diagnóstico de errores en hub/shell.
-Siguiente: revisión/integración por el orquestador; sin merge/promoción/release del worker. Sin merge/promoción/release. Pasos 4–10 pendientes.
-
-
-## VANTA-129 · paso 5 (2026-11-02)
-
-0–2 integrados; paso 3 en draft [#1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882),
-HEAD `2c94a5760`, CI 5/5 SUCCESS y sin conflictos. El orquestador integró
-#1885/#1881 en `nightly@56c6df494866f7d064042a5329787537f295147b`,
-merge y CI 5/5 verificados. VANTA-129 Por revisar para este corte del paso 5;
-4 y 6–10 pendientes, conforme al orden 3→5→6→4 del diseño aprobado.
-
-Rama `vantareapp/isa-1868-paso5-frescura`, worktree
-`D:/VantareServer/worktrees/isa-1868-paso5`, base origin/nightly `56c6df494`.
-`domain::freshness` posee 500/250 ms, Reason y los predicados nombrados.
-Núcleo sin rama de ACC; métodos opcionales del adaptador aportan el detalle
-local, también en replay. El servicio lo registra fuera del núcleo. No cambia
-Snapshot/DTO, capacidades, retención, relojes ni la proyección de los overlays.
-Solo cambia el vocabulario de freshness.log y añade detail del adaptador;
-la UI no inventa el detalle que no recibe por el pipe.
-
-Caracterización previa `08333e828`: GREEN 4/4, run
-`77f14347-0293-4bed-9e21-7c5738ea8ec5`, antes del refactor. Retención del
-jugador con scoring vivo y límites exactos de pausa/silencio en LMU/ACC/unknown.
-Primer comando falló antes de ejecutar tests por directorio sin Cargo.toml;
-corregido a native y ambos logs conservados.
-
-Tanda local por compilar.ps1, cuatro crates juntos, target propio y raíces QA:
-fmt/check/Clippy -D warnings PASS; 1275/1275 Nextest PASS (14 skips), incluidos
-34/34 de telemetría. Run `910879a0-fe31-4cad-8f25-66a487520e2d`.
-Lifecycle runtime 25/25 PASS con binarios reales normal/QA. Corpus ACC
-190471 lecturas, hashes conservados (193,880 s); fotos LMU y recorrido del
-corpus por todos los widgets PASS. Sin regenerar datos, goldens o fixtures.
-Código de esta tanda `fadae8744`. Revisión final `d6ecbb815`: Rust productivo
-idéntico, tests prueban el despacho por el trait y el registro es repetible.
-Fmt/Clippy runtime+ipc y 3/3 focales PASS, run
-`c95415ce-1351-41ee-ad8d-324c7984ee50`. Ambas tandas liberaron la cola.
-
-Revisión completa y mecánica: ámbito del núcleo, raíz de logs y rutas
-reservadas intactos; sin dependencias nuevas. Comparación de conflictos con
-#1882 limpia, sin fusionar ramas. La documentación IPC ocupa una zona distinta.
-No se tocaron ui/layout, hub/shell, installer o packaging. ACC experimental,
-lectores v7–v10 y formato delta por Look se conservan. Fuera DTO v12,
-capacidades en núcleo y conectar ACC. No se midieron píxeles o latencia física.
-Evidencia, scripts de revisión y contador por categorías:
-`D:/VantareServer/evidence/isa-1868-paso5`. Integridad/quality 468/468 PASS.
-[PR draft #1886](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1886)
-listo para revisión final contra nightly. Todos los gates locales requeridos PASS;
-CI remota pendiente de runner compartido al entregar, sin atribuirle verde.
-Código validado `d6ecbb815`, árbol native `ef1c7d0b107079d4497dc49947f5287eb5901b1b`;
-el cierre posterior solo cambia este handoff. HEAD/CI vigentes en #1868/#1886.
-Líneas: producción +164/−53 (neto +111, frente a reducción estimada en el diseño);
-tests +251/−0; docs en contador final. El vocabulario tipado y el método opcional
-con sus cuatro implementaciones explican el aumento de producción de este corte.
-Sesión gpt-6.1-sol medium; no se atribuye un nivel high no configurable aquí.
-Sin merge, promoción ni release del worker.
+Última actualización: 2026-11-03 · VANTA-129 / [#1868](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1868).
+El historial, decisiones y logs de los cortes anteriores se conservan completos
+[en nightly@9d4982e29](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/9d4982e290c3538d8bd2980c3f23c2d8b76b4183/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md),
+incluidas las investigaciones de Imola, #1638/#1750 y los handoffs previos.
+Es referencia histórica; la situación operativa de este archivo es la siguiente.
+
+## Estado vigente
+
+VANTA-129 **Por revisar**: [PR draft #1889](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1889)
+contra nightly, paso 9 + P3, listo para revisión final. Pasos **0–3 y 5 integrados**;
+paso **9 y P3 implementados y validados localmente**;
+pendientes **4, 6, 7, 8 y 10**. Plane es el tablero; GitHub/Project Vantare
+registra código y PRs. No tomar otros encargos desde el historial.
+
+| Corte | Integración en nightly por el orquestador | CI del PR verificada |
+| --- | --- | --- |
+| 0–1, #1873 | bc239c063 | 5/5 SUCCESS |
+| 2 + P3, #1877 | da4c2af08 | 5/5 SUCCESS |
+| REST #1881, #1885 | 56c6df494 | 5/5 SUCCESS |
+| 3, #1882 | ec4ca056c70ebdc92bf21d0540c5a65794667f3f | 5/5 SUCCESS; DeepSeek MERGE comunicado |
+| 5, #1886 | 9d4982e290c3538d8bd2980c3f23c2d8b76b4183 | 5/5 SUCCESS; DeepSeek MERGE comunicado |
+
+Rama `vantareapp/isa-1868-paso9-adaptadores`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso9`, base origin/nightly `9d4982e29`.
+Comenzó sobre `ee74d36b6`, actualizado entonces; al integrarse 3/5 se trasladaron
+los dos commits de caracterización a la base nueva, antes del refactor.
+No se han fusionado ramas, promocionado canales o publicado releases desde el worker.
+
+## Corte actual y verificación
+
+Paso 9 del [diseño aprobado](D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md):
+constructores de Quality en domain, un cruce REST por coche para número/paradas,
+pose/velocidad LMU reutilizadas, umbral de repostaje común y ventana spline ACC.
+Conserva reglas de caducidad, suelo REST, señal ausente y calidad estimada.
+
+Caracterización ANTES: `e62b4edac` y formato `01f669509`.
+Sobre la primera base: 430/430 tests de runtime y 34/34 de telemetría PASS,
+con todos los bytes/hashes congelados. Tras trasladar a `9d4982e29`, 527/527
+unitarios runtime+ipc PASS (5 skips preexistentes), también antes del cambio.
+Código validado `80b735213`, árbol native `f83c2f0a1b4341d39268f2a2b638e691c6cb7656`.
+Tanda conjunta por compilar.ps1 para domain/ipc/runtime, target propio, jobs 4 y
+raíces QA: fmt/check/Clippy -D warnings PASS; **891/891** Nextest PASS (9 skips:
+8 preexistentes y el bench opt-in, ejecutado aparte), incluidos **34/34** de
+telemetría. Run `8a08934a-a18d-416c-99c0-4f4f207ac2a6`. Lifecycle runtime **25/25**
+PASS con overlays reales normal/QA. Cola liberada; quality/integridad 468/468 PASS.
+Las 3857 fotos LMU y hashes ACC de 190471 lecturas permanecen idénticos, sin
+regeneración; ACC completo 202,124 s. Sin nuevas dependencias o configuración.
+CI remota de #1889 pendiente al entregar; no se le atribuye verde. Los commits
+posteriores a 80b735213 solo actualizan este handoff; el árbol native no cambia.
+HEAD/CI final y recuento completo se verifican también en #1868 y #1889.
+
+P3 asignados: sustituir este diario por una única situación operativa con CI real;
+asociar el comentario de alineación de lmu/frame al uso del presupuesto;
+revisar scripts que puedan parsear el sufijo detail del registro; retirar del
+DTO la comparación redundante de caminos que delegan al mismo decodificador.
+La lectura por referencia sigue contrastándose con fotos originales de las cuatro
+calidades; codec y goldens conservan la cobertura de la entrada por valor.
+
+Coste del decode del Hub: por valor delega al lector prestado, que copia payloads
+al crear un Snapshot dueño. No se ha cambiado esa decisión del paso 3.
+El tramo Decode de paint-stats solo mide serde_json::from_slice (codec), no esa
+conversión. Se ejecutó el bench opt-in del DTO real de 47 coches, con setup
+fuera del cronómetro, nueve rondas tras calentamiento y 128 fotos por ronda.
+Mide conversión por valor, incluidas copias/liberación del DTO, sin JSON ni drop
+de los Snapshot resultantes. Es orientativo en servidor compartido, perfil test;
+no compara con el decodificador antiguo por movimiento ni cuenta allocations.
+Bench 1/1 PASS, run `5d5cf6ce-c856-4985-af36-6158590c5d15`: medias por foto,
+mínimo **23,075 µs**, mediana entre rondas **26,560 µs**, máximo **37,209 µs**.
+No aísla el coste de las copias ni representa latencia Live o rendimiento Release.
+En 1248 scripts versionados/de evidencia buscados no se encontró ningún parser
+de freshness.log; el único literal era un generador del test IPC que comprueba
+reason y detail por separado. Los candidatos de reason= eran otros diagnósticos
+o generación de código. No se reescribieron scripts/evidencia históricos.
+
+Evidencia, comandos y recuento de producción/tests/docs separados:
+`D:/VantareServer/evidence/isa-1868-paso9`. Los fallos se conservan en sus logs.
+No se regeneran goldens/corpus ni se cambian baselines o dependencias.
+
+## Contratos y límites que se conservan
+
+- [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md) y [mapa nativo](../../../native/README.md):
+  runtime posee adapters/adquisición/supervisión; domain es puro; IPC posee wire.
+  Domain/UI no dependen de runtime, tampoco transitivamente.
+- Adapter::poll recibe reloj y no bloquea. Origin conserva origen/recepción;
+  calidad y capacidades explícitas no autorizan ceros o referencias inventados.
+- Live negocia DTO **v11**; los lectores guardados v7–v10 se mantienen. Latest-wins
+  de fotos no sustituye journal/cursor/ACK; época nueva invalida estado previo.
+- Boundary de productor y suscriptor coincide, incluida situación de conducción.
+  Core conserva la última foto viva en pausa; silencio 500 ms y situación 250 ms
+  usan domain::freshness. El consumidor conserva su plazo Lost de cinco segundos.
+- ACC sigue experimental con su golden. Sin conexión de ACC al producto, DTO v12,
+  capacidades calculadas en núcleo ni cambio del formato delta por Look.
+- Corpus, fixtures y lifecycle no prueban juego físico, OBS, DPI, audio o latencia.
+  Las mediciones orientativas no certifican fluidez de producto.
+
+## Coordinación y siguiente acción
+
+VANTA-130 conserva cálculos de raíz de datos, persistencia/lectura y constructor
+desde bytes/default de ui/layout, escritor de workshop/state, hub/document y
+carga/avisos/diagnóstico de hub/shell. Sin sondeo/host/motion en su constructor.
+Siguen reservados files::future_version y texto CAS de ipc/files. El orquestador
+liberó ui/motion_policy, conexión reducedMotion del host y migración preferences
+de ui/layout al aplazar VANTA-130 ese grupo. Persistencia/lectura y default_path,
+y las demás zonas previas de VANTA-130, conservan su reserva.
+Este corte no toca UI, Hub, installer, packaging ni ninguna de esas zonas.
+
+Revisar el PR del paso 9 y sus P3, con todos los gates locales verdes. Después, según el orden
+aprobado, paso 6 y paso 4. El **paso 4 no está hecho**: migra fixtures del repo
+a v11, conserva v7/v10 reales para probar los lectores y elimina el alias de
+fixtures; exige Snapshot== antes/después y paridad de píxeles sin rebaselinar.
+Luego quedan host, proyecciones y medición de los pasos 7, 8 y 10.
+
+Fallos iniciales conservados: renombrado mecánico de métodos Velocity.quality,
+dos referencias de tests al helper retirado, atributo must_use y línea vacía tras
+un doc comment. Corregidos sin relajar aserciones ni permitir warnings.

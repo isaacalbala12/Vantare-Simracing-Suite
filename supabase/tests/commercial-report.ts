@@ -118,8 +118,28 @@ if (mode === "deleted") {
   });
   if (simple.status !== 200) throw new Error(`simple_status_${simple.status}`);
   await simple.body?.cancel();
-  const exhausted = await submit(payload);
-  if (exhausted.status !== 429) throw new Error("shared_quota_not_exhausted");
+  await receipt(await submit(payload));
+  for (const suffix of ["031", "032"]) {
+    const admitted = await submit({
+      p_id: `17090000-0000-4000-8000-000000000${suffix}`,
+      p_channel: "master",
+      p_title: "Synthetic",
+      p_body: "Synthetic",
+      p_consent: true,
+    });
+    if (admitted.status !== 200) {
+      throw new Error(`new_report_status_${admitted.status}`);
+    }
+    await admitted.body?.cancel();
+  }
+  const exhausted = await submit({
+    p_id: "17090000-0000-4000-8000-000000000033",
+    p_channel: "master",
+    p_title: "Synthetic",
+    p_body: "Synthetic",
+    p_consent: true,
+  });
+  if (exhausted.status !== 429) throw new Error("account_quota_not_exhausted");
   await exhausted.body?.cancel();
   console.log(
     JSON.stringify({

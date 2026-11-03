@@ -7904,3 +7904,10 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   con caracterización/migración/rollback propios. No se mezcla en #1924;
   coordinar la integración conjunta con el orquestador antes de declarar owner
   único. #1925 sigue bloqueado por esa dependencia, no se integra aquí.
+- Decisión posterior del orquestador: #1924 permanece draft, sin fusionar hasta
+  que estén en nightly #1926 (cierre de escritores) y el mapping/vaciado R6/7b.
+  Entonces renombrar up/down con timestamp posterior a ambos y rebasar.
+  CI recorre todas las migraciones en base desechable, pero la fixture temporal
+  de shutdown introducida aquí evita demostrar el orden real. No equivale a un
+  reset limpio válido. Retirarla del replay al integrar prerequisitos; el gate
+  final debe aplicar la cadena completa sin revokes auxiliares antes del guard.

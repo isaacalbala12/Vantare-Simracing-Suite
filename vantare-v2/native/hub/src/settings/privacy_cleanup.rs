@@ -42,10 +42,7 @@ impl Cleanup {
             .map_err(ConsentSaveError::from)?;
         Ok((store.value, store.observed.take()))
     }
-    pub fn start(
-        root: PathBuf,
-        observed: Option<Vec<u8>>,
-    ) -> Result<Self, String> {
+    pub fn start(root: PathBuf, observed: Option<Vec<u8>>) -> Result<Self, String> {
         let (cancel, stopped) = mpsc::channel();
         let (reply, result) = mpsc::channel();
         let thread = std::thread::Builder::new()

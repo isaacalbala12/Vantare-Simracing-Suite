@@ -52,7 +52,6 @@ fn onboarding_acc_uses_steam_libraries_without_adding_a_launcher_app() {
     }
 }
 
-
 #[test]
 fn isa1548_global_steam_budget_warns_when_manifest_fallback_is_unavailable() {
     let tree = Tree::new();
@@ -313,7 +312,6 @@ fn fresh_install_seeds_templates_once_and_respects_explicit_empty_profiles() {
             .profiles
             .is_empty()
     );
-
 }
 
 #[test]
@@ -366,10 +364,6 @@ fn editor_rejects_missing_steps_apps_duplicates_and_preserves_advanced_copies() 
     assert!(document.lmu_trigger_profile.is_none());
     assert!(document.remove_profile("source").is_err());
 }
-
-
-
-
 
 struct Tree(PathBuf);
 impl Tree {
@@ -1194,36 +1188,61 @@ fn step9_production_does_not_read_wails() {
     if let Some(root) = std::env::var_os("VANTARE_STEP9_CHILD_ROOT") {
         let root = PathBuf::from(root);
         let store = Store::load_production(root.join("launcher.json")).unwrap();
-        assert_eq!(store.document.profiles.iter().map(|profile| profile.id.as_str()).collect::<Vec<_>>(), ["creator", "pro"]);
+        assert_eq!(
+            store
+                .document
+                .profiles
+                .iter()
+                .map(|profile| profile.id.as_str())
+                .collect::<Vec<_>>(),
+            ["creator", "pro"]
+        );
         assert!(store.document.wails_import.is_none());
-        assert_eq!(fs::read(root.join("configs/app-settings.json")).unwrap(), b"{");
+        assert_eq!(
+            fs::read(root.join("configs/app-settings.json")).unwrap(),
+            b"{"
+        );
         return;
     }
     let tree = Tree::new();
     tree.file("configs/app-settings.json", b"{");
     let output = std::process::Command::new(std::env::current_exe().unwrap())
-        .args(["--exact", "tests::step9_production_does_not_read_wails", "--nocapture"])
+        .args([
+            "--exact",
+            "tests::step9_production_does_not_read_wails",
+            "--nocapture",
+        ])
         .current_dir(&tree.0)
         .env("VANTARE_STEP9_CHILD_ROOT", &tree.0)
         .env("VANTARE_NATIVE_DATA_ROOT", &tree.0)
         .env("LOCALAPPDATA", &tree.0)
         .env("APPDATA", &tree.0)
         .env_remove("VANTARE_BETA_ROOT")
-        .output().unwrap();
+        .output()
+        .unwrap();
     assert!(String::from_utf8_lossy(&output.stdout).contains("running 1 test"));
-    assert!(output.status.success(), "{}{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]
 fn step9_saved_archive_and_profile_provenance_survive_save_and_reopen() {
     let tree = Tree::new();
     let bytes = br#"{"version":1,"apps":[],"profiles":[{"id":"legacy","name":"Importado","favorite":false,"steps":[],"first_step_delay":0,"continue_on_error":false,"reuse_running":false,"max_retries":0}],"lmu_trigger_profile":null,"wails_import":{"source":"C:/qa/retired-wails/app-settings.json","launcher":{"launcherProfiles":[{"id":"legacy"}],"unknownArchivedSetting":{"keep":[1,true,"yes"]}}}}"#;
-    let path = tree.file("launcher.json", bytes);
+    let mut value: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+    value["apps"] = serde_json::to_value(Document::default().apps).unwrap();
+    let bytes = serde_json::to_vec(&value).unwrap();
+    let path = tree.file("launcher.json", &bytes);
     let mut store = Store::load_production(path.clone()).unwrap();
     assert!(store.warning.is_none());
     assert!(store.document.profiles[0].imported);
     assert_eq!(fs::read(&path).unwrap(), bytes);
-    let archive = serde_json::from_slice::<serde_json::Value>(bytes).unwrap()["wails_import"].clone();
+    let archive =
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["wails_import"].clone();
     let mut edited = store.document.clone();
     edited.profiles[0].notes = "Mi nota actual".into();
     store.replace(edited).unwrap();

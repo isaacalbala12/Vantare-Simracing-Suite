@@ -9,4 +9,3 @@ pub struct Import {
     pub source: PathBuf,
     pub launcher: BTreeMap<String, serde_json::Value>,
 }
-

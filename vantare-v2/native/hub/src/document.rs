@@ -128,6 +128,12 @@ impl Editor {
             Ok(())
         })
     }
+    pub(crate) fn set_reduced_motion(&mut self, enabled: bool) -> Result<(), vantare_ipc::files::Error> {
+        if self.layout().version != 2 || self.layout().reduced_motion.is_none() {
+            return Err(vantare_ipc::files::Error::Unsupported("8A no activa movimiento en layouts antiguos".into()));
+        }
+        self.change::<String>(|layout| { layout.reduced_motion = Some(enabled); Ok(()) })
+    }
     pub(crate) fn set_hide_off_track(&mut self, enabled: bool) -> Result<(), String> {
         self.change::<String>(|layout| {
             layout.hide_off_track = enabled;

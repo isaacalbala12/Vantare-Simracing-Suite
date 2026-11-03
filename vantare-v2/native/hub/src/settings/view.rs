@@ -875,29 +875,25 @@ impl Hub {
                         orbit::toggle(
                             "settings-reduced-motion",
                             "Reducir animaciones",
-                            settings.reduced_motion,
+                            self.settings_motion(cx),
                             true,
                             cx,
                         )
                         .role(gpui::Role::Switch)
                         .aria_label("Reducir animaciones")
-                        .aria_toggled(if settings.reduced_motion {
+                        .aria_toggled(if self.settings_motion(cx) {
                             gpui::Toggled::True
                         } else {
                             gpui::Toggled::False
                         })
                         .track_focus(&self.settings.appearance_focus[14])
                         .on_click(cx.listener(|hub, _, window, cx| {
-                            let mut settings = hub.settings.store.value.appearance;
-                            settings.reduced_motion = !settings.reduced_motion;
-                            hub.settings_appearance_apply(settings, window, cx);
+                            hub.settings_reduced_motion(window, cx);
                         }))
                         .on_key_down(cx.listener(
                             |hub, event: &gpui::KeyDownEvent, window, cx| {
                                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                    let mut settings = hub.settings.store.value.appearance;
-                                    settings.reduced_motion = !settings.reduced_motion;
-                                    hub.settings_appearance_apply(settings, window, cx);
+                                    hub.settings_reduced_motion(window, cx);
                                     cx.stop_propagation();
                                 }
                             },

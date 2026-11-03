@@ -752,3 +752,30 @@ fn step8a_mirror_failure_reaches_sanitized_diagnostic() {
         app.quit();
     });
 }
+
+#[test]
+fn step8a_existing_v2_motion_remains_editable_without_writing_legacy_mirror() {
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        let mut cx = context();
+        let mut layout = vantare_ui::layout::Layout::default();
+        layout.version = 2;
+        layout.reduced_motion = Some(false);
+        std::fs::write(root.0.join("layout.json"), serde_json::to_vec(&layout).unwrap()).unwrap();
+        let mirror = br#"{"paletteVersion":1,"reducedMotion":true}"#;
+        std::fs::write(root.0.join("appearance.json"), mirror).unwrap();
+        let window = open(&root.0, &mut cx);
+        window.update(&mut cx, |hub, window, cx| {
+            assert!(!hub.settings_motion(cx));
+            hub.settings_reduced_motion(window, cx);
+            assert!(hub.settings_motion(cx));
+            assert_eq!(hub.studio.read(cx).home_layout().version, 2);
+            assert!(cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+        }).unwrap();
+        assert_eq!(std::fs::read(root.0.join("appearance.json")).unwrap(), mirror);
+        draw(window, &mut cx);
+        window.update(&mut cx, |_, window, _| window.remove_window()).unwrap();
+        drop(cx);
+        app.quit();
+    });
+}

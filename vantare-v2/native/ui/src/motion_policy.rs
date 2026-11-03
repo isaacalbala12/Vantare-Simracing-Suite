@@ -7,7 +7,9 @@ impl gpui::Global for MotionPolicy {}
 struct LayoutMotion(Option<bool>);
 impl gpui::Global for LayoutMotion {}
 
-pub(crate) fn apply_layout(value: Option<bool>, cx: &mut gpui::App) {
+impl MotionPolicy {
+/// Aplica una decisión explícita sin que el lector legado vuelva a imponerla.
+pub fn apply_layout(value: Option<bool>, cx: &mut gpui::App) {
     cx.set_global(LayoutMotion(value));
     let current = cx.try_global::<MotionPolicy>().copied().unwrap_or_default();
     let next = MotionPolicy::select(value, current);
@@ -15,6 +17,7 @@ pub(crate) fn apply_layout(value: Option<bool>, cx: &mut gpui::App) {
         cx.set_global(next);
         cx.refresh_windows();
     }
+}
 }
 impl MotionPolicy {
     fn select(layout: Option<bool>, legacy: Self) -> Self {

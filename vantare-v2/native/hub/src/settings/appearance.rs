@@ -134,6 +134,7 @@ impl Hub {
             self.testing.update(cx, |testing, _| testing.observed.error(crate::testing::diagnostic::Module::Hub, vantare_ipc::files::Kind::Local));
         }
         theme::apply(self.settings.store.value.appearance, window.appearance(), cx);
+        vantare_ui::MotionPolicy::apply_layout(self.studio.read(cx).home_layout().reduced_motion, cx);
         // Si falla el disco, los selectores reflejan el documento releído.
         self.settings.density.update(cx, |choice, cx| {
             choice.state.selected = Some(self.settings.store.value.general.density as usize);
@@ -159,6 +160,21 @@ impl Hub {
 }
 
 impl Hub {
+    pub(in crate::shell) fn settings_motion(&self, cx: &gpui::App) -> bool {
+        self.studio.read(cx).home_layout().reduced_motion.unwrap_or(self.settings.store.value.appearance.reduced_motion)
+    }
+    pub(in crate::shell) fn settings_reduced_motion(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let enabled = !self.settings_motion(cx);
+        if self.studio.read(cx).home_layout().reduced_motion.is_some() {
+            self.settings.status = self.studio.update(cx, |studio, cx| studio.set_reduced_motion(enabled, cx)).err().map(String::from);
+            let value = self.studio.read(cx).home_layout().reduced_motion;
+            vantare_ui::MotionPolicy::apply_layout(value, cx);
+            cx.notify();
+        } else {
+            let next = AppearanceSettings { reduced_motion: enabled, ..self.settings.store.value.appearance };
+            self.settings_appearance_apply(next, window, cx);
+        }
+    }
     pub(super) fn settings_scheme(
         &mut self,
         scheme: theme::Scheme,

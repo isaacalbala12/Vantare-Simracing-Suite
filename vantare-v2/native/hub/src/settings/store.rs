@@ -14,7 +14,7 @@ pub(in crate::shell) struct Document {
     pub version: u32,
     pub general: Preferences,
     pub appearance: AppearanceSettings,
-    #[serde(deserialize_with = "read_zoom")]
+    #[serde(default = "default_zoom", deserialize_with = "read_zoom")]
     pub zoom: u16,
     #[serde(default, rename = "migrationPending", skip_serializing_if = "Vec::is_empty")]
     pub migration_pending: Vec<Legacy>,
@@ -385,6 +385,7 @@ fn read_zoom<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u16, D
 fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
     let base = serde_json::to_value(base).expect("settings serialize");
     let desired = serde_json::to_value(desired).expect("settings serialize");
+    let startup = current.general.startup;
     let mut current = serde_json::to_value(current).expect("settings serialize");
     for section in ["general", "appearance"] {
         for (key, value) in desired[section].as_object().expect("settings section") {
@@ -392,5 +393,9 @@ fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
         }
     }
     if base["zoom"] != desired["zoom"] { current["zoom"] = desired["zoom"].clone(); }
-    serde_json::from_value(current).expect("validated settings rebase")
+    let mut next: Document = serde_json::from_value(current).expect("validated settings rebase");
+    next.general.startup = startup;
+    next
 }
+
+const fn default_zoom() -> u16 { 100 }

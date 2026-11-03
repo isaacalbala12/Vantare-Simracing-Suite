@@ -104,7 +104,17 @@ pub(crate) fn execute(
             if !consent || !uuid(&id) || !text(&title, 120, true) || !text(&body, 1000, true) {
                 return Err(Error::Protocol);
             }
-            request.post("functions/v1/testing-report-submit", &serde_json::json!({"p_id":id,"p_channel":channel,"p_title":"Informe estructurado","p_body":"Revisión humana pendiente","p_consent":consent}))?.success()?;
+            let report = crate::report_v2::build(
+                id.clone(),
+                channel,
+                "Informe estructurado".into(),
+                "Revisión humana pendiente".into(),
+                crate::report_v2::key_from_id(&id),
+                crate::report_v2::Kind::Simple,
+            )?;
+            request
+                .post("functions/v1/testing-report-submit", &report)?
+                .success()?;
         }
         Command::TestingCredit { id, consent } => {
             if !uuid(&id) {
@@ -212,7 +222,7 @@ mod tests {
         };
         let session = config.authorize(&http, &account, 100).unwrap();
         let request = session.request(&http, &config, &account, 100);
-        let id = "16100000-0000-0000-0000-000000000010";
+        let id = "16100000-0000-4000-8000-000000000010";
         let command = |consent| Command::TestingContribute {
             id: id.into(),
             title: "Scroll".into(),
@@ -259,7 +269,9 @@ mod tests {
             serde_json::from_str(captured[1].split("\r\n\r\n").nth(1).unwrap()).unwrap();
         assert_eq!(
             body,
-            serde_json::json!({"p_id":id,"p_channel":"master","p_title":"Informe estructurado","p_body":"Revisión humana pendiente","p_consent":true})
+            serde_json::json!({"contract_version":"testing.report.v2","report_id":id,"channel":"master",
+                "title":"Informe estructurado","body":"Revisión humana pendiente","consent":true,
+                "idempotency_key":crate::report_v2::key_from_id(id),"variant":"simple"})
         );
         assert!(captured[3].starts_with("POST /rest/v1/rpc/testing_report_credit "));
         assert!(captured[5].starts_with("POST /rest/v1/rpc/testing_report_notice_read "));

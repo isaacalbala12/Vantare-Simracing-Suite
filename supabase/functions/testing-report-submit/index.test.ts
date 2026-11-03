@@ -22,11 +22,14 @@ function eq(actual: unknown, expected: unknown) {
 }
 const week = "2026-10-12";
 const payload = {
-  p_id: "16100000-0000-4000-8000-000000000011",
-  p_channel: "master",
-  p_title: "Synthetic",
-  p_body: "Synthetic",
-  p_consent: true,
+  contract_version: "testing.report.v2",
+  variant: "simple",
+  idempotency_key: `draft_${"a".repeat(64)}`,
+  report_id: "16100000-0000-4000-8000-000000000011",
+  channel: "master",
+  title: "Synthetic",
+  body: "Synthetic",
+  consent: true,
 };
 function fixture() {
   const counts = new Map<string, number>();
@@ -59,9 +62,17 @@ function fixture() {
         if (scope === "account" && n <= 5) admitted.set(report, digest!);
         return Promise.resolve(n <= (scope === "ip" ? 60 : 5));
       },
-      submit: (account: string, body: Record<string, unknown>) => {
-        reports.push({ account, body });
-        return Promise.resolve();
+      rpc: (_name: string, args: Record<string, unknown>) => {
+        reports.push({ account: args.p_account, body: args.p_report });
+        return Promise.resolve({
+          error: null,
+          data: [{
+            report_id: (args.p_report as Record<string, unknown>).report_id,
+            report_state: "received",
+            idempotent: false,
+            created_at: "2026-10-14T12:00:00Z",
+          }],
+        });
       },
     },
   };
@@ -150,7 +161,6 @@ Deno.test("deleted account SQLSTATE maps to unauthorized on the simple write", a
   const f = fixture();
   const response = await handleTestingReportSubmit(request("account-a"), {
     ...f.deps,
-    submit: undefined,
     rpc: () => Promise.resolve({ data: null, error: { code: "28000" } }),
   });
   eq(response.status, 401);
@@ -181,7 +191,8 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
       (await handleTestingReportSubmit(
         request("account-a", `192.0.2.${i}`, {
           ...payload,
-          p_id: `16100000-0000-4000-8000-0000000000${
+          idempotency_key: `draft_${String(i).padStart(64, "0")}`,
+          report_id: `16100000-0000-4000-8000-0000000000${
             String(i).padStart(2, "0")
           }`,
         }),
@@ -197,7 +208,7 @@ Deno.test("invalid authenticated bodies spend neither IP nor account admission",
   for (let i = 0; i < 5; i++) {
     eq(
       (await handleTestingReportSubmit(
-        request("account-a", undefined, { ...payload, p_consent: false }),
+        request("account-a", undefined, { ...payload, consent: false }),
         f.deps,
       )).status,
       400,
@@ -218,9 +229,7 @@ Deno.test("same evidence-pending report spends no IP and one account slot", asyn
   const f = fixture();
   const pending = {
     ...f.deps,
-    submit: () => {
-      throw new NativeError(503, "submit_failed");
-    },
+    rpc: () => Promise.resolve({ error: { code: "08000" } }),
   };
   for (let i = 0; i < 5; i++) {
     eq(
@@ -370,9 +379,7 @@ Deno.test("JWT failure spends IP admission; exact upstream retry spends one acco
   const g = fixture();
   const offline = {
     ...g.deps,
-    submit: () => {
-      throw new Error("synthetic upstream failure");
-    },
+    rpc: () => Promise.resolve({ error: { code: "08000" } }),
   };
   for (let i = 1; i <= 5; i++) {
     eq(
@@ -411,7 +418,7 @@ Deno.test("client account/IP fields and oversized bodies are denied before servi
   );
   eq(
     (await handleTestingReportSubmit(
-      request("account-a", undefined, { ...payload, p_body: "x".repeat(9000) }),
+      request("account-a", undefined, { ...payload, body: "x".repeat(70000) }),
       f.deps,
     )).status,
     413,
@@ -462,11 +469,12 @@ Deno.test("failed auth needs a trustworthy IP and available coarse guard", async
 });
 
 const structured = {
-  p_id: payload.p_id,
-  p_channel: "testers",
-  p_title: "[contenido retirado por privacidad]",
-  p_body: "[contenido retirado por privacidad]",
-  p_context: {
+  ...payload,
+  variant: "triage",
+  channel: "testers",
+  title: "[contenido retirado por privacidad]",
+  body: "[contenido retirado por privacidad]",
+  context: {
     app_version: "1.2.3",
     app_channel: "testers",
     game: "none",
@@ -480,7 +488,7 @@ const structured = {
       accepted_at: "2026-10-14T00:00:00Z",
     },
   },
-  p_attachments: [{ kind: "app_log", content: "[]", sha256: "a".repeat(64) }],
+  attachments: [{ kind: "app_log", content: "[]", sha256: "a".repeat(64) }],
 };
 Deno.test("F8: structured preview and exact retries retain all fields after account admission", async () => {
   const f = fixture();
@@ -516,11 +524,11 @@ Deno.test("F8: structured preview denied by account admission never reaches stor
 Deno.test("F8: partial structured fields, account injection and missing consent fail closed", async () => {
   for (
     const body of [
-      { ...structured, p_attachments: undefined },
+      { ...structured, attachments: undefined },
       { ...structured, p_account: "account-b" },
-      { ...structured, p_consent: true },
-      { ...structured, p_title: "OrdinaryPrivateTesterNote" },
-      { ...structured, p_context: { ...structured.p_context, consent: null } },
+      { ...structured, consent: false },
+      { ...structured, title: "OrdinaryPrivateTesterNote" },
+      { ...structured, context: { ...structured.context, consent: null } },
     ]
   ) {
     const f = fixture();
@@ -537,14 +545,25 @@ Deno.test("F8: partial structured fields, account injection and missing consent 
 
 Deno.test("F8: production submit dispatches the full package only to the service admission RPC", async () => {
   const f = fixture();
-  const simple = { ...payload, p_id: "16100000-0000-4000-8000-000000000012" };
+  const simple = {
+    ...payload,
+    report_id: "16100000-0000-4000-8000-000000000012",
+    idempotency_key: `draft_${"b".repeat(64)}`,
+  };
   const calls: unknown[] = [];
   const deps = {
     ...f.deps,
-    submit: undefined,
     rpc: (name: string, body: Record<string, unknown>) => {
       calls.push({ name, body });
-      return Promise.resolve({ error: null });
+      return Promise.resolve({
+        error: null,
+        data: [{
+          report_id: (body.p_report as Record<string, unknown>).report_id,
+          report_state: "received",
+          idempotent: false,
+          created_at: "2026-10-14T12:00:00Z",
+        }],
+      });
     },
   };
   eq(
@@ -555,8 +574,8 @@ Deno.test("F8: production submit dispatches the full package only to the service
     200,
   );
   eq(calls, [{
-    name: "testing_contribution_submit_admitted",
-    body: { ...structured, p_account: "verified-account" },
+    name: "testing_report_v2_submit_admitted",
+    body: { p_account: "verified-account", p_report: structured },
   }]);
   eq(
     (await handleTestingReportSubmit(
@@ -566,8 +585,8 @@ Deno.test("F8: production submit dispatches the full package only to the service
     200,
   );
   eq(calls[1], {
-    name: "testing_report_submit_admitted",
-    body: { ...simple, p_account: "verified-account" },
+    name: "testing_report_v2_submit_admitted",
+    body: { p_account: "verified-account", p_report: simple },
   });
 });
 
@@ -578,7 +597,6 @@ Deno.test("candidate membership denial maps to 403 for simple and structured rep
       request("verified-account", undefined, body),
       {
         ...f.deps,
-        submit: undefined,
         rpc: () => Promise.resolve({ error: { code: "42501" } }),
       },
     );
@@ -601,17 +619,24 @@ Deno.test({
     eq(
       (await handleTestingReportSubmit(request(account, undefined, preview), {
         ...f.deps,
-        submit: undefined,
         rpc: (name, body) => {
           calls.push({ name, body });
-          return Promise.resolve({ error: null });
+          return Promise.resolve({
+            error: null,
+            data: [{
+              report_id: preview.report_id,
+              report_state: "received",
+              idempotent: false,
+              created_at: "2026-10-14T12:00:00Z",
+            }],
+          });
         },
       })).status,
       200,
     );
     const expected = {
-      name: "testing_contribution_submit_admitted",
-      body: { ...preview, p_account: account },
+      name: "testing_report_v2_submit_admitted",
+      body: { p_account: account, p_report: preview },
     };
     eq(calls, [expected]);
     const output = Deno.env.get("VANTARE_TRIAGE_TEST_ADMITTED");

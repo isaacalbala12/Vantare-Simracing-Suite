@@ -38,7 +38,16 @@ Deno.test("the three v2 forms use one account-owned write and receipt", async ()
       ? {
         ...base,
         variant,
-        context: { consent: { version: "triage-v2" } },
+        title: "[contenido retirado por privacidad]",
+        body: "[contenido retirado por privacidad]",
+        context: {
+          app_channel: "master",
+          consent: {
+            version: "triage-v2",
+            items: [],
+            accepted_at: "2026-11-03T12:00:00Z",
+          },
+        },
         attachments: [],
       }
       : { ...base, variant, context: { module: "hub", app_version: "1.2.3" } };
@@ -126,4 +135,38 @@ Deno.test("variant shapes are closed before account admission", async () => {
     }
   }
   if (admitted.length) throw new Error("invalid variant spent account quota");
+});
+
+Deno.test("legacy submission bodies are closed at the Edge boundary", async () => {
+  let writes = 0;
+  const deps = {
+    now: () => new Date("2026-11-03T12:00:00Z"),
+    account: () => Promise.resolve(account),
+    admit: () => Promise.resolve(true),
+    rpc: () => {
+      writes++;
+      return Promise.resolve({ error: null, data: null });
+    },
+    submit: () => {
+      writes++;
+      return Promise.resolve();
+    },
+  };
+  for (
+    const body of [
+      {
+        p_id: id,
+        p_channel: "master",
+        p_title: "A",
+        p_body: "B",
+        p_consent: true,
+      },
+      { p_contract_version: "testing-center.v1" },
+    ]
+  ) {
+    if ((await handleTestingReportSubmit(request(body), deps)).status !== 400) {
+      throw new Error("legacy body remained writable");
+    }
+  }
+  if (writes) throw new Error("legacy write reached a database function");
 });

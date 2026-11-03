@@ -261,17 +261,18 @@ impl Testing {
 }
 
 fn new_uuid() -> Option<String> {
-    let id = vantare_services::random_id().ok()?;
-    (id.len() == 64).then(|| {
-        format!(
-            "{}-{}-{}-{}-{}",
-            &id[..8],
-            &id[8..12],
-            &id[12..16],
-            &id[16..20],
-            &id[20..32]
-        )
-    })
+    let mut id = vantare_services::random_id().ok()?;
+    if id.len() != 64 { return None; }
+    id.replace_range(12..13, "4");
+    id.replace_range(16..17, "8");
+    Some(format!(
+        "{}-{}-{}-{}-{}",
+        &id[..8],
+        &id[8..12],
+        &id[12..16],
+        &id[16..20],
+        &id[20..32]
+    ))
 }
 
 #[cfg(test)]

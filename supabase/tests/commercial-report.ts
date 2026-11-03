@@ -82,7 +82,7 @@ async function receipt(response: Response) {
   const rows = await response.json();
   if (
     !Array.isArray(rows) || rows.length !== 1 ||
-    rows[0].report_state !== "submitted"
+    rows[0].report_state !== "received"
   ) {
     throw new Error("receipt_required");
   }
@@ -106,33 +106,54 @@ if (mode === "deleted") {
   const injected = await submit({ ...payload, p_account: account });
   if (injected.status !== 400) throw new Error("client_identity_not_rejected");
   await injected.body?.cancel();
-  const image = await receipt(
+  const triage = await receipt(
     await submit({
       ...payload,
-      p_idempotency_key: "draft_" + "e".repeat(64),
-      p_batch_id: "17090000-0000-4000-8000-000000000010",
+      report_id: "17090000-0000-4000-8000-000000000021",
+      idempotency_key: "draft_" + "e".repeat(64),
+      variant: "triage",
+      title: "[contenido retirado por privacidad]",
+      body: "[contenido retirado por privacidad]",
+      context: {
+        app_version: "1.2.3",
+        app_channel: "testers",
+        game: "none",
+        system: {},
+        consent: {
+          version: "triage-v2",
+          items: [],
+          accepted_at: new Date().toISOString(),
+        },
+      },
+      attachments: [],
     }),
   );
-  if (image.idempotent || image.report_id === first.report_id) {
-    throw new Error("image_report_not_attached");
+  if (triage.idempotent || triage.report_id === first.report_id) {
+    throw new Error("triage_report_not_separate");
   }
   const simple = await submit({
-    p_id: "17090000-0000-4000-8000-000000000030",
-    p_channel: "master",
-    p_title: "Synthetic",
-    p_body: "Synthetic",
-    p_consent: true,
+    contract_version: "testing.report.v2",
+    report_id: "17090000-0000-4000-8000-000000000030",
+    channel: "master",
+    title: "Synthetic",
+    body: "Synthetic",
+    consent: true,
+    idempotency_key: "draft_" + "1".repeat(64),
+    variant: "simple",
   });
   if (simple.status !== 200) throw new Error(`simple_status_${simple.status}`);
   await simple.body?.cancel();
   await receipt(await submit(payload));
   for (const suffix of ["031", "032"]) {
     const admitted = await submit({
-      p_id: `17090000-0000-4000-8000-000000000${suffix}`,
-      p_channel: "master",
-      p_title: "Synthetic",
-      p_body: "Synthetic",
-      p_consent: true,
+      contract_version: "testing.report.v2",
+      report_id: `17090000-0000-4000-8000-000000000${suffix}`,
+      channel: "master",
+      title: "Synthetic",
+      body: "Synthetic",
+      consent: true,
+      idempotency_key: `draft_${suffix.padStart(64, "0")}`,
+      variant: "simple",
     });
     if (admitted.status !== 200) {
       throw new Error(`new_report_status_${admitted.status}`);
@@ -140,18 +161,21 @@ if (mode === "deleted") {
     await admitted.body?.cancel();
   }
   const exhausted = await submit({
-    p_id: "17090000-0000-4000-8000-000000000033",
-    p_channel: "master",
-    p_title: "Synthetic",
-    p_body: "Synthetic",
-    p_consent: true,
+    contract_version: "testing.report.v2",
+    report_id: "17090000-0000-4000-8000-000000000033",
+    channel: "master",
+    title: "Synthetic",
+    body: "Synthetic",
+    consent: true,
+    idempotency_key: "draft_" + "3".repeat(64),
+    variant: "simple",
   });
   if (exhausted.status !== 429) throw new Error("account_quota_not_exhausted");
   await exhausted.body?.cancel();
   console.log(
     JSON.stringify({
       report_id: first.report_id,
-      evidence_report_id: image.report_id,
+      triage_report_id: triage.report_id,
     }),
   );
 }

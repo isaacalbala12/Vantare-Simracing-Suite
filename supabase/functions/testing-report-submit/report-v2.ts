@@ -30,6 +30,10 @@ export function validateReportV2(body: Record<string, unknown>): void {
     typeof value === "string" && value.trim().length > 0 &&
     [...value].length <= max &&
     new TextEncoder().encode(value).length <= max * 4;
+  const record = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+  const context = body.context;
+  const consent = record(context) ? context.consent : undefined;
   if (
     JSON.stringify(actual) !== JSON.stringify(fields) ||
     new TextEncoder().encode(JSON.stringify(body)).length > 64 * 1024 ||
@@ -47,7 +51,15 @@ export function validateReportV2(body: Record<string, unknown>): void {
         new TextEncoder().encode(JSON.stringify(body.context)).length >
           (body.variant === "diagnostic" ? 4096 : 48 * 1024))) ||
     (body.attachments !== undefined &&
-      (!Array.isArray(body.attachments) || body.attachments.length > 2))
+      (!Array.isArray(body.attachments) || body.attachments.length > 2)) ||
+    (body.variant === "triage" &&
+      (!record(context) || !record(consent) ||
+        body.title !== "[contenido retirado por privacidad]" ||
+        body.body !== "[contenido retirado por privacidad]" ||
+        context.app_channel !== body.channel ||
+        consent.version !== "triage-v2" ||
+        !Array.isArray(consent.items) ||
+        typeof consent.accepted_at !== "string"))
   ) throw new NativeError(400, "invalid_request");
 }
 

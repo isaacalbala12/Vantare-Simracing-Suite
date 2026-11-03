@@ -1,6 +1,23 @@
 //! Contrato cerrado: texto y miniaturas locales, nunca tokens/logs/diagnósticos.
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReportV2 {
+    pub contract_version: String,
+    pub report_id: String,
+    pub channel: String,
+    pub title: String,
+    pub body: String,
+    pub consent: bool,
+    pub idempotency_key: String,
+    pub variant: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attachments: Option<serde_json::Value>,
+}
+
 /// Temporal containment until the server validates uploaded evidence (VANTA-131).
 pub const SCREENSHOTS_AVAILABLE: bool = false;
 

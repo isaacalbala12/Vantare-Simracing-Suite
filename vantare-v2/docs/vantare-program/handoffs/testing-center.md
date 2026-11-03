@@ -734,8 +734,8 @@ verificado con plane-estado.py y comentario de PR #1602. Hito separado
 8dbcf8273066cbd76c1063cf4726c110d6d610ee, publicado en la rama del PR.
 API v1 de CE 1.4.2: publicar cada propuesta de tester, antes de T3, con título,
 canal, juego/versión, veredicto/confianza/resumen redactados e ID de contribución.
-Sin account_id/email/cuerpo/logs/hardware. Token propio de servidor se crear�
-al desplegar, con autorizaci�n; no bloquea c�digo. Token de tracker no se reutiliza.
+Sin account_id/email/cuerpo/logs/hardware. Token propio de servidor se crear�
+al desplegar, con autorizaci�n; no bloquea c�digo. Token de tracker no se reutiliza.
 Intake VANTA ya activado según lectura API 2026-10-13; no se cambió ajuste.
 
 Metadata externa en el work item asociado (POST CE la ignora); PATCH anidado
@@ -767,8 +767,8 @@ registrados en runbook/buzón; entrega de cliente/worker y gates finales locales
 
 ## Correcciones de review #1602
 
-1. P1-1: Basic completo y prefijos sk-/sk_ en ambas capas. Regresi�n sint�tica
-   RED observada en Rust y Python antes del cambio; GREEN tras la correcci�n.
+1. P1-1: Basic completo y prefijos sk-/sk_ en ambas capas. Regresi�n sint�tica
+   RED observada en Rust y Python antes del cambio; GREEN tras la correcci�n.
    No proveedores, Intake ni credenciales reales en las pruebas.
 
 2. P1-2: accountId/AccountID/account-id/account_id dentro de JSON, ambas capas.
@@ -810,11 +810,11 @@ y tres regresiones de privacidad ampliadas al prepare/RPC preview real.
 Commits P1 b8a2289a / 92f88d5c / ae18c39f; P2 9bf5cd69 / 3a5112dc /
 fdb891a3 / b580ed6b. Captura adicional 9e6a352a, necesaria para probar prepare.
 Gates finales fmt/check/Clippy PASS, Nextest 1656/1656 (7 skips), lifecycle
-18/18, Python 36/36 y quality 456 PASS. Clippy exigi� extraer el consumo del
-esquema Authorization a helper; sin supresi�n de lint ni cambio de conducta.
+18/18, Python 36/36 y quality 456 PASS. Clippy exigi� extraer el consumo del
+esquema Authorization a helper; sin supresi�n de lint ni cambio de conducta.
 [Tabla y evidencia de cada RED/GREEN](../../../../tools/triage/review-1602-regressions.md).
 Evidencia local E:/tmp/isa1594-review-evidence/ con manifest SHA256.
-Hash SQL/rollback id�nticos; no nuevas acciones de producci�n ni Intake real.
+Hash SQL/rollback id�nticos; no nuevas acciones de producci�n ni Intake real.
 STOP merge prevalece: PR abierto, auto-merge apagado; Isaac coordina re-review.
 
 CI remoto: GitGuardian FAILURE por 6 apariciones de fixtures sintéticas:
@@ -982,3 +982,11 @@ F4: legacy sembrado antes de apply bloqueaba down inmediato (RED). Flag de activ
 F1 CONTENIDO, NO RESUELTO como apertura pública: RED dos cuentas de la misma IP declaran 10 envíos y retries desde otras IP entran; GREEN 17/17 bloquea RPC directa y v2 de #1602 (sin grant sintético). EXECUTE queda cerrado a authenticated/anon/service_role. Falta gateway con IP confiable y contador durable de todos los intentos. --internal-submit concede permiso SOLO en clúster local desechable para preservar los 35 tests semánticos anteriores, separado del test de ACL F1; no prueba admisión/IP productiva. No activar ni reabrir EXECUTE manualmente.
 
 Cierre local ronda 2: F1 17/17, F2 6/6, F3 8/8 más dos sesiones con fixed previo, F4 seis clones de actividad bloqueados y legacy íntegro. Suite original 35/35 + snapshot/concurrencia/rollback/reapply con #1602@87950380 y bootstrap sin dependencia. Mocks 4/4 y quality 456 PASS. Rust/telemetría/QA visual no repetidos: no cambia código/fixtures nativos. F1 sigue pendiente, solo contenido; no activar. Plane real no se consultó ni modificó en esta ronda. Fecha 2026-10-14T04:22:32.6677970+02:00.
+## 2026-11-03 - #1896 / VANTA-131 paso 7a: contrato único de informe
+
+- Base `origin/nightly@51797395b` (#1906 integrado). Rama `vantareapp/isa-1896-paso7a-contrato`, worktree aislado `D:/VantareServer/worktrees/isa-1896-paso7a`. Draft PR y HEAD final pendientes de gates.
+- El DTO `testing.report.v2` da un único cuerpo a simple, triage y diagnóstico. La Edge acepta solo ese cuerpo, deriva la cuenta del bearer y devuelve el recibo de la raíz en `testing_contributions`. La migración trae rollback; tablas y RPC antiguos siguen en esquema hasta 7b. El código nuevo no escribe informes antiguos.
+- Services usa un constructor común. La lectura del agente v2 consulta la contribución con la misma autorización; jobs y callbacks siguen inertes. Admin ya ve y revisa contribuciones mediante `native_admin_reports` y `native_admin_review_report`; no se editó admin ni `_shared/native-auth.ts`. El Hub genera ahora UUID v4 válidos para el contrato Edge. Capturas continúan desactivadas.
+- Caracterización antes del cambio: tres formas/recibo, SQL sin RPC y ruta legacy abierta en RED; test de UUID del Hub añadido antes de corregir el generador. Deno 36 PASS/1 omitido; PostgreSQL 16 aserciones v2, agente y rollback/reapply PASS. Rust check y 269 tests Services PASS antes del último ajuste de UUID; Clippy, fmt, gates finales y CI pendientes.
+- Paso 7b espera a VANTA-132 para retirar tablas/RPC antiguos y migrar filas. Paso 12 después del 7; SQL billing pertenece a R3. Sin despliegue, llamadas a producción, merge ni release.
+- Paso 6b posterior debe exigir nibbles H/V 1..4; referencias DQT/DHT existentes y DHT <=256 símbolos; Storage y descarga `image/jpeg` con `nosniff`; RSTn solo con DRI y en orden, o rechazo de RST. Casos: dos SOS, SOF con dimensión cero, RST sin DRI y nibble cero. Las capturas permanecen apagadas hasta ese paso.

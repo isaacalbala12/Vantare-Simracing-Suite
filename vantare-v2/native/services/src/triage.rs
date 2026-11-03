@@ -220,7 +220,7 @@ impl Triage {
         request
             .post(
                 "functions/v1/testing-report-submit",
-                &p.preview.packet.rpc_payload(channel),
+                &report_v2(&p.preview.packet, channel)?,
             )?
             .success()?;
         // Keep the exact payload on any uncertain response or refresh failure.
@@ -234,7 +234,7 @@ impl Triage {
 // preview. HTTP keeps its existing limit for every caller and exact retry.
 fn fit_http_budget(packet: &mut Packet, channel: &str) -> Result<()> {
     fn fits(packet: &Packet, channel: &str) -> Result<bool> {
-        Ok(serde_json::to_vec(&packet.rpc_payload(channel))
+        Ok(serde_json::to_vec(&report_v2(packet, channel)?)
             .map_err(|_| Error::Protocol)?
             .len()
             <= crate::http::REQUEST_LIMIT)
@@ -266,6 +266,20 @@ fn fit_http_budget(packet: &mut Packet, channel: &str) -> Result<()> {
         return Ok(());
     }
     Err(Error::TooLarge)
+}
+
+fn report_v2(packet: &Packet, channel: &str) -> Result<crate::protocol::report_document::ReportV2> {
+    crate::report_v2::build(
+        packet.id.clone(),
+        channel,
+        packet.title.clone(),
+        packet.body.clone(),
+        crate::report_v2::key_from_id(&packet.id),
+        crate::report_v2::Kind::Triage(
+            packet.context.clone(),
+            serde_json::to_value(&packet.attachments).map_err(|_| Error::Protocol)?,
+        ),
+    )
 }
 fn tail(text: &str, max: usize) -> String {
     let mut start = text.len().saturating_sub(max);

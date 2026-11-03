@@ -845,10 +845,10 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
 
 #[test]
 fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure() {
-    let report_id = format!("report_{}", crate::random_id().expect("entropy"));
+    let report_id = "18960000-0000-4000-8000-000000000072";
     let server=Server::start(vec![
         (200,serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":crate::random_id().expect("entropy"),"expires_at":160}).to_string()),
-        (503,"{}".into()),(200,serde_json::json!([{"report_id":report_id,"report_state":"submitted","idempotent":true,"created_at":"2026-09-30T10:00:00Z"}]).to_string())]);
+        (503,"{}".into()),(200,serde_json::json!([{"report_id":report_id,"report_state":"received","idempotent":true,"created_at":"2026-09-30T10:00:00Z"}]).to_string())]);
     let (root, store) = crate::test_store("report-retry");
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
@@ -873,6 +873,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
             .idempotency_key,
         draft.idempotency_key
     );
+    let expected_key = draft.idempotency_key.clone();
     let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     reports
         .prepare(&request, draft.clone(), environment())
@@ -897,6 +898,10 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("first submit");
     assert!(first.starts_with("POST /functions/v1/testing-report-submit "));
+    let sent: serde_json::Value = serde_json::from_str(first.split("\r\n\r\n").nth(1).unwrap()).unwrap();
+    assert_eq!(sent["contract_version"], "testing.report.v2");
+    assert_eq!(sent["variant"], "diagnostic");
+    assert_eq!(sent["idempotency_key"], expected_key);
     assert!(matches!(
         store
             .fixture::<Attempt>("report-attempt")

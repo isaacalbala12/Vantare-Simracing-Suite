@@ -37,6 +37,8 @@ pub use vantare_ipc::services_protocol as protocol;
 #[cfg(feature = "network")]
 pub mod report;
 #[cfg(feature = "network")]
+mod report_v2;
+#[cfg(feature = "network")]
 pub mod roadmap;
 pub mod storage;
 #[cfg(feature = "network")]

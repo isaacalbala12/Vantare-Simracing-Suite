@@ -2,11 +2,11 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v19 publishes cached Session and persistent LicenseNotice in local LicenseStatus.
+// v20 publishes testing.report.v2 from Services for all report submission paths.
 // v18 removed TransferRights. Admission observes the core without disk replay.
 // Mixed generations are transient failures;
 // no protocol error can invalidate the signed core policy.
-pub const VERSION: u32 = 19;
+pub const VERSION: u32 = 20;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]

@@ -113,7 +113,7 @@ fn uncertain_submission_retries_exact_payload_and_never_selects_identity() {
         .expect("verified account");
     let request = session.request(&http, &config, &account, 100);
     let packet = Packet {
-        id: "15940000-0000-0000-0000-000000000010".into(),
+        id: "15940000-0000-4000-8000-000000000010".into(),
         title: "Failure".into(),
         body: "steps expected observed".into(),
         context: serde_json::json!({"app_version":"1.2.3","app_channel":"testers","game":"none","game_version":null,"system":{},"telemetry_summary":null,"posthog_session_id":null,"consent":{"version":"triage-v2","items":[],"accepted_at":"2026-10-13T00:00:00Z"}}),
@@ -175,7 +175,7 @@ fn uncertain_submission_retries_exact_payload_and_never_selects_identity() {
     assert_eq!(first, retried);
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(first).expect("payload"),
-        preview.packet.rpc_payload("testers")
+        serde_json::to_value(report_v2(&preview.packet, "testers").unwrap()).unwrap()
     );
     assert!(!first.contains("account_id") && !first.contains("data-fixture"));
     server.finish();
@@ -224,8 +224,7 @@ fn review_r7_f8_real_preview_is_preserved_for_combined_sql_admission() {
             |system| Ok(observed_fixture(system)),
         )
         .expect("actual preview");
-    let payload = preview.packet.rpc_payload("testers");
-    let bytes = serde_json::to_vec(&payload).expect("preview bytes");
+    let bytes = serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("preview bytes");
     assert!(!String::from_utf8_lossy(&bytes).contains("OrdinaryPrivateTesterNote"));
     assert_eq!(preview.packet.attachments.len(), 1);
     triage
@@ -541,7 +540,7 @@ fn prepared_text(raw: &str) -> String {
             |system| Ok(observed_fixture(system)),
         )
         .expect("synthetic preparation");
-    serde_json::to_string(&preview.packet.rpc_payload("testers")).expect("RPC JSON")
+    serde_json::to_string(&report_v2(&preview.packet, "testers").unwrap()).expect("v2 JSON")
 }
 
 #[test]
@@ -568,8 +567,8 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
             |system| Ok(observed_fixture(system)),
         )
         .expect("UI-admitted text");
-    let payload = preview.packet.rpc_payload("testers");
-    for (field, max) in [("p_title", 120), ("p_body", 1000)] {
+    let payload = serde_json::to_value(report_v2(&preview.packet, "testers").unwrap()).unwrap();
+    for (field, max) in [("title", 120), ("body", 1000)] {
         let value = payload[field].as_str().expect("text");
         assert!(
             (1..=max).contains(&value.trim().chars().count()),
@@ -579,7 +578,7 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
         assert!(!value.contains("::1"));
         assert_eq!(value, redaction::REMOVED);
     }
-    let expected = serde_json::to_vec(&payload).expect("JSON");
+    let expected = serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
     let server=Server::start(vec![
         (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":160}).to_string()),
         (500,"{}".into()),(200,"null".into()),
@@ -654,7 +653,7 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
                 |system| Ok(observed_fixture(system)),
             )
             .expect("large valid preparation");
-        let expected = serde_json::to_vec(&preview.packet.rpc_payload("testers")).expect("JSON");
+        let expected = serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
         assert!(
             expected.len() <= 65536,
             "offered preview exceeds HTTP budget: {}",

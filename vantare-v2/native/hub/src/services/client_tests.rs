@@ -5,7 +5,7 @@ use vantare_ipc::transport::Listener;
 
 #[test]
 fn hello_mismatch_checks_current_client_and_simulated_legacy_version_guards() {
-    assert_eq!(protocol::VERSION, 19, "step-9 envelope contract");
+    assert_eq!(protocol::VERSION, 20, "report v2 envelope contract");
     for (reader, writer) in [(19, 18), (18, 19), (19, 17), (17, 19)] {
         let name = format!("hub-hello-{reader}-{writer}-{}", std::process::id());
         let stop = Arc::new(Event::new().expect("event"));

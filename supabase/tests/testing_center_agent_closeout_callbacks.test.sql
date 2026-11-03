@@ -14,13 +14,14 @@ BEGIN
 END $$;
 
 set local search_path = public,extensions;
-select plan(45);
+select plan(47);
 
 select has_table('public','testing_center_agent_phase_callbacks','phase callback ledger exists');
 select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='public.testing_center_agent_phase_callbacks'::regclass),'phase callback ledger forces RLS');
 select ok(has_function_privilege('service_role','public.testing_center_record_agent_phase_callback(text,text,text,text,text,text,bigint,bigint,text)','execute'),'service role can apply phase callbacks');
 select ok(not has_function_privilege('authenticated','public.testing_center_record_agent_phase_callback(text,text,text,text,text,text,bigint,bigint,text)','execute'),'clients cannot apply phase callbacks');
 select ok(has_function_privilege('authenticated','public.testing_center_get_agent_job_state(text)','execute'),'authenticated tester can load its visible state');
+select ok(not has_function_privilege('anon','public.testing_center_get_agent_job_state(text)','execute'),'anon cannot load agent state');
 
 insert into auth.users(id,email) values
   ('00000000-0000-4000-8000-000000000324','isa324@example.invalid'),
@@ -219,13 +220,29 @@ select is((select callback_status from public.testing_center_record_agent_phase_
 select is((select state from public.testing_center_agent_jobs where job_key=(select job_key from isa324_jobs where n='f')),'needs_owner','stale pre-GREEN HEAD closes automation');
 
 reset role;
+insert into public.testing_contributions(id,account_id,channel,title,body) values
+  ('00000000-0000-4000-8000-000000000326','00000000-0000-4000-8000-000000000324',
+   'nightly','Synthetic','Synthetic');
+insert into public.testing_center_technical_issues(
+  technical_issue_id,report_id,contribution_id,state,flow_state,origin
+) values (
+  'issue_v2_'||repeat('a',64),null,'00000000-0000-4000-8000-000000000326',
+  'open','queued','orchestrator');
+insert into public.testing_center_agent_jobs(
+  job_key,technical_issue_id,execution_generation,policy_version,
+  report_digest,dossier_digest,nightly_base_sha,state
+) values (
+  public.testing_center_agent_job_key('issue_v2_'||repeat('a',64),repeat('a',64),repeat('a',40),'testing-center.autofix-policy.v2'),
+  'issue_v2_'||repeat('a',64),1,'testing-center.autofix-policy.v2',
+  repeat('a',64),repeat('d',64),repeat('a',40),'completed');
 select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000324');
 set role authenticated;
-select is((select state from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),'completed','reporter can load its own agent state');
+select is((select state from public.testing_center_get_agent_job_state('00000000-0000-4000-8000-000000000326')),'completed','reporter can load its v2 agent state');
 reset role;
 select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000325');
 set role authenticated;
-select is((select count(*)::integer from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),0,'another user cannot load the agent state');
+select is((select count(*)::integer from public.testing_center_get_agent_job_state('00000000-0000-4000-8000-000000000326')),0,'another user cannot load the agent state');
+select is((select count(*)::integer from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),0,'old report IDs no longer authorize the v2 read');
 
 select * from finish();
 rollback;

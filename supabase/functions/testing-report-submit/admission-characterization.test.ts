@@ -2,11 +2,14 @@ import { handleTestingReportSubmit } from "./index.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 
 const valid = {
-  p_id: "16100000-0000-4000-8000-000000000099",
-  p_channel: "master",
-  p_title: "Synthetic",
-  p_body: "Synthetic",
-  p_consent: true,
+  contract_version: "testing.report.v2",
+  variant: "simple",
+  idempotency_key: `draft_${"a".repeat(64)}`,
+  report_id: "16100000-0000-4000-8000-000000000099",
+  channel: "master",
+  title: "Synthetic",
+  body: "Synthetic",
+  consent: true,
 };
 
 function request(account: string, body: unknown = valid) {
@@ -49,11 +52,20 @@ Deno.test("VANTA-131 step 2: authenticated malformed body and exact retry spare 
       counts.set(counterKey, (counts.get(counterKey) ?? 0) + 1);
       return Promise.resolve(true);
     },
-    submit: () => Promise.resolve(),
+    rpc: (_name: string, args: Record<string, unknown>) =>
+      Promise.resolve({
+        error: null,
+        data: [{
+          report_id: (args.p_report as Record<string, unknown>).report_id,
+          report_state: "received",
+          idempotent: false,
+          created_at: "2026-10-14T12:00:00Z",
+        }],
+      }),
   };
   if (
     (await handleTestingReportSubmit(
-      request("account-a", { ...valid, p_consent: false }),
+      request("account-a", { ...valid, consent: false }),
       deps,
     )).status !== 400
   ) {
@@ -71,7 +83,7 @@ Deno.test("VANTA-131 step 2: authenticated malformed body and exact retry spare 
   }
   if (
     (await handleTestingReportSubmit(
-      request("account-a", { ...valid, p_body: "Changed" }),
+      request("account-a", { ...valid, body: "Changed" }),
       deps,
     )).status !== 409
   ) {

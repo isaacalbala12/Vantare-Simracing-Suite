@@ -1,17 +1,16 @@
 {
-  "p_contract_version": "testing-center.v1",
-  "p_channel": "testers",
-  "p_action_text": "Informe estructurado",
-  "p_expected_text": "Revisión humana pendiente",
-  "p_observed_text": "Revisión humana pendiente",
-  "p_context_text": "",
-  "p_app_version": "1.2.3",
-  "p_os_family": "windows",
-  "p_os_version": "Windows 11",
-  "p_module": "hub",
-  "p_include_diagnostic": false,
-  "p_include_logs": false,
-  "p_diagnostic_payload": null,
-  "p_diagnostic_digest": null,
-  "p_idempotency_key": "draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  "contract_version": "testing.report.v2",
+  "report_id": "17090000-0000-4000-8000-000000000020",
+  "channel": "testers",
+  "title": "Informe estructurado",
+  "body": "Revisión humana pendiente",
+  "consent": true,
+  "idempotency_key": "draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "variant": "diagnostic",
+  "context": {
+    "app_version": "1.2.3",
+    "os_family": "windows",
+    "os_version": "Windows 11",
+    "module": "hub"
+  }
 }

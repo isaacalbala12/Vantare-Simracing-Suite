@@ -11,7 +11,6 @@ use vantare_services::storage::Read as Stored;
 use vantare_services::{
     Error, Result,
     account::{Account, OAuth},
-    config::BuildConfig,
     http::Http,
     storage::Store,
 };
@@ -124,17 +123,15 @@ struct Session {
 impl Session {
     fn open(root: &std::path::Path) -> Result<Self> {
         let client = Client::from_build()?;
-        let config = BuildConfig::load();
-        let oauth_config = config.native_oauth.ok_or(Error::Unconfigured)?;
-        // Misma carpeta y binding que App::ensure_account, no una segunda sesión.
-        let context = format!(
-            "v1|{}|{}|{}|{}",
-            oauth_config.issuer,
-            oauth_config.client_id,
-            config.channel.unwrap_or("unknown"),
-            config.supabase.as_ref().map_or("", url::Url::as_str)
-        );
-        let store = Store::open(root, &context)?;
+        let config = crate::config::load()?;
+        if let Some((context, _hub)) = &config.legacy {
+            let legacy = Store::open(root, context)?;
+            let at = now()?.saturating_mul(1000);
+            legacy.quarantine_if_present("account", at)?;
+            legacy.quarantine_if_present("account-profile", at)?;
+        }
+        let oauth_config = config.build.native_oauth.ok_or(Error::Unconfigured)?;
+        let store = Store::open(root, &config.context)?;
         let http = Http::default();
         let oauth = load_oauth(&store, &http, oauth_config, now()?.saturating_mul(1000))?;
         Ok(Self {
@@ -269,7 +266,8 @@ pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
         session.account.identity().is_some()
     );
     diagnose_pages(&session)?;
-    let issuer = BuildConfig::load()
+    let issuer = crate::config::load()?
+        .build
         .native_oauth
         .ok_or(Error::Unconfigured)?
         .issuer;
@@ -520,6 +518,38 @@ mod tests {
             matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
         );
         drop(session);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
+    fn r10_characterization_legacy_admin_accepts_cached_hub_oauth_metadata() {
+        let root =
+            std::env::temp_dir().join(format!("admin-r10-hub-metadata-{}", std::process::id()));
+        let store = Store::open(&root, "r10-synthetic-hub-context").expect("store");
+        let issuer = url::Url::parse("https://clerk.fixture.invalid/").expect("issuer");
+        let redirect = url::Url::parse("http://127.0.0.1:47813/callback").expect("redirect");
+        let oauth: OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":issuer, "client_id":"hub-fixture", "redirect":redirect,
+            "authorization":issuer.join("authorize").expect("URL"),
+            "token":issuer.join("token").expect("URL"),
+            "userinfo":issuer.join("userinfo").expect("URL")
+        }))
+        .expect("metadata");
+        store
+            .save("oauth-metadata", &oauth)
+            .expect("metadata cache");
+        let loaded = load_oauth(
+            &store,
+            &Http::default(),
+            vantare_services::config::OAuthBuild {
+                issuer: issuer.clone(),
+                client_id: "hub-fixture".into(),
+                redirect_uri: redirect.clone(),
+            },
+            1_700_000_000_123,
+        )
+        .expect("cached metadata: no HTTP");
+        assert!(loaded.matches(&issuer, "hub-fixture", &redirect));
+        drop(store);
         std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]

@@ -223,6 +223,18 @@ impl Store {
         Ok(())
     }
 
+    /// Rename a retired document without opening or decrypting its contents.
+    pub fn quarantine_if_present(&self, name: &str, at_millis: u64) -> Result<bool> {
+        match fs::symlink_metadata(self.path(name)?) {
+            Ok(info) if info.is_file() && !info.file_type().is_symlink() => {
+                self.quarantine_dated(name, at_millis)?;
+                Ok(true)
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            _ => Err(Error::Storage),
+        }
+    }
+
     fn trim_quarantines(&self, name: &str, newest: &Path) -> Result<()> {
         let prefix = format!("{name}-");
         let legacy = format!("{name}.corrupto");

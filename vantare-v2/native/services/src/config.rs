@@ -58,7 +58,8 @@ impl BuildConfig {
 }
 
 impl OAuthBuild {
-    fn from_build_values(
+    /// Validate public OAuth values without reading runtime configuration.
+    pub fn from_build_values(
         issuer: Option<&str>,
         client_id: Option<&str>,
         redirect: Option<&str>,

@@ -39,8 +39,7 @@ El lector puente de 8A entiende v1 y el futuro v2. El escritor conserva la
 versión leída; no promueve v1 al guardar posición, formato o rendimiento.
 No se escriben claves nuevas en v1 durante la preparación.
 
-Ejemplo de cabecera v2: `{version:2,instances:[...],reducedMotion:true,extensions:{}}`.
-El objeto real es JSON con claves entre comillas; el ejemplo resume la forma.
+Ejemplo de cabecera v2: `{"version":2,"instances":[],"reducedMotion":true,"extensions":{}}`.
 Layout v2 mantiene los campos actuales y añade reducedMotion: Option<bool> al
 nivel del DTO persistido de UI. Ausente significa pendiente de importar; false
 y true significan decisión ya importada, nunca reimpuesta desde Apariencia.

@@ -14,12 +14,30 @@ import { verifyStandardWebhook } from "../functions/_shared/webhook-verify.ts";
 import { loadPolarProductMap } from "../functions/_shared/mapping.ts";
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../functions/_shared/test-fixtures.ts";
 
-const [readyPath, initialClock, portText] = Deno.args;
-const safeRoot = "/mnt/d/VantareServer/qa/licencias-e2e/";
+const [readyArgument, clockArgument, portText] = Deno.args;
+const safeRoot = await Deno.realPath("/mnt/d/VantareServer/qa/licencias-e2e");
+async function ownedPath(path: string, root: string): Promise<string> {
+  const canonical = await Deno.realPath(path);
+  if (!canonical.startsWith(root + "/")) throw Error("qa_path_escape");
+  return canonical;
+}
+const initialClock = await ownedPath(clockArgument, safeRoot);
+if (!initialClock.endsWith("/clock.json") || !/^\d+$/.test(portText)) {
+  throw Error("qa_arguments");
+}
+const runRoot = initialClock.slice(0, -"/clock.json".length);
 if (
-  ![readyPath, initialClock].every((p) => p.startsWith(safeRoot)) ||
-  !/^\d+$/.test(portText)
-) throw Error("qa_arguments");
+  await Deno.readTextFile(
+    await ownedPath(runRoot + "/qa-e2e-owned", runRoot),
+  ) !== "VANTA-126 qa-e2e fixture"
+) throw Error("qa_owner");
+const readyPath = await ownedPath(readyArgument, runRoot);
+const controlToken = await Deno.readTextFile(
+  await ownedPath(runRoot + "/qa-control-token", runRoot),
+);
+if (controlToken.length < 32 || controlToken.length > 128) {
+  throw Error("qa_control_token");
+}
 const ready = JSON.parse(await Deno.readTextFile(readyPath));
 const origin = `http://127.0.0.1:${Number(portText)}`;
 if (new URL(ready.postgrest).hostname !== "127.0.0.1") {
@@ -31,7 +49,11 @@ let currentSubject = "user_" + "a".repeat(27);
 let mode = "normal";
 let licenseRequests = 0;
 let held = false;
-let release: (() => void) | undefined;
+const pending = new Set<() => void>();
+function releaseHeld() {
+  for (const resolve of pending) resolve();
+  pending.clear();
+}
 const codes = new Map<
   string,
   { subject: string; challenge: string; redirect: string }
@@ -108,10 +130,13 @@ async function checked<T>(
 async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const route = url.pathname;
+  if (
+    route.startsWith("/qa/") && req.headers.get("X-QA-Token") !== controlToken
+  ) return Response.json({ error: "qa_control_denied" }, { status: 403 });
   const time = await now();
   const native = { ...nativeDeps, now: () => time };
   if (route === "/qa/stop") {
-    release?.();
+    releaseHeld();
     await networkServer?.shutdown();
     setTimeout(() => shutdown.abort(), 100);
     return Response.json({ ok: true });
@@ -137,24 +162,24 @@ async function handler(req: Request): Promise<Response> {
       networkServer = undefined;
     }
     if (body.clock) {
-      if (
-        !body.clock.startsWith(safeRoot) || !body.clock.endsWith("/clock.json")
-      ) throw Error("qa_clock_path");
-      await Deno.readTextFile(body.clock);
-      clockPath = body.clock;
+      const path = await ownedPath(body.clock, runRoot);
+      if (!path.endsWith("/clock.json")) throw Error("qa_clock_path");
+      clockPath = path;
     }
     if (body.identity) {
       if (!["a", "b"].includes(body.identity)) throw Error("qa_identity");
       currentSubject = "user_" + body.identity.repeat(27);
     }
     if (body.mode) {
-      if (!["normal", "offline", "unauthorized", "hold"].includes(body.mode)) {
+      if (
+        !["normal", "offline", "unauthorized", "hold", "tampered", "foreign"]
+          .includes(body.mode)
+      ) {
         throw Error("qa_mode");
       }
       mode = body.mode;
       if (mode !== "hold") {
-        release?.();
-        release = undefined;
+        releaseHeld();
         held = false;
       }
     }
@@ -330,12 +355,25 @@ async function handler(req: Request): Promise<Response> {
           environment,
         );
       },
-      sign: (claims) => signCredential(claims, "qa-rfc8032", key),
+      sign: async (claims) => {
+        const signed = await signCredential(
+          mode === "foreign"
+            ? { ...claims, device_fingerprint: "b".repeat(64) }
+            : claims,
+          "qa-rfc8032",
+          key,
+        );
+        if (mode === "tampered") {
+          signed.signature = (signed.signature[0] === "A" ? "B" : "A") +
+            signed.signature.slice(1);
+        }
+        return signed;
+      },
     });
     if (mode === "hold") {
       held = true;
       await new Promise<void>((resolve) => {
-        release = resolve;
+        pending.add(resolve);
       });
     }
     return response;

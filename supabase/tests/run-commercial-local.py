@@ -76,7 +76,8 @@ ENV={k:v for k,v in os.environ.items() if not k.startswith(('PG','PGRST'))}
 if args.deno_bin and not args.baseline:
  edge_suites=['billing-webhook/process.test.ts','billing-reconcile/worker.test.ts',
   'license-credential/','native-license/']
- edge=subprocess.run([args.deno_bin,'test','--frozen','--allow-env','--allow-read',
+ edge_env='--allow-env=BILLING_OWNER_ALERT_SECRET,BILLING_OWNER_ALERT_URL,BILLING_RECONCILE_SECRET,CHECKOUT_CANCEL_URL,CHECKOUT_SUCCESS_URL,CLERK_ISSUER,CLERK_NATIVE_CLIENT_ID,CLERK_SECRET_KEY,OFFLINE_LICENSE_ED25519_PRIVATE_KEY,OFFLINE_LICENSE_KEY_ID,POLAR_ACCESS_TOKEN,POLAR_API_BASE_URL,POLAR_DEBUG_ERRORS,POLAR_ENVIRONMENT,POLAR_PRODUCT_MAP,POLAR_TRIAL_ANTI_ABUSE_CONFIRMED,POLAR_WEBHOOK_SECRET,POLAR_WEBHOOK_SECRET_FORMAT,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,SUPABASE_URL,DENO_DEPLOYMENT_ID' if args.qa_e2e else '--allow-env'
+ edge=subprocess.run([args.deno_bin,'test','--frozen',edge_env,'--allow-read',
   '--config',str(ROOT/'supabase/functions/deno.json'),
   *[str(ROOT/'supabase/functions'/suite) for suite in edge_suites]],
   env=ENV,capture_output=True,text=True,timeout=180)

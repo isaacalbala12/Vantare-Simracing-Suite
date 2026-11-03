@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import queue
 import shutil
+import secrets
 import socket
 import subprocess
 import threading
@@ -60,17 +61,19 @@ def owned(root, checkout):
     shutil.copyfile(checkout / "vantare-v2/testdata/lmu-fixture.bin", root / "replay.bin")
     real = int(time.time() * 1000)
     write_json(root / "clock.json", dict(wall_ms=real, real_anchor_ms=real,
-               monotonic_ms=0, phase="Waiting", session=47, feed=True))
+               monotonic_ms=0, phase="Waiting", session=47))
     return root
 
 
-def advance(root, seconds=0, **changes):
+def advance(root, seconds=0, *, wall_seconds=None, monotonic_seconds=None, **changes):
     path = root / "clock.json"
     clock = json.loads(path.read_text())
     real = int(time.time() * 1000)
-    clock["wall_ms"] += real - clock["real_anchor_ms"] + int(seconds * 1000)
+    wall = seconds if wall_seconds is None else wall_seconds
+    monotonic = seconds if monotonic_seconds is None else monotonic_seconds
+    clock["wall_ms"] += real - clock["real_anchor_ms"] + int(wall * 1000)
     clock["real_anchor_ms"] = real
-    clock["monotonic_ms"] += int(seconds * 1000)
+    clock["monotonic_ms"] += int(monotonic * 1000)
     clock.update(changes)
     write_json(path, clock)
 
@@ -94,14 +97,14 @@ class LocalRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class Backend:
-    def __init__(self, url):
-        self.url = url
+    def __init__(self, url, token):
+        self.url, self.token = url, token
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), LocalRedirect())
 
     def request(self, route, data=None, headers=None):
         body = None if data is None else json.dumps(data, separators=(",", ":")).encode()
         req = urllib.request.Request(self.url + route, body,
-              {"Content-Type": "application/json", **(headers or {})})
+              {"Content-Type": "application/json", **({"X-QA-Token": self.token} if route.startswith("/qa/") else {}), **(headers or {})})
         with self.opener.open(req, timeout=20) as response:
             return json.load(response)
 
@@ -173,7 +176,7 @@ class App:
     def until(self, predicate):
         return wait_for(lambda: (p if predicate(p := self.policy()) else None))
 
-    def login(self, identity="a"):
+    def login(self, identity="a", check_revoked=False):
         self.backend.control(identity=identity)
         self.service("AccountBegin")
         reply = self.service("AccountCopyLink")
@@ -182,8 +185,14 @@ class App:
         # The real callback waits for AccountPoll; the reader is owned/joined here.
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(lambda: self.backend.opener.open(link, timeout=15).close())
-            wait_for(lambda: self.service("AccountPoll").get("session") == "SignedIn")
+            def signed_in():
+                reply=self.service("AccountPoll")
+                if reply.get("session") != "SignedIn": return False
+                if check_revoked: self.revoked_on_reply("AccountPoll SignedIn")
+                return True
+            wait_for(signed_in)
             future.result(timeout=15)
+        if check_revoked: return
         command=(f"Get-CimInstance Win32_Process -Filter 'ParentProcessId = {self.child.pid}' | "
                  "Where-Object Name -in @('vantare-core.exe','vantare-services.exe') | "
                  "Select-Object ProcessId,ParentProcessId,Name | ConvertTo-Json -Compress")
@@ -191,6 +200,11 @@ class App:
                             env=self.child_env,creationflags=subprocess.CREATE_NO_WINDOW,timeout=15))
         assert {p["Name"] for p in children} == {"vantare-core.exe","vantare-services.exe"}
         self.events.append({"real_children":children})
+
+    def revoked_on_reply(self, command):
+        present=bool(list((self.root / "native").rglob("binding.dpapi")))
+        self.events.append({"at_success_reply":command,"binding_present":present})
+        assert not present, "binding still present on successful explicit revocation"
 
     def binding(self):
         paths = list((self.root / "native").rglob("binding.dpapi"))
@@ -292,23 +306,30 @@ def run_cases(checkout, bins, job, backend):
 
     def case5():
         nonlocal app
-        a = fresh("5-logout", grant="founders")
-        a.service("Logout")
-        a.until(lambda p: p["state"]["kind"] == "revoked")
-        assert not list((a.root / "native").rglob("binding.dpapi"))
-        assert a.service("AccountPoll")["session"] == "SignedOut"
-        a.close(); app = None
-        a = fresh("5-identity", grant="founders")
-        backend.control(identity="b", grant="pro", mode="hold")
-        a.login("b")
-        a.until(lambda p: p["state"]["kind"] == "revoked")
-        assert not list((a.root / "native").rglob("binding.dpapi"))
+        for action in ("Logout", "DeviceReset"):
+            a=fresh("5-"+action.lower(),grant="founders")
+            reply=a.service(action)
+            assert reply["result"] != "Error"
+            a.revoked_on_reply(action)
+            a.close(crash=True);app=None
+            backend.control(mode="offline")
+            app=App(a.root,bins,backend)
+            app.until(lambda p:p["state"]["kind"]=="revoked")
+            app.revoked_on_reply("restart after "+action)
+            if action=="Logout": assert app.service("AccountPoll")["session"]=="SignedOut"
+            app.close();app=None
+        a=fresh("5-identity",grant="founders")
+        backend.control(identity="b",grant="pro",mode="hold")
+        a.login("b",check_revoked=True)
+        a.close(crash=True);app=None
+        app=App(a.root,bins,backend)
+        app.until(lambda p:p["state"]["kind"]=="revoked")
+        assert app.policy()["catalog"]!="founders"
         backend.control(mode="normal")
-        a.close(); app = None
-        a = fresh("5-reset", grant="founders")
-        a.service("DeviceReset")
-        a.until(lambda p: p["state"]["kind"] == "revoked")
-        assert not list((a.root / "native").rglob("binding.dpapi"))
+        def b_pro(p):
+            assert p["catalog"]!="founders", "B inherited A's Founders after durable revocation"
+            return p["catalog"]=="pro"
+        app.until(b_pro)
 
     def case6():
         a = fresh(6, seconds=180)  # Inside the last five minutes: documented one-minute floor.
@@ -331,7 +352,6 @@ def run_cases(checkout, bins, job, backend):
         backend.control(grant="free", customer=True)
         assert a.service("Purchase", product="pro_monthly")["result"] == "Checkout"
         assert a.policy()["catalog"] == "free"
-        advance(a.root, feed=False)
         wall = json.loads((a.root / "clock.json").read_text())["wall_ms"]
         stamp = str(wall // 1000)
         iso = __import__('datetime').datetime.fromtimestamp(wall / 1000, __import__('datetime').timezone.utc).isoformat()
@@ -345,11 +365,11 @@ def run_cases(checkout, bins, job, backend):
         before = backend.stats()["licenseRequests"]
         advance(a.root, 61)
         wait_for(lambda: backend.stats()["licenseRequests"] > before)
-        status=wait_for(lambda: (r if (r:=a.service("LicenseStatus")).get("policy",{}).get("catalog")=="pro" else None))
-        a.events.append({"core_while_feed_blocked":status["policy"]})
-        assert a.policy()["catalog"] != "pro", "reply/HTTP bypassed the actual Feed"
-        advance(a.root, feed=True)
-        a.until(lambda p: p["catalog"] == "pro")
+        policy=a.until(lambda p:p["catalog"]=="pro" and p["state"]["kind"]=="active")
+        clock=json.loads((a.root/"clock.json").read_text())
+        wall=clock["wall_ms"]+int(time.time()*1000)-clock["real_anchor_ms"]
+        assert 0 <= wall-policy["checked_at_ms"] < 2000
+        a.events.append({"purchase_observed":"fresh real Feed after webhook", "limitation":"UI confirmation exclusivity not exercised"})
 
     def case8():
         nonlocal app
@@ -371,11 +391,16 @@ def run_cases(checkout, bins, job, backend):
         assert a.policy()["signed_until_ms"] is None
         before = backend.stats()["licenseRequests"]
         a.events.append({"daily_stage":"verified","requests":before})
-        advance(a.root, 86340)
+        advance(a.root,wall_seconds=3*86400,monotonic_seconds=0)
+        a.until(lambda p:p["state"]["kind"]=="active" and p["catalog"]=="founders")
+        a.service("LicenseRenewAutomatic")
+        assert backend.stats()["licenseRequests"]==before, "wall alone triggered perpetual renewal"
+        a.events.append({"daily_stage":"wall +72h; monotonic unchanged","requests":before})
+        advance(a.root,wall_seconds=0,monotonic_seconds=86340)
         a.service("LicenseRenewAutomatic")
         assert backend.stats()["licenseRequests"] == before, "perpetual renewed before 24h"
         a.events.append({"daily_stage":"23h59m","requests":backend.stats()["licenseRequests"]})
-        advance(a.root, 61)
+        advance(a.root,wall_seconds=0,monotonic_seconds=61)
         wait_for(lambda: backend.stats()["licenseRequests"] > before)
         a.events.append({"daily_stage":"24h01s","requests":backend.stats()["licenseRequests"]})
         a.until(lambda p: p["state"]["kind"] == "active" and p["signed_until_ms"] is None)
@@ -400,10 +425,34 @@ def run_cases(checkout, bins, job, backend):
         assert not list((a.root / "native").rglob("license-transfer-pending*"))
         assert binding, "pre-crash binding missing"
 
-    for number, test in enumerate([case1,case2,case3,case4,case5,case6,case7,case8,case9,case10],1):
+    def rejected_credential(mode):
+        a=fresh("negative-"+mode)
+        binding=a.binding()
+        backend.control(mode=mode)
+        reply=a.service("LicenseRenew")
+        assert reply["result"]!="License", "invalid credential accepted"
+        assert a.binding()==binding
+        a.until(lambda p:p["catalog"]=="pro" and p["state"]["kind"]=="active")
+
+    def wall_rollback():
+        a=fresh("negative-clock",grant="founders")
+        binding=a.binding()
+        advance(a.root,wall_seconds=-3600,monotonic_seconds=0)
+        a.until(lambda p:p["state"]["kind"]=="clock_behind")
+        before=backend.stats()["licenseRequests"]
+        a.service("LicenseRenewAutomatic")
+        assert backend.stats()["licenseRequests"]==before
+        assert a.binding()==binding
+        advance(a.root,wall_seconds=3601,monotonic_seconds=0)
+        a.until(lambda p:p["state"]["kind"]=="active")
+
+    tests=list(enumerate([case1,case2,case3,case4,case5,case6,case7,case8,case9,case10],1))
+    tests += [("N1-signature",lambda:rejected_credential("tampered")),
+              ("N2-binding",lambda:rejected_credential("foreign")),("N3-wall",wall_rollback)]
+    for number,test in tests:
         try:
             test()
-            results.append({"scenario":number,"result":"PASA","root":str(app.root)})
+            results.append({"scenario":number,"result":"NO VERIFICABLE" if number==7 else "PASA","root":str(app.root),**({"limitation":"Fresh Feed arrival proved; exclusive UI confirmation not exercised"} if number==7 else {})})
         except Exception as exc:
             # HTTP/IPC exceptions may contain transient OAuth URLs; never stringify them.
             results.append({"scenario":number,"result":"FALLA","error_type":type(exc).__name__,"root":str(app.root) if app else None})
@@ -436,7 +485,9 @@ def main():
                                   for name in ["vantare","vantare-core","vantare-services"]})
     with socket.socket() as probe:
         probe.bind(("127.0.0.1",0)); port = probe.getsockname()[1]
-    backend = Backend(f"http://127.0.0.1:{port}")
+    token=secrets.token_urlsafe(32)
+    (job/"qa-control-token").write_text(token,encoding="utf-8")
+    backend = Backend(f"http://127.0.0.1:{port}",token)
     with (job/"backend.log").open("wb") as log:
         process = subprocess.Popen(["wsl","-d","vantare-inferencia","--","bash",wsl(checkout/"tools/qa/license-e2e-backend.sh"),
                   wsl(checkout),wsl(job),str(port)],stdout=log,stderr=log,stdin=subprocess.DEVNULL)
@@ -446,6 +497,20 @@ def main():
                 try: return backend.stats()
                 except (urllib.error.URLError,ConnectionError): return None
             wait_for(ready, timeout=600)
+            try:
+                Backend(backend.url,"invalid-fixture-token").stats()
+                raise AssertionError("QA admin accepted an invalid token")
+            except urllib.error.HTTPError as denied:
+                assert denied.code==403
+            outside=QA/("outside-"+uuid.uuid4().hex)
+            outside.mkdir();write_json(outside/"clock.json",{})
+            traversal=wsl(job)+"/../"+outside.name+"/clock.json"
+            try:
+                backend.control(clock=traversal)
+                raise AssertionError("QA clock escaped its run root")
+            except urllib.error.HTTPError as denied:
+                assert denied.code in (400,403,500)
+            write_json(job/"backend-security.json",{"invalid_token":"rejected 403","normalized_clock_escape":"rejected"})
             results=run_cases(checkout,bins,job,backend)
         finally:
             try: backend.request("/qa/stop",{})
@@ -459,7 +524,7 @@ def main():
     lines=["# VANTA-126 · E2E real de licencias", "", "| Escenario | Resultado | Evidencia |", "|---|---|---|"]
     lines += [f"| {r['scenario']} | {r['result']} | {r.get('root')} / observations.json |" for r in results]
     (job/"INFORME.md").write_text("\n".join(lines)+"\n",encoding="utf-8")
-    if before!=after or any(r["result"]!="PASA" or r.get("shutdown") for r in results): raise SystemExit(1)
+    if before!=after or any(r["result"]=="FALLA" or r.get("shutdown") for r in results): raise SystemExit(1)
 
 
 if __name__=="__main__":

@@ -23,7 +23,6 @@ pub struct Tick {
     pub monotonic_ms: u64,
     pub phase: String,
     pub session: u64,
-    pub feed: bool,
 }
 fn invalid() -> io::Error {
     io::Error::other("invalid isolated qa-e2e configuration")

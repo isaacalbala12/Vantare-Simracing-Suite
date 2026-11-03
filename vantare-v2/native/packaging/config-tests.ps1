@@ -45,6 +45,20 @@ try {
         try { if ($env:VANTARE_BILLING_ENVIRONMENT -cne $billingEnvironment) { throw 'Entorno no cargado.' }; $passed++ }
         finally { Restore-NativeBuildConfig $previous }
     }
+    # An exported fixture key and unknown VANTARE variable cannot survive config import.
+    $keyBefore=$env:VANTARE_LICENSE_PUBLIC_KEYS; $qaBefore=$env:VANTARE_QA_AMBIENT
+    try {
+        $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
+        $env:VANTARE_QA_AMBIENT='qa-fixture-public'
+        [IO.File]::WriteAllText($file,'VANTARE_VERSION=0.0.0-test')
+        $previous=Import-NativeBuildConfig $file
+        try {
+            if($env:VANTARE_LICENSE_PUBLIC_KEYS -or $env:VANTARE_QA_AMBIENT){throw 'Inherited QA configuration survived import'}
+            $passed++
+        } finally {Restore-NativeBuildConfig $previous}
+        if(-not $env:VANTARE_LICENSE_PUBLIC_KEYS -or -not $env:VANTARE_QA_AMBIENT){throw 'Scoped import failed to restore caller'}
+        $passed++
+    } finally {$env:VANTARE_LICENSE_PUBLIC_KEYS=$keyBefore;$env:VANTARE_QA_AMBIENT=$qaBefore}
     # Una variable ausente debe volver a estar ausente (no presente con valor vacío).
     Remove-Item Env:VANTARE_POSTHOG_KEY -ErrorAction SilentlyContinue
     [IO.File]::WriteAllText($file, 'VANTARE_POSTHOG_KEY=public-fixture')

@@ -4,9 +4,10 @@ function Import-NativeBuildConfig([string]$Path) {
         'VANTARE_CLERK_ISSUER', 'VANTARE_CLERK_CLIENT_ID', 'VANTARE_CLERK_REDIRECT', 'VANTARE_CLERK_ACCOUNT_PORTAL_URL',
         'VANTARE_ACCOUNT_BRIDGE_URL', 'VANTARE_POSTHOG_KEY', 'VANTARE_ADMIN_URL',
         'VANTARE_BUILD_CHANNEL', 'VANTARE_VERSION', 'VANTARE_BILLING_ENVIRONMENT')
-    if ((Get-Item -LiteralPath $Path).Length -gt 65536) { throw 'Configuración de build demasiado grande.' }
+    if ($Path -and (Get-Item -LiteralPath $Path).Length -gt 65536) { throw 'Configuración de build demasiado grande.' }
     $values = @{}
-    foreach ($line in [IO.File]::ReadAllLines((Resolve-Path -LiteralPath $Path).Path)) {
+    $lines = if ($Path) { [IO.File]::ReadAllLines((Resolve-Path -LiteralPath $Path).Path) } else { @() }
+    foreach ($line in $lines) {
         if (-not $line.Trim() -or $line.TrimStart().StartsWith('#')) { continue }
         if ($line -cnotmatch '^([A-Z][A-Z0-9_]*)=(.*)$') { throw 'Formato de configuración inválido; use NOMBRE=valor.' }
         $name = $Matches[1]; $value = $Matches[2].Trim()
@@ -29,10 +30,11 @@ function Import-NativeBuildConfig([string]$Path) {
         $values[$name] = $value
     }
     $previous = @{}
-    foreach ($name in $values.Keys) {
-        $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+    foreach ($entry in Get-ChildItem Env:VANTARE_*) {
+        $previous[$entry.Name] = $entry.Value
     }
     try {
+        foreach ($entry in Get-ChildItem Env:VANTARE_*) { Remove-Item -LiteralPath ('Env:'+$entry.Name) }
         foreach ($name in $values.Keys) { [Environment]::SetEnvironmentVariable($name, $values[$name], 'Process') }
     } catch {
         Restore-NativeBuildConfig $previous
@@ -42,6 +44,8 @@ function Import-NativeBuildConfig([string]$Path) {
 }
 
 function Restore-NativeBuildConfig($Previous) {
+    if ($null -eq $Previous) { return }
+    foreach ($entry in Get-ChildItem Env:VANTARE_*) { Remove-Item -LiteralPath ('Env:'+$entry.Name) }
     foreach ($name in $Previous.Keys) {
         if ($null -eq $Previous[$name]) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
         else { [Environment]::SetEnvironmentVariable($name, $Previous[$name], 'Process') }

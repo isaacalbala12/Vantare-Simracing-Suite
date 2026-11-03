@@ -28,11 +28,7 @@ $null = Read-BetaVersion $Version
 $output = Assert-NativePath $OutputDirectory
 $useLegacyNsis = [bool]$LegacyNsis -or $Version -ceq '0.0.976'
 if ($useLegacyNsis) { $compiler = Get-Command $NsisCompiler -ErrorAction Stop }
-$previousConfig = @{}
-try {
-    if ($publishConfigFile) { $previousConfig = Import-NativeBuildConfig $publishConfigFile }
-    $artifacts = Build-NativeCandidate $output $Version 'beta' $BuildProfile ([bool]$AllowDirty)
-} finally { Restore-NativeBuildConfig $previousConfig }
+$artifacts = Build-NativeCandidate $output $Version 'beta' $BuildProfile ([bool]$AllowDirty) $publishConfigFile
 $manifest = [ordered]@{
     schema = 1; product = 'vantare-native'; channel = 'beta'; version = $Version
     url = "https://github.com/$script:BetaRepository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"

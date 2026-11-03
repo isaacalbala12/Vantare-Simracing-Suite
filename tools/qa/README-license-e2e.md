@@ -4,15 +4,12 @@ Solo Windows, en un checkout propio bajo `D:/VantareServer/qa/licencias-e2e`.
 No usa cuentas reales, servicios cloud ni la instalación real. La feature
 `qa-e2e` está apagada por defecto. No distribuir estos ejecutables.
 
-Antes de ejecutar, compilar por `native/scripts/compilar.ps1` con target propio
-y `-j 2`, desde `vantare-v2/`, manteniendo native/LocalAppData/AppData y TEMP/TMP
-bajo QA. Variables **públicas de fixture** de esa compilación:
+El script de build crea raíces propias e inyecta la configuración de fixture
+sólo en el entorno del proceso hijo de `compilar.ps1`. No exportar claves en
+la sesión de PowerShell:
 
 ```powershell
-$env:VANTARE_BUILD_CHANNEL='nightly'
-$env:VANTARE_BILLING_ENVIRONMENT='sandbox'
-$env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --locked --offline --manifest-path native/Cargo.toml -p vantare-runtime -p vantare-services --features vantare-runtime/qa-e2e --bin vantare --bin vantare-core --bin vantare-services --target-dir D:/VantareServer/qa/licencias-e2e/target-1916 -j 2
+python tools/qa/build-license-e2e.py --checkout D:/VantareServer/qa/licencias-e2e/qa-e2e-checkout --target D:/VantareServer/qa/licencias-e2e/target-1916
 ```
 
 La clave es el vector de prueba público RFC8032. La Edge local firma con ese
@@ -35,7 +32,7 @@ las Edge y el IdP falso en Deno loopback. El IdP valida PKCE. El conductor usa
 copiar enlace y el callback reales sin abrir el navegador del servidor.
 El supervisor ejecutable posee el Job, el núcleo ejecutable y el helper
 ejecutable. Se consumen el Host/Renewal y el Feed reales; el adaptador QA
-reutiliza `lmu-fixture.bin` para Live/Paused/Waiting.
+reutiliza `lmu-fixture.bin` para Live/Paused/Waiting. El Feed no tiene interruptor QA ni reloj de frescura artificial adicional.
 
 `VANTARE_QA_ROOT` exige marcador `qa-e2e-owned`; las tres raíces inyectadas
 deben ser sus subdirectorios. `VANTARE_QA_CLOCK` debe estar dentro de esa raíz.
@@ -43,7 +40,7 @@ Los endpoints `VANTARE_QA_LICENSE_URL`, `VANTARE_QA_IDP_URL` y
 `VANTARE_QA_REDIRECT_URL` sólo admiten HTTP IPv4 loopback. Sin la feature no
 existen esas lecturas ni el modo `--qa-e2e`/`--qa-e2e-probe`.
 
-El reloj mantiene avance real más desplazamientos QA de pared/monotónico;
+El reloj mantiene avance real y permite desplazamientos **independientes** de pared y monotónico;
 no modifica el del equipo. La sustitución del documento es atómica y reintenta
 únicamente la colisión de compartición de Windows/WSL, con límite de cinco
 segundos. No reintenta ni oculta errores del Store de producto.
@@ -73,3 +70,21 @@ Ese gate construye los tres controles negativos QA **optimizados**, exige que
 el escáner los rechace y compila/empaqueta después el inventario release real
 sin QA. El constructor rechaza features QA resueltas y examina los bytes de
 cada EXE antes de copiarlo al payload. La CI invoca el mismo gate.
+
+Revisión de seguridad: el empaquetado limpia todas las variables VANTARE_ antes
+cargar configuración explícita; analiza cada EXE, incluidos Setup/Uninstall y
+MSIX, buscando feature, identificadores QA y clave pública de fixture (texto y
+bytes). El gate prueba deliberadamente un entorno heredado contaminado.
+
+El backend normaliza rutas con realpath antes de comprobar límites, arranca con
+env limpio, restringe los nombres permitidos en Deno y protege /qa/* con token
+aleatorio de cada ejecución. PostgreSQL y su clave efímera viven en volumen
+ext4 de postgres con permisos 0700; no hay chmod 777.
+
+El caso 7 acredita checkout sin concesión inmediata y llegada de Pro mediante
+Feed fresco real. **No verifica la exclusividad de confirmación en la UI**:
+se marca NO VERIFICABLE para esa afirmación. Se añaden tres negativos reales:
+firma manipulada, credencial firmada para otro dispositivo y retroceso sólo de
+pared. El caso 9 adelanta pared 72 h sin renovar, luego sólo el monotónico hasta
+24 h. El caso 5 comprueba ausencia del binding al recibir éxito y restauración
+tras matar el proceso, y observa B→Pro sin Founders.

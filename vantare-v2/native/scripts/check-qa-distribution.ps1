@@ -4,10 +4,13 @@ $ErrorActionPreference='Stop'
 $target=[IO.Path]::GetFullPath($TargetDirectory)
 $native=Split-Path $PSScriptRoot
 . (Join-Path $native 'packaging/no-qa.ps1')
+& (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('marker-negative-'+[guid]::NewGuid().ToString('N')))
 Push-Location $native
 $previousTarget=$env:CARGO_TARGET_DIR
 $previousDuck=$env:DUCKDB_LIB_DIR
 $previousData=@{}
+$fixtureBefore=$env:VANTARE_LICENSE_PUBLIC_KEYS
+$qaBefore=$env:VANTARE_QA_AMBIENT
 try {
     foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))) {
         $previousData[$pair[0]]=[Environment]::GetEnvironmentVariable($pair[0],'Process')
@@ -31,8 +34,14 @@ try {
     if(-not $rejected){throw 'QA feature negative control escaped.'}
     Remove-Item Env:DUCKDB_LIB_DIR -ErrorAction SilentlyContinue
     . (Join-Path $native 'packaging/candidate.ps1') -NativeLibrary -NativeRoot (Join-Path $target 'unused-install-root')
+    # Regression: an ambient public fixture key must never enter the package.
+    $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
+    $env:VANTARE_QA_AMBIENT='qa-fixture-public'
     Build-NativeCandidate -Destination (Join-Path $target 'release-package') -CandidateVersion '0.0.0-qa-exclusion' -CandidateChannel nightly -Profile Release -PermitDirty $true
+    Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
 } finally {
+    $env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore
+    $env:VANTARE_QA_AMBIENT=$qaBefore
     foreach($name in $previousData.Keys){[Environment]::SetEnvironmentVariable($name,$previousData[$name],'Process')}
     $env:CARGO_TARGET_DIR=$previousTarget
     $env:DUCKDB_LIB_DIR=$previousDuck

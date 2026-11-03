@@ -16,6 +16,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (Test-Path Env:DUCKDB_LIB_DIR) { throw [InvalidOperationException]::new('Empaquetado exige DuckDB bundled; retira DUCKDB_LIB_DIR del entorno de desarrollo.') }
+. (Join-Path $PSScriptRoot '../build-config.ps1')
+. (Join-Path $PSScriptRoot '../no-qa.ps1')
+$msixEnvironment=Import-NativeBuildConfig ''
+$msixLocal=$env:LOCALAPPDATA; $msixRoaming=$env:APPDATA
+try {
 $native = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 # Todo artefacto, incluido CER público, debe quedar en target ignorado.
@@ -40,6 +45,11 @@ if (-not $SdkDirectory) {
 }
 if (-not $SdkDirectory -or -not (Test-Path (Join-Path $SdkDirectory 'makeappx.exe')) -or -not (Test-Path (Join-Path $SdkDirectory 'signtool.exe'))) { throw 'Instala Windows SDK 10.0.26100: herramientas de apps Desktop (makeappx y signtool x64). Ver MSIX.md.' }
 [IO.Directory]::CreateDirectory($output) | Out-Null
+foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))) {
+    $data=Join-Path $output ('.build-data/'+$pair[1])
+    [IO.Directory]::CreateDirectory($data)|Out-Null
+    [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
+}
 Push-Location $native
 try {
     $sourceSha = (& git rev-parse HEAD).Trim()
@@ -52,9 +62,10 @@ try {
         & cargo @arguments
         if ($LASTEXITCODE) { throw 'Build Rust falló.' }
     }
-    $metadataText = & cargo metadata --offline --locked --no-deps --format-version 1
+    $metadataText = & cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc
     if ($LASTEXITCODE) { throw 'cargo metadata falló.' }
     $metadata = $metadataText | ConvertFrom-Json
+    Assert-NativeDistributionFeatures @($metadata.resolve.nodes | ForEach-Object {$_.features})
 } finally { Pop-Location }
 $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
 if (-not $BinaryDirectory) { $BinaryDirectory = Join-Path $metadata.target_directory $BuildProfile.ToLowerInvariant() }
@@ -65,6 +76,7 @@ $payload = Join-Path $output 'payload'
 foreach ($bin in $bins) {
     $source = Join-Path $BinaryDirectory "$bin.exe"
     if ((Get-Item -LiteralPath $source).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Enlace rechazado: $bin" }
+    Assert-NativeDistributionBinary $source
     $stream = [IO.File]::OpenRead($source)
     $reader = [IO.BinaryReader]::new($stream)
     try {
@@ -87,6 +99,7 @@ $manifest.Package.Properties.DisplayName = $DisplayName
 $manifest.Package.Properties.PublisherDisplayName = $PublisherDisplayName
 $manifest.Package.Applications.Application[0].VisualElements.DisplayName = $DisplayName
 $manifest.Save((Join-Path $payload 'AppxManifest.xml'))
+Assert-NativeDistributionTree $payload
 $package = Join-Path $output "vantare-native-$Version-x64.msix"
 & (Join-Path $SdkDirectory 'makeappx.exe') pack /d $payload /p $package /h SHA256
 if ($LASTEXITCODE) { throw 'makeappx rechazó el paquete.' }
@@ -114,3 +127,8 @@ $files = @(Get-ChildItem -LiteralPath $payload -File -Recurse | ForEach-Object {
 $evidence = [ordered]@{ source_sha = $sourceSha; source_dirty = $dirty; build_profile = $BuildProfile; external_binary_directory = [bool]$PSBoundParameters.ContainsKey('BinaryDirectory'); version = $Version; identity = $IdentityName; publisher = $Publisher; sdk_directory = $SdkDirectory; test_certificate_thumbprint = $(if ($certificate) { $certificate.Thumbprint } else { $null }); package_sha256 = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant(); files = $files }
 $evidence | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'build-evidence.json') -Encoding UTF8
 Write-Output $package
+
+} finally {
+    Restore-NativeBuildConfig $msixEnvironment
+    $env:LOCALAPPDATA=$msixLocal; $env:APPDATA=$msixRoaming
+}

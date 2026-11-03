@@ -517,13 +517,6 @@ impl Feed {
             .spawn(move || {
                 let mut cursor = (0, 0);
                 while !cancel.is_set() {
-                    #[cfg(feature = "qa-e2e")]
-                    if !crate::qa::tick().is_ok_and(|tick| tick.feed) {
-                        if cancel.wait(std::time::Duration::from_millis(20)) {
-                            break;
-                        }
-                        continue;
-                    }
                     let result = request_cancelled(&link, Command::Read, &cancel);
                     if let Ok(mut slot) = target.lock() {
                         *slot = feed_observation(

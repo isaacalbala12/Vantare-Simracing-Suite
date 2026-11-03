@@ -113,15 +113,16 @@ class Backend:
 
 
 class App:
-    def __init__(self, root, bins, backend):
+    def __init__(self, root, bins, backend, license_url=None):
         self.root, self.backend = root, backend
         self.events = []
         env = {key: value for key, value in os.environ.items() if not key.startswith("VANTARE_")}
         env.update(VANTARE_QA_ROOT=str(root), VANTARE_QA_CLOCK=str(root / "clock.json"),
                    VANTARE_NATIVE_DATA_ROOT=str(root / "native"), LOCALAPPDATA=str(root / "local"),
                    APPDATA=str(root / "roaming"), TEMP=str(root / "tmp"), TMP=str(root / "tmp"),
-                   VANTARE_QA_LICENSE_URL=backend.url, VANTARE_QA_IDP_URL=backend.url,
+                   VANTARE_QA_LICENSE_URL=license_url or backend.url, VANTARE_QA_IDP_URL=backend.url,
                    VANTARE_QA_REDIRECT_URL="http://127.0.0.1:0/callback")
+        self.child_env=env
         self.log = (root / ("process-" + uuid.uuid4().hex + ".stderr.log")).open("wb")
         self.child = subprocess.Popen([str(bins / "vantare.exe"), "--qa-e2e"], env=env,
               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
@@ -129,9 +130,15 @@ class App:
         self.messages = queue.Queue()
         self.reader = threading.Thread(target=self.read_stdout)
         self.reader.start()
-        ready = self.receive()
-        assert ready.get("ready"), "real supervisor did not start"
+        try:
+            ready = self.receive()
+            assert ready.get("ready"), "real supervisor did not start"
+        except Exception:
+            self.child.kill();self.child.wait(timeout=15)
+            self.reader.join(timeout=5);self.log.close()
+            raise
         self.core_pid = ready["core_pid"]
+        self.events.append({"supervisor_pid":self.child.pid,"core_pid":self.core_pid})
 
     def read_stdout(self):
         try:
@@ -154,6 +161,7 @@ class App:
     def service(self, command, **args):
         reply = self.call("service", command=dict(command=command, **args))
         self.events.append({"command": command, "result": reply.get("result"), "session": reply.get("session"),
+                            "outcome": reply.get("outcome"),
                             "error": reply.get("message") if reply.get("result")=="Error" else None})
         return reply
 
@@ -176,6 +184,13 @@ class App:
             future = executor.submit(lambda: self.backend.opener.open(link, timeout=15).close())
             wait_for(lambda: self.service("AccountPoll").get("session") == "SignedIn")
             future.result(timeout=15)
+        command=(f"Get-CimInstance Win32_Process -Filter 'ParentProcessId = {self.child.pid}' | "
+                 "Where-Object Name -in @('vantare-core.exe','vantare-services.exe') | "
+                 "Select-Object ProcessId,ParentProcessId,Name | ConvertTo-Json -Compress")
+        children=json.loads(subprocess.check_output(["pwsh","-NoProfile","-Command",command],
+                            env=self.child_env,creationflags=subprocess.CREATE_NO_WINDOW,timeout=15))
+        assert {p["Name"] for p in children} == {"vantare-core.exe","vantare-services.exe"}
+        self.events.append({"real_children":children})
 
     def binding(self):
         paths = list((self.root / "native").rglob("binding.dpapi"))
@@ -185,34 +200,39 @@ class App:
         return digest
 
     def close(self, crash=False):
+        forced=False
         if self.child.poll() is None:
             if crash:
                 self.child.kill()  # Existing supervisor Job also terminates its actual children.
             else:
                 self.child.stdin.write(b'{"action":"exit"}\n')
                 self.child.stdin.flush()
-            self.child.wait(timeout=15)
+            try:
+                self.child.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                forced=True;self.child.kill();self.child.wait(timeout=15)
         self.reader.join(timeout=5)
         assert not self.reader.is_alive(), "stdout reader did not stop"
         self.log.close()
+        write_json(self.root / "observations.json", self.events)
+        assert not forced, "real process shutdown timed out; Job terminated for cleanup"
         if not crash:
             assert self.child.returncode == 0, "real process shutdown failed"
-        write_json(self.root / "observations.json", self.events)
 
 
 def run_cases(checkout, bins, job, backend):
     results = []
     app = None
 
-    def fresh(number, grant="pro", seconds=600):
+    def fresh(number, grant="pro", seconds=600, license_url=None):
         nonlocal app
         root = owned(job / f"case-{number}-{uuid.uuid4().hex}", checkout)
         backend.control(clock=wsl(root / "clock.json"), identity="a", mode="normal")
         backend.control(grant=grant, seconds=seconds)
-        app = App(root, bins, backend)
+        app = App(root, bins, backend, license_url)
         app.login()
         # Let the real initial automatic renewal consume the confirmed-login check.
-        # A manual check here leaves that distinct pending check armed by design.
+        # A manual check here would leave the confirmed-login check pending.
         app.until(lambda p: p["state"]["kind"] == "active" and (grant == "free" or p["catalog"] != "free"))
         app.service("LicenseStatus")  # Supervisor-state barrier after the actual automatic ACK.
         return app
@@ -224,12 +244,22 @@ def run_cases(checkout, bins, job, backend):
         a.until(lambda p: p["live"] and p["catalog"] == "pro")
 
     def case2():
-        a = fresh(2)
+        origin=backend.control(network=True)["origin"]
+        a = fresh(2, license_url=origin)
         backend.control(grant="pro", seconds=180)
         assert a.service("LicenseRenew")["result"] == "License"
         a.until(lambda p: p["catalog"] == "pro")
         binding = a.binding()
-        backend.control(mode="offline")
+        backend.control(network=False)
+        # The listener is gone: Windows/WSL may refuse TCP or disconnect its forwarder.
+        try:
+            urllib.request.build_opener(urllib.request.ProxyHandler({})).open(origin,timeout=2)
+            raise AssertionError("network listener still accepts connections")
+        except (urllib.error.URLError, ConnectionError):
+            a.events.append({"network":"TCP listener stopped; transport disconnected without HTTP"})
+        failure=a.service("LicenseRenew")
+        assert failure["result"] == "LicenseFailure" and failure["outcome"] == "Transient"
+        assert a.binding() == binding
         advance(a.root, phase="Live")
         a.until(lambda p: p["live"])
         advance(a.root, 181)
@@ -375,7 +405,7 @@ def run_cases(checkout, bins, job, backend):
             # HTTP/IPC exceptions may contain transient OAuth URLs; never stringify them.
             results.append({"scenario":number,"result":"FALLA","error_type":type(exc).__name__,"root":str(app.root) if app else None})
         finally:
-            backend.control(mode="normal")
+            backend.control(mode="normal", network=False)
             if app:
                 try: app.close()
                 except Exception: results[-1]["shutdown"]="FALLA"

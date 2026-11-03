@@ -26,6 +26,7 @@ let held = false;
 let release: (()=>void) | undefined;
 const codes = new Map<string,{subject:string;challenge:string;redirect:string}>();
 const shutdown = new AbortController();
+let networkServer: Deno.HttpServer<Deno.NetAddr> | undefined;
 const tokens = new Map<string,string>();
 const refreshes = new Map<string,string>();
 const opaque = () => crypto.randomUUID();
@@ -63,10 +64,18 @@ async function handler(req:Request):Promise<Response> {
   const route=url.pathname;
   const time=await now();
   const native={...nativeDeps,now:()=>time};
-  if(route==="/qa/stop") { release?.();setTimeout(()=>shutdown.abort(),100);return Response.json({ok:true}); }
+  if(route==="/qa/stop") { release?.();await networkServer?.shutdown();setTimeout(()=>shutdown.abort(),100);return Response.json({ok:true}); }
   if(route==="/qa/stats") return Response.json({licenseRequests,held,mode});
   if(route==="/qa/control") {
     const body=await req.json();
+    if(body.network === true) {
+      if(networkServer) throw Error("qa_network_already_started");
+      networkServer=Deno.serve({hostname:"127.0.0.1",port:0,onListen:()=>{}},serve);
+      return Response.json({origin:`http://127.0.0.1:${networkServer.addr.port}`});
+    }
+    if(body.network === false) {
+      await networkServer?.shutdown();networkServer=undefined;
+    }
     if(body.clock) {
       if(!body.clock.startsWith(safeRoot) || !body.clock.endsWith("/clock.json")) throw Error("qa_clock_path");
       await Deno.readTextFile(body.clock);
@@ -154,7 +163,8 @@ async function handler(req:Request):Promise<Response> {
     processEvent:(event,id,deps)=>processPolarWebhookEvent(event,id,{...deps,now:()=>time,loadMap:()=>loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON)})});
   return new Response(null,{status:404});
 }
-Deno.serve({signal:shutdown.signal,hostname:"127.0.0.1",port:Number(portText),onListen:()=>console.log("qa-e2e local backend ready")},async req=>{
+async function serve(req:Request):Promise<Response> {
   try { const response=await handler(req);const headers=new Headers(response.headers);headers.set("Date",(await now()).toUTCString());return new Response(response.body,{status:response.status,headers}); }
   catch { console.error("qa-e2e handler failed",new URL(req.url).pathname);return Response.json({error:"qa_handler_failed"},{status:500}); }
-});
+}
+Deno.serve({signal:shutdown.signal,hostname:"127.0.0.1",port:Number(portText),onListen:()=>console.log("qa-e2e local backend ready")},serve);

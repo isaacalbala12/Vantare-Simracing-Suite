@@ -49,7 +49,9 @@ no modifica el del equipo. La sustitución del documento es atómica y reintenta
 segundos. No reintenta ni oculta errores del Store de producto.
 
 Se guardan Policy, resultados tipados, hashes de binding sintético y logs
-sanitizados. No guardar stdout completo del conductor: AccountCopyLink lleva
+sanitizados. El caso de red corta un listener TCP separado, comprueba desconexión
+sin respuesta HTTP y el resultado Transient; los 503 de otros casos simulan backend
+indisponible. Se registran PID y nombres de los tres procesos. No guardar stdout completo del conductor: AccountCopyLink lleva
 estado OAuth transitorio. `qa-e2e-ready.json` contiene sólo una clave efímera
 de la base local y no es evidencia para adjuntar. Las cuentas y concesiones
 son fixtures; el webhook firmado se procesa mediante los handlers y SQL reales.

@@ -31,7 +31,7 @@ fn connect_host(name: &str, child: &mut std::process::Child) -> io::Result<Pipe>
         match connect(name, Arc::clone(&stop), Duration::from_secs(15)) {
             Ok(pipe) => return Ok(pipe),
             Err(_) if Instant::now() < deadline && child.try_wait()?.is_none() => {
-                std::thread::sleep(Duration::from_millis(20))
+                std::thread::sleep(Duration::from_millis(20));
             }
             Err(error) => return Err(error),
         }

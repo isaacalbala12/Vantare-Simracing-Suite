@@ -17,7 +17,10 @@ mod tests;
 
 pub fn wall_now() -> DateTime<Utc> {
     #[cfg(feature = "qa-e2e")]
-    return DateTime::from_timestamp_millis(vantare_ipc::qa::wall_ms().expect("qa-e2e wall") as i64).expect("valid qa-e2e wall");
+    return DateTime::from_timestamp_millis(
+        i64::try_from(vantare_ipc::qa::wall_ms().expect("qa-e2e wall")).expect("qa-e2e wall range"),
+    )
+    .expect("valid qa-e2e wall");
     #[cfg(not(feature = "qa-e2e"))]
     std::time::SystemTime::now().into()
 }

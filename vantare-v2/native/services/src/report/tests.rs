@@ -283,6 +283,73 @@ fn screenshot_batch(image: &screenshots::Screenshot, state: &str) -> String {
 }
 
 #[test]
+fn screenshot_draft_is_blocked_before_any_upload() {
+    let image = screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48))
+        .expect("JPEG");
+    let server = Server::start(vec![authorization()]);
+    let (root, store) = crate::test_store("screenshot-unavailable");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server.base.join("functions/v1/native-account-authorize").expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("authorize");
+    let request = session.request(&http, &config, &account, 100);
+    let mut draft = save_draft(&store, fields()).expect("draft");
+    draft.screenshots.push(image.preview.clone());
+    store.save("report-images", &vec![image.clone()]).expect("images");
+    store.save("report-draft", &draft).expect("draft");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
+    assert!(matches!(
+        reports.prepare_with_images(&request, draft, environment(), vec![image]),
+        Err(Error::EvidencePending)
+    ));
+    assert!(load_draft(&store).expect("draft retained").is_some());
+    assert!(matches!(store.read::<Vec<screenshots::Screenshot>>("report-images"), Ok(Stored::Value(_))));
+    assert_eq!(server.finish_observed().len(), 1, "only authorization reaches HTTP");
+    drop(store);
+    crate::cleanup_store(&root, "screenshot-unavailable", &[]);
+}
+
+#[test]
+fn pending_screenshot_attempt_cannot_be_retried() {
+    let image = screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48))
+        .expect("JPEG");
+    let server = Server::start(vec![authorization()]);
+    let (root, store) = crate::test_store("pending-screenshot-unavailable");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server.base.join("functions/v1/native-account-authorize").expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("authorize");
+    let request = session.request(&http, &config, &account, 100);
+    let mut draft = save_draft(&store, fields()).expect("draft");
+    draft.screenshots.push(image.preview.clone());
+    store.save("report-draft", &draft).expect("draft");
+    store.save("report-images", &vec![image.clone()]).expect("images");
+    let attempt = Attempt {
+        version: 1,
+        identity: request.binding().0.clone(),
+        account_id: request.account_id().into(),
+        payload: Submission::new(draft, environment()).expect("payload"),
+        phase: Phase::Uncertain,
+        images: vec![image],
+        installation: None,
+    };
+    store.save("report-attempt", &attempt).expect("attempt");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
+    assert!(matches!(reports.prepare_retry(&request, "nightly"), Err(Error::EvidencePending)));
+    assert_eq!(server.finish_observed().len(), 1, "retry performs no upload");
+    drop(store);
+    crate::cleanup_store(&root, "pending-screenshot-unavailable", &[]);
+}
+
+#[test]
 fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
     let image =
         screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");

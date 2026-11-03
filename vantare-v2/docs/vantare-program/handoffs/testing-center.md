@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 4: verificador nativo
+
+- Draft PR #1902 contra nightly, rama vantareapp/isa-1896-paso4-verificador; rebase sobre paso 3 integrado en curso.
+- El verificador de bearer nativo se comparte en _shared/native-data.ts. testing-center-feedback se retira del repo y de las listas de despliegue tras comprobar que no hay llamador en Hub, web, digest ni scripts.
+- Test de caracterizacion de superficie antes del cambio; firma/claims y guard de despliegue pendientes de nueva verificacion local/CI. Sin despliegue ni merge.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 3: ACL y canales
 
 - Draft PR #1901 contra nightly, rama vantareapp/isa-1896-paso3-acl-canal; base ec7e4b550 (paso 2 integrado).

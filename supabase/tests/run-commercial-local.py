@@ -10,6 +10,7 @@ from commercial_owner_alert import run_owner_alert_race
 from commercial_checkout_terminal import run_terminal_checkout_race
 from commercial_migration_lock import run_migration_lock_regression
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
+from commercial_admin_effects import run_admin_effects_race
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -21,7 +22,7 @@ parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
-parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
+parser.add_argument('--admin-deno-bin', help='Only admin Edgeâ†’SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
@@ -513,6 +514,8 @@ $$;
    suites+=['commercial_account_id.test.sql','report_creator_renewals.test.sql','founders_review_r2.test.sql']
   suites += ['native_admin_gate.test.sql','native_admin_gate_rollback.test.sql']
   suites += ['native_admin_effects.test.sql','native_admin_effects_rollback.test.sql']
+  suites += ['native_admin_effects_review.test.sql']
+  suites += ['native_admin_effects_review_rollback.test.sql']
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
    # whose membership is not granted to managed postgres by the product.
@@ -532,6 +535,7 @@ $$;
     if diagnostic.returncode: raise RuntimeError(diagnostic.stdout+diagnostic.stderr)
     print('Polar checkout diagnostic privacy and standard payload PASS',flush=True)
    run_admin_gate_race(run,conn,OUT,BIN,ENV)
+   run_admin_effects_race(run,conn,OUT,BIN,ENV)
    if args.admin_deno_bin or args.deno_bin:
     run_admin_gate_e2e(args.admin_deno_bin or args.deno_bin,conn,OUT,BIN,ENV)
    run_terminal_checkout_race(BIN,conn,ENV,run,OUT)

@@ -310,3 +310,54 @@ Edge anterior primero y luego el `.down.sql`: elimina la RPC y conserva el
 journal, sus permisos y la evidencia. Reaplicar conserva los eventos.
 La auditoría de Polar/Brevo y su unificación/retención del paso 10 siguen
 pendientes; este PR no cambia billing, licencias ni `_shared`/`clerk-webhook`.
+
+## Auditoría y concurrencia · paso 5b (sustituye los detalles de 5a)
+
+La consulta vigente es `private.admin_pending_effects`, solo para servicio:
+incluye intenciones sin resultado y resultados `unknown` sin reconciliar.
+`succeeded` cierra una operación; `failed` distingue rechazos definitivos HTTP
+401/403/422; el número HTTP queda en `provider_status`. Un DELETE de Clerk con
+404 tras lápida confirmada es `succeeded` con 404 explícito. Errores de transporte
+o de servidor siguen siendo `unknown`. El journal registra también cada DELETE
+de `cancelSubscriptions` de Polar, con hash del ID; lecturas y sus omisiones por
+suscripción ausente/ya cancelada conservan el comportamiento anterior.
+
+Los resultados coinciden exactamente con actor, petición, efecto y hash de la
+intención; pueden registrarse aunque el owner haya caducado durante la llamada.
+Crear otra intención sigue exigiendo owner activo. La RPC no permite cambiar el
+resultado definitivo ni escribir después de una reconciliación.
+
+Consulta y cierre manual para Isaac, tras comprobar el estado externo y que la
+operación anterior ha terminado. No se ejecuta desde agentes ni modifica filas:
+
+```sql
+select * from private.admin_pending_effects
+where request_id = '<REQUEST_UUID>'::uuid order by occurred_at;
+select public.native_admin_reconcile_effect('<OWNER_REVISOR_UUID>'::uuid,
+                                          '<EFFECT_UUID>'::uuid);
+```
+
+`reconciled` añade un evento con el UUID del reviewer y conserva toda la
+evidencia original. No decide si repetir una escritura externa. La lectura
+desde la app por el owner y la retención de `target_hash` pertenecen al paso 10;
+no hay nuevo endpoint de lectura ni política de retención en este cambio.
+
+Ban y unban adquieren un lease por cuenta de 480 segundos, sin renovación:
+supera los [400 segundos máximos del worker hosted de Supabase](https://supabase.com/docs/guides/functions/limits)
+con 80 segundos de margen. Una petición simultánea recibe 409 antes de escribir
+estado o invocar Clerk. Se libera al terminar, incluso si falla; tras un crash
+puede retomarse al caducar, con otro token. No exige desbloqueo manual.
+La escritura de estado requiere token, cuenta, actor y petición coincidentes,
+lease vigente y owner activo; mantiene el bloqueo SQL hasta commit. Un token
+anterior no puede escribir ni liberar el lease nuevo. Se conserva el orden de
+bloqueos de UUID, owner y filas para evitar ciclos entre claim y finish.
+El fencing protege Postgres; Clerk no acepta este token. La caducidad mayor que
+el máximo del worker evita solapar sus llamadas externas en el hosting actual.
+
+Cualquier error posterior a un cambio local/externo, incluidos 4xx SQL tras
+unban, devuelve 503 `account_change_incomplete`. El estado no se presenta como
+un conflicto seguro para repetir ciegamente. Migración antes de Edge;
+rollback después de revertir/drain de Edge, mediante el `.down.sql` con psql:
+restaura la RPC anterior y conserva journal, estados ampliados y filas de lease.
+Reaplicar conserva evidencia. No cambia billing, licencias, `_shared` ni el
+comportamiento de cancelación de Polar. Auditoría Brevo pendiente.

@@ -34,6 +34,10 @@ async function sql(query: string): Promise<string> {
     stderr: "piped",
   }).output();
   if (!result.success) {
+    console.error(
+      "Disposable SQL fixture:",
+      new TextDecoder().decode(result.stderr),
+    );
     throw new Error(
       "disposable SQL fixture failed: " +
         new TextDecoder().decode(result.stderr),
@@ -130,6 +134,22 @@ async function fixture(active: boolean) {
       JSON.parse(
         await sql(`set role service_role;
       select to_json(public.native_admin_begin(${literal(actor)}));`),
+      ),
+    claimChange: async (actor, request, account) =>
+      JSON.parse(
+        await sql(
+          `set role service_role; select coalesce(to_json(public.native_admin_claim_change(${
+            literal(actor)
+          },${literal(request)},${literal(account)})),'null'::json);`,
+        ),
+      ),
+    releaseChange: async (actor, request, account, token) =>
+      JSON.parse(
+        await sql(
+          `set role service_role; select to_json(public.native_admin_release_change(${
+            literal(actor)
+          },${literal(request)},${literal(account)},${literal(token)}));`,
+        ),
       ),
     recordEffect: async (actor, event) =>
       JSON.parse(
@@ -232,6 +252,8 @@ Deno.test("R10 SQL E2E: Clerk intent/result persist when the following SQL state
       literal(config.issuer)
     },${literal(targetSubject)},${literal(target)}) on conflict do nothing;`,
   );
+  deps.finishChange = () =>
+    Promise.reject(new Error("synthetic state transaction failure"));
   let unbanned = false;
   const originalFetch = deps.fetch!;
   deps.fetch = async (url, init?: RequestInit) => {
@@ -285,4 +307,108 @@ Deno.test("R10 SQL E2E: Clerk intent/result persist when the following SQL state
     ),
   );
   assert(JSON.stringify(outcomes) === JSON.stringify(["started", "succeeded"]));
+});
+
+Deno.test("5b SQL E2E: concurrent ban/unban on one account cannot overlap", async () => {
+  const { deps } = await fixture(false);
+  const target = "00000000-0000-4000-8000-000000001955";
+  const targetSubject = "user_fffffffffffffffffffffffffff";
+  await sql(
+    `insert into public.profiles(id) values(${
+      literal(target)
+    }) on conflict do nothing;
+    insert into public.account_identities(issuer,subject,account_id) values(${
+      literal(config.issuer)
+    },${literal(targetSubject)},${literal(target)}) on conflict do nothing;`,
+  );
+  deps.execute = async (actor, issuer, action, params, environment) =>
+    JSON.parse(
+      await sql(
+        `set role service_role; select public.native_admin_execute(${
+          literal(actor)
+        },${literal(issuer)},${literal(action)},${
+          literal(JSON.stringify(params))
+        }::jsonb,${literal(environment)});`,
+      ),
+    );
+  deps.finishChange = async (
+    actor,
+    issuer,
+    params,
+    environment,
+    request,
+    token,
+  ) =>
+    JSON.parse(
+      await sql(
+        `set role service_role; select public.native_admin_finish_change(${
+          literal(actor)
+        },${literal(issuer)},${literal(JSON.stringify(params))}::jsonb,${
+          literal(environment)
+        },${literal(request)},${literal(token)});`,
+      ),
+    );
+  let entered!: () => void;
+  const ready = new Promise<void>((resolve) => entered = resolve);
+  let release!: () => void;
+  const resume = new Promise<void>((resolve) => release = resolve);
+  const original = deps.fetch!;
+  const writes: string[] = [];
+  deps.fetch = async (url, init?: RequestInit) => {
+    if (String(url).endsWith("/ban")) {
+      writes.push("ban");
+      entered();
+      await resume;
+      return new Response(null, { status: 200 });
+    }
+    if (String(url).endsWith("/unban")) {
+      writes.push("unban");
+      return new Response(null, { status: 200 });
+    }
+    return original(url, init);
+  };
+  const call = (blocked: boolean) =>
+    handleNativeAdmin(
+      request({
+        version: 1,
+        action: "set_blocked",
+        account_id: target,
+        blocked,
+      }, { Authorization: "Bearer opaque-hub-fixture" }),
+      deps,
+    );
+  const first = call(true);
+  let firstResponse: Response | undefined;
+  try {
+    await Promise.race([
+      ready,
+      first.then(async (response) => {
+        throw new Error(
+          "ban finished before provider barrier: " + response.status + " " +
+            await response.text(),
+        );
+      }),
+    ]);
+    assert((await call(false)).status === 409);
+    assert(JSON.stringify(writes) === JSON.stringify(["ban"]));
+  } finally {
+    release();
+    firstResponse = await first;
+  }
+  assert(firstResponse.status === 200);
+  assert(
+    await sql(
+      `select blocked from private.admin_account_blocks where account_id=${
+        literal(target)
+      };`,
+    ) === "t",
+  );
+  assert((await call(false)).status === 200);
+  assert(
+    await sql(
+      `select blocked from private.admin_account_blocks where account_id=${
+        literal(target)
+      };`,
+    ) === "f",
+  );
 });

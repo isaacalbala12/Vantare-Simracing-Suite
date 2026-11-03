@@ -105,8 +105,9 @@ renovar el lanzador. Si esa renovación falla, queda un aviso y el siguiente
 arranque no repite el rollback; hay un test con fallo inyectado. El plazo de
 readiness del lanzador es 60 s como el Hub. Un timeout con el hijo aún vivo
 permite reofrecer la versión; solo un fallo determinista conserva
-`rejectedVersion`. El marker `hub-ready` debe contener el PID del hijo y el
-lanzador aborta si no puede retirarlo antes de spawn; ambos casos tienen test.
+`rejectedVersion`. El lanzador aborta si no puede retirar `hub-ready` antes de
+spawn. La tercera revisión sustituyó la comparación de PIDs por un token nuevo
+en cada arranque, porque el Hub es nieto del lanzador.
 
 Producción proyectada: 11 884 líneas del perímetro fijo y 849 fuera
 (corrección de una línea de test clasificada como producción por el script
@@ -120,3 +121,37 @@ readiness y limpieza, Installer integration 29 PASS (uno ignorado), lifecycle
 crates con `-D warnings` PASS. Matriz repetida con binarios QA recompilados:
 **88 filas PASS**, incluidos 45 rechazos, 9 checks de lanzador y 38 de escritura.
 Evidencia `D:/VantareServer/qa/isa-1840/p6-matrix-safety2-20261103-01`.
+
+## Tercera revisión de seguridad de #1908
+
+El lanzador crea un token aleatorio distinto para cada arranque y lo pasa a la
+sesión Rust, que lo entrega al Hub. El Hub publica ese token en `hub-ready` al
+abrir la ventana; el lanzador solo confirma la generación si coincide. La
+matriz ejercita los tres procesos con `boot-pending` y un token incorrecto que
+debe provocar rollback. Antes de iniciar, el lanzador retira un marker de
+`boot-pending` que quedó después de un rollback ya confirmado en `state.json`,
+incluso cuando el manifiesto de la generación fallida está dañado. Una vez
+restaurado el estado, un fallo al publicar `update-status.json` es un aviso.
+Si `recover_launcher` deja `Vantare.exe` válido, limpia el aviso de Reparar.
+
+La prueba aislada de la cadena pasó **11 checks**: la nueva versión 990 se
+confirma con el token propagado por tres procesos y el token distinto fuerza
+rollback a 989. La matriz completa pasó **88 filas**, incluidos los 45
+rechazos por motivo, además de 11 checks de lanzador y 38 de escritura.
+Un test del `Service::spawn` de la sesión comprueba que entrega el token al
+proceso Hub, además de la cadena QA con los tres procesos vivos.
+Evidencia: `D:/VantareServer/qa/isa-1840/p6-token-chain-20261103-04` y
+`D:/VantareServer/qa/isa-1840/p6-matrix-token-20261103-01`.
+
+Producción proyectada: 11 944 líneas del perímetro fijo y 876 fuera
+(corregida la línea de test que el script externo clasifica como producción):
+**12 820 total**, +87 sobre la segunda revisión. El tope compensado del paso
+7 pasa a **9 720**; el objetivo final permanece ≤ 10 110. Tests Rust +296
+líneas netas y tooling/tests QA −1 688 frente a nightly `5f440c094`, medidos
+por separado. `cargo test -p vantare-installer --test installation_write`:
+31 PASS y 1 fixture ignorado; incluye el marker obsoleto y el fallo real de
+publicación de estado después del commit.
+El test de `Service::spawn` pasó en el binario Runtime. Fmt y Clippy de los
+cinco crates afectados con `-D warnings` PASS; lifecycle del workspace PASS.
+La batería completa de Installer pasó con `TEMP` y `TMP` inyectados bajo la
+raíz QA para su test de acceso directo de Windows.

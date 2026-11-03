@@ -5,8 +5,14 @@
 #[path = "../src/installation.rs"]
 mod installation;
 
+#[allow(clippy::too_many_lines)] // QA fixture owns both session and Hub process lifetimes.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use std::{io::BufRead, path::PathBuf, time::Instant};
+    use std::{
+        io::BufRead,
+        path::PathBuf,
+        process::{Command, Stdio},
+        time::Instant,
+    };
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     if args
         .first()
@@ -28,22 +34,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if !root.canonicalize()?.starts_with(prefix.canonicalize()?) {
             return Err("QA root rejected".into());
         }
-        std::fs::write(root.join("hub-ready"), std::process::id().to_string())?;
-        std::fs::write(root.join("app-open"), b"fixture window available")?;
-        let deadline = Instant::now() + std::time::Duration::from_secs(45);
+        let mut token = std::env::var("VANTARE_BOOT_TOKEN")?;
+        let wrong = std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some();
+        if wrong {
+            token.replace_range(..1, if token.starts_with('0') { "1" } else { "0" });
+        }
+        let mut hub = Command::new(std::env::current_exe()?.with_file_name("vantare-hub.exe"))
+            .arg(&root)
+            .env("VANTARE_BOOT_TOKEN", token)
+            .stdin(Stdio::piped())
+            .spawn()?;
+        let deadline = Instant::now() + std::time::Duration::from_mins(1);
+        while !root.join("app-open").exists() {
+            if hub.try_wait()?.is_some() || Instant::now() >= deadline {
+                return Err("QA Hub did not open".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        if wrong {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            hub.kill()?;
+            hub.wait()?;
+            return Err("QA mismatched boot token".into());
+        }
         while root.join("boot-pending.json").exists() {
             if Instant::now() >= deadline {
                 return Err("root ACK timed out".into());
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        std::fs::write(root.join("confirmation-complete"), b"confirmed")?;
+        while !root.join("confirmation-complete").exists() {
+            if hub.try_wait()?.is_some() || Instant::now() >= deadline {
+                return Err("QA Hub did not confirm".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
         while !root.join("allow-exit").exists() {
             if Instant::now() >= deadline {
                 return Err("root session exit timed out".into());
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
+        drop(hub.stdin.take());
+        hub.wait()?;
         return Ok(());
     }
     let root = if args.first().is_some_and(|arg| arg == "--pipe") {
@@ -74,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     std::fs::write(root.join("confirmation-complete"), b"confirmed")?;
     if root.join("run-stage-case").exists() {
-        // File barrier also works when Start-BetaHub creates the process without a pipe.
+        // File barrier also works when the launcher starts the process without a pipe.
         let deadline = Instant::now() + std::time::Duration::from_secs(90);
         while !root.join("allow-exit").exists() {
             if Instant::now() >= deadline {
@@ -84,7 +117,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
-    // Parent owns stdin. Stay alive so Confirm-BetaBoot observes a running app.
+    // Parent owns stdin. Stay alive until the launcher observes a running app.
     let _ = std::io::stdin().lock().lines().next();
     Ok(())
 }

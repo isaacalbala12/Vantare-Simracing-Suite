@@ -254,6 +254,8 @@ struct Service {
     name: &'static str,
     #[cfg(windows)]
     bootstrap: Option<String>,
+    #[cfg(windows)]
+    boot_token: Option<String>,
     program: Program,
     child: Option<Child>,
     policy: session::Policy,
@@ -265,6 +267,8 @@ impl Service {
             name,
             #[cfg(windows)]
             bootstrap: None,
+            #[cfg(windows)]
+            boot_token: None,
             program,
             child: None,
             policy: session::Policy::consumer(budget),
@@ -281,6 +285,9 @@ impl Service {
         {
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x0800_0000);
+            if let Some(token) = &self.boot_token {
+                command.env("VANTARE_BOOT_TOKEN", token);
+            }
         }
         let child = command.spawn()?;
         #[cfg(windows)]
@@ -521,14 +528,25 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             ] {
                 hub_args.extend([flag.into(), path.to_string_lossy().into_owned()]);
             }
-            services.push(Service::new(
+            let mut hub = Service::new(
                 "Hub",
                 Program {
                     path: hub_image,
                     args: hub_args,
                 },
                 config.restarts,
-            ));
+            );
+            let boot_token = std::env::var("VANTARE_BOOT_TOKEN")
+                .map_err(|_| io::Error::other("Falta token de arranque"))?;
+            if boot_token.len() != 32
+                || !boot_token
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            {
+                return Err(io::Error::other("Token de arranque inválido"));
+            }
+            hub.boot_token = Some(boot_token);
+            services.push(hub);
             workers.feed = Some(background::Feed::start(root.clone())?);
         }
         Ok((services, rights))
@@ -622,6 +640,29 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn hub_service_passes_the_boot_token_to_its_child() {
+        let token = "0123456789abcdef0123456789abcdef";
+        let mut hub = Service::new(
+            "Hub",
+            Program {
+                path: PathBuf::from(env::var_os("COMSPEC").expect("Windows shell")),
+                args: vec![
+                    "/D".into(),
+                    "/C".into(),
+                    format!(
+                        "if \"%VANTARE_BOOT_TOKEN%\"==\"{token}\" (exit /b 0) else (exit /b 1)"
+                    ),
+                ],
+            },
+            0,
+        );
+        hub.boot_token = Some(token.into());
+        hub.spawn().unwrap();
+        assert!(hub.child.take().unwrap().wait().unwrap().success());
+    }
 
     #[cfg(windows)]
     #[test]

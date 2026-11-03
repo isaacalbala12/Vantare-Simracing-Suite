@@ -66,6 +66,9 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
             log(format_args!("actualización pendiente: {error}"));
             let _ = fs::remove_file(root.join("staging/pending.json"));
         }
+        if operations::discard_stale_boot_marker(&root).map_err(io_error)? {
+            log("se retiró un arranque pendiente de una generación ya revertida");
+        }
         let (view, generation) = active(&root).inspect_err(|_| {
             let _ = super::win::offer_repair();
         })?;
@@ -77,6 +80,7 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
         cleanup_launcher_artifacts(&root)?;
         let image = generation.join("bin/vantare.exe");
         clear_ready(&root)?;
+        let boot_token = disk::id().map_err(io_error)?;
         let mut session = Command::new(&image);
         session.args(["--session", "-Root"]).arg(&root);
         if background {
@@ -84,6 +88,7 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
         }
         session
             .env("VANTARE_BETA_ROOT", &root)
+            .env("VANTARE_BOOT_TOKEN", &boot_token)
             .env("VANTARE_NATIVE_DATA_ROOT", generation.join("data"))
             .env(
                 "VANTARE_APPEARANCE_FILE",
@@ -106,7 +111,7 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
             Err(error) => return Err(error),
         };
         let opened = if pending {
-            ready(&root, &mut child, Duration::from_mins(1)).unwrap_or_else(|error| {
+            ready(&root, &mut child, &boot_token, Duration::from_mins(1)).unwrap_or_else(|error| {
                 log(format_args!("confirmar ventana: {error}"));
                 false
             })
@@ -176,9 +181,8 @@ fn clear_ready(root: &Path) -> io::Result<()> {
     }
 }
 
-fn ready_pid_matches(root: &Path, child_id: u32) -> bool {
-    fs::read_to_string(root.join("hub-ready"))
-        .is_ok_and(|pid| pid.trim().parse::<u32>() == Ok(child_id))
+fn ready_token_matches(root: &Path, expected: &str) -> bool {
+    fs::read_to_string(root.join("hub-ready")).is_ok_and(|token| token == expected)
 }
 
 fn recover_boot(root: &Path, context: &Context, reject_version: bool) -> io::Result<()> {
@@ -244,13 +248,18 @@ fn installed_context(root: &Path) -> vantare_installer::engine::write_fs::Result
     }
 }
 
-fn ready(root: &Path, child: &mut std::process::Child, limit: Duration) -> io::Result<bool> {
+fn ready(
+    root: &Path,
+    child: &mut std::process::Child,
+    token: &str,
+    limit: Duration,
+) -> io::Result<bool> {
     let deadline = Instant::now() + limit;
     loop {
         if child.try_wait()?.is_some() {
             return Ok(false);
         }
-        if ready_pid_matches(root, child.id()) {
+        if ready_token_matches(root, token) {
             return Ok(true);
         }
         if Instant::now() >= deadline {
@@ -422,7 +431,7 @@ mod tests {
         assert!(wait_for_exit(&mut child, Duration::from_secs(5)).unwrap());
     }
     #[test]
-    fn ready_marker_must_belong_to_child_and_clear_before_spawn() {
+    fn ready_marker_must_match_this_boot_token_and_clear_before_spawn() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {
             PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
         } else {
@@ -431,11 +440,11 @@ mod tests {
         let root = parent.join(format!("ready-marker-{}", std::process::id()));
         vantare_installer::engine::context::qa_path(&root).unwrap();
         fs::create_dir_all(&root).unwrap();
-        fs::write(root.join("hub-ready"), b"999").unwrap();
-        assert!(!ready_pid_matches(&root, 1000));
-        assert!(ready_pid_matches(&root, 999));
+        fs::write(root.join("hub-ready"), b"aabb").unwrap();
+        assert!(!ready_token_matches(&root, "ccdd"));
+        assert!(ready_token_matches(&root, "aabb"));
         clear_ready(&root).unwrap();
-        assert!(!ready_pid_matches(&root, 999));
+        assert!(!ready_token_matches(&root, "aabb"));
         fs::create_dir(root.join("hub-ready")).unwrap();
         assert!(clear_ready(&root).is_err());
         fs::remove_dir(root.join("hub-ready")).unwrap();

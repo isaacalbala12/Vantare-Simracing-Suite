@@ -281,6 +281,66 @@ fn motor_two_boot_confirmation_and_rollback_are_bound_to_the_active_version() {
 }
 
 #[test]
+fn stale_boot_marker_after_committed_rollback_is_removed_without_a_second_rollback() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let marker = fixture.root.join("boot-pending.json");
+    let bytes = fs::read(&marker).unwrap();
+    assert!(!operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert!(marker.exists());
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    let restored = fixture.active();
+    fs::write(&marker, &bytes).unwrap();
+    assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert!(!marker.exists());
+    assert_eq!(fixture.active(), restored);
+    assert!(!operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    let state = disk::read_json(&fixture.root.join("state.json"), None).unwrap();
+    let failed_generation = state["previous"]["generation"].as_str().unwrap();
+    fs::write(
+        fixture
+            .root
+            .join("generations")
+            .join(failed_generation)
+            .join("manifest.json"),
+        b"corrupt",
+    )
+    .unwrap();
+    fs::write(&marker, &bytes).unwrap();
+    assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert!(!marker.exists());
+}
+
+#[test]
+fn rollback_restores_state_even_when_status_cannot_be_published() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let previous = fixture.active();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let status = fixture.root.join("update-status.json");
+    fs::remove_file(&status).unwrap();
+    fs::create_dir(&status).unwrap();
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.active(), previous);
+    assert!(!fixture.root.join("boot-pending.json").exists());
+}
+
+#[test]
 fn update_copies_exact_opaque_data_and_preserves_both_old_generations() {
     let fixture = Fixture::new();
     fixture

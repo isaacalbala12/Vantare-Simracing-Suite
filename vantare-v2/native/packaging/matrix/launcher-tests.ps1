@@ -38,7 +38,7 @@ function Invoke-Writer([string]$Action,[string]$Version=''){
     & $WriteEngine $contract | Out-Null
     if($LASTEXITCODE){throw "LAUNCHER_WRITER_FAILED: $Action $Version"}
 }
-function Start-Root {
+function Start-Root([switch]$WrongToken) {
     $info=[Diagnostics.ProcessStartInfo]::new()
     $info.FileName=Join-Path $install 'Vantare.exe'
     $info.Arguments='--root -Root "'+$install+'" --background'
@@ -48,6 +48,7 @@ function Start-Root {
     $info.EnvironmentVariables['VANTARE_QA_LOCAL_APP_DATA']=$local
     $info.EnvironmentVariables['VANTARE_QA_REGISTRY_PREFIX']=$prefix
     $info.EnvironmentVariables['VANTARE_QA_SHELL_ROOT']=$shell
+    if($WrongToken){$info.EnvironmentVariables['VANTARE_QA_WRONG_BOOT_TOKEN']='1'}
     [Diagnostics.Process]::Start($info)
 }
 try{
@@ -61,10 +62,12 @@ try{
         $directory=Join-Path $assets ('v'+$version)
         New-MatrixPayload $directory ('0.0.'+$version) $TestVerifier
         Copy-Item -LiteralPath $BootProbe -Destination (Join-Path $directory 'bin/vantare.exe') -Force
+        Copy-Item -LiteralPath $BootProbe -Destination (Join-Path $directory 'bin/vantare-hub.exe') -Force
         [IO.File]::WriteAllText((Join-Path $directory 'bin/vantare.exe.sha256'),((Get-NativeHash (Join-Path $directory 'bin/vantare.exe'))+'  vantare.exe'+"`n"))
+        [IO.File]::WriteAllText((Join-Path $directory 'bin/vantare-hub.exe.sha256'),((Get-NativeHash (Join-Path $directory 'bin/vantare-hub.exe'))+'  vantare-hub.exe'+"`n"))
         $manifest=Get-Content -LiteralPath (Join-Path $directory 'manifest.json') -Raw|ConvertFrom-Json
         foreach($member in $manifest.files){
-            if($member.path -in @('bin/vantare.exe','bin/vantare.exe.sha256')){
+            if($member.path -in @('bin/vantare.exe','bin/vantare.exe.sha256','bin/vantare-hub.exe','bin/vantare-hub.exe.sha256')){
                 $file=Join-Path $directory $member.path;$member.size=(Get-Item -LiteralPath $file).Length;$member.sha256=Get-NativeHash $file
             }
         }
@@ -107,6 +110,19 @@ try{
     Assert-Launch (Test-Path -LiteralPath $link) 'SetStartup On restores injected shortcut'
     $key=Join-Path $hive 'Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBeta'
     Assert-Launch ((Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq '0.0.990') 'Register projects confirmed version in injected HKCU'
+    $state=Get-Content -LiteralPath (Join-Path $install 'state.json') -Raw|ConvertFrom-Json
+    $previous=$state.previous.generation
+    Write-NativeJson (Join-Path $install 'boot-pending.json') @{schema=1;version='0.0.990';previous=$previous}
+    Copy-Item -LiteralPath (Join-Path $assets 'Vantare.exe') -Destination (Join-Path $install 'Vantare.exe') -Force
+    $process=Start-Root -WrongToken
+    try{
+        Assert-Launch ($process.WaitForExit(15000) -and $process.ExitCode -ne 0) 'wrong Hub token never confirms the boot'
+        $state=Get-Content -LiteralPath (Join-Path $install 'state.json') -Raw|ConvertFrom-Json
+        Assert-Launch ($state.active.generation -ceq $previous) 'wrong Hub token rolls back to the prior generation'
+    }finally{
+        if(-not $process.HasExited){$process.Kill();$process.WaitForExit()}
+        $process.Dispose()
+    }
 }finally{
     if($hive -cnotmatch '^HKCU:\\Software\\VantareInstallerMatrix\\[a-f0-9]{32}\\launcher$'){throw 'LAUNCHER_HIVE_REJECTED'}
     Remove-Item -LiteralPath $hive -Recurse -Force

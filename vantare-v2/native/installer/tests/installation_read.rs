@@ -210,7 +210,7 @@ fn inventory_paths_duplicates_and_data_binding_are_not_optional() {
 
 #[cfg(windows)]
 #[test]
-fn read_only_probe_rejects_a_link_nested_in_user_data() {
+fn read_only_probe_allows_a_link_nested_in_user_data_without_following_it() {
     let fixture = Fixture::new();
     fixture.load(STATE_RC, RC);
     let canary = fixture.0.join("canary.txt");
@@ -218,7 +218,7 @@ fn read_only_probe_rejects_a_link_nested_in_user_data() {
     let nested = fixture.generation().join("data/nested");
     fs::create_dir(&nested).unwrap();
     std::os::windows::fs::symlink_file(&canary, nested.join("pointer.txt")).unwrap();
-    assert!(Installation::read(&fixture.0).is_err());
+    assert!(Installation::read(&fixture.0).unwrap().state.is_some());
     assert_eq!(fs::read(canary).unwrap(), b"outside stays intact");
 }
 

@@ -19,7 +19,16 @@ impl BootConfirmation {
     pub(crate) fn start(root: &Path) -> Result<Self, String> {
         let executable = std::env::current_exe().map_err(|error| error.to_string())?;
         installed_hub(&executable, root)?;
-        std::fs::write(root.join("hub-ready"), std::process::id().to_string())
+        let token = std::env::var("VANTARE_BOOT_TOKEN")
+            .map_err(|_| "falta token de arranque".to_owned())?;
+        if token.len() != 32
+            || !token
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err("token de arranque inválido".into());
+        }
+        std::fs::write(root.join("hub-ready"), token)
             .map_err(|error| format!("confirmar arranque: {error}"))?;
         Ok(Self {
             root: root.into(),

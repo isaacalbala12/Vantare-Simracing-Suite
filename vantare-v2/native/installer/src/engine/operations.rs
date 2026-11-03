@@ -105,6 +105,7 @@ pub fn recover_launcher(root: &Path, state: &State) -> Result<()> {
     let expected = installation::hash_file(&launcher_source(root, state))?;
     let target = root.join("Vantare.exe");
     if target.try_exists()? && installation::hash_file(&target)? == expected {
+        clear_launcher_notice(root);
         return Ok(());
     }
     let old = root.join("Vantare.exe.old");
@@ -120,7 +121,23 @@ pub fn recover_launcher(root: &Path, state: &State) -> Result<()> {
     ensure(
         installation::hash_file(&target)? == expected,
         "Lanzador raíz inválido",
-    )
+    )?;
+    clear_launcher_notice(root);
+    Ok(())
+}
+fn clear_launcher_notice(root: &Path) {
+    let path = root.join("update-status.json");
+    let Ok(Some(mut status)) = disk::read_optional(&path, Some(65536)) else {
+        return;
+    };
+    if status["state"] == "rollback"
+        && status["message"] == "Se restauró la versión anterior; el lanzador requiere Reparar"
+    {
+        status["message"] = "Se restauró la versión anterior".into();
+        if let Err(error) = disk::publish_json(&path, &status) {
+            eprintln!("No se pudo limpiar el aviso del lanzador: {error}");
+        }
+    }
 }
 #[cfg(all(test, windows))]
 mod launcher_tests {
@@ -225,6 +242,25 @@ mod launcher_tests {
         let status = disk::read_json(&root.join("update-status.json"), None).unwrap();
         assert_eq!(status["state"], "rollback");
         assert!(status["rejectedVersion"].is_null());
+        let id = "a".repeat(32);
+        let bin = root.join("generations").join(&id).join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        fs::write(bin.join("vantare.exe"), b"restored").unwrap();
+        fs::write(root.join("Vantare.exe"), b"broken").unwrap();
+        let state = State {
+            schema: 1,
+            product: "vantare-native".into(),
+            channel: "beta".into(),
+            active: Generation {
+                generation: id,
+                manifest_sha256: Some("b".repeat(64)),
+            },
+            previous: None,
+        };
+        recover_launcher(&root, &state).unwrap();
+        assert_eq!(fs::read(root.join("Vantare.exe")).unwrap(), b"restored");
+        let status = disk::read_json(&root.join("update-status.json"), None).unwrap();
+        assert_eq!(status["message"], "Se restauró la versión anterior");
         fs::remove_dir_all(root).unwrap();
     }
 }
@@ -666,6 +702,38 @@ pub fn rollback(root: &Path) -> Result<BootRecovery> {
 pub fn rollback_retryable(root: &Path) -> Result<BootRecovery> {
     rollback_with_policy(root, false)
 }
+pub fn discard_stale_boot_marker(root: &Path) -> Result<bool> {
+    let marker_path = root.join("boot-pending.json");
+    if !marker_path.try_exists()? {
+        return Ok(false);
+    }
+    let root = disk::open_root(root, false)?;
+    let marker_path = root.join("boot-pending.json");
+    let _operation = disk::lock(&root, ".operation.lock")?;
+    let view = Installation::read(&root)?;
+    let marker = disk::read_json(&marker_path, Some(4096))?;
+    let stale = view
+        .state
+        .as_ref()
+        .zip(view.manifest.as_ref())
+        .is_some_and(|(state, active)| {
+            marker["schema"] == 1
+                && marker["previous"] == state.active.generation
+                && state.previous.is_some()
+                && marker["version"].as_str().is_some_and(|version| {
+                    validation::version(version).is_ok()
+                        && version != active.version
+                        && view
+                            .previous_manifest
+                            .as_ref()
+                            .is_none_or(|previous| previous.version == version)
+                })
+        });
+    if stale {
+        disk::remove_file(&marker_path)?;
+    }
+    Ok(stale)
+}
 fn rollback_with_policy(root: &Path, reject_version: bool) -> Result<BootRecovery> {
     let root = disk::open_root(root, false)?;
     let _session = disk::lock(&root, "beta-session.lock")?;
@@ -736,13 +804,15 @@ fn finish_rollback(
     } else {
         "Se restauró la versión anterior; el lanzador requiere Reparar"
     };
-    publish_status(
+    if let Err(error) = publish_status(
         root,
         "rollback",
         message,
         failed_version,
         reject_version.then_some(failed_version),
-    )?;
+    ) {
+        eprintln!("Rollback: no se pudo publicar el estado: {error}");
+    }
     if let Err(error) = renewed {
         eprintln!("Rollback: no se pudo renovar Vantare.exe: {error}");
     }

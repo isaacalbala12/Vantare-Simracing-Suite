@@ -428,11 +428,8 @@ impl Hub {
         let content = stack()
             .h_full()
             .gap(px(self.shell.adapt.gap()))
-            .when_some(self.settings.status.clone(), |view, status| {
+            .when_some(self.settings.status.clone().or_else(|| self.settings.store.warning_text()), |view, status| {
                 view.child(orbit::callout(status, cx))
-            })
-            .when_some(self.settings.store.warning_text(), |view, warning| {
-                view.child(orbit::callout(warning, cx))
             })
             .when(self.settings.store.has_pending(), |view| {
                 view.child(

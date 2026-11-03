@@ -7232,8 +7232,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 - Rama `vantareapp/isa-1910-paso3-freno-clerk`, worktree
   `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly
-  `ef47c16ad3dc0343798094e50d36676c1898d282`. PR/HEAD/CI en #1910.
+  `ef47c16ad3dc0343798094e50d36676c1898d282`. PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912), código `106a63c31`; HEAD/CI vigentes en #1910.
   Project Vantare / area:plataforma; Plane En curso.
+- Medición: producción +43/−0 (con rollback), tests +180/−0, docs +47/−0.
 - Caracterización ANTES del cambio: commit `3735502a2`, cuatro casos PASS
   (Hub-owner, basura, no-owner, owner caducado). Expectativa nueva RED 4/4,
   luego GREEN. Cupo agotado: 429 y cero llamadas a Clerk/resolve/acciones.

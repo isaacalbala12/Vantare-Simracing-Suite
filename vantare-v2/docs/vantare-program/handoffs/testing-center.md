@@ -1,6 +1,6 @@
 ## 2026-11-03 - #1896 / VANTA-131 paso 6b: endurecimiento JPEG previo a la conexion
 
-- Base nightly a75c9b7aa (#1918 integrado). El validador exige H/V 1..4, referencias DQT y DHT definidas, DHT de hasta 256 simbolos y rechaza RST sin DRI. Dos SOS y dimensiones cero quedan cubiertos por tests. Capturas siguen desactivadas.
+- Draft PR #1923 contra nightly, rama vantareapp/isa-1896-paso6b-jpeg-hardening, base a75c9b7aa (#1918 integrado). El validador exige H/V 1..4, referencias DQT y DHT definidas, DHT de hasta 256 simbolos y rechaza RST sin DRI. Dos SOS y dimensiones cero quedan cubiertos por tests. Capturas siguen desactivadas.
 - El PR de este bloque no conecta la subida. El `image/jpeg` y `nosniff` de Storage/descarga quedan pendientes de la ruta 6b; la descarga admin actual usa URL firmada directa y su cambio depende de VANTA-132 o autorizacion de Isaac. Paso 8 tambien depende del chequeo owner de `testing_contribution_review` en SQL admin.
 - #1905 ya estaba cerrado; sin despliegue, merge ni release. Deno 12 PASS, fmt/lint/diff check PASS. Produccion +19/-10, tests +74/-4, docs +6/-0 (este bloque).
 

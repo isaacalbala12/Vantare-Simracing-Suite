@@ -7856,3 +7856,5 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   vigente del wrapper público, conservando las pausas y aserciones reales.
   Instancias locales detenidas. Rust/lifecycle/telemetría omitidos: ningún crate
   cambia. Evidencia D:/VantareServer/evidence/isa-1910-paso7b; CI nueva pendiente.
+- PR draft [#1924](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1924)
+  contra nightly, código validado 9c4adbe7f. Sin merge propio ni despliegue.

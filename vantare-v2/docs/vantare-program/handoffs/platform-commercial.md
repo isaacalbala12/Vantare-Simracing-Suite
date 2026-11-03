@@ -7406,3 +7406,5 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   checks (incluye nueva tabla de leases), aliases/borrado 4/40 y dos carreras
   reales del journal PASS. Calidad 468 huellas, Python y diff PASS. Entornos
   desechables detenidos; evidencia en D:/VantareServer/evidence/isa-1910-paso5b.
+- PR draft [#1922](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1922)
+  a nightly; código validado c30004016, CI nueva pendiente y sin merge propio.

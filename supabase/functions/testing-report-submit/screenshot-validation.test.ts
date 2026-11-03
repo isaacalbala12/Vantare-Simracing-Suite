@@ -81,7 +81,7 @@ function markerOffset(marker: number): number {
   return offset;
 }
 
-Deno.test("scan rejects early EOI, appended bytes and markers outside stuffed/RST sequence", async () => {
+Deno.test("scan rejects early EOI, appended bytes and unexpected markers", async () => {
   const earlyEoi = Uint8Array.from([
     ...jpeg.subarray(0, -2),
     0xff,
@@ -142,15 +142,13 @@ Deno.test("SOF components, segment lengths and one MiB limit are enforced", asyn
   await denied(wrongScanComponent, "format");
 });
 
-Deno.test("stuffed FF00 and restart markers remain valid scan data", async () => {
+Deno.test("stuffed FF00 remains valid scan data", async () => {
   const sos = markerOffset(0xda);
   const scanLength = (jpeg[sos + 2] << 8) | jpeg[sos + 3];
   const bytes = Uint8Array.from([
     ...jpeg.subarray(0, sos + 2 + scanLength),
     0xff,
     0x00,
-    0xff,
-    0xd0,
     ...jpeg.subarray(sos + 2 + scanLength),
   ]);
   const hash = Array.from(
@@ -161,5 +159,77 @@ Deno.test("stuffed FF00 and restart markers remain valid scan data", async () =>
     ...manifest,
     byteSize: bytes.length,
     sha256: hash,
+  });
+});
+
+Deno.test("SOF sampling factors and referenced quantization tables are bounded", async () => {
+  const sof = markerOffset(0xc0);
+  for (const sampling of [0x01, 0x10, 0x51, 0x15]) {
+    const bytes = new Uint8Array(jpeg);
+    bytes[sof + 11] = sampling;
+    await denied(bytes, "format");
+  }
+  const undefinedTable = new Uint8Array(jpeg);
+  undefinedTable[sof + 12] = 2;
+  await denied(undefinedTable, "format");
+  const zeroWidth = new Uint8Array(jpeg);
+  zeroWidth[sof + 7] = 0;
+  zeroWidth[sof + 8] = 0;
+  await denied(zeroWidth, "format");
+  const zeroHeight = new Uint8Array(jpeg);
+  zeroHeight[sof + 5] = 0;
+  zeroHeight[sof + 6] = 0;
+  await denied(zeroHeight, "format");
+});
+
+Deno.test("SOS references defined Huffman tables and is unique", async () => {
+  const sos = markerOffset(0xda);
+  const dht = markerOffset(0xc4);
+  const dhtLength = (jpeg[dht + 2] << 8) | jpeg[dht + 3];
+  const missingTable = Uint8Array.from([
+    ...jpeg.subarray(0, dht),
+    ...jpeg.subarray(dht + 2 + dhtLength),
+  ]);
+  await denied(missingTable, "format", {
+    ...manifest,
+    byteSize: missingTable.length,
+  });
+  const scanLength = (jpeg[sos + 2] << 8) | jpeg[sos + 3];
+  const secondSos = Uint8Array.from([
+    ...jpeg.subarray(0, sos + 2 + scanLength),
+    ...jpeg.subarray(sos, sos + 2 + scanLength),
+    ...jpeg.subarray(sos + 2 + scanLength),
+  ]);
+  await denied(secondSos, "format", {
+    ...manifest,
+    byteSize: secondSos.length,
+  });
+});
+
+Deno.test("restart markers without DRI and Huffman tables over 256 symbols are rejected", async () => {
+  const sos = markerOffset(0xda);
+  const scanLength = (jpeg[sos + 2] << 8) | jpeg[sos + 3];
+  const restart = Uint8Array.from([
+    ...jpeg.subarray(0, sos + 2 + scanLength),
+    0xff,
+    0xd0,
+    ...jpeg.subarray(sos + 2 + scanLength),
+  ]);
+  await denied(restart, "format", { ...manifest, byteSize: restart.length });
+  const counts = [255, 2, ...new Array(14).fill(0)];
+  const payload = [0x02, ...counts, ...new Array(257).fill(1)];
+  const length = payload.length + 2;
+  const oversizedTable = Uint8Array.from([
+    ...jpeg.subarray(0, 2),
+    0xff,
+    0xc4,
+    length >> 8,
+    length & 0xff,
+    ...payload,
+    ...jpeg.subarray(2),
+  ]);
+  await denied(oversizedTable, "format", {
+    ...manifest,
+    byteSize: oversizedTable.length,
   });
 });

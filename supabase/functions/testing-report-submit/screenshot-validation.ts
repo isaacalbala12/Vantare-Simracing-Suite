@@ -34,8 +34,9 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
   let dimensions: [number, number] | null = null;
   let components = 0;
   const frameIds = new Set<number>();
-  let dqt = false;
-  let dht = false;
+  const quantizationTables = new Set<number>();
+  const dcTables = new Set<number>();
+  const acTables = new Set<number>();
   let jfif = false;
   while (offset < bytes.length - 2) {
     if (bytes[offset] !== 0xff) throw new EvidenceInvalid("format");
@@ -68,22 +69,23 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
       }
       for (let index = start; index < offset + length; index += 65) {
         if (bytes[index] > 3) throw new EvidenceInvalid("format");
+        quantizationTables.add(bytes[index]);
       }
-      dqt = true;
     } else if (marker === 0xc4) {
       let index = start;
       while (index < offset + length) {
         if (index + 17 > offset + length || (bytes[index] & 0xee) !== 0) {
           throw new EvidenceInvalid("format");
         }
+        const selector = bytes[index];
         let symbols = 0;
         for (let n = 1; n <= 16; n++) symbols += bytes[index + n];
         index += 17 + symbols;
-        if (symbols === 0 || index > offset + length) {
+        if (symbols === 0 || symbols > 256 || index > offset + length) {
           throw new EvidenceInvalid("format");
         }
+        (selector >> 4 === 0 ? dcTables : acTables).add(selector & 0x0f);
       }
-      dht = true;
     } else if (marker === 0xc0) {
       components = bytes[start + 5];
       if (
@@ -94,8 +96,12 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
       }
       for (let index = start + 6; index < offset + length; index += 3) {
         if (
-          frameIds.has(bytes[index]) || bytes[index + 1] === 0 ||
-          bytes[index + 2] > 3
+          frameIds.has(bytes[index]) ||
+          (bytes[index + 1] >> 4) < 1 ||
+          (bytes[index + 1] >> 4) > 4 ||
+          (bytes[index + 1] & 0x0f) < 1 ||
+          (bytes[index + 1] & 0x0f) > 4 ||
+          !quantizationTables.has(bytes[index + 2])
         ) {
           throw new EvidenceInvalid("format");
         }
@@ -110,7 +116,8 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
       }
     } else {
       if (
-        !dimensions || !dqt || !dht ||
+        !dimensions || quantizationTables.size === 0 ||
+        dcTables.size === 0 || acTables.size === 0 ||
         length !== 6 + components * 2 || bytes[start] !== components ||
         bytes[offset + length - 3] !== 0 ||
         bytes[offset + length - 2] !== 63 ||
@@ -122,7 +129,9 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
       for (let index = start + 1; index < offset + length - 3; index += 2) {
         if (
           !frameIds.has(bytes[index]) || scanIds.has(bytes[index]) ||
-          (bytes[index + 1] & 0xee) !== 0
+          (bytes[index + 1] & 0xee) !== 0 ||
+          !dcTables.has(bytes[index + 1] >> 4) ||
+          !acTables.has(bytes[index + 1] & 0x0f)
         ) throw new EvidenceInvalid("format");
         scanIds.add(bytes[index]);
       }
@@ -139,7 +148,7 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
         ) {
           return dimensions;
         }
-        if (next !== 0 && !(next >= 0xd0 && next <= 0xd7)) {
+        if (next !== 0) {
           throw new EvidenceInvalid("format");
         }
         offset += 2;

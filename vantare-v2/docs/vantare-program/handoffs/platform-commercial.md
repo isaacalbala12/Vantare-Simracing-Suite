@@ -7288,8 +7288,8 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 ## VANTA-132 / #1910 · Pasos 1–2 · Gestión propia y sesión en memoria (en preparación)
 
 - Rama `vantareapp/isa-1910-paso1-identidad-admin`, worktree
-  `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`.
-  Sin PR todavía; falta rebase sobre nightly con la caracterización integrada.
+  `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`, rebasada sobre `6a461ccf0`.
+  PR draft en preparación contra nightly; depende de #1911 y #1912 para completar los pasos 0–3. Falta incorporar #1911 cuando lo integre el orquestador.
 - Caracterización previa: metadata del Hub aceptada en admin PASS antes del
   cambio; paso 0 demuestra el logout sin revocación. Paso 1 prepara valores
   públicos compilados para cliente/callback propios, inactivos por defecto.
@@ -7299,11 +7299,11 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   La migración conserva todas las cuarentenas pendientes de revocación.
 - Tests exclusivamente con Store y HTTP sintéticos: dos modos, revocación
   correcta/fallida, blob dañado, login/refresh/logout en memoria y diagnóstico
-  interactivo. Gates finales todavía pendientes; no se declara PASS de entrega.
+  interactivo. Focales 18/18 y Nextest completo admin/services 313/313 PASS (5 omisiones preexistentes), check all-targets y Clippy -D warnings PASS; lifecycle 25/25 PASS. Fmt/diff y calidad 468 huellas PASS. Todo Rust por compilar.ps1, target propio y raíces QA. Árbol native idéntico tras rebase: 78216d6d6f4bdb742541e0233c8252aa3ffb3607; no se repiten gates ya aprobados. Telemetría no aplica: sin cambios runtime/domain/ipc/testdata.
 - ADR 0104 registra el límite aprobado: el access JWT vive hasta exp; Isaac
   creará Gestión con JWT y TTL de cinco minutos al activarlo. Sin jti, registro
   de revocación, schema ni dependencia nueva. La configuración pública existente
-  de autenticación permite reutilizar el verificador sin editar `_shared`.
+  de autenticación permite reutilizar el verificador sin editar `_shared`; reserva de native-auth.ts devuelta al orquestador. Se conservan los fallos iniciales de fixture/Clippy corregidos y el intento interrumpido en la evidencia D:/VantareServer/evidence/isa-1910-paso1.
 - #1911 rebasado y publicado con HEAD `b050ecac8bf02a09e34673a1bf5fa91fe852d60a`
   sobre nightly `6a461ccf0`, conservando R6; Deno 88 y SQL 71 PASS, native idéntico
   al aprobado. #1912 espera su integración para rebase definitivo.

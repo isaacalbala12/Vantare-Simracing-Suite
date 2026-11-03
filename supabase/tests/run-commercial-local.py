@@ -264,7 +264,7 @@ $$;
      raise RuntimeError(suite+' failed after rollback')
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(stem+'.sql'))
   if args.testing_identity:
-   for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
+   for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql','testing_report_v2.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
     (OUT/(name+'.log')).write_text(result)
     if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)

@@ -214,7 +214,9 @@ class App:
         self.reader.join(timeout=5)
         assert not self.reader.is_alive(), "stdout reader did not stop"
         self.log.close()
-        write_json(self.root / "observations.json", self.events)
+        evidence=self.root / "observations.json"
+        previous=json.loads(evidence.read_text()) if evidence.exists() else []
+        write_json(evidence, previous+self.events)
         assert not forced, "real process shutdown timed out; Job terminated for cleanup"
         if not crash:
             assert self.child.returncode == 0, "real process shutdown failed"

@@ -264,13 +264,21 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     [IO.Directory]::CreateDirectory((Join-Path $setupData 'empty'))|Out-Null
     [IO.File]::WriteAllText((Join-Path $setupData 'user.bin'),'setup user data')
     $setupDataBefore=Get-NativeDataIndex $setupData
-    $savedRunAcl=Get-Acl -LiteralPath $run
-    $deniedRunAcl=Get-Acl -LiteralPath $run
+    # PowerShell 5.1 Get/Set-Acl cannot resolve this remapped HKCU drive.
+    # Open the exact injected key; keep its permission handle for restoration.
+    $runAclKey=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+        ('Software\VantareInstallerMatrix\'+$hiveId+'\Software\Microsoft\Windows\CurrentVersion\Run'),
+        [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
+        ([Security.AccessControl.RegistryRights]::ReadKey -bor [Security.AccessControl.RegistryRights]::ChangePermissions))
+    $savedRunAcl=$runAclKey.GetAccessControl()
+    $deniedRunAcl=$runAclKey.GetAccessControl()
     $deniedRunAcl.AddAccessRule([Security.AccessControl.RegistryAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,[Security.AccessControl.RegistryRights]::SetValue,[Security.AccessControl.AccessControlType]::Deny))
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
-    Set-Acl -LiteralPath $run -AclObject $deniedRunAcl
+    $runAclKey.SetAccessControl($deniedRunAcl)
     $request.operation='Uninstall';$request.uninstall=$true
-    try{$result=Invoke-StartupWriter $request}finally{Set-Acl -LiteralPath $run -AclObject $savedRunAcl}
+    try{$result=Invoke-StartupWriter $request}finally{
+        try{$runAclKey.SetAccessControl($savedRunAcl)}finally{$runAclKey.Dispose()}
+    }
     $progressJson=$true
     foreach($line in ($result.Stdout -split "`n")){if($line.Trim()){try{$null=$line|ConvertFrom-Json}catch{$progressJson=$false}}}
     Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $setupRoot 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $setupCommand -and (Test-Path -LiteralPath $result.DiagnosticPath) -and (Get-Item -LiteralPath $result.DiagnosticPath).Length -gt 0 -and $progressJson) 'Denied Run deletion records a diagnostic and preserves valid JSON progress while Uninstall completes'

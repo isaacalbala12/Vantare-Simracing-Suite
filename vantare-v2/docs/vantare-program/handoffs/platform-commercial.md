@@ -1,3 +1,36 @@
+## VANTA-126 / #1827 — revisión E2E local del 3-nov-2026
+
+- Base de revisión `origin/nightly@70b2f27538daf07a08e39ba8a415848db1d92f2d`;
+  worktree `D:/VantareServer/qa/licencias-e2e/checkout`, rama
+  `vantareapp/isa-1827-qa-licencias-e2e`. No cambia código de producto.
+- **E2E no acreditado**: los diez escenarios conservan NO VERIFICABLE para
+  el conjunto de procesos contra backend local. Los endpoints HTTPS son de
+  build; HTTP y relojes inyectados existen en los harness, sin interfaz de
+  activación para los ejecutables normales. No se usaron cuentas reales.
+- Binarios normales `vantare`, `vantare-services` y núcleo compilados por cola
+  con target y raíces QA propios. Bibliotecas: **224/224 + 17/17 PASS**; Deno fijado
+  a 2.7.13: **181/181 PASS**. PostgreSQL 16 local: código 0, **964 aserciones
+  pgTAP / 32 planes**, y carreras de 131 rutas / 778 checks de escrituras.
+  Sin PostgREST/B01, Edge servida como HTTP, Hub/Feed ni simulador Live.
+- Sonda reutilizable de procesos y README en `tools/qa/`; su alcance explícito
+  no sustituye login, renovación o compra E2E. Services real confirma cuenta
+  sin configurar por IPC y cierra con 0. Núcleo real: dos arranques disponibles,
+  cuarentena única, guarda de recuperación y ausencia de binding fabricado;
+  cierres EOF con 0. `vantare.exe` sólo se prueba con --version. Sin recuperación
+  online acreditada. Hashes y logs en `processes/result.json` del informe.
+- Informe y logs: `D:/VantareServer/evidence/licencias-e2e/INFORME.md`.
+  Sin bug de producto reproducido ni P0/P1. Se documentan Deno antiguo, permisos
+  drvfs y una creación temporal de recursos auxiliares fuera de QA en WSL,
+  corregida trasladándolos a QA. Sin instalación real ni documentos reales
+  abiertos; inventario final de 16 entradas real sin cambios de metadatos.
+- Bug de tooling fuera del arreglo: [#1914](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1914),
+  --comentario sin estado se rechaza antes de red. No se corrige; el comentario
+  final usa el mismo cliente con POST exclusivo y verificación, sin PATCH.
+- Plane **Por testear**, no se mueve. Próximo paso: el orquestador acuerda
+  una vía QA de identidad falsa/TLS/reloj para acreditar el recorrido completo.
+  Esta revisión no habilita bypasses de producto ni autoriza usar cuentas reales.
+  Entrega aislada por PR draft a nightly; sin merge, release o promoción.
+
 ## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner
 
 - Rama `vantareapp/isa-1878-instant-tests`, base

@@ -12,6 +12,8 @@ create table private.testing_report_admitted_keys (
 );
 alter table private.testing_report_admitted_keys enable row level security;
 revoke all on private.testing_report_admitted_keys from public, anon, authenticated, service_role;
+create index testing_report_admitted_keys_expiry
+  on private.testing_report_admitted_keys(admitted_at);
 create trigger a_account_write_barrier before insert or update or delete
   on private.testing_report_admitted_keys for each row
   execute function private.guard_account_write(
@@ -31,6 +33,10 @@ begin
     or p_week is distinct from date_trunc('week', clock_timestamp() at time zone 'UTC')::date then
     raise exception 'testing_report_admission_invalid' using errcode = '22023';
   end if;
+
+  -- A retry key lives exactly as long as the retained attempt window.
+  delete from private.testing_report_admitted_keys
+    where admitted_at < (((clock_timestamp() at time zone 'UTC')::date - 8)::timestamp at time zone 'UTC');
 
   -- Serialize same-key admission, including its quota increment. A changed body
   -- cannot borrow the first body's exemption, even from the same account.
@@ -57,5 +63,58 @@ end $$;
 revoke all on function public.testing_report_admit_account(uuid,text,text,date)
   from public, anon, authenticated;
 grant execute on function public.testing_report_admit_account(uuid,text,text,date)
+  to service_role;
+
+-- The b03 Clerk deletion marks account_identities.deleted_at. This trigger is
+-- installed after the admission table exists, so it also works on an upgrade
+-- where b03 was applied months earlier. The deletion path owns the UUID lock.
+create function private.testing_report_purge_admitted_on_delete()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  delete from private.testing_report_admitted_keys where account_id = new.account_id;
+  return new;
+end $$;
+revoke all on function private.testing_report_purge_admitted_on_delete()
+  from public, anon, authenticated, service_role;
+create trigger testing_report_purge_admitted_on_delete
+  after update of deleted_at on public.account_identities
+  for each row when (old.deleted_at is null and new.deleted_at is not null)
+  execute function private.testing_report_purge_admitted_on_delete();
+
+-- The IP counter is only a coarse flood guard; it cannot spend the five
+-- authenticated reports belonging to a tester on the same network.
+alter table private.testing_report_attempts
+  drop constraint testing_report_attempts_attempts_check,
+  add constraint testing_report_attempts_attempts_check
+    check (attempts between 1 and 61);
+create or replace function public.testing_report_admit(p_scope text,p_subject text,p_week date)
+returns boolean language plpgsql security definer set search_path='' as $$
+declare d date:=(clock_timestamp() at time zone 'UTC')::date;
+  w date:=date_trunc('week',clock_timestamp() at time zone 'UTC')::date;
+  n integer; total bigint;
+begin
+  if current_setting('transaction_isolation')<>'read committed' then
+    raise exception 'testing_report_read_committed_required' using errcode='25001'; end if;
+  if p_week is distinct from w or p_scope is null or p_subject is null
+    or p_scope not in ('ip','account')
+    or (p_scope='ip' and p_subject !~ '^[0-9a-f]{64}$')
+    or (p_scope='account' and p_subject !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') then
+    raise exception 'testing_report_admission_invalid' using errcode='22023'; end if;
+  delete from private.testing_report_attempts where day_start<d-8;
+  perform pg_advisory_xact_lock(hashtextextended(p_scope||p_subject||w::text,1611));
+  insert into private.testing_report_attempts(scope,subject,week_start,day_start,attempts)
+    values(p_scope,p_subject,w,d,1)
+    on conflict(scope,subject,week_start,day_start) do update
+      set attempts=least(private.testing_report_attempts.attempts+1,
+        case when p_scope='ip' then 61 else 21 end)
+    returning attempts into n;
+  if p_scope='ip' then return n<=60; end if;
+  select sum(attempts) into total from private.testing_report_attempts
+    where scope=p_scope and subject=p_subject and week_start=w;
+  return n<=5 and total<=20;
+end $$;
+revoke all on function public.testing_report_admit(text,text,date)
+  from public, anon, authenticated, service_role;
+grant execute on function public.testing_report_admit(text,text,date)
   to service_role;
 commit;

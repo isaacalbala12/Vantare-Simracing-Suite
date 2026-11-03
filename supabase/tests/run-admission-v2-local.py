@@ -48,6 +48,8 @@ def main():
               create role authenticated noinherit;
               create role service_role noinherit;
               create schema private;
+              create table public.account_identities(
+                account_id uuid primary key, deleted_at timestamptz);
               grant usage on schema public to anon, authenticated, service_role;
               grant usage on schema private to service_role;
               -- The complete commercial harness supplies the real deletion guard.
@@ -107,8 +109,17 @@ def main():
                   where account_id=a and report_key='draft_1') then
                   raise exception 'admission key outlived attempt retention';
                 end if;
+                insert into public.account_identities(account_id) values(a);
+                update public.account_identities set deleted_at=clock_timestamp() where account_id=a;
+                if exists(select 1 from private.testing_report_admitted_keys where account_id=a) then
+                  raise exception 'b03 tombstone retained admission keys';
+                end if;
               end $$;
             ''')
+            denied_ip = run('psql', *connection, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql', expected=3)
+            if 'testing_ip_counter_rollback_requires_data_preservation' not in denied_ip:
+                raise RuntimeError('rollback did not protect coarse IP counters')
+            run('psql', *connection, '-c', "delete from private.testing_report_attempts where scope='ip';")
             denied = run('psql', *connection, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql', expected=3)
             if 'testing_admission_v2_rollback_requires_data_preservation' not in denied:
                 raise RuntimeError('rollback did not protect active admission keys')

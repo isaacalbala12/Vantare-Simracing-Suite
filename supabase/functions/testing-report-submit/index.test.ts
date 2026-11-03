@@ -57,7 +57,7 @@ function fixture() {
         const n = (counts.get(k) ?? 0) + 1;
         counts.set(k, n);
         if (scope === "account" && n <= 5) admitted.set(report, digest!);
-        return Promise.resolve(n <= 5);
+        return Promise.resolve(n <= (scope === "ip" ? 60 : 5));
       },
       submit: (account: string, body: Record<string, unknown>) => {
         reports.push({ account, body });
@@ -86,13 +86,13 @@ function request(
     },
   );
 }
-Deno.test("F1: two accounts share IP; spoofed XFF cannot reset budget; normal submission works", async () => {
+Deno.test("F1: 60 accounts share IP; spoofed XFF cannot reset coarse budget", async () => {
   const f = fixture();
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 60; i++) {
     eq(
       (await handleTestingReportSubmit(
         request(
-          i % 2 ? "account-b" : "account-a",
+          `account-${i}`,
           undefined,
           payload,
           `198.51.100.${i}`,
@@ -106,7 +106,7 @@ Deno.test("F1: two accounts share IP; spoofed XFF cannot reset budget; normal su
     (await handleTestingReportSubmit(request("account-c"), f.deps)).status,
     429,
   );
-  eq(f.reports.length, 5);
+  eq(f.reports.length, 60);
 });
 
 Deno.test("unauthenticated flood cannot spend a tester's five reports on a shared IP", async () => {
@@ -126,6 +126,16 @@ Deno.test("unauthenticated flood cannot spend a tester's five reports on a share
   }
   eq((await handleTestingReportSubmit(request("tester"), auth)).status, 200);
   eq(f.counts.get("accounttester"), 1);
+});
+
+Deno.test("deleted account SQLSTATE maps to unauthorized on the simple write", async () => {
+  const f = fixture();
+  const response = await handleTestingReportSubmit(request("account-a"), {
+    ...f.deps,
+    submit: undefined,
+    rpc: () => Promise.resolve({ data: null, error: { code: "28000" } }),
+  });
+  eq(response.status, 401);
 });
 
 Deno.test("actual backend only accepts the managed Supabase project origin", () => {
@@ -308,7 +318,7 @@ Deno.test("JWT failure spends IP admission; exact upstream retry spends one acco
       throw new NativeError(401, "unauthorized");
     },
   };
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 60; i++) {
     eq(
       (await handleTestingReportSubmit(request("account-a"), deny)).status,
       401,

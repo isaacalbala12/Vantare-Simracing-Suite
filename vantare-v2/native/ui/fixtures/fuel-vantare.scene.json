@@ -8,7 +8,7 @@
   {
    "caption": "LMGT3 · solo combustible",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -75,7 +75,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -254,7 +254,7 @@
   {
    "caption": "Hypercar · limita la energía virtual",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -321,7 +321,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -506,7 +506,7 @@
   {
    "caption": "Combustible bajo · entra esta vuelta",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -573,7 +573,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -752,7 +752,7 @@
   {
    "caption": "Repostando · 34.1 de 58.0 L",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -819,7 +819,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -1010,7 +1010,7 @@
   {
    "caption": "FCY · el consumo cae",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -1077,7 +1077,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -1259,7 +1259,7 @@
   {
    "caption": "Última vuelta · llegas",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -1326,7 +1326,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -1505,7 +1505,7 @@
   {
    "caption": "Sin datos · esperando al simulador",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 7,
     "origin": {
@@ -1572,7 +1572,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -1751,7 +1751,7 @@
   {
    "caption": "Sin coche propio · espectador",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 8,
     "origin": {
@@ -1818,7 +1818,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {

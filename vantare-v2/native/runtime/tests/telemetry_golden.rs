@@ -28,14 +28,36 @@ use vantare_domain::{Adapter, AdapterError, Observation};
 use vantare_runtime::adapter::{open_acc_replay, open_replay};
 use vantare_runtime::core::Core;
 
-// Las fixtures guardadas conservan su orden y sus valores; solo cambia la
-// versión de la vista, nunca el archivo original ni su lector productivo.
+const V11_TIMING_FIELDS: [&str; 7] = [
+    "started_at_s",
+    "finished_at_s",
+    "scheduled_end_s",
+    "start_phase",
+    "distance_to_start_line_m",
+    "next_kind",
+    "next_starts_at_s",
+];
+
+// La vista de fixtures v11 retira solo el timing Unavailable añadido al migrar.
+// El oráculo v9, los valores anteriores y su orden se conservan.
 fn legacy_fixture(text: &str) -> String {
     fn photo(mut view: serde_json::Value) -> String {
         assert!(
             matches!(view["version"].as_u64(), Some(9..=11)),
             "versión de fixture prevista"
         );
+        if view["version"] == 11 {
+            let session = view["state"]["session"]
+                .as_object_mut()
+                .expect("sesión de fixture");
+            for field in V11_TIMING_FIELDS {
+                assert_eq!(
+                    session.shift_remove(field),
+                    Some(serde_json::json!("unavailable")),
+                    "las fixtures del oráculo solo ganan timing ausente al migrar"
+                );
+            }
+        }
         view["version"] = serde_json::json!(9);
         serde_json::to_string(&view).expect("vista v9 de fixture")
     }
@@ -90,15 +112,7 @@ fn oracle_view(snapshot: &vantare_domain::Snapshot) -> serde_json::Value {
         .expect("campo sesión DTO")
         .as_object_mut()
         .expect("sesión DTO");
-    for field in [
-        "started_at_s",
-        "finished_at_s",
-        "scheduled_end_s",
-        "start_phase",
-        "distance_to_start_line_m",
-        "next_kind",
-        "next_starts_at_s",
-    ] {
+    for field in V11_TIMING_FIELDS {
         assert!(session.shift_remove(field).is_some(), "campo v11: {field}");
     }
     view

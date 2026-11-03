@@ -46,7 +46,7 @@ mod tests {
             sync::Arc,
             time::{Duration, Instant},
         };
-        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("captura real");
@@ -252,8 +252,7 @@ mod tests {
                 },
                 str::to_owned,
             );
-            let mut snapshot =
-                vantare_ipc::snapshot_from_fixture_json(&scene).expect("foto completa");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&scene).expect("foto completa");
             let name = format!(
                 "vantare-demand-projection-{}-{}-{}-{index}",
                 std::process::id(),

@@ -1683,7 +1683,7 @@ mod demand_tests {
 
     #[test]
     fn flags_with_cars_omit_penalties_and_serialize_less_than_the_previous_demand() {
-        let source = crate::snapshot_from_fixture_json(include_str!(
+        let source = crate::snapshot_from_json(include_str!(
             "../../ui/fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("captura real");

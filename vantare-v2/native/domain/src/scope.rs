@@ -28,16 +28,21 @@ mod tests {
     #[test]
     fn only_source_session_and_player_define_the_scope() {
         let source = Source::default();
-        let state = State {
+        let mut state = State {
             player: Some(Player::default()),
             ..State::default()
         };
+        state.session.track_name = Quality::Reliable("same track".into());
+        state.session.kind = Quality::Reliable(SessionKind::Race);
         let scope = Scope::of(source, &state);
         let mut metadata = state.clone();
         metadata.source_state = SourceState::Paused;
         metadata.driving_situation = DrivingSituation::Garage;
         metadata.session.track_name = Quality::Stale("same track".into());
         metadata.session.kind = Quality::Stale(SessionKind::Race);
+        assert_eq!(Scope::of(source, &metadata), scope);
+        metadata.session.track_name = Quality::Unavailable;
+        metadata.session.kind = Quality::Unavailable;
         assert_eq!(Scope::of(source, &metadata), scope);
         let changes: [fn(&mut State); 3] = [
             |s: &mut State| s.session.id.0 += 1,

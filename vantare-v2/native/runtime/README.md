@@ -178,3 +178,12 @@ El bucle lo añade al registro local junto al motivo neutral; no cambia la foto,
 el DTO, la caducidad por bloque, la recuperación, la retención o el plazo Lost.
 El presupuesto de alineación del scoring LMU y el TTL SHM de ACC comparten
 la constante de 500 ms; conservan sus comparaciones inclusivas/exclusivas.
+
+## Firma de sesión LMU durante silencio — #1868
+
+Un circuito/tipo conocido nuevo solo cambia SessionId cuando vuelve a ser
+fiable tras dos avances del reloj. Durante el hueco permanece Stale; REST
+compatible con ese circuito nuevo no confirma una pausa de la sesión anterior.
+La misma firma conocida permite la pausa confirmada habitual. La ausencia de
+metadata no contradice por sí sola una firma anterior. El diseño usa
+`Scope::of(Source, &State)`; los lectores guardados v7–v10 se conservan.

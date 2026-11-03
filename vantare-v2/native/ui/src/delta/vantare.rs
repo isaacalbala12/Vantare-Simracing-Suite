@@ -1175,7 +1175,7 @@ mod tests {
             .expect("fases")
             .iter()
             .map(|f| {
-                vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto")
+                vantare_ipc::snapshot_from_json(&f["snapshot"].to_string()).expect("foto")
             })
             .collect()
     }

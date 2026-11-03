@@ -1439,7 +1439,7 @@ mod tests {
                 kind.name()
             ))
             .expect("fixture");
-            let mut snapshot = vantare_ipc::snapshot_from_fixture_json(&json).expect("snapshot");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&json).expect("snapshot");
             snapshot.state.source_state = SourceState::Live;
             let mut normal = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
             let mut reduced = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
@@ -1488,7 +1488,7 @@ mod tests {
                 kind.name()
             );
             let json = std::fs::read_to_string(path).expect("fixture");
-            let snapshot = vantare_ipc::snapshot_from_fixture_json(&json).expect("snapshot");
+            let snapshot = vantare_ipc::snapshot_from_json(&json).expect("snapshot");
             let mut widget = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
             widget.ingest(&snapshot, prefs);
             for _ in 0..3 {
@@ -1521,8 +1521,7 @@ mod tests {
             let mut widget = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
             for frame in scene["frames"].as_array().expect("fases") {
                 let snapshot =
-                    vantare_ipc::snapshot_from_fixture_json(&frame["snapshot"].to_string())
-                        .expect("foto");
+                    vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto");
                 widget.ingest(&snapshot, prefs);
                 assert_ne!(widget.frame(prefs, true).1, Wake::Frame, "{}", kind.name());
             }
@@ -1579,7 +1578,7 @@ mod tests {
                 kind.name()
             );
             let json = std::fs::read_to_string(path).expect("escena del widget");
-            let snapshot = vantare_ipc::snapshot_from_fixture_json(&json).expect("foto");
+            let snapshot = vantare_ipc::snapshot_from_json(&json).expect("foto");
             let mut overlay = Overlay::new(kind, prefs);
             overlay.project_snapshot(&snapshot);
             let repaints = (0..100)
@@ -1597,7 +1596,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 kind.name()
             );
-            let snapshot = vantare_ipc::snapshot_from_fixture_json(
+            let snapshot = vantare_ipc::snapshot_from_json(
                 &std::fs::read_to_string(path).expect("escena del widget"),
             )
             .expect("foto");
@@ -1625,7 +1624,7 @@ mod tests {
                 kind.name()
             );
             let json = std::fs::read_to_string(path).expect("escena del widget");
-            let mut snapshot = vantare_ipc::snapshot_from_fixture_json(&json).expect("foto");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&json).expect("foto");
             let mut overlay = Overlay::new(kind, Preferences::default());
             overlay.project_snapshot(&snapshot);
             for _ in 0..100 {
@@ -1649,7 +1648,7 @@ mod tests {
                 kind.name()
             );
             let json = std::fs::read_to_string(path).expect("escena del widget");
-            let mut snapshot = vantare_ipc::snapshot_from_fixture_json(&json).expect("foto");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&json).expect("foto");
             let mut overlay = Overlay::new(kind, Preferences::default());
             overlay.project_snapshot(&snapshot);
             snapshot.sequence += 1;
@@ -1933,10 +1932,9 @@ mod tests {
 
     #[test]
     fn pause_is_shared_by_every_widget_and_does_not_ingest_repeated_photos() {
-        let live = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/pedals.snapshot.json"
-        ))
-        .expect("foto real guardada");
+        let live =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto real guardada");
         let mut paused = live.clone();
         paused.state.source_state = vantare_domain::SourceState::Paused;
         for &kind in Kind::ALL {
@@ -2046,10 +2044,9 @@ mod tests {
 
     #[test]
     fn studio_and_workshop_preview_never_hide_for_any_situation_or_widget() {
-        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/pedals.snapshot.json"
-        ))
-        .expect("foto");
+        let mut snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto");
         for &kind in Kind::ALL {
             for situation in [
                 vantare_domain::DrivingSituation::Garage,
@@ -2070,10 +2067,9 @@ mod tests {
 
     #[test]
     fn pausing_after_inputs_expire_restores_the_retained_pedals_without_an_old_data_notice() {
-        let live = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/pedals.snapshot.json"
-        ))
-        .expect("foto guardada");
+        let live =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto guardada");
         let mut overlay = Overlay::with_snapshot(
             &Settings::default_for(Kind::Pedals),
             Preferences::default(),
@@ -2184,10 +2180,9 @@ mod tests {
             },
             ..Default::default()
         };
-        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/pedals.snapshot.json"
-        ))
-        .expect("fixture de pedales con velocidad disponible");
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("fixture de pedales con velocidad disponible");
         let mut overlay = Overlay::with_snapshot(
             &Settings::default_for(Kind::Pedals),
             layout.preferences,
@@ -2297,28 +2292,25 @@ mod tests {
 
     #[test]
     fn parity_scenes_use_the_existing_snapshot_wire_format() {
-        let standings = vantare_ipc::snapshot_from_fixture_json(include_str!(
+        let standings = vantare_ipc::snapshot_from_json(include_str!(
             "../fixtures/standings-legacy.snapshot.json"
         ))
         .expect("escena de referencia");
         assert_eq!(standings, crate::source::fixed());
-        let reference_scene = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/standings.snapshot.json"
-        ))
-        .expect("escena Standings fase 2");
+        let reference_scene =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings.snapshot.json"))
+                .expect("escena Standings fase 2");
         assert_eq!(reference_scene.state.cars.len(), 20);
         assert_eq!(reference_scene.state.cars[0].driver.name, "André Lotterer");
-        let radar = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/radar.snapshot.json"
-        ))
-        .expect("escena radar");
+        let radar =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/radar.snapshot.json"))
+                .expect("escena radar");
         let radar = vantare_domain::radar::project(&radar);
         assert_eq!(radar.cars.len(), 3);
         assert_eq!((radar.cars[0].right_m, radar.cars[0].ahead_m), (-4.0, 0.0));
-        let pedals = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../fixtures/pedals.snapshot.json"
-        ))
-        .expect("escena pedales");
+        let pedals =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("escena pedales");
         let pedals = vantare_domain::pedals::project(&pedals, Preferences::default());
         assert_eq!(
             (pedals.throttle, pedals.brake, pedals.clutch),

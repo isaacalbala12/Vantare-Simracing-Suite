@@ -155,8 +155,8 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    sin representación y coordinar su extensión con el propietario de domain/IPC.
    Estas escenas son demostraciones reconstruidas, **no** capturas LMU reales.
    Para animaciones, `.scene.json` añade `label`, `frameMs` (50–60000),
-   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot usa DTO v10.
-   El cargador guardado permite v7/v8/v9/v10; el pipe live nunca migra fixtures.
+   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot del repo usa DTO v11.
+   El cargador de documentos guardados permite v7/v8/v9/v10/v11; el pipe live nunca migra fixtures.
    Preferencias y geometría viven en el documento de layout, fuera del ViewModel.
 5. Medir desde `native/`, con escritorio visible, sin ventanas encima y DPI
    al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):

@@ -65,6 +65,14 @@ def main():
               declare a uuid := '16100000-0000-0000-0000-000000000091';
                 w date := date_trunc('week', clock_timestamp() at time zone 'UTC')::date;
               begin
+                for i in 1..60 loop
+                  if not public.testing_report_admit('ip',repeat('a',64),w) then
+                    raise exception 'coarse shared-IP allowance ended before 60 requests';
+                  end if;
+                end loop;
+                if public.testing_report_admit('ip',repeat('a',64),w) then
+                  raise exception '61st shared-IP request passed';
+                end if;
                 if not exists(select 1 from pg_trigger where
                   tgrelid='private.testing_report_admitted_keys'::regclass
                   and tgname='a_account_write_barrier' and tgenabled='O')

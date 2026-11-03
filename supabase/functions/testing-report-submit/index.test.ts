@@ -40,7 +40,13 @@ function fixture() {
       salt: "synthetic-test-salt-only-32-characters",
       account: (request: Request) =>
         Promise.resolve(request.headers.get("authorization")!.slice(7)),
-      admit: (scope: string, key: string, _week: string, reportKey?: string, digest?: string) => {
+      admit: (
+        scope: string,
+        key: string,
+        _week: string,
+        reportKey?: string,
+        digest?: string,
+      ) => {
         const report = `${key}:${reportKey}`;
         if (scope === "account") {
           const prior = admitted.get(report);
@@ -103,6 +109,25 @@ Deno.test("F1: two accounts share IP; spoofed XFF cannot reset budget; normal su
   eq(f.reports.length, 5);
 });
 
+Deno.test("unauthenticated flood cannot spend a tester's five reports on a shared IP", async () => {
+  const f = fixture();
+  const auth = {
+    ...f.deps,
+    account: (input: Request) => {
+      const bearer = input.headers.get("authorization");
+      if (!bearer) throw new NativeError(401, "unauthorized");
+      return Promise.resolve(bearer.slice(7));
+    },
+  };
+  for (let i = 0; i < 5; i++) {
+    const attack = request("attacker");
+    attack.headers.delete("authorization");
+    eq((await handleTestingReportSubmit(attack, auth)).status, 401);
+  }
+  eq((await handleTestingReportSubmit(request("tester"), auth)).status, 200);
+  eq(f.counts.get("accounttester"), 1);
+});
+
 Deno.test("actual backend only accepts the managed Supabase project origin", () => {
   requireHostedGateway("https://" + "a".repeat(20) + ".supabase.co");
   for (
@@ -126,7 +151,12 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
   for (let i = 1; i <= 6; i++) {
     eq(
       (await handleTestingReportSubmit(
-        request("account-a", `192.0.2.${i}`, { ...payload, p_id: `16100000-0000-4000-8000-0000000000${String(i).padStart(2, "0")}` }),
+        request("account-a", `192.0.2.${i}`, {
+          ...payload,
+          p_id: `16100000-0000-4000-8000-0000000000${
+            String(i).padStart(2, "0")
+          }`,
+        }),
         f.deps,
       )).status,
       i <= 5 ? 200 : 429,
@@ -146,7 +176,10 @@ Deno.test("invalid bodies spend IP admission but leave account quota available",
     );
   }
   eq(
-    (await handleTestingReportSubmit(request("account-a", "192.0.2.11"), f.deps)).status,
+    (await handleTestingReportSubmit(
+      request("account-a", "192.0.2.11"),
+      f.deps,
+    )).status,
     200,
   );
   eq(f.counts.get("accountaccount-a"), 1);
@@ -470,7 +503,10 @@ Deno.test("F8: production submit dispatches the full package only to the service
     body: { ...structured, p_account: "verified-account" },
   }]);
   eq(
-    (await handleTestingReportSubmit(request("verified-account", undefined, simple), deps)).status,
+    (await handleTestingReportSubmit(
+      request("verified-account", undefined, simple),
+      deps,
+    )).status,
     200,
   );
   eq(calls[1], {

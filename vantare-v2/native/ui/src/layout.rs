@@ -211,6 +211,9 @@ impl Layout {
         if !(VERSION..=READ_VERSION).contains(&self.version) {
             return Err(Error::Unsupported(self.version));
         }
+        if self.version == VERSION && (self.reduced_motion.is_some() || !self.extensions.is_empty()) {
+            return Err(Error::Unsupported(self.version));
+        }
         if !self.performance.valid() {
             return Err(Error::Invalid("frecuencia de widget no válida"));
         }
@@ -557,6 +560,47 @@ fn persist_with_hook(
     )
     .map_err(write_error)
 }
+
+fn normalize_companions(layout: &mut Layout) {
+    let parents: Vec<_> = layout
+        .instances
+        .iter()
+        .filter_map(|i| match &i.settings {
+            Settings::SessionAlerts(s) if s.companion_for.is_none() => Some((i.clone(), s.clone())),
+            _ => None,
+        })
+        .collect();
+    layout.instances.retain(|i| {
+        !matches!(&i.settings, Settings::SessionAlerts(s)
+        if s.companion_for.as_ref().is_some_and(|id| !parents.iter().any(|(p,_)| &p.id == id)))
+    });
+    for (parent, mut settings) in parents {
+        settings.companion_for = Some(parent.id.clone());
+        if let Some(mini) = layout.instances.iter_mut().find(|i| {
+            matches!(&i.settings,
+            Settings::SessionAlerts(s) if s.companion_for.as_ref()==Some(&parent.id))
+        }) {
+            mini.settings = Settings::SessionAlerts(settings);
+            mini.visible = parent.visible;
+            mini.show_in = parent.show_in;
+            mini.off_track = parent.off_track;
+            mini.opacity = parent.opacity;
+        } else {
+            let mut mini = parent.clone();
+            mini.id = format!("{}-mini", parent.id);
+            if layout.instances.iter().any(|i| i.id == mini.id) {
+                continue;
+            }
+            let width = layout.canvas_resolution.map_or(1920.0, |c| c.width);
+            mini.x = width - 226.0;
+            mini.y = 92.0;
+            mini.geometry = crate::geometry::Geometry::default();
+            mini.settings = Settings::SessionAlerts(settings);
+            layout.instances.push(mini);
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -1065,44 +1109,4 @@ struct StrictLayout {
         assert!(orphan.normalized().unwrap().instances.is_empty());
     }
 
-}
-
-fn normalize_companions(layout: &mut Layout) {
-    let parents: Vec<_> = layout
-        .instances
-        .iter()
-        .filter_map(|i| match &i.settings {
-            Settings::SessionAlerts(s) if s.companion_for.is_none() => Some((i.clone(), s.clone())),
-            _ => None,
-        })
-        .collect();
-    layout.instances.retain(|i| {
-        !matches!(&i.settings, Settings::SessionAlerts(s)
-        if s.companion_for.as_ref().is_some_and(|id| !parents.iter().any(|(p,_)| &p.id == id)))
-    });
-    for (parent, mut settings) in parents {
-        settings.companion_for = Some(parent.id.clone());
-        if let Some(mini) = layout.instances.iter_mut().find(|i| {
-            matches!(&i.settings,
-            Settings::SessionAlerts(s) if s.companion_for.as_ref()==Some(&parent.id))
-        }) {
-            mini.settings = Settings::SessionAlerts(settings);
-            mini.visible = parent.visible;
-            mini.show_in = parent.show_in;
-            mini.off_track = parent.off_track;
-            mini.opacity = parent.opacity;
-        } else {
-            let mut mini = parent.clone();
-            mini.id = format!("{}-mini", parent.id);
-            if layout.instances.iter().any(|i| i.id == mini.id) {
-                continue;
-            }
-            let width = layout.canvas_resolution.map_or(1920.0, |c| c.width);
-            mini.x = width - 226.0;
-            mini.y = 92.0;
-            mini.geometry = crate::geometry::Geometry::default();
-            mini.settings = Settings::SessionAlerts(settings);
-            layout.instances.push(mini);
-        }
-    }
 }

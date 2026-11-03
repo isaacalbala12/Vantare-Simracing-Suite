@@ -373,8 +373,6 @@ fn clamp(settings: &mut AppearanceSettings) {
     settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
 }
 
-#[cfg(test)]
-mod tests;
 
 fn read_zoom<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u16, D::Error> {
     let value = Value::deserialize(deserializer)?;
@@ -399,3 +397,6 @@ fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
 }
 
 const fn default_zoom() -> u16 { 100 }
+
+#[cfg(test)]
+mod tests;

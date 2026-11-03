@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: bearer demasiado largo
+
+- La CI de 2e7e21ef9 termino 6/6 PASS. Un bearer de mas de 16 KiB se rechaza localmente con 413; ahora tambien consume el tope IP de fallos de autenticacion. Test RED previo y Deno 26 PASS/1 omitido.
+- HEAD de codigo 2f4b20e88; CI del nuevo HEAD pendiente. La firma ES256 sigue siendo local y las consultas a Clerk/Supabase ocurren despues de una firma valida.
+- No se edito _shared/native-auth.ts. Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: re-revision de seguridad
 
 - Firma ES256 del bearer verificada localmente; despues se consulta Clerk y se resuelve la cuenta. Un bearer ausente/invalido no llega a esas llamadas y solo entonces carga IP. 61 fallos no bloquean a un tester valido en la misma IP.

@@ -1,7 +1,7 @@
 #![cfg(windows)]
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::os::windows::{fs::OpenOptionsExt, io::AsRawHandle, process::CommandExt};
+use std::os::windows::{fs::OpenOptionsExt, process::CommandExt};
 use std::{
     fs,
     io::{BufRead, BufReader, Write},

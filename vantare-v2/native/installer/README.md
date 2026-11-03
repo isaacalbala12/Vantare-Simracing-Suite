@@ -161,8 +161,8 @@ Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
 `vantare-v2/`, como indica el README nativo:
 
 ```powershell
-powershell -NoProfile -File packaging/candidate.ps1 -Operation Build `
-  -Root D:/VantareServer/qa/build-context -Channel beta -Version 0.0.977 -OutputDirectory D:/VantareServer/qa/build-a
+powershell -NoProfile -File packaging/build-candidate.ps1 `
+  -Channel beta -Version 0.0.977 -OutputDirectory D:/VantareServer/qa/build-a
 powershell -NoProfile -File packaging/build-installer.ps1 -Version 0.0.977 `
   -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller
 ```

@@ -260,7 +260,7 @@ pub fn sync(
             progress(crate::model::Progress::step("register", 88, false));
         }
         return Ok(());
-    };
+    }
     let version = version.expect("state projection");
     let run = legacy_run(context, root)?;
     let ui = prepare_projection(root, &programs.join(CURRENT), options, run.is_some())?;

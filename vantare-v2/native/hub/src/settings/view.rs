@@ -435,15 +435,19 @@ impl Hub {
                 view.child(orbit::callout(warning, cx))
             })
             .when(self.settings.store.has_pending(), |view| {
-                view.child(orbit::button("settings-retry-save", "Reintentar guardado", cx)
-                    .track_focus(&self.settings.retry_focus)
-                    .on_click(cx.listener(|hub, _, window, cx| hub.settings_retry_save(window, cx)))
-                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            hub.settings_retry_save(window, cx);
-                            cx.stop_propagation();
-                        }
-                    })))
+                view.child(
+                    orbit::button("settings-retry-save", "Reintentar guardado", cx)
+                        .track_focus(&self.settings.retry_focus)
+                        .on_click(
+                            cx.listener(|hub, _, window, cx| hub.settings_retry_save(window, cx)),
+                        )
+                        .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                hub.settings_retry_save(window, cx);
+                                cx.stop_propagation();
+                            }
+                        })),
+                )
             })
             .child(
                 match self.settings.page {

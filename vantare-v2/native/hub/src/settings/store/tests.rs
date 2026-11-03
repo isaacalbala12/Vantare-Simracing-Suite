@@ -409,7 +409,12 @@ fn step8a_warning_clears_after_successful_repair() {
 
 #[test]
 fn step8a_bad_zoom_preserves_other_v2_sections() {
-    for zoom in [serde_json::json!(99), serde_json::json!(-1), serde_json::json!("bad"), Value::Null] {
+    for zoom in [
+        serde_json::json!(99),
+        serde_json::json!(-1),
+        serde_json::json!("bad"),
+        Value::Null,
+    ] {
         let root = Root::new();
         let mut value = serde_json::to_value(Document::default()).unwrap();
         value["general"]["minimized"] = true.into();
@@ -448,14 +453,20 @@ fn step8a_cas_conflict_reloads_and_can_retry_without_restart() {
 
 #[test]
 fn step8a_protected_mirror_is_never_replaced_even_after_source_disappears() {
-    for bytes in [br#"{"paletteVersion":99}"#.to_vec(), vec![b' '; 16 * 1024 + 1]] {
+    for bytes in [
+        br#"{"paletteVersion":99}"#.to_vec(),
+        vec![b' '; 16 * 1024 + 1],
+    ] {
         let root = Root::new();
         root.load();
         root.write("appearance.json", &bytes);
         let mut store = root.load();
         assert!(store.warning.is_some());
         fs::remove_file(root.0.join("appearance.json")).unwrap();
-        let next = AppearanceSettings { reduced_motion: true, ..store.value.appearance };
+        let next = AppearanceSettings {
+            reduced_motion: true,
+            ..store.value.appearance
+        };
         store.save_appearance(next).unwrap();
         assert!(!root.0.join("appearance.json").exists());
         assert!(store.mirror_warning.is_some());
@@ -475,7 +486,10 @@ fn step8a_store_v3_bridge_protects_only_marked_section_without_creating_v3() {
     store.save_zoom(110).unwrap();
     let current: Value = serde_json::from_slice(&root.read(FILE)).unwrap();
     assert_eq!(current["version"], 3);
-    assert_eq!(current["migrationPending"], serde_json::json!(["appearance"]));
+    assert_eq!(
+        current["migrationPending"],
+        serde_json::json!(["appearance"])
+    );
     let fresh = Root::new();
     fresh.load().save_zoom(125).unwrap();
     let current: Value = serde_json::from_slice(&fresh.read(FILE)).unwrap();
@@ -490,7 +504,10 @@ fn step8a_retry_rebases_only_edited_keys_and_retains_draft() {
     let mut foreign = winner.value.appearance;
     foreign.palette = Palette::Ocean;
     winner.save_appearance(foreign).unwrap();
-    let wanted = AppearanceSettings { reduced_motion: true, ..stale.value.appearance };
+    let wanted = AppearanceSettings {
+        reduced_motion: true,
+        ..stale.value.appearance
+    };
     assert!(stale.save_appearance(wanted).is_err());
     assert!(stale.has_pending());
     stale.retry().unwrap();

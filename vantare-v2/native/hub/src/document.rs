@@ -11,7 +11,9 @@ fn layout_file_error(error: vantare_ui::layout::Error, path: &Path) -> vantare_i
             path: path.to_path_buf(),
         },
         vantare_ui::layout::Error::Io(error) => error.into(),
-        error @ vantare_ui::layout::Error::Unsupported(_) => vantare_ipc::files::Error::Unsupported(error.to_string()),
+        error @ vantare_ui::layout::Error::Unsupported(_) => {
+            vantare_ipc::files::Error::Unsupported(error.to_string())
+        }
         error => vantare_ipc::files::Error::Message(error.to_string()),
     }
 }
@@ -45,8 +47,13 @@ impl Editor {
                 let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
                     vantare_ipc::files::Error::InvalidInput(format!("JSON de layout: {error}"))
                 })?;
-                if !matches!(value.get("version").and_then(serde_json::Value::as_u64), Some(1 | 2)) {
-                    return Err(vantare_ipc::files::Error::Unsupported("versión de layout no compatible; original protegido".into()));
+                if !matches!(
+                    value.get("version").and_then(serde_json::Value::as_u64),
+                    Some(1 | 2)
+                ) {
+                    return Err(vantare_ipc::files::Error::Unsupported(
+                        "versión de layout no compatible; original protegido".into(),
+                    ));
                 }
                 Layout::from_json(bytes).map_err(|error| layout_file_error(error, &path))
             },
@@ -128,11 +135,19 @@ impl Editor {
             Ok(())
         })
     }
-    pub(crate) fn set_reduced_motion(&mut self, enabled: bool) -> Result<(), vantare_ipc::files::Error> {
+    pub(crate) fn set_reduced_motion(
+        &mut self,
+        enabled: bool,
+    ) -> Result<(), vantare_ipc::files::Error> {
         if self.layout().version != 2 || self.layout().reduced_motion.is_none() {
-            return Err(vantare_ipc::files::Error::Unsupported("8A no activa movimiento en layouts antiguos".into()));
+            return Err(vantare_ipc::files::Error::Unsupported(
+                "8A no activa movimiento en layouts antiguos".into(),
+            ));
         }
-        self.change::<String>(|layout| { layout.reduced_motion = Some(enabled); Ok(()) })
+        self.change::<String>(|layout| {
+            layout.reduced_motion = Some(enabled);
+            Ok(())
+        })
     }
     pub(crate) fn set_hide_off_track(&mut self, enabled: bool) -> Result<(), String> {
         self.change::<String>(|layout| {

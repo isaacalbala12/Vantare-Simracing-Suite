@@ -384,7 +384,11 @@ impl Studio {
             .current()
             .map(String::as_str)
     }
-    pub(crate) fn set_reduced_motion(&mut self, enabled: bool, cx: &mut Context<Self>) -> Result<(), vantare_ipc::files::Error> {
+    pub(crate) fn set_reduced_motion(
+        &mut self,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) -> Result<(), vantare_ipc::files::Error> {
         let result = self.editor.set_reduced_motion(enabled);
         self.status = result.as_ref().copied().map_err(ToString::to_string);
         cx.notify();

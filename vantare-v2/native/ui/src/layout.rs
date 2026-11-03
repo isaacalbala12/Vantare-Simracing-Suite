@@ -211,7 +211,8 @@ impl Layout {
         if !(VERSION..=READ_VERSION).contains(&self.version) {
             return Err(Error::Unsupported(self.version));
         }
-        if self.version == VERSION && (self.reduced_motion.is_some() || !self.extensions.is_empty()) {
+        if self.version == VERSION && (self.reduced_motion.is_some() || !self.extensions.is_empty())
+        {
             return Err(Error::Unsupported(self.version));
         }
         if !self.performance.valid() {
@@ -277,7 +278,10 @@ impl std::fmt::Display for Error {
             Self::Io(error) => write!(f, "{error}"),
             Self::Json(error) => write!(f, "JSON de layout: {error}"),
             Self::Invalid(message) => f.write_str(message),
-            Self::Unsupported(version) => write!(f, "versión de layout {version} no compatible; original protegido"),
+            Self::Unsupported(version) => write!(
+                f,
+                "versión de layout {version} no compatible; original protegido"
+            ),
             Self::Conflict => {
                 f.write_str("layout cambiado por otro editor; releer antes de guardar")
             }
@@ -600,7 +604,6 @@ fn normalize_companions(layout: &mut Layout) {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1048,28 +1051,27 @@ mod presentation_tests {
 #[cfg(test)]
 mod bridge_characterization {
     use super::*;
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct StrictLayout {
-    version: u32,
-    instances: Vec<Instance>,
-    /// Ausente en layouts anteriores: seguir el monitor donde están los overlays.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    canvas_resolution: Option<CanvasResolution>,
-    /// Un solo documento permite aplicar formato y layout con la misma recarga.
-    /// Los documentos v1 anteriores conservan ES/métrico por defecto.
-    #[serde(default, with = "preferences")]
-    preferences: Preferences,
-    #[serde(
-        default,
-        skip_serializing_if = "crate::performance::Preferences::is_default"
-    )]
-    performance: crate::performance::Preferences,
-    /// Opt-in global; los layouts anteriores conservan overlays visibles.
-    #[serde(default, skip_serializing_if = "disabled")]
-    hide_off_track: bool,
-}
-
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct StrictLayout {
+        version: u32,
+        instances: Vec<Instance>,
+        /// Ausente en layouts anteriores: seguir el monitor donde están los overlays.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        canvas_resolution: Option<CanvasResolution>,
+        /// Un solo documento permite aplicar formato y layout con la misma recarga.
+        /// Los documentos v1 anteriores conservan ES/métrico por defecto.
+        #[serde(default, with = "preferences")]
+        preferences: Preferences,
+        #[serde(
+            default,
+            skip_serializing_if = "crate::performance::Preferences::is_default"
+        )]
+        performance: crate::performance::Preferences,
+        /// Opt-in global; los layouts anteriores conservan overlays visibles.
+        #[serde(default, skip_serializing_if = "disabled")]
+        hide_off_track: bool,
+    }
 
     #[test]
     fn step8a_original_reader_rejects_new_version_and_reduced_motion() {
@@ -1084,20 +1086,49 @@ struct StrictLayout {
     }
     #[test]
     fn step8a_published_and_future_corpus_roundtrip_without_promoting_v1() {
-        for bytes in [include_bytes!("../fixtures/layouts/native-beta-v0.0.975.json").as_slice(), include_bytes!("../fixtures/layouts/v2-bridge.json").as_slice()] {
+        for bytes in [
+            include_bytes!("../fixtures/layouts/native-beta-v0.0.975.json").as_slice(),
+            include_bytes!("../fixtures/layouts/v2-bridge.json").as_slice(),
+        ] {
             let layout = Layout::from_json(bytes).unwrap();
             let again = Layout::from_json(&serde_json::to_vec(&layout).unwrap()).unwrap();
             assert_eq!(layout, again);
             let original: serde_json::Value = serde_json::from_slice(bytes).unwrap();
-            assert_eq!(serde_json::to_value(&layout).unwrap()["version"], original["version"]);
-            assert_eq!(serde_json::to_value(&layout).unwrap().get("reducedMotion"), original.get("reducedMotion"));
-            if layout.version == 2 { assert_eq!(serde_json::to_value(&layout).unwrap()["extensions"], original["extensions"]); }
+            assert_eq!(
+                serde_json::to_value(&layout).unwrap()["version"],
+                original["version"]
+            );
+            assert_eq!(
+                serde_json::to_value(&layout).unwrap().get("reducedMotion"),
+                original.get("reducedMotion")
+            );
+            if layout.version == 2 {
+                assert_eq!(
+                    serde_json::to_value(&layout).unwrap()["extensions"],
+                    original["extensions"]
+                );
+            }
         }
     }
     #[test]
     fn step8a_external_alerts_are_repaired_idempotently() {
-        let parent = Instance { id: "alert".into(), x: 20.0, y: 30.0, visible: false, show_in: Default::default(), opacity: 0.5, geometry: Default::default(), settings: Settings::default_for(crate::Kind::SessionAlerts), off_track: OffTrack::Hide };
-        let layout = Layout { instances: vec![parent], ..Default::default() }.normalized().unwrap();
+        let parent = Instance {
+            id: "alert".into(),
+            x: 20.0,
+            y: 30.0,
+            visible: false,
+            show_in: crate::session::ShowIn::default(),
+            opacity: 0.5,
+            geometry: crate::geometry::Geometry::default(),
+            settings: Settings::default_for(crate::Kind::SessionAlerts),
+            off_track: OffTrack::Hide,
+        };
+        let layout = Layout {
+            instances: vec![parent],
+            ..Default::default()
+        }
+        .normalized()
+        .unwrap();
         assert_eq!(layout.instances.len(), 2);
         assert_eq!(layout, layout.clone().normalized().unwrap());
         let mini = &layout.instances[1];
@@ -1108,5 +1139,4 @@ struct StrictLayout {
         orphan.instances.remove(0);
         assert!(orphan.normalized().unwrap().instances.is_empty());
     }
-
 }

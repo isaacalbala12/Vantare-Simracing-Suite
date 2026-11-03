@@ -135,7 +135,7 @@ impl Hub {
                 testing.observed.error(
                     crate::testing::diagnostic::Module::Hub,
                     vantare_ipc::files::Kind::Local,
-                )
+                );
             });
         }
         theme::apply(

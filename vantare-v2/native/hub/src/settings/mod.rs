@@ -476,7 +476,10 @@ fn search_text(value: &str) -> String {
 impl Hub {
     fn finish_settings_initialization(&mut self, cx: &mut Context<Self>) {
         self.settings_account_destination(cx);
-        vantare_ui::MotionPolicy::apply_layout(self.studio.read(cx).home_layout().reduced_motion, cx);
+        vantare_ui::MotionPolicy::apply_layout(
+            self.studio.read(cx).home_layout().reduced_motion,
+            cx,
+        );
         // Application's rail needs metadata before Updates is opened. Reuse
         // the bounded background reader after Hub construction.
         self.refresh_settings_update(cx);

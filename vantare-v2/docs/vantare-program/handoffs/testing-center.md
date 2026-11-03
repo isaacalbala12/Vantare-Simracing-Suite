@@ -1,3 +1,10 @@
+## 2026-11-03 - #1896 / VANTA-131 bloqueo SQL paso 5b
+
+- PR WIP #1905 contiene solo test RED previo: 4 tablas y 7 RPC Linear aun existen. No hay migracion de retirada aplicada.
+- El esquema comparte effect_outbox, triage y carreras de borrado; reconstruir el rollback no es aislado. Isaac decide retiro ahora o conservar SQL inerte hasta 7/12.
+- PR #1904 propone disenos 7/12; espera decisiones sobre lectura del agente v2 y billing. PR #1903 de codigo retirado esta en verde.
+- Sin produccion, merge, despliegue ni release.
+
 ## 2026-10-19 - #1709 / VANTA-96: aislar UUID de pgTAP y Edge
 
 - Run39181530688 completa Edge y suites previas, luego falla en testing_report_rich_admission.test.sql:47 por evidence_batches PK duplicada. Edge y pgTAP reutilizaban lote17090000-...0010/evidencia...0011.

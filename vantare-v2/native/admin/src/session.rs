@@ -565,10 +565,10 @@ mod migration_tests;
 mod tests {
     use super::*;
     #[test]
-    fn r10_characterization_logout_makes_no_http_request() {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
-        listener.set_nonblocking(true).expect("nonblocking");
-        let base = format!("http://{}", listener.local_addr().expect("address"));
+    fn r10_regression_legacy_logout_revokes_refresh_before_forgetting_session() {
+        let server =
+            vantare_services::test_http::Server::start_observed(vec![(200, String::new())]);
+        let base = server.base.as_str().trim_end_matches('/');
         let root = std::env::temp_dir().join(format!("admin-r10-logout-{}", std::process::id()));
         let store = Store::open(&root, "r10-synthetic-logout").expect("store");
         let oauth: OAuth = serde_json::from_value(serde_json::json!({
@@ -593,11 +593,13 @@ mod tests {
             .expect("synthetic session");
         let account = Account::restore(oauth, &store).expect("restore");
         assert!(account.identity().is_some());
+        let mut http = Http::default();
+        http.enable_loopback_for_test();
         let mut session = Session {
             account,
-            store,
-            http: Http::default(),
-            client: crate::client::tests::loopback_client(&base),
+            _store: store,
+            http,
+            client: crate::client::tests::loopback_client(base),
             pending: false,
         };
         assert!(matches!(
@@ -605,10 +607,10 @@ mod tests {
             Ok(Reply::LoggedOut)
         ));
         assert!(session.account.identity().is_none());
-        // Logout is synchronous: after its return there can be no in-flight request.
-        assert!(
-            matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
-        );
+        let requests = server.finish_observed();
+        assert_eq!(requests.len(), 1);
+        assert!(requests[0].starts_with("POST /oauth/token/revoke "));
+        assert!(requests[0].contains("token=synthetic-refresh"));
         drop(session);
         std::fs::remove_dir_all(root).expect("cleanup");
     }

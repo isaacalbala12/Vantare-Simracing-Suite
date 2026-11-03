@@ -76,3 +76,13 @@ anteriores exactas quedan en `legacy-evidence/hub-capture-before-1840/` como
 Solo cambian los dos pins activos y se añaden los dos originales archivados:
 468 archivos exactos, sin recalibrar corpus, PNG ni baselines de analizadores.
 No se ejecutan capturas físicas para esta adaptación de importación.
+
+#1868, paso 4: las 102 fixtures UI v10 pasan a v11 (797 fotos), junto a dos
+archivos ya v11 de control. Solo cambian la etiqueta y los siete campos de
+timing que el lector antiguo dejaba Unavailable. La comparación Snapshot ==
+antes/después se hace con los lectores reales; invertir los cambios léxicos
+reconstruye los bytes y hashes anteriores. Las 80 entradas fijadas conservan
+source_sha256, migration y todas sus revisiones; se añade la revisión de esta
+migración y el pin actual. Los otros 388 archivos, PNG, corpus y goldens no
+cambian. verify.py sigue exigiendo el hash exacto de las 468 entradas, sin
+ensanchar tolerancias ni recalibrar baselines de analizadores.

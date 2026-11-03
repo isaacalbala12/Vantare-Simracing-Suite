@@ -159,6 +159,7 @@ impl Translator {
             && !frame.vehicles.is_empty()
             && frame.source_time.is_some()
             && self.gate.is_stalled_at(now)
+            && self.known_session_matches(&frame)
             && self
                 .rest
                 .session_alive(now, self.floor)
@@ -315,6 +316,16 @@ impl Translator {
         Some((info, fresh))
     }
 
+    /// Metadata ausente no contradice la sesión; otra firma conocida no es una pausa.
+    fn known_session_matches(&self, frame: &Frame) -> bool {
+        self.signature.as_ref().is_none_or(|(track, kind, number)| {
+            (frame.track.is_empty() || frame.track == *track)
+                && frame
+                    .kind
+                    .is_none_or(|current| current == *kind && frame.session_number == *number)
+        })
+    }
+
     /// Nueva sesión si el circuito o el tipo cambian con datos frescos, o si el
     /// reloj de sesión retrocede.
     fn track_session(&mut self, frame: &Frame, now: Duration, stale: bool) {
@@ -331,9 +342,7 @@ impl Translator {
             .kind
             .filter(|_| !stale && !frame.track.is_empty())
             .map(|kind| (frame.track.clone(), kind, frame.session_number));
-        let changed = signature
-            .as_ref()
-            .is_some_and(|new| self.signature.as_ref().is_some_and(|old| old != new));
+        let changed = signature.is_some() && !self.known_session_matches(frame);
         if signature.is_some() {
             self.signature = signature;
         }
@@ -932,6 +941,19 @@ mod tests {
             "REST de otro circuito no confirma una pausa de la sesión anterior"
         );
         assert_eq!(next.state.session.track_name, Quality::Stale("Otro".into()));
+        for (at, clock, fresh) in [(550, 1000.1_f64, false), (600, 1000.2, true)] {
+            changed[1_700..1_708].copy_from_slice(&clock.to_le_bytes());
+            let next = observe(&mut t, &changed, ms(at));
+            assert_eq!(next.state.session.id != first.state.session.id, fresh);
+            assert_eq!(
+                next.state.source_state,
+                if fresh {
+                    vantare_domain::SourceState::Live
+                } else {
+                    vantare_domain::SourceState::Stale
+                }
+            );
+        }
     }
 
     #[test]

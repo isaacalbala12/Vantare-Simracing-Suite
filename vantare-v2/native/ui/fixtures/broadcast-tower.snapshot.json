@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 11,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -64,7 +64,7 @@
         "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-    },
+    ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
     "flags": {
       "reliable": [
         {

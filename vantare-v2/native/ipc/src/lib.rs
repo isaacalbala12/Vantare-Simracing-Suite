@@ -107,14 +107,6 @@ pub fn snapshot_from_saved_json(text: &str) -> Result<Snapshot, Error> {
     decode_snapshot(dto)
 }
 
-/// Helper explícito para fixtures históricas; comparte la lectura de datos guardados.
-///
-/// # Errors
-/// Los mismos que [`snapshot_from_saved_json`].
-pub fn snapshot_from_fixture_json(text: &str) -> Result<Snapshot, Error> {
-    snapshot_from_saved_json(text)
-}
-
 fn decode_snapshot(mut dto: dto::SnapshotDto) -> Result<Snapshot, Error> {
     dto.restore(None, &Demand::all(), &Demand::all())?;
     Snapshot::try_from(dto)
@@ -261,10 +253,6 @@ mod tests {
                 snapshot_from_saved_json(&legacy).expect("dato guardado"),
                 snapshot
             );
-            assert_eq!(
-                snapshot_from_fixture_json(&legacy).expect("fixture"),
-                snapshot
-            );
             assert!(
                 matches!(snapshot_from_json(&legacy), Err(Error::Version { got }) if got == version)
             );
@@ -282,8 +270,7 @@ mod tests {
     fn every_workshop_scene_decodes_and_round_trips_at_the_current_version() {
         fn snapshots(value: &serde_json::Value, count: &mut usize) {
             if value.get("state").is_some() && value.get("epoch").is_some() {
-                let snapshot =
-                    snapshot_from_saved_json(&value.to_string()).expect("escena guardada");
+                let snapshot = snapshot_from_json(&value.to_string()).expect("fixture actual v11");
                 assert_eq!(
                     snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
                         .expect("ida y vuelta"),
@@ -303,7 +290,9 @@ mod tests {
         fn directory(path: &std::path::Path, count: &mut usize) {
             for entry in std::fs::read_dir(path).expect("directorio de escenas") {
                 let path = entry.expect("escena").path();
-                if path.extension().is_some_and(|v| v == "json") {
+                if path.is_dir() {
+                    directory(&path, count);
+                } else if path.extension().is_some_and(|v| v == "json") {
                     let value: serde_json::Value =
                         serde_json::from_str(&std::fs::read_to_string(&path).expect("JSON"))
                             .expect("escena");
@@ -327,9 +316,8 @@ mod tests {
 
     #[test]
     fn workshop_scene_decodes_with_unavailable_weather_and_damage() {
-        let scene =
-            snapshot_from_fixture_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
-                .expect("escena migrada al DTO vigente");
+        let scene = snapshot_from_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
+            .expect("escena migrada al DTO vigente");
         assert_eq!(scene.state.cars.len(), 47);
         assert_eq!(
             scene.state.session.weather,

@@ -8,7 +8,7 @@
   {
    "caption": "Carrera · ±3 con tu Ferrari #50",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -75,7 +75,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -672,7 +672,7 @@
   {
    "caption": "Si corres en LMGT3 · Hypercar por detrás",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -739,7 +739,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -1224,7 +1224,7 @@
   {
    "caption": "En boxes · estimación de salida",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -1291,7 +1291,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -1891,7 +1891,7 @@
   {
    "caption": "FCY · sin flechas de acercamiento",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -1958,7 +1958,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {
@@ -2555,7 +2555,7 @@
   {
    "caption": "Sin datos · esperando al simulador",
    "snapshot": {
-    "version": 10,
+    "version": 11,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -2622,7 +2622,7 @@
        "reliable": 0.0
       },
       "weather_pressure_pa": "unavailable"
-     },
+     ,"started_at_s":"unavailable","finished_at_s":"unavailable","scheduled_end_s":"unavailable","start_phase":"unavailable","distance_to_start_line_m":"unavailable","next_kind":"unavailable","next_starts_at_s":"unavailable"},
      "flags": {
       "reliable": [
        {

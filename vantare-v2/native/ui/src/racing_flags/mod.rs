@@ -699,7 +699,7 @@ mod tests {
 
     #[test]
     fn source_interruption_repaints_even_when_the_cached_flag_is_unchanged() {
-        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/racing-flags.snapshot.json"
         ))
         .expect("foto");
@@ -736,7 +736,7 @@ mod tests {
     #[test]
     fn variant_scenes_cover_sector_filter_and_green_hiding() {
         let sectors =
-            vantare_ipc::snapshot_from_fixture_json(include_str!("scenes/sectors.snapshot.json"))
+            vantare_ipc::snapshot_from_json(include_str!("scenes/sectors.snapshot.json"))
                 .expect("sectores reconstruidos en DTO v4");
         let prefs = Preferences::default();
         let vm = Settings::default().project(&sectors, prefs);
@@ -751,7 +751,7 @@ mod tests {
         };
         assert!(settings.project(&sectors, prefs).sectors.is_empty());
         let green =
-            vantare_ipc::snapshot_from_fixture_json(include_str!("scenes/green.snapshot.json"))
+            vantare_ipc::snapshot_from_json(include_str!("scenes/green.snapshot.json"))
                 .expect("verde reconstruido en DTO v4");
         let settings = Settings {
             hide_when_green: true,
@@ -810,7 +810,7 @@ mod tests {
 
     #[test]
     fn default_scene_projects_the_frozen_green_banner() {
-        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/racing-flags.snapshot.json"
         ))
         .expect("escena Workshop DTO v3 válida");
@@ -825,7 +825,7 @@ mod tests {
 
     #[test]
     fn qa_stale_scene_contains_old_flags_and_preserves_the_product_contract() {
-        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/racing-flags-stale.snapshot.json"
         ))
         .expect("escena de banderas antiguas válida");

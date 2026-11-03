@@ -91,9 +91,8 @@ Servicios usa protocolo v19 (#1827, sin candidate/TransferRights y Session expl�
 El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
 `snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
 Studio/Workshop/exportaciones v7/v8/v9/v10/v11 sin reescribir originales.
-`snapshot_from_fixture_json` es el helper explícito para fixtures históricas.
 No usar esos lectores de compatibilidad en pipes live ni eventos live.
-Fixtures archivadas: DTO v10; el lector explícito las migra a v11 en memoria; `.scene.json` contiene fases con fotos/captions,
+Fixtures activas del repo: DTO v11, leídas por el camino estricto; `.scene.json` contiene fases con fotos/captions,
 no un protocolo alternativo. Ver [ui/README.md](ui/README.md).
 
 ## Contrato adaptador ↔ núcleo
@@ -104,7 +103,7 @@ recepción) más `State`, con las capacidades que declara el adaptador. El núcl
 fusiona mediante `runtime::core::merge_validated` (validación, saneado,
 derivaciones y numeración; recibe los trackers de combustible/delta/stint/
 tendencia; la frescura la vigila `Core`); ver `domain/src/adapter.rs`.
-`domain::Scope` identifica fuente (simulador y live/replay), `session.id` y
+`domain::Scope::of(Source, &State)` identifica fuente (simulador y live/replay), `session.id` y
 coche del jugador. Core lo usa para retención en pausa y confirmación de
 situación; las derivaciones con memoria también lo usan y reinician al cambiar
 la fuente. El adaptador debe emitir un SessionId nuevo si cambia un valor

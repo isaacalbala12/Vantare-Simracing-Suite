@@ -8,11 +8,10 @@ Es referencia histórica; la situación operativa de este archivo es la siguient
 
 ## Estado vigente
 
-VANTA-129 **Por revisar**: [PR draft #1889](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1889)
-contra nightly, paso 9 + P3, listo para revisión final. Pasos **0–3 y 5 integrados**;
-paso **9 y P3 implementados y validados localmente**;
-pendientes **4, 6, 7, 8 y 10**. Plane es el tablero; GitHub/Project Vantare
-registra código y PRs. No tomar otros encargos desde el historial.
+VANTA-129 **En curso**: pasos **0–3, 5 y 9 integrados**; paso 6 validado localmente,
+listo para publicar el PR draft, después paso 4. Pendientes también 7, 8 y 10.
+Plane es el tablero; GitHub/Project Vantare registra código y PRs.
+Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 
 | Corte | Integración en nightly por el orquestador | CI del PR verificada |
 | --- | --- | --- |
@@ -21,62 +20,63 @@ registra código y PRs. No tomar otros encargos desde el historial.
 | REST #1881, #1885 | 56c6df494 | 5/5 SUCCESS |
 | 3, #1882 | ec4ca056c70ebdc92bf21d0540c5a65794667f3f | 5/5 SUCCESS; DeepSeek MERGE comunicado |
 | 5, #1886 | 9d4982e290c3538d8bd2980c3f23c2d8b76b4183 | 5/5 SUCCESS; DeepSeek MERGE comunicado |
+| 9, #1889 | cc5af8de149b7f9156130417fe1dc3545ee4fec7 | 5/5 SUCCESS verificado; DeepSeek MERGE comunicado |
 
-Rama `vantareapp/isa-1868-paso9-adaptadores`, worktree
-`D:/VantareServer/worktrees/isa-1868-paso9`, base origin/nightly `9d4982e29`.
-Comenzó sobre `ee74d36b6`, actualizado entonces; al integrarse 3/5 se trasladaron
-los dos commits de caracterización a la base nueva, antes del refactor.
+Rama `vantareapp/isa-1868-paso6-scope`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso6`, base origin/nightly `cc5af8de1`.
 No se han fusionado ramas, promocionado canales o publicado releases desde el worker.
 
 ## Corte actual y verificación
 
-Paso 9 del [diseño aprobado](D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md):
-constructores de Quality en domain, un cruce REST por coche para número/paradas,
-pose/velocidad LMU reutilizadas, umbral de repostaje común y ventana spline ACC.
-Conserva reglas de caducidad, suelo REST, señal ausente y calidad estimada.
+Paso 6 del [diseño aprobado](D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md):
+`domain::Scope` reúne Source (simulador y live/replay), SessionId y coche del
+jugador, sin copiar payloads. Core delega retención en pausa/jugador y reset de
+situación; Trackers usa el mismo valor y reinicia también al cambiar fuente.
+La ausencia de jugador mantiene su invalidación parcial previa; Paused no
+alimenta derivaciones. No se redefine Journal ni la Boundary del pipe.
 
-Caracterización ANTES: `e62b4edac` y formato `01f669509`.
-Sobre la primera base: 430/430 tests de runtime y 34/34 de telemetría PASS,
-con todos los bytes/hashes congelados. Tras trasladar a `9d4982e29`, 527/527
-unitarios runtime+ipc PASS (5 skips preexistentes), también antes del cambio.
-Código validado `80b735213`, árbol native `f83c2f0a1b4341d39268f2a2b638e691c6cb7656`.
-Tanda conjunta por compilar.ps1 para domain/ipc/runtime, target propio, jobs 4 y
-raíces QA: fmt/check/Clippy -D warnings PASS; **891/891** Nextest PASS (9 skips:
-8 preexistentes y el bench opt-in, ejecutado aparte), incluidos **34/34** de
-telemetría. Run `8a08934a-a18d-416c-99c0-4f4f207ac2a6`. Lifecycle runtime **25/25**
-PASS con overlays reales normal/QA. Cola liberada; quality/integridad 468/468 PASS.
-Las 3857 fotos LMU y hashes ACC de 190471 lecturas permanecen idénticos, sin
-regeneración; ACC completo 202,124 s. Sin nuevas dependencias o configuración.
-CI remota de #1889 pendiente al entregar; no se le atribuye verde. Los commits
-posteriores a 80b735213 solo actualizan este handoff; el árbol native no cambia.
-HEAD/CI final y recuento completo se verifican también en #1868 y #1889.
+El contrato exige SessionId nuevo al cambiar un valor conocido de circuito o
+tipo. Ausencia/calidad de metadatos no son identidad. La tabla 0(b) conserva
+sus casos, con SessionId nuevo en cambios reales de pista/tipo, como hacen los
+adapters. La caracterización anterior registraba retención de trackers al
+cambiar fuente: pasa a reset, igual que Core y conforme al diseño. Un test
+observable comprueba que metadatos Stale no pierden la foto viva ni reinician
+la confirmación de Garage. Los límites de frescura y confirmación no cambian.
 
-P3 asignados: sustituir este diario por una única situación operativa con CI real;
-asociar el comentario de alineación de lmu/frame al uso del presupuesto;
-revisar scripts que puedan parsear el sufijo detail del registro; retirar del
-DTO la comparación redundante de caminos que delegan al mismo decodificador.
-La lectura por referencia sigue contrastándose con fotos originales de las cuatro
-calidades; codec y goldens conservan la cobertura de la entrada por valor.
+Caracterización ANTES: `f56fd28ba` y formato `58debe440`.
+435/435 unitarios runtime PASS (5 skips), run
+`e8d09439-b741-4a64-a9bc-cce0f958a906`; **34/34** telemetría PASS (1 skip), run
+`cf7ac234-cd85-46e2-a08d-d854b8804607`. Pruebas de tipo sobre frame LMU real y
+vectores ACC SHM/UDP, y garantía de pista/tipo junto a los corpus completos.
+LMU47 y ACC cumplen la garantía, incluidos huecos de metadata; bytes/hashes
+congelados intactos antes del cambio. ACC completo 189,446 s.
+Tanda conjunta domain/runtime por compilar.ps1, target propio, jobs 2 del entorno:
+fmt/check/Clippy -D warnings PASS; **781/781** Nextest PASS (8 skips), incluidos
+**34/34** telemetría. Run `41a28cba-0b61-45c5-b3fd-d0d8e74b3e40`.
+ACC completo 193,066 s, 3849 fotos LMU y hashes de los 190308 DTO ACC intactos.
+Quality/integridad 468/468 PASS. Lifecycle **25/25 PASS**, overlays reales normal/QA. El primer build se detuvo
+antes de compilar por D: <15 GB libres, fallo conservado. Se retiraron solo cachés Cargo
+propias de pasos 0/2 ya integrados, con rutas/tags/links/locks comprobados;
+D: pasó de 11,22 a 25,52 GB libres. Código y evidencia conservados, guard sin
+cambios; reanudación solo de lifecycle por cola completada. Cola liberada.
+Código validado `d1ccd82e04a390a0d1798979a7d6626643d06c11`, árbol native
+`928480e7c3b1c98063365af62a87e1f3ae928869`. Sin CI remota aún.
 
-Coste del decode del Hub: por valor delega al lector prestado, que copia payloads
-al crear un Snapshot dueño. No se ha cambiado esa decisión del paso 3.
-El tramo Decode de paint-stats solo mide serde_json::from_slice (codec), no esa
-conversión. Se ejecutó el bench opt-in del DTO real de 47 coches, con setup
-fuera del cronómetro, nueve rondas tras calentamiento y 128 fotos por ronda.
-Mide conversión por valor, incluidas copias/liberación del DTO, sin JSON ni drop
-de los Snapshot resultantes. Es orientativo en servidor compartido, perfil test;
-no compara con el decodificador antiguo por movimiento ni cuenta allocations.
-Bench 1/1 PASS, run `5d5cf6ce-c856-4985-af36-6158590c5d15`: medias por foto,
-mínimo **23,075 µs**, mediana entre rondas **26,560 µs**, máximo **37,209 µs**.
-No aísla el coste de las copias ni representa latencia Live o rendimiento Release.
-En 1248 scripts versionados/de evidencia buscados no se encontró ningún parser
-de freshness.log; el único literal era un generador del test IPC que comprueba
-reason y detail por separado. Los candidatos de reason= eran otros diagnósticos
-o generación de código. No se reescribieron scripts/evidencia históricos.
+P3 de #1889: constructores Quality con must_use; su test único vive en
+`domain/quality.rs`, retiradas las dos copias en LMU/ACC. Riesgos abiertos
+conservados arriba. El código productivo de los adapters no cambia en este paso.
+Evidencia y contador separado de producción/tests/docs:
+`D:/VantareServer/evidence/isa-1868-paso6`. Sin dependencias nuevas ni
+regeneración de goldens, corpus, fixtures o baselines.
 
-Evidencia, comandos y recuento de producción/tests/docs separados:
-`D:/VantareServer/evidence/isa-1868-paso9`. Los fallos se conservan en sus logs.
-No se regeneran goldens/corpus ni se cambian baselines o dependencias.
+Paso 9 integrado: revisión DeepSeek MERGE comunicada y CI real 5/5 SUCCESS.
+Gates locales: 891/891 Nextest, 34/34 telemetría y lifecycle 25/25 PASS.
+El decode por valor del Hub conserva copias; paint-stats solo mide JSON.
+Bench orientativo de 47 coches, perfil test, mediana de medias 26,560 us/foto;
+no mide coste aislado de clonado ni latencia Live/Release. La revisión de 1248
+scripts no encontró parser de freshness.log. Detalles y límites completos
+[en el handoff integrado de #1889](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/cc5af8de149b7f9156130417fe1dc3545ee4fec7/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md)
+y `D:/VantareServer/evidence/isa-1868-paso9`.
 
 ## Contratos y límites que se conservan
 
@@ -106,12 +106,7 @@ de ui/layout al aplazar VANTA-130 ese grupo. Persistencia/lectura y default_path
 y las demás zonas previas de VANTA-130, conservan su reserva.
 Este corte no toca UI, Hub, installer, packaging ni ninguna de esas zonas.
 
-Revisar el PR del paso 9 y sus P3, con todos los gates locales verdes. Después, según el orden
-aprobado, paso 6 y paso 4. El **paso 4 no está hecho**: migra fixtures del repo
+Paso 9 integrado y verificado. En curso paso 6 y sus P3, después paso 4. El **paso 4 no está hecho**: migra fixtures del repo
 a v11, conserva v7/v10 reales para probar los lectores y elimina el alias de
 fixtures; exige Snapshot== antes/después y paridad de píxeles sin rebaselinar.
 Luego quedan host, proyecciones y medición de los pasos 7, 8 y 10.
-
-Fallos iniciales conservados: renombrado mecánico de métodos Velocity.quality,
-dos referencias de tests al helper retirado, atributo must_use y línea vacía tras
-un doc comment. Corregidos sin relajar aserciones ni permitir warnings.

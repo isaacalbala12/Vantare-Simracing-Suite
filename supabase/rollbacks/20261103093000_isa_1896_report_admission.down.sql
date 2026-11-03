@@ -1,14 +1,11 @@
 -- VANTA-131 step 2: restore the previous account admission surface.
 begin;
 set local lock_timeout = '5s';
-do $$ begin
-  if exists (select 1 from private.testing_report_attempts where attempts > 21) then
-    raise exception 'testing_ip_counter_rollback_requires_data_preservation' using errcode = '55000';
-  end if;
-  if exists (select 1 from private.testing_report_admitted_keys) then
-    raise exception 'testing_admission_v2_rollback_requires_data_preservation' using errcode = '55000';
-  end if;
-end $$;
+-- The old schema caps each IP counter at 21. Preserve the coarse count up to
+-- that limit; retry keys are disposable exemptions, not report data.
+update private.testing_report_attempts
+  set attempts = least(attempts, 21)
+  where scope = 'ip' and attempts > 21;
 drop trigger testing_report_purge_admitted_on_delete on public.account_identities;
 drop function private.testing_report_purge_admitted_on_delete();
 drop function public.testing_report_admit_account(uuid,text,text,date);

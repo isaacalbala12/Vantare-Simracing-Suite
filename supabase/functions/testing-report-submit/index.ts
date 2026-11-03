@@ -209,11 +209,6 @@ export async function handleTestingReportSubmit(
     if (!deps.admit) requireHostedGateway(Deno.env.get("SUPABASE_URL") ?? "");
     const now = (deps.now ?? (() => new Date()))();
     const week = weekStart(now);
-    const hash = await ipDigest(
-      request.headers.get("cf-connecting-ip") ?? "",
-      deps.salt ?? Deno.env.get("TESTING_REPORT_IP_SALT") ?? "",
-      week,
-    );
     const admit = deps.admit ?? (async (scope, subject, week, key, digest) => {
       const { data, error } = await getSupabaseAdmin().rpc(
         scope === "ip"
@@ -234,11 +229,24 @@ export async function handleTestingReportSubmit(
       }
       return data;
     });
-    // Each RPC commits independently of later auth, body and submission errors.
-    if (!await admit("ip", hash, week)) {
-      throw new NativeError(429, "rate_limited");
+    let user: string;
+    try {
+      // The ES256 bearer signature and closed claims are checked locally first.
+      // A valid account never spends the shared-IP flood allowance.
+      user = await (deps.account ?? ((r) => account(r, now)))(request);
+    } catch (error) {
+      if (error instanceof NativeError && [401, 403].includes(error.status)) {
+        const hash = await ipDigest(
+          request.headers.get("cf-connecting-ip") ?? "",
+          deps.salt ?? Deno.env.get("TESTING_REPORT_IP_SALT") ?? "",
+          week,
+        );
+        if (!await admit("ip", hash, week)) {
+          throw new NativeError(429, "rate_limited");
+        }
+      }
+      throw error;
     }
-    const user = await (deps.account ?? ((r) => account(r, now)))(request);
     if (
       request.headers.get("content-type")?.split(";")[0].trim()
         .toLowerCase() !== "application/json"

@@ -34,9 +34,11 @@ begin
     raise exception 'testing_report_admission_invalid' using errcode = '22023';
   end if;
 
-  -- A retry key lives exactly as long as the retained attempt window.
+  -- Expire only this account's keys. A concurrent admission for another
+  -- account must never delete its rows or cause an unrelated write conflict.
   delete from private.testing_report_admitted_keys
-    where admitted_at < (((clock_timestamp() at time zone 'UTC')::date - 8)::timestamp at time zone 'UTC');
+    where account_id = p_account
+      and admitted_at < (((clock_timestamp() at time zone 'UTC')::date - 8)::timestamp at time zone 'UTC');
 
   -- Serialize same-key admission, including its quota increment. A changed body
   -- cannot borrow the first body's exemption, even from the same account.

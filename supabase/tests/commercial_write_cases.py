@@ -218,3 +218,7 @@ CASES += [
 ]
 
 CASES += [('testing-triage-review', 'insert into public.testing_contribution_reviews(contribution_id,reviewer,decision,note,model_verdict,model_confidence,proposal) values(\'{new_id}\',\'{a}\',\'accepted\',\'Reviewed\',\'valido\',0.9,\'{{"schema":"vantare.triage.v2","verdict":"valido","confidence":0.9,"summary":"Synthetic test","criteria":{{"contenido_minimo":"si","evidencia":"si","no_duplicado":"si"}},"trazable":"si","duplicate_of":null,"severity":"media","area":"telemetria","preliminary_fix":null,"reasons":["Evidence reviewed"],"evidence_refs":["log:L1-L1"]}}\')')]
+
+# VANTA-131: admission keys are account-owned and must race the tombstone too.
+CASES += [('testing-admission-key',
+           "insert into private.testing_report_admitted_keys(account_id,report_key,body_digest) values('{a}','{case}','{h}')")]

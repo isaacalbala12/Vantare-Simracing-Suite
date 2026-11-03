@@ -526,3 +526,24 @@ fn driver_swap_keeps_car_and_driver_ids_follow_names() {
     assert_ne!(swap.state.cars[0].driver.id, alice);
     assert_eq!(swap.state.cars[1].driver.id, alice);
 }
+
+#[test]
+fn session_kind_changes_start_new_sessions_in_shm_and_udp() {
+    for shm in [false, true] {
+        let mut t = setup();
+        if !shm {
+            t.udp(&session(0, 10, 5, 1000.0), ms(0)).expect("firma UDP inicial");
+        }
+        let first = t.observe(ms(0)).expect("sesión inicial");
+        if shm {
+            let mut graphics = pages()[1].clone();
+            int(&mut graphics, 0, 2);
+            int(&mut graphics, 8, 0); // ACC practice; la captura de setup es carrera.
+            t.shm(1, graphics, ms(20)).expect("tipo SHM");
+        } else {
+            t.udp(&session(0, 0, 5, 2000.0), ms(20)).expect("tipo UDP");
+        }
+        let next = t.observe(ms(20)).expect("sesión nueva");
+        assert_ne!(next.state.session.id, first.state.session.id, "SHM={shm}");
+    }
+}

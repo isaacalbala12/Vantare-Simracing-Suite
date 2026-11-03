@@ -121,6 +121,37 @@ fn oracle_view_removes_nested_timing_values_without_cutting_neighbor_text() {
     assert!(view["state"].get("driving_situation").is_none());
 }
 
+#[derive(Default)]
+struct SessionContract(Option<vantare_domain::Session>);
+
+impl SessionContract {
+    fn observe(&mut self, observation: &Observation) {
+        let mut next = observation.state.session.clone();
+        if let Some(previous) = &self.0
+            && previous.id == next.id
+        {
+            if let (Some(before), Some(after)) =
+                (previous.track_name.last_known(), next.track_name.last_known())
+            {
+                assert_eq!(before, after, "circuito distinto exige SessionId nuevo");
+            }
+            if let (Some(before), Some(after)) =
+                (previous.kind.last_known(), next.kind.last_known())
+            {
+                assert_eq!(before, after, "tipo distinto exige SessionId nuevo");
+            }
+            // Una ausencia temporal tampoco autoriza cambiar la identidad al volver.
+            if next.track_name.last_known().is_none() {
+                next.track_name.clone_from(&previous.track_name);
+            }
+            if next.kind.last_known().is_none() {
+                next.kind.clone_from(&previous.kind);
+            }
+        }
+        self.0 = Some(next);
+    }
+}
+
 struct Once(Option<Observation>);
 impl Adapter for Once {
     fn poll(&mut self, _: Duration) -> Result<Option<Observation>, AdapterError> {
@@ -314,8 +345,10 @@ fn lmu_real_temporal_corpus_matches_frozen_dtos() {
     let mut core = Core::new(1463);
     let mut output = Vec::new();
     let mut count = 0;
+    let mut contract = SessionContract::default();
     for _ in 0..3839 {
         if let Some(observation) = replay.poll(Duration::from_secs(61)).expect("corpus válido") {
+            contract.observe(&observation);
             count += 1;
             append(&mut core, observation, &mut output);
             if count == 1 {
@@ -416,6 +449,7 @@ fn acc_real_corpus_matches_frozen_dtos() {
     let mut core = Core::new(1463);
     let mut output = Vec::new();
     let mut count = 0;
+    let mut contract = SessionContract::default();
     let mut hash = Sha256::new();
     // Las 27 fotos incoherentes de ec743de8 quedan congeladas como evidencia
     // del bug. Invertir exclusivamente sus rangos debe reproducir ambos hashes
@@ -431,6 +465,7 @@ fn acc_real_corpus_matches_frozen_dtos() {
             .expect("corpus válido")
         {
             count += 1;
+            contract.observe(&observation);
             let now = observation.origin.received_at;
             core.step(&mut Once(Some(observation)), now)
                 .expect("foto válida");

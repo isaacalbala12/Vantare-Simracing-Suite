@@ -928,6 +928,19 @@ mod tests {
     }
 
     #[test]
+    fn a_session_kind_change_on_the_real_frame_starts_a_new_session() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        let mut race = REAL_44.to_vec();
+        race[1_696..1_700].copy_from_slice(&10_i32.to_le_bytes());
+        let next = observe(&mut t, &race, ms(20));
+        assert_eq!(first.state.session.kind, Quality::Reliable(SessionKind::Practice));
+        assert_eq!(next.state.session.kind, Quality::Reliable(SessionKind::Race));
+        assert_ne!(next.state.session.id, first.state.session.id);
+        assert_eq!(next.state.session.track_name, first.state.session.track_name);
+    }
+
+    #[test]
     fn a_new_track_or_a_clock_reset_starts_a_session_but_the_24h_wrap_does_not() {
         let mut t = translator();
         let first = observe(&mut t, REAL_44, ms(0));

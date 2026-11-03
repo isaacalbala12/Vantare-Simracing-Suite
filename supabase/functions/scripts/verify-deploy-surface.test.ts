@@ -52,11 +52,19 @@ Deno.test("configured functions match directories and known inert functions stay
 });
 
 Deno.test("retired feedback endpoint is absent from deploy surfaces", () => {
-  const config = Deno.readTextFileSync(new URL("../../config.toml", import.meta.url));
-  const pilot = Deno.readTextFileSync(new URL("deploy-testing-center-pilot.ps1", import.meta.url));
-  if (config.includes("[functions.testing-center-feedback]") ||
-      pilot.includes('"testing-center-feedback"') ||
-      invalidDeployableDirectories([{ name: "testing-center-feedback", isDirectory: true } as Deno.DirEntry]).length !== 1) {
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  );
+  const pilot = Deno.readTextFileSync(
+    new URL("deploy-testing-center-pilot.ps1", import.meta.url),
+  );
+  if (
+    config.includes("[functions.testing-center-feedback]") ||
+    pilot.includes('"testing-center-feedback"') ||
+    invalidDeployableDirectories([
+        { name: "testing-center-feedback", isDirectory: true } as Deno.DirEntry,
+      ]).length !== 1
+  ) {
     throw new Error("retired feedback endpoint remains deployable");
   }
 });
@@ -447,12 +455,25 @@ Deno.test("commercial default excludes the retired issuer; explicit selection re
   );
   const defaults = wrapper.match(/\$Functions\s*=\s*@\(([^)]*)\)/)?.[1];
   const explicit = wrapper.match(/\[ValidateSet\(([^)]*)\)\]/)?.[1];
-  if (!defaults || !explicit) throw new Error("deploy parameters were not found");
-  const names = [...defaults.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-  if (JSON.stringify(names) !== JSON.stringify(["billing-checkout", "billing-portal", "billing-webhook"])) {
-    throw new Error("commercial default must not deploy the conditional 410 tombstone");
+  if (!defaults || !explicit) {
+    throw new Error("deploy parameters were not found");
   }
-  if (![...explicit.matchAll(/"([^"]+)"/g)].some((match) => match[1] === "license-credential")) {
-    throw new Error("authorized explicit legacy retirement selection was removed");
+  const names = [...defaults.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  if (
+    JSON.stringify(names) !==
+      JSON.stringify(["billing-checkout", "billing-portal", "billing-webhook"])
+  ) {
+    throw new Error(
+      "commercial default must not deploy the conditional 410 tombstone",
+    );
+  }
+  if (
+    ![...explicit.matchAll(/"([^"]+)"/g)].some((match) =>
+      match[1] === "license-credential"
+    )
+  ) {
+    throw new Error(
+      "authorized explicit legacy retirement selection was removed",
+    );
   }
 });

@@ -54,9 +54,9 @@ probar el canal en desarrollo hay que compilar explícitamente con
 - El frontend envía únicamente candidata, SHA, decisión y, al rechazar, cuatro
   campos estructurados más impacto y consentimiento diagnóstico. Nunca envía
   actor, rol, autor, rama, estado o disposición owner.
-- `testing-center-feedback` autentica la sesión, deriva membresía y candidata en
-  servidor, impide auto-validación y valida el SHA actual antes de llamar al RPC
-  service-role endurecido de TAU-07G.
+- En ISA-220, `testing-center-feedback` autenticaba la sesión, derivaba
+  membresía y candidata en servidor, impedía auto-validación y validaba el SHA
+  antes de llamar al RPC service-role de TAU-07G. Esa función se retiró en #1902.
 - Nightly exige `primary_tester` u `owner`; Testers admite también `tester`.
   `No puedo verificar` registra evidencia neutral. Un rechazo incompleto se
   conserva en pantalla y no produce efecto.

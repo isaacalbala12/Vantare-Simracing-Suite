@@ -25,7 +25,8 @@ parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
-parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
+parser.add_argument('--admin-owner-only', action='store_true', help='Only admin owner authority SQL; all migrations replayed first')
+parser.add_argument('--admin-deno-bin', help='Only admin EdgeÃ¢â€ â€™SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
@@ -236,7 +237,7 @@ $$;
    }
    if args.docker and m.name in existing_roles:
     run_existing_role_regression(run, conn, admin_conn(), migration_source, OUT, *existing_roles[m.name])
-   if 'isa_1770_terminal_checkout_attempts' in m.name and not args.admin_effects_only:
+   if 'isa_1770_terminal_checkout_attempts' in m.name and not (args.admin_effects_only or args.admin_owner_only):
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
@@ -270,7 +271,7 @@ $$;
   """).strip()
   assert role_contract=='t', 'managed product role attributes changed'
   (OUT/'managed-role-contract.log').write_text('Four product roles: safe attributes PASS\n')
-  if not (args.baseline or args.before_write_barrier or args.before_testing_identity or args.admin_effects_only):
+  if not (args.baseline or args.before_write_barrier or args.before_testing_identity or args.admin_effects_only or args.admin_owner_only):
    admission='20261103093000_isa_1896_report_admission'
    run('psql',*conn,'-c',"""insert into private.testing_report_attempts
     (scope,subject,week_start,day_start,attempts) values
@@ -294,7 +295,7 @@ $$;
    (OUT/'testing_owner_unification_rollback.test.sql.log').write_text(result)
    if 'not ok ' in result or '1..8' not in result:
     raise RuntimeError('step 8 owner rollback failed')
-  if not args.baseline and not args.before_testing_identity and not args.admin_effects_only:
+  if not args.baseline and not args.before_testing_identity and not (args.admin_effects_only or args.admin_owner_only):
    for stem,suite,count in [
     ('20261103114000_isa_1896_calendar_acl','testing_step3_acl_rollback.test.sql',16),
     ('20261103114100_isa_1896_candidate_membership','testing_step3_channel_rollback.test.sql',1),
@@ -382,7 +383,7 @@ $$;
   if args.writers:
    run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
    raise SystemExit(0)
-  if not args.baseline and not args.admin_effects_only:
+  if not args.baseline and not (args.admin_effects_only or args.admin_owner_only):
    run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
   if args.concurrency:
    raise SystemExit(0)
@@ -620,7 +621,9 @@ $$;
   suites += ['native_admin_effects_review.test.sql']
   suites += ['native_admin_effects_review_rollback.test.sql']
   suites += ['native_admin_effects_r2.test.sql']
-  if args.admin_effects_only:
+  if args.admin_owner_only:
+   suites=['native_admin_owner_authority.test.sql']
+  elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
@@ -632,6 +635,9 @@ $$;
    (OUT/(name+'.log')).write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
+  if args.admin_owner_only:
+   print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
+   raise SystemExit(0)
   if not args.baseline:
    if args.deno_bin and not args.admin_effects_only:
     diagnostic=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',

@@ -7362,6 +7362,8 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   configuración externa, despliegue, merge del worker ni release.
 - Gates y HEAD/PR se cierran en #1910. Rust/lifecycle/telemetría omitidos:
   este grupo solo cambia Edge/SQL y tests locales, ningún crate nativo.
+- PR draft [#1921](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1921)
+  a nightly; código validado b2bf11e48. CI remota pendiente; sin merge propio.
 - Verificado: Deno 2.7.13 (CI) 154 PASS, check/lint/fmt PASS; PostgreSQL
   16.15 desechable 36 planes/1016 pgTAP PASS, rollback/reaplicación con evidencia
   retenida, carreras 131 rutas/778 checks y borrado/aliases 4/40 PASS.

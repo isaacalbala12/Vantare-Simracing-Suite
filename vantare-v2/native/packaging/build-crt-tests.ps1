@@ -79,6 +79,7 @@ $dynamic=Join-Path $fixtureBin ($firstBin+'.exe')
 Copy-Item (Join-Path $evidence 'dynamic.exe') $dynamic
 $script:metadataFixture=@{
     target_directory=$fixtureTarget
+    resolve=@{nodes=@(@{features=@()})}
     workspace_members=@('fixture-app','fixture-installer')
     packages=@(
         @{id='fixture-app';name='fixture-app';targets=@(($script:NativeBuildBins+$script:NativePrivateBuildBins)|ForEach-Object{@{name=$_;kind=@('bin')}})},

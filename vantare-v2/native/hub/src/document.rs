@@ -47,10 +47,9 @@ impl Editor {
                 let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
                     vantare_ipc::files::Error::InvalidInput(format!("JSON de layout: {error}"))
                 })?;
-                if !matches!(
-                    value.get("version").and_then(serde_json::Value::as_u64),
-                    Some(1 | 2)
-                ) {
+                if value.get("version").and_then(serde_json::Value::as_u64)
+                    .is_some_and(|version| !matches!(version, 1 | 2))
+                {
                     return Err(vantare_ipc::files::Error::Unsupported(
                         "versión de layout no compatible; original protegido".into(),
                     ));
@@ -122,7 +121,11 @@ impl Editor {
         .map_err(Into::into)
     }
     pub(crate) fn persist(&mut self) -> Result<(), String> {
-        if let Some(warning) = &self.warning && !self.document.exists() { return Err(warning.clone()); }
+        if let Some(warning) = &self.warning
+            && !self.document.exists()
+        {
+            return Err(warning.clone());
+        }
         self.document
             .save(&self.layout().clone())
             .map_err(|error| error.to_string())
@@ -238,7 +241,9 @@ impl Editor {
         &mut self,
         edit: impl FnOnce(&mut Layout) -> Result<(), E>,
     ) -> Result<(), vantare_ipc::files::Error> {
-        if let Some(warning) = &self.warning && !self.document.exists() {
+        if let Some(warning) = &self.warning
+            && !self.document.exists()
+        {
             return Err(vantare_ipc::files::Error::Unsupported(warning.clone()));
         }
         let previous = self.layout().clone();
@@ -958,5 +963,43 @@ pub(crate) mod tests {
         // Ocultar sin solicitud vigente es idempotente.
         editor.hide_from_track().expect("ocultar idle");
         assert!(!editor.is_showing_on_track());
+    }
+}
+
+#[cfg(test)]
+mod bridge_tests {
+    use super::*;
+    use super::tests::File;
+    #[test]
+    fn step8a_editor_roundtrip_preserves_future_extensions_and_v1_version() {
+        for bytes in [include_bytes!("../../ui/fixtures/layouts/native-beta-v0.0.975.json").as_slice(), include_bytes!("../../ui/fixtures/layouts/v2-bridge.json").as_slice()] {
+            let file = File::new();
+            std::fs::write(&file.path, bytes).unwrap();
+            let original: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+            let mut editor = Editor::open(file.path.clone()).unwrap();
+            assert!(editor.warning.is_none());
+            editor.set_preferences(vantare_domain::format::Preferences {
+                language: vantare_domain::format::Language::En,
+                units: vantare_domain::format::Units::Imperial,
+            }).unwrap();
+            let actual: serde_json::Value = serde_json::from_slice(&std::fs::read(&file.path).unwrap()).unwrap();
+            assert_eq!(actual["version"], original["version"]);
+            assert_eq!(actual.get("extensions"), original.get("extensions"));
+            assert_eq!(actual.get("reducedMotion"), original.get("reducedMotion"));
+        }
+    }
+    #[test]
+    fn step8a_missing_version_is_corruption_not_a_future_format() {
+        let file = File::new();
+        std::fs::write(&file.path, b"{}").unwrap();
+        let mut editor = Editor::open(file.path.clone()).unwrap();
+        assert!(editor.warning.is_some());
+        let archive = file.path.with_extension("json.invalid");
+        assert_eq!(std::fs::read(&archive).unwrap(), b"{}");
+        editor.set_preferences(vantare_domain::format::Preferences {
+            language: vantare_domain::format::Language::En,
+            ..Default::default()
+        }).unwrap();
+        std::fs::remove_file(archive).unwrap();
     }
 }

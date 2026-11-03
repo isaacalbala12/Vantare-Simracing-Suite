@@ -8,6 +8,7 @@ import {
   submitRichReport,
   validateRichReport,
 } from "./rich-report.ts";
+import { submitReportV2, validateReportV2 } from "./report-v2.ts";
 import {
   NativeError,
   requireUnblocked,
@@ -208,6 +209,24 @@ export async function handleTestingReportSubmit(
       );
     }
     const body = parsed.value;
+    if (body.contract_version === "testing.report.v2") {
+      validateReportV2(body);
+      if (
+        !await admit(
+          "account",
+          user,
+          week,
+          body.idempotency_key as string,
+          await bodyDigest(body),
+        )
+      ) throw new NativeError(429, "rate_limited");
+      const receipt = await submitReportV2(
+        user,
+        body,
+        deps.rpc ?? ((name, args) => getSupabaseAdmin().rpc(name, args)),
+      );
+      return jsonResponse(receipt, 200, { "Cache-Control": "no-store" });
+    }
     if (Object.hasOwn(body, "p_contract_version")) {
       validateRichReport(body);
       if (

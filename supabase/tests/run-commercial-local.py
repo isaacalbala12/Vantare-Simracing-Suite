@@ -264,6 +264,11 @@ $$;
      raise RuntimeError(suite+' failed after rollback')
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(stem+'.sql'))
   if args.testing_identity:
+   report_v2='20261103190000_isa_1896_report_v2'
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(report_v2+'.down.sql'))
+   absent=run('psql',*conn,'-At','-c',"select to_regclass('private.testing_report_v2_keys') is null").strip()
+   if absent!='t': raise RuntimeError('step 7a rollback retained v2 keys')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(report_v2+'.sql'))
    for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql','testing_report_v2.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
     (OUT/(name+'.log')).write_text(result)

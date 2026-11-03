@@ -32,7 +32,16 @@ const base = {
 Deno.test("the three v2 forms use one account-owned write and receipt", async () => {
   for (const variant of ["simple", "triage", "diagnostic"]) {
     const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
-    const body = { ...base, variant };
+    const body = variant === "simple"
+      ? { ...base, variant }
+      : variant === "triage"
+      ? {
+        ...base,
+        variant,
+        context: { consent: { version: "triage-v2" } },
+        attachments: [],
+      }
+      : { ...base, variant, context: { module: "hub", app_version: "1.2.3" } };
     const response = await handleTestingReportSubmit(request(body), {
       now: () => new Date("2026-11-03T12:00:00Z"),
       account: () => Promise.resolve(account),

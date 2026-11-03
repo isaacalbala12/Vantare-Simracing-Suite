@@ -1,8 +1,9 @@
 ## 2026-11-03 - #1896 / VANTA-131 paso 5a: retiradas de Linear y Codex
 
 - Draft PR #1903 contra nightly, rama vantareapp/isa-1896-paso5-retiradas; base 2e5f14a9d (paso 4 integrado).
-- Se retiran los endpoints Linear y helpers Codex sin llamadores, con test de caracterizacion de superficie antes del cambio. SQL de Linear permanece inerte hasta el paso 12.
-- La limpieza de tests huerfanos, wrapper vacio, lista testingPilot y runbooks se integra en este PR. Verificacion local y CI pendientes tras rebase. Sin despliegue ni merge.
+- Se retiran endpoints Linear, helpers Codex/GitHub/PostHog y tests huerfanos sin llamadores. El workflow Codex sin contrato y wrapper piloto vacio se retiran; la lista testingPilot se elimina. SQL Linear sigue inerte hasta paso 12.
+- Runbooks afectados marcados como historicos. Deno guard 15 PASS; fmt, lint, guard PowerShell y diff check PASS. Medida previa al handoff: produccion +1/-5565, tests +35/-4796, docs +86/-20.
+- CI del nuevo HEAD pendiente. La retirada operativa de funciones y secretos queda para Isaac. Sin despliegue, merge ni release.
 
 - 2026-11-03 VANTA-131 paso 4 / PR #1902: revision Sonnet aprobable. Runbook testing-center-ui actualizado: los comandos Deno contra testing-center-feedback retirado se sustituyen por el gate Edge vigente; Go/React se marca historico. Pendiente rebase tras #1901 integrado, sin despliegue ni merge propio.
 ## 2026-11-03 - #1896 / VANTA-131 paso 4: verificador nativo

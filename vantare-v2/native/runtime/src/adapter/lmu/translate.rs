@@ -934,10 +934,19 @@ mod tests {
         let mut race = REAL_44.to_vec();
         race[1_696..1_700].copy_from_slice(&10_i32.to_le_bytes());
         let next = observe(&mut t, &race, ms(20));
-        assert_eq!(first.state.session.kind, Quality::Reliable(SessionKind::Practice));
-        assert_eq!(next.state.session.kind, Quality::Reliable(SessionKind::Race));
+        assert_eq!(
+            first.state.session.kind,
+            Quality::Reliable(SessionKind::Practice)
+        );
+        assert_eq!(
+            next.state.session.kind,
+            Quality::Reliable(SessionKind::Race)
+        );
         assert_ne!(next.state.session.id, first.state.session.id);
-        assert_eq!(next.state.session.track_name, first.state.session.track_name);
+        assert_eq!(
+            next.state.session.track_name,
+            first.state.session.track_name
+        );
     }
 
     #[test]

@@ -532,7 +532,8 @@ fn session_kind_changes_start_new_sessions_in_shm_and_udp() {
     for shm in [false, true] {
         let mut t = setup();
         if !shm {
-            t.udp(&session(0, 10, 5, 1000.0), ms(0)).expect("firma UDP inicial");
+            t.udp(&session(0, 10, 5, 1000.0), ms(0))
+                .expect("firma UDP inicial");
         }
         let first = t.observe(ms(0)).expect("sesión inicial");
         if shm {

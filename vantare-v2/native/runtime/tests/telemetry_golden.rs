@@ -130,9 +130,10 @@ impl SessionContract {
         if let Some(previous) = &self.0
             && previous.id == next.id
         {
-            if let (Some(before), Some(after)) =
-                (previous.track_name.last_known(), next.track_name.last_known())
-            {
+            if let (Some(before), Some(after)) = (
+                previous.track_name.last_known(),
+                next.track_name.last_known(),
+            ) {
                 assert_eq!(before, after, "circuito distinto exige SessionId nuevo");
             }
             if let (Some(before), Some(after)) =

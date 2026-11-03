@@ -431,6 +431,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let (columns, width) = options.layout(style, options.driver_max(style));
     let mut items = Vec::new();
     let mut y = variant.padding_y + 1.0;
+    // true: Standings admite espectador sin coche propio.
     let shown = board.filter(|b| !waiting(Some((b.source_state, true))));
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
@@ -975,6 +976,7 @@ impl Painter<'_> {
             self.style.colors.header_em.hsla()
         };
         let em = self.ink(face, v.header_size, v.header_tracking, em_color);
+        // true: Standings admite espectador sin coche propio.
         let board = self
             .board
             .filter(|b| !waiting(Some((b.source_state, true))));
@@ -1775,9 +1777,7 @@ impl Painter<'_> {
                 // Compacto abrevia el pie para que quepa en 340 px.
                 let compact = self.narrow();
                 if let Some((time, driver)) = &board.fastest {
-                    let qualifying = board.session.to_lowercase().starts_with("clasi")
-                        || board.session.to_lowercase().starts_with("qual");
-                    let lead = if qualifying {
+                    let lead = if board.qualifying {
                         "Pole "
                     } else {
                         match (compact, es) {

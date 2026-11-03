@@ -17,7 +17,7 @@ vantare-profiling.workspace = true
 vantare-launcher.workspace = true
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
-vantare-services.workspace = true
+vantare-services = { workspace = true, features = ["network"] }
 # Mismas versiones ya usadas para verificar en services; dueño trasladado, sin paquete nuevo.
 base64 = "0.22"
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }

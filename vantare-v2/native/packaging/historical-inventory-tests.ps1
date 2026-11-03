@@ -180,12 +180,8 @@ foreach($case in @('active974','974','976-974','977-974','978-974','979-974','97
     if(-not $restorable){
         Reject-History {Restore-NativeCandidate $history} "$case cannot be restored" 'No hay generación anterior; no se cambian datos.'
         Assert-History ((Get-NativeHash (Join-Path $history 'state.json')) -ceq $stateHash) "$case rejected rollback preserves state"
-        # A nonempty boot.previous must never claim a rollback that did not run.
-        Write-BetaJson (Join-Path $history 'boot-pending.json') @{schema=1;previous=$reference.generation;version='0.0.980'}
-        $process=Start-Process -FilePath (Join-Path $env:WINDIR 'System32/cmd.exe') -ArgumentList '/D /C exit 7' -WindowStyle Hidden -PassThru
-        try{$process.WaitForExit();Reject-History {Confirm-BetaBoot $history $process 0} "$case failed boot cannot announce a fictitious rollback" 'No hay versión anterior íntegra que pueda restaurarse.'}finally{$process.Dispose()}
-        $status=Get-Content (Join-Path $history 'update-status.json') -Raw|ConvertFrom-Json
-        Assert-History ($status.state -ceq 'error' -and (Read-NativeState $history).active.generation -ceq [IO.Path]::GetFileName($active)) "$case boot reports error and preserves active"
+        # El arranque/rollback del motor 2 se prueba en installer/installation_write.
+        Assert-History ((Read-NativeState $history).active.generation -ceq [IO.Path]::GetFileName($active)) "$case rejected rollback preserves active"
     }
     $request=Join-Path $history 'probe-request.json'
     Write-NativeJson $request @{operation='Probe';root=$history;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix=$root;silent=$true;uninstall=$false;version='0.0.980';size=1024}

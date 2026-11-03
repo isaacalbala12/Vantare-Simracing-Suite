@@ -426,4 +426,5 @@ impl Session {
 }
 
 #[cfg(test)]
+#[path = "session/tests.rs"]
 mod tests;

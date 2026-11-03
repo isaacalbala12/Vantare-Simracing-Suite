@@ -81,10 +81,13 @@ mod tests {
     use super::*;
     #[test]
     fn installed_preference_has_priority_over_legacy() {
-        let root = std::path::PathBuf::from(
-            std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("QA root"),
-        )
-        .join(format!("startup-read-{}", std::process::id()));
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))
+        } else {
+            std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("startup-read-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(
             root.join("startup-options.json"),

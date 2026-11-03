@@ -28,6 +28,8 @@ mod background;
 mod child_shutdown;
 #[cfg(windows)]
 mod installed;
+#[cfg(windows)]
+mod restart;
 mod session;
 mod supervisor;
 #[cfg(test)]
@@ -547,6 +549,12 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         && root.join("staging/pending.json").try_exists()?
     {
         return installed::apply(root);
+    }
+    if let Some(root) = &installation
+        && result == ExitCode::SUCCESS
+        && restart::take(root)?
+    {
+        return Ok(ExitCode::from(10));
     }
     Ok(result)
 }

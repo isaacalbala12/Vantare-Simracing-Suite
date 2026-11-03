@@ -255,11 +255,22 @@ fn motor_two_boot_confirmation_and_rollback_are_bound_to_the_active_version() {
     assert!(operations::rollback(&fixture.root).is_err());
     changed["version"] = "1.0.1".into();
     fs::write(&marker, changed.to_string()).unwrap();
+    fs::write(fixture.root.join("Vantare.exe"), b"bad launcher").unwrap();
     assert_eq!(
         operations::rollback(&fixture.root).unwrap(),
         operations::BootRecovery::Restored
     );
     assert_eq!(fixture.active(), old);
+    assert_eq!(
+        fs::read(fixture.root.join("Vantare.exe")).unwrap(),
+        fs::read(old.join("bin/vantare.exe")).unwrap()
+    );
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["version"], "1.0.1");
+    assert_eq!(status["rejectedVersion"], "1.0.1");
+    operations::status(&fixture.root, "current", "retry query", "1.0.0").unwrap();
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["rejectedVersion"], "1.0.1");
     assert!(!marker.exists());
     fixture
         .install(&fixture.package("1.0.2"), Mode::Auto, false, false)
@@ -732,6 +743,40 @@ fn repair_and_update_renew_stale_root_launcher() {
         fs::read(&launcher).unwrap(),
         fs::read(fixture.active().join("bin/vantare.exe")).unwrap()
     );
+}
+
+#[test]
+fn user_junction_is_readable_for_start_but_blocks_data_copy() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let target = fixture.path.join("junction-target");
+    fs::create_dir_all(&target).unwrap();
+    let link = fixture.data().join("user-junction");
+    std::os::windows::fs::symlink_dir(&target, &link).unwrap();
+    assert_eq!(
+        Installation::read(&fixture.root)
+            .unwrap()
+            .installed_version(),
+        Some("1.0.0")
+    );
+    let package = fixture.package("1.0.1");
+    let cancel = AtomicBool::new(false);
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut |_| {},
+    };
+    assert!(operations::update(&fixture.root, &package.borrowed(), false, &mut control).is_err());
+    assert_eq!(
+        Installation::read(&fixture.root)
+            .unwrap()
+            .installed_version(),
+        Some("1.0.0")
+    );
+    fs::remove_dir(&link).unwrap();
 }
 
 #[test]

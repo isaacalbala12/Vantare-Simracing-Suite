@@ -64,8 +64,64 @@ fn renew_launcher(root: &Path, state: &State) -> Result<bool> {
     }
     let temporary = root.join(format!("launcher-{}.tmp", disk::id()?));
     fs::copy(source, &temporary)?;
-    disk::replace_temporary(&temporary, &target)?;
+    let old = if root.join("Vantare.exe.old").try_exists()? {
+        root.join(format!("Vantare-{}.old", disk::id()?))
+    } else {
+        root.join("Vantare.exe.old")
+    };
+    if existed {
+        fs::rename(&target, &old)?;
+    }
+    if let Err(error) = disk::replace_temporary(&temporary, &target) {
+        if existed {
+            let _ = fs::rename(&old, &target);
+        }
+        return Err(error);
+    }
     Ok(!existed)
+}
+#[cfg(all(test, windows))]
+mod launcher_tests {
+    use super::*;
+    #[test]
+    fn renews_a_running_root_launcher_by_renaming_it() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("live-launcher-{}", std::process::id()));
+        super::super::context::qa_path(&root).unwrap();
+        let id = "a".repeat(32);
+        let bin = root.join("generations").join(&id).join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let system = PathBuf::from(std::env::var_os("WINDIR").unwrap()).join("System32/cmd.exe");
+        let launcher = root.join("Vantare.exe");
+        fs::copy(&system, &launcher).unwrap();
+        let mut next = fs::read(&system).unwrap();
+        next.push(0);
+        fs::write(bin.join("vantare.exe"), &next).unwrap();
+        let state = State {
+            schema: 1,
+            product: "vantare-native".into(),
+            channel: "beta".into(),
+            active: Generation {
+                generation: id,
+                manifest_sha256: Some("b".repeat(64)),
+            },
+            previous: None,
+        };
+        let mut child = std::process::Command::new(&launcher)
+            .args(["/D", "/C", "ping -n 5 127.0.0.1 >NUL"])
+            .spawn()
+            .unwrap();
+        assert!(!renew_launcher(&root, &state).unwrap());
+        assert_eq!(fs::read(&launcher).unwrap(), next);
+        assert!(root.join("Vantare.exe.old").is_file());
+        child.kill().unwrap();
+        child.wait().unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
 }
 struct Before {
     state: Option<serde_json::Value>,
@@ -139,6 +195,12 @@ impl Before {
             (control.warning)(&format!(
                 "Rollback: se conservan las generaciones al no poder comprobarlas: {error}"
             ));
+        }
+        if let Some(state) = &self.state
+            && let Ok(state) = serde_json::from_value::<State>(state.clone())
+            && let Err(error) = renew_launcher(root, &state)
+        {
+            (control.warning)(&format!("Rollback: lanzador anterior: {error}"));
         }
         true
     }
@@ -440,9 +502,15 @@ pub fn update(
 
 /// Caller holds .operation.lock when a concurrent session can be staging.
 pub fn status(root: &Path, state: &str, message: &str, version: &str) -> Result<()> {
+    let rejected = if matches!(state, "rollback" | "repair") {
+        Some(version.to_owned())
+    } else {
+        disk::read_optional(&root.join("update-status.json"), Some(65536))?
+            .and_then(|old| old["rejectedVersion"].as_str().map(str::to_owned))
+    };
     disk::publish_json(
         &root.join("update-status.json"),
-        &json!({"schema":1,"state":state,"message":message,"version":version,"notes":""}),
+        &json!({"schema":1,"state":state,"message":message,"version":version,"notes":"","rejectedVersion":rejected}),
     )
 }
 
@@ -467,13 +535,13 @@ pub fn confirm(root: &Path) -> Result<()> {
         marker["schema"] == 1 && marker["version"] == manifest.version && manifest.engine() == 2,
         "Confirmación de generación inválida",
     )?;
-    disk::remove_file(&root.join("boot-pending.json"))?;
     status(
         &root,
         "current",
         "Versión actualizada y arranque confirmado",
         &manifest.version,
-    )
+    )?;
+    disk::remove_file(&root.join("boot-pending.json"))
 }
 
 /// Called by the root launcher after the failed session has exited. Motor 1
@@ -529,11 +597,12 @@ pub fn rollback(root: &Path) -> Result<BootRecovery> {
     let prior = state.previous.take().expect("previous authenticated");
     state.previous = Some(std::mem::replace(&mut state.active, prior));
     disk::commit_raw(&root, &serde_json::to_vec_pretty(&state)?, &mut |_| Ok(()))?;
+    renew_launcher(&root, &state)?;
     status(
         &root,
         "rollback",
         "Se restauró la versión anterior",
-        &previous.expect("checked").version,
+        &active.version,
     )?;
     disk::remove_file(&root.join("boot-pending.json"))?;
     Ok(BootRecovery::Restored)

@@ -21,6 +21,21 @@ use vantare_domain::{Quality, Snapshot};
 use vantare_ipc::{Publisher, Subscriber};
 
 #[cfg(windows)]
+const BACKOFF: Duration = Duration::from_millis(250);
+#[cfg(windows)]
+const BACKOFF_CAP: Duration = Duration::from_secs(8);
+#[cfg(windows)]
+const STABLE: Duration = Duration::from_secs(30);
+#[cfg(windows)]
+#[allow(dead_code)] // The integration harness exercises selected product transitions.
+#[rustfmt::skip]
+#[path = "../src/bin/vantare/session.rs"]
+mod session;
+#[cfg(windows)]
+#[path = "../src/bin/vantare/restart.rs"]
+mod restart;
+
+#[cfg(windows)]
 #[path = "lifecycle/characterization.rs"]
 mod characterization;
 

@@ -59,9 +59,25 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
         let _ = Stop::signal(&object_name("launcher-open-hub", "native-beta"));
         return Ok(ExitCode::SUCCESS);
     };
+    for entry in fs::read_dir(&root)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let generated = name
+            .strip_prefix("Vantare-")
+            .and_then(|n| n.strip_suffix(".old"));
+        if name == "Vantare.exe.old"
+            || generated
+                .is_some_and(|id| id.len() == 32 && id.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
     for _ in 0..3 {
-        if root.join("staging/pending.json").try_exists()? {
-            let _ = apply(&root)?;
+        if root.join("staging/pending.json").try_exists()?
+            && let Err(error) = apply(&root)
+        {
+            log(format_args!("actualización pendiente: {error}"));
+            let _ = fs::remove_file(root.join("staging/pending.json"));
         }
         let (_, generation) = active(&root).inspect_err(|_| {
             let _ = super::win::offer_repair();
@@ -86,26 +102,39 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
         } else {
             session.env("VANTARE_INTERACTIVE_STARTUP", "1");
         }
-        let mut child = session.spawn()?;
         let pending = root.join("boot-pending.json").try_exists()?;
-        let opened = !pending || ready(&root, &mut child, Duration::from_secs(45))?;
+        let mut child = match session.spawn() {
+            Ok(child) => child,
+            Err(error) if pending => {
+                log(format_args!("sesión nueva: {error}"));
+                recover_boot(&root, &context)?;
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
+        let opened = if pending {
+            ready(&root, &mut child, Duration::from_secs(45)).unwrap_or_else(|error| {
+                log(format_args!("confirmar ventana: {error}"));
+                false
+            })
+        } else {
+            true
+        };
         if pending {
-            if opened {
-                operations::confirm(&root).map_err(io_error)?;
-            } else {
+            let confirmed = opened
+                && operations::confirm(&root)
+                    .inspect_err(|error| {
+                        log(format_args!("confirmar generación: {error}"));
+                    })
+                    .is_ok();
+            if !confirmed {
                 let _ = Stop::signal(&object_name("launcher-stop", "native-beta"));
-                // The session owns the single shutdown budget, including kills.
-                let _ = child.wait()?;
-                match operations::rollback(&root).map_err(io_error)? {
-                    BootRecovery::Restored => {
-                        sync_registration(&root, &context);
-                        continue;
-                    }
-                    BootRecovery::RepairRequired => {
-                        let _ = super::win::offer_repair();
-                        return Ok(ExitCode::FAILURE);
-                    }
+                if !wait_for_exit(&mut child, Duration::from_secs(15)).unwrap_or(false) {
+                    let _ = child.kill();
+                    let _ = child.wait();
                 }
+                recover_boot(&root, &context)?;
+                continue;
             }
         }
         sync_registration(&root, &context);
@@ -122,6 +151,32 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
     Err(io_error(
         "Demasiados reinicios consecutivos; ejecuta Reparar",
     ))
+}
+
+fn recover_boot(root: &Path, context: &Context) -> io::Result<()> {
+    let recovery = operations::rollback(root).map_err(|error| {
+        let _ = super::win::offer_repair();
+        io_error(error)
+    })?;
+    match recovery {
+        BootRecovery::Restored => sync_registration(root, context),
+        BootRecovery::RepairRequired => {
+            let _ = super::win::offer_repair();
+            return Err(io_error("Falló el arranque; ejecuta Reparar"));
+        }
+    }
+    Ok(())
+}
+
+fn wait_for_exit(child: &mut std::process::Child, limit: Duration) -> io::Result<bool> {
+    let deadline = Instant::now() + limit;
+    while child.try_wait()?.is_none() {
+        if Instant::now() >= deadline {
+            return Ok(false);
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    Ok(true)
 }
 
 fn sync_registration(root: &Path, context: &Context) {
@@ -218,6 +273,16 @@ pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
         return Err(io_error("Oferta pendiente demasiado grande"));
     }
     let offer = super::update_feed::Offer::verify(&bytes)?;
+    let (view, _) = active(root)?;
+    let current = view.manifest.as_ref().expect("active manifest");
+    if pending_obsolete(
+        &offer.version,
+        current.version_parts,
+        root.join("boot-pending.json").try_exists()?,
+    )? {
+        fs::remove_file(pending)?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let archive = root.join("staging").join(format!("{}.zip", offer.sha256));
     let package = operations::Package {
         archive: &archive,
@@ -236,6 +301,10 @@ pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
     Ok(ExitCode::from(10))
 }
 
+fn pending_obsolete(version: &str, active: [u16; 3], boot_pending: bool) -> io::Result<bool> {
+    Ok(boot_pending
+        || vantare_installer::engine::validation::version(version).map_err(io_error)? <= active)
+}
 pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
     let (view, _) = active(root)?;
     let current = view.manifest.as_ref().expect("active manifest");
@@ -250,7 +319,11 @@ pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
     if root.join("boot-pending.json").try_exists()? {
         return Ok(());
     }
-    let found = super::update_feed::check(&current.version, &staging, cancelled)?;
+    let rejected = disk::read_optional(&root.join("update-status.json"), Some(65536))
+        .map_err(io_error)?
+        .and_then(|status| status["rejectedVersion"].as_str().map(str::to_owned));
+    let found =
+        super::update_feed::check(&current.version, &staging, cancelled, rejected.as_deref())?;
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
@@ -265,7 +338,10 @@ pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
         return Err(io_error("La generación cambió durante la consulta"));
     }
     let Some(download) = found else {
-        operations::status(root, "current", "Estás al día", &current.version).map_err(io_error)?;
+        if rejected.is_none() {
+            operations::status(root, "current", "Estás al día", &current.version)
+                .map_err(io_error)?;
+        }
         return Ok(());
     };
     let archive = staging.join(format!("{}.zip", download.offer.sha256));
@@ -289,7 +365,29 @@ pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
         &root.join("update-status.json"),
         &serde_json::json!({"schema":1,"state":"ready",
             "message":"Actualización lista; se aplicará al reiniciar",
-            "version":download.offer.version,"notes":download.offer.notes}),
+            "version":download.offer.version,"notes":download.offer.notes,
+            "rejectedVersion":rejected}),
     )
     .map_err(io_error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn staging_989_then_setup_989_is_obsolete_at_next_start() {
+        assert!(!pending_obsolete("0.0.989", [0, 0, 988], false).unwrap());
+        assert!(pending_obsolete("0.0.989", [0, 0, 989], false).unwrap());
+        assert!(pending_obsolete("0.0.990", [0, 0, 989], true).unwrap());
+    }
+    #[test]
+    fn failed_ready_child_is_reaped_before_rollback() {
+        let mut child = Command::new(std::env::var("COMSPEC").unwrap())
+            .args(["/D", "/C", "ping -n 5 127.0.0.1 >NUL"])
+            .spawn()
+            .unwrap();
+        assert!(!wait_for_exit(&mut child, Duration::from_millis(1)).unwrap());
+        child.kill().unwrap();
+        assert!(wait_for_exit(&mut child, Duration::from_secs(5)).unwrap());
+    }
 }

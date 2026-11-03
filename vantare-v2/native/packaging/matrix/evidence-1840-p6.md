@@ -52,3 +52,41 @@ indicador. Evidencia local:
 
 Gate de publicación: Isaac debe pasar el Setup distribuido sobre raíces reales
 975 y 988 en VM o cuenta aislada antes de publicar motor 2 sin LegacyRunner.
+
+## Revisión de seguridad de #1908
+
+La CI de Windows ejecutaba `Confirm-BetaBoot` tras su retirada. El histórico
+conserva sus comprobaciones de lectura y rollback; la llamada huérfana se
+retiró y el gate aislado volvió a pasar (14 inventarios y 142 checks históricos).
+Las otras llamadas al PowerShell retirado están en scripts manuales huérfanos
+reservados para la limpieza del paso 7.
+
+El lanzador descarta un pending obsoleto y continúa si Apply falla; tras
+spawn, readiness o confirmación fallidos recoge al hijo y hace rollback o
+ofrece Reparar. `Vantare.exe` en uso se renombra a `.old` antes de renovarlo,
+y los backups propios se retiran en el arranque siguiente. El rollback
+restaura el lanzador, conserva la versión rechazada en `update-status.json`,
+y Stage la excluye. Un ZIP alterado se borra antes de descargarlo otra vez.
+La lectura del arranque admite enlaces del usuario dentro de `data/`; la copia
+de actualización los rechaza. La confirmación del Hub dispone de 60 s.
+
+La matriz lifecycle usa `session.rs` y `restart.rs` para sus tres escenarios
+que dependían de `Run-BetaHub`; el gate `cargo test --workspace --test lifecycle`
+pasó con 5 + 25 escenarios. Hay regresiones para renovación del ejecutable
+en uso, rollback del lanzador, versión rechazada, rechazo de oferta y
+descarga, enlace en datos, solicitud de reinicio y plazo del Hub.
+El build autónomo del lanzador QA activa la feature `network` de Services,
+necesaria para verificar el feed firmado sin depender de la unificación de
+features que sucede en el workspace.
+El Hub reconoce `rejectedVersion` en el estado firmado por el instalador y
+conserva el rechazo de campos desconocidos; su test cubre ambos casos.
+La matriz repetida tras estos arreglos pasó 88 filas, incluidos los 45 rechazos,
+9 checks del lanzador y 38 de límites de escritura. Evidencia:
+`D:/VantareServer/qa/isa-1840/p6-matrix-security-20261103-01`.
+
+Medición tras seguridad: perímetro fijo 11 790 líneas de producción y 818
+fuera (se excluye una línea de test que el script externo clasifica como
+producción); **12 608 total**, exactamente +150 sobre el cierre anterior.
+El paso 7 absorbe esas 150 líneas: tope compensado **9 932**; objetivo final
+≤ 10 110. Tests Rust +94 frente a la base del PR; tests/tooling QA −1 737;
+se informan por separado de producción.

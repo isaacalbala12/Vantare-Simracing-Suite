@@ -395,7 +395,7 @@ pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>,
             reject_links(&path).map_err(|_| ReadError::Invalid("Árbol con reparse point"))?;
             let in_data = in_data || skip_data && path == root.join("data");
             let is_directory = entry.file_type()?.is_dir();
-            if is_directory {
+            if is_directory && !in_data {
                 pending.push((path.clone(), in_data));
             }
             if !in_data {

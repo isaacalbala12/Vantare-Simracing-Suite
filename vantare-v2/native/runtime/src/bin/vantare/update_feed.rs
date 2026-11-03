@@ -16,7 +16,7 @@ const LIMIT: u64 = 128 * 1024 * 1024;
 const QUERY_TIMEOUT: Duration = Duration::from_secs(30);
 const PACKAGE_TIMEOUT: Duration = Duration::from_mins(5);
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Offer {
     pub schema: u32,
@@ -47,25 +47,29 @@ impl Offer {
     pub fn verify(signed: &[u8]) -> io::Result<Self> {
         let payload = vantare_services::update_manifest::verify(signed).map_err(failure)?;
         let offer: Self = serde_json::from_slice(&payload).map_err(failure)?;
+        offer.validate()?;
+        Ok(offer)
+    }
+    fn validate(&self) -> io::Result<()> {
         let url = format!(
             "https://github.com/{REPO}/releases/download/native-beta-v{}/vantare-native-amd64-package.zip",
-            offer.version
+            self.version
         );
-        if offer.schema != 1
-            || offer.product != "vantare-native"
-            || offer.channel != "beta"
-            || offer.url != url
-            || version(&offer.version).is_err()
-            || offer.notes.len() > 8192
-            || offer.sha256.len() != 64
-            || !offer
+        if self.schema != 1
+            || self.product != "vantare-native"
+            || self.channel != "beta"
+            || self.url != url
+            || version(&self.version).is_err()
+            || self.notes.len() > 8192
+            || self.sha256.len() != 64
+            || !self
                 .sha256
                 .bytes()
                 .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
         {
             return Err(failure("Oferta beta firmada incompatible"));
         }
-        Ok(offer)
+        Ok(())
     }
 }
 
@@ -100,6 +104,7 @@ pub fn check(
     current: &str,
     staging: &Path,
     cancelled: &AtomicBool,
+    rejected: Option<&str>,
 ) -> io::Result<Option<Downloaded>> {
     let current = version(current).map_err(failure)?;
     let query_agent = agent(QUERY_TIMEOUT);
@@ -111,11 +116,7 @@ pub fn check(
     .map_err(failure)?;
     let mut candidates: Vec<_> = releases
         .into_iter()
-        .filter_map(|release| {
-            let tag = release.tag_name.strip_prefix("native-beta-v")?;
-            let parsed = version(tag).ok()?;
-            (parsed > current && !release.draft).then_some((parsed, release))
-        })
+        .filter_map(|release| eligible(&release, current, rejected).map(|parsed| (parsed, release)))
         .collect();
     candidates.sort_by_key(|candidate| std::cmp::Reverse(candidate.0));
     for (_, release) in candidates {
@@ -132,17 +133,13 @@ pub fn check(
         let Ok(offer) = Offer::verify(&signed) else {
             continue;
         };
-        if release.tag_name != format!("native-beta-v{}", offer.version) {
+        if !tag_matches(&release.tag_name, &offer) {
             continue;
         }
         fs::create_dir_all(staging)?;
         let target = staging.join(format!("{}.zip", offer.sha256));
-        if target.try_exists()? {
-            disk::path(&target).map_err(failure)?;
-            if hash_file(&target).map_err(failure)? == offer.sha256 {
-                return Ok(Some(Downloaded { signed, offer }));
-            }
-            return Err(failure("Staging alterado"));
+        if cached(&target, &offer.sha256)? {
+            return Ok(Some(Downloaded { signed, offer }));
         }
         let temporary = staging.join(format!("{}.download", offer.sha256));
         discard_orphan(&temporary)?;
@@ -152,6 +149,7 @@ pub fn check(
             &temporary,
             &offer.sha256,
             cancelled,
+            LIMIT,
         );
         if result.is_err() {
             let _ = fs::remove_file(&temporary);
@@ -161,6 +159,28 @@ pub fn check(
         return Ok(Some(Downloaded { signed, offer }));
     }
     Ok(None)
+}
+
+fn cached(target: &Path, expected: &str) -> io::Result<bool> {
+    if !target.try_exists()? {
+        return Ok(false);
+    }
+    disk::path(target).map_err(failure)?;
+    if hash_file(target).map_err(failure)? == expected {
+        return Ok(true);
+    }
+    fs::remove_file(target)?;
+    Ok(false)
+}
+
+fn tag_matches(tag: &str, offer: &Offer) -> bool {
+    tag == format!("native-beta-v{}", offer.version)
+}
+
+fn eligible(release: &Release, current: [u16; 3], rejected: Option<&str>) -> Option<[u16; 3]> {
+    let tag = release.tag_name.strip_prefix("native-beta-v")?;
+    let parsed = version(tag).ok()?;
+    (parsed > current && !release.draft && Some(tag) != rejected).then_some(parsed)
 }
 
 fn discard_orphan(path: &Path) -> io::Result<()> {
@@ -177,6 +197,7 @@ fn download(
     target: &Path,
     expected: &str,
     cancelled: &AtomicBool,
+    limit: u64,
 ) -> io::Result<()> {
     let mut response = agent
         .get(url)
@@ -186,7 +207,7 @@ fn download(
     if response.status().as_u16() != 200 {
         return Err(failure("Paquete HTTP no disponible"));
     }
-    let mut input = response.body_mut().with_config().limit(LIMIT).reader();
+    let mut input = response.body_mut().with_config().limit(limit).reader();
     let mut output = fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -210,7 +231,6 @@ fn download(
     }
     Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,7 +242,9 @@ mod tests {
         } else {
             std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
         };
-        parent.join(format!("{name}-{}", std::process::id()))
+        let root = parent.join(format!("{name}-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
+        root
     }
     #[test]
     fn feed_version_is_closed_and_numeric() {
@@ -230,6 +252,48 @@ mod tests {
         for invalid in ["", "1.2", "01.2.3", "1.2.3.4", "1.2.3-x", "65536.0.0"] {
             assert!(version(invalid).is_err());
         }
+    }
+
+    #[test]
+    fn offer_rejects_untrusted_origin_channel_sha_fields_and_tag() {
+        let valid = Offer {
+            schema: 1,
+            product: "vantare-native".into(),
+            channel: "beta".into(),
+            version: "0.0.989".into(),
+            url: format!(
+                "https://github.com/{REPO}/releases/download/native-beta-v0.0.989/vantare-native-amd64-package.zip"
+            ),
+            sha256: "a".repeat(64),
+            notes: String::new(),
+        };
+        valid.validate().unwrap();
+        assert!(tag_matches("native-beta-v0.0.989", &valid));
+        assert!(!tag_matches("native-beta-v0.0.990", &valid));
+        let mut bad = valid.clone();
+        bad.url = "https://example.com/package.zip".into();
+        assert!(bad.validate().is_err());
+        let mut bad = valid.clone();
+        bad.channel = "master".into();
+        assert!(bad.validate().is_err());
+        let mut bad = valid.clone();
+        bad.sha256 = "Z".repeat(64);
+        assert!(bad.validate().is_err());
+        let raw = serde_json::to_value(&valid).unwrap();
+        let mut extra = raw.as_object().unwrap().clone();
+        extra.insert("surprise".into(), serde_json::json!(true));
+        assert!(serde_json::from_value::<Offer>(serde_json::Value::Object(extra)).is_err());
+    }
+
+    #[test]
+    fn rejected_version_is_not_restaged_after_rollback() {
+        let release = Release {
+            draft: false,
+            tag_name: "native-beta-v0.0.989".into(),
+        };
+        assert_eq!(eligible(&release, [0, 0, 988], None), Some([0, 0, 989]));
+        assert_eq!(eligible(&release, [0, 0, 988], Some("0.0.989")), None);
+        assert_eq!(eligible(&release, [0, 0, 989], None), None);
     }
 
     fn slow_offer() -> (String, std::thread::JoinHandle<()>) {
@@ -269,12 +333,40 @@ mod tests {
             &target,
             &expected,
             &AtomicBool::new(false),
+            LIMIT,
         )
         .unwrap();
         server.join().unwrap();
         assert_eq!(fs::read(&target).unwrap(), b"package");
         fs::remove_file(&target).unwrap();
         fs::remove_dir(&root).unwrap();
+    }
+
+    #[test]
+    fn package_rejects_wrong_sha_and_size_limit() {
+        for (expected, limit) in [
+            ("0".repeat(64), LIMIT),
+            (format!("{:x}", sha2::Sha256::digest(b"package")), 6),
+        ] {
+            let (url, server) = slow_offer();
+            let root = qa_root("feed-reject");
+            fs::create_dir_all(&root).unwrap();
+            let path = root.join(format!("{}-{limit}.download", std::process::id()));
+            assert!(
+                download(
+                    &agent(Duration::from_secs(1)),
+                    &url,
+                    &path,
+                    &expected,
+                    &AtomicBool::new(false),
+                    limit
+                )
+                .is_err()
+            );
+            server.join().unwrap();
+            fs::remove_file(path).unwrap();
+            fs::remove_dir(root).unwrap();
+        }
     }
 
     #[test]
@@ -293,5 +385,20 @@ mod tests {
         assert_eq!(fs::read(&target).unwrap(), b"verified");
         fs::remove_file(&target).unwrap();
         fs::remove_dir(&root).unwrap();
+    }
+
+    #[test]
+    fn altered_cached_archive_is_removed_before_redownload() {
+        let root = qa_root("feed-altered");
+        vantare_installer::engine::context::qa_path(&root).unwrap();
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("archive.zip");
+        fs::write(&path, b"tampered").unwrap();
+        let expected = format!("{:x}", sha2::Sha256::digest(b"authentic"));
+        assert!(!cached(&path, &expected).unwrap());
+        assert!(!path.exists());
+        fs::write(&path, b"authentic").unwrap();
+        assert!(cached(&path, &expected).unwrap());
+        fs::remove_dir_all(root).unwrap();
     }
 }

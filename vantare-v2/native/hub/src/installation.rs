@@ -23,7 +23,7 @@ impl BootConfirmation {
             .map_err(|error| format!("confirmar arranque: {error}"))?;
         Ok(Self {
             root: root.into(),
-            deadline: Instant::now() + Duration::from_secs(10),
+            deadline: Instant::now() + Duration::from_mins(1),
         })
     }
 
@@ -77,19 +77,23 @@ mod tests {
     use super::*;
     #[test]
     fn marker_ack_has_one_injected_deadline_and_no_register_child() {
-        let root = std::path::PathBuf::from(
-            std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("QA root"),
-        )
-        .join(format!("boot-confirmation-{}", std::process::id()));
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))
+        } else {
+            std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("boot-confirmation-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(root.join("boot-pending.json"), b"{}").unwrap();
         let now = Instant::now();
         let confirmation = BootConfirmation {
             root: root.clone(),
-            deadline: now + Duration::from_secs(10),
+            deadline: now + Duration::from_mins(1),
         };
         assert!(!confirmation.poll_at(now).unwrap());
-        assert!(confirmation.poll_at(now + Duration::from_secs(10)).is_err());
+        assert!(!confirmation.poll_at(now + Duration::from_secs(10)).unwrap());
+        assert!(confirmation.poll_at(now + Duration::from_mins(1)).is_err());
         std::fs::remove_file(root.join("boot-pending.json")).unwrap();
         assert!(confirmation.poll_at(now).unwrap());
         std::fs::remove_dir(root).unwrap();

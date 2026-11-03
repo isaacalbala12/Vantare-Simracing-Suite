@@ -179,13 +179,44 @@ fn legacy_run(context: &Context, root: &Path) -> Result<Option<(String, String)>
     let name = "VantareNative.Hub".to_owned();
     let value = super::windows::registry_string(&context.registry_prefix, RUN, &name, false)?;
     Ok(value
-        .filter(|command| {
-            let normalized = command.to_ascii_lowercase();
-            let root = root.to_string_lossy().to_ascii_lowercase();
-            normalized.contains(&root)
-                && (normalized.contains("beta.ps1") || normalized.contains("vantare-hub.exe"))
-        })
+        .filter(|command| legacy_command(command, root))
         .map(|value| (name, value)))
+}
+fn legacy_command(command: &str, root: &Path) -> bool {
+    let lower = fold(command);
+    let root = fold(&root.to_string_lossy());
+    let script = format!("-file \"{root}\\beta.ps1\" -root \"{root}\"");
+    let trusted = powershell()
+        .ok()
+        .map(|p| fold(&format!("\"{}\"", p.display())));
+    (lower.ends_with(&script) && trusted.as_ref().is_some_and(|path| lower.starts_with(path)))
+        || lower.trim() == format!("\"{root}\\vantare-hub.exe\"")
+}
+fn fold(value: &str) -> String {
+    value.replace('/', "\\").to_ascii_lowercase()
+}
+#[cfg(test)]
+mod legacy_command_tests {
+    use super::*;
+    #[test]
+    fn matches_only_exact_legacy_command() {
+        let root = Path::new("C:\\QA\\Vantare");
+        let valid = format!(
+            "\"{}\" -NoProfile -File \"C:\\QA\\Vantare\\beta.ps1\" -Root \"C:\\QA\\Vantare\"",
+            powershell().unwrap().display()
+        );
+        assert!(legacy_command(&valid, root));
+        assert!(legacy_command(&valid.replace('\\', "/"), root));
+        assert!(!legacy_command(&format!("{valid} --foreign"), root));
+        assert!(!legacy_command(
+            &valid.replace("powershell.exe", "foreign.exe"),
+            root
+        ));
+        assert!(!legacy_command(
+            "\"C:\\QA\\Vantare\\foreign.exe\" beta.ps1",
+            root
+        ));
+    }
 }
 
 /// Rebuild from the resulting state, including after a failed Setup restores it.

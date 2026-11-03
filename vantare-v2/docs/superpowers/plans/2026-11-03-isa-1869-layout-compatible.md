@@ -1,6 +1,23 @@
 # VANTA-130 · Propuesta concreta para pasos 8 + 7 y continuación 9
 
-Estado: PROPUESTA, pendiente de aprobación del orquestador. No hay código nuevo.
+Estado: APROBADO por el orquestador el 3-nov-2026, con ajustes siguientes.
+8A se ejecuta ahora: lector puente, normalización, P3 y espejo protegido.
+8B NO se activa ahora. Requiere una release PUBLICADA con el lector puente 8A,
+de modo que la generación anterior recuperable ya pueda leer el formato nuevo.
+Versión mínima compatible: la primera release publicada que incluya el PR 8A;
+pendiente de asignar tag/SHA de publicación. No se inventa un número de versión.
+El tag y SHA deberán registrarse aquí y en #1869 antes de activar 8B.
+P2 protección por sección se queda en 8B, con migrationPending en Store v3.
+No hay marcador auxiliar, fichero nuevo ni escritura de Store v3 en 8A.
+El espejo jamás escribe sobre appearance protegido (futuro, ilegible o grande),
+aunque desaparezca tras cargarlo; se avisa y se registra en Diagnóstico.
+Se conserva importación de movimiento para layouts antiguos sin campo. En 8A
+el espejo y su lector actual siguen activos para que los cambios lleguen en vivo;
+la retirada se hará en 8B. El importador único cubre overlays antes del Hub.
+Reservas de layout, document, session_alerts y lectura opcional host trasladadas
+por el orquestador a VANTA-129 antes de escribir código. Dominio intacto.
+Las secciones siguientes conservan la propuesta original como contexto; estos
+acuerdos son la autoridad para ejecución y sustituyen condiciones alternativas.
 Base verificada: origin/nightly 7e92e1a9e52d57db17263234ec62efc5774794cb.
 Paso 6 #1890 integrado por el orquestador como
 b68a34311024ad56beac101a7e4e93e96e3fde8a; cinco checks SUCCESS verificados.
@@ -140,6 +157,7 @@ y llegar a documentos externos, inicialización y guardado además de Studio.
   sin reponer una copia obsoleta de las otras secciones. Error de recarga o
   versión futura conserva el borrador y protege el destino.
 
+El P2 queda exclusivamente en 8B por decisión posterior; 8A no crea marcadores.
 Los P3 que no cambian el formato pueden salir en un PR pequeño propio antes de
 activar 8B. El P2 no se resuelve con un marcador que el lector #1890 no conoce.
 No se crean almacenes alternativos ni escrituras v1 de respaldo para eludirlo.

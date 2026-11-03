@@ -1,3 +1,19 @@
+## VANTA-130 · 8A autorizado; 8B espera release del puente (3-nov-2026)
+
+El orquestador aprueba los dos cortes: 8A ahora, 8B sin activar hasta publicar una
+release que contenga el lector puente; la generación anterior recuperable debe
+saber leer el nuevo formato. Versión mínima compatible pendiente de tag/SHA de
+esa primera publicación; registrar aquí y en #1869 cuando exista, sin inventarla.
+P2 por sección sigue en 8B, Store v3/migrationPending. No marcador auxiliar.
+8A conserva v2, layout v1, espejo y lector actual; añade protección explícita del
+espejo aun si desaparece un origen protegido y su registro en Diagnóstico.
+P3: avisos persistentes y reparables, zoom aislado y reintento CAS sin reiniciar.
+Importador único para layouts sin movimiento aprobado; retirada en 8B.
+Reserva de ui/layout, hub/document, session_alerts y lectura opcional del host
+trasladada a VANTA-129 por el orquestador; dominio intacto. Caracterización y
+regresiones previas en 166f0e118/8799ba0d4, en ejecución QA por compilar.ps1.
+Paso 9 después en rama nueva; 10 excluido. No se activa formato ni se instala.
+
 ## VANTA-130 · paso 6 integrado; diseño 8 + 7 pendiente de aprobación (3-nov-2026)
 
 #1890 integrado por el orquestador en nightly

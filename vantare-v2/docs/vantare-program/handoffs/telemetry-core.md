@@ -14,7 +14,7 @@ Cierre pequeño solicitado en rama vantareapp/isa-1868-cierre, worktree
 D:/VantareServer/worktrees/isa-1868-cierre desde ese origin/nightly actualizado.
 Este cierre no está integrado: completa el footer tipado, documenta espectador
 y añade check bench obligatorio al gate check. Validación local final completa;
-CI remota del cierre pendiente al publicar el PR. Código 80828160f10f22f202e84a6de71971f13349a7ca,
+CI remota pendiente al publicar [PR draft #1909](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1909). Código 80828160f10f22f202e84a6de71971f13349a7ca,
 árbol nativo 374b3e128ed77267b5fdc925f469a70a880c30ef.
 Plane es el tablero; GitHub/Project Vantare registra código y PRs.
 Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.

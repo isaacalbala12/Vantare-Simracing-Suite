@@ -1,6 +1,6 @@
 # VANTA-131: propuestas para los pasos 7 y 12
 
-Estado: propuesta para Isaac; no autoriza código ni despliegue. Issue [#1896](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1896). Base examinada: `origin/nightly@8066d1c8e`. El diseño general sigue en `D:\VantareServer\evidence\revision-general\hub-servidor-DISENO.md`.
+Estado: diseño aprobado por Isaac el 2026-11-03 para código de los pasos 7 y 12; no autoriza despliegue ni merge. Issue [#1896](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1896). Base examinada: `origin/nightly@8066d1c8e`. El diseño general sigue en `D:\VantareServer\evidence\revision-general\hub-servidor-DISENO.md`.
 
 ## Paso 7: un único modelo de informe
 
@@ -14,7 +14,7 @@ Estado: propuesta para Isaac; no autoriza código ni despliegue. Issue [#1896](h
 
 ### Agente v2 y límites
 
-`testing_center_get_agent_job_state` todavía consulta `testing_center_reports`. Propuesta: cambiar esa consulta y cualquier enlace de trabajo a la raíz `testing_contributions`, con una proyección de solo lectura y autorización equivalente. Los jobs y callbacks existentes permanecen inertes; no se configura dispatch, workflow, credenciales ni ruleset. Si Isaac prefiere una vista de compatibilidad, se conserva una vista **solo lectura** hasta una issue específica, sin segunda tabla de informes ni doble escritura. Esta elección necesita su decisión antes de codificar el paso.
+`testing_center_get_agent_job_state` todavía consulta `testing_center_reports`. Decisión: adaptar solo esa lectura y cualquier enlace de trabajo a `testing_contributions`, con autorización equivalente. No habrá vista de compatibilidad ni segunda tabla de informes. Los jobs y callbacks permanecen inertes; no se configura dispatch, workflow, credenciales ni ruleset.
 
 No se cambia billing, licencias ni admin. Las operaciones de _shared que ya sirven a esos dominios se revisan explícitamente antes de editar.
 
@@ -34,7 +34,7 @@ La ADR del Testing Center fijará el DTO, la única raíz, la idempotencia, el c
 
 Se preparan bases legibles para identidad, Storage, Testing Center y roadmap/calendario, con definiciones completas, grants y RLS explícitos y rollbacks por dominio. Las migraciones anteriores se archivan, no se borran. La política de nuevas migraciones prohíbe transformar cuerpos con `pg_get_functiondef` + `replace`; se crea la definición completa y se prueba su rollback. Ningún archivo se aplica a producción en este encargo.
 
-Billing comparte la cadena histórica. Mi propuesta es que R3 sea dueño de su base y de sus checks en un PR separado; aquí se fija el contrato de equivalencia y se prueba la composición con su resultado, sin editar SQL de billing. La alternativa de incluir billing en mi PR requiere autorización expresa de Isaac.
+Billing comparte la cadena histórica. Decisión: R3 es dueño de su base y de sus checks en un PR separado; aquí se fija el contrato de equivalencia y se prueba la composición con su resultado, sin editar SQL de billing. El paso 12 se ejecuta después del 7.
 
 ### Construcción y equivalencia
 
@@ -49,9 +49,11 @@ Antes de conservar triggers sobre `storage.*`, un test local fijará versión de
 
 La ADR de plataforma fijará orden de dominios, propiedad de R3 sobre billing, reglas de migración/rollback, normalización del dump, versión de Storage y procedimiento de reconstrucción sin acceso a producción.
 
-## Decisiones solicitadas
+## Decisiones de Isaac (2026-11-03)
 
-1. Paso 7: adaptar solo la lectura del agente v2 a `testing_contributions` (recomendado) o mantener temporalmente una vista de compatibilidad de solo lectura.
-2. Paso 12: base billing en PR separado de R3 (recomendado) o autorización expresa para que este encargo edite también billing.
+1. Paso 7: adaptar solo la lectura del agente v2 a `testing_contributions`; sin vista de compatibilidad.
+2. Paso 12: la base de billing pertenece a R3 en un PR separado; este encargo no edita su SQL.
+3. El SQL histórico de Linear permanece inerte hasta el paso 12, donde se retira en la base por dominios. El draft #1905 se cerró sin integrar.
+4. Orden aprobado: paso 7 antes de conectar la subida firmada del paso 6. Las capturas siguen desactivadas entretanto.
 
-Hasta resolverlas no se escribe código de los pasos 7 ni 12.
+El código del paso 7 está autorizado; el paso 12 sigue después del 7. Ninguno autoriza desplegar.

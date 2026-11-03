@@ -1,3 +1,4 @@
+- 2026-11-03 VANTA-131: Isaac aprobo paso 7 con agente v2 leyendo solo testing_contributions, sin vista ni segunda tabla; jobs/callbacks inertes. Paso 12 despues del 7, billing en PR separado de R3 sin editar su SQL aqui. Paso 5b SQL Linear inerte hasta 12; PR #1905 cerrado sin integrar. Paso 7 precede subida firmada de 6; capturas siguen apagadas. Sin despliegue ni merge.
 ## 2026-11-03 - #1896 / VANTA-131 diseno previo 7 y 12
 
 - Propuesta concreta en docs/vantare-program/designs/VANTA-131-pasos-7-12-propuesta.md: DTO unico, raiz unica, migraciones por dominio y equivalencia de esquema. Sin codigo de los pasos 7/12.

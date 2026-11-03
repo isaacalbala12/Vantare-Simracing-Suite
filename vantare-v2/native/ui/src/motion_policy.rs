@@ -8,6 +8,11 @@ struct LayoutMotion(Option<bool>);
 impl gpui::Global for LayoutMotion {}
 
 impl MotionPolicy {
+    /// Apariencia es respaldo mientras no exista decisión explícita en el layout.
+    pub fn apply_appearance(value: bool, cx: &mut gpui::App) {
+        let explicit = cx.try_global::<LayoutMotion>().and_then(|value| value.0);
+        cx.set_global(Self::select(explicit, Self(value)));
+    }
     /// Aplica una decisión explícita sin que el lector legado vuelva a imponerla.
     pub fn apply_layout(value: Option<bool>, cx: &mut gpui::App) {
         cx.set_global(LayoutMotion(value));

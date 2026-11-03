@@ -779,6 +779,9 @@ fn step8a_existing_v2_motion_remains_editable_without_writing_legacy_mirror() {
         window
             .update(&mut cx, |hub, window, cx| {
                 assert!(!hub.settings_motion(cx));
+            assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+            crate::orbit::theme::apply(hub.settings.store.value.appearance, window.appearance(), cx);
+            assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
                 hub.settings_reduced_motion(window, cx);
                 assert!(hub.settings_motion(cx));
                 assert_eq!(hub.studio.read(cx).home_layout().version, 2);

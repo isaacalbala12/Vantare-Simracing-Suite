@@ -1295,6 +1295,7 @@ impl Hub {
         let workshop = create_workshop(prepared, cx);
         let snapshot = workshop.read(cx).scene.snapshot().clone();
         let studio = cx.new(|cx| Studio::new(prepared_studio, cx));
+        vantare_ui::MotionPolicy::apply_layout(studio.read(cx).home_layout().reduced_motion, cx);
         #[cfg(feature = "parity-capture")]
         let capture_policy =
             capture.is_some() && std::env::var_os("VANTARE_CAPTURE_POLICY").is_some();

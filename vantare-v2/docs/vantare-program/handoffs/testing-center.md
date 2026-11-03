@@ -4,7 +4,7 @@
 - PostgreSQL local: 39 comprobaciones nuevas de permisos de calendario, roadmap y participación; `anon` conserva ejecución de cuatro RPC de calendario y de `is_active_owner`. El arnés imita las concesiones por defecto de Supabase.
 - PostgreSQL local: el informe simple de `nightly` se guarda sin membresía; un lote finalizado sigue sin estar listo tras reintentar. Edge fija la cuota de cuenta e IP compartida; Rust conserva imágenes tras confirmar el envío.
 - `testing-center-feedback` sigue exigiendo Supabase JWT. `config.toml` declara 21 funciones; dos directorios del agente siguen inertes y ausentes de los wrappers.
-- PR draft #1897: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1897; primer HEAD 641204f1a, CI pendiente de verificar; canal alcanzado: rama de issue.
+- PR draft #1897: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1897; commit de pruebas 641204f1a; CI del HEAD vigente en la PR; canal alcanzado: rama de issue.
 - Siguiente: revisar este PR draft. El paso 1 partirá de `origin/nightly` actualizado en rama y worktree propios. Pasos 2 y 3 siguen en la próxima candidata; pasos 7 y 12 requieren diseño y ADR antes de código.
 - Sin llamadas a producción, despliegue, merge ni release.
 ## 2026-10-19 - #1709 / VANTA-96: aislar UUID de pgTAP y Edge

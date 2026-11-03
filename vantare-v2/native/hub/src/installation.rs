@@ -88,10 +88,10 @@ mod tests {
             root: root.clone(),
             deadline: now + Duration::from_secs(10),
         };
-        assert_eq!(confirmation.poll_at(now).unwrap(), false);
+        assert!(!confirmation.poll_at(now).unwrap());
         assert!(confirmation.poll_at(now + Duration::from_secs(10)).is_err());
         std::fs::remove_file(root.join("boot-pending.json")).unwrap();
-        assert_eq!(confirmation.poll_at(now).unwrap(), true);
+        assert!(confirmation.poll_at(now).unwrap());
         std::fs::remove_dir(root).unwrap();
     }
 }

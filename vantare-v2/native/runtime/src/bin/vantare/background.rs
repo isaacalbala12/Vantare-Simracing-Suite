@@ -42,7 +42,7 @@ impl Feed {
                     if let Err(error) = super::installed::stage(&root, &token) {
                         super::log(format_args!("feed beta: {error}"));
                     }
-                    std::thread::park_timeout(std::time::Duration::from_secs(6 * 60 * 60));
+                    std::thread::park_timeout(std::time::Duration::from_hours(6));
                 }
             })?;
         Ok(Self { cancel, thread })

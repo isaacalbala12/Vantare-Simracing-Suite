@@ -539,6 +539,7 @@ pub fn rollback(root: &Path) -> Result<BootRecovery> {
     Ok(BootRecovery::Restored)
 }
 
+#[allow(clippy::too_many_lines)] // The ownership checks and deletion share one transaction.
 pub fn uninstall(
     root: &Path,
     control: &mut Control<'_>,

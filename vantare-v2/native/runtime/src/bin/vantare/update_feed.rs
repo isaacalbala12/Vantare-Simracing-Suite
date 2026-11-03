@@ -14,7 +14,7 @@ use vantare_installer::engine::{hash_file, validation::version, write_fs as disk
 const REPO: &str = "isaacalbala12/Vantare-Downloads";
 const LIMIT: u64 = 128 * 1024 * 1024;
 const QUERY_TIMEOUT: Duration = Duration::from_secs(30);
-const PACKAGE_TIMEOUT: Duration = Duration::from_secs(5 * 60);
+const PACKAGE_TIMEOUT: Duration = Duration::from_mins(5);
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -117,7 +117,7 @@ pub fn check(
             (parsed > current && !release.draft).then_some((parsed, release))
         })
         .collect();
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    candidates.sort_by_key(|candidate| std::cmp::Reverse(candidate.0));
     for (_, release) in candidates {
         if cancelled.load(Ordering::Acquire) {
             return Ok(None);
@@ -192,7 +192,7 @@ fn download(
         .create_new(true)
         .open(target)?;
     let mut digest = sha2::Sha256::new();
-    let mut chunk = [0; 65536];
+    let mut chunk = vec![0; 65536];
     loop {
         if cancelled.load(Ordering::Acquire) {
             return Err(failure("Descarga cancelada"));

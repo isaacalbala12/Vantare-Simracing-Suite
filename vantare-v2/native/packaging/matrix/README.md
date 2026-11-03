@@ -10,6 +10,9 @@ confirmación, Register y SetStartup. Se retiraron `registration-boot-tests.ps1`
 y `startup-tests.ps1`, que ejercitaban únicamente el host PowerShell antiguo.
 Las 45 clases de rechazo del lector permanecen en el gate. El saldo de líneas
 de tests y tooling se mide aparte de la producción.
+En `boot-update`, el motor Rust devuelve 1 por arranque pendiente; el
+PowerShell antiguo devolvía 0 sin actualizar. El baseline
+comprueba el rechazo y la conservación de datos.
 
 Vigencia 5b: el producto no incluye ni ejecuta installer-driver.ps1. El lector
 actual usa read/verify, sin perfiles, y `probe-invariants.ps1` conserva los 45

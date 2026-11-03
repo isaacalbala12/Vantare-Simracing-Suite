@@ -69,6 +69,7 @@ pub struct Options {
     pub capture_zoom: Option<u16>,
 }
 
+#[allow(clippy::struct_excessive_bools)] // Distinct user choices and lifecycle flags.
 pub(crate) struct Hub {
     onboarding: Option<onboarding::State>,
     analytics: analytics::State,

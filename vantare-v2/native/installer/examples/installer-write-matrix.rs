@@ -49,6 +49,7 @@ mod platform {
         }
         Ok(output.stdout)
     }
+    #[allow(clippy::too_many_lines)] // A single QA dispatcher preserves the operation ordering.
     fn qa_action(
         input: &Input,
         context: &Context,

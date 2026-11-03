@@ -28,7 +28,7 @@ function Wait-LaunchFile([string]$Path,$Process){
 }
 function Invoke-Writer([string]$Action,[string]$Version=''){
     $contract=Join-Path $qa ('contract-'+[guid]::NewGuid().ToString('N')+'.json')
-    $request=@{operation='Probe';root=$install;qa=$false;silent=$true;uninstall=$false;version='0.0.989';size=1;mode='auto';desktop=$true;autostart=$true;processId=2147483647;packageSha=('0'*64);logFile=(Join-Path $qa 'writer.log')}
+    $request=@{operation='Probe';root=$install;qa=$false;silent=$true;uninstall=$false;version='0.0.989';size=1;mode='auto';desktop=$true;autostart=$true;processId=2147483647;packageSha=('0'*64);logFile=($contract+'.log')}
     $directory=$assets
     if($Version){
         $request.operation='Install';$request.version=$Version;$request.packageSha=Get-NativeHash (Join-Path $payload 'package.zip')
@@ -68,7 +68,10 @@ try{
                 $file=Join-Path $directory $member.path;$member.size=(Get-Item -LiteralPath $file).Length;$member.sha256=Get-NativeHash $file
             }
         }
-        Write-NativeJson (Join-Path $directory 'manifest.json') $manifest
+        $manifestPath=Join-Path $directory 'manifest.json'
+        $null=Assert-MatrixRoot $manifestPath
+        Remove-Item -LiteralPath $manifestPath -Force
+        Write-NativeJson $manifestPath $manifest
         New-NativeZip $directory (Join-Path $assets ('v'+$version+'.zip'))
     }
     foreach($name in @('candidate.ps1','beta.ps1')){Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $payload}

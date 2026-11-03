@@ -282,8 +282,9 @@ por cerrar esta poda ni se altera el presupuesto único del supervisor (#1816).
 
 **Resultado del paso 6 (3-nov-2026):** la build release del Hub, con fixtures
 distribuidos en QA aislada, abrió la ventana en 2402/344/331/330/343 ms;
-mediana 343 ms. Se retiró el indicador. Isaac aceptó 12434 líneas de producción
-para cerrar el paso 6; el tope del 7 es 10106 y el objetivo final sigue en
+mediana 343 ms. Se retiró el indicador. Tras el rebase y los arreglos, el paso 6
+ocupa 12458 líneas de producción: 148 sobre el límite inicial de 12310, dentro
+del margen de 150 autorizado. El tope compensado del 7 es 10082 y el objetivo final sigue en
 10110. Los excesos intermedios de hasta 150 líneas se trasladan al paso
 siguiente; solo se detiene la entrega si exceden 150 o el final no cabe.
 

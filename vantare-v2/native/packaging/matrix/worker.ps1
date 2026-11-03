@@ -7,6 +7,7 @@ $qaCaseRoot=Assert-MatrixRoot $Root
 $env:LOCALAPPDATA=Join-Path $qaCaseRoot 'LocalAppData'
 $script:Packaging=Split-Path $PSScriptRoot -Parent
 $qaInstallRoot=Join-Path $qaCaseRoot 'install'
+$qaShellRoot=Join-Path $qaCaseRoot 'shell'
 $qaRequestedOperation=$Operation
 # Remap the drive in THIS PROCESS before any product code is loaded.
 if ($RegistryRoot -cnotmatch '^HKEY_CURRENT_USER\\Software\\VantareInstallerMatrix\\[a-f0-9]{32}\\[a-z0-9-]+$') { throw 'MATRIX_REGISTRY_REJECTED' }
@@ -45,7 +46,7 @@ try {
         Write-NativeJson $contract @{
             qaAction=$Operation;verifier=(Join-Path $Assets 'verifier.exe');payloadDirectory=$Assets
             request=@{operation='Probe';root=$qaInstallRoot;qa=$false;silent=$true;uninstall=$false;version='0.0.989';size=1;mode='auto';desktop=$false;autostart=$false;processId=2147483647;packageSha=('0'*64);logFile=(Join-Path $qaCaseRoot 'writer.log')}
-            context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
+            context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaShellRoot}
         }
         & $WriteEngine $contract
         $code=$LASTEXITCODE
@@ -74,7 +75,7 @@ try {
             [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
             $OutputEncoding=[Text.UTF8Encoding]::new($false)
             $contract=Join-Path $qaCaseRoot 'writer.json'
-            $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
+            $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaShellRoot}
             Write-NativeJson $contract @{request=$requestValue;context=$context;payloadDirectory=$engine}
             if($Operation -ceq 'Probe'){
                 $actual=& $WriteEngine $contract

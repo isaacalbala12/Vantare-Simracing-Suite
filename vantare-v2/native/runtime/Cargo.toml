@@ -26,8 +26,8 @@ chrono = { version = "0.4", default-features = false, features = ["std", "serde"
 # Cuerpos REST de LMU (`/rest/watch/*`), decodificados con límites.
 # El codec de series debe recuperar exactamente los f64 originales (ISA-1429).
 serde_json = { version = "1", features = ["float_roundtrip"] }
-# Cliente HTTP síncrono para el REST local de LMU (sin TLS ni gzip: solo 127.0.0.1).
-ureq = { version = "3.4", default-features = false }
+# REST local LMU y feed beta HTTPS; rustls ya está fijado por services.
+ureq = { version = "3.4", default-features = false, features = ["rustls"] }
 # Foto latest-wins: los lectores nunca bloquean al escritor (ver core/publish.rs).
 arc-swap = "1"
 

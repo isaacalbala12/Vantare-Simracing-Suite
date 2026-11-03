@@ -113,11 +113,12 @@ try {
             }
             $links=[ordered]@{}
             $shell=New-Object -ComObject WScript.Shell
+            $shellRoot=Join-Path $caseRoot 'shell'
             foreach ($folder in @('Programs','Startup','DesktopDirectory')) {
-                $path=Join-Path $caseRoot $folder
+                $path=Join-Path $shellRoot $folder
                 foreach ($file in @(Get-ChildItem -LiteralPath $path -Filter '*.lnk' -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName)) {
                     $link=$shell.CreateShortcut($file.FullName)
-                    $links[$file.FullName.Substring($caseRoot.Length+1)]=@{target=$link.TargetPath;arguments=$link.Arguments;icon=$link.IconLocation}
+                    $links[$file.FullName.Substring($shellRoot.Length+1)]=@{target=$link.TargetPath;arguments=$link.Arguments;icon=$link.IconLocation}
                 }
             }
             $registry=[ordered]@{}

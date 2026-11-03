@@ -46,7 +46,6 @@ use std::io::Write;
 #[cfg(windows)]
 use vantare_launcher as launcher;
 #[cfg(windows)]
-#[cfg(windows)]
 mod resident;
 #[cfg(windows)]
 mod triggers_win;
@@ -413,6 +412,7 @@ fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
 }
 
 #[cfg(windows)]
+#[allow(clippy::too_many_lines)] // Session setup keeps child ownership and shutdown in one scope.
 fn run(mut config: Config) -> io::Result<ExitCode> {
     let Some(instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
         if config.installation.is_some() {
@@ -430,12 +430,14 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
-    let mut workers = background::Workers::default();
-    workers.open_hub = config
-        .installation
-        .as_ref()
-        .map(|_| win::OpenHub::create(&object_name("launcher-open-hub", &config.instance)))
-        .transpose()?;
+    let mut workers = background::Workers {
+        open_hub: config
+            .installation
+            .as_ref()
+            .map(|_| win::OpenHub::create(&object_name("launcher-open-hub", &config.instance)))
+            .transpose()?,
+        ..Default::default()
+    };
     let _session_lock = config
         .installation
         .as_ref()

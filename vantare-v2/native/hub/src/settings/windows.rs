@@ -48,14 +48,19 @@ impl StartupChange {
         }
     }
 
-    pub(super) async fn complete(self, _executor: gpui::BackgroundExecutor) -> Result<(), String> {
+    pub(super) async fn complete(self, executor: gpui::BackgroundExecutor) -> Result<(), String> {
         #[cfg(windows)]
         {
-            vantare_installer::engine::shell::sync_running(&self.root, Some(self.enabled))
-                .map_err(|error| error.to_string())
+            executor
+                .spawn(async move {
+                    vantare_installer::engine::shell::sync_running(&self.root, Some(self.enabled))
+                        .map_err(|error| error.to_string())
+                })
+                .await
         }
         #[cfg(not(windows))]
         {
+            let _ = executor;
             Err("Inicio automático disponible solo en Windows".into())
         }
     }
@@ -89,7 +94,10 @@ mod tests {
         assert_eq!(installed_startup_at(&root), Some(true));
         std::fs::write(
             root.join("installer-ui.json"),
-            br#"{"schema":1,"kind":"rust-gpui","autostart":false}"#,
+            format!(
+                "{{\"schema\":1,\"kind\":\"rust-gpui\",\"uninstaller\":\"Uninstall.exe\",\"sha256\":\"{}\",\"desktop\":false,\"autostart\":false}}",
+                "a".repeat(64)
+            ),
         )
         .unwrap();
         assert_eq!(installed_startup_at(&root), Some(false));

@@ -55,12 +55,9 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
     let (requested, background) = parse(args, "--root")?;
     let context = installed_context(&requested).map_err(io_error)?;
     let root = disk::open_root(&requested, false).map_err(io_error)?;
-    let _bootstrap = match disk::lock(&root, ".bootstrap.lock") {
-        Ok(lock) => lock,
-        Err(_) => {
-            let _ = Stop::signal(&object_name("launcher-open-hub", "native-beta"));
-            return Ok(ExitCode::SUCCESS);
-        }
+    let Ok(_bootstrap) = disk::lock(&root, ".bootstrap.lock") else {
+        let _ = Stop::signal(&object_name("launcher-open-hub", "native-beta"));
+        return Ok(ExitCode::SUCCESS);
     };
     for _ in 0..3 {
         if root.join("staging/pending.json").try_exists()? {
@@ -91,11 +88,7 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
         }
         let mut child = session.spawn()?;
         let pending = root.join("boot-pending.json").try_exists()?;
-        let opened = if pending {
-            ready(&root, &mut child, Duration::from_secs(45))?
-        } else {
-            true
-        };
+        let opened = !pending || ready(&root, &mut child, Duration::from_secs(45))?;
         if pending {
             if opened {
                 operations::confirm(&root).map_err(io_error)?;
@@ -114,10 +107,6 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
                     }
                 }
             }
-        } else if !opened {
-            let _ = Stop::signal(&object_name("launcher-stop", "native-beta"));
-            let _ = child.wait()?;
-            return Ok(ExitCode::FAILURE);
         }
         sync_registration(&root, &context);
         let status = child.wait()?;
@@ -137,23 +126,21 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
 
 fn sync_registration(root: &Path, context: &Context) {
     let status = root.join("registration-status.json");
-    let result = vantare_installer::engine::shell::sync_running_with_context(root, context, None);
-    match result {
-        Ok(()) => {
-            let _ = fs::remove_file(status);
-        }
-        Err(error) => {
-            let message = error.to_string();
-            log(format_args!("registro: {message}"));
-            if disk::publish_json(
-                &status,
-                &serde_json::json!({"schema":1,"state":"warning","message":message}),
-            )
-            .is_err()
-            {
-                log("no se pudo registrar el aviso de Windows");
-            }
-        }
+    let Err(error) =
+        vantare_installer::engine::shell::sync_running_with_context(root, context, None)
+    else {
+        let _ = fs::remove_file(status);
+        return;
+    };
+    let message = error.to_string();
+    log(format_args!("registro: {message}"));
+    if disk::publish_json(
+        &status,
+        &serde_json::json!({"schema":1,"state":"warning","message":message}),
+    )
+    .is_err()
+    {
+        log("no se pudo registrar el aviso de Windows");
     }
 }
 

@@ -18,7 +18,8 @@
   medido. Isaac autorizó retirar LegacyRunner en los pasos 6–7; la prueba
   de las raíces reales 975/988 con Setup distribuido bloquea la release;
   indicador retirado tras mediana Hub release de 343 ms en cinco arranques QA.
-  Cierre6 aceptado en 12434 líneas; tope7≤10106 y final≤10110. Las demás retiradas legacy van en6–7 y se
+  Paso6 medido tras rebase en 12458 líneas (148 sobre 12310, dentro del margen autorizado);
+  tope7 compensado≤10082 y final≤10110. Las demás retiradas legacy van en6–7 y se
   mantienen migraciones baratas de datos/preferencias. Véase enmienda ADR0103.
 
 - §4.5, pasos5/7: decisión posterior permanente. Solo Cleanup conserva un script

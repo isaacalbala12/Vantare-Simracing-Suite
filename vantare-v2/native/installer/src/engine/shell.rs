@@ -37,7 +37,7 @@ fn owned(link: &Link, root: &Path) -> Result<bool> {
     let ps = same(&link.target, &powershell()?);
     Ok((same(&link.target, &root.join("Vantare.exe"))
         && [
-            format!("--root {}", root_arg),
+            format!("--root {root_arg}"),
             format!("--root {root_arg} --background"),
         ]
         .contains(&link.arguments))
@@ -612,7 +612,8 @@ mod tests {
             PathBuf::from("D:/VantareServer/qa/isa-1840")
         };
         let id = disk::id().expect("ID");
-        let root = parent.join("p5a-options-tests").join(&id);
+        let qa = parent.join("p5a-options-tests").join(&id);
+        let root = qa.join("install");
         context::qa_path(&root).expect("QA guard");
         fs::create_dir_all(&root).expect("owned root");
         fs::write(root.join(".vantare-native"), b"offline-candidate-v1")
@@ -629,9 +630,9 @@ mod tests {
         fs::write(root.join("installer-ui.json"), b"{ changed metadata")
             .expect("changed after capture");
         let context = Context::isolated(
-            root.join("LocalAppData"),
+            qa.join("LocalAppData"),
             format!("Software\\VantareInstallerMatrix\\{id}"),
-            root.join("shell"),
+            qa.join("shell"),
         )
         .expect("isolated context");
         let request = super::super::Request::new(
@@ -721,7 +722,7 @@ mod tests {
         assert!(!root.join("installer-ui.json").exists());
     }
     #[test]
-    fn startup_preserves_frozen_root_and_generation_capabilities() {
+    fn startup_uses_root_launcher_for_foreground_and_background() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {
             PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
         } else {
@@ -746,35 +747,19 @@ mod tests {
             },
             previous: None,
         };
-        let capability = b"# vantare-launch-capabilities: background-v1\n";
-        fs::write(folder.join("candidate.ps1"), capability).expect("generation capability");
-        fs::write(root.join("candidate.ps1"), b"# frozen legacy root\n").expect("frozen root");
-        assert!(same(
-            &launch(&root, Some(&state), true)
-                .expect("legacy Startup")
-                .target,
-            &powershell().expect("Windows")
-        ));
+        let launcher = root.join("Vantare.exe");
+        fs::write(&launcher, b"inert launcher").expect("root launcher");
+        let foreground = launch(&root, Some(&state), false).expect("Start menu");
+        let background = launch(&root, Some(&state), true).expect("Startup");
+        assert_eq!(foreground.target, launcher);
+        assert_eq!(background.target, launcher);
         assert_eq!(
-            launch(&root, Some(&state), false)
-                .expect("Start menu")
-                .target,
-            target
+            foreground.arguments,
+            format!("--root {}", argument_root(&root))
         );
-        fs::write(root.join("candidate.ps1"), capability).expect("capable root");
-        assert!(
-            launch(&root, Some(&state), true)
-                .expect("background")
-                .arguments
-                .ends_with(" --background")
-        );
-        fs::write(folder.join("candidate.ps1"), b"# frozen generation\n")
-            .expect("frozen generation");
-        assert!(
-            !launch(&root, Some(&state), true)
-                .expect("foreground legacy")
-                .arguments
-                .ends_with(" --background")
+        assert_eq!(
+            background.arguments,
+            format!("--root {} --background", argument_root(&root))
         );
     }
     #[test]

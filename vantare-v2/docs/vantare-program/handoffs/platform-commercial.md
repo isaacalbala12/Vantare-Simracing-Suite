@@ -7379,3 +7379,72 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   retenida, carreras 131 rutas/778 checks y borrado/aliases 4/40 PASS.
   Edge→SQL 4/4 PASS, incluida intención/resultados reales antes de fallo de estado
   tras unban. Calidad 468 huellas y diff PASS. Instancias locales detenidas.
+
+## VANTA-132 · Paso 5b, revisión de auditoría y concurrencia (2026-11-03)
+
+- #1921 integrado por el orquestador en nightly 34aa4e2a3; CI verde antes del
+  merge. Rama/worktree nuevos vantareapp/isa-1910-paso5b-reconciliacion /
+  D:/VantareServer/worktrees/isa-1910-paso5b, rebasados sobre esa integración.
+- Caracterización previa 4223291a2 (72ee117ab tras rebase): 5 RED y 1 PASS.
+  Rechazos HTTP 401/403/422 pasan a failed, transporte/servidor a unknown;
+  provider_status distingue DELETE Clerk 404 idempotente. Journal por DELETE
+  de cancelSubscriptions Polar, sin cambiar su comportamiento ni billing.
+- Resultados exactos de una intención pueden cerrarse tras caducar owner.
+  Nuevas intenciones exigen owner. Vista privada de pendientes y RPC manual
+  reconciled (reviewer owner vigente), sin lectura nueva desde la app. Lectura
+  owner y retención de target_hash reservadas al paso 10. README documenta SQL.
+- Ban/unban adquieren lease 480s por cuenta (máximo hosted worker 400s +80), sin
+  renovar y con token nuevo tras caducar; liberación al terminar. Fencing de
+  estado bajo bloqueo SQL: token viejo no escribe ni libera el lease nuevo.
+  Orden UUID/owner/filas conservado y barrera de cuentas borradas instalada en
+  la tabla nueva. Error incluso 4xx tras unban => account_change_incomplete.
+- Carreras reales del mismo effect_id: intenciones idénticas deduplicadas y
+  resultados incompatibles serializados. Tests de ban/unban simultáneos entre
+  Edge y SQL, recuperación por caducidad, token viejo, ban, fallo de intención
+  de delete y anon/authenticated sin SELECT. Solo PostgreSQL/HTTP sintéticos.
+- Rollback restaura RPC anterior y conserva journal, estados HTTP y leases;
+  reaplicación conserva evidencia. Fallos iniciales del fixture NULL de psql,
+  formato/lint y detección/cobertura de barrera conservados en evidencia.
+- Sin Rust: check/Clippy/Nextest/lifecycle/telemetría omitidos por no cambiar
+  crates. Sin Store real, secretos, servicios/configuración de producción,
+  billing/licencias, _shared/clerk-webhook, despliegue, merge propio ni release.
+- Resto del plan continúa: Brevo pendiente; admin→testing_contributions espera
+  integración de #1918 y aviso del orquestador; pasos 4/11 siguen en R6.
+  HEAD, PR, CI y gates finales se reflejan también en #1910 y Plane --resumen.
+- Gates finales: Deno 2.7.13 165 PASS; check/lint/fmt PASS. SQL local 38 planes/1046 pgTAP,
+  rollback/reaplicación y E2E 5/5 PASS; carreras de escritura 132 rutas/784
+  checks (incluye nueva tabla de leases), aliases/borrado 4/40 y dos carreras
+  reales del journal PASS. Calidad 468 huellas, Python y diff PASS. Entornos
+  desechables detenidos; evidencia en D:/VantareServer/evidence/isa-1910-paso5b.
+- PR draft [#1922](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1922)
+  a nightly; código validado c30004016, CI nueva pendiente y sin merge propio.
+
+### #1922 · Corrección de review R2
+
+- Elegido bloquear `claim` con la vista de pendientes, incluso tras caducar o
+  liberar el lease. Release marca vencimiento y retiene la petición; antes de
+  sustituirla se revisan todos sus efectos, incluido Polar. El hash de las
+  identidades cubre eventos Clerk antiguos. No se confía solo en la caducidad:
+  una llamada remota incierta podría completar tarde y deshacer un unban.
+- Reconcile exige unknown o intención anterior a now()-480s, owner revisor
+  vigente y ausencia de succeeded/failed. README aclara que service_role
+  autentica a p_reviewer; el UUID por sí mismo no demuestra identidad.
+- Release sobre cuenta borrada no escribe a través de la barrera. Su fallo
+  deja intacto el error original. Tests RED previos en f3bde7aa6.
+- Seis carreras reales observadas en pg_stat_activity: mismas intenciones y
+  resultados, finish frente a takeover, dos claims caducados y reconcile frente
+  a resultado en ambos órdenes. Casos secuenciales de token vigente pero lease
+  caducado, revisor no owner, reconcile de succeeded/failed y ventana de 480s.
+- Diferidos expresamente: set_blocked sin token durante solape de despliegue;
+  limpieza de leases caducados (conservar referencias pendientes); 503 cuando
+  release falla tras un cambio correcto. Lectura owner/retención en paso 10.
+- #1918 integrado en nightly a75c9b7aa según orquestador. Migración admin a
+  testing_contributions se hará en PR separado SOLO después del merge de #1922;
+  no se mezcla aquí. Pasos 4 y 11 siguen con sus dependencias de R6.
+- Gates limitados a admin: runner --admin-effects-only aplica schema desechable
+  y ejecuta suites de efectos/leases, sus carreras y E2E. Sin Rust ni servicios
+  reales; sin cambios _shared/clerk-webhook, billing/licencias ni despliegue.
+- Gates R2: Deno 2.7.13, 94 tests de admin PASS; SQL acotado 5 suites/69
+  comprobaciones PASS, seis carreras reales PASS, E2E 6/6 PASS. Check/lint/fmt,
+  Python y diff PASS. Rollback/reaplicación incluidos; instancia local detenida.
+  Evidencia review-r2 dentro de isa-1910-paso5b. CI del HEAD nuevo pendiente.

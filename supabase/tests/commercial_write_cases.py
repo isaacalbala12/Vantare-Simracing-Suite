@@ -184,6 +184,7 @@ CASES += [
 # Financial/report history is retained; a tombstone must stop fresh writes.
 CASES += [
  ('admin-block', "insert into private.admin_account_blocks values('{a}',false,null)"),
+ ('admin-change-lease', "insert into private.admin_change_leases(account_id,actor,request_id,token,expires_at) values('{a}','{other}','{attempt}','{other}',now()+interval '480 seconds')"),
  ('admin-payment', "insert into private.admin_payments(environment,payment_id,account_id,product,paid_at,amount_cents,currency,modified_at) values('sandbox','{case}','{a}','Fixture',now(),100,'eur',now())"),
  ('admin-history', "insert into private.admin_payment_history values('sandbox','{a}')"),
  ('admin-payout', "insert into private.admin_creator_payouts(creator_id,amount_cents,actor) values('{new_id}',100,'{a}')"),

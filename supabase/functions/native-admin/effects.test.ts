@@ -65,7 +65,13 @@ function fixture(fail?: string) {
       return authDeps().fetch!(url, init);
     },
   };
-  return { calls, events, deps };
+  const leased = {
+    ...deps,
+    claimChange: () => Promise.resolve("00000000-0000-4000-8000-000000001996"),
+    releaseChange: () => Promise.resolve(true),
+    finishChange: (a: string, i: string) => deps.execute(a, i, "set_blocked"),
+  };
+  return { calls, events, deps: leased };
 }
 const unblock = () =>
   request({

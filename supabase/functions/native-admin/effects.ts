@@ -5,6 +5,7 @@ export type Effect =
   | "clerk_ban"
   | "clerk_unban"
   | "clerk_delete"
+  | "polar_cancel"
   | "storage_cleanup";
 export type EffectEvent = {
   request_id: string;
@@ -12,8 +13,14 @@ export type EffectEvent = {
   action: "set_blocked" | "delete_account";
   effect: Effect;
   target_hash: string;
-  outcome: "started" | "succeeded" | "unknown";
+  outcome: "started" | "succeeded" | "unknown" | "failed";
+  provider_status?: number;
 };
+export class EffectFailure extends NativeError {
+  constructor(public providerStatus: number) {
+    super(503, "account_change_incomplete");
+  }
+}
 export type EffectRecorder = (
   actor: string,
   event: EffectEvent,
@@ -40,12 +47,12 @@ export function effectAudit(
   requestId: string,
   record: EffectRecorder,
 ) {
-  return async <T>(
+  return async (
     action: EffectEvent["action"],
     effect: Effect,
     subject: string,
-    work: () => Promise<T>,
-  ): Promise<T> => {
+    work: () => Promise<number | void>,
+  ): Promise<void> => {
     const digest = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(subject),
@@ -61,9 +68,18 @@ export function effectAudit(
       ).join(""),
       outcome: "started",
     };
-    const write = async (outcome: EffectEvent["outcome"]) => {
+    const write = async (
+      outcome: EffectEvent["outcome"],
+      provider_status?: number,
+    ) => {
       try {
-        if (await record(actor, { ...event, outcome }) === true) return;
+        if (
+          await record(actor, {
+            ...event,
+            outcome,
+            ...(provider_status === undefined ? {} : { provider_status }),
+          }) === true
+        ) return;
       } catch {
         // The durable intent, if committed, is the recovery source. Do not log
         // a provider/SQL error that could contain identities or request bodies.
@@ -71,15 +87,22 @@ export function effectAudit(
       throw new NativeError(503, "account_change_incomplete");
     };
     await write("started");
-    let result: T;
+    let result: number | void;
     try {
       result = await work();
     } catch (error) {
       // A timeout/error cannot prove that the provider did not apply a write.
-      await write("unknown");
+      const status = error instanceof EffectFailure
+        ? error.providerStatus
+        : undefined;
+      await write(
+        status !== undefined && [401, 403, 422].includes(status)
+          ? "failed"
+          : "unknown",
+        status,
+      );
       throw error;
     }
-    await write("succeeded");
-    return result;
+    await write("succeeded", typeof result === "number" ? result : undefined);
   };
 }

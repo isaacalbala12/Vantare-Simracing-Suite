@@ -21,6 +21,16 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),
     recordEffect: () => Promise.resolve(true),
+    claimChange: () => Promise.resolve("00000000-0000-4000-8000-000000001996"),
+    releaseChange: () => Promise.resolve(true),
+    finishChange: (a, i, p, e) =>
+      (overrides.execute ?? (() => Promise.resolve({})))(
+        a,
+        i,
+        "set_blocked",
+        p,
+        e,
+      ),
     execute: () => Promise.resolve({}),
     ...overrides,
   };

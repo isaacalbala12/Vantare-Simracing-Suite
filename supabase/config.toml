@@ -25,9 +25,6 @@ verify_jwt = false
 [functions.native-admin]
 verify_jwt = false
 
-[functions.testing-center-feedback]
-verify_jwt = true
-
 [functions.testing-center-linear-worker]
 verify_jwt = false
 

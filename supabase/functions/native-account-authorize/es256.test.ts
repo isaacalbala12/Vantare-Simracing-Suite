@@ -1,5 +1,5 @@
 import { handleNativeAccountAuthorize, signDataToken } from "./index.ts";
-import { verifyBridgeAccount } from "../testing-report-submit/index.ts";
+import { verifyBridgeAccount } from "../_shared/native-data.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import {
   account,

@@ -1,3 +1,4 @@
+import { verifyBridgeAccount } from "../_shared/native-data.ts";
 import {
   testPrivateJwk,
   testPublicJwk,
@@ -6,7 +7,6 @@ import {
   handleTestingReportSubmit,
   ipDigest,
   requireHostedGateway,
-  verifyBridgeAccount,
 } from "./index.ts";
 import { signDataToken } from "../native-account-authorize/index.ts";
 import { nativeBearer, NativeError } from "../_shared/native-auth.ts";

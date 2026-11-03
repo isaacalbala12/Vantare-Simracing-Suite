@@ -54,16 +54,16 @@ probar el canal en desarrollo hay que compilar explícitamente con
 - El frontend envía únicamente candidata, SHA, decisión y, al rechazar, cuatro
   campos estructurados más impacto y consentimiento diagnóstico. Nunca envía
   actor, rol, autor, rama, estado o disposición owner.
-- `testing-center-feedback` autentica la sesión, deriva membresía y candidata en
-  servidor, impide auto-validación y valida el SHA actual antes de llamar al RPC
-  service-role endurecido de TAU-07G.
+- En ISA-220, `testing-center-feedback` autenticaba la sesión, derivaba
+  membresía y candidata en servidor, impedía auto-validación y validaba el SHA
+  antes de llamar al RPC service-role de TAU-07G. Esa función se retiró en #1902.
 - Nightly exige `primary_tester` u `owner`; Testers admite también `tester`.
   `No puedo verificar` registra evidencia neutral. Un rechazo incompleto se
   conserva en pantalla y no produce efecto.
 - No existen controles de merge, promoción, redelegación o disposición owner en
   esta UI. Un rechazo queda `needs_owner` para decisión humana.
 
-## Verificación
+## Verificación histórica de ISA-220
 
 Desde `vantare-v2`:
 
@@ -74,8 +74,14 @@ go vet ./internal/testingcenter/diagnostic ./internal/testingcenter/reportdraft 
 pnpm --dir frontend test -- src/hub/testing-center src/hub/navigation.test.ts src/hub/components/Topbar.test.tsx src/hub/components/V52Shell.test.tsx src/hub/HubApp.test.tsx
 pnpm --dir frontend build
 pnpm --dir frontend visual:testing-center
-deno check --no-lock ../supabase/functions/testing-center-feedback/index.ts ../supabase/functions/testing-center-feedback/index.test.ts
-deno test --no-check --no-lock ../supabase/functions/testing-center-feedback/index.test.ts
+```
+
+Las rutas Go/React anteriores se conservan como evidencia histórica de ISA-220;
+el checkout nativo ya no las ejecuta. La función `testing-center-feedback` se
+retiró en #1902. Para verificar la puerta Edge vigente desde la raíz Git:
+
+```powershell
+deno test --config supabase/functions/deno.json --allow-env --allow-read supabase/functions/native-account-authorize supabase/functions/testing-report-submit
 ```
 
 El harness visual valida 390, 768, 1.024 y 1.440 px, ambas vistas, cero overflow,

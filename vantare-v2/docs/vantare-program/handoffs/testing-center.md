@@ -1,3 +1,11 @@
+- 2026-11-03 VANTA-131 paso 4 / PR #1902: revision Sonnet aprobable. Runbook testing-center-ui actualizado: los comandos Deno contra testing-center-feedback retirado se sustituyen por el gate Edge vigente; Go/React se marca historico. Pendiente rebase tras #1901 integrado, sin despliegue ni merge propio.
+## 2026-11-03 - #1896 / VANTA-131 paso 4: verificador nativo
+
+- Draft PR #1902 contra nightly, rama vantareapp/isa-1896-paso4-verificador; base 6a461ccf0 (paso 3 integrado).
+- El verificador de bearer nativo se comparte en _shared/native-data.ts. testing-center-feedback se retira del repo y de las listas de despliegue tras comprobar que no hay llamador en Hub, web, digest ni scripts.
+- Test de caracterizacion de superficie antes del cambio. Deno 64 PASS/1 omitido; fmt, check, lint y diff check PASS. PostgreSQL local testing-identity 7 suites PASS, con rollback de pasos 2 y 3.
+- Medida frente a 6a461ccf0: produccion +57/-555, tests +39/-319, docs +19/-6 antes de este handoff. CI del nuevo HEAD pendiente. Sin despliegue, merge ni release.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 3: ACL y canales
 
 - Draft PR #1901 contra nightly, rama vantareapp/isa-1896-paso3-acl-canal; base ec7e4b550 (paso 2 integrado).

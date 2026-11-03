@@ -10,7 +10,6 @@ const productionFunctions = new Set([
   "native-admin",
 ]);
 const testingPilotFunctions = new Set([
-  "testing-center-feedback",
   "testing-center-linear-webhook",
   "testing-center-linear-worker",
 ]);

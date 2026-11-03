@@ -34,12 +34,19 @@ const deps: SubmitDeps = {
     }
     return identity.account;
   },
-  admit: async (scope, subject, week) => {
-    const result = await rpc("testing_report_admit", {
-      p_scope: scope,
-      p_subject: subject,
-      p_week: week,
-    });
+  admit: async (scope, subject, week, key, digest) => {
+    const result = await rpc(
+      scope === "ip" ? "testing_report_admit" : "testing_report_admit_account",
+      scope === "ip"
+        ? { p_scope: scope, p_subject: subject, p_week: week }
+        : { p_account: subject, p_key: key, p_digest: digest, p_week: week },
+    );
+    if (result.error?.code === "23505") {
+      throw new NativeError(409, "submit_failed");
+    }
+    if (result.error?.code === "28000") {
+      throw new NativeError(401, "unauthorized");
+    }
     if (result.error || typeof result.data !== "boolean") {
       throw new NativeError(503, "admission_unavailable");
     }

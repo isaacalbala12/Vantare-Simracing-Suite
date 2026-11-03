@@ -163,9 +163,12 @@ impl Context {
             let directory = state
                 .as_ref()
                 .map(|state| root.join("generations").join(&state.active.generation));
-            let version = directory
+            let version = state
                 .as_ref()
-                .and_then(|directory| super::Manifest::read(&directory.join("manifest.json")).ok())
+                .zip(directory.as_ref())
+                .and_then(|(state, directory)| {
+                    super::Manifest::authenticated(directory, &state.active, &state.channel).ok()
+                })
                 .map(|manifest| manifest.version);
             (
                 version,

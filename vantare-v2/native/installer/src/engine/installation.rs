@@ -83,7 +83,7 @@ pub struct Generation {
     pub manifest_sha256: Option<String>,
 }
 impl Generation {
-    fn valid(&self) -> bool {
+    pub(super) fn valid(&self) -> bool {
         hex(&self.generation, 32)
             && self
                 .manifest_sha256
@@ -102,24 +102,10 @@ pub struct State {
     pub previous: Option<Generation>,
 }
 impl State {
-    /// Structural state is sufficient to resume retirement after program files
-    /// have gone. This uses the same decoder, never a second validation profile.
+    /// Informational state remains readable after an interrupted legacy retirement.
+    /// Mutations validate references from the same decoder before deleting files.
     pub fn read(root: &Path) -> Result<Option<Self>, ReadError> {
-        let Some(document) = read_state(root)? else {
-            return Ok(None);
-        };
-        require(document.previous_present, Rejection::MissingPrevious)?;
-        require(
-            document.warning.is_none()
-                && document.state.active.valid()
-                && document
-                    .state
-                    .previous
-                    .as_ref()
-                    .is_none_or(Generation::valid),
-            Rejection::Reference,
-        )?;
-        Ok(Some(document.state))
+        Ok(read_state(root)?.map(|document| document.state))
     }
 }
 
@@ -304,11 +290,11 @@ pub struct Installation {
     pub(super) original_state: Option<Value>,
     pub(super) retained: Option<Retained>,
 }
-struct StateDocument {
-    state: State,
+pub(super) struct StateDocument {
+    pub(super) state: State,
     original: Value,
-    previous_present: bool,
-    warning: Option<&'static str>,
+    pub(super) previous_present: bool,
+    pub(super) warning: Option<&'static str>,
 }
 fn require(valid: bool, reason: impl Into<ReadError>) -> Result<(), ReadError> {
     if valid { Ok(()) } else { Err(reason.into()) }
@@ -325,7 +311,7 @@ fn bytes(path: &Path) -> Result<Vec<u8>, ReadError> {
 fn utf8(raw: &[u8]) -> &[u8] {
     raw.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(raw)
 }
-fn read_state(root: &Path) -> Result<Option<StateDocument>, ReadError> {
+pub(super) fn read_state(root: &Path) -> Result<Option<StateDocument>, ReadError> {
     let raw = match bytes(&root.join("state.json")) {
         Ok(raw) => raw,
         Err(ReadError::Io(error)) if error.kind() == io::ErrorKind::NotFound => return Ok(None),

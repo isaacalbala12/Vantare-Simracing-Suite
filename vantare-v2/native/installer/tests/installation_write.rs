@@ -428,8 +428,14 @@ fn uninstall_probe_uses_manifest_or_a_neutral_absence_never_a_retained_version()
             .as_deref(),
         Some("1.0.0")
     );
-    fs::remove_file(fixture.active().join("manifest.json"))
-        .expect("simulate already removed manifest");
+    let manifest_path = fixture.active().join("manifest.json");
+    let bound = fs::read(&manifest_path).unwrap();
+    let mut unbound = bound.clone();
+    unbound.push(b' ');
+    fs::write(&manifest_path, unbound).unwrap();
+    assert_eq!(context.probe(&request).unwrap().installed_version, None);
+    fs::write(&manifest_path, bound).unwrap();
+    fs::remove_file(manifest_path).expect("simulate already removed manifest");
     fs::write(
         fixture.root.join("retained-data.json"),
         serde_json::to_vec(&json!({"schema":1,"generation":"a".repeat(32),"version":"9.9.9"}))
@@ -639,11 +645,14 @@ fn retirement_uses_the_shared_reader_and_rejects_invalid_references_before_delet
         }
         let bytes = serde_json::to_vec(&value).expect("invalid fixture");
         fs::write(&path, &bytes).expect("isolated state fault");
-        assert!(
-            engine::State::read(&fixture.root).is_err()
-                || Installation::read(&fixture.root).is_err(),
-            "{fault}"
-        );
+        if fault == "previous-hash" {
+            assert_eq!(
+                Installation::read(&fixture.root).unwrap().previous_warning,
+                Some("previous-corrupt")
+            );
+        } else {
+            assert!(Installation::read(&fixture.root).is_err(), "{fault}");
+        }
         let cancel = AtomicBool::new(false);
         let mut control = Control {
             cancel: &cancel,
@@ -1277,4 +1286,37 @@ fn integrity_checks_reject_a_sidecar_reparse_before_attempting_to_read_it() {
         view.verify(&fixture.root),
         Err(engine::ReadError::Invalid(_))
     ));
+}
+
+#[test]
+fn repair_without_active_state_rejects_before_touching_a_pending_cleanup() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    fixture.install(&package, Mode::Auto, false, false).unwrap();
+    fixture.write_data();
+    let data = fixture.data();
+    let before = disk::data_index(&data).unwrap();
+    let cancel = AtomicBool::new(false);
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut |_| Ok(()),
+        warning: &mut |_| {},
+    };
+    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).unwrap();
+    let marker = fixture.root.join("installer-cleanup.json");
+    fs::write(&marker, b"pending cleanup sentinel").unwrap();
+    let error = operations::install(
+        &fixture.root,
+        &package.borrowed(),
+        Mode::Repair,
+        &mut control,
+        |_, _, _| panic!("invalid repair cannot finalize"),
+        || panic!("invalid repair cannot prepare or mutate pending cleanup"),
+    )
+    .expect_err("repair needs active state before pending-cleanup handling");
+    assert_eq!(error.code, 3);
+    assert_eq!(fs::read(&marker).unwrap(), b"pending cleanup sentinel");
+    assert_eq!(disk::data_index(&data).unwrap(), before);
+    assert!(!fixture.root.join("state.json").exists());
 }

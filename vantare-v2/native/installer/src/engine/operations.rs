@@ -214,8 +214,14 @@ pub fn install(
     let _session = disk::lock(&root, "beta-session.lock")
         .map_err(|_| WriteError::new(2, "Cierra Vantare para continuar"))?;
     let _operation = disk::lock(&root, ".operation.lock")?;
-    prepare()?;
     let mut view = Installation::read(&root)?;
+    if mode == Mode::Repair && view.state.is_none() {
+        return Err(WriteError::new(
+            3,
+            "Reparar exige una instalación de la misma versión",
+        ));
+    }
+    prepare()?;
     let before = Before::capture(&root, &view)?;
     let stage = root.join("staging").join(format!("setup-{}", disk::id()?));
     let mut changed = false;
@@ -247,12 +253,6 @@ pub fn install(
             )
             .map_err(|e| WriteError::new(4, e.to_string()))?;
         } else {
-            if mode == Mode::Repair {
-                return Err(WriteError::new(
-                    3,
-                    "Reparar exige una instalación de la misma versión",
-                ));
-            }
             source = retained_source(&root, incoming.version_parts, &view)?;
             previous = None;
         }
@@ -388,11 +388,17 @@ pub fn uninstall(
     let _session = disk::lock(&root, "beta-session.lock")?;
     let _lock = disk::lock(&root, ".operation.lock")?;
     let state_path = root.join("state.json");
-    if !state_path.try_exists()? {
+    let Some(document) = installation::read_state(&root)? else {
         return finalize(control);
-    }
-    let state =
-        State::read(&root)?.ok_or_else(|| WriteError::new(1, "No hay instalación activa"))?;
+    };
+    let state = document.state;
+    ensure(
+        document.previous_present
+            && document.warning.is_none()
+            && state.active.valid()
+            && state.previous.as_ref().is_none_or(Generation::valid),
+        "Referencia de generación inválida",
+    )?;
     drop(disk::binary_guard(&root)?);
     // Authenticate all referenced inventories before deleting any member. A
     // generation without a state binding has no authority over foreign files.

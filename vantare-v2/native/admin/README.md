@@ -48,9 +48,27 @@ y no cambia roles/grants.
 Valores públicos compilados existentes: `VANTARE_ADMIN_URL` opcional (endpoint
 HTTPS exacto), `VANTARE_SUPABASE_URL`, `VANTARE_CLERK_ISSUER`,
 `VANTARE_CLERK_CLIENT_ID`, `VANTARE_CLERK_REDIRECT`, `VANTARE_BUILD_CHANNEL`.
-Reutiliza Account/PKCE/callback/refresh/Store. Nunca secretos en el cliente.
+Reutiliza Account/PKCE/callback/refresh. Nunca secretos en el cliente.
 POST bearer OAuth, `version:1` y JSON cerrado; contrato actualizado en
 [README del servidor](../../../supabase/functions/native-admin/README.md).
+
+La [ADR 0104](../../docs/adr/0104-identidad-admin-y-sesion-en-memoria.md) fija el
+cliente propio, inactivo por defecto. Al compilar con
+`VANTARE_ADMIN_AUTH_ENABLED=true` hacen falta los valores públicos
+`VANTARE_ADMIN_CLERK_CLIENT_ID` y `VANTARE_ADMIN_CLERK_REDIRECT`, distintos del
+cliente y socket callback del Hub. Isaac debe crear Gestión con tokens JWT,
+TTL de cinco minutos, y activar también la configuración de la Edge. Sin la
+bandera se mantiene el cliente Hub existente, aunque haya valores parciales.
+
+La sesión y el perfil viven solo en memoria: hay login en cada apertura,
+también en `--diagnose-owner`, que abre el navegador y espera PKCE. El Store
+guarda únicamente metadata OAuth pública. En el primer arranque se revoca el
+refresh de la sesión anterior antes de borrar cuenta y perfil locales; al
+cambiar de cliente se conserva primero una cuarentena con fecha. Un fallo
+conserva el blob y muestra un aviso: no restaura sesión y reintenta al reiniciar.
+Cerrar sesión revoca el refresh y limpia la memoria; si falla la red lo indica.
+El access JWT ya emitido sigue vivo hasta exp. La QA usa exclusivamente Store
+y servidor loopback sintéticos, nunca el almacén de una instalación real.
 
 Cada escritura pide confirmación y espera ACK y relectura; no hay cambios
 optimistas ni reintento automático. El Owner no tiene botones de bloqueo/borrado,

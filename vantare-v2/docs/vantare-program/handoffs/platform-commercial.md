@@ -7228,6 +7228,7 @@ prueba física de pausa del simulador. Siguiente: revisar #1834 rebasado sobre
 esta integración y su CI; sin autorizar promoción ni publicación.
 <!-- /isa1827-paso6b -->
 
+
 ## VANTA-132 / #1910 — Paso 3: freno previo a Clerk (2026-11-03)
 
 - PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912),
@@ -7263,6 +7264,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   el rechazo de Gestión activa se prueba en local-auth.test.ts. #1913 se rebasa
   encima para revisión de seguridad. Reserva de native-auth.ts liberada sin
   modificar ningún _shared. Paso 4 espera R6/8; 11 pertenece a R6/12.
+
 ### VANTA-132 · Review de seguridad de #1912 (2026-11-03)
 
 - Decisión explícita del orquestador: en Hub inactivo se acepta agotar el cupo
@@ -7280,3 +7282,33 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Caracterización previa ccc35c51d: 8 fallos nuevos reproducidos antes del cambio;
   Deno 142 PASS después. SQL/E2E y métricas finales en #1910 y el PR.
 - Corrección CI de tipos del fixture (run 41691373731): init tipado RequestInit y lib dom.iterable local al test. Reproducido TS2339 con Deno 2.7.13/TS5.9.2; deno check con y sin config, fmt y lint PASS en esa versión. Producto sin cambios.
+
+
+<!-- isa1910-pasos1y2 -->
+## VANTA-132 / #1910 · Pasos 1–2 · Gestión propia y sesión en memoria (en preparación)
+
+- Rama `vantareapp/isa-1910-paso1-identidad-admin`, worktree
+  `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`.
+  Sin PR todavía; falta rebase sobre nightly con la caracterización integrada.
+- Caracterización previa: metadata del Hub aceptada en admin PASS antes del
+  cambio; paso 0 demuestra el logout sin revocación. Paso 1 prepara valores
+  públicos compilados para cliente/callback propios, inactivos por defecto.
+- Decisión confirmada del orquestador: sesión/perfil solo en memoria; primer
+  arranque revoca el refresh antiguo antes de borrar. Fallo o daño conservan
+  blob/cuarentena, bloquean restauración, muestran aviso y reintentan al reiniciar.
+  La migración conserva todas las cuarentenas pendientes de revocación.
+- Tests exclusivamente con Store y HTTP sintéticos: dos modos, revocación
+  correcta/fallida, blob dañado, login/refresh/logout en memoria y diagnóstico
+  interactivo. Gates finales todavía pendientes; no se declara PASS de entrega.
+- ADR 0104 registra el límite aprobado: el access JWT vive hasta exp; Isaac
+  creará Gestión con JWT y TTL de cinco minutos al activarlo. Sin jti, registro
+  de revocación, schema ni dependencia nueva. La configuración pública existente
+  de autenticación permite reutilizar el verificador sin editar `_shared`.
+- #1911 rebasado y publicado con HEAD `b050ecac8bf02a09e34673a1bf5fa91fe852d60a`
+  sobre nightly `6a461ccf0`, conservando R6; Deno 88 y SQL 71 PASS, native idéntico
+  al aprobado. #1912 espera su integración para rebase definitivo.
+- Sin Store real, secretos, producción, billing/licencias, configuración SaaS,
+  despliegue, merge del worker ni release. Harness medium heredado; sin delegación.
+<!-- /isa1910-pasos1y2 -->
+
+

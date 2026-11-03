@@ -11,6 +11,7 @@ from commercial_checkout_terminal import run_terminal_checkout_race
 from commercial_migration_lock import run_migration_lock_regression
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
+from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -182,6 +183,7 @@ $$;
     'testing_center_report_submission_keys','testing_center_report_events')
    order by c.relname"""
   legacy_acl_before=None
+  admin_owner_previous=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
@@ -241,6 +243,8 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==ADMIN_OWNER_STEM:
+    admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -621,6 +625,8 @@ $$;
   suites += ['native_admin_effects_review.test.sql']
   suites += ['native_admin_effects_review_rollback.test.sql']
   suites += ['native_admin_effects_r2.test.sql']
+  if admin_owner_previous is not None:
+   suites += ['native_admin_owner_authority.test.sql']
   if args.admin_owner_only:
    suites=['native_admin_owner_authority.test.sql']
   elif args.admin_effects_only:
@@ -635,7 +641,10 @@ $$;
    (OUT/(name+'.log')).write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
+  if admin_owner_previous is not None and not args.baseline:
+   run_admin_owner_regressions(run,conn,OUT,BIN,ENV,admin_owner_previous)
   if args.admin_owner_only:
+   assert admin_owner_previous is not None, 'owner migration was not applied'
    print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
    raise SystemExit(0)
   if not args.baseline:

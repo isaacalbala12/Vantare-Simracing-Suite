@@ -1332,3 +1332,28 @@ fn discovery_prefers_the_root_executable_over_nested_copies() {
     );
     assert_eq!(found.app("motec").expect("MoTeC").executable, Some(primary));
 }
+
+#[test]
+fn step9_production_does_not_read_wails() {
+    if let Some(root) = std::env::var_os("VANTARE_STEP9_CHILD_ROOT") {
+        let root = PathBuf::from(root);
+        let store = Store::load_production(root.join("launcher.json")).unwrap();
+        assert_eq!(store.document.profiles.iter().map(|profile| profile.id.as_str()).collect::<Vec<_>>(), ["creator", "pro"]);
+        assert!(store.document.wails_import.is_none());
+        assert_eq!(fs::read(root.join("configs/app-settings.json")).unwrap(), b"{");
+        return;
+    }
+    let tree = Tree::new();
+    tree.file("configs/app-settings.json", b"{");
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "tests::step9_production_does_not_read_wails", "--nocapture"])
+        .current_dir(&tree.0)
+        .env("VANTARE_STEP9_CHILD_ROOT", &tree.0)
+        .env("VANTARE_NATIVE_DATA_ROOT", &tree.0)
+        .env("LOCALAPPDATA", &tree.0)
+        .env("APPDATA", &tree.0)
+        .env_remove("VANTARE_BETA_ROOT")
+        .output().unwrap();
+    assert!(String::from_utf8_lossy(&output.stdout).contains("running 1 test"));
+    assert!(output.status.success(), "{}{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+}

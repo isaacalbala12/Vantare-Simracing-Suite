@@ -455,6 +455,19 @@ impl super::Hub {
 mod tests {
     use super::*;
     #[test]
+    fn step9_installer_file_cannot_create_a_new_usage_decision() {
+        let path = std::env::temp_dir().join(format!("vantare-step9-{}", vantare_services::random_id().unwrap()));
+        std::fs::create_dir_all(&path).unwrap();
+        let original = br#"{"version":1,"usage":true,"explicit":true}"#;
+        std::fs::write(path.join("installer-analytics-consent.json"), original).unwrap();
+        let store = Store::load(&path).unwrap();
+        assert_eq!(store.value, Privacy::default());
+        assert!(!path.join(PRIVACY_FILE).exists());
+        assert_eq!(std::fs::read(path.join("installer-analytics-consent.json")).unwrap(), original);
+        std::fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn settings_retry_sends_the_pending_intent_instead_of_inverting_an_old_ack() {
         crate::shell::onboarding::interaction_tests::with_hub(|hub, cx| {
             let file = crate::document::tests::File::new();

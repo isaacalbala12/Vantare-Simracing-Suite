@@ -1,4 +1,5 @@
 import { executeMail, type MailDeps, validateMail } from "./mail.ts";
+import { createLocalOAuthVerifier } from "./local-auth.ts";
 import { cleanupDeletedObjects } from "../clerk-webhook/index.ts";
 import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
@@ -40,6 +41,13 @@ const statuses = [
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
+  adminAuth?: { enabled: boolean; clientId: string };
+  verifyLocal?: ReturnType<typeof createLocalOAuthVerifier>;
+  gateRpc?: {
+    rpc: (
+      name: "native_admin_gate",
+    ) => PromiseLike<{ data: unknown; error: unknown }>;
+  };
   gate?: () => Promise<boolean>;
   mail?: MailDeps;
   mailExecute?: (
@@ -187,8 +195,10 @@ export function validateAdminRequest(
   return { action, params };
 }
 
-async function gate(): Promise<boolean> {
-  const { data, error } = await getSupabaseAdmin().rpc("native_admin_gate");
+export async function gate(
+  rpc: NonNullable<AdminDeps["gateRpc"]> = getSupabaseAdmin(),
+): Promise<boolean> {
+  const { data, error } = await rpc.rpc("native_admin_gate");
   if (error || typeof data !== "boolean") {
     throw new NativeError(503, "bridge_unavailable");
   }
@@ -416,14 +426,41 @@ export async function handleNativeAdmin(
     }
     const { action, params } = validateAdminRequest(parsed.value);
     timingAction = action;
-    if (!(await timed("global_budget", () => (deps.gate ?? gate)()))) {
+    const adminAuth = deps.adminAuth ?? {
+      enabled: Deno.env.get("CLERK_ADMIN_AUTH_ENABLED") === "true",
+      clientId: Deno.env.get("CLERK_ADMIN_CLIENT_ID") ?? "",
+    };
+    let oauthDeps = deps;
+    if (adminAuth.enabled) {
+      const config = nativeConfig(deps);
+      if (
+        !adminAuth.clientId || /\s/.test(adminAuth.clientId) ||
+        adminAuth.clientId.length > 256 ||
+        adminAuth.clientId === config.clientId
+      ) throw new NativeError(503, "bridge_unavailable");
+      oauthDeps = {
+        ...deps,
+        config: { ...config, clientId: adminAuth.clientId },
+      };
+      await timed(
+        "verify_local",
+        () =>
+          (deps.verifyLocal ?? createLocalOAuthVerifier())(token, oauthDeps),
+      );
+    }
+    if (
+      !(await timed(
+        "global_budget",
+        () => (deps.gate ?? (() => gate(deps.gateRpc)))(),
+      ))
+    ) {
       throw new NativeError(429, "rate_limited");
     }
     let identity;
     try {
       identity = await timed(
         "verify_oauth",
-        () => verifyNativeOAuth(token, deps),
+        () => verifyNativeOAuth(token, oauthDeps),
       );
     } catch (error) {
       if (error instanceof NativeError && error.status === 403) {
@@ -790,4 +827,7 @@ export async function handleNativeAdmin(
   }
 }
 
-if (import.meta.main) Deno.serve((request) => handleNativeAdmin(request));
+if (import.meta.main) {
+  const verifyLocal = createLocalOAuthVerifier();
+  Deno.serve((request) => handleNativeAdmin(request, { verifyLocal }));
+}

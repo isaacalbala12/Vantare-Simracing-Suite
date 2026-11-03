@@ -15,8 +15,8 @@ begin
  insert into private.native_admin_gate_rate as budget(singleton,window_start,requests)
  values(true,date_trunc('minute',statement_timestamp()),1)
  on conflict(singleton) do update set
-  window_start=excluded.window_start,
-  requests=case when budget.window_start=excluded.window_start
+  window_start=greatest(budget.window_start,excluded.window_start),
+  requests=case when budget.window_start>=excluded.window_start
    then least(budget.requests+1,121) else 1 end
  returning requests into used;
  return used<=120;

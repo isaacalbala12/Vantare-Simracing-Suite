@@ -5,13 +5,35 @@ bloqueada: 403. JSON cerrado de 8 KiB, bearer limitado, solo POST, `no-store`,
 presupuesto persistente de 60 peticiones/minuto por actor. El cliente no recibe
 secretos ni tiene acceso directo a tablas. No se crea Owner automáticamente.
 
-VANTA-132 / #1910, paso 3: tras validar el cuerpo y antes de llamar a Clerk,
-`native_admin_gate()` reserva una petición en un cupo global de **120/minuto**.
-Incluye correo y peticiones con bearer inválido; no guarda identidad ni token.
-Agotado: 429 sin llamadas a Clerk. Fallo del cupo: 503 sin continuar.
-También afecta al owner; esperar a la siguiente ventana de minuto. No existe
-excepción de emergencia por token ni una ruta SQL automatizada para saltarlo.
-El cupo por owner de 60/minuto sigue aplicándose después de autenticar.
+VANTA-132 / #1910, paso 3, revisión del orquestador:
+
+- **Gestión inactiva (por defecto)**: mientras `CLERK_ADMIN_AUTH_ENABLED` no sea
+  exactamente `true`, sigue el cliente del Hub y su introspección opaca. El
+  contador global de 120/minuto precede a Clerk como red de seguridad. No cambia
+  el login actual ni se infiere activación por tener un ID configurado.
+- **Gestión activa**: exige `CLERK_ADMIN_CLIENT_ID` distinto del Hub. Solo JWT
+  OAuth RS256, tipo `at+jwt`/`application/at+jwt`, firma JWKS, issuer exacto,
+  `client_id`, audiencia o `azp` del cliente configurado, y `exp`/`nbf` válidos.
+  No acepta JWT de sesión, del Hub ni tokens opacos. La firma se comprueba ANTES
+  del contador y de la introspección: basura o firma falsa → 401, sin gastar
+  cupo ni llamadas de la API de Clerk. La introspección posterior conserva la
+  comprobación remota de revocación y el owner sigue decidiéndose en SQL.
+
+JWKS del issuer configurado: caché privada del handler 5 minutos, una carga
+concurrente, máximo 64 KiB/20 claves y backoff de 15 segundos si falla. Un `kid`
+desconocido no fuerza recarga; una rotación puede requerir esperar al vencimiento
+de esa caché. No se usa el issuer ni una URL de claves enviados por el token.
+Crear el cliente Gestión con **tokens JWT**, comprobar sus claims y activar
+configuración/cliente Rust corresponde exclusivamente a Isaac; aquí queda
+inactivo. [Formato OAuth de Clerk](https://clerk.com/changelog/2026-01-08-jwt-oauth-access-tokens)
+y [verificación](https://clerk.com/docs/guides/configure/auth-strategies/oauth/verify-oauth-tokens).
+
+`native_admin_gate()` reserva una petición en un cupo global de **120/minuto**,
+sin guardar identidad ni token. Agotado: 429; fallo RPC/no booleano: 503 sin
+continuar. Su ventana nunca retrocede, incluso con transacciones bloqueadas.
+El cupo por owner de 60/minuto sigue después de autenticar. Un token válido
+puede agotar la red global; mientras Gestión esté inactiva también puede hacerlo
+un token basura. El cierre de ese abuso requiere activar el modo JWT.
 El mismo patrón en native-license queda pendiente del recorrido R3 (#1827);
 este cambio no modifica licencias ni billing.
 
@@ -20,6 +42,25 @@ Preparación para Isaac, sin ejecutar aquí: aplicar
 Para retirar: restaurar primero la Edge anterior y después ejecutar
 `supabase/rollbacks/20261103152000_isa_1910_admin_gate.down.sql`.
 Solo se pierde el contador efímero; ninguna cuenta, auditoría o permiso cambia.
+
+### Emergencia: reset manual del contador (solo Isaac)
+
+Si se necesita recuperar acceso, desde el editor SQL como propietario de la
+base y con autorización de Isaac, inspeccionar primero el contador y ejecutar:
+
+```sql
+select window_start,requests from private.native_admin_gate_rate;
+begin;
+lock table private.native_admin_gate_rate in exclusive mode;
+delete from private.native_admin_gate_rate where singleton=true;
+commit;
+```
+
+La próxima petición reserva el primero de los 120 huecos. El lock serializa el
+reset con peticiones en vuelo. Solo borra la fila efímera; no toca usuarios ni
+permisos. No hay RPC pública para resetear ni excepción por token. Verificar
+después el contador y el acceso del owner. No se ejecutó este procedimiento
+contra ningún proyecto real.
 
 Aplicar las migraciones existentes y las de gestión `20261014010000_native_admin_r1.sql` y
 `20261015010000_native_admin_review_r3.sql`, `20261015120000_native_admin_final_decision_r4.sql`

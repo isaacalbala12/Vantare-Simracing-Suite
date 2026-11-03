@@ -7230,31 +7230,36 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 ## VANTA-132 / #1910 — Paso 3: freno previo a Clerk (2026-11-03)
 
-- Rama `vantareapp/isa-1910-paso3-freno-clerk`, worktree
-  `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly
-  `ef47c16ad3dc0343798094e50d36676c1898d282`. PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912), código `106a63c31`; HEAD/CI vigentes en #1910.
-  Project Vantare / area:plataforma; Plane En curso.
-- Medición: producción +43/−0 (con rollback), tests +180/−0, docs +47/−0.
-- Caracterización ANTES del cambio: commit `3735502a2`, cuatro casos PASS
-  (Hub-owner, basura, no-owner, owner caducado). Expectativa nueva RED 4/4,
-  luego GREEN. Cupo agotado: 429 y cero llamadas a Clerk/resolve/acciones.
-- SQL: cupo global 120/minuto, upsert atómico de una fila sin identidad/token,
-  contador saturado en 121, permisos exclusivos del backend y RLS. Un fallo
-  del cupo corta con 503. Owner mantiene además su cupo posterior de 60/minuto.
-  Misma barrera para correo; cuerpo inválido no consume cupo.
-- Deno 91 PASS, typecheck/fmt/lint PASS. Los ocho tests del paso 0 también pasan
-  contra esta Edge mediante copia temporal eliminada, sin merge local.
-  PostgreSQL 16.15 local: 29 suites / 909 pgTAP PASS, incluidos gate 10 y
-  rollback/reaplicación 4. Carreras existentes: 130 rutas / 772 checks PASS;
-  borrado Clerk/aliases 4 escenarios / 40 checks PASS. Servidor detenido.
-- Evidencia: `D:/VantareServer/evidence/isa-1910-paso3`. Calidad 468 huellas PASS.
-  Rust/lifecycle/telemetría omitidos: ningún archivo nativo modificado en este paso.
-  Revisión de privilegios y bloqueo con las skills Supabase/Postgres.
-- Antes de cualquier despliegue de Isaac: migración primero, Edge después.
-  Retirada: Edge anterior primero y rollback SQL después. No se ejecutó ninguna
-  acción remota. El cupo puede bloquear también al owner hasta el siguiente minuto.
-- No se modificó _shared/clerk-webhook, billing ni licencias; el mismo patrón
-  para native-license queda señalado en R3 #1827. Paso 1 sigue esperando el
-  aviso de coordinación; 4 depende de R6/8 y 11 pertenece a R6/12.
-  Próximo: review de los PR de pasos 0/3, verificar CI y continuar 1/2 tras
-  coordinación. Sin merge, despliegue, cambio SaaS ni release.
+- PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912),
+  rama `vantareapp/isa-1910-paso3-freno-clerk`, worktree
+  `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly `ef47c16ad`.
+  HEAD/CI vigentes en #1910. Project Vantare / area:plataforma; Plane En curso.
+- Review del orquestador: mantener el Hub opaco mientras Gestión no esté activa.
+  `CLERK_ADMIN_AUTH_ENABLED=true` exige su cliente distinto, JWT OAuth RS256,
+  issuer/client_id/aud o azp/exp/nbf y JWKS válido ANTES de contador/Clerk.
+  Caché del handler 5 min, carga compartida, backoff 15 s, 64 KiB/20 claves;
+  desconocer kid no fuerza recarga. Introspección posterior conserva revocación.
+  Sin dependencias nuevas ni cambios en _shared. Activación reservada a Isaac.
+- Caracterización previa `3735502a2`: cuatro casos PASS; expectativas nuevas
+  RED 4/4 antes del primer cambio. Modo JWT: RED 11 antes de implementar.
+  Deno final 123 PASS (dos modos, firma real, cache, no-owner/caducado,
+  RPC real con true/false/no-booleano/error); typecheck/fmt/lint PASS.
+- Edge→SQL local 2/2 PASS: firma real, gate, resolve, owner y acción SQL reales;
+  JWKS/Clerk son dobles. Tras 200 tokens basura/falsificados/Hub/opacos, contador
+  1→1 y Clerk sin llamadas nuevas; el owner válido vuelve a pasar, 1→2.
+  El modo legado conserva introspección opaca y contador, como pidió el orquestador.
+- PostgreSQL 16.15 local: 29 suites / 909 pgTAP PASS (gate 10, rollback/up 4).
+  Carrera real RED: waiter antiguo regalaba cupo (contador 120→1). GREEN:
+  greatest y comparación monotónica conservan ventana, 120→121, denegado.
+  Carreras existentes 130 rutas / 772 checks y borrado/aliases 4 / 40 PASS.
+  Servidores detenidos; evidencia `D:/VantareServer/evidence/isa-1910-paso3`.
+- README incluye emergencia SQL de reset para Isaac y orden migración→Edge /
+  retirada Edge→rollback. No se ejecutó nada contra proyectos reales. El modo
+  legado conserva el riesgo de agotar el cupo con basura hasta activar Gestión.
+- Calidad 468 huellas PASS. Rust/lifecycle/telemetría no aplican a este paso.
+  Sin producción, cambios SaaS, merge ni release; billing/licencias intactos.
+- Próximo: rebase sobre nightly después de integrar #1911 por el orquestador,
+  renombrar las caracterizaciones P2 para distinguir legado de riesgo cerrado
+  en modo JWT, verificar CI y continuar 1/2. _shared/native-auth.ts está reservado
+  para el paso 1; cualquier otro _shared necesita aviso y espera. 4 espera R6/8;
+  11 pertenece a R6/12.

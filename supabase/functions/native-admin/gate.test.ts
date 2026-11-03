@@ -135,3 +135,45 @@ Deno.test("R10 mail actions use the same pre-Clerk global gate", async () => {
   );
   assert(response.status === 429);
 });
+
+for (
+  const [data, error, status] of [
+    [true, null, 200],
+    [false, null, 429],
+    [null, null, 503],
+    ["true", null, 503],
+    [1, null, 503],
+    [true, { message: "fixture failure" }, 503],
+  ] as const
+) {
+  Deno.test(`R10 real gate RPC boundary: ${JSON.stringify(data)} / ${status}`, async () => {
+    let rpc = 0, clerk = 0;
+    const response = await handleNativeAdmin(
+      request({ version: 1, action: "get_rollout" }),
+      {
+        ...authDeps(),
+        adminAuth: { enabled: false, clientId: "" },
+        gateRpc: {
+          rpc: (name) => {
+            assert(name === "native_admin_gate");
+            rpc++;
+            return Promise.resolve({ data, error });
+          },
+        },
+        fetch: (url, init) => {
+          clerk++;
+          return authDeps().fetch!(url, init);
+        },
+        resolve: () => Promise.resolve(account),
+        begin: () => Promise.resolve(true),
+        execute: () => Promise.resolve({}),
+        environment: "sandbox",
+      },
+    );
+    assert(response.status === status && rpc === 1);
+    assert(clerk === (status === 200 ? 2 : 0));
+    if (status === 503) {
+      assert((await response.json()).error === "bridge_unavailable");
+    }
+  });
+}

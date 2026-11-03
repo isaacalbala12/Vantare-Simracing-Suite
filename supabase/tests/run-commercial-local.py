@@ -25,6 +25,7 @@ parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
+parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -52,6 +53,7 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
+if args.admin_reports_only: args.admin_effects_only=True
 legacy_writers_enabled=(not args.baseline and not args.admin_effects_only and
                         not args.upgrade and not any(
                          value for name,value in vars(args).items() if name.startswith('before_')))
@@ -930,6 +932,10 @@ $$;
    suites += ['native_admin_owner_authority.test.sql']
   if args.admin_owner_only:
    suites=['native_admin_owner_authority.test.sql','commercial_testing_identity.test.sql']
+  if args.admin_reports_only:
+   guard=run('psql',*conn,'-c',"select to_json(encode(tgargs,'escape')) from pg_trigger where tgrelid='public.admin_audit_log'::regclass and tgname='a_account_write_barrier'")
+   (OUT/'admin-audit-guard.json').write_text(guard,encoding='utf-8')
+   suites=['native_admin_report_root.test.sql','native_admin_effects_r2.test.sql']
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:

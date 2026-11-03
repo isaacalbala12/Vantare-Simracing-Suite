@@ -5174,6 +5174,40 @@ Los efectos externos nuevos siguen limitados a sandbox. Falta revisión del
 orquestador. La decisión anual queda cerrada el 15/10/2026. No hay activación en producción.
 Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).
 
+## VANTA-132 / #1910 — Paso 0: caracterización de admin (2026-11-03)
+
+Issue: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1910.
+Project Vantare, area:plataforma; Plane En curso verificado. Base origin/nightly
+`6a461ccf0f26ce58f22fbfdaff9a530d538622be` (rebase tras #1900/#1901), rama
+`vantareapp/isa-1910-paso0-caracterizacion`, worktree
+`D:/VantareServer/worktrees/isa-1910-paso0`. PR draft [#1911](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1911), código `689eda930`; HEAD/CI vigentes en la issue.
+
+- Medición: producción +0/−0, tests/tooling +374/−0; docs y SHA finales en #1910.
+- Solo tests: OAuth del Hub aceptado como owner, bearer basura antes de cupo,
+  coste de Clerk/resolve para no-owner y owner caducado, tres errores SQL como
+  503 y desbloqueo Clerk previo a fallo SQL. Deno: 8 nuevos / 88 totales PASS,
+  con typecheck y sin permiso de red; lint PASS.
+- PostgreSQL 16.15 local, socket Unix privado, todas las migraciones: 58 checks
+  existentes + 13 nuevos PASS. Owner vivo/caducado, protección de destino,
+  membresía owner escrita por set_tester y huellas de 12 funciones vivas.
+  `policy_version=2` no puede existir: CHECK 23514, sin relajar el schema.
+  Borrado caracterizado por la entrada vigente prepare_account_deletion.
+- Nuevo test Rust de Command::Logout con sesión sintética y listener local:
+  comprueba que no hay HTTP. Fmt, Nextest admin completo, check all-targets y
+  Clippy -D warnings y lifecycle 25/25 PASS. Telemetría no aplica:
+  no cambia runtime/domain/ipc/testdata.
+  No se ha abierto el almacén real. Harness medium heredado; sin subagentes.
+- Runner SQL local reproducible: run-admin-characterization-local.py --pg-bin
+  <PostgreSQL/bin> --output <evidencia>, como usuario sin privilegios.
+  La batería comercial incluye el nuevo SQL para CI LF/CRLF. Evidencia local:
+  WSL /tmp/admin-1910-evidence; su servidor ya está parado.
+- Reserva de _shared/native-auth.ts para paso 1 confirmada por el orquestador.
+  No hay cambios en _shared/clerk-webhook, billing ni licencias. Paso 4 espera
+  R6 paso 8; paso 11 pertenece a R6 paso 12. Review inicial aprobada; siguiente: CI del rebase e integración del orquestador.
+  Pasos 1/2 en preparación; cliente admin inactivo hasta configuración de Isaac.
+  Rebase conserva ambas listas del runner (caracterización + canal de R6).
+  Sin producción, despliegue, cambio externo de configuración, merge ni release.
+
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
 
 Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture

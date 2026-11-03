@@ -1,16 +1,16 @@
 # Handoff vivo — Telemetry Core
 
 Última actualización: 2026-11-03 · VANTA-129 / [#1868](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1868).
-El historial, decisiones y logs de los cortes anteriores se conservan completos
-[en nightly@9d4982e29](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/9d4982e290c3538d8bd2980c3f23c2d8b76b4183/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md),
-incluidas las investigaciones de Imola, #1638/#1750 y los handoffs previos.
-Es referencia histórica; la situación operativa de este archivo es la siguiente.
+Historial y evidencia completos de los cortes anteriores
+[en nightly@71a12cc09](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/71a12cc092c7aeee2b76ec357936471e6bee1043/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md).
 
 ## Estado vigente
 
-VANTA-129 **Por revisar**: pasos **0–3, 5, 6 y 9 integrados**; paso 4 en
-[PR draft #1895](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1895)
-contra nightly, sin integrar. Después quedan 7, 8 y 10.
+VANTA-129 **Por revisar**: pasos **0–6 y 9 integrados**; paso 7 en el
+[PR draft #1898](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1898)
+contra nightly, validado localmente. Quedan 8 y 10. #1895 integrado por el orquestador en 71a12cc09, CI 5/5 SUCCESS
+verificada y Sonnet MERGE comunicado. CI remota del paso 7 sin resultado final
+verificado en este corte; la revisión externa corresponde al orquestador.
 Plane es el tablero; GitHub/Project Vantare registra código y PRs.
 Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 
@@ -24,74 +24,66 @@ Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 | 9, #1889 | cc5af8de149b7f9156130417fe1dc3545ee4fec7 | 5/5 SUCCESS verificado; DeepSeek MERGE comunicado |
 | 6, #1891 | 7e92e1a9e52d57db17263234ec62efc5774794cb | 5/5 SUCCESS verificado; DeepSeek MERGE comunicado |
 
-Código `ffc1fae4d74ff52dd71fa2bf42fe3e8181f2739a`; árbol nativo
-`a0ff32f6c0735fcae5236d88ce5f4c6487e40269`.
-Rama `vantareapp/isa-1868-paso4-fixtures-v11`, worktree
-`D:/VantareServer/worktrees/isa-1868-paso4`, base origin/nightly `7e92e1a9e`.
-No se han fusionado ramas, promocionado canales o publicado releases desde el worker.
+| 4, #1895 | 71a12cc092c7aeee2b76ec357936471e6bee1043 | 5/5 SUCCESS verificado; Sonnet MERGE comunicado |
+
+Rama `vantareapp/isa-1868-paso7-host`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso7`, base origin/nightly `71a12cc09`.
+Caracterización previa en `37a92f016`: 1.106 unitarios PASS, 12 skips; telemetría
+34 PASS, un skip. El cambio del host se aplica después de los unitarios; el
+replay de telemetría ya compilado termina sin cambiar código runtime.
 
 ## Corte actual y verificación
 
-Paso 4: migradas 102 fixtures UI v10 (797 fotos). Dos archivos ya v11 (seis
-fotos) son controles. Solo cambia versión y siete campos de timing Unavailable;
-Snapshot == antes/propuesta/aplicar/volver a leer, 803 fotos. La inversión de
-los parches recupera los bytes exactos de los 104 archivos. El alias de fixtures
-se retira; los datos internos usan lectura estricta y los documentos externos
-conservan lectura guardada v7–v10. El documento v7 real conserva nombre histórico
-saved-v8.snapshot.json y bytes; se añade una copia v10 real con SHA y valores.
-80 pins activos de retirement se revisan conservando source_sha256 e historia;
-las otras 388 entradas son idénticas. Ningún golden, corpus, PNG de referencia
-ni baseline histórico se regenera; verify.py permanece intacto.
+Paso 7: campaña y layout comparten recepción, entidades y ventanas por monitor.
+La campaña crea un Layout en memoria, conserva posiciones, tipos, preferencias,
+opacidad y proyección de cada foto; solo el documento guardado instala recarga,
+bandeja, calendario y uso local. LiveWidget retiene Instance completa para no
+buscar filtros y geometría repetidamente. Render y uso comparten visibility().
+Se retiran run_with_rights, pipe_feed, pipe_feed_requested y open_screens.
+La demanda completa de Workshop al guardar conserva su saludo legado con None.
+La cola flume sigue acotada a cuatro; no cambia la política de muestras.
+La campaña hereda la retención de entidades por ID del layout incluso fuera
+de un monitor; no se crean ventanas allí. Las cifras previas del host retirado
+no son una medición de rendimiento del host nuevo.
 
-Caracterización previa de producto/datos: d1386dac7 y 8ebe041a8; 724 unitarios,
-34 telemetría, Snapshot == de 803 fotos y 208 capturas anteriores PASS. El caso
-LMU quedó en rojo (Paused en vez de Stale) antes de la guarda mínima. Ahora una
-firma conocida incompatible no confirma pausa bajo el ID anterior y hacen falta
-los dos avances habituales para adoptar ID nuevo. Unavailable literal se prueba
-en Scope y retención/confirmación del Core. Diseño externo alineado con
-Scope::of(Source, &State), diff y hashes guardados; Journal conserva SessionChanged.
+P3 de #1895: los tests aíslan kind y session_number al confirmar pausa, y prueban
+la salida observable Stale frente al control Paused. El migrador de fixtures
+se conserva fuera del repo en la evidencia y deja de entrar en --all-targets.
 
-Validación local del árbol nativo a0ff32f6c0735fcae5236d88ce5f4c6487e40269:
-- Fmt, check y Clippy habitual de domain/ipc/runtime/ui/hub PASS, juntos por
-  compilar.ps1; ejemplo QA con parity-capture compila.
-- Nextest completo: 1.922/1.922 PASS, 19 skips, run
-  8e9800c4-919c-41aa-b752-61b79ae8990c. Incluye telemetría 34 PASS (#1498),
-  ACC experimental 198,958 s, goldens/corpus existentes intactos.
-- Lifecycle con procesos reales: 25/25 PASS, overlays normal y QA. Target privado
-  del worktree D:/VantareServer/worktrees/isa-1868-paso4/vantare-v2/native/target/gates;
-  cola liberada al terminar; sin copiar cachés.
-- 208 comparaciones de captura, 19 familias y ambos Looks: 200 PNG byteidénticos;
-  ocho delta-trace difieren en dos píxeles de S1, máximo premultiplicado 1,1255.
-  Cero píxeles fuera del umbral canónico 8 / máximo 4 %, sin máscaras. Se conserva
-  también la sonda estricta a cero (ocho diferencias) y el lote repetido idéntico
-  16/16 al posterior. No se atribuye una causa interna ni se cambian tolerancias.
-  13 lotes por fase, una ventana fuera de pantalla por proceso, sin foco/omisiones.
-  Revisión visual de standings, pedals, input-telemetry, fuel-strategy y delta-trace.
-- Integridad y quality: 468/468 PASS. Reservas VANTA-130 verificadas por diff;
-  app.rs solo cambia llamadas de tests, con prefijo productivo idéntico a la base.
+P2 de #1895: repetido una vez el lote «antes» completo de 16 trabajos desde la
+fuente anterior congelada 8ebe041a8. Las ocho delta-trace 017–020 coinciden byte
+a byte con el «después» original y las otras ocho con ambos originales. La
+variación de dos píxeles se reproduce en la base anterior: no demuestra un
+cambio visual del paso 4. El binario original no estaba archivado; se ha
+reconstruido su fuente exacta y registrado toolchain y hash del nuevo binario.
+No se atribuye una causa interna al rasterizador. Originales preservados.
 
-Incidencias conservadas en la evidencia, sin ocultar fallos: el primer intento
-omitió el binario storage, después compilado con DuckDB oficial. El test nuevo
-esperaba Version; los documentos históricos reales se rechazan antes por señales
-ausentes (Protocol). Corregida esa expectativa en ffc1fae4d; lectores live y guard
-de versión son idénticos a la base y las aserciones sintéticas existentes siguen.
-Una tanda dio 1.919/1.922 y tres timeouts de servicios sin diff: pasan en los
-binarios anterior/actual, en Nextest filtrado y en la repetición completa, sin
-cambiar plazos/aserciones. Causa no aislada; mantener seguimiento en #1561.
-Clippy QA adicional conserva 17 avisos preexistentes de Hub (#1648). DeepSeek
-opcional no arrancó por Insufficient account funds; diff revisado directamente.
-NumPy no está disponible: PNG idéntico se prueba por bytes y el resto con GDI+
-BGRA8 premultiplicado, equivalente para el umbral vigente; no se instala nada.
-
-El orquestador acepta ambos ajustes de #1891: ignorar calidad de metadatos en
-Scope y reiniciar trackers al cambiar fuente. CI real 5/5 SUCCESS verificada;
-DeepSeek MERGE comunicado tras integrar 7e92e1a9e.
-Detalles completos del paso 6 [en el handoff integrado](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/7e92e1a9e52d57db17263234ec62efc5774794cb/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md).
-Evidencia de este corte: D:/VantareServer/evidence/isa-1868-paso4, incluidos
-validation.json, pixel-parity-canonical.json, la sonda estricta, parches e inversión.
-CI de este corte: al publicar, cuatro checks SUCCESS y el gate bloqueante en
-curso en efba6053b. [Estado vivo de los checks](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1895/checks);
-la issue registra HEAD y la última verificación remota. No se afirma 5/5 aún.
+Verificación local del código b7b49f25946112ceb831d5080fad325f7b1a9201,
+árbol nativo 521ffdf283345d1b884b487c1d6ac5f29833b8b9:
+- Fmt, check y Clippy -D warnings PASS: domain/ipc/runtime/ui juntos por cola,
+  --all-targets, target privado native/target/gates y jobs 2 del entorno.
+- Nextest CI 1.303/1.303 PASS, 15 skips; incluye telemetría 34/34 (#1498),
+  corpus LMU/ACC y replay hasta los widgets. ACC completo 196,955 s.
+- Lifecycle 25/25 PASS con procesos reales y overlays normal/QA. Capturador QA
+  compila; cola cedida antes del contraste adicional del renderer anterior.
+- 208 capturas nuevas: 200 PNG byteidénticos a las referencias aceptadas del
+  paso 4; ocho delta-trace con uno o tres píxeles distintos, x=76/y=51–53,
+  máximo premultiplicado 1,20. Cero píxeles sobre el umbral canónico 8 / 4 %,
+  sin cambiar tolerancias. Se conserva también el resultado estricto a cero.
+  La compilación intermedia se conserva como diagnóstico. El ejecutable final
+  produce 208/208 PNG byteidénticos a las referencias, sin usar tolerancias;
+  el lote crítico 16/16 también coincide con el renderer previo al host
+  reconstruido desde 37a92f016. No persisten diferencias en la entrega final.
+- Recuento físico de producción +255/−236 (neto +19), tests +111/−2 y
+  tooling −105, separado de docs. No logra la reducción estimada: conservar
+  los servicios del documento solo en el modo guardado necesita configuración
+  y condiciones explícitas, además de construir el layout de campaña.
+Integridad y quality: 468/468 PASS. No se regeneran goldens ni corpus.
+Evidencia actual: `D:/VantareServer/evidence/isa-1868-paso7`, incluidos
+before-repeat.md, comparaciones PNG, logs previos y migrate-fixtures.rs archivado.
+El comando final del script previo se llama before-capture-build por historia,
+pero compila el host nuevo: no se presenta como binario previo al rework.
+No se han usado subagentes: OpenCode sin saldo y DeepSeek expresamente excluido.
 
 ## Contratos y límites que se conservan
 
@@ -112,15 +104,14 @@ la issue registra HEAD y la última verificación remota. No se afirma 5/5 aún.
 
 ## Coordinación y siguiente acción
 
-VANTA-130 paso 8A reserva ui/layout (lector, normalización y persistencia,
-incluido default_path), hub/document, ipc/session_alerts y la lectura opcional
-de reducedMotion en el host. Se mantienen las reservas anteriores de raíz de
-datos, workshop/state, carga/avisos/diagnóstico de hub/shell, files::future_version
-y texto CAS de ipc/files. Las reservas nuevas tampoco se tocan; en app.rs solo
-cambian llamadas de tests, con el prefijo productivo idéntico al de la base.
-Este corte solo cambia lectores de fixtures de UI/Studio fuera de esas zonas;
-no cambia installer, packaging ni las rutas reservadas.
+VANTA-130 paso 8A reserva ui/layout (lector, normalización, persistencia y
+default_path), hub/document, ipc/session_alerts y lectura opcional de
+reducedMotion en el host. Se mantienen las reservas de raíz de datos,
+workshop/state, carga/avisos/diagnóstico de hub/shell, files::future_version y
+texto CAS de ipc/files. No se modifican esos archivos o líneas, ni installer,
+packaging o hub/installation. La llamada MotionPolicy::apply_layout permanece
+idéntica en el host compartido.
 
-Paso 4 publicado para revisión; comprobar la CI final y recoger la revisión del
-orquestador. Después quedan 7, 8 y 10, coordinando las reservas vigentes.
-Sin merge, release ni promoción por el worker.
+Revisar #1898 y su CI, e integrar mediante el orquestador; después 8 y 10,
+cada uno desde origin/nightly actualizado y worktree propio. La integración,
+las promociones y releases corresponden al orquestador.

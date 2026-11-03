@@ -36,7 +36,9 @@ DO $fixture$ BEGIN
       ON CONFLICT (id) DO NOTHING;
     INSERT INTO public.account_identities(issuer,subject,account_id)
       SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
-      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+      FROM public.profiles where id in
+        ('00000000-0000-4000-8000-000000000324','00000000-0000-4000-8000-000000000325')
+      ON CONFLICT (issuer,subject) DO NOTHING;
   END IF;
 END $fixture$;
 

@@ -22,7 +22,7 @@ pub struct OAuthBuild {
 
 impl BuildConfig {
     pub fn load() -> Self {
-        Self {
+        let config = Self {
             supabase: option_env!("VANTARE_SUPABASE_URL").and_then(|value| remote_url(value).ok()),
             anon_key: option_env!("VANTARE_SUPABASE_ANON_KEY").filter(|s| !s.is_empty()),
             license_keys: option_env!("VANTARE_LICENSE_PUBLIC_KEYS").filter(|s| !s.is_empty()),
@@ -32,7 +32,10 @@ impl BuildConfig {
                 option_env!("VANTARE_CLERK_CLIENT_ID"),
                 option_env!("VANTARE_CLERK_REDIRECT"),
             ),
-        }
+        };
+        #[cfg(feature = "qa-e2e")]
+        let config = crate::qa::configure(config);
+        config
     }
 
     /// Solo activa cuenta con issuer, client ID y redirect públicos válidos.
@@ -43,9 +46,13 @@ impl BuildConfig {
     /// El puente de datos es independiente de native-license. Ausencia o
     /// configuración inválida deja disponibles los borradores locales.
     pub fn data_bridge(&self) -> Option<crate::bridge::Config> {
+        #[cfg(feature = "qa-e2e")]
+        return crate::qa::bridge();
+        #[cfg(not(feature = "qa-e2e"))]
         self.data_bridge_url(option_env!("VANTARE_ACCOUNT_BRIDGE_URL"))
     }
 
+    #[cfg(any(test, not(feature = "qa-e2e")))]
     fn data_bridge_url(&self, authorize: Option<&str>) -> Option<crate::bridge::Config> {
         let config = crate::bridge::Config {
             authorize: remote_url(authorize?).ok()?,
@@ -85,6 +92,10 @@ impl OAuthBuild {
 }
 
 pub fn remote_url(text: &str) -> Result<Url> {
+    #[cfg(feature = "qa-e2e")]
+    if text.starts_with("http:") {
+        return crate::qa::endpoint(text);
+    }
     let url = Url::parse(text).map_err(|_| Error::Unconfigured)?;
     if url.scheme() != "https"
         || url.host_str().is_none()

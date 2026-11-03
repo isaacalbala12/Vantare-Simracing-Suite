@@ -12,6 +12,7 @@ use crate::{
 };
 use std::io::Write;
 use std::path::{Path, PathBuf};
+#[cfg(not(feature = "qa-e2e"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 mod mail;
 #[cfg(all(test, windows))]
@@ -1206,6 +1207,11 @@ pub(crate) fn report_error(error: Error) -> String {
 }
 
 pub fn now() -> Result<u64> {
+    #[cfg(feature = "qa-e2e")]
+    return vantare_ipc::qa::wall_ms()
+        .map(|ms| ms / 1000)
+        .map_err(|_| Error::Clock);
+    #[cfg(not(feature = "qa-e2e"))]
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())

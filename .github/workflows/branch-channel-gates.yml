@@ -397,6 +397,13 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: ./setup-duckdb.ps1
 
+      - name: Verify release package excludes QA feature and symbols
+        if: needs.policy.outputs.native != 'false'
+        working-directory: ${{ env.VANTARE_DIR }}
+        run: |
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "$env:RUNNER_TEMP/qa-exclusion-target"
+          if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
+
       - name: Native format and blocking gates
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native

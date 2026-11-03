@@ -23,6 +23,7 @@ if ($MyInvocation.InvocationName -eq '.' -and -not $NativeLibrary) { throw 'NATI
 if ($NativeLibrary -and $MyInvocation.InvocationName -ne '.') { throw 'NATIVE_LIBRARY_REQUIRES_DOT_SOURCE' }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 
@@ -1294,6 +1295,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
+        Assert-NativeDistributionFeatures @($metadata.resolve.nodes | ForEach-Object { $_.features })
         $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cnotin @('vantare-admin', 'vantare-installer') } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
         Assert-NativeBuildInventory $bins
         $installerBins = @($metadata.packages | Where-Object name -CEQ 'vantare-installer' | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
@@ -1305,6 +1307,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses')) | Out-Null
     foreach ($bin in (Get-NativeBins $CandidateChannel)) {
         $source = Join-Path $metadata.target_directory ('x86_64-pc-windows-msvc/' + $Profile.ToLowerInvariant() + "/$bin.exe")
+        Assert-NativeDistributionBinary $source
         Assert-NativeStaticCrt $source $dumpbin
         $probe=Invoke-NativeProcess -Executable $source -Arguments @('--version')
         $embedded=$probe.Stdout.TrimEnd([char[]]"`r`n")

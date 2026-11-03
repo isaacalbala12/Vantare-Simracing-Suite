@@ -87,6 +87,12 @@ fn run() -> vantare_services::Result<()> {
 }
 
 fn main() -> ExitCode {
+    #[cfg(feature = "qa-e2e")]
+    match vantare_ipc::qa::startup() {
+        Ok(true) => return ExitCode::SUCCESS,
+        Err(_) => return ExitCode::FAILURE,
+        Ok(false) => {}
+    }
     if product::print_version() {
         return ExitCode::SUCCESS;
     }

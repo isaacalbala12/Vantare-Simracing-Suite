@@ -7448,3 +7448,27 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   comprobaciones PASS, seis carreras reales PASS, E2E 6/6 PASS. Check/lint/fmt,
   Python y diff PASS. Rollback/reaplicación incluidos; instancia local detenida.
   Evidencia review-r2 dentro de isa-1910-paso5b. CI del HEAD nuevo pendiente.
+
+## VANTA-126 / #1916 — vía QA E2E, implementación aislada
+
+- Encargo del orquestador tras la revisión parcial #1915; diseño comunicado
+  antes de código y registrado en [#1916](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1916).
+  Project Vantare / area:licencias. Plane sigue Por testear, sin cambio de estado.
+- Base `origin/nightly@ddebd895a388e7600eba87eea39b8be31a84cf7c`, rama
+  `vantareapp/isa-1916-qa-e2e-licencias`; checkout, targets y datos bajo
+  `D:/VantareServer/qa/licencias-e2e`. Sin cuentas ni instalación reales.
+- Feature opt-in qa-e2e en runtime/services/ipc: raíz con marcador, endpoints
+  sólo loopback, reloj compartido, replay de fixture y conductor real de
+  supervisor/helper/núcleo. PKCE usa copiar enlace y el IdP local; no hay
+  sesiones prefabricadas ni excepciones a Ed25519/binding/ACK.
+- Control de distribución en curso: grafo de features y marcador de los EXE
+  copiados al paquete; gate distribution/CI construye el paquete release real
+  y rechaza como control negativo los tres EXE QA.
+- Primeros builds QA compilan; Deno valida el servidor de test con config
+  propia dom.iterable. Arranque local en depuración: sockets Unix demasiado
+  largos resueltos con TCP exclusivamente; warm-up de import dinámico sigue CI.
+  Aún no hay PASA E2E ni gates completos acreditados. Logs de intentos en
+  `D:/VantareServer/evidence/licencias-e2e/isa-1916` y raíces e2e-1916-*.
+- Siguiente: ejecutar diez escenarios, corregir sólo tooling QA si falla,
+  registrar bugs de producto sin arreglarlos y completar exclusión release,
+  regresiones sin feature, telemetría y lifecycle. Sin merge/release/promoción.

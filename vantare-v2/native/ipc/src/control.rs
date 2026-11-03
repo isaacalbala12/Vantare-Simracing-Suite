@@ -1,6 +1,7 @@
 //! Plano de derechos: JSON acotado, distinto de adquisición, sin tokens.
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
+#[cfg(not(feature = "qa-e2e"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const VERSION: u32 = 7;
@@ -275,6 +276,9 @@ pub fn pipe_name(photo: &str) -> String {
     format!("{photo}-rights")
 }
 pub fn wall_ms() -> io::Result<u64> {
+    #[cfg(feature = "qa-e2e")]
+    return crate::qa::wall_ms();
+    #[cfg(not(feature = "qa-e2e"))]
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .ok()
@@ -513,6 +517,13 @@ impl Feed {
             .spawn(move || {
                 let mut cursor = (0, 0);
                 while !cancel.is_set() {
+                    #[cfg(feature = "qa-e2e")]
+                    if !crate::qa::tick().is_ok_and(|tick| tick.feed) {
+                        if cancel.wait(std::time::Duration::from_millis(20)) {
+                            break;
+                        }
+                        continue;
+                    }
                     let result = request_cancelled(&link, Command::Read, &cancel);
                     if let Ok(mut slot) = target.lock() {
                         *slot = feed_observation(

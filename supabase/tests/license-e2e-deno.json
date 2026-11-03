@@ -1,0 +1,5 @@
+{
+  "extends": "../functions/deno.json",
+  "lock": "../functions/deno.lock",
+  "compilerOptions": { "lib": ["deno.ns", "deno.unstable", "dom", "dom.iterable"] }
+}

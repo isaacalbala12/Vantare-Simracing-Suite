@@ -354,4 +354,6 @@ mod tests {
     }
 }
 
+#[cfg(feature = "qa-e2e")]
+pub mod qa;
 pub mod session_alerts;

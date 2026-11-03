@@ -30,6 +30,8 @@ mod child_shutdown;
 mod installed;
 #[cfg(windows)]
 mod restart;
+#[cfg(all(windows, feature = "qa-e2e"))]
+mod qa_e2e;
 mod session;
 mod supervisor;
 #[cfg(test)]
@@ -593,6 +595,22 @@ fn signal_stop(instance: &str) -> io::Result<()> {
 }
 
 fn main() -> ExitCode {
+    #[cfg(feature = "qa-e2e")]
+    match vantare_ipc::qa::startup() {
+        Ok(true) => return ExitCode::SUCCESS,
+        Err(_) => return ExitCode::FAILURE,
+        Ok(false) => {}
+    }
+    #[cfg(all(windows, feature = "qa-e2e"))]
+    if env::args().nth(1).as_deref() == Some("--qa-e2e") {
+        return qa_e2e::run().map_or_else(
+            |error| {
+                log(error);
+                ExitCode::FAILURE
+            },
+            |()| ExitCode::SUCCESS,
+        );
+    }
     if product::print_version() {
         return ExitCode::SUCCESS;
     }

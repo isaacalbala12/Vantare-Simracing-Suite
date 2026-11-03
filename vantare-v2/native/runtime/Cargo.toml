@@ -8,6 +8,7 @@ publish.workspace = true
 [features]
 # Ablaciones de diagnóstico opt-in; nunca en builds de producto/distribución.
 bench = []
+qa-e2e = ["vantare-services/qa-e2e", "vantare-ipc/qa-e2e"]
 # Consultas de CPU/reloj y marcas de fotos para diagnóstico local; no altera IPC.
 paint-stats = []
 installer-qa = ["vantare-installer/test-installer"] # Isolated matrix build only.

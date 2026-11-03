@@ -158,6 +158,7 @@ console.log(
   JSON.stringify({
     jwks,
     tokens,
+    qaPrivateJwk: Deno.args.includes("--qa-e2e") ? testPrivateJwk : undefined,
     serviceToken: await testToken({
       role: "service_role",
       aud: "vantare-native-data",

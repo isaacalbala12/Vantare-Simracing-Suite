@@ -104,6 +104,13 @@ recepción) más `State`, con las capacidades que declara el adaptador. El núcl
 fusiona mediante `runtime::core::merge_validated` (validación, saneado,
 derivaciones y numeración; recibe los trackers de combustible/delta/stint/
 tendencia; la frescura la vigila `Core`); ver `domain/src/adapter.rs`.
+`domain::Scope` identifica fuente (simulador y live/replay), `session.id` y
+coche del jugador. Core lo usa para retención en pausa y confirmación de
+situación; las derivaciones con memoria también lo usan y reinician al cambiar
+la fuente. El adaptador debe emitir un SessionId nuevo si cambia un valor
+conocido de circuito o tipo; ausencia/calidad de metadatos no son otra sesión.
+Época e hidratación del pipe conservan su Boundary propio. Journal conserva
+la semántica de sus eventos; no se redefine SessionChanged por cambiar coche.
 Los widgets consumen las proyecciones puras de domain y pintan sus ViewModels.
 La unificación de Standings, Relative, Delta y Fuel a una proyección/estado
 por widget con N Looks está integrada (#1531); ambos pintores comparten Board y Motion.

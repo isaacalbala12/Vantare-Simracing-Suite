@@ -17,6 +17,10 @@
 //! `Core`, que publica una revisión más con lo actual degradado a obsoleto.
 //! Una `epoch` nueva la fija el núcleo al (re)inicializarse; un cambio de
 //! `session.id` sin cambio de época es una sesión nueva del mismo productor.
+//! El adaptador debe emitir un `SessionId` nuevo cuando cambien los valores
+//! conocidos de circuito o tipo de sesión. La ausencia temporal o el cambio
+//! de calidad de esos metadatos no crean otra sesión. `Scope` usa fuente,
+//! `session.id` y coche del jugador; el núcleo no rededuce esa identidad.
 
 use std::time::Duration;
 

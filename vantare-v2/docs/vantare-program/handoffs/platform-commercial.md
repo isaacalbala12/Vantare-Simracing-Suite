@@ -7285,11 +7285,11 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 
 <!-- isa1910-pasos1y2 -->
-## VANTA-132 / #1910 · Pasos 1–2 · Gestión propia y sesión en memoria (en preparación)
+## VANTA-132 / #1910 · Pasos 1–2 · Gestión propia y sesión en memoria · PR draft #1913
 
 - Rama `vantareapp/isa-1910-paso1-identidad-admin`, worktree
-  `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`, rebasada sobre `6a461ccf0`.
-  PR draft en preparación contra nightly; depende de #1911 y #1912 para completar los pasos 0–3. Falta incorporar #1911 cuando lo integre el orquestador.
+  `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`, rebasada sobre #1912 `11cdd561c` y nightly `51797395b`.
+  PR draft [#1913](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1913) contra nightly, apilado sobre #1912 por instrucción del orquestador; #1911 integrado como 70b2f2753. HEAD/CI vigentes en #1910.
 - Caracterización previa: metadata del Hub aceptada en admin PASS antes del
   cambio; paso 0 demuestra el logout sin revocación. Paso 1 prepara valores
   públicos compilados para cliente/callback propios, inactivos por defecto.
@@ -7299,14 +7299,12 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   La migración conserva todas las cuarentenas pendientes de revocación.
 - Tests exclusivamente con Store y HTTP sintéticos: dos modos, revocación
   correcta/fallida, blob dañado, login/refresh/logout en memoria y diagnóstico
-  interactivo. Focales 18/18 y Nextest completo admin/services 313/313 PASS (5 omisiones preexistentes), check all-targets y Clippy -D warnings PASS; lifecycle 25/25 PASS. Fmt/diff y calidad 468 huellas PASS. Todo Rust por compilar.ps1, target propio y raíces QA. Árbol native idéntico tras rebase: 78216d6d6f4bdb742541e0233c8252aa3ffb3607; no se repiten gates ya aprobados. Telemetría no aplica: sin cambios runtime/domain/ipc/testdata.
+  interactivo. Focales 18/18 y Nextest completo admin/services 314/314 PASS (5 omisiones preexistentes), check all-targets y Clippy -D warnings PASS; lifecycle 25/25 PASS. Fmt/diff y calidad 468 huellas PASS. Todo Rust por compilar.ps1, target propio y raíces QA. Primer rebase conserva árbol native 78216d6d6f4bdb742541e0233c8252aa3ffb3607. Rebase sobre #1912 conserva todo el código nativo de producción; añade/adapta únicamente el test heredado de logout a revocación HTTP. Nextest 314/314 y Clippy -D warnings de esa base repetidos PASS; lifecycle 25/25 no se repite porque su código y dependencias no cambiaron. Telemetría no aplica: sin cambios runtime/domain/ipc/testdata.
 - ADR 0104 registra el límite aprobado: el access JWT vive hasta exp; Isaac
   creará Gestión con JWT y TTL de cinco minutos al activarlo. Sin jti, registro
   de revocación, schema ni dependencia nueva. La configuración pública existente
   de autenticación permite reutilizar el verificador sin editar `_shared`; reserva de native-auth.ts devuelta al orquestador. Se conservan los fallos iniciales de fixture/Clippy corregidos y el intento interrumpido en la evidencia D:/VantareServer/evidence/isa-1910-paso1.
-- #1911 rebasado y publicado con HEAD `b050ecac8bf02a09e34673a1bf5fa91fe852d60a`
-  sobre nightly `6a461ccf0`, conservando R6; Deno 88 y SQL 71 PASS, native idéntico
-  al aprobado. #1912 espera su integración para rebase definitivo.
+- #1911 integrado por el orquestador; #1912 rebasado sobre nightly 51797395b, HEAD 11cdd561c, Deno 131 y SQL 34 suites / 978 pgTAP PASS. Sin merge del worker.
 - Sin Store real, secretos, producción, billing/licencias, configuración SaaS,
   despliegue, merge del worker ni release. Harness medium heredado; sin delegación.
 <!-- /isa1910-pasos1y2 -->

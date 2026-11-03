@@ -63,3 +63,77 @@ Deno.test("EXIF and progressive JPEG headers are refused before accepting a dige
   progressive[frame + 1] = 0xc2;
   await denied(progressive, "format");
 });
+
+function withSegment(marker: number, payload: number[]): Uint8Array {
+  const segment = [0xff, marker, 0, payload.length + 2, ...payload];
+  return Uint8Array.from([
+    ...jpeg.subarray(0, 2),
+    ...segment,
+    ...jpeg.subarray(2),
+  ]);
+}
+
+function markerOffset(marker: number): number {
+  const offset = jpeg.findIndex((byte, index) =>
+    byte === 0xff && jpeg[index + 1] === marker
+  );
+  if (offset < 0) throw new Error("fixture marker absent");
+  return offset;
+}
+
+Deno.test("scan rejects early EOI, appended bytes and markers outside stuffed/RST sequence", async () => {
+  const earlyEoi = Uint8Array.from([
+    ...jpeg.subarray(0, -2),
+    0xff,
+    0xd9,
+    0,
+    0xff,
+    0xd9,
+  ]);
+  await denied(earlyEoi, "format", { ...manifest, byteSize: earlyEoi.length });
+  const appended = Uint8Array.from([...jpeg, 0, 0xff, 0xd9]);
+  await denied(appended, "format", { ...manifest, byteSize: appended.length });
+  const scan = markerOffset(0xda);
+  const scanLength = (jpeg[scan + 2] << 8) | jpeg[scan + 3];
+  const inserted = Uint8Array.from([
+    ...jpeg.subarray(0, scan + 2 + scanLength),
+    0xff,
+    0xe0,
+    ...jpeg.subarray(scan + 2 + scanLength),
+  ]);
+  await denied(inserted, "format", { ...manifest, byteSize: inserted.length });
+});
+
+Deno.test("header accepts only bounded JFIF, DQT, DHT, SOF0 and SOS", async () => {
+  for (const marker of [0xfe, 0xe2, 0xef, 0xdd]) {
+    const bytes = withSegment(marker, [1, 2]);
+    await denied(bytes, "format", { ...manifest, byteSize: bytes.length });
+  }
+  const fakeJfif = withSegment(0xe0, [1, 2, 3]);
+  await denied(fakeJfif, "format", { ...manifest, byteSize: fakeJfif.length });
+  const noDqt = jpeg.subarray(0, markerOffset(0xdb));
+  await denied(noDqt, "format", { ...manifest, byteSize: noDqt.length });
+  const noSos = Uint8Array.from([
+    ...jpeg.subarray(0, markerOffset(0xda)),
+    0xff,
+    0xd9,
+  ]);
+  await denied(noSos, "format", { ...manifest, byteSize: noSos.length });
+});
+
+Deno.test("SOF components, segment lengths and one MiB limit are enforced", async () => {
+  const sof = markerOffset(0xc0);
+  const wrongComponents = new Uint8Array(jpeg);
+  wrongComponents[sof + 9] = 4;
+  await denied(wrongComponents, "format");
+  const malformedLength = new Uint8Array(jpeg);
+  malformedLength[markerOffset(0xdb) + 3] = 1;
+  await denied(malformedLength, "format");
+  const tooLarge = Uint8Array.from([
+    ...jpeg.subarray(0, -2),
+    ...new Uint8Array(1024 * 1024),
+    0xff,
+    0xd9,
+  ]);
+  await denied(tooLarge, "size", { ...manifest, byteSize: tooLarge.length });
+});

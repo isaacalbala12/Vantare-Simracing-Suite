@@ -571,6 +571,22 @@ Deno.test("F8: production submit dispatches the full package only to the service
   });
 });
 
+Deno.test("candidate membership denial maps to 403 for simple and structured reports", async () => {
+  for (const body of [payload, structured]) {
+    const f = fixture();
+    const response = await handleTestingReportSubmit(
+      request("verified-account", undefined, body),
+      {
+        ...f.deps,
+        submit: undefined,
+        rpc: () => Promise.resolve({ error: { code: "42501" } }),
+      },
+    );
+    eq(response.status, 403);
+    eq(f.reports.length, 0);
+  }
+});
+
 Deno.test({
   name:
     "F8: exact native preview crosses Edge admission unchanged for the combined SQL runner",

@@ -332,6 +332,8 @@ export async function handleTestingReportSubmit(
             ? 429
             : error.code === "28000"
             ? 401
+            : error.code === "42501"
+            ? 403
             : error.code === "23505"
             ? 409
             : error.code === "22023"

@@ -10,7 +10,7 @@ select ok(not (select rolsuper or rolcreatedb or rolcreaterole or rolreplication
 select ok(not has_schema_privilege('vantare_roadmap_publisher','public','CREATE'),'no schema creation');
 select ok(not exists(select 1 from pg_auth_members m join pg_roles r on r.oid=m.member where r.rolname='vantare_roadmap_publisher'),'no memberships');
 select ok(not has_function_privilege('vantare_roadmap_publisher','public.race_schedule_my_draft()','EXECUTE'),'private draft inaccessible');
-select ok(has_function_privilege('authenticated','public.race_schedule_my_draft()','EXECUTE'),'authenticated draft retained');
+select ok(not has_function_privilege('authenticated','public.race_schedule_my_draft()','EXECUTE'),'authenticated draft RPC closed after step 3');
 select ok(not has_function_privilege('vantare_roadmap_publisher','public.is_active_owner(uuid)','EXECUTE'),'owner oracle closed');
 create schema internal_ci_fixture;
 revoke all on schema internal_ci_fixture from public;

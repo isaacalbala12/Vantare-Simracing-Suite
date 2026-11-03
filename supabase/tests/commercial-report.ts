@@ -2,8 +2,8 @@
 import {
   handleTestingReportSubmit,
   type SubmitDeps,
-  verifyBridgeAccount,
 } from "../functions/testing-report-submit/index.ts";
+import { verifyBridgeAccount } from "../functions/_shared/native-data.ts";
 import { NativeError } from "../functions/_shared/native-auth.ts";
 import payload from "./fixtures/native-hub-report.json" with { type: "json" };
 import { fixtureRpc } from "./fixtures/postgrest-rpc.ts";

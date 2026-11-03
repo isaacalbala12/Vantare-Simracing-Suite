@@ -522,6 +522,13 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         .expect("confirmed");
     assert!(load_draft(&store).expect("draft cleared").is_none());
     assert_confirmed_images_cleared(&store);
+    assert_upload_routes(&server, &payload["reporte"]["p_idempotency_key"]);
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "report-images", &[]);
+}
+
+fn assert_upload_routes(server: &Server, key: &serde_json::Value) {
     for route in [
         "/functions/v1/native-account-authorize",
         "/rest/v1/rpc/testing_center_prepare_screenshot_batch",
@@ -543,12 +550,9 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
             );
         }
         if route == "/functions/v1/testing-report-submit" {
-            assert_batch_request(&sent, &payload["reporte"]["p_idempotency_key"]);
+            assert_batch_request(&sent, key);
         }
     }
-    server.finish();
-    drop(store);
-    crate::cleanup_store(&root, "report-images", &[]);
 }
 
 fn assert_batch_request(sent: &str, key: &serde_json::Value) {

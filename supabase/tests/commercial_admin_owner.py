@@ -15,6 +15,15 @@ SNAPSHOT = """select json_object_agg(p.oid::regprocedure::text,json_build_object
 def run_admin_owner_regressions(run, conn, out, bin_dir, env, previous):
     root = Path(__file__).resolve().parents[2]
     current = json.loads(run('psql', *conn, '-c', SNAPSHOT))
+    probe = out/'owner-missing-authority.sql'
+    probe.write_text("begin; alter function private.is_owner(uuid) rename to is_owner_unavailable_1910;\n\\ir "+
+        str(root/'supabase/migrations'/(STEM+'.sql'))+'\n',encoding='utf-8')
+    missing = subprocess.run([str(bin_dir/'psql'),*conn,'-f',str(probe)],
+        env=env,text=True,capture_output=True,timeout=20)
+    (out/'owner-missing-authority.log').write_text(missing.stdout+missing.stderr,encoding='utf-8')
+    assert missing.returncode and '55000' in missing.stderr and 'native_admin_requires_r6_owner_authority' in missing.stderr
+    assert json.loads(run('psql',*conn,'-c',SNAPSHOT)) == current, 'missing dependency changed admin bodies/ACLs'
+    assert run('psql',*conn,'-c',"select to_regprocedure('private.is_owner(uuid)') is not null").strip()=='t'
     run('psql', *conn, '-f', root/'supabase/rollbacks'/(STEM+'.down.sql'))
     assert json.loads(run('psql', *conn, '-c', SNAPSHOT)) == previous, 'owner rollback must restore both exact bodies and ACLs'
     run('psql', *conn, '-f', root/'supabase/migrations'/(STEM+'.sql'))
@@ -102,6 +111,9 @@ def run_admin_owner_regressions(run, conn, out, bin_dir, env, previous):
               where application_name='vanta132-public-review-waiter' and wait_event_type='Lock'
               and cardinality(pg_blocking_pids(pid))>0)""").strip()
             if blocked == 't': break
+            if waiter.poll() is not None:
+                stdout,stderr=waiter.communicate()
+                raise AssertionError(('public review exited before target lock',stdout,stderr))
             assert time.monotonic() < deadline, 'public review did not reach target lock'
             time.sleep(.02)  # Readiness is the lock, not elapsed time.
         _, error = holder.communicate(authorize+' commit;\n\\q\n',timeout=12)

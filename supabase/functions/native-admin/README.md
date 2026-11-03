@@ -94,6 +94,25 @@ por día y 2 por semana UTC/cuenta. La revisión manual se identifica como `huma
 sin inventar una propuesta o confianza de modelo. La ruta pública anterior sigue
 exigiendo propuesta y Owner autenticado; no se amplían permisos EXECUTE.
 La decisión es inmutable como en #1594; un intento incompatible devuelve 409.
+
+### Autoridad de revisión · costura con R6/#1925
+
+`native_admin_require_owner` toma los mismos bloqueos de UUID y asignación,
+pero `private.is_owner(uuid)` de R6 decide la autorización. La RPC pública
+`testing_contribution_review` reutiliza ese helper, conservando su error
+`testing_owner_required`, la propuesta obligatoria y sus permisos EXECUTE.
+Un owner operativo sin membresía puede revisar; una membresía owner no autoriza
+si falta la asignación operativa o está caducada/revocada. No se escriben roles
+ni membresías. La RPC recoge actor y cuenta del informe antes de tomar filas,
+bloquea los UUID ordenados y vuelve a comprobar la cuenta del informe.
+
+Instalar primero la migración owner de R6/#1925 y después
+`20261104005000_isa_1910_admin_owner_authority.sql`, dentro del conjunto acordado
+por el orquestador. Si falta `private.is_owner`, aborta con 55000 antes de cambiar
+cuerpos. Revertir primero el `.down.sql` admin y después R6: restaura exactamente
+los dos cuerpos anteriores y conserva ACL y datos. Esta costura no completa el
+resto del paso 4 ni cambia el recorte de tablas legacy de #1924.
+
 La purga existente usa `decided_at + 90 días` para logs y telemetría.
 Arreglado exige aceptación previa y versión, y sigue consumiendo cupo. Las
 contribuciones aceptadas/rechazadas/spam/arregladas no vuelven a Recibido ni En

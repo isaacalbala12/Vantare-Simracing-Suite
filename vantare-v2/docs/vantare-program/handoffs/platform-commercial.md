@@ -7525,3 +7525,44 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Evidencia stack-rebase-40a725910 bajo evidence/licencias-e2e.
 - #1920 se mantiene aparte, apilado sobre este HEAD; su base sigue en la rama de
   #1917 hasta su merge, después nightly. HEAD/CI publicados en issues/PRs.
+## VANTA-132 · Costura de autoridad owner con R6 (2026-11-04)
+
+- Encargo del orquestador: PR pequeño aparte para testing_contribution_review
+  y native_admin_require_owner. Rama vantareapp/isa-1910-paso4-owner-review y
+  worktree D:/VantareServer/worktrees/isa-1910-paso4 desde nightly cef0ec16c.
+  #1925 leído en bbac6c70c, sin modificarlo. No se completa el resto del paso 4.
+- Caracterización bb5d68d67 antes del producto: 16 PASS/9 RED de 25 casos.
+  La RPC vieja negaba al owner operativo sin membresía y aceptaba membresía
+  antigua con asignación caducada/revocada/otro rol. Incluye no-owner, claims
+  basura, revisión real/idempotente y ACL. No se modifica ninguna membresía.
+- Helper conserva sus bloqueos y consulta private.is_owner. RPC pública delega
+  al helper manteniendo error testing_owner_required, propuesta y ACL. Recoge
+  actor/target y bloquea UUID ordenados antes de filas; verifica de nuevo el
+  dueño del informe. Test de orden 03bbbb3db antes de corregir esa entrada:
+  RED con account_write_retry_before_rows en el camino sin bloqueo previo.
+- Migración posterior al timestamp de R6, con guard de autoridad ausente y
+  rollback de los dos cuerpos. Prerequisito real: integrar R6/#1925 y esta
+  costura como conjunto coordinado; aplicar R6 primero, admin después. Revertir
+  admin antes que R6. PR propio draft a nightly desde base nightly; CI depende
+  de R6 y no se presentará como cadena verde mientras falte esa migración.
+- Validación local en copia desechable: cadena completa de esta rama más el
+  archivo real owner_unification de #1925@bbac6c70c, sin sustituir autoridad ni
+  adelantar revokes. LF/CRLF: 25/25, guard 55000 atómico, dos cuerpos/ACL exactos
+  tras down, reapply y tres carreras observadas en pg_stat_activity PASS.
+  Deno 2.7.13 94/94, incluidos Hub, basura, caducado/no-owner. Python/diff PASS.
+  Instancias detenidas. Rust/lifecycle/telemetría omitidos: ningún crate cambia.
+  Evidencia D:/VantareServer/evidence/isa-1910-paso4. Sin servicios reales.
+- #1924 queda draft sin fusionar hasta nightly con #1926 y mapping/vaciado de
+  R6/7b. HEAD documental 237552f72. Después renombrar up/down a timestamp
+  posterior a ambos, rebasar y quitar el shutdown auxiliar del replay. CI hoy
+  recorre todas las migraciones en base nueva, pero esa fixture oculta el orden
+  inválido; NO demuestra reset limpio real ni autoriza integración.
+- Guard pendiente para ese rebase: tabla reports y siete hijas legacy
+  (evidence, technical_issues, screenshot_evidence, evidence_batches,
+  report_payloads, report_submission_keys, report_events): cero filas y ningún
+  INSERT/UPDATE/DELETE/TRUNCATE efectivo para service_role, authenticated, anon,
+  PUBLIC o vantare_triage; RPC legacy sin EXECUTE para esos roles. Revokes en
+  R6, no aquí. Se mantiene el guard de ejecutor BYPASSRLS/SUPERUSER.
+- Sin cambios _shared/clerk-webhook, billing/licencias, datos R6, dependencias,
+  Store real, secretos, producción, despliegue, merge ni release. Paso 11 en R6;
+  distinguir 409 y lectura/retención siguen en paso 10.

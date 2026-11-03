@@ -27,7 +27,7 @@ parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Only admin owner authority SQL; all migrations replayed first')
-parser.add_argument('--admin-deno-bin', help='Only admin EdgeÃ¢â€ â€™SQL E2E, also accepts existing Windows Deno from WSL')
+parser.add_argument('--admin-deno-bin', help='Only admin EdgeÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
@@ -66,6 +66,7 @@ if args.qa_e2e:
  qa_output=pathlib.Path(args.output).resolve()
  if not qa_output.is_relative_to('/mnt/d/VantareServer/qa/licencias-e2e') or (qa_output/'qa-e2e-owned').read_bytes()!=b'VANTA-126 qa-e2e fixture':
   parser.error('--qa-e2e requires an owned directory under the dedicated QA root')
+admin_owner_enabled=owner_enabled
 if args.b01 and (not args.postgrest_bin or not args.deno_bin):
  parser.error('--b01 requires --postgrest-bin and --deno-bin')
 if args.b01:
@@ -187,6 +188,8 @@ $$;
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
+   # Same historical modes as the R6 authority prerequisite; full CI has none.
+   if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
    if args.before_testing_identity and 'testing_server_identity' in m.name: continue

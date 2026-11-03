@@ -1,6 +1,12 @@
 # Testing Center — piloto remoto Supabase → Linear
 
-> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
+> **Histórico, no ejecutar.** Linear fue retirado el 2026-08-20. El PR #1903 elimina las funciones y el wrapper local del piloto. El proyecto Supabase de testing podría conservar funciones desplegadas: solo Isaac las retira, junto con los secretos y el webhook, siguiendo la lista operativa de la issue #1896. Los issues actuales viven en GitHub Issues.
 
 Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
 `lbaxvpzexoferfvfkplz`. Schema completo; `testing-center-feedback` y
@@ -103,7 +109,7 @@ Configuración revisada para el primer piloto:
 `LINEAR_ORGANIZATION_ID`, el client secret, el signing secret del webhook y el
 bearer del piloto permanecen fuera del repositorio.
 
-## Orden de activación aprobado
+## Registro histórico de activación (no ejecutar)
 
 1. Crear snapshot/backup del proyecto de testing y confirmar pausa global.
 2. Verificar de forma determinista que el worktree está vinculado al proyecto
@@ -120,13 +126,7 @@ bearer del piloto permanecen fuera del repositorio.
    migraciones ajenas pendientes.
 3. Cargar secretos con `supabase secrets set --project-ref <TESTING_REF>` sin
    imprimir valores.
-4. Desplegar solo la superficie de testing con:
-
-   ```powershell
-   & .\supabase\functions\scripts\deploy-testing-center-pilot.ps1 `
-     -ProjectRef lbaxvpzexoferfvfkplz `
-     -Confirmation DEPLOY-ISA-243-TESTING-PILOT
-   ```
+4. El wrapper de despliegue del piloto fue retirado en #1903; esta instrucción ya no tiene comando ejecutable.
 
 5. Crear/activar el webhook de Linear para `Issue` y guardar su signing secret.
 6. Registrar la identidad exacta de la build sintética. Enviar desde la app un

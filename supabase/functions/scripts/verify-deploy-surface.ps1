@@ -2,8 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $functionsRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $production = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential", "native-billing-checkout", "native-billing-portal", "native-license", "native-account-authorize", "native-admin")
-$testingPilot = @("testing-center-linear-webhook", "testing-center-linear-worker")
-$allowed = $production + $testingPilot
+$allowed = $production
 $testingAutomation = @("testing-center-agent-dispatch", "testing-center-agent-callback")
 $infrastructure = @("_deprecated", "_shared", "scripts")
 $reviewCandidates = @("billing-report-promotion", "testing-report-submit", "clerk-webhook", "billing-reconcile", "mail-unsubscribe", "mail-webhook", "mail-cleanup", "native-mail-consent", "owner-alert-receiver") # Inert: not added to $allowed or deploy wrappers.

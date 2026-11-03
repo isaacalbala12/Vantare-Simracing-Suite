@@ -34,12 +34,7 @@ Deno.test("configured functions match directories and known inert functions stay
     );
   }
   for (const name of unconfigured) {
-    for (
-      const wrapper of [
-        "deploy-approved-functions.ps1",
-        "deploy-testing-center-pilot.ps1",
-      ]
-    ) {
+    for (const wrapper of ["deploy-approved-functions.ps1"]) {
       if (
         Deno.readTextFileSync(new URL(wrapper, import.meta.url)).includes(
           `"${name}"`,
@@ -55,17 +50,34 @@ Deno.test("retired feedback endpoint is absent from deploy surfaces", () => {
   const config = Deno.readTextFileSync(
     new URL("../../config.toml", import.meta.url),
   );
-  const pilot = Deno.readTextFileSync(
-    new URL("deploy-testing-center-pilot.ps1", import.meta.url),
-  );
   if (
     config.includes("[functions.testing-center-feedback]") ||
-    pilot.includes('"testing-center-feedback"') ||
     invalidDeployableDirectories([
         { name: "testing-center-feedback", isDirectory: true } as Deno.DirEntry,
       ]).length !== 1
   ) {
     throw new Error("retired feedback endpoint remains deployable");
+  }
+});
+
+Deno.test("retired Linear endpoints are absent from deploy surfaces", () => {
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  );
+  for (
+    const name of [
+      "testing-center-linear-webhook",
+      "testing-center-linear-worker",
+    ]
+  ) {
+    if (
+      config.includes(`[functions.${name}]`) ||
+      invalidDeployableDirectories([
+          { name, isDirectory: true } as Deno.DirEntry,
+        ]).length !== 1
+    ) {
+      throw new Error(`retired Linear endpoint remains deployable: ${name}`);
+    }
   }
 });
 
@@ -160,33 +172,22 @@ Deno.test("native license is guarded and deployable in isolation", () => {
   }
 });
 
-Deno.test("testing pilot functions are recognized but remain outside production wrapper", () => {
+Deno.test("retired testing pilot has no deploy wrapper or allowlist", () => {
   const entries = [
-    { name: "testing-center-linear-webhook", isDirectory: true },
-    { name: "testing-center-linear-worker", isDirectory: true },
+    { name: "testing-center-feedback", isDirectory: true },
   ] as Deno.DirEntry[];
-  if (invalidDeployableDirectories(entries).length !== 0) {
-    throw new Error("reviewed testing pilot surface was rejected");
-  }
-  const wrapper = Deno.readTextFileSync(
-    new URL("./deploy-approved-functions.ps1", import.meta.url),
-  );
-  if (wrapper.includes("testing-center-linear-worker")) {
-    throw new Error("testing pilot leaked into production deployment wrapper");
-  }
-  const pilotWrapper = Deno.readTextFileSync(
-    new URL("./deploy-testing-center-pilot.ps1", import.meta.url),
-  );
   if (
-    !pilotWrapper.includes("DEPLOY-ISA-243-TESTING-PILOT") ||
-    !pilotWrapper.includes("assert-testing-center-pilot-project.ps1") ||
-    !pilotWrapper.includes("verify-deploy-surface.ps1") ||
-    !pilotWrapper.includes('"testing-center-linear-worker"')
-  ) throw new Error("testing pilot wrapper lacks explicit guards");
-  if (/& \$guard\s+if \(\$LASTEXITCODE/.test(pilotWrapper)) {
-    throw new Error(
-      "PowerShell guard incorrectly reuses stale native exit code",
+    invalidDeployableDirectories(entries).join() !== "testing-center-feedback"
+  ) {
+    throw new Error("retired testing pilot remains deployable");
+  }
+  try {
+    Deno.statSync(
+      new URL("./deploy-testing-center-pilot.ps1", import.meta.url),
     );
+    throw new Error("retired pilot wrapper still exists");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
   }
 });
 
@@ -198,12 +199,7 @@ Deno.test("agent automation is recognized but remains absent from every deploy w
   if (invalidDeployableDirectories(entries).length !== 0) {
     throw new Error("reviewed agent automation surface was rejected");
   }
-  for (
-    const wrapper of [
-      "deploy-approved-functions.ps1",
-      "deploy-testing-center-pilot.ps1",
-    ]
-  ) {
+  for (const wrapper of ["deploy-approved-functions.ps1"]) {
     const content = Deno.readTextFileSync(new URL(wrapper, import.meta.url));
     if (
       content.includes('"testing-center-agent-dispatch"') ||

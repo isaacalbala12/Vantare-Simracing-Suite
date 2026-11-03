@@ -1,6 +1,12 @@
 # Testing Center — dispatch Codex firmado e inerte
 
-Estado: TAU-07A / ISA-234 preparado sin ejecución. No existe caller, secreto,
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
+Estado: histórico. El workflow inerte y sus tests quedaron retirados en #1903; no hay contrato Codex ejecutable en este checkout. TAU-07A / ISA-234 se preparó sin ejecución. No existe caller, secreto,
 API, trigger automático, checkout efectivo, escritura de repo, rama, commit, PR,
 deploy, merge o promoción.
 
@@ -49,10 +55,9 @@ El límite agregado de 32 KiB, paths leaf-level, contenido, duplicados y
 coherencia se validarán de nuevo en TAU-07C. El JSON Schema no sustituye ese
 decoder privilegiado.
 
-## Workflow inerte
+## Workflow inerte retirado
 
-`.github/workflows/testing-center-codex-inert.yml` solo declara
-`workflow_call`; no tiene caller y su único job usa `if: ${{ false }}`. Además:
+El workflow ya no existe. Antes de retirarlo solo declaraba `workflow_call`, no tenía caller y su único job usaba `if: ${{ false }}`. El registro histórico siguiente describe aquel archivo:
 
 - `permissions: contents: read`;
 - Linux y timeout de 15 minutos;
@@ -78,14 +83,9 @@ Fuentes verificadas el 2026-08-03:
 - [guía oficial de seguridad](https://github.com/openai/codex-action/blob/main/docs/security.md);
 - [permisos de workflows de GitHub](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions).
 
-## Reproducción
+## Reproducción histórica
 
-```powershell
-deno test --config supabase/functions/deno.json --node-modules-dir=auto `
-  --no-lock --allow-read `
-  supabase/functions/_shared/testing-center-codex-dispatch.test.ts `
-  supabase/tests/testing-center-codex-workflow-contract.test.ts
-```
+Los tests y el módulo del contrato Codex se retiraron en #1903. Este comando histórico no se ejecuta en el checkout vigente.
 
 Verificación de pins:
 

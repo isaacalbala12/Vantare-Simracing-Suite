@@ -1,5 +1,11 @@
 # Testing Center — handoff humano a Codex Cloud
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 > **Alcance de tracker:** las instrucciones de Linear de abajo son históricas
 > y no se ejecutan; Linear ya está retirado. Leer [Seguimiento vigente: GitHub Issues](../vantare-program/README.md).
 > Se preservan los contratos técnicos y de privacidad aplicables. Esta decisión

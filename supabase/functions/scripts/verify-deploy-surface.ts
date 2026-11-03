@@ -9,10 +9,6 @@ const productionFunctions = new Set([
   "native-account-authorize",
   "native-admin",
 ]);
-const testingPilotFunctions = new Set([
-  "testing-center-linear-webhook",
-  "testing-center-linear-worker",
-]);
 const testingAutomationFunctions = new Set([
   "testing-center-agent-dispatch",
   "testing-center-agent-callback",
@@ -29,7 +25,6 @@ const recognizedFunctions = new Set([
   "owner-alert-receiver", // Explicit deployment after review; no wrapper activation.
   "billing-report-promotion",
   ...productionFunctions,
-  ...testingPilotFunctions,
   ...testingAutomationFunctions,
 ]);
 const infrastructure = new Set(["_deprecated", "_shared", "scripts"]);
@@ -77,8 +72,6 @@ if (import.meta.main) {
   console.log(
     `Known deploy surfaces verified: production=[${
       [...productionFunctions].sort().join(", ")
-    }] testing-pilot=[${
-      [...testingPilotFunctions].sort().join(", ")
     }] testing-automation=[${
       [...testingAutomationFunctions].sort().join(", ")
     }]`,

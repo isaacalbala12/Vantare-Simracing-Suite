@@ -1,5 +1,11 @@
 # Testing Center — contrato Codex dry-run, sin agente
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 Estado: TAU-06B / ISA-227 implementado en rama de issue. Este corte construye
 y valida un sobre de análisis; no llama a OpenAI/Codex, no abre un checkout, no
 lee o escribe el repo, no ejecuta comandos, no crea ramas/commits/PRs y no usa

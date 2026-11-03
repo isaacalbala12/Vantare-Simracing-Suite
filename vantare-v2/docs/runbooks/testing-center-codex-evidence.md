@@ -1,5 +1,11 @@
 # Testing Center — evidencia mínima para Codex
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 Estado: TAU-06D / ISA-229 implementado como contrato puro. No hay consulta a
 Supabase, API Codex, red, endpoint, credencial, checkout o write.
 

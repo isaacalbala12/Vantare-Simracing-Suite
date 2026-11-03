@@ -98,6 +98,15 @@ def main():
                 if public.testing_report_admit_account(a,'draft_6',repeat('a',64),w)
                   or exists(select 1 from private.testing_report_admitted_keys where account_id=a and report_key='draft_6')
                 then raise exception 'sixth new report admitted'; end if;
+                update private.testing_report_admitted_keys
+                  set admitted_at=clock_timestamp()-interval '9 days'
+                  where account_id=a and report_key='draft_1';
+                perform public.testing_report_admit_account(
+                  '16100000-0000-0000-0000-000000000092','fresh-key',repeat('a',64),w);
+                if exists(select 1 from private.testing_report_admitted_keys
+                  where account_id=a and report_key='draft_1') then
+                  raise exception 'admission key outlived attempt retention';
+                end if;
               end $$;
             ''')
             denied = run('psql', *connection, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql', expected=3)

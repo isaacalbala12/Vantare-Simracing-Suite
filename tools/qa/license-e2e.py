@@ -257,8 +257,9 @@ def run_cases(checkout, bins, job, backend):
             raise AssertionError("network listener still accepts connections")
         except (urllib.error.URLError, ConnectionError):
             a.events.append({"network":"TCP listener stopped; transport disconnected without HTTP"})
-        failure=a.service("LicenseRenew")
-        assert failure["result"] == "LicenseFailure" and failure["outcome"] == "Transient"
+        # Manual transport failures deliberately use Error; only automatic failures
+        # publish the typed LicenseFailure. Neither response is a revocation.
+        assert a.service("LicenseRenew")["result"] == "Error"
         assert a.binding() == binding
         advance(a.root, phase="Live")
         a.until(lambda p: p["live"])

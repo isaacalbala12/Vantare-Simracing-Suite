@@ -1,3 +1,10 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: rebase de seguridad
+
+- #1899 integrado por Isaac en nightly 7ff084c45; PR draft #1900 rebasado sobre ese SHA. HEAD de codigo 659c1330b.
+- IP compartida: tope grueso de 60 peticiones/dia; la cuota de cuenta sigue en 5/dia y 20/semana solo tras autenticar. Test del atacante sin token y tester en la misma IP.
+- Claves de admision: purga en el borrado B03 y caducidad con la ventana de intentos. Edge convierte 28000 en 401. Runbook fija SQL antes de Edge y Edge antes de SQL al revertir.
+- Deno 24 PASS/1 omitido; PostgreSQL local: admision v2 y F1IP 28 PASS, incluidos rollback y ACL. CI del nuevo HEAD pendiente. Sin produccion, despliegue, merge propio ni release.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: CI final
 
 - PR draft #1900: el test comercial encontro la barrera de borrado de cuenta ausente en las claves de admision. Se agrego trigger y carrera real con cuenta borrada.

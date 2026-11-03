@@ -92,3 +92,29 @@ Deno.test("anonymous and changed-account bodies cannot submit v2", async () => {
     throw new Error("anonymous v2 write reached SQL");
   }
 });
+
+Deno.test("variant shapes are closed before account admission", async () => {
+  const admitted: string[] = [];
+  const deps = {
+    now: () => new Date("2026-11-03T12:00:00Z"),
+    account: () => Promise.resolve(account),
+    admit: () => {
+      admitted.push("account");
+      return Promise.resolve(true);
+    },
+    rpc: () => Promise.resolve({ error: null }),
+  };
+  for (
+    const body of [
+      { ...base, variant: "triage" },
+      { ...base, variant: "diagnostic" },
+      { ...base, context: {} },
+      { ...base, variant: "triage", context: {}, attachments: [], extra: 1 },
+    ]
+  ) {
+    if ((await handleTestingReportSubmit(request(body), deps)).status !== 400) {
+      throw new Error("variant shape accepted");
+    }
+  }
+  if (admitted.length) throw new Error("invalid variant spent account quota");
+});

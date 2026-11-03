@@ -1,3 +1,34 @@
+## VANTA-130 · 8A validado para revisión final (3-nov-2026)
+
+Rama vantareapp/isa-1869-paso8-compatibilidad; worktree
+D:/VantareServer/worktrees/isa-1869-paso8; base origin/nightly actualizado
+7e92e1a9e52d57db17263234ec62efc5774794cb. Código final
+b6713442cd51e2fb8f40baf12fc260be532603ea. PR draft a nightly pendiente de abrir.
+Lector puente layout v1/v2 y Store v2/v3, sin promover documentos actuales;
+normalización estructural en UI y movimiento explícito conservado al volver
+al puente. Espejo protegido con aviso/Diagnóstico, zoom aislado con copia .bak,
+avisos que sobreviven a navegar y reintento CAS del borrador sobre el ganador.
+
+Caracterización original 1/1 PASS antes de producción; cuatro regresiones RED y
+una cancelada por fail-fast. Final por compilar.ps1: fmt/check/Clippy/captura
+PASS; regresiones 16/16; replay aislado 1/1 y suite Hub/UI 1033/1033 PASS
+(4 slow, 11 skips, incluye replay ya hecho aparte). Lifecycle 25/25 PASS.
+Telemetría no exigida en 8A: no modifica runtime/domain/ipc/testdata. Integridad
+468 y fragmento válidos. Primera suite: faltaba CLI auxiliar de Storage; arnés
+corregido y suite completa repetida. Logs de errores anteriores conservados.
+El primer lifecycle no tenía espacio; D se recuperó externamente, sin borrados
+por este hilo. Un intento se canceló al no observar CPU; el orquestador confirmó
+saturación de E/S (151 % de tiempo de disco), no suspensión ni fallo de caché.
+El reintento sin sccache se dejó terminar y pasó. Sin excepciones ni límites
+rebajados. Windows headless y archivos reales QA; sin prueba GUI ni Linux/macOS.
+
+8B y protección por sección no se activan: mínimo tag/SHA pendiente de release
+publicada con 8A. Formatos actuales, espejo y lectura de Apariencia conservados.
+9 sigue en su rama independiente: suite 935/935 PASS, lifecycle/telemetría en cola.
+Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos
+reales por el worker. Evidencia D:/VantareServer/evidence/isa-1869/paso8 y paso9.
+Cola de 8A cedida. Plane En curso hasta terminar la entrega del 9.
+
 ## VANTA-130 · 8A autorizado; 8B espera release del puente (3-nov-2026)
 
 El orquestador aprueba los dos cortes: 8A ahora, 8B sin activar hasta publicar una

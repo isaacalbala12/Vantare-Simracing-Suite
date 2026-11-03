@@ -203,7 +203,7 @@ Paso 10 excluido (#1840); #1870/#1871/#1872/#1888 siguen sin implementar.
 
 ## Estado de ejecución
 
-Diseño aprobado, implementación 8A en rama propia y gates en curso. En 8A:
+Diseño aprobado, implementación 8A validada en rama propia; PR de revisión final. En 8A:
 lector de layout v1/v2 y Store v2/v3, sin promover documentos actuales; movimiento
 explícito de v2 tiene prioridad y sigue editable al volver al puente. Normalizar
 un v1 que ya trae los campos exclusivos de v2 lo protege, no los publica.
@@ -223,3 +223,7 @@ anterior conserva su DTO original y el resultado observado antes del cambio.
 Paso 9 en rama separada desde nightly actualizado. No hay merge, release,
 promoción, instalación ni uso de datos reales por este worker. Los resultados
 finales, PRs y SHAs se registran en #1869 y el único handoff vivo.
+
+Validación final 8A: formato/check/Clippy/captura, 16 regresiones, suite 1033,
+replay aislado 1 y lifecycle 25 PASS. Solo QA; telemetría no exigida por rutas.
+El mínimo publicado de 8B sigue pendiente; estos resultados no lo activan.

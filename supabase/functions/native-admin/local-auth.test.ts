@@ -18,6 +18,7 @@ function fixture(enabled = true, clientId = adminClient) {
   const deps: AdminDeps = {
     ...authDeps(),
     ...mode,
+    ...{ preOwner: () => Promise.resolve(account) },
     environment: "sandbox",
     fetch: (input) => {
       if (String(input).endsWith("/.well-known/jwks.json")) {
@@ -191,3 +192,53 @@ for (
     assert(calls.gate === 1 && calls.verify === 1);
   });
 }
+
+for (const role of ["non-owner", "expired-owner", "unmapped"]) {
+  Deno.test(`R10 owner preflight: ${role} cannot reach quota, Clerk or account creation`, async () => {
+    const { calls, deps } = fixture();
+    let resolved = 0;
+    const guarded = { ...deps,
+      preOwner: () => Promise.reject({ message: "native_admin_forbidden" }),
+      resolve: () => { resolved++; return Promise.resolve(account); },
+    };
+    assert((await call(await signedJwt(), guarded)).status === 403);
+    assert(calls.gate === 0 && calls.verify === 0 && calls.action === 0 && resolved === 0);
+  });
+}
+Deno.test("R10 active owner never calls account-creating resolver", async () => {
+  const { deps } = fixture();
+  let resolved = 0;
+  const response = await call(await signedJwt(), { ...deps,
+    resolve: () => { resolved++; return Promise.resolve(account); },
+  });
+  assert(response.status === 200 && resolved === 0);
+});
+for (const [offset, status] of [[-59,200],[-60,401],[-61,401]]) {
+  Deno.test(`R10 exp clock tolerance boundary ${offset}`, async () => {
+    assert((await call(await signedJwt({exp:now.getTime()/1000+offset}),fixture().deps)).status === status);
+  });
+}
+for (const [offset, status] of [[59,200],[60,200],[61,401]]) {
+  Deno.test(`R10 nbf clock tolerance boundary ${offset}`, async () => {
+    assert((await call(await signedJwt({nbf:now.getTime()/1000+offset}),fixture().deps)).status === status);
+  });
+}
+Deno.test("R10 JWKS rotation reloads once and coalesces concurrent new kids", async () => {
+  const { deps, calls } = fixture();
+  deps.verifyLocal = createLocalOAuthVerifier();
+  const originalFetch = deps.fetch!;
+  let rotated = false;
+  deps.fetch = (input, init) => {
+    if (rotated && String(input).endsWith("/.well-known/jwks.json")) {
+      calls.jwks++;
+      return Promise.resolve(Response.json({keys:[{...publicKey,kid:"rotated-fixture"}]}));
+    }
+    return originalFetch(input,init);
+  };
+  assert((await call(await signedJwt(),deps)).status === 200);
+  rotated=true;
+  const token=await signedJwt({}, {kid:"rotated-fixture"});
+  const responses=await Promise.all(Array.from({length:10},()=>call(token,deps)));
+  assert(responses.every(r=>r.status===200));
+  assert(calls.jwks===2);
+});

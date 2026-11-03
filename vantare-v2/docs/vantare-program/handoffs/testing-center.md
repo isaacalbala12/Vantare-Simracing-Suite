@@ -1,3 +1,4 @@
+- 2026-11-03 VANTA-131 paso 1: PR #1899 rebasado sobre nightly 6c83125e3 (paso 0 integrado). Se invierte la caracterizacion obsoleta de #1897: el recibo confirmado limpia imagenes. Sin merge propio ni despliegue. Gates y CI del nuevo HEAD en curso.
 ## 2026-11-03 - #1896 / VANTA-131 paso 1: contencion de capturas
 
 - PR draft #1899 contra nightly, rama vantareapp/isa-1896-paso1-capturas; base 71a12cc09, HEAD 647fe6aa2.

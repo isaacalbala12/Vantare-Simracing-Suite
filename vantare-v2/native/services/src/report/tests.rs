@@ -898,7 +898,8 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("first submit");
     assert!(first.starts_with("POST /functions/v1/testing-report-submit "));
-    let sent: serde_json::Value = serde_json::from_str(first.split("\r\n\r\n").nth(1).unwrap()).unwrap();
+    let sent: serde_json::Value =
+        serde_json::from_str(first.split("\r\n\r\n").nth(1).unwrap()).unwrap();
     assert_eq!(sent["contract_version"], "testing.report.v2");
     assert_eq!(sent["variant"], "diagnostic");
     assert_eq!(sent["idempotency_key"], expected_key);

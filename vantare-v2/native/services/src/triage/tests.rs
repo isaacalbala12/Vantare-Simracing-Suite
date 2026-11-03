@@ -224,7 +224,8 @@ fn review_r7_f8_real_preview_is_preserved_for_combined_sql_admission() {
             |system| Ok(observed_fixture(system)),
         )
         .expect("actual preview");
-    let bytes = serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("preview bytes");
+    let bytes =
+        serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("preview bytes");
     assert!(!String::from_utf8_lossy(&bytes).contains("OrdinaryPrivateTesterNote"));
     assert_eq!(preview.packet.attachments.len(), 1);
     triage
@@ -578,7 +579,8 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
         assert!(!value.contains("::1"));
         assert_eq!(value, redaction::REMOVED);
     }
-    let expected = serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
+    let expected =
+        serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
     let server=Server::start(vec![
         (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":160}).to_string()),
         (500,"{}".into()),(200,"null".into()),
@@ -653,7 +655,8 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
                 |system| Ok(observed_fixture(system)),
             )
             .expect("large valid preparation");
-        let expected = serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
+        let expected =
+            serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
         assert!(
             expected.len() <= 65536,
             "offered preview exceeds HTTP budget: {}",

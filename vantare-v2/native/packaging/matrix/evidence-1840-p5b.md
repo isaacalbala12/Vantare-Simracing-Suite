@@ -2,11 +2,11 @@
 
 Base inicial/mediciones por bloque: nightly `e8637bb68b8d8232921564acd44f1328c5024f13`, con #1883 integrado.
 Relevo rebasado sin conflictos a `9d4982e290c3538d8bd2980c3f23c2d8b76b4183`.
-Actualización de base sin conflictos a `b68a34311024ad56beac101a7e4e93e96e3fde8a`
+Actualización de base sin conflictos a `7e92e1a9e52d57db17263234ec62efc5774794cb`
 (3-nov-2026). El nuevo nightly cambió código de Hub ajeno al instalador:
 base 11875 Rust + 2305 PowerShell = 14180; árbol final 10662 Rust + 2109
 PowerShell = **12771/12800**. La diferencia de 14 líneas afecta a ambos
-extremos. Medición `lines-final-b68a34311.json` en la evidencia QA. Fuera
+extremos. Medición `lines-final-7e92e1a9e.json` en la evidencia QA. Fuera
 de producción: tests Rust +233, tests/tooling PowerShell −37, tooling QA
 Rust +318, tooling Python +5, build Rust −18, fixtures +559, CI −6 y
 documentación +487. Son categorías separadas del tope.
@@ -136,7 +136,7 @@ no se presenta ese check local como una CI Rust Linux que no existe.
 
 ## Validación
 
-Base final `b68a34311`; código de instalador `c1f754198db4f175d4c0db75c5658e3de580f438`.
+Base final `7e92e1a9e`; código de instalador `63fad3ff3`.
 Gates por `compilar.ps1`, target exclusivo
 `D:/VantareServer/targets/isa-1840-p5b`, locked/offline y jobs2, sin alterar
 la cola ni sus límites. La tanda de cierre cedió a otros workers; una espera

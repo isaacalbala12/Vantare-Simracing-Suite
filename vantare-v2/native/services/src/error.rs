@@ -76,7 +76,7 @@ impl fmt::Display for Error {
             Self::Busy => "operación en curso",
             Self::Canceled => "operación cancelada",
             Self::Uncertain => "resultado sin confirmar",
-            Self::EvidencePending => "capturas en validación: el borrador y el intento se conservan; reintenta el envío cuando el servidor termine",
+            Self::EvidencePending => "Las capturas no están disponibles todavía. Quítalas del borrador para enviar el informe sin imágenes.",
             Self::TooLarge => "datos por encima del límite",
             Self::Conflict => "conflicto de revisión",
             Self::PilotRejected => "perfil pendiente de corrección: revisa los datos y vuelve a guardar",

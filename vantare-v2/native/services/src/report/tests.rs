@@ -284,14 +284,17 @@ fn screenshot_batch(image: &screenshots::Screenshot, state: &str) -> String {
 
 #[test]
 fn screenshot_draft_is_blocked_before_any_upload() {
-    let image = screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48))
-        .expect("JPEG");
-    let server = Server::start(vec![authorization()]);
+    let image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
+    let server = Server::start_observed(vec![authorization()]);
     let (root, store) = crate::test_store("screenshot-unavailable");
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("functions/v1/native-account-authorize").expect("URL"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };
@@ -299,7 +302,9 @@ fn screenshot_draft_is_blocked_before_any_upload() {
     let request = session.request(&http, &config, &account, 100);
     let mut draft = save_draft(&store, fields()).expect("draft");
     draft.screenshots.push(image.preview.clone());
-    store.save("report-images", &vec![image.clone()]).expect("images");
+    store
+        .save("report-images", &vec![image.clone()])
+        .expect("images");
     store.save("report-draft", &draft).expect("draft");
     let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     assert!(matches!(
@@ -307,22 +312,32 @@ fn screenshot_draft_is_blocked_before_any_upload() {
         Err(Error::EvidencePending)
     ));
     assert!(load_draft(&store).expect("draft retained").is_some());
-    assert!(matches!(store.read::<Vec<screenshots::Screenshot>>("report-images"), Ok(Stored::Value(_))));
-    assert_eq!(server.finish_observed().len(), 1, "only authorization reaches HTTP");
+    assert!(matches!(
+        store.read::<Vec<screenshots::Screenshot>>("report-images"),
+        Ok(Stored::Value(_))
+    ));
+    assert_eq!(
+        server.finish_observed().len(),
+        1,
+        "only authorization reaches HTTP"
+    );
     drop(store);
     crate::cleanup_store(&root, "screenshot-unavailable", &[]);
 }
 
 #[test]
 fn pending_screenshot_attempt_cannot_be_retried() {
-    let image = screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48))
-        .expect("JPEG");
-    let server = Server::start(vec![authorization()]);
+    let image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
+    let server = Server::start_observed(vec![authorization()]);
     let (root, store) = crate::test_store("pending-screenshot-unavailable");
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("functions/v1/native-account-authorize").expect("URL"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };
@@ -331,7 +346,10 @@ fn pending_screenshot_attempt_cannot_be_retried() {
     let mut draft = save_draft(&store, fields()).expect("draft");
     draft.screenshots.push(image.preview.clone());
     store.save("report-draft", &draft).expect("draft");
-    store.save("report-images", &vec![image.clone()]).expect("images");
+    store
+        .save("report-images", &vec![image.clone()])
+        .expect("images");
+    let image_id = image.preview.id.clone();
     let attempt = Attempt {
         version: 1,
         identity: request.binding().0.clone(),
@@ -343,14 +361,97 @@ fn pending_screenshot_attempt_cannot_be_retried() {
     };
     store.save("report-attempt", &attempt).expect("attempt");
     let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
-    assert!(matches!(reports.prepare_retry(&request, "nightly"), Err(Error::EvidencePending)));
-    assert_eq!(server.finish_observed().len(), 1, "retry performs no upload");
+    assert!(matches!(
+        reports.prepare_retry(&request, "nightly"),
+        Err(Error::EvidencePending)
+    ));
+    // A consent opened by an older client cannot upload after this version starts.
+    let old_preview = reports
+        .preview(&request, attempt.clone(), true, None)
+        .expect("old preview");
+    assert!(matches!(
+        reports.send(&request, &old_preview.id, &store),
+        Err(Error::EvidencePending)
+    ));
+    assert!(matches!(
+        store
+            .fixture::<Attempt>("report-attempt")
+            .expect("terminal attempt")
+            .phase,
+        Phase::Rejected
+    ));
+    let corrected = screenshots::remove(&store, &image_id).expect("remove old image");
+    let mut other = attempt.clone();
+    other.account_id = "550e8400-e29b-41d4-a716-446655440099".into();
+    store
+        .save("report-attempt", &other)
+        .expect("other account attempt");
+    let mut foreign = Reports::restore(&store, 1_700_000_000_123).expect("restore foreign");
+    assert!(matches!(
+        foreign.prepare(&request, corrected.clone(), environment()),
+        Err(Error::Authentication)
+    ));
+    assert!(reports.prepare(&request, corrected, environment()).is_ok());
+    assert_eq!(
+        server.finish_observed().len(),
+        1,
+        "retry performs no upload"
+    );
     drop(store);
     crate::cleanup_store(&root, "pending-screenshot-unavailable", &[]);
 }
 
 #[test]
+fn restored_confirmed_report_erases_old_screenshot_bytes() {
+    let (root, store) = crate::test_store("confirmed-old-screenshot");
+    let image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(32, 32)).expect("JPEG");
+    let draft = save_draft(&store, fields()).expect("draft");
+    store
+        .save("report-images", &vec![image.clone()])
+        .expect("old images");
+    let attempt = Attempt {
+        version: 1,
+        identity: Identity {
+            issuer: "https://fixture.test/".into(),
+            subject: "user_fixture".into(),
+        },
+        account_id: "550e8400-e29b-41d4-a716-446655440000".into(),
+        payload: Submission::new(draft, environment()).expect("payload"),
+        phase: Phase::Confirmed(Receipt {
+            report_id: format!("report_{}", "a".repeat(64)),
+            report_state: "submitted".into(),
+            idempotent: false,
+            created_at: "2026-10-19T00:00:00Z".into(),
+        }),
+        images: vec![image],
+        installation: None,
+    };
+    store.save("report-attempt", &attempt).expect("old attempt");
+    store.remove("report-draft").expect("no newer draft");
+    let reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
+    assert!(reports.receipt().is_some());
+    assert!(matches!(
+        store.read::<Vec<screenshots::Screenshot>>("report-images"),
+        Ok(Stored::Missing)
+    ));
+    assert!(
+        store
+            .fixture::<Attempt>("report-attempt")
+            .expect("confirmed attempt")
+            .images
+            .is_empty()
+    );
+    drop(store);
+    crate::cleanup_store(&root, "confirmed-old-screenshot", &[]);
+}
+
+#[test]
 fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
+    if !SCREENSHOTS_AVAILABLE {
+        screenshot_draft_is_blocked_before_any_upload();
+        return;
+    }
     let image =
         screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
     let server = Server::start(vec![authorization(),
@@ -485,6 +586,11 @@ fn edge_quota_preserves_durable_report_for_manual_retry_and_legacy_routes_are_cl
         assert!(matches!(request.post(route, &()), Err(Error::Protocol)));
     }
     let draft = save_draft(&store, fields()).expect("draft");
+    let stale_image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(32, 32)).expect("JPEG");
+    store
+        .save("report-images", &vec![stale_image])
+        .expect("stale images");
     let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let preview = reports
         .prepare(&request, draft.clone(), environment())
@@ -519,6 +625,10 @@ fn edge_quota_preserves_durable_report_for_manual_retry_and_legacy_routes_are_cl
         .expect("retry request");
     assert_text_only_retry(&first, &second, &retry);
     assert!(load_draft(&store).expect("load").is_none());
+    assert!(matches!(
+        store.read::<Vec<screenshots::Screenshot>>("report-images"),
+        Ok(Stored::Missing)
+    ));
     server.finish();
     drop(store);
     crate::cleanup_store(&root, "report-edge-quota", &[]);
@@ -587,7 +697,7 @@ fn missing_tester_preserves_draft_and_submission() {
 fn screenshot_upload_rejection_retains_draft_without_attaching_report() {
     let image =
         screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
-    let server = Server::start(vec![
+    let server = Server::start_observed(vec![
         authorization(),
         (200, screenshot_batch(&image, "prepared")),
         (413, "{}".into()),
@@ -612,6 +722,22 @@ fn screenshot_upload_rejection_retains_draft_without_attaching_report() {
         .expect("images");
     store.save("report-draft", &draft).expect("draft");
     let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
+    if !SCREENSHOTS_AVAILABLE {
+        assert!(matches!(
+            reports.prepare_with_images(&request, draft, environment(), vec![image.clone()]),
+            Err(Error::EvidencePending)
+        ));
+        let corrected = screenshots::remove(&store, &image.preview.id).expect("remove old image");
+        assert!(reports.prepare(&request, corrected, environment()).is_ok());
+        assert_eq!(
+            server.finish_observed().len(),
+            1,
+            "no upload or report submission"
+        );
+        drop(store);
+        crate::cleanup_store(&root, "report-image-limit", &[]);
+        return;
+    }
     let preview = reports
         .prepare_with_images(&request, draft, environment(), vec![image])
         .expect("preview");
@@ -855,12 +981,24 @@ fn confirmed_retry_preserves_a_later_draft_and_does_not_resubmit() {
         .expect("first submit");
     let mut edited = fields();
     edited.observed_text = "Nuevo informe sin enviar".into();
-    let later_draft = save_draft(&store, edited).expect("later draft");
+    let mut later_draft = save_draft(&store, edited).expect("later draft");
+    let later_image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(32, 32)).expect("JPEG");
+    later_draft.screenshots.push(later_image.preview.clone());
+    store
+        .save("report-draft", &later_draft)
+        .expect("draft with image");
+    store
+        .save("report-images", &vec![later_image])
+        .expect("later image");
     assert_ne!(first_draft.idempotency_key, later_draft.idempotency_key);
     let retry = reports.prepare_retry(&request, "nightly").expect("retry");
     assert_eq!(retry.payload, preview.payload);
     let (receipt, draft_state) = reports.send(&request, &retry.id, &store).expect("receipt");
     assert_eq!(draft_state, DraftState::Preserved);
+    assert!(
+        matches!(store.read::<Vec<screenshots::Screenshot>>("report-images"), Ok(Stored::Value(images)) if images.len() == 1)
+    );
     assert_eq!(
         serde_json::to_value(load_draft(&store).expect("draft")).expect("json"),
         serde_json::to_value(Some(&later_draft)).expect("json")
@@ -874,6 +1012,9 @@ fn confirmed_retry_preserves_a_later_draft_and_does_not_resubmit() {
     assert_eq!(
         restored.draft_state(&store).expect("draft state"),
         DraftState::Preserved
+    );
+    assert!(
+        matches!(store.read::<Vec<screenshots::Screenshot>>("report-images"), Ok(Stored::Value(images)) if images.len() == 1)
     );
     assert_eq!(
         restored.receipt().expect("durable receipt").report_id,

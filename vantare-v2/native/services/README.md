@@ -276,6 +276,16 @@ Las imágenes completas se guardan protegidas con DPAPI, no viajan por IPC.
 IPC admite hasta 128 KiB para tres miniaturas y el JSON escapado del reporte;
 almacenamiento protegido hasta 2 MiB para tres JPEG serializados y sus miniaturas.
 
+Contención de VANTA-131, paso 1: `SCREENSHOTS_AVAILABLE=false` en IPC.
+Hub no ofrece capturas nuevas; Services rechaza preparar, enviar o reintentar
+informes con imágenes antes de subirlas o consumir cuota. Las capturas de un
+borrador anterior se pueden quitar para enviar solo texto. El aviso visible
+explica que aún no están disponibles. Tras confirmar un informe, el intento
+durable deja de guardar imágenes; `report-images` se retira cuando no pertenece
+a otro borrador. Si la retirada falla, el recibo sigue visible y la siguiente
+consulta del recibo vuelve a intentar la limpieza.
+
+Ruta conservada para reactivación en el paso 6, actualmente inactiva:
 Con imágenes: `testing_center_prepare_screenshot_batch` → INSERT JPEG en
 `storage/v1/object/testing-center-evidence/...` (`x-upsert=false`) →
 `testing_center_finalize_screenshot` → `testing_center_submit_report_with_evidence`.
@@ -287,7 +297,8 @@ validación, **no** significa ready. Si attach devuelve
 con borrador e intento conservados. Al reintentar se reutiliza manifest/key/JPEG;
 los slots ready no se vuelven a subir. Se debe desplegar un consumidor del outbox
 que valide tamaño, formato, dimensiones y hash y marque evidencia/batch ready.
-El cliente nunca concede ese estado.
+El cliente nunca concede ese estado. El reintento descrito aquí queda suspendido
+mientras la constante de contención sea `false`.
 
 El intento se protege antes de cualquier HTTP. 401, 403, 413, 5xx, desconexión,
 validación pendiente y respuesta malformada conservan borrador/intento.

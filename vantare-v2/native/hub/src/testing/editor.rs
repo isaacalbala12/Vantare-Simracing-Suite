@@ -11,6 +11,7 @@ use crate::{
     },
 };
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
+use vantare_ipc::services_protocol::report_document::SCREENSHOTS_AVAILABLE;
 
 const FIELD_HEIGHTS: [f32; 4] = [38.0, 48.0, 96.0, 48.0];
 
@@ -559,7 +560,7 @@ impl Editor {
             images = images.child(tile);
         }
         block = block.child(images);
-        if self.screenshots.len() < 3 {
+        if SCREENSHOTS_AVAILABLE && self.screenshots.len() < 3 {
             block = block.child(
                 orbit::button("report-capture", "Capturar pantalla", cx)
                     .self_start()
@@ -571,7 +572,11 @@ impl Editor {
             );
         }
         block.child(orbit::text(
-            "Monitor principal. Revisa la captura y quítala si contiene datos personales.",
+            if SCREENSHOTS_AVAILABLE {
+                "Monitor principal. Revisa la captura y quítala si contiene datos personales."
+            } else {
+                "Las capturas no están disponibles todavía. Quita las capturas anteriores para enviar el informe sin imágenes."
+            },
             11.0,
             400,
             orbit::ink_3(cx),

@@ -982,6 +982,11 @@ impl App {
                 })
             }
             Command::ReportCapture { .. } | Command::ReportRemoveScreenshot { .. } => {
+                if matches!(command, Command::ReportCapture { .. })
+                    && !crate::protocol::report_document::SCREENSHOTS_AVAILABLE
+                {
+                    return Err(Error::EvidencePending);
+                }
                 self.reports
                     .as_mut()
                     .ok_or(Error::Storage)?
@@ -1044,7 +1049,7 @@ impl App {
                     .reports
                     .as_ref()
                     .ok_or(Error::Storage)?
-                    .draft_state(store)
+                    .confirmed_state(store)
                     .unwrap_or(crate::protocol::DraftState::CleanupPending),
             });
         }

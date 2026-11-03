@@ -1,6 +1,9 @@
 //! Contrato cerrado: texto y miniaturas locales, nunca tokens/logs/diagnósticos.
 use serde::{Deserialize, Serialize};
 
+/// Temporal containment until the server validates uploaded evidence (VANTA-131).
+pub const SCREENSHOTS_AVAILABLE: bool = false;
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Fields {

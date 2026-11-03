@@ -1517,8 +1517,7 @@ fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
 }
 
 fn load_settings(options: &Options, layout_preexisted: bool) -> settings::store::Store {
-    let mut settings_store =
-        settings::store::Store::load(&options.data_dir, layout_preexisted);
+    let mut settings_store = settings::store::Store::load(&options.data_dir, layout_preexisted);
     if let Some(enabled) = settings::windows::installed_startup() {
         settings_store.value.general.startup = enabled;
     }

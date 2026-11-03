@@ -65,7 +65,7 @@ impl Default for Http {
 
 impl Http {
     #[cfg(feature = "test-support")]
-    pub(crate) fn enable_loopback_for_test(&mut self) {
+    pub fn enable_loopback_for_test(&mut self) {
         self.loopback_for_test = true;
     }
 

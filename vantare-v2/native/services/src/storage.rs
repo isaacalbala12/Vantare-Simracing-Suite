@@ -166,7 +166,11 @@ impl Store {
 
     fn load_bytes(&self, name: &str) -> Result<Zeroizing<Vec<u8>>> {
         let path = self.path(name)?;
-        let info = fs::symlink_metadata(&path).map_err(|e| {
+        self.load_path(&path)
+    }
+
+    fn load_path(&self, path: &Path) -> Result<Zeroizing<Vec<u8>>> {
+        let info = fs::symlink_metadata(path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 Error::NotFound
             } else {
@@ -208,6 +212,14 @@ impl Store {
     /// Preserve an incompatible cache beside the original with an injected date.
     /// The old bytes are never overwritten; failure to move blocks recovery.
     pub fn quarantine_dated(&self, name: &str, at_millis: u64) -> Result<()> {
+        let aside = self.move_to_quarantine(name, at_millis)?;
+        if self.trim_quarantines(name, &aside).is_err() {
+            eprintln!("license-cache-trim-incomplete");
+        }
+        Ok(())
+    }
+
+    fn move_to_quarantine(&self, name: &str, at_millis: u64) -> Result<PathBuf> {
         let path = self.path(name)?;
         let aside = self.root.join(format!(
             "{name}-{at_millis}-{}.corrupto",
@@ -217,17 +229,16 @@ impl Store {
             return Err(Error::Storage);
         }
         fs::rename(path, &aside).map_err(|_| Error::Storage)?;
-        if self.trim_quarantines(name, &aside).is_err() {
-            eprintln!("license-cache-trim-incomplete");
-        }
-        Ok(())
+        Ok(aside)
     }
 
     /// Rename a retired document without opening or decrypting its contents.
     pub fn quarantine_if_present(&self, name: &str, at_millis: u64) -> Result<bool> {
         match fs::symlink_metadata(self.path(name)?) {
             Ok(info) if info.is_file() && !info.file_type().is_symlink() => {
-                self.quarantine_dated(name, at_millis)?;
+                // Migration archives must survive until revocation, even when
+                // their number exceeds the ordinary cache quarantine cap.
+                self.move_to_quarantine(name, at_millis)?;
                 Ok(true)
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
@@ -235,9 +246,55 @@ impl Store {
         }
     }
 
+    fn retired_paths(&self, name: &str) -> Result<Vec<PathBuf>> {
+        let current = self.path(name)?;
+        let mut paths = Vec::new();
+        for entry in fs::read_dir(&self.root).map_err(|_| Error::Storage)? {
+            let entry = entry.map_err(|_| Error::Storage)?;
+            let owned = entry.path() == current
+                || entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|file| quarantine_time(name, file).is_some());
+            if owned {
+                let kind = entry.file_type().map_err(|_| Error::Storage)?;
+                if !kind.is_file() || kind.is_symlink() {
+                    return Err(Error::Storage);
+                }
+                paths.push(entry.path());
+            }
+        }
+        paths.sort();
+        Ok(paths)
+    }
+
+    /// Retire active and dated session blobs only after the caller's revocation
+    /// ACK. Damage or a failed ACK preserves that blob for the next startup.
+    pub fn retire_session<T: DeserializeOwned>(
+        &self,
+        mut revoke: impl FnMut(T) -> Result<()>,
+    ) -> Result<()> {
+        for path in self.retired_paths("account")? {
+            let bytes = self.load_path(&path)?;
+            let saved = serde_json::from_slice(&bytes).map_err(|_| Error::Storage)?;
+            revoke(saved)?;
+            fs::remove_file(path).map_err(|_| Error::Storage)?;
+        }
+        Ok(())
+    }
+
+    /// Purge only a declared cache, including its owned quarantine copies.
+    pub fn retire_cache(&self, name: &str) -> Result<()> {
+        if document_class(name)? != Class::Cache {
+            return Err(Error::Storage);
+        }
+        for path in self.retired_paths(name)? {
+            fs::remove_file(path).map_err(|_| Error::Storage)?;
+        }
+        Ok(())
+    }
+
     fn trim_quarantines(&self, name: &str, newest: &Path) -> Result<()> {
-        let prefix = format!("{name}-");
-        let legacy = format!("{name}.corrupto");
         let mut archives = Vec::new();
         for entry in fs::read_dir(&self.root).map_err(|_| Error::Storage)? {
             let entry = entry.map_err(|_| Error::Storage)?;
@@ -245,25 +302,8 @@ impl Store {
             let Some(file_name) = file_name.to_str() else {
                 continue;
             };
-            // Older restores used a fixed name or an undated random ID. Count
-            // those owned formats as oldest, so upgrades keep the same cap.
-            let time = if file_name == legacy {
-                0
-            } else {
-                let Some(rest) = file_name
-                    .strip_prefix(&prefix)
-                    .and_then(|n| n.strip_suffix(".corrupto"))
-                else {
-                    continue;
-                };
-                let (time, id) = rest.split_once('-').unwrap_or(("0", rest));
-                let Ok(time) = time.parse::<u64>() else {
-                    continue;
-                };
-                if id.len() != 64 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-                    continue;
-                }
-                time
+            let Some(time) = quarantine_time(name, file_name) else {
+                continue;
             };
             let kind = entry.file_type().map_err(|_| Error::Storage)?;
             if kind.is_file() && !kind.is_symlink() {
@@ -334,6 +374,18 @@ impl Store {
             Err(_) => Err(Error::Storage),
         }
     }
+}
+
+fn quarantine_time(name: &str, file: &str) -> Option<u64> {
+    if file == format!("{name}.corrupto") {
+        return Some(0);
+    }
+    let rest = file
+        .strip_prefix(&format!("{name}-"))?
+        .strip_suffix(".corrupto")?;
+    let (time, id) = rest.split_once('-').unwrap_or(("0", rest));
+    let time = time.parse::<u64>().ok()?;
+    (id.len() == 64 && id.bytes().all(|byte| byte.is_ascii_hexdigit())).then_some(time)
 }
 
 #[cfg(windows)]

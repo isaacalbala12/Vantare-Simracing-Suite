@@ -27,6 +27,8 @@ pub enum Reply {
     Ready,
     OpenBrowser(String),
     LoggedOut,
+    LogoutFailed(Error),
+    MigrationPending,
     Data(Action, serde_json::Value, Vec<Result<Vec<u8>>>),
     Failed(Error),
     Prefetched(Action, Result<serde_json::Value>),
@@ -43,6 +45,7 @@ impl Worker {
             .name("vantare-admin-services".into())
             .spawn(move || {
                 let mut session: Option<Session> = None;
+                let mut migration_pending = false;
                 loop {
                     let command = if session.as_ref().is_some_and(|s| s.pending) {
                         commands.recv_timeout(Duration::from_millis(100))
@@ -66,8 +69,18 @@ impl Worker {
                             };
                             let started = Instant::now();
                             let result = (|| {
+                                if migration_pending {
+                                    return Ok(Reply::MigrationPending);
+                                }
                                 if session.is_none() {
-                                    session = Some(Session::open(&root)?);
+                                    match Session::open(&root) {
+                                        Ok(opened) => session = Some(opened),
+                                        Err(OpenError::Migration(_)) => {
+                                            migration_pending = true;
+                                            return Ok(Reply::MigrationPending);
+                                        }
+                                        Err(OpenError::Service(error)) => return Err(error),
+                                    }
                                 }
                                 session
                                     .as_mut()
@@ -78,7 +91,12 @@ impl Worker {
                                 label,
                                 started.elapsed().as_micros(),
                                 match &result {
-                                    Ok(Reply::Prefetched(_, Err(_))) | Err(_) => "error",
+                                    Ok(
+                                        Reply::MigrationPending
+                                        | Reply::LogoutFailed(_)
+                                        | Reply::Prefetched(_, Err(_)),
+                                    )
+                                    | Err(_) => "error",
                                     _ => "ok",
                                 },
                             );
@@ -115,28 +133,60 @@ impl Worker {
 }
 struct Session {
     account: Account,
-    store: Store,
+    _store: Store,
     http: Http,
     client: Client,
     pending: bool,
 }
+#[derive(Debug)]
+enum OpenError {
+    Migration(Error),
+    Service(Error),
+}
+impl From<Error> for OpenError {
+    fn from(error: Error) -> Self {
+        Self::Service(error)
+    }
+}
+impl OpenError {
+    fn error(self) -> Error {
+        match self {
+            Self::Migration(error) | Self::Service(error) => error,
+        }
+    }
+}
 impl Session {
-    fn open(root: &std::path::Path) -> Result<Self> {
+    fn open(root: &std::path::Path) -> std::result::Result<Self, OpenError> {
         let client = Client::from_build()?;
         let config = crate::config::load()?;
-        if let Some((context, _hub)) = &config.legacy {
-            let legacy = Store::open(root, context)?;
+        Self::open_config(root, config, Http::default(), client)
+    }
+    fn open_config(
+        root: &std::path::Path,
+        config: crate::config::Config,
+        http: Http,
+        client: Client,
+    ) -> std::result::Result<Self, OpenError> {
+        if let Some((context, hub)) = &config.legacy {
+            let legacy = Store::open(root, context).map_err(OpenError::Migration)?;
             let at = now()?.saturating_mul(1000);
-            legacy.quarantine_if_present("account", at)?;
-            legacy.quarantine_if_present("account-profile", at)?;
+            legacy
+                .quarantine_if_present("account", at)
+                .map_err(OpenError::Migration)?;
+            legacy
+                .quarantine_if_present("account-profile", at)
+                .map_err(OpenError::Migration)?;
+            Account::retire_saved_session(&http, &legacy, &hub.issuer, &hub.client_id)
+                .map_err(OpenError::Migration)?;
         }
         let oauth_config = config.build.native_oauth.ok_or(Error::Unconfigured)?;
         let store = Store::open(root, &config.context)?;
-        let http = Http::default();
+        Account::retire_saved_session(&http, &store, &oauth_config.issuer, &oauth_config.client_id)
+            .map_err(OpenError::Migration)?;
         let oauth = load_oauth(&store, &http, oauth_config, now()?.saturating_mul(1000))?;
         Ok(Self {
-            account: Account::restore(oauth, &store)?,
-            store,
+            account: Account::in_memory(oauth)?,
+            _store: store,
             http,
             client,
             pending: false,
@@ -149,10 +199,8 @@ impl Session {
             .expires_at()
             .is_some_and(|expiry| expiry <= time.saturating_add(60))
         {
-            self.account.complete(
-                self.account.refresh()?.run(&self.http, now()?)?,
-                &self.store,
-            )?;
+            self.account
+                .complete_in_memory(self.account.refresh()?.run(&self.http, now()?)?)?;
         }
         Ok(())
     }
@@ -172,8 +220,12 @@ impl Session {
             }
             Command::Logout => {
                 self.pending = false;
-                self.account.logout(&self.store)?;
-                Ok(Reply::LoggedOut)
+                let revoked = self.account.revoke_refresh(&self.http);
+                self.account.forget_in_memory()?;
+                Ok(match revoked {
+                    Ok(()) => Reply::LoggedOut,
+                    Err(error) => Reply::LogoutFailed(error),
+                })
             }
             Command::Restore => {
                 self.refresh()?;
@@ -203,11 +255,25 @@ impl Session {
     fn poll(&mut self) -> Result<Option<Reply>> {
         if let Some(exchange) = self.account.poll_login()? {
             self.account
-                .complete(exchange.run(&self.http, now()?)?, &self.store)?;
+                .complete_in_memory(exchange.run(&self.http, now()?)?)?;
             self.pending = false;
             return Ok(Some(Reply::Ready));
         }
         Ok(None)
+    }
+    fn login_interactive(&mut self, open: impl FnOnce(&str) -> Result<()>) -> Result<()> {
+        let Reply::OpenBrowser(url) = self.handle(Command::Login)? else {
+            return Err(Error::Protocol);
+        };
+        open(&url)?;
+        while self.pending {
+            if self.poll()?.is_some() {
+                break;
+            }
+            // Same bounded PKCE polling as the worker; callback/timeout decides completion.
+            thread::sleep(Duration::from_millis(100));
+        }
+        Ok(())
     }
 }
 fn load_oauth(
@@ -256,10 +322,33 @@ fn now() -> Result<u64> {
         .map_err(|_| Error::Clock)
 }
 
+fn open_browser(url: &str) -> Result<()> {
+    #[cfg(windows)]
+    let mut command = {
+        use std::os::windows::process::CommandExt;
+        let mut command = std::process::Command::new("rundll32.exe");
+        command
+            .creation_flags(0x0800_0000)
+            .arg("url.dll,FileProtocolHandler");
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = std::process::Command::new("open");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = std::process::Command::new("xdg-open");
+    command.arg(url).spawn().map_err(|_| Error::Offline)?;
+    Ok(())
+}
+
 /// Owner-only read-back using this app's isolated session. No credentials printed.
 pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
-    let mut session = Session::open(root)?;
-    session.refresh()?;
+    let mut session = Session::open(root).map_err(|failure| {
+        if matches!(failure, OpenError::Migration(_)) {
+            eprintln!("No se pudo retirar la sesión anterior. No se ha restaurado; reinicia Gestión para reintentar.");
+        }
+        failure.error()
+    })?;
+    session.login_interactive(open_browser)?;
     let _written = writeln!(
         std::io::stdout(),
         "restore signed_in={}",
@@ -468,6 +557,9 @@ pub fn data_root() -> Result<PathBuf> {
     }
     vantare_services::app::default_root().map(|root| root.join("admin"))
 }
+
+#[cfg(test)]
+mod migration_tests;
 
 #[cfg(test)]
 mod tests {

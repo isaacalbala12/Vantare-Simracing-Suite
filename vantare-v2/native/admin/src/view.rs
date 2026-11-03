@@ -299,6 +299,16 @@ impl Admin {
                 self.images.clear();
                 self.state.message = "Inicia sesión con la cuenta owner".into();
             }
+            Reply::MigrationPending => {
+                self.cache.clear();
+                self.images.clear();
+                self.state.migration_pending();
+            }
+            Reply::LogoutFailed(error) => {
+                self.cache.clear();
+                self.images.clear();
+                self.state.logout_failed(error);
+            }
             Reply::OpenBrowser(url) => {
                 cx.open_url(&url);
                 self.state.busy = true;

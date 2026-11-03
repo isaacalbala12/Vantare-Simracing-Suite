@@ -341,6 +341,73 @@ impl Exchange {
 }
 
 impl Account {
+    /// A session owner that never restores or writes an account/profile Store.
+    pub fn in_memory(oauth: OAuth) -> Result<Self> {
+        Ok(Self {
+            oauth,
+            session: None,
+            needs_sign_in: false,
+            profile: None,
+            attempt: None,
+            generation: fresh_generation()?,
+            email: None,
+            email_block: 0,
+        })
+    }
+
+    pub fn complete_in_memory(&mut self, completion: Completion) -> Result<()> {
+        if completion.generation != self.generation {
+            return Err(Error::Canceled);
+        }
+        self.email = None;
+        self.session = Some(completion.session);
+        self.needs_sign_in = false;
+        self.profile = Some(completion.profile);
+        self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
+        Ok(())
+    }
+
+    /// Public-client FAPI revocation; no client secret and no access-token log.
+    pub fn revoke_refresh(&self, http: &Http) -> Result<()> {
+        if let Some(session) = &self.session {
+            revoke_refresh(http, &self.oauth.issuer, &session.refresh)?;
+        }
+        Ok(())
+    }
+
+    pub fn forget_in_memory(&mut self) -> Result<()> {
+        self.cancel_login()?;
+        self.session = None;
+        self.needs_sign_in = false;
+        self.profile = None;
+        Ok(())
+    }
+
+    /// One-time admin migration. Never constructs/restores a usable Account;
+    /// each active/quarantined refresh is revoked before its blob is removed.
+    pub fn retire_saved_session(
+        http: &Http,
+        store: &Store,
+        issuer: &Url,
+        client_id: &str,
+    ) -> Result<()> {
+        store.retire_session(|saved: Saved| match saved {
+            Saved::SignedOut => Ok(()),
+            Saved::SignedIn {
+                version: 1,
+                session,
+            }
+            | Saved::NeedsSignIn {
+                version: 1,
+                session,
+            } if session.identity.issuer == issuer.as_str() && session.client_id == client_id => {
+                revoke_refresh(http, issuer, &session.refresh)
+            }
+            _ => Err(Error::Storage),
+        })?;
+        store.retire_cache("account-profile")
+    }
+
     pub fn restore(oauth: OAuth, store: &Store) -> Result<Self> {
         Self::restore_at(oauth, store, crate::app::now()?.saturating_mul(1000))
     }
@@ -661,6 +728,24 @@ impl Account {
         }
         Ok(())
     }
+}
+
+fn revoke_refresh(http: &Http, issuer: &Url, refresh: &Secret) -> Result<()> {
+    if refresh.expose().is_empty() || refresh.expose().len() > 16 * 1024 {
+        return Err(Error::Storage);
+    }
+    let endpoint = issuer
+        .join("/oauth/token/revoke")
+        .map_err(|_| Error::Unconfigured)?;
+    http.post_form(
+        &endpoint,
+        &[
+            ("token", refresh.expose()),
+            ("token_type_hint", "refresh_token"),
+        ],
+    )?
+    .success()?;
+    Ok(())
 }
 
 /// Valida la petición del redirect y devuelve el código. Parámetros extra del

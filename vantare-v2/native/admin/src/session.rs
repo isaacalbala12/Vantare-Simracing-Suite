@@ -475,6 +475,54 @@ pub fn data_root() -> Result<PathBuf> {
 mod tests {
     use super::*;
     #[test]
+    fn r10_characterization_logout_makes_no_http_request() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        listener.set_nonblocking(true).expect("nonblocking");
+        let base = format!("http://{}", listener.local_addr().expect("address"));
+        let root = std::env::temp_dir().join(format!("admin-r10-logout-{}", std::process::id()));
+        let store = Store::open(&root, "r10-synthetic-logout").expect("store");
+        let oauth: OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":format!("{base}/"), "client_id":"hub-fixture",
+            "redirect":"http://127.0.0.1:0/callback",
+            "authorization":format!("{base}/authorize"),
+            "token":format!("{base}/token"), "userinfo":format!("{base}/userinfo")
+        }))
+        .expect("oauth");
+        store
+            .save(
+                "account",
+                &serde_json::json!({
+                    "state":"SignedIn", "version":1,
+                    "session": {
+                        "identity":{"issuer":format!("{base}/"),"subject":"owner-fixture"},
+                        "client_id":"hub-fixture", "access":"synthetic-access",
+                        "refresh":"synthetic-refresh", "expires_at":4_000_000_000_u64
+                    }
+                }),
+            )
+            .expect("synthetic session");
+        let account = Account::restore(oauth, &store).expect("restore");
+        assert!(account.identity().is_some());
+        let mut session = Session {
+            account,
+            store,
+            http: Http::default(),
+            client: crate::client::tests::loopback_client(&base),
+            pending: false,
+        };
+        assert!(matches!(
+            session.handle(Command::Logout),
+            Ok(Reply::LoggedOut)
+        ));
+        assert!(session.account.identity().is_none());
+        // Logout is synchronous: after its return there can be no in-flight request.
+        assert!(
+            matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
+        );
+        drop(session);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
     fn regression_1555_admin_redirect_mismatch_is_quarantined_before_discovery() {
         let root = std::env::temp_dir().join(format!("admin-oauth-1555-{}", std::process::id()));
         let issuer = url::Url::parse("http://127.0.0.1:1/").expect("issuer");

@@ -1,0 +1,165 @@
+// VANTA-132 step 0: these assertions deliberately describe the existing risks.
+// No network permissions: every SaaS/SQL boundary is a test double.
+import { type AdminDeps, handleNativeAdmin } from "./index.ts";
+import {
+  account,
+  assert,
+  authDeps,
+  claims,
+  request,
+  subject,
+  user,
+} from "../native-account-authorize/testdata/auth.ts";
+
+function deps(overrides: AdminDeps = {}): AdminDeps {
+  return {
+    ...authDeps(),
+    environment: "sandbox",
+    resolve: () => Promise.resolve(account),
+    begin: () => Promise.resolve(true),
+    execute: () => Promise.resolve({}),
+    ...overrides,
+  };
+}
+const rollout = () => request({ version: 1, action: "get_rollout" });
+
+Deno.test("R10 P1 characterization: owner Hub OAuth grants admin access", async () => {
+  let authorized = false;
+  const response = await handleNativeAdmin(
+    rollout(),
+    deps({
+      begin: () => {
+        authorized = true;
+        return Promise.resolve(true);
+      },
+      execute: () => Promise.resolve({ rollout: [] }),
+    }),
+  );
+  assert(response.status === 200 && authorized);
+  assert((await response.json()).ok === true);
+});
+
+Deno.test("R10 P2 characterization: garbage bearer reaches Clerk before any SQL budget", async () => {
+  const calls: string[] = [];
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "get_rollout" }, {
+      Authorization: "Bearer garbage",
+    }),
+    deps({
+      fetch: () => {
+        calls.push("clerk");
+        return Promise.resolve(new Response(null, { status: 400 }));
+      },
+      resolve: () => {
+        calls.push("resolve");
+        return Promise.resolve(account);
+      },
+      begin: () => {
+        calls.push("budget");
+        return Promise.resolve(true);
+      },
+    }),
+  );
+  assert(response.status === 401);
+  assert(JSON.stringify(calls) === JSON.stringify(["clerk"]));
+});
+
+for (const role of ["non-owner", "expired owner"]) {
+  Deno.test(`R10 P2 characterization: ${role} costs two Clerk calls and resolve`, async () => {
+    const calls: string[] = [];
+    const response = await handleNativeAdmin(
+      rollout(),
+      deps({
+        fetch: (url) => {
+          const verify = String(url).endsWith("/verify");
+          calls.push(verify ? "verify" : "profile");
+          return Promise.resolve(Response.json(verify ? claims : user));
+        },
+        resolve: () => {
+          calls.push("resolve");
+          return Promise.resolve(account);
+        },
+        // Real role/expiry predicates are characterized separately in pgTAP.
+        begin: () => {
+          calls.push("owner");
+          return Promise.reject({ message: "native_admin_forbidden" });
+        },
+        execute: () => {
+          throw new Error("unauthorized action executed");
+        },
+      }),
+    );
+    assert(response.status === 403);
+    assert(
+      JSON.stringify(calls) === JSON.stringify([
+        "verify",
+        "profile",
+        "resolve",
+        "owner",
+      ]),
+    );
+  });
+}
+
+for (
+  const code of [
+    "creator_coupon_mismatch",
+    "admin_report_owner_changed",
+    "account_deleted",
+  ]
+) {
+  Deno.test(`R10 P9 characterization: ${code} is reported as unavailable`, async () => {
+    const response = await handleNativeAdmin(
+      rollout(),
+      deps({
+        execute: () => Promise.reject({ message: code }),
+      }),
+    );
+    assert(response.status === 503);
+    assert((await response.json()).error === "bridge_unavailable");
+  });
+}
+
+Deno.test("R10 P4 characterization: unban precedes failed SQL audit transaction", async () => {
+  const calls: string[] = [];
+  const target = "00000000-0000-4000-8000-000000001999";
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_blocked",
+      account_id: target,
+      blocked: false,
+    }),
+    deps({
+      fetch: (url, init) => {
+        if (String(url).endsWith("/unban")) {
+          calls.push("unban");
+          return Promise.resolve(Response.json(user));
+        }
+        return authDeps().fetch!(url, init);
+      },
+      execute: (_actor, _issuer, action) => {
+        if (action === "get_payment_sync") {
+          return Promise.resolve({ needs_sync: false });
+        }
+        if (action === "get_account") {
+          return Promise.resolve({
+            account: {
+              account_id: target,
+              clerk_subject: subject,
+              owner: false,
+            },
+          });
+        }
+        assert(action === "set_blocked");
+        calls.push("sql-audit-failure");
+        return Promise.reject({ message: "test_audit_failure" });
+      },
+    }),
+  );
+  assert(response.status === 503);
+  assert(
+    JSON.stringify(calls) === JSON.stringify(["unban", "sql-audit-failure"]),
+  );
+  // SQL rollback on audit failure is verified by native_admin.test.sql.
+});

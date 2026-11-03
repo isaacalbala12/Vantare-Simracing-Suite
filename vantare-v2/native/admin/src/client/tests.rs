@@ -5,6 +5,14 @@ use std::{
     thread,
 };
 
+pub(crate) fn loopback_client(base: &str) -> Client {
+    Client::new(
+        Url::parse(&format!("{base}/functions/v1/native-admin")).expect("endpoint"),
+        Url::parse(base).expect("origin"),
+    )
+    .expect("client")
+}
+
 fn serve(status: u16, body: Vec<u8>) -> (Client, thread::JoinHandle<String>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let base = format!("http://{}", listener.local_addr().expect("address"));

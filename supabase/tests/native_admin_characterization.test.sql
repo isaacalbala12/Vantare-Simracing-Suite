@@ -58,10 +58,10 @@ insert into expected_admin_definitions values
  ('private.native_admin_account_before_1593','084f6aea3e40b54ee1adb6eac42dadec'),
  ('private.native_admin_account_before_1661_reports','cda5fcaaad48df5997c98cbdc6341cc4'),
  ('private.native_admin_account_deletion','b235508f5e50e5c41e727046a05b16b4'),
- ('private.native_admin_account_summary','decd6cccddd906376d34061623c826db'),
- ('private.native_admin_account_v1','a7bba08ed56691c78f2c6b143fdf8c74'),
- ('private.native_admin_execute_before_creator_coupon','1b29a41006e451c36f8688a099a04780'),
- ('private.native_admin_execute_v1','5ce8f227132a712bad922f4e3b4a3867'),
+ ('private.native_admin_account_summary','715d0d6c83bbb5942f5d278384ad3f14'),
+ ('private.native_admin_account_v1','25137a4d2f324589a90d29f20848212a'),
+ ('private.native_admin_execute_before_creator_coupon','f104f96d62494d1ece25e8e234f6a244'),
+ ('private.native_admin_execute_v1','08197d847f456872b354a5f8e7eca671'),
  ('public.mail_admin_execute','80d2ff8b4ece907c5f5fee0d11a9d1dc'),
  ('public.native_admin_execute','9e870a1e6c54ee88133a2e55ab81bc87');
 create temporary table actual_admin_definitions as
@@ -74,6 +74,6 @@ order by n.nspname,p.proname;
 select results_eq(
  $$select fingerprint collate "C" from actual_admin_definitions order by fingerprint collate "C"$$,
  $$select (name || '|' || digest) collate "C" from expected_admin_definitions order by (name || '|' || digest) collate "C"$$,
- 'all 12 live admin/mail/account SQL definitions match nightly ef47c16ad');
+ '12 live definitions: 4 approved report-root changes, 8 unchanged wrappers/mail');
 select * from finish();
 rollback;

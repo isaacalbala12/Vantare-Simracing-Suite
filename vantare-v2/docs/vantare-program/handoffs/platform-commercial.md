@@ -7820,3 +7820,39 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Metadatos del native real intactos. Huellas de producción siguen pendientes
   de Isaac antes del RC; no se lee configuración real. Plane Por testear intacto.
   Listo para review final; HEAD/push/CI verificados y publicados en #1919/#1920.
+## VANTA-132 · Admin → testing_contributions (2026-11-03)
+
+- #1922 integrado por el orquestador en nightly cef0ec16c, re-review Sonnet
+  MERGE. Nuevo worktree D:/VantareServer/worktrees/isa-1910-paso7b y rama
+  vantareapp/isa-1910-paso7b-informes-admin desde ese SHA. #1918 ya integrado
+  como a75c9b7aa; contrato ADR 0105 / testing.report.v2.
+- Caracterización previa deac76b46: v2 lista/consulta/revisión/count y owner
+  vigentes protegidos; RED en cinco funciones y un trigger con referencias
+  legacy. Se retiran esas ramas sin aplanar las capas; paso 11 fuera. JSON Rust
+  y acciones no relacionadas conservados. Sin cambios de crates.
+- Guard cerrado aprobado por el orquestador: cualquier fila en
+  testing_center_reports aborta la migración, bajo lock SHARE, sin cambiar
+  definiciones ni esconder datos. No hay tabla de mapping ni escrituras R6.
+- Orden de despliegue obligatorio (Isaac/R6): primero mapear, verificar y
+  vaciar las filas de origen/detener escritores legacy en R6/7b; después este
+  PR; al final retirar tablas/RPC antiguas en R6. Guard y rollback local se
+  prueban con rechazo atómico. Si R6 desea conservar origen, el orquestador
+  definirá antes un contrato de evidencia. Rollback admin restaura definiciones
+  y trigger, sin borrar datos; tras retirar tablas, restaurar primero R6.
+- P3 pedidos: assert de expires_at sin cambios al liberar en cuenta borrada;
+  fallback por target_hash sin historial de lease; índice parcial sobre
+  target_hash de intenciones started y plan local; segundo reconcile idempotente
+  sin filas duplicadas; diagnóstico de release con console.error. Diferenciar
+  409 sigue en paso 10, junto con lectura/retención. Otros P3 diferidos intactos.
+- Sin Store real, secretos, servicios/configuración de producción, _shared ni
+  clerk-webhook, billing/licencias, despliegue, merge propio ni release. Los
+  cambios de reports_count en definiciones de cuenta no cambian su lógica de
+  pagos/acceso. Pasos 4/11 conservan sus dependencias R6.
+- Gates de las rutas afectadas: Deno 2.7.13 94 PASS; check/lint/fmt/Python/diff
+  PASS. SQL admin y contrato v2: 5 suites/125 comprobaciones PASS; guard de origen no vacío con rechazo
+  atómico, rollback/reaplicación exacta y plan de índice PASS. Carreras actor/
+  objetivo en ambos órdenes frente a borrado, seis carreras de journal/lease
+  y E2E 6/6 PASS. Se actualizó el harness de locks para seguir la delegación
+  vigente del wrapper público, conservando las pausas y aserciones reales.
+  Instancias locales detenidas. Rust/lifecycle/telemetría omitidos: ningún crate
+  cambia. Evidencia D:/VantareServer/evidence/isa-1910-paso7b; CI nueva pendiente.

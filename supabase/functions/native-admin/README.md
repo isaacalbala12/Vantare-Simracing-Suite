@@ -401,3 +401,39 @@ escribir en la fila. Un error de liberación conserva el error de la operación
 original. Quedan diferidos: proteger `set_blocked` sin token durante el solape
 de despliegue, limpiar leases caducados (sin eliminar referencias de efectos
 pendientes) y revisar el 503 cuando solo falla release tras un cambio correcto.
+
+## Raíz única de informes · coordinación R6/7b
+
+Admin lista, consulta, cuenta y revisa únicamente `testing_contributions` y su
+seguimiento existente. Conserva el JSON que consume Rust y el mapeo de estados
+de contribución a estados de admin. Las cinco funciones modificadas mantienen
+sus firmas/ACL y las capas de despacho; se retiran las ramas legacy del cuerpo
+delegado, sin aplanar SQL ni cambiar acciones ajenas a informes. El trigger de
+auditoría resuelve la cuenta de un informe desde la misma raíz nueva.
+
+**Orden obligatorio, reservado a Isaac y coordinado con VANTA-131:**
+
+1. R6/7b mapea, verifica y vacía los registros del origen legacy, y detiene sus
+   escritores antiguos. Este PR no copia ni borra ninguna fila de R6.
+2. Aplicar `20261103224121_isa_1910_admin_report_root.sql` y publicar este PR.
+   La migración bloquea escrituras al origen mientras verifica que esté vacío.
+   Cualquier fila, también draft, aborta toda la transacción con
+   `native_admin_legacy_reports_require_r6_mapping` (55000), antes de redefinir
+   funciones o crear el índice. No hay tabla de mapping ni excepción manual.
+3. R6/7b retira las tablas/RPC antiguas cuando haya cerrado sus demás lectores.
+
+Para revertir admin antes de retirar esas tablas, usar el `.down.sql` con psql:
+restaura las cinco definiciones y el trigger anteriores y quita el índice, sin
+borrar contribuciones ni datos. Después de retirar las tablas, restaurar primero
+el esquema y los datos de R6; el rollback lo exige explícitamente. El guard
+conservador no interpreta copias todavía retenidas en el origen como prueba de
+mapeo: cualquier futuro contrato que permita conservarlas lo define el
+orquestador con R6.
+
+El fallback de `claim` por `target_hash` está cubierto sin una fila de lease.
+Un índice parcial sobre ese hash para `outcome='started'` corresponde al
+predicado de la vista de pendientes y evita recorrer intenciones de otras
+cuentas. No cambia la retención ni expone lecturas al cliente. Segundo reconcile
+es idempotente y conserva una sola fila; release en cuenta borrada conserva
+`expires_at`. Los fallos de release se registran con `console.error`, sin datos
+personales ni errores SQL. Distinguir los 409 sigue reservado al paso 10.

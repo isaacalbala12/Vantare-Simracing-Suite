@@ -10,6 +10,11 @@ select is(public.native_admin_execute('19107000-0000-4000-8000-000000000001','ht
 select lives_ok($$select public.native_admin_execute('19107000-0000-4000-8000-000000000001','https://admin-root.invalid','set_report_status','{"report_id":"19107000-0000-4000-8000-000000000003","status":"in_review"}','production')$$,'v2 review persisted');
 select is((select state from public.testing_contributions where id='19107000-0000-4000-8000-000000000003'),'reviewing','review uses unique root');
 select is((private.native_admin_account_summary('19107000-0000-4000-8000-000000000002','https://admin-root.invalid','production')->>'reports_count')::integer,1,'account report count');
+-- Renaming the disposable legacy table simulates removal of its old SQL name.
+alter table public.testing_center_reports rename to fixture_legacy_admin_reports;
+select lives_ok($$select public.native_admin_execute('19107000-0000-4000-8000-000000000001','https://admin-root.invalid','get_report','{"report_id":"19107000-0000-4000-8000-000000000003"}','production')$$,'report reads work without the legacy relation name');
+select lives_ok($$select public.native_admin_execute('19107000-0000-4000-8000-000000000001','https://admin-root.invalid','get_account','{"account_id":"19107000-0000-4000-8000-000000000002"}','production')$$,'account summaries work without the legacy relation name');
+alter table public.fixture_legacy_admin_reports rename to testing_center_reports;
 select throws_ok($$select public.native_admin_execute('19107000-0000-4000-8000-000000000002','https://admin-root.invalid','list_reports','{"limit":100}','production')$$,'42501','native_admin_forbidden','non owner rejected');
 update public.operational_access_assignments set granted_at=now()-interval '1 day',expires_at=now()-interval '1 minute' where user_id='19107000-0000-4000-8000-000000000001' and role='owner';
 select throws_ok($$select public.native_admin_execute('19107000-0000-4000-8000-000000000001','https://admin-root.invalid','list_reports','{"limit":100}','production')$$,'42501','native_admin_forbidden','expired owner rejected');

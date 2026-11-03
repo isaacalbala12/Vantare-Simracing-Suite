@@ -675,7 +675,7 @@ export async function handleNativeAdmin(
         } catch (error) {
           if (!changeFailed) throw error;
           // Preserve the operation error; never log identities, tokens or SQL.
-          console.info(
+          console.error(
             JSON.stringify({
               event: "native_admin_release_failed",
               request_id: requestId,

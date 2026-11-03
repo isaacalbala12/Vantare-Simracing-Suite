@@ -12,6 +12,7 @@ from commercial_migration_lock import run_migration_lock_regression
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
+from commercial_admin_report_root import run_admin_report_cutover
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -932,10 +933,11 @@ $$;
    suites += ['native_admin_owner_authority.test.sql']
   if args.admin_owner_only:
    suites=['native_admin_owner_authority.test.sql','commercial_testing_identity.test.sql']
+  suites += ['native_admin_report_root.test.sql']
   if args.admin_reports_only:
    guard=run('psql',*conn,'-c',"select to_json(encode(tgargs,'escape')) from pg_trigger where tgrelid='public.admin_audit_log'::regclass and tgname='a_account_write_barrier'")
    (OUT/'admin-audit-guard.json').write_text(guard,encoding='utf-8')
-   suites=['native_admin_report_root.test.sql','native_admin_effects_r2.test.sql']
+   suites=['native_admin_report_root.test.sql','native_admin.test.sql','native_admin_characterization.test.sql','native_admin_effects_r2.test.sql','testing_report_v2.test.sql']
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:
@@ -955,6 +957,10 @@ $$;
    print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
    raise SystemExit(0)
   if not args.baseline:
+   if args.admin_reports_only or not args.admin_effects_only:
+    run_admin_report_cutover(run,conn,OUT,BIN,ENV)
+   if args.admin_reports_only:
+    run_admin_lock_order(BIN,conn,ENV,run,OUT)
    if args.deno_bin and not args.admin_effects_only:
     diagnostic=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',
      '--config',str(ROOT/'supabase/functions/deno.json'),str(ROOT/'supabase/functions/_shared/polar-checkout-diagnostic.test.ts')],

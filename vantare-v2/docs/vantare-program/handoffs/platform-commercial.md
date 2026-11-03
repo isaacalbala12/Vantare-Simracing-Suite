@@ -7884,3 +7884,11 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Test existente de fallo de release exige console.error y error original 404.
 - Diferido por revisión: test concurrente del guard. Distinguir 409 sigue en
   paso 10; demás dependencias y P3 diferidos no cambian.
+- Gates de revisión: Deno 2.7.13 94/94; check/lint/fmt y Python PASS. PostgreSQL
+  16.15 LF y CRLF: cinco suites/125 comprobaciones por pasada, cinco rechazos
+  adicionales de permisos/ejecutor y origen no vacío, cinco digests exactos,
+  EXPLAIN y carreras PASS. E2E LF 6/6 PASS; no repetido en CRLF. Primer intento
+  E2E agotó 120s; repetición completa 15s PASS sin modificar producto ni timeout.
+  Instancias locales detenidas. diff --check solo avisa del espacio intencional
+  en down.sql:315. Rust/lifecycle/telemetría omitidos: ningún crate cambia.
+  Evidencia review-r1 dentro de isa-1910-paso7b. CI del nuevo HEAD pendiente.

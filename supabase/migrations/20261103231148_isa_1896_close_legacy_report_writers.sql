@@ -23,10 +23,32 @@ revoke all on function public.testing_center_submit_report(
   boolean,boolean,text,text,text
 ) from public, anon, authenticated, service_role;
 
--- A trusted service role previously had direct DML in addition to RPC access.
--- Keep SELECT for the history/read and drain checks.
-revoke insert, update, delete on public.testing_center_reports
-  from service_role;
+-- The service role had direct DML on every legacy report child. Remove every
+-- table privilege first (including TRUNCATE, REFERENCES and TRIGGER), then
+-- restore only the historical read surface needed for the locked drain.
+revoke all on table public.testing_center_reports,
+  public.testing_center_evidence,
+  public.testing_center_technical_issues,
+  public.testing_center_screenshot_evidence,
+  public.testing_center_evidence_batches,
+  public.testing_center_report_payloads,
+  public.testing_center_report_submission_keys,
+  public.testing_center_report_events
+from public, anon, authenticated, service_role;
+grant select on table public.testing_center_reports,
+  public.testing_center_evidence,
+  public.testing_center_technical_issues,
+  public.testing_center_screenshot_evidence,
+  public.testing_center_evidence_batches,
+  public.testing_center_report_payloads,
+  public.testing_center_report_submission_keys,
+  public.testing_center_report_events
+to service_role;
+-- Preserve existing RLS-limited history reads for reporters/admin.
+grant select on table public.testing_center_reports,
+  public.testing_center_evidence,
+  public.testing_center_technical_issues,
+  public.testing_center_report_payloads to authenticated;
 
 notify pgrst, 'reload schema';
 commit;

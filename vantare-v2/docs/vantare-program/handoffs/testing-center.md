@@ -7,9 +7,9 @@
 ## 2026-11-04 - #1896 / VANTA-131 7b1: detener escritores legacy
 
 - Draft PR #1926, rama vantareapp/isa-1896-paso7b1-cerrar-escritores desde origin/nightly@cef0ec16c, sin tablas ni datos vaciados. Test de caracterizacion de grants anterior al cambio.
-- REVOKE EXECUTE de los cinco RPC legacy de envio/triage a public, anon, authenticated y service_role; el unico grant activo de envio era testing_center_report_submit_admitted para service_role y triage_report tambien seguia concedido. Se revoca ademas INSERT/UPDATE/DELETE directo de service_role en testing_center_reports, conservando SELECT.
-- Rollback repone solo los grants activos anteriores; runner lo ejecuta y conserva las suites historicas de admision/admin bajo el rollback. La matriz posterior comprueba anon, authenticated y el abuso de INSERT directo por service_role. Shared IP no interviene en ACL SQL; la cuota por IP se cubrio en paso 2.
-- El mapeo/verificacion/vaciado espera el contrato de archivo temporal para un rollback fiel; #1924 admin va despues. Produccion SQL +32/-0, rollback +18/-0, tests +84/-2, docs +7/-0; CI 6/6 verde en codigo cd750c121. Sin despliegue, merge ni release.
+- REVOKE EXECUTE de los cinco RPC legacy de envio/triage a public, anon, authenticated y service_role. REVOKE ALL cierra tambien el padre y siete tablas hijas para los roles API; SELECT se concede de nuevo a service_role y se conservan las cuatro lecturas authenticated bajo RLS. Se prueban PUBLIC, vantare_triage, anon, authenticated y service_role, incluidas sobrecargas y privilegios TRUNCATE/REFERENCES/TRIGGER.
+- Rollback repone exactamente los grants anteriores; el runner lo ejecuta y conserva las suites historicas de admision/admin bajo rollback. El test PostgREST de native-account-authorize ahora exige 403 del RPC admitido cerrado. La cuota de IP compartida se cubrio en el paso 2.
+- El RPC admin native_admin_execute('set_report_status') aun actualiza legacy y desaparecera en #1924, sin editar SQL admin aqui. El siguiente mapeo, verificacion y vaciado se hara en una sola transaccion con LOCK sobre padre e hijas, de modo que ese UPDATE no pueda intercalarse. Se conserva archivo privado completo con rollback; #1924 va despues. Sin despliegue, merge ni release.
 
 ## 2026-11-03 - #1896 / VANTA-131 paso 6a: validacion de capturas JPEG
 

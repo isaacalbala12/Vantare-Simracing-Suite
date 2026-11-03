@@ -142,16 +142,18 @@ Deno.test({
         p_idempotency_key: `draft_${"d".repeat(64)}`,
       },
     );
-    assert(admitted.status === 200, `admitted RPC returned ${admitted.status}`);
-    const reports = await admitted.json();
-    assert(reports.length === 1 && typeof reports[0].report_id === "string");
-    const reportPath = `testing_center_reports?report_id=eq.${
-      encodeURIComponent(reports[0].report_id)
-    }`;
-    const ownReport = await call(reportPath, token);
     assert(
-      ownReport.status === 200 && (await ownReport.json()).length === 1,
-      "legacy report not visible to its reporter",
+      admitted.status === 403,
+      `closed admitted RPC returned ${admitted.status}`,
+    );
+    await admitted.body?.cancel();
+    const ownReport = await call(
+      `testing_center_reports?reporter_user_id=eq.${account}`,
+      token,
+    );
+    assert(
+      ownReport.status === 200 && (await ownReport.json()).length === 0,
+      "closed admitted RPC wrote a legacy report",
     );
     const reset = await call("rpc/reset_active_device", token, {
       device_fingerprint: "b".repeat(64),

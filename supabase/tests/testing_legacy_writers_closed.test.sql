@@ -31,6 +31,12 @@ select ok(not has_table_privilege('anon','public.testing_center_reports','insert
  'anonymous cannot insert directly');
 select ok(not has_table_privilege('authenticated','public.testing_center_reports','insert'),
  'authenticated cannot insert directly');
+select ok(has_table_privilege('authenticated',c.oid,'select'),
+ 'existing authenticated history read preserved on '||c.relname)
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public' and c.relname in (
+ 'testing_center_reports','testing_center_evidence',
+ 'testing_center_technical_issues','testing_center_report_payloads');
 select ok(not has_function_privilege(r.rolname,p.oid,'execute'),
  r.rolname||' denied '||p.oid::regprocedure)
 from pg_proc p join pg_namespace n on n.oid=p.pronamespace cross join pg_roles r

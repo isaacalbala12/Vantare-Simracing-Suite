@@ -39,8 +39,11 @@ where n.nspname='public' and c.relname in (
  'testing_center_technical_issues','testing_center_screenshot_evidence',
  'testing_center_evidence_batches','testing_center_report_payloads',
  'testing_center_report_submission_keys','testing_center_report_events');
-select ok(has_table_privilege('authenticated',
- 'public.testing_center_report_payloads','select'),
- 'authenticated keeps its original own-payload SELECT grant');
+select ok(has_table_privilege('authenticated',c.oid,'select'),
+ 'original authenticated SELECT restored on '||c.relname)
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public' and c.relname in (
+ 'testing_center_reports','testing_center_evidence',
+ 'testing_center_technical_issues','testing_center_report_payloads');
 select * from finish();
 rollback;

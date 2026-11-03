@@ -114,6 +114,7 @@ Deno.test("mail Edge checks native OAuth and Owner budget before mail SQL", asyn
     request({ version: 1, action: "mail_list" }),
     {
       ...authDeps(),
+      gate: () => Promise.resolve(true),
       environment: "sandbox",
       resolve: () => Promise.resolve(account),
       begin: () => Promise.reject(new NativeError(403, "forbidden")),
@@ -128,6 +129,7 @@ Deno.test("mail Edge checks native OAuth and Owner budget before mail SQL", asyn
     request({ version: 1, action: "mail_list" }),
     {
       ...authDeps(),
+      gate: () => Promise.resolve(true),
       environment: "sandbox",
       resolve: () => Promise.resolve(account),
       begin: () => Promise.resolve(true),
@@ -463,6 +465,7 @@ Deno.test("mail byte caps preserve legacy malformed rejection and cancel oversiz
     }),
     {
       ...authDeps(),
+      gate: () => Promise.resolve(true),
       environment: "sandbox",
       resolve: () => Promise.resolve(account),
       begin: () => Promise.resolve(true),

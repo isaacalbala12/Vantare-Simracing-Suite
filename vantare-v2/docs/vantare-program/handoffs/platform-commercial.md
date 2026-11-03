@@ -7227,3 +7227,33 @@ Sin merge del worker, release, instalación, producción ni datos reales. No se 
 prueba física de pausa del simulador. Siguiente: revisar #1834 rebasado sobre
 esta integración y su CI; sin autorizar promoción ni publicación.
 <!-- /isa1827-paso6b -->
+
+## VANTA-132 / #1910 — Paso 3: freno previo a Clerk (2026-11-03)
+
+- Rama `vantareapp/isa-1910-paso3-freno-clerk`, worktree
+  `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly
+  `ef47c16ad3dc0343798094e50d36676c1898d282`. PR/HEAD/CI en #1910.
+  Project Vantare / area:plataforma; Plane En curso.
+- Caracterización ANTES del cambio: commit `3735502a2`, cuatro casos PASS
+  (Hub-owner, basura, no-owner, owner caducado). Expectativa nueva RED 4/4,
+  luego GREEN. Cupo agotado: 429 y cero llamadas a Clerk/resolve/acciones.
+- SQL: cupo global 120/minuto, upsert atómico de una fila sin identidad/token,
+  contador saturado en 121, permisos exclusivos del backend y RLS. Un fallo
+  del cupo corta con 503. Owner mantiene además su cupo posterior de 60/minuto.
+  Misma barrera para correo; cuerpo inválido no consume cupo.
+- Deno 91 PASS, typecheck/fmt/lint PASS. Los ocho tests del paso 0 también pasan
+  contra esta Edge mediante copia temporal eliminada, sin merge local.
+  PostgreSQL 16.15 local: 29 suites / 909 pgTAP PASS, incluidos gate 10 y
+  rollback/reaplicación 4. Carreras existentes: 130 rutas / 772 checks PASS;
+  borrado Clerk/aliases 4 escenarios / 40 checks PASS. Servidor detenido.
+- Evidencia: `D:/VantareServer/evidence/isa-1910-paso3`. Calidad 468 huellas PASS.
+  Rust/lifecycle/telemetría omitidos: ningún archivo nativo modificado en este paso.
+  Revisión de privilegios y bloqueo con las skills Supabase/Postgres.
+- Antes de cualquier despliegue de Isaac: migración primero, Edge después.
+  Retirada: Edge anterior primero y rollback SQL después. No se ejecutó ninguna
+  acción remota. El cupo puede bloquear también al owner hasta el siguiente minuto.
+- No se modificó _shared/clerk-webhook, billing ni licencias; el mismo patrón
+  para native-license queda señalado en R3 #1827. Paso 1 sigue esperando el
+  aviso de coordinación; 4 depende de R6/8 y 11 pertenece a R6/12.
+  Próximo: review de los PR de pasos 0/3, verificar CI y continuar 1/2 tras
+  coordinación. Sin merge, despliegue, cambio SaaS ni release.

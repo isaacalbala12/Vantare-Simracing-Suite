@@ -5,6 +5,22 @@ bloqueada: 403. JSON cerrado de 8 KiB, bearer limitado, solo POST, `no-store`,
 presupuesto persistente de 60 peticiones/minuto por actor. El cliente no recibe
 secretos ni tiene acceso directo a tablas. No se crea Owner automáticamente.
 
+VANTA-132 / #1910, paso 3: tras validar el cuerpo y antes de llamar a Clerk,
+`native_admin_gate()` reserva una petición en un cupo global de **120/minuto**.
+Incluye correo y peticiones con bearer inválido; no guarda identidad ni token.
+Agotado: 429 sin llamadas a Clerk. Fallo del cupo: 503 sin continuar.
+También afecta al owner; esperar a la siguiente ventana de minuto. No existe
+excepción de emergencia por token ni una ruta SQL automatizada para saltarlo.
+El cupo por owner de 60/minuto sigue aplicándose después de autenticar.
+El mismo patrón en native-license queda pendiente del recorrido R3 (#1827);
+este cambio no modifica licencias ni billing.
+
+Preparación para Isaac, sin ejecutar aquí: aplicar
+`20261103152000_isa_1910_admin_gate.sql` antes de desplegar la Edge revisada.
+Para retirar: restaurar primero la Edge anterior y después ejecutar
+`supabase/rollbacks/20261103152000_isa_1910_admin_gate.down.sql`.
+Solo se pierde el contador efímero; ninguna cuenta, auditoría o permiso cambia.
+
 Aplicar las migraciones existentes y las de gestión `20261014010000_native_admin_r1.sql` y
 `20261015010000_native_admin_review_r3.sql`, `20261015120000_native_admin_final_decision_r4.sql`
 y `20261015130000_native_admin_account_deletion_r4.sql` antes

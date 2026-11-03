@@ -40,6 +40,7 @@ const statuses = [
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
+  gate?: () => Promise<boolean>;
   mail?: MailDeps;
   mailExecute?: (
     actor: string,
@@ -184,6 +185,14 @@ export function validateAdminRequest(
   })();
   if (!valid) throw new NativeError(400, "invalid_request");
   return { action, params };
+}
+
+async function gate(): Promise<boolean> {
+  const { data, error } = await getSupabaseAdmin().rpc("native_admin_gate");
+  if (error || typeof data !== "boolean") {
+    throw new NativeError(503, "bridge_unavailable");
+  }
+  return data;
 }
 
 async function begin(actor: string): Promise<boolean> {
@@ -407,6 +416,9 @@ export async function handleNativeAdmin(
     }
     const { action, params } = validateAdminRequest(parsed.value);
     timingAction = action;
+    if (!(await timed("global_budget", () => (deps.gate ?? gate)()))) {
+      throw new NativeError(429, "rate_limited");
+    }
     let identity;
     try {
       identity = await timed(

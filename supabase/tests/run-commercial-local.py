@@ -509,6 +509,7 @@ $$;
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear or args.before_private_write_barriers):
    suites+=['commercial_account_id.test.sql','report_creator_renewals.test.sql','founders_review_r2.test.sql']
+  suites += ['native_admin_gate.test.sql','native_admin_gate_rollback.test.sql']
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
    # whose membership is not granted to managed postgres by the product.

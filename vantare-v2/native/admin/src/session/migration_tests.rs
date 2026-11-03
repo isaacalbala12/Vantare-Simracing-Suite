@@ -180,7 +180,7 @@ fn r10_admin_diagnosis_logs_in_interactively_and_logout_revokes_once() {
                     .query_pairs()
                     .collect::<std::collections::BTreeMap<_, _>>();
                 assert_eq!(
-                    params.get("client_id").map(|s| s.as_ref()),
+                    params.get("client_id").map(AsRef::as_ref),
                     Some("admin-fixture")
                 );
                 let mut callback = url::Url::parse(&params["redirect_uri"]).expect("redirect");
@@ -216,14 +216,16 @@ fn r10_admin_diagnosis_logs_in_interactively_and_logout_revokes_once() {
             _ => panic!("logout must report the actual revocation outcome"),
         }
         assert!(session.account.identity().is_none());
-        assert!(matches!(
-            session._store.read::<serde_json::Value>("account"),
-            Ok(Stored::Missing)
-        ));
         let requests = server.finish_observed();
         assert_eq!(requests.len(), 4);
         assert!(requests[3].contains("token=synthetic-new-refresh"));
         drop(session);
+        let store = Store::open(&root, "admin-fixture-v2").expect("synthetic Store");
+        assert!(matches!(
+            store.read::<serde_json::Value>("account"),
+            Ok(Stored::Missing)
+        ));
+        drop(store);
         std::fs::remove_dir_all(root).expect("cleanup");
     }
 }

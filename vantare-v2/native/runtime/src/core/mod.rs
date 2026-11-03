@@ -789,46 +789,51 @@ mod tests {
     #[test]
     fn metadata_quality_changes_preserve_pause_and_situation_confirmation() {
         use vantare_domain::DrivingSituation;
-        let mut first = observation(ms(0), ms(0), 0.5);
-        first.state.session.track_name = Quality::Reliable("same".into());
-        first.state.session.kind = Quality::Reliable(SessionKind::Race);
-        let mut changed = first.clone();
-        changed.origin.received_at = ms(200);
-        changed.origin.source_time = Some(ms(200));
-        changed.state.session.track_name = Quality::Stale("same".into());
-        changed.state.session.kind = Quality::Stale(SessionKind::Race);
-
-        let mut core = Core::new(1);
-        core.observe(first.clone()).unwrap();
-        let mut paused = changed.clone();
-        paused.state.source_state = SourceState::Paused;
-        paused.state.player.as_mut().unwrap().telemetry.throttle = Quality::Reliable(0.9);
-        core.observe(paused).unwrap();
-        assert_eq!(
-            core.snapshot()
-                .state
-                .player
-                .as_ref()
-                .unwrap()
-                .telemetry
-                .throttle,
-            Quality::Reliable(0.5),
-            "el cambio de calidad no pierde la última foto viva"
-        );
-
-        let mut core = Core::new(1);
-        first.state.driving_situation = DrivingSituation::Garage;
-        changed.state.driving_situation = DrivingSituation::Garage;
-        core.observe(first).unwrap();
-        core.observe(changed.clone()).unwrap();
-        changed.origin.received_at = ms(250);
-        changed.origin.source_time = Some(ms(250));
-        core.observe(changed).unwrap();
-        assert_eq!(
-            core.snapshot().state.driving_situation,
-            DrivingSituation::Garage,
-            "el cambio de calidad no reinicia los 250 ms de confirmación"
-        );
+        for (track, kind) in [
+            (Quality::Stale("same".into()), Quality::Stale(SessionKind::Race)),
+            (Quality::Unavailable, Quality::Unavailable),
+        ] {
+            let mut first = observation(ms(0), ms(0), 0.5);
+            first.state.session.track_name = Quality::Reliable("same".into());
+            first.state.session.kind = Quality::Reliable(SessionKind::Race);
+            let mut changed = first.clone();
+            changed.origin.received_at = ms(200);
+            changed.origin.source_time = Some(ms(200));
+            changed.state.session.track_name = track;
+            changed.state.session.kind = kind;
+    
+            let mut core = Core::new(1);
+            core.observe(first.clone()).unwrap();
+            let mut paused = changed.clone();
+            paused.state.source_state = SourceState::Paused;
+            paused.state.player.as_mut().unwrap().telemetry.throttle = Quality::Reliable(0.9);
+            core.observe(paused).unwrap();
+            assert_eq!(
+                core.snapshot()
+                    .state
+                    .player
+                    .as_ref()
+                    .unwrap()
+                    .telemetry
+                    .throttle,
+                Quality::Reliable(0.5),
+                "el cambio de calidad no pierde la última foto viva"
+            );
+    
+            let mut core = Core::new(1);
+            first.state.driving_situation = DrivingSituation::Garage;
+            changed.state.driving_situation = DrivingSituation::Garage;
+            core.observe(first).unwrap();
+            core.observe(changed.clone()).unwrap();
+            changed.origin.received_at = ms(250);
+            changed.origin.source_time = Some(ms(250));
+            core.observe(changed).unwrap();
+            assert_eq!(
+                core.snapshot().state.driving_situation,
+                DrivingSituation::Garage,
+                "el cambio de calidad no reinicia los 250 ms de confirmación"
+            );
+        }
     }
 
     #[test]

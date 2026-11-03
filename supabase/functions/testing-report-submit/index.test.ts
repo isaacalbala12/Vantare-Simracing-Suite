@@ -30,6 +30,7 @@ const payload = {
 };
 function fixture() {
   const counts = new Map<string, number>();
+  const admitted = new Map<string, string>();
   const reports: unknown[] = [];
   return {
     counts,
@@ -39,10 +40,17 @@ function fixture() {
       salt: "synthetic-test-salt-only-32-characters",
       account: (request: Request) =>
         Promise.resolve(request.headers.get("authorization")!.slice(7)),
-      admit: (scope: string, key: string, _week: string) => {
+      admit: (scope: string, key: string, _week: string, reportKey?: string, digest?: string) => {
+        const report = `${key}:${reportKey}`;
+        if (scope === "account") {
+          const prior = admitted.get(report);
+          if (prior === digest) return Promise.resolve(true);
+          if (prior !== undefined) throw new NativeError(409, "submit_failed");
+        }
         const k = scope + key;
         const n = (counts.get(k) ?? 0) + 1;
         counts.set(k, n);
+        if (scope === "account" && n <= 5) admitted.set(report, digest!);
         return Promise.resolve(n <= 5);
       },
       submit: (account: string, body: Record<string, unknown>) => {
@@ -118,7 +126,7 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
   for (let i = 1; i <= 6; i++) {
     eq(
       (await handleTestingReportSubmit(
-        request("account-a", `192.0.2.${i}`),
+        request("account-a", `192.0.2.${i}`, { ...payload, p_id: `16100000-0000-4000-8000-0000000000${String(i).padStart(2, "0")}` }),
         f.deps,
       )).status,
       i <= 5 ? 200 : 429,
@@ -126,7 +134,7 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
   }
   eq(f.reports.length, 5);
 });
-Deno.test("invalid bodies and exact retries consume durable admission before validation", async () => {
+Deno.test("invalid bodies spend IP admission but leave account quota available", async () => {
   const f = fixture();
   for (let i = 0; i < 5; i++) {
     eq(
@@ -138,10 +146,11 @@ Deno.test("invalid bodies and exact retries consume durable admission before val
     );
   }
   eq(
-    (await handleTestingReportSubmit(request("account-a"), f.deps)).status,
-    429,
+    (await handleTestingReportSubmit(request("account-a", "192.0.2.11"), f.deps)).status,
+    200,
   );
-  eq(f.reports.length, 0);
+  eq(f.counts.get("accountaccount-a"), 1);
+  eq(f.reports.length, 1);
 });
 Deno.test("same evidence-pending report consumes shared IP and account admission on every retry", async () => {
   const f = fixture();
@@ -258,7 +267,7 @@ Deno.test("bridge signature, issuer, expiry and identity are checked before acce
   }
 });
 
-Deno.test("JWT failure spends IP admission; upstream failure spends account admission", async () => {
+Deno.test("JWT failure spends IP admission; exact upstream retry spends one account slot", async () => {
   const f = fixture();
   const deny = {
     ...f.deps,
@@ -294,8 +303,9 @@ Deno.test("JWT failure spends IP admission; upstream failure spends account admi
       request("account-a", "192.0.2.6"),
       offline,
     )).status,
-    429,
+    503,
   );
+  eq(g.counts.get("accountaccount-a"), 1);
 });
 
 Deno.test("client account/IP fields and oversized bodies are denied before service submission", async () => {
@@ -396,7 +406,7 @@ Deno.test("F8: structured preview and exact retries retain all fields after IP/a
     account: "account-a",
     body: structured,
   }]);
-  eq([...f.counts.values()], [2, 2]);
+  eq([...f.counts.values()], [2, 1]);
 });
 Deno.test("F8: structured preview without IP/account admission never reaches storage", async () => {
   for (const denied of ["ip", "account"]) {
@@ -438,6 +448,7 @@ Deno.test("F8: partial structured fields, account injection and missing consent 
 
 Deno.test("F8: production submit dispatches the full package only to the service admission RPC", async () => {
   const f = fixture();
+  const simple = { ...payload, p_id: "16100000-0000-4000-8000-000000000012" };
   const calls: unknown[] = [];
   const deps = {
     ...f.deps,
@@ -459,12 +470,12 @@ Deno.test("F8: production submit dispatches the full package only to the service
     body: { ...structured, p_account: "verified-account" },
   }]);
   eq(
-    (await handleTestingReportSubmit(request("verified-account"), deps)).status,
+    (await handleTestingReportSubmit(request("verified-account", undefined, simple), deps)).status,
     200,
   );
   eq(calls[1], {
     name: "testing_report_submit_admitted",
-    body: { ...payload, p_account: "verified-account" },
+    body: { ...simple, p_account: "verified-account" },
   });
 });
 

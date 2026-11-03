@@ -225,6 +225,14 @@ def main():
                     concurrent_quota(connection, acceptance=True)
                 if args.regression == 'F1IP':
                     concurrent_quota(connection, admission=True)
+                    fair_migration = root / 'supabase/migrations/20261103093000_isa_1896_report_admission.sql'
+                    run('psql', *actor, '-f', fair_migration, log='fair-admission-apply.log')
+                    fair = run('psql', *connection, '-f', root / 'supabase/tests/testing_report_admission_v2.test.sql', log='fair-admission-test.log')
+                    fair_plan = re.search(r'^1\.\.(\d+)$', fair, re.M)
+                    fair_count = len(re.findall(r'^ok \d+\b', fair, re.M))
+                    if not fair_plan or fair_count != int(fair_plan[1]) or re.search(r'^not ok |^# Looks like', fair, re.M):
+                        raise RuntimeError('fair admission pgTAP failed/incomplete')
+                    run('psql', *actor, '-f', root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql', log='fair-admission-down.log')
                     result = run('psql', *actor, '-f', admission_down, log='admission-active-down.log', expected=3)
                     if 'testing_admission_rollback_requires_data_preservation' not in result:
                         raise RuntimeError('admission rollback did not preserve used budgets')

@@ -17,6 +17,51 @@ export async function submitRichReport(
   body: Record<string, unknown>,
   rpc: ReportRpc,
 ): Promise<unknown> {
+  validateRichReport(body);
+  const { data, error } = await rpc("testing_center_report_submit_admitted", {
+    ...body,
+    p_account: account,
+  });
+  if (error) {
+    // Only stable public codes; never forward upstream SQL text or payloads.
+    if (error.code === "55000") {
+      throw new NativeError(400, "evidence_not_ready");
+    }
+    throw new NativeError(
+      error.code === "42501"
+        ? 403
+        : error.code === "28000"
+        ? 401
+        : error.code === "23505"
+        ? 409
+        : error.code === "22023"
+        ? 400
+        : error.code === "54000"
+        ? 429
+        : 503,
+      "submit_failed",
+    );
+  }
+  if (!Array.isArray(data) || data.length !== 1) {
+    throw new NativeError(503, "submit_unavailable");
+  }
+  const receipt = data[0];
+  const pattern = (value: unknown, regex: RegExp) =>
+    typeof value === "string" && regex.test(value);
+  if (
+    !receipt || typeof receipt !== "object" ||
+    Object.keys(receipt).sort().join(",") !==
+      "created_at,idempotent,report_id,report_state" ||
+    !pattern(receipt.report_id, /^report_[0-9a-f]{64}$/) ||
+    receipt.report_state !== "submitted" ||
+    typeof receipt.idempotent !== "boolean" ||
+    typeof receipt.created_at !== "string" || receipt.created_at.length > 64 ||
+    !Number.isFinite(Date.parse(receipt.created_at))
+  ) throw new NativeError(503, "submit_unavailable");
+  return data;
+}
+
+export function validateRichReport(body: Record<string, unknown>): void {
   const fields = [
     "p_contract_version",
     "p_channel",
@@ -73,43 +118,4 @@ export async function submitRichReport(
     (Object.hasOwn(body, "p_batch_id") && !isUuid(body.p_batch_id))
   ) throw new NativeError(400, "invalid_request");
 
-  const { data, error } = await rpc("testing_center_report_submit_admitted", {
-    ...body,
-    p_account: account,
-  });
-  if (error) {
-    // Only stable public codes; never forward upstream SQL text or payloads.
-    if (error.code === "55000") {
-      throw new NativeError(400, "evidence_not_ready");
-    }
-    throw new NativeError(
-      error.code === "42501"
-        ? 403
-        : error.code === "28000"
-        ? 401
-        : error.code === "23505"
-        ? 409
-        : error.code === "22023"
-        ? 400
-        : error.code === "54000"
-        ? 429
-        : 503,
-      "submit_failed",
-    );
-  }
-  if (!Array.isArray(data) || data.length !== 1) {
-    throw new NativeError(503, "submit_unavailable");
-  }
-  const receipt = data[0];
-  if (
-    !receipt || typeof receipt !== "object" ||
-    Object.keys(receipt).sort().join(",") !==
-      "created_at,idempotent,report_id,report_state" ||
-    !pattern(receipt.report_id, /^report_[0-9a-f]{64}$/) ||
-    receipt.report_state !== "submitted" ||
-    typeof receipt.idempotent !== "boolean" ||
-    typeof receipt.created_at !== "string" || receipt.created_at.length > 64 ||
-    !Number.isFinite(Date.parse(receipt.created_at))
-  ) throw new NativeError(503, "submit_unavailable");
-  return data;
 }

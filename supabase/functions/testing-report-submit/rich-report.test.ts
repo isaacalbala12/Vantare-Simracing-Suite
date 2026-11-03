@@ -16,14 +16,14 @@ const receipt = [{
   idempotent: false,
   created_at: "2026-10-19T00:00:00Z",
 }];
-function request(payload: unknown) {
+function request(payload: unknown, ip = "192.0.2.10") {
   return new Request(
     "https://example.invalid/functions/v1/testing-report-submit",
     {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "cf-connecting-ip": "192.0.2.10",
+        "cf-connecting-ip": ip,
       },
       body: JSON.stringify(payload),
     },
@@ -62,7 +62,7 @@ Deno.test("1709: Rust Windows UTF-8 request contract with/without batch crosses 
     }]);
   }
 });
-Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and invalid batches after admission", async () => {
+Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and invalid batches before account admission", async () => {
   for (
     const change of [
       { p_account: account },
@@ -89,10 +89,10 @@ Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and in
         .status,
       400,
     );
-    eq(f.calls, ["ip", "auth", "account"]);
+    eq(f.calls, ["ip", "auth"]);
   }
 });
-Deno.test("1709: rich and existing forms exhaust the same IP/account budget; retries consume admission", async () => {
+Deno.test("1709: distinct rich and simple reports share account quota across IPs", async () => {
   const f = fixture();
   const counts = new Map<string, number>();
   f.deps.admit = (scope, key) => {
@@ -110,15 +110,18 @@ Deno.test("1709: rich and existing forms exhaust the same IP/account budget; ret
     p_consent: true,
   };
   for (let i = 0; i < 5; i++) {
+    const unique = i % 2
+      ? { ...simple, p_id: `17090000-0000-4000-8000-00000000000${i}` }
+      : { ...body, p_idempotency_key: `draft_${String(i).repeat(64)}` };
     eq(
-      (await handleTestingReportSubmit(request(i % 2 ? simple : body), f.deps))
+      (await handleTestingReportSubmit(request(unique), f.deps))
         .status,
       200,
     );
   }
   eq(
     (await handleTestingReportSubmit(
-      request({ ...body, p_batch_id: batch }),
+      request({ ...body, p_idempotency_key: `draft_${"5".repeat(64)}` }, "192.0.2.11"),
       f.deps,
     )).status,
     429,

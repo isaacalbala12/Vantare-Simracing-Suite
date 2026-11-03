@@ -5194,7 +5194,7 @@ Project Vantare, area:plataforma; Plane En curso verificado. Base origin/nightly
   Borrado caracterizado por la entrada vigente prepare_account_deletion.
 - Nuevo test Rust de Command::Logout con sesión sintética y listener local:
   comprueba que no hay HTTP. Fmt, Nextest admin completo, check all-targets y
-  Clippy -D warnings PASS; lifecycle pendiente de cola. Telemetría no aplica:
+  Clippy -D warnings y lifecycle 25/25 PASS. Telemetría no aplica:
   no cambia runtime/domain/ipc/testdata.
   No se ha abierto el almacén real. Harness medium heredado; sin subagentes.
 - Runner SQL local reproducible: run-admin-characterization-local.py --pg-bin

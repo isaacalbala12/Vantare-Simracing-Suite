@@ -7566,3 +7566,6 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Sin cambios _shared/clerk-webhook, billing/licencias, datos R6, dependencias,
   Store real, secretos, producción, despliegue, merge ni release. Paso 11 en R6;
   distinguir 409 y lectura/retención siguen en paso 10.
+- PR draft [#1927](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1927)
+  contra nightly; código validado d2c247ca7 y push verificado. Dependencia #1925
+  explícita; CI nueva pendiente. No hay integración ni despliegue autorizado.

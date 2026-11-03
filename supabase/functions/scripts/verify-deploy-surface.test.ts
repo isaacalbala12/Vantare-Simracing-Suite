@@ -171,36 +171,6 @@ Deno.test("native license is guarded and deployable in isolation", () => {
   }
 });
 
-Deno.test("testing pilot functions are recognized but remain outside production wrapper", () => {
-  const entries = [
-    { name: "testing-center-linear-webhook", isDirectory: true },
-    { name: "testing-center-linear-worker", isDirectory: true },
-  ] as Deno.DirEntry[];
-  if (invalidDeployableDirectories(entries).length !== 0) {
-    throw new Error("reviewed testing pilot surface was rejected");
-  }
-  const wrapper = Deno.readTextFileSync(
-    new URL("./deploy-approved-functions.ps1", import.meta.url),
-  );
-  if (wrapper.includes("testing-center-linear-worker")) {
-    throw new Error("testing pilot leaked into production deployment wrapper");
-  }
-  const pilotWrapper = Deno.readTextFileSync(
-    new URL("./deploy-testing-center-pilot.ps1", import.meta.url),
-  );
-  if (
-    !pilotWrapper.includes("DEPLOY-ISA-243-TESTING-PILOT") ||
-    !pilotWrapper.includes("assert-testing-center-pilot-project.ps1") ||
-    !pilotWrapper.includes("verify-deploy-surface.ps1") ||
-    !pilotWrapper.includes('"testing-center-linear-worker"')
-  ) throw new Error("testing pilot wrapper lacks explicit guards");
-  if (/& \$guard\s+if \(\$LASTEXITCODE/.test(pilotWrapper)) {
-    throw new Error(
-      "PowerShell guard incorrectly reuses stale native exit code",
-    );
-  }
-});
-
 Deno.test("agent automation is recognized but remains absent from every deploy wrapper", () => {
   const entries = [
     { name: "testing-center-agent-dispatch", isDirectory: true },

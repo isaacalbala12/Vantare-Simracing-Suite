@@ -11,7 +11,7 @@ from commercial_checkout_terminal import run_terminal_checkout_race
 from commercial_migration_lock import run_migration_lock_regression
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
-from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions
+from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -278,6 +278,8 @@ $$;
   """).strip()
   assert role_contract=='t', 'managed product role attributes changed'
   (OUT/'managed-role-contract.log').write_text('Four product roles: safe attributes PASS\n')
+  if admin_owner_previous is not None:
+   run_admin_owner_precheck(run,conn,OUT,BIN,ENV)
   if not (args.baseline or args.before_write_barrier or args.before_testing_identity or args.admin_effects_only or args.admin_owner_only):
    admission='20261103093000_isa_1896_report_admission'
    run('psql',*conn,'-c',"""insert into private.testing_report_attempts

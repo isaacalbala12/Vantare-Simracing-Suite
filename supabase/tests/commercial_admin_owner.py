@@ -12,6 +12,42 @@ SNAPSHOT = """select json_object_agg(p.oid::regprocedure::text,json_build_object
  'public.testing_contribution_review(uuid,text,text,jsonb)'::regprocedure)"""
 
 
+def run_admin_owner_precheck(run, conn, out, bin_dir, env):
+    actor = '19100400-0000-4000-8000-000000000091'
+    target = '19100400-0000-4000-8000-000000000092'
+    report = '19100400-0000-4000-8000-000000000093'
+    claims = json.dumps(dict(iss='https://owner-precheck.invalid',sub='user_precheck',
+        role='authenticated',sid='sess_fixture',azp='https://app.invalid'))
+    run('psql',*conn,'-c',f"""insert into public.profiles(id) values('{actor}'),('{target}');
+      insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+        values('https://owner-precheck.invalid',array['https://app.invalid'],true);
+      insert into public.account_identities(issuer,subject,account_id)
+        values('https://owner-precheck.invalid','user_precheck','{actor}');
+      insert into public.testing_contributions(id,account_id,channel,title,body)
+        values('{report}','{target}','master','Synthetic','Synthetic');""")
+    holder = subprocess.Popen([str(bin_dir/'psql'),*conn,'-q'],env=env,
+        stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    try:
+        holder.stdin.write(f"begin; do $$begin perform private.lock_accounts_before_rows(array['{target}'::uuid]); end$$; select 'ready';\n")
+        holder.stdin.flush()
+        assert select.select([holder.stdout],[],[],10)[0]
+        assert holder.stdout.readline().strip() == 'ready'
+        # The target is explicitly locked until this request finishes. Lock
+        # timeout makes any attempted target lock fail; elapsed time is no oracle.
+        result = subprocess.run([str(bin_dir/'psql'),*conn,'-q','-c',
+            "set lock_timeout='1s'; set statement_timeout='5s'; set role authenticated; "+
+            f"select set_config('request.jwt.claims','{claims}',false); "+
+            f"select public.testing_contribution_review('{report}','declined','Synthetic',null);"],
+            env=env,text=True,capture_output=True,timeout=10)
+        (out/'admin-owner-precheck.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+        assert result.returncode and '42501' in result.stderr and 'testing_owner_required' in result.stderr, result.stderr
+        assert '55P03' not in result.stderr
+    finally:
+        if holder.poll() is None:
+            holder.communicate('rollback;\n\\q\n',timeout=10)
+    print('Admin owner: non-owner denied while target UUID remains locked PASS',flush=True)
+
+
 def run_admin_owner_regressions(run, conn, out, bin_dir, env, previous):
     root = Path(__file__).resolve().parents[2]
     current = json.loads(run('psql', *conn, '-c', SNAPSHOT))

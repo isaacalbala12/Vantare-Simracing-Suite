@@ -89,11 +89,15 @@ for (
       " keeps uploads pending but drains completed objects",
     async () => {
       const { calls, run } = fixture(failure);
-      await assertRejects(run);
-      assertEquals(calls.includes("clerk_deletion_completed"), true);
-      if (failure === "abort") {
-        assertEquals(calls.includes("clerk_deletion_upload_completed"), false);
-      }
+      await assertRejects(run, { message: "cleanup_retry_required" });
+      assertEquals(calls, [
+        "clerk_deletion_uploads",
+        ...(failure === "clerk_deletion_uploads" ? [] : ["abort"]),
+        ...(failure === "clerk_deletion_upload_completed"
+          ? ["clerk_deletion_upload_completed"] : []),
+        "clerk_deletion_objects", "remove", "clerk_deletion_completed",
+        "clerk_deletion_objects",
+      ]);
     },
   );
 }
@@ -109,10 +113,16 @@ for (
     "erasure characterization: " + failure + " prevents successful completion",
     async () => {
       const { calls, run } = fixture(failure);
-      await assertRejects(run);
-      if (failure === "remove") {
-        assertEquals(calls.includes("clerk_deletion_completed"), false);
+      await assertRejects(run, { message: failure });
+      const sequence = [
+        "clerk_deletion_uploads", "abort", "clerk_deletion_upload_completed",
+        "clerk_deletion_uploads", "clerk_deletion_objects",
+      ];
+      if (failure !== "clerk_deletion_objects") sequence.push("remove");
+      if (failure === "clerk_deletion_completed") {
+        sequence.push("clerk_deletion_completed");
       }
+      assertEquals(calls, sequence);
     },
   );
 }

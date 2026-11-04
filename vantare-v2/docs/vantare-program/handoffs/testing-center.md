@@ -1,3 +1,10 @@
+## 2026-11-04 - #1896 / VANTA-131 paso 8b: disposición owner operativa
+
+- #1928 se cerró porque #1934 ya está en nightly. De #1936, el cierre 7b retiró `testing_center_authorize_posthog_linear_link`; seguía viva `testing_center_record_owner_disposition` con autorización por membresía owner antigua. El test previo falló 4/7: owner revocado aceptado por la puerta antigua y owner operativo sin membresía rechazado.
+- [Draft #1960](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1960), rama `vantareapp/isa-1896-paso8b-owner-disposition` desde `nightly@6047b8ea6`. Una migración incremental con rollback completo cambia solo esa RPC a `private.is_owner(account)`; conserva el actor histórico para reintentos y usa el UUID de cuenta cuando no hay membresía. PostgreSQL 16 local LF/CRLF: 7/7, rollback de función y ACL exactos, reaplicación y cierre 7b PASS. El volcado se generó en PostgreSQL 17; PostgreSQL 16 da diferencias de versión en `shared.sql` y `testing.sql`, por lo que la CI comprueba el snapshot con PostgreSQL 17. La ruta sigue inerte; no se toca SQL admin, billing ni ningún entorno alojado.
+- Review Sonnet de #1960: `testing_center_validate_candidate` (ACL autenticado cerrado) y `testing_center_record_validation_projection` también reconocían la membresía owner antigua. Test previo RED 10/13; ahora usan `private.is_owner` y conservan tester/primary_tester. El rollback restaura la política de membresía y ACL; el cuerpo de la ruta autenticada usa `private.current_account()` por ADR 0106 en vez del `auth.uid()` histórico. PostgreSQL 16 LF/CRLF: disposición 9/9, validación 13/13, rollback/reaplicación y harness completo (134 rutas, 795 checks) PASS. El gate completo deshace #1960 antes del owner del paso 8. El ajuste del corte del lint 0106 espera decisión de Isaac sobre dos migraciones ya fusionadas que no cumplen la regla.
+- Quedan el enlace de capturas del paso 6 y los pasos 9, 10, 11 y 13. #1933 (pgcrypto) sigue abierto como preflight de despliegue. La Fase B del paso 12 necesita ventana y autorización de Isaac.
+
 ## 2026-11-04 - #1896 / VANTA-131 paso 12, Fase A: lint e inmutabilidad
 
 - #1954 rebasado tras el merge de #1955 (`nightly@269d08d1b`). La CI aplica la ADR 0106 solo a migraciones posteriores a `20261104235959` y compara los SQL y rollbacks que ya existen en `origin/nightly`; si cambian, exige una migración nueva. La referencia ausente falla cerrada.
@@ -1187,3 +1194,26 @@ ejecución sobre la cadena actual 0 nuevas migraciones y 0 errores. El PR
 del lint va aislado del seguimiento 7b5 #1953; no cambia SQL de producto.
 [PR draft #1954](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1954)
 contra nightly; pendiente CI/review antes de integrar.
+
+Corrección del corte ADR 0106 en #1960: el corte real es
+`20261104105500` UTC. Dos migraciones fusionadas después de esa hora
+(`#1910`/`20261104110000` y `#1949`/`20261104120500`) reciben una excepción
+por fichero exacto y únicamente para el diagnóstico `missing_revoke_all`;
+los demás errores y la prohibición de editar migraciones fusionadas siguen
+fallando. Una migración nueva declara la ACL final de `admin_effects`,
+`technical_issues`, `effect_outbox` y `linear_projection_snapshots`; aborta
+si su `relacl` cambia. El harness PG16 comprobó snapshot antes/después,
+down y reaplicación idénticos. No se cambió ningún permiso efectivo.
+Re-review de #1960: el harness omite la reafirmación de ACL en los modos
+históricos que también omiten el cierre de escritores legacy; conserva su
+control RED. El lint reconoce `REVOKE ALL` dentro de `EXECUTE` solo cuando
+el texto es una constante; la concatenación falla. Unitarios 19/19 PASS;
+PostgreSQL local conserva el RED esperado de `--before-private-write-barriers`.
+Orden de integración: #1959 → #1960 → #1961; la migración pgcrypto de #1961
+se renombró a `20261104182500`, posterior a `181200`.
+Tras el merge de #1959, #1960 se rebasó sobre `nightly@18fb6ca17` y
+conservó la auditoría admin en el runner. El generador fijado con PostgreSQL
+17 produjo nueve volcados; todos son idénticos a `supabase/schema/` tras
+normalizar LF/CRLF, así que no hubo cambios derivados que versionar. La CI
+comercial del rebase pasó lint, control RED, harness LF/CRLF, cierre legacy,
+owner y comparación de esquema. Sin despliegue ni merge de #1960.

@@ -29,8 +29,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest supabase.tests.test_migration_policy_lint
-          # The ADR merged on 2026-11-04; in-flight SQL on that date is historical.
-          python3 supabase/tests/lint_migrations.py --cutoff 20261104235959 --baseline-ref origin/nightly
+          # ADR 0106 merged at about 10:55 UTC on 2026-11-04.
+          python3 supabase/tests/lint_migrations.py --cutoff 20261104105500 --baseline-ref origin/nightly
       - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
           deno-version: 2.7.13
@@ -115,6 +115,18 @@ jobs:
               --legacy-retirement-only \
               --output "$RUNNER_TEMP/commercial-races/retirement-$newline" \
               2>&1 | tee "$RUNNER_TEMP/commercial-races/retirement-$newline.log"
+          done
+      - name: Verify operational owner disposition and exact rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          for newline in lf crlf; do
+            python3 supabase/tests/run-commercial-local.py --docker \
+              --pg-bin "$(pg_config --bindir)" \
+              --migration-newlines "$newline" \
+              --owner-disposition-only \
+              --output "$RUNNER_TEMP/commercial-races/owner-disposition-$newline" \
+              2>&1 | tee "$RUNNER_TEMP/commercial-races/owner-disposition-$newline.log"
           done
       - name: Verify derived domain schema
         shell: bash

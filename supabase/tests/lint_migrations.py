@@ -6,6 +6,13 @@ import subprocess
 
 
 ROLES = {'public', 'anon', 'authenticated', 'service_role'}
+# The two migrations were merged before the lint entered CI with the real cut.
+# Only this diagnostic is waived; other checks (and merged-file immutability)
+# still apply to them.
+EXCEPTIONS = {
+    '20261104110000_isa_1910_smtp_effects.sql': frozenset({'missing_revoke_all'}),
+    '20261104120500_isa_1896_legacy_retirement.sql': frozenset({'missing_revoke_all'}),
+}
 MIGRATION = re.compile(r'^(\d{14})_[a-zA-Z0-9_]+\.sql$')
 IDENT = r'(?P<name>(?:[a-zA-Z_][\w]*\.)?[a-zA-Z_][\w]*)'
 OBJECT = re.compile(
@@ -16,6 +23,7 @@ REVOKE = re.compile(
     r'\brevoke\s+all(?:\s+privileges)?\s+on\s+'
     r'(?P<kind>table|sequence|function)\s+'
     r'(?P<objects>[^;]+?)\s+from\s+(?P<roles>[^;]+);', re.I | re.S)
+EXECUTE_LITERAL = re.compile(r"\bexecute\s+'(?P<body>(?:''|[^'])*)'\s*;", re.I | re.S)
 
 
 def without_comments(source: str) -> str:
@@ -73,7 +81,11 @@ def without_comments(source: str) -> str:
 def revoke_roles(sql: str, kind: str, name: str) -> set[str]:
     expected_kind = 'function' if kind == 'function' else (
         'sequence' if kind == 'sequence' else 'table')
-    for match in REVOKE.finditer(sql):
+    # A constant EXECUTE string is executable SQL too. A concatenated string
+    # is deliberately excluded: its final ACL cannot be proved statically.
+    literal_sql = [match.group('body').replace("''", "'") + ';'
+                   for match in EXECUTE_LITERAL.finditer(sql)]
+    for match in (m for source in [*literal_sql, sql] for m in REVOKE.finditer(source)):
         if match.group('kind').lower() != expected_kind:
             continue
         objects = match.group('objects').lower()
@@ -120,7 +132,7 @@ def check_migration(path: pathlib.Path, rollback: pathlib.Path) -> list[str]:
                              declaration, re.I):
                 errors.append(f'{path.name}: {name} needs a full body')
         roles = revoke_roles(sql, kind, name)
-        if not ROLES <= roles:
+        if not ROLES <= roles and 'missing_revoke_all' not in EXCEPTIONS.get(path.name, ()):
             missing = ', '.join(sorted(ROLES - roles))
             errors.append(f'{path.name}: {name} needs REVOKE ALL for {missing}')
     return errors

@@ -37,6 +37,7 @@ parser.add_argument('--admin-erasure-only', action='store_true')
 parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
 parser.add_argument('--legacy-retirement-inventory', action='store_true', help='Read-only catalog inventory after migrations')
 parser.add_argument('--legacy-retirement-only', action='store_true', help='Replay full chain, then verify final 7b closure and rollback')
+parser.add_argument('--owner-disposition-only', action='store_true', help='Replay full chain, then test the operational owner disposition boundary')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -206,6 +207,19 @@ $$;
   owner_ack_previous=None
   retirement_stem='20261104120500_isa_1896_legacy_retirement'
   retirement_before=None
+  owner_disposition_stem='20261104164800_isa_1936_owner_disposition_authority'
+  owner_disposition_before=None
+  owner_validation_before=None
+  owner_disposition_snapshot="""select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')
+    ||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p
+    where p.oid='public.testing_center_record_owner_disposition(text,text,text,text,text,text,text,uuid)'::regprocedure"""
+  owner_validation_snapshot="""select jsonb_build_object(
+    'validate',pg_get_functiondef('public.testing_center_validate_candidate(text,text,text,text,text,text)'::regprocedure),
+    'validate_acl',(select coalesce(proacl::text,'<null>') from pg_proc
+      where oid='public.testing_center_validate_candidate(text,text,text,text,text,text)'::regprocedure),
+    'projection',pg_get_functiondef('public.testing_center_record_validation_projection(jsonb,text,text,text,text,uuid)'::regprocedure),
+    'projection_acl',(select coalesce(proacl::text,'<null>') from pg_proc
+      where oid='public.testing_center_record_validation_projection(jsonb,text,text,text,text,uuid)'::regprocedure))"""
   retirement_schema_before=None
   retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',
     'testing_center_issue_occurrences','testing_center_posthog_consent_events',
@@ -316,11 +330,13 @@ $$;
   channel_role_before=None
   channel_role_after=None
   erasure_previous=None
+  acl_restatement_stem='20261104181200_isa_1896_acl_restatement'
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    # Historical suites run against the pre-retirement schema. CI also replays
    # the complete chain with --legacy-retirement-only and tests the final state.
-   if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot): continue
+   if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot or args.owner_disposition_only): continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
+   if m.stem==acl_restatement_stem and not legacy_writers_enabled: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
@@ -403,6 +419,10 @@ $$;
      'private.testing_contribution_submit_v2_for_account(uuid,uuid,text,text,text,jsonb,jsonb)'::regprocedure)"""
    if m.stem==channel_stem:
     channel_role_before=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
+   if m.stem==owner_disposition_stem:
+    owner_disposition_before=run('psql',*conn,'-At','-c',owner_disposition_snapshot).strip()
+    if args.owner_disposition_only:
+     owner_validation_before=json.loads(run('psql',*conn,'-At','-c',owner_validation_snapshot))
    archive_stem='20261104014000_isa_1896_legacy_archive'
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
@@ -538,6 +558,15 @@ $$;
      (OUT/'retirement-live-references.before.json').write_text(references,encoding='utf-8')
    if m.stem==ERASURE_STEM:
     erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
+   acl_restatement_query="""select jsonb_object_agg(n.nspname||'.'||c.relname,
+     coalesce(c.relacl::text,'<null>') order by n.nspname,c.relname)
+     from pg_class c join pg_namespace n on n.oid=c.relnamespace
+     where (n.nspname,c.relname) in (
+       ('private','admin_effects'),('public','testing_center_technical_issues'),
+       ('public','testing_center_effect_outbox'),
+       ('public','testing_center_linear_projection_snapshots'))"""
+   if m.stem==acl_restatement_stem:
+    acl_restatement_before=run('psql',*conn,'-At','-c',acl_restatement_query).strip()
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -560,6 +589,12 @@ $$;
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
+   if m.stem==acl_restatement_stem:
+    assert run('psql',*conn,'-At','-c',acl_restatement_query).strip()==acl_restatement_before, 'ACL restatement changed relacl'
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(acl_restatement_stem+'.down.sql'))
+    assert run('psql',*conn,'-At','-c',acl_restatement_query).strip()==acl_restatement_before, 'ACL rollback changed relacl'
+    run('psql',*conn,'-f',migration_source)
+    print('ADR 0106 four-table exact relacl up/down/reapply PASS',flush=True)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
     admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'
@@ -783,6 +818,40 @@ $$;
     run('psql',*conn,'-c',"""delete from public.testing_contributions
       where legacy_source_id is not null;
       delete from private.testing_center_legacy_archive;""")
+  def owner_disposition_down():
+   down=ROOT/'supabase/rollbacks'/(owner_disposition_stem+'.down.sql')
+   down_source=OUT/'migration-sources'/down.name
+   down_text=down.read_text(encoding='utf-8')
+   down_source.write_bytes(down_text.replace('\n','\r\n').encode('utf-8')
+    if args.migration_newlines=='crlf' else down_text.encode('utf-8'))
+   run('psql',*conn,'-f',down_source)
+  if args.owner_disposition_only:
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_disposition_authority.test.sql')
+   if re.search(r'^not ok ',result,re.M):
+    raise RuntimeError('owner disposition characterization failed:\n'+result)
+   validation=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_validation_authority.test.sql')
+   if re.search(r'^not ok ',validation,re.M):
+    raise RuntimeError('owner validation characterization failed:\n'+validation)
+   if owner_disposition_before is not None:
+    owner_disposition_down()
+    restored=run('psql',*conn,'-At','-c',owner_disposition_snapshot).strip()
+    if restored!=owner_disposition_before:
+     raise RuntimeError('owner disposition rollback changed function or ACL')
+    restored_validation=json.loads(run('psql',*conn,'-At','-c',owner_validation_snapshot))
+    expected_validation=dict(owner_validation_before)
+    expected_validation['validate']=expected_validation['validate'].replace(
+     'v_user_id uuid := auth.uid();','v_user_id uuid := private.current_account();')
+    if restored_validation!=expected_validation:
+     raise RuntimeError('owner validation rollback changed body beyond identity or ACL')
+    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_disposition_stem+'.sql'))
+    replay=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_disposition_authority.test.sql')
+    if re.search(r'^not ok ',replay,re.M):
+     raise RuntimeError('owner disposition reapply failed:\n'+replay)
+    replay=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_validation_authority.test.sql')
+    if re.search(r'^not ok ',replay,re.M):
+     raise RuntimeError('owner validation reapply failed:\n'+replay)
+   print('Operational owner disposition boundary PASS',flush=True)
+   raise SystemExit(0)
   if args.schema_snapshot:
    # The runner owns a fresh loopback database; no DSN or hosted endpoint is accepted.
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null and to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
@@ -855,6 +924,8 @@ $$;
    actor_result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement_actor.test.sql')
    (OUT/'testing_center_legacy_retirement_actor.test.sql.log').write_text(actor_result)
    if 'not ok ' in actor_result or '1..6' not in actor_result: raise RuntimeError(actor_result)
+   if owner_disposition_before is not None:
+    owner_disposition_down()
    run('psql',*conn,'-c',"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
      values('https://retirement.invalid',array['https://retirement.invalid'],true)
      on conflict(issuer) do nothing;
@@ -920,6 +991,8 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(retirement_stem+'.sql'))
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null").strip()!='t':
     raise RuntimeError('final 7b failed with an already absent Storage policy')
+   if owner_disposition_before is not None:
+    run('psql',*conn,'-f',OUT/'migration-sources'/(owner_disposition_stem+'.sql'))
    print('Final 7b closure, absent Storage policy, empty-archive guard, exact rollback and reapply PASS',flush=True)
    raise SystemExit(0)
   # All four product principals must retain the same safe attributes after
@@ -1035,6 +1108,8 @@ $$;
   if owner_enabled and not args.admin_effects_only:
    owner_stem='20261103235000_isa_1896_owner_unification'
    admin_owner_current=None
+   if owner_disposition_before is not None:
+    owner_disposition_down()
    # Channel writers depend on private.is_owner; unwind them before step 8.
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(channel_stem+'.down.sql'))
    channel_predecessor=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
@@ -1105,6 +1180,8 @@ $$;
     actual=dict(line.split('|',1) for line in channel_restored.splitlines())
     raise RuntimeError('#1928 role contract lost after step 8 rollback/reapply: '+
                        ', '.join(name for name in expected if expected[name]!=actual.get(name)))
+   if owner_disposition_before is not None:
+    run('psql',*conn,'-f',OUT/'migration-sources'/(owner_disposition_stem+'.sql'))
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))

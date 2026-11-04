@@ -3061,7 +3061,7 @@ CREATE FUNCTION public.testing_center_record_owner_disposition(p_rejection_valid
     SET search_path TO ''
     AS $$
 declare
-  v_owner public.testing_center_memberships%rowtype;
+  v_actor_id text;
   v_validation public.testing_center_validation_snapshots%rowtype;
   v_issue public.testing_center_technical_issues%rowtype;
   v_dossier public.testing_center_codex_dossier_snapshots%rowtype;
@@ -3077,11 +3077,14 @@ begin
     or pg_catalog.octet_length(p_reason) not between 3 and 2048 then
     raise exception 'testing_center_owner_disposition_invalid' using errcode='22023';
   end if;
-  select * into v_owner from public.testing_center_memberships
-  where user_id=p_owner_user_id and active and role='owner' for update;
-  if not found then
+  if not private.is_owner(p_owner_user_id) then
     raise exception 'testing_center_owner_required' using errcode='42501';
   end if;
+  -- Keep the historical actor identifier for exact replay; an operational
+  -- owner without Testing Center membership uses the canonical account UUID.
+  select m.actor_id into v_actor_id from public.testing_center_memberships m
+  where m.user_id=p_owner_user_id;
+  v_actor_id := coalesce(v_actor_id,p_owner_user_id::text);
   select * into v_validation from public.testing_center_validation_snapshots
   where validation_id=p_rejection_validation_id and decision='rejected'
   for update;
@@ -3097,7 +3100,7 @@ begin
     || coalesce(p_correction_issue_id,'') || pg_catalog.chr(31)
     || coalesce(p_target_branch,'') || pg_catalog.chr(31)
     || coalesce(p_nightly_sha,'') || pg_catalog.chr(31)
-    || v_owner.actor_id || pg_catalog.chr(31) || p_owner_user_id::text,
+    || v_actor_id || pg_catalog.chr(31) || p_owner_user_id::text,
     'UTF8'),'sha256'),'hex');
   v_disposition_id := 'disposition_' || v_digest;
   select * into v_existing from public.testing_center_owner_dispositions
@@ -3143,7 +3146,7 @@ begin
     target_branch,nightly_sha,disposition_digest
   ) values (
     v_disposition_id,p_rejection_validation_id,v_validation.technical_issue_id,
-    v_owner.actor_id,p_owner_user_id,p_disposition,p_reason,p_dossier_digest,
+    v_actor_id,p_owner_user_id,p_disposition,p_reason,p_dossier_digest,
     p_correction_issue_id,p_target_branch,p_nightly_sha,v_digest
   );
   if v_target_state='stopped' then
@@ -3155,7 +3158,7 @@ begin
       actor_id,actor_user_id,actor_role,exact_sha,operation_digest
     ) values (
       'testing-center.v1','audit_' || v_digest,v_validation.technical_issue_id,
-      'needs_owner','stopped','testing_center',v_owner.actor_id,p_owner_user_id,
+      'needs_owner','stopped','testing_center',v_actor_id,p_owner_user_id,
       'owner',v_validation.candidate_sha,v_digest
     );
   end if;
@@ -3178,6 +3181,7 @@ declare
   v_candidate public.testing_center_candidate_builds%rowtype;
   v_issue public.testing_center_technical_issues%rowtype;
   v_membership public.testing_center_memberships%rowtype;
+  v_has_membership boolean;
   v_existing public.testing_center_validation_snapshots%rowtype;
   v_validation_id text;
   v_replay_key text;
@@ -3258,8 +3262,16 @@ begin
 
   select * into v_membership from public.testing_center_memberships
   where user_id = p_actor_user_id and active for update;
-  if not found
-    or v_membership.actor_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  v_has_membership := found;
+  if private.is_owner(p_actor_user_id) then
+    v_membership.actor_id := coalesce(v_membership.actor_id, p_actor_user_id::text);
+    v_membership.role := 'owner';
+  elsif not v_has_membership
+    or coalesce(v_membership.role, '') not in ('tester', 'primary_tester') then
+    raise exception 'testing_center_validation_membership_invalid'
+      using errcode = '42501';
+  end if;
+  if v_membership.actor_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     or v_membership.role <> p_projection->>'actorRole' then
     raise exception 'testing_center_validation_membership_invalid'
       using errcode = '42501';
@@ -3636,7 +3648,10 @@ begin
   where membership.user_id = v_user_id
     and membership.active;
 
-  if not found then
+  if private.is_owner(v_user_id) then
+    v_actor_id := coalesce(v_actor_id, v_user_id::text);
+    v_role := 'owner';
+  elsif coalesce(v_role, '') not in ('tester', 'primary_tester') then
     raise exception 'testing_center_membership_required' using errcode = '42501';
   end if;
 

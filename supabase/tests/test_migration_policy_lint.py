@@ -7,7 +7,7 @@ import unittest
 
 
 LINTER = pathlib.Path(__file__).with_name('lint_migrations.py')
-CUTOFF = '20261104110000'
+CUTOFF = '20261104105500'
 OLD = '20261104100000_historical.sql'
 NEW = '20261104110001_new.sql'
 VALID = '''begin;
@@ -74,7 +74,8 @@ class MigrationPolicyLintTests(unittest.TestCase):
         self.write_new(VALID + 'select auth.uid();\n')
         self.assertIn('auth.uid', self.lint().stdout)
         self.write_new('-- old auth.uid() is not executable\n' + VALID)
-        self.assertEqual(self.lint().returncode, 0)
+        result = self.lint()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_missing_acl_role_rejected(self):
         self.write_new(VALID.replace('public, anon, authenticated, service_role',
@@ -82,6 +83,42 @@ class MigrationPolicyLintTests(unittest.TestCase):
         result = self.lint()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('service_role', result.stdout)
+
+    def test_exact_historical_exception_does_not_hide_another_error(self):
+        for name in ('20261104110000_isa_1910_smtp_effects.sql',
+                     '20261104120500_isa_1896_legacy_retirement.sql'):
+            with self.subTest(name=name):
+                path = self.root / 'migrations' / name
+                down = self.root / 'rollbacks' / name.replace('.sql', '.down.sql')
+                path.write_text('alter table public.example add column note text;\nselect auth.uid();\n')
+                down.write_text('begin; commit;\n')
+                result = self.lint()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('auth.uid() is forbidden', result.stdout)
+                self.assertNotIn('needs REVOKE ALL', result.stdout)
+                path.write_text('create function public.example() returns integer language sql as $$select 1$$;\n')
+                result = self.lint()
+                self.assertIn('must use create or replace', result.stdout)
+                path.rename(self.root / 'migrations' / name.replace('_isa_', '_other_isa_'))
+                result = self.lint()
+                self.assertIn('needs REVOKE ALL', result.stdout)
+                (self.root / 'migrations' / name.replace('_isa_', '_other_isa_')).unlink()
+                down.unlink()
+
+    def test_constant_execute_revoke_is_recognized(self):
+        self.write_new('''create or replace function public.example() returns integer language sql as $$select 1$$;
+do $$ begin execute 'revoke all on function public.example() from public, anon, authenticated, service_role'; end $$;
+''')
+        result = self.lint()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_concatenated_execute_revoke_is_rejected(self):
+        self.write_new('''create or replace function public.example() returns integer language sql as $$select 1$$;
+do $$ begin execute 'revoke all on function public.example() from public, anon, authenticated, ' || 'service_role'; end $$;
+''')
+        result = self.lint()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('needs REVOKE ALL', result.stdout)
 
     def test_create_function_without_full_replace_rejected(self):
         self.write_new(VALID.replace('create or replace function', 'create function'))

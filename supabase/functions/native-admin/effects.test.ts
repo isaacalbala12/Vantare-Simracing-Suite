@@ -263,3 +263,24 @@ Deno.test("R10 effects: active Gestión rejects Hub JWT before any intent", asyn
   );
   assert(response.status === 401 && f.calls.length === 0);
 });
+
+for (const value of [false, null, {}, "true", "throw"]) {
+  Deno.test(
+    "R10 effects: recorder requires true, got " + JSON.stringify(value),
+    async () => {
+      const f = fixture();
+      const deps: AdminDeps = {
+        ...f.deps,
+        recordEffect: () => {
+          if (value === "throw") throw new Error("private recorder");
+          // Deliberately violate the dependency's typed ACK, like a malformed RPC.
+          return Promise.resolve(value) as Promise<boolean>;
+        },
+      };
+      const response = await handleNativeAdmin(unblock(), deps);
+      assert(response.status === 503);
+      assert((await response.json()).error === "account_change_incomplete");
+      assert(JSON.stringify(f.calls) === "[]");
+    },
+  );
+}

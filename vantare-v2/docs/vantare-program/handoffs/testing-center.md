@@ -1045,3 +1045,6 @@ Cierre local ronda 2: F1 17/17, F2 6/6, F3 8/8 más dos sesiones con fixed previ
 - Base nueva `origin/nightly@6e80ae71a`, con #1912 y #1913 de admin. El runner SQL conserva las suites de admin de nightly y añade las pruebas y rollbacks de 7a. El handoff conserva los cambios de ambos trabajos.
 - Admin ya había reservado ADR 0104; el diseño de informes del Testing Center pasa a ADR 0105, con el contenido aprobado intacto. Solo cambian el número, el nombre del archivo y su índice.
 - PostgreSQL local completo con las suites de admin y 7a: 133 rutas/789 checks PASS. Deno 39 PASS/1 omitido; Rust fmt y Clippy `-D warnings` para IPC, Services y Hub PASS; Nextest y CI remota pendientes. PR draft #1918 sin merge, release, despliegue ni llamada a producción.
+# 2026-11-04 · #1928 autoridad de canales
+
+Isaac decidió que solo `private.is_owner()` concede acceso owner a los canales. Una membresía `owner` antigua, incluso activa, no concede acceso después de revocar la asignación operativa. `tester` y `primary_tester` conservan su acceso de membresía. La migración #1928 fija esos dos roles en una lista explícita y tiene rollback; la matriz se caracterizó antes del SQL en PostgreSQL local. No cambia admin, billing ni el estado de capturas.

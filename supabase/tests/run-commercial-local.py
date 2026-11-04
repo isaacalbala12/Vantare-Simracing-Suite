@@ -196,6 +196,7 @@ $$;
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
+   if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
    if m.stem in (OWNER_POLICY_STEM,ACK_STEM) and not legacy_writers_enabled: continue
@@ -258,6 +259,10 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
+   channel_stem='20261104043200_isa_1928_channel_owner_authority'
+   channel_role_snapshot_query="select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure"
+   channel_role_before=(run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
+                        if m.stem==channel_stem else None)
    archive_stem='20261104014000_isa_1896_legacy_archive'
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
@@ -373,7 +378,17 @@ $$;
     admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'
     print('Clean chain: actual 7b2 then admin cutover; Clerk deletion remains executable PASS',flush=True)
-
+   if m.stem==channel_stem:
+    channel_role_after=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
+    if channel_role_before==channel_role_after:
+     raise RuntimeError('#1928 did not make the membership allowlist explicit')
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(channel_stem+'.down.sql'))
+    if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_before:
+     raise RuntimeError('#1928 rollback changed current_role definition or ACL')
+    run('psql',*conn,'-f',migration_source)
+    if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_after:
+     raise RuntimeError('#1928 reapply changed current_role definition or ACL')
+    print('#1928 current_role exact rollback/reapply PASS',flush=True)
    if archive_fixture:
     def archive_check(name):
      result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
@@ -677,6 +692,9 @@ $$;
      raise RuntimeError('admin owner changed after dependency rollback/reapply')
    if owner_policy_previous is not None:
     owner_policy_up()
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(channel_stem+'.sql'))
+   if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_after:
+    raise RuntimeError('#1928 role contract lost after step 8 rollback/reapply')
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))

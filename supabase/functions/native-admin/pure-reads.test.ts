@@ -41,12 +41,13 @@ for (
   Deno.test("pending history remains a pure read: " + action, async () => {
     calls.length = 0;
     const response = await handleNativeAdmin(
-      request({ version: 1, action, ...params }),
+      request({ version: 1, action, explicit_payments:true, ...params }),
       deps(),
     );
     assert(response.status === 200);
     const body = await response.json();
     assert(body.payment_sync_required === true);
+    assert(JSON.stringify(calls)===JSON.stringify(["get_payment_sync",action]));
     assert(
       !calls.some((x) =>
         x.startsWith("sync_admin_") || x === "finish_payment_sync"

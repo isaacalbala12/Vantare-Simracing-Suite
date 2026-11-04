@@ -33,6 +33,21 @@ insert into private.mail_audit(id,actor,action,target,detail) values
  ('19101000-0000-4000-8000-000000000012','19101000-0000-4000-8000-000000000002','consent','contact','{"consent":true}');
 insert into public.admin_audit_log(id,actor_account_id,action,target) values
  ('19101000-0000-4000-8000-000000000013','19101000-0000-4000-8000-000000000002','get_rollout','get_rollout');
+create temporary table audit_effect_event as select jsonb_build_object(
+ 'request_id','19101000-0000-4000-8000-000000000021',
+ 'effect_id','19101000-0000-4000-8000-000000000022','action','set_blocked',
+ 'effect','clerk_ban','target_hash',encode(sha256(convert_to('user_audit_target','UTF8')),'hex'),
+ 'outcome','started') event;
+select public.native_admin_record_effect('19101000-0000-4000-8000-000000000001',event,
+ '19101000-0000-4000-8000-000000000002') from audit_effect_event;
+select public.native_admin_record_effect('19101000-0000-4000-8000-000000000001',event||'{"outcome":"succeeded"}',
+ '19101000-0000-4000-8000-000000000002') from audit_effect_event;
+select public.native_admin_record_effect('19101000-0000-4000-8000-000000000001',
+ event||'{"effect_id":"19101000-0000-4000-8000-000000000023"}',
+ '19101000-0000-4000-8000-000000000002') from audit_effect_event;
+select public.native_admin_record_effect('19101000-0000-4000-8000-000000000001',
+ event||'{"effect_id":"19101000-0000-4000-8000-000000000023","outcome":"unknown"}',
+ '19101000-0000-4000-8000-000000000002') from audit_effect_event;
 select lives_ok($$select pg_temp.audit_action('prepare_account_deletion',
  jsonb_build_object('confirmation_hash',repeat('a',64),'clerk_subject','user_audit_target'))$$,
  'the real deletion path prepares a durable tombstone');
@@ -59,5 +74,19 @@ insert into private.mail_audit(id,actor,action,target,detail) values
 select is((select target from public.admin_audit_log where action='get_account'
  and actor_account_id='19101000-0000-4000-8000-000000000001'),'erased','admin row written after erasure stays erased');
 select is((select target from private.mail_audit where id='19101000-0000-4000-8000-000000000014'),'erased','mail row written after erasure stays erased');
+select ok(not exists(select 1 from private.admin_effects
+ where effect_id='19101000-0000-4000-8000-000000000022' and target_hash<>'erased'),
+ 'real deletion removes hashes from all closed effect events');
+select ok((select target_hash<>'erased' from private.admin_effects
+ where effect_id='19101000-0000-4000-8000-000000000023' and outcome='started'),
+ 'pending effect keeps its intent hash after account erasure');
+select public.native_admin_reconcile_effect('19101000-0000-4000-8000-000000000001',
+ '19101000-0000-4000-8000-000000000023');
+set constraints all immediate;
+select ok(not exists(select 1 from private.admin_effects
+ where effect_id='19101000-0000-4000-8000-000000000023' and target_hash<>'erased'),
+ 'reconcile removes the hash of a pending erased account');
+select ok(not exists(select 1 from private.admin_effects where target_account='19101000-0000-4000-8000-000000000002'),
+ 'erasure retains no account UUID in effect associations');
 select * from finish();
 rollback;

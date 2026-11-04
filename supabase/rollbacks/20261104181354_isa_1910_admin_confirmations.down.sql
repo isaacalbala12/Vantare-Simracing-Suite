@@ -1,4 +1,5 @@
 begin;
+set local lock_timeout='5s';
 do $$begin if exists(select 1 from private.mail_campaigns where state='canceled') then raise exception 'canceled_campaigns_require_forward_fix' using errcode='55000'; end if; end $$;
 alter table private.mail_campaigns drop constraint mail_campaigns_state_check;
 alter table private.mail_campaigns add constraint mail_campaigns_state_check check(state in('draft','sending','completed'));

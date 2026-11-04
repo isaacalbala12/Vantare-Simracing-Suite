@@ -1,4 +1,5 @@
 begin;
+set local lock_timeout='5s';
 alter table private.mail_campaigns drop constraint mail_campaigns_state_check;
 alter table private.mail_campaigns add constraint mail_campaigns_state_check check(state in('draft','sending','completed','canceled'));
 CREATE OR REPLACE FUNCTION public.mail_admin_execute(p_actor uuid, p_action text, p_params jsonb, p_environment text) RETURNS jsonb
@@ -37,7 +38,7 @@ begin
  else
   response:=private.mail_admin_execute_v2(p_actor,p_action,p_params,p_environment);
  end if;
- if response ? 'campaign' then
+ if p_action in('mail_get','mail_save') and response->'campaign'->>'state'='draft' then
   select * into c from private.mail_campaigns where id=(response->'campaign'->>'id')::uuid;
   select count(*) into recipients from private.mail_contacts t where c.target_group=any(private.mail_groups(t.email,p_environment));
   response:=response||jsonb_build_object('recipients',recipients);
@@ -78,9 +79,10 @@ begin
   select enabled_for_all into current_enabled from public.module_rollout where module=p_params->>'module' for update;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
   if p_action='set_module' then
-   select (item->>'individual')::boolean into current_enabled
-    from jsonb_array_elements(private.native_admin_account_summary(account,p_issuer,p_environment)->'module_access') item
-    where item->>'module'=p_params->>'module';
+   select exists(select 1 from public.billing_effective_access_grants
+    where user_id=account and environment=p_environment and status='active'
+     and (valid_until is null or valid_until>now()) and capability=p_params->>'module'
+     and provider='vantare' and source_type='support') into current_enabled;
   end if;
   if current_enabled is distinct from (p_params->>'expected_enabled')::boolean then
    raise exception 'account_conflict' using errcode='40001'; end if;

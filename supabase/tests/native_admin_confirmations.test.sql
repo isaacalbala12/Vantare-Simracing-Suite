@@ -22,6 +22,8 @@ select throws_ok($$select pg_temp.mail('mail_approve','{"campaign_id":"19100600-
  '40001','mail_revision_conflict','changed recipient count conflicts atomically');
 select is((select state from private.mail_campaigns where id='19100600-0000-4000-8000-000000000010'),'draft','failed approval preserves draft');
 select is((select count(*)::integer from private.mail_deliveries where campaign_id='19100600-0000-4000-8000-000000000010'),0,'failed approval does not queue deliveries');
+insert into private.mail_campaigns(id,environment) values('19100600-0000-4000-8000-000000000012','sandbox');
+select is((pg_temp.mail('mail_save',jsonb_build_object('campaign_id','19100600-0000-4000-8000-000000000012','revision',1,'name','Fixture','template','news','target_group','waitlist','content',(select content from private.mail_campaigns where id='19100600-0000-4000-8000-000000000010')))->>'recipients')::integer,1,'draft save returns recipients');
 select ok(not (pg_temp.mail('mail_new','{}') ? 'recipients'),'new campaign does not recount contacts');
 select throws_ok($$select pg_temp.mail('mail_cancel','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')$$,
  'P0001','native_admin_invalid','draft cannot be canceled');

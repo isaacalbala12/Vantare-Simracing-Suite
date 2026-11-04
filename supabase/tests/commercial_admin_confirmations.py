@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from lint_migrations import check_migration
+from commercial_admin_mail_cancel import run_claim_cancel_races
 
 STEM='20261104181354_isa_1910_admin_confirmations'
 SNAPSHOT="""select jsonb_build_object('functions',(select jsonb_object_agg(oid::regprocedure::text,
@@ -11,7 +12,7 @@ SNAPSHOT="""select jsonb_build_object('functions',(select jsonb_object_agg(oid::
  'constraint',(select pg_get_constraintdef(oid) from pg_constraint where conrelid='private.mail_campaigns'::regclass and conname='mail_campaigns_state_check'),
  'table_acl',(select coalesce(relacl,acldefault('r',relowner))::text from pg_class where oid='private.mail_campaigns'::regclass))"""
 
-def run_confirmations(run,conn,out,previous,newlines):
+def run_confirmations(run,conn,out,previous,newlines,bin_dir=None,env=None):
     root=Path(__file__).resolve().parents[2]
     up=root/'supabase/migrations'/(STEM+'.sql'); down=root/'supabase/rollbacks'/(STEM+'.down.sql')
     assert not check_migration(up,down),check_migration(up,down)
@@ -23,6 +24,7 @@ def run_confirmations(run,conn,out,previous,newlines):
         assert 'not ok ' not in result and '# Looks like' not in result,result
     current=json.loads(run('psql',*conn,'-c',SNAPSHOT))
     sql(root/'supabase/tests/native_admin_confirmations.test.sql')
+    if bin_dir is not None: run_claim_cancel_races(run,conn,out,bin_dir,env)
     sql(down)
     assert json.loads(run('psql',*conn,'-c',SNAPSHOT))==json.loads(previous),'confirmations down changed bodies/ACL/constraint'
     sql(up)

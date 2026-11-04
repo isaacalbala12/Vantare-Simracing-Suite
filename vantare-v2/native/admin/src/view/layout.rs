@@ -29,8 +29,7 @@ impl Admin {
                 Some(Action::MailDraft{..})=>"Claude preparará cuatro borradores a partir del brief. Revisa su contenido antes de guardarlo. No envía correos.".into(),
                 Some(Action::SetTester{enabled,..})=>format!("{} el acceso de tester a esta persona.",if *enabled{"Activar"}else{"Desactivar"}),
                 Some(Action::SetModule{module,enabled,..})=>format!("{} el acceso propio a {}. Los accesos del plan o para todos se conservan.",if *enabled{"Activar"}else{"Desactivar"},module.label()),
-                Some(Action::SetRollout{module,enabled_for_all, ..
-})=>format!("{} {} para todas las cuentas ({}). Los accesos propios se conservan.",if *enabled_for_all{"Activar"}else{"Desactivar"},module.label(),self.state.accounts_total),
+                Some(Action::SetRollout{module,enabled_for_all,..})=>format!("{} {} para todas las cuentas ({}). Los accesos propios se conservan.",if *enabled_for_all{"Activar"}else{"Desactivar"},module.label(),self.state.accounts_total),
                 _=>"Confirma el cambio antes de guardarlo.".into(),
             }),
         };

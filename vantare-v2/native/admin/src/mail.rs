@@ -233,6 +233,10 @@ impl crate::state::State {
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<()> {
+        let recipients = response
+            .get("recipients")
+            .map(|_| field(response, "recipients"))
+            .transpose()?;
         match action {
             Action::MailForgetWaitlist { .. } => {}
             Action::MailList | Action::MailCleanup => {
@@ -288,11 +292,7 @@ impl crate::state::State {
                 if quota > 300 || history.len() > 100 {
                     return Err(Error::Protocol);
                 }
-                self.mail.recipients = response
-                    .get("recipients")
-                    .map(|v| serde_json::from_value(v.clone()))
-                    .transpose()
-                    .map_err(|_| Error::Protocol)?;
+                self.mail.recipients = recipients;
                 self.mail.campaign = Some(c);
                 self.mail.history = history;
                 self.mail.totals = totals;
@@ -301,11 +301,7 @@ impl crate::state::State {
             Action::MailNew => {
                 let c: crate::mail::Campaign = field(response, "campaign")?;
                 c.validate(true)?;
-                self.mail.recipients = response
-                    .get("recipients")
-                    .map(|v| serde_json::from_value(v.clone()))
-                    .transpose()
-                    .map_err(|_| Error::Protocol)?;
+                self.mail.recipients = recipients;
                 self.mail.campaign = Some(c);
                 self.mail.history.clear();
                 self.mail.totals.clear();
@@ -333,14 +329,14 @@ impl crate::state::State {
     }
     pub(crate) fn demo_mail_action(&mut self, action: &Action) {
         match action {
-            Action::MailApprove { .. } => {
+            Action::MailApprove { .. } | Action::MailCancel { .. } => {
                 if let Some(c) = &mut self.mail.campaign {
-                    c.state = "sending".into();
-                }
-            }
-            Action::MailCancel { .. } => {
-                if let Some(c) = &mut self.mail.campaign {
-                    c.state = "canceled".into();
+                    c.state = if matches!(action, Action::MailApprove { .. }) {
+                        "sending"
+                    } else {
+                        "canceled"
+                    }
+                    .into();
                 }
             }
             Action::MailSendBatch { .. } => {
@@ -364,7 +360,6 @@ impl crate::state::State {
             Action::MailNew => {
                 let mut c = crate::mail::MailState::demo().campaigns.remove(0);
                 c.name = "Nueva campaña".into();
-                self.mail.recipients = self.mail.counts.get(&c.target_group).copied();
                 self.mail.campaign = Some(c);
             }
             Action::MailDraft { .. } => {

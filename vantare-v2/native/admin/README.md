@@ -85,8 +85,9 @@ conservando la copia y metadata OAuth; al abrir pedirá login nuevo. No usar la
 carpeta ni la concesión del Hub ni borrar guardas de otros servicios. Esta es una
 operación manual de Isaac; el agente nunca abre ni manipula el Store real.
 La QA usa exclusivamente Store/HTTP sintéticos.
-Cada escritura pide confirmación y espera ACK y relectura; no hay cambios
-optimistas ni reintento automático. El Owner no tiene botones de bloqueo/borrado,
+Las escrituras muestran confirmación en Gestión y esperan ACK y relectura;
+no hay cambios optimistas ni reintento automático. El servidor compara estado
+esperado solo en set_module, set_rollout y mail_approve. El Owner no tiene botones de bloqueo/borrado,
 y el servidor también lo protege. Borrar exige correo exacto normalizado en app
 y servidor. Aplica la barrera de #1622, cancela suscripciones, borra en Clerk y
 completa Storage. Si queda incompleto, repite con el mismo correo; el servidor

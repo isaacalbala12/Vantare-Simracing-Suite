@@ -8901,3 +8901,22 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Commercial LF/CRLF, retirada final y marketing pasan; el check de derivados
   detectaba solo los archivos aún no copiados. Se publica su salida exacta.
   Native check/Clippy/Nextest47 pasan, sin Store real; nueva CI tras este push.
+
+### Re-review1962 (2026-11-04)
+
+- Orden fijado por orquestador:1960→1962→1961→1963. Timestamps intactos.
+- RED64e5ade46:4 fallos de conteo fuera de draft. Solo get/save draft cuentan;
+  recorte de lectura de recipients en cliente y demo. CAS individual conserva
+  locks y filtro, consultando grants directamente, sin cargar account_summary.
+- Cancelación por Edge real, draft/completed inválidos, claim→cancel→can_send
+  false→finish skipped sin dispatching. Dos órdenes reales en dos sesiones,
+  pg_stat_activity y bloqueo en PID exacto, fixture clonada local y retirada.
+- Lock timeout5s en up/down, mojibake y layout corregidos. El servidor compara
+  confirmación solo en set_module/set_rollout/mail_approve; Edge y Gestión deben
+  desplegarse justo después de SQL. No hay despliegue/merge/release del worker.
+
+- Gates re-review1962:SQL LF30 y dos carreras PASS; Deno274, Clippy -D
+  warnings y Nextest47 PASS. Tooling31 PASS con TEMP/TMP en D tras C:lleno;
+  C recuperó4GB sin limpieza del worker. CRLF final en marcha. Rollback/cuerpos/
+  ACL/constraint y guard canceled conservados. Volcados PG17 tras integrar la pila,
+  según orden1960→1962→1961→1963, sin cambiar timestamps ni desplegar.

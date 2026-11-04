@@ -846,7 +846,7 @@ La lectura desde la app por el owner sigue en el siguiente corte del paso 10.
 
 `set_module` y `set_rollout` exigen `expected_enabled` (acceso individual o
 rollout mostrado); si cambió, responden 409 y hay que actualizar y confirmar de
-nuevo. `mail_get`, `mail_new` y `mail_save` devuelven `recipients`; el diálogo
+nuevo. Solo `mail_get` y `mail_save`, con campaña draft, devuelven `recipients`; el diálogo
 manda esa cifra como `expected_recipients` en `mail_approve`. Se compara con la
 cola realmente creada, en la misma transacción; una discrepancia revierte toda
 la aprobación y devuelve 409.
@@ -858,8 +858,15 @@ cancelar. Un HTTP que ya salió puede terminar. Gestión ofrece Cancelar campañ
 con confirmación y admite el ACK canceled.
 
 Solo Isaac despliega: primero `20261104181354_isa_1910_admin_confirmations.sql`,
-después Edge y Gestión con el contrato nuevo. No presupone una base vacía.
+desplegar Edge y Gestión con el contrato nuevo justo después de la migración.
+Hasta completar ambos, el contrato anterior no permite aprobar/cambiar módulos.
+No presupone una base vacía.
 Pre-check readonly: `select state,count(*) from private.mail_campaigns group by state;`.
 El down restaura funciones, permisos y constraint; si existen campañas canceled,
 Aborta antes del DDL (`canceled_campaigns_require_forward_fix`): usar corrección
 hacia delante, sin convertir estados ni borrar datos para forzarlo.
+
+La comparación de estado en servidor se limita a set_module, set_rollout y
+mail_approve. Los demás diálogos son confirmaciones en Gestión; mantienen sus
+validaciones propias de owner/revisión. recipients no se cuenta en new,
+approve, cancel ni al consultar campañas sending/completed.

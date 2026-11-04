@@ -40,7 +40,7 @@ parser.add_argument('--legacy-retirement-inventory', action='store_true', help='
 parser.add_argument('--legacy-retirement-only', action='store_true', help='Replay full chain, then verify final 7b closure and rollback')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
-parser.add_argument('--admin-deno-bin', help='Only admin Edgeâ†’SQL E2E, also accepts existing Windows Deno from WSL')
+parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
@@ -562,7 +562,7 @@ $$;
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem==CONFIRM_STEM and not args.schema_snapshot:
-    run_confirmations(run,conn,OUT,confirmation_previous,args.migration_newlines)
+    run_confirmations(run,conn,OUT,confirmation_previous,args.migration_newlines,BIN,ENV)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem=='20261104024000_isa_1910_admin_report_root':

@@ -12,7 +12,7 @@ la sesión de PowerShell:
 python tools/qa/build-license-e2e.py --checkout D:/VantareServer/qa/licencias-e2e/qa-e2e-checkout --target D:/VantareServer/qa/licencias-e2e/target-1916
 ```
 
-La clave es el vector de prueba público RFC8032. La Edge local firma con ese
+La clave de firma de licencia QA es fija en el repo: el vector de prueba público RFC8032, no una clave efímera. La Edge local firma con ese
 vector; el núcleo conserva su verificador Ed25519 y binding de dispositivo
 reales. No importar claves de producción ni modificar el trust store.
 
@@ -49,7 +49,7 @@ Se guardan Policy, resultados tipados, hashes de binding sintético y logs
 sanitizados. El caso de red corta un listener TCP separado, comprueba desconexión
 sin respuesta HTTP y conserva el binding y la gracia; los 503 de otros casos simulan backend
 indisponible. Se registran PID y nombres de los tres procesos. No guardar stdout completo del conductor: AccountCopyLink lleva
-estado OAuth transitorio. `qa-e2e-ready.json` contiene sólo una clave efímera
+estado OAuth transitorio. `qa-e2e-ready.json` contiene sólo una clave JWT efímera
 de la base local y no es evidencia para adjuntar. Las cuentas y concesiones
 son fixtures; el webhook firmado se procesa mediante los handlers y SQL reales.
 El checkout devuelve una URL sintética válida, que nunca se abre ni contacta
@@ -88,3 +88,39 @@ firma manipulada, credencial firmada para otro dispositivo y retroceso sólo de
 pared. El caso 9 adelanta pared 72 h sin renovar, luego sólo el monotónico hasta
 24 h. El caso 5 comprueba ausencia del binding al recibir éxito y restauración
 tras matar el proceso, y observa B→Pro sin Founders.
+
+El gate valida tres condiciones deterministas, sin buscar parejas de claves por
+regex dentro de `.rdata`:
+
+1. Cada clave del registro configurado tiene su SHA-256 en
+   `native/packaging/production-license-keys.sha256`. Para un registro configurado,
+   lista vacía, ausente o malformada es error. El smoke de CI sin registro no
+   configura ninguna autoridad y no representa un RC de producto.
+2. `vantare-core` y `vantare-services` deben contener literalmente el registro
+   configurado completo. Son los dos EXE que lo embeben; el supervisor `vantare`
+   no lo embebe. La comparación no necesita límites entre cadenas adyacentes.
+3. Todos los EXE se revisan contra los marcadores QA y cada clave de
+   `native/packaging/known-test-license-keys`, tanto base64url como bytes crudos,
+   mediante búsqueda literal sin límites de palabra. Los nuevos fixtures fijos
+   deben añadir su pública a esa lista versionada.
+
+Antes del próximo RC, **Isaac debe añadir la(s) huella(s) de producción** a la
+lista mediante review. Sigue vacía y deniega cualquier registro configurado.
+El agente no consulta configuración real ni claves privadas. Para calcular la
+huella de una clave pública configurada, Isaac prepara un fichero que contenga
+sólo `kid:base64url` (o sólo base64url) y ejecuta desde la raíz del repo:
+
+```powershell
+Get-Content -LiteralPath 'C:/ruta/public-license-key.txt' -Raw | pwsh -NoProfile -File vantare-v2/native/packaging/license-key-fingerprint.ps1
+```
+
+La salida contiene únicamente SHA-256 en hexadecimal sobre los 32 bytes de la
+clave pública, una huella por línea si el registro contiene varias parejas
+separadas por comas. No lee variables de entorno, `.env` ni configuración de
+build, no imprime clave/kid y no modifica la lista. Entrada inválida produce
+salida estándar vacía y código distinto de cero.
+
+La regresión local usa ficheros de bytes: registro aprobado presente/ausente,
+clave fuera de lista, claves QA pegadas a texto, listas inválidas y `Status`
+de serde. **El control de EXE limpio real queda en la CI de `distribution`**,
+junto al EXE QA real, después de compilar los controles y el paquete normal.

@@ -1,0 +1,11 @@
+# Public test keys only: literal base64url and raw bytes are forbidden in packages.
+# RFC8032 / tools/qa/build-license-e2e.py
+11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo
+# native/runtime/testdata/license/recovery-v1.json
+IVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI
+# Fixed signing fixture: vantare-v2/native/runtime/src/rights/tests.rs
+6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw
+# Fixed signing fixture: vantare-v2/native/services/examples/matrix-verifier.rs
+GX9rI-FshTLGq8g4-s1ep4m-DHaykgM0A5v6iz02jWE
+# Fixed signing fixture: vantare-v2/native/runtime/examples/license_generation_fixture.rs
+RQigeqlBcH8-stuUyIl6gLLBGXR2tt4hOsJz332GxP8

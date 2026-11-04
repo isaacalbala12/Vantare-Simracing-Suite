@@ -434,8 +434,19 @@ def run_cases(checkout, bins, job, backend):
         a=fresh("negative-"+mode)
         binding=a.binding()
         backend.control(mode=mode)
+        requests_before=backend.stats()["licenseRequests"]
+        log_path=Path(a.log.name)
+        log_offset=log_path.stat().st_size
         reply=a.service("LicenseRenew")
-        assert reply["result"]!="License", "invalid credential accepted"
+        requests_after=backend.stats()["licenseRequests"]
+        assert requests_after>requests_before, "negative did not reach license endpoint"
+        assert reply["result"]=="Error", "unexpected rejection reply"
+        # This closed core diagnostic distinguishes credential rejection from HTTP,
+        # unavailable helper, unconfigured verifier or unrelated service failures.
+        diagnostic=b"services-core rights-credential-invalid"
+        wait_for(lambda:diagnostic in log_path.read_bytes()[log_offset:])
+        a.events.append({"negative_mode":mode,"license_requests_before":requests_before,
+                         "license_requests_after":requests_after,"rejection":"rights-credential-invalid"})
         assert a.binding()==binding
         a.until(lambda p:p["catalog"]=="pro" and p["state"]["kind"]=="active")
 
@@ -523,8 +534,8 @@ def main():
             after=metadata()
             write_json(job/"real-native-metadata.json",dict(before=before,after=after,unchanged=before==after))
             print(job,flush=True)
-    lines=["# VANTA-126 · E2E real de licencias", "", "| Escenario | Resultado | Evidencia |", "|---|---|---|"]
-    lines += [f"| {r['scenario']} | {r['result']} | {r.get('root')} / observations.json |" for r in results]
+    lines=["# VANTA-126 · E2E real de licencias", "", "| Escenario | Resultado | Motivo / límite | Evidencia |", "|---|---|---|---|"]
+    lines += [f"| {r['scenario']} | {r['result']} | {r.get('limitation', '')} | {r.get('root')} / observations.json |" for r in results]
     (job/"INFORME.md").write_text("\n".join(lines)+"\n",encoding="utf-8")
     if before!=after or any(r["result"]=="FALLA" or r.get("shutdown") for r in results): raise SystemExit(1)
 

@@ -30,7 +30,7 @@ $json=Invoke-BuildProcess $verifier @('--sign-update',(Assert-BuildPath $Signing
 $verified=Invoke-BuildProcess $verifier @('--verify-update') $json|ConvertFrom-Json
 if($verified.version -cne $Version -or $verified.channel -cne 'beta' -or $verified.sha256 -cne $artifacts.sha256){throw 'Manifiesto firmado incompatible'}
 [IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'),$json,[Text.UTF8Encoding]::new($false))
-& (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile
+& (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile -ConfigFile $ConfigFile
 if(-not $?){throw 'Falló el instalador propio'}
 Assert-PublishArtifacts $output
 "Listo: $output"

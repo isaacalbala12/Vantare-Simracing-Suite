@@ -181,12 +181,8 @@ fn clear_ready(root: &Path) -> io::Result<()> {
     }
 }
 
-fn ready_token_matches(root: &Path, expected: &str) -> io::Result<Option<bool>> {
-    match fs::read_to_string(root.join("hub-ready")) {
-        Ok(token) => Ok(Some(token == expected)),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error),
-    }
+fn ready_token_matches(root: &Path, expected: &str) -> bool {
+    fs::read_to_string(root.join("hub-ready")).is_ok_and(|token| token == expected)
 }
 
 fn recover_boot(root: &Path, context: &Context, reject_version: bool) -> io::Result<()> {
@@ -263,8 +259,8 @@ fn ready(
         if child.try_wait()?.is_some() {
             return Ok(false);
         }
-        if let Some(matches) = ready_token_matches(root, token)? {
-            return Ok(matches);
+        if ready_token_matches(root, token) {
+            return Ok(true);
         }
         if Instant::now() >= deadline {
             return Ok(false);
@@ -529,11 +525,28 @@ mod tests {
         vantare_installer::engine::context::qa_path(&root).unwrap();
         fs::create_dir_all(&root).unwrap();
         fs::write(root.join("hub-ready"), b"aabb").unwrap();
-        assert_eq!(ready_token_matches(&root, "ccdd").unwrap(), Some(false));
-        assert_eq!(ready_token_matches(&root, "aabb").unwrap(), Some(true));
+        assert!(!ready_token_matches(&root, "ccdd"));
+        assert!(ready_token_matches(&root, "aabb"));
         clear_ready(&root).unwrap();
-        assert_eq!(ready_token_matches(&root, "aabb").unwrap(), None);
+        assert!(!ready_token_matches(&root, "aabb"));
+        fs::write(root.join("hub-ready"), b"").unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
+        fs::write(root.join("hub-ready"), b"aa").unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
+        let mut child = Command::new(std::env::var("COMSPEC").unwrap())
+            .args(["/D", "/C", "ping -n 5 127.0.0.1 >NUL"])
+            .spawn()
+            .unwrap();
+        let start = Instant::now();
+        assert!(!ready(&root, &mut child, "aabb", Duration::from_millis(150)).unwrap());
+        assert!(start.elapsed() >= Duration::from_millis(150));
+        child.kill().unwrap();
+        child.wait().unwrap();
+        fs::write(root.join("hub-ready"), b"\xff").unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
+        clear_ready(&root).unwrap();
         fs::create_dir(root.join("hub-ready")).unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
         assert!(clear_ready(&root).is_err());
         fs::remove_dir(root.join("hub-ready")).unwrap();
         let temporary = root.join(format!("launcher-{}.tmp", "a".repeat(32)));

@@ -15,6 +15,8 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
 . (Join-Path $PSScriptRoot 'build-config.ps1')
 if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión beta inválida'}
+if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión beta fuera de rango'}
+if([Text.Encoding]::UTF8.GetByteCount($Notes) -gt 8192){throw 'Notas demasiado grandes'}
 $output=Assert-BuildPath $OutputDirectory
 $previousConfig=@{}
 try{
@@ -27,7 +29,7 @@ $manifest=[ordered]@{
     url="https://github.com/$repository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"
     sha256=$artifacts.sha256;notes=$Notes
 }
-if([Text.Encoding]::UTF8.GetByteCount($Notes) -gt 8192){throw 'Notas demasiado grandes'}
+Assert-BetaManifest ([pscustomobject]$manifest)
 $verifier=Join-Path $output 'payload/bin/vantare-services.exe'
 $json=Invoke-BuildProcess $verifier @('--sign-update',(Assert-BuildPath $SigningKeyFile)) ($manifest|ConvertTo-Json -Compress)
 $verified=Invoke-BuildProcess $verifier @('--verify-update') $json|ConvertFrom-Json
@@ -35,5 +37,6 @@ if($verified.version -cne $Version -or $verified.channel -cne 'beta' -or $verifi
 [IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'),$json,[Text.UTF8Encoding]::new($false))
 & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile
 if(-not $?){throw 'Falló el instalador propio'}
+Assert-PublishArtifacts $output
 "Listo: $output"
 "gh release create native-beta-v$Version --repo $repository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-amd64-package.zip.sha256' '$output/vantare-native-beta.json'"

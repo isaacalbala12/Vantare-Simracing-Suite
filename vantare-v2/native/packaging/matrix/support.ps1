@@ -1,4 +1,4 @@
-# Test-only filesystem and process helpers. No installed PowerShell engine is loaded.
+﻿# Test-only filesystem and process helpers. No installed PowerShell engine is loaded.
 #requires -Version 5.1
 Set-StrictMode -Version Latest
 Add-Type -AssemblyName System.IO.Compression

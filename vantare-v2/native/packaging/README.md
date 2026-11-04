@@ -14,6 +14,8 @@ El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el ú
 
 `build-candidate.ps1` es herramienta del repositorio, no parte de la instalación. Construye los binarios mediante `native/scripts/compilar.ps1` con CRT estático, verifica sus versiones y dependencias, genera el manifiesto y los ZIP de paquete y portable. `build-installer.ps1` empaqueta Setup/Uninstall; `sign-beta-manifest.ps1` y `publish-beta.ps1` preparan el feed. Esas herramientas no publican una release por sí solas y exigen un checkout limpio salvo `-AllowDirty` explícito.
 
+El inventario público cerrado está en `public-inventory.json`: diez EXE y 97 recursos aprobados, sin `ui/fixtures/layouts/` ni `telemetry-real/`. Cada artefacto publicable, incluido Setup, exige su `.sha256`. `build-tooling-tests.ps1 -QaRoot <raíz QA>` verifica la entrada UTF-8, el inventario, los sidecars y el manifiesto; con `-Verifier <matrix-verifier.exe>` comprueba además la firma de ida y vuelta con acentos. Tras una actualización confirmada no hay rollback manual: una versión nueva requiere otro paquete firmado.
+
 Antes de **publicar** cualquier release con motor 2 sin LegacyRunner, Isaac debe probar el Setup con los bytes distribuidos sobre raíces 0.0.975 y 0.0.988 reales en una VM o cuenta aislada y registrar la evidencia en [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840). La prueba es condición de publicación, no de programación ni de apertura del PR.
 
 ## QA

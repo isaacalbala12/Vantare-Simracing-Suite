@@ -326,7 +326,7 @@
     },
     "native/hub/reference/compare.ps1": {
       "source": "native/hub/reference/compare.ps1",
-      "sha256": "a23afb80598ca646c10db98cee9830343af01af1662571cb39a2c8915ae73348",
+      "sha256": "5e9ce540469b2fe6505eaa240c3e335414d4a4872c271889bee1a36df77a62e3",
       "source_sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a",
       "revisions": [
         {
@@ -364,6 +364,15 @@
           "previous_sha256": "ff90a92e5cf23f370b745e6d63491d8d3c41d552009e39526f3da8be02cfaff7",
           "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1840/compare.ps1.txt",
           "reason": "Orchestrator-authorized #1847 review: active capture tools load candidate with explicit Library and Root. Previous active bytes retained unchanged as inert .txt; source pins, prior revisions, corpora and visual baselines preserved."
+        },
+        {
+          "commit": "ea8d8344d9ff75e05fc2ba6440c6b976930db68b",
+          "issues": [
+            "#1840"
+          ],
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1929/compare.ps1.txt",
+          "reason": "Authorized #1929 review: capture tools are historical inert after candidate.ps1 retirement; old bytes retained as .txt evidence.",
+          "previous_sha256": "a23afb80598ca646c10db98cee9830343af01af1662571cb39a2c8915ae73348"
         }
       ]
     },
@@ -417,7 +426,7 @@
     },
     "native/hub/reference/tools/capture-alpha.ps1": {
       "source": "native/hub/reference/tools/capture-alpha.ps1",
-      "sha256": "11bc601b1845cb7c42c890c0668d6bc2c1929ed922ccdf33cffb24b9dfc2c42d",
+      "sha256": "5e9ce540469b2fe6505eaa240c3e335414d4a4872c271889bee1a36df77a62e3",
       "source_sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e",
       "revisions": [
         {
@@ -455,6 +464,15 @@
           "previous_sha256": "63033433af053ac4522a9f267eae604d6f3726ad2caa2b5a02915faafa43a86a",
           "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1840/capture-alpha.ps1.txt",
           "reason": "Orchestrator-authorized #1847 review: active capture tools load candidate with explicit Library and Root. Previous active bytes retained unchanged as inert .txt; source pins, prior revisions, corpora and visual baselines preserved."
+        },
+        {
+          "commit": "ea8d8344d9ff75e05fc2ba6440c6b976930db68b",
+          "issues": [
+            "#1840"
+          ],
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1929/capture-alpha.ps1.txt",
+          "reason": "Authorized #1929 review: capture tools are historical inert after candidate.ps1 retirement; old bytes retained as .txt evidence.",
+          "previous_sha256": "11bc601b1845cb7c42c890c0668d6bc2c1929ed922ccdf33cffb24b9dfc2c42d"
         }
       ]
     },
@@ -3721,6 +3739,14 @@
       "source": "native/hub/reference/tools/capture-alpha.ps1",
       "source_commit": "04c06df2c96753140643db631b004f8189a14d5c",
       "sha256": "63033433af053ac4522a9f267eae604d6f3726ad2caa2b5a02915faafa43a86a"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1929/compare.ps1.txt": {
+      "source": "native/hub/reference/compare.ps1",
+      "sha256": "a23afb80598ca646c10db98cee9830343af01af1662571cb39a2c8915ae73348"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1929/capture-alpha.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-alpha.ps1",
+      "sha256": "11bc601b1845cb7c42c890c0668d6bc2c1929ed922ccdf33cffb24b9dfc2c42d"
     }
   }
 }

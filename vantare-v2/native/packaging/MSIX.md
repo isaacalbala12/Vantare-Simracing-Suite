@@ -3,15 +3,19 @@
 ## Alcance del lanzamiento beta pública (VANTA-105 / #1695)
 
 MSIX no se utiliza para RC1 ni para el lanzamiento beta pública del 26-oct.
-El artefacto de distribución es el Setup propio construido con candidate.ps1
+El artefacto de distribución es el Setup propio construido con build-candidate.ps1
 y build-installer.ps1, con target MSVC explícito, CRT estático y guarda de
 imports para cada EXE, incluidos Setup y Uninstall. No hay publicación Store.
 
 El builder MSIX sigue siendo experimental: su compilación propia no aplica
 todavía ese contrato de CRT ni la guarda. No usar su salida como RC/release.
 Antes de habilitar ese canal hay que consumir binarios del candidato verificado
-o alinear target, CRT estático y validación de imports con candidate.ps1,
+o alinear target, CRT estático y validación de imports con build-candidate.ps1,
 y probarlos en Windows limpio. Esta entrega no cambia toolchain ni habilita MSIX.
+
+Desde #1840 el builder MSIX y NSIS están retirados. Las menciones a
+`candidate.ps1` y `NSIS` en el expediente inferior describen el estado histórico
+de ISA-1432; no son instrucciones vigentes de empaquetado o rollback.
 
 ## Expediente experimental ISA-1432
 
@@ -176,9 +180,9 @@ Reiniciar núcleo y verificar reconexión; comprobar OBS/click-through/transpare
 voz opt-in y cierre de Engineer, overlays y núcleo. **No crear mappings falsos
 para sustituir la prueba live.** Repetir en Windows limpio/otra GPU.
 
-## Cambios frente a instalador y portable actuales
+## Comparación histórica con Wails/NSIS y el candidato de ISA-1432
 
-El instalador Wails/NSIS vigente instala por usuario en
+El instalador Wails/NSIS de esa etapa instalaba por usuario en
 `%LOCALAPPDATA%/Programs/<producto>` o por máquina en `Program Files`, según
 `WAILS_INSTALL_SCOPE`; crea accesos directos. El producto Go guarda configuración
 instalada en `%APPDATA%/Vantare/configs` y sesiones/logs en
@@ -193,9 +197,9 @@ Evidencia del checkout: [NSIS](https://github.com/isaacalbala12/Vantare-Simracin
 [updater](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/updater/updater.go),
 [autoarranque](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/launcher/autostart_windows.go).
 
-La comparación del candidato **nativo** ya existente es:
+La comparación histórica del candidato **nativo** de ISA-1432 era:
 
-| Tema | Candidato ZIP/instalador script | MSIX/Store |
+| Tema | Candidato ZIP/instalador script de ISA-1432 | MSIX/Store |
 | --- | --- | --- |
 | Binarios | Carpeta elegida, generaciones y puntero `state.json` | WindowsApps administrado por Windows, árbol de paquete de solo lectura |
 | Datos | `data` por generación; rollback del conjunto binarios/datos | Virtualización AppData/registro por identidad; update conserva estado, no guarda una generación de datos para rollback |

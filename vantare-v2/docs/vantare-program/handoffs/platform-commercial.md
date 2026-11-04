@@ -604,6 +604,14 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   fuera, **11.213** en total; dentro de 10.300 y 11.250. `qa_session` cuenta como
   producción. Rust tests: **3.658**; PowerShell tests/tooling: **1.566**, medidos
   aparte con `installer-lines.py --projection`.
+- Revisión #1929: el rollback automático solo cubre un arranque pendiente que
+  todavía no se ha confirmado. Tras Confirm no hay rollback manual a la versión
+  anterior; cualquier corrección requiere otro paquete firmado. El builder
+  comprueba el inventario cerrado de diez EXE, recursos y sidecars antes de
+  preparar una publicación. La firma usa stdin UTF-8 sin BOM también en PS 5.1.
+  Siguen diferidos a un trabajo posterior la validación del ZIP con todos los
+  límites del lector Rust y el test de corte real por checkpoint; esta revisión
+  no modifica rollback ni resistencia a cortes.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

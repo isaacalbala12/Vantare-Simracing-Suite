@@ -1,5 +1,11 @@
 # Matriz de paridad de servicios — candidato fase 7 (ISA-1432)
 
+**Nota de vigencia (#1840):** esta matriz registra el candidato histórico de
+ISA-1432. El instalador actual es Rust motor 2; `candidate.ps1`, `beta.ps1`,
+MSIX y NSIS se retiraron. El paquete se construye con `build-candidate.ps1`
+y `build-installer.ps1`. Feed/Apply/Confirm y rollback de arranque pendiente
+son Rust; una actualización ya confirmada no admite rollback manual.
+
 Inspección actualizada en fase 7b, base `a6cd70ab`, 2026-09-30. Autoridad arquitectónica:
 ADR 0099 §3/§7 y fase 7 del plan. El paquete contiene **la base de esta rama**,
 no los cambios aún aislados de otros workers. Compilar un servicio o tener

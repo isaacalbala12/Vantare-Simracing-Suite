@@ -1,4 +1,4 @@
-# Repository build tool. Its output contains only motor 2 binaries and manifests.
+﻿# Repository build tool. Its output contains only motor 2 binaries and manifests.
 #requires -Version 5.1
 [CmdletBinding()]
 param(
@@ -13,6 +13,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
 if($env:DUCKDB_LIB_DIR){throw 'Empaquetado exige DuckDB bundled'}
 if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión inválida'}
+if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
 $destination=Assert-BuildPath $OutputDirectory
 if((Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count){throw 'La salida debe estar vacía'}
 $native=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -38,10 +39,10 @@ try{
         $metadata=& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
         if($LASTEXITCODE){throw 'No se pudo leer cargo metadata'}
     }finally{Pop-Location}
-    $excluded=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu')
-    if($Channel -ceq 'beta'){$excluded+= 'vantare-workshop'}
-    $bins=@($metadata.packages|Where-Object {$_.id -cin $metadata.workspace_members}|ForEach-Object {$_.targets|Where-Object {'bin' -cin $_.kind -and $_.name -cnotin $excluded}|ForEach-Object {$_.name}}|Sort-Object -Unique)
-    if($bins -cnotcontains 'vantare' -or $bins -cnotcontains 'vantare-hub' -or $bins -cnotcontains 'vantare-services'){throw 'Faltan binarios de producto'}
+    $inventory=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
+    $bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)}|Sort-Object -Unique)
+    $available=@($metadata.packages|Where-Object {$_.id -cin $metadata.workspace_members}|ForEach-Object {$_.targets|Where-Object {'bin' -cin $_.kind}|ForEach-Object {$_.name}}|Sort-Object -Unique)
+    Assert-PublicBins $available $inventory
     $payload=Join-Path $destination 'payload';$binDirectory=Join-Path $payload 'bin'
     [IO.Directory]::CreateDirectory($binDirectory)|Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses'))|Out-Null
@@ -50,16 +51,16 @@ try{
     foreach($bin in $bins){
         $source=Join-Path $target "$bin.exe"
         Assert-NativeStaticCrt $source $dumpbin
-        $embedded=@(& $source --version)
-        if($LASTEXITCODE -or ($embedded -join "`n").Trim() -cne "Vantare Native $Version ($Channel)"){throw "Versión del binario incompatible: $bin"}
+        $embedded=Invoke-BuildProcess $source @('--version') $null
+        if($embedded.Trim() -cne "Vantare Native $Version ($Channel)"){throw "Versión del binario incompatible: $bin"}
         $dest=Join-Path $binDirectory "$bin.exe"
         Copy-Item -LiteralPath $source -Destination $dest
         [IO.File]::WriteAllText("$dest.sha256","$(Get-NativeHash $dest)  $bin.exe`n",[Text.UTF8Encoding]::new($false))
     }
     $fixtures=Join-Path $native 'ui/fixtures'
-    foreach($item in Get-ChildItem -LiteralPath $fixtures -Recurse -File -Force){
+    foreach($relative in $inventory.resources){
+        $item=Get-Item -LiteralPath (Join-Path $fixtures $relative)
         $null=Assert-BuildPath $item.FullName
-        $relative=$item.FullName.Substring($fixtures.Length+1)
         $dest=Join-Path $payload ('bin/fixtures/'+$relative)
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($dest))|Out-Null
         Copy-Item -LiteralPath $item.FullName -Destination $dest
@@ -68,6 +69,7 @@ try{
     Copy-Item -LiteralPath (Join-Path $native 'ui/assets/fonts/OFL-Inter.txt') -Destination (Join-Path $payload 'licenses/OFL-Inter.txt')
     $dependencies=@($metadata.packages|Sort-Object name,version|ForEach-Object {@{name=$_.name;version=$_.version;license=$_.license;source=$_.source}})
     Write-BuildJson (Join-Path $payload 'dependencies.json') $dependencies
+    Assert-PublicInventory $payload $inventory
     $files=@(Get-ChildItem -LiteralPath $payload -Recurse -File -Force|Sort-Object FullName|ForEach-Object {
         $null=Assert-BuildPath $_.FullName
         @{path=$_.FullName.Substring($payload.Length+1).Replace('\','/');size=$_.Length;sha256=(Get-NativeHash $_.FullName)}

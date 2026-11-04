@@ -1,6 +1,7 @@
 //! The Hub announces its window; the root launcher owns confirmation and
 //! rollback. No Register child or PowerShell runs during a normal boot.
 use std::{
+    io::Write,
     path::Path,
     time::{Duration, Instant},
 };
@@ -28,8 +29,7 @@ impl BootConfirmation {
         {
             return Err("token de arranque inválido".into());
         }
-        std::fs::write(root.join("hub-ready"), token)
-            .map_err(|error| format!("confirmar arranque: {error}"))?;
+        publish_ready(root, &token).map_err(|error| format!("confirmar arranque: {error}"))?;
         Ok(Self {
             root: root.into(),
             deadline: Instant::now() + Duration::from_mins(1),
@@ -48,6 +48,14 @@ impl BootConfirmation {
             Err(error) => Err(error.to_string()),
         }
     }
+}
+
+fn publish_ready(root: &Path, token: &str) -> std::io::Result<()> {
+    let temporary = root.join(format!("hub-ready-{token}.tmp"));
+    let mut file = std::fs::File::create(&temporary)?;
+    file.write_all(token.as_bytes())?;
+    file.sync_all()?;
+    std::fs::rename(temporary, root.join("hub-ready"))
 }
 
 fn installed_hub(executable: &Path, root: &Path) -> Result<(), String> {
@@ -84,6 +92,24 @@ pub(crate) fn defer_close(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ready_is_published_as_complete_token() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))
+        } else {
+            std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("hub-ready-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        publish_ready(&root, "aabb").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("hub-ready")).unwrap(),
+            "aabb"
+        );
+        assert!(!root.join("hub-ready-aabb.tmp").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn marker_ack_has_one_injected_deadline_and_no_register_child() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {

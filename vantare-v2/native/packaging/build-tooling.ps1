@@ -1,4 +1,4 @@
-# Repository-only packaging helpers. Never copied into an installed generation.
+﻿# Repository-only packaging helpers. Never copied into an installed generation.
 #requires -Version 5.1
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -9,6 +9,7 @@ function Assert-BuildPath([string]$Path) {
     if([string]::IsNullOrWhiteSpace($Path)){throw 'Ruta de build obligatoria'}
     $full=[IO.Path]::GetFullPath($Path)
     if($full -eq [IO.Path]::GetPathRoot($full) -or $full.StartsWith('\\')){throw 'Raíz de build inválida'}
+    if([IO.DriveInfo]::new([IO.Path]::GetPathRoot($full)).DriveType -eq [IO.DriveType]::Network){throw 'Unidad de red rechazada'}
     for($parent=$full;$parent;$parent=[IO.Path]::GetDirectoryName($parent)){
         if([IO.Path]::GetFileName($parent) -like '.env*'){throw 'Ruta .env rechazada'}
         if(Test-Path -LiteralPath $parent){
@@ -77,7 +78,7 @@ function Assert-NativeStaticCrt([string]$Path,[string]$Dumpbin) {
     $dlls=@($report|ForEach-Object{if($_ -match '^\s+([A-Za-z0-9_.-]+\.dll)\s*$'){$matches[1]}})
     if(-not $dlls.Count -or @($dlls|Where-Object{$_ -match '^(vcruntime|msvcp[0-9]|msvcr[0-9]|concrt[0-9]|ucrtbase|api-ms-win-crt-)'}).Count){throw 'CRT dinámico o inventario vacío'}
 }
-function Invoke-BuildProcess([string]$Executable,[string[]]$Arguments,[string]$InputText) {
+function Invoke-BuildProcess([string]$Executable,[string[]]$Arguments,[string]$InputText,[int]$TimeoutMilliseconds=30000) {
     $info=[Diagnostics.ProcessStartInfo]::new()
     $info.FileName=Assert-BuildPath $Executable
     $info.Arguments=(@($Arguments|ForEach-Object {'"'+[regex]::Replace([regex]::Replace($_,'(\\*)"','$1$1\"'),'(\\+)$','$1$1')+'"'}) -join ' ')
@@ -86,12 +87,69 @@ function Invoke-BuildProcess([string]$Executable,[string[]]$Arguments,[string]$I
     $info.StandardOutputEncoding=[Text.UTF8Encoding]::new($false)
     $info.StandardErrorEncoding=[Text.UTF8Encoding]::new($false)
     $process=[Diagnostics.Process]::new();$process.StartInfo=$info
+    $started=$false
     try{
         if(-not $process.Start()){throw 'No se pudo iniciar el verificador'}
+        $started=$true
         $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.Write($InputText);$process.StandardInput.Close()
-        if(-not $process.WaitForExit(30000)){$process.Kill();$process.WaitForExit();throw 'Verificador agotó el plazo'}
-        if($process.ExitCode){throw "Verificador rechazó el manifiesto: $($stderr.GetAwaiter().GetResult())"}
+        $watch=[Diagnostics.Stopwatch]::StartNew()
+        if($null -ne $InputText){
+            $bytes=[Text.UTF8Encoding]::new($false).GetBytes($InputText)
+            $write=$process.StandardInput.BaseStream.WriteAsync($bytes,0,$bytes.Length)
+            if(-not $write.Wait([Math]::Max(0,$TimeoutMilliseconds-[int]$watch.ElapsedMilliseconds))){throw 'Proceso agotó el plazo al recibir stdin'}
+            $null=$write.GetAwaiter().GetResult()
+        }
+        $process.StandardInput.Close()
+        if(-not $process.WaitForExit([Math]::Max(0,$TimeoutMilliseconds-[int]$watch.ElapsedMilliseconds))){throw 'Proceso agotó el plazo'}
+        if($process.ExitCode){throw "Proceso rechazó la petición: $($stderr.GetAwaiter().GetResult())"}
         $stdout.GetAwaiter().GetResult()
-    }finally{$process.Dispose()}
+    }finally{
+        if($started -and -not $process.HasExited){$process.Kill();$process.WaitForExit()}
+        $process.Dispose()
+    }
+}
+
+function Assert-BetaManifest([object]$Manifest) {
+    $fields=@($Manifest.PSObject.Properties.Name|Sort-Object)
+    $expected=@('channel','notes','product','schema','sha256','url','version')
+    if(($fields -join ',') -cne ($expected -join ',')){throw 'Campos del manifiesto beta inválidos'}
+    if(($Manifest.schema -isnot [int] -and $Manifest.schema -isnot [long]) -or $Manifest.schema -ne 1 -or $Manifest.product -cne 'vantare-native' -or $Manifest.channel -cne 'beta'){throw 'Manifiesto beta incompatible'}
+    if($Manifest.version -isnot [string] -or $Manifest.version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión beta inválida'}
+    if(@($Manifest.version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión beta fuera de rango'}
+    if($Manifest.sha256 -isnot [string] -or $Manifest.sha256 -cnotmatch '^[0-9a-f]{64}$'){throw 'SHA beta inválido'}
+    if($Manifest.notes -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($Manifest.notes) -gt 8192){throw 'Notas beta inválidas'}
+    if($Manifest.url -isnot [string] -or $Manifest.url -cnotmatch '^https://github\.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v([0-9]+\.[0-9]+\.[0-9]+)/vantare-native-amd64-package\.zip$' -or $Matches[1] -cne $Manifest.version){throw 'URL beta inválida'}
+}
+
+function Assert-PublishArtifacts([string]$OutputDirectory) {
+    foreach($name in @('VantareSetup.exe','vantare-native-amd64-package.zip')){
+        $artifact=Join-Path $OutputDirectory $name
+        if(-not (Test-Path -LiteralPath $artifact -PathType Leaf) -or -not (Test-Path -LiteralPath "$artifact.sha256" -PathType Leaf)){throw "Artefacto o sidecar ausente: $name"}
+        $expected="$(Get-NativeHash $artifact)  $name"
+        if(([IO.File]::ReadAllText("$artifact.sha256")).Trim() -cne $expected){throw "Sidecar incompatible: $name"}
+    }
+}
+
+function Assert-PublicInventory([string]$Payload,[object]$Inventory) {
+    $public=@('vantare.exe','vantare-core.exe','vantare-overlays.exe','vantare-hub.exe','vantare-engineer.exe','vantare-services.exe','vantare-storage.exe','vantare-grabar-lmu.exe','vantare-grabar-acc.exe','vantare-import-profile.exe')
+    $listed=@($Inventory.executables|Sort-Object -CaseSensitive)
+    $approved=@($public|Sort-Object -CaseSensitive)
+    if($Inventory.schema -ne 1 -or [string]::Join("`n",$listed) -cne [string]::Join("`n",$approved)){throw 'Inventario público inválido'}
+    if(@($Inventory.resources|Where-Object {$_ -cmatch '(^|/)\.\.?(/|$)' -or $_ -cmatch '^/' -or $_ -cmatch '\\' -or $_ -cmatch '^(layouts|telemetry-real)/'}).Count){throw 'Ruta de recurso inválida'}
+    foreach($required in @('standings-design-system.sequence.json','session-alerts.snapshot.json')){
+        if($required -cnotin $Inventory.resources){throw "Recurso obligatorio ausente: $required"}
+    }
+    $expected=@('README.md','licenses/OFL-Inter.txt','dependencies.json')
+    $expected+=@($Inventory.executables|ForEach-Object {"bin/$_";"bin/$_.sha256"})
+    $expected+=@($Inventory.resources|ForEach-Object {"bin/fixtures/$_"})
+    $actual=@(Get-ChildItem -LiteralPath $Payload -File -Recurse|ForEach-Object {$_.FullName.Substring($Payload.Length+1).Replace('\','/')})
+    $expected=@($expected|Sort-Object -CaseSensitive)
+    $actual=@($actual|Sort-Object -CaseSensitive)
+    if([string]::Join("`n",$expected) -cne [string]::Join("`n",$actual)){throw 'Inventario público incompatible'}
+}
+
+function Assert-PublicBins([string[]]$Available,[object]$Inventory) {
+    $public=@($Inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)})
+    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop')
+    if(@($public|Where-Object {$_ -cnotin $Available}).Count -or @($Available|Where-Object {$_ -cnotin $public -and $_ -cnotin $internal}).Count){throw 'Binarios públicos incompatibles'}
 }

@@ -2,6 +2,29 @@
 begin;
 set local lock_timeout = '5s';
 
+-- Admin must roll back first. Only the four functions changed by this step
+-- may still reference the private owner oracle at this point.
+do $$
+declare dependency regprocedure;
+begin
+  select p.oid::regprocedure into dependency
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname in ('public','private')
+    and p.prokind in ('f','p')
+    and p.oid <> 'private.is_owner(uuid)'::regprocedure
+    and p.oid <> all(array[
+      'public.race_schedule_draft_save(text,jsonb,timestamptz,integer)'::regprocedure,
+      'public.race_schedule_publish(uuid)'::regprocedure,
+      'public.race_schedule_my_draft()'::regprocedure,
+      'public.testing_center_current_role()'::regprocedure
+    ])
+    and position('private.is_owner(' in pg_get_functiondef(p.oid)) > 0
+  limit 1;
+  if dependency is not null then
+    raise exception 'owner_rollback_dependency: %', dependency using errcode='55000';
+  end if;
+end $$;
+
 create function public.is_active_owner(p_user_id uuid)
 returns boolean language sql stable security definer
 set search_path = public, pg_temp as $$
@@ -33,9 +56,16 @@ begin
 end $$;
 
 create or replace function public.testing_center_current_role()
-returns text language sql stable security definer set search_path = '' as $$
-  select m.role from public.testing_center_memberships m
-  where m.user_id = private.current_account() and m.active
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select membership.role
+  from public.testing_center_memberships as membership
+  where membership.user_id = auth.uid()
+    and membership.active
 $$;
 
 -- A changed assignment is a new admin decision and is never overwritten.

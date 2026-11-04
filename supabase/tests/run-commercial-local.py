@@ -287,7 +287,7 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if owner_enabled and not args.admin_effects_only:
-   owner_stem='20261103225029_isa_1896_owner_unification'
+   owner_stem='20261103235000_isa_1896_owner_unification'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
    role_snapshot=run('psql',*conn,'-At','-c',"select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure").strip()
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_unification_rollback.test.sql')

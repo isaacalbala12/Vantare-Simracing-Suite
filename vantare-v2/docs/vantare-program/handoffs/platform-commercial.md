@@ -8650,3 +8650,6 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Aviso de coordinación enviado antes de8: crear _shared/account-erasure.ts y
   modificar clerk-webhook/index.ts. En espera de autorización; no se han tocado.
   Paso7 avanza en worktree independiente desde la misma nightly.
+- PR draft [#1947](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1947) a nightly; código ce8ca8a73. HEAD documental final en PR/issue; CI nueva pendiente.
+- Producción tocada (incluye SQL up/down):1422 →1600 (+178; +190/−12). Tests +478/−4; docs +72/−1. Basecf41b7c30. Sin merge ni despliegue del worker.
+- Plane/issue/handoff actualizados por esta entrega. Continúan7 y9 independientes;8 compartido en espera del aviso enviado al orquestador.

@@ -916,6 +916,10 @@ SQL completo posterior a1962, con permisos service_role y rollback exacto.
 Mantiene el CAS de confirmación, recipients solo en get/save draft y cancelación.
 Por timestamp, desplegar esta migración después de1963; producción tiene datos.
 Pre-check readonly: `select state,count(*),min(created_at) from private.mail_contact_erasures group by state;`.
-Comprobar que el barrido mail-cleanup existente sigue programado antes de desplegar.
+Comprobar la ejecución programada de mail-cleanup antes de desplegar; el repo
+no demuestra la configuración de producción. Consulta readonly para cron local:
+`select jobname,schedule,active from cron.job where command like '%mail-cleanup%' or command like '%mail_erasure_expire%';`.
+Si se programa fuera de Postgres, Isaac comprueba ese scheduler. Sin un barrido
+activo verificado no desplegar este corte; la acción manual no garantiza24h.
 Este PR no crea ni cambia cron, flags ni configuración. El down restaura la llamada
 al mantenimiento en la lectura, sin convertir estados ni recuperar datos borrados.

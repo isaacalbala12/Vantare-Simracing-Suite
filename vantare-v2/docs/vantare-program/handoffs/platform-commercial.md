@@ -9056,3 +9056,26 @@ union all select 'linear_deliveries',outcome::text,count(*)
   para conservar su wrapper completo de confirmación/cancelación (ADR0106).
 - Este corte prepara tests, sin cambio de producción (0), sin migración nueva,
   PR ni push. No ejecuta Rust: no cambia código Rust. No deploy/merge/release.
+
+### Paso8d implementado: mail_list sin caducidad implícita (2026-11-04)
+
+- Código2c43c148d sobre1962 e2e049d02, sin cambiar1962 ni1963. Los4 RED
+  pasan: leer conserva la cola y no añade erasure_failed. La auditoría mínima
+  mail_list sigue siendo legítima y se excluye de la comparación de mantenimiento.
+- SQL completo, definer/search_path y ACL final service_role explícitos. Down
+  exacto del cuerpo/ACL1962, reaplicación y control negativo4/10 al restaurarlo.
+  Conserva CAS/recipients/cancelación; sus30 checks siguen GREEN.
+- LF y CRLF10/10 (dos pasadas), control RED y chain10b/carreras previas PASS.
+  Deno1 prueba que el worker existente caduca aunque Brevo esté desactivado y
+  no hace HTTP. Tooling28, lint propio y diff PASS. No Rust modificado aquí.
+- Medición repositorio: producción0→62 (+62), íntegramente la definición SQL
+  completa exigida por ADR0106; no se parchea catálogo ni se cambia historia.
+  Función efectiva: una línea/llamada menos; sin otro worker/abstracción.
+  Tests+98; rollback63 excluido; docs aparte. No se afirma reducción neta del repo.
+- Se abrirá draft tras entrar1962, con rebase nightly. Volcados PG17 de CI
+  pendientes entonces. Timestamp215424 posterior a1963: despliegue tras la pila.
+  Isaac verifica antes el scheduler mail-cleanup (cron/externo) y conteos de cola;
+  el repo no prueba configuración real. Sin barrido activo no desplegar este corte:
+  mail_cleanup manual no garantiza retención24h. No se cambia configuración.
+- Sin push/PR nuevo8d aún, despliegue/merge/release ni SaaS/Store/secretos. El11
+  sigue exclusivamente en R6/12. Falta cerrar el seguimiento menor de1962.

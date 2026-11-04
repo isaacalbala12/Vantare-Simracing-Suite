@@ -34,11 +34,26 @@ begin
    raise exception 'native_admin_legacy_reports_require_r6_mapping'
     using errcode='55000',detail=v_table::text;
   end if;
-  if exists(select 1 from (values ('service_role'),('authenticated'),('anon'),('vantare_triage')) principal(name)
-    where has_table_privilege(principal.name,v_table,'INSERT,UPDATE,DELETE,TRUNCATE'))
-   or exists(select 1 from pg_class c,
-     lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
-     where c.oid=v_table and a.grantee=0 and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE')) then
+  -- ACL grantees include arbitrary roles and PUBLIC (OID 0). The owner
+  -- and superusers are the only exemptions, at table AND column level.
+  if exists(select 1 from pg_class c
+    cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl
+    left join pg_roles grantee on grantee.oid=acl.grantee
+    where c.oid=v_table and acl.grantee<>c.relowner
+      and not coalesce(grantee.rolsuper,false)
+      and acl.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE'))
+   or exists(select 1 from pg_attribute att
+    join pg_class c on c.oid=att.attrelid
+    cross join lateral aclexplode(att.attacl) acl
+    left join pg_roles grantee on grantee.oid=acl.grantee
+    where c.oid=v_table and att.attnum>0 and not att.attisdropped
+      and acl.grantee<>c.relowner and not coalesce(grantee.rolsuper,false)
+      and acl.privilege_type in ('INSERT','UPDATE'))
+   -- Also account for effective privileges inherited from another role.
+   or exists(select 1 from pg_roles principal join pg_class c on c.oid=v_table
+    where principal.oid<>c.relowner and not principal.rolsuper
+      and (has_table_privilege(principal.oid,v_table,'INSERT,UPDATE,DELETE,TRUNCATE')
+        or has_any_column_privilege(principal.oid,v_table,'INSERT,UPDATE'))) then
    raise exception 'native_admin_legacy_table_still_writable'
     using errcode='55000',detail=v_table::text;
   end if;
@@ -57,11 +72,26 @@ begin
   if v_function is null then
    raise exception 'native_admin_legacy_rpc_missing' using errcode='55000',detail=v_signature;
   end if;
-  if exists(select 1 from (values ('service_role'),('authenticated'),('anon'),('vantare_triage')) principal(name)
-     where has_function_privilege(principal.name,v_function,'EXECUTE'))
-   or exists(select 1 from pg_proc p,
-     lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
-     where p.oid=v_function and a.grantee=0 and a.privilege_type='EXECUTE') then
+ end loop;
+ -- Enumerate names, not bodies: every overload of the seven closed APIs
+ -- must be closed too. Canonical signatures above must still exist.
+ for v_function,v_signature in
+  select p.oid,p.oid::regprocedure::text from pg_proc p
+  join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.proname in (
+   'testing_center_report_submit_admitted','testing_center_triage_report',
+   'testing_center_prepare_screenshot_batch','testing_center_finalize_screenshot',
+   'testing_center_submit_report','testing_center_submit_report_with_evidence',
+   'testing_center_submit_report_without_transport_size')
+ loop
+  if exists(select 1 from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+    left join pg_roles grantee on grantee.oid=acl.grantee
+    where p.oid=v_function and acl.grantee<>p.proowner
+      and not coalesce(grantee.rolsuper,false) and acl.privilege_type='EXECUTE')
+   or exists(select 1 from pg_roles principal join pg_proc p on p.oid=v_function
+    where principal.oid<>p.proowner and not principal.rolsuper
+      and has_function_privilege(principal.oid,v_function,'EXECUTE')) then
    raise exception 'native_admin_legacy_writers_still_callable'
     using errcode='55000',detail=v_signature;
   end if;

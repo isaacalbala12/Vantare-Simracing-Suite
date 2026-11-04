@@ -417,9 +417,11 @@ auditoría resuelve la cuenta de un informe desde la misma raíz nueva.
    padre y sus siete hijas (#1930, migración `20261104014000`).
 2. Aplicar `20261104024000_isa_1910_admin_report_root.sql`.
    Bajo SHARE en las ocho tablas, exige que no quede ninguna fila (55000),
-   ni INSERT/UPDATE/DELETE/TRUNCATE efectivo para service_role, authenticated,
-   anon, PUBLIC o vantare_triage (55000). La lista explícita de siete firmas
-   RPC de #1926 debe carecer de EXECUTE para esos mismos roles (55000).
+   ni INSERT/UPDATE/DELETE/TRUNCATE para ningún grantee salvo el dueño y los
+   superusuarios (55000). Inspecciona ACL de tabla y columna, incluido PUBLIC,
+   y permisos efectivos heredados. Los siete nombres RPC de #1926 deben carecer
+   de EXECUTE para cualquier otro grantee, en todas sus sobrecargas (55000).
+   Exige también que sigan existiendo sus siete firmas canónicas.
    No escanea cuerpos de funciones ni revoca permisos. Exige current_user con
    BYPASSRLS o SUPERUSER (42501), por FORCE RLS. El fallo es atómico.
 3. Solo el paso final de R6 retirará tablas/RPC, junto con el archivo y el
@@ -438,9 +440,10 @@ orquestador con R6.
 
 El gate recorre todas las migraciones por orden, incluido el 7b2 real, antes
 de aplicar admin; comprueba que Clerk sigue ejecutable por service_role.
-No hay shutdown auxiliar ni fixture que revoque Clerk. Cubre las siete firmas,
-los cinco roles y cuatro privilegios en cada tabla, las ocho relaciones no
-vacías y un ejecutor sin BYPASSRLS. Los oráculos históricos corren en su estado
+No hay shutdown auxiliar ni fixture que revoque Clerk. Cubre las siete firmas
+canónicas y sus sobrecargas, roles de API, PUBLIC y un rol arbitrario,
+privilegios por tabla y columna, ocho relaciones no vacías y un ejecutor sin
+BYPASSRLS. Los oráculos históricos corren en su estado
 anterior mediante los rollbacks reales de R6, fuera del replay limpio.
 El rollback de admin compara cinco digests originales, incluido
 native_admin_reports; conserva intencionadamente una línea con un espacio para
@@ -453,3 +456,11 @@ cuentas. No cambia la retención ni expone lecturas al cliente. Segundo reconcil
 es idempotente y conserva una sola fila; release en cuenta borrada conserva
 `expires_at`. Los fallos de release se registran con `console.error`, sin datos
 personales ni errores SQL. Distinguir los 409 sigue reservado al paso 10.
+
+Los tests `native_admin_report_r5.test.sql` y
+`native_admin_final_decision_r4.test.sql` son históricos: solo se ejecutan contra
+su cadena anterior a `20261104024000`, nunca como gates del esquema final.
+La cobertura vigente es `native_admin_report_root.test.sql` con el harness de
+cutover y rollback. Los digests nuevos de `native_admin_characterization.test.sql`
+solo se seleccionan cuando el runner aplicó esa migración; los modos `before_*`
+conservan sus controles RED de barreras sin anticipar el nuevo esquema.

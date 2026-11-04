@@ -188,6 +188,7 @@ $$;
    order by c.relname"""
   legacy_acl_before=None
   admin_owner_previous=None
+  admin_report_root_applied=False
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
@@ -357,6 +358,7 @@ $$;
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
+    admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'
     print('Clean chain: actual 7b2 then admin cutover; Clerk deletion remains executable PASS',flush=True)
 
@@ -919,7 +921,7 @@ $$;
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','visual_roadmap_clickup.test.sql']
   if not legacy_writers_enabled: suites.append('native_admin.test.sql')
-  suites.append('native_admin_characterization.test.sql')
+  if admin_report_root_applied: suites.append('native_admin_characterization.test.sql')
   if legacy_writers_enabled:
    suites+=['testing_legacy_writers_closed.test.sql']
   if owner_enabled: suites.append('testing_owner_unification.test.sql')

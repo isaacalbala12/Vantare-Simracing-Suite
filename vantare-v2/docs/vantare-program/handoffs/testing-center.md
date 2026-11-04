@@ -1194,3 +1194,13 @@ ejecución sobre la cadena actual 0 nuevas migraciones y 0 errores. El PR
 del lint va aislado del seguimiento 7b5 #1953; no cambia SQL de producto.
 [PR draft #1954](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1954)
 contra nightly; pendiente CI/review antes de integrar.
+
+Corrección del corte ADR 0106 en #1960: el corte real es
+`20261104105500` UTC. Dos migraciones fusionadas después de esa hora
+(`#1910`/`20261104110000` y `#1949`/`20261104120500`) reciben una excepción
+por fichero exacto y únicamente para el diagnóstico `missing_revoke_all`;
+los demás errores y la prohibición de editar migraciones fusionadas siguen
+fallando. Una migración nueva declara la ACL final de `admin_effects`,
+`technical_issues`, `effect_outbox` y `linear_projection_snapshots`; aborta
+si su `relacl` cambia. El harness PG16 comprobó snapshot antes/después,
+down y reaplicación idénticos. No se cambió ningún permiso efectivo.

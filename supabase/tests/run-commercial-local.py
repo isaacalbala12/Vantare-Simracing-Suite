@@ -556,6 +556,16 @@ $$;
      (OUT/'retirement-live-references.before.json').write_text(references,encoding='utf-8')
    if m.stem==ERASURE_STEM:
     erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
+   acl_restatement_stem='20261104181200_isa_1896_acl_restatement'
+   acl_restatement_query="""select jsonb_object_agg(n.nspname||'.'||c.relname,
+     coalesce(c.relacl::text,'<null>') order by n.nspname,c.relname)
+     from pg_class c join pg_namespace n on n.oid=c.relnamespace
+     where (n.nspname,c.relname) in (
+       ('private','admin_effects'),('public','testing_center_technical_issues'),
+       ('public','testing_center_effect_outbox'),
+       ('public','testing_center_linear_projection_snapshots'))"""
+   if m.stem==acl_restatement_stem:
+    acl_restatement_before=run('psql',*conn,'-At','-c',acl_restatement_query).strip()
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -578,6 +588,12 @@ $$;
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
+   if m.stem==acl_restatement_stem:
+    assert run('psql',*conn,'-At','-c',acl_restatement_query).strip()==acl_restatement_before, 'ACL restatement changed relacl'
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(acl_restatement_stem+'.down.sql'))
+    assert run('psql',*conn,'-At','-c',acl_restatement_query).strip()==acl_restatement_before, 'ACL rollback changed relacl'
+    run('psql',*conn,'-f',migration_source)
+    print('ADR 0106 four-table exact relacl up/down/reapply PASS',flush=True)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
     admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'

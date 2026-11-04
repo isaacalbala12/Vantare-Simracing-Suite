@@ -1,8 +1,8 @@
 import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { abortStorageUpload } from "./storage-abort.ts";
+  deepStrictEqual as assertEquals,
+  rejects as assertRejects,
+} from "node:assert/strict";
+import { abortStorageUpload } from "../_shared/account-erasure.ts";
 const upload = {
   bucket_id: "testing-center-evidence",
   name: "folder/part + ñ.png",
@@ -17,15 +17,16 @@ const config = {
 };
 Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only acknowledges API success", async () => {
   await abortStorageUpload(upload, config, (input, init) => {
-    const u = new URL(String(input));
+    const request = new Request(String(input), init);
+    const u = new URL(request.url);
     assertEquals(
       u.pathname,
       "/storage/v1/s3/testing-center-evidence/folder/part%20%2B%20%C3%B1.png",
     );
     assertEquals(u.searchParams.get("uploadId"), "fixture/+=id");
-    assertEquals(init?.method, "DELETE");
-    assertEquals(init?.redirect, "error");
-    const headers = new Headers(init?.headers);
+    assertEquals(request.method, "DELETE");
+    assertEquals(request.redirect, "error");
+    const headers = request.headers;
     assertEquals(headers.get("x-amz-security-token"), "fixture-service");
     assertEquals(
       headers.get("authorization")?.startsWith(
@@ -43,14 +44,12 @@ Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only 
           config,
           () => Promise.resolve(new Response(null, { status })),
         ),
-      Error,
-      "storage_abort_failed",
+      { message: "storage_abort_failed" },
     );
   }
   await assertRejects(
     () => abortStorageUpload(upload, { ...config, tenant: "" }),
-    Error,
-    "storage_abort_not_configured",
+    { message: "storage_abort_not_configured" },
   );
 });
 
@@ -75,7 +74,6 @@ Deno.test("API abort succeeded but SQL ACK lost: exact NoSuchUpload can drain re
             headers: { "content-type": "application/xml" },
           }),
         )),
-    Error,
-    "storage_abort_failed",
+    { message: "storage_abort_failed" },
   );
 });

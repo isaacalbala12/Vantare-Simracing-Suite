@@ -692,3 +692,18 @@ deno run --cached-only --no-lock --config supabase/functions/deno.json supabase/
 
 Deno y Rust leen la fixture; Rust la carga una vez y cruza variantes, campos,
 serialización, mutación y enums. paid_at sigue omitido por la vista. Sin migración.
+
+## Borrado compartido · paso 8a
+
+Admin y Clerk importan el mismo limpiador desde `_shared/account-erasure.ts`;
+el admin deja de importar el punto de entrada del webhook. Abortos multipart,
+objetos, límites de cinco tandas y ACK conservan su orden y sus reintentos.
+Los errores de una cola de uploads no impiden drenar los objetos completados.
+No cambia SQL, tampoco `apply_clerk_user_event`. Sin migración; Isaac despliega
+las dos Edge del corte aprobado. El resto de lecturas puras sigue en el paso 8b.
+
+Las tres lecturas de cuenta y creadores conservan su sincronización de pagos.
+Su conversión a lecturas puras irá junto con `sync_payments`, su cupo propio y
+el botón/flujo nativo, para no mostrar comisiones menos completas entre entregas.
+El paso 8a de este PR contiene únicamente el limpiador compartido; quedan esas
+lecturas y retirar el mantenimiento implícito de `mail_list` en el paso 8b.

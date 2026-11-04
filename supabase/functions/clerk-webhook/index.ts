@@ -7,7 +7,7 @@ import {
 import { readBoundedRawBody } from "../billing-webhook/index.ts";
 import { computeWebhookPayloadHash } from "../billing-webhook/inbox.ts";
 
-import { abortStorageUpload } from "./storage-abort.ts";
+import { cleanupDeletedObjects } from "../_shared/account-erasure.ts";
 
 type Event = {
   type: "user.created" | "user.updated" | "user.deleted";
@@ -158,73 +158,6 @@ export async function handleClerkWebhook(
     // SQL deduplicates IDs and tombstones permanently prevent resurrection.
     return errorResponse("identity_unavailable", "Retry delivery", 503);
   }
-}
-
-export async function cleanupDeletedObjects(
-  issuer: string,
-  subject: string,
-  admin = getSupabaseAdmin(),
-  abort = abortStorageUpload,
-): Promise<void> {
-  // Retry deliveries drain the durable queue even after an idempotent SQL no-op.
-  let uploadsDrained = false;
-  for (let batch = 0; batch < 5; batch++) {
-    const uploads = await admin.rpc("clerk_deletion_uploads", {
-      p_issuer: issuer,
-      p_subject: subject,
-    });
-    // Abort/list/ACK failures keep uploads pending, but cannot retain unrelated
-    // completed objects. The webhook still returns 503 after the object drain.
-    if (uploads.error) break;
-    if (!uploads.data?.length) {
-      uploadsDrained = true;
-      break;
-    }
-    let failed = false;
-    for (const upload of uploads.data ?? []) {
-      try {
-        await abort(upload);
-        const ack = await admin.rpc("clerk_deletion_upload_completed", {
-          p_issuer: issuer,
-          p_subject: subject,
-          p_upload_id: upload.upload_id,
-        });
-        if (ack.error) throw ack.error;
-      } catch {
-        failed = true;
-      }
-    }
-    if (failed) break;
-  }
-  for (let batch = 0; batch < 5; batch++) {
-    const { data, error } = await admin.rpc("clerk_deletion_objects", {
-      p_issuer: issuer,
-      p_subject: subject,
-    });
-    if (error) throw error;
-    if (!data?.length) {
-      if (!uploadsDrained) throw new Error("cleanup_retry_required");
-      return;
-    }
-    const buckets = new Map<string, string[]>();
-    for (const row of data) {
-      const names = buckets.get(row.bucket_id) ?? [];
-      names.push(row.name);
-      buckets.set(row.bucket_id, names);
-    }
-    for (const [bucket, names] of buckets) {
-      const removed = await admin.storage.from(bucket).remove(names);
-      if (removed.error) throw removed.error;
-      const completed = await admin.rpc("clerk_deletion_completed", {
-        p_issuer: issuer,
-        p_subject: subject,
-        p_bucket: bucket,
-        p_names: names,
-      });
-      if (completed.error) throw completed.error;
-    }
-  }
-  throw new Error("cleanup_retry_required");
 }
 
 if (import.meta.main) Deno.serve((req) => handleClerkWebhook(req));

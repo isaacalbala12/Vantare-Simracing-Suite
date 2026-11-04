@@ -8686,3 +8686,37 @@ union all select 'linear_deliveries',outcome::text,count(*)
   native-auth y apply_clerk_user_event reservados.
 - Producción 3715 → 3774 (+59; +323/-264): ejemplos y despacho comunes;
   tests +569/-10; docs +37/-0 (antes +74). HEAD y gates finales en PR/issue.
+
+## VANTA-132 · paso 8a, borrado compartido (2026-11-04)
+
+- PR [#1952](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1952),
+  draft sobre nightly27b02f475; rama/worktree propios. #1949 integrado.
+- Un solo limpiador de abortos/objetos en account-erasure; admin deja de importar
+  el entrypoint Clerk. Reutiliza run para su lectura final. Firmado S3 y
+  reconocimiento NoSuchUpload idénticos tras normalizar saltos de línea.
+- Decisión de review: se retira de #1952 la conversión a lecturas puras.
+  get_account/list_creators/get_creator conservan exactamente el sync anterior;
+  tests de las tres lecturas y r1 lo verifican. Así el owner conserva el mismo
+  historial/comisión mientras no exista sync_payments y su botón nativo.
+- P2: webhook probado con sus defaults, sin deps.cleanup ni deps.apply,
+  RPC y transporte Storage falsos. Prueba drenar y ACK en orden, y RPC fallando
+  →503 aunque se drenen objetos independientes. Sin Docker ni red; se sustituye
+  la lectura de entorno sin leer ni guardar valores reales y se restaura siempre.
+- P3: secuencias exactas en seis fallos del limpiador; uploads fallidos exigen
+  cleanup_retry_required. Fallos de listar/borrar/ACK de objetos conservan su
+  error original y prueban que no hay ACK prematuro.
+- Caracterización previa de restauración: r1 RED; después 264 Deno PASS en
+  admin/webhook. SDK/entrada de Storage typecheck PASS. Gates de formato/lint
+  PASS; se conservan errores previos en evidencia.
+- Producción 1160 →1152 (-8; +188/-196); tests +320/-17, docs +49/-0.
+  El test de defaults vive aparte con firma HMAC y sin dependencia nueva;
+  lint/fmt/check PASS. Fallos previos de imports legacy y await retenidos.
+  No SQL ni Rust: gates SQL/compilación/telemetría/lifecycle omitidos. Storage
+  con dobles; sin stack Docker local. HEAD publicado y CI vigentes en PR/issue.
+- Sin native-auth, SQL apply_clerk_user_event, billing/licencias, secretos,
+  Store real, servicios/configuración reales, deploy o merge. Plane En curso.
+- Sigue paso8b: lecturas puras JUNTO con sync_payments sandbox, confirmación,
+  cupo y llamador nativo; mail_list sin mantenimiento. Luego10 y6; 11 R6/12.
+  La elección de retención10 sigue pendiente; no se presume respuesta.
+- Rebase tras #1951: conserva despacho de ACTIONS y sus cuatro syncPayments.
+  README/handoff conservan contrato y limpiador; Rust y SQL intactos.

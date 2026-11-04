@@ -8007,3 +8007,8 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Sin Rust/lifecycle/telemetría: no cambia native. Los 94 tests Deno de la
   entrega anterior siguen cubriendo el mismo código Edge sin cambios nuevos.
   CI completa pendiente del HEAD publicado; no se afirma verde prematuramente.
+- Base final actualizada a nightly `715c55cd89034e5ae1a134eff15ef7975ca08434`
+  tras entrar #1920 mientras corrían los gates. Conflicto solo en handoff,
+  conservadas las dos entregas; supabase/ idéntico al código local validado.
+  Edge→SQL LF 6/6 PASS y ambas instancias detenidas. RED y primer rechazo de
+  pg_write_all_data guardados en evidencia; no se oculta ningún fallo inicial.

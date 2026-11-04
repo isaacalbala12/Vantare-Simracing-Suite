@@ -38,6 +38,7 @@ declare
   v_mapped bigint;
   v_parent_count bigint;
   v_deleted bigint;
+  v_predeleted bigint;
 begin
   create temp table _legacy_relations (
     relid oid primary key,
@@ -198,12 +199,15 @@ begin
         and captured."row"->>'state'<>'completed')
        or (captured.source_table='public.testing_center_codex_execution_control'
         and captured."row"->>'state'<>'completed')
+       or (captured.source_table='public.testing_center_linear_webhook_deliveries'
+        and captured."row"->>'outcome' in ('pending','needs_owner'))
        or (captured.source_table ~ '(outbox|jobs|reservations|deliver)'
         and captured.source_table not in (
           'public.testing_center_effect_outbox',
           'public.testing_center_agent_effect_outbox',
           'public.testing_center_agent_jobs',
-          'public.testing_center_agent_reservations')
+          'public.testing_center_agent_reservations',
+          'public.testing_center_linear_webhook_deliveries')
         and coalesce(captured."row"->>'state',captured."row"->>'status',
           'pending') not in ('completed','superseded','dry_run_completed',
           'confirmed','applied'))
@@ -212,17 +216,72 @@ begin
       using errcode='55000';
   end if;
 
+  -- A prior user.deleted is permanent: drain these source rows without ever
+  -- copying their personal data into the archive.
+  create temp table _legacy_predeleted (
+    source_table text not null, source_id text not null,
+    primary key(source_table,source_id)
+  ) on commit drop;
+  insert into pg_temp._legacy_predeleted(source_table,source_id)
+  with recursive doomed(source_table,source_id) as (
+    select root.source_table,root.source_id
+    from pg_temp._legacy_rows root
+    join public.account_identities identity_row
+      on identity_row.account_id=(root."row"->>'reporter_user_id')::uuid
+    where root.source_table='public.testing_center_reports'
+      and identity_row.deleted_at is not null
+    union
+    select child.source_table,child.source_id
+    from pg_temp._legacy_rows child
+    join doomed path on true
+    join pg_temp._legacy_rows parent
+      on parent.source_table=path.source_table and parent.source_id=path.source_id
+    where (
+      exists(select 1 from pg_catalog.pg_constraint fk
+        where fk.contype='f' and fk.conrelid=child.relid
+          and fk.confrelid=parent.relid
+          and not exists(select 1 from unnest(fk.conkey,fk.confkey)
+            as key_pair(child_attnum,parent_attnum)
+            join pg_catalog.pg_attribute ca on ca.attrelid=fk.conrelid
+              and ca.attnum=key_pair.child_attnum
+            join pg_catalog.pg_attribute pa on pa.attrelid=fk.confrelid
+              and pa.attnum=key_pair.parent_attnum
+            where child."row"->ca.attname is null
+              or child."row"->ca.attname is distinct from parent."row"->pa.attname))
+      or (parent.source_table='public.testing_center_technical_issues'
+        and child.source_table in ('public.testing_center_audit',
+          'public.testing_center_idempotency')
+        and child."row"->>'aggregate_id'=parent.source_id)
+    ) and (child."row"->>'report_id' is null or exists(
+      select 1 from pg_temp._legacy_rows owned
+      join public.account_identities identity_row
+        on identity_row.account_id=(owned."row"->>'reporter_user_id')::uuid
+      where owned.source_table='public.testing_center_reports'
+        and owned.source_id=child."row"->>'report_id'
+        and identity_row.deleted_at is not null))
+  ) select * from doomed;
+  select count(*) into v_predeleted from pg_temp._legacy_predeleted;
+
   insert into private.testing_center_legacy_archive
     (source_table,source_id,"row",row_sha256)
   select source_table,source_id,"row",row_sha256
-  from pg_temp._legacy_rows
+  from pg_temp._legacy_rows source
+  where not exists(select 1 from pg_temp._legacy_predeleted deleted
+    where deleted.source_table=source.source_table
+      and deleted.source_id=source.source_id)
   on conflict (source_table,source_id) do nothing;
-  select count(*) into v_expected from pg_temp._legacy_rows;
+  select count(*) into v_expected from pg_temp._legacy_rows source
+    where not exists(select 1 from pg_temp._legacy_predeleted deleted
+      where deleted.source_table=source.source_table
+        and deleted.source_id=source.source_id);
   select count(*) into v_actual
   from pg_temp._legacy_rows source
   join private.testing_center_legacy_archive archived
     using (source_table,source_id)
   where archived."row"=source."row"
+    and not exists(select 1 from pg_temp._legacy_predeleted deleted
+      where deleted.source_table=source.source_table
+        and deleted.source_id=source.source_id)
     and archived.row_sha256=source.row_sha256
     and archived.row_sha256=pg_catalog.encode(public.digest(
       pg_catalog.convert_to(archived."row"::text,'UTF8'),'sha256'),'hex');
@@ -346,8 +405,8 @@ begin
   end if;
   select count(*) into v_parent_count from pg_temp._legacy_rows
     where source_table='public.testing_center_reports';
-  raise notice 'legacy_archive rows=%, parent=%, mapped=%, archive_only=%',
-    v_actual,v_parent_count,v_mapped,v_parent_count-v_mapped;
+  raise notice 'legacy_archive rows=%, parent=%, mapped=%, archive_only=%, predeleted_drained=%',
+    v_actual,v_parent_count,v_mapped,v_parent_count-v_mapped,v_predeleted;
 end $archive$;
 
 -- Extend only the B03 account-deletion function. Its prior SQL is retained
@@ -356,27 +415,50 @@ do $account_erasure$
 declare
   definition text;
   anchor text := 'delete from public.testing_contributions where account_id=account;';
+  redaction_start text := 'update public.testing_center_report_payloads set action_text=''Deleted'',';
+  redaction_end text := 'where report_id in(select report_id from public.testing_center_reports where reporter_user_id=account);';
+  start_at integer;
+  end_at integer;
   fragment text := $fragment$
     -- VANTA131 legacy archive erasure begin
     with recursive doomed(source_table,source_id) as (
       select archived.source_table,archived.source_id
       from private.testing_center_legacy_archive archived
-      where archived.source_table='public.testing_center_reports'
+      where archived.source_table='public.'||'testing_center_'||'reports'
         and archived."row"->>'reporter_user_id'=account::text
       union
       select child.source_table,child.source_id
       from private.testing_center_legacy_archive child
-      join doomed parent on
-        (parent.source_table='public.testing_center_reports'
-          and (child."row"->>'report_id'=parent.source_id
-            or child."row"->>'primary_report_id'=parent.source_id))
+      join doomed path on true
+      join private.testing_center_legacy_archive parent
+        on parent.source_table=path.source_table and parent.source_id=path.source_id
+      where (
+        exists(select 1 from pg_catalog.pg_constraint fk
+          join pg_catalog.pg_class cc on cc.oid=fk.conrelid
+          join pg_catalog.pg_namespace cn on cn.oid=cc.relnamespace
+          join pg_catalog.pg_class pc on pc.oid=fk.confrelid
+          join pg_catalog.pg_namespace pn on pn.oid=pc.relnamespace
+          where fk.contype='f'
+            and child.source_table=pg_catalog.format('%I.%I',cn.nspname,cc.relname)
+            and parent.source_table=pg_catalog.format('%I.%I',pn.nspname,pc.relname)
+            and not exists(select 1 from unnest(fk.conkey,fk.confkey)
+              as key_pair(child_attnum,parent_attnum)
+              join pg_catalog.pg_attribute ca on ca.attrelid=fk.conrelid
+                and ca.attnum=key_pair.child_attnum
+              join pg_catalog.pg_attribute pa on pa.attrelid=fk.confrelid
+                and pa.attnum=key_pair.parent_attnum
+              where child."row"->ca.attname is null
+                or child."row"->ca.attname is distinct from parent."row"->pa.attname))
         or (parent.source_table='public.testing_center_technical_issues'
-          and (child."row"->>'technical_issue_id'=parent.source_id
-            or child."row"->>'aggregate_id'=parent.source_id))
-        or (parent.source_table='public.testing_center_agent_jobs'
-          and child."row"->>'job_key'=parent.source_id)
-        or (parent.source_table='public.testing_center_effect_outbox'
-          and child."row"->>'effect_id'=parent.source_id)
+          and child.source_table in ('public.testing_center_audit',
+            'public.testing_center_idempotency')
+          and child."row"->>'aggregate_id'=parent.source_id)
+      )
+        and (child."row"->>'report_id' is null or exists(
+          select 1 from private.testing_center_legacy_archive owned
+          where owned.source_table='public.'||'testing_center_'||'reports'
+            and owned.source_id=child."row"->>'report_id'
+            and owned."row"->>'reporter_user_id'=account::text))
     )
     delete from private.testing_center_legacy_archive archived
     using doomed
@@ -387,6 +469,16 @@ $fragment$;
 begin
   definition:=pg_catalog.pg_get_functiondef(
     'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure);
+  start_at:=position(redaction_start in definition);
+  end_at:=position(redaction_end in definition);
+  if start_at=0 or end_at<=start_at
+    or position(redaction_start in pg_catalog.substr(definition,start_at+1))>0
+    or position(redaction_end in pg_catalog.substr(definition,end_at+1))>0 then
+    raise exception 'legacy_archive_account_redaction_source_drift' using errcode='55000';
+  end if;
+  -- Once the closed legacy tables are drained, payload redaction is dead code.
+  definition:=pg_catalog.substr(definition,1,start_at-1)||
+    pg_catalog.substr(definition,end_at+pg_catalog.length(redaction_end));
   if pg_catalog.length(definition)-pg_catalog.length(pg_catalog.replace(definition,anchor,''))
       <>pg_catalog.length(anchor)
     or position('VANTA131 legacy archive erasure' in definition)>0 then

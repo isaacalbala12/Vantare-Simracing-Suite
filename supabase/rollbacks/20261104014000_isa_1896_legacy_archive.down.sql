@@ -9,6 +9,14 @@ declare
   definition text;
   begin_marker text := '-- VANTA131 legacy archive erasure begin';
   end_marker text := '-- VANTA131 legacy archive erasure end';
+  anchor text := 'delete from public.testing_contributions where account_id=account;';
+  redaction text := $redaction$
+    update public.testing_center_report_payloads set action_text='Deleted',
+      expected_text='Deleted',observed_text='Deleted',context_text=null,
+      include_diagnostic=false,include_logs=false,diagnostic_document=null,
+      diagnostic_transport_digest=null
+      where report_id in(select report_id from public.testing_center_reports where reporter_user_id=account);
+$redaction$;
   start_at integer;
   end_at integer;
 begin
@@ -23,8 +31,13 @@ begin
     or position(end_marker in pg_catalog.substr(definition,end_at+1))>0 then
     raise exception 'legacy_archive_account_delete_rollback_drift' using errcode='55000';
   end if;
-  execute pg_catalog.substr(definition,1,start_at-1)||
+  definition:=pg_catalog.substr(definition,1,start_at-1)||
     pg_catalog.substr(definition,end_at+pg_catalog.length(end_marker));
+  if position(anchor in definition)=0
+    or position('update public.testing_center_report_payloads set action_text' in definition)>0 then
+    raise exception 'legacy_archive_account_redaction_rollback_drift' using errcode='55000';
+  end if;
+  execute pg_catalog.replace(definition,anchor,anchor||redaction);
 end $account_erasure$;
 
 do $restore$
@@ -114,19 +127,33 @@ begin
         or not exists(select 1 from public.profiles profile
           where profile.id=(archived."row"->>'reporter_user_id')::uuid))
     union
-    select child.source_table,child.source_id,parent.reason
+    select child.source_table,child.source_id,path.reason
     from private.testing_center_legacy_archive child
-    join skipped parent on
-      (parent.source_table='public.testing_center_reports'
-        and (child."row"->>'report_id'=parent.source_id
-          or child."row"->>'primary_report_id'=parent.source_id))
+    join skipped path on true
+    join private.testing_center_legacy_archive parent
+      on parent.source_table=path.source_table and parent.source_id=path.source_id
+    where (
+      exists(select 1 from pg_catalog.pg_constraint fk
+        join pg_catalog.pg_class cc on cc.oid=fk.conrelid
+        join pg_catalog.pg_namespace cn on cn.oid=cc.relnamespace
+        join pg_catalog.pg_class pc on pc.oid=fk.confrelid
+        join pg_catalog.pg_namespace pn on pn.oid=pc.relnamespace
+        where fk.contype='f'
+          and child.source_table=pg_catalog.format('%I.%I',cn.nspname,cc.relname)
+          and parent.source_table=pg_catalog.format('%I.%I',pn.nspname,pc.relname)
+          and not exists(select 1 from unnest(fk.conkey,fk.confkey)
+            as key_pair(child_attnum,parent_attnum)
+            join pg_catalog.pg_attribute ca on ca.attrelid=fk.conrelid
+              and ca.attnum=key_pair.child_attnum
+            join pg_catalog.pg_attribute pa on pa.attrelid=fk.confrelid
+              and pa.attnum=key_pair.parent_attnum
+            where child."row"->ca.attname is null
+              or child."row"->ca.attname is distinct from parent."row"->pa.attname))
       or (parent.source_table='public.testing_center_technical_issues'
-        and (child."row"->>'technical_issue_id'=parent.source_id
-          or child."row"->>'aggregate_id'=parent.source_id))
-      or (parent.source_table='public.testing_center_agent_jobs'
-        and child."row"->>'job_key'=parent.source_id)
-      or (parent.source_table='public.testing_center_effect_outbox'
-        and child."row"->>'effect_id'=parent.source_id)
+        and child.source_table in ('public.testing_center_audit',
+          'public.testing_center_idempotency')
+        and child."row"->>'aggregate_id'=parent.source_id)
+    )
   ) select source_table,source_id,min(reason) from skipped
     group by source_table,source_id;
   select count(*) into v_skipped from pg_temp._legacy_skipped;

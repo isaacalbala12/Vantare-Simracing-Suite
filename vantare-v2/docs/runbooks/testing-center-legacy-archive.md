@@ -41,11 +41,13 @@ from names order by source_table;
 
 La migración bloquea el padre y todas sus tablas descendientes por clave
 foránea en una transacción. Incluye los ledgers de auditoría e idempotencia
-enlazados por `aggregate_id` al issue. Archiva `to_jsonb` de cada fila completa
+enlazados por `aggregate_id` al issue. Archiva la fila completa de las
+cuentas vivas con `to_jsonb`
 en `private.testing_center_legacy_archive` con SHA-256, compara recuentos y
 hashes con el origen, crea las contribuciones admisibles y vacía los hijos
 antes del padre. El aviso SQL final da los recuentos reales de filas archivadas,
-padres, mapeadas y conservadas solo en archivo. Cualquier discrepancia aborta
+padres, mapeadas, conservadas solo en archivo y vaciadas de cuentas ya borradas.
+Cualquier discrepancia aborta
 la transacción.
 
 Si hay cualquier lote o fila de capturas, aborta antes de tocar datos que
@@ -53,6 +55,10 @@ apunten a Storage. También aborta si hay efectos o jobs pendientes en las
 colas del subárbol. El contrato inicial citaba ocho tablas; el recorrido real
 incluye además los descendientes indirectos de issues, efectos y jobs, y los
 dos ledgers lógicos. La consulta anterior los enumera desde el catálogo.
+Si un job está en `needs_info` o `needs_owner`, el operador debe resolverlo
+y llevarlo a un estado terminal antes del despliegue; no se descarta la cola.
+Las entregas de Linear se comprueban por `outcome`: `pending` y `needs_owner`
+bloquean, mientras `applied`, `stale` e `ignored` están terminadas.
 
 | Estado legacy | Resultado v2 |
 | --- | --- |
@@ -63,10 +69,11 @@ dos ledgers lógicos. La consulta anterior los enumera desde el catálogo.
 | `fixed` | `fixed` |
 | `draft`, `closed`, `duplicate_linked`, `incomplete` | Solo archivo; no hay equivalente seguro |
 
-El ID inválido, la cuenta sin perfil y la cuenta con `deleted_at` quedan solo
-en el archivo. Ningún informe legacy se crea como `received`: no vuelve a
-triage. El UUID v2 se deriva de forma determinista del `report_id` con SHA-1,
-versión 5 y namespace `vanta131:legacy:`.
+El ID inválido y la cuenta sin perfil quedan solo en el archivo. Las filas
+de una cuenta ya borrada se vacían sin archivarse, con recuento verificado.
+Ningún informe legacy se crea como `received`: no vuelve a triage. El UUID
+se deriva del SHA-1 del texto `vanta131:legacy:` seguido del `report_id`,
+con los bits de versión fijados; no es un UUIDv5 RFC con namespace UUID.
 
 `legacy_source_id` en la contribución conserva el identificador `report_<hash>`.
 Tiene un índice único parcial para que la repetición no cree otra contribución.
@@ -75,8 +82,15 @@ Título y cuerpo se ajustan a los límites v2; `app_version`, `os_family`,
 campos largos y la evidencia original. No se infiere consentimiento nuevo.
 Los informes sin cuenta v2 viva o sin ID admisible quedan solo en el archivo.
 El archivo no concede acceso a roles API.
+`user.deleted` borra del archivo los informes de la cuenta y sus descendientes
+según las FK del catálogo. Conserva las ocurrencias de informes de otras
+cuentas aunque compartan un issue. La redacción del payload legacy se retira
+de esa función mientras las tablas están vacías y cerradas; el `.down.sql`
+la restaura junto con el código anterior de borrado.
 
-Desplegar con el tráfico de informes v2 detenido. Los títulos usan
+Desplegar con el tráfico de informes v2 detenido. Pausar también el webhook
+de Clerk y los borrados de cuenta durante esta migración y el `.down.sql`:
+el lock del archivo y el lock de cuenta tienen orden inverso. Los títulos usan
 `action_text` o el placeholder «Informe legacy» y se truncan a 120 caracteres;
 el cuerpo usa `expected_text`/`observed_text` o el identificador legacy y se
 trunca a 1000. La fila original completa permanece en el archivo. El

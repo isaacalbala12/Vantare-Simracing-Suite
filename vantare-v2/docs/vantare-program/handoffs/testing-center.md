@@ -1,3 +1,9 @@
+## 2026-11-04 - #1896 / VANTA-131 7b2: re-review de guard y FK
+
+- #1930: se retira quirúrgicamente la redacción legacy ya inerte de apply_clerk_user_event; el fragmento de archivo no contiene el nombre literal de la tabla padre. El .down restaura la redacción. VANTA-132 cambia el guard de #1924 a privilegios y tablas vacías, sin inspección del texto.
+- Borrado de archivo y skip del rollback siguen todas las FK del catálogo, incluidas supersessions y entregas Linear. Una ocurrencia de informe de otra cuenta se conserva al borrar A. Las cuentas ya borradas antes de 7b2 se vacían y cuentan sin entrar al archivo. El guard de colas usa outcome de Linear; needs_info y needs_owner siguen bloqueando. Runbook: pausar webhook Clerk y borrados durante up/down por orden de locks y descripción precisa del UUID.
+- PostgreSQL 16 local completo PASS: 26 filas de fixture, cuenta borrada antes y después, job completado, supersession, entrega Linear aplicada y pendiente, ocurrencia ajena, rollback y 134 rutas/795 checks de concurrencia. Rebase y CI del nuevo HEAD pendientes. Sin despliegue, merge ni release.
+
 ## 2026-11-04 - #1896 / VANTA-131 7b2: revisión de borrado y efectos
 
 - Draft PR #1930 rebasado sobre origin/nightly@b1e36c868, que ya incluye #1925 y #1927. La migración se mantiene en 20261104014000; #1924 debe tener timestamp posterior. No se cambió SQL admin ni se hizo despliegue.

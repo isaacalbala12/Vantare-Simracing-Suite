@@ -8701,5 +8701,6 @@ union all select 'linear_deliveries',outcome::text,count(*)
   de producción, deploy, merge ni release. SQL histórico permanece para baseR6/12.
   Continúa8 cuando se autorice coordinación;6/10 pendientes,11 exclusivamente R6.
 - PR draft [#1951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1951) a nightly, código bcbe83e5f; HEAD documental final en PR/issue. Basecf41b7c30, CI nueva pendiente.
-- Producción tocada3621 →3689 (+68; +290/−222); tests +504/−0, incluida fixture JSON; docs +73/−0. No se cuenta la fixture como producción porque solo se consume en gates.
+- Producción tocada3621 →3689 (+68; +290/−222); tests +504/−0, incluida fixture JSON; docs +74/−0. No se cuenta la fixture como producción porque solo se consume en gates.
 - Drafts SMTP1947 y errores1948 continúan independientes.8 espera coordinación explícita;6/10 pendientes,11 fuera con R6. VANTA-132 En curso; sin merge propio ni despliegue.
+- Verificación remota final:1947 y1948 MERGEABLE con seis checks SUCCESS cada uno;1951 CI nueva pendiente. Primer push documental1951 recibió500 de GitHub; reintento normal exitoso, sin force ni cambios de producto.

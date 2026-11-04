@@ -8653,3 +8653,17 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - PR draft [#1947](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1947) a nightly; código ce8ca8a73. HEAD documental final en PR/issue; CI nueva pendiente.
 - Producción tocada (incluye SQL up/down):1422 →1600 (+178; +190/−12). Tests +478/−4; docs +72/−1. Basecf41b7c30. Sin merge ni despliegue del worker.
 - Plane/issue/handoff actualizados por esta entrega. Continúan7 y9 independientes;8 compartido en espera del aviso enviado al orquestador.
+
+### #1947 · review P2/P3 cerrada (2026-11-04)
+
+- Claim conserva 409/403/404/400 conocidos; resto 503 de auditoría. Fallos previos
+  al HTTP cierran failed/NULL antes del ACK. Máximo 5 s desde inicio del claim.
+  Índice único por entrega/entorno, incluso cerrada: no se reenvía esa entrega.
+- RED previo: 12 PASS/7 RED Deno; SQL 39 PASS/1 RED sin índice, tras corregir fixture
+  de contactos. GREEN: 216 Deno; LF/CRLF 120 SQL y 19 Edge→SQL PASS; down/reapply,
+  índice retirado al revertir y guards de retención PASS. Instancias paradas.
+- Check/lint/fmt/Python/diff PASS; native intacto. Producción 1422 → 1633 (+211;
+  +226/-15), tests +576/-4; docs +96/-1. HEAD final/CI en PR/issue. Cero despliegues.
+- #1948 corregido en e83faac5a; #1951 rebasado y en gates. Paso8 autorizado en
+  account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
+  No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.

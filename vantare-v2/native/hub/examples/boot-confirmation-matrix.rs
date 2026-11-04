@@ -4,7 +4,7 @@
 #[allow(dead_code)]
 #[path = "../src/installation.rs"]
 mod installation;
-use vantare_hub::installed_generation;
+use vantare_hub::{canonical_executable, installed_generation};
 
 #[allow(clippy::too_many_lines)] // QA fixture owns both session and Hub process lifetimes.
 fn main() -> Result<(), Box<dyn std::error::Error>> {

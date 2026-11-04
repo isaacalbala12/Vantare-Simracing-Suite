@@ -15,8 +15,42 @@ pub fn installed_generation(executable: &std::path::Path) -> Option<&std::path::
         && folder.eq_ignore_ascii_case("bin")
         && parent.eq_ignore_ascii_case("generations")
         && id.len() == 32
-        && id.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
     .then_some(generation)
+}
+
+/// Canonicalize the running binary without passing Win32 verbatim paths to
+/// consumers that deliberately reject device paths.
+pub fn canonical_executable(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
+    let canonical = std::fs::canonicalize(path)?;
+    #[cfg(windows)]
+    {
+        let Some(value) = canonical.to_str() else {
+            return Ok(canonical);
+        };
+        if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
+            return Ok(std::path::PathBuf::from(format!(r"\\{unc}")));
+        }
+        if let Some(local) = value.strip_prefix(r"\\?\") {
+            return Ok(std::path::PathBuf::from(local));
+        }
+    }
+    Ok(canonical)
+}
+
+#[cfg(test)]
+#[test]
+fn installed_generation_requires_lowercase_id() {
+    let lower = std::path::Path::new(
+        "root/generations/0123456789abcdef0123456789abcdef/bin/vantare-hub.exe",
+    );
+    let upper = std::path::Path::new(
+        "root/generations/0123456789ABCDEF0123456789ABCDEF/bin/vantare-hub.exe",
+    );
+    assert!(installed_generation(lower).is_some());
+    assert!(installed_generation(upper).is_none());
 }
 
 pub mod calendar;

@@ -18,7 +18,22 @@ fn qa_root() -> PathBuf {
     root
 }
 
-fn run(exe: &Path, data: Option<&Path>, qa: &Path) -> Output {
+struct QaFixture(PathBuf);
+impl Drop for QaFixture {
+    fn drop(&mut self) {
+        for _ in 0..30 {
+            if fs::remove_dir_all(&self.0).is_ok() || !self.0.exists() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        if !std::thread::panicking() {
+            panic!("could not clean QA fixture: {}", self.0.display());
+        }
+    }
+}
+
+fn run(exe: &Path, data: Option<&Path>, qa: &Path, redirected: bool) -> Output {
     let mut command = Command::new(exe);
     command
         .arg("--version")
@@ -27,7 +42,17 @@ fn run(exe: &Path, data: Option<&Path>, qa: &Path) -> Output {
         .env("APPDATA", qa.join("appdata"))
         .env("TEMP", qa.join("temp"))
         .env("TMP", qa.join("temp"))
+        .env("VANTARE_BOOT_TOKEN", "0123456789abcdef0123456789abcdef")
+        .env("VANTARE_BETA_ROOT", qa.join("other"))
+        .env("VANTARE_APPEARANCE_FILE", qa.join("appearance.json"))
+        .env("VANTARE_BACKGROUND_STARTUP", "1")
+        .env("VANTARE_INTERACTIVE_STARTUP", "1")
         .env("VANTARE_STEP10_LAUNCH_PROBE", qa.join("launcher-started"));
+    if redirected {
+        command.env("VANTARE_HUB_REDIRECTED", "1");
+    } else {
+        command.env_remove("VANTARE_HUB_REDIRECTED");
+    }
     if let Some(data) = data {
         command.env("VANTARE_NATIVE_DATA_ROOT", data);
     }
@@ -60,13 +85,8 @@ fn wait_for(path: &Path) {
 
 #[test]
 fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
-    if let Some(marker) = std::env::var_os("VANTARE_STEP10_LAUNCH_PROBE") {
-        let marker = PathBuf::from(marker);
-        vantare_installer::engine::context::qa_path(&marker).expect("QA probe guard");
-        fs::write(marker, b"started").expect("launcher probe");
-        return;
-    }
     let qa = qa_root();
+    let _cleanup = QaFixture(qa.clone());
     if qa.exists() {
         fs::remove_dir_all(&qa).expect("old QA fixture");
     }
@@ -79,8 +99,15 @@ fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
     }
     let hub = bin.join("vantare-hub.exe");
     fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &hub).expect("QA Hub");
+    let verbatim_hub = PathBuf::from(format!(
+        r"\\?\{}",
+        hub.display().to_string().replace('/', "\\")
+    ));
+    let ordinary = vantare_hub::canonical_executable(&verbatim_hub).expect("canonical executable");
+    assert!(!ordinary.to_string_lossy().starts_with(r"\\?\"));
+    assert!(ordinary.is_absolute());
     fs::copy(
-        std::env::current_exe().expect("test executable"),
+        env!("CARGO_BIN_EXE_root-launch-probe"),
         root.join("Vantare.exe"),
     )
     .expect("QA launcher probe");
@@ -88,29 +115,52 @@ fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
     let before = entries(&qa);
 
     for (exe, supplied) in [(&hub, None), (&hub, Some(qa.join("other")))] {
-        let result = run(exe, supplied.as_deref(), &qa);
+        let result = run(exe, supplied.as_deref(), &qa, false);
         assert!(result.status.success());
         wait_for(&marker);
         fs::remove_file(&marker).expect("reset launcher probe");
         assert_eq!(entries(&qa), before, "Hub wrote before redirect");
         assert!(!root.join("hub-ready").exists());
     }
-    let uppercase_bin = root.join("generations/ABCDEF0123456789ABCDEF0123456789/bin");
-    fs::create_dir_all(
-        uppercase_bin
-            .parent()
-            .expect("uppercase generation")
-            .join("data"),
-    )
-    .expect("uppercase QA data");
-    fs::create_dir_all(&uppercase_bin).expect("uppercase QA bin");
-    let uppercase_exe = uppercase_bin.join("VANTARE-HUB.EXE");
-    fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &uppercase_exe).expect("uppercase QA Hub");
+    let uppercase_exe = PathBuf::from(hub.to_string_lossy().to_uppercase());
     let before = entries(&qa);
-    assert!(run(&uppercase_exe, None, &qa).status.success());
+    assert!(run(&uppercase_exe, None, &qa, false).status.success());
     wait_for(&marker);
     fs::remove_file(&marker).expect("reset launcher probe");
     assert_eq!(entries(&qa), before);
+    let short = Command::new("cmd")
+        .args([
+            "/C",
+            &format!("for %I in (\"{}\") do @echo %~sI", hub.display()),
+        ])
+        .output()
+        .expect("8.3 path probe");
+    let short = PathBuf::from(String::from_utf8_lossy(&short.stdout).trim());
+    if short.is_file() && short != hub {
+        assert!(run(&short, None, &qa, false).status.success());
+        wait_for(&marker);
+        fs::remove_file(&marker).expect("reset launcher probe");
+    }
+    let junction = qa.join("generation-junction");
+    let source = root.join("generations");
+    let created = Command::new("cmd")
+        .args([
+            "/C",
+            &format!(
+                "mklink /J \"{}\" \"{}\"",
+                junction.display(),
+                source.display()
+            ),
+        ])
+        .output()
+        .expect("junction probe");
+    if created.status.success() {
+        let linked = junction.join("0123456789abcdef0123456789abcdef/bin/vantare-hub.exe");
+        assert!(run(&linked, None, &qa, false).status.success());
+        wait_for(&marker);
+        fs::remove_file(&marker).expect("reset launcher probe");
+        fs::remove_dir(&junction).expect("remove QA junction");
+    }
 
     let variants = [
         data.clone(),
@@ -122,25 +172,33 @@ fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
         )),
     ];
     for variant in variants {
-        let result = run(&hub, Some(&variant), &qa);
+        let result = run(&hub, Some(&variant), &qa, false);
         assert!(result.status.success(), "{variant:?}: {result:?}");
         assert!(!result.stdout.is_empty());
         assert!(!marker.exists(), "correct root relaunched Vantare");
     }
 
+    assert!(!run(&hub, None, &qa, true).status.success());
+    assert!(!marker.exists(), "second Hub launched the root again");
+    assert!(
+        fs::read_to_string(data.join("hub-startup.log"))
+            .expect("redirect log")
+            .contains("redirección repetida")
+    );
+    fs::remove_file(data.join("hub-startup.log")).expect("reset redirect log");
     fs::remove_file(root.join("Vantare.exe")).expect("remove QA launcher");
-    assert!(!run(&hub, None, &qa).status.success());
+    assert!(!run(&hub, None, &qa, false).status.success());
     let log_path = data.join("hub-startup.log");
     let log = fs::read_to_string(&log_path).expect("generation data log");
     assert!(log.contains("abre Vantare desde su acceso directo"));
     fs::copy(
-        std::env::current_exe().expect("test executable"),
+        env!("CARGO_BIN_EXE_root-launch-probe"),
         root.join("Vantare.exe"),
     )
     .expect("restore QA launcher probe");
     fs::remove_file(log_path).expect("remove QA log");
     fs::remove_dir(&data).expect("remove QA data root");
-    assert!(run(&hub, None, &qa).status.success());
+    assert!(run(&hub, None, &qa, false).status.success());
     wait_for(&marker);
     fs::remove_file(&marker).expect("reset launcher probe");
     let temp_log = fs::read_dir(qa.join("temp"))
@@ -154,11 +212,4 @@ fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
             .expect("data error log")
             .contains("raíz de datos:")
     );
-    for _ in 0..30 {
-        if fs::remove_dir_all(&qa).is_ok() {
-            return;
-        }
-        std::thread::sleep(Duration::from_millis(20));
-    }
-    fs::remove_dir_all(&qa).expect("clean QA fixture");
 }

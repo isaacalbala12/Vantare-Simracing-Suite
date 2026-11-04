@@ -52,7 +52,7 @@ impl LocalUpdate {
 
     pub(super) fn current() -> Self {
         std::env::current_exe()
-            .and_then(fs::canonicalize)
+            .and_then(|path| crate::canonical_executable(&path))
             .map_or(Self::Invalid, |exe| Self::at(&exe))
     }
     fn at(exe: &Path) -> Self {
@@ -133,15 +133,22 @@ mod tests {
     }
     #[test]
     fn reads_real_files_and_rejects_wrong_active_generation_and_corrupt_state() {
-        let root = std::env::temp_dir().join(format!(
+        let qa = if std::env::var("CI").as_deref() == Ok("true") {
+            std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))
+        } else {
+            std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = qa.join(format!(
             "vantare-settings-update-{}-{}",
             std::process::id(),
             chrono::Utc::now().timestamp_nanos_opt().expect("reloj")
         ));
+        vantare_installer::engine::context::qa_path(&root).expect("QA guard");
         let id = "a".repeat(32);
         let package = root.join("generations").join(&id);
         fs::create_dir_all(package.join("bin")).expect("directorio");
         let exe = package.join("bin/vantare-hub.exe");
+        fs::write(&exe, b"fixture").expect("QA executable");
         assert_eq!(LocalUpdate::at(&exe), LocalUpdate::Invalid);
         fs::create_dir(package.join("data")).expect("data");
         let manifest = serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,
@@ -153,6 +160,19 @@ mod tests {
         let state = serde_json::json!({"schema":1,"product":"vantare-native","channel":"nightly",
             "active":{"generation":id,"manifest_sha256":vantare_installer::engine::Manifest::read(&package.join("manifest.json")).unwrap().sha256()},"previous":null});
         fs::write(root.join("state.json"), state.to_string()).expect("estado");
+        #[cfg(windows)]
+        {
+            let verbatim = std::path::PathBuf::from(format!(
+                r"\\?\{}",
+                exe.display().to_string().replace('/', "\\")
+            ));
+            let normalized = crate::canonical_executable(&verbatim).expect("normalize verbatim");
+            assert!(!normalized.to_string_lossy().starts_with(r"\\?\"));
+            assert!(matches!(
+                LocalUpdate::at(&normalized),
+                LocalUpdate::Package { .. }
+            ));
+        }
         assert_eq!(
             LocalUpdate::at(&exe),
             LocalUpdate::Package {

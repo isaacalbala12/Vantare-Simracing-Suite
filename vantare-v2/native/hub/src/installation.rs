@@ -19,11 +19,11 @@ pub(crate) struct BootConfirmation {
 impl BootConfirmation {
     pub(crate) fn start(root: &Path) -> Result<Self, String> {
         let executable = std::env::current_exe()
-            .and_then(std::fs::canonicalize)
+            .and_then(|path| crate::canonical_executable(&path))
             .map_err(|error| error.to_string())?;
         let generation = crate::installed_generation(&executable)
             .ok_or("el Hub no pertenece a esta instalación")?;
-        let expected_root = std::fs::canonicalize(root).map_err(|error| error.to_string())?;
+        let expected_root = crate::canonical_executable(root).map_err(|error| error.to_string())?;
         if generation.parent().and_then(Path::parent) != Some(expected_root.as_path()) {
             return Err("el Hub no pertenece a esta instalación".into());
         }

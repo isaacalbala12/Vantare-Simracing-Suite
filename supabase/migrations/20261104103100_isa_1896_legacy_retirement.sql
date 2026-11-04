@@ -1,6 +1,13 @@
 -- VANTA-131 / 7b final. The archive must be empty: pilot purge is an Isaac decision.
 begin;
 set local lock_timeout='5s';
+do $role$
+begin
+  if not exists(select 1 from pg_roles where rolname=current_user
+    and (rolsuper or rolbypassrls)) then
+    raise exception 'legacy_retirement_requires_bypassrls' using errcode='42501';
+  end if;
+end $role$;
 lock table private.testing_center_legacy_archive,
   public.testing_center_evidence_outbox,
   public.testing_center_screenshot_evidence,
@@ -16,7 +23,29 @@ lock table private.testing_center_legacy_archive,
   public.testing_center_reports,
   public.testing_center_technical_issues,
   public.testing_center_effect_outbox,
-  public.testing_center_linear_projection_snapshots in access exclusive mode;
+  public.testing_center_linear_projection_snapshots,
+  public.testing_center_agent_audit,
+  public.testing_center_agent_callbacks,
+  public.testing_center_agent_effect_outbox,
+  public.testing_center_agent_jobs,
+  public.testing_center_agent_phase_callbacks,
+  public.testing_center_agent_reservations,
+  public.testing_center_audit,
+  public.testing_center_candidate_builds,
+  public.testing_center_codex_dossier_snapshots,
+  public.testing_center_codex_execution_control,
+  public.testing_center_codex_runs,
+  public.testing_center_effect_supersessions,
+  public.testing_center_idempotency,
+  public.testing_center_issue_destinations,
+  public.testing_center_linear_issue_bindings,
+  public.testing_center_linear_reconciliations,
+  public.testing_center_linear_webhook_deliveries,
+  public.testing_center_owner_dispositions,
+  public.testing_center_pauses,
+  public.testing_center_promotions,
+  public.testing_center_validation_snapshots,
+  public.testing_center_validations in access exclusive mode;
 lock table storage.objects,storage.s3_multipart_uploads in share mode;
 do $preflight$
 begin
@@ -87,6 +116,16 @@ drop function public.testing_center_set_posthog_consent(text,boolean,boolean,tex
 drop function public.testing_center_submit_report(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text) restrict;
 drop function public.testing_center_triage_report(text) restrict;
 drop function public.testing_center_submit_report_without_transport_size(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text) restrict;
+-- No Hub, web, digest or deploy caller remains. The dry-run Codex RPC itself
+-- calls the removed evidence reader, so retire both in the same transaction.
+drop function public.testing_center_queue_codex_dry_run(text,text,text,text,text,text) restrict;
+drop function public.testing_center_load_codex_evidence(text) restrict;
+drop function public.testing_center_prepare_linear_projection(text) restrict;
+drop function public.testing_center_expire_posthog_evidence(timestamptz) restrict;
+drop function public.testing_center_authorize_posthog_linear_link(text,uuid) restrict;
+drop function private.testing_center_report_evidence_for_account(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid) restrict;
+drop function private.testing_center_report_for_account(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text) restrict;
+drop function private.testing_center_report_payload_for_account(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text) restrict;
 drop policy testing_center_issues_select_own on public.testing_center_technical_issues;
 create policy testing_center_issues_select_own on public.testing_center_technical_issues
   for select to authenticated using (exists (
@@ -99,6 +138,9 @@ create policy testing_center_issues_select_own on public.testing_center_technica
 drop trigger a_account_write_barrier on public.testing_center_technical_issues;
 alter table public.testing_center_technical_issues
   drop constraint testing_center_technical_issues_report_id_fkey;
+alter table public.testing_center_technical_issues
+  add constraint testing_center_technical_issue_no_legacy_report_id
+  check (report_id is null);
 create trigger a_account_write_barrier before insert or update or delete
   on public.testing_center_technical_issues for each row
   execute function private.guard_account_write(
@@ -108,6 +150,67 @@ alter table public.testing_center_effect_outbox
   drop constraint testing_center_effect_outbox_primary_report_id_fkey;
 alter table public.testing_center_linear_projection_snapshots
   drop constraint testing_center_linear_projection_snapsho_primary_report_id_fkey;
+
+-- pg_depend cannot see SQL stored in trigger arguments. Drop the obsolete
+-- guard when the v2 guard already owns the row; replace it elsewhere with
+-- retained contribution lineage. This intentionally leaves inert ledgers
+-- writable only through their existing SQL privileges.
+do $retained_guards$
+declare r record;
+  owner_query constant text := $owners$
+    select array_remove(array[
+      private.testing_center_v2_owner($1->>'technical_issue_id'),
+      private.testing_center_v2_owner($1->>'job_key'),
+      private.testing_center_v2_owner($1->>'aggregate_id'),
+      (select private.testing_center_v2_owner(e.technical_issue_id)
+        from public.testing_center_effect_outbox e where e.effect_id=$1->>'effect_id'),
+      (select private.testing_center_v2_owner(e.technical_issue_id)
+        from public.testing_center_effect_outbox e where e.effect_id=$1->>'legacy_effect_id'),
+      (select private.testing_center_v2_owner(e.technical_issue_id)
+        from public.testing_center_effect_outbox e where e.effect_id=$1->>'superseded_by_effect_id'),
+      (select private.testing_center_v2_owner(c.technical_issue_id)
+        from public.testing_center_candidate_builds c where c.candidate_id=$1->>'candidate_id'),
+      (select private.testing_center_v2_owner(c.technical_issue_id)
+        from public.testing_center_validations v
+        join public.testing_center_candidate_builds c on c.candidate_id=v.candidate_id
+        where v.validation_id=$1->>'validation_id'),
+      (select private.testing_center_v2_owner(c.technical_issue_id)
+        from public.testing_center_validations v
+        join public.testing_center_candidate_builds c on c.candidate_id=v.candidate_id
+        where v.validation_id=$1->>'rejection_validation_id'),
+      (select private.testing_center_v2_owner(b.technical_issue_id)
+        from public.testing_center_linear_issue_bindings b
+        where b.external_issue_id::text=$1->>'external_issue_id'),
+      nullif($1->>'actor_user_id','')::uuid,
+      nullif($1->>'requested_by_user_id','')::uuid,
+      nullif($1->>'authorized_by_user_id','')::uuid
+    ],null)
+  $owners$;
+begin
+  for r in select t.tgrelid::regclass as relation
+    from pg_trigger t join pg_class c on c.oid=t.tgrelid
+    where not t.tgisinternal and t.tgname='a_account_write_barrier'
+      and c.relnamespace='public'::regnamespace
+      and c.relname not in (
+        'testing_center_reports','testing_center_evidence','testing_center_triage_results',
+        'testing_center_issue_occurrences','testing_center_posthog_consent_events',
+        'testing_center_posthog_evidence','testing_center_report_events',
+        'testing_center_report_payloads','testing_center_report_submission_keys',
+        'testing_center_screenshot_evidence','testing_center_evidence_batches',
+        'testing_center_evidence_outbox','testing_center_technical_issues')
+      and encode(t.tgargs,'escape') ~
+        'public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\M'
+    order by t.tgrelid::regclass::text
+  loop
+    execute format('drop trigger a_account_write_barrier on %s',r.relation);
+    if not exists(select 1 from pg_trigger b
+      where b.tgrelid=r.relation and b.tgname='b_account_write_barrier_v2') then
+      execute format('create trigger a_account_write_barrier before insert or update or delete
+        on %s for each row execute function private.guard_account_write(%L,%L)',
+        r.relation,owner_query,'select false');
+    end if;
+  end loop;
+end $retained_guards$;
 
 -- The account erasure contract and Storage owner resolver no longer inspect
 -- report-only rows. Full function bodies preserve every other route.
@@ -183,31 +286,6 @@ begin
     delete from public.testing_answers where account_id=account;
     delete from public.testing_contributions where account_id=account;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     update public.testing_center_memberships set active=false where user_id=account;
     update public.account_identities set deleted_at = p_event_at, user_event_at = greatest(user_event_at,p_event_at)
       where account_id = account;
@@ -275,4 +353,17 @@ drop table public.testing_center_triage_results restrict;
 drop table public.testing_center_evidence restrict;
 drop table public.testing_center_reports restrict;
 drop table private.testing_center_legacy_archive restrict;
+-- SQL in function bodies and trigger arguments is opaque to pg_depend.
+do $no_dangling_legacy$
+begin
+  if exists(select 1 from pg_trigger t where not t.tgisinternal
+      and encode(t.tgargs,'escape') ~
+        '(public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M')
+    or exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
+        and pg_get_functiondef(p.oid) ~
+          '(public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M') then
+    raise exception 'legacy_retirement_dangling_catalog_reference' using errcode='55000';
+  end if;
+end $no_dangling_legacy$;
 commit;

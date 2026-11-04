@@ -1,6 +1,6 @@
 -- VANTA-131 / final 7b: v2 agent lineage remains readable only to its owner.
 begin;
-select plan(12);
+select plan(18);
 
 select ok(to_regclass('public.testing_center_reports') is null,'legacy report root retired');
 select ok(to_regclass('private.testing_center_legacy_archive') is null,'empty archive retired');
@@ -16,6 +16,7 @@ select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pron
   'no surviving function reads a retired report table');
 select ok(exists(select 1 from pg_constraint c
   where c.conrelid='public.testing_center_technical_issues'::regclass
+    and c.conname='testing_center_technical_issue_no_legacy_report_id'
     and c.contype='c' and pg_get_constraintdef(c.oid) ~ 'report_id IS NULL'),
   'retained technical issue cannot regain a legacy report_id');
 select is((select count(*)::integer from pg_policies where schemaname='storage'
@@ -40,6 +41,34 @@ insert into public.testing_center_technical_issues(
   technical_issue_id,contribution_id,state,flow_state,origin) values
  ('issue_v2_'||repeat('7',64),'18960000-0000-4000-8000-000000000073',
   'open','queued','orchestrator');
+select throws_ok($$insert into public.testing_center_technical_issues
+  (technical_issue_id,report_id,state,flow_state,origin)
+  values('issue_v2_'||repeat('8',64),'report_'||repeat('8',64),'open','queued','orchestrator')$$,
+  '23514');
+
+select lives_ok($$insert into public.testing_center_agent_jobs
+  (job_key,technical_issue_id,execution_generation,policy_version,report_digest,dossier_digest,nightly_base_sha,state)
+  values(public.testing_center_agent_job_key('issue_v2_'||repeat('7',64),repeat('a',64),repeat('b',40),'testing-center.autofix-policy.v2'),
+    'issue_v2_'||repeat('7',64),1,'testing-center.autofix-policy.v2',repeat('a',64),repeat('c',64),repeat('b',40),'triage_queued')$$,
+  'agent job insert works after retired root is dropped');
+select lives_ok($$insert into public.testing_center_audit
+  (audit_id,aggregate_id,from_state,to_state,origin,actor_id,operation_digest)
+  values('v2-retirement-audit','issue_v2_'||repeat('7',64),'reported','queued','orchestrator','fixture',repeat('d',64))$$,
+  'audit insert works after retired root is dropped');
+select lives_ok($$insert into public.testing_center_idempotency
+  (idempotency_key,payload_digest,aggregate_id,from_state,to_state,origin)
+  values('v2-retirement-key',repeat('e',64),'issue_v2_'||repeat('7',64),'reported','queued','orchestrator')$$,
+  'idempotency insert works after retired root is dropped');
+select lives_ok($$insert into public.testing_center_effect_outbox
+  (effect_id,effect_key,technical_issue_id,primary_report_id,state)
+  values('effect_'||repeat('f',64),'github_issue_create:issue_v2_retirement',
+    'issue_v2_'||repeat('7',64),'retired-root-placeholder','failed')$$,
+  'inert effect outbox insert works after retired root is dropped');
+select lives_ok($$insert into public.testing_center_linear_projection_snapshots
+  (effect_id,technical_issue_id,primary_report_id,source_snapshot,source_digest,marker,occurrence_count)
+  values('effect_'||repeat('f',64),'issue_v2_'||repeat('7',64),'retired-root-placeholder',
+    '{}'::jsonb,repeat('f',64),'v2-retirement-marker',1)$$,
+  'inert Linear projection insert works after retired root is dropped');
 
 select ok(not has_table_privilege('anon','public.testing_center_technical_issues','SELECT'),
   'anon has no direct issue read');

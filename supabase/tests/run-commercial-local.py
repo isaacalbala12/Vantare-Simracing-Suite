@@ -220,6 +220,33 @@ $$;
        ('testing_center_technical_issues_report_id_fkey',
         'testing_center_effect_outbox_primary_report_id_fkey',
         'testing_center_linear_projection_snapsho_primary_report_id_fkey')),
+     'technical_constraints',(select jsonb_agg(jsonb_build_object(
+       'name',c.conname,'definition',pg_get_constraintdef(c.oid)) order by c.conname)
+       from pg_constraint c where c.conrelid='public.testing_center_technical_issues'::regclass
+         and c.contype='c'),
+     'kept_triggers',(select jsonb_agg(jsonb_build_object(
+       'table',t.tgrelid::regclass::text,'name',t.tgname,
+       'definition',pg_get_triggerdef(t.oid),'args',encode(t.tgargs,'escape'))
+       order by t.tgrelid::regclass::text,t.tgname)
+       from pg_trigger t join pg_class c on c.oid=t.tgrelid
+       where not t.tgisinternal and c.relnamespace='public'::regnamespace
+         and c.relname like 'testing_center_%' and c.relname not in
+           ('testing_center_reports','testing_center_evidence','testing_center_triage_results',
+            'testing_center_issue_occurrences','testing_center_posthog_consent_events',
+            'testing_center_posthog_evidence','testing_center_report_events',
+            'testing_center_report_payloads','testing_center_report_submission_keys',
+            'testing_center_screenshot_evidence','testing_center_evidence_batches',
+            'testing_center_evidence_outbox')),
+     'orphan_functions',(select jsonb_agg(jsonb_build_object(
+       'signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),
+       'acl',coalesce(p.proacl::text,'<null>'),'comment',obj_description(p.oid,'pg_proc'))
+       order by p.oid::regprocedure::text)
+       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname in ('public','private') and p.proname=any(array[
+         'testing_center_report_evidence_for_account','testing_center_report_for_account',
+         'testing_center_report_payload_for_account','testing_center_authorize_posthog_linear_link',
+         'testing_center_expire_posthog_evidence','testing_center_load_codex_evidence',
+         'testing_center_prepare_linear_projection','testing_center_queue_codex_dry_run'])),
      'rpcs',(select jsonb_agg(jsonb_build_object(
        'signature',p.oid::regprocedure::text,
        'definition',pg_get_functiondef(p.oid),
@@ -241,6 +268,9 @@ $$;
    if snapshot['rpcs'] is not None:
     for rpc in snapshot['rpcs']:
      rpc['definition']=rpc['definition'].replace('\r\n','\n')
+   if snapshot['orphan_functions'] is not None:
+    for rpc in snapshot['orphan_functions']:
+     rpc['definition']=rpc['definition'].replace('\r\n','\n')
    return json.dumps(snapshot,sort_keys=True)
   def retirement_schema():
    tables=tuple(argument for table in retired_tables for argument in ('-t','public.'+table))
@@ -252,8 +282,17 @@ $$;
    else:
     ddl=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
       '-d',database,'--schema-only','--no-owner',*tables)
-   return '\n'.join(line for line in ddl.splitlines()
-     if not line.startswith(('\\restrict ','\\unrestrict ')))
+   lines=[line for line in ddl.splitlines()
+     if not line.startswith(('\\restrict ','\\unrestrict '))]
+   if not args.docker:
+    # PG16's pg_dump renders four historical UNION branches in a different
+    # order than the PG17 production image. PG17 CI compares every byte;
+    # locally omit only these four equivalent trigger statements.
+    rendered=('testing_center_evidence_outbox','testing_center_posthog_evidence',
+      'testing_center_screenshot_evidence','testing_center_triage_results')
+    lines=[line for line in lines if not (line.startswith('CREATE TRIGGER a_account_write_barrier')
+      and any(' ON public.'+table+' ' in line for table in rendered))]
+   return '\n'.join(lines)
   channel_role_before=None
   channel_role_after=None
   erasure_previous=None
@@ -431,6 +470,30 @@ $$;
    if m.stem==retirement_stem:
     retirement_before=retirement_snapshot()
     retirement_schema_before=retirement_schema()
+    if args.legacy_retirement_only:
+     probe=OUT/'retirement-unprivileged.sql'
+     probe.write_text("set role authenticated;\n\\i '"+str(migration_source).replace("'","''")+"'\n",encoding='utf-8')
+     denied=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',str(probe)],
+       env=ENV,capture_output=True,text=True)
+     if denied.returncode==0 or 'legacy_retirement_requires_bypassrls' not in denied.stderr:
+      raise RuntimeError('retirement role guard did not fail closed: '+denied.stderr)
+     references=run('psql',*conn,'-c',"""select jsonb_build_object(
+       'triggers',(select coalesce(jsonb_agg(jsonb_build_object(
+         'table',t.tgrelid::regclass::text,'name',t.tgname,
+         'definition',pg_get_triggerdef(t.oid),'args',encode(t.tgargs,'escape'),
+         'has_v2',exists(select 1 from pg_trigger b where b.tgrelid=t.tgrelid
+           and b.tgname='b_account_write_barrier_v2')) order by t.tgrelid::regclass::text),'[]'::jsonb)
+         from pg_trigger t where not t.tgisinternal and t.tgname='a_account_write_barrier'
+           and encode(t.tgargs,'escape') ~ 'public\\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\\M'),
+       'functions',(select coalesce(jsonb_agg(jsonb_build_object(
+         'signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),
+         'acl',coalesce(p.proacl::text,'<null>'),'comment',obj_description(p.oid,'pg_proc'))
+         order by p.oid::regprocedure::text),'[]'::jsonb)
+         from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+         where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
+           and (pg_get_functiondef(p.oid) ~ '(public\\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\\.testing_center_legacy_archive)\\M'
+             or p.proname='testing_center_queue_codex_dry_run')))""")
+     (OUT/'retirement-live-references.before.json').write_text(references,encoding='utf-8')
    if m.stem==ERASURE_STEM:
     erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
    try: result=run('psql',*conn,'-f',migration_source)
@@ -711,7 +774,7 @@ $$;
     raise RuntimeError('final 7b retained an obsolete report RPC')
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement.test.sql')
    (OUT/'testing_center_legacy_retirement.test.sql.log').write_text(result)
-   if 'not ok ' in result or '1..9' not in result: raise RuntimeError(result)
+   if 'not ok ' in result or '1..18' not in result: raise RuntimeError(result)
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))
    retirement_after=retirement_snapshot()
    retirement_schema_after=retirement_schema()

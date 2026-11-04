@@ -1100,3 +1100,17 @@ tests y runner +261/−4; docs +80/−15; CI +12/−0. Sin despliegue,
 llamadas a producción, merge ni release. El siguiente trabajo es la Fase A
 del paso 12, con ADR 0106 antes del lint y del generador de esquema.
 La CI inicial detectó que el snapshot usaba `pg_dump` 16 contra PostgreSQL 17; el siguiente intento identificó cuatro triggers cuya cláusula `UNION` cambiaba de orden textual en el rollback. El `.down.sql` restaura ahora esas definiciones exactas. El replay histórico y el cierre final, incluido el snapshot exacto tras rollback, pasan en LF y CRLF en la CI de PostgreSQL 17.
+
+Review de seguridad de #1949: el catálogo previo reveló 24 triggers de tablas
+conservadas cuyo SQL en `tgargs` leía tablas retiradas, además del de
+`technical_issues`. La migración bloquea esas tablas, quita el guard viejo
+cuando ya existe `b_account_write_barrier_v2` y reescribe los demás con la
+propiedad de la contribución v2. Exige BYPASSRLS/SUPERUSER antes del preflight,
+impide nuevos `technical_issues.report_id` y aborta si queda un trigger o
+función con referencia a las tablas retiradas. El down restaura las 24
+definiciones, ocho funciones huérfanas y ACL; PostgreSQL local verifica el
+snapshot antes/después, 18 pruebas finales y cinco escrituras reales.
+Las suites de informes legacy se marcan como históricas. La allowlist del Hub
+conserva por ahora los dos RPC de capturas porque `report/screenshots.rs` aún
+los invoca y `report/tests.rs` los caracteriza; las capturas siguen apagadas y
+el paso 6b debe cambiar esos clientes antes de quitar la allowlist.

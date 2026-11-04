@@ -1,3 +1,4 @@
+-- Historical pre-7b corpus: the runner executes this before final legacy retirement.
 begin;
 select to_regclass('private.clerk_issuers') IS NOT NULL as b03 \gset
 

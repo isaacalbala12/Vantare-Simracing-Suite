@@ -130,7 +130,12 @@ union all select 'public.testing_center_report_payloads',count(*) from public.te
 union all select 'public.testing_center_report_submission_keys',count(*) from public.testing_center_report_submission_keys
 union all select 'public.testing_center_screenshot_evidence',count(*) from public.testing_center_screenshot_evidence
 union all select 'public.testing_center_evidence_batches',count(*) from public.testing_center_evidence_batches
-union all select 'public.testing_center_evidence_outbox',count(*) from public.testing_center_evidence_outbox;
+union all select 'public.testing_center_evidence_outbox',count(*) from public.testing_center_evidence_outbox
+union all select 'public.testing_center_technical_issues/report_id',count(*)
+  from public.testing_center_technical_issues where report_id is not null
+union all select 'public.testing_center_effect_outbox',count(*) from public.testing_center_effect_outbox
+union all select 'public.testing_center_linear_projection_snapshots',count(*)
+  from public.testing_center_linear_projection_snapshots;
 
 select 'storage.objects/testing-center-evidence' as source,count(*)
 from storage.objects where bucket_id='testing-center-evidence'
@@ -145,10 +150,16 @@ la automatiza. También aborta si queda una fila en las tablas exclusivas o
 una referencia legacy en `technical_issues`, `effect_outbox` o las proyecciones
 de Linear, o un objeto/upload del bucket de capturas. Conserva
 `technical_issues` y `agent_jobs` para la lectura v2;
-Linear y outbox permanecen inertes hasta el paso 12. El rollback recrea el
-esquema legacy vacío, sus permisos, políticas y triggers. No restaura datos
+Linear y outbox permanecen inertes hasta el paso 12. La migración quita los
+triggers antiguos de las tablas conservadas que ya tienen guard v2 y reescribe
+los demás para seguir la contribución v2; aborta si el catálogo conserva una
+referencia a una tabla retirada. El rollback restaura los 24 triggers afectados,
+las funciones y el esquema legacy vacío con sus permisos y políticas. No restaura datos
 porque el cierre exige cero antes de retirar las tablas.
-También retira diez RPC de envío, triage, consentimiento PostHog y capturas
-del informe antiguo. El rollback restaura sus definiciones, permisos y
-comentarios. La ruta de subida de capturas del Hub sigue desactivada; el paso
-6b debe conectarse al contrato v2 antes de habilitarla.
+Retira diez RPC de envío, triage, consentimiento PostHog y capturas del informe
+antiguo, más ocho funciones huérfanas de Codex, Linear, PostHog y admisión
+legacy. El rollback restaura sus definiciones, permisos y comentarios.
+Las suites `testing_center_*` que escriben informes o capturas legacy son un
+corpus histórico: se ejecutan antes del cierre, no sobre el esquema final.
+La ruta de subida de capturas del Hub sigue desactivada; el paso 6b debe
+conectarse al contrato v2 antes de habilitarla.

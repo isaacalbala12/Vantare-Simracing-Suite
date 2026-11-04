@@ -569,11 +569,12 @@ auditoría resuelve la cuenta de un informe desde la misma raíz nueva.
    Exige también que sigan existiendo sus siete firmas canónicas.
    No escanea cuerpos de funciones ni revoca permisos. Exige current_user con
    BYPASSRLS o SUPERUSER (42501), por FORCE RLS. El fallo es atómico.
-3. Solo el paso final de R6 retirará tablas/RPC, junto con el archivo y el
-   parche de `apply_clerk_user_event`: el archivo y el borrado de cuentas
-   dependen de que las tablas legacy y sus FK sigan existiendo. Clerk también
-   lee `testing_center_screenshot_evidence` y `testing_center_evidence_batches`.
-   #1924 conserva las ocho tablas y sus FK; Clerk conserva EXECUTE service_role.
+3. El paso final de R6 está en el PR #1949: retira las tablas/RPC exclusivas
+   del informe, el archivo vacío y el parche de `apply_clerk_user_event` en
+   una transacción. Conserva `technical_issues`/`agent_jobs`, reescribe sus
+   barreras de cuenta v2 y deja Linear/outbox inertes. Aborta si queda una
+   fila legacy o una referencia viva del catálogo. #1924 conserva las ocho
+   tablas y sus FK hasta ese cierre; Clerk conserva EXECUTE service_role.
 
 Para revertir admin antes de retirar esas tablas, usar el `.down.sql` con psql:
 restaura las cinco definiciones y el trigger anteriores y quita el índice, sin

@@ -8109,3 +8109,6 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   propio ni release. Las tablas/FK legacy permanecen según contrato R6.
 - VANTA-132 En curso. Siguientes: cerrar auditoría Brevo del paso 5 y pasos6–10.
   El paso 11 permanece en la base R6/12; no se hace aquí.
+- PR draft [#1941](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1941) a nightly,
+  código validado 1c8339509; HEAD documental final publicado en el PR. CI nueva pendiente.
+- Medición frente a d1616b2f7: producción +44/−0 (up/down), tests +182/−22, docs +59/−0.

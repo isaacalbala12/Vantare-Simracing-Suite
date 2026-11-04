@@ -8502,3 +8502,9 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Solo contactos: SMTP sigue siguiente5e; después6–9 y10 con decisión de
   privacidad. Sin shared/webhook, billing/licencias, secretos, Store real,
   producción, despliegue, merge ni release. VANTA-132 continúa En curso.
+- Cierre de gates5d: LF/CRLF43SQL (27 DELETE+16 sync) y10E2E reales PASS;
+  rollback/reaplicación/checks anteriores y rechazo con evidencia PASS. Deno137,
+  check/fmt/lint/Python/diff y471huellas PASS. Instancias focales paradas; cadena
+  LF completa adicional en curso, CI remota nueva pendiente. Código0e4a138b6.
+- Medición contra65b21aed0: producción +181/−17; tests +367/−4; docs +234/−0.
+- PR/HEAD final y resultado de cadena completa se registran en issue y entrega.

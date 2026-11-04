@@ -1217,3 +1217,9 @@ conservó la auditoría admin en el runner. El generador fijado con PostgreSQL
 normalizar LF/CRLF, así que no hubo cambios derivados que versionar. La CI
 comercial del rebase pasó lint, control RED, harness LF/CRLF, cierre legacy,
 owner y comparación de esquema. Sin despliegue ni merge de #1960.
+
+## 2026-11-04 - #1896 / VANTA-131 paso 9: calendario
+
+- [Draft #1964](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1964), rama `vantareapp/isa-1896-paso9-calendar-validation`, base `nightly@91adfd786`. Services rechaza la agenda oficial inválida antes del IPC y el Hub muestra RaceControl como fuente no oficial. Se retiró del draft la función SQL y su rollback tras la review: nadie la llamaba y divergía de Rust; Services es la autoridad única.
+- Caracterización previa de Services: 7 documentos inválidos aceptados. Corpus ampliado a 27 casos y fixture LMU real; los tests de Services y Hub recorren el mismo archivo. La prueba local inicial de la función SQL usó PostgreSQL 16; la CI inicial con la función usó PostgreSQL 17 y pasó LF/CRLF (41903407421). Ninguna de esas pruebas SQL se atribuye al HEAD corregido, que ya no tiene migración. El primer enlace del Hub agotó C:; se limpiaron solo artefactos de este worktree y se repitió con target aislado D:.
+- El publicador `draft_save`/`publish` queda intacto: si VANTA-132 lo lleva a admin, validará allí con este corpus. #1961 pgcrypto espera a que #1962 entre en nightly, según el orden global. Sin despliegue, merge ni release de #1964.

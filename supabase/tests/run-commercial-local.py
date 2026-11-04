@@ -315,7 +315,7 @@ $$;
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    # Historical suites run against the pre-retirement schema. CI also replays
    # the complete chain with --legacy-retirement-only and tests the final state.
-   if m.stem==retirement_stem and not args.legacy_retirement_only: continue
+   if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot): continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
@@ -772,6 +772,8 @@ $$;
       delete from private.testing_center_legacy_archive;""")
   if args.schema_snapshot:
    # The runner owns a fresh loopback database; no DSN or hosted endpoint is accepted.
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null and to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
+    raise RuntimeError('schema snapshot requires the final legacy retirement migration')
    if args.docker:
     dump=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
      '-U','postgres','-d',database,'--schema-only','--no-owner')

@@ -8360,7 +8360,7 @@ antes de7b2, ventana de mantenimiento y procedimiento R6 vigentes.
 - [ ] **#1939**: `20261104070000_isa_1910_admin_owner_policy.sql`.
 - [ ] **#1941**: `20261104083000_isa_1910_admin_owner_ack.sql`.
 - [ ] **#1942**: `20261104095000_isa_1910_brevo_erasure_journal.sql`.
-- [ ] Futuro **#1944 draft**, no desplegable sin aprobación: `20261104100000_isa_1910_brevo_sync_journal.sql`
+- [ ] **#1944 integrado** en nightly2f49a57f1: `20261104100000_isa_1910_brevo_sync_journal.sql`
   después de#1942 y antes de native-admin del corte5d; backout según su README.
 - [ ] **Primero todas las migraciones, después las Edge** native-admin y
   mail-cleanup del corte aprobado. Mientras SQL está en curso, mantener admin
@@ -8549,3 +8549,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Rust/lifecycle/telemetría omitidos: native intacto. Sin billing/licencias,
   secretos, Store real, servicios/configuración de producción, deploy, merge ni
   release. VANTA-132 En curso; siguiente5e SMTP, luego6–10;11 exclusivamente R6.
+- PR draft [#1946](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1946), código da9e076e0, contra nightly2f49a57f1. HEAD documental final en PR/issue; CI nueva pendiente.
+- Gates finales: Deno141, LF/CRLF80SQL(27DELETE+53sync) y14E2E PASS, incluido400/404 repetidos sin pending y stale en POST/PUT. Rollback byte-exacto cuerpo/owner/ACL, reaplicación y guards de evidencia PASS; instancias paradas.
+- Check/lint/fmt/Python/diff y471huellas PASS. Solo gates del alcance tocado; Rust omitido por no tocar native. Docker marketing local ausente; CI nueva pendiente de verificar.
+- Medición final vs2f49a57f1: producción +146/−34; tests +222/−9; docs +66/−2. Siguiente5eSMTP; VANTA-132 En curso.

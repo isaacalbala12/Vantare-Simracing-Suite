@@ -8705,3 +8705,20 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - No native-auth, SQL apply_clerk_user_event (#1949 abierto), billing/licencias,
   secretos, Store real, servicios/configuración de producción, deploy o merge.
   VANTA-132 En curso: continúa 8b, luego 10 y 6; 11 exclusivamente R6/12.
+
+### VANTA-132 · continuación efectiva del paso 8 (2026-11-04)
+
+- #1952 rebasado sobre nightly4405c7c1c, con #1949 integrado. Se mantiene un
+  solo limpiador en account-erasure; ninguna modificación de native-auth.
+- Tres RED previos reproducen importación oculta en get_account/list_creators/
+  get_creator; ahora leen solo SQL. Se conserva cobertura r1 de importación
+  de facturas/reembolsos y la barrera de historial incompleto antes de pagar.
+- 234 Deno PASS (admin/webhook); check de consumidores Storage/SDK y lint PASS.
+  El test r1 antiguo falló por exigir sincronizar al leer; se conserva como
+  test del importador. Primer intento tuvo import de fixture ausente, corregido.
+- Producción tocada 1304 →1295 (-9; +191/-200); tests/docs separados en PR.
+- Siguiente entrega: sync_payments explícito con llamador y cupo, y mail_list
+  sin mantenimiento implícito. Paso8 todavía incompleto; luego10 y6. La reserva
+  SQL de #1949 terminó; no se modifica aquí. Retención10 pendiente de decisión.
+- Sin SQL/Rust tocado: no gates de crates, lifecycle ni telemetría. Storage con
+  dobles; no Docker disponible ni servicios reales. Sin merge ni despliegue.

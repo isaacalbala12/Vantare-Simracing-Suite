@@ -2,7 +2,14 @@
 
 - Draft PR #1923 contra nightly, rama vantareapp/isa-1896-paso6b-jpeg-hardening, base a75c9b7aa (#1918 integrado). El validador exige H/V 1..4, referencias DQT y DHT definidas, DHT de hasta 256 simbolos y rechaza RST sin DRI. Dos SOS y dimensiones cero quedan cubiertos por tests. Capturas siguen desactivadas.
 - El PR de este bloque no conecta la subida. El `image/jpeg` y `nosniff` de Storage/descarga quedan pendientes de la ruta 6b; la descarga admin actual usa URL firmada directa y su cambio depende de VANTA-132 o autorizacion de Isaac. Paso 8 tambien depende del chequeo owner de `testing_contribution_review` en SQL admin.
-- #1905 ya estaba cerrado; sin despliegue, merge ni release. Deno 12 PASS, fmt/lint/diff check PASS. Produccion +19/-10, tests +74/-4, docs +6/-0 (este bloque).
+- #1905 ya estaba cerrado; #1923 integrado en nightly@404e8b357. La conexion de subida sigue condicionada al limite MCU ≤10, image/jpeg y nosniff; Huffman semantico y entropia son limites conocidos del validador estructural. Sin despliegue ni release. Deno 12 PASS, fmt/lint/diff check PASS. Produccion +19/-10, tests +74/-4, docs +6/-0 (este bloque).
+
+## 2026-11-04 - #1896 / VANTA-131 7b1: detener escritores legacy
+
+- Draft PR #1926, rama vantareapp/isa-1896-paso7b1-cerrar-escritores rebasada sobre origin/nightly@404e8b357, sin tablas ni datos vaciados. Test de caracterizacion de grants anterior al cambio; HEAD de codigo 0ae44d346.
+- REVOKE EXECUTE de los cinco RPC legacy de envio/triage y de prepare_screenshot_batch/finalize_screenshot a public, anon, authenticated y service_role. REVOKE ALL cierra tambien el padre y siete tablas hijas para los roles API; SELECT se concede de nuevo a service_role y se conservan las cuatro lecturas authenticated bajo RLS. Se prueban PUBLIC, vantare_triage, anon, authenticated y service_role, incluidas sobrecargas y privilegios TRUNCATE/REFERENCES/TRIGGER.
+- Rollback repone los grants anteriores, incluido ALL de service_role procedente de default privileges, y el runner compara un snapshot de relacl de las ocho tablas antes del up y despues del down. Conserva las suites historicas bajo rollback y un test reducido de lectura/cambio de estado admin con escritores cerrados. El test PostgREST de native-account-authorize exige 403 del RPC admitido cerrado. La cuota de IP compartida se cubrio en el paso 2. `hiddenReport` y testing_center_evidence_outbox quedan fuera; este ultimo solo escribe mediante security definer.
+- El RPC admin native_admin_execute('set_report_status') aun actualiza legacy y desaparecera en #1924, sin editar SQL admin aqui. El siguiente mapeo, verificacion y vaciado se hara en una sola transaccion con LOCK sobre padre e hijas, de modo que ese UPDATE no pueda intercalarse. Se conserva archivo privado completo con rollback; #1924 va despues. PostgreSQL local no disponible; CI 6/6 PASS en HEAD de codigo 393b3dc06. Sin despliegue, merge ni release.
 
 ## 2026-11-03 - #1896 / VANTA-131 paso 6a: validacion de capturas JPEG
 

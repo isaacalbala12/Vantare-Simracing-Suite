@@ -38,8 +38,12 @@ select throws_ok($$select public.testing_center_submit_report_without_transport_
  '1.2.3','windows','Windows 11','hub',false,false,null,null,'draft_'||repeat('d',64))$$,
  '42501',null,'legacy inner alias cannot bypass admission');
 reset role;
-select ok(has_function_privilege('authenticated','public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)','execute'), 'preparing screenshots remains possible');
-select ok(has_function_privilege('authenticated','public.testing_center_finalize_screenshot(uuid,uuid)','execute'), 'finalizing screenshots remains possible');
+select is(has_function_privilege('authenticated','public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)','execute'),
+ has_function_privilege('service_role','public.testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)','execute'),
+ 'screenshot preparation follows the legacy adapter closure');
+select is(has_function_privilege('authenticated','public.testing_center_finalize_screenshot(uuid,uuid)','execute'),
+ has_function_privilege('service_role','public.testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)','execute'),
+ 'screenshot finalization follows the legacy adapter closure');
 select is((select count(*)::integer from public.testing_center_reports
  where reporter_user_id='17090000-0000-4000-8000-000000000090'),0,'no report written through closed routes');
 select * from finish();

@@ -25,7 +25,7 @@ def domain(name, schema='public', kind='', body=''):
         return 'storage'
     # Policies, triggers, indexes and ACL sections are assigned by their table.
     match = TABLE_REF.search(body) if kind in {'POLICY', 'TRIGGER', 'INDEX', 'CONSTRAINT', 'FK CONSTRAINT'} else None
-    candidate = (match.group(1) if match else name.split()[0]).lower().strip('"')
+    candidate = (match.group(1) if match else name.split()[0]).lower().strip('"').rsplit('.', 1)[-1]
     for group, prefixes in PREFIXES:
         if candidate.startswith(prefixes):
             return group

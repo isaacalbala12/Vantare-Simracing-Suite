@@ -1248,3 +1248,7 @@ el rechazo de 4097 bytes en Hub y Services. El siguiente grupo debe importar
 `editor-draft.json` y `report-draft.json` al borrador protegido de Services;
 la política para borradores distintos está pendiente de decisión del
 orquestador. Ningún cambio de este grupo escribe ni migra ficheros.
+Rebase de [PR #1966](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1966)
+sobre `nightly@902c9a2d8`, HEAD de código `95a7443ef`. Hub testing
+18/18, Services report 18/18, Clippy de IPC/Services/Hub y formato PASS.
+La CI del HEAD publicado queda pendiente; sin despliegue ni merge.

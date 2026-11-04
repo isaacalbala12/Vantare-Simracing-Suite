@@ -17,6 +17,7 @@ $ErrorActionPreference='Stop'
 if($env:DUCKDB_LIB_DIR){throw 'Empaquetado exige DuckDB bundled'}
 if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión inválida'}
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
+Assert-NativeDistributionConfigFile $Channel $ConfigFile
 $destination=Assert-BuildPath $OutputDirectory
 if((Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count){throw 'La salida debe estar vacía'}
 $native=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -31,6 +32,7 @@ $oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
 $previousConfig=$null
 try{
     $previousConfig=Import-NativeBuildConfig $ConfigFile
+    if($Channel -ieq 'beta'){Assert-NativeDistributionLicenseRegistry $env:VANTARE_LICENSE_PUBLIC_KEYS -Required}
     foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
         $data=Join-Path $destination ('.build-data/'+$pair[1])
         [IO.Directory]::CreateDirectory($data)|Out-Null

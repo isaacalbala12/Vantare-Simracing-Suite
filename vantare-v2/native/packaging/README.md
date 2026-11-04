@@ -1,4 +1,4 @@
-﻿# Instalador nativo y paquete beta
+# Instalador nativo y paquete beta
 
 El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el único motor instalado. El paquete contiene binarios Rust de motor 2, recursos y `manifest.json`; `candidate.ps1`, `beta.ps1` y NSIS ya no se distribuyen. `installer-cleanup.ps1` sigue siendo la excepción mínima y permanente para borrar el desinstalador después de que salga su proceso.
 
@@ -56,3 +56,16 @@ repite el gate sobre los EXE del ZIP antes de embeberlo; recibe el mismo
 `-ConfigFile` público que el candidato (`publish-beta.ps1` lo propaga).
 Sin registro sólo se permite el smoke sin autoridad; cualquier registro
 configurado exige una lista válida y no vacía. No se leen claves privadas.
+
+
+### Autoridad de licencias obligatoria para beta
+
+`publish-beta.ps1`, `build-candidate.ps1 -Channel beta` y
+`build-installer.ps1` (canal beta por defecto) exigen `-ConfigFile` explícito y
+un `VANTARE_LICENSE_PUBLIC_KEYS` no vacío dentro de ese archivo público.
+El entorno heredado no sustituye el archivo. La allowlist debe aprobar todas
+las claves; antes del RC Isaac debe incorporar las huellas de producción.
+Para un smoke local sin autoridad se admite `-Channel nightly`, también en
+build-installer; el canal del manifiesto debe coincidir. No se publica una beta
+con ese paquete. El scanner bloquea las claves conocidas de test como bytes,
+base64url, base64 estándar (con/sin padding) y hex sin distinguir mayúsculas/minúsculas.

@@ -13,8 +13,35 @@ function Expect-GateFailure([scriptblock]$Action,[string]$Expected) {
     }
     if(-not $failed){throw 'Distribution negative control escaped.'}
 }
+# Real entry points must reject beta before any build/signing/payload work.
+$emptyConfig=Join-Path $EvidenceDirectory 'empty-public.cfg'
+[IO.File]::WriteAllText($emptyConfig,'# No licensing authority: local smoke only.')
+$betaOutput=Join-Path $EvidenceDirectory 'beta-rejection'
+$duckBefore=$env:DUCKDB_LIB_DIR
+try {
+    Remove-Item Env:DUCKDB_LIB_DIR -ErrorAction SilentlyContinue
+    foreach($config in @('',$emptyConfig)) {
+        $expected=if($config){'Beta requires a configured license registry.'}else{'Beta requires an explicit public ConfigFile.'}
+        Expect-GateFailure {
+            & (Join-Path $PSScriptRoot 'build-candidate.ps1') -Version '0.0.0' -Channel beta -OutputDirectory $betaOutput -ConfigFile $config -AllowDirty | Out-Null
+        } $expected
+        Expect-GateFailure {
+            & (Join-Path $PSScriptRoot 'publish-beta.ps1') -Version '0.0.0' -OutputDirectory $betaOutput -ConfigFile $config -SigningKeyFile $emptyConfig -AllowDirty | Out-Null
+        } $expected
+        Expect-GateFailure {
+            & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version '0.0.0' -OutputDirectory $betaOutput -ConfigFile $config | Out-Null
+        } $expected
+    }
+} finally {$env:DUCKDB_LIB_DIR=$duckBefore}
+Assert-NativeDistributionConfigFile 'nightly' ''
+Assert-NativeDistributionLicenseRegistry ''
+Assert-NativeDistributionConfigFile 'beta' $emptyConfig
+if(@(Get-ChildItem -LiteralPath $betaOutput -Recurse -File -ErrorAction SilentlyContinue).Count){throw 'Rejected beta left artifacts.'}
+'Beta entry points reject absent ConfigFile and empty registry; local empty smoke allowed PASS'
 $markers=@('qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public')
 $markers+=@(Get-NativeKnownTestLicenseMarkers)
+$hex=@($markers|Where-Object {$_ -cmatch '^[0-9A-F]{64}$'})[0]
+$markers+=($hex.Substring(0,32).ToLowerInvariant()+$hex.Substring(32))
 foreach($marker in $markers) {
     # No separators; the literal key/marker crosses 64 KiB between other words.
     [IO.File]::WriteAllBytes($exe,$encoding.GetBytes(('x'*65533)+$marker+'vantare-services.exe'))
@@ -40,7 +67,7 @@ $registry='approved-control:'+$encoded
 [IO.File]::WriteAllText($policyList,$hash)
 . (Join-Path $policy 'no-qa.ps1')
 $probe=Join-Path $policy 'vantare-core.exe'
-Assert-NativeDistributionLicenseRegistry $registry
+Assert-NativeDistributionLicenseRegistry $registry -Required
 [IO.File]::WriteAllText($probe,$registry)
 Assert-NativeDistributionBinary $probe -ExpectedRegistry $registry
 'Approved literal registry with no QA content admitted PASS'

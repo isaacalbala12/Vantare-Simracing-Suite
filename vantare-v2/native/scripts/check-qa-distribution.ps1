@@ -46,6 +46,29 @@ try {
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
     & (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('actual-exe-controls-'+[guid]::NewGuid().ToString('N'))) -CleanExecutable (Join-Path $target 'release-package/payload/bin/vantare.exe') -FixtureExecutable (Join-Path $target 'release/vantare-core.exe')
 
+
+    # End-to-end configured authority control, without the QA feature: compile
+    # through the real candidate builder, then require its byte gate to reject.
+    # The production allowlist is never edited or populated with a test key.
+    $testConfig=Join-Path $target 'configured-test-public.cfg'
+    [IO.File]::WriteAllText($testConfig,'VANTARE_LICENSE_PUBLIC_KEYS=qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo',[Text.UTF8Encoding]::new($false))
+    $rejected=$false
+    try {
+        $null=& (Join-Path $native 'packaging/build-candidate.ps1') -Version '0.0.0' -Channel nightly -OutputDirectory (Join-Path $target 'configured-test-package') -ConfigFile $testConfig -BuildProfile Release -AllowDirty
+    } catch {
+        if($_.Exception.Message -cne 'QA executable in distribution payload.'){throw}
+        $rejected=$true
+    }
+    if(-not $rejected){throw 'Explicit test license registry escaped real release packaging.'}
+    foreach($name in @('vantare-core','vantare-services')) {
+        $rejected=$false
+        try {Assert-NativeDistributionBinary (Join-Path $target "x86_64-pc-windows-msvc/release/$name.exe")}
+        catch {if($_.Exception.Message -cne 'QA executable in distribution payload.'){throw};$rejected=$true}
+        if(-not $rejected){throw "Configured test license key missing from negative control: $name"}
+    }
+    if(Test-Path -LiteralPath (Join-Path $target 'configured-test-package/vantare-native-amd64-package.zip')){throw 'Rejected test registry produced a package.'}
+    'Real non-QA candidate with explicit TEST license registry rejected end-to-end PASS'
+
 } finally {
     $env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore
     $env:VANTARE_QA_AMBIENT=$qaBefore

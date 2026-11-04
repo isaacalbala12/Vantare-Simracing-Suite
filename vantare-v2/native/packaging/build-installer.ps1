@@ -6,6 +6,7 @@ param(
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
     [string]$ConfigFile,
+    [ValidateSet('nightly','testers','master','beta')][string]$Channel='beta',
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
 )
 Set-StrictMode -Version Latest
@@ -17,6 +18,7 @@ $installerVersion=$Version; $installerOutput=$OutputDirectory; $installerProfile
 $Version=$installerVersion; $OutputDirectory=$installerOutput; $BuildProfile=$installerProfile
 foreach ($define in $Defines) { if ($define -ceq '/DTEST_INSTALLER') { $TestInstaller=$true } else { throw 'Define de instalador desconocido.' } }
 if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count) { throw 'Versión inválida.' }
+Assert-NativeDistributionConfigFile $Channel $ConfigFile
 $output=Assert-BuildPath $OutputDirectory
 if ($TestInstaller) {
     . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
@@ -28,8 +30,9 @@ $oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
 $oldTarget=$env:CARGO_TARGET_DIR
 $previousConfig=Import-NativeBuildConfig $ConfigFile
 try {
+if($Channel -ieq 'beta'){Assert-NativeDistributionLicenseRegistry $env:VANTARE_LICENSE_PUBLIC_KEYS -Required}
 if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
-$null=Test-BuildPackage $archive $Version 'beta'
+$null=Test-BuildPackage $archive $Version $Channel
 Assert-NativeDistributionArchive $archive -Registry $env:VANTARE_LICENSE_PUBLIC_KEYS
 foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
     $data=Join-Path $output ('.build-data/'+$pair[1])

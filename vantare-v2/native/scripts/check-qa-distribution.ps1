@@ -37,7 +37,9 @@ try {
     # Regression: an ambient public fixture key must never enter the package.
     $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
     $env:VANTARE_QA_AMBIENT='qa-fixture-public'
-    Build-NativeCandidate -Destination (Join-Path $target 'release-package') -CandidateVersion '0.0.0-qa-exclusion' -CandidateChannel nightly -Profile Release -PermitDirty $true
+    # The runtime now links installer/write-engine (#1908): its Windows version
+    # resource requires three numeric u16 components, even in this smoke package.
+    Build-NativeCandidate -Destination (Join-Path $target 'release-package') -CandidateVersion '0.0.0' -CandidateChannel nightly -Profile Release -PermitDirty $true
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
 } finally {
     $env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore

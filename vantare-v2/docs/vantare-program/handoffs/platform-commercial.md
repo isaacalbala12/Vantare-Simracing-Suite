@@ -7501,3 +7501,16 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - P3 (#1919 / draft #1920) sigue aparte: ni oráculo nuevo, nota generada,
   aclaración de clave fija ni ALLOWLIST se incorporan a #1917.
 - Sin merge, release, cuentas o carpeta reales; Plane permanece Por testear.
+
+### #1917 — corrección del gate release tras #1908 (2026-11-04)
+
+- Run 41734825419 falló en el build del instalador: el smoke pasaba
+  VANTARE_VERSION=0.0.0-qa-exclusion, incompatible con su recurso Windows.
+  Reproducción real por compilar.ps1, installer sin UI + write-engine: exit 101
+  con InvalidDigit; con 0.0.0, exit 0. Logs en evidence/licencias-e2e/fix-version-1917.
+- Sólo se cambia la versión del candidato del gate a 0.0.0 (numérica). Sin
+  modificar parser/producto ni quitar controles negativos, entorno contaminado,
+  scanner o empaquetado real. Los siete controles negativos y sintaxis PS pasan.
+  El propio gate vuelve a construir el paquete real en CI; verde aún pendiente.
+- No repetir gate completo local: el cambio es tooling; no Rust de producto.
+  #1920 se rebasa por separado después del push. Plane sigue Por testear.

@@ -274,7 +274,13 @@ $$;
    if snapshot['kept_triggers'] is not None:
     for trigger in snapshot['kept_triggers']:
      for key in ('definition','args'):
-      trigger[key]=trigger[key].replace('\r\n','\n')
+      trigger[key]=re.sub(r'(?m)[ \t]+$', '',trigger[key].replace('\r\n','\n'))
+    if not args.docker:
+     # PG16 orders generated UNION branches differently from pinned PG17.
+     # The PG17 CI checks all retained barriers exactly; local PG16 still
+     # checks every v2 barrier and the behavioral insert/rollback probes.
+     snapshot['kept_triggers']=[trigger for trigger in snapshot['kept_triggers']
+       if trigger['name']!='a_account_write_barrier']
    return json.dumps(snapshot,sort_keys=True)
   def retirement_schema():
    tables=tuple(argument for table in retired_tables for argument in ('-t','public.'+table))

@@ -1116,6 +1116,10 @@ La comprobación cubre nombres cualificados y referencias SQL sin esquema
 (`FROM`, `JOIN`, `UPDATE`, `INTO`, `REFERENCES`, `TABLE`). No interpreta como
 acceso SQL la comparación histórica de `tg_table_name` en la función compartida
 `private.guard_account_write`; esa rama ya no se ejecuta tras el DROP.
+La CI PG17 reveló que PG16 ordena once triggers conservados de otra forma al
+generar el rollback. El down usa las definiciones capturadas por PG17; el
+snapshot local PG16 omite solo el texto de los `a_` conservados, mientras la
+CI PG17 compara todos los triggers y ambos formatos de migración.
 Las suites de informes legacy se marcan como históricas. La allowlist del Hub
 conserva por ahora los dos RPC de capturas porque `report/screenshots.rs` aún
 los invoca y `report/tests.rs` los caracteriza; las capturas siguen apagadas y

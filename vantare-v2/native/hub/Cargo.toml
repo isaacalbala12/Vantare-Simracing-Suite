@@ -7,6 +7,16 @@ publish.workspace = true
 
 [features]
 parity-capture = ["vantare-ui/parity-capture"]
+installer-qa = [] # Diagnóstico de rutas sin abrir ventana ni acceder al registro.
+
+[[bin]]
+name = "root-launch-probe"
+path = "tests/support/root_launch_probe.rs"
+required-features = ["installer-qa"]
+
+[[test]]
+name = "installed_data_root"
+required-features = ["installer-qa"]
 
 [[example]]
 name = "ui-quality"

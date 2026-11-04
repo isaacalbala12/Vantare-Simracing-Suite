@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[string]$RootLauncher,[switch]$Record,
+param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[string]$RootLauncher,[string]$HubExecutable,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
       [string[]]$Cases=@('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker'),
       [ValidateSet('Probe','Install','Update','Repair','Check','Apply','Confirm','Timeout','Rollback','Uninstall','Cleanup')]
@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
 $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
-if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe -or -not $WriteEngine -or -not $RootLauncher) { throw 'MATRIX_FIXTURES_REQUIRED' }
+if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe -or -not $WriteEngine -or -not $RootLauncher -or -not $HubExecutable) { throw 'MATRIX_FIXTURES_REQUIRED' }
 $script:Packaging=$PSScriptRoot
 $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'matrix/support.ps1')
@@ -157,7 +157,7 @@ try {
         $launcher=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
             '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/launcher-tests.ps1'),
             '-Root',(Join-Path $qaMatrixRoot 'launcher'),'-TestVerifier',$TestVerifier,
-            '-BootProbe',$BootProbe,'-WriteEngine',$WriteEngine,'-RootLauncher',$RootLauncher
+            '-BootProbe',$BootProbe,'-WriteEngine',$WriteEngine,'-RootLauncher',$RootLauncher,'-HubExecutable',$HubExecutable
         ) -TimeoutMilliseconds 180000 -LogPath (Join-Path $qaMatrixRoot 'launcher.log')
     }finally{$env:TEMP=$savedLaunchTemp;$env:TMP=$savedLaunchTmp;$env:LOCALAPPDATA=$savedLaunchLocal}
     if($launcher.ExitCode -ne 0){throw ('MATRIX_LAUNCHER_FAILED: '+$launcher.Stderr)}

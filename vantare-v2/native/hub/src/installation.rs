@@ -18,8 +18,15 @@ pub(crate) struct BootConfirmation {
 
 impl BootConfirmation {
     pub(crate) fn start(root: &Path) -> Result<Self, String> {
-        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-        installed_hub(&executable, root)?;
+        let executable = std::env::current_exe()
+            .and_then(|path| crate::canonical_executable(&path))
+            .map_err(|error| error.to_string())?;
+        let generation = crate::installed_generation(&executable)
+            .ok_or("el Hub no pertenece a esta instalación")?;
+        let expected_root = crate::canonical_executable(root).map_err(|error| error.to_string())?;
+        if generation.parent().and_then(Path::parent) != Some(expected_root.as_path()) {
+            return Err("el Hub no pertenece a esta instalación".into());
+        }
         let token = std::env::var("VANTARE_BOOT_TOKEN")
             .map_err(|_| "falta token de arranque".to_owned())?;
         if token.len() != 32
@@ -61,26 +68,6 @@ fn publish_ready(root: &Path, token: &str) -> std::io::Result<()> {
         let _ = std::fs::remove_file(temporary);
     }
     result
-}
-
-fn installed_hub(executable: &Path, root: &Path) -> Result<(), String> {
-    let bin = executable.parent().ok_or("falta la carpeta bin")?;
-    let generation = bin.parent().ok_or("falta la generación")?;
-    let generations = generation.parent().ok_or("faltan las generaciones")?;
-    let id = generation.file_name().and_then(|name| name.to_str());
-    if executable.file_name().and_then(|name| name.to_str()) != Some("vantare-hub.exe")
-        || bin.file_name().and_then(|name| name.to_str()) != Some("bin")
-        || generations != root.join("generations")
-        || !id.is_some_and(|id| {
-            id.len() == 32
-                && id
-                    .bytes()
-                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        })
-    {
-        return Err("el Hub no pertenece a esta instalación".into());
-    }
-    Ok(())
 }
 
 pub(crate) fn defer_close(

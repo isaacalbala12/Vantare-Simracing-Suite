@@ -146,6 +146,6 @@ function Assert-PublicInventory([string]$Payload,[object]$Inventory) {
 
 function Assert-PublicBins([string[]]$Available,[object]$Inventory) {
     $public=@($Inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)})
-    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop')
+    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop','root-launch-probe')
     if(@($public|Where-Object {$_ -cnotin $Available}).Count -or @($Available|Where-Object {$_ -cnotin $public -and $_ -cnotin $internal}).Count){throw 'Binarios públicos incompatibles'}
 }

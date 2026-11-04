@@ -9,6 +9,61 @@ use std::process::ExitCode;
 use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
 use vantare_hub::{Section, shell::Options};
 
+fn log_start_error(generation: Option<&Path>, error: &str) {
+    let path = generation
+        .filter(|root| root.join("data").is_dir())
+        .map_or_else(
+            || std::env::temp_dir().join(format!("VantareHub-{}.log", std::process::id())),
+            |generation| generation.join("data/hub-startup.log"),
+        );
+    let mut options = std::fs::OpenOptions::new();
+    if let Ok(mut log) = options.create(true).append(true).open(path) {
+        let _written = writeln!(log, "{error}");
+    }
+}
+
+fn redirect_installed_hub(
+    executable: &Path,
+    data_root: Option<&std::ffi::OsStr>,
+) -> Option<ExitCode> {
+    let generation = vantare_hub::installed_generation(executable)?;
+    let data = std::fs::canonicalize(generation.join("data"))
+        .map_err(|error| log_start_error(Some(generation), &format!("raíz de datos: {error}")))
+        .ok();
+    let supplied = data_root.and_then(|root| std::fs::canonicalize(Path::new(root)).ok());
+    if data.is_some() && data == supplied {
+        return None;
+    }
+    let root = generation.ancestors().nth(2).expect("generación instalada");
+    if std::env::var("VANTARE_HUB_REDIRECTED").as_deref() == Ok("1") {
+        log_start_error(
+            Some(generation),
+            "abre Vantare desde su acceso directo: redirección repetida",
+        );
+        return Some(ExitCode::FAILURE);
+    }
+    let launcher = root.join("Vantare.exe");
+    if let Err(error) = std::process::Command::new(&launcher)
+        .arg("--root")
+        .arg("-Root")
+        .arg(root)
+        .current_dir(root)
+        .env_remove("VANTARE_NATIVE_DATA_ROOT")
+        .env_remove("VANTARE_BOOT_TOKEN")
+        .env_remove("VANTARE_BETA_ROOT")
+        .env_remove("VANTARE_APPEARANCE_FILE")
+        .env_remove("VANTARE_BACKGROUND_STARTUP")
+        .env_remove("VANTARE_INTERACTIVE_STARTUP")
+        .env("VANTARE_HUB_REDIRECTED", "1")
+        .spawn()
+    {
+        let message = format!("abre Vantare desde su acceso directo: {error}");
+        log_start_error(Some(generation), &message);
+        return Some(ExitCode::FAILURE);
+    }
+    Some(ExitCode::SUCCESS)
+}
+
 fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
     let (palette, scheme) = value
         .split_once('-')
@@ -393,7 +448,34 @@ fn capture_batch(path: &Path) -> Result<(), String> {
     vantare_hub::capture::run_many(options)
 }
 
+#[allow(clippy::too_many_lines)] // El probe QA sale antes de abrir ventana; conserva el arranque en un punto.
 fn main() -> ExitCode {
+    let Ok(executable) = std::env::current_exe()
+        .and_then(|path| vantare_hub::canonical_executable(&path))
+        .inspect_err(|error| log_start_error(None, &format!("resolver ejecutable: {error}")))
+    else {
+        return ExitCode::FAILURE;
+    };
+    if let Some(result) = redirect_installed_hub(
+        &executable,
+        std::env::var_os("VANTARE_NATIVE_DATA_ROOT").as_deref(),
+    ) {
+        return result;
+    }
+    #[cfg(feature = "installer-qa")]
+    if std::env::args().nth(1).as_deref() == Some("--qa-data-root") {
+        let result = parse(&[]);
+        if let Err(error) = &result {
+            eprintln!("{error}");
+        }
+        if let Ok(options) = result
+            && vantare_installer::engine::context::qa_path(&options.data_dir).is_ok()
+        {
+            println!("{}", options.data_dir.display());
+            return ExitCode::SUCCESS;
+        }
+        return ExitCode::FAILURE;
+    }
     if product::print_version() {
         return ExitCode::SUCCESS;
     }

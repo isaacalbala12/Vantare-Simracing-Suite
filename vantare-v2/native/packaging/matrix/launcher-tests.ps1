@@ -1,11 +1,11 @@
 #requires -Version 5.1
-param([string]$Root,[string]$TestVerifier,[string]$BootProbe,[string]$WriteEngine,[string]$RootLauncher)
+param([string]$Root,[string]$TestVerifier,[string]$BootProbe,[string]$WriteEngine,[string]$RootLauncher,[string]$HubExecutable)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'guard.ps1')
 $qa=Assert-MatrixRoot $Root
 if(Test-Path -LiteralPath $qa){throw 'LAUNCHER_NEEDS_FRESH_QA_ROOT'}
-foreach($path in @($TestVerifier,$BootProbe,$WriteEngine,$RootLauncher)){
+foreach($path in @($TestVerifier,$BootProbe,$WriteEngine,$RootLauncher,$HubExecutable)){
     if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw 'LAUNCHER_BINARY_MISSING'}
 }
 [IO.Directory]::CreateDirectory($qa)|Out-Null
@@ -106,6 +106,49 @@ try{
         Remove-Item -LiteralPath (Join-Path $install 'allow-exit') -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $install 'app-open') -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $install 'confirmation-complete') -ErrorAction SilentlyContinue
+    }
+    # A real installed Hub must reach the real root launcher and its QA session.
+    $decoy=Join-Path $install 'generations/11111111111111111111111111111111'
+    try {
+    [IO.Directory]::CreateDirectory((Join-Path $decoy 'bin'))|Out-Null
+    [IO.Directory]::CreateDirectory((Join-Path $decoy 'data'))|Out-Null
+    $directHub=Join-Path $decoy 'bin/vantare-hub.exe'
+    Copy-Item -LiteralPath $HubExecutable -Destination $directHub
+    $info=[Diagnostics.ProcessStartInfo]::new()
+    $info.FileName=$directHub;$info.UseShellExecute=$false;$info.CreateNoWindow=$true
+    $info.EnvironmentVariables.Remove('VANTARE_NATIVE_DATA_ROOT')
+    $info.EnvironmentVariables.Remove('VANTARE_HUB_REDIRECTED')
+    $info.EnvironmentVariables['TEMP']=$qa;$info.EnvironmentVariables['TMP']=$qa
+    $info.EnvironmentVariables['LOCALAPPDATA']=$local
+    $info.EnvironmentVariables['VANTARE_QA_LOCAL_APP_DATA']=$local
+    $info.EnvironmentVariables['VANTARE_QA_REGISTRY_PREFIX']=$prefix
+    $info.EnvironmentVariables['VANTARE_QA_SHELL_ROOT']=$shell
+    $info.EnvironmentVariables['VANTARE_QA_SESSION_PROBE']=$BootProbe
+    $direct=[Diagnostics.Process]::Start($info)
+    try {
+        Assert-Launch ($direct.WaitForExit(10000) -and $direct.ExitCode -eq 0) 'real Hub redirects to the real root launcher'
+        $deadline=[DateTime]::UtcNow.AddSeconds(45)
+        while(-not(Test-Path -LiteralPath (Join-Path $install 'app-open')) -and [DateTime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 20}
+        Assert-Launch (Test-Path -LiteralPath (Join-Path $install 'app-open')) 'real root launcher opens the QA session'
+        [IO.File]::WriteAllText((Join-Path $install 'allow-exit'),'QA child may exit')
+        $deadline=[DateTime]::UtcNow.AddSeconds(10)
+        do {
+            $alive=@(Get-Process -Name Vantare -ErrorAction SilentlyContinue | Where-Object { try { $_.Path -eq (Join-Path $install 'Vantare.exe') } catch { $false } })
+            if($alive.Count -eq 0){break}
+            Start-Sleep -Milliseconds 20
+        } while([DateTime]::UtcNow -lt $deadline)
+        Assert-Launch ($alive.Count -eq 0) 'redirected root launcher reaps its QA session'
+    }finally{
+        if(-not $direct.HasExited){$direct.Kill();$direct.WaitForExit()}
+        $direct.Dispose()
+    }
+    Remove-Item -LiteralPath (Join-Path $install 'app-open') -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $install 'allow-exit') -ErrorAction SilentlyContinue
+    } finally {
+        $decoyFull=Assert-MatrixRoot $decoy
+        $qaPrefix=[IO.Path]::GetFullPath($qa).TrimEnd('\','/')+'\'
+        if(-not $decoyFull.StartsWith($qaPrefix,[StringComparison]::OrdinalIgnoreCase)){throw 'LAUNCHER_DECOY_OUTSIDE_QA'}
+        if(Test-Path -LiteralPath $decoyFull){Remove-Item -LiteralPath $decoyFull -Recurse -Force}
     }
     $link=Join-Path $shell 'Startup/Vantare.lnk'
     Assert-Launch (Test-Path -LiteralPath $link) 'Run projects injected Startup shortcut'

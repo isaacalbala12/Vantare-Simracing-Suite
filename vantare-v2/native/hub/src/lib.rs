@@ -2,6 +2,65 @@
 #![deny(unsafe_code)] // Win32: launcher/windows, testing/windows (BCrypt), installation::tests (espera por handle).
 
 pub mod analysis;
+/// Identifica una generación instalada por la estructura exacta del ejecutable.
+pub fn installed_generation(executable: &std::path::Path) -> Option<&std::path::Path> {
+    let bin = executable.parent()?;
+    let generation = bin.parent()?;
+    let generations = generation.parent()?;
+    let file = executable.file_name()?.to_string_lossy();
+    let folder = bin.file_name()?.to_string_lossy();
+    let parent = generations.file_name()?.to_string_lossy();
+    let id = generation.file_name()?.to_string_lossy();
+    (file.eq_ignore_ascii_case("vantare-hub.exe")
+        && folder.eq_ignore_ascii_case("bin")
+        && parent.eq_ignore_ascii_case("generations")
+        && id.len() == 32
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
+    .then_some(generation)
+}
+
+#[cfg(windows)]
+fn verbatim_drive(value: &str) -> Option<&str> {
+    let local = value.strip_prefix(r"\\?\")?;
+    matches!(local.as_bytes(), [drive, b':', b'\\', ..] if drive.is_ascii_alphabetic())
+        .then_some(local)
+}
+
+/// Canonicalize without passing Win32 drive-device paths to local consumers.
+pub fn canonical_executable(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
+    let canonical = std::fs::canonicalize(path)?;
+    #[cfg(windows)]
+    {
+        if let Some(local) = canonical.to_str().and_then(verbatim_drive) {
+            return Ok(std::path::PathBuf::from(local));
+        }
+    }
+    Ok(canonical)
+}
+
+#[cfg(test)]
+#[test]
+fn installed_generation_requires_lowercase_id() {
+    let lower = std::path::Path::new(
+        "root/generations/0123456789abcdef0123456789abcdef/bin/vantare-hub.exe",
+    );
+    let upper = std::path::Path::new(
+        "root/generations/0123456789ABCDEF0123456789ABCDEF/bin/vantare-hub.exe",
+    );
+    assert!(installed_generation(lower).is_some());
+    assert!(installed_generation(upper).is_none());
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn only_verbatim_drive_paths_lose_the_device_prefix() {
+    assert_eq!(verbatim_drive(r"\\?\C:\Vantare"), Some(r"C:\Vantare"));
+    assert_eq!(verbatim_drive(r"\\?\Volume{abcd}\Vantare"), None);
+    assert_eq!(verbatim_drive(r"\\?\UNC\server\share"), None);
+}
+
 pub mod calendar;
 #[cfg(feature = "parity-capture")]
 pub mod capture;

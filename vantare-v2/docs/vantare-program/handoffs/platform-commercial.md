@@ -718,14 +718,17 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   un marker sin commit se descarta y la huérfana autenticada se intenta borrar;
   un archivo bloqueado deja aviso y no bloquea la recuperación. La matriz
   conserva los 45 rechazos por motivo y el gate ZIP usa el extractor de Setup.
-  **Pendiente §4.2, punto 10 del Hub:** el lanzador fija
-  `VANTARE_NATIVE_DATA_ROOT` por generación y `vantare --session` rechaza su
-  ausencia o una ruta distinta, pero `vantare-hub.exe` ejecutado directamente
-  desde `generations/<id>/bin` todavía puede usar el respaldo de
-  `%LOCALAPPDATA%` de `ipc::paths::Root::from_env`. Alcance antes de empezar:
-  detectar el ejecutable instalado y rechazar sin escrituras una raíz ausente
-  o distinta; conservar el respaldo para el Hub de desarrollo y probar ambos
-  caminos con carpetas QA inyectadas. No se inicia sin revisión del orquestador.
+  **Punto 10 del Hub, re-review de #1945:** la ejecución directa del Hub
+  instalado exige la raíz de datos de su generación antes de resolver rutas o
+  escribir. Si falta o difiere, abre el `Vantare.exe` raíz con
+  `--root -Root <root>` y termina; limpia las variables heredadas de la sesión
+  y fija la raíz como directorio de trabajo. `VANTARE_HUB_REDIRECTED=1` evita
+  una segunda redirección y deja el motivo en el log. Los fallos al resolver
+  rutas o abrir el lanzador también quedan registrados. Los tres consumidores
+  comparten la canonicalización sin prefijo verbatim, para que Ajustes no
+  considere inválida una instalación real; el ID de generación exige minúsculas.
+  El Hub de desarrollo conserva `%LOCALAPPDATA%`; un modo QA de solo lectura
+  permite comprobarlo con el binario real sin abrir UI ni tocar registro.
   El paso 9 (renovación opcional tras confirmación) sigue aparcado; K3, retención
   de huérfanas históricas, exige diseño nuevo con SHA ligado al estado.
   **Antes de publicar:** Isaac prueba Setup con bytes distribuidos sobre raíces
@@ -736,7 +739,29 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   distribución. Ninguno de esos dos requisitos está acreditado por la CI.
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
-  Plane VANTA-127 sigue «En curso» por el punto 10, sin iniciar ese cambio.
+  Paso 10 en [PR draft #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
+  contra nightly, código `ef96b165d`; tercera revisión Sonnet corregida,
+  CI pendiente
+  y Plane por revisar. El test de proceso comprueba argumentos, entorno,
+  directorio de trabajo, misma ruta con otra capitalización, 8.3 y junction
+  cuando Windows los admite, y la guarda de segunda redirección. Con
+  `CI=true` la junction es obligatoria y pasó. La matriz ejecuta el Hub y
+  `Vantare.exe` reales: **14/14** checks del lanzador en QA, y su `finally`
+  retiró la generación señuelo. Biblioteca Hub **596** tests correctos,
+  4 ignorados, más el nuevo test de `Volume{guid}` **1/1**; binario **11/11**;
+  `development-fallback.ps1` PASS con Hub QA independiente. Fmt, Check y
+  Clippy `-D warnings` del Hub PASS con target propio. El gate normal
+  `gates.ps1 -Gate check` sin `installer-qa` también pasó completo.
+  Producción tras esa revisión: **11.359/11.360**
+  (perímetro 10.221 Rust + 53 Cleanup; fuera 1.085). Las 40 líneas nuevas
+  fuera del perímetro cubren canonicalización y redirección segura; el probe
+  de argumentos es fixture de tests. La CI de #1945 detectó que el inventario
+  de bins incluía ese probe con `installer-qa`: queda clasificado como interno,
+  mientras el paquete conserva exactamente los diez EXE públicos. El gate
+  local `gates.ps1 -Gate distribution` pasó con el paquete release completo;
+  `build-tooling-tests.ps1` comprueba el rechazo del probe en el payload y de
+  cualquier bin público desconocido, y pasó en QA. Sin release; siguen pendientes
+  los dos gates manuales de Isaac.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

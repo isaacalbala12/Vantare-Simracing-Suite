@@ -7958,3 +7958,6 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Carrera del guard diferida por review; distinguir 409 queda paso 10; paso 11
   sigue reservado a R6. Sin _shared/clerk-webhook, secretos, Store real,
   billing/licencias, producción, despliegue, merge propio ni release.
+- Medición frente a fa2ab202c: producción +1013/−1 (incluye up y down),
+  tests +217/−30, documentación +193/−0. VANTA-132 permanece En curso por el
+  resto del diseño; issue #1910 / Project Vantare / area:plataforma, abierta.

@@ -30,6 +30,53 @@ values ('legacy-7b2-issue','report_'||repeat('7',64),'open','reported','testing_
 insert into public.testing_center_codex_runs
  (run_id,technical_issue_id,attempt,state,origin)
 values ('legacy-7b2-run','legacy-7b2-issue',1,'completed','orchestrator');
+insert into public.testing_center_effect_outbox
+ (effect_id,effect_key,effect_type,technical_issue_id,primary_report_id,state)
+values
+ ('effect_'||repeat('8',64),'github_issue_create:legacy7b2',
+  'github_issue_create','legacy-7b2-issue','report_'||repeat('7',64),'superseded'),
+ ('effect_'||repeat('9',64),'linear_issue_create:legacy7b2',
+  'linear_issue_create','legacy-7b2-issue','report_'||repeat('7',64),'completed');
+insert into public.testing_center_issue_destinations
+ (technical_issue_id,destination,active_effect_id)
+values ('legacy-7b2-issue','linear','effect_'||repeat('9',64));
+insert into public.testing_center_linear_issue_bindings
+ (external_issue_id,organization_id,technical_issue_id,effect_id,bound_by_id)
+values ('18960000-0000-4000-8000-000000000711',
+ '18960000-0000-4000-8000-000000000712','legacy-7b2-issue',
+ 'effect_'||repeat('9',64),'legacy-7b2-actor');
+insert into public.testing_center_linear_webhook_deliveries
+ (delivery_id,webhook_id,organization_id,external_issue_id,event_name,
+  event_action,webhook_timestamp_ms,event_created_at,payload_digest,outcome)
+values ('18960000-0000-4000-8000-000000000713',
+ '18960000-0000-4000-8000-000000000714',
+ '18960000-0000-4000-8000-000000000712',
+ '18960000-0000-4000-8000-000000000711','Issue','update',1,now(),
+ repeat('7',64),'applied');
+insert into public.testing_center_effect_supersessions
+ (legacy_effect_id,superseded_by_effect_id,prior_state,prior_attempt_count,
+  prior_updated_at)
+values ('effect_'||repeat('8',64),'effect_'||repeat('9',64),'pending',0,now());
+insert into public.testing_center_agent_jobs
+ (job_key,technical_issue_id,execution_generation,policy_version,
+  report_digest,dossier_digest,nightly_base_sha,state)
+values (public.testing_center_agent_job_key('legacy-7b2-issue',repeat('7',64),
+  repeat('a',40),'testing-center.autofix-policy.v2'),
+  'legacy-7b2-issue',1,'testing-center.autofix-policy.v2',repeat('7',64),
+  repeat('7',64),repeat('a',40),'completed');
+insert into public.testing_center_agent_effect_outbox
+ (effect_id,job_key,effect_kind,effect_target,effect_generation,
+  payload_digest,state,dispatch_reserved)
+values ('legacy-7b2-agent-effect',
+  public.testing_center_agent_job_key('legacy-7b2-issue',repeat('7',64),
+    repeat('a',40),'testing-center.autofix-policy.v2'),
+  'github_dispatch','triage',1,repeat('7',64),'completed',true);
+insert into public.testing_center_agent_callbacks
+ (delivery_id,job_key,head_sha,callback_kind,outcome,payload_digest,disposition)
+values ('legacy-7b2-agent-callback',
+  public.testing_center_agent_job_key('legacy-7b2-issue',repeat('7',64),
+    repeat('a',40),'testing-center.autofix-policy.v2'),
+  repeat('a',40),'fix','accepted',repeat('7',64),'applied');
 insert into public.testing_center_audit
  (audit_id,aggregate_id,from_state,to_state,origin,actor_id,operation_digest)
 values ('legacy-7b2-audit','legacy-7b2-issue','reported','queued',

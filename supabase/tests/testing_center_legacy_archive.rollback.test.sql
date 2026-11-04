@@ -24,6 +24,18 @@ select is((select count(*)::integer from public.testing_center_triage_results
 select is((select count(*)::integer from public.testing_center_issue_occurrences
  where report_id='report_'||repeat('7',64)),1,
  'rollback restores the issue occurrence');
+select is((select count(*)::integer from public.testing_center_effect_supersessions
+ where legacy_effect_id='effect_'||repeat('8',64)),1,
+ 'rollback restores the supersession');
+select is((select count(*)::integer from public.testing_center_agent_jobs
+ where technical_issue_id='legacy-7b2-issue'),1,
+ 'rollback restores the completed agent job');
+select is((select count(*)::integer from public.testing_center_agent_callbacks
+ where delivery_id='legacy-7b2-agent-callback'),1,
+ 'rollback restores the completed job child');
+select is((select count(*)::integer from public.testing_center_linear_webhook_deliveries
+ where delivery_id='18960000-0000-4000-8000-000000000713'),1,
+ 'rollback restores the completed Linear delivery');
 select is((select count(*)::integer from public.testing_contributions
  where account_id='18960000-0000-4000-8000-0000000007b2'),0,
  'rollback removes only mapped v2 rows');
@@ -66,7 +78,7 @@ select ok(not exists (
   or a.source_table='public.testing_center_issue_occurrences' and exists(
     select 1 from public.testing_center_issue_occurrences r where to_jsonb(r)=a.row))
  ),'restored direct and indirect descendants exactly match the archive');
-select is((select count(*)::integer from private.testing_center_legacy_archive),17,
+select is((select count(*)::integer from private.testing_center_legacy_archive),26,
  'rollback retains the full private archive');
 select * from finish();
 rollback;

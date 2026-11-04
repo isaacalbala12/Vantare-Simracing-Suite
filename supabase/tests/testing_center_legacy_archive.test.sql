@@ -13,8 +13,22 @@ select is((select count(*)::integer from private.testing_center_legacy_archive
  'public.testing_center_report_submission_keys',
  'public.testing_center_report_events',
  'public.testing_center_triage_results',
- 'public.testing_center_issue_occurrences')),10,
+ 'public.testing_center_issue_occurrences',
+ 'public.testing_center_effect_outbox',
+ 'public.testing_center_effect_supersessions',
+ 'public.testing_center_issue_destinations',
+ 'public.testing_center_linear_issue_bindings',
+ 'public.testing_center_linear_webhook_deliveries',
+ 'public.testing_center_agent_jobs',
+ 'public.testing_center_agent_effect_outbox',
+ 'public.testing_center_agent_callbacks')),19,
  'direct, indirect and logical issue children are archived');
+select is((select count(*)::integer from private.testing_center_legacy_archive
+ where source_table='public.testing_center_effect_supersessions'),1,
+ 'supersession is reached through both effect foreign keys');
+select is((select count(*)::integer from private.testing_center_legacy_archive
+ where source_table='public.testing_center_linear_webhook_deliveries'),1,
+ 'applied Linear delivery is reached through the binding FK');
 select ok(not exists(select 1 from private.testing_center_legacy_archive
  where row_sha256 <> encode(public.digest(convert_to(row::text,'UTF8'),'sha256'),'hex')),
  'all archive row hashes match their complete JSON rows');

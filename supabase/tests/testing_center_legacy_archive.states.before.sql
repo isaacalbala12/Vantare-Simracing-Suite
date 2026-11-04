@@ -26,6 +26,10 @@ values
   '18960000-0000-4000-8000-0000000007b3','tester','nightly','incomplete'),
  ('report_'||repeat('f',64),'legacy-7b5',
   '18960000-0000-4000-8000-0000000007b5','tester','nightly','submitted');
+insert into public.testing_center_report_events
+ (event_id,report_id,actor_id,actor_user_id,actor_role,operation_digest)
+values ('legacy-7b5-event','report_'||repeat('f',64),'legacy-7b5',
+ '18960000-0000-4000-8000-0000000007b5','tester',repeat('5',64));
 commit;
 
 -- This orphan models a pilot row written before the account write barrier.

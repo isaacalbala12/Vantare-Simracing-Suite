@@ -94,6 +94,7 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
       ) {
         throw new EvidenceInvalid("format");
       }
+      let blocksPerMcu = 0;
       for (let index = start + 6; index < offset + length; index += 3) {
         if (
           frameIds.has(bytes[index]) ||
@@ -105,6 +106,9 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
         ) {
           throw new EvidenceInvalid("format");
         }
+        blocksPerMcu += (bytes[index + 1] >> 4) *
+          (bytes[index + 1] & 0x0f);
+        if (blocksPerMcu > 10) throw new EvidenceInvalid("format");
         frameIds.add(bytes[index]);
       }
       dimensions = [

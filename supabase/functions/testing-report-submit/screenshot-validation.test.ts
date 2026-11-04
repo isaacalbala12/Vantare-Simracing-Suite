@@ -182,6 +182,20 @@ Deno.test("SOF sampling factors and referenced quantization tables are bounded",
   await denied(zeroHeight, "format");
 });
 
+Deno.test("SOF accepts ten blocks per MCU and rejects eleven or more", async () => {
+  const bytes = new Uint8Array(jpeg);
+  const samplingOffset = markerOffset(0xc0) + 11;
+  for (const [sampling, accepted] of [[0x42, true], [0x43, false]] as const) {
+    bytes[samplingOffset] = sampling;
+    const sha256 = Array.from(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+      (byte) => byte.toString(16).padStart(2, "0"),
+    ).join("");
+    if (accepted) await validateEvidence(bytes, { ...manifest, sha256 });
+    else await denied(bytes, "format", { ...manifest, sha256 });
+  }
+});
+
 Deno.test("SOS references defined Huffman tables and is unique", async () => {
   const sos = markerOffset(0xda);
   const dht = markerOffset(0xc4);

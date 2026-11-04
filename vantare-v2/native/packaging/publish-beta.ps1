@@ -13,9 +13,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
 if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión beta inválida'}
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión beta fuera de rango'}
 if([Text.Encoding]::UTF8.GetByteCount($Notes) -gt 8192){throw 'Notas demasiado grandes'}
+Assert-NativeDistributionConfigFile 'beta' $ConfigFile
 $output=Assert-BuildPath $OutputDirectory
 $artifacts=& (Join-Path $PSScriptRoot 'build-candidate.ps1') -Version $Version -Channel beta -OutputDirectory $output -BuildProfile $BuildProfile -ConfigFile $ConfigFile -AllowDirty:$AllowDirty
 $repository='isaacalbala12/Vantare-Downloads'

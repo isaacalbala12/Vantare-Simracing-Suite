@@ -36,6 +36,48 @@
 - Plane permanece **Por testear**, verificado por lectura; Isaac pidió no cambiar
   su estado. Sin merge ni release; siguiente paso: revisar el PR draft a nightly.
 
+## Licencias QA / release gate
+
+- Rebase sobre nightly 65b21aed0 (#1935/#1942/#1943): se mantienen el
+  verificador Rust Test-BuildPackage y su target/restauración, después del gate
+  beta obligatorio; canal explícito propagado al verificador. Sin cambios Rust.
+  Tests de licencias (beta/36 controles/ZIP) PASS. Nuevo test de tooling
+  detenido al intentar compilar el verificador, cediendo cola; ejecución completa
+  del verificador y candidato real pendiente de CI, sin declarar PASS local.
+
+### VANTA-126 / #1937 — cierre del encargo y seguimiento P2/P3 (2026-11-04)
+
+- #1917 y #1920 integrados; base del seguimiento nightly 715c55cd8. Beta ahora
+  exige ConfigFile explícito y registro no vacío; candidate/installer validan
+  antes de compilar y publish-beta delega esa validación antes de firmar.
+  Installer conserva beta por defecto; -Channel nightly permite smoke local
+  sin autoridad y exige manifiesto nightly. Allowlist real sigue vacía: Isaac
+  debe añadir huellas públicas antes del RC. Sin configuración/privadas reales.
+- README packaging sin BOM. Claves de test bloqueadas como bytes, base64url,
+  base64 estándar con/sin padding y hex de cualquier combinación de mayúsculas.
+  Distribution CI compila candidato normal con ConfigFile TEST explícito;
+  exige rechazo por gate de bytes, comprueba core/services y ausencia de ZIP.
+  No se autoriza ese test en la allowlist ni se activa qa-e2e en ese candidato.
+- PASS local: seis rechazos de entradas beta (archivo ausente/registro vacío),
+  control positivo de registro requerido, 36 controles literales en fichero/ZIP,
+  listas inválidas, Status, registro/owner ausente, huella y build-tooling.
+  Sin Rust cambiado, nueva compilación ni gate completo local. El nuevo control
+  con candidato compilado queda pendiente de CI, no se declara ejecutado aquí.
+- Encargo documentado: E2E real conserva 12 PASA / 1 NO VERIFICABLE / 0 FALLA;
+  caso 7 necesita automatización del renderer Hub para demostrar exclusividad UI.
+  No nuevo E2E tras este tooling. INFORME y Plane resumen actualizados, estado
+  conservado. Evidencia followup-1937 en evidence/licencias-e2e. PR/HEAD/CI en
+  #1937; sólo falta review/merge/CI del seguimiento, sin publicación por el worker.
+
+- Rebase sobre nightly 3397df2ea tras #1924: sólo conflicto del handoff;
+  contenido de nightly conservado y sección #1937 añadida. Código sin cambios.
+
+- Rebase sobre nightly d1616b2f7 tras #1939: handoff de nightly conservado;
+  único conflicto documental, código y tests del seguimiento sin cambios.
+
+- Rebase sobre nightly 937e55afd tras #1941: sólo conflicto documental;
+  entrada trasladada a esta sección propia y código del seguimiento intacto.
+
 <!-- isa1860-arranque-cierre -->
 ## VANTA-128 / #1860 — pasos 0–2 integrados; paso 3 listo para revisión
 

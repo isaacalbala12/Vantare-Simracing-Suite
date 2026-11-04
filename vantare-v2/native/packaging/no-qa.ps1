@@ -26,8 +26,16 @@ function Assert-NativeLicensePublicKey([string]$Encoded, $Approved) {
     $fingerprint=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
     if($fingerprint -cnotin @($Approved)){throw 'Unapproved license public key in distribution payload.'}
 }
-function Assert-NativeDistributionLicenseRegistry([string]$Registry) {
-    if(-not $Registry){return} # Unconfigured smoke packages carry no trust root.
+function Assert-NativeDistributionConfigFile([string]$Channel,[string]$ConfigFile) {
+    if($Channel -ieq 'beta' -and [string]::IsNullOrWhiteSpace($ConfigFile)) {
+        throw 'Beta requires an explicit public ConfigFile.'
+    }
+}
+function Assert-NativeDistributionLicenseRegistry([string]$Registry,[switch]$Required) {
+    if([string]::IsNullOrWhiteSpace($Registry)) {
+        if($Required){throw 'Beta requires a configured license registry.'}
+        return # Unconfigured local smoke packages carry no trust root.
+    }
     $approved=@(Get-NativeProductionLicenseKeyFingerprints)
     foreach($pair in $Registry.Split(',')) {
         if($pair -cnotmatch '^[A-Za-z0-9_.-]{1,64}:([A-Za-z0-9_-]{43})$'){throw 'Invalid distribution license registry.'}
@@ -47,6 +55,12 @@ function Get-NativeKnownTestLicenseMarkers {
         $bytes=Get-NativeLicensePublicKeyBytes $value
         if($null -eq $bytes){throw 'Invalid known test license key list.'}
         $markers+=$value
+        $standard=[Convert]::ToBase64String($bytes)
+        $markers+=$standard
+        $markers+=$standard.TrimEnd('=')
+        $hex=[BitConverter]::ToString($bytes).Replace('-','')
+        $markers+=$hex
+        $markers+=$hex.ToLowerInvariant()
         $markers+=$encoding.GetString($bytes)
     }
     if(-not $markers.Count){throw 'Known test license key list is empty.'}
@@ -60,6 +74,8 @@ function Assert-NativeDistributionStream([IO.Stream]$Stream, [string]$ExpectedRe
     }
     $markers=@('qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public')
     $markers+=@(Get-NativeKnownTestLicenseMarkers)
+    # Hex has case-insensitive spelling; base64 remains case-sensitive.
+    $hexMarkers=@($markers|Where-Object {$_ -cmatch '^[0-9A-F]{64}$'})
     # Registry/markers are ASCII emitted by Rust option_env! as UTF-8, never
     # UTF-16. Latin-1 preserves every byte, including the raw 32-byte test keys.
     # Literal comparisons deliberately have NO word boundaries: .rdata literals
@@ -74,6 +90,9 @@ function Assert-NativeDistributionStream([IO.Stream]$Stream, [string]$ExpectedRe
         $text=$previous+$encoding.GetString($buffer,0,$count)
         foreach($marker in $markers) {
             if($text.Contains($marker)){throw 'QA executable in distribution payload.'}
+        }
+        foreach($hex in $hexMarkers) {
+            if($text.IndexOf($hex,[StringComparison]::OrdinalIgnoreCase) -ge 0){throw 'QA executable in distribution payload.'}
         }
         if($requireRegistry -and $text.Contains($ExpectedRegistry)){$foundRegistry=$true}
         $previous=$text.Substring([Math]::Max(0,$text.Length-$overlap))

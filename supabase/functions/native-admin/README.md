@@ -476,7 +476,10 @@ El recorder service-only exige owner vigente y lease real del contacto para
 started. El resultado puede cerrar su intención exacta aunque el owner/lease
 caduque o el contacto se borre. SHA-256 del UUID interno y lease, sin correo,
 URL, lista de destinatarios, body ni errores. 2xx con respuesta válida succeeded;
-401/403/422 failed; transporte, otros HTTP o respuesta ilegible unknown. Los
+400/401/403/404/422 failed; transporte, otros HTTP o respuesta ilegible unknown.
+Esto clasifica los rechazos permanentes fuera de pendientes; no añade contador
+ni elimina el contacto dirty: tras corregir la configuración se puede volver a
+sincronizar al caducar el lease. Los unknown históricos se conservan sin reescribir. Los
 unknown permanecen en la misma vista y se reconcilian como owner, sin cierre
 por sistema. No cambia consentimiento, proyección, pertenencia a listas ni ACK.
 
@@ -487,6 +490,28 @@ RPC si todavía no hay eventos sync; con evidencia aborta atómicamente. Backout
 con evidencia: revocar EXECUTE de native_admin_record_mail_sync(uuid,uuid,uuid,
 text,uuid,uuid,text,integer) a service_role y revertir Edge, conservando journal.
 No se deshace#1942 ni su auditoría DELETE. Todo despliegue reservado a Isaac.
+
+Las bajas también exigen auditoría: no hay excepción que omita el journal para
+blacklist/supresión. El consentimiento local manda; mail_can_send lo revalida
+antes de SMTP, por lo que no se envía nada al usuario dado de baja aunque una
+caída de auditoría impida actualizar Brevo. Esto no altera la baja local.
+
+Cada POST/PUT admite como máximo5s desde antes de solicitar started hasta
+justo antes de HTTP, con reloj monotónico (incluye espera del recorder). A los
+5s se omite HTTP, se registra failed sin provider_status (no despachado),
+se devuelve503 mail_sync_intent_expired y no se confirma sync. Dirty permite
+reintentar tras lease.5s+timeout HTTP4s=9s, por debajo del margen de borrado10s
+tras lease. Las dos fases comprueban el plazo por separado; el reloj de test
+es inyectado, sin sleeps. No se cambia el margen ni los locks de borrado.
+
+La corrección posterior usa20261104103000_isa_1910_mail_sync_limits.sql antes de
+Edge. Sustituye la función completa; down restaura exactamente el cuerpo previo
+sin borrar eventos. Los límites de provider_status siguen100..599; failed/null
+representa exclusivamente una intención cuyo HTTP se omitió por caducidad.
+Antes de revertir#1942, **revertir primero esta corrección y después#1944**:
+Edge anterior primero; deshacer SQL solo cuando lo permitan sus guards. Si hay
+eventos sync o DELETE, revocar EXECUTE y conservar schema/evidencia según cada
+runbook; no forzar los down borrando filas ni deshacer#1942 con#1944 aún activo.
 
 SMTP sigue pendiente (siguiente corte5e). No se declara cerrado el paso5 ni se
 implementan aquí confirmaciones, errores generales o retención del paso10.

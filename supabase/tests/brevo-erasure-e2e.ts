@@ -1,0 +1,99 @@
+/// <reference lib="dom.iterable" />
+import { handleMailCleanup } from "../functions/mail-cleanup/index.ts";
+import { assert } from "../functions/native-account-authorize/testdata/auth.ts";
+
+const command: { program: string; args: string[] } = JSON.parse(Deno.args[0]);
+assert(command.args.includes("127.0.0.1"), "disposable loopback required");
+const lit = (v: unknown): string =>
+  v === null || v === undefined ? "null" : typeof v === "number" ? String(v) :
+    "'" + String(v).replaceAll("'", "''") + "'";
+async function sql(query: string): Promise<string> {
+  const r = await new Deno.Command(command.program, {
+    args: [...command.args, "-q", "-c", "set statement_timeout='8s'; " + query],
+    stdout: "piped", stderr: "piped",
+  }).output();
+  assert(r.success, new TextDecoder().decode(r.stderr));
+  return new TextDecoder().decode(r.stdout).trim();
+}
+const env = (k: string) =>
+  ({ MARKETING_CLEANUP_ENABLED: "true", BREVO_API_KEY: "fake",
+    MAIL_CLEANUP_KEY: "fake-maintenance-key-32-characters-long" } as Record<string, string>)[k];
+const request = () => new Request("https://fixture.invalid/", {
+  method: "POST", headers: { Authorization: "Bearer " + env("MAIL_CLEANUP_KEY") },
+  body: '{"version":1}',
+});
+async function setup(n: number) {
+  const id = "19105500-0000-4000-8000-" + String(n).padStart(12, "0");
+  await sql("update private.mail_contact_erasures set next_attempt_at=clock_timestamp()+interval '1 hour' where state='pending'; " +
+    "insert into private.mail_contact_erasures(id,email,email_fingerprint) values(" +
+    lit(id) + ",'synthetic@example.invalid',repeat('b',64));");
+  return id;
+}
+const rpcNames = new Set(["mail_erasure_expire", "mail_erasure_claim",
+  "mail_erasure_finish", "native_admin_record_mail_erasure"]);
+async function rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
+  assert(rpcNames.has(name));
+  const params = Object.entries(args).map(([k, v]) => {
+    assert(/^p_[a-z_]+$/.test(k));
+    return k + " => " + lit(v);
+  });
+  return JSON.parse(await sql("set role service_role; select coalesce(to_json(public." +
+    name + "(" + params.join(",") + ")),'null'::json);"));
+}
+async function events(requestId?: string) {
+  return JSON.parse(await sql("select coalesce(json_agg(e order by occurred_at),'[]'::json) from private.admin_effects e " +
+    "where effect='brevo_delete'" + (requestId ? " and request_id=" + lit(requestId) : ""))) as Record<string, unknown>[];
+}
+Deno.test("real maintenance route commits started before fake DELETE and succeeded before ACK", async () => {
+  const id = await setup(1);
+  let http = 0;
+  const response = await handleMailCleanup(request(), {
+    env, rpc: async (name, args) => {
+      if (name === "mail_erasure_finish") {
+        const rows = await events();
+        assert(rows.some((e) => e.outcome === "succeeded"), "result must precede SQL ACK");
+      }
+      return await rpc(name, args);
+    },
+    fetch: async () => {
+      http++;
+      const rows = await events();
+      assert(rows.some((e) => e.outcome === "started"), "intent must precede HTTP");
+      return new Response(null, { status: 204 });
+    },
+  });
+  assert(response.status === 200 && http === 1);
+  assert(await sql("select state from private.mail_contact_erasures where id=" + lit(id)) === "completed");
+  const rows = await events();
+  assert(rows.filter((e) => e.outcome === "started").length === 1 &&
+    rows.filter((e) => e.outcome === "succeeded").length === 1);
+  assert(!JSON.stringify(rows).includes("synthetic@") && !JSON.stringify(rows).includes("https://"));
+});
+Deno.test("uncertain fake DELETE is pending in existing view and existing reconcile closes it", async () => {
+  await setup(2);
+  const response = await handleMailCleanup(request(), {
+    env, rpc, fetch: () => { throw new Error("synthetic private transport"); },
+  });
+  assert(response.status === 200);
+  const pending = JSON.parse(await sql("select coalesce(json_agg(e),'[]'::json) from private.admin_pending_effects e where effect='brevo_delete'"));
+  assert(pending.length === 1 && pending[0].latest_outcome === "unknown");
+  const reviewer = "19105500-0000-4000-8000-000000000099";
+  await sql("insert into public.profiles(id) values(" + lit(reviewer) + "); select * from public.operational_access_set(" +
+    lit(reviewer) + ",'owner','grant','fixture','Brevo reconcile','brevo-reconcile',null);");
+  assert(await sql("set role service_role; select public.native_admin_reconcile_effect(" +
+    lit(reviewer) + "," + lit(pending[0].effect_id) + ");") === "t");
+  assert(await sql("select count(*) from private.admin_pending_effects where effect='brevo_delete'") === "0");
+});
+Deno.test("real route recorder failure prevents fake DELETE and leaves job unacknowledged", async () => {
+  const id = await setup(3);
+  let http = 0;
+  const response = await handleMailCleanup(request(), {
+    env, rpc: (name, args) =>
+      name === "native_admin_record_mail_erasure" ? Promise.resolve(false) : rpc(name, args),
+    fetch: () => { http++; return Promise.resolve(new Response(null, { status: 204 })); },
+  });
+  assert(response.status === 503 && http === 0);
+  assert(await sql("select state from private.mail_contact_erasures where id=" + lit(id)) === "processing");
+  const rows = await events();
+  assert(!JSON.stringify(rows).includes("synthetic@") && !JSON.stringify(rows).includes("https://"));
+});

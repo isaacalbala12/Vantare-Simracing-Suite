@@ -358,7 +358,11 @@ Deno.test("missing atomic claim RPC never falls back to unaudited legacy claim",
   }
 });
 
-async function syncRoute(fetcher: typeof fetch, record: typeof rpc = rpc) {
+async function syncRoute(
+  fetcher: typeof fetch,
+  record: typeof rpc = rpc,
+  now?: () => number,
+) {
   const syncEnv = (key: string) =>
     ({
       MARKETING_SEND_ENABLED: "true",
@@ -401,7 +405,7 @@ async function syncRoute(fetcher: typeof fetch, record: typeof rpc = rpc) {
               ");",
           ),
         ),
-      mail: { env: syncEnv, rpc: record, fetch: fetcher },
+      mail: { env: syncEnv, rpc: record, fetch: fetcher, now },
     },
   );
 }
@@ -518,3 +522,93 @@ Deno.test("real sync recorder outage prevents provider and leaves projection dir
     ) === "f",
   );
 });
+
+for (const status of [400, 404]) {
+  Deno.test(
+    "real repeated sync rejection " + status +
+      " closes failed without accumulating pending",
+    async () => {
+      const id = await syncSetup(status === 400 ? 4 : 5);
+      let http = 0;
+      for (let n = 0; n < 2; n++) {
+        await sql(
+          "update private.mail_contacts set sync_lease_until=clock_timestamp()-interval '1 second' where id=" +
+            lit(id),
+        );
+        const response = await syncRoute(() => {
+          http++;
+          return Promise.resolve(new Response(null, { status }));
+        });
+        assert(response.status === 503);
+        const requestId = response.headers.get("X-Request-ID");
+        const rows = (await syncEvents()).filter((r) =>
+          r.request_id === requestId
+        );
+        assert(
+          rows.length === 2 &&
+            rows.some((r) =>
+              r.outcome === "failed" && r.provider_status === status
+            ),
+        );
+        assert(
+          await sql(
+            "select count(*) from private.admin_pending_effects where request_id=" +
+              lit(requestId),
+          ) === "0",
+        );
+      }
+      assert(
+        http === 2 &&
+          await sql(
+              "select sync_state ? 'sandbox' from private.mail_contacts where id=" +
+                lit(id),
+            ) === "f",
+      );
+    },
+  );
+}
+for (const stalePhase of [1, 2]) {
+  Deno.test(
+    "real stale sync intent skips HTTP phase " + stalePhase +
+      " and closes not-dispatched",
+    async () => {
+      const id = await syncSetup(5 + stalePhase);
+      let http = 0, elapsed = 0, starts = 0;
+      const response = await syncRoute(() => {
+        http++;
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }, async (name, args) => {
+        const result = await rpc(name, args);
+        if (
+          name === "native_admin_record_mail_sync" &&
+          args.p_outcome === "started" && ++starts === stalePhase
+        ) elapsed += 5000;
+        return result;
+      }, () => elapsed);
+      assert(
+        response.status === 503 &&
+          (await response.json()).error === "mail_sync_intent_expired" &&
+          http === stalePhase - 1,
+      );
+      const requestId = response.headers.get("X-Request-ID");
+      const rows = (await syncEvents()).filter((r) =>
+        r.request_id === requestId
+      );
+      assert(
+        rows.some((r) => r.outcome === "failed" && r.provider_status === null),
+      );
+      assert(
+        await sql(
+          "select count(*) from private.admin_pending_effects where request_id=" +
+            lit(requestId),
+        ) === "0",
+      );
+      assert(
+        await sql(
+          "select sync_state ? 'sandbox' from private.mail_contacts where id=" +
+            lit(id),
+        ) === "f",
+      );
+    },
+  );
+}

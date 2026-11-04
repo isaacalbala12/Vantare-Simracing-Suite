@@ -73,8 +73,9 @@ def run_erasure_retained_guard(run, conn, out, bin_dir, env):
 
 
 SYNC_STEM='20261104100000_isa_1910_brevo_sync_journal'
+LIMITS_STEM='20261104103000_isa_1910_mail_sync_limits'
 
-def run_sync_sql(run, conn, out, bin_dir, env):
+def run_sync_sql(run, conn, out, bin_dir, env, newline_mode="lf"):
     root=Path(__file__).resolve().parents[2]
     # The erasure down oracle restores its exact old checks before this stage.
     before=run('psql',*conn,'-c',CONSTRAINTS)
@@ -84,6 +85,24 @@ def run_sync_sql(run, conn, out, bin_dir, env):
     assert run('psql',*conn,'-c',CONSTRAINTS)==before, 'sync rollback changes old checks'
     assert run('psql',*conn,'-c',"select to_regprocedure('public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer)') is null").strip()=='t'
     run('psql',*conn,'-f',up)
+    # Match the replay's transport format, independently of Git autocrlf on Windows.
+    # Do not normalize snapshots: compare the actual stored body/owner/ACL exactly.
+    def formatted(path):
+        text=path.read_text(encoding='utf-8')
+        if newline_mode=='crlf': text=text.replace('\n','\r\n')
+        target=out/('sync-oracle-'+path.name)
+        target.write_bytes(text.encode('utf-8'))
+        return target
+    run('psql',*conn,'-f',formatted(up))
+    snapshot="select json_build_object('body',pg_get_functiondef(oid),'owner',proowner,'acl',proacl::text) from pg_proc where oid='public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer)'::regprocedure"
+    previous=run('psql',*conn,'-c',snapshot)
+    run('psql',*conn,'-f',formatted(root/'supabase/migrations'/(LIMITS_STEM+'.sql')))
+    run('psql',*conn,'-f',formatted(root/'supabase/rollbacks'/(LIMITS_STEM+'.down.sql')))
+    restored=run('psql',*conn,'-c',snapshot)
+    (out/'sync-limits-before.json').write_text(previous,encoding='utf-8')
+    (out/'sync-limits-down.json').write_text(restored,encoding='utf-8')
+    assert restored==previous, 'sync limits down must restore exact old body/owner/ACL'
+    run('psql',*conn,'-f',formatted(root/'supabase/migrations'/(LIMITS_STEM+'.sql')))
     result=run('psql',*conn,'-f',root/'supabase/tests/native_admin_mail_sync_effects.test.sql')
     (out/'native_admin_mail_sync_effects.test.sql.log').write_text(result,encoding='utf-8')
     assert 'not ok ' not in result and '# Looks like' not in result, result

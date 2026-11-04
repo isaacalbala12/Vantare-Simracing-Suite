@@ -8360,7 +8360,7 @@ antes de7b2, ventana de mantenimiento y procedimiento R6 vigentes.
 - [ ] **#1939**: `20261104070000_isa_1910_admin_owner_policy.sql`.
 - [ ] **#1941**: `20261104083000_isa_1910_admin_owner_ack.sql`.
 - [ ] **#1942**: `20261104095000_isa_1910_brevo_erasure_journal.sql`.
-- [ ] Futuro **#1944 draft**, no desplegable sin aprobación: `20261104100000_isa_1910_brevo_sync_journal.sql`
+- [ ] **#1944 integrado** en nightly2f49a57f1: `20261104100000_isa_1910_brevo_sync_journal.sql`
   después de#1942 y antes de native-admin del corte5d; backout según su README.
 - [ ] **Primero todas las migraciones, después las Edge** native-admin y
   mail-cleanup del corte aprobado. Mientras SQL está en curso, mantener admin
@@ -8514,3 +8514,42 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Cadena LF completa adicional PASS: migraciones/rollback/owner/leases/Edge y134rutas/795checks de barreras, instancia parada. Fuente de producto idéntica a los gates focales LF/CRLF.
 - Medición final #1944 frente a65b21aed0: producción +181/−17; tests +367/−4; docs +240/−0. CI nueva pendiente de verificar.
 - Issue/handoff/Plane sincronizados: VANTA-132 En curso; siguiente5e SMTP, después6–10;11 fuera. Sin merge propio, release ni acción de producción.
+
+## VANTA-132 · #1944 integrado; corrección sync antes de SMTP (2026-11-04)
+
+- #1944 integrado por el orquestador en nightly2f49a57f1a57a83b122187e48d0d450699879699;
+  HEAD34550f658 y seis checks SUCCESS verificados. Se cierra su evidencia.
+  Rama/worktree nuevos desde esa base: vantareapp/isa-1910-paso5d-sync-limites.
+- Review P2/P3 elegida como PR pequeño antes de5e SMTP. En sync400/404 pasan
+  a failed junto con401/403/422; ya no añaden unknown a pendientes. No se pone
+  tope de intentos ni se borra dirty: configuración corregida permite volver a
+  sincronizar. Los unknown históricos permanecen hasta reconcile owner.
+- Bajas también exigen auditoría (decisión del orquestador). El consentimiento
+  local impide SMTP aunque Brevo no se haya actualizado por una caída del
+  recorder. README explícito; no hay bypass de auditoría para supresión.
+- Plazo máximo5s desde antes de started hasta HTTP, por fase, con reloj
+  monotónico inyectable.5s+timeout4s=9s < margen de borrado10s tras lease.
+  Si vence: no HTTP, failed/provider_status NULL (no despachado),503
+  mail_sync_intent_expired, sin ACK, dirty reintentable tras caducar lease.
+- POST y PUT reutilizan brevo con opciones effect/method. Ningún shared tocado;
+  margen de borrado, locks y consentimiento permanecen. RPC completa en nueva
+  migración103000; down contiene el cuerpo previo completo, sin patch catálogo.
+- Caracterización previa e049c5d85: Deno9PASS/3RED (400/404 y stale); SQL previa
+  70f3db40b +cita de fixture637cff84a:6RED/53, límites y rechazos definidos.
+  Error inicial de cita en label SQL corregido; logs preservados. Deno141 PASS.
+- Snapshot exacto de función/owner/ACL en rollback detectó mezcla CRLF de Git
+  con LF del nuevo archivo. El harness ahora transporta ambos archivos en el
+  formato LF/CRLF del replay; conserva comparación byte-exacta sin normalizar
+  snapshots. Evidencia bajo isa-1910-paso5d-limites y /tmp/admin-sync-limits-*.
+- Checklist: después de#1944,103000 antes de Edge nueva; solo Isaac. Antes de
+  revertir#1942, revertir esta corrección y luego#1944; con evidencia, respetar
+  guards y revocar EXECUTE/revertir Edge conservando journal, nunca borrar filas.
+  Producción contiene datos y tablas/FK legacy se mantienen con R6.
+- Gates SQL/E2E finales LF/CRLF en curso al registrar; resultado y HEAD en PR.
+  Rust/lifecycle/telemetría omitidos: native intacto. Sin billing/licencias,
+  secretos, Store real, servicios/configuración de producción, deploy, merge ni
+  release. VANTA-132 En curso; siguiente5e SMTP, luego6–10;11 exclusivamente R6.
+- PR draft [#1946](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1946), código da9e076e0, contra nightly2f49a57f1. HEAD documental final en PR/issue; CI nueva pendiente.
+- Gates finales: Deno141, LF/CRLF80SQL(27DELETE+53sync) y14E2E PASS, incluido400/404 repetidos sin pending y stale en POST/PUT. Rollback byte-exacto cuerpo/owner/ACL, reaplicación y guards de evidencia PASS; instancias paradas.
+- Check/lint/fmt/Python/diff y471huellas PASS. Solo gates del alcance tocado; Rust omitido por no tocar native. Docker marketing local ausente; CI nueva pendiente de verificar.
+- Medición final vs2f49a57f1: producción +146/−34; tests +222/−9; docs +66/−2. Siguiente5eSMTP; VANTA-132 En curso.

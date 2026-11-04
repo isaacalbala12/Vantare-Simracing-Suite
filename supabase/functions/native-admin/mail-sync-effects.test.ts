@@ -79,7 +79,7 @@ for (const phase of ["started", "succeeded"]) {
     assert(f.trace.includes("POST") === (phase !== "started"));
   });
 }
-for (const status of [401, 403, 422, 503, 0]) {
+for (const status of [400, 401, 403, 404, 422, 503, 0]) {
   Deno.test("sync failed/unknown provider outcome " + status, async () => {
     const f = fixture();
     f.deps.fetch = () => {
@@ -97,10 +97,61 @@ for (const status of [401, 403, 422, 503, 0]) {
     assert(
       f.rows.length === 2 &&
         f.rows[1].p_outcome ===
-          ([401, 403, 422].includes(status) ? "failed" : "unknown"),
+          ([400, 401, 403, 404, 422].includes(status) ? "failed" : "unknown"),
     );
     assert(
       !f.trace.includes("ack") && !JSON.stringify(f.rows).includes("private@"),
     );
   });
 }
+
+Deno.test("sync stale started never dispatches HTTP or ACK and closes failed without HTTP status", async () => {
+  const f = fixture();
+  let elapsed = 0;
+  const original = f.deps.rpc;
+  const deps = {
+    ...f.deps,
+    now: () => elapsed,
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      const reply = await original(name, args);
+      if (args.p_outcome === "started") elapsed = 5000;
+      return reply;
+    },
+  };
+  let error: unknown;
+  try {
+    await executeMail("mail_sync", {}, f.run, deps as MailDeps);
+  } catch (e) {
+    error = e;
+  }
+  assert(
+    error instanceof NativeError && error.code === "mail_sync_intent_expired",
+  );
+  assert(
+    !f.trace.includes("POST") && !f.trace.includes("PUT") &&
+      !f.trace.includes("ack"),
+  );
+  assert(
+    f.rows.length === 2 && f.rows[1].p_outcome === "failed" &&
+      f.rows[1].p_provider_status === null,
+  );
+});
+Deno.test("sync dispatch before freshness boundary preserves the normal two requests", async () => {
+  const f = fixture();
+  let elapsed = 0;
+  const original = f.deps.rpc;
+  const deps = {
+    ...f.deps,
+    now: () => elapsed,
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      const reply = await original(name, args);
+      if (args.p_outcome === "started") elapsed += 4999;
+      return reply;
+    },
+  };
+  await executeMail("mail_sync", {}, f.run, deps as MailDeps);
+  assert(
+    f.trace.includes("POST") && f.trace.includes("PUT") &&
+      f.trace.includes("ack"),
+  );
+});

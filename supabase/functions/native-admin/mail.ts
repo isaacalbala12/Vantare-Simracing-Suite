@@ -25,6 +25,7 @@ export type MailDeps = {
   actor?: string;
   requestId?: string;
   rpc?: MailRpc;
+  now?: () => number;
   cleanup?: ErasureDeps;
   fetch?: typeof fetch;
   env?: (key: string) => string | undefined;
@@ -160,7 +161,12 @@ export async function executeMail(
     if (env(name) !== "true") throw new NativeError(503, "mail_disabled");
   };
   const requestId = deps.requestId ?? crypto.randomUUID();
-  type SyncEffect = { kind: string; contact: string; lease: string };
+  const now = deps.now ?? (() => performance.now());
+  type SyncEffect = {
+    kind: "brevo_contact_upsert" | "brevo_contact_update";
+    contact: string;
+    lease: string;
+  };
   async function external(
     url: string,
     headers: Record<string, string>,
@@ -189,7 +195,13 @@ export async function executeMail(
       } catch { /* Never expose identity, SQL or provider details. */ }
       throw new NativeError(503, "mail_sync_audit_unavailable");
     };
+    const intentStarted = now();
     await record("started", null);
+    // 5s dispatch + 4s HTTP < the erasure grace of 10s after the sync lease.
+    if (effect && now() - intentStarted >= 5000) {
+      await record("failed", null); // Definitively not dispatched, no HTTP status.
+      throw new NativeError(503, "mail_sync_intent_expired");
+    }
     let status: number | null = null;
     let result: Obj = {};
     let failure: unknown;
@@ -219,7 +231,7 @@ export async function executeMail(
     await record(
       !providerFailed
         ? "succeeded"
-        : [401, 403, 422].includes(status ?? 0)
+        : [400, 401, 403, 404, 422].includes(status ?? 0)
         ? "failed"
         : "unknown",
       status,
@@ -227,10 +239,21 @@ export async function executeMail(
     if (providerFailed) throw failure;
     return result;
   }
-  const brevo = (path: string, body: Obj) =>
-    external(`https://api.brevo.com/v3/${path}`, {
-      "api-key": require("BREVO_API_KEY"),
-    }, body);
+  const brevo = (
+    path: string,
+    body: Obj,
+    options: { method?: string; effect?: SyncEffect } = {},
+  ) =>
+    external(
+      `https://api.brevo.com/v3/${path}`,
+      {
+        "api-key": require("BREVO_API_KEY"),
+      },
+      body,
+      4000,
+      options.method ?? "POST",
+      options.effect,
+    );
   if (action === "mail_draft") {
     const current = (await run("mail_get", { campaign_id: p.campaign_id }))
       .campaign as Obj;
@@ -304,42 +327,31 @@ export async function executeMail(
       if (claim.allowed !== true) continue;
       const selected = (claim.groups as string[] | null) ?? [];
       // Exact membership: remove stale groups and suppress any contact now ineligible.
-      await external(
-        "https://api.brevo.com/v3/contacts",
-        {
-          "api-key": require("BREVO_API_KEY"),
-        },
-        {
-          email: c.email,
-          updateEnabled: true,
-          emailBlacklisted: true,
-        },
-        4000,
-        "POST",
-        {
+      await brevo("contacts", {
+        email: c.email,
+        updateEnabled: true,
+        emailBlacklisted: true,
+      }, {
+        effect: {
           kind: "brevo_contact_upsert",
           contact: c.id,
           lease: String(claim.lease),
         },
-      );
-      await external(
-        `https://api.brevo.com/v3/contacts/${encodeURIComponent(c.email)}`,
-        { "api-key": require("BREVO_API_KEY") },
-        {
-          emailBlacklisted: claim.consent !== true || selected.length === 0,
-          listIds: selected.map((g) => map[g]),
-          unlinkListIds: groups.filter((g) => !selected.includes(g)).map((g) =>
-            map[g]
-          ),
-        },
-        4000,
-        "PUT",
-        {
+      });
+      await brevo(`contacts/${encodeURIComponent(c.email)}`, {
+        emailBlacklisted: claim.consent !== true || selected.length === 0,
+        listIds: selected.map((g) => map[g]),
+        unlinkListIds: groups.filter((g) => !selected.includes(g)).map((g) =>
+          map[g]
+        ),
+      }, {
+        method: "PUT",
+        effect: {
           kind: "brevo_contact_update",
           contact: c.id,
           lease: String(claim.lease),
         },
-      );
+      });
       await run("mail_sync_ack", {
         email: c.email,
         revision: c.revision,

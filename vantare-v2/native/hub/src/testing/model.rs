@@ -1,5 +1,5 @@
-pub(super) use crate::services::protocol::report_document::MODULES;
-use crate::services::protocol::report_document::{FIELD_LIMITS, Fields, Preview};
+pub(super) use crate::services::protocol::report_document::{FIELD_LIMITS, MODULES};
+use crate::services::protocol::report_document::{Fields, Preview};
 
 /// Mismo canal de build que Actualizaciones, también en las capturas QA.
 pub(super) fn channel_label(channel: Option<&str>) -> String {

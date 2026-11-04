@@ -1120,6 +1120,10 @@ fn draft_contract_rejects_secret_fields_and_oversized_text() {
     assert_eq!(value.context_text.len(), 4097);
     assert!(matches!(fields_valid(&value, false), Err(Error::TooLarge)));
     value = fields();
+    value.context_text = "ñ".repeat(2049);
+    assert_eq!(value.context_text.len(), 4098);
+    assert!(matches!(fields_valid(&value, false), Err(Error::TooLarge)));
+    value = fields();
     value.module = "invented".into();
     assert!(fields_valid(&value, false).is_err());
 }

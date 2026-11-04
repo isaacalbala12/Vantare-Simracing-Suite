@@ -35,7 +35,7 @@ fn validate(fields: &Fields) -> Result<(), String> {
         &fields.context_text,
     ]
     .into_iter()
-    .zip(super::store::FIELD_LIMITS)
+    .zip(super::model::FIELD_LIMITS)
     .any(|(field, limit)| *field != super::store::clean_field(field, limit));
     if out_of_bounds || !MODULES.iter().any(|(key, _)| *key == fields.module) {
         return Err("Recuperación del reporte fuera de límites; se conserva el archivo".into());
@@ -58,7 +58,7 @@ fn clean(fields: &mut Fields) {
         &mut fields.context_text,
     ]
     .into_iter()
-    .zip(super::store::FIELD_LIMITS)
+    .zip(super::model::FIELD_LIMITS)
     {
         *field = super::store::clean_field(field, limit);
     }
@@ -139,7 +139,7 @@ mod tests {
             action_text: "ñ\n文 🚗".into(),
             expected_text: "a".into(),
             observed_text: String::new(),
-            context_text: "x".repeat(super::super::store::FIELD_LIMITS[3]),
+            context_text: "x".repeat(super::super::model::FIELD_LIMITS[3]),
             module: "strategy".into(),
         };
         let mut recovery = Recovery::load(&path).expect("sin archivo");
@@ -208,7 +208,7 @@ mod tests {
         assert!(
             recovery
                 .save(Fields {
-                    action_text: "x".repeat(super::super::store::FIELD_LIMITS[0] + 1),
+                    action_text: "x".repeat(super::super::model::FIELD_LIMITS[0] + 1),
                     ..empty_fields()
                 })
                 .is_err()
@@ -240,7 +240,7 @@ mod tests {
         .expect("escribir");
         let recovery = Recovery::load(&path).expect("debe recuperar, no quedarse muerto");
         assert!(
-            recovery.fields.action_text.len() <= super::super::store::FIELD_LIMITS[0],
+            recovery.fields.action_text.len() <= super::super::model::FIELD_LIMITS[0],
             "debe caber en el limite del envio"
         );
         assert!(

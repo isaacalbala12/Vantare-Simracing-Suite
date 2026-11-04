@@ -1,9 +1,9 @@
+use super::model::FIELD_LIMITS;
 use super::{
     diagnostic::{Diagnostic, Module, Observed},
     store::{self, Draft, LABELS, Store},
 };
 use crate::orbit::{self, Input};
-use crate::services::protocol::report_document::FIELD_LIMITS;
 use crate::services::{protocol::Command, view::Remote};
 use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*, px, rgba};
 #[cfg(any(feature = "parity-capture", test))]

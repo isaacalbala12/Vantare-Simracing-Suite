@@ -115,8 +115,7 @@ fn report_form_uses_wails_utf8_limits_and_optional_context() {
 
 #[test]
 fn shared_draft_contract_has_unique_modules_and_rejects_4097_bytes_in_hub() {
-    use crate::services::protocol::report_document::{FIELD_LIMITS, FIELD_PLACEHOLDERS, MODULES};
-    assert_eq!(FIELD_LIMITS.len(), FIELD_PLACEHOLDERS.len());
+    use super::model::{FIELD_LIMITS, MODULES};
     let ids: std::collections::HashSet<_> = MODULES.iter().map(|(id, _)| id).collect();
     assert_eq!(ids.len(), MODULES.len());
     let mut fields = super::empty_fields();

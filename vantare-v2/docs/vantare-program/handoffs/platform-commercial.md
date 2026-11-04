@@ -8013,3 +8013,27 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Edge→SQL LF 6/6 PASS y ambas instancias detenidas. RED y primer rechazo de
   pg_write_all_data guardados en evidencia; no se oculta ningún fallo inicial.
 - Medición frente a 715c55cd8: producción +1038/−1; tests +247/−31; docs +256/−0.
+
+## VANTA-132 · Cierre de #1924 y continuación del paso 4 (2026-11-04)
+
+- #1924 integrado por el orquestador en nightly
+  `3397df2ea5e9222e30d1efb1f9ba8443924af944`; HEAD revisado
+  `97993db72ca9e763ed76bdf68d8959f7fd8ff1ac`. Seis checks SUCCESS verificados:
+  Commercial LF/CRLF [41780853304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41780853304),
+  marketing/promoción/bloqueantes [41780853272](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41780853272),
+  calidad [41780853118](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41780853118)
+  y GitGuardian. El control RED llegó a la barrera esperada y después corrió
+  el harness completo en ambos formatos; ya no queda la dependencia de CI.
+- Evidencia local conservada: cuatro suites/67 pgTAP, 282 rechazos atómicos,
+  cinco digests de rollback exactos/reaplicación, índice JSON, autoridad owner,
+  carreras actor/target y seis journal/lease; Edge→SQL 6/6 y Deno94 PASS.
+  Medición de esa entrega: producción +1038/−1; tests +247/−31; docs +256/−0.
+- El archivo y borrado Clerk siguen dependiendo de tablas legacy/FK, conservadas
+  por #1924. La retirada final de R6 debe resolver archivo y parche Clerk,
+  también screenshot_evidence/evidence_batches. No se retiran aquí.
+- Continúa paso 4 desde esa nightly en worktree propio isa-1910-paso4b, rama
+  vantareapp/isa-1910-paso4b-owner-unico: protección del objetivo y set_tester
+  deben usar private.is_owner. #1927 ya cerró require_owner/review. Primero
+  caracterización; sin aplanar funciones ni tocar el paso 11 (base R6/12).
+- VANTA-132 permanece En curso: paso 4 restante, auditoría Brevo y pasos 6–10
+  pendientes. Sin despliegue, producción, merge del worker ni release.

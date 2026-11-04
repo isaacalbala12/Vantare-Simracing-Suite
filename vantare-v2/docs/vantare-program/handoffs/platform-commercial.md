@@ -8111,6 +8111,13 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   El paso 11 permanece en la base R6/12; no se hace aquí.
 - PR draft [#1941](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1941) a nightly,
   código validado 1c8339509; HEAD documental final publicado en el PR. CI nueva pendiente.
-- Medición frente a d1616b2f7: producción +44/−0 (up/down), tests +182/−22, docs +61/−0.
+- Medición frente a d1616b2f7: producción +44/−0 (up/down), tests +221/−22, docs +68/−0.
 - Siguiente paso5/Brevo espera la coordinación obligatoria antes de tocar
   _shared/mail-erasure.ts: auditar DELETE por UUID del job, sin correo. Aún sin editar.
+- Confirmación solicitada: Edge index.ts solo valida enabled de la petición;
+  propaga el ACK SQL sin leerlo (return respond spread result). Rust Client::call
+  decodifica el JSON; State::accept(SetTester) pide GetAccount sin leer enabled.
+  Dos tests getter fallarían ante esa lectura: Deno96/check/lint/fmt PASS.
+- Producción Supabase contiene datos: reconstruida con la cadena en octubre.
+  Queda sustituida cualquier suposición histórica de base vacía en runbooks.
+- Autorizado tocar solo _shared/mail-erasure.ts y sus tests; alcance de integración por aclarar.

@@ -380,7 +380,7 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
-   if m.stem==AUDIT_STEM:
+   if m.stem==AUDIT_STEM and not args.schema_snapshot:
     audit_previous=run('psql',*conn,'-c',AUDIT_SNAPSHOT)
     audit_schema_previous=audit_schema(run,conn)
     seed_audit_upgrade(run,conn)
@@ -552,7 +552,7 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
-   if m.stem==AUDIT_STEM:
+   if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
     admin_report_root_applied=True
@@ -791,6 +791,7 @@ $$;
    relations={
     'storage.buckets': "select id,name,public,file_size_limit,allowed_mime_types from storage.buckets",
     'cron.job': "select jobname,schedule,active,md5(command) as command_md5 from cron.job",
+    'private.admin_audit_policy': "select singleton,closed_retention_days from private.admin_audit_policy",
     'private.report_promotion_policy': "select singleton,reward_valid_months from private.report_promotion_policy",
     'private.billing_compensation_policy': "select environment,enabled,amount_basis from private.billing_compensation_policy",
     'private.report_promotion_catalog': "select environment,product_id,plan,normal_cents,launch_cents from private.report_promotion_catalog",

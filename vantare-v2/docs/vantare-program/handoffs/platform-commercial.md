@@ -8793,7 +8793,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   triggers. Dos RED antes; coalesce(false) y sesión nueva GREEN. Fallos previos
   de variable ambigua y fixture global de identidades también documentados.
 - P3: recorders false/null/objeto/string/throw; sync falla en succeeded/failed/
-  unknown sin ACK. SMTP requiere actor antes del claim/resultado. Deno273 PASS;
+  unknown sin ACK. SMTP requiere actor antes del claim/resultado. Deno285 PASS;
   check/lint/fmt/Python/diff PASS. Compilación/telemetría/lifecycle omitidos.
 - Despliegue solo Isaac: cadena anterior 7b1→7b2→#1924→owner→#1939→#1941→
   #1942→#1944→#1946→SMTP/#1947→10b; SQL antes de Edge. Clerk se pausa en7b2.
@@ -8803,3 +8803,10 @@ union all select 'linear_deliveries',outcome::text,count(*)
   owner vigente. El down no recupera PII ni evidencia ya purgada.
 - Sigue lectura owner en la app para cerrar10; luego6 y sync_payments explícito
   junto con UI/lecturas puras. Paso11 exclusivamente R6/12. Sin deploy/merge/SaaS.
+- Rebase sobre nightly269d08d1b, con #1957/10a integrado (1990f6048) y FaseA
+  de R6. Los snapshots se regeneran por la cadena completa; ese modo no baja
+  nuestra migración para oráculos históricos. write/check locales PASS.
+- Medición: SQL ejecutable (migración+rollback) +208 líneas, sin borrar historia.
+  Este corte de privacidad NO reduce producción; requiere funciones nuevas,
+  backfill, ACL y down completos por ADR0106. No se presenta como reducción.
+  Los volcados derivados se miden aparte; la reducción total del10 sigue pendiente.

@@ -4,7 +4,7 @@ const calls: string[] = [];
 function deps(): AdminDeps {
  return {...authDeps(), environment:"sandbox",gate:()=>Promise.resolve(true),resolve:()=>Promise.resolve(account),begin:()=>Promise.resolve(true),
   execute:(_actor,_issuer,action)=>{calls.push(action);return Promise.resolve(action==="get_payment_sync"?{needs_sync:true}:action==="get_account"?{account:{account_id:account}}:action==="list_creators"?{creators:[]}:{creator:{creator_id:account}});},
-  polar:{fetch:()=>{throw new Error("pure reads must not call Polar");}}};
+  polar:{fetchFn:()=>{throw new Error("pure reads must not call Polar");}}};
 }
 for(const [action,params] of [["get_account",{account_id:account}],["list_creators",{}],["get_creator",{creator_id:account}]] as const) {
  Deno.test("pending history remains a pure read: "+action,async()=>{

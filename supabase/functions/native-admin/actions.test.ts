@@ -81,3 +81,29 @@ Deno.test("action characterization: statuses/modules match current accepted wire
     );
   }
 });
+
+import { actionContract, assertAdminEnvironment } from "./actions.ts";
+Deno.test("canonical registry export matches the Rust wire fixture exactly", () => {
+  assert(JSON.stringify(actionContract()) === JSON.stringify(contract));
+});
+Deno.test("canonical action environments retain sandbox restrictions and closed unknown names", () => {
+  for (const [action, spec] of Object.entries(contract.actions)) {
+    assertAdminEnvironment(action, "sandbox");
+    let rejected = false;
+    try {
+      assertAdminEnvironment(action, "production");
+    } catch {
+      rejected = true;
+    }
+    assert(rejected === (spec.environment === "sandbox"));
+  }
+  for (const action of ["mail_claim", "toString", "__proto__", "unknown"]) {
+    let rejected = false;
+    try {
+      validateAdminRequest({ version: 1, action });
+    } catch {
+      rejected = true;
+    }
+    assert(rejected);
+  }
+});

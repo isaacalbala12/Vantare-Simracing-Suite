@@ -753,6 +753,7 @@ impl Admin {
                 Action::RecordCreatorPayout {
                     creator_id: creator.creator_id.clone(),
                     amount_cents: creator.payable_cents,
+                    paid_at: None,
                 }
             }
             Dialog::Report(status) => {

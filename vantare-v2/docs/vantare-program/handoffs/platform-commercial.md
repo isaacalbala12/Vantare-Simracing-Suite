@@ -8667,3 +8667,36 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - #1948 integrado en nightly28b1e8fa9; #1947 rebasado, 234 Deno PASS. Paso8 autorizado en
   account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
   No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.
+
+## VANTA-132 · paso9: contrato de acciones TS/Rust (2026-11-04)
+
+- Base origin/nightlycf41b7c30 (#1946 integrado con seis checks verdes), rama
+  vantareapp/isa-1910-paso9-contrato y worktree propio. Drafts separados SMTP1947
+  (31f817f72) y errores1948 (c46fcb31e);8 compartido espera respuesta al aviso
+  para _shared/account-erasure.ts y clerk-webhook/index.ts, rutas intactas.
+- ACTIONS único con25 campos/validadores/tipos/entornos públicos sustituye dos
+  tablas y el switch de index/mail. Mismos defaults y sandbox-only. Estados y
+  listas mail salen del contrato, módulos de MODULE_CAPABILITIES existente sin
+  tocar licencias. Exportación CLI sin permisos de red ni secretos.
+- Fixture única native/admin/fixtures/admin-actions.json, generada desde TS y
+  comparada por Deno. Test Rust obtiene las variantes y campos reales de Serde,
+  incluidos opcionales, y cruza con JSON; comprueba serialización, mutation,
+  estados y módulos. Action Deserialize solo en cfg(test), sin nuevo API runtime.
+- Caracterización previa5d77fb731:26Deno PASS; Rust RED runtime por paid_at
+  ausente en Action. Se alinea como Option omitida por la vista (None), mantiene
+  lógica/fecha de pagos existente y protocolo1. No servicios, runtime ni UI cambian
+  de arquitectura; solo wirefield y constructor existentes. Sin dependencias.
+- GREEN169Deno y46/46Nextest admin PASS, check all-targets y Clippy-Dwarnings
+  admin PASS. Rust por compilar.ps1, target isa-1910-contract y tres raíces QA
+  explícitas; cada comando libera cola. Ningún Store real ni SaaS. Servicios,
+  domain/runtime/ipc/testdata intactos: telemetría no aplica. No hay target de
+  lifecycle propio del crate admin; no se ejecuta workspace ajeno al alcance.
+- PostgreSQL admin-reports-only replay completo, rollback/guards/autoridad,
+  locks/races y Edge→SQL ambos modos/abuso PASS. Check/lint/fmt/exportfixture y
+ 471huellas PASS; instancia parada. Primer comando Rust omitía manifest-path,
+  corregido; primer test Serde suponía rechazo de extras en variantes unit, se
+  ajusta al formato de Serde y el cierre se verifica en Edge para las25 acciones.
+  Todos los fallos conservados en evidencia isa-1910-paso9.
+- Sin migración, shared/webhook, billing/licencias, secretos, Store real, datos
+  de producción, deploy, merge ni release. SQL histórico permanece para baseR6/12.
+  Continúa8 cuando se autorice coordinación;6/10 pendientes,11 exclusivamente R6.

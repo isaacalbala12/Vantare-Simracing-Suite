@@ -189,3 +189,13 @@ Persistencia compartida (paso 12, #1827): [contrato de Store](../services/README
 Gestión consume read tipado; mantiene su lectura estricta de metadata OAuth y
 aparta metadata de otro emisor/redirect con quarantine_dated, sin borrar copias
 previas y con tope tres. E/S y rename fallido siguen siendo errores.
+
+## Contrato de acciones #1910
+
+La fuente de campos/tipos/entornos es
+[actions.ts](../../../supabase/functions/native-admin/actions.ts). Su exportación
+[fixtures/admin-actions.json](fixtures/admin-actions.json) se verifica en Deno y
+en los tests del cliente Rust: todas las variantes/campos Serde, opcionales,
+estados y módulos deben coincidir, además de serializar y validar ejemplos.
+No se añade dependencia. paid_at es opcional y la vista lo omite como hasta ahora.
+Los datos de prueba son sintéticos; no se abre el Store del usuario.

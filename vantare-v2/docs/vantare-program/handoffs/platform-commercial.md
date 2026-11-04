@@ -635,7 +635,9 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   VANTA-127 sigue En curso para el paso 8. Próximo trabajo: retención K3 si
   cabe limpiamente, límites del ZIP y test de corte por checkpoint; el gate
   de VM sobre 975/988 reales continúa siendo condición de publicación.
-- Paso 8 en `vantareapp/isa-1840-paso8-retencion`: K3 queda diferido. El estado
+- Paso 8 en [PR draft #1935](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1935),
+  rama `vantareapp/isa-1840-paso8-retencion`, base nightly `8ca3e63be`:
+  K3 queda diferido. El estado
   no conserva un SHA que atribuya las generaciones huérfanas y la poda segura
   probada necesitaba +49 líneas de producción con solo 24 de margen; no se
   cambia la regla que conserva sus binarios y datos. El tooling ahora valida

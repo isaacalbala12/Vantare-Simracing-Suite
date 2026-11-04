@@ -8708,7 +8708,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Caracterización previa de restauración: r1 RED; después 235 Deno PASS en
   admin/webhook. SDK/entrada de Storage typecheck PASS. Gates de formato/lint
   PASS; se conservan errores previos en evidencia.
-- Producción 1304 →1296 (-8; +188/-196); tests +320/-17, docs +48/-0.
+- Producción 1304 →1296 (-8; +188/-196); tests +320/-17, docs +47/-0.
   El test de defaults vive aparte con firma HMAC y sin dependencia nueva;
   lint/fmt/check PASS. Fallos previos de imports legacy y await retenidos.
   No SQL ni Rust: gates SQL/compilación/telemetría/lifecycle omitidos. Storage

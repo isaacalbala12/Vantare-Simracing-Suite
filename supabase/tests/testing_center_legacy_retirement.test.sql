@@ -1,11 +1,23 @@
 -- VANTA-131 / final 7b: v2 agent lineage remains readable only to its owner.
 begin;
-select plan(9);
+select plan(12);
 
 select ok(to_regclass('public.testing_center_reports') is null,'legacy report root retired');
 select ok(to_regclass('private.testing_center_legacy_archive') is null,'empty archive retired');
 select ok(to_regclass('public.testing_center_technical_issues') is not null
   and to_regclass('public.testing_center_agent_jobs') is not null,'v2 agent lineage retained');
+select ok(not exists(select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+  where not t.tgisinternal and c.relkind in ('r','p')
+    and encode(t.tgargs,'escape') ~ 'public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\M'),
+  'no surviving trigger reads a retired report table');
+select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
+    and pg_get_functiondef(p.oid) ~ '(public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M'),
+  'no surviving function reads a retired report table');
+select ok(exists(select 1 from pg_constraint c
+  where c.conrelid='public.testing_center_technical_issues'::regclass
+    and c.contype='c' and pg_get_constraintdef(c.oid) ~ 'report_id IS NULL'),
+  'retained technical issue cannot regain a legacy report_id');
 select is((select count(*)::integer from pg_policies where schemaname='storage'
   and tablename='objects' and policyname='testing_center_evidence_insert_own_slot'),0,
   'retired capture slot has no authenticated Storage insert policy');

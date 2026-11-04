@@ -8998,8 +8998,19 @@ union all select 'linear_deliveries',outcome::text,count(*)
   sin añadir un wrapper. Metadata opt-in y envío HTTP se prueban contra el fixture.
 - RED9546414ec:8 fallos antes de corregir. Deno298 PASS; SQL combinado6/8c/10b
   LF y CRLF PASS, con rollback exacto/ACL/constraints/reapply y guard irreversible.
-  Native gates finales en marcha, solo admin/compilar.ps1/target aislado y QA falsa.
+  Native check/Clippy -D warnings/Nextest49/fmt PASS, solo admin mediante
+  compilar.ps1, target aislado y QA falsa; se cede la cola entre comandos.
+  Tooling31 PASS. Sin runtime/domain/ipc/testdata: telemetría/lifecycle no aplican.
 - Solo Isaac despliega: SQL y enseguida Edge compatible/Gestión por1962. Un cliente
   antiguo conserva lecturas/importación anteriores. Si ya existe evidencia sync,
   el down aborta; conservar SQL y revertir Edge/corrección hacia delante, sin borrar.
   Volcados PG17 tras integrar la pila; nada desplegado/fusionado por este worker.
+
+- Medición8c contra1962 HEAD48b8a1d9f: producción4825→5045 (+220):
+  Edge/contrato106, SQL53, Rust/UI61. Tests+532; down16 y derivados63 aparte.
+  El incremento no satisface el descenso pedido: compatibilidad opt-in y journal
+  son requisitos de la review; se conserva el importador de pago seguro.
+  Sin consultas duplicadas de readiness ni wrapper accept_account. Docs se miden
+  aparte; no se maquilla el resultado retirando protecciones o limpiando otro área.
+- Lint del SQL propio limpio; el barrido global10:55 aún señala10 errores en
+  históricos SMTP/R6 de nightly, cubiertos por1960. No se editan históricos.

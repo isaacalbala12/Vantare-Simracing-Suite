@@ -31,6 +31,7 @@ parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--admin-erasure-only', action='store_true')
 parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
+parser.add_argument('--legacy-retirement-inventory', action='store_true', help='Read-only catalog inventory after migrations')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -633,6 +634,16 @@ $$;
    raise SystemExit(0)
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
+  if args.legacy_retirement_inventory:
+   inventory=run('psql',*conn,'-c',"""select p.oid::regprocedure::text
+     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname in ('public','private') and p.prokind='f'
+       and pg_get_functiondef(p.oid) ~
+         'testing_center_(reports|evidence|technical_issues|screenshot_evidence|evidence_batches|report_payloads|report_submission_keys|report_events|legacy_archive)'
+     order by 1""")
+   (OUT/'legacy-retirement-functions.log').write_text(inventory)
+   print(inventory,flush=True)
+   raise SystemExit(0)
   role_contract=run('psql',*conn,'-c',"""
    select count(*)=4 and bool_and(not (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)
     and not rolinherit and rolcanlogin=(rolname='vantare_roadmap_publisher')

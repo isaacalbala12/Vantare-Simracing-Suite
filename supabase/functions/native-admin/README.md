@@ -413,22 +413,20 @@ auditoría resuelve la cuenta de un informe desde la misma raíz nueva.
 
 **Orden obligatorio, reservado a Isaac y coordinado con VANTA-131:**
 
-1. R6/7b detiene primero los escritores antiguos: retira EXECUTE efectivo para
-   service_role, authenticated y anon, también vía PUBLIC o roles heredados,
-   de la RPC legacy y de los demás escritores/callers. Después mapea, verifica
-   y vacía el origen. Este PR no revoca permisos ni copia o borra filas de R6.
-2. Aplicar `20261104024000_isa_1910_admin_report_root.sql` y publicar este PR.
-   La migración bloquea escrituras al origen mientras verifica que esté vacío.
-   Cualquier fila, también draft, aborta toda la transacción con
-   `native_admin_legacy_reports_require_r6_mapping` (55000), antes de redefinir
-   funciones o crear el índice. No hay tabla de mapping ni excepción manual.
-   También aborta con `native_admin_legacy_writers_still_callable` (55000) si
-   conserva EXECUTE alguno de esos roles. El inventario conservador del catálogo
-   incluye DML sobre la relación y llamadas indirectas; excluye solo los dos
-   cuerpos admin cuyas ramas legacy retira esta misma migración. El detalle del
-   error enumera las funciones que R6 debe cerrar. Exige current_user con
-   BYPASSRLS o SUPERUSER (42501), porque la tabla tiene FORCE RLS.
-3. R6/7b retira las tablas/RPC antiguas cuando haya cerrado sus demás lectores.
+1. R6 detiene los escritores legacy (#1926) y archiva, verifica y vacía el
+   padre y sus siete hijas (#1930, migración `20261104014000`).
+2. Aplicar `20261104024000_isa_1910_admin_report_root.sql`.
+   Bajo SHARE en las ocho tablas, exige que no quede ninguna fila (55000),
+   ni INSERT/UPDATE/DELETE/TRUNCATE efectivo para service_role, authenticated,
+   anon, PUBLIC o vantare_triage (55000). La lista explícita de siete firmas
+   RPC de #1926 debe carecer de EXECUTE para esos mismos roles (55000).
+   No escanea cuerpos de funciones ni revoca permisos. Exige current_user con
+   BYPASSRLS o SUPERUSER (42501), por FORCE RLS. El fallo es atómico.
+3. Solo el paso final de R6 retirará tablas/RPC, junto con el archivo y el
+   parche de `apply_clerk_user_event`: el archivo y el borrado de cuentas
+   dependen de que las tablas legacy y sus FK sigan existiendo. Clerk también
+   lee `testing_center_screenshot_evidence` y `testing_center_evidence_batches`.
+   #1924 conserva las ocho tablas y sus FK; Clerk conserva EXECUTE service_role.
 
 Para revertir admin antes de retirar esas tablas, usar el `.down.sql` con psql:
 restaura las cinco definiciones y el trigger anteriores y quita el índice, sin
@@ -438,14 +436,15 @@ conservador no interpreta copias todavía retenidas en el origen como prueba de
 mapeo: cualquier futuro contrato que permita conservarlas lo define el
 orquestador con R6.
 
-El gate local simula el cierre de escritores de R6 solo en su base desechable,
-y restaura sus permisos únicamente para ejecutar los oráculos históricos de
-intake/RLS. No es un procedimiento de despliegue. Prueba rechazos atómicos para
-los tres roles, un escritor indirecto, un ejecutor sin BYPASSRLS y origen con
-filas. El rollback se compara con los cinco digests originales, incluido
-native_admin_reports; conserva intencionadamente una línea con un espacio en
-el cuerpo anterior para restaurarlo byte a byte. El test concurrente del guard
-queda diferido por decisión de revisión.
+El gate recorre todas las migraciones por orden, incluido el 7b2 real, antes
+de aplicar admin; comprueba que Clerk sigue ejecutable por service_role.
+No hay shutdown auxiliar ni fixture que revoque Clerk. Cubre las siete firmas,
+los cinco roles y cuatro privilegios en cada tabla, las ocho relaciones no
+vacías y un ejecutor sin BYPASSRLS. Los oráculos históricos corren en su estado
+anterior mediante los rollbacks reales de R6, fuera del replay limpio.
+El rollback de admin compara cinco digests originales, incluido
+native_admin_reports; conserva intencionadamente una línea con un espacio para
+restaurar el cuerpo byte a byte. La carrera del guard sigue diferida por review.
 
 El fallback de `claim` por `target_hash` está cubierto sin una fila de lease.
 Un índice parcial sobre ese hash para `outcome='started'` corresponde al

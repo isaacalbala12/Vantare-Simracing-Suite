@@ -1,44 +1,71 @@
 -- VANTA-132 / #1910: admin consumes only the R6 testing_contributions root.
--- R6 owns mapping, verification and emptying the origin. No data writes here.
+-- R6 owns shutdown, mapping, verification and emptying. No data writes here.
 begin;
 set local lock_timeout='5s';
-lock table public.testing_center_reports in share mode;
+lock table public.testing_center_reports,
+ public.testing_center_evidence,
+ public.testing_center_technical_issues,
+ public.testing_center_screenshot_evidence,
+ public.testing_center_evidence_batches,
+ public.testing_center_report_payloads,
+ public.testing_center_report_submission_keys,
+ public.testing_center_report_events in share mode;
 do $cutover$
-declare v_callable text;
+declare
+ v_table regclass;
+ v_signature text;
+ v_function oid;
+ v_nonempty boolean;
 begin
  if not exists(select 1 from pg_roles where rolname=current_user and (rolsuper or rolbypassrls)) then
   raise exception 'native_admin_cutover_requires_bypassrls' using errcode='42501';
  end if;
- if exists(select 1 from public.testing_center_reports) then
-  raise exception 'native_admin_legacy_reports_require_r6_mapping' using errcode='55000';
- end if;
- -- A conservative inventory includes indirect callers and PUBLIC/inherited
- -- EXECUTE via has_function_privilege. R6 owns the revokes, never this cutover.
-
-with recursive routines as (
- select p.oid,n.nspname,p.proname,
-  replace(lower(p.prosrc),'"','') body,
-  regexp_replace(lower(p.prosrc),'[[:space:]\"]','','g') calls
- from pg_proc p join pg_namespace n on n.oid=p.pronamespace
- where p.prokind='f' and n.nspname not like 'pg_%' and n.nspname<>'information_schema'
- -- These two admin bodies lose their legacy branches in THIS migration.
- and not(n.nspname='private' and p.proname in
-   ('native_admin_execute_v1','native_admin_execute_before_creator_coupon'))
-), writers(oid) as (
- select oid from routines where (nspname='public' and proname='testing_center_report_submit_admitted')
-  -- Conservative: also catches dynamic SQL with a literal relation name.
-  or (body ~ '\mtesting_center_reports\M' and body ~ '\m(insert|update|delete)\M')
- union
- select caller.oid from writers w join routines callee on callee.oid=w.oid
- join routines caller on caller.calls ~ ('(^|[^a-z0-9_])'||lower(callee.proname)||'\(')
-)
-select string_agg(distinct p.oid::regprocedure::text, ', ' order by p.oid::regprocedure::text)
- into v_callable from writers w join pg_proc p on p.oid=w.oid
- cross join (values ('service_role'),('authenticated'),('anon')) principal(name)
- where has_function_privilege(principal.name,p.oid,'EXECUTE');
- if v_callable is not null then
-  raise exception 'native_admin_legacy_writers_still_callable' using errcode='55000',detail=v_callable;
- end if;
+ foreach v_table in array array[
+ 'public.testing_center_reports'::regclass,
+ 'public.testing_center_evidence'::regclass,
+ 'public.testing_center_technical_issues'::regclass,
+ 'public.testing_center_screenshot_evidence'::regclass,
+ 'public.testing_center_evidence_batches'::regclass,
+ 'public.testing_center_report_payloads'::regclass,
+ 'public.testing_center_report_submission_keys'::regclass,
+ 'public.testing_center_report_events'::regclass] loop
+  execute format('select exists(select 1 from %s)',v_table) into v_nonempty;
+  if v_nonempty then
+   raise exception 'native_admin_legacy_reports_require_r6_mapping'
+    using errcode='55000',detail=v_table::text;
+  end if;
+  if exists(select 1 from (values ('service_role'),('authenticated'),('anon'),('vantare_triage')) principal(name)
+    where has_table_privilege(principal.name,v_table,'INSERT,UPDATE,DELETE,TRUNCATE'))
+   or exists(select 1 from pg_class c,
+     lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+     where c.oid=v_table and a.grantee=0 and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE')) then
+   raise exception 'native_admin_legacy_table_still_writable'
+    using errcode='55000',detail=v_table::text;
+  end if;
+ end loop;
+ -- Exact legacy surface closed by #1926. Do not infer writers from function
+ -- text: Clerk account deletion legitimately still consumes legacy tables/FKs.
+ foreach v_signature in array array[
+ 'public.testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)',
+ 'public.testing_center_triage_report(text)',
+ 'public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)',
+ 'public.testing_center_finalize_screenshot(uuid,uuid)',
+ 'public.testing_center_submit_report(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text)',
+ 'public.testing_center_submit_report_with_evidence(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)',
+ 'public.testing_center_submit_report_without_transport_size(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text)'] loop
+  v_function=to_regprocedure(v_signature);
+  if v_function is null then
+   raise exception 'native_admin_legacy_rpc_missing' using errcode='55000',detail=v_signature;
+  end if;
+  if exists(select 1 from (values ('service_role'),('authenticated'),('anon'),('vantare_triage')) principal(name)
+     where has_function_privilege(principal.name,v_function,'EXECUTE'))
+   or exists(select 1 from pg_proc p,
+     lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+     where p.oid=v_function and a.grantee=0 and a.privilege_type='EXECUTE') then
+   raise exception 'native_admin_legacy_writers_still_callable'
+    using errcode='55000',detail=v_signature;
+  end if;
+ end loop;
 end $cutover$;
 CREATE OR REPLACE FUNCTION private.native_admin_reports(p_issuer text)
  RETURNS TABLE(item jsonb)

@@ -66,7 +66,7 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
           'create table public.'+table+'(probe boolean); '
           'insert into public.'+table+' values(true);',
           '55000','native_admin_legacy_reports_require_r6_mapping')
-    rejected_probe('force-rls-caller','grant all on public.testing_center_reports to authenticated; set local role authenticated;', '42501','native_admin_cutover_requires_bypassrls')
+    rejected_probe('force-rls-caller','grant all on '+','.join('public.'+table for table in tables)+' to authenticated; set local role authenticated;', '42501','native_admin_cutover_requires_bypassrls')
 
     # The transaction's only row is synthetic. A failure must roll it back too.
     probe = out/'legacy-guard-probe.sql'

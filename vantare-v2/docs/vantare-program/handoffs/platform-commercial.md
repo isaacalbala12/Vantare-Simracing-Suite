@@ -8121,3 +8121,31 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Producción Supabase contiene datos: reconstruida con la cadena en octubre.
   Queda sustituida cualquier suposición histórica de base vacía en runbooks.
 - Autorizado tocar solo _shared/mail-erasure.ts y sus tests; alcance de integración por aclarar.
+
+## VANTA-132 · Preparación acotada de auditoría Brevo (2026-11-04)
+
+- El orquestador autoriza _shared/mail-erasure.ts y sus tests; VANTA-131 no
+  trabaja en _shared. No se modifica native-auth ni clerk-webhook. Código
+  limitado a ese archivo y su test; handoff actualizado como evidencia.
+- Nuevo worktree isa-1910-paso5c y rama vantareapp/isa-1910-paso5c-brevo desde
+  nightly d1616b2f7. Hook opcional audit por UUID del job: started antes de HTTP
+  y resultado antes de mail_erasure_finish, con ACK true exigido. Fallo/ACK no
+  booleano → 503 saneado; no HTTP si falla started, no finish si falla resultado.
+- Solo entrega job_id, outcome y provider_status: sin correo, URL, lease,
+  cuerpo ni error. 204/404 succeeded (404 explícito), 401/403/422 failed,
+  transporte/otros estados unknown, alineado con el ACK SQL existente.
+- El callback no se registra todavía desde ningún caller ni escribe un journal
+  por sí solo: preparación, no cierre del paso5. Sin callback se conserva el
+  comportamiento previo. La integración en native-admin queda fuera de esta
+  entrega mientras se aclara la limitación de alcance con el orquestador.
+- Caracterización bcb34d5ca: cinco tests previos PASS y seis RED de hook antes
+  del cambio. GREEN: 13 tests del worker y 123 con consumidores mail/admin,
+  ambos modos/abuso; check/lint/fmt/diff PASS. Primer gate de consumidores se
+  ejecutó sin los permisos env acotados y falló; repetido con los cuatro nombres
+  de configuración usados por los gates nativos, PASS. Fallo conservado.
+- Producción Supabase NO está vacía: se reconstruyó con la cadena en octubre.
+  Ningún runbook nuevo puede asumir vacío ni resetear datos. Aquí no hay SQL,
+  migraciones, despliegue, llamadas reales ni cambios de datos/configuración.
+  Gates SQL/Rust/lifecycle/telemetría omitidos: no cambia schema ni native.
+- Evidencia isa-1910-paso5c. VANTA-132 En curso; integración Brevo y pasos6–10
+  pendientes. Paso11 sigue exclusivamente en la base R6/12.

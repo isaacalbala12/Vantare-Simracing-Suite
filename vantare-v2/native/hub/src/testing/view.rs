@@ -3,6 +3,7 @@ use super::{
     store::{self, Draft, LABELS, Store},
 };
 use crate::orbit::{self, Input};
+use crate::services::protocol::report_document::FIELD_LIMITS;
 use crate::services::{protocol::Command, view::Remote};
 use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*, px, rgba};
 #[cfg(any(feature = "parity-capture", test))]
@@ -310,11 +311,7 @@ impl Testing {
         for (index, label) in LABELS.into_iter().enumerate() {
             body = body.child(orbit::setting_row(
                 label,
-                if index == 3 {
-                    "Texto privado · máximo 4096 bytes"
-                } else {
-                    "Texto privado · máximo 2048 bytes"
-                },
+                &format!("Texto privado · máximo {} bytes", FIELD_LIMITS[index]),
                 div()
                     .w(gpui::px(orbit::COLUMN_W * 1.5))
                     .min_w_0()

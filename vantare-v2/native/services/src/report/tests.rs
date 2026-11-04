@@ -1116,7 +1116,8 @@ fn edits_rotate_idempotency_and_consent_never_survives_logout_or_restored_accoun
 fn draft_contract_rejects_secret_fields_and_oversized_text() {
     assert!(serde_json::from_str::<Fields>(r#"{"actionText":"","expectedText":"","observedText":"","contextText":"","module":"hub","accessToken":"x"}"#).is_err());
     let mut value = fields();
-    value.context_text = "ñ".repeat(2049);
+    value.context_text = "x".repeat(crate::protocol::report_document::FIELD_LIMITS[3] + 1);
+    assert_eq!(value.context_text.len(), 4097);
     assert!(matches!(fields_valid(&value, false), Err(Error::TooLarge)));
     value = fields();
     value.module = "invented".into();

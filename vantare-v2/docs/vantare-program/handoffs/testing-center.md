@@ -1241,8 +1241,10 @@ Paso 13a (contrato de borrador, previo a la migración de ficheros): `ipc`
 contiene la lista de módulos, los límites de texto y los placeholders usados
 por Hub y Services. El puente deja de admitir dos rutas v1 sin llamadores;
 las rutas de capturas siguen porque Services aún las llama, aunque la subida
-permanece desactivada. La caracterización previa pasó en Hub (21/21) y
-Services (18/18) tras el cambio. El siguiente grupo del paso 13 debe importar
+permanece desactivada. La caracterización previa pasó en Hub (recovery 4/4 y
+testing 17/17); tras el cambio pasaron Hub testing 18/18 y Services report
+18/18. El test nuevo comprueba longitud de arrays, IDs de módulos únicos y
+el rechazo de 4097 bytes en Hub y Services. El siguiente grupo debe importar
 `editor-draft.json` y `report-draft.json` al borrador protegido de Services;
 la política para borradores distintos está pendiente de decisión del
 orquestador. Ningún cambio de este grupo escribe ni migra ficheros.

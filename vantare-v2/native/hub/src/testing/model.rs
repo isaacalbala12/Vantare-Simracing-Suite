@@ -1,5 +1,5 @@
 pub(super) use crate::services::protocol::report_document::MODULES;
-use crate::services::protocol::report_document::{Fields, Preview};
+use crate::services::protocol::report_document::{FIELD_LIMITS, Fields, Preview};
 
 /// Mismo canal de build que Actualizaciones, también en las capturas QA.
 pub(super) fn channel_label(channel: Option<&str>) -> String {
@@ -79,7 +79,7 @@ pub(super) fn field_errors(fields: &Fields) -> [Option<&'static str>; 4] {
         let bytes = values[index].trim().len();
         if index < 3 && bytes < 3 {
             Some("Hacen falta al menos tres caracteres.")
-        } else if bytes > if index == 3 { 4096 } else { 2048 } {
+        } else if bytes > FIELD_LIMITS[index] {
             Some("El texto es demasiado largo.")
         } else {
             None

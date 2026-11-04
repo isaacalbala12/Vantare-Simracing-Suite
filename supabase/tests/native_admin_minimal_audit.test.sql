@@ -26,6 +26,13 @@ select ok(not exists(select 1 from public.admin_audit_log where action='set_test
    or jsonb_path_exists(coalesce(before_value,'{}'),'$.**.plan')
    or jsonb_path_exists(coalesce(after_value,'{}'),'$.**.plan'))),
  'mutation audit does not duplicate full account/payment summaries');
+select is(private.admin_audit_fields('{"enabled":true}','set_tester'),'{"enabled":true}'::jsonb,
+ 'second pass preserves an already-minimized true value');
+insert into private.mail_audit(id,actor,action,target,detail) values
+ ('19101000-0000-4000-8000-000000000011','19101000-0000-4000-8000-000000000001','consent','19101000-0000-4000-8000-000000000002','{"consent":true}'),
+ ('19101000-0000-4000-8000-000000000012','19101000-0000-4000-8000-000000000002','consent','contact','{"consent":true}');
+insert into public.admin_audit_log(id,actor_account_id,action,target) values
+ ('19101000-0000-4000-8000-000000000013','19101000-0000-4000-8000-000000000002','get_rollout','get_rollout');
 select lives_ok($$select pg_temp.audit_action('prepare_account_deletion',
  jsonb_build_object('confirmation_hash',repeat('a',64),'clerk_subject','user_audit_target'))$$,
  'the real deletion path prepares a durable tombstone');
@@ -41,5 +48,16 @@ select ok(not exists(select 1 from public.admin_audit_log where action='set_test
 select ok(exists(select 1 from public.admin_audit_log where action='set_tester'
  and actor_account_id='19101000-0000-4000-8000-000000000001' and occurred_at is not null),
  'minimal evidence still records actor action and time');
+select is((select target from public.admin_audit_log where action='set_tester'
+ and actor_account_id='19101000-0000-4000-8000-000000000001'),'erased','real erasure rewrites live admin row to erased');
+select is((select target from private.mail_audit where id='19101000-0000-4000-8000-000000000011'),'erased','real erasure rewrites live mail row to erased');
+select ok((select actor_account_id is null from public.admin_audit_log where id='19101000-0000-4000-8000-000000000013'),'erasure removes deleted actor from admin audit');
+select ok((select actor is null from private.mail_audit where id='19101000-0000-4000-8000-000000000012'),'erasure removes deleted actor from mail audit');
+select pg_temp.audit_action('get_account','{}');
+insert into private.mail_audit(id,actor,action,target,detail) values
+ ('19101000-0000-4000-8000-000000000014','19101000-0000-4000-8000-000000000001','consent','19101000-0000-4000-8000-000000000002','{}');
+select is((select target from public.admin_audit_log where action='get_account'
+ and actor_account_id='19101000-0000-4000-8000-000000000001'),'erased','admin row written after erasure stays erased');
+select is((select target from private.mail_audit where id='19101000-0000-4000-8000-000000000014'),'erased','mail row written after erasure stays erased');
 select * from finish();
 rollback;

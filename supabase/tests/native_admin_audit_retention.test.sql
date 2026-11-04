@@ -13,6 +13,9 @@ update public.operational_access_assignments set granted_at=now()-interval '2 da
  where user_id='19101010-0000-4000-8000-000000000003';
 select throws_ok($$select public.native_admin_prune_audit('19101010-0000-4000-8000-000000000003')$$,
  '42501','native_admin_forbidden','expired owner cannot purge');
+select set_config('vantare.audit_maintenance',pg_current_xact_id()::text,true);
+select is(private.admin_audit_maintenance(),false,'a caller-controlled GUC cannot authorize maintenance');
+select set_config('vantare.audit_maintenance','',true);
 select is((select closed_retention_days from private.admin_audit_policy where singleton),365,'single provisional default is 365 days');
 insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,occurred_at)
 select ('19101010-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,outcome,
@@ -72,5 +75,9 @@ select ok(has_function_privilege('service_role','public.native_admin_prune_audit
  and not has_function_privilege('anon','public.native_admin_prune_audit(uuid)','EXECUTE'),'prune RPC is service-only and rechecks owner');
 select ok((select prosecdef and proconfig @> array['search_path=""'] from pg_proc
  where oid='public.native_admin_prune_audit(uuid)'::regprocedure),'privileged RPC fixes definer and search_path');
+select ok(exists(select 1 from private.mail_audit where action='audit_prune'
+ and actor='19101010-0000-4000-8000-000000000001'
+ and occurred_at is not null and detail ?& array['retention_days','admin','mail','effects']),
+ 'purge records actor date TTL and counts in the existing journal');
 select * from finish();
 rollback;

@@ -614,8 +614,10 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   La batería Hub obtuvo 591 correctos, 4 ignorados y 2 smokes sin el binario
   auxiliar Storage en el target; `core_e2e` de Runtime agotó dos veces sus
   10 s sin recibir una foto, sin cambios en ese código. Ambos se declaran en
-  el PR draft y quedan para la CI; no se debilitaron ni omitieron tests.
-  Plane VANTA-127 permanece En curso; sin merge ni release.
+  el [PR draft #1929](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1929)
+  y quedan para la CI; no se debilitaron ni omitieron tests. Base de la rama
+  `origin/nightly@40a725910`, código verificado `ad688a80e`; el PR sigue
+  abierto contra nightly. Plane VANTA-127 permanece En curso; sin merge ni release.
 
 ### Paso 2 · ADR 0103 listo para revisión (1-nov-2026)
 

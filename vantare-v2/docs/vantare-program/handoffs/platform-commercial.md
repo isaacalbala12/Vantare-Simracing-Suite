@@ -9086,3 +9086,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   LF daba una diferencia de cuerpo. Se reaplican con el mismo modo LF/CRLF del
   replay, conservando comparación byte-exacta de cuerpo y ACL. No cambia producto.
   Nuevo replay local/CI en curso; PG17 derivado pendiente de su artefacto CI.
+
+- Cierre del rebase8d: código5a180f37b pasa el replay nightly7e40fdb7c LF/CRLF,
+ 10/10 dos veces, control4 RED, rollback exacto/ACL y30 confirmaciones. Lint propio
+ y diff PASS. CI nueva y sus volcados PG17 pendientes; no se declara CI verde.

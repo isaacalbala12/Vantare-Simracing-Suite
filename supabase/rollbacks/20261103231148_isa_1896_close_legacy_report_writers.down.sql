@@ -12,8 +12,11 @@ grant execute on function public.testing_center_report_submit_admitted(
 ) to service_role;
 grant execute on function public.testing_center_triage_report(text)
   to service_role;
--- Recreate exactly the pre-close table ACLs: four service privileges on each
--- legacy table and the four authenticated SELECT grants. No PUBLIC or API writes.
+grant execute on function public.testing_center_prepare_screenshot_batch(text,text,text,jsonb),
+  public.testing_center_finalize_screenshot(uuid,uuid)
+  to authenticated, service_role;
+-- Recreate the pre-close table ACLs. Default privileges had already given
+-- service_role ALL, including TRUNCATE, REFERENCES and TRIGGER. No PUBLIC writes.
 revoke all on table public.testing_center_reports,
   public.testing_center_evidence,
   public.testing_center_technical_issues,
@@ -23,7 +26,7 @@ revoke all on table public.testing_center_reports,
   public.testing_center_report_submission_keys,
   public.testing_center_report_events
 from public, anon, authenticated, service_role;
-grant select, insert, update, delete on table public.testing_center_reports,
+grant all on table public.testing_center_reports,
   public.testing_center_evidence,
   public.testing_center_technical_issues,
   public.testing_center_screenshot_evidence,

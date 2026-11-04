@@ -9,6 +9,9 @@ revoke all on function public.testing_center_report_submit_admitted(
 ) from public, anon, authenticated, service_role;
 revoke all on function public.testing_center_triage_report(text)
   from public, anon, authenticated, service_role;
+revoke all on function public.testing_center_prepare_screenshot_batch(text,text,text,jsonb),
+  public.testing_center_finalize_screenshot(uuid,uuid)
+  from public, anon, authenticated, service_role;
 
 -- These old wrappers were already closed by #1709. Assert the terminal ACL
 -- again so a replayed grant cannot keep a second route writable.

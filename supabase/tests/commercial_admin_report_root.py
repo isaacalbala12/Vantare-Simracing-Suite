@@ -58,6 +58,27 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
                 rejected_probe(table+'-'+role+'-'+privilege,
                   'grant '+privilege+' on public.'+table+' to '+role+';',
                   '55000','native_admin_legacy_table_still_writable')
+    for table in tables:
+        column=run('psql',*conn,'-At','-c',
+          "select quote_ident(attname) from pg_attribute where attrelid='public."+table+
+          "'::regclass and attnum>0 and not attisdropped order by attnum limit 1").strip()
+        for role in ['authenticated','public']:
+            for privilege in ['insert','update']:
+                rejected_probe('column-'+table+'-'+role+'-'+privilege,
+                  'grant '+privilege+'('+column+') on public.'+table+' to '+role+';',
+                  '55000','native_admin_legacy_table_still_writable')
+        for privilege in ['insert','update','delete','truncate']:
+            rejected_probe('arbitrary-role-'+table+'-'+privilege,
+              'grant '+privilege+' on public.'+table+' to authenticator;',
+              '55000','native_admin_legacy_table_still_writable')
+    for signature in signatures:
+        name=signature.split('(')[0]
+        for role in ['public','authenticator']:
+            rejected_probe('overload-'+name+'-'+role,
+              'create function public.'+name+'(integer) returns void language sql as $f$select$f$; '
+              'revoke all on function public.'+name+'(integer) from public; '
+              'grant execute on function public.'+name+'(integer) to '+role+';',
+              '55000','native_admin_legacy_writers_still_callable')
     # Isolate each child's emptiness check without inventing orphan records or
     # disabling production FK/barrier triggers. Transactional substitute only.
     for table in tables[1:]:

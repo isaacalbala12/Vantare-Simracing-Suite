@@ -260,7 +260,14 @@ $$;
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
    channel_stem='20261104043200_isa_1928_channel_owner_authority'
-   channel_role_snapshot_query="select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure"
+   channel_role_snapshot_query="""select string_agg(
+     p.oid::regprocedure::text||'|'||encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>'),
+     E'\\n' order by p.oid::regprocedure::text)
+    from pg_proc p where p.oid in (
+     'public.testing_center_current_role()'::regprocedure,
+     'private.testing_report_submit_for_account(uuid,uuid,text,text,text,boolean)'::regprocedure,
+     'private.testing_contribution_submit_for_account(uuid,uuid,text,text,text)'::regprocedure,
+     'private.testing_contribution_submit_v2_for_account(uuid,uuid,text,text,text,jsonb,jsonb)'::regprocedure)"""
    channel_role_before=(run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
                         if m.stem==channel_stem else None)
    archive_stem='20261104014000_isa_1896_legacy_archive'
@@ -384,11 +391,11 @@ $$;
      raise RuntimeError('#1928 did not make the membership allowlist explicit')
     run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(channel_stem+'.down.sql'))
     if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_before:
-     raise RuntimeError('#1928 rollback changed current_role definition or ACL')
+     raise RuntimeError('#1928 rollback changed one of four functions or ACLs')
     run('psql',*conn,'-f',migration_source)
     if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_after:
      raise RuntimeError('#1928 reapply changed current_role definition or ACL')
-    print('#1928 current_role exact rollback/reapply PASS',flush=True)
+    print('#1928 four channel functions and ACLs: exact rollback/reapply PASS',flush=True)
    if archive_fixture:
     def archive_check(name):
      result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
@@ -639,6 +646,10 @@ $$;
     owner_policy_down()
    owner_stem='20261103235000_isa_1896_owner_unification'
    admin_owner_current=None
+   # Channel writers depend on private.is_owner; unwind them before step 8.
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(channel_stem+'.down.sql'))
+   if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_before:
+    raise RuntimeError('#1928 did not restore its predecessor before step 8 rollback')
    if admin_owner_previous is not None:
     # Respect the deployed dependency order: admin down, R6 down/up, admin up.
     admin_owner_current=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
@@ -659,13 +670,13 @@ $$;
     (OUT/(suite+'.log')).write_text(result)
     if 'not ok ' in result or f'1..{count}' not in result:
      raise RuntimeError(suite+' failed after rollback')
-    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(stem+'.sql'))
+    run('psql',*conn,'-f',OUT/'migration-sources'/(stem+'.sql'))
   if owner_enabled and not args.admin_effects_only:
    run('psql',*conn,'-c',"""insert into public.profiles(id) values
     ('13100000-0000-4000-8000-000000000009');
     insert into public.testing_center_memberships(user_id,actor_id,role)
     values('13100000-0000-4000-8000-000000000009','vanta131-backfill-owner','owner');""")
-   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_stem+'.sql'))
+   run('psql',*conn,'-f',OUT/'migration-sources'/(owner_stem+'.sql'))
    migrated=run('psql',*conn,'-At','-c',"""select private.is_owner('13100000-0000-4000-8000-000000000009')
     and (select granted_by='migration:vanta131' from public.operational_access_assignments
       where user_id='13100000-0000-4000-8000-000000000009' and role='owner');""").strip()
@@ -678,7 +689,7 @@ $$;
     and role='owner') and (select role='owner' from public.testing_center_memberships
     where user_id='13100000-0000-4000-8000-000000000009');""").strip()
    if reverted!='t': raise RuntimeError('step 8 rollback lost legacy membership or live grant')
-   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_stem+'.sql'))
+   run('psql',*conn,'-f',OUT/'migration-sources'/(owner_stem+'.sql'))
    if run('psql',*conn,'-At','-c',"select private.is_owner('13100000-0000-4000-8000-000000000009')").strip()!='t':
     raise RuntimeError('step 8 reapply did not restore legacy owner')
    run('psql',*conn,'-c',"create function private.vanta131_owner_down_guard_probe() returns boolean language sql as 'select private.is_owner(null::uuid)'")
@@ -692,9 +703,13 @@ $$;
      raise RuntimeError('admin owner changed after dependency rollback/reapply')
    if owner_policy_previous is not None:
     owner_policy_up()
-   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(channel_stem+'.sql'))
-   if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_after:
-    raise RuntimeError('#1928 role contract lost after step 8 rollback/reapply')
+   run('psql',*conn,'-f',OUT/'migration-sources'/(channel_stem+'.sql'))
+   channel_restored=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
+   if channel_restored!=channel_role_after:
+    expected=dict(line.split('|',1) for line in channel_role_after.splitlines())
+    actual=dict(line.split('|',1) for line in channel_restored.splitlines())
+    raise RuntimeError('#1928 role contract lost after step 8 rollback/reapply: '+
+                       ', '.join(name for name in expected if expected[name]!=actual.get(name)))
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))

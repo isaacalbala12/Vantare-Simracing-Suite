@@ -68,7 +68,7 @@ select ok(not private.admin_audit_maintenance(),'maintenance capability does not
 select throws_ok($$delete from private.admin_effects where effect_id='19101010-0000-4000-8000-000000000014'$$,
  'P0001','operational_access_audit_is_append_only','normal append-only barrier is restored after maintenance');
 select ok(not exists(select 1 from (values('anon'),('authenticated'),('service_role')) roles(name)
- where has_table_privilege(name,'private.admin_audit','SELECT')
+ where has_table_privilege(name,'private.admin_audit_maintenance_tx','INSERT')
  or has_table_privilege(name,'private.admin_audit_policy','UPDATE')),'private read model and policy have no direct app grants');
 select ok(has_function_privilege('service_role','public.native_admin_prune_audit(uuid)','EXECUTE')
  and not has_function_privilege('authenticated','public.native_admin_prune_audit(uuid)','EXECUTE')

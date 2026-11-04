@@ -40,7 +40,12 @@ def seed_audit_upgrade(run, conn):
       '{"account":{"account_id":"19101090-0000-4000-8000-000000000002","roles":["tester"]}}');
      update public.account_identities set deleted_at=now() where subject='user_audit_upgrade';
      insert into private.mail_audit(id,action,target,detail) values
-      ('19101090-0000-4000-8000-000000000012','consent','contact','{"consent":true,"evidence":"private@example.invalid"}');""")
+      ('19101090-0000-4000-8000-000000000012','consent','contact','{"consent":true,"evidence":"private@example.invalid"}');
+     insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
+      select '19101090-0000-4000-8000-000000000014',outcome,
+      '19101090-0000-4000-8000-000000000015','19101090-0000-4000-8000-000000000001',
+      'set_blocked','clerk_ban',encode(sha256(convert_to('user_audit_upgrade','UTF8')),'hex')
+      from unnest(array['started','succeeded']) outcome;""")
 
 
 def run_minimal_audit(run, conn, out, before, schema_before, newline):
@@ -52,6 +57,9 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
         return run('psql',*conn,'-f',target)
     up = root/'supabase/migrations'/(AUDIT_STEM+'.sql')
     down = root/'supabase/rollbacks'/(AUDIT_STEM+'.down.sql')
+    readme=(root/'supabase/functions/native-admin/README.md').read_text(encoding='utf-8')
+    precheck='select current_user,rolsuper'+readme.split('select current_user,rolsuper',1)[1].split('```',1)[0]
+    run('psql',*conn,'-c',precheck)
     upgraded=run('psql',*conn,'-c',"""select
       (select target='erased' and before_value='{"enabled":false}'::jsonb
        and after_value='{"enabled":true}'::jsonb from public.admin_audit_log
@@ -59,23 +67,44 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
       (select detail='{"consent":true}'::jsonb from private.mail_audit
        where id='19101090-0000-4000-8000-000000000012')""").strip()
     if upgraded!='t|t': raise RuntimeError('nonempty audit upgrade retained PII: '+upgraded)
+    effect_upgrade=run('psql',*conn,'-c',"""select count(*)=2 and bool_and(target_hash='erased' and target_account is null and erase_on_close)
+      from private.admin_effects where effect_id='19101090-0000-4000-8000-000000000014'""").strip()
+    if effect_upgrade!='t': raise RuntimeError('nonempty effect backfill retained a deleted target')
     for name in ['native_admin_minimal_audit.test.sql','native_admin_audit_retention.test.sql']:
         result=sql(root/'supabase/tests'/name)
         (out/(name+'.log')).write_text(result,encoding='utf-8')
         if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
         print(name+' GREEN',flush=True)
     run('psql',*conn,'-c',"""begin;
-      select set_config('vantare.audit_maintenance',pg_current_xact_id()::text,true);
-      delete from public.admin_audit_log where id='19101090-0000-4000-8000-000000000011';
-      delete from private.mail_audit where id='19101090-0000-4000-8000-000000000012';
-      select set_config('vantare.audit_maintenance','',true);
-      commit;""")
+      insert into private.admin_audit_maintenance_tx default values;
+      delete from private.admin_effects where effect_id='19101090-0000-4000-8000-000000000014';
+      delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id(); commit;""")
     for name in ['native_admin_effects.test.sql','native_admin_effects_r2.test.sql',
-                 'native_admin_deletion_r4.test.sql','marketing_mail.test.sql','native_admin_reads_r3.test.sql']:
+                 'native_admin_deletion_r4.test.sql','marketing_mail.test.sql','native_admin_reads_r3.test.sql',
+                 'native_admin_brevo_effects.test.sql','native_admin_mail_sync_effects.test.sql','native_admin_mail_send_effects.test.sql']:
         result=sql(root/'supabase/tests'/name)
         (out/('audit-active-'+name+'.log')).write_text(result,encoding='utf-8')
         if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
         print('Audit active: '+name+' PASS',flush=True)
+    # A redacted actor cannot satisfy the predecessor's NOT NULL. Down must
+    # fail before any DDL, not invent or restore an identifier.
+    run('psql',*conn,'-c',"""begin;
+     insert into private.admin_audit_maintenance_tx default values;
+     insert into public.admin_audit_log(id,actor_account_id,action,target)
+     values('19101090-0000-4000-8000-000000000013',null,'get_rollout','get_rollout');
+     delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id(); commit;""")
+    active_schema=audit_schema(run,conn)
+    try:
+        sql(down)
+    except RuntimeError as exc:
+        if 'admin_audit_rollback_requires_backup' not in str(exc): raise
+    else: raise RuntimeError('down accepted irreversible actor redaction')
+    if audit_schema(run,conn)!=active_schema: raise RuntimeError('rejected down changed schema')
+    run('psql',*conn,'-c',"""begin;
+      insert into private.admin_audit_maintenance_tx default values;
+      delete from public.admin_audit_log where id='19101090-0000-4000-8000-000000000013';
+      delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
+      commit;""")
     sql(down)
     after=run('psql',*conn,'-c',AUDIT_SNAPSHOT)
     (out/'audit-before.json').write_text(before,encoding='utf-8')
@@ -85,7 +114,29 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
     (out/'audit-schema.before.sql').write_text(schema_before,encoding='utf-8')
     (out/'audit-schema.down.sql').write_text(schema_after,encoding='utf-8')
     if schema_after!=schema_before: raise RuntimeError('audit rollback full schema dump differs')
+    unmapped=out/'audit-unmapped.sql'
+    fixture="""begin;
+      insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
+      values('19101090-0000-4000-8000-000000000016','started',
+      '19101090-0000-4000-8000-000000000015','19101090-0000-4000-8000-000000000001',
+      'set_blocked','clerk_ban',repeat('f',64));"""
+    unmapped.write_text(up.read_text(encoding='utf-8').replace('begin;',fixture,1),encoding='utf-8')
+    try:
+        run('psql',*conn,'-f',unmapped)
+    except RuntimeError as exc:
+        if 'admin_effect_backfill_requires_mapping' not in str(exc): raise
+    else: raise RuntimeError('up accepted an unverifiable legacy effect association')
+    if audit_schema(run,conn)!=schema_before: raise RuntimeError('rejected up changed schema')
     sql(up)
+    second=run('psql',*conn,'-c',"""select after_value='{"enabled":true}'::jsonb
+      from public.admin_audit_log where id='19101090-0000-4000-8000-000000000011'""").strip()
+    if second!='t': raise RuntimeError('second backfill changed minimized historical evidence: '+second)
+    run('psql',*conn,'-c',"""begin;
+      insert into private.admin_audit_maintenance_tx default values;
+      delete from public.admin_audit_log where id='19101090-0000-4000-8000-000000000011';
+      delete from private.mail_audit where id='19101090-0000-4000-8000-000000000012';
+      delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
+      commit;""")
     result=sql(root/'supabase/tests/native_admin_minimal_audit.test.sql')
     if 'not ok ' in result: raise RuntimeError(result)
     # Old digest/rollback oracles run against their actual predecessor, not new triggers.

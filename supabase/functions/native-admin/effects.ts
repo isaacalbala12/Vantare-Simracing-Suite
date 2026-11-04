@@ -24,16 +24,19 @@ export class EffectFailure extends NativeError {
 export type EffectRecorder = (
   actor: string,
   event: EffectEvent,
+  account: string,
 ) => Promise<boolean>;
 export async function recordEffect(
   actor: string,
   event: EffectEvent,
+  account: string,
 ): Promise<boolean> {
   const { data, error } = await getSupabaseAdmin().rpc(
     "native_admin_record_effect",
     {
       p_actor: actor,
       p_event: event,
+      p_account: account,
     },
   );
   if (error) throw error;
@@ -57,6 +60,7 @@ export function effectAudit(
   actor: string,
   requestId: string,
   record: EffectRecorder,
+  account: string,
 ) {
   return async (
     action: EffectEvent["action"],
@@ -88,7 +92,7 @@ export function effectAudit(
           ...event,
           outcome,
           ...(provider_status === undefined ? {} : { provider_status }),
-        }), "account_change_incomplete");
+        }, account), "account_change_incomplete");
     await write("started");
     let result: number | void;
     try {

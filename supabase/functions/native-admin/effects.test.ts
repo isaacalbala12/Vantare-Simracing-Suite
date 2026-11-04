@@ -29,7 +29,8 @@ function fixture(fail?: string) {
     environment: "sandbox" as const,
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),
-    recordEffect: (_actor: string, event: Event) => {
+    recordEffect: (_actor: string, event: Event, effectAccount: string) => {
+      assert(effectAccount === target);
       calls.push(event.outcome);
       if (event.outcome === fail) {
         return Promise.reject(new Error("audit unavailable"));

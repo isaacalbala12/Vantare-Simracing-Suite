@@ -1,6 +1,12 @@
 import { executeMail, type MailDeps } from "./mail.ts";
 import { assert } from "../native-account-authorize/testdata/auth.ts";
 import { NativeError } from "../_shared/native-auth.ts";
+import { handleNativeAdmin } from "./index.ts";
+import {
+  account,
+  authDeps,
+  request,
+} from "../native-account-authorize/testdata/auth.ts";
 const id = "19106000-0000-4000-8000-000000000001";
 function fixture() {
   const trace: string[] = [];
@@ -145,3 +151,76 @@ Deno.test("SMTP consent withdrawn after atomic claim closes not-dispatched befor
       f.rows[1].p_provider_status === null,
   );
 });
+
+for (
+  const [message, status] of [
+    ["mail_revision_conflict", 409],
+    ["native_admin_forbidden", 403],
+    ["native_admin_not_found", 404],
+    ["native_admin_invalid", 400],
+  ] as const
+) {
+  Deno.test("SMTP claim preserves known SQL response " + message, async () => {
+    const f = fixture();
+    f.deps.rpc = () => Promise.reject({ message });
+    const response = await handleNativeAdmin(
+      request({
+        version: 1,
+        action: "mail_send_batch",
+        campaign_id: id,
+        revision: 1,
+      }),
+      {
+        ...authDeps(),
+        adminAuth: { enabled: false, clientId: "" },
+        environment: "sandbox",
+        gate: () => Promise.resolve(true),
+        resolve: () => Promise.resolve(account),
+        begin: () => Promise.resolve(true),
+        mail: f.deps,
+        mailExecute: f.run,
+      },
+    );
+    assert(response.status === status && !f.trace.includes("http"));
+  });
+}
+for (const phase of ["consent", "unsubscribe", "stale"]) {
+  Deno.test(
+    "SMTP pre-dispatch failure closes started before ACK: " + phase,
+    async () => {
+      const f = fixture();
+      let elapsed = 0;
+      const deps: MailDeps = { ...f.deps, now: () => elapsed };
+      const original = f.deps.rpc;
+      deps.rpc = async (name, args) => {
+        const result = await original(name, args);
+        if (name === "native_admin_claim_mail_send") {
+          if (phase === "stale") elapsed = 5000;
+          if (
+            phase === "unsubscribe" && result && typeof result === "object" &&
+            "delivery" in result && result.delivery
+          ) {
+            Object.defineProperty(result.delivery, "email", {
+              get: () => {
+                throw Error("synthetic token construction error");
+              },
+            });
+          }
+        }
+        return result;
+      };
+      const run = (name: string) =>
+        name === "mail_can_send" && phase === "consent"
+          ? Promise.reject(Error("consent SQL unavailable"))
+          : f.run(name);
+      await executeMail(
+        "mail_send_batch",
+        { campaign_id: id, revision: 1 },
+        run,
+        deps,
+      );
+      assert(JSON.stringify(f.trace) === '["started","failed","ack"]');
+      assert(f.rows[1].p_provider_status === null);
+    },
+  );
+}

@@ -739,10 +739,17 @@ asocian la capacidad actual de contacto/job/entrega antes de perder su origen.
 Los reintentos de ACK tras redactar un hash fallan cerrados; no se vuelve a enviar
 HTTP. El índice SMTP excluye `erased`: su contacto y entrega ya se han borrado.
 
-**Pendiente de decisión para datos históricos:** los leases Brevo antiguos no
-pueden reconstruirse. Por ahora el guard `admin_effect_backfill_requires_mapping`
-aborta antes de reescribir si queda cualquier efecto sin asociación verificable.
-No se borran hashes sin esa asociación ni se supone producción vacía.
+Históricos sin asociación verificable: los grupos cerrados pasan a
+`target_hash='erased'`, conservando las filas, acción, resultado y fecha. Los
+pendientes conservan el hash hasta reconciliarse; entonces también se redacta.
+No se exige mapeo previo. El pre-check cuenta filas cerradas a redactar y filas
+pendientes que conservarán su hash, después de intentar las mismas asociaciones
+por identidad/pago/contacto/job/entrega que usa el backfill.
+
+Los triggers de admin y mail usan una función parametrizada y el backfill llama
+al mismo minimizador de filas. Los tres recorders Brevo comparten validación de
+estados y escritura de intención/ACK; cada RPC conserva su control de owner y
+capacidad de origen. La vista adicional está retirada.
 
 Único parámetro de retención, **365 días por defecto y provisional**:
 
@@ -787,6 +794,27 @@ select journal,count(*) filas_fisicas,
 from rows group by journal;
 select effect,outcome,count(*) from private.admin_effects group by effect,outcome;
 select count(*) from private.admin_pending_effects;
+with accounts as (
+ select array['clerk_ban','clerk_unban','clerk_delete','storage_cleanup'] kinds,
+  encode(sha256(convert_to(subject,'UTF8')),'hex') hash,account_id account from public.account_identities
+ union all select array['polar_cancel'],encode(sha256(convert_to(subscription_id,'UTF8')),'hex'),account_id from private.admin_payments
+ union all select array['brevo_contact_upsert','brevo_contact_update'],
+  encode(sha256(convert_to('brevo_contact_sync:'||id::text||':'||sync_lease::text,'UTF8')),'hex'),coalesce(account_id,erasure_account)
+ from private.mail_contacts where sync_lease is not null
+ union all select array['brevo_delete'],encode(sha256(convert_to('brevo_delete:'||id::text||':'||lease::text,'UTF8')),'hex'),account_id
+ from private.mail_contact_erasures where lease is not null
+ union all select array['brevo_smtp_send'],encode(sha256(convert_to('brevo_smtp_send:'||m.environment||':'||d.id::text,'UTF8')),'hex'),
+  coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d
+ join private.mail_contacts c on c.email=d.email join private.mail_campaigns m on m.id=d.campaign_id
+), unassociated as (
+ select e.*,exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
+  and r.outcome in('succeeded','failed','reconciled')) closed from private.admin_effects e
+ where not exists(select 1 from accounts a where a.account is not null and e.effect=any(a.kinds) and a.hash=e.target_hash)
+)
+select 'sin_asociacion' criterio,
+ count(*) filter(where closed and target_hash<>'erased') cerradas_a_redactar,
+ count(*) filter(where not closed) pendientes_con_hash
+from unassociated;
 ```
 
 **Irreversible: haz backup lógico de `admin_audit_log` y `mail_audit` antes.**

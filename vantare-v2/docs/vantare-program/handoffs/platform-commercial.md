@@ -8776,51 +8776,67 @@ union all select 'linear_deliveries',outcome::text,count(*)
 
 ## VANTA-132 · paso 10b · [PR #1959](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1959) (2026-11-04)
 
-- Re-review de fdc329647: P1-1/P1-2/P1-3 corregidos. El backfill conserva
-  `enabled` booleano, incluso con filas minimizadas que sobreviven up/down/up.
-  Borrado real: admin y mail quedan en `target=erased`, antes y después del
-  borrado; se retiran también `actor_account_id` y `mail_audit.actor` borrados.
-- Los efectos cerrados pierden `target_hash`. Los pendientes guardan el hash
-  hasta resultado/reconcile; una marca sin UUID permite borrarlo al cerrar.
-  La redacción se difiere hasta validar la intención. La asociación privada
-  con la cuenta se elimina al borrarla. Brevo asocia por contacto/job/entrega
-  con clave primaria; el nuevo recorder nativo recibe la cuenta de la acción.
-- Pendiente de decisión del orquestador: históricos sin asociación verificable
-  (por ejemplo leases Brevo rotados). El guard actual aborta atómicamente con
-  `admin_effect_backfill_requires_mapping`; no elimina hashes sin mapeo ni
-  supone producción vacía. Se preguntó si borrar cerrados sin asociación o
-  exigir evidencia/mapeo previo. PR permanece draft y VANTA-132 En curso.
-- Retención provisional **365 días**, solo filas cerradas, desde el último
-  evento. Isaac puede bajarla a 90 en el único parámetro SQL
-  `private.admin_audit_policy.closed_retention_days`. Pendientes hasta reconcile.
-  No purga al desplegar ni cron nuevo. Cada purga deja actor/fecha/TTL/conteos
-  en mail_audit. Se retira la vista adicional; un único DELETE de efectos.
-- Mantenimiento mediante tabla privada por transacción, sin GUC que abra
-  barreras. Lock de identidades SHARE ROW EXCLUSIVE. RPC service-only, owner
-  vigente, definer postgres y search_path vacío; SQL completo por ADR 0106.
-- README: pre-check de solo lectura con total físico/claves/UUID/borrados,
-  conteos de efectos y pendientes. **Irreversible: Isaac hace y custodia backup
-  lógico de admin_audit_log y mail_audit antes.** El agente no exporta datos.
-  Down exacto de esquema/ACL cuando los datos lo permiten; aborta antes de DDL
-  si actores/hashes ya redactados impiden restaurar el contrato anterior.
-- Despliegue solo Isaac: cadena anterior 7b1 → 7b2 → #1924 → owner → #1939 →
-  #1941 → #1942 → #1944 → #1946 → SMTP/#1947 → 10b. Pausar Clerk en 7b2.
-  SQL antes de native-admin; el recorder antiguo sin cuenta queda revocado
-  y una Edge antigua falla cerrada antes del proveedor. ACK tras hash redactado
-  falla cerrado y no reenvía HTTP. SMTP conserva el bloqueo de contactos borrados.
-- Caracterizaciones RED c98b825b1 y 22c315bc5, código validado 2053ae69c:
-  285 Deno PASS; SQL LF/CRLF 26 mínimos + 27 retención y ocho suites activas,
-  histórico no vacío, rechazo atómico de guard/down, pg_dump/ACL/triggers
-  idénticos tras down, segunda pasada y reaplicación PASS. Se mantienen seis
-  carreras reales de journal/leases. PostgreSQL local detenido.
-- Snapshots schema/ provienen solo de regenerar la cadena completa; write/check
-  PASS en replay independiente. Sin edición manual. Check/lint/fmt/Python/diff
-  PASS. Sin Rust: compilación/telemetría/lifecycle omitidos, no cambia ningún crate.
-- Producción **915 → 1542 (+627)**: TS +5 y migración/down completos +622,
-  incluidas las tres funciones de proveedor y sus cuerpos anteriores exactos.
-  No cumple la reducción del paso 10; crecimiento exigido por esta política de
-  redacción y SQL completo. Tests/tooling y derivados se informan aparte en PR.
-- Base nightly 269d08d1b (#1957 integrado); sin cambios en _shared,
-  apply_clerk_user_event, billing o licencias. Sin producción/deploy/merge/release.
-  Sigue lectura owner del 10; luego 6 y sync_payments con UI/lecturas puras.
-  El 11 permanece exclusivamente en R6/12.
+- Política histórica decidida: cerrados sin asociación verificable pasan a
+  `target_hash=erased`, sin borrar filas ni acción/resultado/fecha. Los pendientes
+  conservan el hash hasta reconciliarse. No se exige mapeo ni queda ese bloqueo.
+  El pre-check de solo lectura cuenta ambos conjuntos y se prueba antes del up:
+  fixture no vacía con 2 filas cerradas y 2 pendientes; cierre posterior GREEN.
+- Recortes: los tres recorders Brevo pasan de 132 a 102 líneas, contando sus
+  dos helpers compartidos. Mantienen clasificación HTTP, owner/capacidad e
+  intención/ACK exactos. Un solo trigger parametrizado para admin y mail; el
+  mismo minimizador de filas sirve al INSERT y al backfill. Backfill de efectos
+  en un UPDATE; sin vista adicional ni guard que exija mapeo. La purga mantiene
+  DELETE por fecha de admin/mail y un único DELETE para grupos de efectos.
+- P1 anteriores siguen GREEN: tester idempotente en up/down/up con filas vivas;
+  borrado real retira target y actores de admin/mail, incluidos INSERT posteriores.
+  Efectos cerrados pierden hash; pendientes pierden asociación UUID y conservan
+  una marca para redactar al cerrar, después de validar el resultado original.
+- Retención provisional de 365 días en el único parámetro SQL
+  `private.admin_audit_policy.closed_retention_days`, bajable a 90 por Isaac.
+  Solo cerrados, desde último evento; pendientes hasta reconcile. Cada purga
+  deja actor/fecha/TTL/conteos en mail_audit. Sin cron ni purga durante despliegue.
+- Seguridad: tabla privada por transacción en lugar de GUC; identidades con
+  SHARE ROW EXCLUSIVE. Guard exige postgres con BYPASSRLS/superuser, fijando
+  propietario de objetos nuevos. Helpers privados sin EXECUTE de app, RPC
+  service-only/owner vigente y search_path vacío. Funciones SQL completas.
+- Código validado 4da5d77bb; RED a21f3e1eb antes del cambio. LF/CRLF: 26 mínimos,
+  28 de retención/seguridad, 220 de ocho suites activas, pre-check/históricos,
+  pg_dump/ACL/triggers exactos tras down, rechazo atómico del down y segunda
+  pasada/reapply PASS. Seis carreras existentes PASS. Python/diff PASS.
+  schema/ solo regenerado desde cadena completa, write/check independiente PASS.
+  PostgreSQL local detenido. Sin TS/Rust nuevo en esta revisión; Deno previo
+  285 PASS; compilación/telemetría/lifecycle omitidos al no tocar crates.
+- Corrección de medición: la cifra +627 incluía **188 de rollbacks/**; se separan.
+  Producción física pasa de +439 a **+381** (915 → 1296), recorte real de 58.
+  Rollback actual 191, excluido; tests/docs/derivados separados en el PR.
+
+| Bloque físico | eff002c85 | Actual |
+| --- | ---: | ---: |
+| Funciones nuevas | 159 | 189 |
+| Tres funciones Brevo redefinidas completas | 132 | 72 |
+| DDL de triggers/barreras | 25 | 25 |
+| Backfill, incluido helper temporal anterior | 42 | 28 |
+| Guards de rol/mapeo | 11 | 6 |
+| Tablas, índices, ACL, transacción y comentarios | 65 | 56 |
+| TypeScript neto frente a nightly | 5 | 5 |
+| **Producción** | **439** | **381** |
+| Rollback, excluido de producción | 188 | 191 |
+
+- Sigue por encima de +250 físicos; no se presenta como objetivo alcanzado.
+  Las funciones nuevas son: minimización compartida 56, asociación/borrado y
+  cierre diferido 71, mantenimiento/escritura/estados compartidos 35 y purga 27.
+  Cada bloque implementa las P1 acordadas o el TTL/rastro obligatorio. Las 72
+  de RPC conservan owner/lease y protocolo proveedor; las 28 de backfill sanea
+  producción con datos; las 25 de triggers mantienen barreras y la redacción
+  concurrente. Guards/ACL/DDL son necesarios para propiedad, permisos, erased
+  y unicidad SMTP. ADR 0106 exige cuerpos completos; no se aplana historia/11.
+- Solo Isaac despliega: cadena 7b1 → 7b2 → #1924 → owner → #1939 → #1941 →
+  #1942 → #1944 → #1946 → SMTP/#1947 → 10b. Pausar Clerk en 7b2. Backup lógico
+  admin_audit_log/mail_audit antes del cambio irreversible; ejecutar pre-check.
+  SQL antes de native-admin. La firma antigua sin cuenta queda revocada;
+  una Edge antigua falla cerrada antes de HTTP. Down exacto cuando los datos
+  lo permiten; aborta antes de DDL si actores/hashes redactados impiden volver.
+- Base nightly 269d08d1b; PR draft, VANTA-132 En curso. Sin _shared,
+  apply_clerk_user_event, billing, licencias, secretos ni producción. Sin deploy,
+  merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
+  UI/lecturas puras. El 11 sigue exclusivamente en R6/12.

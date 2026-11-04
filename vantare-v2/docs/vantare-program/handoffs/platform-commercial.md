@@ -8565,7 +8565,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
   sus fallos públicos son native_admin_forbidden/native_admin_not_found.
 - Caracterización previa f75af7424: 5 PASS/4 RED. Review: 16 PASS/1 RED antes de
   retirar nombres especulativos. Replay local admin/Edge, down/guards y carreras
-  de la entrega anterior PASS; nuevos gates/medición y HEAD en PR/issue.
+  de la entrega anterior PASS. Review final: 198 Deno, check/lint/fmt y 471 huellas PASS.
+- Producción 990 → 989 (-1); tests +104/-3; docs +31/-0. HEAD final en PR/issue.
 - Desconocidos: 503 con diagnóstico fijo, sin PII. Sin shared, secretos, servicios
   reales, deploy, merge ni release. Rust omitido porque native no cambia.
 - VANTA-132 En curso: revisar 1948, rebasar 1951 encima y corregir su contrato;

@@ -417,6 +417,7 @@ declare
   anchor text := 'delete from public.testing_contributions where account_id=account;';
   redaction_start text := 'update public.testing_center_report_payloads set action_text=''Deleted'',';
   redaction_end text := 'where report_id in(select report_id from public.testing_center_reports where reporter_user_id=account);';
+  redaction_sha256 text := '391427b59c8239426d6c8e051bf680cacada5cff21bf289eb0aeb161164e91c7';
   start_at integer;
   end_at integer;
   fragment text := $fragment$
@@ -473,7 +474,11 @@ begin
   end_at:=position(redaction_end in definition);
   if start_at=0 or end_at<=start_at
     or position(redaction_start in pg_catalog.substr(definition,start_at+1))>0
-    or position(redaction_end in pg_catalog.substr(definition,end_at+1))>0 then
+    or position(redaction_end in pg_catalog.substr(definition,end_at+1))>0
+    or pg_catalog.encode(public.digest(pg_catalog.convert_to(
+      pg_catalog.replace(pg_catalog.substr(definition,start_at,
+        end_at-start_at+pg_catalog.length(redaction_end)),E'\r\n',E'\n'),
+      'UTF8'),'sha256'),'hex')<>redaction_sha256 then
     raise exception 'legacy_archive_account_redaction_source_drift' using errcode='55000';
   end if;
   -- Once the closed legacy tables are drained, payload redaction is dead code.

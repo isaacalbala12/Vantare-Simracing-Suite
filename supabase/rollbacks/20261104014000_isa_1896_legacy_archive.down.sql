@@ -183,6 +183,40 @@ begin
         where child."row"->ca.attname is null
           or child."row"->ca.attname is distinct from parent."row"->pa.attname))
   on conflict (source_table,source_id) do nothing;
+  -- A missing parent can itself have archived children. Propagate the skip
+  -- through the same catalog FK edges before any restore INSERT runs.
+  insert into pg_temp._legacy_skipped(source_table,source_id,reason)
+  with recursive descendants(source_table,source_id) as (
+    select source_table,source_id from pg_temp._legacy_skipped
+    where reason='missing_parent'
+    union
+    select child.source_table,child.source_id
+    from private.testing_center_legacy_archive child
+    join descendants path on true
+    join private.testing_center_legacy_archive parent
+      on parent.source_table=path.source_table and parent.source_id=path.source_id
+    where exists(select 1 from pg_catalog.pg_constraint fk
+      join pg_catalog.pg_class cc on cc.oid=fk.conrelid
+      join pg_catalog.pg_namespace cn on cn.oid=cc.relnamespace
+      join pg_catalog.pg_class pc on pc.oid=fk.confrelid
+      join pg_catalog.pg_namespace pn on pn.oid=pc.relnamespace
+      where fk.contype='f'
+        and child.source_table=pg_catalog.format('%I.%I',cn.nspname,cc.relname)
+        and parent.source_table=pg_catalog.format('%I.%I',pn.nspname,pc.relname)
+        and not exists(select 1 from unnest(fk.conkey,fk.confkey)
+          as key_pair(child_attnum,parent_attnum)
+          join pg_catalog.pg_attribute ca on ca.attrelid=fk.conrelid
+            and ca.attnum=key_pair.child_attnum
+          join pg_catalog.pg_attribute pa on pa.attrelid=fk.confrelid
+            and pa.attnum=key_pair.parent_attnum
+          where child."row"->ca.attname is null
+            or child."row"->ca.attname is distinct from parent."row"->pa.attname))
+      or (parent.source_table='public.testing_center_technical_issues'
+        and child.source_table in ('public.testing_center_audit',
+          'public.testing_center_idempotency')
+        and child."row"->>'aggregate_id'=parent.source_id)
+  ) select source_table,source_id,'missing_parent' from descendants
+  on conflict (source_table,source_id) do nothing;
   select count(*) into v_skipped from pg_temp._legacy_skipped;
   select count(*) into v_deleted_skipped from pg_temp._legacy_skipped
     where reason='deleted';

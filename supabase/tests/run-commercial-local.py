@@ -252,6 +252,8 @@ $$;
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
    if archive_fixture:
+    b03_before=run('psql',*conn,'-At','-c',"""select pg_get_functiondef(
+      'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure)""")
     run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.before.sql')
     preflight=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.preflight.sql')
     (OUT/'testing_center_legacy_archive.preflight.log').write_text(preflight)
@@ -302,6 +304,29 @@ $$;
      if 'legacy_archive_pending_effect' not in str(error): raise
     else: raise RuntimeError('7b2 discarded a pending Linear delivery')
     run('psql',*conn,'-c',"update public.testing_center_linear_webhook_deliveries set outcome='applied' where delivery_id='18960000-0000-4000-8000-000000000713'")
+    run('psql',*conn,'-c',"""do $tamper$
+      declare definition text;
+      begin
+        definition:=pg_get_functiondef(
+          'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure);
+        if position('expected_text=''Deleted''' in definition)=0 then
+          raise exception 'legacy_redaction_fixture_missing';
+        end if;
+        execute replace(definition,'expected_text=''Deleted''',
+          'expected_text=''Altered''');
+      end $tamper$;""")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_account_redaction_source_drift' not in str(error): raise
+    else: raise RuntimeError('7b2 accepted changed legacy redaction')
+    run('psql',*conn,'-c',"""do $restore$
+      declare definition text;
+      begin
+        definition:=pg_get_functiondef(
+          'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure);
+        execute replace(definition,'expected_text=''Altered''',
+          'expected_text=''Deleted''');
+      end $restore$;""")
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -342,6 +367,12 @@ $$;
     mapped_ids=run('psql',*conn,'-At','-c',"""select jsonb_object_agg(legacy_source_id,id order by legacy_source_id)
       from public.testing_contributions where legacy_source_id is not null""").strip()
     run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+    b03_after=run('psql',*conn,'-At','-c',"""select pg_get_functiondef(
+      'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure)""")
+    def without_blank_lines(definition):
+     return '\n'.join(line for line in definition.split('\n') if line.strip())
+    if without_blank_lines(b03_after)!=without_blank_lines(b03_before):
+     raise RuntimeError('7b2 rollback changed B03 beyond blank lines')
     b03_restored=run('psql',*conn,'-At','-c',"""select position(
       'VANTA131 legacy archive erasure begin' in pg_get_functiondef(
       'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))=0""").strip()
@@ -434,22 +465,48 @@ $$;
       (select count(*) from public.testing_contributions
         where account_id='18960000-0000-4000-8000-0000000007b2')::text""").strip()
     if erased!='0|2|0': raise RuntimeError('account erasure crossed owners or retained data: '+erased)
+    run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
+      (source_table,source_id,"row",row_sha256)
+      select source_table,'effect_'||repeat(suffix,64),changed,
+        encode(public.digest(convert_to(changed::text,'UTF8'),'sha256'),'hex')
+      from private.vanta131_archive_restore_probe source
+      cross join (values ('8','b'),('9','c')) as pair(original,suffix)
+      cross join lateral (select source."row"||jsonb_build_object(
+        'effect_id','effect_'||repeat(suffix,64),
+        'effect_key',(source."row"->>'effect_key')||'_b',
+        'primary_report_id','report_'||repeat('b',64)) as changed) cloned
+      where source_table='public.testing_center_effect_outbox'
+        and source_id='effect_'||repeat(original,64);
+      insert into private.testing_center_legacy_archive
+      (source_table,source_id,"row",row_sha256)
+      select source_table,'effect_'||repeat('b',64),changed,
+        encode(public.digest(convert_to(changed::text,'UTF8'),'sha256'),'hex')
+      from private.vanta131_archive_restore_probe source
+      cross join lateral (select source."row"||jsonb_build_object(
+        'legacy_effect_id','effect_'||repeat('b',64),
+        'superseded_by_effect_id','effect_'||repeat('c',64)) as changed) cloned
+      where source_table='public.testing_center_effect_supersessions';""")
     cross_owner_down=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
       str(ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))],
       env=ENV,capture_output=True,text=True)
-    if cross_owner_down.returncode or 'missing-parent rows=1' not in cross_owner_down.stderr:
+    if cross_owner_down.returncode or 'missing-parent rows=4' not in cross_owner_down.stderr:
      raise RuntimeError('cross-owner rollback did not skip missing issue: '+cross_owner_down.stderr)
     cross_owner_restored=run('psql',*conn,'-At','-c',"""select
       (select count(*) from public.testing_center_reports where
         report_id='report_'||repeat('b',64))::text||'|'||
       (select count(*) from public.testing_center_issue_occurrences where
-        report_id='report_'||repeat('b',64))::text""").strip()
-    if cross_owner_restored!='1|0':
+        report_id='report_'||repeat('b',64))::text||'|'||
+      (select count(*) from public.testing_center_effect_outbox where
+        effect_id in ('effect_'||repeat('b',64),'effect_'||repeat('c',64)))::text||'|'||
+      (select count(*) from public.testing_center_effect_supersessions where
+        legacy_effect_id='effect_'||repeat('b',64))::text""").strip()
+    if cross_owner_restored!='1|0|0|0':
      raise RuntimeError('cross-owner rollback lost report or restored dangling issue')
     run('psql',*conn,'-c',"""delete from public.testing_center_reports
       where report_id='report_'||repeat('b',64);
       delete from private.testing_center_legacy_archive
-      where source_id='report_'||repeat('b',64);""")
+      where source_id in ('report_'||repeat('b',64),
+        'effect_'||repeat('b',64),'effect_'||repeat('c',64));""")
     run('psql',*conn,'-f',migration_source)
     run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
       select * from private.vanta131_archive_restore_probe;

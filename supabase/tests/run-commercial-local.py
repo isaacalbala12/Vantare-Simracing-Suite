@@ -243,9 +243,15 @@ $$;
      rpc['definition']=rpc['definition'].replace('\r\n','\n')
    return json.dumps(snapshot,sort_keys=True)
   def retirement_schema():
-   ddl=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
-     '-d',database,'--schema-only','--no-owner',
-     *(argument for table in retired_tables for argument in ('-t','public.'+table)))
+   tables=tuple(argument for table in retired_tables for argument in ('-t','public.'+table))
+   # The pinned Supabase container is PG17; Ubuntu's pg_dump client is PG16.
+   # Use the matching server image client for the exact before/after snapshot.
+   if args.docker:
+    ddl=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+      '-U','postgres','-d',database,'--schema-only','--no-owner',*tables)
+   else:
+    ddl=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
+      '-d',database,'--schema-only','--no-owner',*tables)
    return '\n'.join(line for line in ddl.splitlines()
      if not line.startswith(('\\restrict ','\\unrestrict ')))
   channel_role_before=None

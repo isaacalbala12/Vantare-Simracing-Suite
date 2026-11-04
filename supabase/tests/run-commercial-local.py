@@ -248,6 +248,60 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
+   archive_stem='20261104014000_isa_1896_legacy_archive'
+   archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
+                    and not (args.testing_identity or args.pilot_profile or args.b01))
+   if archive_fixture:
+    run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.before.sql')
+    preflight=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.preflight.sql')
+    (OUT/'testing_center_legacy_archive.preflight.log').write_text(preflight)
+    if 'public.testing_center_reports|archivar vinculadas|7' not in preflight:
+     raise RuntimeError('7b2 preflight did not count every legacy parent')
+    run('psql',*conn,'-c',"""insert into public.testing_center_evidence_batches
+      (batch_id,reporter_user_id,channel,idempotency_key,manifest_digest)
+      values('18960000-0000-4000-8000-000000000701',
+        '18960000-0000-4000-8000-0000000007b2','nightly',
+        '7b2-storage-guard',repeat('7',64));
+      insert into public.testing_center_screenshot_evidence
+      (evidence_id,batch_id,report_id,position,object_path,media_type,
+       byte_size,sha256,width,height)
+      values('18960000-0000-4000-8000-000000000702',
+        '18960000-0000-4000-8000-000000000701','report_'||repeat('7',64),
+        1,'v1/'||repeat('7',32)||'/18960000-0000-4000-8000-000000000701/'||
+        '18960000-0000-4000-8000-000000000702','image/jpeg',100,
+        repeat('7',64),10,10);""")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_storage_present' not in str(error): raise
+    else: raise RuntimeError('7b2 archived Storage-linked rows')
+    run('psql',*conn,'-c',"""delete from public.testing_center_screenshot_evidence
+      where evidence_id='18960000-0000-4000-8000-000000000702';
+      delete from public.testing_center_evidence_batches
+      where batch_id='18960000-0000-4000-8000-000000000701';""")
+    run('psql',*conn,'-c',"update public.testing_center_effect_outbox set state='pending' where effect_id='effect_'||repeat('9',64)")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_pending_effect' not in str(error): raise
+    else: raise RuntimeError('7b2 discarded a pending effect')
+    run('psql',*conn,'-c',"update public.testing_center_effect_outbox set state='completed' where effect_id='effect_'||repeat('9',64)")
+    run('psql',*conn,'-c',"update public.testing_center_agent_jobs set state='triage_queued' where technical_issue_id='legacy-7b2-issue'")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_pending_effect' not in str(error): raise
+    else: raise RuntimeError('7b2 discarded a queued agent job')
+    run('psql',*conn,'-c',"update public.testing_center_agent_jobs set state='completed' where technical_issue_id='legacy-7b2-issue'")
+    run('psql',*conn,'-c',"update public.testing_center_codex_runs set state='queued' where run_id='legacy-7b2-run'")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_pending_effect' not in str(error): raise
+    else: raise RuntimeError('7b2 discarded a queued Codex run')
+    run('psql',*conn,'-c',"update public.testing_center_codex_runs set state='completed' where run_id='legacy-7b2-run'")
+    run('psql',*conn,'-c',"update public.testing_center_linear_webhook_deliveries set outcome='pending' where delivery_id='18960000-0000-4000-8000-000000000713'")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_pending_effect' not in str(error): raise
+    else: raise RuntimeError('7b2 discarded a pending Linear delivery')
+    run('psql',*conn,'-c',"update public.testing_center_linear_webhook_deliveries set outcome='applied' where delivery_id='18960000-0000-4000-8000-000000000713'")
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -268,6 +322,182 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if archive_fixture:
+    def archive_check(name):
+     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
+     (OUT/(name+'.log')).write_text(result)
+     if 'not ok ' in result or '# Looks like' in result:
+      raise RuntimeError(name+' failed')
+    archive_check('testing_center_legacy_archive.test.sql')
+    b03_patched=run('psql',*conn,'-At','-c',"""select position(
+      'VANTA131 legacy archive erasure begin' in pg_get_functiondef(
+      'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))>0""").strip()
+    if b03_patched!='t': raise RuntimeError('7b2 did not extend B03 account deletion')
+    legacy_writer_text=run('psql',*conn,'-At','-c',"""select
+      position('testing_center_reports' in pg_get_functiondef(
+        'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))=0
+      and position('update public.testing_center_report_payloads set action_text' in pg_get_functiondef(
+        'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))=0""").strip()
+    if legacy_writer_text!='t': raise RuntimeError('7b2 retained dead legacy payload writer')
+    mapped_ids=run('psql',*conn,'-At','-c',"""select jsonb_object_agg(legacy_source_id,id order by legacy_source_id)
+      from public.testing_contributions where legacy_source_id is not null""").strip()
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+    b03_restored=run('psql',*conn,'-At','-c',"""select position(
+      'VANTA131 legacy archive erasure begin' in pg_get_functiondef(
+      'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))=0""").strip()
+    if b03_restored!='t': raise RuntimeError('7b2 rollback kept B03 archive erasure')
+    legacy_redaction_restored=run('psql',*conn,'-At','-c',"""select position(
+      'update public.testing_center_report_payloads set action_text' in pg_get_functiondef(
+      'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))>0""").strip()
+    if legacy_redaction_restored!='t': raise RuntimeError('7b2 rollback did not restore legacy redaction')
+    archive_check('testing_center_legacy_archive.rollback.test.sql')
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=repeat('0',64)
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    try:
+     run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_hash_or_count_mismatch' not in str(error): raise
+    else:
+     raise RuntimeError('corrupt archive did not abort 7b2 atomically')
+    unchanged=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from public.testing_center_reports where
+        reporter_user_id='18960000-0000-4000-8000-0000000007b2')::text||'|'||
+      (select count(*) from public.testing_contributions where
+        account_id='18960000-0000-4000-8000-0000000007b2')::text""").strip()
+    assert unchanged=='7|0', 'failed 7b2 replay changed pilot rows'
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set "row"=pg_catalog.jsonb_set("row",'{reporter_id}',
+        '"changed"'::jsonb)
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_hash_or_count_mismatch' not in str(error): raise
+    else: raise RuntimeError('changed archive JSON did not abort 7b2')
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set "row"=pg_catalog.jsonb_set("row",'{reporter_id}',
+        '"legacy-7b2"'::jsonb)
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    run('psql',*conn,'-f',migration_source)
+    archive_check('testing_center_legacy_archive.test.sql')
+    replay_ids=run('psql',*conn,'-At','-c',"""select jsonb_object_agg(legacy_source_id,id order by legacy_source_id)
+      from public.testing_contributions where legacy_source_id is not null""").strip()
+    if replay_ids!=mapped_ids: raise RuntimeError('legacy report IDs changed on replay')
+    run('psql',*conn,'-c',"""create table private.vanta131_archive_restore_probe as
+      select * from private.testing_center_legacy_archive;""")
+    run('psql',*conn,'-c',"insert into public.profiles(id) values('18960000-0000-4000-8000-0000000007b3') on conflict (id) do nothing")
+    run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
+      (source_table,source_id,"row",row_sha256)
+      select source_table,'report_'||repeat('b',64),changed,
+        encode(public.digest(convert_to(changed::text,'UTF8'),'sha256'),'hex')
+      from private.testing_center_legacy_archive source
+      cross join lateral (select jsonb_set(jsonb_set(source."row",
+        '{report_id}',to_jsonb('report_'||repeat('b',64))),
+        '{reporter_user_id}',to_jsonb('18960000-0000-4000-8000-0000000007b3'::text))
+        as changed) other_account
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64);""")
+    run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
+      (source_table,source_id,"row",row_sha256)
+      select source_table,'report_'||repeat('b',64),changed,
+        encode(public.digest(convert_to(changed::text,'UTF8'),'sha256'),'hex')
+      from private.testing_center_legacy_archive source
+      cross join lateral (select jsonb_set(source."row",'{report_id}',
+        to_jsonb('report_'||repeat('b',64))) as changed) other_account
+      where source_table='public.testing_center_issue_occurrences'
+        and source_id='report_'||repeat('7',64);""")
+    deletion=run('psql',*conn,'-At','-c',"""select public.apply_clerk_user_event(
+      'vanta131-archive-delete',repeat('7',64),
+      'https://vanta131-archive.clerk.invalid','user_legacyarchive7b2',
+      'user.deleted',now(),null)""").strip()
+    if deletion!='applied': raise RuntimeError('archive account deletion not applied: '+deletion)
+    erased=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from private.testing_center_legacy_archive
+        where source_id<>'report_'||repeat('b',64))::text||'|'||
+      (select count(*) from private.testing_center_legacy_archive
+        where source_id='report_'||repeat('b',64))::text||'|'||
+      (select count(*) from public.testing_contributions
+        where account_id='18960000-0000-4000-8000-0000000007b2')::text""").strip()
+    if erased!='0|2|0': raise RuntimeError('account erasure crossed owners or retained data: '+erased)
+    cross_owner_down=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+      str(ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))],
+      env=ENV,capture_output=True,text=True)
+    if cross_owner_down.returncode or 'missing-parent rows=1' not in cross_owner_down.stderr:
+     raise RuntimeError('cross-owner rollback did not skip missing issue: '+cross_owner_down.stderr)
+    cross_owner_restored=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from public.testing_center_reports where
+        report_id='report_'||repeat('b',64))::text||'|'||
+      (select count(*) from public.testing_center_issue_occurrences where
+        report_id='report_'||repeat('b',64))::text""").strip()
+    if cross_owner_restored!='1|0':
+     raise RuntimeError('cross-owner rollback lost report or restored dangling issue')
+    run('psql',*conn,'-c',"""delete from public.testing_center_reports
+      where report_id='report_'||repeat('b',64);
+      delete from private.testing_center_legacy_archive
+      where source_id='report_'||repeat('b',64);""")
+    run('psql',*conn,'-f',migration_source)
+    run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
+      select * from private.vanta131_archive_restore_probe;
+      drop table private.vanta131_archive_restore_probe;""")
+    skipped=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+      str(ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))],
+      env=ENV,capture_output=True,text=True)
+    if skipped.returncode or 'skipped deleted-owner rows=26' not in skipped.stderr:
+     raise RuntimeError('rollback did not count deleted-owner archive rows: '+skipped.stderr)
+    if run('psql',*conn,'-At','-c',"select count(*) from public.testing_center_reports").strip()!='0':
+     raise RuntimeError('rollback resurrected deleted-account reports')
+    run('psql',*conn,'-f',migration_source)
+    # The rest of the commercial suite assumes an empty report catalogue.
+    # Remove only this disposable characterization fixture after verifying it.
+    run('psql',*conn,'-c',"""delete from public.testing_report_followup f
+      using public.testing_contributions c
+      where f.contribution_id=c.id and c.legacy_source_id is not null;
+      delete from public.testing_contributions where legacy_source_id is not null;
+      delete from private.testing_center_legacy_archive;""")
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+    run('psql',*conn,'-f',migration_source)
+    empty=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from public.testing_center_reports)::text||'|'||
+      (select count(*) from private.testing_center_legacy_archive)::text||'|'||
+      (select count(*) from public.testing_contributions
+        where legacy_source_id is not null)::text""").strip()
+    if empty!='0|0|0': raise RuntimeError('empty 7b2 migration changed rows: '+empty)
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+    run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.states.before.sql')
+    state_move=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+      str(migration_source)],env=ENV,capture_output=True,text=True)
+    if state_move.returncode or 'predeleted_drained=2' not in state_move.stderr:
+     raise RuntimeError('7b2 did not count and drain predeleted rows: '+state_move.stderr)
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.states.test.sql')
+    (OUT/'testing_center_legacy_archive.states.test.sql.log').write_text(result)
+    if 'not ok ' in result or '# Looks like' in result:
+     raise RuntimeError('legacy archive state mapping failed: '+result)
+    skipped_states=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+      str(ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))],
+      env=ENV,capture_output=True,text=True)
+    if skipped_states.returncode or 'skipped deleted-owner rows=0, missing-profile rows=1' not in skipped_states.stderr:
+     raise RuntimeError('state rollback did not skip ineligible owners: '+skipped_states.stderr)
+    if run('psql',*conn,'-At','-c',"select count(*) from public.testing_center_reports").strip()!='6':
+     raise RuntimeError('state rollback restored a deleted or missing owner')
+    run('psql',*conn,'-f',migration_source)
+    run('psql',*conn,'-c',"""delete from public.testing_contributions
+      where legacy_source_id is not null;
+      delete from private.testing_center_legacy_archive;""")
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   role_contract=run('psql',*conn,'-c',"""
@@ -683,7 +913,15 @@ $$;
     (OUT/'owner-alert-edge.log').write_text(owner_tests.stdout+owner_tests.stderr,encoding='utf-8')
     if owner_tests.returncode: raise RuntimeError(owner_tests.stdout+owner_tests.stderr)
     print('Owner alert HMAC/durable ACK/email regressions PASS',flush=True)
-   if not args.admin_effects_only: run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
+   if not args.admin_effects_only:
+    # This historical race corpus seeds legacy payloads through SQL fixtures.
+    # Run it with the 7b2 rollback, which restores B03 redaction; the 7b2
+    # production state drains those tables and closes their API writers.
+    if legacy_writers_enabled and (ROOT/'supabase/migrations'/(archive_stem+'.sql')).exists():
+     run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+     run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
+    else:
+     run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
  finally:
   if args.docker:
    (OUT/'postgres.log').write_text(docker('logs',container))

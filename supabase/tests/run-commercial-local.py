@@ -271,6 +271,10 @@ $$;
    if snapshot['orphan_functions'] is not None:
     for rpc in snapshot['orphan_functions']:
      rpc['definition']=rpc['definition'].replace('\r\n','\n')
+   if snapshot['kept_triggers'] is not None:
+    for trigger in snapshot['kept_triggers']:
+     for key in ('definition','args'):
+      trigger[key]=trigger[key].replace('\r\n','\n')
    return json.dumps(snapshot,sort_keys=True)
   def retirement_schema():
    tables=tuple(argument for table in retired_tables for argument in ('-t','public.'+table))
@@ -477,6 +481,17 @@ $$;
        env=ENV,capture_output=True,text=True)
      if denied.returncode==0 or 'legacy_retirement_requires_bypassrls' not in denied.stderr:
       raise RuntimeError('retirement role guard did not fail closed: '+denied.stderr)
+     run('psql',*conn,'-c',"""create function public.testing_center_legacy_reference_probe()
+       returns void language plpgsql as $$ begin
+         perform pg_catalog.to_regclass('public.testing_center_reports');
+       end $$""")
+     dangling=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',str(migration_source)],
+       env=ENV,capture_output=True,text=True)
+     if dangling.returncode==0 or 'legacy_retirement_dangling_catalog_reference' not in dangling.stderr:
+      raise RuntimeError('retirement catalog guard did not fail closed: '+dangling.stderr)
+     if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is not null").strip()!='t':
+      raise RuntimeError('failed catalog guard partially retired the schema')
+     run('psql',*conn,'-c','drop function public.testing_center_legacy_reference_probe()')
      references=run('psql',*conn,'-c',"""select jsonb_build_object(
        'triggers',(select coalesce(jsonb_agg(jsonb_build_object(
          'table',t.tgrelid::regclass::text,'name',t.tgname,

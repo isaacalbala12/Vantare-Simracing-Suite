@@ -1109,6 +1109,9 @@ impide nuevos `technical_issues.report_id` y aborta si queda un trigger o
 función con referencia a las tablas retiradas. El down restaura las 24
 definiciones, ocho funciones huérfanas y ACL; PostgreSQL local verifica el
 snapshot antes/después, 18 pruebas finales y cinco escrituras reales.
+El runner inyecta además una función local con referencia opaca a la tabla
+retirada: el preflight de catálogo aborta atómicamente y el runner comprueba
+que la tabla siga existiendo antes de repetir el cierre limpio.
 Las suites de informes legacy se marcan como históricas. La allowlist del Hub
 conserva por ahora los dos RPC de capturas porque `report/screenshots.rs` aún
 los invoca y `report/tests.rs` los caracteriza; las capturas siguen apagadas y

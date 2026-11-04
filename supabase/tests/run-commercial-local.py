@@ -720,7 +720,15 @@ $$;
    (OUT/'retirement-before.sql').write_text(retirement_schema_before)
    (OUT/'retirement-after.sql').write_text(retirement_schema_after)
    if retirement_after!=retirement_before or retirement_schema_after!=retirement_schema_before:
-    raise RuntimeError('final 7b rollback did not restore exact schema, policies, ACL or functions')
+    earlier=json.loads(retirement_before); later=json.loads(retirement_after)
+    changed=[key for key in earlier if earlier[key]!=later[key]]
+    old_lines=retirement_schema_before.splitlines()
+    new_lines=retirement_schema_after.splitlines()
+    first=next((i for i in range(max(len(old_lines),len(new_lines)))
+      if old_lines[i:i+1]!=new_lines[i:i+1]),None)
+    headers=[line for line in old_lines[:first or 0] if line.startswith('-- Name: ')]
+    raise RuntimeError('final 7b rollback drift: catalog '+','.join(changed)+
+      ', schema line '+str(first)+', object '+(headers[-1] if headers else '<header>'))
    if run('psql',*conn,'-c',"""select bool_or(has_table_privilege(role_name,
      'private.testing_center_legacy_archive','SELECT,INSERT,UPDATE,DELETE'))
      from (values('anon'),('authenticated'),('service_role')) roles(role_name)""").strip()!='f':

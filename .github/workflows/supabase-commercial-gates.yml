@@ -116,6 +116,18 @@ jobs:
               --output "$RUNNER_TEMP/commercial-races/retirement-$newline" \
               2>&1 | tee "$RUNNER_TEMP/commercial-races/retirement-$newline.log"
           done
+      - name: Verify operational owner disposition and exact rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          for newline in lf crlf; do
+            python3 supabase/tests/run-commercial-local.py --docker \
+              --pg-bin "$(pg_config --bindir)" \
+              --migration-newlines "$newline" \
+              --owner-disposition-only \
+              --output "$RUNNER_TEMP/commercial-races/owner-disposition-$newline" \
+              2>&1 | tee "$RUNNER_TEMP/commercial-races/owner-disposition-$newline.log"
+          done
       - name: Verify derived domain schema
         shell: bash
         run: |

@@ -37,6 +37,7 @@ parser.add_argument('--admin-erasure-only', action='store_true')
 parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
 parser.add_argument('--legacy-retirement-inventory', action='store_true', help='Read-only catalog inventory after migrations')
 parser.add_argument('--legacy-retirement-only', action='store_true', help='Replay full chain, then verify final 7b closure and rollback')
+parser.add_argument('--owner-disposition-only', action='store_true', help='Replay full chain, then test the operational owner disposition boundary')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -206,6 +207,11 @@ $$;
   owner_ack_previous=None
   retirement_stem='20261104120500_isa_1896_legacy_retirement'
   retirement_before=None
+  owner_disposition_stem='20261104164800_isa_1936_owner_disposition_authority'
+  owner_disposition_before=None
+  owner_disposition_snapshot="""select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')
+    ||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p
+    where p.oid='public.testing_center_record_owner_disposition(text,text,text,text,text,text,text,uuid)'::regprocedure"""
   retirement_schema_before=None
   retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',
     'testing_center_issue_occurrences','testing_center_posthog_consent_events',
@@ -319,7 +325,7 @@ $$;
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    # Historical suites run against the pre-retirement schema. CI also replays
    # the complete chain with --legacy-retirement-only and tests the final state.
-   if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot): continue
+   if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot or args.owner_disposition_only): continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
@@ -403,6 +409,8 @@ $$;
      'private.testing_contribution_submit_v2_for_account(uuid,uuid,text,text,text,jsonb,jsonb)'::regprocedure)"""
    if m.stem==channel_stem:
     channel_role_before=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
+   if m.stem==owner_disposition_stem and (args.owner_disposition_only or args.legacy_retirement_only):
+    owner_disposition_before=run('psql',*conn,'-At','-c',owner_disposition_snapshot).strip()
    archive_stem='20261104014000_isa_1896_legacy_archive'
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
@@ -783,6 +791,28 @@ $$;
     run('psql',*conn,'-c',"""delete from public.testing_contributions
       where legacy_source_id is not null;
       delete from private.testing_center_legacy_archive;""")
+  def owner_disposition_down():
+   down=ROOT/'supabase/rollbacks'/(owner_disposition_stem+'.down.sql')
+   down_source=OUT/'migration-sources'/down.name
+   down_text=down.read_text(encoding='utf-8')
+   down_source.write_bytes(down_text.replace('\n','\r\n').encode('utf-8')
+    if args.migration_newlines=='crlf' else down_text.encode('utf-8'))
+   run('psql',*conn,'-f',down_source)
+  if args.owner_disposition_only:
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_disposition_authority.test.sql')
+   if re.search(r'^not ok ',result,re.M):
+    raise RuntimeError('owner disposition characterization failed:\n'+result)
+   if owner_disposition_before is not None:
+    owner_disposition_down()
+    restored=run('psql',*conn,'-At','-c',owner_disposition_snapshot).strip()
+    if restored!=owner_disposition_before:
+     raise RuntimeError('owner disposition rollback changed function or ACL')
+    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_disposition_stem+'.sql'))
+    replay=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_disposition_authority.test.sql')
+    if re.search(r'^not ok ',replay,re.M):
+     raise RuntimeError('owner disposition reapply failed:\n'+replay)
+   print('Operational owner disposition boundary PASS',flush=True)
+   raise SystemExit(0)
   if args.schema_snapshot:
    # The runner owns a fresh loopback database; no DSN or hosted endpoint is accepted.
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null and to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
@@ -855,6 +885,8 @@ $$;
    actor_result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement_actor.test.sql')
    (OUT/'testing_center_legacy_retirement_actor.test.sql.log').write_text(actor_result)
    if 'not ok ' in actor_result or '1..6' not in actor_result: raise RuntimeError(actor_result)
+   if owner_disposition_before is not None:
+    owner_disposition_down()
    run('psql',*conn,'-c',"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
      values('https://retirement.invalid',array['https://retirement.invalid'],true)
      on conflict(issuer) do nothing;
@@ -920,6 +952,8 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(retirement_stem+'.sql'))
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null").strip()!='t':
     raise RuntimeError('final 7b failed with an already absent Storage policy')
+   if owner_disposition_before is not None:
+    run('psql',*conn,'-f',OUT/'migration-sources'/(owner_disposition_stem+'.sql'))
    print('Final 7b closure, absent Storage policy, empty-archive guard, exact rollback and reapply PASS',flush=True)
    raise SystemExit(0)
   # All four product principals must retain the same safe attributes after

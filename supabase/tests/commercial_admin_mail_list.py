@@ -33,6 +33,7 @@ def run_mail_list(run,conn,out,newlines,previous):
     current=json.loads(run('psql',*conn,'-c',SNAPSHOT))
     sql(root/'supabase/tests/native_admin_mail_list_purity.test.sql')
     sql(root/'supabase/tests/native_admin_confirmations.test.sql')
+    sql(root/'supabase/tests/marketing_mail_erasure_retention.test.sql')
     sql(down)
     assert json.loads(run('psql',*conn,'-c',SNAPSHOT))==json.loads(previous),'mail list down changed predecessor body/ACL'
     baseline=run('psql',*conn,'-f',root/'supabase/tests/native_admin_mail_list_purity.test.sql')

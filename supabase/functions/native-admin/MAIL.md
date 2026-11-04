@@ -198,7 +198,8 @@ invocación periódica falla. Aquí no se instala monitor ni scheduler.
 
 Retención: la llamada periódica de `mail-cleanup` debe mantenerse aunque falle
 Brevo o se apaguen campañas. Su primer paso es `mail_erasure_expire`, antes de
-mirar clave/flag Brevo; también se ejecuta en cada claim y lectura Owner. Con
+mirar clave/flag Brevo; también se ejecuta en cada claim. El panel solo informa del estado y no ejecuta
+mantenimiento. Con
 limpieza deshabilitada/sin clave devuelve 503 **después** de purgar por edad. Se
 puede programar directamente la RPC solo-servidor `mail_erasure_expire` cada
 minuto, independiente del worker HTTP. El límite de 24 h se evalúa en cada tick;

@@ -700,13 +700,13 @@ el admin deja de importar el punto de entrada del webhook. Abortos multipart,
 objetos, límites de cinco tandas y ACK conservan su orden y sus reintentos.
 Los errores de una cola de uploads no impiden drenar los objetos completados.
 No cambia SQL, tampoco `apply_clerk_user_event`. Sin migración; Isaac despliega
-las dos Edge del corte aprobado. El resto de lecturas puras sigue en el paso 8b.
+las dos Edge del corte aprobado. El resto de lecturas puras sigue en el paso 8d.
 
 Las tres lecturas de cuenta y creadores conservan su sincronización de pagos.
 Su conversión a lecturas puras irá junto con `sync_payments`, su cupo propio y
 el botón/flujo nativo, para no mostrar comisiones menos completas entre entregas.
 El paso 8a de este PR contiene únicamente el limpiador compartido; quedan esas
-lecturas y retirar el mantenimiento implícito de `mail_list` en el paso 8b.
+lecturas y retirar el mantenimiento implícito de `mail_list` en el paso 8d.
 
 ### Confirmación común del journal · paso 10a
 
@@ -910,16 +910,18 @@ mail_list informa la cola tal como está: no caduca trabajos ni escribe eventos
 de mantenimiento. Conserva la auditoría mínima de la lectura. La caducidad
 permanece en mail-cleanup y en la acción explícita mail_cleanup; el worker la
 ejecuta antes de comprobar los flags/credenciales de Brevo, también desactivado.
-No se crea otro barrido ni se cambia la retención de24h de direcciones temporales.
+No se crea otro barrido ni se cambia la retención de 24 h de direcciones temporales.
 
-SQL completo posterior a1962, con permisos service_role y rollback exacto.
+SQL completo posterior a 1962, con permisos service_role y rollback exacto.
 Mantiene el CAS de confirmación, recipients solo en get/save draft y cancelación.
 Por timestamp, desplegar esta migración después de1963; producción tiene datos.
 Pre-check readonly: `select state,count(*),min(created_at) from private.mail_contact_erasures group by state;`.
-Comprobar la ejecución programada de mail-cleanup antes de desplegar; el repo
-no demuestra la configuración de producción. Consulta readonly para cron local:
-`select jobname,schedule,active from cron.job where command like '%mail-cleanup%' or command like '%mail_erasure_expire%';`.
-Si se programa fuera de Postgres, Isaac comprueba ese scheduler. Sin un barrido
-activo verificado no desplegar este corte; la acción manual no garantiza24h.
+Precondición bloqueante antes de desplegar 215424: comprobar que la tarea de
+Windows `\Vantare-VANTA96-MailCleanup` está activa, se ejecuta cada minuto con
+`scheduler.py --mail-only` y termina correctamente (último resultado 0).
+El orquestador verificó su existencia y una ejecución correcta; Isaac repite la
+comprobación justo antes del despliegue. No modificar la tarea. Consulta readonly:
+`Get-ScheduledTask -TaskPath '\' -TaskName 'Vantare-VANTA96-MailCleanup' | Select-Object State`
+y `Get-ScheduledTaskInfo -TaskPath '\' -TaskName 'Vantare-VANTA96-MailCleanup' | Select-Object LastRunTime,LastTaskResult,NextRunTime`.
 Este PR no crea ni cambia cron, flags ni configuración. El down restaura la llamada
 al mantenimiento en la lectura, sin convertir estados ni recuperar datos borrados.

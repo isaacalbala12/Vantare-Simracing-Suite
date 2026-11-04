@@ -9,50 +9,42 @@ use std::process::ExitCode;
 use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
 use vantare_hub::{Section, shell::Options};
 
-const INSTALLED_HUB_MESSAGE: &str = "abre Vantare desde su acceso directo";
+fn log_start_error(generation: Option<&Path>, error: &str) {
+    let path = generation
+        .filter(|root| root.join("data").is_dir())
+        .map_or_else(
+            || std::env::temp_dir().join(format!("VantareHub-{}.log", std::process::id())),
+            |generation| generation.join("data/hub-startup.log"),
+        );
+    let mut options = std::fs::OpenOptions::new();
+    if let Ok(mut log) = options.create(true).append(true).open(path) {
+        let _written = writeln!(log, "{error}");
+    }
+}
 
-fn check_installed_data_root(
+fn redirect_installed_hub(
     executable: &Path,
     data_root: Option<&std::ffi::OsStr>,
-) -> Result<(), &'static str> {
-    let Some(bin) = executable.parent() else {
-        return Ok(());
-    };
-    let Some(generation) = bin.parent() else {
-        return Ok(());
-    };
-    let named = |path: &Path, expected: &str| {
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name.eq_ignore_ascii_case(expected))
-    };
-    let installed = named(executable, "vantare-hub.exe")
-        && named(bin, "bin")
-        && generation
-            .parent()
-            .is_some_and(|parent| named(parent, "generations"))
-        && generation
-            .file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|id| {
-                id.len() == 32
-                    && id
-                        .bytes()
-                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-            });
-    if !installed {
-        return Ok(());
+) -> Option<ExitCode> {
+    let generation = vantare_hub::installed_generation(executable)?;
+    let data = std::fs::canonicalize(generation.join("data"))
+        .map_err(|error| log_start_error(Some(generation), &format!("raíz de datos: {error}")))
+        .ok();
+    let supplied = data_root.and_then(|root| std::fs::canonicalize(Path::new(root)).ok());
+    if data.is_some() && data == supplied {
+        return None;
     }
-    let expected =
-        std::fs::canonicalize(generation.join("data")).map_err(|_| INSTALLED_HUB_MESSAGE)?;
-    let supplied = data_root
-        .filter(|value| !value.is_empty())
-        .and_then(|value| std::fs::canonicalize(Path::new(value)).ok());
-    if supplied.as_deref() == Some(expected.as_path()) {
-        Ok(())
-    } else {
-        Err(INSTALLED_HUB_MESSAGE)
+    let root = generation.ancestors().nth(2).expect("generación instalada");
+    let launcher = root.join("Vantare.exe");
+    if let Err(error) = std::process::Command::new(&launcher)
+        .env_remove("VANTARE_NATIVE_DATA_ROOT")
+        .spawn()
+    {
+        let message = format!("abre Vantare desde su acceso directo: {error}");
+        log_start_error(Some(generation), &message);
+        return Some(ExitCode::FAILURE);
     }
+    Some(ExitCode::SUCCESS)
 }
 
 fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
@@ -439,15 +431,32 @@ fn capture_batch(path: &Path) -> Result<(), String> {
     vantare_hub::capture::run_many(options)
 }
 
+#[allow(clippy::too_many_lines)] // El probe QA sale antes de abrir ventana; conserva el arranque en un punto.
 fn main() -> ExitCode {
-    let Ok(executable) = std::env::current_exe() else {
+    let Ok(executable) = std::env::current_exe()
+        .and_then(std::fs::canonicalize)
+        .inspect_err(|error| log_start_error(None, &format!("resolver ejecutable: {error}")))
+    else {
         return ExitCode::FAILURE;
     };
-    if let Err(message) = check_installed_data_root(
+    if let Some(result) = redirect_installed_hub(
         &executable,
         std::env::var_os("VANTARE_NATIVE_DATA_ROOT").as_deref(),
     ) {
-        let _written = writeln!(std::io::stderr(), "vantare-hub: {message}");
+        return result;
+    }
+    #[cfg(feature = "installer-qa")]
+    if std::env::args().nth(1).as_deref() == Some("--qa-data-root") {
+        let result = parse(&[]);
+        if let Err(error) = &result {
+            eprintln!("{error}");
+        }
+        if let Ok(options) = result
+            && vantare_installer::engine::context::qa_path(&options.data_dir).is_ok()
+        {
+            println!("{}", options.data_dir.display());
+            return ExitCode::SUCCESS;
+        }
         return ExitCode::FAILURE;
     }
     if product::print_version() {

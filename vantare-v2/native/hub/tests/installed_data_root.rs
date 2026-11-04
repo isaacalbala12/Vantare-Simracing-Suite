@@ -1,32 +1,40 @@
 #![cfg(windows)]
 
-use std::{fs, path::PathBuf, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::{Command, Output},
+    time::{Duration, Instant},
+};
 
 fn qa_root() -> PathBuf {
-    let base = if std::env::var_os("CI").is_some() {
+    let base = if std::env::var("CI").as_deref() == Ok("true") {
         PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("RUNNER_TEMP"))
     } else {
         PathBuf::from("D:/VantareServer/qa/isa-1840")
     };
-    assert!(base.is_absolute());
-    base.join(format!("hub-step10-{}", std::process::id()))
+    let root = base.join(format!("hub-step10-{}", std::process::id()));
+    vantare_installer::engine::context::qa_path(&root).expect("QA guard");
+    root
 }
 
-fn run(executable: &std::path::Path, data: Option<&std::path::Path>) -> String {
-    let mut command = Command::new(executable);
+fn run(exe: &Path, data: Option<&Path>, qa: &Path) -> Output {
+    let mut command = Command::new(exe);
     command
-        .arg("--invalid-step10-test")
+        .arg("--version")
         .env_remove("VANTARE_NATIVE_DATA_ROOT")
-        .env("LOCALAPPDATA", qa_root().join("localappdata"));
+        .env("LOCALAPPDATA", qa.join("localappdata"))
+        .env("APPDATA", qa.join("appdata"))
+        .env("TEMP", qa.join("temp"))
+        .env("TMP", qa.join("temp"))
+        .env("VANTARE_STEP10_LAUNCH_PROBE", qa.join("launcher-started"));
     if let Some(data) = data {
         command.env("VANTARE_NATIVE_DATA_ROOT", data);
     }
-    let output = command.output().expect("Hub subprocess");
-    assert!(!output.status.success());
-    String::from_utf8_lossy(&output.stderr).into_owned()
+    command.output().expect("Hub subprocess")
 }
 
-fn entries(root: &std::path::Path) -> Vec<PathBuf> {
+fn entries(root: &Path) -> Vec<PathBuf> {
     let mut pending = vec![root.to_path_buf()];
     let mut found = Vec::new();
     while let Some(directory) = pending.pop() {
@@ -42,58 +50,115 @@ fn entries(root: &std::path::Path) -> Vec<PathBuf> {
     found
 }
 
+fn wait_for(path: &Path) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !path.exists() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(path.exists(), "root launcher was not started");
+}
+
 #[test]
-fn installed_hub_requires_its_own_data_before_any_write() {
+fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
+    if let Some(marker) = std::env::var_os("VANTARE_STEP10_LAUNCH_PROBE") {
+        let marker = PathBuf::from(marker);
+        vantare_installer::engine::context::qa_path(&marker).expect("QA probe guard");
+        fs::write(marker, b"started").expect("launcher probe");
+        return;
+    }
     let qa = qa_root();
-    let generation = qa.join("root/generations/0123456789abcdef0123456789abcdef");
+    if qa.exists() {
+        fs::remove_dir_all(&qa).expect("old QA fixture");
+    }
+    let root = qa.join("root");
+    let generation = root.join("generations/0123456789abcdef0123456789abcdef");
     let bin = generation.join("bin");
     let data = generation.join("data");
-    fs::create_dir_all(&bin).expect("QA bin");
-    fs::create_dir_all(&data).expect("QA data");
-    fs::create_dir_all(qa.join("other")).expect("QA other data");
-    let installed = bin.join("vantare-hub.exe");
-    fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &installed).expect("QA Hub");
-    let before = entries(&qa);
-    assert!(!qa.join("localappdata").exists());
-
-    for supplied in [None, Some(qa.join("other"))] {
-        let error = run(&installed, supplied.as_deref());
-        assert!(
-            error.contains("abre Vantare desde su acceso directo"),
-            "{error}"
-        );
-        assert_eq!(entries(&qa), before);
-        assert!(!qa.join("localappdata").exists());
+    for dir in [&bin, &data, &qa.join("other"), &qa.join("temp")] {
+        fs::create_dir_all(dir).expect("QA directory");
     }
-    let version = Command::new(&installed)
-        .arg("--version")
-        .env_remove("VANTARE_NATIVE_DATA_ROOT")
-        .output()
-        .expect("installed version guard");
-    assert!(version.stdout.is_empty());
-    assert!(
-        String::from_utf8_lossy(&version.stderr).contains("abre Vantare desde su acceso directo")
-    );
-    assert_eq!(entries(&qa), before);
-    let allowed = run(&installed, Some(&data));
-    assert!(allowed.contains("uso: vantare-hub"), "{allowed}");
-    assert!(!allowed.contains("abre Vantare desde su acceso directo"));
-    let version_ok = Command::new(&installed)
-        .arg("--version")
-        .env("VANTARE_NATIVE_DATA_ROOT", &data)
-        .output()
-        .expect("installed version");
-    assert!(version_ok.status.success());
-    assert!(!version_ok.stdout.is_empty());
+    let hub = bin.join("vantare-hub.exe");
+    fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &hub).expect("QA Hub");
+    fs::copy(
+        std::env::current_exe().expect("test executable"),
+        root.join("Vantare.exe"),
+    )
+    .expect("QA launcher probe");
+    let marker = qa.join("launcher-started");
+    let before = entries(&qa);
 
-    let development = qa.join("vantare-hub.exe");
-    fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &development).expect("QA dev Hub");
-    let fallback = run(&development, None);
-    assert!(fallback.contains("uso: vantare-hub"), "{fallback}");
-    let expected = qa.join("localappdata/VantareNative/hub");
-    let resolved = vantare_ipc::paths::Root::resolve_fixture("windows", |key| {
-        (key == "LOCALAPPDATA").then(|| qa.join("localappdata").into_os_string())
-    })
-    .expect("development fallback");
-    assert_eq!(resolved.hub(), expected);
+    for (exe, supplied) in [(&hub, None), (&hub, Some(qa.join("other")))] {
+        let result = run(exe, supplied.as_deref(), &qa);
+        assert!(result.status.success());
+        wait_for(&marker);
+        fs::remove_file(&marker).expect("reset launcher probe");
+        assert_eq!(entries(&qa), before, "Hub wrote before redirect");
+        assert!(!root.join("hub-ready").exists());
+    }
+    let uppercase_bin = root.join("generations/ABCDEF0123456789ABCDEF0123456789/bin");
+    fs::create_dir_all(
+        uppercase_bin
+            .parent()
+            .expect("uppercase generation")
+            .join("data"),
+    )
+    .expect("uppercase QA data");
+    fs::create_dir_all(&uppercase_bin).expect("uppercase QA bin");
+    let uppercase_exe = uppercase_bin.join("VANTARE-HUB.EXE");
+    fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &uppercase_exe).expect("uppercase QA Hub");
+    let before = entries(&qa);
+    assert!(run(&uppercase_exe, None, &qa).status.success());
+    wait_for(&marker);
+    fs::remove_file(&marker).expect("reset launcher probe");
+    assert_eq!(entries(&qa), before);
+
+    let variants = [
+        data.clone(),
+        PathBuf::from(data.to_string_lossy().to_uppercase()),
+        PathBuf::from(format!("{}\\", data.display())),
+        PathBuf::from(format!(
+            r"\\?\{}",
+            data.display().to_string().replace('/', "\\")
+        )),
+    ];
+    for variant in variants {
+        let result = run(&hub, Some(&variant), &qa);
+        assert!(result.status.success(), "{variant:?}: {result:?}");
+        assert!(!result.stdout.is_empty());
+        assert!(!marker.exists(), "correct root relaunched Vantare");
+    }
+
+    fs::remove_file(root.join("Vantare.exe")).expect("remove QA launcher");
+    assert!(!run(&hub, None, &qa).status.success());
+    let log_path = data.join("hub-startup.log");
+    let log = fs::read_to_string(&log_path).expect("generation data log");
+    assert!(log.contains("abre Vantare desde su acceso directo"));
+    fs::copy(
+        std::env::current_exe().expect("test executable"),
+        root.join("Vantare.exe"),
+    )
+    .expect("restore QA launcher probe");
+    fs::remove_file(log_path).expect("remove QA log");
+    fs::remove_dir(&data).expect("remove QA data root");
+    assert!(run(&hub, None, &qa).status.success());
+    wait_for(&marker);
+    fs::remove_file(&marker).expect("reset launcher probe");
+    let temp_log = fs::read_dir(qa.join("temp"))
+        .expect("QA temp")
+        .next()
+        .expect("fallback error log")
+        .expect("fallback entry")
+        .path();
+    assert!(
+        fs::read_to_string(temp_log)
+            .expect("data error log")
+            .contains("raíz de datos:")
+    );
+    for _ in 0..30 {
+        if fs::remove_dir_all(&qa).is_ok() {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    fs::remove_dir_all(&qa).expect("clean QA fixture");
 }

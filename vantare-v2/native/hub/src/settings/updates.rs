@@ -51,42 +51,33 @@ impl LocalUpdate {
     }
 
     pub(super) fn current() -> Self {
-        match std::env::current_exe() {
-            Ok(exe) => Self::at(&exe),
-            Err(_) => Self::Invalid,
-        }
+        std::env::current_exe()
+            .and_then(fs::canonicalize)
+            .map_or(Self::Invalid, |exe| Self::at(&exe))
     }
     fn at(exe: &Path) -> Self {
-        let Some(package) = exe
-            .parent()
-            .filter(|bin| bin.file_name().is_some_and(|name| name == "bin"))
-            .and_then(Path::parent)
-        else {
+        let installed = crate::installed_generation(exe);
+        let Some(package) = installed.or_else(|| {
+            exe.parent()
+                .filter(|bin| bin.file_name().is_some_and(|name| name == "bin"))
+                .and_then(Path::parent)
+        }) else {
             return Self::Development;
         };
         let path = package.join("manifest.json");
         // Un checkout puede llamarse bin; una generación instalada con el
         // manifiesto ausente o inaccesible debe mostrar estado inválido.
         match path.try_exists() {
-            Ok(true) => Self::package(package).unwrap_or(Self::Invalid),
-            Ok(false)
-                if package.parent().is_some_and(|parent| {
-                    parent.file_name().is_some_and(|name| name == "generations")
-                }) =>
-            {
-                Self::Invalid
-            }
+            Ok(true) => Self::package(package, installed.is_some()).unwrap_or(Self::Invalid),
+            Ok(false) if installed.is_some() => Self::Invalid,
             Ok(false) => Self::Development,
             Err(_) => Self::Invalid,
         }
     }
-    fn package(package: &Path) -> Result<Self, ()> {
+    fn package(package: &Path, installed: bool) -> Result<Self, ()> {
         use vantare_installer::engine::{Installation, Manifest};
-        let (manifest, previous) = if let Some(generations) = package
-            .parent()
-            .filter(|parent| parent.file_name().is_some_and(|name| name == "generations"))
-        {
-            let root = generations.parent().ok_or(())?;
+        let (manifest, previous) = if installed {
+            let root = package.parent().and_then(Path::parent).ok_or(())?;
             if !crate::testing::diagnostic::local_path(root) {
                 return Err(());
             }

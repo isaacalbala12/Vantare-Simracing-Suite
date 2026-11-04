@@ -309,7 +309,9 @@ directorio base es `%LOCALAPPDATA%` en Windows, `$XDG_DATA_HOME` (o
 `$HOME/.local/share`) en Linux y `$HOME/Library/Application Support` en macOS.
 El Hub de una generación instalada (`generations/<id>/bin/vantare-hub.exe`)
 exige `VANTARE_NATIVE_DATA_ROOT` igual a `data/` de esa generación antes de
-arrancar; si falta o difiere, indica abrir Vantare desde su acceso directo.
+arrancar; si falta o difiere, abre el `Vantare.exe` raíz y termina. Si el
+lanzador falla, anota la causa en `generations/<id>/data/hub-startup.log` y sale con
+error.
 El Hub de desarrollo conserva el directorio base de la plataforma.
 Un error inicial de documento/escena termina con error, sin reemplazarlo por
 datos ficticios.

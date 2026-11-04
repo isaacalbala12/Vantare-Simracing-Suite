@@ -7,6 +7,7 @@ publish.workspace = true
 
 [features]
 parity-capture = ["vantare-ui/parity-capture"]
+installer-qa = [] # Diagnóstico de rutas sin abrir ventana ni acceder al registro.
 
 [[example]]
 name = "ui-quality"

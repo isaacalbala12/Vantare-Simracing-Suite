@@ -2,6 +2,23 @@
 #![deny(unsafe_code)] // Win32: launcher/windows, testing/windows (BCrypt), installation::tests (espera por handle).
 
 pub mod analysis;
+/// Identifica una generación instalada por la estructura exacta del ejecutable.
+pub fn installed_generation(executable: &std::path::Path) -> Option<&std::path::Path> {
+    let bin = executable.parent()?;
+    let generation = bin.parent()?;
+    let generations = generation.parent()?;
+    let file = executable.file_name()?.to_string_lossy();
+    let folder = bin.file_name()?.to_string_lossy();
+    let parent = generations.file_name()?.to_string_lossy();
+    let id = generation.file_name()?.to_string_lossy();
+    (file.eq_ignore_ascii_case("vantare-hub.exe")
+        && folder.eq_ignore_ascii_case("bin")
+        && parent.eq_ignore_ascii_case("generations")
+        && id.len() == 32
+        && id.bytes().all(|byte| byte.is_ascii_hexdigit()))
+    .then_some(generation)
+}
+
 pub mod calendar;
 #[cfg(feature = "parity-capture")]
 pub mod capture;

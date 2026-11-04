@@ -7571,3 +7571,23 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   explícita. CI 41742042080 de ad02fb322 confirma el bloqueo esperado:
   native_admin_requires_r6_owner_authority al aplicar toda la cadena sin R6.
   No hay integración ni despliegue autorizado; no se debilita ese guard.
+
+### Pila de revisión #1925 + #1927 (2026-11-04)
+
+- #1927 rebasado sobre #1925@38ce76aa2, sin editar ese PR. Se incorpora también
+  nightly@40a725910 (#1926) en esta rama para resolver los conflictos y probar
+  la combinación real. Ambos SHA son ancestros; se conservan los dos lados del
+  runner y del handoff Testing Center. Sin cambio de comportamiento adicional.
+- Se mantiene destino nightly: workflows SQL filtran pull_request a nightly.
+  Se usa la alternativa de rebase local autorizada; CI validará ambos trabajos
+  en la cadena completa, sin sustituir private.is_owner ni adelantar revokes.
+  El anterior fallo por dependencia ausente queda como evidencia histórica.
+- Gate local sobre esta rama real: 25/25, rollback exacto/ACL, guard atómico,
+  reaplicación y tres carreras PASS; también conserva los checks de rollback
+  y cierre legacy de R6. Python/diff PASS. CI nueva pendiente. Rust y Deno no
+  repetidos: sin cambios nativos/Edge; los 94 Deno previos siguen referenciados.
+- #1924 continúa draft esperando 7b2. #1926 ya integrado: al rebasar #1924 tras
+  7b2, guard para padre, siete hijas y RPC legacy/capturas, incluidos
+  testing_center_prepare_screenshot_batch y testing_center_finalize_screenshot;
+  renombrar up/down detrás de los prerequisitos y retirar el shutdown auxiliar
+  del replay. No se hace ese rebase ni se cambia el guard todavía.

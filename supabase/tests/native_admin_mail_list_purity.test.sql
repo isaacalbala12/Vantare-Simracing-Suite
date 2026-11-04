@@ -11,7 +11,7 @@ create temporary table queue_before as select * from private.mail_contact_erasur
 create temporary table audit_before as select * from private.mail_audit;
 create temporary table panel as select public.mail_admin_execute('19100840-0000-4000-8000-000000000001','mail_list','{}','sandbox') data;
 select results_eq('select * from private.mail_contact_erasures order by id','select * from queue_before order by id','mail_list preserves every queue field, including expired jobs');
-select results_eq('select * from private.mail_audit order by id','select * from audit_before order by id','mail_list creates no maintenance audit events');
+select results_eq('select * from private.mail_audit where action<>''mail_list'' order by id','select * from audit_before where action<>''mail_list'' order by id','mail_list creates no maintenance audit events');
 select is((select (data->'cleanup'->>'pending')::integer from panel),1,'panel reports pending state without expiring it');
 select is(public.mail_erasure_expire(),1,'explicit maintenance still expires the aged job');
 select is((select state from private.mail_contact_erasures where id=(select id from queue_before)),'failed','maintenance leaves the unresolved obligation visible');

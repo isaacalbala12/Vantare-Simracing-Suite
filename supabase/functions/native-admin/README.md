@@ -903,3 +903,19 @@ para clientes antiguos. Pre-check readonly:
 El down restaura constraints/ACL y retira las RPC/cupo solo sin esos efectos;
 con evidencia aborta antes del DDL: conservar SQL y revertir Edge o corregir hacia
 delante. No se borra evidencia para forzarlo. No presupone una base vacía.
+
+### Panel de correo sin mantenimiento (#1910,8d)
+
+mail_list informa la cola tal como está: no caduca trabajos ni escribe eventos
+de mantenimiento. Conserva la auditoría mínima de la lectura. La caducidad
+permanece en mail-cleanup y en la acción explícita mail_cleanup; el worker la
+ejecuta antes de comprobar los flags/credenciales de Brevo, también desactivado.
+No se crea otro barrido ni se cambia la retención de24h de direcciones temporales.
+
+SQL completo posterior a1962, con permisos service_role y rollback exacto.
+Mantiene el CAS de confirmación, recipients solo en get/save draft y cancelación.
+Por timestamp, desplegar esta migración después de1963; producción tiene datos.
+Pre-check readonly: `select state,count(*),min(created_at) from private.mail_contact_erasures group by state;`.
+Comprobar que el barrido mail-cleanup existente sigue programado antes de desplegar.
+Este PR no crea ni cambia cron, flags ni configuración. El down restaura la llamada
+al mantenimiento en la lectura, sin convertir estados ni recuperar datos borrados.

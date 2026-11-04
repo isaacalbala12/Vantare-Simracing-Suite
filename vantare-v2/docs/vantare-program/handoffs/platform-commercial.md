@@ -9077,5 +9077,5 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Isaac verifica antes el scheduler mail-cleanup (cron/externo) y conteos de cola;
   el repo no prueba configuración real. Sin barrido activo no desplegar este corte:
   mail_cleanup manual no garantiza retención24h. No se cambia configuración.
-- Sin push/PR nuevo8d aún, despliegue/merge/release ni SaaS/Store/secretos. El11
+- Rama8d publicada sin PR aún; no despliegue/merge/release ni SaaS/Store/secretos. El11
   sigue exclusivamente en R6/12. Falta cerrar el seguimiento menor de1962.

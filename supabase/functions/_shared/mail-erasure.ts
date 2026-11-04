@@ -45,14 +45,31 @@ export async function drainMailErasures(
   let processed = 0;
   for (let i = 0; i < 5; i++) {
     if (env("MARKETING_CLEANUP_ENABLED") !== "true") break;
-    const result = await rpc("mail_erasure_claim", {}) as {
-      job: null | { id: string; lease: string; email: string };
-    };
+    const effectId = crypto.randomUUID();
+    let result: { job: null | { id: string; lease: string; email: string } };
+    try {
+      const claimed = await rpc("native_admin_claim_mail_erasure", {
+        p_request: requestId,
+        p_effect: effectId,
+        p_actor: deps.actor ?? null,
+      }) as typeof result;
+      if (
+        !claimed || typeof claimed !== "object" || !("job" in claimed) ||
+        (claimed.job !== null &&
+          (!claimed.job || typeof claimed.job.id !== "string" ||
+            typeof claimed.job.lease !== "string" ||
+            typeof claimed.job.email !== "string"))
+      ) {
+        throw new Error("unconfirmed claim");
+      }
+      result = claimed;
+    } catch {
+      throw new NativeError(503, "mail_cleanup_audit_unavailable");
+    }
     if (!result.job) break;
     const job = result.job;
-    const effectId = crypto.randomUUID();
     const record = async (
-      outcome: "started" | "succeeded" | "failed" | "unknown",
+      outcome: "succeeded" | "failed" | "unknown",
       providerStatus: number | null = null,
     ) => {
       try {
@@ -70,7 +87,6 @@ export async function drainMailErasures(
       } catch { /* Never expose SQL/provider details. */ }
       throw new NativeError(503, "mail_cleanup_unconfirmed");
     };
-    await record("started");
     let status = 0;
     try {
       const response = await (deps.fetch ?? fetch)(

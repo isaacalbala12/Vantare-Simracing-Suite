@@ -1,5 +1,8 @@
 begin;
 select no_plan();
+select ok(has_function_privilege('service_role','public.native_admin_claim_mail_erasure(uuid,uuid,uuid)','execute'),'service atomic claim callable');
+select ok(not has_function_privilege('anon','public.native_admin_claim_mail_erasure(uuid,uuid,uuid)','execute'),'anon atomic claim denied');
+select ok(not has_function_privilege('authenticated','public.native_admin_claim_mail_erasure(uuid,uuid,uuid)','execute'),'authenticated atomic claim denied');
 insert into public.profiles(id) values
  ('19105600-0000-4000-8000-000000000001'),
  ('19105600-0000-4000-8000-000000000002'),

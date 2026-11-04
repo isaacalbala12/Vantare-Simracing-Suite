@@ -1,3 +1,4 @@
+import { NativeError } from "../_shared/native-auth.ts";
 import {
   drainMailErasures,
   type ErasureDeps,
@@ -36,8 +37,14 @@ export async function handleMailCleanup(
       ok: true,
       ...await drainMailErasures({ ...deps, requestId }),
     });
-  } catch {
-    return reply(503, { ok: false });
+  } catch (error) {
+    return reply(503, {
+      ok: false,
+      ...(error instanceof NativeError &&
+          error.code === "mail_cleanup_audit_unavailable"
+        ? { code: error.code }
+        : {}),
+    });
   }
 }
 if (import.meta.main) Deno.serve((request) => handleMailCleanup(request));

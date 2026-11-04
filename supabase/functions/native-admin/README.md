@@ -407,8 +407,14 @@ pendientes) y revisar el 503 cuando solo falla release tras un cambio correcto.
 Los dos llamadores reales (`native-admin` y `mail-cleanup`) usan obligatoriamente
 `native_admin_record_mail_erasure`, sin callback opcional ni journal nuevo.
 Escribe en `private.admin_effects`: `mail_cleanup` / `brevo_delete`, intención
-`started` antes de HTTP y resultado antes de `mail_erasure_finish`. Solo un ACK
-booleano `true` permite continuar. Si falta auditoría, no hay DELETE; si falla
+`started` antes de HTTP y resultado antes de `mail_erasure_finish`.
+`native_admin_claim_mail_erasure` une claim + started en una transacción: un
+rechazo/error del recorder revierte lease e incremento de attempts, dejando el
+job pending. Edge no llama al claim legacy por separado; si falta la migración,
+la nueva RPC falla antes de reclamar. Ambos llamadores devuelven 503 con código
+`mail_cleanup_audit_unavailable` para esa indisponibilidad. La retención vigente
+de 24 horas no cambia. El recorder debe confirmar `true` dentro de la
+transacción; Edge exige un claim válido y un resultado confirmado. Si falta auditoría, no hay DELETE; si falla
 el resultado, devuelve 503 sin finalizar la cola y conserva la intención.
 204/404 son `succeeded` (404 explícito), 401/403/422 son `failed`; transporte y
 el resto son `unknown`. Se conserva la política de reintentos DELETE de la cola.
@@ -435,10 +441,25 @@ ambas Edge. DDL transaccional con `lock_timeout=5s`: un timeout aborta y exige
 reprogramar la operación, no borrar datos ni retirar el límite para forzarla.
 La función nueva está escrita completa; no se parchean cuerpos desde el catálogo.
 Para revertir, detener/revertir ambos llamadores primero. El down restaura los
-dos checks anteriores y elimina la RPC, conservando eventos antiguos. Si hay
-cualquier evidencia Brevo, aborta atómicamente con
-`brevo_journal_rollback_requires_retention`: conservar schema y evidencia hasta
-acordar una vía de retención/migración; nunca borrar el journal para forzarlo.
+dos checks anteriores y elimina las dos RPC nuevas, conservando eventos antiguos. Si hay
+cualquier evidencia Brevo, el down ya no sirve: aborta atómicamente con
+`brevo_journal_rollback_requires_retention`. La salida es revocar EXECUTE de las
+dos RPC nuevas a service_role y revertir ambas Edge; conservar schema y evidencia.
+La Edge anterior no usa esas RPC. Estas acciones son exclusivas de Isaac:
+
+```sql
+revoke execute on function public.native_admin_claim_mail_erasure(uuid,uuid,uuid)
+  from service_role;
+revoke execute on function public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)
+  from service_role;
+notify pgrst, 'reload schema';
+```
+
+Nunca borrar el journal para forzar un down. Los unknown de intentos anteriores
+no se cierran automáticamente al completar otro intento del mismo job:
+`reconciled` exige owner vigente. El vínculo explícito job/efecto y una posible
+revisión por sistema quedan anotados para una decisión posterior; este PR no
+cambia esa autoridad ni inventa un reviewer owner.
 El gate prueba ese rechazo y el rollback exacto sobre datos antiguos no vacíos.
 
 ## Raíz única de informes · coordinación R6/7b

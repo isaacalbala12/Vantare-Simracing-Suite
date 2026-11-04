@@ -7,9 +7,11 @@ function journalFixture(status = 204) {
     env,
     rpc: (name: string, args: Record<string, unknown>): Promise<unknown> => {
       if (name === "mail_erasure_expire") return Promise.resolve(0);
-      if (name === "mail_erasure_claim") {
+      if (name === "native_admin_claim_mail_erasure") {
         if (claimed) return Promise.resolve({ job: null });
         claimed = true;
+        trace.push("started");
+        records.push({ ...args, p_outcome: "started" });
         return Promise.resolve({
           job: {
             id: "19105000-0000-4000-8000-000000000001",
@@ -70,8 +72,9 @@ for (const phase of ["started", "terminal"]) {
         const original = f.options.rpc;
         f.options.rpc = (name, args) => {
           if (
-            name === "native_admin_record_mail_erasure" &&
-            ((args.p_outcome === "started") === (phase === "started"))
+            (phase === "started"
+              ? name === "native_admin_claim_mail_erasure"
+              : name === "native_admin_record_mail_erasure")
           ) {
             if (reply === "throw") {
               throw new Error("private@example.invalid SQL");
@@ -88,7 +91,10 @@ for (const phase of ["started", "terminal"]) {
         }
         assert(
           error instanceof NativeError &&
-            error.code === "mail_cleanup_unconfirmed" &&
+            error.code ===
+              (phase === "started"
+                ? "mail_cleanup_audit_unavailable"
+                : "mail_cleanup_unconfirmed") &&
             !error.message.includes("private@") &&
             !f.trace.includes("finish") &&
             f.trace.includes("http") === (phase === "terminal"),
@@ -134,7 +140,7 @@ Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never 
       env,
       rpc: (name, args) => {
         if (name === "mail_erasure_expire") return Promise.resolve(0);
-        if (name === "mail_erasure_claim") {
+        if (name === "native_admin_claim_mail_erasure") {
           if (claimed) return Promise.resolve({ job: null });
           claimed = true;
           return Promise.resolve({
@@ -205,7 +211,9 @@ Deno.test("erasure worker is bounded, disabled by default and authenticates befo
     env,
     rpc: (name) =>
       Promise.resolve(
-        name === "mail_erasure_expire" ? 0 : name === "mail_erasure_claim"
+        name === "mail_erasure_expire"
+          ? 0
+          : name === "native_admin_claim_mail_erasure"
           ? {
             job: {
               id: String(++claimed),
@@ -228,7 +236,7 @@ Deno.test("erasure cannot claim a false result as a confirmed ACK", async () => 
         Promise.resolve(
           name === "mail_erasure_expire"
             ? 0
-            : name === "mail_erasure_claim"
+            : name === "native_admin_claim_mail_erasure"
             ? { job: { id: "id", lease: "lease", email: "x@example.invalid" } }
             : false,
         ),
@@ -246,7 +254,7 @@ Deno.test("authenticated queue endpoint accepts only the closed maintenance requ
     env,
     rpc: (name: string) => {
       if (name === "mail_erasure_expire") return Promise.resolve(0);
-      assert(name === "mail_erasure_claim");
+      assert(name === "native_admin_claim_mail_erasure");
       claims++;
       return Promise.resolve({ job: null });
     },

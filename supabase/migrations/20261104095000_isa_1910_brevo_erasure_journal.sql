@@ -71,11 +71,36 @@ revoke all on function public.native_admin_record_mail_erasure(uuid,uuid,uuid,uu
  from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)
  to service_role;
+-- One SQL transaction: a recorder outage rolls back claim, lease and attempts.
+-- New Edge calls this entrypoint only; missing migration never calls legacy claim.
+create or replace function public.native_admin_claim_mail_erasure(
+ p_request uuid,p_effect uuid,p_actor uuid default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare claimed jsonb; job jsonb;
+begin
+ if p_request is null or p_effect is null then
+  raise exception 'native_admin_invalid' using errcode='22023';
+ end if;
+ if p_actor is not null then perform private.native_admin_require_owner(p_actor); end if;
+ claimed:=public.mail_erasure_claim();
+ job:=claimed->'job';
+ if job is null or job='null'::jsonb then return claimed; end if;
+ if public.native_admin_record_mail_erasure((job->>'id')::uuid,(job->>'lease')::uuid,
+   p_request,p_effect,'started',null,p_actor) is distinct from true then
+  raise exception 'mail_cleanup_audit_unavailable' using errcode='55000';
+ end if;
+ return claimed;
+end$$;
+revoke all on function public.native_admin_claim_mail_erasure(uuid,uuid,uuid)
+ from public,anon,authenticated,service_role;
+grant execute on function public.native_admin_claim_mail_erasure(uuid,uuid,uuid) to service_role;
+
 do $$begin
  if exists(select 1 from pg_proc p
   cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
   left join pg_roles grantee on grantee.oid=acl.grantee
-  where p.oid='public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)'::regprocedure
+  where p.oid in ('public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)'::regprocedure,
+   'public.native_admin_claim_mail_erasure(uuid,uuid,uuid)'::regprocedure)
    and acl.grantee<>p.proowner and not coalesce(grantee.rolsuper,false)
    and acl.grantee<>(select oid from pg_roles where rolname='service_role')) then
   raise exception 'brevo_recorder_unexpected_grantee' using errcode='55000';

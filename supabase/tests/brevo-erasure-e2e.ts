@@ -51,7 +51,7 @@ async function setup(n: number) {
 }
 const rpcNames = new Set([
   "mail_erasure_expire",
-  "mail_erasure_claim",
+  "native_admin_claim_mail_erasure",
   "mail_erasure_finish",
   "native_admin_record_mail_erasure",
 ]);
@@ -164,7 +164,7 @@ Deno.test("real route recorder failure prevents fake DELETE and leaves job unack
   const response = await handleMailCleanup(request(), {
     env,
     rpc: (name, args) =>
-      name === "native_admin_record_mail_erasure"
+      name === "native_admin_claim_mail_erasure"
         ? Promise.resolve(false)
         : rpc(name, args),
     fetch: () => {
@@ -176,7 +176,7 @@ Deno.test("real route recorder failure prevents fake DELETE and leaves job unack
   assert(
     await sql(
       "select state from private.mail_contact_erasures where id=" + lit(id),
-    ) === "processing",
+    ) === "pending",
   );
   const rows = await events();
   assert(
@@ -184,7 +184,7 @@ Deno.test("real route recorder failure prevents fake DELETE and leaves job unack
       !JSON.stringify(rows).includes("https://"),
   );
 });
-Deno.test("SQL capability rejection prevents DELETE through the actual route", async () => {
+Deno.test("SQL invalid intent rejection prevents DELETE through the actual route", async () => {
   await setup(4);
   let http = 0;
   const response = await handleMailCleanup(request(), {
@@ -192,8 +192,8 @@ Deno.test("SQL capability rejection prevents DELETE through the actual route", a
     rpc: (name, args) =>
       rpc(
         name,
-        name === "native_admin_record_mail_erasure"
-          ? { ...args, p_lease: "19105500-0000-4000-8000-000000000098" }
+        name === "native_admin_claim_mail_erasure"
+          ? { ...args, p_request: null }
           : args,
       ),
     fetch: () => {
@@ -274,11 +274,11 @@ Deno.test("real admin mail_cleanup records the verified actor and DELETE404", as
 Deno.test("nine started recorder failures preserve pending job and attempts", async () => {
   const id = await setup(6);
   await sql(
-    `create function public.fixture_brevo_recorder_down() returns trigger language plpgsql as $$begin
-    if new.effect='brevo_delete' and new.outcome='started' then raise exception 'fixture_recorder_unavailable'; end if;
-    return new; end$$;
-    create trigger fixture_brevo_recorder_down before insert on private.admin_effects
-    for each row execute function public.fixture_brevo_recorder_down();`,
+    "create function public.fixture_brevo_recorder_down() returns trigger language plpgsql as " +
+      lit(
+        "begin if new.effect='brevo_delete' and new.outcome='started' then raise exception 'fixture_recorder_unavailable'; end if; return new; end",
+      ) +
+      "; create trigger fixture_brevo_recorder_down before insert on private.admin_effects for each row execute function public.fixture_brevo_recorder_down();",
   );
   let http = 0;
   const codes: unknown[] = [];
@@ -318,6 +318,41 @@ Deno.test("nine started recorder failures preserve pending job and attempts", as
   } finally {
     await sql(
       "drop trigger fixture_brevo_recorder_down on private.admin_effects; drop function public.fixture_brevo_recorder_down()",
+    );
+  }
+});
+
+Deno.test("missing atomic claim RPC never falls back to unaudited legacy claim", async () => {
+  const id = await setup(7);
+  await sql(
+    "alter function public.native_admin_claim_mail_erasure(uuid,uuid,uuid) rename to fixture_missing_atomic_claim",
+  );
+  let http = 0;
+  try {
+    for (let n = 0; n < 9; n++) {
+      const response = await handleMailCleanup(request(), {
+        env,
+        rpc,
+        fetch: () => {
+          http++;
+          return Promise.resolve(new Response(null, { status: 204 }));
+        },
+      });
+      assert(
+        response.status === 503 &&
+          (await response.json()).code === "mail_cleanup_audit_unavailable",
+      );
+    }
+    const job = JSON.parse(
+      await sql(
+        "select to_json(j) from private.mail_contact_erasures j where id=" +
+          lit(id),
+      ),
+    );
+    assert(job.state === "pending" && job.attempts === 0 && http === 0);
+  } finally {
+    await sql(
+      "alter function public.fixture_missing_atomic_claim(uuid,uuid,uuid) rename to native_admin_claim_mail_erasure",
     );
   }
 });

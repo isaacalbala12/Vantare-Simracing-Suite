@@ -42,6 +42,7 @@ def run_erasure_sql(run, conn, out, bin_dir, env, previous):
     run('psql',*conn,'-f',down)
     assert json.loads(run('psql',*conn,'-c',CONSTRAINTS))==previous, 'Brevo down must restore both exact old constraints'
     assert run('psql',*conn,'-c',"select to_regprocedure('public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)') is null").strip()=='t'
+    assert run('psql',*conn,'-c',"select to_regprocedure('public.native_admin_claim_mail_erasure(uuid,uuid,uuid)') is null").strip()=='t'
     assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect_id='19105700-0000-4000-8000-000000000001'").strip()=='2', 'rollback lost old journal evidence'
     collision=out/'brevo-actor-collision.sql'
     collision.write_text("begin; insert into public.profiles(id) values('00000000-0000-0000-0000-000000000000');\n"+r"\ir "+str(up)+'\n',encoding='utf-8')

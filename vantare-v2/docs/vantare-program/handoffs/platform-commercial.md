@@ -8200,3 +8200,37 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   validado 502f3c444; métricas frente a esa base: producción +155/−3,
   tests +542/−1, docs +118/−0. Calidad: 471 huellas PASS.
 - PR/issue/Plane registran el HEAD documental final; CI remota nueva pendiente.
+
+## VANTA-132 · #1942 review P2: intentos y caída de auditoría (2026-11-04)
+
+- Review Sonnet sobre 88099729c: MERGE sin P0/P1, con P2 de borrado a cerrar
+  en el mismo PR antes de integrar. No se fusiona desde este worker.
+- Caracterización comprometida 9867518d6 antes de producto. El primer run
+  falló en la fixture SQL (WSL expandía $$); se corrigió la cita. RED válido
+  contra código anterior en worktree separado: nueve fallos reales de INSERT
+  started dejan state=failed/attempts=8, sin HTTP. Logs conservados bajo
+  /tmp/brevo-attempts-{red,red2,lf,green2,final-lf,final-crlf}.
+- RPC nueva completa native_admin_claim_mail_erasure une el claim existente
+  y el recorder started en una transacción. Error/rechazo de recorder revierte
+  claim, lease e incremento: job pending, attempts=0 tras nueve fallos. No se
+  parchean funciones desde pg_get_functiondef ni se cambia el claim legacy.
+  Nueva Edge solo usa la RPC atómica: falta de migración no invoca claim legacy.
+  Alerta propia 503 mail_cleanup_audit_unavailable en worker y admin.
+- Resultados siguen grabándose antes del ACK; el down elimina ambas RPC y
+  conserva checks exactos/evidencia antigua. Si existen filas brevo_delete,
+  el down ya no sirve: Isaac revoca EXECUTE de ambas RPC nuevas y revierte ambas
+  Edge, conservando schema y journal. README incluye SQL manual, no ejecutado.
+  Producción tiene datos; nunca reset ni borrado de evidencia para forzar down.
+- P3 de job explícito/cierre automático anotado, sin implementar: reconcile
+  exige owner vigente. No se introduce reviewer de sistema ni se cambia esa
+  autoridad. Los unknown anteriores siguen visibles hasta reconcile owner.
+- Gates focales: Deno129 PASS (17 worker), check/lint/fmt/Python/diff y471huellas.
+  SQL27 y E2E7 LF/CRLF prueban nueve fallos de recorder y nueve llamadas con
+  RPC ausente, todos sin consumir intentos/HTTP; orden durable, permisos,
+  pending/reconcile y rollback/reaplicación/guard de retención conservados.
+  Servidores desechables parados al terminar; evidencia final en PR/issue.
+- Sin native-auth/webhook ni otro _shared fuera del archivo/test autorizados;
+  sin producción, secretos, Store real, billing/licencias, despliegue, merge ni
+  release. Rust/lifecycle/telemetría omitidos: no cambia native. Docker marketing
+  local no disponible: adaptador RPC actualizado y gate pendiente de CI nueva.
+  VANTA-132 En curso, resto del plan intacto; paso11 pertenece a R6/12.

@@ -86,7 +86,7 @@ async function rpc(
       "p_actor",
     ],
     mail_erasure_expire: [],
-    mail_erasure_claim: [],
+    native_admin_claim_mail_erasure: ["p_request", "p_effect", "p_actor"],
     mail_erasure_finish: ["p_id", "p_lease", "p_http_status"],
   };
   const keys = fields[name];

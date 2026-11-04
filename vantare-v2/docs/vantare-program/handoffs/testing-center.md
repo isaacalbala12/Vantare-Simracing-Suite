@@ -1180,3 +1180,5 @@ los cuatro roles, ACL de tablas/vistas/secuencias modificadas, y prohíbe
 El lint solo lee SQL y no accede a bases de datos. Unitarios 11/11 PASS;
 ejecución sobre la cadena actual 0 nuevas migraciones y 0 errores. El PR
 del lint va aislado del seguimiento 7b5 #1953; no cambia SQL de producto.
+[PR draft #1954](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1954)
+contra nightly; pendiente CI/review antes de integrar.

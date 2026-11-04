@@ -231,3 +231,48 @@ ALTER TABLE public.visual_roadmap ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visual_roadmap_sync_approvals ENABLE ROW LEVEL SECURITY;
 
 --
+
+-- Name: FUNCTION visual_roadmap_current(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.visual_roadmap_current() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.visual_roadmap_current() TO anon;
+GRANT ALL ON FUNCTION public.visual_roadmap_current() TO authenticated;
+
+
+--
+
+-- Name: FUNCTION visual_roadmap_current_v2(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.visual_roadmap_current_v2() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.visual_roadmap_current_v2() TO anon;
+GRANT ALL ON FUNCTION public.visual_roadmap_current_v2() TO authenticated;
+
+
+--
+
+-- Name: FUNCTION visual_roadmap_publish(p_document jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.visual_roadmap_publish(p_document jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION visual_roadmap_sync(p_document jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.visual_roadmap_sync(p_document jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.visual_roadmap_sync(p_document jsonb) TO vantare_roadmap_publisher;
+
+
+--
+
+-- Name: FUNCTION visual_roadmap_valid(p_document jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.visual_roadmap_valid(p_document jsonb) FROM PUBLIC;
+
+
+--

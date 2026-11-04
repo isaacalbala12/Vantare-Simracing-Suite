@@ -1332,6 +1332,14 @@ $$;
 
 --
 
+-- Name: FUNCTION billing_expire_subscription_grants(p_evaluated_at timestamp with time zone); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.billing_expire_subscription_grants(p_evaluated_at timestamp with time zone) IS 'Revokes subscription and recovery grants at the exact boundary now >= valid_until.';
+
+
+--
+
 -- Name: billing_expire_unpublished_checkouts(text, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1709,6 +1717,14 @@ begin
   return v_snapshot;
 end;
 $$;
+
+
+--
+
+-- Name: FUNCTION billing_observability_snapshot(p_environment text, p_now timestamp with time zone); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.billing_observability_snapshot(p_environment text, p_now timestamp with time zone) IS 'Aggregate-only BIL-10 operational snapshot. Contains no customer or provider resource identifiers.';
 
 
 --
@@ -2838,6 +2854,14 @@ CREATE TABLE private.billing_checkout_compensations (
 
 --
 
+-- Name: TABLE billing_checkout_compensations; Type: COMMENT; Schema: private; Owner: -
+--
+
+COMMENT ON TABLE private.billing_checkout_compensations IS 'Financial compensation ledger, service RPC only. No email/customer/account UUID. Survives account deletion without recreating identity; financial retention follows billing ledger policy.';
+
+
+--
+
 -- Name: billing_checkout_dispositions; Type: TABLE; Schema: private; Owner: -
 --
 
@@ -3051,6 +3075,14 @@ CREATE TABLE private.web_purchase_erasure_events (
 
 --
 
+-- Name: TABLE web_purchase_erasure_events; Type: COMMENT; Schema: private; Owner: -
+--
+
+COMMENT ON TABLE private.web_purchase_erasure_events IS 'Post-erasure web cleanup duty, enqueued after the identity tombstone. No direct API grants; bounded pull and proven idempotent ACK remain available after account deletion.';
+
+
+--
+
 -- Name: web_purchase_erasure_proof_key; Type: TABLE; Schema: private; Owner: -
 --
 
@@ -3117,6 +3149,14 @@ CREATE TABLE public.billing_access_grants (
 
 --
 
+-- Name: TABLE billing_access_grants; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.billing_access_grants IS 'Authoritative local projection by commercial source. user_entitlements is derived from this table.';
+
+
+--
+
 -- Name: billing_checkout_attempts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3145,6 +3185,14 @@ CREATE TABLE public.billing_checkout_attempts (
     CONSTRAINT billing_checkout_attempts_resolution_check CHECK ((resolution = ANY (ARRAY['unpaid_expired'::text, 'refunded'::text, 'revoked'::text]))),
     CONSTRAINT billing_checkout_attempts_status_check CHECK ((status = ANY (ARRAY['creating'::text, 'open'::text, 'uncertain'::text])))
 );
+
+
+--
+
+-- Name: TABLE billing_checkout_attempts; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.billing_checkout_attempts IS 'Server-only shared app/web dedupe. Expired leases do not prove Polar expiry. Preserve unresolved attempts for authorized reconciliation; never delete on another claim.';
 
 
 --
@@ -3215,6 +3263,14 @@ CREATE TABLE public.billing_customers (
     environment text,
     CONSTRAINT billing_customers_environment_check CHECK (((environment IS NULL) OR (environment = ANY (ARRAY['sandbox'::text, 'production'::text]))))
 );
+
+
+--
+
+-- Name: COLUMN billing_customers.environment; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.billing_customers.environment IS 'Polar environment. Legacy NULL rows are quarantined and never used by checkout, portal or webhook resolution.';
 
 
 --
@@ -3291,6 +3347,14 @@ CREATE TABLE public.billing_orders (
 
 --
 
+-- Name: TABLE billing_orders; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.billing_orders IS 'Minimal server-only Polar one-time order ledger; aggregates never revoke without attributed succeeded refunds.';
+
+
+--
+
 -- Name: billing_reconciliation_runs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3319,6 +3383,14 @@ CREATE TABLE public.billing_reconciliation_runs (
     CONSTRAINT billing_reconciliation_runs_status_check CHECK ((status = ANY (ARRAY['applied'::text, 'unchanged'::text, 'quarantined'::text]))),
     CONSTRAINT billing_reconciliation_runs_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['manual'::text, 'scheduled'::text, 'event'::text])))
 );
+
+
+--
+
+-- Name: TABLE billing_reconciliation_runs; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.billing_reconciliation_runs IS 'Applied reconciliation audit only. Dry-run performs zero database writes.';
 
 
 --
@@ -3359,6 +3431,14 @@ CREATE TABLE public.billing_refunds (
 
 --
 
+-- Name: TABLE billing_refunds; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.billing_refunds IS 'Minimal server-only Polar refund ledger attributed by refund, payment and order identifiers.';
+
+
+--
+
 -- Name: billing_subscription_recovery_cycles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3381,6 +3461,14 @@ CREATE TABLE public.billing_subscription_recovery_cycles (
     CONSTRAINT billing_subscription_recovery_cycles_provider_check CHECK ((provider = 'polar'::text)),
     CONSTRAINT billing_subscription_recovery_cycles_subscription_id_check CHECK (((length(subscription_id) >= 1) AND (length(subscription_id) <= 200)))
 );
+
+
+--
+
+-- Name: TABLE billing_subscription_recovery_cycles; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.billing_subscription_recovery_cycles IS 'Immutable audit of bounded Vantare recovery grants per Polar subscription paid-through cycle.';
 
 
 --
@@ -4701,6 +4789,717 @@ ALTER TABLE public.license_validations ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY license_validations_select_own ON public.license_validations FOR SELECT USING ((private.current_account() = user_id));
+
+
+--
+
+-- Name: FUNCTION billing_creator_renewal_prepare_before_1593(p_environment text, p_user uuid, p_checkout text, p_subscription text, p_order text, p_product uuid, p_key text, p_initial_discount uuid, p_creator_savings integer); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.billing_creator_renewal_prepare_before_1593(p_environment text, p_user uuid, p_checkout text, p_subscription text, p_order text, p_product uuid, p_key text, p_initial_discount uuid, p_creator_savings integer) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_creator_revocation_before_1593(p_stage text, p_environment text, p_user uuid, p_subscription text, p_order text, p_reason text, p_token uuid, p_success boolean); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.billing_creator_revocation_before_1593(p_stage text, p_environment text, p_user uuid, p_subscription text, p_order text, p_reason text, p_token uuid, p_success boolean) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_deleted_event(p_provider text, p_environment text, p_type text, p_payload jsonb, p_hash text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.billing_deleted_event(p_provider text, p_environment text, p_type text, p_payload jsonb, p_hash text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_event_accounts(p_provider text, p_environment text, p_type text, p_payload jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.billing_event_accounts(p_provider text, p_environment text, p_type text, p_payload jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_launch_checkout_before_1593_guard(p_account uuid, p_environment text, p_product text, p_discount text, p_key text, p_now timestamp with time zone, p_attempt uuid, p_replaces uuid); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.billing_launch_checkout_before_1593_guard(p_account uuid, p_environment text, p_product text, p_discount text, p_key text, p_now timestamp with time zone, p_attempt uuid, p_replaces uuid) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_set_report_candidate_before_1593(p_environment text, p_user uuid, p_subscription text, p_discount uuid, p_savings integer, p_valid_until timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.billing_set_report_candidate_before_1593(p_environment text, p_user uuid, p_subscription text, p_discount uuid, p_savings integer, p_valid_until timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION checkout_was_fulfilled(p_environment text, p_order uuid, p_checkout uuid, p_product uuid, p_subscription uuid, p_capabilities text[]); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.checkout_was_fulfilled(p_environment text, p_order uuid, p_checkout uuid, p_product uuid, p_subscription uuid, p_capabilities text[]) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_admit_lifetime_order(p_user_id uuid, p_environment text, p_checkout_key text, p_order_id text, p_product_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_admit_lifetime_order(p_user_id uuid, p_environment text, p_checkout_key text, p_order_id text, p_product_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_admit_lifetime_order(p_user_id uuid, p_environment text, p_checkout_key text, p_order_id text, p_product_id text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_apply_reconciliation_plan(p_user_id uuid, p_environment text, p_trigger_kind text, p_snapshot_hash text, p_plan_hash text, p_observed_at timestamp with time zone, p_operations jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_apply_reconciliation_plan(p_user_id uuid, p_environment text, p_trigger_kind text, p_snapshot_hash text, p_plan_hash text, p_observed_at timestamp with time zone, p_operations jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_apply_reconciliation_plan(p_user_id uuid, p_environment text, p_trigger_kind text, p_snapshot_hash text, p_plan_hash text, p_observed_at timestamp with time zone, p_operations jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_apply_resource_snapshot(p_provider text, p_environment text, p_resource_type text, p_resource_id text, p_user_id uuid, p_modified_at timestamp with time zone, p_snapshot_hash text, p_state text, p_grants jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_apply_resource_snapshot(p_provider text, p_environment text, p_resource_type text, p_resource_id text, p_user_id uuid, p_modified_at timestamp with time zone, p_snapshot_hash text, p_state text, p_grants jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_apply_resource_snapshot(p_provider text, p_environment text, p_resource_type text, p_resource_id text, p_user_id uuid, p_modified_at timestamp with time zone, p_snapshot_hash text, p_state text, p_grants jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_apply_subscription_lifecycle(p_user_id uuid, p_environment text, p_subscription_id text, p_product_id text, p_status text, p_period_start timestamp with time zone, p_remote_period_end timestamp with time zone, p_paid_through timestamp with time zone, p_cancel_at_period_end boolean, p_modified_at timestamp with time zone, p_snapshot_hash text, p_recovery_action text, p_failure_at timestamp with time zone, p_cycle_paid_through timestamp with time zone, p_evaluated_at timestamp with time zone, p_capabilities text[]); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_apply_subscription_lifecycle(p_user_id uuid, p_environment text, p_subscription_id text, p_product_id text, p_status text, p_period_start timestamp with time zone, p_remote_period_end timestamp with time zone, p_paid_through timestamp with time zone, p_cancel_at_period_end boolean, p_modified_at timestamp with time zone, p_snapshot_hash text, p_recovery_action text, p_failure_at timestamp with time zone, p_cycle_paid_through timestamp with time zone, p_evaluated_at timestamp with time zone, p_capabilities text[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_apply_subscription_lifecycle(p_user_id uuid, p_environment text, p_subscription_id text, p_product_id text, p_status text, p_period_start timestamp with time zone, p_remote_period_end timestamp with time zone, p_paid_through timestamp with time zone, p_cancel_at_period_end boolean, p_modified_at timestamp with time zone, p_snapshot_hash text, p_recovery_action text, p_failure_at timestamp with time zone, p_cycle_paid_through timestamp with time zone, p_evaluated_at timestamp with time zone, p_capabilities text[]) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_begin_checkout_request(p_user_id uuid, p_attempt_id uuid, p_product_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_begin_checkout_request(p_user_id uuid, p_attempt_id uuid, p_product_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_begin_checkout_request(p_user_id uuid, p_attempt_id uuid, p_product_id uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_checkout_incident(p_environment text, p_correlation text, p_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_checkout_incident(p_environment text, p_correlation text, p_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_checkout_incident(p_environment text, p_correlation text, p_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_checkout_maintenance(p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_checkout_maintenance(p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_checkout_maintenance(p_environment text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_checkout_owner_alerts(p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_checkout_owner_alerts(p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_checkout_owner_alerts(p_environment text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_claim_checkout_compensation(p_environment text, p_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_claim_checkout_compensation(p_environment text, p_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_claim_checkout_compensation(p_environment text, p_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_claim_webhook(p_inbox_id uuid, p_lease_token uuid, p_lease_seconds integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_claim_webhook(p_inbox_id uuid, p_lease_token uuid, p_lease_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_claim_webhook(p_inbox_id uuid, p_lease_token uuid, p_lease_seconds integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_claim_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid, p_lease_seconds integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_claim_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid, p_lease_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_claim_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid, p_lease_seconds integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_complete_founders_transition(p_environment text, p_subscription_id text, p_revision timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_complete_founders_transition(p_environment text, p_subscription_id text, p_revision timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_complete_founders_transition(p_environment text, p_subscription_id text, p_revision timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_complete_webhook(p_inbox_id uuid, p_lease_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_complete_webhook(p_inbox_id uuid, p_lease_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_complete_webhook(p_inbox_id uuid, p_lease_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_complete_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_complete_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_complete_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_creator_renewal_authorized(p_environment text, p_subscription text, p_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_creator_renewal_authorized(p_environment text, p_subscription text, p_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_creator_renewal_authorized(p_environment text, p_subscription text, p_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_creator_renewal_finish(p_environment text, p_subscription text, p_token uuid, p_success boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_creator_renewal_finish(p_environment text, p_subscription text, p_token uuid, p_success boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_creator_renewal_finish(p_environment text, p_subscription text, p_token uuid, p_success boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_creator_renewal_prepare(p_environment text, p_user uuid, p_checkout text, p_subscription text, p_order text, p_product uuid, p_key text, p_initial_discount uuid, p_creator_savings integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_creator_renewal_prepare(p_environment text, p_user uuid, p_checkout text, p_subscription text, p_order text, p_product uuid, p_key text, p_initial_discount uuid, p_creator_savings integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_creator_renewal_prepare(p_environment text, p_user uuid, p_checkout text, p_subscription text, p_order text, p_product uuid, p_key text, p_initial_discount uuid, p_creator_savings integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_creator_revocation(p_stage text, p_environment text, p_user uuid, p_subscription text, p_order text, p_reason text, p_token uuid, p_success boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_creator_revocation(p_stage text, p_environment text, p_user uuid, p_subscription text, p_order text, p_reason text, p_token uuid, p_success boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_creator_revocation(p_stage text, p_environment text, p_user uuid, p_subscription text, p_order text, p_reason text, p_token uuid, p_success boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_expire_published_checkout(p_environment text, p_user_id uuid, p_attempt_id uuid, p_checkout_id text, p_terminal boolean, p_provider_status text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_expire_published_checkout(p_environment text, p_user_id uuid, p_attempt_id uuid, p_checkout_id text, p_terminal boolean, p_provider_status text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_expire_published_checkout(p_environment text, p_user_id uuid, p_attempt_id uuid, p_checkout_id text, p_terminal boolean, p_provider_status text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_expire_subscription_grants(p_evaluated_at timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_expire_subscription_grants(p_evaluated_at timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_expire_subscription_grants(p_evaluated_at timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_expire_unpublished_checkouts(p_environment text, p_evaluated_at timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_expire_unpublished_checkouts(p_environment text, p_evaluated_at timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_expire_unpublished_checkouts(p_environment text, p_evaluated_at timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_fail_webhook(p_inbox_id uuid, p_lease_token uuid, p_error_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_fail_webhook(p_inbox_id uuid, p_lease_token uuid, p_error_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_fail_webhook(p_inbox_id uuid, p_lease_token uuid, p_error_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_fail_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid, p_error_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_fail_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid, p_error_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_fail_webhook_effect(p_inbox_id uuid, p_effect_key text, p_lease_token uuid, p_error_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_finish_checkout_compensation(p_environment text, p_order_id uuid, p_token uuid, p_outcome text, p_refund_id uuid, p_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_finish_checkout_compensation(p_environment text, p_order_id uuid, p_token uuid, p_outcome text, p_refund_id uuid, p_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_finish_checkout_compensation(p_environment text, p_order_id uuid, p_token uuid, p_outcome text, p_refund_id uuid, p_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_finish_checkout_owner_alert(p_environment text, p_order_id uuid, p_delivered boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_finish_checkout_owner_alert(p_environment text, p_order_id uuid, p_delivered boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_finish_checkout_owner_alert(p_environment text, p_order_id uuid, p_delivered boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_finish_operational_owner_alert(p_environment text, p_order_id uuid, p_kind text, p_delivered boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_finish_operational_owner_alert(p_environment text, p_order_id uuid, p_kind text, p_delivered boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_finish_operational_owner_alert(p_environment text, p_order_id uuid, p_kind text, p_delivered boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_founders_payment_allowed(p_environment text, p_paid_at timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_founders_payment_allowed(p_environment text, p_paid_at timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_founders_payment_allowed(p_environment text, p_paid_at timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_founders_subscription_transitions(p_environment text, p_order_id text, p_user_id uuid, p_subscription_id text, p_revision timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_founders_subscription_transitions(p_environment text, p_order_id text, p_user_id uuid, p_subscription_id text, p_revision timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_founders_subscription_transitions(p_environment text, p_order_id text, p_user_id uuid, p_subscription_id text, p_revision timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_launch_checkout(p_account uuid, p_environment text, p_product text, p_discount text, p_key text, p_now timestamp with time zone, p_attempt uuid, p_replaces uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_launch_checkout(p_account uuid, p_environment text, p_product text, p_discount text, p_key text, p_now timestamp with time zone, p_attempt uuid, p_replaces uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_launch_checkout(p_account uuid, p_environment text, p_product text, p_discount text, p_key text, p_now timestamp with time zone, p_attempt uuid, p_replaces uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_observability_snapshot(p_environment text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_observability_snapshot(p_environment text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_observability_snapshot(p_environment text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_observe_checkout_payment(p_environment text, p_order_id uuid, p_checkout_id uuid, p_organization_id uuid, p_product_id uuid, p_subscription_id uuid, p_net_amount bigint, p_currency text, p_capabilities text[], p_attempt_id uuid, p_dispatch_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_observe_checkout_payment(p_environment text, p_order_id uuid, p_checkout_id uuid, p_organization_id uuid, p_product_id uuid, p_subscription_id uuid, p_net_amount bigint, p_currency text, p_capabilities text[], p_attempt_id uuid, p_dispatch_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_observe_checkout_payment(p_environment text, p_order_id uuid, p_checkout_id uuid, p_organization_id uuid, p_product_id uuid, p_subscription_id uuid, p_net_amount bigint, p_currency text, p_capabilities text[], p_attempt_id uuid, p_dispatch_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_observe_checkout_session(p_environment text, p_checkout_id uuid, p_product_id uuid, p_status text, p_attempt_id uuid, p_dispatch_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_observe_checkout_session(p_environment text, p_checkout_id uuid, p_product_id uuid, p_status text, p_attempt_id uuid, p_dispatch_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_observe_checkout_session(p_environment text, p_checkout_id uuid, p_product_id uuid, p_status text, p_attempt_id uuid, p_dispatch_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_operational_owner_alerts(p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_operational_owner_alerts(p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_operational_owner_alerts(p_environment text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_owner_alert_claim(p_environment text, p_type text, p_id text, p_code text, p_lease uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_owner_alert_claim(p_environment text, p_type text, p_id text, p_code text, p_lease uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_owner_alert_claim(p_environment text, p_type text, p_id text, p_code text, p_lease uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_owner_alert_finish(p_environment text, p_type text, p_id text, p_lease uuid, p_sent boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_owner_alert_finish(p_environment text, p_type text, p_id text, p_lease uuid, p_sent boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_owner_alert_finish(p_environment text, p_type text, p_id text, p_lease uuid, p_sent boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_published_checkouts_to_expire(p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_published_checkouts_to_expire(p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_published_checkouts_to_expire(p_environment text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_purchase_policy(p_user_id uuid, p_environment text, p_checkout_key text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_purchase_policy(p_user_id uuid, p_environment text, p_checkout_key text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_purchase_policy(p_user_id uuid, p_environment text, p_checkout_key text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_purge_webhook_payloads(p_processed_before timestamp with time zone, p_quarantined_before timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_purge_webhook_payloads(p_processed_before timestamp with time zone, p_quarantined_before timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_purge_webhook_payloads(p_processed_before timestamp with time zone, p_quarantined_before timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_quarantine_webhook(p_inbox_id uuid, p_lease_token uuid, p_reason_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_quarantine_webhook(p_inbox_id uuid, p_lease_token uuid, p_reason_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_quarantine_webhook(p_inbox_id uuid, p_lease_token uuid, p_reason_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_receive_webhook(p_provider text, p_provider_event_id text, p_event_type text, p_payload_hash text, p_payload jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_receive_webhook(p_provider text, p_provider_event_id text, p_event_type text, p_payload_hash text, p_payload jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_receive_webhook(p_provider text, p_provider_event_id text, p_event_type text, p_payload_hash text, p_payload jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_receive_webhook(p_provider text, p_environment text, p_provider_event_id text, p_event_type text, p_payload_hash text, p_payload jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_receive_webhook(p_provider text, p_environment text, p_provider_event_id text, p_event_type text, p_payload_hash text, p_payload jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_receive_webhook(p_provider text, p_environment text, p_provider_event_id text, p_event_type text, p_payload_hash text, p_payload jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_reconciliation_item_failed(p_environment text, p_resource text, p_item_key text, p_resource_id text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_reconciliation_item_failed(p_environment text, p_resource text, p_item_key text, p_resource_id text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_reconciliation_item_failed(p_environment text, p_resource text, p_item_key text, p_resource_id text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_record_dispute_snapshot(p_environment text, p_dispute_id text, p_order_id text, p_blocked boolean, p_modified_at timestamp with time zone, p_snapshot_hash text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_record_dispute_snapshot(p_environment text, p_dispute_id text, p_order_id text, p_blocked boolean, p_modified_at timestamp with time zone, p_snapshot_hash text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_record_dispute_snapshot(p_environment text, p_dispute_id text, p_order_id text, p_blocked boolean, p_modified_at timestamp with time zone, p_snapshot_hash text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_record_order_snapshot(p_environment text, p_order_id text, p_user_id uuid, p_product_id text, p_checkout_id text, p_status text, p_paid boolean, p_net_amount bigint, p_currency text, p_reported_refunded_amount bigint, p_modified_at timestamp with time zone, p_snapshot_hash text, p_subscription_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_record_order_snapshot(p_environment text, p_order_id text, p_user_id uuid, p_product_id text, p_checkout_id text, p_status text, p_paid boolean, p_net_amount bigint, p_currency text, p_reported_refunded_amount bigint, p_modified_at timestamp with time zone, p_snapshot_hash text, p_subscription_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_record_order_snapshot(p_environment text, p_order_id text, p_user_id uuid, p_product_id text, p_checkout_id text, p_status text, p_paid boolean, p_net_amount bigint, p_currency text, p_reported_refunded_amount bigint, p_modified_at timestamp with time zone, p_snapshot_hash text, p_subscription_id text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_record_refund_snapshot(p_environment text, p_refund_id text, p_order_id text, p_payment_id text, p_status text, p_amount bigint, p_currency text, p_modified_at timestamp with time zone, p_snapshot_hash text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_record_refund_snapshot(p_environment text, p_refund_id text, p_order_id text, p_payment_id text, p_status text, p_amount bigint, p_currency text, p_modified_at timestamp with time zone, p_snapshot_hash text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_record_refund_snapshot(p_environment text, p_refund_id text, p_order_id text, p_payment_id text, p_status text, p_amount bigint, p_currency text, p_modified_at timestamp with time zone, p_snapshot_hash text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_refresh_entitlement_read_model(p_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_refresh_entitlement_read_model(p_user_id uuid) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_refresh_entitlement_read_model_at(p_user_id uuid, p_evaluated_at timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_refresh_entitlement_read_model_at(p_user_id uuid, p_evaluated_at timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION billing_reject_checkout_request(p_user_id uuid, p_attempt_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_reject_checkout_request(p_user_id uuid, p_attempt_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_reject_checkout_request(p_user_id uuid, p_attempt_id uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_replay_webhook(p_inbox_id uuid, p_actor_id text, p_reason_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_replay_webhook(p_inbox_id uuid, p_actor_id text, p_reason_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_replay_webhook(p_inbox_id uuid, p_actor_id text, p_reason_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_resolve_checkout_non_applicable(p_environment text, p_order_id uuid, p_reason text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_resolve_checkout_non_applicable(p_environment text, p_order_id uuid, p_reason text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_resolve_checkout_non_applicable(p_environment text, p_order_id uuid, p_reason text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_save_creator_attribution(p_user uuid, p_environment text, p_attempt uuid, p_code text, p_discount uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_save_creator_attribution(p_user uuid, p_environment text, p_attempt uuid, p_code text, p_discount uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_save_creator_attribution(p_user uuid, p_environment text, p_attempt uuid, p_code text, p_discount uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_set_report_renewal_candidate(p_environment text, p_user uuid, p_subscription text, p_discount uuid, p_savings integer, p_valid_until timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_set_report_renewal_candidate(p_environment text, p_user uuid, p_subscription text, p_discount uuid, p_savings integer, p_valid_until timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_set_report_renewal_candidate(p_environment text, p_user uuid, p_subscription text, p_discount uuid, p_savings integer, p_valid_until timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION billing_sync_order_access(p_environment text, p_order_id text, p_capabilities jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.billing_sync_order_access(p_environment text, p_order_id text, p_capabilities jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.billing_sync_order_access(p_environment text, p_order_id text, p_capabilities jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION web_purchase_attempt_states(p_keys jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.web_purchase_attempt_states(p_keys jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.web_purchase_attempt_states(p_keys jsonb) TO web_purchase_erasure;
+
+
+--
+
+-- Name: FUNCTION web_purchase_erasure_ack(p_from_cursor bigint, p_to_cursor bigint, p_count integer, p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.web_purchase_erasure_ack(p_from_cursor bigint, p_to_cursor bigint, p_count integer, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION web_purchase_erasure_ack(p_from_cursor bigint, p_to_cursor bigint, p_count integer, p_environment text, p_erasure_digest text, p_remaining_rows integer, p_receipt text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.web_purchase_erasure_ack(p_from_cursor bigint, p_to_cursor bigint, p_count integer, p_environment text, p_erasure_digest text, p_remaining_rows integer, p_receipt text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.web_purchase_erasure_ack(p_from_cursor bigint, p_to_cursor bigint, p_count integer, p_environment text, p_erasure_digest text, p_remaining_rows integer, p_receipt text) TO web_purchase_erasure;
+
+
+--
+
+-- Name: FUNCTION web_purchase_erasure_failed(p_code text, p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.web_purchase_erasure_failed(p_code text, p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.web_purchase_erasure_failed(p_code text, p_environment text) TO web_purchase_erasure;
+
+
+--
+
+-- Name: FUNCTION web_purchase_erasure_pull(p_limit integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.web_purchase_erasure_pull(p_limit integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.web_purchase_erasure_pull(p_limit integer) TO web_purchase_erasure;
+
+
+--
+
+-- Name: TABLE billing_access_blocks; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_access_blocks TO service_role;
+
+
+--
+
+-- Name: TABLE billing_access_grants; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_access_grants TO service_role;
+
+
+--
+
+-- Name: TABLE billing_checkout_attempts; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_checkout_attempts TO service_role;
+
+
+--
+
+-- Name: TABLE billing_checkout_bindings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_checkout_bindings TO service_role;
+
+
+--
+
+-- Name: TABLE billing_commercial_resources; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_commercial_resources TO service_role;
+
+
+--
+
+-- Name: TABLE billing_customers; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_customers TO service_role;
+
+
+--
+
+-- Name: TABLE billing_effective_access_grants; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_effective_access_grants TO service_role;
+
+
+--
+
+-- Name: TABLE billing_orders; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_orders TO service_role;
+
+
+--
+
+-- Name: TABLE billing_reconciliation_runs; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_reconciliation_runs TO service_role;
+
+
+--
+
+-- Name: TABLE billing_refunds; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_refunds TO service_role;
+
+
+--
+
+-- Name: TABLE billing_subscription_recovery_cycles; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_subscription_recovery_cycles TO service_role;
+
+
+--
+
+-- Name: TABLE billing_subscriptions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_subscriptions TO service_role;
+
+
+--
+
+-- Name: TABLE billing_webhook_effects; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_webhook_effects TO service_role;
+
+
+--
+
+-- Name: TABLE billing_webhook_inbox; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_webhook_inbox TO service_role;
+
+
+--
+
+-- Name: TABLE billing_webhook_replay_audit; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.billing_webhook_replay_audit TO service_role;
+
+
+--
+
+-- Name: TABLE license_events; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.license_events TO service_role;
+
+
+--
+
+-- Name: TABLE license_validations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.license_validations TO service_role;
 
 
 --

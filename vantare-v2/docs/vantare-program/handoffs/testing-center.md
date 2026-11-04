@@ -1,3 +1,8 @@
+## 2026-11-04 - #1896 / VANTA-131 paso 12, Fase A: lint e inmutabilidad
+
+- #1954 rebasado tras el merge de #1955 (`nightly@269d08d1b`). La CI aplica la ADR 0106 solo a migraciones posteriores a `20261104235959` y compara los SQL y rollbacks que ya existen en `origin/nightly`; si cambian, exige una migración nueva. La referencia ausente falla cerrada.
+- El generador deja `shared.sql` en 3.204 líneas (antes 7.570): correo y operaciones tienen archivos propios, y ACL/comentarios se asignan a su tabla o función. PostgreSQL 17 local reproduce la cadena y compara nueve volcados; tests de lint y generador pasan. No se cambia SQL de producto ni se llama a un entorno alojado.
+
 ## 2026-11-04 - #1896 / VANTA-131: excepción de inmutabilidad de 7b
 
 - #1953 fusionado en `nightly@7bd1e7596` enmendó la migración `20261104120500_isa_1896_legacy_retirement.sql` y su rollback después de #1949. El orquestador confirmó que **no se había desplegado en ningún entorno**; esa es la única razón para aceptar la enmienda.

@@ -37,10 +37,22 @@ class MigrationPolicyLintTests(unittest.TestCase):
         else:
             down.write_text(rollback)
 
-    def lint(self):
+    def lint(self, baseline=False):
+        args = ([sys.executable, str(LINTER), '--root', str(self.root),
+                 '--cutoff', CUTOFF])
+        if baseline:
+            args += ['--baseline-ref', 'origin/nightly']
         return subprocess.run(
-            [sys.executable, str(LINTER), '--root', str(self.root),
-             '--cutoff', CUTOFF], capture_output=True, text=True)
+            args, capture_output=True, text=True)
+
+    def baseline(self):
+        for args in (('init', '-q'), ('config', 'user.name', 'Test'),
+                     ('config', 'user.email', 'test@example.invalid'),
+                     ('add', '.'), ('commit', '-qm', 'nightly baseline')):
+            subprocess.run(['git', *args], cwd=self.root, check=True,
+                           capture_output=True)
+        subprocess.run(['git', 'update-ref', 'refs/remotes/origin/nightly',
+                        'HEAD'], cwd=self.root, check=True, capture_output=True)
 
     def test_historical_violation_ignored_and_new_complete_function_passes(self):
         result = self.lint()
@@ -109,6 +121,38 @@ revoke all on table public.example from public,anon,authenticated,service_role;
 grant select on table public.example to service_role;
 ''')
         self.assertEqual(self.lint().returncode, 0)
+
+    def test_merged_post_cutoff_up_cannot_change(self):
+        self.baseline()
+        self.write_new(VALID + '\nselect 2;\n')
+        result = self.lint(baseline=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('already merged', result.stdout)
+
+    def test_merged_post_cutoff_rollback_cannot_change(self):
+        self.baseline()
+        self.write_new(VALID, rollback='begin; select 2; commit;\n')
+        result = self.lint(baseline=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('already merged', result.stdout)
+
+    def test_new_post_cutoff_migration_is_allowed(self):
+        self.baseline()
+        self.write_new(VALID)
+        new = self.root / 'migrations' / '20261104110002_more.sql'
+        new.write_text(VALID)
+        (self.root / 'rollbacks' / '20261104110002_more.down.sql').write_text('begin; commit;\n')
+        self.assertEqual(self.lint(baseline=True).returncode, 0)
+
+    def test_missing_baseline_ref_fails_closed(self):
+        result = self.lint(baseline=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('baseline', result.stdout)
+
+    def test_checkout_line_endings_are_not_a_migration_edit(self):
+        self.baseline()
+        (self.root / 'migrations' / NEW).write_bytes(VALID.replace('\n', '\r\n').encode())
+        self.assertEqual(self.lint(baseline=True).returncode, 0)
 
 
 if __name__ == '__main__':

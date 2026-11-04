@@ -178,6 +178,14 @@ CREATE FUNCTION private.report_promotion_eligible(t timestamp with time zone) RE
 
 --
 
+-- Name: FUNCTION report_promotion_eligible(t timestamp with time zone); Type: COMMENT; Schema: private; Owner: -
+--
+
+COMMENT ON FUNCTION private.report_promotion_eligible(t timestamp with time zone) IS 'Historical name: launch first-period checkout window only. Report enrollment uses report_promotion_enrollment_open and its independent, disabled-by-default policy.';
+
+
+--
+
 -- Name: report_promotion_enrollment_open(timestamp with time zone); Type: FUNCTION; Schema: private; Owner: -
 --
 
@@ -1521,6 +1529,14 @@ end $$;
 
 --
 
+-- Name: FUNCTION testing_center_assert_linear_dispatch(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.testing_center_assert_linear_dispatch(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text) IS 'TAU-07I final pause, lease and projection gate immediately before Linear.';
+
+
+--
+
 -- Name: testing_center_authorize_codex_dispatch(text, text, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2117,6 +2133,14 @@ end $_$;
 
 --
 
+-- Name: FUNCTION testing_center_complete_linear_pilot(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text, p_external_issue_id uuid, p_organization_id uuid, p_external_identifier text, p_external_url text, p_bound_by_id text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.testing_center_complete_linear_pilot(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text, p_external_issue_id uuid, p_organization_id uuid, p_external_identifier text, p_external_url text, p_bound_by_id text) IS 'TAU-07I atomic durable binding after one externally confirmed Linear create.';
+
+
+--
+
 -- Name: testing_center_current_role(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2502,6 +2526,14 @@ begin
   set outcome = v_outcome where delivery_id = p_delivery_id;
   return query select v_outcome, v_reconciliation.observed_state;
 end $_$;
+
+
+--
+
+-- Name: FUNCTION testing_center_reconcile_linear_webhook(p_delivery_id uuid, p_webhook_id uuid, p_organization_id uuid, p_external_issue_id uuid, p_event_name text, p_event_action text, p_webhook_timestamp_ms bigint, p_event_created_at timestamp with time zone, p_linear_state_id uuid, p_payload_digest text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.testing_center_reconcile_linear_webhook(p_delivery_id uuid, p_webhook_id uuid, p_organization_id uuid, p_external_issue_id uuid, p_event_name text, p_event_action text, p_webhook_timestamp_ms bigint, p_event_created_at timestamp with time zone, p_linear_state_id uuid, p_payload_digest text) IS 'TAU-07F fail-closed replay/order reconciliation with no execution authority.';
 
 
 --
@@ -3885,6 +3917,14 @@ $_$;
 
 --
 
+-- Name: FUNCTION testing_center_validate_candidate(p_contract_version text, p_candidate_id text, p_exact_sha text, p_decision text, p_rejection_reason text, p_idempotency_key text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.testing_center_validate_candidate(p_contract_version text, p_candidate_id text, p_exact_sha text, p_decision text, p_rejection_reason text, p_idempotency_key text) IS 'TAU-02C authenticated, fail-closed and idempotent candidate validation.';
+
+
+--
+
 -- Name: testing_center_validate_issue_destination(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4706,6 +4746,14 @@ ALTER TABLE ONLY public.testing_center_agent_effect_outbox FORCE ROW LEVEL SECUR
 
 --
 
+-- Name: TABLE testing_center_agent_effect_outbox; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_agent_effect_outbox IS 'HAF-05 per-phase external effects with lease, fencing and no retry after reservation ambiguity.';
+
+
+--
+
 -- Name: testing_center_agent_jobs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4743,6 +4791,14 @@ ALTER TABLE ONLY public.testing_center_agent_jobs FORCE ROW LEVEL SECURITY;
 
 --
 
+-- Name: TABLE testing_center_agent_jobs; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_agent_jobs IS 'HAF-05 one immutable generation-one autofix job per Testing Center technical issue.';
+
+
+--
+
 -- Name: testing_center_agent_phase_callbacks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4770,6 +4826,14 @@ CREATE TABLE public.testing_center_agent_phase_callbacks (
 );
 
 ALTER TABLE ONLY public.testing_center_agent_phase_callbacks FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_agent_phase_callbacks; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_agent_phase_callbacks IS 'HAF-09 one replay-safe, fenced ledger row per non-triage agent phase callback.';
 
 
 --
@@ -4837,6 +4901,14 @@ ALTER TABLE ONLY public.testing_center_audit FORCE ROW LEVEL SECURITY;
 
 --
 
+-- Name: TABLE testing_center_audit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_audit IS 'TAU-02B append-oriented audit snapshots; transition authorization remains outside SQL.';
+
+
+--
+
 -- Name: testing_center_build_identities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4856,6 +4928,14 @@ CREATE TABLE public.testing_center_build_identities (
 );
 
 ALTER TABLE ONLY public.testing_center_build_identities FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_build_identities; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_build_identities IS 'TAU-07E server-only channel and app-version to exact candidate SHA registry.';
 
 
 --
@@ -4924,6 +5004,14 @@ ALTER TABLE ONLY public.testing_center_codex_dossier_snapshots FORCE ROW LEVEL S
 
 --
 
+-- Name: TABLE testing_center_codex_dossier_snapshots; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_codex_dossier_snapshots IS 'TAU-07G deterministic sanitized dossier; storage grants no Codex authority.';
+
+
+--
+
 -- Name: testing_center_codex_execution_control; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4959,6 +5047,14 @@ CREATE TABLE public.testing_center_codex_execution_control (
 );
 
 ALTER TABLE ONLY public.testing_center_codex_execution_control FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_codex_execution_control; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_codex_execution_control IS 'TAU-06F one automatic Codex dry-run dispatch per issue with durable fencing.';
 
 
 --
@@ -5027,6 +5123,14 @@ ALTER TABLE ONLY public.testing_center_effect_outbox FORCE ROW LEVEL SECURITY;
 
 --
 
+-- Name: TABLE testing_center_effect_outbox; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_effect_outbox IS 'TAU-05A durable exactly-once reservation; no external GitHub call is made by this migration.';
+
+
+--
+
 -- Name: testing_center_effect_supersessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5049,6 +5153,14 @@ ALTER TABLE ONLY public.testing_center_effect_supersessions FORCE ROW LEVEL SECU
 
 --
 
+-- Name: TABLE testing_center_effect_supersessions; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_effect_supersessions IS 'TAU-07E exact reversible snapshot of superseded inert GitHub effects.';
+
+
+--
+
 -- Name: testing_center_github_deliveries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5067,6 +5179,14 @@ CREATE TABLE public.testing_center_github_deliveries (
 );
 
 ALTER TABLE ONLY public.testing_center_github_deliveries FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_github_deliveries; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_github_deliveries IS 'TAU-05C signed GitHub delivery replay ledger; payloads and signatures are not stored.';
 
 
 --
@@ -5116,6 +5236,14 @@ CREATE TABLE public.testing_center_issue_destinations (
 );
 
 ALTER TABLE ONLY public.testing_center_issue_destinations FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_issue_destinations; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_issue_destinations IS 'TAU-07E durable single destination per technical issue, including terminal effects.';
 
 
 --
@@ -5181,6 +5309,14 @@ ALTER TABLE ONLY public.testing_center_linear_projection_snapshots FORCE ROW LEV
 
 --
 
+-- Name: TABLE testing_center_linear_projection_snapshots; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_linear_projection_snapshots IS 'TAU-07E durable canonical source and sanitized Linear dry-run projection.';
+
+
+--
+
 -- Name: testing_center_linear_reconciliations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5201,6 +5337,14 @@ CREATE TABLE public.testing_center_linear_reconciliations (
 );
 
 ALTER TABLE ONLY public.testing_center_linear_reconciliations FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_linear_reconciliations; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_linear_reconciliations IS 'TAU-07F observational state only; never authorizes Codex, Git or promotion.';
 
 
 --
@@ -5253,6 +5397,14 @@ ALTER TABLE ONLY public.testing_center_linear_webhook_deliveries FORCE ROW LEVEL
 
 --
 
+-- Name: TABLE testing_center_linear_webhook_deliveries; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_linear_webhook_deliveries IS 'TAU-07F durable allowlisted Linear delivery metadata; no raw body or signature.';
+
+
+--
+
 -- Name: testing_center_memberships; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5268,6 +5420,14 @@ CREATE TABLE public.testing_center_memberships (
 );
 
 ALTER TABLE ONLY public.testing_center_memberships FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_memberships; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_memberships IS 'TAU-02C server-owned Testing Center roles; clients cannot self-assign.';
 
 
 --
@@ -5297,6 +5457,14 @@ CREATE TABLE public.testing_center_owner_dispositions (
 );
 
 ALTER TABLE ONLY public.testing_center_owner_dispositions FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_owner_dispositions; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_owner_dispositions IS 'TAU-07G explicit owner decision; same_branch is impossible by constraint.';
 
 
 --
@@ -5441,6 +5609,14 @@ CREATE TABLE public.testing_center_validation_snapshots (
 );
 
 ALTER TABLE ONLY public.testing_center_validation_snapshots FORCE ROW LEVEL SECURITY;
+
+
+--
+
+-- Name: TABLE testing_center_validation_snapshots; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.testing_center_validation_snapshots IS 'TAU-07G exact candidate feedback projection; tester identity remains private.';
 
 
 --
@@ -8689,6 +8865,1264 @@ CREATE POLICY triage_read ON public.testing_contribution_context FOR SELECT TO v
 --
 
 CREATE POLICY triage_read ON public.testing_contributions FOR SELECT TO vantare_triage USING ((created_at > (statement_timestamp() - '30 days'::interval)));
+
+
+--
+
+-- Name: FUNCTION report_creator_block_finished(p_account uuid, p_environment text, p_now timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_creator_block_finished(p_account uuid, p_environment text, p_now timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_creator_bound(p_environment text, p_subscription text, p_operation jsonb, p_now timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_creator_bound(p_environment text, p_subscription text, p_operation jsonb, p_now timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_creator_context(p_user uuid, p_environment text, p_subscription text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_creator_context(p_user uuid, p_environment text, p_subscription text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_creator_due(p_account uuid, p_environment text, p_now timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_creator_due(p_account uuid, p_environment text, p_now timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_creator_end(p_environment text, p_subscription text, p_now timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_creator_end(p_environment text, p_subscription text, p_now timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_checkout_started(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_promotion_checkout_started() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_eligible(t timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_promotion_eligible(t timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_enrollment_open(t timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_promotion_enrollment_open(t timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_mark_launch(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_promotion_mark_launch() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_months(t timestamp with time zone, n integer); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_promotion_months(t timestamp with time zone, n integer) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_progress(p_account uuid, p_environment text, p_now timestamp with time zone); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.report_promotion_progress(p_account uuid, p_environment text, p_now timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_v2_owner(p_reference text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_center_v2_owner(p_reference text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_purge_evidence(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_contribution_purge_evidence() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_review_as(p_reviewer uuid, p_id uuid, p_decision text, p_note text, p_proposal jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_contribution_review_as(p_reviewer uuid, p_id uuid, p_decision text, p_note text, p_proposal jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_submit_for_account(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_contribution_submit_for_account(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_submit_v2_for_account(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_contribution_submit_v2_for_account(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_proposal_valid(p jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_proposal_valid(p jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_acceptance_limit(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_acceptance_limit() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_activity(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_activity() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_limit(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_limit() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_purge_admitted_on_delete(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_purge_admitted_on_delete() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_status(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_status() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_submit_for_account(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_submit_for_account(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_v2_submit(p_account uuid, p_report jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_report_v2_submit(p_account uuid, p_report jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_system_valid(p jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_system_valid(p jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_telemetry_valid(p jsonb); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.testing_telemetry_valid(p jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_accounts(p_environment text, p_after uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_accounts(p_environment text, p_after uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_accounts(p_environment text, p_after uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_ack(p_id uuid, p_token uuid, p_now timestamp with time zone, p_observed_discount text, p_cleanup_reason text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_ack(p_id uuid, p_token uuid, p_now timestamp with time zone, p_observed_discount text, p_cleanup_reason text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_ack(p_id uuid, p_token uuid, p_now timestamp with time zone, p_observed_discount text, p_cleanup_reason text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_ack_before_1661(p_id uuid, p_token uuid, p_now timestamp with time zone, p_observed_discount text, p_cleanup_reason text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_ack_before_1661(p_id uuid, p_token uuid, p_now timestamp with time zone, p_observed_discount text, p_cleanup_reason text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_checkout_pending(p_account uuid, p_environment text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_checkout_pending(p_account uuid, p_environment text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_checkout_pending(p_account uuid, p_environment text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_claim(p_id uuid, p_token uuid, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_claim(p_id uuid, p_token uuid, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_claim(p_id uuid, p_token uuid, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_claim_before_1661(p_id uuid, p_token uuid, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_claim_before_1661(p_id uuid, p_token uuid, p_now timestamp with time zone) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION report_promotion_cleared(p_id uuid, p_token uuid, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_cleared(p_id uuid, p_token uuid, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_cleared(p_id uuid, p_token uuid, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_failed(p_account uuid, p_environment text, p_code text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_failed(p_account uuid, p_environment text, p_code text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_failed(p_account uuid, p_environment text, p_code text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_invoice(p_environment text, p_order text, p_discount text, p_amount integer, p_billed timestamp with time zone, p_start timestamp with time zone, p_end timestamp with time zone, p_initial boolean, p_source text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_invoice(p_environment text, p_order text, p_discount text, p_amount integer, p_billed timestamp with time zone, p_start timestamp with time zone, p_end timestamp with time zone, p_initial boolean, p_source text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_invoice(p_environment text, p_order text, p_discount text, p_amount integer, p_billed timestamp with time zone, p_start timestamp with time zone, p_end timestamp with time zone, p_initial boolean, p_source text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_invoice_missing(p_environment text, p_order text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_invoice_missing(p_environment text, p_order text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_invoice_missing(p_environment text, p_order text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_observe(p_account uuid, p_environment text, p_subscription text, p_product text, p_started timestamp with time zone, p_modified timestamp with time zone, p_discount text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_observe(p_account uuid, p_environment text, p_subscription text, p_product text, p_started timestamp with time zone, p_modified timestamp with time zone, p_discount text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_observe(p_account uuid, p_environment text, p_subscription text, p_product text, p_started timestamp with time zone, p_modified timestamp with time zone, p_discount text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_period(p_account uuid, p_environment text, p_subscription text, p_end timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_period(p_account uuid, p_environment text, p_subscription text, p_end timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_period(p_account uuid, p_environment text, p_subscription text, p_end timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_prepare(p_account uuid, p_environment text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_prepare(p_account uuid, p_environment text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_prepare(p_account uuid, p_environment text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_renewal_failed(p_id uuid, p_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_renewal_failed(p_id uuid, p_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_renewal_failed(p_id uuid, p_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION report_promotion_renewal_prepare(p_id uuid, p_creator_savings integer, p_creator_months integer, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.report_promotion_renewal_prepare(p_id uuid, p_creator_savings integer, p_creator_months integer, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.report_promotion_renewal_prepare(p_id uuid, p_creator_savings integer, p_creator_months integer, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_answer_save(p_id uuid, p_score smallint, p_note text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_answer_save(p_id uuid, p_score smallint, p_note text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_answer_save(p_id uuid, p_score smallint, p_note text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_center_agent_job_key(p_technical_issue_id text, p_report_digest text, p_nightly_base_sha text, p_policy_version text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_agent_job_key(p_technical_issue_id text, p_report_digest text, p_nightly_base_sha text, p_policy_version text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_agent_transition_allowed(p_from text, p_to text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_agent_transition_allowed(p_from text, p_to text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_assert_github_effect_unpaused(p_effect_id text, p_lease_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_assert_github_effect_unpaused(p_effect_id text, p_lease_token uuid) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_assert_linear_dispatch(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_assert_linear_dispatch(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_assert_linear_dispatch(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_authorize_codex_dispatch(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_authorize_codex_dispatch(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_authorize_codex_dispatch(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_bind_linear_issue(p_effect_id text, p_external_issue_id uuid, p_organization_id uuid, p_bound_by_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_bind_linear_issue(p_effect_id text, p_external_issue_id uuid, p_organization_id uuid, p_bound_by_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_bind_linear_issue(p_effect_id text, p_external_issue_id uuid, p_organization_id uuid, p_bound_by_id text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_can_view_channel(p_channel text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_can_view_channel(p_channel text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_can_view_channel(p_channel text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_center_claim_agent_effect(p_worker_id text, p_lease_seconds integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_claim_agent_effect(p_worker_id text, p_lease_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_claim_agent_effect(p_worker_id text, p_lease_seconds integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_claim_codex_dry_run(p_technical_issue_id text, p_worker_id text, p_lease_seconds integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_claim_codex_dry_run(p_technical_issue_id text, p_worker_id text, p_lease_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_claim_codex_dry_run(p_technical_issue_id text, p_worker_id text, p_lease_seconds integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_claim_github_effect(p_effect_id text, p_lease_token uuid, p_lease_seconds integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_claim_github_effect(p_effect_id text, p_lease_token uuid, p_lease_seconds integer) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_claim_linear_effect(p_effect_id text, p_worker_id text, p_lease_seconds integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_claim_linear_effect(p_effect_id text, p_worker_id text, p_lease_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_claim_linear_effect(p_effect_id text, p_worker_id text, p_lease_seconds integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_complete_agent_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_outcome text, p_outcome_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_complete_agent_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_outcome text, p_outcome_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_complete_agent_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_outcome text, p_outcome_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_complete_github_effect(p_effect_id text, p_lease_token uuid, p_issue_number bigint, p_issue_node_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_complete_github_effect(p_effect_id text, p_lease_token uuid, p_issue_number bigint, p_issue_node_id text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_complete_linear_dry_run(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_complete_linear_dry_run(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_complete_linear_dry_run(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_source_digest text, p_projection jsonb, p_canonical_projection text, p_projection_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_complete_linear_pilot(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text, p_external_issue_id uuid, p_organization_id uuid, p_external_identifier text, p_external_url text, p_bound_by_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_complete_linear_pilot(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text, p_external_issue_id uuid, p_organization_id uuid, p_external_identifier text, p_external_url text, p_bound_by_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_complete_linear_pilot(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text, p_external_issue_id uuid, p_organization_id uuid, p_external_identifier text, p_external_url text, p_bound_by_id text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_current_role(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_current_role() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_current_role() TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_center_enforce_selected_effect(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_enforce_selected_effect() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_expire_reserved_agent_effect(p_effect_id text, p_now timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_expire_reserved_agent_effect(p_effect_id text, p_now timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_expire_reserved_agent_effect(p_effect_id text, p_now timestamp with time zone) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_fail_codex_before_dispatch(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_fail_codex_before_dispatch(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_fail_codex_before_dispatch(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_fail_github_effect(p_effect_id text, p_lease_token uuid, p_error_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_fail_github_effect(p_effect_id text, p_lease_token uuid, p_error_code text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_fail_linear_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_error_code text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_fail_linear_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_error_code text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_fail_linear_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_error_code text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_get_agent_job_state(p_report_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_get_agent_job_state(p_report_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_get_agent_job_state(p_report_id text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_center_queue_agent_effect(p_job_key text, p_effect_kind text, p_effect_target text, p_payload_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_queue_agent_effect(p_job_key text, p_effect_kind text, p_effect_target text, p_payload_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_queue_agent_effect(p_job_key text, p_effect_kind text, p_effect_target text, p_payload_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_queue_agent_job(p_job_key text, p_technical_issue_id text, p_execution_generation integer, p_policy_version text, p_report_digest text, p_dossier_digest text, p_nightly_base_sha text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_queue_agent_job(p_job_key text, p_technical_issue_id text, p_execution_generation integer, p_policy_version text, p_report_digest text, p_dossier_digest text, p_nightly_base_sha text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_queue_agent_job(p_job_key text, p_technical_issue_id text, p_execution_generation integer, p_policy_version text, p_report_digest text, p_dossier_digest text, p_nightly_base_sha text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_reconcile_github_effect(p_effect_id text, p_issue_number bigint, p_issue_node_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_reconcile_github_effect(p_effect_id text, p_issue_number bigint, p_issue_node_id text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_reconcile_linear_webhook(p_delivery_id uuid, p_webhook_id uuid, p_organization_id uuid, p_external_issue_id uuid, p_event_name text, p_event_action text, p_webhook_timestamp_ms bigint, p_event_created_at timestamp with time zone, p_linear_state_id uuid, p_payload_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_reconcile_linear_webhook(p_delivery_id uuid, p_webhook_id uuid, p_organization_id uuid, p_external_issue_id uuid, p_event_name text, p_event_action text, p_webhook_timestamp_ms bigint, p_event_created_at timestamp with time zone, p_linear_state_id uuid, p_payload_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_reconcile_linear_webhook(p_delivery_id uuid, p_webhook_id uuid, p_organization_id uuid, p_external_issue_id uuid, p_event_name text, p_event_action text, p_webhook_timestamp_ms bigint, p_event_created_at timestamp with time zone, p_linear_state_id uuid, p_payload_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_agent_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_callback_kind text, p_outcome text, p_payload_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_agent_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_callback_kind text, p_outcome text, p_payload_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_agent_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_callback_kind text, p_outcome text, p_payload_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_agent_phase_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_reviewed_head_sha text, p_phase text, p_payload_digest text, p_fencing_token bigint, p_run_id bigint, p_release_tag text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_agent_phase_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_reviewed_head_sha text, p_phase text, p_payload_digest text, p_fencing_token bigint, p_run_id bigint, p_release_tag text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_agent_phase_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_reviewed_head_sha text, p_phase text, p_payload_digest text, p_fencing_token bigint, p_run_id bigint, p_release_tag text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_codex_dossier(p_rejection_validation_id text, p_dossier jsonb, p_canonical_dossier text, p_dossier_digest_source text, p_dossier_digest text, p_transport_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_codex_dossier(p_rejection_validation_id text, p_dossier jsonb, p_canonical_dossier text, p_dossier_digest_source text, p_dossier_digest text, p_transport_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_codex_dossier(p_rejection_validation_id text, p_dossier jsonb, p_canonical_dossier text, p_dossier_digest_source text, p_dossier_digest text, p_transport_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_codex_outcome(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint, p_outcome_code text, p_response_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_codex_outcome(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint, p_outcome_code text, p_response_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_codex_outcome(p_technical_issue_id text, p_worker_id text, p_fencing_token bigint, p_outcome_code text, p_response_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_fenced_agent_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_callback_kind text, p_outcome text, p_payload_digest text, p_fencing_token bigint); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_fenced_agent_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_callback_kind text, p_outcome text, p_payload_digest text, p_fencing_token bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_fenced_agent_callback(p_delivery_id text, p_job_key text, p_head_sha text, p_callback_kind text, p_outcome text, p_payload_digest text, p_fencing_token bigint) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_github_delivery(p_delivery_id text, p_event_name text, p_action text, p_payload_digest text, p_issue_number bigint); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_github_delivery(p_delivery_id text, p_event_name text, p_action text, p_payload_digest text, p_issue_number bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_github_delivery(p_delivery_id text, p_event_name text, p_action text, p_payload_digest text, p_issue_number bigint) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_linear_ambiguity(p_effect_id text, p_worker_id text, p_fencing_token bigint); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_linear_ambiguity(p_effect_id text, p_worker_id text, p_fencing_token bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_linear_ambiguity(p_effect_id text, p_worker_id text, p_fencing_token bigint) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_owner_disposition(p_rejection_validation_id text, p_dossier_digest text, p_disposition text, p_reason text, p_correction_issue_id text, p_target_branch text, p_nightly_sha text, p_owner_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_owner_disposition(p_rejection_validation_id text, p_dossier_digest text, p_disposition text, p_reason text, p_correction_issue_id text, p_target_branch text, p_nightly_sha text, p_owner_user_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_owner_disposition(p_rejection_validation_id text, p_dossier_digest text, p_disposition text, p_reason text, p_correction_issue_id text, p_target_branch text, p_nightly_sha text, p_owner_user_id uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_record_validation_projection(p_projection jsonb, p_canonical_projection text, p_projection_digest_source text, p_projection_digest text, p_transport_digest text, p_actor_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_record_validation_projection(p_projection jsonb, p_canonical_projection text, p_projection_digest_source text, p_projection_digest text, p_transport_digest text, p_actor_user_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_record_validation_projection(p_projection jsonb, p_canonical_projection text, p_projection_digest_source text, p_projection_digest text, p_transport_digest text, p_actor_user_id uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_reserve_agent_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_reserve_agent_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_reserve_agent_effect(p_effect_id text, p_worker_id text, p_fencing_token bigint) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_reserve_agent_resource(p_job_key text, p_reservation_kind text, p_reservation_key text, p_binding_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_reserve_agent_resource(p_job_key text, p_reservation_kind text, p_reservation_key text, p_binding_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_reserve_agent_resource(p_job_key text, p_reservation_kind text, p_reservation_key text, p_binding_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_retry_linear_pilot_token(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_retry_linear_pilot_token(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_retry_linear_pilot_token(p_effect_id text, p_worker_id text, p_fencing_token bigint, p_projection_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_transition_agent_job(p_job_key text, p_expected_state text, p_to_state text, p_actor text, p_operation_digest text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_transition_agent_job(p_job_key text, p_expected_state text, p_to_state text, p_actor text, p_operation_digest text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_transition_agent_job(p_job_key text, p_expected_state text, p_to_state text, p_actor text, p_operation_digest text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_upsert_linear_state_mapping(p_organization_id uuid, p_linear_state_id uuid, p_coarse_state text, p_configured_by_id text, p_active boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_upsert_linear_state_mapping(p_organization_id uuid, p_linear_state_id uuid, p_coarse_state text, p_configured_by_id text, p_active boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_center_upsert_linear_state_mapping(p_organization_id uuid, p_linear_state_id uuid, p_coarse_state text, p_configured_by_id text, p_active boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_center_validate_candidate(p_contract_version text, p_candidate_id text, p_exact_sha text, p_decision text, p_rejection_reason text, p_idempotency_key text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_validate_candidate(p_contract_version text, p_candidate_id text, p_exact_sha text, p_decision text, p_rejection_reason text, p_idempotency_key text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_center_validate_issue_destination(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_center_validate_issue_destination() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_review(p_id uuid, p_decision text, p_note text, p_proposal jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_contribution_review(p_id uuid, p_decision text, p_note text, p_proposal jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_contribution_review(p_id uuid, p_decision text, p_note text, p_proposal jsonb) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_submit(p_id uuid, p_channel text, p_title text, p_body text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_contribution_submit(p_id uuid, p_channel text, p_title text, p_body text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_submit_admitted(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_contribution_submit_admitted(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_contribution_submit_admitted(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_contribution_submit_v2(p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_contribution_submit_v2(p_id uuid, p_channel text, p_title text, p_body text, p_context jsonb, p_attachments jsonb) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_participation_current(p_channel text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_participation_current(p_channel text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_participation_current(p_channel text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_participation_current_v2(p_channel text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_participation_current_v2(p_channel text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_participation_current_v2(p_channel text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_report_admit(p_scope text, p_subject text, p_week date); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_admit(p_scope text, p_subject text, p_week date) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_admit(p_scope text, p_subject text, p_week date) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_report_admit_account(p_account uuid, p_key text, p_digest text, p_week date); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_admit_account(p_account uuid, p_key text, p_digest text, p_week date) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_admit_account(p_account uuid, p_key text, p_digest text, p_week date) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_report_credit(p_id uuid, p_consent boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_credit(p_id uuid, p_consent boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_credit(p_id uuid, p_consent boolean) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_report_fixed(p_id uuid, p_version text, p_reviewed_title text, p_reviewed_summary text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_fixed(p_id uuid, p_version text, p_reviewed_title text, p_reviewed_summary text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_fixed(p_id uuid, p_version text, p_reviewed_title text, p_reviewed_summary text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_report_notice_read(p_id uuid, p_updated_at timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_notice_read(p_id uuid, p_updated_at timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_notice_read(p_id uuid, p_updated_at timestamp with time zone) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_report_patch_candidates(p_version text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_patch_candidates(p_version text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_patch_candidates(p_version text) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION testing_report_submit(p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_submit(p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION testing_report_submit_admitted(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_submit_admitted(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_submit_admitted(p_account uuid, p_id uuid, p_channel text, p_title text, p_body text, p_consent boolean) TO service_role;
+
+
+--
+
+-- Name: FUNCTION testing_report_v2_submit_admitted(p_account uuid, p_report jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.testing_report_v2_submit_admitted(p_account uuid, p_report jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.testing_report_v2_submit_admitted(p_account uuid, p_report jsonb) TO service_role;
+
+
+--
+
+-- Name: TABLE testing_answers; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_answers TO service_role;
+GRANT SELECT ON TABLE public.testing_answers TO authenticated;
+
+
+--
+
+-- Name: TABLE testing_center_agent_audit; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_agent_audit TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_agent_callbacks; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_agent_callbacks TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_agent_effect_outbox; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_agent_effect_outbox TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_agent_jobs; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_agent_jobs TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_agent_phase_callbacks; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_agent_phase_callbacks TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_agent_reservations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_agent_reservations TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_audit; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_audit TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_build_identities; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.testing_center_build_identities TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_candidate_builds; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_candidate_builds TO service_role;
+GRANT SELECT ON TABLE public.testing_center_candidate_builds TO authenticated;
+
+
+--
+
+-- Name: TABLE testing_center_codex_dossier_snapshots; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_codex_dossier_snapshots TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_codex_execution_control; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_codex_execution_control TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_codex_runs; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_codex_runs TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_effect_outbox; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_effect_outbox TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_effect_supersessions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_effect_supersessions TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_github_deliveries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_github_deliveries TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_idempotency; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_idempotency TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_issue_destinations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_issue_destinations TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_linear_issue_bindings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_linear_issue_bindings TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_linear_projection_snapshots; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_linear_projection_snapshots TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_linear_reconciliations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_linear_reconciliations TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_linear_state_mappings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_linear_state_mappings TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_linear_webhook_deliveries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_linear_webhook_deliveries TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_memberships; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_memberships TO service_role;
+GRANT SELECT ON TABLE public.testing_center_memberships TO authenticated;
+
+
+--
+
+-- Name: TABLE testing_center_owner_dispositions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_owner_dispositions TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_pauses; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_pauses TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_promotions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_promotions TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_technical_issues; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_technical_issues TO service_role;
+GRANT SELECT ON TABLE public.testing_center_technical_issues TO authenticated;
+
+
+--
+
+-- Name: TABLE testing_center_validation_snapshots; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_center_validation_snapshots TO service_role;
+
+
+--
+
+-- Name: TABLE testing_center_validations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_center_validations TO service_role;
+
+
+--
+
+-- Name: TABLE testing_contribution_attachments; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_contribution_attachments TO authenticated;
+GRANT SELECT ON TABLE public.testing_contribution_attachments TO vantare_triage;
+
+
+--
+
+-- Name: TABLE testing_contribution_context; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_contribution_context TO authenticated;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.contribution_id; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(contribution_id) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.app_version; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(app_version) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.app_channel; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(app_channel) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.game; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(game) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.game_version; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(game_version) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.system; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(system) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.telemetry_summary; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(telemetry_summary) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contribution_context.consent; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(consent) ON TABLE public.testing_contribution_context TO vantare_triage;
+
+
+--
+
+-- Name: TABLE testing_contribution_reviews; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.testing_contribution_reviews TO authenticated;
+
+
+--
+
+-- Name: TABLE testing_contributions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_contributions TO service_role;
+GRANT SELECT ON TABLE public.testing_contributions TO authenticated;
+
+
+--
+
+-- Name: COLUMN testing_contributions.id; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(id) ON TABLE public.testing_contributions TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contributions.channel; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(channel) ON TABLE public.testing_contributions TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contributions.title; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(title) ON TABLE public.testing_contributions TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contributions.body; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(body) ON TABLE public.testing_contributions TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contributions.state; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(state) ON TABLE public.testing_contributions TO vantare_triage;
+
+
+--
+
+-- Name: COLUMN testing_contributions.created_at; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(created_at) ON TABLE public.testing_contributions TO vantare_triage;
+
+
+--
+
+-- Name: TABLE testing_questionnaires; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_questionnaires TO service_role;
+GRANT SELECT ON TABLE public.testing_questionnaires TO authenticated;
+
+
+--
+
+-- Name: TABLE testing_report_followup; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.testing_report_followup TO service_role;
+GRANT SELECT ON TABLE public.testing_report_followup TO authenticated;
 
 
 --

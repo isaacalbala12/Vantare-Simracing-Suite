@@ -519,3 +519,102 @@ CREATE POLICY profiles_update_own ON public.profiles FOR UPDATE USING ((private.
 
 
 --
+
+-- Name: FUNCTION pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid); Type: ACL; Schema: pilot_private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION pilot_private.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION pilot_private.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION clerk_bootstrap_account(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.clerk_bootstrap_account() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.clerk_bootstrap_account() TO authenticated;
+
+
+--
+
+-- Name: FUNCTION clerk_deletion_completed(p_issuer text, p_subject text, p_bucket text, p_names text[]); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.clerk_deletion_completed(p_issuer text, p_subject text, p_bucket text, p_names text[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.clerk_deletion_completed(p_issuer text, p_subject text, p_bucket text, p_names text[]) TO service_role;
+
+
+--
+
+-- Name: FUNCTION clerk_deletion_objects(p_issuer text, p_subject text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.clerk_deletion_objects(p_issuer text, p_subject text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.clerk_deletion_objects(p_issuer text, p_subject text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION clerk_deletion_upload_completed(p_issuer text, p_subject text, p_upload_id text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.clerk_deletion_upload_completed(p_issuer text, p_subject text, p_upload_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.clerk_deletion_upload_completed(p_issuer text, p_subject text, p_upload_id text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION clerk_deletion_uploads(p_issuer text, p_subject text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.clerk_deletion_uploads(p_issuer text, p_subject text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.clerk_deletion_uploads(p_issuer text, p_subject text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION pilot_profile_load(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.pilot_profile_load() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.pilot_profile_load() TO authenticated;
+
+
+--
+
+-- Name: FUNCTION pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid) TO authenticated;
+
+
+--
+
+-- Name: FUNCTION pilot_profile_valid(document jsonb, photo_hash text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.pilot_profile_valid(document jsonb, photo_hash text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.pilot_profile_valid(document jsonb, photo_hash text) TO authenticated;
+GRANT ALL ON FUNCTION public.pilot_profile_valid(document jsonb, photo_hash text) TO pilot_profile_writer;
+
+
+--
+
+-- Name: TABLE clerk_issuers; Type: ACL; Schema: private; Owner: -
+--
+
+GRANT SELECT,INSERT,UPDATE ON TABLE private.clerk_issuers TO service_role;
+
+
+--
+
+-- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.profiles TO service_role;
+GRANT SELECT ON TABLE public.profiles TO authenticated;
+
+
+--

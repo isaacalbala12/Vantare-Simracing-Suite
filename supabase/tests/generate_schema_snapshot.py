@@ -14,6 +14,8 @@ PREFIXES = (
     ('roadmap', ('visual_roadmap',)),
     ('identity', ('profiles', 'clerk_', 'native_account_', 'account_', 'pilot_profile_')),
     ('storage', ('storage.',)),
+    ('mail', ('mail_',)),
+    ('operations', ('operational_',)),
 )
 HEADER = re.compile(r'^-- Name: (?P<name>.*?); Type: (?P<kind>.*?); Schema: (?P<schema>.*?); Owner:', re.M)
 TABLE_REF = re.compile(r'\b(?:ON|TABLE|REFERENCES)\s+(?:ONLY\s+)?(?:"?\w+"?\.)?"?([a-zA-Z_][\w]*)"?', re.I)
@@ -25,7 +27,15 @@ def domain(name, schema='public', kind='', body=''):
         return 'storage'
     # Policies, triggers, indexes and ACL sections are assigned by their table.
     match = TABLE_REF.search(body) if kind in {'POLICY', 'TRIGGER', 'INDEX', 'CONSTRAINT', 'FK CONSTRAINT'} else None
-    candidate = (match.group(1) if match else name.split()[0]).lower().strip('"').rsplit('.', 1)[-1]
+    if match:
+        candidate = match.group(1)
+    elif name.startswith('COLUMN '):
+        candidate = name.removeprefix('COLUMN ').split('.', 1)[0]
+    elif name.startswith(('TABLE ', 'FUNCTION ', 'SEQUENCE ')):
+        candidate = name.split(' ', 1)[1].split('(', 1)[0]
+    else:
+        candidate = name.split()[0]
+    candidate = candidate.lower().strip('"').rsplit('.', 1)[-1]
     for group, prefixes in PREFIXES:
         if candidate.startswith(prefixes):
             return group

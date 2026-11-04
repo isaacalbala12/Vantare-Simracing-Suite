@@ -2,6 +2,7 @@
 import argparse
 import pathlib
 import re
+import subprocess
 
 
 ROLES = {'public', 'anon', 'authenticated', 'service_role'}
@@ -125,9 +126,50 @@ def check_migration(path: pathlib.Path, rollback: pathlib.Path) -> list[str]:
     return errors
 
 
-def lint(root: pathlib.Path, cutoff: str) -> tuple[int, list[str]]:
+def merged_migration_errors(root: pathlib.Path, cutoff: str,
+                            baseline_ref: str) -> list[str]:
+    def git(*args: str) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.run(['git', '-C', str(root), *args],
+                              capture_output=True)
+
+    top = git('rev-parse', '--show-toplevel')
+    baseline = git('rev-parse', '--verify', baseline_ref + '^{commit}')
+    if top.returncode or baseline.returncode:
+        return [f'baseline {baseline_ref} is unavailable; cannot verify merged migrations']
+    repo = pathlib.Path(top.stdout.decode().strip()).resolve()
+    prefix = root.resolve().relative_to(repo).as_posix()
+    migration_dir = 'migrations' if prefix == '.' else prefix + '/migrations'
+    listed = git('ls-tree', '-r', '--name-only', baseline_ref, '--', migration_dir)
+    if listed.returncode:
+        return [f'baseline {baseline_ref} cannot list merged migrations']
+
+    errors = []
+    for path in listed.stdout.decode().splitlines():
+        match = MIGRATION.fullmatch(pathlib.PurePosixPath(path).name)
+        if not match or match.group(1) <= cutoff:
+            continue
+        rollback = path.replace('/migrations/', '/rollbacks/').replace(
+            '.sql', '.down.sql')
+        if prefix == '.':
+            rollback = rollback.replace('migrations/', 'rollbacks/', 1)
+        for checked in (path, rollback):
+            original = git('show', f'{baseline_ref}:{checked}')
+            before = original.stdout if original.returncode == 0 else None
+            current = repo / pathlib.PurePosixPath(checked)
+            after = current.read_bytes() if current.is_file() else None
+            # Git may check out the same committed SQL as CRLF on Windows.
+            canonical = lambda data: None if data is None else data.replace(b'\r\n', b'\n')
+            if canonical(before) != canonical(after):
+                errors.append(f'{checked}: already merged in {baseline_ref}; use a new migration')
+    return errors
+
+
+def lint(root: pathlib.Path, cutoff: str,
+         baseline_ref: str | None = None) -> tuple[int, list[str]]:
     errors = []
     checked = 0
+    if baseline_ref:
+        errors.extend(merged_migration_errors(root, cutoff, baseline_ref))
     for path in sorted((root / 'migrations').glob('*.sql')):
         match = MIGRATION.fullmatch(path.name)
         if not match:
@@ -147,10 +189,12 @@ def main() -> int:
                         default=pathlib.Path(__file__).resolve().parents[1])
     parser.add_argument('--cutoff', required=True,
                         help='ADR 0106 merge time in UTC, YYYYMMDDHHMMSS')
+    parser.add_argument('--baseline-ref',
+                        help='Fail when a post-cutoff migration already in this Git ref changed')
     args = parser.parse_args()
     if not re.fullmatch(r'\d{14}', args.cutoff):
         parser.error('--cutoff must be 14 UTC digits')
-    checked, errors = lint(args.root, args.cutoff)
+    checked, errors = lint(args.root, args.cutoff, args.baseline_ref)
     for error in errors:
         print(error)
     if errors:

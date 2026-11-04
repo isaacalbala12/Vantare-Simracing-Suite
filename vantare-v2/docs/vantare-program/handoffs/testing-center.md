@@ -1158,3 +1158,5 @@ el lock exclusivo, para que un borrado de cuenta no se cruce con el preflight.
 sobre ese HEAD sin conflicto. PostgreSQL local LF y CRLF: prueba aislada
 6/6, cierre 29/29, política Storage ausente, rollback exacto y reaplicación
 PASS. Sin despliegue ni llamada a producción.
+[PR draft #1953](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1953)
+contra nightly; pendiente de la CI PG17 y revisión antes de integrar.

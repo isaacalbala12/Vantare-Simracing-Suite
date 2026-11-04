@@ -248,7 +248,7 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
-   archive_stem='20261104180000_isa_1896_legacy_archive'
+   archive_stem='20261104014000_isa_1896_legacy_archive'
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
    if archive_fixture:

@@ -1,6 +1,6 @@
 # VANTA-131 · 7b2: archivo y vaciado legacy
 
-La migración `20261104180000_isa_1896_legacy_archive.sql` requiere el cierre
+La migración `20261104014000_isa_1896_legacy_archive.sql` requiere el cierre
 de escritores de #1926. Isaac puede ejecutar esta **consulta de solo lectura**
 antes de desplegar. Devuelve recuentos, nunca contenido de informes:
 
@@ -50,6 +50,6 @@ despliegue automático ni llamada de este trabajo a producción.
 
 Antes de integrar #1924, VANTA-132 debe mover su migración
 `20261103224121_isa_1910_admin_report_root.sql` a un timestamp posterior a
-`20261104180000`: el guard de admin se ejecuta después del vaciado y
+`20261104014000`: el guard de admin se ejecuta después del vaciado y
 `supabase db push` exige que esa migración tenga un orden posterior. Este PR
 no cambia SQL admin.

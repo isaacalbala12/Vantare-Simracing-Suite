@@ -117,6 +117,12 @@ Ejecutar solo en el entorno que Isaac vaya a desplegar, con el tráfico de
 informes y los borrados de Clerk pausados. El resultado esperado es **cero**
 en el archivo y en las doce tablas exclusivas del informe:
 
+Isaac debe confirmar antes del despliegue que el rol que aplica la migración
+puede ejecutar `DROP POLICY` sobre `storage.objects` y tomar
+`LOCK TABLE storage.objects IN SHARE MODE`. La política retirada puede estar
+ya ausente; el cierre usa `DROP POLICY IF EXISTS` y el replay local cubre
+ese estado.
+
 ```sql
 select 'private.testing_center_legacy_archive' as source_table,count(*) from private.testing_center_legacy_archive
 union all select 'public.testing_center_reports',count(*) from public.testing_center_reports

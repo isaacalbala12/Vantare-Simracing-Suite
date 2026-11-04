@@ -2,14 +2,6 @@
 begin;
 set local lock_timeout='5s';
 set local check_function_bodies=false;
-do $rollback_guard$
-begin
-  if exists(select 1 from public.testing_center_technical_issues
-    where contribution_id is null) then
-    raise exception 'legacy_retirement_rollback_orphaned_v2_issue: retain technical issues until an explicit owner disposition'
-      using errcode='55000';
-  end if;
-end $rollback_guard$;
 lock table public.testing_center_technical_issues,
   public.testing_center_effect_outbox,
   public.testing_center_linear_projection_snapshots,
@@ -35,6 +27,15 @@ lock table public.testing_center_technical_issues,
   public.testing_center_promotions,
   public.testing_center_validation_snapshots,
   public.testing_center_validations in access exclusive mode;
+-- The owner check must run under the same table lock as the restore.
+do $rollback_guard$
+begin
+  if exists(select 1 from public.testing_center_technical_issues
+    where contribution_id is null) then
+    raise exception 'legacy_retirement_rollback_orphaned_v2_issue: retain technical issues until an explicit owner disposition'
+      using errcode='55000';
+  end if;
+end $rollback_guard$;
 create table private.testing_center_legacy_archive (
   source_table text not null,
   source_id text not null,

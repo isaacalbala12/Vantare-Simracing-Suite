@@ -804,6 +804,9 @@ $$;
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement.test.sql')
    (OUT/'testing_center_legacy_retirement.test.sql.log').write_text(result)
    if 'not ok ' in result or '1..29' not in result: raise RuntimeError(result)
+   actor_result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement_actor.test.sql')
+   (OUT/'testing_center_legacy_retirement_actor.test.sql.log').write_text(actor_result)
+   if 'not ok ' in actor_result or '1..6' not in actor_result: raise RuntimeError(actor_result)
    run('psql',*conn,'-c',"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
      values('https://retirement.invalid',array['https://retirement.invalid'],true)
      on conflict(issuer) do nothing;
@@ -864,7 +867,12 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(retirement_stem+'.sql'))
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null").strip()!='t':
     raise RuntimeError('final 7b reapply failed')
-   print('Final 7b closure, empty-archive guard, exact rollback and reapply PASS',flush=True)
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))
+   run('psql',*conn,'-c','drop policy testing_center_evidence_insert_own_slot on storage.objects')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(retirement_stem+'.sql'))
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null").strip()!='t':
+    raise RuntimeError('final 7b failed with an already absent Storage policy')
+   print('Final 7b closure, absent Storage policy, empty-archive guard, exact rollback and reapply PASS',flush=True)
    raise SystemExit(0)
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.

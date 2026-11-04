@@ -804,6 +804,9 @@ $$;
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement.test.sql')
    (OUT/'testing_center_legacy_retirement.test.sql.log').write_text(result)
    if 'not ok ' in result or '1..29' not in result: raise RuntimeError(result)
+   actor_result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement_actor.test.sql')
+   (OUT/'testing_center_legacy_retirement_actor.test.sql.log').write_text(actor_result)
+   if 'not ok ' in actor_result or '1..6' not in actor_result: raise RuntimeError(actor_result)
    run('psql',*conn,'-c',"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
      values('https://retirement.invalid',array['https://retirement.invalid'],true)
      on conflict(issuer) do nothing;

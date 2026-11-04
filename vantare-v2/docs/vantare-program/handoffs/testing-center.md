@@ -1145,3 +1145,14 @@ migraciones de nightly justo antes de integrar.
 Revisión publicada sobre `nightly@c86d59e8c` en
 [PR #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949).
 La CI de PostgreSQL 17 para este HEAD está pendiente al publicarlo.
+
+P3 de la tercera review de #1949, preparado como seguimiento 7b5: la política
+de Storage se retira con `IF EXISTS`; el runbook exige comprobar los permisos
+del rol de despliegue sobre `storage.objects`. Una prueba aislada usa una
+segunda issue de dueño vivo para distinguir el actor borrado del dueño. La
+issue conserva FK `owner_account_id → profiles(id) ON DELETE RESTRICT`; el
+guard de owner_dispositions también consulta al actor del snapshot citado.
+En el `.down.sql`, el guard de issues desvinculadas corre **después** de tomar
+el lock exclusivo, para que un borrado de cuenta no se cruce con el preflight.
+La preparación no se publica hasta que #1949 esté integrado; entonces se
+rebasará sobre `origin/nightly` actualizado y se abrirá un PR draft propio.

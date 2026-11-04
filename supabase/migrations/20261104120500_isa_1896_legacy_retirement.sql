@@ -103,7 +103,7 @@ begin
 end $preflight$;
 
 -- Remove the disabled Storage upload slot policy before its two source tables.
-drop policy testing_center_evidence_insert_own_slot on storage.objects;
+drop policy if exists testing_center_evidence_insert_own_slot on storage.objects;
 -- These ten obsolete report RPCs have no active product caller. Keep the
 -- separate issue/agent and Linear/outbox RPCs inert for the next phase.
 drop function public.testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid) restrict;
@@ -140,7 +140,8 @@ alter table public.testing_center_technical_issues
   drop constraint testing_center_technical_issues_report_id_fkey;
 -- Keep the tombstoned reporter as durable lineage after Clerk removes the v2
 -- contribution. This lets every retained child barrier reject later writes.
-alter table public.testing_center_technical_issues add column owner_account_id uuid;
+alter table public.testing_center_technical_issues
+  add column owner_account_id uuid references public.profiles(id) on delete restrict;
 update public.testing_center_technical_issues i set owner_account_id=c.account_id
   from public.testing_contributions c where c.id=i.contribution_id;
 alter table public.testing_center_technical_issues
@@ -201,6 +202,8 @@ declare r record;
         where v.validation_id=$1->>'validation_id'),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>'rejection_validation_id'),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>'rejection_validation_id'),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>'external_issue_id'),

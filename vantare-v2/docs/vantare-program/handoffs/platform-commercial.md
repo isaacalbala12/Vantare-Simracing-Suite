@@ -8360,6 +8360,8 @@ antes de7b2, ventana de mantenimiento y procedimiento R6 vigentes.
 - [ ] **#1939**: `20261104070000_isa_1910_admin_owner_policy.sql`.
 - [ ] **#1941**: `20261104083000_isa_1910_admin_owner_ack.sql`.
 - [ ] **#1942**: `20261104095000_isa_1910_brevo_erasure_journal.sql`.
+- [ ] Futuro **#1944 draft**, no desplegable sin aprobación: `20261104100000_isa_1910_brevo_sync_journal.sql`
+  después de#1942 y antes de native-admin del corte5d; backout según su README.
 - [ ] **Primero todas las migraciones, después las Edge** native-admin y
   mail-cleanup del corte aprobado. Mientras SQL está en curso, mantener admin
   y limpieza detenidos para que las Edge antiguas no escriban rutas antiguas.
@@ -8508,3 +8510,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   LF completa adicional en curso, CI remota nueva pendiente. Código0e4a138b6.
 - Medición contra65b21aed0: producción +181/−17; tests +367/−4; docs +234/−0.
 - PR/HEAD final y resultado de cadena completa se registran en issue y entrega.
+- PR draft [#1944](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1944) a nightly, base65b21aed0, rama propia; código0e4a138b6. HEAD documental final registrado en PR/issue.
+- Cadena LF completa adicional PASS: migraciones/rollback/owner/leases/Edge y134rutas/795checks de barreras, instancia parada. Fuente de producto idéntica a los gates focales LF/CRLF.
+- Medición final #1944 frente a65b21aed0: producción +181/−17; tests +367/−4; docs +240/−0. CI nueva pendiente de verificar.
+- Issue/handoff/Plane sincronizados: VANTA-132 En curso; siguiente5e SMTP, después6–10;11 fuera. Sin merge propio, release ni acción de producción.

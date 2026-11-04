@@ -7868,6 +7868,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   igualdad exacta después del down. DROP INDEX IF EXISTS permite índice ausente.
   La advertencia de whitespace de esa única línea es intencional, requerida
   para conservar el cuerpo byte a byte; no se cambia ninguna regla de lint.
+- **Histórico sustituido:** el catálogo textual y la fixture descritos en los
+  dos puntos siguientes ya no se usan. Rige el guard de ACL y nombres RPC de
+  la sección «Re-review de #1924»; no se escanean cuerpos ni se revoca Clerk.
 - Guard exige current_user SUPERUSER/BYPASSRLS antes de leer FORCE RLS. También
   aborta si service_role/authenticated/anon conservan EXECUTE efectivo (PUBLIC
   e herencia incluidos) de RPC legacy, otros escritores o callers indirectos.
@@ -7961,3 +7964,46 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Medición frente a fa2ab202c: producción +1013/−1 (incluye up y down),
   tests +217/−30, documentación +193/−0. VANTA-132 permanece En curso por el
   resto del diseño; issue #1910 / Project Vantare / area:plataforma, abierta.
+
+## VANTA-132 · Re-review de #1924 (2026-11-04)
+
+- Rebase sobre nightly `b5018321756b503bf8fe222206d519c73444c278`, preservando
+  las dos partes del conflicto del runner: preflight de redacción B03 de R6 y
+  caracterización legacy previa al cutover. Rama propia, PR draft a nightly.
+- P1 de CI 41772291482 confirmado: el control before_private_write_barriers
+  seleccionaba los digests posteriores a una migración que había omitido.
+  Ahora solo los selecciona si 024000 terminó de aplicarse. El control local
+  llega al RED esperado «all eleven later account-owned tables have the full
+  write barrier»; no se omite ni se debilita ese control en el workflow.
+- Guard sin lista fija de roles: aclexplode recorre las ACL de ocho tablas y
+  sus columnas, incluido PUBLIC; solo excluye dueño y superusuarios. Comprueba
+  has_any_column_privilege para los grantees de columna. Un permiso heredado
+  no crea otra vía: la ACL de su rol de origen también debe estar cerrada.
+  No se confunden los derechos implícitos de roles builtin como
+  pg_write_all_data con grants operativos en estas relaciones.
+- Las siete firmas canónicas deben existir; el catálogo pg_proc se recorre
+  por sus siete nombres públicos para cerrar también cualquier sobrecarga.
+  Se inspeccionan sus ACL, sin cuerpos. apply_clerk_user_event sigue fuera
+  de esa lista y conserva EXECUTE para service_role.
+- Tests previos `fb436214c`: INSERT por columna a authenticated pasa donde
+  debía abortar (RED). Añadidos grants de columna INSERT/UPDATE a authenticated
+  y PUBLIC en ocho tablas, cuatro grants de tabla a authenticator en cada
+  relación y sobrecargas de siete RPC para PUBLIC y authenticator.
+- native_admin_report_r5.test.sql y native_admin_final_decision_r4.test.sql
+  marcados históricos, solo para su esquema anterior a 024000; cobertura
+  final en native_admin_report_root y el harness de cutover/rollback. README
+  actualizado. **Toda instrucción anterior del handoff sobre catálogo textual
+  o pause_legacy_writers queda sustituida** por esta sección.
+- Se mantiene el orden #1926 → archivo/mapeo/vaciado 7b2 → #1924 → retirada
+  final R6. Las tablas legacy y FK permanecen: archivo y borrado de cuentas
+  dependen de ellas. Retirada final junto con archivo y parche Clerk, incluido
+  el acceso a screenshot_evidence y evidence_batches. #1924 no las retira.
+- PostgreSQL 16.15 desechable LF/CRLF: replay completo con 7b2 real y Clerk
+  ejecutable, cuatro suites/67 pgTAP, 282 rechazos atómicos (204 previos,
+  32 columnas, 32 grants de tabla a authenticator y 14 sobrecargas), cinco
+  digests exactos del rollback y reaplicación PASS. Índice EXPLAIN JSON,
+  autoridad owner, locks actor/target y seis carreras journal/lease PASS.
+- Python y diff PASS salvo el espacio histórico deliberado de down:315.
+  Sin Rust/lifecycle/telemetría: no cambia native. Los 94 tests Deno de la
+  entrega anterior siguen cubriendo el mismo código Edge sin cambios nuevos.
+  CI completa pendiente del HEAD publicado; no se afirma verde prematuramente.

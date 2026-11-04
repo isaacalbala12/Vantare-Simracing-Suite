@@ -693,6 +693,11 @@ $$;
          'public.testing_center_evidence_outbox'::regclass])
      order by 1""")
    (OUT/'legacy-retirement-external-fks.log').write_text(external_dependencies)
+   for label,signature in [
+    ('clerk-erasure','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'),
+    ('storage-owner','private.storage_owner_accounts(jsonb)')]:
+    definition=run('psql',*conn,'-c',f"select pg_get_functiondef('{signature}'::regprocedure)")
+    (OUT/f'legacy-retirement-{label}.sql').write_text(definition)
    print(relations,flush=True)
    print(inventory,flush=True)
    print(external_dependencies,flush=True)

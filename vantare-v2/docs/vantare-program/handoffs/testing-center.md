@@ -1211,3 +1211,9 @@ el texto es una constante; la concatenación falla. Unitarios 19/19 PASS;
 PostgreSQL local conserva el RED esperado de `--before-private-write-barriers`.
 Orden de integración: #1959 → #1960 → #1961; la migración pgcrypto de #1961
 se renombró a `20261104182500`, posterior a `181200`.
+Tras el merge de #1959, #1960 se rebasó sobre `nightly@18fb6ca17` y
+conservó la auditoría admin en el runner. El generador fijado con PostgreSQL
+17 produjo nueve volcados; todos son idénticos a `supabase/schema/` tras
+normalizar LF/CRLF, así que no hubo cambios derivados que versionar. La CI
+comercial del rebase pasó lint, control RED, harness LF/CRLF, cierre legacy,
+owner y comparación de esquema. Sin despliegue ni merge de #1960.

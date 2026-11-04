@@ -17,6 +17,27 @@ const MAX_DOCUMENT_BYTES: usize = 40_000;
 /// escrita: reiniciar no lo cura, hay que borrar el fichero a mano.
 const MAX_PUBLICATION_BYTES: usize = 56 * 1024;
 
+fn valid_version(value: &str) -> bool {
+    let value = value.strip_prefix('v').unwrap_or(value);
+    let (core, suffix) = value
+        .split_once('-')
+        .map_or((value, None), |(a, b)| (a, Some(b)));
+    let mut parts = core.split('.');
+    (0..3).all(|_| {
+        parts
+            .next()
+            .is_some_and(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
+    }) && parts.next().is_none()
+        && suffix.is_none_or(|part| {
+            !part.is_empty()
+                && part.bytes().all(|byte| {
+                    byte.is_ascii_lowercase()
+                        || byte.is_ascii_digit()
+                        || matches!(byte, b'.' | b'-')
+                })
+        })
+}
+
 fn validate(publication: &Publication) -> Result<()> {
     if !uuid(&publication.id)
         || publication.published_at.chars().count() > MAX_TIMESTAMP_CHARS
@@ -33,13 +54,10 @@ fn validate(publication: &Publication) -> Result<()> {
             .as_ref()
             .is_some_and(|v| v.trim().is_empty() || v.chars().count() > 60 || v.contains('\0'))
             || (publication.document.schema_version == 2 && item.area.is_none())
-            || item.version.as_ref().is_some_and(|v| {
-                v.is_empty()
-                    || v.len() > 60
-                    || !v
-                        .bytes()
-                        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-'))
-            })
+            || item
+                .version
+                .as_ref()
+                .is_some_and(|v| v.len() > 60 || !valid_version(v))
             || item.due_date.as_ref().is_some_and(|v| {
                 v.len() != 10 || chrono::NaiveDate::parse_from_str(v, "%Y-%m-%d").is_err()
             })
@@ -128,7 +146,7 @@ impl Roadmap {
         let url = base
             .join("rest/v1/rpc/visual_roadmap_current_v2")
             .map_err(|_| Error::Unconfigured)?;
-        // POST is an explicitly read-only RPC. One request per manual refresh.
+        // POST is an explicitly read-only RPC. Automatic refresh runs every 300 seconds.
         let mut rows: Vec<Publication> = http
             .post_json(&url, &serde_json::json!({}), Some(anon), Some(anon))?
             .success()?
@@ -151,6 +169,46 @@ impl Roadmap {
 
 #[cfg(all(test, any(windows, unix)))]
 mod tests {
+    #[test]
+    fn shared_roadmap_document_corpus() {
+        let corpus: serde_json::Value =
+            serde_json::from_str(include_str!("../../../fixtures/roadmap/cases.json"))
+                .expect("corpus");
+        for case in corpus["cases"].as_array().expect("cases") {
+            let mut document = corpus["base"].clone();
+            let path = case["path"].as_array().expect("path");
+            if !path.is_empty() {
+                let mut target = &mut document;
+                for key in &path[..path.len() - 1] {
+                    target = if let Some(index) = key.as_u64() {
+                        &mut target[usize::try_from(index).expect("índice")]
+                    } else {
+                        &mut target[key.as_str().expect("key")]
+                    };
+                }
+                let key = &path[path.len() - 1];
+                if let Some(index) = key.as_u64() {
+                    target[usize::try_from(index).expect("índice")] = case["value"].clone();
+                } else {
+                    target[key.as_str().expect("key")] = case["value"].clone();
+                }
+            }
+            let publication = serde_json::json!({
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "published_at": "2026-10-13T00:00:00Z",
+                "document": document
+            });
+            let accepted = serde_json::from_value::<super::Publication>(publication)
+                .is_ok_and(|value| super::validate(&value).is_ok());
+            assert_eq!(
+                accepted,
+                case["expected"].as_bool().unwrap(),
+                "{}",
+                case["name"]
+            );
+        }
+    }
+
     use super::*;
     use crate::test_http::Server;
     use std::time::Duration;

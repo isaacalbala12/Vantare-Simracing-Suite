@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from plane_roadmap import document, fetch, Plane, SyncError
+from plane_roadmap import document, fetch, Plane, SyncError, validate_public_document
 from publish_plane_roadmap import publication_sql, main
 
 
@@ -30,6 +30,18 @@ def snapshot():
 
 
 class PlaneRoadmapTests(unittest.TestCase):
+    def test_shared_roadmap_document_corpus(self):
+        corpus = json.loads((Path(__file__).parent.parent / 'fixtures/roadmap/cases.json').read_text(encoding='utf-8'))
+        for case in corpus['cases']:
+            value = copy.deepcopy(corpus['base'])
+            if case['path']:
+                node = value
+                for key in case['path'][:-1]:
+                    node = node[key]
+                node[case['path'][-1]] = case['value']
+            with self.subTest(case=case['name']):
+                self.assertEqual(validate_public_document(value), case['expected'])
+
     def test_cli_fixture_cannot_produce_sql_and_live_preparation_is_repeatable(self):
         with tempfile.TemporaryDirectory() as temporary:
             output, sql = Path(temporary) / 'roadmap.json', Path(temporary) / 'publish.sql'
@@ -124,12 +136,13 @@ class PlaneRoadmapTests(unittest.TestCase):
             document(data)
 
     def test_sql_only_uses_dedicated_sync_and_quotes_literal_text(self):
-        sql = publication_sql(document(snapshot()))
+        sql = publication_sql()
         self.assertIn('public.visual_roadmap_sync', sql)
         self.assertIn("current_user <> 'vantare_roadmap_publisher'", sql)
         self.assertNotIn('visual_roadmap_publish', sql)
         self.assertTrue(sql.startswith('begin;') and sql.endswith('commit;\n'))
-        self.assertIn("''", publication_sql({'literal': "'"}))
+        self.assertIn("visual_roadmap_sync(:'doc'::jsonb)", sql)
+        self.assertNotIn('Rework - Roadmap', sql)
 
 
 class Pages:

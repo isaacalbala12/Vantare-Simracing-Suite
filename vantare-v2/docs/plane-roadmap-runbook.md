@@ -147,7 +147,8 @@ journalctl -u vantare-roadmap.service -n 20 --no-pager
 ```
 
 El servicio prepara el documento de nuevo, valida TLS verify-full y llama solo
-`visual_roadmap_sync`. Si falla, parar y revisar privadamente: no repetir con
+`visual_roadmap_sync`. Entrega el JSON a `psql` mediante la variable `doc` y
+`:'doc'::jsonb`, sin concatenarlo en el SQL generado. Si falla, parar y revisar privadamente: no repetir con
 credenciales administrativas ni debilitar TLS. El log no imprime SQL/respuestas.
 Comparar lectura pública en app y web: mismos IDs/nombres/columnas. Repetir sin
 cambios debe conservar ID/fecha de publicación; cambiar una tarea de producto

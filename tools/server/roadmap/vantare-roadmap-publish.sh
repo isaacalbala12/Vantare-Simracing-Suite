@@ -20,7 +20,8 @@ env -u PLANE_API_KEY -u PGPASSWORD node --test vantare-v2/scripts/test_roadmap_w
 env -u PGPASSWORD python3 -B vantare-v2/scripts/publish_plane_roadmap.py --output "$tmp/roadmap.json" --sql-output "$tmp/publish.sql"
 export PGSSLMODE=verify-full PGSSLROOTCERT="$repo/.github/certs/supabase-prod-ca-2021.crt"
 env -u PLANE_API_KEY -u PGPASSWORD python3 -B vantare-v2/scripts/verify_roadmap_tls.py --host "$PGHOST" --port "$PGPORT" --ca "$PGSSLROOTCERT"
-if ! env -u PLANE_API_KEY psql -X --no-password -q -v ON_ERROR_STOP=1 -f "$tmp/publish.sql" >"$tmp/psql.log" 2>&1; then
+if ! env -u PLANE_API_KEY psql -X --no-password -q -v ON_ERROR_STOP=1 \
+  -v "doc=$(<"$tmp/roadmap.json")" -f "$tmp/publish.sql" >"$tmp/psql.log" 2>&1; then
   echo 'Roadmap sync failed; inspect limits/ACL/mass-removal approval privately before retrying'
   exit 1
 fi

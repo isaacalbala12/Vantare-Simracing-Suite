@@ -23,6 +23,10 @@ Nombre exacto, incluido el tipo: «Rework - Roadmap» no se reformatea ni traduc
 `later` legado se agrupa en Planeado. IDs estables del UUID Plane, orden por
 sequence_id/UUID. area contiene los modules de producto; version/dueDate quedan
 null si no hay datos aprobados. La compatibilidad IPC v6/JSON v1-v2 no cambia.
+El corpus `fixtures/roadmap/cases.json` fija el contrato v2 en el publicador
+Python, `visual_roadmap_valid` y Services Rust. Los lectores v2 rechazan campos
+desconocidos: agregar uno exige una nueva `schemaVersion` y clientes preparados.
+La RPC v1 sigue disponible para builds instaladas.
 
 Límite estricto: 40 tareas y 40.000 bytes. Si se excede, **parar y preguntar a
 Isaac**, sin truncar ni ampliar esquema. Lectura incompleta, estado desconocido,

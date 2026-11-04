@@ -132,6 +132,7 @@ mod tests {
         assert!(!hex("../manifest.json", 32));
     }
     #[test]
+    #[allow(clippy::too_many_lines)] // Un mismo estado QA cubre manifiesto, rollback y ruta verbatim.
     fn reads_real_files_and_rejects_wrong_active_generation_and_corrupt_state() {
         let qa = if std::env::var("CI").as_deref() == Ok("true") {
             std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))

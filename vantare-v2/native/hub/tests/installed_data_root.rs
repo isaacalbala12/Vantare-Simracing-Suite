@@ -27,9 +27,11 @@ impl Drop for QaFixture {
             }
             std::thread::sleep(Duration::from_millis(20));
         }
-        if !std::thread::panicking() {
-            panic!("could not clean QA fixture: {}", self.0.display());
-        }
+        assert!(
+            std::thread::panicking(),
+            "could not clean QA fixture: {}",
+            self.0.display()
+        );
     }
 }
 
@@ -84,6 +86,7 @@ fn wait_for(path: &Path) {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // Una raíz QA cubre redirección, equivalencias y logs.
 fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
     let qa = qa_root();
     let _cleanup = QaFixture(qa.clone());

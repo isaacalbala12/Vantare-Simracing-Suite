@@ -84,6 +84,19 @@ begin
     order by depth,source_table loop
     execute format('lock table %s in access exclusive mode',v_relation.source_table);
   end loop;
+  lock table public.testing_center_evidence_batches,
+    public.testing_center_screenshot_evidence,
+    public.testing_center_evidence_outbox in access exclusive mode;
+  if exists(select 1 from public.testing_center_evidence_batches)
+    or exists(select 1 from public.testing_center_screenshot_evidence) then
+    raise exception 'legacy_archive_storage_present: inspect Storage before migrating'
+      using errcode='55000';
+  end if;
+  -- Storage-linked rows are handled separately; the empty tables are never
+  -- archived or drained by this migration.
+  delete from pg_temp._legacy_relations where source_table in (
+    'public.testing_center_screenshot_evidence',
+    'public.testing_center_evidence_outbox');
   create temp table _legacy_rows (
     relid oid not null,
     source_table text not null,
@@ -170,6 +183,35 @@ begin
     on issue.relid='public.testing_center_technical_issues'::regclass
     and i.aggregate_id=issue.source_id;
 
+  if exists(select 1 from pg_temp._legacy_rows captured
+    where (captured.source_table='public.testing_center_effect_outbox'
+        and captured."row"->>'state' not in
+          ('completed','superseded','dry_run_completed'))
+       or (captured.source_table='public.testing_center_agent_effect_outbox'
+        and captured."row"->>'state'<>'completed')
+       or (captured.source_table='public.testing_center_agent_jobs'
+        and captured."row"->>'state' not in
+          ('completed','duplicate','ineligible','reverted','stopped'))
+       or (captured.source_table='public.testing_center_agent_reservations'
+        and captured."row"->>'state'<>'confirmed')
+       or (captured.source_table='public.testing_center_codex_runs'
+        and captured."row"->>'state'<>'completed')
+       or (captured.source_table='public.testing_center_codex_execution_control'
+        and captured."row"->>'state'<>'completed')
+       or (captured.source_table ~ '(outbox|jobs|reservations|deliver)'
+        and captured.source_table not in (
+          'public.testing_center_effect_outbox',
+          'public.testing_center_agent_effect_outbox',
+          'public.testing_center_agent_jobs',
+          'public.testing_center_agent_reservations')
+        and coalesce(captured."row"->>'state',captured."row"->>'status',
+          'pending') not in ('completed','superseded','dry_run_completed',
+          'confirmed','applied'))
+  ) then
+    raise exception 'legacy_archive_pending_effect: resolve queues before migrating'
+      using errcode='55000';
+  end if;
+
   insert into private.testing_center_legacy_archive
     (source_table,source_id,"row",row_sha256)
   select source_table,source_id,"row",row_sha256
@@ -196,6 +238,7 @@ begin
   from public.testing_center_reports r
   join public.profiles account on account.id=r.reporter_user_id
   where r.report_id ~ '^report_[0-9a-f]{64}$'
+    and r.state in ('submitted','in_review','validated','rejected','spam','fixed')
     and not exists(select 1 from public.account_identities identity_row
       where identity_row.account_id=r.reporter_user_id
         and identity_row.deleted_at is not null);
@@ -204,18 +247,32 @@ begin
   alter table public.testing_contributions disable trigger testing_report_limit;
   insert into public.testing_contributions
     (id,account_id,channel,title,body,state,created_at,legacy_source_id)
-  select pg_catalog.gen_random_uuid(),r.reporter_user_id,r.channel,
+  select (pg_catalog.substr(mapping_hash.digest,1,8)||'-'||
+    pg_catalog.substr(mapping_hash.digest,9,4)||'-5'||
+    pg_catalog.substr(mapping_hash.digest,14,3)||'-8'||
+    pg_catalog.substr(mapping_hash.digest,18,3)||'-'||
+    pg_catalog.substr(mapping_hash.digest,21,12))::uuid,
+    r.reporter_user_id,r.channel,
     pg_catalog.left(coalesce(nullif(pg_catalog.btrim(p.action_text),''),
       'Informe legacy'),120),
     pg_catalog.left(coalesce(nullif(pg_catalog.btrim(
       'Esperado: '||p.expected_text||E'\nObservado: '||p.observed_text),''),
       'Informe legacy '||r.report_id),1000),
-    case when r.state in ('draft','submitted') then 'received' else 'reviewing' end,
+    case r.state when 'submitted' then 'reviewing'
+      when 'in_review' then 'reviewing'
+      when 'validated' then 'accepted'
+      when 'rejected' then 'declined'
+      when 'spam' then 'spam'
+      when 'fixed' then 'fixed' end,
     r.created_at,r.report_id
   from public.testing_center_reports r
+  cross join lateral (select pg_catalog.encode(public.digest(
+    pg_catalog.convert_to('vanta131:legacy:'||r.report_id,'UTF8'),'sha1'),'hex')
+    as digest) mapping_hash
   left join public.testing_center_report_payloads p on p.report_id=r.report_id
   join public.profiles account on account.id=r.reporter_user_id
   where r.report_id ~ '^report_[0-9a-f]{64}$'
+    and r.state in ('submitted','in_review','validated','rejected','spam','fixed')
     and not exists(select 1 from public.account_identities identity_row
       where identity_row.account_id=r.reporter_user_id
         and identity_row.deleted_at is not null)
@@ -232,10 +289,15 @@ begin
     and c.body=pg_catalog.left(coalesce(nullif(pg_catalog.btrim(
       'Esperado: '||p.expected_text||E'\nObservado: '||p.observed_text),''),
       'Informe legacy '||r.report_id),1000)
-    and c.state=case when r.state in ('draft','submitted')
-      then 'received' else 'reviewing' end
+    and c.state=case r.state when 'submitted' then 'reviewing'
+      when 'in_review' then 'reviewing'
+      when 'validated' then 'accepted'
+      when 'rejected' then 'declined'
+      when 'spam' then 'spam'
+      when 'fixed' then 'fixed' end
     and c.created_at=r.created_at
   where r.report_id ~ '^report_[0-9a-f]{64}$'
+    and r.state in ('submitted','in_review','validated','rejected','spam','fixed')
     and not exists(select 1 from public.account_identities identity_row
       where identity_row.account_id=r.reporter_user_id
         and identity_row.deleted_at is not null);
@@ -287,5 +349,50 @@ begin
   raise notice 'legacy_archive rows=%, parent=%, mapped=%, archive_only=%',
     v_actual,v_parent_count,v_mapped,v_parent_count-v_mapped;
 end $archive$;
+
+-- Extend only the B03 account-deletion function. Its prior SQL is retained
+-- byte-for-byte outside this guarded insertion so later B03 amendments survive.
+do $account_erasure$
+declare
+  definition text;
+  anchor text := 'delete from public.testing_contributions where account_id=account;';
+  fragment text := $fragment$
+    -- VANTA131 legacy archive erasure begin
+    with recursive doomed(source_table,source_id) as (
+      select archived.source_table,archived.source_id
+      from private.testing_center_legacy_archive archived
+      where archived.source_table='public.testing_center_reports'
+        and archived."row"->>'reporter_user_id'=account::text
+      union
+      select child.source_table,child.source_id
+      from private.testing_center_legacy_archive child
+      join doomed parent on
+        (parent.source_table='public.testing_center_reports'
+          and (child."row"->>'report_id'=parent.source_id
+            or child."row"->>'primary_report_id'=parent.source_id))
+        or (parent.source_table='public.testing_center_technical_issues'
+          and (child."row"->>'technical_issue_id'=parent.source_id
+            or child."row"->>'aggregate_id'=parent.source_id))
+        or (parent.source_table='public.testing_center_agent_jobs'
+          and child."row"->>'job_key'=parent.source_id)
+        or (parent.source_table='public.testing_center_effect_outbox'
+          and child."row"->>'effect_id'=parent.source_id)
+    )
+    delete from private.testing_center_legacy_archive archived
+    using doomed
+    where archived.source_table=doomed.source_table
+      and archived.source_id=doomed.source_id;
+    -- VANTA131 legacy archive erasure end
+$fragment$;
+begin
+  definition:=pg_catalog.pg_get_functiondef(
+    'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure);
+  if pg_catalog.length(definition)-pg_catalog.length(pg_catalog.replace(definition,anchor,''))
+      <>pg_catalog.length(anchor)
+    or position('VANTA131 legacy archive erasure' in definition)>0 then
+    raise exception 'legacy_archive_account_delete_source_drift' using errcode='55000';
+  end if;
+  execute pg_catalog.replace(definition,anchor,anchor||fragment);
+end $account_erasure$;
 
 commit;

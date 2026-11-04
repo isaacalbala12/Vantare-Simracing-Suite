@@ -4,6 +4,29 @@ begin;
 set local lock_timeout = '5s';
 set local timezone = 'UTC';
 
+do $account_erasure$
+declare
+  definition text;
+  begin_marker text := '-- VANTA131 legacy archive erasure begin';
+  end_marker text := '-- VANTA131 legacy archive erasure end';
+  start_at integer;
+  end_at integer;
+begin
+  definition:=pg_catalog.pg_get_functiondef(
+    'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure);
+  start_at:=position(begin_marker in definition);
+  end_at:=position(end_marker in definition);
+  if start_at=0 or end_at<=start_at
+    or position('delete from private.testing_center_legacy_archive' in
+      pg_catalog.substr(definition,start_at,end_at-start_at))=0
+    or position(begin_marker in pg_catalog.substr(definition,start_at+1))>0
+    or position(end_marker in pg_catalog.substr(definition,end_at+1))>0 then
+    raise exception 'legacy_archive_account_delete_rollback_drift' using errcode='55000';
+  end if;
+  execute pg_catalog.substr(definition,1,start_at-1)||
+    pg_catalog.substr(definition,end_at+pg_catalog.length(end_marker));
+end $account_erasure$;
+
 do $restore$
 declare
   v_relation record;
@@ -12,6 +35,9 @@ declare
   v_has_dependents boolean;
   v_expected bigint;
   v_actual bigint;
+  v_skipped bigint;
+  v_deleted_skipped bigint;
+  v_orphan_skipped bigint;
 begin
   if to_regclass('private.testing_center_legacy_archive') is null
     or to_regclass('public.testing_center_reports') is null then
@@ -61,6 +87,52 @@ begin
   lock table private.testing_center_legacy_archive in access exclusive mode;
   lock table public.testing_contributions in access exclusive mode;
   lock table public.testing_report_followup in access exclusive mode;
+  delete from pg_temp._legacy_relations where source_table in (
+    'public.testing_center_screenshot_evidence',
+    'public.testing_center_evidence_outbox');
+
+  create temp table _legacy_skipped (
+    source_table text not null,
+    source_id text not null,
+    reason text not null,
+    primary key(source_table,source_id)
+  ) on commit drop;
+  insert into pg_temp._legacy_skipped(source_table,source_id,reason)
+  with recursive skipped(source_table,source_id,reason) as (
+    select archived.source_table,archived.source_id,
+      case when exists(select 1 from public.account_identities identity_row
+        where identity_row.account_id=
+          (archived."row"->>'reporter_user_id')::uuid
+          and identity_row.deleted_at is not null)
+      then 'deleted' else 'missing_profile' end
+    from private.testing_center_legacy_archive archived
+    where archived.source_table='public.testing_center_reports'
+      and (exists(select 1 from public.account_identities identity_row
+          where identity_row.account_id=
+            (archived."row"->>'reporter_user_id')::uuid
+            and identity_row.deleted_at is not null)
+        or not exists(select 1 from public.profiles profile
+          where profile.id=(archived."row"->>'reporter_user_id')::uuid))
+    union
+    select child.source_table,child.source_id,parent.reason
+    from private.testing_center_legacy_archive child
+    join skipped parent on
+      (parent.source_table='public.testing_center_reports'
+        and (child."row"->>'report_id'=parent.source_id
+          or child."row"->>'primary_report_id'=parent.source_id))
+      or (parent.source_table='public.testing_center_technical_issues'
+        and (child."row"->>'technical_issue_id'=parent.source_id
+          or child."row"->>'aggregate_id'=parent.source_id))
+      or (parent.source_table='public.testing_center_agent_jobs'
+        and child."row"->>'job_key'=parent.source_id)
+      or (parent.source_table='public.testing_center_effect_outbox'
+        and child."row"->>'effect_id'=parent.source_id)
+  ) select source_table,source_id,min(reason) from skipped
+    group by source_table,source_id;
+  select count(*) into v_skipped from pg_temp._legacy_skipped;
+  select count(*) into v_deleted_skipped from pg_temp._legacy_skipped
+    where reason='deleted';
+  v_orphan_skipped:=v_skipped-v_deleted_skipped;
 
   if exists(select 1 from public.testing_center_reports) then
     raise exception 'legacy_archive_restore_parent_not_empty' using errcode='55000';
@@ -91,7 +163,15 @@ begin
     left join private.testing_center_legacy_archive p
       on p.source_table='public.testing_center_report_payloads'
       and p.source_id=a.source_id
+    cross join lateral (select pg_catalog.encode(public.digest(
+      pg_catalog.convert_to('vanta131:legacy:'||a.source_id,'UTF8'),'sha1'),'hex')
+      as digest) mapping_hash
     where c.account_id is distinct from (a."row"->>'reporter_user_id')::uuid
+      or c.id is distinct from (pg_catalog.substr(mapping_hash.digest,1,8)||'-'||
+        pg_catalog.substr(mapping_hash.digest,9,4)||'-5'||
+        pg_catalog.substr(mapping_hash.digest,14,3)||'-8'||
+        pg_catalog.substr(mapping_hash.digest,18,3)||'-'||
+        pg_catalog.substr(mapping_hash.digest,21,12))::uuid
       or c.channel is distinct from a."row"->>'channel'
       or c.created_at is distinct from (a."row"->>'created_at')::timestamptz
       or c.title is distinct from pg_catalog.left(coalesce(nullif(
@@ -100,8 +180,13 @@ begin
         pg_catalog.btrim('Esperado: '||(p."row"->>'expected_text')||
           E'\nObservado: '||(p."row"->>'observed_text')),''),
         'Informe legacy '||a.source_id),1000)
-      or c.state is distinct from case when a."row"->>'state' in
-        ('draft','submitted') then 'received' else 'reviewing' end
+      or c.state is distinct from case a."row"->>'state'
+        when 'submitted' then 'reviewing'
+        when 'in_review' then 'reviewing'
+        when 'validated' then 'accepted'
+        when 'rejected' then 'declined'
+        when 'spam' then 'spam'
+        when 'fixed' then 'fixed' end
   ) then
     raise exception 'legacy_archive_restore_mapping_changed' using errcode='55000';
   end if;
@@ -164,13 +249,20 @@ begin
   for v_relation in select * from pg_temp._legacy_relations
     order by depth,source_table loop
     select count(*) into v_expected
-    from private.testing_center_legacy_archive
-    where source_table=v_relation.source_table;
+    from private.testing_center_legacy_archive archived
+    where archived.source_table=v_relation.source_table
+      and not exists(select 1 from pg_temp._legacy_skipped skipped
+        where skipped.source_table=archived.source_table
+          and skipped.source_id=archived.source_id);
     execute format($sql$
       insert into %s overriding system value
       select (pg_catalog.jsonb_populate_record(null::%s,a."row")).*
       from private.testing_center_legacy_archive a
-      where a.source_table=%L order by a.source_id
+      where a.source_table=%L and not exists(
+        select 1 from pg_temp._legacy_skipped skipped
+        where skipped.source_table=a.source_table
+          and skipped.source_id=a.source_id)
+      order by a.source_id
     $sql$,v_relation.source_table,v_relation.source_table,
       v_relation.source_table);
     get diagnostics v_actual=row_count;
@@ -180,7 +272,11 @@ begin
     end if;
     execute format($sql$
       select count(*) from private.testing_center_legacy_archive a
-      where a.source_table=%L and exists(
+      where a.source_table=%L and not exists(
+        select 1 from pg_temp._legacy_skipped skipped
+        where skipped.source_table=a.source_table
+          and skipped.source_id=a.source_id)
+        and exists(
         select 1 from %s restored
         where pg_catalog.to_jsonb(restored)=a."row"
           and a.row_sha256=pg_catalog.encode(public.digest(
@@ -192,7 +288,8 @@ begin
         v_relation.source_table,v_actual,v_expected using errcode='55000';
     end if;
   end loop;
-  raise notice 'legacy_archive restored rows verified; archive retained';
+  raise notice 'legacy_archive restored rows verified; skipped deleted-owner rows=%, missing-profile rows=%; archive retained',
+    v_deleted_skipped,v_orphan_skipped;
 end $restore$;
 
 commit;

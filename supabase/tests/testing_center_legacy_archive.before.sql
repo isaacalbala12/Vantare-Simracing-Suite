@@ -2,6 +2,11 @@
 begin;
 insert into public.profiles(id) values
  ('18960000-0000-4000-8000-0000000007b2') on conflict (id) do nothing;
+insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+values('https://vanta131-archive.clerk.invalid',array['https://app.invalid'],true);
+insert into public.account_identities(issuer,subject,account_id)
+values('https://vanta131-archive.clerk.invalid',
+ 'user_legacyarchive7b2','18960000-0000-4000-8000-0000000007b2');
 insert into public.testing_center_reports
  (report_id,reporter_id,reporter_user_id,reporter_role,channel,state)
 values ('report_'||repeat('7',64),'legacy-7b2',
@@ -24,7 +29,7 @@ insert into public.testing_center_technical_issues
 values ('legacy-7b2-issue','report_'||repeat('7',64),'open','reported','testing_center');
 insert into public.testing_center_codex_runs
  (run_id,technical_issue_id,attempt,state,origin)
-values ('legacy-7b2-run','legacy-7b2-issue',1,'queued','orchestrator');
+values ('legacy-7b2-run','legacy-7b2-issue',1,'completed','orchestrator');
 insert into public.testing_center_audit
  (audit_id,aggregate_id,from_state,to_state,origin,actor_id,operation_digest)
 values ('legacy-7b2-audit','legacy-7b2-issue','reported','queued',
@@ -33,6 +38,22 @@ insert into public.testing_center_idempotency
  (idempotency_key,payload_digest,aggregate_id,from_state,to_state,origin)
 values ('legacy-7b2-key',repeat('7',64),'legacy-7b2-issue',
  'reported','queued','orchestrator');
+insert into public.testing_center_report_submission_keys
+ (reporter_user_id,idempotency_key,payload_digest,report_id)
+values ('18960000-0000-4000-8000-0000000007b2','legacy-7b2-submit',
+ repeat('7',64),'report_'||repeat('7',64));
+insert into public.testing_center_report_events
+ (event_id,report_id,actor_id,actor_user_id,actor_role,operation_digest)
+values ('legacy-7b2-event','report_'||repeat('7',64),'legacy-7b2',
+ '18960000-0000-4000-8000-0000000007b2','tester',repeat('7',64));
+insert into public.testing_center_triage_results
+ (report_id,triage_state,incomplete_reason)
+values ('report_'||lpad('1',64,'0'),'incomplete','missing_server_context');
+insert into public.testing_center_issue_occurrences
+ (report_id,technical_issue_id,is_primary,functional_fingerprint,
+  compatibility_digest)
+values ('report_'||repeat('7',64),'legacy-7b2-issue',true,
+ repeat('7',64),repeat('7',64));
 do $$ begin
   if (select count(*) from public.testing_center_reports
     where reporter_user_id='18960000-0000-4000-8000-0000000007b2')<>7

@@ -8012,3 +8012,4 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   conservadas las dos entregas; supabase/ idéntico al código local validado.
   Edge→SQL LF 6/6 PASS y ambas instancias detenidas. RED y primer rechazo de
   pg_write_all_data guardados en evidencia; no se oculta ningún fallo inicial.
+- Medición frente a 715c55cd8: producción +1038/−1; tests +247/−31; docs +256/−0.

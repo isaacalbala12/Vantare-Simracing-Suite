@@ -156,6 +156,16 @@ $$;
    conn+=['-v','dblink_unrestricted=1','-v','dblink_password=commercial-local-fixture']
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
+  legacy_acl_query="""select c.relname||':'||coalesce((
+    select string_agg(a::text,',' order by a::text) from unnest(c.relacl) a
+   ),'<null>') from pg_class c join pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='public' and c.relname in (
+    'testing_center_reports','testing_center_evidence',
+    'testing_center_technical_issues','testing_center_screenshot_evidence',
+    'testing_center_evidence_batches','testing_center_report_payloads',
+    'testing_center_report_submission_keys','testing_center_report_events')
+   order by c.relname"""
+  legacy_acl_before=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
@@ -212,6 +222,8 @@ $$;
     run_existing_role_regression(run, conn, admin_conn(), migration_source, OUT, *existing_roles[m.name])
    if 'isa_1770_terminal_checkout_attempts' in m.name and not args.admin_effects_only:
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
+   if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
+    legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -508,6 +520,9 @@ $$;
   if legacy_writers_enabled:
    closed_stem='20261103231148_isa_1896_close_legacy_report_writers'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(closed_stem+'.down.sql'))
+   assert legacy_acl_before is not None, 'missing pre-close relacl snapshot'
+   assert run('psql',*conn,'-At','-c',legacy_acl_query)==legacy_acl_before, \
+    '7b1 rollback did not restore the eight original relacl values'
    for name in ['testing_legacy_writers_rollback.test.sql',
                 'native_admin.test.sql','testing_report_rich_admission.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
@@ -523,7 +538,9 @@ $$;
    'canonical_device_claim.test.sql','visual_roadmap_clickup.test.sql']
   if not legacy_writers_enabled: suites.append('native_admin.test.sql')
   suites.append('native_admin_characterization.test.sql')
-  if legacy_writers_enabled: suites.append('testing_legacy_writers_closed.test.sql')
+  if legacy_writers_enabled:
+   suites+=['testing_legacy_writers_closed.test.sql',
+            'testing_legacy_admin_closed.test.sql']
   for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists() and not (legacy_writers_enabled and optional=='testing_report_rich_admission.test.sql'):
     suites.append(optional)

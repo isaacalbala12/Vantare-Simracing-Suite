@@ -971,7 +971,8 @@ $$;
   if admin_report_root_applied and owner_policy_previous is None: suites.append('native_admin_characterization.test.sql')
   if legacy_writers_enabled:
    suites+=['testing_legacy_writers_closed.test.sql']
-  if owner_enabled: suites.append('testing_owner_unification.test.sql')
+  if owner_enabled:
+   suites+=['testing_owner_unification.test.sql','testing_channel_submission_authority.test.sql']
   for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists() and not (legacy_writers_enabled and optional=='testing_report_rich_admission.test.sql'):
     suites.append(optional)

@@ -32,6 +32,7 @@ parser.add_argument('--deno-bin')
 parser.add_argument('--admin-erasure-only', action='store_true')
 parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
 parser.add_argument('--legacy-retirement-inventory', action='store_true', help='Read-only catalog inventory after migrations')
+parser.add_argument('--legacy-retirement-only', action='store_true', help='Replay full chain, then verify final 7b closure and rollback')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -197,10 +198,63 @@ $$;
   admin_report_root_applied=False
   owner_policy_previous=None
   owner_ack_previous=None
+  retirement_stem='20261104104000_isa_1896_legacy_retirement'
+  retirement_before=None
+  retirement_schema_before=None
+  retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',
+    'testing_center_issue_occurrences','testing_center_posthog_consent_events',
+    'testing_center_posthog_evidence','testing_center_report_events',
+    'testing_center_report_payloads','testing_center_report_submission_keys',
+    'testing_center_screenshot_evidence','testing_center_evidence_batches',
+    'testing_center_evidence_outbox']
+  def retirement_snapshot():
+   snapshot=json.loads(run('psql',*conn,'-c',"""select jsonb_build_object(
+     'clerk',pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure),
+     'storage',pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),
+     'policy',(select to_jsonb(p) from pg_policies p where schemaname='public'
+       and tablename='testing_center_technical_issues' and policyname='testing_center_issues_select_own'),
+     'storage_policy',(select to_jsonb(p) from pg_policies p where schemaname='storage'
+       and tablename='objects' and policyname='testing_center_evidence_insert_own_slot'),
+     'fks',(select jsonb_agg(pg_get_constraintdef(c.oid) order by c.conname)
+       from pg_constraint c where c.contype='f' and c.conname in
+       ('testing_center_technical_issues_report_id_fkey',
+        'testing_center_effect_outbox_primary_report_id_fkey',
+        'testing_center_linear_projection_snapsho_primary_report_id_fkey')),
+     'rpcs',(select jsonb_agg(jsonb_build_object(
+       'signature',p.oid::regprocedure::text,
+       'definition',pg_get_functiondef(p.oid),
+       'acl',coalesce(p.proacl::text,'<null>'),
+       'comment',obj_description(p.oid,'pg_proc')) order by p.proname,p.oid::regprocedure::text)
+       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname='public' and p.proname=any(array[
+         'testing_center_report_submit_admitted','testing_center_triage_report',
+         'testing_center_prepare_screenshot_batch','testing_center_finalize_screenshot',
+         'testing_center_can_insert_evidence_object','testing_center_submit_report',
+         'testing_center_submit_report_with_evidence',
+         'testing_center_submit_report_without_transport_size',
+         'testing_center_set_posthog_consent','testing_center_record_posthog_evidence']))
+   )""").strip())
+   # The replay also runs with CRLF SQL. Compare all nonblank source bytes,
+   # while ignoring only source line endings and B03's blank-line whitespace.
+   for key in ('clerk','storage'):
+    snapshot[key]=re.sub(r'(?m)^[ \t\r]+$', '', snapshot[key].replace('\r\n','\n'))
+   if snapshot['rpcs'] is not None:
+    for rpc in snapshot['rpcs']:
+     rpc['definition']=rpc['definition'].replace('\r\n','\n')
+   return json.dumps(snapshot,sort_keys=True)
+  def retirement_schema():
+   ddl=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
+     '-d',database,'--schema-only','--no-owner',
+     *(argument for table in retired_tables for argument in ('-t','public.'+table)))
+   return '\n'.join(line for line in ddl.splitlines()
+     if not line.startswith(('\\restrict ','\\unrestrict ')))
   channel_role_before=None
   channel_role_after=None
   erasure_previous=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   # Historical suites run against the pre-retirement schema. CI also replays
+   # the complete chain with --legacy-retirement-only and tests the final state.
+   if m.stem==retirement_stem and not args.legacy_retirement_only: continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
@@ -368,6 +422,9 @@ $$;
     owner_policy_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
    if m.stem==ACK_STEM:
     owner_ack_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
+   if m.stem==retirement_stem:
+    retirement_before=retirement_snapshot()
+    retirement_schema_before=retirement_schema()
    if m.stem==ERASURE_STEM:
     erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
    try: result=run('psql',*conn,'-f',migration_source)
@@ -632,6 +689,52 @@ $$;
    run_sync_retained_guard(run,conn,OUT,BIN,ENV)
    run_erasure_retained_guard(run,conn,OUT,BIN,ENV)
    raise SystemExit(0)
+  if args.legacy_retirement_only:
+   assert retirement_before is not None and retirement_schema_before is not None
+   closed=run('psql',*conn,'-c',"""select
+     to_regclass('public.testing_center_reports') is null,
+     to_regclass('private.testing_center_legacy_archive') is null,
+     to_regclass('public.testing_center_technical_issues') is not null,
+     to_regclass('public.testing_center_agent_jobs') is not null,
+     position('testing_center_reports' in pg_get_functiondef(
+       'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))=0,
+     position('testing_center_screenshot_evidence' in pg_get_functiondef(
+       'private.storage_owner_accounts(jsonb)'::regprocedure))=0""").strip()
+   if closed!='t|t|t|t|t|t': raise RuntimeError('final 7b schema or function closure failed: '+closed)
+   if json.loads(retirement_snapshot())['rpcs'] is not None:
+    raise RuntimeError('final 7b retained an obsolete report RPC')
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement.test.sql')
+   (OUT/'testing_center_legacy_retirement.test.sql.log').write_text(result)
+   if 'not ok ' in result or '1..9' not in result: raise RuntimeError(result)
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))
+   retirement_after=retirement_snapshot()
+   retirement_schema_after=retirement_schema()
+   (OUT/'retirement-before.json').write_text(retirement_before)
+   (OUT/'retirement-after.json').write_text(retirement_after)
+   (OUT/'retirement-before.sql').write_text(retirement_schema_before)
+   (OUT/'retirement-after.sql').write_text(retirement_schema_after)
+   if retirement_after!=retirement_before or retirement_schema_after!=retirement_schema_before:
+    raise RuntimeError('final 7b rollback did not restore exact schema, policies, ACL or functions')
+   if run('psql',*conn,'-c',"""select bool_or(has_table_privilege(role_name,
+     'private.testing_center_legacy_archive','SELECT,INSERT,UPDATE,DELETE'))
+     from (values('anon'),('authenticated'),('service_role')) roles(role_name)""").strip()!='f':
+    raise RuntimeError('final 7b rollback exposed the private archive')
+   run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
+     (source_table,source_id,\"row\",row_sha256) values
+     ('public.testing_center_reports','archive-guard','{}',repeat('a',64))""")
+   blocked=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+     str(ROOT/'supabase/migrations'/(retirement_stem+'.sql'))],
+     env=ENV,capture_output=True,text=True)
+   if blocked.returncode==0 or 'legacy_retirement_archive_not_empty' not in blocked.stderr:
+    raise RuntimeError('final 7b failed to reject a populated archive: '+blocked.stderr)
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is not null").strip()!='t':
+    raise RuntimeError('failed final 7b migration changed the schema')
+   run('psql',*conn,'-c',"delete from private.testing_center_legacy_archive where source_id='archive-guard'")
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(retirement_stem+'.sql'))
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null").strip()!='t':
+    raise RuntimeError('final 7b reapply failed')
+   print('Final 7b closure, empty-archive guard, exact rollback and reapply PASS',flush=True)
+   raise SystemExit(0)
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   if args.legacy_retirement_inventory:
@@ -698,6 +801,20 @@ $$;
     ('storage-owner','private.storage_owner_accounts(jsonb)')]:
     definition=run('psql',*conn,'-c',f"select pg_get_functiondef('{signature}'::regprocedure)")
     (OUT/f'legacy-retirement-{label}.sql').write_text(definition)
+   old_rpcs=run('psql',*conn,'-c',"""select jsonb_agg(jsonb_build_object(
+     'signature',p.oid::regprocedure::text,
+     'definition',pg_get_functiondef(p.oid),
+     'acl',coalesce(p.proacl::text,'<null>'),
+     'comment',obj_description(p.oid,'pg_proc')) order by p.oid)::text
+     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='public' and p.proname=any(array[
+       'testing_center_report_submit_admitted','testing_center_triage_report',
+       'testing_center_prepare_screenshot_batch','testing_center_finalize_screenshot',
+       'testing_center_can_insert_evidence_object','testing_center_submit_report',
+       'testing_center_submit_report_with_evidence',
+       'testing_center_submit_report_without_transport_size',
+       'testing_center_set_posthog_consent','testing_center_record_posthog_evidence'])""")
+   (OUT/'legacy-retirement-old-rpcs.json').write_text(old_rpcs)
    print(relations,flush=True)
    print(inventory,flush=True)
    print(external_dependencies,flush=True)

@@ -1076,3 +1076,15 @@ contra `nightly@69827ca12`, rama `vantareapp/isa-1896-paso12a-adr`.
 Caracterización: la matriz ACL del paso 0 (39 permisos) permanece como
 oráculo; no cambia SQL ni sus tests. Medida: producción +0/−0, tests +0/−0,
 docs +68/−0 tras registrar este handoff. CI del último push pendiente; sin despliegue.
+
+VANTA-131 7b final: el cierre parte de la cadena 7b2→admin ya integrada. Solo
+retira las doce tablas exclusivas del informe y el archivo si están vacíos;
+conserva la rama `technical_issues`/`agent_jobs` y deja Linear/outbox inertes.
+La misma migración elimina del borrado Clerk el parche del archivo y las
+lecturas de capturas, y elimina del resolver Storage la lectura de capturas.
+Retira diez RPC del informe antiguo; el Hub solo conserva código de subida
+sin llamador, desactivado por `SCREENSHOTS_AVAILABLE=false`, que el paso 6b
+debe sustituir por el contrato v2 antes de activar capturas. El `.down.sql`
+recrea el esquema vacío y las funciones anteriores. La consulta
+previa y el procedimiento para un archivo no vacío están en el runbook; la
+purga requiere una decisión explícita de Isaac.

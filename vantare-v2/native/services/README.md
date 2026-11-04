@@ -293,20 +293,11 @@ durable deja de guardar imágenes; `report-images` se retira cuando no pertenece
 a otro borrador. Si la retirada falla, el recibo sigue visible y la siguiente
 consulta del recibo vuelve a intentar la limpieza.
 
-Ruta conservada para reactivación en el paso 6, actualmente inactiva:
-Con imágenes: `testing_center_prepare_screenshot_batch` → INSERT JPEG en
-`storage/v1/object/testing-center-evidence/...` (`x-upsert=false`) →
-`testing_center_finalize_screenshot` → `testing_center_submit_report_with_evidence`.
-Sin imágenes: `testing_center_submit_report`, sin cambiar su schema.
-Se validan UUID, posición, digest y ruta de cada slot; no se aceptan URLs remotas.
-Un objeto ya insertado tras perder conexión no se sobrescribe. Finalizar encola
-validación, **no** significa ready. Si attach devuelve
-`testing_center_evidence_not_ready` (55000), se explica que sigue en validación
-con borrador e intento conservados. Al reintentar se reutiliza manifest/key/JPEG;
-los slots ready no se vuelven a subir. Se debe desplegar un consumidor del outbox
-que valide tamaño, formato, dimensiones y hash y marque evidencia/batch ready.
-El cliente nunca concede ese estado. El reintento descrito aquí queda suspendido
-mientras la constante de contención sea `false`.
+El envío vigente de texto usa Edge `testing-report-submit` y el contrato
+`testing.report.v2`. Las RPC de informe y captura legacy se retiran en el
+cierre 7b. El código de subida de capturas sigue sin llamador y
+`SCREENSHOTS_AVAILABLE=false`; el paso 6b deberá conectarlo al contrato nuevo
+antes de activar capturas.
 
 El intento se protege antes de cualquier HTTP. 401, 403, 413, 5xx, desconexión,
 validación pendiente y respuesta malformada conservan borrador/intento.

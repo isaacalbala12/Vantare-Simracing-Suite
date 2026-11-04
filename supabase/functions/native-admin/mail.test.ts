@@ -1,11 +1,5 @@
-import {
-  executeMail as actualExecuteMail,
-  mailContent,
-  type MailDeps,
-  type MailRun,
-  renderMail,
-  validateMail,
-} from "./mail.ts";
+import { mailContent, validateAction } from "./actions.ts";
+import { executeMail as actualExecuteMail, type MailDeps, type MailRun, renderMail } from "./mail.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import {
   handleUnsubscribe as realUnsubscribe,
@@ -97,7 +91,7 @@ Deno.test("mail closed request schema, confirmation, languages and header inject
       ["mail_draft", { ...p, brief: "b", template: "wrong" }],
       ["mail_send_batch", { ...p, to: "victim@example.invalid" }],
     ] as const
-  ) await rejects(() => validateMail(a, args));
+  ) await rejects(() => validateAction(a, args));
   assert(mailContent(content));
   assert(!mailContent({ ...content, fr: content.en }));
   assert(
@@ -564,7 +558,7 @@ Deno.test("waitlist erasure uses only verified token address and GET never mutat
   }, { env });
   assert(actions === 1);
   await rejects(() =>
-    validateMail("mail_forget_waitlist", {
+    validateAction("mail_forget_waitlist", {
       email: "wait@example.invalid",
       confirm: false,
     })
@@ -575,7 +569,7 @@ Deno.test("P3: locale cannot inject html attributes and cursor never exposes an 
   const html = renderMail("B", "https://project.invalid/", 'es" onload="x');
   assert(html.includes('<html lang="en">') && !html.includes("onload"));
   await rejects(() =>
-    validateMail("mail_sync", { cursor: "private@example.invalid" })
+    validateAction("mail_sync", { cursor: "private@example.invalid" })
   );
   let sync = 0;
   const response = await executeMail("mail_sync", { cursor: id }, (action) => {

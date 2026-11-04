@@ -6,7 +6,7 @@ import {
   releaseChange,
 } from "./change-lease.ts";
 import { executeMail, type MailDeps } from "./mail.ts";
-import { assertAdminEnvironment, validateAdminRequest } from "./actions.ts";
+import { ACTIONS, validateAdminRequest } from "./actions.ts";
 export { validateAdminRequest } from "./actions.ts";
 import { createLocalOAuthVerifier } from "./local-auth.ts";
 import {
@@ -326,7 +326,8 @@ export async function handleNativeAdmin(
     });
     const parsed = await readJsonObject(counted, 128 * 1024);
     const mailRequest = parsed.ok && typeof parsed.value.action === "string" &&
-      parsed.value.action.startsWith("mail_");
+      Object.hasOwn(ACTIONS, parsed.value.action) &&
+      !!ACTIONS[parsed.value.action][3]?.mail;
     if (
       !mailRequest &&
       (receivedBytes > 8192 ||
@@ -445,13 +446,16 @@ export async function handleNativeAdmin(
     // Adding it before subjects would incorrectly return the owner in every search.
     users.set(actorUser.id, actorUser);
     const environment = deps.environment ?? requirePolarEnvironment();
-    assertAdminEnvironment(action, environment);
+    const policy = ACTIONS[action][3];
+    if (policy?.sandbox && environment !== "sandbox") {
+      throw new NativeError(503, "admin_sandbox_required");
+    }
     const effect = effectAudit(
       actor,
       requestId,
       deps.recordEffect ?? recordEffect,
     );
-    if (action.startsWith("mail_")) {
+    if (policy?.mail) {
       const runMail = (command: string, arguments_: ObjectValue) =>
         (deps.mailExecute ?? (async (actor, command, params, environment) => {
           const { data, error } = await getSupabaseAdmin().rpc(
@@ -485,11 +489,10 @@ export async function handleNativeAdmin(
         arguments_,
         environment,
       );
-    if (
-      ["get_account", "list_creators", "get_creator", "record_creator_payout"]
-        .includes(action)
-    ) await syncAdminPayments(run, environment, deps.productMap, deps.polar);
-    if (action === "create_creator") {
+    if (policy?.syncPayments) {
+      await syncAdminPayments(run, environment, deps.productMap, deps.polar);
+    }
+    if (policy?.handler === "creator") {
       const reserved = await run(action, params);
       const creator = objectValue(reserved.creator);
       if (
@@ -515,7 +518,7 @@ export async function handleNativeAdmin(
         ok: true,
       });
     }
-    if (["set_blocked", "delete_account"].includes(action)) {
+    if (policy?.handler === "account") {
       const lease = action === "set_blocked"
         ? await (deps.claimChange ?? claimChange)(
           actor,
@@ -761,17 +764,9 @@ export async function handleNativeAdmin(
           environment,
         ),
     );
-    if (
-      [
-        "search_accounts",
-        "get_account",
-        "list_reports",
-        "get_report",
-        "get_creator",
-      ].includes(
-        action,
-      )
-    ) await timed("enrich_clerk", () => enrich(result, users, deps));
+    if (policy?.enrich) {
+      await timed("enrich_clerk", () => enrich(result, users, deps));
+    }
     if (action === "get_report") {
       const report = objectValue(result.report);
       if (

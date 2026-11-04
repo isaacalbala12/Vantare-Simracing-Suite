@@ -678,29 +678,19 @@ incluso si ya se cerró: ninguna entrega SMTP se reenvía automáticamente.
 `owner-alert-receiver` queda fuera de este journal: ya tiene su propia reserva
 persistente e `idempotencyKey`.
 
-## Contrato único de acciones · paso9
 
-`actions.ts` contiene las25 acciones públicas: campos permitidos, validación,
-tipo read/write/destructive/bulk y restricción de entorno. Index y mail delegan
-en esa tabla; se conservan defaults, validaciones de contenido y sandbox-only.
-MODULE_CAPABILITIES conserva su fuente existente; estados de informes y listas
-de correo se exportan desde este contrato. SQL mantiene permisos e invariantes
-de negocio; no se aplana la cadena de migraciones del paso11.
+## Contrato único de acciones · paso 9
 
-Exportar desde la raíz Git, sin red ni claves, con Deno2.7.13:
+`actions.ts` define campos, validadores, mutación y despacho de las 25 acciones:
+correo SQL/Edge, sincronización, enriquecimiento, handler y sandbox. `index.ts`
+y `mail.ts` consumen esos indicadores. SQL conserva la autoridad de negocio.
+
+Exportar los ejemplos sintéticos y metadatos, sin red ni claves:
 
 ```powershell
 deno run --cached-only --no-lock --config supabase/functions/deno.json supabase/functions/native-admin/actions.ts > vantare-v2/native/admin/fixtures/admin-actions.json
 ```
 
-El test Deno exige que la exportación coincida con esa fixture. Rust contrasta
-las variantes y TODOS los campos declarados por Serde (incluidos opcionales),
-serialización exacta, tipo de mutación, estados y módulos. Añadir o retirar una
-acción/campo en un solo lado rompe el gate. Los ejemplos son sintéticos; no hay
-almacén ni servicios reales. La deserialización de Action se deriva solo en test.
-
-Se alinea paid_at opcional que ya admitía la API: la vista sigue enviando None,
-por lo que conserva fecha decidida en servidor. No cambia lógica de pagos,
-consentimiento, autoridad owner ni protocolo1. Sin migración. Deploy reservado a
-Isaac; cliente nuevo y Edge son compatibles con el corte anterior. Paso8 deberá
-actualizar esta misma tabla/fixture al añadir sync_payments explícito.
+Deno y Rust leen esa fixture; Rust la carga una sola vez y comprueba variantes,
+campos opcionales, serialización, mutación, estados y módulos. `paid_at` ya era
+opcional en la API; la vista sigue enviando `None`. Sin migración ni protocolo nuevo.

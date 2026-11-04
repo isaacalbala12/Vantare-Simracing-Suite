@@ -455,37 +455,6 @@ fn mail_draft_and_confirmation_use_owner_contract_over_local_http() {
     }
 }
 
-#[test]
-fn admin_contract_fields_characterization() {
-    let contract: serde_json::Value =
-        serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract");
-    let action = Action::RecordCreatorPayout {
-        creator_id: "19106900-0000-4000-8000-000000000001".into(),
-        amount_cents: 100,
-        paid_at: Some("2026-11-04T00:00:00Z".into()),
-    };
-    let payload = serde_json::to_value(action).expect("serialize");
-    let mut actual: Vec<_> = payload
-        .as_object()
-        .expect("object")
-        .keys()
-        .filter(|key| key.as_str() != "action")
-        .map(String::as_str)
-        .collect();
-    let mut expected: Vec<_> = contract["actions"]["record_creator_payout"]["fields"]
-        .as_array()
-        .expect("fields")
-        .iter()
-        .map(|v| v.as_str().expect("field"))
-        .collect();
-    actual.sort_unstable();
-    expected.sort_unstable();
-    assert_eq!(
-        actual, expected,
-        "Rust must expose all current public payout wire fields"
-    );
-}
-
 #[derive(Debug)]
 struct WireNames(Vec<&'static str>);
 impl std::fmt::Display for WireNames {
@@ -507,8 +476,7 @@ impl serde::de::Error for WireNames {
 }
 #[test]
 fn canonical_action_contract_covers_every_rust_wire_variant_and_field() {
-    let contract: serde_json::Value =
-        serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract");
+    let contract = action_contract();
     let actions = contract["actions"].as_object().expect("actions");
     let input = serde::de::value::MapDeserializer::<_, WireNames>::new(
         [("action", "__contract_unknown__")].into_iter(),
@@ -518,17 +486,6 @@ fn canonical_action_contract_covers_every_rust_wire_variant_and_field() {
     let mut names: Vec<_> = actions.keys().map(String::as_str).collect();
     names.sort_unstable();
     assert_eq!(labels, names, "Rust and Edge action sets");
-    let id = "19106900-0000-4000-8000-000000000001";
-    let content: serde_json::Value = ["es", "en", "it", "pt-BR"]
-        .into_iter()
-        .map(|locale| {
-            (
-                locale.to_owned(),
-                serde_json::json!({"subject":"fixture","body":"fixture"}),
-            )
-        })
-        .collect::<serde_json::Map<_, _>>()
-        .into();
     for (name, spec) in actions {
         // Capture actual Serde fields, including optional Rust fields absent from Edge.
         let probe = serde::de::value::MapDeserializer::<_, WireNames>::new(
@@ -551,33 +508,15 @@ fn canonical_action_contract_covers_every_rust_wire_variant_and_field() {
         actual_fields.sort_unstable();
         expected_fields.sort_unstable();
         assert_eq!(actual_fields, expected_fields, "wire field set: {name}");
-        let mut wire = serde_json::json!({"action":name});
-        for field in spec["fields"].as_array().expect("fields") {
-            let field = field.as_str().expect("field");
-            wire[field] = match field {
-                "account_id" | "creator_id" | "campaign_id" | "report_id" | "cursor" => id.into(),
-                "confirm" | "blocked" | "enabled" | "enabled_for_all" => true.into(),
-                "revision" => 1.into(),
-                "limit" => 50.into(),
-                "amount_cents" => 100.into(),
-                "query" => "".into(),
-                "module" => contract["modules"][0].clone(),
-                "status" => "submitted".into(),
-                "name" | "reason" | "brief" => "fixture".into(),
-                "email" | "confirm_email" => "fixture@example.invalid".into(),
-                "code" => "CREATOR".into(),
-                "paid_at" => "2026-11-04T00:00:00Z".into(),
-                "fixed_in_version" => "1.2.3".into(),
-                "template" => "news".into(),
-                "target_group" => "free".into(),
-                "content" => content.clone(),
-                _ => panic!("missing typed sample for field {field}"),
-            };
-        }
+        let mut wire = spec["example"].clone();
+        wire["action"] = name.clone().into();
         let action: Action =
             serde_json::from_value(wire.clone()).expect("canonical fields supported");
         assert_eq!(action.label(), name);
-        assert_eq!(action.mutation(), spec["kind"] != "read");
+        assert_eq!(
+            action.mutation(),
+            spec["mutation"].as_bool().expect("mutation")
+        );
         assert!(action.validate().is_ok(), "client validates {name}");
         assert_eq!(
             serde_json::to_value(&action).expect("serialize"),
@@ -592,8 +531,7 @@ fn canonical_action_contract_covers_every_rust_wire_variant_and_field() {
 }
 #[test]
 fn canonical_status_and_module_contract_cover_both_wire_enums() {
-    let contract: serde_json::Value =
-        serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract");
+    let contract = action_contract();
     let mut statuses = Status::deserialize(serde::de::value::StrDeserializer::<WireNames>::new(
         "__contract_unknown__",
     ))
@@ -630,4 +568,11 @@ fn canonical_status_and_module_contract_cover_both_wire_enums() {
         let item: Module = serde_json::from_value(value.clone()).expect("module");
         assert_eq!(serde_json::to_value(item).expect("wire"), *value);
     }
+}
+
+fn action_contract() -> &'static serde_json::Value {
+    static CONTRACT: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    CONTRACT.get_or_init(|| {
+        serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract")
+    })
 }

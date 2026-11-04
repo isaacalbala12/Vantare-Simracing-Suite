@@ -4,45 +4,11 @@ import contract from "../../../vantare-v2/native/admin/fixtures/admin-actions.js
 import { validateAdminRequest } from "./index.ts";
 import { assert } from "../native-account-authorize/testdata/auth.ts";
 const id = "19106900-0000-4000-8000-000000000001";
-const sample: Record<string, unknown> = {
-  query: "",
-  limit: 50,
-  cursor: id,
-  account_id: id,
-  creator_id: id,
-  campaign_id: id,
-  report_id: id,
-  blocked: true,
-  enabled: true,
-  enabled_for_all: true,
-  confirm: true,
-  confirm_email: "fixture@example.invalid",
-  email: "fixture@example.invalid",
-  module: contract.modules[0],
-  status: "submitted",
-  reason: "fixture",
-  fixed_in_version: "1.2.3",
-  amount_cents: 100,
-  paid_at: "2026-11-04T00:00:00Z",
-  name: "fixture",
-  code: "CREATOR",
-  revision: 1,
-  brief: "fixture",
-  template: "news",
-  target_group: "free",
-  content: Object.fromEntries(
-    ["es", "en", "it", "pt-BR"].map(
-      (x) => [x, { subject: "fixture", body: "fixture" }],
-    ),
-  ),
-};
 for (const [action, spec] of Object.entries(contract.actions)) {
   Deno.test(
     "action characterization fields/defaults and closed inputs: " + action,
     () => {
-      const params = Object.fromEntries(
-        spec.fields.map((field) => [field, sample[field]]),
-      );
+      const params = spec.example;
       assert(
         validateAdminRequest({ version: 1, action, ...params }).action ===
           action,
@@ -82,20 +48,16 @@ Deno.test("action characterization: statuses/modules match current accepted wire
   }
 });
 
-import { actionContract, assertAdminEnvironment } from "./actions.ts";
+import { actionContract, ACTIONS } from "./actions.ts";
 Deno.test("canonical registry export matches the Rust wire fixture exactly", () => {
   assert(JSON.stringify(actionContract()) === JSON.stringify(contract));
 });
 Deno.test("canonical action environments retain sandbox restrictions and closed unknown names", () => {
   for (const [action, spec] of Object.entries(contract.actions)) {
-    assertAdminEnvironment(action, "sandbox");
-    let rejected = false;
-    try {
-      assertAdminEnvironment(action, "production");
-    } catch {
-      rejected = true;
-    }
-    assert(rejected === (spec.environment === "sandbox"));
+    assert(
+      (ACTIONS[action][3]?.sandbox === true) ===
+        (spec.environment === "sandbox"),
+    );
   }
   for (const action of ["mail_claim", "toString", "__proto__", "unknown"]) {
     let rejected = false;
@@ -114,6 +76,12 @@ Deno.test("registry generates usable wire examples and dispatch flags", () => {
     assert(!!spec.example && typeof spec.example === "object");
     assert(typeof spec.mutation === "boolean");
     assert(typeof spec.mail === "boolean");
-    assert(validateAdminRequest({version: 1, action, ...spec.example as Record<string, unknown>}).action === action);
+    assert(
+      validateAdminRequest({
+        version: 1,
+        action,
+        ...spec.example as Record<string, unknown>,
+      }).action === action,
+    );
   }
 });

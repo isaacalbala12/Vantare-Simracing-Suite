@@ -8,17 +8,11 @@ import { NativeError } from "../_shared/native-auth.ts";
 import { unsubscribeToken } from "../mail-unsubscribe/tokens.ts";
 
 import {
-  MAIL_GROUPS as groups,
-  MAIL_LOCALES as locales,
+  ACTIONS,
+  MAIL_GROUPS,
+  MAIL_LOCALES,
   mailContent,
-  validateMail,
-} from "./actions.ts";
-export {
-  MAIL_GROUPS as groups,
-  MAIL_LOCALES as locales,
-  MAIL_TEMPLATES as templates,
-  mailContent,
-  validateMail,
+  validateAction,
 } from "./actions.ts";
 type Obj = Record<string, unknown>;
 export type MailRun = (action: string, params: Obj) => Promise<Obj>;
@@ -41,7 +35,7 @@ export const escapeHtml = (s: string): string =>
       ]!,
   );
 export function renderMail(body: string, url: string, locale: string): string {
-  const language = locales.includes(locale as typeof locales[number])
+  const language = MAIL_LOCALES.includes(locale as typeof MAIL_LOCALES[number])
     ? locale
     : "en";
   const labels: Record<string, string> = {
@@ -64,7 +58,7 @@ export async function executeMail(
   run: MailRun,
   deps: MailDeps = {},
 ): Promise<Obj> {
-  validateMail(action, p);
+  validateAction(action, p);
   const env = deps.env ?? Deno.env.get;
   const send = deps.fetch ?? fetch;
   const require = (name: string) => {
@@ -73,18 +67,7 @@ export async function executeMail(
     return v;
   };
   // Also checks Owner inside SQL, including before all provider calls and AI.
-  if (
-    [
-      "mail_list",
-      "mail_new",
-      "mail_get",
-      "mail_save",
-      "mail_approve",
-      "mail_forget_waitlist",
-    ].includes(
-      action,
-    )
-  ) return await run(action, p);
+  if (ACTIONS[action][3]?.mail === "sql") return await run(action, p);
   await run("mail_list", {});
   if (action === "mail_cleanup") {
     return {
@@ -287,9 +270,9 @@ export async function executeMail(
       number
     >;
     if (
-      Object.keys(map).length !== groups.length || !groups.every((g) =>
-        Number.isSafeInteger(map[g]) && map[g] > 0
-      ) || new Set(Object.values(map)).size !== groups.length
+      Object.keys(map).length !== MAIL_GROUPS.length ||
+      !MAIL_GROUPS.every((g) => Number.isSafeInteger(map[g]) && map[g] > 0) ||
+      new Set(Object.values(map)).size !== MAIL_GROUPS.length
     ) throw new NativeError(503, "mail_unconfigured");
     const page = await run(
       "mail_sync_page",
@@ -327,9 +310,9 @@ export async function executeMail(
       await brevo(`contacts/${encodeURIComponent(c.email)}`, {
         emailBlacklisted: claim.consent !== true || selected.length === 0,
         listIds: selected.map((g) => map[g]),
-        unlinkListIds: groups.filter((g) => !selected.includes(g)).map((g) =>
-          map[g]
-        ),
+        unlinkListIds: MAIL_GROUPS.filter((g) => !selected.includes(g)).map((
+          g,
+        ) => map[g]),
       }, {
         method: "PUT",
         effect: {

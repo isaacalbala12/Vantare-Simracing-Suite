@@ -8668,39 +8668,19 @@ union all select 'linear_deliveries',outcome::text,count(*)
   account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
   No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.
 
-## VANTA-132 · paso9: contrato de acciones TS/Rust (2026-11-04)
 
-- Base origin/nightlycf41b7c30 (#1946 integrado con seis checks verdes), rama
-  vantareapp/isa-1910-paso9-contrato y worktree propio. Drafts separados SMTP1947
-  (31f817f72) y errores1948 (c46fcb31e);8 compartido espera respuesta al aviso
-  para _shared/account-erasure.ts y clerk-webhook/index.ts, rutas intactas.
-- ACTIONS único con25 campos/validadores/tipos/entornos públicos sustituye dos
-  tablas y el switch de index/mail. Mismos defaults y sandbox-only. Estados y
-  listas mail salen del contrato, módulos de MODULE_CAPABILITIES existente sin
-  tocar licencias. Exportación CLI sin permisos de red ni secretos.
-- Fixture única native/admin/fixtures/admin-actions.json, generada desde TS y
-  comparada por Deno. Test Rust obtiene las variantes y campos reales de Serde,
-  incluidos opcionales, y cruza con JSON; comprueba serialización, mutation,
-  estados y módulos. Action Deserialize solo en cfg(test), sin nuevo API runtime.
-- Caracterización previa5d77fb731:26Deno PASS; Rust RED runtime por paid_at
-  ausente en Action. Se alinea como Option omitida por la vista (None), mantiene
-  lógica/fecha de pagos existente y protocolo1. No servicios, runtime ni UI cambian
-  de arquitectura; solo wirefield y constructor existentes. Sin dependencias.
-- GREEN169Deno y46/46Nextest admin PASS, check all-targets y Clippy-Dwarnings
-  admin PASS. Rust por compilar.ps1, target isa-1910-contract y tres raíces QA
-  explícitas; cada comando libera cola. Ningún Store real ni SaaS. Servicios,
-  domain/runtime/ipc/testdata intactos: telemetría no aplica. No hay target de
-  lifecycle propio del crate admin; no se ejecuta workspace ajeno al alcance.
-- PostgreSQL admin-reports-only replay completo, rollback/guards/autoridad,
-  locks/races y Edge→SQL ambos modos/abuso PASS. Check/lint/fmt/exportfixture y
- 471huellas PASS; instancia parada. Primer comando Rust omitía manifest-path,
-  corregido; primer test Serde suponía rechazo de extras en variantes unit, se
-  ajusta al formato de Serde y el cierre se verifica en Edge para las25 acciones.
-  Todos los fallos conservados en evidencia isa-1910-paso9.
-- Sin migración, shared/webhook, billing/licencias, secretos, Store real, datos
-  de producción, deploy, merge ni release. SQL histórico permanece para baseR6/12.
-  Continúa8 cuando se autorice coordinación;6/10 pendientes,11 exclusivamente R6.
-- PR draft [#1951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1951) a nightly, código bcbe83e5f; HEAD documental final en PR/issue. Basecf41b7c30, CI nueva pendiente.
-- Producción tocada3621 →3689 (+68; +290/−222); tests +504/−0, incluida fixture JSON; docs +74/−0. No se cuenta la fixture como producción porque solo se consume en gates.
-- Drafts SMTP1947 y errores1948 continúan independientes.8 espera coordinación explícita;6/10 pendientes,11 fuera con R6. VANTA-132 En curso; sin merge propio ni despliegue.
-- Verificación remota final:1947 y1948 MERGEABLE con seis checks SUCCESS cada uno;1951 CI nueva pendiente. Primer push documental1951 recibió500 de GitHub; reintento normal exitoso, sin force ni cambios de producto.
+## VANTA-132 · paso 9, contrato único · review (2026-11-04)
+
+- #1951 rebasado sobre #1948 e83faac5a. ACTIONS controla validación y despacho:
+  correo SQL/Edge, syncPayments, enrich, handler y sandbox; sin listas en index.
+  `mutation` sustituye kind. Sin reexports/alias/wrapper de validación en mail.
+- Ejemplos generados desde actions.ts; ambos tests leen la fixture. Rust la carga
+  una vez y compara variantes/campos Serde, serialización, mutación y enums.
+  Se retira la caracterización redundante. paid_at opcional conserva vista None.
+- Caracterización review: 28 PASS/1 RED antes del cambio. Nuevos gates, HEAD y
+  mediciones finales en PR/issue. Compilar.ps1, target aislado y raíces QA;
+  sin Store real. Cola retenida por RAM de otro gate: no se salta ni se fuerza.
+- Replay admin/Edge y rollback de la entrega anterior PASS. Sin cambios SQL,
+  shared, billing/licencias, secretos, servicios reales, merge o despliegue.
+- VANTA-132 En curso: cerrar review 1951, ajustes SMTP1947 y paso8 autorizado;
+  6/10 pendientes; 11 pertenece a R6/12. Native-auth y apply_clerk_user_event reservados.

@@ -20,156 +20,245 @@
   ],
   "actions": {
     "search_accounts": {
-      "kind": "read",
+      "mutation": false,
       "fields": [
         "query",
         "limit",
         "cursor"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "query": "",
+        "limit": 50,
+        "cursor": "19106900-0000-4000-8000-000000000001"
+      }
     },
     "get_account": {
-      "kind": "read",
+      "mutation": false,
       "fields": [
         "account_id"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "account_id": "19106900-0000-4000-8000-000000000001"
+      }
     },
     "set_blocked": {
-      "kind": "destructive",
+      "mutation": true,
       "fields": [
         "account_id",
         "blocked",
         "reason"
       ],
-      "environment": "sandbox"
+      "mail": false,
+      "environment": "sandbox",
+      "example": {
+        "account_id": "19106900-0000-4000-8000-000000000001",
+        "blocked": true,
+        "reason": "fixture"
+      }
     },
     "delete_account": {
-      "kind": "destructive",
+      "mutation": true,
       "fields": [
         "account_id",
         "confirm_email"
       ],
-      "environment": "sandbox"
+      "mail": false,
+      "environment": "sandbox",
+      "example": {
+        "account_id": "19106900-0000-4000-8000-000000000001",
+        "confirm_email": "fixture@example.invalid"
+      }
     },
     "set_tester": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "account_id",
         "enabled"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "account_id": "19106900-0000-4000-8000-000000000001",
+        "enabled": true
+      }
     },
     "set_module": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "account_id",
         "module",
         "enabled"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "account_id": "19106900-0000-4000-8000-000000000001",
+        "module": "vantare.module.analysis",
+        "enabled": true
+      }
     },
     "list_creators": {
-      "kind": "read",
+      "mutation": false,
       "fields": [],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {}
     },
     "get_creator": {
-      "kind": "read",
+      "mutation": false,
       "fields": [
         "creator_id"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "creator_id": "19106900-0000-4000-8000-000000000001"
+      }
     },
     "record_creator_payout": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "creator_id",
         "amount_cents",
         "paid_at"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "creator_id": "19106900-0000-4000-8000-000000000001",
+        "amount_cents": 100,
+        "paid_at": "2026-11-04T00:00:00Z"
+      }
     },
     "create_creator": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "name",
         "email",
         "code"
       ],
-      "environment": "sandbox"
+      "mail": false,
+      "environment": "sandbox",
+      "example": {
+        "name": "fixture",
+        "email": "fixture@example.invalid",
+        "code": "CREATOR"
+      }
     },
     "get_rollout": {
-      "kind": "read",
+      "mutation": false,
       "fields": [],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {}
     },
     "set_rollout": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "module",
         "enabled_for_all"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "module": "vantare.module.analysis",
+        "enabled_for_all": true
+      }
     },
     "list_reports": {
-      "kind": "read",
+      "mutation": false,
       "fields": [
         "status",
         "limit",
         "cursor"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "status": "submitted",
+        "limit": 50,
+        "cursor": "19106900-0000-4000-8000-000000000001"
+      }
     },
     "get_report": {
-      "kind": "read",
+      "mutation": false,
       "fields": [
         "report_id"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "report_id": "19106900-0000-4000-8000-000000000001"
+      }
     },
     "set_report_status": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "report_id",
         "status",
         "fixed_in_version",
         "reason"
       ],
-      "environment": "both"
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "report_id": "19106900-0000-4000-8000-000000000001",
+        "status": "submitted",
+        "fixed_in_version": "1.2.3",
+        "reason": "fixture"
+      }
     },
     "mail_forget_waitlist": {
-      "kind": "destructive",
+      "mutation": true,
       "fields": [
         "email",
         "confirm"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "email": "fixture@example.invalid",
+        "confirm": true
+      }
     },
     "mail_cleanup": {
-      "kind": "destructive",
+      "mutation": true,
       "fields": [],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {}
     },
     "mail_list": {
-      "kind": "read",
+      "mutation": false,
       "fields": [],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {}
     },
     "mail_new": {
-      "kind": "write",
+      "mutation": true,
       "fields": [],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {}
     },
     "mail_get": {
-      "kind": "read",
+      "mutation": false,
       "fields": [
         "campaign_id"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "campaign_id": "19106900-0000-4000-8000-000000000001"
+      }
     },
     "mail_save": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "campaign_id",
         "revision",
@@ -178,41 +267,89 @@
         "target_group",
         "content"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "campaign_id": "19106900-0000-4000-8000-000000000001",
+        "revision": 1,
+        "name": "fixture",
+        "template": "news",
+        "target_group": "free",
+        "content": {
+          "es": {
+            "subject": "fixture",
+            "body": "fixture"
+          },
+          "en": {
+            "subject": "fixture",
+            "body": "fixture"
+          },
+          "it": {
+            "subject": "fixture",
+            "body": "fixture"
+          },
+          "pt-BR": {
+            "subject": "fixture",
+            "body": "fixture"
+          }
+        }
+      }
     },
     "mail_approve": {
-      "kind": "bulk",
+      "mutation": true,
       "fields": [
         "campaign_id",
         "revision",
         "confirm"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "campaign_id": "19106900-0000-4000-8000-000000000001",
+        "revision": 1,
+        "confirm": true
+      }
     },
     "mail_send_batch": {
-      "kind": "bulk",
+      "mutation": true,
       "fields": [
         "campaign_id",
         "revision"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "campaign_id": "19106900-0000-4000-8000-000000000001",
+        "revision": 1
+      }
     },
     "mail_draft": {
-      "kind": "write",
+      "mutation": true,
       "fields": [
         "campaign_id",
         "revision",
         "brief",
         "template"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "campaign_id": "19106900-0000-4000-8000-000000000001",
+        "revision": 1,
+        "brief": "fixture",
+        "template": "news"
+      }
     },
     "mail_sync": {
-      "kind": "bulk",
+      "mutation": true,
       "fields": [
         "cursor"
       ],
-      "environment": "both"
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "cursor": "19106900-0000-4000-8000-000000000001"
+      }
     }
   }
 }

@@ -8915,8 +8915,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
   confirmación solo en set_module/set_rollout/mail_approve; Edge y Gestión deben
   desplegarse justo después de SQL. No hay despliegue/merge/release del worker.
 
-- Gates re-review1962:SQL LF30 y dos carreras PASS; Deno274, Clippy -D
+- Gates re-review1962:SQL LF/CRLF30 y dos carreras PASS; Deno274, Clippy -D
   warnings y Nextest47 PASS. Tooling31 PASS con TEMP/TMP en D tras C:lleno;
-  C recuperó4GB sin limpieza del worker. CRLF final en marcha. Rollback/cuerpos/
+  C recuperó4GB sin limpieza del worker. Rollback/cuerpos/
   ACL/constraint y guard canceled conservados. Volcados PG17 tras integrar la pila,
   según orden1960→1962→1961→1963, sin cambiar timestamps ni desplegar.

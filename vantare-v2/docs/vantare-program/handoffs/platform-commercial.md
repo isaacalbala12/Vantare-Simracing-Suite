@@ -8303,3 +8303,214 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   local no disponible: adaptador RPC actualizado y gate pendiente de CI nueva.
   VANTA-132 En curso, resto del plan intacto; paso11 pertenece a R6/12.
 - Medición total #1942 vs ccc9b2e5e: producción +209/−8; tests +645/−6; docs +174/−0. Código validado 5c4e5deeb; HEAD documental final en PR/issue, CI nueva pendiente.
+
+## VANTA-132 · #1942 integrado y pendientes reales (2026-11-04)
+
+- #1942 integrado por el orquestador en nightly
+  65b21aed03e73dbdb8b0f7fd4cd375c938fcea69; HEAD revisado aed8f0520,
+  seis checks SUCCESS verificados en GitHub. Sin merge ni despliegue del worker.
+  Se cierra la evidencia DELETE Brevo: nueve fallos del recorder o RPC ausente
+  dejan pending/attempts0/HTTP0. Deno129 y LF/CRLF27SQL+7E2E PASS.
+- Estado del plan: 0–4 integrados. 5 parcial: Clerk/Polar/Storage y DELETE Brevo
+  integrados; faltan POST/PUT de contactos y SMTP. Siguen 6 (estado esperado y
+  cancelar campaña), 7 (errores), 8 (lecturas puras/borrado compartido), 9
+  (contrato TS/Rust), 10 (auditoría mínima/lectura owner/retención). Paso11 fuera,
+  exclusivamente R6/12. No se declara reducción global ni tarea terminada.
+- Siguiente corte: 5d contactos Brevo desde esta nightly, rama/worktree propios.
+  Sin nuevo _shared ni webhook. Luego SMTP y6–9; antes de10 concretar política
+  de retención con Isaac;8 requiere aviso y coordinación antes de _shared y
+  clerk-webhook. Activación Gestión/MFA y todas las acciones externas son Isaac.
+
+### Checklist de despliegue para Isaac — manual, sin ejecutar por el worker
+
+Producción contiene datos desde octubre. Esta lista es inventario candidato,
+no una afirmación de qué está aplicado: Isaac contrasta el historial remoto y
+el SHA de las Edge antes de marcar cada casilla. No reset, no base nueva vacía,
+no `repair` para aparentar una migración aplicada. Backup y restauración ensayada
+antes de7b2, ventana de mantenimiento y procedimiento R6 vigentes.
+
+- [ ] Verificar SQL con BYPASSRLS/superuser (FORCE RLS), historial, permisos,
+  cantidades y colas con las consultas de abajo. Conservar resultados agregados.
+- [ ] Prerrequisitos admin, en orden si faltan: `20261103152000_isa_1910_admin_gate.sql`
+  (#1912), `20261103212343_isa_1910_admin_effects.sql` (#1921),
+  `20261103214115_isa_1910_admin_effects_review.sql` (#1922). R6/7a debe tener
+  `20261103190000_isa_1896_report_v2.sql` y `20261103190100_isa_1896_agent_v2_read.sql`.
+- [ ] **7b1**: `20261103231148_isa_1896_close_legacy_report_writers.sql` (#1926).
+  Detiene escritores padre/siete hijas/RPC; verificar ACL, incluidas columnas,
+  PUBLIC y roles arbitrarios, antes de vaciar. No revocar apply_clerk_user_event.
+- [ ] **7b2**: `20261104014000_isa_1896_legacy_archive.sql` (#1930).
+  **Pausar Clerk y borrados de cuentas durante up/down**; drenar peticiones ya
+  en vuelo y conservar entregas/reintentos para reanudarlos, sin descartar
+  user.deleted. Pausar agentes/escritores legacy según R6. Resolver colas de
+  efectos antes; screenshot_evidence y evidence_batches deben estar vacías:
+  si hay filas, STOP para inspección de Storage por Isaac, nunca vaciar a ciegas.
+  Verificar NOTICE de archivo/mapeo/vaciado y hashes, no solo exit0. R6 decide
+  qué filas se mapean y cuáles quedan solo archivadas. Reanudar Clerk tras commit
+  verificado; también si aborta, una vez resuelta la ventana, sin perder eventos.
+- [ ] **#1924**: `20261104024000_isa_1910_admin_report_root.sql`, solo después de
+  7b1→7b2 verificados. Guard cerrado: ocho tablas vacías y sin DML/TRUNCATE;
+  siete nombres RPC sin EXECUTE en ninguna firma. Clerk sigue ejecutable por
+  service_role. No eliminar tablas/FK: archivo y borrado Clerk dependen de ellas;
+  retirada final exclusivamente R6 junto con archivo/parche Clerk.
+- [ ] **Owner**: `20261103235000_isa_1896_owner_unification.sql` (#1925),
+  `20261104005000_isa_1910_admin_owner_authority.sql` (#1927). Revisar owners
+  legacy y asignaciones expiradas/revocadas antes del backfill. Autoridad única
+  private.is_owner; comprobar owner vigente/caducado/no owner. Incluir la costura
+  R6 de canales `20261104084000_isa_1928_channel_owner_authority.sql` (#1934).
+- [ ] **#1939**: `20261104070000_isa_1910_admin_owner_policy.sql`.
+- [ ] **#1941**: `20261104083000_isa_1910_admin_owner_ack.sql`.
+- [ ] **#1942**: `20261104095000_isa_1910_brevo_erasure_journal.sql`.
+- [ ] Futuro **#1944 draft**, no desplegable sin aprobación: `20261104100000_isa_1910_brevo_sync_journal.sql`
+  después de#1942 y antes de native-admin del corte5d; backout según su README.
+- [ ] **Primero todas las migraciones, después las Edge** native-admin y
+  mail-cleanup del corte aprobado. Mientras SQL está en curso, mantener admin
+  y limpieza detenidos para que las Edge antiguas no escriban rutas antiguas.
+  No activar Gestión hasta crear cliente JWT independiente, TTL5min y verificar
+  token real typ=at+jwt/issuer/aud o azp. Flags/IDs reales solo los configura Isaac.
+- [ ] Comprobar funcionalmente con cuentas autorizadas por Isaac: rechazo de
+  Hub/basura/no owner/caducado en Gestión activa, login Hub intacto si inactiva,
+  cupo, owner ACK, pendientes/reconcile y limpieza sin gastar intentos por caída
+  de auditoría. Registrar SHA/resultado. Ningún agente lo ejecuta en producción.
+
+Orden operativo pedido: **7b1 → 7b2 → #1924 → owner → #1939 → #1941 → #1942**.
+Los archivos owner tienen timestamps anteriores a7b2: esta secuencia describe
+fases manuales, no el orden que produciría un push CLI por timestamp. El replay
+limpio canónico aplica timestamps (owner antes de7b2) y está cubierto por CI
+LF/CRLF. No renombrar migraciones históricas ya integradas ni asumir que una
+orden CLI reproduce las fases. Isaac debe revisar el plan de ejecución antes
+si usa un lote automático. Nunca ocultar esta diferencia mediante repair.
+
+Consultas previas de solo lectura para Isaac; ejecutar con el rol comprobado,
+no con anon/authenticated. No exponen correos ni cuerpos:
+
+```sql
+select current_user, rolsuper, rolbypassrls from pg_roles where rolname=current_user;
+-- Si existe este historial, identificar los pendientes sin marcar nada aplicado.
+select version from supabase_migrations.schema_migrations
+where version >= '20261103000000' order by version;
+select 'reports' as relation,count(*) from public.testing_center_reports
+union all select 'evidence',count(*) from public.testing_center_evidence
+union all select 'technical_issues',count(*) from public.testing_center_technical_issues
+union all select 'screenshot_evidence',count(*) from public.testing_center_screenshot_evidence
+union all select 'evidence_batches',count(*) from public.testing_center_evidence_batches
+union all select 'report_payloads',count(*) from public.testing_center_report_payloads
+union all select 'submission_keys',count(*) from public.testing_center_report_submission_keys
+union all select 'report_events',count(*) from public.testing_center_report_events;
+-- Antes de owner: conteos, no UUID/perfiles personales.
+select role,status,policy_version,
+       (expires_at is not null and expires_at<=now()) as expired,count(*)
+from public.operational_access_assignments group by 1,2,3,4;
+select role,active,count(*) from public.testing_center_memberships group by 1,2;
+```
+
+Después de7b1, ambas consultas ACL deben devolver **cero filas** (ejecución
+legítima del dueño/superusers exceptuada). Validan tabla, columna y sobrecargas:
+
+```sql
+with relations as (
+ select c.* from pg_class c join pg_namespace n on n.oid=c.relnamespace
+ where n.nspname='public' and c.relname in ('testing_center_reports',
+ 'testing_center_evidence','testing_center_technical_issues',
+ 'testing_center_screenshot_evidence','testing_center_evidence_batches',
+ 'testing_center_report_payloads','testing_center_report_submission_keys',
+ 'testing_center_report_events')
+), privileges as (
+ select c.relname,c.relowner,null::text as column_name,a.* from relations c
+ cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+ union all
+ select c.relname,c.relowner,t.attname::text,a.* from relations c
+ join pg_attribute t on t.attrelid=c.oid and t.attnum>0 and not t.attisdropped
+ cross join lateral aclexplode(t.attacl) a
+)
+select p.relname,p.column_name,coalesce(r.rolname,'PUBLIC') as grantee,p.privilege_type
+from privileges p left join pg_roles r on r.oid=p.grantee
+where p.grantee<>p.relowner and not coalesce(r.rolsuper,false)
+and p.privilege_type in('INSERT','UPDATE','DELETE','TRUNCATE');
+select p.oid::regprocedure,coalesce(r.rolname,'PUBLIC') as grantee
+from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+left join pg_roles r on r.oid=a.grantee
+where n.nspname='public' and p.proname in('testing_center_report_submit_admitted',
+ 'testing_center_triage_report','testing_center_prepare_screenshot_batch',
+ 'testing_center_finalize_screenshot','testing_center_submit_report',
+ 'testing_center_submit_report_with_evidence',
+ 'testing_center_submit_report_without_transport_size')
+and a.grantee<>p.proowner and not coalesce(r.rolsuper,false)
+and a.privilege_type='EXECUTE';
+select has_function_privilege('service_role',
+ 'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')
+ as clerk_deletion_must_remain_executable;
+```
+
+Antes de7b2: revisar además las colas del subárbol de FK con R6. El guard completo
+está en7b2 (`legacy_archive_pending_effect`), no se sustituye con un recuento
+solo del padre. No migrar si hay efectos sin cierre. Tras7b2, repetir conteo
+de ocho tablas (todo0), verificar archivo/mapeo/NOTICE y después aplicar#1924.
+Antes de7b2 aún no existe el archivo: ejecutar las siguientes solo después:
+
+```sql
+select source_table,count(*) from private.testing_center_legacy_archive
+ group by source_table order by source_table;
+select count(*) as bad_hashes from private.testing_center_legacy_archive
+ where row_sha256<>encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex');
+-- Debe ser0; la elegibilidad de mapeo no equivale a todas las filas archivadas.
+select count(*) as mapped_legacy from public.testing_contributions
+ where legacy_source_id is not null;
+```
+
+Backout: sin borrar auditoría ni archivo. Down7b2 exige la misma pausa de Clerk/
+borrados y su runbook R6. Down#1942 solo antes de eventos Brevo; con evidencia,
+revocar EXECUTE de ambas RPC nuevas y revertir Edge, conservar SQL/journal.
+No rebobinar a ciegas migraciones con nuevas contribuciones o eventos reales.
+
+Consultas agregadas adicionales antes de7b2 (globales, conservadoras: revisar
+con R6 el subárbol afectado; no equivalen al guard completo):
+
+```sql
+select 'effects' as queue,state::text,count(*)
+ from public.testing_center_effect_outbox group by state
+union all select 'agent_effects',state::text,count(*)
+ from public.testing_center_agent_effect_outbox group by state
+union all select 'agent_jobs',state::text,count(*)
+ from public.testing_center_agent_jobs group by state
+union all select 'agent_reservations',state::text,count(*)
+ from public.testing_center_agent_reservations group by state
+union all select 'linear_deliveries',outcome::text,count(*)
+ from public.testing_center_linear_webhook_deliveries group by outcome;
+```
+
+## VANTA-132 · siguiente PR5d: auditoría contactos Brevo (2026-11-04)
+
+- Worktree isa-1910-paso5d desde nightly65b21aed0; rama
+  vantareapp/isa-1910-paso5d-brevo. Caracterización previa193a97d85: ocho RED
+  por ausencia de journal en POST/PUT reales de mail_sync, sin SaaS real.
+- RPC service-only nueva, completa, native_admin_record_mail_sync: mismo
+  admin_effects/pending/reconcile, owner vigente y lease real para started;
+  resultado exacto puede cerrar tras caducar owner/lease. Hash de UUID interno
+  y lease, sin correo/URL/cuerpos. Actor/request del contexto verificado Edge.
+- Cada POST/PUT confirma intención antes de HTTP y resultado antes de siguiente
+  HTTP/ACK. Fallo de journal devuelve503 mail_sync_audit_unavailable y deja la
+  proyección dirty, reintentable tras lease: sin contador ni pérdida definitiva.
+  2xx válido succeeded;401/403/422 failed;transporte/otros/JSON ilegible unknown.
+- Migración/rollback20261104100000, después de#1942; función completa sin patch
+  de catálogo. CLI migration new en scaffold vacío (sin .env) y timestamp
+  ajustado tras095000. Down exacto con eventos antiguos preservados; con sync
+  retenido aborta sin borrar evidencia. SQL antes de native-admin, solo Isaac.
+- Deno137 PASS, ocho nuevos; check/lint/fmt/Python y471huellas PASS. Primera
+  ejecución PG detectó RequestInit ambiguo en fixture Deno; anotación explícita
+  corregida. Gates SQL/E2E LF/CRLF finales en curso al registrar esta sección;
+  resultados finales y HEAD en PR/issue. Rust/lifecycle/telemetría omitidos:
+  no cambia native. Docker marketing local ausente, adaptador RPC actualizado.
+- Solo contactos: SMTP sigue siguiente5e; después6–9 y10 con decisión de
+  privacidad. Sin shared/webhook, billing/licencias, secretos, Store real,
+  producción, despliegue, merge ni release. VANTA-132 continúa En curso.
+- Cierre de gates5d: LF/CRLF43SQL (27 DELETE+16 sync) y10E2E reales PASS;
+  rollback/reaplicación/checks anteriores y rechazo con evidencia PASS. Deno137,
+  check/fmt/lint/Python/diff y471huellas PASS. Instancias focales paradas; cadena
+  LF completa adicional en curso, CI remota nueva pendiente. Código0e4a138b6.
+- Medición contra65b21aed0: producción +181/−17; tests +367/−4; docs +234/−0.
+- PR/HEAD final y resultado de cadena completa se registran en issue y entrega.
+- PR draft [#1944](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1944) a nightly, base65b21aed0, rama propia; código0e4a138b6. HEAD documental final registrado en PR/issue.
+- Cadena LF completa adicional PASS: migraciones/rollback/owner/leases/Edge y134rutas/795checks de barreras, instancia parada. Fuente de producto idéntica a los gates focales LF/CRLF.
+- Medición final #1944 frente a65b21aed0: producción +181/−17; tests +367/−4; docs +240/−0. CI nueva pendiente de verificar.
+- Issue/handoff/Plane sincronizados: VANTA-132 En curso; siguiente5e SMTP, después6–10;11 fuera. Sin merge propio, release ni acción de producción.

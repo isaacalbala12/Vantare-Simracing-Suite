@@ -462,6 +462,35 @@ revisión por sistema quedan anotados para una decisión posterior; este PR no
 cambia esa autoridad ni inventa un reviewer owner.
 El gate prueba ese rechazo y el rollback exacto sobre datos antiguos no vacíos.
 
+## Contactos Brevo · paso 5d
+
+`mail_sync` registra en el journal existente cada POST de alta/supresión y cada
+PUT de grupos: `brevo_contact_upsert` y `brevo_contact_update`. El actor y request
+UUID proceden del contexto verificado de native-admin; no del cuerpo recibido.
+Intención confirmada antes del HTTP, resultado antes del siguiente HTTP y antes
+de `mail_sync_ack`. Sin auditoría devuelve503 `mail_sync_audit_unavailable` y no
+avanza. El contacto queda dirty y puede volver a sincronizarse al caducar su
+lease; no se añade contador ni límite de intentos. No se envían campañas aquí.
+
+El recorder service-only exige owner vigente y lease real del contacto para
+started. El resultado puede cerrar su intención exacta aunque el owner/lease
+caduque o el contacto se borre. SHA-256 del UUID interno y lease, sin correo,
+URL, lista de destinatarios, body ni errores. 2xx con respuesta válida succeeded;
+401/403/422 failed; transporte, otros HTTP o respuesta ilegible unknown. Los
+unknown permanecen en la misma vista y se reconcilian como owner, sin cierre
+por sistema. No cambia consentimiento, proyección, pertenencia a listas ni ACK.
+
+Isaac: migración `20261104100000_isa_1910_brevo_sync_journal.sql` después de#1942,
+antes de native-admin. Producción tiene datos: sin reset, lock_timeout5s y
+BYPASSRLS comprobado. Down restaura checks anteriores y elimina solo la nueva
+RPC si todavía no hay eventos sync; con evidencia aborta atómicamente. Backout
+con evidencia: revocar EXECUTE de native_admin_record_mail_sync(uuid,uuid,uuid,
+text,uuid,uuid,text,integer) a service_role y revertir Edge, conservando journal.
+No se deshace#1942 ni su auditoría DELETE. Todo despliegue reservado a Isaac.
+
+SMTP sigue pendiente (siguiente corte5e). No se declara cerrado el paso5 ni se
+implementan aquí confirmaciones, errores generales o retención del paso10.
+
 ## Raíz única de informes · coordinación R6/7b
 
 Admin lista, consulta, cuenta y revisa únicamente `testing_contributions` y su

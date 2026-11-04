@@ -85,6 +85,16 @@ async function rpc(
       "p_provider_status",
       "p_actor",
     ],
+    native_admin_record_mail_sync: [
+      "p_actor",
+      "p_request",
+      "p_effect",
+      "p_kind",
+      "p_contact",
+      "p_lease",
+      "p_outcome",
+      "p_provider_status",
+    ],
     mail_erasure_expire: [],
     native_admin_claim_mail_erasure: ["p_request", "p_effect", "p_actor"],
     mail_erasure_finish: ["p_id", "p_lease", "p_http_status"],
@@ -196,7 +206,12 @@ Deno.test({
       writes.push(JSON.parse(String(init?.body)));
       return Promise.resolve(new Response(null, { status: 204 }));
     };
-    await executeMail("mail_sync", {}, run, { env, fetch: fetcher });
+    await executeMail("mail_sync", {}, run, {
+      env,
+      fetch: fetcher,
+      actor: owner,
+      rpc,
+    });
     assert(
       writes.some((w) =>
         w.emailBlacklisted === false && JSON.stringify(w.listIds) === "[1]"
@@ -215,7 +230,12 @@ Deno.test({
     );
     assert(withdraw.status === 200);
     writes.length = 0;
-    await executeMail("mail_sync", {}, run, { env, fetch: fetcher });
+    await executeMail("mail_sync", {}, run, {
+      env,
+      fetch: fetcher,
+      actor: owner,
+      rpc,
+    });
     assert(
       writes.every((w) => w.emailBlacklisted !== false),
       "withdrawal in settings suppresses provider contact",

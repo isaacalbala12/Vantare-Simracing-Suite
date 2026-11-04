@@ -7,7 +7,7 @@
 
 ## 2026-11-04 - #1933 / VANTA-131: contrato digest entre schemas
 
-- El SQL fusionado usa `public.digest` y `extensions.digest`; Billing contiene llamadas vivas al segundo nombre y permanece fuera del alcance de edición de R6. La migración incremental `20261104172000` toma `public.digest` como contrato para SQL nuevo y crea dos bridges `extensions.digest` solo si pgcrypto nativo está en `public`. Con pgcrypto en `extensions`, conserva los wrappers históricos y no cambia el esquema. El rollback retira solo bridges marcados y falla cerrado con dependencias o deriva.
+- [Draft #1961](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1961), rama `vantareapp/isa-1933-pgcrypto-unification` desde `nightly@6047b8ea6`. El SQL fusionado usa `public.digest` y `extensions.digest`; Billing contiene llamadas vivas al segundo nombre y permanece fuera del alcance de edición de R6. La migración incremental `20261104172000` toma `public.digest` como contrato para SQL nuevo y crea dos bridges `extensions.digest` solo si pgcrypto nativo está en `public`. Con pgcrypto en `extensions`, conserva los wrappers históricos y no cambia el esquema. El rollback retira solo bridges marcados y falla cerrado con dependencias o deriva.
 - Caracterización previa local PostgreSQL 16: layout `extensions` PASS, layout `public` RED. Tras el up/down/reapply ambos pasan; extensión ausente aborta con `55000`. CI probará los dos layouts en PostgreSQL 17 desechable. Consulta previa de solo lectura e interpretación: [pgcrypto-digest-contract.md](../../runbooks/pgcrypto-digest-contract.md). No se consulta ni cambia un entorno alojado.
 
 ## 2026-11-04 - #1896 / VANTA-131 paso 12, Fase A: lint e inmutabilidad

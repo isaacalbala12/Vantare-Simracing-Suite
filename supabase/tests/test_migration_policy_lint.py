@@ -83,6 +83,12 @@ class MigrationPolicyLintTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('public.example', result.stdout)
 
+    def test_rollback_cannot_patch_function_text(self):
+        self.write_new(VALID, rollback="select replace(pg_get_functiondef('public.example()'::regprocedure),'a','b');\n")
+        result = self.lint()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('.down.sql', result.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()

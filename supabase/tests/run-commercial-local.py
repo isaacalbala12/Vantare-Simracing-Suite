@@ -1,5 +1,6 @@
 """Disposable loopback PostgreSQL only. macOS/Linux; never accepts a DSN."""
 import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse, re
+from generate_schema_snapshot import compose, write_or_check
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
@@ -25,6 +26,7 @@ parser.add_argument('--qa-edge-origin')
 parser.add_argument('--migration-newlines', choices=['lf','crlf'], default='lf')
 parser.add_argument('--before-private-write-barriers', action='store_true', help='RED: omit only the #1702 private-table guards')
 parser.add_argument('--baseline', action='store_true')
+parser.add_argument('--schema-snapshot', choices=['write','check'], help='Replay every migration locally, then write/check the derived domain schema')
 parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS/Pilot/license/tombstone checks after all migrations; no unrelated writer matrix')
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
@@ -313,7 +315,7 @@ $$;
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    # Historical suites run against the pre-retirement schema. CI also replays
    # the complete chain with --legacy-retirement-only and tests the final state.
-   if m.stem==retirement_stem and not args.legacy_retirement_only: continue
+   if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot): continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
@@ -768,6 +770,39 @@ $$;
     run('psql',*conn,'-c',"""delete from public.testing_contributions
       where legacy_source_id is not null;
       delete from private.testing_center_legacy_archive;""")
+  if args.schema_snapshot:
+   # The runner owns a fresh loopback database; no DSN or hosted endpoint is accepted.
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null and to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
+    raise RuntimeError('schema snapshot requires the final legacy retirement migration')
+   if args.docker:
+    dump=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+     '-U','postgres','-d',database,'--schema-only','--no-owner')
+   else:
+    dump=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
+     '-d',database,'--schema-only','--no-owner')
+   catalog={}
+   relations={
+    'storage.buckets': "select id,name,public,file_size_limit,allowed_mime_types from storage.buckets",
+    'cron.job': "select jobname,schedule,active,md5(command) as command_md5 from cron.job",
+    'private.report_promotion_policy': "select singleton,reward_valid_months from private.report_promotion_policy",
+    'private.billing_compensation_policy': "select environment,enabled,amount_basis from private.billing_compensation_policy",
+    'private.report_promotion_catalog': "select environment,product_id,plan,normal_cents,launch_cents from private.report_promotion_catalog",
+   }
+   for relation,query in relations.items():
+    if run('psql',*conn,'-c',f"select to_regclass('{relation}') is not null").strip()!='t':
+     catalog[relation]=[]
+     continue
+    payload=run('psql',*conn,'-c',f"select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from ({query}) t").strip()
+    catalog[relation]=json.loads(payload)
+   groups=compose(dump,catalog)
+   generated=OUT/'schema'
+   write_or_check(generated,groups)
+   if args.schema_snapshot=='check':
+    drift=write_or_check(ROOT/'supabase/schema',groups,check=True)
+    if drift: raise RuntimeError('derived schema drift: '+', '.join(drift))
+   print('Derived domain schema '+('matches' if args.schema_snapshot=='check' else 'written')+
+    ': '+', '.join(sorted(groups)),flush=True)
+   raise SystemExit(0)
   # Historical oracles unwind the dependent ACK before the owner policy.
   def owner_policy_down():
    if owner_ack_previous is not None:

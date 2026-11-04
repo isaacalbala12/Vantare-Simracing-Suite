@@ -192,12 +192,9 @@ $$;
   admin_owner_previous=None
   admin_report_root_applied=False
   owner_policy_previous=None
-<<<<<<< HEAD
   owner_ack_previous=None
-=======
   channel_role_before=None
   channel_role_after=None
->>>>>>> 44146fc (fix: ordenar migración de canales tras admin owner policy)
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
@@ -264,7 +261,7 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
-   channel_stem='20261104071000_isa_1928_channel_owner_authority'
+   channel_stem='20261104084000_isa_1928_channel_owner_authority'
    channel_role_snapshot_query="""select string_agg(
      p.oid::regprocedure::text||'|'||encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>'),
      E'\\n' order by p.oid::regprocedure::text)

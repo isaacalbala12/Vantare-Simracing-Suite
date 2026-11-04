@@ -1059,4 +1059,4 @@ Código corregido `bb8e25d62`, publicado en la misma rama de #1934 contra `night
 
 Tras integrar admin #1924 en `nightly@3397df2ea`, #1934 se rebasó conservando el gate real de admin y sus suites. El harness LF con la cadena 7b2→admin y la suite de envíos pasó; CRLF se repite sobre esa base. Sin merge propio, despliegue ni release.
 
-Tras #1939 (`nightly@d1616b2f7`), Isaac autorizó renombrar la migración y rollback de #1934 a `20261104071000`, posterior a `20261104070000` de admin. El runner conserva ambos lados, aplica rollback LIFO y prueba definiciones/ACL exactos de las cuatro funciones; PostgreSQL local LF pasó con 134 rutas/795 comprobaciones y 16 envíos. CRLF y CI del HEAD rebasado quedan por verificar antes de integrar.
+Tras #1939 (`nightly@d1616b2f7`), Isaac autorizó renombrar la migración y rollback de #1934 a `20261104084000`, posterior a `20261104070000` de admin. El runner conserva ambos lados, aplica rollback LIFO y prueba definiciones/ACL exactos de las cuatro funciones; PostgreSQL local LF pasó con 134 rutas/795 comprobaciones y 16 envíos. CRLF y CI del HEAD rebasado quedan por verificar antes de integrar.

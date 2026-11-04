@@ -8072,3 +8072,52 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Medición frente a 3397df2ea: producción +100/−0 (up y down), tests +120/−2, docs +84/−0.
 - PR draft [#1939](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1939) a nightly,
   código validado d34ab62cf; HEAD documental final publicado en el PR. CI nueva en curso.
+
+## VANTA-132 · Follow-up owner ACK y cobertura P2/P3 (2026-11-04)
+
+- #1939 integrado por el orquestador en nightly d1616b2f76eb8f6eec8cd2aaee5ca1cdde1bc3be;
+  código revisado 203e14749. Seis checks SUCCESS verificados, Commercial
+  [41784274084](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41784274084),
+  marketing/promoción/bloqueantes
+  [41784273917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41784273917)
+  y calidad [41784274047](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41784274047).
+  No se modificó su rama ni se creó otro vigilante.
+- Nuevo worktree isa-1910-paso4c desde esa base exacta, rama
+  vantareapp/isa-1910-paso4c-owner-ack. ACK de set_tester sobre owner vigente:
+  account_id + owner:true + unchanged:true, sin enabled. Tester normal conserva
+  su ACK. No cambia asignación, membresía, auditoría ni permisos.
+- Cliente Rust State::accept no consume enabled: pide GetAccount después del
+  ACK. No requiere adaptación. Sin cambios native ni gates Rust/lifecycle/
+  telemetría; no se usa la cola de compilación.
+- Caracterización previa d46debced: ACK 2 PASS/2 RED. Ya pasan antes del producto
+  la carrera real objetivo-owner/revocar contra set_blocked (commit y rollback,
+  dos sesiones observadas por PID bloqueador en pg_stat_activity), borrado
+  p_account=p_actor rechazado sin job/identidad borrada, y prepare_account_deletion
+  sobre owner caducado con job y lápida persistidos en la transacción sintética.
+- Una deriva por cada uno de los cuatro hunks del paso 4: error 55000 y firma
+  correspondiente; no deja ninguna definición/ACL parcialmente cambiada.
+  El nuevo ACK tiene rollback exacto, reaplicación y tres cuerpos ajenos/ACL
+  conservados. Los oráculos históricos revierten ACK antes de policy y R6.
+- GREEN PostgreSQL 16.15 desechable LF y CRLF: cinco suites/91 checks finales
+  (33 policy, 4 ACK), 13 de caracterización histórica antes del corte,
+  rollback/ACL, cuatro derivas, dos carreras nuevas, autoridad/locks y seis
+  carreras journal/lease PASS. Gate #1924 de 282 rechazos/índice/down intacto.
+  Deno2.7.13 94 PASS y Edge→SQL LF6/6, incluye Hub/basura/caducado/no-owner y
+  los dos modos. Python/diff PASS; servidores parados. CI nueva pendiente.
+- Evidencia isa-1910-paso4c y /tmp/admin-1910-ack-{red,lf,crlf}. Sin secretos,
+  Store real, _shared/webhook, billing/licencias, producción, despliegue, merge
+  propio ni release. Las tablas/FK legacy permanecen según contrato R6.
+- VANTA-132 En curso. Siguientes: cerrar auditoría Brevo del paso 5 y pasos6–10.
+  El paso 11 permanece en la base R6/12; no se hace aquí.
+- PR draft [#1941](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1941) a nightly,
+  código validado 1c8339509; HEAD documental final publicado en el PR. CI nueva pendiente.
+- Medición frente a d1616b2f7: producción +44/−0 (up/down), tests +221/−22, docs +68/−0.
+- Siguiente paso5/Brevo espera la coordinación obligatoria antes de tocar
+  _shared/mail-erasure.ts: auditar DELETE por UUID del job, sin correo. Aún sin editar.
+- Confirmación solicitada: Edge index.ts solo valida enabled de la petición;
+  propaga el ACK SQL sin leerlo (return respond spread result). Rust Client::call
+  decodifica el JSON; State::accept(SetTester) pide GetAccount sin leer enabled.
+  Dos tests getter fallarían ante esa lectura: Deno96/check/lint/fmt PASS.
+- Producción Supabase contiene datos: reconstruida con la cadena en octubre.
+  Queda sustituida cualquier suposición histórica de base vacía en runbooks.
+- Autorizado tocar solo _shared/mail-erasure.ts y sus tests; alcance de integración por aclarar.

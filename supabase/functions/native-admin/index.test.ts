@@ -1,3 +1,4 @@
+/// <reference lib="dom.iterable" />
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
 import { type PolarProductMap } from "../_shared/mapping.ts";
 import {
@@ -38,6 +39,44 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
 }
 const module = "vantare.module.engineer";
 const reportId = "report-beta-test";
+for (const enabled of [true, false]) {
+  Deno.test(
+    "owner tester ACK never reads enabled (" + enabled + ")",
+    async () => {
+      const ack = { account_id: account, owner: true, unchanged: true };
+      Object.defineProperty(ack, "enabled", {
+        enumerable: false,
+        get: () => {
+          throw new Error("Edge must not read enabled from the owner ACK");
+        },
+      });
+      const response = await handleNativeAdmin(
+        request({
+          version: 1,
+          action: "set_tester",
+          account_id: account,
+          enabled,
+        }),
+        deps({
+          fetch: (url) =>
+            Promise.resolve(
+              Response.json(String(url).endsWith("verify") ? claims : user),
+            ),
+          execute: (_actor, _issuer, action, params) => {
+            assert(action === "set_tester" && params.enabled === enabled);
+            return Promise.resolve(ack);
+          },
+        }),
+      );
+      const body = await response.json();
+      assert(
+        response.status === 200 && body.account_id === account &&
+          body.owner === true && body.unchanged === true &&
+          !("enabled" in body),
+      );
+    },
+  );
+}
 const imagePath = `v1/${"a".repeat(32)}/${account}/${account}`;
 Deno.test("empty query lists mapped accounts with cursor and no Clerk search", async () => {
   let directoryCalls = 0;

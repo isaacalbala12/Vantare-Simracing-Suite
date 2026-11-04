@@ -49,5 +49,20 @@ select throws_ok($$select private.native_admin_require_owner('19104400-0000-4000
 select throws_ok($$select private.native_admin_require_owner('19104400-0000-4000-8000-000000000006')$$,'42501','native_admin_forbidden','tester actor rejected');
 select throws_ok($$select private.native_admin_require_owner(null)$$,'42501','native_admin_forbidden','missing actor rejected');
 select throws_ok($$select private.native_admin_require_owner('garbage'::uuid)$$,'22P02',null,'garbage identity rejected');
+-- Exercise the real preparation path, not only the read-only retry lookup.
+insert into public.account_identities(issuer,subject,account_id) values
+ ('https://admin-policy.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','19104400-0000-4000-8000-000000000001'),
+ ('https://admin-policy.invalid','user_ggggggggggggggggggggggggggg','19104400-0000-4000-8000-000000000007');
+select throws_ok($$select pg_temp.policy('prepare_account_deletion','19104400-0000-4000-8000-000000000001',
+ jsonb_build_object('confirmation_hash',repeat('a',64),'clerk_subject','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'))$$,
+ '55000','native_admin_owner_conflict','p_account=p_actor cannot prepare its own deletion');
+select is((select count(*)::integer from private.admin_account_deletions where account_id='19104400-0000-4000-8000-000000000001'),0,'self deletion leaves no job');
+select is((select deleted_at is null from public.account_identities where account_id='19104400-0000-4000-8000-000000000001'),true,'self deletion leaves identity live');
+select lives_ok($$select pg_temp.policy('prepare_account_deletion','19104400-0000-4000-8000-000000000007',
+ jsonb_build_object('confirmation_hash',repeat('b',64),'clerk_subject','user_ggggggggggggggggggggggggggg'))$$,
+ 'live actor can prepare deletion of expired owner');
+select is((select count(*)::integer from private.admin_account_deletions where account_id='19104400-0000-4000-8000-000000000007'),1,'expired owner deletion job persisted');
+select is((select deleted_at is not null from public.account_identities where account_id='19104400-0000-4000-8000-000000000007'),true,'expired owner identity tombstone persisted');
+select ok(not private.is_owner('19104400-0000-4000-8000-000000000007'),'deleted expired owner has no authority');
 select * from finish();
 rollback;

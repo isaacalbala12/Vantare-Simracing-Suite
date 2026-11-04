@@ -489,3 +489,22 @@ puente owner de #1927 y finalmente la autoridad R6. El gate conserva los
 oráculos anteriores antes del corte o bajo sus rollbacks reales y prueba el
 nuevo comportamiento en el esquema final. No cambia datos, permisos, billing,
 licencias, tablas legacy ni FK; el paso 11 sigue reservado a la base R6/12.
+
+### ACK explícito del tester sobre owner vigente
+
+`20261104083000_isa_1910_admin_owner_ack.sql`, después de la policy del paso 4,
+responde `{account_id, owner:true, unchanged:true}` cuando `set_tester` apunta
+al owner vigente. No incluye `enabled`: tanto activar como desactivar son un
+no-op de asignación/membresía. Para un tester ordinario se conserva
+`{account_id, enabled}`. No cambia la auditoría existente ni la autorización.
+El rollback restaura el ACK anterior; debe revertirse antes de owner_policy.
+
+El cliente Rust no lee `enabled` del ACK: `State::accept` agenda `GetAccount`
+para `SetTester` y relee la cuenta. Por eso no requiere adaptación ni cambios
+nativos. La compatibilidad se apoya en ese comportamiento, no en conservar un
+campo engañoso. Tests nuevos cubren ambos ACK, borrado propio rechazado y
+preparación real del borrado de un owner caducado (solo SQL desechable).
+El gate observa en pg_stat_activity dos sesiones reales: revocación del owner
+objetivo confirmada permite set_blocked tras esperar; si revierte, sigue
+protegido. Cada uno de los cuatro hunks de policy tiene una prueba de deriva
+atómica independiente, además del rollback exacto y la reaplicación.

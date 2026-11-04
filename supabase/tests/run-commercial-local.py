@@ -949,6 +949,7 @@ $$;
    guard=run('psql',*conn,'-c',"select to_json(encode(tgargs,'escape')) from pg_trigger where tgrelid='public.admin_audit_log'::regclass and tgname='a_account_write_barrier'")
    (OUT/'admin-audit-guard.json').write_text(guard,encoding='utf-8')
    suites=['native_admin_report_root.test.sql','native_admin_characterization.test.sql','native_admin_effects_r2.test.sql','testing_report_v2.test.sql']
+   suites+=['native_admin_owner_policy.test.sql']
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:

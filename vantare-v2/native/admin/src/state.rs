@@ -565,6 +565,23 @@ impl State {
 mod tests {
     use super::*;
     #[test]
+    fn pending_payment_history_requires_confirmation_without_replacing_facts() {
+        let mut state = State::new(true, Screen::Users);
+        state.demo = false;
+        let previous = state.users[0].clone();
+        state.user = Some(previous.clone());
+        let mut incoming = previous.clone();
+        incoming.name = Some("Must wait for history".into());
+        let read = Action::GetAccount { account_id: previous.account_id.clone() };
+        assert!(state.accept(&read, &serde_json::json!({"account":incoming,"payment_sync_required":true})).expect("defer read").is_none());
+        assert_eq!(state.user,Some(previous.clone()));
+        let sync = state.confirmation.clone().expect("sync confirmation");
+        assert_eq!(sync.label(),"sync_payments");
+        assert_eq!(state.accept(&sync,&serde_json::json!({"ok":true})).expect("sync ACK"),Some(read.clone()));
+        state.accept(&read,&serde_json::json!({"account":incoming,"payment_sync_required":false})).expect("fresh data");
+        assert_eq!(state.user,Some(incoming));
+    }
+    #[test]
     fn empty_search_lists_accounts_and_cursor_does_not_leak_to_filtered_search() {
         let action = Action::SearchAccounts {
             query: String::new(),

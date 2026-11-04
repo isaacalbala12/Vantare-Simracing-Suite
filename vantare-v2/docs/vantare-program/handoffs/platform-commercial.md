@@ -8613,3 +8613,57 @@ union all select 'linear_deliveries',outcome::text,count(*)
   reales, deploy, merge ni release. Rust omitido porque native no cambia.
 - VANTA-132 En curso: revisar 1948, rebasar 1951 encima y corregir su contrato;
   luego ajustes 1947 y paso 8 autorizado. 6/10 pendientes; 11 en R6/12.
+
+## VANTA-132 · #1946 integrado; paso5e SMTP (2026-11-04)
+
+- #1946 integrado por el orquestador en nightlycf41b7c30d860c0053d8712ff8e8757cda4c382c;
+  HEADf4b827d24 y seis checks SUCCESS verificados. Se cierra su evidencia.
+  Worktree/rama nuevos isa-1910-paso5e / vantareapp/isa-1910-paso5e-smtp.
+- SMTP reserva destinatario+cuota y started en una transacción. Auditoría caída
+  revierte los tres: nueve fallos reales dejan pending, reserva0 y HTTP0.
+  Sin RPC nueva no hay fallback. Resultado durable antes de mail_finish; sin
+  ACK de recorder no se confirma entrega, queda intención pendiente y503.
+- Tandas3/cuota300/día/consentimiento local y no reintentos automáticos quedan.
+  Baja posterior a claim cierra failed/HTTP NULL y skipped, sin SMTP. Solo2xx
+  con messageId no vacío es succeeded;400/401/403/404/422 failed; otros errores,
+  transporte o recibo inválido unknown. El mismo helper brevo y journal/pending/
+  reconcile; sin correo, URL, contenido ni receipt en admin_effects.
+- RPC started service-only y owner vigente, entrega dispatching de campaña
+  aprobada en entorno correcto. Resultado exacto puede cerrar tras caducar
+  owner o borrarse entrega; hash del UUID+entorno. Reconcile no autoriza reenviar.
+- Migración/rollback110000 después de103000, funciones completas sin patches.
+  Down exacto de checks y RPC con eventos antiguos conservados; con SMTP aborta
+  sin borrar evidencia. SQL antes de Edge, solo Isaac. Con filas: revocar execute
+  de ambas RPC SMTP y revertir Edge, conservar journal. Producción tiene datos.
+- RED previo536a898cb:12fallos. GREEN Deno153; SQL119(27DELETE+53sync+39SMTP)
+  y19E2E LF/CRLF PASS. SQL/Edge reales, proveedor falso: nueve fallos de recorder
+  sin cuota/claim, unknown pendiente/reconcile/no reenvío, retirada local sin
+  envío, resultado perdido sin ACK. Down/reaplicación/guards PASS. Check/lint/
+  fmt/Python/diff y471huellas PASS. Instancias paradas; Docker marketing ausente
+  localmente. Rust/lifecycle/telemetría omitidos: native intacto.
+- Primer run de consumidores omitió permisos env de tests nativos; repetido con
+  cuatro nombres permitidos PASS. Ajuste de tipo de recibo validado por helper
+  corregido. Fallos conservados en evidencia isa-1910-paso5e y /tmp/admin-smtp-*.
+- Sin shared/webhook, billing/licencias, secretos, Store real, producción,
+  despliegue, merge ni release. VANTA-132 En curso. Después se priorizan7,8,9;
+  6 y10 siguen pendientes,10 necesita decisión de retención;11 exclusivamente R6.
+- Aviso de coordinación enviado antes de8: crear _shared/account-erasure.ts y
+  modificar clerk-webhook/index.ts. En espera de autorización; no se han tocado.
+  Paso7 avanza en worktree independiente desde la misma nightly.
+- PR draft [#1947](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1947) a nightly; código ce8ca8a73. HEAD documental final en PR/issue; CI nueva pendiente.
+- Producción tocada (incluye SQL up/down):1422 →1600 (+178; +190/−12). Tests +478/−4; docs +72/−1. Basecf41b7c30. Sin merge ni despliegue del worker.
+- Plane/issue/handoff actualizados por esta entrega. Continúan7 y9 independientes;8 compartido en espera del aviso enviado al orquestador.
+
+### #1947 · review P2/P3 cerrada (2026-11-04)
+
+- Claim conserva 409/403/404/400 conocidos; resto 503 de auditoría. Fallos previos
+  al HTTP cierran failed/NULL antes del ACK. Máximo 5 s desde inicio del claim.
+  Índice único por entrega/entorno, incluso cerrada: no se reenvía esa entrega.
+- RED previo: 12 PASS/7 RED Deno; SQL 39 PASS/1 RED sin índice, tras corregir fixture
+  de contactos. GREEN: 216 Deno; LF/CRLF 120 SQL y 19 Edge→SQL PASS; down/reapply,
+  índice retirado al revertir y guards de retención PASS. Instancias paradas.
+- Check/lint/fmt/Python/diff PASS; native intacto. Producción 1422 → 1633 (+211;
+  +226/-15), tests +576/-4; docs +97/-1. HEAD final/CI en PR/issue. Cero despliegues.
+- #1948 integrado en nightly28b1e8fa9; #1947 rebasado, 234 Deno PASS. Paso8 autorizado en
+  account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
+  No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.

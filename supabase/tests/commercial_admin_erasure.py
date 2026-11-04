@@ -120,3 +120,35 @@ def run_sync_retained_guard(run, conn, out, bin_dir, env):
     assert run('psql',*conn,'-c',CONSTRAINTS)==before
     assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where action='mail_sync'").strip()==count
     print('Brevo sync rollback refuses retained evidence atomically PASS',flush=True)
+
+
+SEND_STEM='20261104110000_isa_1910_smtp_effects'
+
+def run_send_sql(run, conn, out, bin_dir, env):
+    root=Path(__file__).resolve().parents[2]
+    before=run('psql',*conn,'-c',CONSTRAINTS)
+    up=root/'supabase/migrations'/(SEND_STEM+'.sql')
+    run('psql',*conn,'-f',up)
+    run('psql',*conn,'-f',root/'supabase/rollbacks'/(SEND_STEM+'.down.sql'))
+    assert run('psql',*conn,'-c',CONSTRAINTS)==before, 'SMTP down must restore exact old checks'
+    assert run('psql',*conn,'-c',"select to_regclass('private.admin_effects_smtp_delivery_started') is null").strip()=='t', 'SMTP down retained unique index'
+    for signature in ['public.native_admin_claim_mail_send(uuid,uuid,uuid,uuid,integer,text)','public.native_admin_record_mail_send(uuid,uuid,uuid,uuid,text,text,integer)']:
+        assert run('psql',*conn,'-c',"select to_regprocedure('"+signature+"') is null").strip()=='t'
+    run('psql',*conn,'-f',up)
+    result=run('psql',*conn,'-f',root/'supabase/tests/native_admin_mail_send_effects.test.sql')
+    (out/'native_admin_mail_send_effects.test.sql.log').write_text(result,encoding='utf-8')
+    assert 'not ok ' not in result and '# Looks like' not in result, result
+    print('SMTP SQL: rollback/reapply, owner, intent/result/pending/reconcile PASS',flush=True)
+
+
+def run_send_retained_guard(run, conn, out, bin_dir, env):
+    root=Path(__file__).resolve().parents[2]
+    before=run('psql',*conn,'-c',CONSTRAINTS)
+    count=run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect='brevo_smtp_send'").strip()
+    assert int(count)>0
+    result=subprocess.run([str(bin_dir/'psql'),*conn,'-f',str(root/'supabase/rollbacks'/(SEND_STEM+'.down.sql'))],env=env,text=True,capture_output=True)
+    (out/'smtp-retained-rollback.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+    assert result.returncode and '55000' in result.stderr and 'mail_send_rollback_requires_retention' in result.stderr
+    assert run('psql',*conn,'-c',CONSTRAINTS)==before
+    assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect='brevo_smtp_send'").strip()==count
+    print('SMTP down retains journal evidence atomically PASS',flush=True)

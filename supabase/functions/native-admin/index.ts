@@ -602,6 +602,7 @@ export async function handleNativeAdmin(
       return respond({
         ...await executeMail(action, params, runMail, {
           ...deps.mail,
+          environment,
           actor,
           requestId,
           cleanup: { ...deps.mail?.cleanup, actor, requestId },

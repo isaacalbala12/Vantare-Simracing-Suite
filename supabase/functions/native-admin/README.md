@@ -513,8 +513,39 @@ Edge anterior primero; deshacer SQL solo cuando lo permitan sus guards. Si hay
 eventos sync o DELETE, revocar EXECUTE y conservar schema/evidencia según cada
 runbook; no forzar los down borrando filas ni deshacer#1942 con#1944 aún activo.
 
-SMTP sigue pendiente (siguiente corte5e). No se declara cerrado el paso5 ni se
+SMTP queda cubierto por el corte5e descrito a continuación. No se declara cerrado el paso5 ni se
 implementan aquí confirmaciones, errores generales o retención del paso10.
+
+## SMTP Brevo · paso5e
+
+`mail_send_batch` reserva cada entrega y graba started en una sola transacción
+mediante native_admin_claim_mail_send. Si falla el journal, se revierten claim,
+reserva de cuota y auditoría local: entrega pending, cupo intacto, cero HTTP.
+RPC ausente no tiene fallback legacy. La Edge exige actor y entorno verificados.
+Antes de SMTP conserva mail_can_send y el consentimiento local; una baja cierra
+failed/HTTP NULL (no despachado), después confirma skipped, sin enviar.
+
+El proveedor pasa por el mismo helper brevo, con registro obligatorio. Solo2xx
+con messageId no vacío es succeeded;400/401/403/404/422 failed; timeout, otros
+HTTP y respuesta/recibo inválidos unknown. Se confirma resultado antes de
+mail_finish. Caída de recorder devuelve503 mail_send_audit_unavailable y no
+ACK: una intención sin cierre permanece en admin_pending_effects. Mantiene
+reconcile owner, sin journal nuevo, sin registrar correo, URL, contenido ni
+messageId. El hash incluye entorno y UUID interno de entrega.
+
+La reserva que llegó a confirmarse puede representar un envío incierto y nunca
+se reutiliza ni reenvía automáticamente, incluso tras reconcile. Tras perder
+el ACK de claim o resultado, revisar proveedor/estado manualmente antes de
+cualquier reparación. Quedan las tandas manuales de3 y cuota300/día existentes.
+Reconcile conserva evidencia y no autoriza reintento SMTP.
+
+Migración20261104110000_isa_1910_smtp_effects.sql después de103000, luego Edge
+native-admin del corte aprobado, solo Isaac. Producción con datos: sin reset,
+lock_timeout5s y BYPASSRLS comprobado. Down exacto de checks/RPC con evidencia
+antigua conservada; con SMTP retenido aborta atómicamente. Backout con eventos:
+revocar EXECUTE de las dos RPC SMTP y revertir Edge; conservar schema/journal.
+Antes de deshacer1942, revertir los cortes SMTP, límites103000 y1944 en orden
+inverso, respetando guards. Ningún agente realiza esas acciones en producción.
 
 ## Raíz única de informes · coordinación R6/7b
 
@@ -635,3 +666,14 @@ Un cambio parcial siempre devuelve 503 `account_change_incomplete`; los demás
 `NativeError` se conservan. Desconocidos dan 503 y un diagnóstico fijo sin PII.
 No se aceptan prefijos ni nombres genéricos de errores externos. Sin migración;
 Isaac puede revertir la Edge al corte anterior.
+
+### Review SMTP: claim y límites previos al envío
+
+El claim conserva los errores SQL conocidos (revisión 409, permiso 403,
+inexistente 404, inválido 400); los demás son 503 de auditoría. Si falla el
+consentimiento o la firma de baja antes del HTTP, la intención se cierra como
+`failed` sin estado HTTP antes del ACK. No se envía tras 5 s desde el inicio del
+claim. El índice parcial único permite una sola intención por entrega y entorno,
+incluso si ya se cerró: ninguna entrega SMTP se reenvía automáticamente.
+`owner-alert-receiver` queda fuera de este journal: ya tiene su propia reserva
+persistente e `idempotencyKey`.

@@ -55,6 +55,8 @@ const rpcNames = new Set([
   "mail_erasure_finish",
   "native_admin_record_mail_erasure",
   "native_admin_record_mail_sync",
+  "native_admin_claim_mail_send",
+  "native_admin_record_mail_send",
 ]);
 async function rpc(
   name: string,
@@ -362,11 +364,16 @@ async function syncRoute(
   fetcher: typeof fetch,
   record: typeof rpc = rpc,
   now?: () => number,
+  action = "mail_sync",
+  params: Record<string, unknown> = {},
 ) {
   const syncEnv = (key: string) =>
     ({
       MARKETING_SEND_ENABLED: "true",
       BREVO_API_KEY: "fake",
+      BREVO_MARKETING_SENDER: "sender@example.invalid",
+      MARKETING_UNSUBSCRIBE_URL: "https://fixture.invalid/unsubscribe",
+      MARKETING_UNSUBSCRIBE_KEY: "fake-unsubscribe-key-longer-than-32-chars",
       BREVO_MARKETING_LISTS: JSON.stringify({
         free: 1,
         pro: 2,
@@ -378,7 +385,7 @@ async function syncRoute(
       }),
     } as Record<string, string>)[key];
   return await handleNativeAdmin(
-    adminRequest({ version: 1, action: "mail_sync" }),
+    adminRequest({ version: 1, action, ...params }),
     {
       ...authDeps(),
       adminAuth: { enabled: false, clientId: "" },
@@ -612,3 +619,203 @@ for (const stalePhase of [1, 2]) {
     },
   );
 }
+
+async function sendSetup(n: number) {
+  const campaign = "19106200-0000-4000-8000-" + String(n).padStart(12, "0");
+  const delivery = "19106300-0000-4000-8000-" + String(n).padStart(12, "0");
+  const email = "smtp" + n + "@example.invalid";
+  await sql(
+    "insert into private.mail_contacts(email,locale,evidence,consent,waitlist) values(" +
+      lit(email) +
+      ",'es','fixture',true,true); insert into private.mail_campaigns(id,environment,state,target_group,approved_by,content) values(" +
+      lit(campaign) + ",'sandbox','sending','waitlist'," + lit(account) +
+      ',\'{"es":{"subject":"fixture","body":"fixture"}}\'); insert into private.mail_deliveries(id,campaign_id,email,locale) values(' +
+      lit(delivery) + "," + lit(campaign) + "," + lit(email) + ",'es')",
+  );
+  return { campaign, delivery, email };
+}
+const sendRoute = (
+  campaign: string,
+  fetcher: typeof fetch,
+  record: typeof rpc = rpc,
+) =>
+  syncRoute(fetcher, record, () => 0, "mail_send_batch", {
+    campaign_id: campaign,
+    revision: 1,
+  });
+async function sendEvents(requestId: string | null) {
+  return JSON.parse(
+    await sql(
+      "select coalesce(json_agg(e),'[]'::json) from private.admin_effects e where effect='brevo_smtp_send' and request_id=" +
+        lit(requestId),
+    ),
+  ) as Record<string, unknown>[];
+}
+Deno.test("real SMTP started and succeeded precede fake provider and delivery ACK", async () => {
+  const job = await sendSetup(1);
+  let http = 0;
+  const response = await sendRoute(job.campaign, async () => {
+    http++;
+    assert(
+      await sql(
+        "select count(*) from private.admin_effects where effect='brevo_smtp_send' and outcome='started'",
+      ) !== "0",
+    );
+    return Response.json({ messageId: "private-provider-receipt" }, {
+      status: 201,
+    });
+  }, async (name, args) => {
+    return await rpc(name, args);
+  });
+  assert(response.status === 200 && http === 1);
+  const rows = await sendEvents(response.headers.get("X-Request-ID"));
+  assert(
+    rows.length === 2 &&
+      rows.some((r) => r.outcome === "succeeded" && r.provider_status === 201),
+  );
+  assert(
+    !JSON.stringify(rows).includes("@") &&
+      !JSON.stringify(rows).includes("https://") &&
+      !JSON.stringify(rows).includes("private-provider-receipt"),
+  );
+  assert(
+    await sql(
+      "select status from private.mail_deliveries where id=" +
+        lit(job.delivery),
+    ) === "accepted",
+  );
+});
+Deno.test("real SMTP unknown uses existing pending/reconcile and never resends", async () => {
+  const job = await sendSetup(2);
+  let http = 0;
+  const response = await sendRoute(job.campaign, () => {
+    http++;
+    throw new Error("private@example.invalid transport");
+  });
+  assert(
+    response.status === 200 && http === 1 &&
+      await sql(
+          "select status from private.mail_deliveries where id=" +
+            lit(job.delivery),
+        ) === "uncertain",
+  );
+  const rows = await sendEvents(response.headers.get("X-Request-ID"));
+  const intent = rows.find((r) => r.outcome === "started");
+  assert(intent && rows.some((r) => r.outcome === "unknown"));
+  assert(
+    await sql(
+      "select count(*) from private.admin_pending_effects where effect_id=" +
+        lit(intent.effect_id),
+    ) === "1",
+  );
+  assert(
+    await sql(
+      "set role service_role; select public.native_admin_reconcile_effect(" +
+        lit(account) + "," + lit(intent.effect_id) + ")",
+    ) === "t",
+  );
+  await sendRoute(job.campaign, () => {
+    http++;
+    return Promise.resolve(Response.json({ messageId: "forbidden" }));
+  });
+  assert(http === 1);
+});
+Deno.test("nine real SMTP recorder failures roll back quota and claim before provider", async () => {
+  const job = await sendSetup(3);
+  let http = 0;
+  await sql(
+    "create function public.fixture_smtp_recorder_down() returns trigger language plpgsql as " +
+      lit(
+        "begin if new.effect='brevo_smtp_send' and new.outcome='started' then raise exception 'fixture_recorder_unavailable'; end if; return new; end",
+      ) +
+      "; create trigger fixture_smtp_recorder_down before insert on private.admin_effects for each row execute function public.fixture_smtp_recorder_down()",
+  );
+  try {
+    for (let n = 0; n < 9; n++) {
+      const response = await sendRoute(job.campaign, () => {
+        http++;
+        return Promise.resolve(Response.json({ messageId: "forbidden" }));
+      });
+      assert(
+        response.status === 503 &&
+          (await response.json()).error === "mail_send_audit_unavailable",
+      );
+    }
+    assert(
+      http === 0 &&
+        await sql(
+            "select status from private.mail_deliveries where id=" +
+              lit(job.delivery),
+          ) === "pending",
+    );
+    assert(
+      await sql(
+        "select count(*) from private.mail_quota_reservations where id=" +
+          lit(job.delivery),
+      ) === "0",
+    );
+  } finally {
+    await sql(
+      "drop trigger fixture_smtp_recorder_down on private.admin_effects; drop function public.fixture_smtp_recorder_down()",
+    );
+  }
+});
+Deno.test("real SMTP withdrawal after atomic claim closes not-dispatched and never sends", async () => {
+  const job = await sendSetup(4);
+  let http = 0;
+  const response = await sendRoute(job.campaign, () => {
+    http++;
+    return Promise.resolve(Response.json({ messageId: "forbidden" }));
+  }, async (name, args) => {
+    const value = await rpc(name, args);
+    if (name === "native_admin_claim_mail_send") {
+      await sql("select public.mail_unsubscribe(" + lit(job.email) + ")");
+    }
+    return value;
+  });
+  assert(
+    response.status === 200 && http === 0 &&
+      await sql(
+          "select status from private.mail_deliveries where id=" +
+            lit(job.delivery),
+        ) === "skipped",
+  );
+  const rows = await sendEvents(response.headers.get("X-Request-ID"));
+  assert(
+    rows.some((r) => r.outcome === "failed" && r.provider_status === null),
+  );
+});
+Deno.test("real SMTP lost result journal prevents delivery ACK and leaves pending evidence", async () => {
+  const job = await sendSetup(5);
+  let http = 0;
+  const response = await sendRoute(
+    job.campaign,
+    () => {
+      http++;
+      return Promise.resolve(
+        Response.json({ messageId: "private-provider-receipt" }, {
+          status: 201,
+        }),
+      );
+    },
+    (name, args) =>
+      name === "native_admin_record_mail_send"
+        ? Promise.resolve(false)
+        : rpc(name, args),
+  );
+  assert(
+    response.status === 503 && http === 1 &&
+      await sql(
+          "select status from private.mail_deliveries where id=" +
+            lit(job.delivery),
+        ) === "dispatching",
+  );
+  const rows = await sendEvents(response.headers.get("X-Request-ID"));
+  assert(rows.length === 1 && rows[0].outcome === "started");
+  assert(
+    await sql(
+      "select count(*) from private.admin_pending_effects where effect_id=" +
+        lit(rows[0].effect_id),
+    ) === "1",
+  );
+});

@@ -224,3 +224,44 @@ for (const phase of ["consent", "unsubscribe", "stale"]) {
     },
   );
 }
+
+for (const value of [false, null, {}, "true", "throw", "reject"]) {
+  Deno.test(
+    "SMTP result confirmation accepts only true: " + JSON.stringify(value),
+    async () => {
+      const f = fixture();
+      const original = f.deps.rpc;
+      const deps: MailDeps = {
+        ...f.deps,
+        rpc: (name, args) => {
+          if (name === "native_admin_claim_mail_send") {
+            return original(name, args);
+          }
+          if (value === "throw") {
+            throw new Error("private recorder");
+          }
+          if (value === "reject") {
+            return Promise.reject(new Error("private recorder"));
+          }
+          return Promise.resolve(value);
+        },
+      };
+      let error: unknown;
+      try {
+        await executeMail(
+          "mail_send_batch",
+          { campaign_id: id, revision: 1 },
+          f.run,
+          deps,
+        );
+      } catch (caught) {
+        error = caught;
+      }
+      assert(
+        error instanceof NativeError &&
+          error.code === "mail_send_audit_unavailable",
+      );
+      assert(JSON.stringify(f.trace) === '["started","http"]');
+    },
+  );
+}

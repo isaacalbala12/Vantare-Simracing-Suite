@@ -371,7 +371,7 @@ begin
  else
   response:=private.mail_admin_execute_v2(p_actor,p_action,p_params,p_environment);
  end if;
- if response ? 'campaign' then
+ if p_action in('mail_get','mail_save') and response->'campaign'->>'state'='draft' then
   select * into c from private.mail_campaigns where id=(response->'campaign'->>'id')::uuid;
   select count(*) into recipients from private.mail_contacts t where c.target_group=any(private.mail_groups(t.email,p_environment));
   response:=response||jsonb_build_object('recipients',recipients);

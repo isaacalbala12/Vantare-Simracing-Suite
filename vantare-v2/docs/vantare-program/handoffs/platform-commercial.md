@@ -8920,3 +8920,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   C recuperó4GB sin limpieza del worker. Rollback/cuerpos/
   ACL/constraint y guard canceled conservados. Volcados PG17 tras integrar la pila,
   según orden1960→1962→1961→1963, sin cambiar timestamps ni desplegar.
+
+- Cierre CI1962: run41902621733 pasó replay LF/CRLF y carreras; solo falló
+  derived schema drift admin/mail. Se incorporan volcados del replay PG17 fijado
+  (artefacto13359192619), sin cambios runtime ni timestamps. Nueva CI pendiente.

@@ -1,8 +1,8 @@
 ## 2026-11-04 - #1896 / VANTA-131 7b2: revisión de borrado y efectos
 
-- Draft PR #1930 rebasado sobre origin/nightly@39b944d8c, que ya incluye #1925. La migración se mantiene en 20261104014000; #1924 debe tener timestamp posterior. No se cambió SQL admin ni se hizo despliegue.
+- Draft PR #1930 rebasado sobre origin/nightly@b1e36c868, que ya incluye #1925 y #1927. La migración se mantiene en 20261104014000; #1924 debe tener timestamp posterior. No se cambió SQL admin ni se hizo despliegue.
 - user.deleted borra las filas archivadas de la cuenta y sus dependientes. La migración aborta si hay capturas/lotes de Storage o efectos/jobs pendientes. El rollback cuenta y omite cuentas borradas o sin perfil. Los estados legacy se mapean solo a revisión o terminales; draft, closed, duplicate_linked e incomplete quedan solo en archivo. Los UUID v2 son deterministas.
-- Consulta previa por cada tabla del subárbol, tabla de estados y límites en docs/runbooks/testing-center-legacy-archive.md. PostgreSQL 16 local completo PASS después del rebase: 17 filas de fixture, casos de cuenta borrada, Storage, colas pendientes, hash y JSON alterados, estados sin mapeo y 134 rutas/795 checks de concurrencia. CI del HEAD nuevo pendiente. Sin merge ni release.
+- Consulta previa por cada tabla del subárbol, tabla de estados y límites en docs/runbooks/testing-center-legacy-archive.md. PostgreSQL 16 local completo PASS después de integrar #1927: 17 filas de fixture, casos de cuenta borrada, Storage, colas pendientes, hash y JSON alterados, estados sin mapeo y 134 rutas/795 checks de concurrencia. CI del HEAD nuevo pendiente. Sin merge ni release.
 
 ## 2026-11-04 - #1896 / VANTA-131 7b2: archivar, mapear y vaciar legacy
 

@@ -1,7 +1,7 @@
 # ADR 0106 · Una cadena de migraciones Supabase y un esquema derivado
 
-Estado: aceptada por Isaac para la Fase A de VANTA-131 / #1896, compartida
-con R3. Fecha: 2026-11-04. No autoriza despliegues.
+Estado: aceptada por el orquestador (revisión general VANTA-131); Isaac la puede
+revisar. Compartida con R3. Fecha: 2026-11-04. No autoriza despliegues.
 
 ## Contexto
 

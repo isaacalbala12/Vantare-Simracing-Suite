@@ -41,3 +41,14 @@ Deno.test("confirmation contract accepts explicit expectations and campaign canc
     ] as const
   ) assert.doesNotThrow(() => validateAction(action, params));
 });
+import { handleNativeAdmin } from "./index.ts";
+import { account, authDeps, request } from "../native-account-authorize/testdata/auth.ts";
+Deno.test("campaign cancel traverses the real admin Edge dispatch", async () => {
+ const calls: unknown[]=[];
+ const response=await handleNativeAdmin(request({version:1,action:"mail_cancel",campaign_id:id,revision:1}),{
+  ...authDeps(),environment:"sandbox",gate:()=>Promise.resolve(true),resolve:()=>Promise.resolve(account),begin:()=>Promise.resolve(true),
+  mailExecute:(actor,action,params,environment)=>{calls.push([actor,action,params,environment]);return Promise.resolve({campaign:{id,state:"canceled"}});},
+ });
+ assert.equal(response.status,200);assert.equal((await response.json()).campaign.state,"canceled");
+ assert.deepEqual(calls,[[account,"mail_cancel",{campaign_id:id,revision:1},"sandbox"]]);
+});

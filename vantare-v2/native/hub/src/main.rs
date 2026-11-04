@@ -9,6 +9,52 @@ use std::process::ExitCode;
 use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
 use vantare_hub::{Section, shell::Options};
 
+const INSTALLED_HUB_MESSAGE: &str = "abre Vantare desde su acceso directo";
+
+fn check_installed_data_root(
+    executable: &Path,
+    data_root: Option<&std::ffi::OsStr>,
+) -> Result<(), &'static str> {
+    let Some(bin) = executable.parent() else {
+        return Ok(());
+    };
+    let Some(generation) = bin.parent() else {
+        return Ok(());
+    };
+    let named = |path: &Path, expected: &str| {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.eq_ignore_ascii_case(expected))
+    };
+    let installed = named(executable, "vantare-hub.exe")
+        && named(bin, "bin")
+        && generation
+            .parent()
+            .is_some_and(|parent| named(parent, "generations"))
+        && generation
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|id| {
+                id.len() == 32
+                    && id
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            });
+    if !installed {
+        return Ok(());
+    }
+    let expected =
+        std::fs::canonicalize(generation.join("data")).map_err(|_| INSTALLED_HUB_MESSAGE)?;
+    let supplied = data_root
+        .filter(|value| !value.is_empty())
+        .and_then(|value| std::fs::canonicalize(Path::new(value)).ok());
+    if supplied.as_deref() == Some(expected.as_path()) {
+        Ok(())
+    } else {
+        Err(INSTALLED_HUB_MESSAGE)
+    }
+}
+
 fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
     let (palette, scheme) = value
         .split_once('-')
@@ -394,6 +440,16 @@ fn capture_batch(path: &Path) -> Result<(), String> {
 }
 
 fn main() -> ExitCode {
+    let Ok(executable) = std::env::current_exe() else {
+        return ExitCode::FAILURE;
+    };
+    if let Err(message) = check_installed_data_root(
+        &executable,
+        std::env::var_os("VANTARE_NATIVE_DATA_ROOT").as_deref(),
+    ) {
+        let _written = writeln!(std::io::stderr(), "vantare-hub: {message}");
+        return ExitCode::FAILURE;
+    }
     if product::print_version() {
         return ExitCode::SUCCESS;
     }

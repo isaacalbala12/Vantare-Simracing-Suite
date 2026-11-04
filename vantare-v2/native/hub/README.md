@@ -307,6 +307,10 @@ La selección se guarda en `workshop-selection.json` en `--data-dir` (por
 defecto `<directorio de datos>/VantareNative/hub`, separado de Wails). El
 directorio base es `%LOCALAPPDATA%` en Windows, `$XDG_DATA_HOME` (o
 `$HOME/.local/share`) en Linux y `$HOME/Library/Application Support` en macOS.
+El Hub de una generación instalada (`generations/<id>/bin/vantare-hub.exe`)
+exige `VANTARE_NATIVE_DATA_ROOT` igual a `data/` de esa generación antes de
+arrancar; si falta o difiere, indica abrir Vantare desde su acceso directo.
+El Hub de desarrollo conserva el directorio base de la plataforma.
 Un error inicial de documento/escena termina con error, sin reemplazarlo por
 datos ficticios.
 Guardar o cerrar conserva widget/escena/foto/loop/unidades/idioma; la comparación

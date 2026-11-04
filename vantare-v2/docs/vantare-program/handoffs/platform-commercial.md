@@ -676,14 +676,10 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   un marker sin commit se descarta y la huérfana autenticada se intenta borrar;
   un archivo bloqueado deja aviso y no bloquea la recuperación. La matriz
   conserva los 45 rechazos por motivo y el gate ZIP usa el extractor de Setup.
-  **Pendiente §4.2, punto 10 del Hub:** el lanzador fija
-  `VANTARE_NATIVE_DATA_ROOT` por generación y `vantare --session` rechaza su
-  ausencia o una ruta distinta, pero `vantare-hub.exe` ejecutado directamente
-  desde `generations/<id>/bin` todavía puede usar el respaldo de
-  `%LOCALAPPDATA%` de `ipc::paths::Root::from_env`. Alcance antes de empezar:
-  detectar el ejecutable instalado y rechazar sin escrituras una raíz ausente
-  o distinta; conservar el respaldo para el Hub de desarrollo y probar ambos
-  caminos con carpetas QA inyectadas. No se inicia sin revisión del orquestador.
+  **Punto 10 del Hub aprobado:** la ejecución directa del Hub instalado exige
+  la raíz de datos de su propia generación antes de resolver rutas o escribir;
+  el Hub de desarrollo conserva el respaldo a `%LOCALAPPDATA%`. La prueba de
+  proceso usa copias bajo QA y comprueba el rechazo sin archivos nuevos.
   El paso 9 (renovación opcional tras confirmación) sigue aparcado; K3, retención
   de huérfanas históricas, exige diseño nuevo con SHA ligado al estado.
   **Antes de publicar:** Isaac prueba Setup con bytes distribuidos sobre raíces
@@ -694,7 +690,10 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   distribución. Ninguno de esos dos requisitos está acreditado por la CI.
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
-  Plane VANTA-127 sigue «En curso» por el punto 10, sin iniciar ese cambio.
+  Plane VANTA-127 sigue «En curso» hasta el PR del paso 10.
+  Producción proyectada tras ese paso: **11.315/11.320**
+  (perímetro 10.243 Rust + 53 Cleanup; fuera 1.019, incluidas 56 líneas nuevas
+  del Hub). Sin release; siguen pendientes los dos gates manuales de Isaac.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

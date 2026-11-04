@@ -9,7 +9,7 @@ import {
 } from "../_shared/native-auth.ts";
 import { type MailRpc, mailRpc } from "../_shared/mail-erasure.ts";
 import { readJsonObject } from "../_shared/request.ts";
-import { locales } from "../native-admin/mail.ts";
+import { MAIL_LOCALES } from "../native-admin/actions.ts";
 export type ConsentDeps = NativeAuthDeps & {
   resolve?: typeof resolveNativeAccount;
   rpc?: MailRpc;
@@ -48,7 +48,7 @@ export async function handleNativeMailConsent(
       Object.keys(body).some((k) => !fields.includes(k)) ||
       (body.action === "set" &&
         (typeof body.consent !== "boolean" ||
-          !locales.includes(body.locale as typeof locales[number]) ||
+          !MAIL_LOCALES.includes(body.locale as typeof MAIL_LOCALES[number]) ||
           !["onboarding", "settings"].includes(String(body.source))))
     ) throw new NativeError(400, "invalid_request");
     const identity = await verifyNativeOAuth(token, deps);
@@ -101,7 +101,7 @@ export async function handleNativeMailConsent(
       typeof result.consent !== "boolean" ||
       !Number.isSafeInteger(result.revision) ||
       (result.locale !== null &&
-        !locales.includes(result.locale as typeof locales[number]))
+        !MAIL_LOCALES.includes(result.locale as typeof MAIL_LOCALES[number]))
     ) throw new NativeError(503, "bridge_unavailable");
     return reply(200, {
       ok: true,

@@ -8234,3 +8234,4 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   release. Rust/lifecycle/telemetría omitidos: no cambia native. Docker marketing
   local no disponible: adaptador RPC actualizado y gate pendiente de CI nueva.
   VANTA-132 En curso, resto del plan intacto; paso11 pertenece a R6/12.
+- Medición total #1942 vs ccc9b2e5e: producción +209/−8; tests +645/−6; docs +174/−0. Código validado 5c4e5deeb; HEAD documental final en PR/issue, CI nueva pendiente.

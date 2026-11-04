@@ -5,20 +5,15 @@ import {
   mailRpc,
 } from "../_shared/mail-erasure.ts";
 import { NativeError } from "../_shared/native-auth.ts";
-import { isUuid } from "../_shared/request.ts";
 import { unsubscribeToken } from "../mail-unsubscribe/tokens.ts";
 
-export const locales = ["es", "en", "it", "pt-BR"] as const;
-export const groups = [
-  "free",
-  "pro",
-  "pro_plus",
-  "launch",
-  "testers",
-  "creators",
-  "waitlist",
-];
-export const templates = ["news", "offer", "launch"];
+import {
+  ACTIONS,
+  MAIL_GROUPS,
+  MAIL_LOCALES,
+  mailContent,
+  validateAction,
+} from "./actions.ts";
 type Obj = Record<string, unknown>;
 export type MailRun = (action: string, params: Obj) => Promise<Obj>;
 export type MailDeps = {
@@ -31,73 +26,6 @@ export type MailDeps = {
   fetch?: typeof fetch;
   env?: (key: string) => string | undefined;
 };
-const invalid = () => new NativeError(400, "invalid_request");
-export function mailContent(
-  value: unknown,
-): value is Record<string, { subject: string; body: string }> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const content = value as Obj;
-  return Object.keys(content).length === 4 && locales.every((locale) => {
-    const item = content[locale] as Obj | undefined;
-    return item && typeof item === "object" && Object.keys(item).length === 2 &&
-      typeof item.subject === "string" && item.subject.length <= 200 &&
-      !/[\r\n]/.test(item.subject) &&
-      typeof item.body === "string" && item.body.length <= 12000;
-  });
-}
-export function validateMail(action: string, p: Obj): void {
-  const fields: Record<string, string[]> = {
-    mail_forget_waitlist: ["email", "confirm"],
-    mail_cleanup: [],
-    mail_list: [],
-    mail_new: [],
-    mail_get: ["campaign_id"],
-    mail_save: [
-      "campaign_id",
-      "revision",
-      "name",
-      "template",
-      "target_group",
-      "content",
-    ],
-    mail_approve: ["campaign_id", "revision", "confirm"],
-    mail_send_batch: ["campaign_id", "revision"],
-    mail_draft: ["campaign_id", "revision", "brief", "template"],
-    mail_sync: ["cursor"],
-  };
-  if (
-    !Object.hasOwn(fields, action) ||
-    Object.keys(p).some((k) => !fields[action].includes(k))
-  ) throw invalid();
-  if (fields[action].includes("campaign_id") && !isUuid(p.campaign_id)) {
-    throw invalid();
-  }
-  if (
-    fields[action].includes("revision") &&
-    (!Number.isSafeInteger(p.revision) || Number(p.revision) < 1)
-  ) throw invalid();
-  if (
-    action === "mail_forget_waitlist" &&
-    (p.confirm !== true || typeof p.email !== "string" ||
-      p.email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email))
-  ) throw invalid();
-  if (action === "mail_approve" && p.confirm !== true) throw invalid();
-  if (
-    action === "mail_save" &&
-    (!mailContent(p.content) || typeof p.name !== "string" || !p.name.trim() ||
-      p.name.length > 120 || !groups.includes(String(p.target_group)) ||
-      !templates.includes(String(p.template)))
-  ) throw invalid();
-  if (
-    action === "mail_draft" &&
-    (typeof p.brief !== "string" || !p.brief.trim() || p.brief.length > 4000 ||
-      !templates.includes(String(p.template)))
-  ) throw invalid();
-  if (
-    action === "mail_sync" && p.cursor !== undefined &&
-    (!isUuid(p.cursor))
-  ) throw invalid();
-}
 export const escapeHtml = (s: string): string =>
   s.replace(
     /[&<>"']/g,
@@ -107,7 +35,7 @@ export const escapeHtml = (s: string): string =>
       ]!,
   );
 export function renderMail(body: string, url: string, locale: string): string {
-  const language = locales.includes(locale as typeof locales[number])
+  const language = MAIL_LOCALES.includes(locale as typeof MAIL_LOCALES[number])
     ? locale
     : "en";
   const labels: Record<string, string> = {
@@ -130,7 +58,7 @@ export async function executeMail(
   run: MailRun,
   deps: MailDeps = {},
 ): Promise<Obj> {
-  validateMail(action, p);
+  validateAction(action, p);
   const env = deps.env ?? Deno.env.get;
   const send = deps.fetch ?? fetch;
   const require = (name: string) => {
@@ -139,18 +67,7 @@ export async function executeMail(
     return v;
   };
   // Also checks Owner inside SQL, including before all provider calls and AI.
-  if (
-    [
-      "mail_list",
-      "mail_new",
-      "mail_get",
-      "mail_save",
-      "mail_approve",
-      "mail_forget_waitlist",
-    ].includes(
-      action,
-    )
-  ) return await run(action, p);
+  if (ACTIONS[action][2]?.mail === "sql") return await run(action, p);
   await run("mail_list", {});
   if (action === "mail_cleanup") {
     return {
@@ -353,9 +270,9 @@ export async function executeMail(
       number
     >;
     if (
-      Object.keys(map).length !== groups.length || !groups.every((g) =>
-        Number.isSafeInteger(map[g]) && map[g] > 0
-      ) || new Set(Object.values(map)).size !== groups.length
+      Object.keys(map).length !== MAIL_GROUPS.length ||
+      !MAIL_GROUPS.every((g) => Number.isSafeInteger(map[g]) && map[g] > 0) ||
+      new Set(Object.values(map)).size !== MAIL_GROUPS.length
     ) throw new NativeError(503, "mail_unconfigured");
     const page = await run(
       "mail_sync_page",
@@ -393,9 +310,9 @@ export async function executeMail(
       await brevo(`contacts/${encodeURIComponent(c.email)}`, {
         emailBlacklisted: claim.consent !== true || selected.length === 0,
         listIds: selected.map((g) => map[g]),
-        unlinkListIds: groups.filter((g) => !selected.includes(g)).map((g) =>
-          map[g]
-        ),
+        unlinkListIds: MAIL_GROUPS.filter((g) => !selected.includes(g)).map((
+          g,
+        ) => map[g]),
       }, {
         method: "PUT",
         effect: {

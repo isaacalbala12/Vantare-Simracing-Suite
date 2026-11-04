@@ -189,3 +189,9 @@ Persistencia compartida (paso 12, #1827): [contrato de Store](../services/README
 Gestión consume read tipado; mantiene su lectura estricta de metadata OAuth y
 aparta metadata de otro emisor/redirect con quarantine_dated, sin borrar copias
 previas y con tope tres. E/S y rename fallido siguen siendo errores.
+
+## Contrato de acciones #1910
+
+[actions.ts](../../../supabase/functions/native-admin/actions.ts) genera la
+[fixture](fixtures/admin-actions.json) compartida con Deno. Rust la carga una vez
+para comprobar variantes, campos, serialización, mutación y enums; sin Store real.

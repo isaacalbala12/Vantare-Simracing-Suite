@@ -8667,3 +8667,22 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - #1948 integrado en nightly28b1e8fa9; #1947 rebasado, 234 Deno PASS. Paso8 autorizado en
   account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
   No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.
+
+
+## VANTA-132 · paso 9, contrato único · review (2026-11-04)
+
+- #1951 rebasado sobre nightlyc86d59e8c (#1947 integrado); 266 Deno PASS. ACTIONS:
+  correo SQL/Edge, syncPayments, enrich, handler y sandbox; sin listas en index.
+  `mutation` sustituye kind. Sin reexports/alias/wrapper de validación en mail.
+- Ejemplos generados desde actions.ts; ambos tests leen la fixture. Rust la carga
+  una vez y compara variantes/campos Serde, serialización, mutación y enums.
+- Review: 28 PASS/1 RED; después 247 Deno, 45 Nextest, check all-targets,
+  Clippy -D warnings y fmt PASS. Compilar.ps1, target/QA propios y cola liberada;
+  reintento sin caché PASS. CI detectó import antiguo de locales en mail-consent:
+  adaptado al contrato, check canónico y sus tests PASS; logs de ambos fallos conservados.
+- Replay final admin/Edge, rollback/guards y seis carreras PASS; sin SQL, shared,
+  billing/licencias, secretos, servicios reales, merge ni despliegue.
+- VANTA-132 En curso: paso8 autorizado, 6/10 pendientes, 11 en R6/12;
+  native-auth y apply_clerk_user_event reservados.
+- Producción 3715 → 3774 (+59; +323/-264): ejemplos y despacho comunes;
+  tests +569/-10; docs +37/-0 (antes +74). HEAD y gates finales en PR/issue.

@@ -454,3 +454,125 @@ fn mail_draft_and_confirmation_use_owner_contract_over_local_http() {
         assert_eq!(body["version"], 1);
     }
 }
+
+#[derive(Debug)]
+struct WireNames(Vec<&'static str>);
+impl std::fmt::Display for WireNames {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "wire variant catalog")
+    }
+}
+impl std::error::Error for WireNames {}
+impl serde::de::Error for WireNames {
+    fn custom<T: std::fmt::Display>(_: T) -> Self {
+        Self(Vec::new())
+    }
+    fn unknown_variant(_variant: &str, expected: &'static [&'static str]) -> Self {
+        Self(expected.to_vec())
+    }
+    fn unknown_field(_field: &str, expected: &'static [&'static str]) -> Self {
+        Self(expected.to_vec())
+    }
+}
+#[test]
+fn canonical_action_contract_covers_every_rust_wire_variant_and_field() {
+    let contract = action_contract();
+    let actions = contract["actions"].as_object().expect("actions");
+    let input = serde::de::value::MapDeserializer::<_, WireNames>::new(
+        [("action", "__contract_unknown__")].into_iter(),
+    );
+    let mut labels = Action::deserialize(input).expect_err("unknown variant").0;
+    labels.sort_unstable();
+    let mut names: Vec<_> = actions.keys().map(String::as_str).collect();
+    names.sort_unstable();
+    assert_eq!(labels, names, "Rust and Edge action sets");
+    for (name, spec) in actions {
+        // Capture actual Serde fields, including optional Rust fields absent from Edge.
+        let probe = serde::de::value::MapDeserializer::<_, WireNames>::new(
+            [
+                ("action", name.as_str()),
+                ("__contract_unknown_field__", ""),
+            ]
+            .into_iter(),
+        );
+        let mut actual_fields = match Action::deserialize(probe) {
+            Err(names) => names.0,
+            Ok(_) => Vec::new(), // Serde unit variants have no fields and ignore extras.
+        };
+        let mut expected_fields: Vec<_> = spec["fields"]
+            .as_array()
+            .expect("fields")
+            .iter()
+            .map(|v| v.as_str().expect("field"))
+            .collect();
+        actual_fields.sort_unstable();
+        expected_fields.sort_unstable();
+        assert_eq!(actual_fields, expected_fields, "wire field set: {name}");
+        let mut wire = spec["example"].clone();
+        wire["action"] = name.clone().into();
+        let action: Action =
+            serde_json::from_value(wire.clone()).expect("canonical fields supported");
+        assert_eq!(action.label(), name);
+        assert_eq!(
+            action.mutation(),
+            spec["mutation"].as_bool().expect("mutation")
+        );
+        assert!(action.validate().is_ok(), "client validates {name}");
+        assert_eq!(
+            serde_json::to_value(&action).expect("serialize"),
+            wire,
+            "wire fields {name}"
+        );
+        wire["unexpected"] = true.into();
+        if !expected_fields.is_empty() {
+            assert!(serde_json::from_value::<Action>(wire).is_err());
+        } // Edge validates closed inputs for all actions, including unit variants.
+    }
+}
+#[test]
+fn canonical_status_and_module_contract_cover_both_wire_enums() {
+    let contract = action_contract();
+    let mut statuses = Status::deserialize(serde::de::value::StrDeserializer::<WireNames>::new(
+        "__contract_unknown__",
+    ))
+    .expect_err("unknown status")
+    .0;
+    let mut modules = Module::deserialize(serde::de::value::StrDeserializer::<WireNames>::new(
+        "__contract_unknown__",
+    ))
+    .expect_err("unknown module")
+    .0;
+    statuses.sort_unstable();
+    modules.sort_unstable();
+    let mut expected_statuses: Vec<_> = contract["statuses"]
+        .as_array()
+        .expect("statuses")
+        .iter()
+        .map(|v| v.as_str().expect("status"))
+        .collect();
+    let mut expected_modules: Vec<_> = contract["modules"]
+        .as_array()
+        .expect("modules")
+        .iter()
+        .map(|v| v.as_str().expect("module"))
+        .collect();
+    expected_statuses.sort_unstable();
+    expected_modules.sort_unstable();
+    assert_eq!(statuses, expected_statuses);
+    assert_eq!(modules, expected_modules);
+    for value in contract["statuses"].as_array().expect("statuses") {
+        let item: Status = serde_json::from_value(value.clone()).expect("status");
+        assert_eq!(serde_json::to_value(item).expect("wire"), *value);
+    }
+    for value in contract["modules"].as_array().expect("modules") {
+        let item: Module = serde_json::from_value(value.clone()).expect("module");
+        assert_eq!(serde_json::to_value(item).expect("wire"), *value);
+    }
+}
+
+fn action_contract() -> &'static serde_json::Value {
+    static CONTRACT: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    CONTRACT.get_or_init(|| {
+        serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract")
+    })
+}

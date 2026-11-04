@@ -403,6 +403,8 @@ impl<'de> Deserialize<'de> for Report {
     }
 }
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum Action {
     MailForgetWaitlist {
@@ -482,6 +484,8 @@ pub enum Action {
     RecordCreatorPayout {
         creator_id: String,
         amount_cents: i64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        paid_at: Option<String>,
     },
     GetRollout,
     SetRollout {

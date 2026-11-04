@@ -678,3 +678,17 @@ claim. El índice parcial único permite una sola intención por entrega y entor
 incluso si ya se cerró: ninguna entrega SMTP se reenvía automáticamente.
 `owner-alert-receiver` queda fuera de este journal: ya tiene su propia reserva
 persistente e `idempotencyKey`.
+
+
+## Contrato único de acciones · paso 9
+
+`actions.ts` define validación y despacho de las 25 acciones, con ejemplos,
+mutación y límites de entorno. Index y mail consumen esa tabla; SQL conserva
+los permisos y el negocio. Exportar sin red ni claves:
+
+```powershell
+deno run --cached-only --no-lock --config supabase/functions/deno.json supabase/functions/native-admin/actions.ts > vantare-v2/native/admin/fixtures/admin-actions.json
+```
+
+Deno y Rust leen la fixture; Rust la carga una vez y cruza variantes, campos,
+serialización, mutación y enums. paid_at sigue omitido por la vista. Sin migración.

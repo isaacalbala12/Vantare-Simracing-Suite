@@ -5,7 +5,9 @@ import {
   finishChange,
   releaseChange,
 } from "./change-lease.ts";
-import { executeMail, type MailDeps, validateMail } from "./mail.ts";
+import { executeMail, type MailDeps } from "./mail.ts";
+import { ACTIONS, validateAdminRequest } from "./actions.ts";
+export { validateAdminRequest } from "./actions.ts";
 import { createLocalOAuthVerifier } from "./local-auth.ts";
 import {
   effectAudit,
@@ -28,7 +30,6 @@ import {
   resolveNativeAccount,
   verifyNativeOAuth,
 } from "../_shared/native-auth.ts";
-import { MODULE_CAPABILITIES } from "../_shared/license-credential.ts";
 import {
   getPolarCustomerStateByExternalId,
   polarAdminRequest,
@@ -40,18 +41,6 @@ import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 
-const statuses = [
-  "draft",
-  "submitted",
-  "validated",
-  "duplicate_linked",
-  "incomplete",
-  "closed",
-  "in_review",
-  "rejected",
-  "fixed",
-  "spam",
-];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & ChangeDeps & {
   recordEffect?: EffectRecorder;
@@ -86,129 +75,6 @@ export type AdminDeps = NativeAuthDeps & ChangeDeps & {
   polar?: PolarClientDeps;
   productMap?: PolarProductMap;
 };
-
-function boundedText(value: unknown, max: number): value is string {
-  return typeof value === "string" && value.length > 0 &&
-    value === value.trim() && new TextEncoder().encode(value).length <= max;
-}
-
-export function validateAdminRequest(
-  body: ObjectValue,
-): { action: string; params: ObjectValue } {
-  const { version, action, ...params } = body;
-  if (version !== 1 || typeof action !== "string") {
-    throw new NativeError(400, "invalid_request");
-  }
-  if (action.startsWith("mail_")) {
-    validateMail(action, params);
-    return { action, params };
-  }
-  const fields: Record<string, string[]> = {
-    search_accounts: ["query", "limit", "cursor"],
-    get_account: ["account_id"],
-    set_blocked: ["account_id", "blocked", "reason"],
-    delete_account: ["account_id", "confirm_email"],
-    set_tester: ["account_id", "enabled"],
-    set_module: ["account_id", "module", "enabled"],
-    list_creators: [],
-    get_creator: ["creator_id"],
-    record_creator_payout: ["creator_id", "amount_cents", "paid_at"],
-    create_creator: ["name", "email", "code"],
-    get_rollout: [],
-    set_rollout: ["module", "enabled_for_all"],
-    list_reports: ["status", "limit", "cursor"],
-    get_report: ["report_id"],
-    set_report_status: ["report_id", "status", "fixed_in_version", "reason"],
-  };
-  if (
-    !Object.hasOwn(fields, action) ||
-    Object.keys(params).some((key) => !fields[action].includes(key))
-  ) throw new NativeError(400, "invalid_request");
-  const valid = (() => {
-    switch (action) {
-      case "search_accounts":
-        if (params.limit === undefined) params.limit = 50;
-        return (params.query === "" || boundedText(params.query, 200)) &&
-          (params.cursor === undefined ||
-            (params.query === "" && isUuid(params.cursor))) &&
-          Number.isInteger(params.limit) && Number(params.limit) >= 1 &&
-          Number(params.limit) <= 50;
-      case "set_blocked":
-        return isUuid(params.account_id) &&
-          typeof params.blocked === "boolean" &&
-          (params.reason === undefined || boundedText(params.reason, 200));
-      case "delete_account":
-        return isUuid(params.account_id) &&
-          boundedText(params.confirm_email, 320);
-      case "get_account":
-        return isUuid(params.account_id);
-      case "set_tester":
-        return isUuid(params.account_id) && typeof params.enabled === "boolean";
-      case "set_module":
-        return isUuid(params.account_id) &&
-          typeof params.enabled === "boolean" &&
-          MODULE_CAPABILITIES.includes(
-            params.module as typeof MODULE_CAPABILITIES[number],
-          );
-      case "record_creator_payout":
-        return isUuid(params.creator_id) &&
-          Number.isSafeInteger(params.amount_cents) &&
-          Number(params.amount_cents) > 0 &&
-          (params.paid_at === undefined ||
-            (boundedText(params.paid_at, 40) &&
-              Number.isFinite(Date.parse(String(params.paid_at)))));
-      case "get_creator":
-        return isUuid(params.creator_id);
-      case "list_creators":
-        return true;
-      case "create_creator":
-        return boundedText(params.name, 120) &&
-          boundedText(params.email, 320) &&
-          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(params.email)) &&
-          typeof params.code === "string" &&
-          /^[A-Z0-9]{3,32}$/.test(params.code);
-      case "get_rollout":
-        return true;
-      case "set_rollout":
-        return typeof params.enabled_for_all === "boolean" &&
-          MODULE_CAPABILITIES.includes(
-            params.module as typeof MODULE_CAPABILITIES[number],
-          );
-      case "list_reports":
-        if (params.limit === undefined) params.limit = 100;
-        return Number.isInteger(params.limit) && Number(params.limit) >= 1 &&
-          Number(params.limit) <= 100 &&
-          (params.status === undefined ||
-            statuses.includes(params.status as string)) &&
-          (params.cursor === undefined || boundedText(params.cursor, 256));
-      case "get_report":
-        return boundedText(params.report_id, 256);
-      case "set_report_status":
-        return boundedText(params.report_id, 256) &&
-          statuses.includes(params.status as string) &&
-          (params.reason === undefined || boundedText(params.reason, 500)) &&
-          (![
-            "validated",
-            "rejected",
-            "spam",
-            "closed",
-            "duplicate_linked",
-            "incomplete",
-          ].includes(String(params.status)) ||
-            boundedText(params.reason, 500)) &&
-          (params.fixed_in_version === undefined ||
-            (boundedText(params.fixed_in_version, 60) &&
-              /^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-z0-9.-]+)?$/.test(
-                String(params.fixed_in_version),
-              ))) &&
-          (params.status !== "fixed" || params.fixed_in_version !== undefined);
-      default:
-        return false;
-    }
-  })();
-  if (!valid) throw new NativeError(400, "invalid_request");
-  return { action, params };
-}
 
 async function preOwner(issuer: string, subject: string): Promise<string> {
   const { data, error } = await getSupabaseAdmin().rpc(
@@ -460,7 +326,8 @@ export async function handleNativeAdmin(
     });
     const parsed = await readJsonObject(counted, 128 * 1024);
     const mailRequest = parsed.ok && typeof parsed.value.action === "string" &&
-      parsed.value.action.startsWith("mail_");
+      Object.hasOwn(ACTIONS, parsed.value.action) &&
+      !!ACTIONS[parsed.value.action][2]?.mail;
     if (
       !mailRequest &&
       (receivedBytes > 8192 ||
@@ -579,12 +446,16 @@ export async function handleNativeAdmin(
     // Adding it before subjects would incorrectly return the owner in every search.
     users.set(actorUser.id, actorUser);
     const environment = deps.environment ?? requirePolarEnvironment();
+    const policy = ACTIONS[action][2];
+    if (policy?.sandbox && environment !== "sandbox") {
+      throw new NativeError(503, "admin_sandbox_required");
+    }
     const effect = effectAudit(
       actor,
       requestId,
       deps.recordEffect ?? recordEffect,
     );
-    if (action.startsWith("mail_")) {
+    if (policy?.mail) {
       const runMail = (command: string, arguments_: ObjectValue) =>
         (deps.mailExecute ?? (async (actor, command, params, environment) => {
           const { data, error } = await getSupabaseAdmin().rpc(
@@ -618,14 +489,10 @@ export async function handleNativeAdmin(
         arguments_,
         environment,
       );
-    if (
-      ["get_account", "list_creators", "get_creator", "record_creator_payout"]
-        .includes(action)
-    ) await syncAdminPayments(run, environment, deps.productMap, deps.polar);
-    if (action === "create_creator") {
-      if (environment !== "sandbox") {
-        throw new NativeError(503, "admin_sandbox_required");
-      }
+    if (policy?.syncPayments) {
+      await syncAdminPayments(run, environment, deps.productMap, deps.polar);
+    }
+    if (policy?.handler === "creator") {
       const reserved = await run(action, params);
       const creator = objectValue(reserved.creator);
       if (
@@ -651,10 +518,7 @@ export async function handleNativeAdmin(
         ok: true,
       });
     }
-    if (["set_blocked", "delete_account"].includes(action)) {
-      if (environment !== "sandbox") {
-        throw new NativeError(503, "admin_sandbox_required");
-      }
+    if (policy?.handler === "account") {
       const lease = action === "set_blocked"
         ? await (deps.claimChange ?? claimChange)(
           actor,
@@ -900,17 +764,9 @@ export async function handleNativeAdmin(
           environment,
         ),
     );
-    if (
-      [
-        "search_accounts",
-        "get_account",
-        "list_reports",
-        "get_report",
-        "get_creator",
-      ].includes(
-        action,
-      )
-    ) await timed("enrich_clerk", () => enrich(result, users, deps));
+    if (policy?.enrich) {
+      await timed("enrich_clerk", () => enrich(result, users, deps));
+    }
     if (action === "get_report") {
       const report = objectValue(result.report);
       if (

@@ -642,9 +642,16 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   probada necesitaba +49 líneas de producción con solo 24 de margen; no se
   cambia la regla que conserva sus binarios y datos. El tooling ahora valida
   el ZIP con los límites numéricos del lector Rust; el test de proceso real
-  incluye el checkpoint `staged`. PS 5.1/7 y ZIP release real pasan. Test local
-  de checkpoint bloqueado por D: lleno antes de ejecutarse; se comprobará en
-  CI. El total de producción permanece **11.226/11.250**.
+  incluye el checkpoint `staged`. PS 5.1/7 y ZIP release real pasan. Tras
+  liberar espacio en D:, el test local de corte real pasó **1/1** en 5,03 s
+  mediante `compilar.ps1` y target propio; CI del PR pendiente. El total de
+  producción permanece **11.226/11.250**.
+  Para retomar K3 hace falta guardar, antes de perder `previous`, el par
+  generación + SHA-256 de su manifiesto en un estado ligado al commit y
+  autenticado bajo `.operation.lock`. La poda debe aceptar solo esa referencia,
+  comprobar miembros/hashes y no tocar `data/`; la matriz cubrirá manifiesto
+  ajeno, corte antes/después del commit y reintento. Un manifiesto huérfano que
+  solo se valida a sí mismo no confiere propiedad.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

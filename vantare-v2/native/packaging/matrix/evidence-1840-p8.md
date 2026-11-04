@@ -15,9 +15,11 @@ El test `abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state`
 ahora también mata el proceso hijo en `staged`, después de mover la generación
 y copiar los datos pero antes de comprometer `state.json`. Verifica que el
 estado activo y los datos siguen intactos; conserva los cortes reales previos
-justo antes y después del commit. La ejecución local del test se detuvo antes
-del primer checkpoint por `StorageFull` en D: (raíz QA, 3 MiB libres). La CI
-de este PR debe confirmar el nuevo caso con su `RUNNER_TEMP` aislado.
+justo antes y después del commit. Tras liberar espacio en D:, la repetición
+local pasó **1/1** en 5,03 s con `compilar.ps1`, target
+`C:/VantareServer/targets/isa-1840-p8` y raíces QA inyectadas. El intento
+anterior, detenido antes del primer checkpoint por `StorageFull`, queda como
+antecedente. La CI del PR repetirá el caso en `RUNNER_TEMP` aislado.
 
 K3 se evaluó y no se incluyó: el estado no conserva el SHA de una generación
 huérfana, así que un manifiesto autoconsistente no prueba propiedad para

@@ -739,10 +739,9 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   distribución. Ninguno de esos dos requisitos está acreditado por la CI.
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
-  Paso 10 en [PR draft #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
-  contra nightly, código `ef96b165d`; tercera revisión Sonnet corregida,
-  CI pendiente
-  y Plane por revisar. El test de proceso comprueba argumentos, entorno,
+  Paso 10 integrado por [PR #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
+  en `nightly` `136aa732a`, con CI verde; Plane VANTA-127 queda «Por revisar».
+  El test de proceso comprueba argumentos, entorno,
   directorio de trabajo, misma ruta con otra capitalización, 8.3 y junction
   cuando Windows los admite, y la guarda de segunda redirección. Con
   `CI=true` la junction es obligatoria y pasó. La matriz ejecuta el Hub y
@@ -760,8 +759,16 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   mientras el paquete conserva exactamente los diez EXE públicos. El gate
   local `gates.ps1 -Gate distribution` pasó con el paquete release completo;
   `build-tooling-tests.ps1` comprueba el rechazo del probe en el payload y de
-  cualquier bin público desconocido, y pasó en QA. Sin release; siguen pendientes
-  los dos gates manuales de Isaac.
+  cualquier bin público desconocido, y pasó en QA. Recorrido del instalador
+  concluido: producción **14.180 → 11.359 líneas** (−21 % aproximadamente).
+  Se retiraron LegacyRunner, beta.ps1, candidate.ps1, NSIS y MSIX del recorrido.
+  Dos fallos reales quedaron corregidos: un corte al preparar una actualización
+  ya no deja bloqueado el siguiente arranque o intento de actualizar; abrir el
+  Hub instalado fuera de su raíz correcta conduce al lanzador de la instalación.
+  **Checklist de Isaac antes de publicar:** probar Setup con los bytes distribuidos
+  sobre raíces reales 0.0.975 y 0.0.988 en una VM o cuenta aislada, y añadir la
+  huella de la clave pública de licencia de producción a la lista aprobada.
+  No se ha hecho release ni promoción a testers/master.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

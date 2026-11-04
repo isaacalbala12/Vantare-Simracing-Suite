@@ -698,16 +698,20 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
   Paso 10 en [PR draft #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
-  contra nightly, código `f2445c180`; revisión Sonnet corregida, CI pendiente
+  contra nightly, código `ef96b165d`; tercera revisión Sonnet corregida,
+  CI pendiente
   y Plane por revisar. El test de proceso comprueba argumentos, entorno,
   directorio de trabajo, misma ruta con otra capitalización, 8.3 y junction
-  cuando Windows los admite, y la guarda de segunda redirección. La matriz
-  ejecuta el Hub y `Vantare.exe` reales: **14/14** checks del lanzador en QA.
-  Biblioteca Hub **596** tests correctos, 4 ignorados; binario **11/11**;
+  cuando Windows los admite, y la guarda de segunda redirección. Con
+  `CI=true` la junction es obligatoria y pasó. La matriz ejecuta el Hub y
+  `Vantare.exe` reales: **14/14** checks del lanzador en QA, y su `finally`
+  retiró la generación señuelo. Biblioteca Hub **596** tests correctos,
+  4 ignorados, más el nuevo test de `Volume{guid}` **1/1**; binario **11/11**;
   `development-fallback.ps1` PASS con Hub QA independiente. Fmt, Check y
-  Clippy `-D warnings` del Hub PASS con target propio.
-  Producción tras esa revisión: **11.358/11.360**
-  (perímetro 10.221 Rust + 53 Cleanup; fuera 1.084). Las 39 líneas nuevas
+  Clippy `-D warnings` del Hub PASS con target propio. El gate normal
+  `gates.ps1 -Gate check` sin `installer-qa` también pasó completo.
+  Producción tras esa revisión: **11.359/11.360**
+  (perímetro 10.221 Rust + 53 Cleanup; fuera 1.085). Las 40 líneas nuevas
   fuera del perímetro cubren canonicalización y redirección segura; el probe
   de argumentos es fixture de tests. Sin release; siguen pendientes
   los dos gates manuales de Isaac.

@@ -107,3 +107,13 @@ Deno.test("canonical action environments retain sandbox restrictions and closed 
     assert(rejected);
   }
 });
+
+Deno.test("registry generates usable wire examples and dispatch flags", () => {
+  for (const [action, raw] of Object.entries(actionContract().actions)) {
+    const spec = raw as unknown as Record<string, unknown>;
+    assert(!!spec.example && typeof spec.example === "object");
+    assert(typeof spec.mutation === "boolean");
+    assert(typeof spec.mail === "boolean");
+    assert(validateAdminRequest({version: 1, action, ...spec.example as Record<string, unknown>}).action === action);
+  }
+});

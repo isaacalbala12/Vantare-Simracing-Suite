@@ -1204,3 +1204,10 @@ fallando. Una migración nueva declara la ACL final de `admin_effects`,
 `technical_issues`, `effect_outbox` y `linear_projection_snapshots`; aborta
 si su `relacl` cambia. El harness PG16 comprobó snapshot antes/después,
 down y reaplicación idénticos. No se cambió ningún permiso efectivo.
+Re-review de #1960: el harness omite la reafirmación de ACL en los modos
+históricos que también omiten el cierre de escritores legacy; conserva su
+control RED. El lint reconoce `REVOKE ALL` dentro de `EXECUTE` solo cuando
+el texto es una constante; la concatenación falla. Unitarios 19/19 PASS;
+PostgreSQL local conserva el RED esperado de `--before-private-write-barriers`.
+Orden de integración: #1959 → #1960 → #1961; la migración pgcrypto de #1961
+se renombró a `20261104182500`, posterior a `181200`.

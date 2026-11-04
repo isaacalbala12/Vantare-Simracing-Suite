@@ -116,7 +116,7 @@ Deno.test({
       p_idempotency_key: `integration-${crypto.randomUUID()}`,
     });
     assert(
-      direct.status === 403,
+      direct.status === 403 || direct.status === 404,
       `legacy tester RPC returned ${direct.status}`,
     );
     await direct.body?.cancel();
@@ -142,9 +142,10 @@ Deno.test({
         p_idempotency_key: `draft_${"d".repeat(64)}`,
       },
     );
+    const retired = admitted.status === 404;
     assert(
-      admitted.status === 403,
-      `closed admitted RPC returned ${admitted.status}`,
+      admitted.status === 403 || retired,
+      `closed or retired admitted RPC returned ${admitted.status}`,
     );
     await admitted.body?.cancel();
     const ownReport = await call(
@@ -152,7 +153,8 @@ Deno.test({
       token,
     );
     assert(
-      ownReport.status === 200 && (await ownReport.json()).length === 0,
+      retired ? ownReport.status === 404
+        : ownReport.status === 200 && (await ownReport.json()).length === 0,
       "closed admitted RPC wrote a legacy report",
     );
     const reset = await call("rpc/reset_active_device", token, {

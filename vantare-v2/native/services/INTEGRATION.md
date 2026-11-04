@@ -247,7 +247,7 @@ procedentes de JWKS remoto para derechos: los trust roots son los del build.
 Testing Center conserva los diagnósticos/borradores de fase 2 y el editor remoto
 con Orbit e Input compartido `pub(crate)` (sin módulo duplicado). El auxiliar es
 el único escritor DPAPI del borrador/intento remoto. Solo consentimiento explícito
-sobre preview vigente permite `testing_center_submit_report`; nada automático,
+sobre preview vigente permite el envío v2 por Edge `testing-report-submit`; nada automático,
 adjuntos, logs/capturas ni borradores Go. Un intento pendiente por cuenta/contexto,
 campos de una línea y revocación Clerk remota siguen como límites documentados.
 Roadmap conserva la última publicación válida; no hay polling de red/Realtime.

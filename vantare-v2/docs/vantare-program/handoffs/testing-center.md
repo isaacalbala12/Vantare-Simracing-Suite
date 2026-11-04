@@ -1076,3 +1076,72 @@ contra `nightly@69827ca12`, rama `vantareapp/isa-1896-paso12a-adr`.
 Caracterización: la matriz ACL del paso 0 (39 permisos) permanece como
 oráculo; no cambia SQL ni sus tests. Medida: producción +0/−0, tests +0/−0,
 docs +68/−0 tras registrar este handoff. CI del último push pendiente; sin despliegue.
+
+VANTA-131 7b final: el cierre parte de la cadena 7b2→admin ya integrada. Solo
+retira las doce tablas exclusivas del informe y el archivo si están vacíos;
+conserva la rama `technical_issues`/`agent_jobs` y deja Linear/outbox inertes.
+La misma migración elimina del borrado Clerk el parche del archivo y las
+lecturas de capturas, y elimina del resolver Storage la lectura de capturas.
+Retira diez RPC del informe antiguo y ocho funciones huérfanas; el Hub conserva código de subida
+sin llamador, desactivado por `SCREENSHOTS_AVAILABLE=false`, que el paso 6b
+debe sustituir por el contrato v2 antes de activar capturas. El `.down.sql`
+recrea el esquema vacío y las funciones anteriores. La consulta
+previa y el procedimiento para un archivo no vacío están en el runbook; la
+purga requiere una decisión explícita de Isaac.
+
+Entrega 7b final: [PR draft #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949)
+contra `nightly@28b1e8fa9`, rama
+`vantareapp/isa-1896-paso7b4-retirada-legacy`, HEAD en el PR y checks del último push.
+PostgreSQL local: harness histórico LF 134 rutas/795 comprobaciones PASS;
+esquema final LF y CRLF, 18 casos RLS/Storage y escrituras, guard de archivo, rollback
+exacto y reaplicación PASS. `py_compile` y diff check PASS. CI comercial LF/CRLF PASS en PostgreSQL 17 (run 41813107183).
+Medida de producción, rollback, tests, docs y CI actualizada en el PR. Sin despliegue,
+llamadas a producción, merge ni release. El siguiente trabajo es la Fase A
+del paso 12: la ADR 0106 ya está integrada; siguen el lint y el generador.
+La CI inicial detectó que el snapshot usaba `pg_dump` 16 contra PostgreSQL 17; el siguiente intento identificó cuatro triggers cuya cláusula `UNION` cambiaba de orden textual en el rollback. El `.down.sql` restaura ahora esas definiciones exactas. El replay histórico y el cierre final, incluido el snapshot exacto tras rollback, pasan en LF y CRLF en la CI de PostgreSQL 17.
+
+Review de seguridad de #1949: el catálogo previo reveló 24 triggers de tablas
+conservadas cuyo SQL en `tgargs` leía tablas retiradas, además del de
+`technical_issues`. La migración bloquea esas tablas, quita el guard viejo
+cuando ya existe `b_account_write_barrier_v2` y reescribe los demás con la
+propiedad de la contribución v2. Exige BYPASSRLS/SUPERUSER antes del preflight,
+impide nuevos `technical_issues.report_id` y aborta si queda un trigger o
+función con referencia a las tablas retiradas. El down restaura las 24
+definiciones, ocho funciones huérfanas y ACL; PostgreSQL local verifica el
+snapshot antes/después, 18 pruebas finales y cinco escrituras reales.
+El runner inyecta además una función local con referencia opaca a la tabla
+retirada: el preflight de catálogo aborta atómicamente y el runner comprueba
+que la tabla siga existiendo antes de repetir el cierre limpio.
+La comprobación cubre nombres cualificados y referencias SQL sin esquema
+(`FROM`, `JOIN`, `UPDATE`, `INTO`, `REFERENCES`, `TABLE`). No interpreta como
+acceso SQL la comparación histórica de `tg_table_name` en la función compartida
+`private.guard_account_write`; esa rama ya no se ejecuta tras el DROP.
+La CI PG17 reveló que PG16 ordena once triggers conservados de otra forma al
+generar el rollback. El down usa las definiciones capturadas por PG17; el
+snapshot local PG16 omite solo el texto de los `a_` conservados, mientras la
+CI PG17 compara todos los triggers y ambos formatos de migración.
+Las suites de informes legacy se marcan como históricas. La allowlist del Hub
+conserva por ahora los dos RPC de capturas porque `report/screenshots.rs` aún
+los invoca y `report/tests.rs` los caracteriza; las capturas siguen apagadas y
+el paso 6b debe cambiar esos clientes antes de quitar la allowlist.
+
+Re-review #1949: migración y down renombrados a `20261104120500`, después de
+`20261104110000_isa_1910_smtp_effects` en nightly. El test de caracterización
+reprodujo 23503 al borrar una cuenta con issue v2. El cierre conserva en la
+issue el UUID de su dueño y desvincula la contribución antes del borrado;
+`private.testing_center_v2_owner` mantiene la barrera de sus descendientes.
+El rollback aborta atómicamente si ya hay una issue desvinculada, para no
+resucitar el informe borrado. Audit conserva su guard de actor y las
+promotions, dispositions y snapshots también comprueban al actor de la
+validación referenciada. Las pruebas finales locales son 29/29, incluyendo
+seis rechazos 28000 tras tombstone, cuatro variantes del guard de catálogo,
+rollback exacto y rechazo atómico del rollback con issue desvinculada.
+`apply_clerk_user_event`, `storage_owner_accounts` y `v2_owner` tienen ACL
+explícita en up/down. Los dos RPC de capturas siguen en `bridge.rs` porque
+la ruta de `report/screenshots.rs` y sus pruebas aún los utilizan; retirar
+esa allowlist rompería el cliente antes del paso 6b. Sin despliegue ni
+llamadas a producción. Revalidar que el timestamp es posterior a todas las
+migraciones de nightly justo antes de integrar.
+Revisión publicada sobre `nightly@c86d59e8c` en
+[PR #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949).
+La CI de PostgreSQL 17 para este HEAD está pendiente al publicarlo.

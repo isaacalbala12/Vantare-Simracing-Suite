@@ -96,6 +96,18 @@ jobs:
               --output "$RUNNER_TEMP/commercial-races/$newline" \
               2>&1 | tee "$RUNNER_TEMP/commercial-races/$newline.log"
           done
+      - name: Verify final legacy retirement and rollback in LF and CRLF
+        shell: bash
+        run: |
+          set -euo pipefail
+          for newline in lf crlf; do
+            python3 supabase/tests/run-commercial-local.py --docker \
+              --pg-bin "$(pg_config --bindir)" \
+              --migration-newlines "$newline" \
+              --legacy-retirement-only \
+              --output "$RUNNER_TEMP/commercial-races/retirement-$newline" \
+              2>&1 | tee "$RUNNER_TEMP/commercial-races/retirement-$newline.log"
+          done
       - name: Preserve disposable test evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

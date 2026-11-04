@@ -1,3 +1,4 @@
+-- Historical pre-7b corpus: the runner executes this before final legacy retirement.
 begin;
 SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
 -- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.

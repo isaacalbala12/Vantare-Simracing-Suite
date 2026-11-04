@@ -110,3 +110,62 @@ no cambia SQL admin.
 El guard de #1924 comprueba la tabla de informes legacy y sus escritores
 concedidos; su diff no consulta `testing_center_promotions` ni
 `testing_center_validations`.
+
+## Cierre 7b: comprobación previa para Isaac
+
+Ejecutar solo en el entorno que Isaac vaya a desplegar, con el tráfico de
+informes y los borrados de Clerk pausados. El resultado esperado es **cero**
+en el archivo y en las doce tablas exclusivas del informe:
+
+```sql
+select 'private.testing_center_legacy_archive' as source_table,count(*) from private.testing_center_legacy_archive
+union all select 'public.testing_center_reports',count(*) from public.testing_center_reports
+union all select 'public.testing_center_evidence',count(*) from public.testing_center_evidence
+union all select 'public.testing_center_triage_results',count(*) from public.testing_center_triage_results
+union all select 'public.testing_center_issue_occurrences',count(*) from public.testing_center_issue_occurrences
+union all select 'public.testing_center_posthog_consent_events',count(*) from public.testing_center_posthog_consent_events
+union all select 'public.testing_center_posthog_evidence',count(*) from public.testing_center_posthog_evidence
+union all select 'public.testing_center_report_events',count(*) from public.testing_center_report_events
+union all select 'public.testing_center_report_payloads',count(*) from public.testing_center_report_payloads
+union all select 'public.testing_center_report_submission_keys',count(*) from public.testing_center_report_submission_keys
+union all select 'public.testing_center_screenshot_evidence',count(*) from public.testing_center_screenshot_evidence
+union all select 'public.testing_center_evidence_batches',count(*) from public.testing_center_evidence_batches
+union all select 'public.testing_center_evidence_outbox',count(*) from public.testing_center_evidence_outbox
+union all select 'public.testing_center_technical_issues/report_id',count(*)
+  from public.testing_center_technical_issues where report_id is not null
+union all select 'public.testing_center_effect_outbox',count(*) from public.testing_center_effect_outbox
+union all select 'public.testing_center_linear_projection_snapshots',count(*)
+  from public.testing_center_linear_projection_snapshots;
+
+select 'storage.objects/testing-center-evidence' as source,count(*)
+from storage.objects where bucket_id='testing-center-evidence'
+union all
+select 'storage.s3_multipart_uploads/testing-center-evidence',count(*)
+from storage.s3_multipart_uploads where bucket_id='testing-center-evidence';
+```
+
+La migración final aborta sin cambios si el archivo tiene filas. Si el
+piloto conserva alguna, Isaac decide su purga en un paso aparte; este PR no
+la automatiza. También aborta si queda una fila en las tablas exclusivas o
+una referencia legacy en `technical_issues`, `effect_outbox` o las proyecciones
+de Linear, o un objeto/upload del bucket de capturas. Conserva
+`technical_issues` y `agent_jobs` para la lectura v2;
+Linear y outbox permanecen inertes hasta el paso 12. La migración quita los
+triggers antiguos de las tablas conservadas que ya tienen guard v2 y reescribe
+los demás para seguir la contribución v2; aborta si el catálogo conserva una
+referencia a una tabla retirada. El rollback restaura los 24 triggers afectados,
+las funciones y el esquema legacy vacío con sus permisos y políticas. No restaura datos
+porque el cierre exige cero antes de retirar las tablas.
+Para que `user.deleted` no choque con una issue v2, la issue conserva
+`owner_account_id` después de desvincular la contribución. Sus guardas y las
+de las tablas hijas siguen rechazando escrituras de la cuenta borrada. El
+rollback aborta si existe una issue así desvinculada: hace falta una decisión
+explícita sobre su destino antes de volver al esquema anterior, que exigía
+una contribución viva. No se recrea el informe borrado.
+Retira diez RPC de envío, triage, consentimiento PostHog y capturas del informe
+antiguo, más ocho funciones huérfanas de Codex, Linear, PostHog y admisión
+legacy. El rollback restaura sus definiciones, permisos y comentarios.
+Las suites `testing_center_*` que escriben informes o capturas legacy son un
+corpus histórico: se ejecutan antes del cierre, no sobre el esquema final.
+La ruta de subida de capturas del Hub sigue desactivada; el paso 6b debe
+conectarse al contrato v2 antes de habilitarla.

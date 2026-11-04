@@ -1,3 +1,4 @@
+-- Historical pre-7b corpus: the runner executes this before final legacy retirement.
 begin;
 
 select plan(45);

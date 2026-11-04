@@ -1,3 +1,4 @@
+-- Historical pre-7b corpus: the runner executes this before final legacy retirement.
 begin;
 select no_plan();
 select is((select count(*)::integer from public.testing_center_reports

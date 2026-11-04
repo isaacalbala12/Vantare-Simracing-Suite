@@ -31,6 +31,8 @@ parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--admin-erasure-only', action='store_true')
 parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
+parser.add_argument('--legacy-retirement-inventory', action='store_true', help='Read-only catalog inventory after migrations')
+parser.add_argument('--legacy-retirement-only', action='store_true', help='Replay full chain, then verify final 7b closure and rollback')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -196,10 +198,122 @@ $$;
   admin_report_root_applied=False
   owner_policy_previous=None
   owner_ack_previous=None
+  retirement_stem='20261104120500_isa_1896_legacy_retirement'
+  retirement_before=None
+  retirement_schema_before=None
+  retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',
+    'testing_center_issue_occurrences','testing_center_posthog_consent_events',
+    'testing_center_posthog_evidence','testing_center_report_events',
+    'testing_center_report_payloads','testing_center_report_submission_keys',
+    'testing_center_screenshot_evidence','testing_center_evidence_batches',
+    'testing_center_evidence_outbox']
+  def retirement_snapshot():
+   snapshot=json.loads(run('psql',*conn,'-c',"""select jsonb_build_object(
+     'clerk',pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure),
+     'storage',pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),
+     'v2_owner',pg_get_functiondef('private.testing_center_v2_owner(text)'::regprocedure),
+     'clerk_acl',(select coalesce(proacl::text,'<null>') from pg_proc where oid='public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure),
+     'storage_acl',(select coalesce(proacl::text,'<null>') from pg_proc where oid='private.storage_owner_accounts(jsonb)'::regprocedure),
+     'v2_owner_acl',(select coalesce(proacl::text,'<null>') from pg_proc where oid='private.testing_center_v2_owner(text)'::regprocedure),
+     'policy',(select to_jsonb(p) from pg_policies p where schemaname='public'
+       and tablename='testing_center_technical_issues' and policyname='testing_center_issues_select_own'),
+     'storage_policy',(select to_jsonb(p) from pg_policies p where schemaname='storage'
+       and tablename='objects' and policyname='testing_center_evidence_insert_own_slot'),
+     'fks',(select jsonb_agg(pg_get_constraintdef(c.oid) order by c.conname)
+       from pg_constraint c where c.contype='f' and c.conname in
+       ('testing_center_technical_issues_report_id_fkey',
+        'testing_center_effect_outbox_primary_report_id_fkey',
+        'testing_center_linear_projection_snapsho_primary_report_id_fkey')),
+     'technical_constraints',(select jsonb_agg(jsonb_build_object(
+       'name',c.conname,'definition',pg_get_constraintdef(c.oid)) order by c.conname)
+       from pg_constraint c where c.conrelid='public.testing_center_technical_issues'::regclass
+         and c.contype='c'),
+     'kept_triggers',(select jsonb_agg(jsonb_build_object(
+       'table',t.tgrelid::regclass::text,'name',t.tgname,
+       'definition',pg_get_triggerdef(t.oid),'args',encode(t.tgargs,'escape'))
+       order by t.tgrelid::regclass::text,t.tgname)
+       from pg_trigger t join pg_class c on c.oid=t.tgrelid
+       where not t.tgisinternal and c.relnamespace='public'::regnamespace
+         and c.relname like 'testing_center_%' and c.relname not in
+           ('testing_center_reports','testing_center_evidence','testing_center_triage_results',
+            'testing_center_issue_occurrences','testing_center_posthog_consent_events',
+            'testing_center_posthog_evidence','testing_center_report_events',
+            'testing_center_report_payloads','testing_center_report_submission_keys',
+            'testing_center_screenshot_evidence','testing_center_evidence_batches',
+            'testing_center_evidence_outbox')),
+     'orphan_functions',(select jsonb_agg(jsonb_build_object(
+       'signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),
+       'acl',coalesce(p.proacl::text,'<null>'),'comment',obj_description(p.oid,'pg_proc'))
+       order by p.oid::regprocedure::text)
+       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname in ('public','private') and p.proname=any(array[
+         'testing_center_report_evidence_for_account','testing_center_report_for_account',
+         'testing_center_report_payload_for_account','testing_center_authorize_posthog_linear_link',
+         'testing_center_expire_posthog_evidence','testing_center_load_codex_evidence',
+         'testing_center_prepare_linear_projection','testing_center_queue_codex_dry_run'])),
+     'rpcs',(select jsonb_agg(jsonb_build_object(
+       'signature',p.oid::regprocedure::text,
+       'definition',pg_get_functiondef(p.oid),
+       'acl',coalesce(p.proacl::text,'<null>'),
+       'comment',obj_description(p.oid,'pg_proc')) order by p.proname,p.oid::regprocedure::text)
+       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname='public' and p.proname=any(array[
+         'testing_center_report_submit_admitted','testing_center_triage_report',
+         'testing_center_prepare_screenshot_batch','testing_center_finalize_screenshot',
+         'testing_center_can_insert_evidence_object','testing_center_submit_report',
+         'testing_center_submit_report_with_evidence',
+         'testing_center_submit_report_without_transport_size',
+         'testing_center_set_posthog_consent','testing_center_record_posthog_evidence']))
+   )""").strip())
+   # The replay also runs with CRLF SQL. Compare all nonblank source bytes,
+   # while ignoring only source line endings and B03's blank-line whitespace.
+   for key in ('clerk','storage','v2_owner'):
+    snapshot[key]=re.sub(r'(?m)^[ \t\r]+$', '', snapshot[key].replace('\r\n','\n'))
+   if snapshot['rpcs'] is not None:
+    for rpc in snapshot['rpcs']:
+     rpc['definition']=rpc['definition'].replace('\r\n','\n')
+   if snapshot['orphan_functions'] is not None:
+    for rpc in snapshot['orphan_functions']:
+     rpc['definition']=rpc['definition'].replace('\r\n','\n')
+   if snapshot['kept_triggers'] is not None:
+    for trigger in snapshot['kept_triggers']:
+     for key in ('definition','args'):
+      trigger[key]=re.sub(r'(?m)[ \t]+$', '',trigger[key].replace('\r\n','\n'))
+    if not args.docker:
+     # PG16 orders generated UNION branches differently from pinned PG17.
+     # The PG17 CI checks all retained barriers exactly; local PG16 still
+     # checks every v2 barrier and the behavioral insert/rollback probes.
+     snapshot['kept_triggers']=[trigger for trigger in snapshot['kept_triggers']
+       if trigger['name']!='a_account_write_barrier']
+   return json.dumps(snapshot,sort_keys=True)
+  def retirement_schema():
+   tables=tuple(argument for table in retired_tables for argument in ('-t','public.'+table))
+   # The pinned Supabase container is PG17; Ubuntu's pg_dump client is PG16.
+   # Use the matching server image client for the exact before/after snapshot.
+   if args.docker:
+    ddl=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+      '-U','postgres','-d',database,'--schema-only','--no-owner',*tables)
+   else:
+    ddl=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
+      '-d',database,'--schema-only','--no-owner',*tables)
+   lines=[line for line in ddl.splitlines()
+     if not line.startswith(('\\restrict ','\\unrestrict '))]
+   if not args.docker:
+    # PG16's pg_dump renders four historical UNION branches in a different
+    # order than the PG17 production image. PG17 CI compares every byte;
+    # locally omit only these four equivalent trigger statements.
+    rendered=('testing_center_evidence_outbox','testing_center_posthog_evidence',
+      'testing_center_screenshot_evidence','testing_center_triage_results')
+    lines=[line for line in lines if not (line.startswith('CREATE TRIGGER a_account_write_barrier')
+      and any(' ON public.'+table+' ' in line for table in rendered))]
+   return '\n'.join(lines)
   channel_role_before=None
   channel_role_after=None
   erasure_previous=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   # Historical suites run against the pre-retirement schema. CI also replays
+   # the complete chain with --legacy-retirement-only and tests the final state.
+   if m.stem==retirement_stem and not args.legacy_retirement_only: continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
@@ -367,6 +481,48 @@ $$;
     owner_policy_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
    if m.stem==ACK_STEM:
     owner_ack_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
+   if m.stem==retirement_stem:
+    retirement_before=retirement_snapshot()
+    retirement_schema_before=retirement_schema()
+    if args.legacy_retirement_only:
+     probe=OUT/'retirement-unprivileged.sql'
+     probe.write_text("set role authenticated;\n\\i '"+str(migration_source).replace("'","''")+"'\n",encoding='utf-8')
+     denied=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',str(probe)],
+       env=ENV,capture_output=True,text=True)
+     if denied.returncode==0 or 'legacy_retirement_requires_bypassrls' not in denied.stderr:
+      raise RuntimeError('retirement role guard did not fail closed: '+denied.stderr)
+     for reference in (
+       "perform pg_catalog.to_regclass('public.testing_center_reports');",
+       "perform pg_catalog.to_regclass('PUBLIC.TESTING_CENTER_REPORTS');",
+       'perform (select count(*) from pg_catalog.pg_class c, testing_center_reports r);',
+       "perform public.testing_center_load_codex_evidence('fixture');",
+     ):
+      run('psql',*conn,'-c',"""create function public.testing_center_legacy_reference_probe()
+        returns void language plpgsql as $$ begin """+reference+" end $$")
+      dangling=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',str(migration_source)],
+        env=ENV,capture_output=True,text=True)
+      if dangling.returncode==0 or 'legacy_retirement_dangling_catalog_reference' not in dangling.stderr:
+       raise RuntimeError('retirement catalog guard did not fail closed for '+reference+': '+dangling.stderr)
+      if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is not null").strip()!='t':
+       raise RuntimeError('failed catalog guard partially retired the schema')
+      run('psql',*conn,'-c','drop function public.testing_center_legacy_reference_probe()')
+     references=run('psql',*conn,'-c',"""select jsonb_build_object(
+       'triggers',(select coalesce(jsonb_agg(jsonb_build_object(
+         'table',t.tgrelid::regclass::text,'name',t.tgname,
+         'definition',pg_get_triggerdef(t.oid),'args',encode(t.tgargs,'escape'),
+         'has_v2',exists(select 1 from pg_trigger b where b.tgrelid=t.tgrelid
+           and b.tgname='b_account_write_barrier_v2')) order by t.tgrelid::regclass::text),'[]'::jsonb)
+         from pg_trigger t where not t.tgisinternal and t.tgname='a_account_write_barrier'
+           and encode(t.tgargs,'escape') ~ '(public\\.|\\m(from|join|update|into|references|table)\\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\\M'),
+       'functions',(select coalesce(jsonb_agg(jsonb_build_object(
+         'signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),
+         'acl',coalesce(p.proacl::text,'<null>'),'comment',obj_description(p.oid,'pg_proc'))
+         order by p.oid::regprocedure::text),'[]'::jsonb)
+         from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+         where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
+           and (pg_get_functiondef(p.oid) ~ '((public\\.|\\m(from|join|update|into|references|table)\\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\\.testing_center_legacy_archive)\\M'
+             or p.proname='testing_center_queue_codex_dry_run')))""")
+     (OUT/'retirement-live-references.before.json').write_text(references,encoding='utf-8')
    if m.stem==ERASURE_STEM:
     erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
    try: result=run('psql',*conn,'-f',migration_source)
@@ -631,8 +787,169 @@ $$;
    run_sync_retained_guard(run,conn,OUT,BIN,ENV)
    run_erasure_retained_guard(run,conn,OUT,BIN,ENV)
    raise SystemExit(0)
+  if args.legacy_retirement_only:
+   assert retirement_before is not None and retirement_schema_before is not None
+   closed=run('psql',*conn,'-c',"""select
+     to_regclass('public.testing_center_reports') is null,
+     to_regclass('private.testing_center_legacy_archive') is null,
+     to_regclass('public.testing_center_technical_issues') is not null,
+     to_regclass('public.testing_center_agent_jobs') is not null,
+     position('testing_center_reports' in pg_get_functiondef(
+       'public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure))=0,
+     position('testing_center_screenshot_evidence' in pg_get_functiondef(
+       'private.storage_owner_accounts(jsonb)'::regprocedure))=0""").strip()
+   if closed!='t|t|t|t|t|t': raise RuntimeError('final 7b schema or function closure failed: '+closed)
+   if json.loads(retirement_snapshot())['rpcs'] is not None:
+    raise RuntimeError('final 7b retained an obsolete report RPC')
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement.test.sql')
+   (OUT/'testing_center_legacy_retirement.test.sql.log').write_text(result)
+   if 'not ok ' in result or '1..29' not in result: raise RuntimeError(result)
+   run('psql',*conn,'-c',"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+     values('https://retirement.invalid',array['https://retirement.invalid'],true)
+     on conflict(issuer) do nothing;
+     insert into public.profiles(id) values('18960000-0000-4000-8000-000000000081');
+     insert into public.account_identities(issuer,subject,account_id)
+     values('https://retirement.invalid','user_18960000000040008000000000000081',
+       '18960000-0000-4000-8000-000000000081');
+     insert into public.testing_contributions(id,account_id,channel,title,body)
+     values('18960000-0000-4000-8000-000000000083',
+       '18960000-0000-4000-8000-000000000081','testers','Rollback fixture','Rollback fixture');
+     insert into public.testing_center_technical_issues(
+       technical_issue_id,contribution_id,state,flow_state,origin)
+     values('issue_v2_'||repeat('8',64),'18960000-0000-4000-8000-000000000083',
+       'open','queued','orchestrator');
+     select public.apply_clerk_user_event('retirement-rollback-delete',repeat('8',64),
+       'https://retirement.invalid','user_18960000000040008000000000000081',
+       'user.deleted',now(),null);""")
+   orphan_down=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+     str(ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))],
+     env=ENV,capture_output=True,text=True)
+   if orphan_down.returncode==0 or 'legacy_retirement_rollback_orphaned_v2_issue' not in orphan_down.stderr:
+    raise RuntimeError('rollback accepted a retained orphan issue: '+orphan_down.stderr)
+   if run('psql',*conn,'-c',"select to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
+    raise RuntimeError('orphan rollback guard changed the schema before aborting')
+   run('psql',*conn,'-c',"delete from public.testing_center_technical_issues where technical_issue_id='issue_v2_'||repeat('8',64)")
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))
+   retirement_after=retirement_snapshot()
+   retirement_schema_after=retirement_schema()
+   (OUT/'retirement-before.json').write_text(retirement_before)
+   (OUT/'retirement-after.json').write_text(retirement_after)
+   (OUT/'retirement-before.sql').write_text(retirement_schema_before)
+   (OUT/'retirement-after.sql').write_text(retirement_schema_after)
+   if retirement_after!=retirement_before or retirement_schema_after!=retirement_schema_before:
+    earlier=json.loads(retirement_before); later=json.loads(retirement_after)
+    changed=[key for key in earlier if earlier[key]!=later[key]]
+    old_lines=retirement_schema_before.splitlines()
+    new_lines=retirement_schema_after.splitlines()
+    first=next((i for i in range(max(len(old_lines),len(new_lines)))
+      if old_lines[i:i+1]!=new_lines[i:i+1]),None)
+    headers=[line for line in old_lines[:first or 0] if line.startswith('-- Name: ')]
+    raise RuntimeError('final 7b rollback drift: catalog '+','.join(changed)+
+      ', schema line '+str(first)+', object '+(headers[-1] if headers else '<header>'))
+   if run('psql',*conn,'-c',"""select bool_or(has_table_privilege(role_name,
+     'private.testing_center_legacy_archive','SELECT,INSERT,UPDATE,DELETE'))
+     from (values('anon'),('authenticated'),('service_role')) roles(role_name)""").strip()!='f':
+    raise RuntimeError('final 7b rollback exposed the private archive')
+   run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
+     (source_table,source_id,\"row\",row_sha256) values
+     ('public.testing_center_reports','archive-guard','{}',repeat('a',64))""")
+   blocked=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+     str(ROOT/'supabase/migrations'/(retirement_stem+'.sql'))],
+     env=ENV,capture_output=True,text=True)
+   if blocked.returncode==0 or 'legacy_retirement_archive_not_empty' not in blocked.stderr:
+    raise RuntimeError('final 7b failed to reject a populated archive: '+blocked.stderr)
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is not null").strip()!='t':
+    raise RuntimeError('failed final 7b migration changed the schema')
+   run('psql',*conn,'-c',"delete from private.testing_center_legacy_archive where source_id='archive-guard'")
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(retirement_stem+'.sql'))
+   if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null").strip()!='t':
+    raise RuntimeError('final 7b reapply failed')
+   print('Final 7b closure, empty-archive guard, exact rollback and reapply PASS',flush=True)
+   raise SystemExit(0)
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
+  if args.legacy_retirement_inventory:
+   retired_tables=[
+    'testing_center_reports','testing_center_evidence',
+    'testing_center_triage_results','testing_center_issue_occurrences',
+    'testing_center_posthog_consent_events','testing_center_posthog_evidence',
+    'testing_center_report_events','testing_center_report_payloads',
+    'testing_center_report_submission_keys','testing_center_screenshot_evidence',
+    'testing_center_evidence_batches','testing_center_evidence_outbox']
+   schema=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
+     '-d',database,'--schema-only','--no-owner',
+     *(argument for table in retired_tables for argument in ('-t','public.'+table)))
+   (OUT/'legacy-retirement-tables.schema.sql').write_text(schema)
+   relations=run('psql',*conn,'-c',"""with recursive walk(relid,depth,path) as (
+       select 'public.testing_center_reports'::regclass::oid,0,
+         array['public.testing_center_reports'::regclass::oid]::oid[]
+       union all
+       select fk.conrelid,walk.depth+1,walk.path||fk.conrelid
+       from walk join pg_constraint fk on fk.contype='f' and fk.confrelid=walk.relid
+       where not fk.conrelid=any(walk.path)
+     ) select min(depth)::text||'|'||relid::regclass::text
+       from walk group by relid order by 1""")
+   (OUT/'legacy-retirement-relations.log').write_text(relations)
+   inventory=run('psql',*conn,'-c',"""select p.oid::regprocedure::text
+     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname in ('public','private') and p.prokind='f'
+       and pg_get_functiondef(p.oid) ~
+         'testing_center_(reports|evidence|technical_issues|screenshot_evidence|evidence_batches|report_payloads|report_submission_keys|report_events|legacy_archive)'
+     order by 1""")
+   (OUT/'legacy-retirement-functions.log').write_text(inventory)
+   external_dependencies=run('psql',*conn,'-c',"""select conrelid::regclass::text||'|'||conname||'|'||pg_get_constraintdef(c.oid)
+     from pg_constraint c where c.contype='f'
+       and c.confrelid=any(array[
+         'public.testing_center_reports'::regclass,
+         'public.testing_center_evidence'::regclass,
+         'public.testing_center_triage_results'::regclass,
+         'public.testing_center_issue_occurrences'::regclass,
+         'public.testing_center_posthog_consent_events'::regclass,
+         'public.testing_center_posthog_evidence'::regclass,
+         'public.testing_center_report_events'::regclass,
+         'public.testing_center_report_payloads'::regclass,
+         'public.testing_center_report_submission_keys'::regclass,
+         'public.testing_center_screenshot_evidence'::regclass,
+         'public.testing_center_evidence_batches'::regclass,
+         'public.testing_center_evidence_outbox'::regclass])
+       and c.conrelid<>all(array[
+         'public.testing_center_reports'::regclass,
+         'public.testing_center_evidence'::regclass,
+         'public.testing_center_triage_results'::regclass,
+         'public.testing_center_issue_occurrences'::regclass,
+         'public.testing_center_posthog_consent_events'::regclass,
+         'public.testing_center_posthog_evidence'::regclass,
+         'public.testing_center_report_events'::regclass,
+         'public.testing_center_report_payloads'::regclass,
+         'public.testing_center_report_submission_keys'::regclass,
+         'public.testing_center_screenshot_evidence'::regclass,
+         'public.testing_center_evidence_batches'::regclass,
+         'public.testing_center_evidence_outbox'::regclass])
+     order by 1""")
+   (OUT/'legacy-retirement-external-fks.log').write_text(external_dependencies)
+   for label,signature in [
+    ('clerk-erasure','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'),
+    ('storage-owner','private.storage_owner_accounts(jsonb)')]:
+    definition=run('psql',*conn,'-c',f"select pg_get_functiondef('{signature}'::regprocedure)")
+    (OUT/f'legacy-retirement-{label}.sql').write_text(definition)
+   old_rpcs=run('psql',*conn,'-c',"""select jsonb_agg(jsonb_build_object(
+     'signature',p.oid::regprocedure::text,
+     'definition',pg_get_functiondef(p.oid),
+     'acl',coalesce(p.proacl::text,'<null>'),
+     'comment',obj_description(p.oid,'pg_proc')) order by p.oid)::text
+     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='public' and p.proname=any(array[
+       'testing_center_report_submit_admitted','testing_center_triage_report',
+       'testing_center_prepare_screenshot_batch','testing_center_finalize_screenshot',
+       'testing_center_can_insert_evidence_object','testing_center_submit_report',
+       'testing_center_submit_report_with_evidence',
+       'testing_center_submit_report_without_transport_size',
+       'testing_center_set_posthog_consent','testing_center_record_posthog_evidence'])""")
+   (OUT/'legacy-retirement-old-rpcs.json').write_text(old_rpcs)
+   print(relations,flush=True)
+   print(inventory,flush=True)
+   print(external_dependencies,flush=True)
+   raise SystemExit(0)
   role_contract=run('psql',*conn,'-c',"""
    select count(*)=4 and bool_and(not (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)
     and not rolinherit and rolcanlogin=(rolname='vantare_roadmap_publisher')

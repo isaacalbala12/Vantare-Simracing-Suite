@@ -8895,3 +8895,9 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Derivados PG17 pendientes de artefacto CI; el PR sigue draft. Próximo corte8c:
   UI conserva hechos anteriores y pide sync si el servidor anuncia historial
   sandbox pendiente; las lecturas no llaman a Polar. Producción conserva lecturas.
+
+- Derivados paso6 regenerados por el replay completo de CI41893318639, imagen
+  PG17 fijada y opciones verificadas por el generador; artefacto13354768687.
+  Commercial LF/CRLF, retirada final y marketing pasan; el check de derivados
+  detectaba solo los archivos aún no copiados. Se publica su salida exacta.
+  Native check/Clippy/Nextest47 pasan, sin Store real; nueva CI tras este push.

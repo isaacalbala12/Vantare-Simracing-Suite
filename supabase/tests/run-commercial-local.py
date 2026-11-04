@@ -635,6 +635,16 @@ $$;
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   if args.legacy_retirement_inventory:
+   relations=run('psql',*conn,'-c',"""with recursive walk(relid,depth,path) as (
+       select 'public.testing_center_reports'::regclass::oid,0,
+         array['public.testing_center_reports'::regclass::oid]::oid[]
+       union all
+       select fk.conrelid,walk.depth+1,walk.path||fk.conrelid
+       from walk join pg_constraint fk on fk.contype='f' and fk.confrelid=walk.relid
+       where not fk.conrelid=any(walk.path)
+     ) select min(depth)::text||'|'||relid::regclass::text
+       from walk group by relid order by 1""")
+   (OUT/'legacy-retirement-relations.log').write_text(relations)
    inventory=run('psql',*conn,'-c',"""select p.oid::regprocedure::text
      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
      where n.nspname in ('public','private') and p.prokind='f'
@@ -642,6 +652,7 @@ $$;
          'testing_center_(reports|evidence|technical_issues|screenshot_evidence|evidence_batches|report_payloads|report_submission_keys|report_events|legacy_archive)'
      order by 1""")
    (OUT/'legacy-retirement-functions.log').write_text(inventory)
+   print(relations,flush=True)
    print(inventory,flush=True)
    raise SystemExit(0)
   role_contract=run('psql',*conn,'-c',"""

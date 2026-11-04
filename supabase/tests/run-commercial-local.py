@@ -9,6 +9,7 @@ from commercial_roadmap_role import run_roadmap_role_regression, run_existing_ro
 from commercial_owner_alert import run_owner_alert_race
 from commercial_checkout_terminal import run_terminal_checkout_race
 from commercial_migration_lock import run_migration_lock_regression
+from commercial_admin_erasure import STEM as ERASURE_STEM, CONSTRAINTS as ERASURE_CONSTRAINTS, run_erasure_sql, run_erasure_e2e, run_erasure_retained_guard
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
@@ -28,6 +29,7 @@ parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
+parser.add_argument('--admin-erasure-only', action='store_true')
 parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
@@ -56,6 +58,7 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
+if args.admin_erasure_only: args.admin_reports_only=True
 if args.admin_reports_only: args.admin_effects_only=True
 legacy_writers_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
                         not args.upgrade and not any(
@@ -195,13 +198,14 @@ $$;
   owner_ack_previous=None
   channel_role_before=None
   channel_role_after=None
+  erasure_previous=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
-   if m.stem in (OWNER_POLICY_STEM,ACK_STEM) and not legacy_writers_enabled: continue
+   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM) and not legacy_writers_enabled: continue
    if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
@@ -363,6 +367,8 @@ $$;
     owner_policy_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
    if m.stem==ACK_STEM:
     owner_ack_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
+   if m.stem==ERASURE_STEM:
+    erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -615,6 +621,12 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(OWNER_POLICY_STEM+'.sql'))
    if owner_ack_previous is not None:
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(ACK_STEM+'.sql'))
+  if args.admin_erasure_only:
+   assert args.admin_deno_bin, 'erasure gate requires --admin-deno-bin'
+   run_erasure_sql(run,conn,OUT,BIN,ENV,erasure_previous)
+   run_erasure_e2e(args.admin_deno_bin,conn,OUT,BIN,ENV)
+   run_erasure_retained_guard(run,conn,OUT,BIN,ENV)
+   raise SystemExit(0)
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   role_contract=run('psql',*conn,'-c',"""
@@ -1073,6 +1085,11 @@ $$;
    run_admin_effects_race(run,conn,OUT,BIN,ENV)
    if args.admin_deno_bin or args.deno_bin:
     run_admin_gate_e2e(args.admin_deno_bin or args.deno_bin,conn,OUT,BIN,ENV)
+   if erasure_previous is not None:
+    run_erasure_sql(run,conn,OUT,BIN,ENV,erasure_previous)
+    if args.admin_deno_bin or args.deno_bin:
+     run_erasure_e2e(args.admin_deno_bin or args.deno_bin,conn,OUT,BIN,ENV)
+     run_erasure_retained_guard(run,conn,OUT,BIN,ENV)
    if not args.admin_effects_only:
     run_terminal_checkout_race(BIN,conn,ENV,run,OUT)
     run_owner_alert_race(run,conn,OUT)

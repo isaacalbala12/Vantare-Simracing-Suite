@@ -1,0 +1,72 @@
+"""Real maintenance Edge -> disposable PostgreSQL -> fake Brevo."""
+from pathlib import Path
+import json
+import subprocess
+
+
+def run_erasure_e2e(deno, conn, out, bin_dir, env):
+    root=Path(__file__).resolve().parents[2]
+    script=root/'supabase/tests/brevo-erasure-e2e.ts'
+    config=root/'supabase/functions/deno.json'
+    command={'program':str(bin_dir/'psql'),'args':conn}
+    permission=command['program']
+    if str(deno).endswith('.exe'):
+        script=subprocess.check_output(['wslpath','-w',str(script)],text=True).strip()
+        config=subprocess.check_output(['wslpath','-w',str(config)],text=True).strip()
+        command={'program':'wsl.exe','args':['-d',env['WSL_DISTRO_NAME'],'--',str(bin_dir/'psql'),*conn]}
+        permission='wsl.exe'
+    result=subprocess.run([str(deno),'test','--cached-only','--no-lock','--config',str(config),
+        '--allow-run='+permission,str(script),'--',json.dumps(command)],
+        env=env,capture_output=True,text=True,timeout=120)
+    (out/'brevo-erasure-e2e.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+    assert result.returncode==0, result.stdout+result.stderr
+    print('Brevo actual maintenance route -> journal/pending/reconcile, fake provider PASS',flush=True)
+
+
+STEM='20261104095000_isa_1910_brevo_erasure_journal'
+CONSTRAINTS="""select json_object_agg(conname,json_build_object('definition',pg_get_constraintdef(oid),'validated',convalidated))
+ from pg_constraint where conrelid='private.admin_effects'::regclass
+ and conname in('admin_effects_action_check','admin_effects_effect_check')"""
+
+
+def run_erasure_sql(run, conn, out, bin_dir, env, previous):
+    root=Path(__file__).resolve().parents[2]
+    up=root/'supabase/migrations'/(STEM+'.sql')
+    down=root/'supabase/rollbacks'/(STEM+'.down.sql')
+    # Legacy rollback oracles restore their own constraint version first.
+    run('psql',*conn,'-f',up)
+    current=json.loads(run('psql',*conn,'-c',CONSTRAINTS))
+    run('psql',*conn,'-c',"""insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
+      values('19105700-0000-4000-8000-000000000001','started','19105700-0000-4000-8000-000000000001','19105700-0000-4000-8000-000000000001','delete_account','clerk_delete',repeat('c',64)),
+      ('19105700-0000-4000-8000-000000000001','succeeded','19105700-0000-4000-8000-000000000001','19105700-0000-4000-8000-000000000001','delete_account','clerk_delete',repeat('c',64));""")
+    run('psql',*conn,'-f',down)
+    assert json.loads(run('psql',*conn,'-c',CONSTRAINTS))==previous, 'Brevo down must restore both exact old constraints'
+    assert run('psql',*conn,'-c',"select to_regprocedure('public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)') is null").strip()=='t'
+    assert run('psql',*conn,'-c',"select to_regprocedure('public.native_admin_claim_mail_erasure(uuid,uuid,uuid)') is null").strip()=='t'
+    assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect_id='19105700-0000-4000-8000-000000000001'").strip()=='2', 'rollback lost old journal evidence'
+    collision=out/'brevo-actor-collision.sql'
+    collision.write_text("begin; insert into public.profiles(id) values('00000000-0000-0000-0000-000000000000');\n"+r"\ir "+str(up)+'\n',encoding='utf-8')
+    rejected=subprocess.run([str(bin_dir/'psql'),*conn,'-f',str(collision)],env=env,text=True,capture_output=True)
+    (out/'brevo-actor-collision.log').write_text(rejected.stdout+rejected.stderr,encoding='utf-8')
+    assert rejected.returncode and '55000' in rejected.stderr and 'brevo_worker_actor_collision' in rejected.stderr
+    assert json.loads(run('psql',*conn,'-c',CONSTRAINTS))==previous, 'collision guard changed schema'
+
+    run('psql',*conn,'-f',up)
+    assert json.loads(run('psql',*conn,'-c',CONSTRAINTS))==current
+    result=run('psql',*conn,'-f',root/'supabase/tests/native_admin_brevo_effects.test.sql')
+    (out/'native_admin_brevo_effects.test.sql.log').write_text(result,encoding='utf-8')
+    assert 'not ok ' not in result and '# Looks like' not in result, result
+    print('Brevo SQL: exact constraint rollback/reapply preserves old evidence; capability/owner/pending/reconcile PASS',flush=True)
+
+
+def run_erasure_retained_guard(run, conn, out, bin_dir, env):
+    root=Path(__file__).resolve().parents[2]
+    before=run('psql',*conn,'-c',CONSTRAINTS)
+    count=run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect='brevo_delete'").strip()
+    assert int(count)>0
+    result=subprocess.run([str(bin_dir/'psql'),*conn,'-f',str(root/'supabase/rollbacks'/(STEM+'.down.sql'))],env=env,text=True,capture_output=True)
+    (out/'brevo-retained-rollback.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+    assert result.returncode and '55000' in result.stderr and 'brevo_journal_rollback_requires_retention' in result.stderr
+    assert run('psql',*conn,'-c',CONSTRAINTS)==before
+    assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect='brevo_delete'").strip()==count
+    print('Brevo rollback refuses retained new evidence atomically, without deleting rows PASS',flush=True)

@@ -8189,3 +8189,117 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Producción Supabase contiene datos: reconstruida con la cadena en octubre.
   Queda sustituida cualquier suposición histórica de base vacía en runbooks.
 - Autorizado tocar solo _shared/mail-erasure.ts y sus tests; alcance de integración por aclarar.
+
+## VANTA-132 · Preparación Brevo histórica, sustituida por integración obligatoria abajo (2026-11-04)
+
+- El orquestador autoriza _shared/mail-erasure.ts y sus tests; VANTA-131 no
+  trabaja en _shared. No se modifica native-auth ni clerk-webhook. Código
+  limitado a ese archivo y su test; handoff actualizado como evidencia.
+- Nuevo worktree isa-1910-paso5c y rama vantareapp/isa-1910-paso5c-brevo desde
+  nightly d1616b2f7. Hook opcional audit por UUID del job: started antes de HTTP
+  y resultado antes de mail_erasure_finish, con ACK true exigido. Fallo/ACK no
+  booleano → 503 saneado; no HTTP si falla started, no finish si falla resultado.
+- Solo entrega job_id, outcome y provider_status: sin correo, URL, lease,
+  cuerpo ni error. 204/404 succeeded (404 explícito), 401/403/422 failed,
+  transporte/otros estados unknown, alineado con el ACK SQL existente.
+- El callback no se registra todavía desde ningún caller ni escribe un journal
+  por sí solo: preparación, no cierre del paso5. Sin callback se conserva el
+  comportamiento previo. La integración en native-admin queda fuera de esta
+  entrega mientras se aclara la limitación de alcance con el orquestador.
+- Caracterización bcb34d5ca: cinco tests previos PASS y seis RED de hook antes
+  del cambio. GREEN: 13 tests del worker y 125 con consumidores mail/admin,
+  ambos modos/abuso; check/lint/fmt/diff PASS. Primer gate de consumidores se
+  ejecutó sin los permisos env acotados y falló; repetido con los cuatro nombres
+  de configuración usados por los gates nativos, PASS. Fallo conservado.
+- Producción Supabase NO está vacía: se reconstruyó con la cadena en octubre.
+  Ningún runbook nuevo puede asumir vacío ni resetear datos. Aquí no hay SQL,
+  migraciones, despliegue, llamadas reales ni cambios de datos/configuración.
+  Gates SQL/Rust/lifecycle/telemetría omitidos: no cambia schema ni native.
+- Evidencia isa-1910-paso5c. VANTA-132 En curso; integración Brevo y pasos6–10
+  pendientes. Paso11 sigue exclusivamente en la base R6/12.
+- PR draft [#1942](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1942) a nightly,
+  código validado bca121f45; HEAD documental final publicado en el PR. CI pendiente.
+- Medición frente a 937e55afd: producción +29/−0; tests +176/−0; docs +34/−0.
+- Rebase final sobre nightly 937e55afd231826cabdd360b8a89520b6a430073, con #1941
+  integrado y sus seis checks verdes; conflicto solo de handoff, ambas evidencias
+  conservadas y fuente del hook idéntica. Gate final Deno125 PASS.
+
+## VANTA-132 · #1942 Brevo conectado al journal existente (2026-11-04)
+
+- Sustituye el hook opcional de la sección anterior, rechazado por carecer de
+  llamador. Mismo PR draft #1942: worker `mail-cleanup` y admin usan recorder
+  obligatorio dentro de `drainMailErasures`; sin auditoría no hay DELETE.
+  Admin pasa actor/request verificados; mantenimiento acredita job y lease
+  vigente. Actor técnico nil UUID reservado, sin crear perfil/owner; guard de
+  colisión en perfiles y RPC solo service_role. No se toca native-auth/webhook
+  ni otro fichero _shared fuera de mail-erasure.ts y sus tests autorizados.
+- `admin_effects` existente: started antes de DELETE y resultado antes del ACK
+  de cola; 204/404 succeeded, 401/403/422 failed, resto/transporte unknown.
+  Misma vista pending y reconcile owner; hash de job+lease, sin correo/URL ni
+  lease en claro. Resultado coincide con intención aun tras caducar actor/lease;
+  reconciliado no se reabre. Función SQL nueva completa, sin parchear catálogo.
+- Migración/rollback 20261104095000. Producción tiene datos desde octubre:
+  SQL primero y ambas Edge después, solo Isaac. Lock_timeout5s y guard de ACL.
+  Down exacto de checks/RPC con dos eventos antiguos existentes preservados;
+  con eventos Brevo aborta atómicamente, conserva schema/evidencia y requiere
+  acordar retención/migración antes de deshacer schema. Nunca borrar journal ni
+  resetear producción. Detener/revertir llamadores primero, reservado a Isaac.
+- Caracterización E2E comprometida 65cdbc1c6 antes de producto: RED por ausencia
+  de journal; otros dos casos inicialmente fallaron además por email duplicado
+  de fixture (corregida). Otra ejecución SQL detectó lectura de schema private
+  por servicio: corregido solo contexto de fixture, sin ampliar permisos.
+  Fallos preservados en evidencia isa-1910-paso5c y /tmp/brevo-journal-*.
+- GREEN Deno2.7.13: 129 consumidores, 17 del worker; check/lint/fmt y Python/diff
+  PASS. PostgreSQL16.15 desechable: cadena completa LF, carreras previas y
+  134 rutas/795 checks de barreras PASS. Gate Brevo LF/CRLF: 24 SQL +5 E2E,
+  rollback/reaplicación sobre datos antiguos y rechazo de rollback retenido PASS.
+  E2E usa las dos rutas reales y SQL real con proveedor falso: orden durable,
+  pending/reconcile, recorder false y lease SQL inválido impiden DELETE,
+  actor admin/404 explícito y ausencia de correo/URL. Instancias detenidas.
+- Docker marketing local no disponible; whitelist de su adaptador SQL actualizada
+  para nuevo recorder; pendiente CI. Rust/lifecycle/telemetría omitidos porque
+  no cambia native. Sin producción, secretos, Store real, billing/licencias,
+  despliegue, merge propio ni release. Archivo/tablas/FK legacy R6 conservados.
+- VANTA-132 En curso: auditoría SMTP/contactos y pasos6–10 pendientes; paso11
+  sigue exclusivamente dentro de R6/12. PR #1942 continúa draft a nightly;
+  SHA y métricas finales se registran en la entrega del PR y la issue.
+- Rebase final sobre nightly ccc9b2e5e (incluye #1934). Conflicto en tres
+  inicializadores del runner: conservados canales R6 y snapshot Brevo. Código
+  validado 502f3c444; métricas frente a esa base: producción +155/−3,
+  tests +542/−1, docs +118/−0. Calidad: 471 huellas PASS.
+- PR/issue/Plane registran el HEAD documental final; CI remota nueva pendiente.
+
+## VANTA-132 · #1942 review P2: intentos y caída de auditoría (2026-11-04)
+
+- Review Sonnet sobre 88099729c: MERGE sin P0/P1, con P2 de borrado a cerrar
+  en el mismo PR antes de integrar. No se fusiona desde este worker.
+- Caracterización comprometida 9867518d6 antes de producto. El primer run
+  falló en la fixture SQL (WSL expandía $$); se corrigió la cita. RED válido
+  contra código anterior en worktree separado: nueve fallos reales de INSERT
+  started dejan state=failed/attempts=8, sin HTTP. Logs conservados bajo
+  /tmp/brevo-attempts-{red,red2,lf,green2,final-lf,final-crlf}.
+- RPC nueva completa native_admin_claim_mail_erasure une el claim existente
+  y el recorder started en una transacción. Error/rechazo de recorder revierte
+  claim, lease e incremento: job pending, attempts=0 tras nueve fallos. No se
+  parchean funciones desde pg_get_functiondef ni se cambia el claim legacy.
+  Nueva Edge solo usa la RPC atómica: falta de migración no invoca claim legacy.
+  Alerta propia 503 mail_cleanup_audit_unavailable en worker y admin.
+- Resultados siguen grabándose antes del ACK; el down elimina ambas RPC y
+  conserva checks exactos/evidencia antigua. Si existen filas brevo_delete,
+  el down ya no sirve: Isaac revoca EXECUTE de ambas RPC nuevas y revierte ambas
+  Edge, conservando schema y journal. README incluye SQL manual, no ejecutado.
+  Producción tiene datos; nunca reset ni borrado de evidencia para forzar down.
+- P3 de job explícito/cierre automático anotado, sin implementar: reconcile
+  exige owner vigente. No se introduce reviewer de sistema ni se cambia esa
+  autoridad. Los unknown anteriores siguen visibles hasta reconcile owner.
+- Gates focales: Deno129 PASS (17 worker), check/lint/fmt/Python/diff y471huellas.
+  SQL27 y E2E7 LF/CRLF prueban nueve fallos de recorder y nueve llamadas con
+  RPC ausente, todos sin consumir intentos/HTTP; orden durable, permisos,
+  pending/reconcile y rollback/reaplicación/guard de retención conservados.
+  Servidores desechables parados al terminar; evidencia final en PR/issue.
+- Sin native-auth/webhook ni otro _shared fuera del archivo/test autorizados;
+  sin producción, secretos, Store real, billing/licencias, despliegue, merge ni
+  release. Rust/lifecycle/telemetría omitidos: no cambia native. Docker marketing
+  local no disponible: adaptador RPC actualizado y gate pendiente de CI nueva.
+  VANTA-132 En curso, resto del plan intacto; paso11 pertenece a R6/12.
+- Medición total #1942 vs ccc9b2e5e: producción +209/−8; tests +645/−6; docs +174/−0. Código validado 5c4e5deeb; HEAD documental final en PR/issue, CI nueva pendiente.

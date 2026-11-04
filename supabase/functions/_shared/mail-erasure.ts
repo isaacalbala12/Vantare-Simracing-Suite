@@ -8,6 +8,8 @@ export type ErasureDeps = {
   env?: (key: string) => string | undefined;
   fetch?: typeof fetch;
   rpc?: MailRpc;
+  actor?: string;
+  requestId?: string;
 };
 export async function mailRpc(
   name: string,
@@ -35,6 +37,7 @@ export async function drainMailErasures(
 ): Promise<{ processed: number }> {
   const env = deps.env ?? Deno.env.get;
   const rpc = deps.rpc ?? mailRpc;
+  const requestId = deps.requestId ?? crypto.randomUUID();
   await rpc("mail_erasure_expire", {});
   if (env("MARKETING_CLEANUP_ENABLED") !== "true" || !env("BREVO_API_KEY")) {
     throw new NativeError(503, "mail_cleanup_disabled");
@@ -42,11 +45,48 @@ export async function drainMailErasures(
   let processed = 0;
   for (let i = 0; i < 5; i++) {
     if (env("MARKETING_CLEANUP_ENABLED") !== "true") break;
-    const result = await rpc("mail_erasure_claim", {}) as {
-      job: null | { id: string; lease: string; email: string };
-    };
+    const effectId = crypto.randomUUID();
+    let result: { job: null | { id: string; lease: string; email: string } };
+    try {
+      const claimed = await rpc("native_admin_claim_mail_erasure", {
+        p_request: requestId,
+        p_effect: effectId,
+        p_actor: deps.actor ?? null,
+      }) as typeof result;
+      if (
+        !claimed || typeof claimed !== "object" || !("job" in claimed) ||
+        (claimed.job !== null &&
+          (!claimed.job || typeof claimed.job.id !== "string" ||
+            typeof claimed.job.lease !== "string" ||
+            typeof claimed.job.email !== "string"))
+      ) {
+        throw new Error("unconfirmed claim");
+      }
+      result = claimed;
+    } catch {
+      throw new NativeError(503, "mail_cleanup_audit_unavailable");
+    }
     if (!result.job) break;
     const job = result.job;
+    const record = async (
+      outcome: "succeeded" | "failed" | "unknown",
+      providerStatus: number | null = null,
+    ) => {
+      try {
+        if (
+          await rpc("native_admin_record_mail_erasure", {
+            p_job: job.id,
+            p_lease: job.lease,
+            p_request: requestId,
+            p_effect: effectId,
+            p_outcome: outcome,
+            p_provider_status: providerStatus,
+            p_actor: deps.actor ?? null,
+          }) === true
+        ) return;
+      } catch { /* Never expose SQL/provider details. */ }
+      throw new NativeError(503, "mail_cleanup_unconfirmed");
+    };
     let status = 0;
     try {
       const response = await (deps.fetch ?? fetch)(
@@ -65,6 +105,14 @@ export async function drainMailErasures(
     } catch {
       /* Transport outcome is retried safely with DELETE, never logged. */
     }
+    await record(
+      [204, 404].includes(status)
+        ? "succeeded"
+        : [401, 403, 422].includes(status)
+        ? "failed"
+        : "unknown",
+      status > 0 ? status : null,
+    );
     const ack = await rpc("mail_erasure_finish", {
       p_id: job.id,
       p_lease: job.lease,

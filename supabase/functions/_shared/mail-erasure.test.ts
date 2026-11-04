@@ -1,3 +1,127 @@
+import { NativeError } from "./native-auth.ts";
+function journalFixture(status = 204) {
+  let claimed = false;
+  const trace: string[] = [];
+  const records: Record<string, unknown>[] = [];
+  const options = {
+    env,
+    rpc: (name: string, args: Record<string, unknown>): Promise<unknown> => {
+      if (name === "mail_erasure_expire") return Promise.resolve(0);
+      if (name === "native_admin_claim_mail_erasure") {
+        if (claimed) return Promise.resolve({ job: null });
+        claimed = true;
+        trace.push("started");
+        records.push({ ...args, p_outcome: "started" });
+        return Promise.resolve({
+          job: {
+            id: "19105000-0000-4000-8000-000000000001",
+            lease: "19105000-0000-4000-8000-000000000002",
+            email: "private@example.invalid",
+          },
+        });
+      }
+      if (name === "native_admin_record_mail_erasure") {
+        trace.push(String(args.p_outcome));
+        records.push(args);
+        return Promise.resolve(true);
+      }
+      assert(name === "mail_erasure_finish" && args.p_http_status === status);
+      trace.push("finish");
+      return Promise.resolve(true);
+    },
+    fetch: () => {
+      trace.push("http");
+      if (!status) throw new Error("private@example.invalid transport");
+      return Promise.resolve(new Response(null, { status }));
+    },
+  };
+  return { options, trace, records };
+}
+Deno.test("mandatory real recorder RPC precedes DELETE and SQL ACK, without email or URL", async () => {
+  for (const status of [204, 404, 401, 403, 422, 503, 200, 0]) {
+    const f = journalFixture(status);
+    await drainMailErasures(f.options);
+    const outcome = [204, 404].includes(status)
+      ? "succeeded"
+      : [401, 403, 422].includes(status)
+      ? "failed"
+      : "unknown";
+    assert(
+      JSON.stringify(f.trace) ===
+        JSON.stringify(["started", "http", outcome, "finish"]),
+    );
+    assert(
+      f.records.length === 2 &&
+        f.records[0].p_effect === f.records[1].p_effect &&
+        f.records[0].p_request === f.records[1].p_request &&
+        f.records[0].p_actor === null &&
+        f.records[1].p_provider_status === (status || null),
+    );
+    assert(
+      !JSON.stringify(f.records).includes("private@") &&
+        !JSON.stringify(f.records).includes("https://"),
+    );
+  }
+});
+for (const phase of ["started", "terminal"]) {
+  for (const reply of [false, null, undefined, "true", "throw"]) {
+    Deno.test(
+      "unconfirmed mandatory recorder blocks at " + phase + "/" + String(reply),
+      async () => {
+        const f = journalFixture();
+        const original = f.options.rpc;
+        f.options.rpc = (name, args) => {
+          if (
+            (phase === "started"
+              ? name === "native_admin_claim_mail_erasure"
+              : name === "native_admin_record_mail_erasure")
+          ) {
+            if (reply === "throw") {
+              throw new Error("private@example.invalid SQL");
+            }
+            return Promise.resolve(reply);
+          }
+          return original(name, args);
+        };
+        let error: unknown;
+        try {
+          await drainMailErasures(f.options);
+        } catch (caught) {
+          error = caught;
+        }
+        assert(
+          error instanceof NativeError &&
+            error.code ===
+              (phase === "started"
+                ? "mail_cleanup_audit_unavailable"
+                : "mail_cleanup_unconfirmed") &&
+            !error.message.includes("private@") &&
+            !f.trace.includes("finish") &&
+            f.trace.includes("http") === (phase === "terminal"),
+        );
+      },
+    );
+  }
+}
+Deno.test("SQL ACK failure preserves recorded provider result", async () => {
+  const f = journalFixture(404);
+  const original = f.options.rpc;
+  f.options.rpc = (name, args) =>
+    name === "mail_erasure_finish"
+      ? Promise.resolve(false)
+      : original(name, args);
+  let error: unknown;
+  try {
+    await drainMailErasures(f.options);
+  } catch (caught) {
+    error = caught;
+  }
+  assert(
+    error instanceof NativeError &&
+      JSON.stringify(f.trace) === '["started","http","succeeded"]' &&
+      f.records[1].p_provider_status === 404,
+  );
+});
 import { drainMailErasures } from "./mail-erasure.ts";
 import { handleMailCleanup } from "../mail-cleanup/index.ts";
 import { assert } from "../native-account-authorize/testdata/auth.ts";
@@ -16,7 +140,7 @@ Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never 
       env,
       rpc: (name, args) => {
         if (name === "mail_erasure_expire") return Promise.resolve(0);
-        if (name === "mail_erasure_claim") {
+        if (name === "native_admin_claim_mail_erasure") {
           if (claimed) return Promise.resolve({ job: null });
           claimed = true;
           return Promise.resolve({
@@ -26,6 +150,9 @@ Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never 
               email: "old@example.invalid",
             },
           });
+        }
+        if (name === "native_admin_record_mail_erasure") {
+          return Promise.resolve(true);
         }
         assert(
           name === "mail_erasure_finish" && args.p_http_status === status &&
@@ -84,7 +211,9 @@ Deno.test("erasure worker is bounded, disabled by default and authenticates befo
     env,
     rpc: (name) =>
       Promise.resolve(
-        name === "mail_erasure_expire" ? 0 : name === "mail_erasure_claim"
+        name === "mail_erasure_expire"
+          ? 0
+          : name === "native_admin_claim_mail_erasure"
           ? {
             job: {
               id: String(++claimed),
@@ -107,7 +236,7 @@ Deno.test("erasure cannot claim a false result as a confirmed ACK", async () => 
         Promise.resolve(
           name === "mail_erasure_expire"
             ? 0
-            : name === "mail_erasure_claim"
+            : name === "native_admin_claim_mail_erasure"
             ? { job: { id: "id", lease: "lease", email: "x@example.invalid" } }
             : false,
         ),
@@ -125,7 +254,7 @@ Deno.test("authenticated queue endpoint accepts only the closed maintenance requ
     env,
     rpc: (name: string) => {
       if (name === "mail_erasure_expire") return Promise.resolve(0);
-      assert(name === "mail_erasure_claim");
+      assert(name === "native_admin_claim_mail_erasure");
       claims++;
       return Promise.resolve({ job: null });
     },

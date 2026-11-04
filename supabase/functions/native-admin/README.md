@@ -402,6 +402,66 @@ original. Quedan diferidos: proteger `set_blocked` sin token durante el solape
 de despliegue, limpiar leases caducados (sin eliminar referencias de efectos
 pendientes) y revisar el 503 cuando solo falla release tras un cambio correcto.
 
+## Brevo DELETE · paso 5c
+
+Los dos llamadores reales (`native-admin` y `mail-cleanup`) usan obligatoriamente
+`native_admin_record_mail_erasure`, sin callback opcional ni journal nuevo.
+Escribe en `private.admin_effects`: `mail_cleanup` / `brevo_delete`, intención
+`started` antes de HTTP y resultado antes de `mail_erasure_finish`.
+`native_admin_claim_mail_erasure` une claim + started en una transacción: un
+rechazo/error del recorder revierte lease e incremento de attempts, dejando el
+job pending. Edge no llama al claim legacy por separado; si falta la migración,
+la nueva RPC falla antes de reclamar. Ambos llamadores devuelven 503 con código
+`mail_cleanup_audit_unavailable` para esa indisponibilidad. La retención vigente
+de 24 horas no cambia. El recorder debe confirmar `true` dentro de la
+transacción; Edge exige un claim válido y un resultado confirmado. Si falta auditoría, no hay DELETE; si falla
+el resultado, devuelve 503 sin finalizar la cola y conserva la intención.
+204/404 son `succeeded` (404 explícito), 401/403/422 son `failed`; transporte y
+el resto son `unknown`. Se conserva la política de reintentos DELETE de la cola.
+
+El admin pasa actor verificado y UUID de petición; `started` revalida owner.
+El worker prueba un job `processing` con lease vigente, mediante RPC exclusiva
+de servicio. Su actor técnico es el UUID nulo reservado, no una cuenta ni un
+owner inventado. La migración aborta si ya existe un perfil con ese UUID.
+El resultado puede cerrar tras caducar owner/lease solo si coincide con su
+intención. No puede cambiar un resultado definitivo ni reabrir un reconciliado.
+El journal guarda SHA-256 de `brevo_delete:<job UUID>:<lease UUID>`, nunca correo,
+URL, lease en claro, cuerpo ni excepciones. `X-Request-ID` correlaciona ambas rutas.
+Los UUID y hashes siguen siendo seudónimos.
+
+Usa la misma vista `private.admin_pending_effects` y
+`native_admin_reconcile_effect` descritas arriba: revisar primero el estado
+externo, y reconciliar como owner mediante servicio. No se crea endpoint de
+lectura ni se cambia la retención del paso 10. SMTP y sincronización de contactos
+Brevo siguen pendientes de auditoría; este corte cubre exclusivamente DELETE.
+
+Operación reservada a Isaac: producción contiene datos desde octubre, nunca
+hacer reset. Aplicar `20261104095000_isa_1910_brevo_erasure_journal.sql` antes de
+ambas Edge. DDL transaccional con `lock_timeout=5s`: un timeout aborta y exige
+reprogramar la operación, no borrar datos ni retirar el límite para forzarla.
+La función nueva está escrita completa; no se parchean cuerpos desde el catálogo.
+Para revertir, detener/revertir ambos llamadores primero. El down restaura los
+dos checks anteriores y elimina las dos RPC nuevas, conservando eventos antiguos. Si hay
+cualquier evidencia Brevo, el down ya no sirve: aborta atómicamente con
+`brevo_journal_rollback_requires_retention`. La salida es revocar EXECUTE de las
+dos RPC nuevas a service_role y revertir ambas Edge; conservar schema y evidencia.
+La Edge anterior no usa esas RPC. Estas acciones son exclusivas de Isaac:
+
+```sql
+revoke execute on function public.native_admin_claim_mail_erasure(uuid,uuid,uuid)
+  from service_role;
+revoke execute on function public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid)
+  from service_role;
+notify pgrst, 'reload schema';
+```
+
+Nunca borrar el journal para forzar un down. Los unknown de intentos anteriores
+no se cierran automáticamente al completar otro intento del mismo job:
+`reconciled` exige owner vigente. El vínculo explícito job/efecto y una posible
+revisión por sistema quedan anotados para una decisión posterior; este PR no
+cambia esa autoridad ni inventa un reviewer owner.
+El gate prueba ese rechazo y el rollback exacto sobre datos antiguos no vacíos.
+
 ## Raíz única de informes · coordinación R6/7b
 
 Admin lista, consulta, cuenta y revisa únicamente `testing_contributions` y su

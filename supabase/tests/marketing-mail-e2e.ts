@@ -76,8 +76,17 @@ async function rpc(
     mail_forget_waitlist: ["p_email"],
     mail_unsubscribe: ["p_email"],
     mail_unsubscribe_budget: ["p_token_hash"],
+    native_admin_record_mail_erasure: [
+      "p_job",
+      "p_lease",
+      "p_request",
+      "p_effect",
+      "p_outcome",
+      "p_provider_status",
+      "p_actor",
+    ],
     mail_erasure_expire: [],
-    mail_erasure_claim: [],
+    native_admin_claim_mail_erasure: ["p_request", "p_effect", "p_actor"],
     mail_erasure_finish: ["p_id", "p_lease", "p_http_status"],
   };
   const keys = fields[name];

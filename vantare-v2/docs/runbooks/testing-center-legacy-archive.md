@@ -73,7 +73,7 @@ El ID inválido y la cuenta sin perfil quedan solo en el archivo. Las filas
 de una cuenta ya borrada se vacían sin archivarse, con recuento verificado.
 Ningún informe legacy se crea como `received`: no vuelve a triage. El UUID
 se deriva del SHA-1 del texto `vanta131:legacy:` seguido del `report_id`,
-con los bits de versión fijados; no es un UUIDv5 RFC con namespace UUID.
+con los bits de versión y variante fijados; no es un UUIDv5 RFC con namespace UUID.
 
 `legacy_source_id` en la contribución conserva el identificador `report_<hash>`.
 Tiene un índice único parcial para que la repetición no cree otra contribución.

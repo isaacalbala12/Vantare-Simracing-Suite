@@ -1069,8 +1069,10 @@ compartida por R6 y R3. Producción no está vacía: la reconstrucción aplicó
 volcado local por dominio siguen en PR pequeños posteriores. La Fase B de
 compactación y `supabase migration repair` queda solo como propuesta: necesita
 ventana, comparación A=B=C con el esquema alojado y autorización de Isaac.
+La aceptó el orquestador en la revisión general de VANTA-131; Isaac aún la
+puede revisar. El texto de la ADR ya atribuye así la decisión.
 ADR en [PR draft #1950](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1950)
 contra `nightly@69827ca12`, rama `vantareapp/isa-1896-paso12a-adr`.
 Caracterización: la matriz ACL del paso 0 (39 permisos) permanece como
 oráculo; no cambia SQL ni sus tests. Medida: producción +0/−0, tests +0/−0,
-docs +66/−0 tras registrar este handoff. CI pendiente; sin despliegue.
+docs +68/−0 tras registrar este handoff. CI del último push pendiente; sin despliegue.

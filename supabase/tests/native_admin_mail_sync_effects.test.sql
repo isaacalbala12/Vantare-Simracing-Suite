@@ -1,0 +1,34 @@
+begin;
+select no_plan();
+insert into public.profiles(id) values('19105800-0000-4000-8000-000000000001'),('19105800-0000-4000-8000-000000000002'),('19105800-0000-4000-8000-000000000003');
+select * from public.operational_access_set('19105800-0000-4000-8000-000000000001','owner','grant','fixture','Sync owner','sync-owner',null);
+select * from public.operational_access_set('19105800-0000-4000-8000-000000000002','owner','grant','fixture','Sync reviewer','sync-reviewer',null);
+insert into private.mail_contacts(id,email,locale,evidence,sync_lease,sync_lease_until)
+ values('19105800-0000-4000-8000-000000000010','sync-sql@example.invalid','es','fixture','19105800-0000-4000-8000-000000000011',clock_timestamp()+interval '1 hour');
+select ok(has_function_privilege('service_role','public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer)','execute'),'service recorder callable');
+select ok(not has_function_privilege('anon','public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer)','execute'),'anon denied');
+select ok(not has_function_privilege('authenticated','public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer)','execute'),'authenticated denied');
+set local role service_role;
+select throws_ok($$select public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000003','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','started',null)$$,'42501','native_admin_forbidden','non owner denied');
+select throws_ok($$select public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000003','started',null)$$,'22023','native_admin_invalid','wrong contact lease denied');
+select is(public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','started',null),true,'durable contact intent');
+select is(public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','started',null),true,'intent replay idempotent');
+select is(public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','unknown',503),true,'unknown recorded');
+reset role;
+select is((select count(*)::integer from private.admin_pending_effects where effect_id='19105800-0000-4000-8000-000000000021'),1,'same pending view');
+set local role service_role;
+select is(public.native_admin_reconcile_effect('19105800-0000-4000-8000-000000000002','19105800-0000-4000-8000-000000000021'),true,'same owner reconcile');
+select throws_ok($$select public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','succeeded',204)$$,'22023','native_admin_invalid','cannot reopen reconcile');
+select is(public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000022','brevo_contact_update','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','started',null),true,'PUT intent');
+reset role;
+update public.operational_access_assignments set granted_at=now()-interval '2 days',expires_at=now()-interval '1 day' where user_id='19105800-0000-4000-8000-000000000001';
+update private.mail_contacts set sync_lease_until=clock_timestamp()-interval '1 second' where id='19105800-0000-4000-8000-000000000010';
+set local role service_role;
+select is(public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000022','brevo_contact_update','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','succeeded',204),true,'matching result survives owner and lease expiry');
+select throws_ok($$select public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000001','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','started',null)$$,'42501','native_admin_forbidden','expired owner denied');
+select throws_ok($$select public.native_admin_record_mail_sync('19105800-0000-4000-8000-000000000002','19105800-0000-4000-8000-000000000020','19105800-0000-4000-8000-000000000021','brevo_contact_upsert','19105800-0000-4000-8000-000000000010','19105800-0000-4000-8000-000000000011','started',null)$$,'22023','native_admin_invalid','expired lease cannot start');
+reset role;
+select ok(not exists(select 1 from private.admin_effects where action='mail_sync' and
+ (to_jsonb(admin_effects)::text like '%@%' or to_jsonb(admin_effects)::text like '%https://%' or to_jsonb(admin_effects)::text like '%19105800-0000-4000-8000-000000000011%')),'no email URL or lease in journal');
+select * from finish();
+rollback;

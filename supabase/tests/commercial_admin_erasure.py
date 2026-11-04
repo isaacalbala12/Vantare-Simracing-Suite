@@ -70,3 +70,34 @@ def run_erasure_retained_guard(run, conn, out, bin_dir, env):
     assert run('psql',*conn,'-c',CONSTRAINTS)==before
     assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where effect='brevo_delete'").strip()==count
     print('Brevo rollback refuses retained new evidence atomically, without deleting rows PASS',flush=True)
+
+
+SYNC_STEM='20261104100000_isa_1910_brevo_sync_journal'
+
+def run_sync_sql(run, conn, out, bin_dir, env):
+    root=Path(__file__).resolve().parents[2]
+    # The erasure down oracle restores its exact old checks before this stage.
+    before=run('psql',*conn,'-c',CONSTRAINTS)
+    up=root/'supabase/migrations'/(SYNC_STEM+'.sql')
+    run('psql',*conn,'-f',up)
+    run('psql',*conn,'-f',root/'supabase/rollbacks'/(SYNC_STEM+'.down.sql'))
+    assert run('psql',*conn,'-c',CONSTRAINTS)==before, 'sync rollback changes old checks'
+    assert run('psql',*conn,'-c',"select to_regprocedure('public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer)') is null").strip()=='t'
+    run('psql',*conn,'-f',up)
+    result=run('psql',*conn,'-f',root/'supabase/tests/native_admin_mail_sync_effects.test.sql')
+    (out/'native_admin_mail_sync_effects.test.sql.log').write_text(result,encoding='utf-8')
+    assert 'not ok ' not in result and '# Looks like' not in result, result
+    print('Brevo sync SQL: exact old checks rollback/reapply, owner/capability/pending/reconcile PASS',flush=True)
+
+
+def run_sync_retained_guard(run, conn, out, bin_dir, env):
+    root=Path(__file__).resolve().parents[2]
+    before=run('psql',*conn,'-c',CONSTRAINTS)
+    count=run('psql',*conn,'-c',"select count(*) from private.admin_effects where action='mail_sync'").strip()
+    assert int(count)>0
+    result=subprocess.run([str(bin_dir/'psql'),*conn,'-f',str(root/'supabase/rollbacks'/(SYNC_STEM+'.down.sql'))],env=env,text=True,capture_output=True)
+    (out/'brevo-sync-retained-rollback.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+    assert result.returncode and '55000' in result.stderr and 'mail_sync_rollback_requires_retention' in result.stderr
+    assert run('psql',*conn,'-c',CONSTRAINTS)==before
+    assert run('psql',*conn,'-c',"select count(*) from private.admin_effects where action='mail_sync'").strip()==count
+    print('Brevo sync rollback refuses retained evidence atomically PASS',flush=True)

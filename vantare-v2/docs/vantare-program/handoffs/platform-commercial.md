@@ -8460,3 +8460,45 @@ Backout: sin borrar auditoría ni archivo. Down7b2 exige la misma pausa de Clerk
 borrados y su runbook R6. Down#1942 solo antes de eventos Brevo; con evidencia,
 revocar EXECUTE de ambas RPC nuevas y revertir Edge, conservar SQL/journal.
 No rebobinar a ciegas migraciones con nuevas contribuciones o eventos reales.
+
+Consultas agregadas adicionales antes de7b2 (globales, conservadoras: revisar
+con R6 el subárbol afectado; no equivalen al guard completo):
+
+```sql
+select 'effects' as queue,state::text,count(*)
+ from public.testing_center_effect_outbox group by state
+union all select 'agent_effects',state::text,count(*)
+ from public.testing_center_agent_effect_outbox group by state
+union all select 'agent_jobs',state::text,count(*)
+ from public.testing_center_agent_jobs group by state
+union all select 'agent_reservations',state::text,count(*)
+ from public.testing_center_agent_reservations group by state
+union all select 'linear_deliveries',outcome::text,count(*)
+ from public.testing_center_linear_webhook_deliveries group by outcome;
+```
+
+## VANTA-132 · siguiente PR5d: auditoría contactos Brevo (2026-11-04)
+
+- Worktree isa-1910-paso5d desde nightly65b21aed0; rama
+  vantareapp/isa-1910-paso5d-brevo. Caracterización previa193a97d85: ocho RED
+  por ausencia de journal en POST/PUT reales de mail_sync, sin SaaS real.
+- RPC service-only nueva, completa, native_admin_record_mail_sync: mismo
+  admin_effects/pending/reconcile, owner vigente y lease real para started;
+  resultado exacto puede cerrar tras caducar owner/lease. Hash de UUID interno
+  y lease, sin correo/URL/cuerpos. Actor/request del contexto verificado Edge.
+- Cada POST/PUT confirma intención antes de HTTP y resultado antes de siguiente
+  HTTP/ACK. Fallo de journal devuelve503 mail_sync_audit_unavailable y deja la
+  proyección dirty, reintentable tras lease: sin contador ni pérdida definitiva.
+  2xx válido succeeded;401/403/422 failed;transporte/otros/JSON ilegible unknown.
+- Migración/rollback20261104100000, después de#1942; función completa sin patch
+  de catálogo. CLI migration new en scaffold vacío (sin .env) y timestamp
+  ajustado tras095000. Down exacto con eventos antiguos preservados; con sync
+  retenido aborta sin borrar evidencia. SQL antes de native-admin, solo Isaac.
+- Deno137 PASS, ocho nuevos; check/lint/fmt/Python y471huellas PASS. Primera
+  ejecución PG detectó RequestInit ambiguo en fixture Deno; anotación explícita
+  corregida. Gates SQL/E2E LF/CRLF finales en curso al registrar esta sección;
+  resultados finales y HEAD en PR/issue. Rust/lifecycle/telemetría omitidos:
+  no cambia native. Docker marketing local ausente, adaptador RPC actualizado.
+- Solo contactos: SMTP sigue siguiente5e; después6–9 y10 con decisión de
+  privacidad. Sin shared/webhook, billing/licencias, secretos, Store real,
+  producción, despliegue, merge ni release. VANTA-132 continúa En curso.

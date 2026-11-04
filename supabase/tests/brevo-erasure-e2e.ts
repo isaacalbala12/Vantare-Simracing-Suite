@@ -54,6 +54,7 @@ const rpcNames = new Set([
   "native_admin_claim_mail_erasure",
   "mail_erasure_finish",
   "native_admin_record_mail_erasure",
+  "native_admin_record_mail_sync",
 ]);
 async function rpc(
   name: string,
@@ -355,4 +356,165 @@ Deno.test("missing atomic claim RPC never falls back to unaudited legacy claim",
       "alter function public.fixture_missing_atomic_claim(uuid,uuid,uuid) rename to native_admin_claim_mail_erasure",
     );
   }
+});
+
+async function syncRoute(fetcher: typeof fetch, record: typeof rpc = rpc) {
+  const syncEnv = (key: string) =>
+    ({
+      MARKETING_SEND_ENABLED: "true",
+      BREVO_API_KEY: "fake",
+      BREVO_MARKETING_LISTS: JSON.stringify({
+        free: 1,
+        pro: 2,
+        pro_plus: 3,
+        launch: 4,
+        testers: 5,
+        creators: 6,
+        waitlist: 7,
+      }),
+    } as Record<string, string>)[key];
+  return await handleNativeAdmin(
+    adminRequest({ version: 1, action: "mail_sync" }),
+    {
+      ...authDeps(),
+      adminAuth: { enabled: false, clientId: "" },
+      environment: "sandbox",
+      gate: () => Promise.resolve(true),
+      resolve: () => Promise.resolve(account),
+      begin: async () =>
+        JSON.parse(
+          await sql(
+            "set role service_role; select to_json(public.native_admin_begin(" +
+              lit(account) + "));",
+          ),
+        ),
+      fetch: (url) =>
+        Promise.resolve(
+          Response.json(String(url).endsWith("verify") ? claims : user),
+        ),
+      mailExecute: async (actor, action, params, environment) =>
+        JSON.parse(
+          await sql(
+            "set role service_role; select public.mail_admin_execute(" +
+              lit(actor) + "," + lit(action) + "," +
+              lit(JSON.stringify(params)) + "::jsonb," + lit(environment) +
+              ");",
+          ),
+        ),
+      mail: { env: syncEnv, rpc: record, fetch: fetcher },
+    },
+  );
+}
+async function syncSetup(n: number) {
+  const id = "19105900-0000-4000-8000-" + String(n).padStart(12, "0");
+  await sql(
+    "update private.mail_contacts set sync_lease_until=clock_timestamp()+interval '1 hour'; insert into private.mail_contacts(id,email,locale,evidence,consent,waitlist) values(" +
+      lit(id) + "," + lit("sync" + n + "@example.invalid") +
+      ",'es','fixture',true,true)",
+  );
+  return id;
+}
+async function syncEvents() {
+  return JSON.parse(
+    await sql(
+      "select coalesce(json_agg(e),'[]'::json) from private.admin_effects e where action='mail_sync'",
+    ),
+  ) as Record<string, unknown>[];
+}
+Deno.test("real admin sync POST and PUT journal precedes fake provider and SQL ACK", async () => {
+  const id = await syncSetup(1);
+  let http = 0;
+  const response = await syncRoute(async (_url, init?: RequestInit) => {
+    http++;
+    const rows = await syncEvents();
+    assert(
+      rows.some((r) =>
+        r.outcome === "started" &&
+        r.effect === (init?.method === "PUT"
+            ? "brevo_contact_update"
+            : "brevo_contact_upsert")
+      ),
+    );
+    return new Response(null, { status: 204 });
+  });
+  assert(response.status === 200 && http === 2);
+  const requestId = response.headers.get("X-Request-ID");
+  const rows = (await syncEvents()).filter((r) => r.request_id === requestId);
+  assert(rows.length === 4 && rows.every((r) => r.actor === account));
+  assert(rows.filter((r) => r.outcome === "succeeded").length === 2);
+  assert(
+    await sql(
+      "select sync_state ? 'sandbox' from private.mail_contacts where id=" +
+        lit(id),
+    ) === "t",
+  );
+  assert(
+    !JSON.stringify(rows).includes("@example.invalid") &&
+      !JSON.stringify(rows).includes("https://"),
+  );
+});
+Deno.test("real sync unknown PUT stays pending, no sync ACK, existing owner reconciles", async () => {
+  const id = await syncSetup(2);
+  let http = 0;
+  const response = await syncRoute(() => {
+    http++;
+    if (http === 2) {
+      throw new Error("private@example.invalid https://transport.invalid");
+    }
+    return Promise.resolve(new Response(null, { status: 201 }));
+  });
+  assert(response.status === 503 && http === 2);
+  assert(
+    await sql(
+      "select sync_state ? 'sandbox' from private.mail_contacts where id=" +
+        lit(id),
+    ) === "f",
+  );
+  const pending = JSON.parse(
+    await sql(
+      "select coalesce(json_agg(e),'[]'::json) from private.admin_pending_effects e where action='mail_sync'",
+    ),
+  );
+  assert(pending.length === 1 && pending[0].latest_outcome === "unknown");
+  assert(
+    await sql(
+      "set role service_role; select public.native_admin_reconcile_effect(" +
+        lit(account) + "," + lit(pending[0].effect_id) + ")",
+    ) === "t",
+  );
+  assert(
+    await sql(
+      "select count(*) from private.admin_pending_effects where action='mail_sync'",
+    ) === "0",
+  );
+  const rows = await syncEvents();
+  assert(
+    !JSON.stringify(rows).includes("@example.invalid") &&
+      !JSON.stringify(rows).includes("https://"),
+  );
+});
+Deno.test("real sync recorder outage prevents provider and leaves projection dirty", async () => {
+  const id = await syncSetup(3);
+  let http = 0;
+  const response = await syncRoute(
+    () => {
+      http++;
+      return Promise.resolve(new Response(null, { status: 204 }));
+    },
+    (name, args) =>
+      name === "native_admin_record_mail_sync"
+        ? Promise.resolve(false)
+        : rpc(name, args),
+  );
+  assert(
+    response.status === 503 &&
+      (await response.json()).error === "mail_sync_audit_unavailable" &&
+      http === 0,
+  );
+  assert(
+    await sql(
+      "select sync_state ? 'sandbox' from private.mail_contacts where id=" +
+        lit(id),
+    ) === "f",
+  );
 });

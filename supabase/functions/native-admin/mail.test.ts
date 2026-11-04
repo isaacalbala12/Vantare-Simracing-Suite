@@ -310,11 +310,13 @@ Deno.test("mail sync exact groups, removal and suppression, no implicit recipien
         a === "mail_sync_page"
           ? {
             contacts: [{
+              id,
               email: "yes@example.invalid",
               revision: 2,
               consent: true,
               groups: ["pro"],
             }, {
+              id,
               email: "no@example.invalid",
               revision: 3,
               consent: false,
@@ -332,6 +334,8 @@ Deno.test("mail sync exact groups, removal and suppression, no implicit recipien
       ),
     {
       env,
+      actor: id,
+      rpc: () => Promise.resolve(true),
       fetch: (url, init?: RequestInit) => {
         calls++;
         const b = JSON.parse(String(init?.body));
@@ -567,6 +571,8 @@ Deno.test("P3: locale cannot inject html attributes and cursor never exposes an 
     return Promise.resolve({});
   }, {
     env,
+    actor: id,
+    rpc: () => Promise.resolve(true),
     fetch: () => Promise.resolve(new Response(null, { status: 204 })),
   });
   assert(

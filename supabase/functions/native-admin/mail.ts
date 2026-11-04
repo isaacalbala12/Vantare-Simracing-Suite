@@ -1,6 +1,8 @@
 import {
   drainMailErasures,
   type ErasureDeps,
+  type MailRpc,
+  mailRpc,
 } from "../_shared/mail-erasure.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import { isUuid } from "../_shared/request.ts";
@@ -20,6 +22,9 @@ export const templates = ["news", "offer", "launch"];
 type Obj = Record<string, unknown>;
 export type MailRun = (action: string, params: Obj) => Promise<Obj>;
 export type MailDeps = {
+  actor?: string;
+  requestId?: string;
+  rpc?: MailRpc;
   cleanup?: ErasureDeps;
   fetch?: typeof fetch;
   env?: (key: string) => string | undefined;
@@ -154,26 +159,73 @@ export async function executeMail(
   const enabled = (name: string) => {
     if (env(name) !== "true") throw new NativeError(503, "mail_disabled");
   };
+  const requestId = deps.requestId ?? crypto.randomUUID();
+  type SyncEffect = { kind: string; contact: string; lease: string };
   async function external(
     url: string,
     headers: Record<string, string>,
     body: Obj,
     timeout = 4000,
     method = "POST",
+    effect?: SyncEffect,
   ): Promise<Obj> {
-    const response = await send(url, {
-      method,
-      headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify(body),
-      redirect: "error",
-      signal: AbortSignal.timeout(timeout),
-    });
-    if (!response.ok) throw new NativeError(503, "mail_provider_unavailable");
-    const text = await response.text();
-    if (text.length > 100000) {
-      throw new NativeError(503, "mail_provider_unavailable");
+    const effectId = crypto.randomUUID();
+    const record = async (outcome: string, status: number | null) => {
+      if (!effect) return;
+      try {
+        if (!deps.actor) throw new Error("missing actor");
+        if (
+          await (deps.rpc ?? mailRpc)("native_admin_record_mail_sync", {
+            p_actor: deps.actor,
+            p_request: requestId,
+            p_effect: effectId,
+            p_kind: effect.kind,
+            p_contact: effect.contact,
+            p_lease: effect.lease,
+            p_outcome: outcome,
+            p_provider_status: status,
+          }) === true
+        ) return;
+      } catch { /* Never expose identity, SQL or provider details. */ }
+      throw new NativeError(503, "mail_sync_audit_unavailable");
+    };
+    await record("started", null);
+    let status: number | null = null;
+    let result: Obj = {};
+    let failure: unknown;
+    let providerFailed = false;
+    try {
+      const response = await send(url, {
+        method,
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(body),
+        redirect: "error",
+        signal: AbortSignal.timeout(timeout),
+      });
+      status = response.status;
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new NativeError(503, "mail_provider_unavailable");
+      }
+      const text = await response.text();
+      if (text.length > 100000) {
+        throw new NativeError(503, "mail_provider_unavailable");
+      }
+      result = text ? JSON.parse(text) as Obj : {};
+    } catch (error) {
+      providerFailed = true;
+      failure = error;
     }
-    return text ? JSON.parse(text) as Obj : {};
+    await record(
+      !providerFailed
+        ? "succeeded"
+        : [401, 403, 422].includes(status ?? 0)
+        ? "failed"
+        : "unknown",
+      status,
+    );
+    if (providerFailed) throw failure;
+    return result;
   }
   const brevo = (path: string, body: Obj) =>
     external(`https://api.brevo.com/v3/${path}`, {
@@ -252,11 +304,24 @@ export async function executeMail(
       if (claim.allowed !== true) continue;
       const selected = (claim.groups as string[] | null) ?? [];
       // Exact membership: remove stale groups and suppress any contact now ineligible.
-      await brevo("contacts", {
-        email: c.email,
-        updateEnabled: true,
-        emailBlacklisted: true,
-      });
+      await external(
+        "https://api.brevo.com/v3/contacts",
+        {
+          "api-key": require("BREVO_API_KEY"),
+        },
+        {
+          email: c.email,
+          updateEnabled: true,
+          emailBlacklisted: true,
+        },
+        4000,
+        "POST",
+        {
+          kind: "brevo_contact_upsert",
+          contact: c.id,
+          lease: String(claim.lease),
+        },
+      );
       await external(
         `https://api.brevo.com/v3/contacts/${encodeURIComponent(c.email)}`,
         { "api-key": require("BREVO_API_KEY") },
@@ -269,6 +334,11 @@ export async function executeMail(
         },
         4000,
         "PUT",
+        {
+          kind: "brevo_contact_update",
+          contact: c.id,
+          lease: String(claim.lease),
+        },
       );
       await run("mail_sync_ack", {
         email: c.email,

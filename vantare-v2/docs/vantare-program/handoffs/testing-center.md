@@ -1082,7 +1082,7 @@ retira las doce tablas exclusivas del informe y el archivo si están vacíos;
 conserva la rama `technical_issues`/`agent_jobs` y deja Linear/outbox inertes.
 La misma migración elimina del borrado Clerk el parche del archivo y las
 lecturas de capturas, y elimina del resolver Storage la lectura de capturas.
-Retira diez RPC del informe antiguo; el Hub solo conserva código de subida
+Retira diez RPC del informe antiguo y ocho funciones huérfanas; el Hub conserva código de subida
 sin llamador, desactivado por `SCREENSHOTS_AVAILABLE=false`, que el paso 6b
 debe sustituir por el contrato v2 antes de activar capturas. El `.down.sql`
 recrea el esquema vacío y las funciones anteriores. La consulta
@@ -1090,15 +1090,14 @@ previa y el procedimiento para un archivo no vacío están en el runbook; la
 purga requiere una decisión explícita de Isaac.
 
 Entrega 7b final: [PR draft #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949)
-contra `nightly@69827ca12`, rama
+contra `nightly@df5ab7655`, rama
 `vantareapp/isa-1896-paso7b4-retirada-legacy`, HEAD en el PR y checks del último push.
 PostgreSQL local: harness histórico LF 134 rutas/795 comprobaciones PASS;
-esquema final LF y CRLF, 9 casos RLS/Storage, guard de archivo, rollback
+esquema final LF y CRLF, 18 casos RLS/Storage y escrituras, guard de archivo, rollback
 exacto y reaplicación PASS. `py_compile` y diff check PASS. CI comercial LF/CRLF PASS en PostgreSQL 17 (run 41813107183).
-Medida frente a nightly: producción SQL +278/−0; rollback SQL +2717/−0;
-tests y runner +261/−4; docs +80/−15; CI +12/−0. Sin despliegue,
+Medida de producción, rollback, tests, docs y CI actualizada en el PR. Sin despliegue,
 llamadas a producción, merge ni release. El siguiente trabajo es la Fase A
-del paso 12, con ADR 0106 antes del lint y del generador de esquema.
+del paso 12: la ADR 0106 ya está integrada; siguen el lint y el generador.
 La CI inicial detectó que el snapshot usaba `pg_dump` 16 contra PostgreSQL 17; el siguiente intento identificó cuatro triggers cuya cláusula `UNION` cambiaba de orden textual en el rollback. El `.down.sql` restaura ahora esas definiciones exactas. El replay histórico y el cierre final, incluido el snapshot exacto tras rollback, pasan en LF y CRLF en la CI de PostgreSQL 17.
 
 Review de seguridad de #1949: el catálogo previo reveló 24 triggers de tablas

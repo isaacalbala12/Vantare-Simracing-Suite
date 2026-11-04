@@ -248,6 +248,11 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
+   archive_stem='20261104180000_isa_1896_legacy_archive'
+   archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
+                    and not (args.testing_identity or args.pilot_profile or args.b01))
+   if archive_fixture:
+    run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.before.sql')
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -268,6 +273,17 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if archive_fixture:
+    def archive_check(name):
+     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
+     (OUT/(name+'.log')).write_text(result)
+     if 'not ok ' in result or '# Looks like' in result:
+      raise RuntimeError(name+' failed')
+    archive_check('testing_center_legacy_archive.test.sql')
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+    archive_check('testing_center_legacy_archive.rollback.test.sql')
+    run('psql',*conn,'-f',migration_source)
+    archive_check('testing_center_legacy_archive.test.sql')
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   role_contract=run('psql',*conn,'-c',"""

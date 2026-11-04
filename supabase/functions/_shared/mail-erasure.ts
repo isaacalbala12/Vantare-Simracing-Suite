@@ -4,18 +4,12 @@ export type MailRpc = (
   name: string,
   args: Record<string, unknown>,
 ) => Promise<unknown>;
-export type ErasureAuditEvent = Readonly<{
-  job_id: string;
-  outcome: "started" | "succeeded" | "failed" | "unknown";
-  provider_status?: number;
-}>;
 export type ErasureDeps = {
   env?: (key: string) => string | undefined;
   fetch?: typeof fetch;
   rpc?: MailRpc;
-  // Optional until an authorized caller supplies its durable journal.
-  // No email, provider URL, lease or exception is exposed to the recorder.
-  audit?: (event: ErasureAuditEvent) => Promise<boolean>;
+  actor?: string;
+  requestId?: string;
 };
 export async function mailRpc(
   name: string,
@@ -43,16 +37,7 @@ export async function drainMailErasures(
 ): Promise<{ processed: number }> {
   const env = deps.env ?? Deno.env.get;
   const rpc = deps.rpc ?? mailRpc;
-  const record = deps.audit;
-  const audit = async (event: ErasureAuditEvent) => {
-    if (!record) return;
-    try {
-      if (await record(event) === true) return;
-    } catch {
-      // A lost journal ACK must not expose provider/SQL details or continue.
-    }
-    throw new NativeError(503, "mail_cleanup_unconfirmed");
-  };
+  const requestId = deps.requestId ?? crypto.randomUUID();
   await rpc("mail_erasure_expire", {});
   if (env("MARKETING_CLEANUP_ENABLED") !== "true" || !env("BREVO_API_KEY")) {
     throw new NativeError(503, "mail_cleanup_disabled");
@@ -65,7 +50,27 @@ export async function drainMailErasures(
     };
     if (!result.job) break;
     const job = result.job;
-    await audit({ job_id: job.id, outcome: "started" });
+    const effectId = crypto.randomUUID();
+    const record = async (
+      outcome: "started" | "succeeded" | "failed" | "unknown",
+      providerStatus: number | null = null,
+    ) => {
+      try {
+        if (
+          await rpc("native_admin_record_mail_erasure", {
+            p_job: job.id,
+            p_lease: job.lease,
+            p_request: requestId,
+            p_effect: effectId,
+            p_outcome: outcome,
+            p_provider_status: providerStatus,
+            p_actor: deps.actor ?? null,
+          }) === true
+        ) return;
+      } catch { /* Never expose SQL/provider details. */ }
+      throw new NativeError(503, "mail_cleanup_unconfirmed");
+    };
+    await record("started");
     let status = 0;
     try {
       const response = await (deps.fetch ?? fetch)(
@@ -84,16 +89,14 @@ export async function drainMailErasures(
     } catch {
       /* Transport outcome is retried safely with DELETE, never logged. */
     }
-    await audit({
-      job_id: job.id,
-      // Match the existing SQL queue ACK: only 204/404 complete erasure.
-      outcome: [204, 404].includes(status)
+    await record(
+      [204, 404].includes(status)
         ? "succeeded"
         : [401, 403, 422].includes(status)
         ? "failed"
         : "unknown",
-      ...(status > 0 ? { provider_status: status } : {}),
-    });
+      status > 0 ? status : null,
+    );
     const ack = await rpc("mail_erasure_finish", {
       p_id: job.id,
       p_lease: job.lease,

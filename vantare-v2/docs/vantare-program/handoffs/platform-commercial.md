@@ -8122,7 +8122,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Queda sustituida cualquier suposición histórica de base vacía en runbooks.
 - Autorizado tocar solo _shared/mail-erasure.ts y sus tests; alcance de integración por aclarar.
 
-## VANTA-132 · Preparación acotada de auditoría Brevo (2026-11-04)
+## VANTA-132 · Preparación Brevo histórica, sustituida por integración obligatoria abajo (2026-11-04)
 
 - El orquestador autoriza _shared/mail-erasure.ts y sus tests; VANTA-131 no
   trabaja en _shared. No se modifica native-auth ni clerk-webhook. Código
@@ -8155,3 +8155,43 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Rebase final sobre nightly 937e55afd231826cabdd360b8a89520b6a430073, con #1941
   integrado y sus seis checks verdes; conflicto solo de handoff, ambas evidencias
   conservadas y fuente del hook idéntica. Gate final Deno125 PASS.
+
+## VANTA-132 · #1942 Brevo conectado al journal existente (2026-11-04)
+
+- Sustituye el hook opcional de la sección anterior, rechazado por carecer de
+  llamador. Mismo PR draft #1942: worker `mail-cleanup` y admin usan recorder
+  obligatorio dentro de `drainMailErasures`; sin auditoría no hay DELETE.
+  Admin pasa actor/request verificados; mantenimiento acredita job y lease
+  vigente. Actor técnico nil UUID reservado, sin crear perfil/owner; guard de
+  colisión en perfiles y RPC solo service_role. No se toca native-auth/webhook
+  ni otro fichero _shared fuera de mail-erasure.ts y sus tests autorizados.
+- `admin_effects` existente: started antes de DELETE y resultado antes del ACK
+  de cola; 204/404 succeeded, 401/403/422 failed, resto/transporte unknown.
+  Misma vista pending y reconcile owner; hash de job+lease, sin correo/URL ni
+  lease en claro. Resultado coincide con intención aun tras caducar actor/lease;
+  reconciliado no se reabre. Función SQL nueva completa, sin parchear catálogo.
+- Migración/rollback 20261104095000. Producción tiene datos desde octubre:
+  SQL primero y ambas Edge después, solo Isaac. Lock_timeout5s y guard de ACL.
+  Down exacto de checks/RPC con dos eventos antiguos existentes preservados;
+  con eventos Brevo aborta atómicamente, conserva schema/evidencia y requiere
+  acordar retención/migración antes de deshacer schema. Nunca borrar journal ni
+  resetear producción. Detener/revertir llamadores primero, reservado a Isaac.
+- Caracterización E2E comprometida 65cdbc1c6 antes de producto: RED por ausencia
+  de journal; otros dos casos inicialmente fallaron además por email duplicado
+  de fixture (corregida). Otra ejecución SQL detectó lectura de schema private
+  por servicio: corregido solo contexto de fixture, sin ampliar permisos.
+  Fallos preservados en evidencia isa-1910-paso5c y /tmp/brevo-journal-*.
+- GREEN Deno2.7.13: 129 consumidores, 17 del worker; check/lint/fmt y Python/diff
+  PASS. PostgreSQL16.15 desechable: cadena completa LF, carreras previas y
+  134 rutas/795 checks de barreras PASS. Gate Brevo LF/CRLF: 24 SQL +5 E2E,
+  rollback/reaplicación sobre datos antiguos y rechazo de rollback retenido PASS.
+  E2E usa las dos rutas reales y SQL real con proveedor falso: orden durable,
+  pending/reconcile, recorder false y lease SQL inválido impiden DELETE,
+  actor admin/404 explícito y ausencia de correo/URL. Instancias detenidas.
+- Docker marketing local no disponible; whitelist de su adaptador SQL actualizada
+  para nuevo recorder; pendiente CI. Rust/lifecycle/telemetría omitidos porque
+  no cambia native. Sin producción, secretos, Store real, billing/licencias,
+  despliegue, merge propio ni release. Archivo/tablas/FK legacy R6 conservados.
+- VANTA-132 En curso: auditoría SMTP/contactos y pasos6–10 pendientes; paso11
+  sigue exclusivamente dentro de R6/12. PR #1942 continúa draft a nightly;
+  SHA y métricas finales se registran en la entrega del PR y la issue.

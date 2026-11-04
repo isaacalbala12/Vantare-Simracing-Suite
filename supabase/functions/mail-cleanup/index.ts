@@ -8,8 +8,15 @@ export async function handleMailCleanup(
   request: Request,
   deps: ErasureDeps = {},
 ): Promise<Response> {
+  const requestId = crypto.randomUUID();
   const reply = (status: number, body: unknown) =>
-    Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+    Response.json(body, {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Request-ID": requestId,
+      },
+    });
   if (request.method !== "POST") return reply(405, { ok: false });
   const secret = (deps.env ?? Deno.env.get)("MAIL_CLEANUP_KEY");
   if (!secret || secret.length < 32) return reply(503, { ok: false });
@@ -25,7 +32,10 @@ export async function handleMailCleanup(
     Object.keys(parsed.value).length !== 1
   ) return reply(400, { ok: false });
   try {
-    return reply(200, { ok: true, ...await drainMailErasures(deps) });
+    return reply(200, {
+      ok: true,
+      ...await drainMailErasures({ ...deps, requestId }),
+    });
   } catch {
     return reply(503, { ok: false });
   }

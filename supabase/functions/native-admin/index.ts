@@ -599,7 +599,10 @@ export async function handleNativeAdmin(
           return objectValue(data);
         }))(actor, command, arguments_, environment);
       return respond({
-        ...await executeMail(action, params, runMail, deps.mail),
+        ...await executeMail(action, params, runMail, {
+          ...deps.mail,
+          cleanup: { ...deps.mail?.cleanup, actor, requestId },
+        }),
         ok: true,
       });
     }

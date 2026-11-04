@@ -1,44 +1,27 @@
-import { drainMailErasures } from "./mail-erasure.ts";
-import { handleMailCleanup } from "../mail-cleanup/index.ts";
-import { assert } from "../native-account-authorize/testdata/auth.ts";
 import { NativeError } from "./native-auth.ts";
-const env = (key: string) =>
-  ({
-    MARKETING_CLEANUP_ENABLED: "true",
-    BREVO_API_KEY: "local-fake",
-    MAIL_CLEANUP_KEY: "local-cleanup-key-at-least-32-characters",
-  })[key as "BREVO_API_KEY"];
-
-type AuditEvent = {
-  job_id: string;
-  outcome: string;
-  provider_status?: number;
-};
-function auditedFixture(status = 204) {
-  const job = "19105000-0000-4000-8000-000000000001";
-  const trace: string[] = [];
-  const events: AuditEvent[] = [];
+function journalFixture(status = 204) {
   let claimed = false;
+  const trace: string[] = [];
+  const records: Record<string, unknown>[] = [];
   const options = {
     env,
-    audit: async (event: AuditEvent) => {
-      await Promise.resolve();
-      events.push(event);
-      trace.push(event.outcome);
-      return true;
-    },
-    rpc: (name: string, args: Record<string, unknown>) => {
+    rpc: (name: string, args: Record<string, unknown>): Promise<unknown> => {
       if (name === "mail_erasure_expire") return Promise.resolve(0);
       if (name === "mail_erasure_claim") {
         if (claimed) return Promise.resolve({ job: null });
         claimed = true;
         return Promise.resolve({
           job: {
-            id: job,
-            lease: "private-lease",
-            email: "old@example.invalid",
+            id: "19105000-0000-4000-8000-000000000001",
+            lease: "19105000-0000-4000-8000-000000000002",
+            email: "private@example.invalid",
           },
         });
+      }
+      if (name === "native_admin_record_mail_erasure") {
+        trace.push(String(args.p_outcome));
+        records.push(args);
+        return Promise.resolve(true);
       }
       assert(name === "mail_erasure_finish" && args.p_http_status === status);
       trace.push("finish");
@@ -46,58 +29,56 @@ function auditedFixture(status = 204) {
     },
     fetch: () => {
       trace.push("http");
-      if (status === 0) {
-        throw new Error("private transport old@example.invalid");
-      }
+      if (!status) throw new Error("private@example.invalid transport");
       return Promise.resolve(new Response(null, { status }));
     },
   };
-  return { options, trace, events, job };
+  return { options, trace, records };
 }
-Deno.test("optional audit commits intent and provider result before queue ACK, without email", async () => {
+Deno.test("mandatory real recorder RPC precedes DELETE and SQL ACK, without email or URL", async () => {
   for (const status of [204, 404, 401, 403, 422, 503, 200, 0]) {
-    const f = auditedFixture(status);
+    const f = journalFixture(status);
+    await drainMailErasures(f.options);
     const outcome = [204, 404].includes(status)
       ? "succeeded"
       : [401, 403, 422].includes(status)
       ? "failed"
       : "unknown";
-    const result = await drainMailErasures(f.options);
-    assert(result.processed === 1);
     assert(
       JSON.stringify(f.trace) ===
         JSON.stringify(["started", "http", outcome, "finish"]),
     );
     assert(
-      JSON.stringify(f.events) === JSON.stringify([
-        { job_id: f.job, outcome: "started" },
-        {
-          job_id: f.job,
-          outcome,
-          ...(status ? { provider_status: status } : {}),
-        },
-      ]),
+      f.records.length === 2 &&
+        f.records[0].p_effect === f.records[1].p_effect &&
+        f.records[0].p_request === f.records[1].p_request &&
+        f.records[0].p_actor === null &&
+        f.records[1].p_provider_status === (status || null),
     );
     assert(
-      !JSON.stringify(f.events).includes("old@example.invalid") &&
-        !JSON.stringify(f.events).includes("private-lease"),
+      !JSON.stringify(f.records).includes("private@") &&
+        !JSON.stringify(f.records).includes("https://"),
     );
   }
 });
 for (const phase of ["started", "terminal"]) {
-  for (const throws of [false, true]) {
+  for (const reply of [false, null, undefined, "true", "throw"]) {
     Deno.test(
-      "audit failure is closed and sanitized: " + phase + "/" + throws,
+      "unconfirmed mandatory recorder blocks at " + phase + "/" + String(reply),
       async () => {
-        const f = auditedFixture();
-        f.options.audit = (event) => {
-          f.events.push(event);
-          f.trace.push(event.outcome);
-          if ((event.outcome === "started") === (phase === "started")) {
-            if (throws) throw new Error("private recorder old@example.invalid");
-            return Promise.resolve(false);
+        const f = journalFixture();
+        const original = f.options.rpc;
+        f.options.rpc = (name, args) => {
+          if (
+            name === "native_admin_record_mail_erasure" &&
+            ((args.p_outcome === "started") === (phase === "started"))
+          ) {
+            if (reply === "throw") {
+              throw new Error("private@example.invalid SQL");
+            }
+            return Promise.resolve(reply);
           }
-          return Promise.resolve(true);
+          return original(name, args);
         };
         let error: unknown;
         try {
@@ -106,18 +87,18 @@ for (const phase of ["started", "terminal"]) {
           error = caught;
         }
         assert(
-          error instanceof NativeError && error.status === 503 &&
+          error instanceof NativeError &&
             error.code === "mail_cleanup_unconfirmed" &&
-            !error.message.includes("old@example.invalid"),
+            !error.message.includes("private@") &&
+            !f.trace.includes("finish") &&
+            f.trace.includes("http") === (phase === "terminal"),
         );
-        assert(!f.trace.includes("finish"));
-        assert(f.trace.includes("http") === (phase === "terminal"));
       },
     );
   }
 }
-Deno.test("SQL ACK failure preserves audit of the already accepted DELETE", async () => {
-  const f = auditedFixture(404);
+Deno.test("SQL ACK failure preserves recorded provider result", async () => {
+  const f = journalFixture(404);
   const original = f.options.rpc;
   f.options.rpc = (name, args) =>
     name === "mail_erasure_finish"
@@ -130,59 +111,20 @@ Deno.test("SQL ACK failure preserves audit of the already accepted DELETE", asyn
     error = caught;
   }
   assert(
-    error instanceof NativeError && error.code === "mail_cleanup_unconfirmed",
-  );
-  assert(
-    JSON.stringify(f.trace) === '["started","http","succeeded"]' &&
-      f.events[1].provider_status === 404,
+    error instanceof NativeError &&
+      JSON.stringify(f.trace) === '["started","http","succeeded"]' &&
+      f.records[1].p_provider_status === 404,
   );
 });
-Deno.test("audit requires a real boolean ACK before HTTP", async () => {
-  for (const reply of [null, undefined, "true"]) {
-    const f = auditedFixture();
-    f.options.audit = (() =>
-      Promise.resolve(reply)) as unknown as typeof f.options.audit;
-    let error: unknown;
-    try {
-      await drainMailErasures(f.options);
-    } catch (caught) {
-      error = caught;
-    }
-    assert(
-      error instanceof NativeError &&
-        error.code === "mail_cleanup_unconfirmed" &&
-        !f.trace.includes("http") && !f.trace.includes("finish"),
-    );
-  }
-});
-Deno.test("invalid queue credentials never invoke audit, SQL or provider", async () => {
-  for (const token of ["opaque-hub-token", "garbage", "expired-owner-token"]) {
-    let calls = 0;
-    const response = await handleMailCleanup(
-      new Request("https://project.invalid/", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token },
-        body: '{"version":1}',
-      }),
-      {
-        env,
-        audit: () => {
-          calls++;
-          return Promise.resolve(true);
-        },
-        rpc: () => {
-          calls++;
-          return Promise.resolve(null);
-        },
-        fetch: () => {
-          calls++;
-          return Promise.resolve(new Response(null, { status: 204 }));
-        },
-      },
-    );
-    assert(response.status === 401 && calls === 0);
-  }
-});
+import { drainMailErasures } from "./mail-erasure.ts";
+import { handleMailCleanup } from "../mail-cleanup/index.ts";
+import { assert } from "../native-account-authorize/testdata/auth.ts";
+const env = (key: string) =>
+  ({
+    MARKETING_CLEANUP_ENABLED: "true",
+    BREVO_API_KEY: "local-fake",
+    MAIL_CLEANUP_KEY: "local-cleanup-key-at-least-32-characters",
+  })[key as "BREVO_API_KEY"];
 Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never sends", async () => {
   for (const status of [0, 401, 503, 204, 404]) {
     let claimed = false;
@@ -202,6 +144,9 @@ Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never 
               email: "old@example.invalid",
             },
           });
+        }
+        if (name === "native_admin_record_mail_erasure") {
+          return Promise.resolve(true);
         }
         assert(
           name === "mail_erasure_finish" && args.p_http_status === status &&

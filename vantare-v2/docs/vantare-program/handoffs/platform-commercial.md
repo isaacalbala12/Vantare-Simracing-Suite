@@ -8773,3 +8773,33 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Paso10b local: tres RED SQL reproducen resumen completo, vínculo al objetivo
   borrado y copia de su account_id. Flujo real de lápida anonimiza perfil;
   auditoría conserva lo anterior. PostgreSQL desechable parado, sin purga.
+
+## VANTA-132 · paso 10b, minimización y retención (2026-11-04)
+
+- Decisión del orquestador: retención provisional365 días, único parámetro SQL
+  private.admin_audit_policy.closed_retention_days. Isaac puede cambiarlo a90
+  mediante UPDATE; no se edita la historia. Solo filas cerradas; pending/unknown
+  se conservan hasta reconciliar y el cierre reciente reinicia el plazo.
+- Tres RED de b533a22ed →GREEN: no se duplica el resumen ni account_id y el
+  borrado elimina el enlace al objetivo. Migración sanea datos anteriores y
+  protege entradas nuevas. Prueba con históricos no vacíos, incluido ya borrado.
+- Vista común sobre journals existentes usada por la purga, sin segunda copia.
+  Triggers/funciones completos, owner/grants/search_path y down exacto. No se
+  modifica apply_clerk_user_event, billing, licencias, _shared ni crates Rust.
+- Gates LF/CRLF: casos nuevos y cinco suites activas de efectos/borrado/correo;
+  pg_dump completo antes/down y ACL/triggers idénticos, reaplicación PASS.
+  El corpus histórico usa su down real. Instancias PostgreSQL detenidas.
+- P1 local NO publicado detectado: contexto ausente devolvía NULL y podía saltar
+  triggers. Dos RED antes; coalesce(false) y sesión nueva GREEN. Fallos previos
+  de variable ambigua y fixture global de identidades también documentados.
+- P3: recorders false/null/objeto/string/throw; sync falla en succeeded/failed/
+  unknown sin ACK. SMTP requiere actor antes del claim/resultado. Deno273 PASS;
+  check/lint/fmt/Python/diff PASS. Compilación/telemetría/lifecycle omitidos.
+- Despliegue solo Isaac: cadena anterior 7b1→7b2→#1924→owner→#1939→#1941→
+  #1942→#1944→#1946→SMTP/#1947→10b; SQL antes de Edge. Clerk se pausa en7b2.
+  Previo: rol postgres/BYPASSRLS, conteos de admin_audit_log/mail_audit/pending;
+  NO se presume producción vacía. NOWAIT aborta sin cambios si hay actividad.
+  No hay purga durante el despliegue ni cron nuevo: invocación explícita con
+  owner vigente. El down no recupera PII ni evidencia ya purgada.
+- Sigue lectura owner en la app para cerrar10; luego6 y sync_payments explícito
+  junto con UI/lecturas puras. Paso11 exclusivamente R6/12. Sin deploy/merge/SaaS.

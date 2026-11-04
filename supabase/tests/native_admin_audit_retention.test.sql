@@ -7,6 +7,12 @@ insert into private.mail_audit(id,action,target,detail) values
  ('19101010-0000-4000-8000-000000000024','consent','contact','{}');
 select throws_ok($$update private.mail_audit set action='tampered' where id='19101010-0000-4000-8000-000000000024'$$,
  'P0001','operational_access_audit_is_append_only','fresh session cannot bypass immutability with a missing GUC');
+insert into public.profiles(id) values('19101010-0000-4000-8000-000000000003');
+select * from public.operational_access_set('19101010-0000-4000-8000-000000000003','owner','grant','test:audit','Expired retention fixture','audit-expired',null);
+update public.operational_access_assignments set granted_at=now()-interval '2 days',expires_at=now()-interval '1 day'
+ where user_id='19101010-0000-4000-8000-000000000003';
+select throws_ok($$select public.native_admin_prune_audit('19101010-0000-4000-8000-000000000003')$$,
+ '42501','native_admin_forbidden','expired owner cannot purge');
 select is((select closed_retention_days from private.admin_audit_policy where singleton),365,'single provisional default is 365 days');
 insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,occurred_at)
 select ('19101010-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,outcome,
@@ -50,6 +56,11 @@ select public.native_admin_prune_audit('19101010-0000-4000-8000-000000000001');
 select is((select count(*)::int from private.admin_effects where effect_id='19101010-0000-4000-8000-000000000016'),0,'Isaac can lower only the SQL parameter to 90');
 select is((select count(*)::int from private.admin_pending_effects where effect_id in(
  '19101010-0000-4000-8000-000000000013','19101010-0000-4000-8000-000000000014')),2,'policy change still preserves pending evidence');
+select lives_ok($$select public.native_admin_reconcile_effect('19101010-0000-4000-8000-000000000001',
+ '19101010-0000-4000-8000-000000000013')$$,'owner can close an old unknown');
+select public.native_admin_prune_audit('19101010-0000-4000-8000-000000000001');
+select is((select count(*)::int from private.admin_effects where effect_id='19101010-0000-4000-8000-000000000013'),3,
+ 'new reconciliation starts its own retention window');
 select ok(not private.admin_audit_maintenance(),'maintenance capability does not leak to caller');
 select throws_ok($$delete from private.admin_effects where effect_id='19101010-0000-4000-8000-000000000014'$$,
  'P0001','operational_access_audit_is_append_only','normal append-only barrier is restored after maintenance');

@@ -715,3 +715,54 @@ solo `true` confirma la escritura. Una excepción o cualquier otro valor impide
 el efecto o su ACK y conserva el código propio del camino. SMTP y sync comparten
 el mapeo de metadatos; no se cambian RPC, estados, orden ni permisos. La retención
 y la minimización de los resúmenes SQL siguen en el siguiente corte del paso 10.
+
+## Auditoría mínima y retención provisional · paso 10b
+
+`20261104145436_isa_1910_admin_audit_minimal` minimiza también las filas que ya
+existan: conserva indicadores de tester/módulos, estados y revisiones, sin copiar
+el resumen de la cuenta, pagos, grants completos, correos, nombres o notas libres.
+Los objetivos se seudonimizan; al marcar la identidad borrada se retira el vínculo
+al UUID en admin/correo. La operación real de borrado y sus barreras se conservan.
+No hay copia de seguridad de esos datos personales dentro del journal.
+
+`private.admin_audit` es la lectura común de los tres journals existentes;
+la purga la consume sin crear un segundo almacén. Sus filas SQL/correo describen
+transacciones confirmadas; las dudas externas están en los efectos. Un `started`
+sin cierre o un `unknown` sigue pendiente hasta reconciliarlo. El TTL de un efecto
+cerrado se cuenta desde su último evento, incluida una reconciliación posterior.
+Actor y hashes siguen siendo datos seudonimizados, no anónimos.
+
+Único parámetro de retención, **365 días por defecto y provisional**:
+
+```sql
+select closed_retention_days from private.admin_audit_policy where singleton;
+-- Solo Isaac: bajar a 90 sin editar la cadena histórica ni otros TTL.
+update private.admin_audit_policy set closed_retention_days=90 where singleton;
+```
+
+No se purgan filas al desplegar, al leer ni con un cron creado por este cambio.
+Isaac puede ejecutar/programar `native_admin_prune_audit('<OWNER_UUID>'::uuid)`.
+Es service-only y vuelve a comprobar owner vigente; el servicio confía en el actor
+que recibe del puente autenticado. El parámetro no se acepta desde el cliente.
+Se conservan todos los pendientes, sin importar su edad; se toma el lock de cada
+intención antes de eliminar su grupo cerrado y se omiten los grupos bloqueados.
+Purga y redacción se serializan por transacción, sin un bloqueo persistente.
+
+Despliegue por Isaac: después de las migraciones admin/Brevo/SMTP anteriores.
+Primero SQL, después las Edge que correspondan. Producción tiene datos: comprobar
+rol `postgres` con BYPASSRLS/superuser y contar filas/pending antes del cambio:
+
+```sql
+select current_user,rolsuper,rolbypassrls from pg_roles where rolname=current_user;
+select count(*) from public.admin_audit_log;
+select count(*) from private.mail_audit;
+select count(*) from private.admin_pending_effects;
+```
+
+El cambio toma todos los locks DDL con NOWAIT: si no puede, aborta antes de editar;
+Isaac lo reintenta en una ventana sin lectores/escritores, no fuerza sesiones.
+El down restaura triggers, esquema y ACL exactos; no reconstruye PII minimizada
+ni evidencia ya purgada. Revertir no recupera datos borrados. La rutina de
+mantenimiento no deja su capacidad de escritura activada en el llamador.
+SMTP exige `deps.actor` antes del RPC de claim y de confirmar sus resultados.
+La lectura desde la app por el owner sigue en el siguiente corte del paso 10.

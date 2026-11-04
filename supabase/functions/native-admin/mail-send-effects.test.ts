@@ -265,3 +265,32 @@ for (const value of [false, null, {}, "true", "throw", "reject"]) {
     },
   );
 }
+
+Deno.test("SMTP requires actor before the claim RPC", async () => {
+  const f = fixture();
+  let calls = 0;
+  const deps: MailDeps = {
+    ...f.deps,
+    actor: undefined,
+    rpc: () => {
+      calls++;
+      return Promise.resolve({ delivery: null });
+    },
+  };
+  let error: unknown;
+  try {
+    await executeMail(
+      "mail_send_batch",
+      { campaign_id: id, revision: 1 },
+      f.run,
+      deps,
+    );
+  } catch (caught) {
+    error = caught;
+  }
+  assert(
+    error instanceof NativeError &&
+      error.code === "mail_send_audit_unavailable",
+  );
+  assert(calls === 0 && JSON.stringify(f.trace) === "[]");
+});

@@ -8689,7 +8689,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
 
 ## VANTA-132 · paso 8a, borrado compartido (2026-11-04)
 
-- Base nightlyc86d59e8c (#1947 integrado); rama/worktree isa-1910-paso8-borrado.
+- PR [#1952](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1952), draft a nightlyc86d59e8c; rama/worktree propios.
   Reserva autorizada: solo account-erasure.ts y clerk-webhook en la costura.
 - Un limpiador compartido para abortos/objetos y un comprobador de errores RPC.
   Admin no importa el entrypoint Clerk; su lectura final reutiliza run. Firmado

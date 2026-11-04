@@ -21,7 +21,11 @@ if(-not $rejected -or $clock.Elapsed.TotalSeconds -gt 5){throw 'Plazo de --versi
 $inventory=Get-Content (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
 $bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)})
 Assert-PublicBins $bins $inventory
-$rejected=$false;try{Assert-PublicBins ($bins+@('surprise')) $inventory}catch{$rejected=$true}
+$qaProbe='root-launch-probe'
+$hubManifest=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../hub/Cargo.toml') -Raw
+if($hubManifest -notmatch '(?s)\[\[bin\]\]\s*name\s*=\s*"root-launch-probe"\s*path\s*=\s*"tests/support/root_launch_probe.rs"\s*required-features\s*=\s*\["installer-qa"\]'){throw 'Probe sin feature QA obligatoria'}
+Assert-PublicBins ($bins+@($qaProbe)) $inventory
+$rejected=$false;try{Assert-PublicBins ($bins+@($qaProbe,'surprise')) $inventory}catch{$rejected=$true}
 if(-not $rejected){throw 'Binario desconocido aceptado'}
 $payload=Join-Path $root 'payload'
 foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json')+@($inventory.executables|ForEach-Object {"bin/$_";"bin/$_.sha256"})+@($inventory.resources|ForEach-Object {"bin/fixtures/$_"})){
@@ -30,7 +34,7 @@ foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json')+@($
     [IO.File]::WriteAllText($file,'x')
 }
 Assert-PublicInventory $payload $inventory
-foreach($extra in @('bin/unknown.exe','bin/fixtures/telemetry-real/unwanted.json')){
+foreach($extra in @('bin/root-launch-probe.exe','bin/unknown.exe','bin/fixtures/telemetry-real/unwanted.json')){
     $file=Join-Path $payload $extra
     [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file))|Out-Null
     [IO.File]::WriteAllText($file,'x')

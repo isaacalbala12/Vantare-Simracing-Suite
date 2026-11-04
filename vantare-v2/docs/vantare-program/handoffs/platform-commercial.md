@@ -713,7 +713,12 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Producción tras esa revisión: **11.359/11.360**
   (perímetro 10.221 Rust + 53 Cleanup; fuera 1.085). Las 40 líneas nuevas
   fuera del perímetro cubren canonicalización y redirección segura; el probe
-  de argumentos es fixture de tests. Sin release; siguen pendientes
+  de argumentos es fixture de tests. La CI de #1945 detectó que el inventario
+  de bins incluía ese probe con `installer-qa`: queda clasificado como interno,
+  mientras el paquete conserva exactamente los diez EXE públicos. El gate
+  local `gates.ps1 -Gate distribution` pasó con el paquete release completo;
+  `build-tooling-tests.ps1` comprueba el rechazo del probe en el payload y de
+  cualquier bin público desconocido, y pasó en QA. Sin release; siguen pendientes
   los dos gates manuales de Isaac.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de

@@ -1,5 +1,10 @@
 import { mailContent, validateAction } from "./actions.ts";
-import { executeMail as actualExecuteMail, type MailDeps, type MailRun, renderMail } from "./mail.ts";
+import {
+  executeMail as actualExecuteMail,
+  type MailDeps,
+  type MailRun,
+  renderMail,
+} from "./mail.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import {
   handleUnsubscribe as realUnsubscribe,

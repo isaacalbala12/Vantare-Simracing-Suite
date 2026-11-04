@@ -8671,7 +8671,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
 
 ## VANTA-132 · paso 9, contrato único · review (2026-11-04)
 
-- #1951 rebasado sobre nightly28b1e8fa9 (#1948 integrado); 247 Deno PASS. ACTIONS:
+- #1951 rebasado sobre nightlyc86d59e8c (#1947 integrado); 266 Deno PASS. ACTIONS:
   correo SQL/Edge, syncPayments, enrich, handler y sandbox; sin listas en index.
   `mutation` sustituye kind. Sin reexports/alias/wrapper de validación en mail.
 - Ejemplos generados desde actions.ts; ambos tests leen la fixture. Rust la carga

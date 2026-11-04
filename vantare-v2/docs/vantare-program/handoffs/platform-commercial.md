@@ -8676,7 +8676,6 @@ union all select 'linear_deliveries',outcome::text,count(*)
   `mutation` sustituye kind. Sin reexports/alias/wrapper de validación en mail.
 - Ejemplos generados desde actions.ts; ambos tests leen la fixture. Rust la carga
   una vez y compara variantes/campos Serde, serialización, mutación y enums.
-  Se retira la caracterización redundante. paid_at opcional conserva vista None.
 - Review: 28 PASS/1 RED; después 247 Deno, 45 Nextest, check all-targets,
   Clippy -D warnings y fmt PASS. Compilar.ps1, target/QA propios y cola liberada;
   reintento sin caché PASS. CI detectó import antiguo de locales en mail-consent:
@@ -8684,5 +8683,6 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Replay final admin/Edge, rollback/guards y seis carreras PASS; sin SQL, shared,
   billing/licencias, secretos, servicios reales, merge ni despliegue.
 - VANTA-132 En curso: paso8 autorizado, 6/10 pendientes, 11 en R6/12;
-  native-auth y apply_clerk_user_event reservados. Producción 3715 → 3774 (+59; +323/-264): ejemplos y política de despacho comunes;
+  native-auth y apply_clerk_user_event reservados.
+- Producción 3715 → 3774 (+59; +323/-264): ejemplos y despacho comunes;
   tests +569/-10; docs +37/-0 (antes +74). HEAD y gates finales en PR/issue.

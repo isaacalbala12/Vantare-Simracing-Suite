@@ -1,3 +1,9 @@
+## 2026-11-04 - #1896 / VANTA-131 7b2: revisión de borrado y efectos
+
+- Draft PR #1930 rebasado sobre origin/nightly@39b944d8c, que ya incluye #1925. La migración se mantiene en 20261104014000; #1924 debe tener timestamp posterior. No se cambió SQL admin ni se hizo despliegue.
+- user.deleted borra las filas archivadas de la cuenta y sus dependientes. La migración aborta si hay capturas/lotes de Storage o efectos/jobs pendientes. El rollback cuenta y omite cuentas borradas o sin perfil. Los estados legacy se mapean solo a revisión o terminales; draft, closed, duplicate_linked e incomplete quedan solo en archivo. Los UUID v2 son deterministas.
+- Consulta previa por cada tabla del subárbol, tabla de estados y límites en docs/runbooks/testing-center-legacy-archive.md. PostgreSQL 16 local completo PASS después del rebase: 17 filas de fixture, casos de cuenta borrada, Storage, colas pendientes, hash y JSON alterados, estados sin mapeo y 134 rutas/795 checks de concurrencia. CI del HEAD nuevo pendiente. Sin merge ni release.
+
 ## 2026-11-04 - #1896 / VANTA-131 7b2: archivar, mapear y vaciar legacy
 
 - Draft PR #1930, rama vantareapp/isa-1896-paso7b2-archive desde origin/nightly@076e64047. La migracion 20261104014000 archiva las filas completas de reports y todas las hijas por FK, incluidas las hijas logicas de issues, en private.testing_center_legacy_archive con PK (source_table,source_id), JSONB y SHA-256. Solo el owner de SQL puede leerla; no hay grants API. LOCK sobre padre e hijas en una transaccion.

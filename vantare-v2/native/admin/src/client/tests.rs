@@ -454,3 +454,16 @@ fn mail_draft_and_confirmation_use_owner_contract_over_local_http() {
         assert_eq!(body["version"], 1);
     }
 }
+
+#[test]
+fn admin_contract_fields_characterization() {
+    let contract: serde_json::Value = serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract");
+    let action = Action::RecordCreatorPayout {
+        creator_id: "19106900-0000-4000-8000-000000000001".into(),
+        amount_cents: 100,
+    };
+    let payload=serde_json::to_value(action).expect("serialize");
+    let mut actual:Vec<_>=payload.as_object().expect("object").keys().filter(|key|key.as_str()!="action").map(String::as_str).collect();
+    let mut expected:Vec<_>=contract["actions"]["record_creator_payout"]["fields"].as_array().expect("fields").iter().map(|v|v.as_str().expect("field")).collect();
+    actual.sort_unstable();expected.sort_unstable();assert_eq!(actual,expected,"Rust must expose all current public payout wire fields");
+}

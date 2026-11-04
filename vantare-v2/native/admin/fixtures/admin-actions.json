@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "modules": [
+    "vantare.module.analysis",
+    "vantare.module.calendar",
+    "vantare.module.engineer",
+    "vantare.module.strategy"
+  ],
+  "statuses": [
+    "draft",
+    "submitted",
+    "validated",
+    "duplicate_linked",
+    "incomplete",
+    "closed",
+    "in_review",
+    "rejected",
+    "fixed",
+    "spam"
+  ],
+  "actions": {
+    "search_accounts": {
+      "kind": "read",
+      "fields": [
+        "query",
+        "limit",
+        "cursor"
+      ],
+      "environment": "both"
+    },
+    "get_account": {
+      "kind": "read",
+      "fields": [
+        "account_id"
+      ],
+      "environment": "both"
+    },
+    "set_blocked": {
+      "kind": "destructive",
+      "fields": [
+        "account_id",
+        "blocked",
+        "reason"
+      ],
+      "environment": "sandbox"
+    },
+    "delete_account": {
+      "kind": "destructive",
+      "fields": [
+        "account_id",
+        "confirm_email"
+      ],
+      "environment": "sandbox"
+    },
+    "set_tester": {
+      "kind": "write",
+      "fields": [
+        "account_id",
+        "enabled"
+      ],
+      "environment": "both"
+    },
+    "set_module": {
+      "kind": "write",
+      "fields": [
+        "account_id",
+        "module",
+        "enabled"
+      ],
+      "environment": "both"
+    },
+    "list_creators": {
+      "kind": "read",
+      "fields": [],
+      "environment": "both"
+    },
+    "get_creator": {
+      "kind": "read",
+      "fields": [
+        "creator_id"
+      ],
+      "environment": "both"
+    },
+    "record_creator_payout": {
+      "kind": "write",
+      "fields": [
+        "creator_id",
+        "amount_cents",
+        "paid_at"
+      ],
+      "environment": "both"
+    },
+    "create_creator": {
+      "kind": "write",
+      "fields": [
+        "name",
+        "email",
+        "code"
+      ],
+      "environment": "sandbox"
+    },
+    "get_rollout": {
+      "kind": "read",
+      "fields": [],
+      "environment": "both"
+    },
+    "set_rollout": {
+      "kind": "write",
+      "fields": [
+        "module",
+        "enabled_for_all"
+      ],
+      "environment": "both"
+    },
+    "list_reports": {
+      "kind": "read",
+      "fields": [
+        "status",
+        "limit",
+        "cursor"
+      ],
+      "environment": "both"
+    },
+    "get_report": {
+      "kind": "read",
+      "fields": [
+        "report_id"
+      ],
+      "environment": "both"
+    },
+    "set_report_status": {
+      "kind": "write",
+      "fields": [
+        "report_id",
+        "status",
+        "fixed_in_version",
+        "reason"
+      ],
+      "environment": "both"
+    },
+    "mail_forget_waitlist": {
+      "kind": "destructive",
+      "fields": [
+        "email",
+        "confirm"
+      ],
+      "environment": "both"
+    },
+    "mail_cleanup": {
+      "kind": "destructive",
+      "fields": [],
+      "environment": "both"
+    },
+    "mail_list": {
+      "kind": "read",
+      "fields": [],
+      "environment": "both"
+    },
+    "mail_new": {
+      "kind": "write",
+      "fields": [],
+      "environment": "both"
+    },
+    "mail_get": {
+      "kind": "read",
+      "fields": [
+        "campaign_id"
+      ],
+      "environment": "both"
+    },
+    "mail_save": {
+      "kind": "write",
+      "fields": [
+        "campaign_id",
+        "revision",
+        "name",
+        "template",
+        "target_group",
+        "content"
+      ],
+      "environment": "both"
+    },
+    "mail_approve": {
+      "kind": "bulk",
+      "fields": [
+        "campaign_id",
+        "revision",
+        "confirm"
+      ],
+      "environment": "both"
+    },
+    "mail_send_batch": {
+      "kind": "bulk",
+      "fields": [
+        "campaign_id",
+        "revision"
+      ],
+      "environment": "both"
+    },
+    "mail_draft": {
+      "kind": "write",
+      "fields": [
+        "campaign_id",
+        "revision",
+        "brief",
+        "template"
+      ],
+      "environment": "both"
+    },
+    "mail_sync": {
+      "kind": "bulk",
+      "fields": [
+        "cursor"
+      ],
+      "environment": "both"
+    }
+  }
+}

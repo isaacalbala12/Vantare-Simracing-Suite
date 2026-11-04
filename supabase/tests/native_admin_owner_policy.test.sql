@@ -24,6 +24,7 @@ select lives_ok($$select pg_temp.policy('set_tester','19104400-0000-4000-8000-00
 select lives_ok($$select pg_temp.policy('set_tester','19104400-0000-4000-8000-000000000002','{"enabled":false}')$$,'active owner tester disable remains safe');
 select ok(private.is_owner('19104400-0000-4000-8000-000000000002'),'tester toggle preserves operational owner');
 select is((select count(*)::integer from public.testing_center_memberships where user_id='19104400-0000-4000-8000-000000000002'),0,'tester toggle never creates a second owner authority');
+update public.testing_center_memberships set updated_at=now()-interval '1 day' where user_id='19104400-0000-4000-8000-000000000001';
 create temporary table policy_membership_before as select to_jsonb(m) data from public.testing_center_memberships m where user_id='19104400-0000-4000-8000-000000000001';
 select pg_temp.policy('set_tester','19104400-0000-4000-8000-000000000001','{"enabled":true}');
 select is((select to_jsonb(m) from public.testing_center_memberships m where user_id='19104400-0000-4000-8000-000000000001'),(select data from policy_membership_before),'existing legacy owner membership is not rewritten');

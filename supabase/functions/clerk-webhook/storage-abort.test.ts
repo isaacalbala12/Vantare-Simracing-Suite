@@ -17,15 +17,16 @@ const config = {
 };
 Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only acknowledges API success", async () => {
   await abortStorageUpload(upload, config, (input, init) => {
-    const u = new URL(String(input));
+    const request = new Request(String(input), init);
+    const u = new URL(request.url);
     assertEquals(
       u.pathname,
       "/storage/v1/s3/testing-center-evidence/folder/part%20%2B%20%C3%B1.png",
     );
     assertEquals(u.searchParams.get("uploadId"), "fixture/+=id");
-    assertEquals(init?.method, "DELETE");
-    assertEquals(init?.redirect, "error");
-    const headers = new Headers(init?.headers);
+    assertEquals(request.method, "DELETE");
+    assertEquals(request.redirect, "error");
+    const headers = request.headers;
     assertEquals(headers.get("x-amz-security-token"), "fixture-service");
     assertEquals(
       headers.get("authorization")?.startsWith(

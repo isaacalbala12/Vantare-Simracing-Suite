@@ -870,3 +870,24 @@ La comparación de estado en servidor se limita a set_module, set_rollout y
 mail_approve. Los demás diálogos son confirmaciones en Gestión; mantienen sus
 validaciones propias de owner/revisión. recipients no se cuenta en new,
 approve, cancel ni al consultar campañas sending/completed.
+
+### Lecturas de pagos y sync explícito (#1910, 8c)
+
+`get_account`, `list_creators` y `get_creator` no llaman a Polar. En sandbox
+anuncian `payment_sync_required` si falta la importación inicial. Gestión conserva
+los hechos anteriores, pide confirmar `sync_payments`, y solo tras el ACK relee
+la ficha/lista. Cancelar o fallar no sustituye importes; el botón Sincronizar
+historial permite reintentar. Logout y cambiar de contexto descartan la lectura
+pendiente. El caso completo/producción no añade llamadas a Polar.
+
+`sync_payments {}` es owner/sandbox, con cupo propio SQL de una importación por
+minuto entre sesiones. Historial ya completo devuelve ACK sin cupo ni HTTP.
+Conserva la importación y sus límites/paginación existentes; registrar un pago
+conserva su protección previa. No cambia cálculo de comisiones, billing ni licencias.
+
+Solo Isaac despliega: migración `20261104190009_isa_1910_admin_explicit_sync.sql`,
+Gestión compatible con el flag opcional y después la Edge. Verificar que usa
+Gestión actualizado antes de activar lecturas puras: un cliente antiguo ignora
+el flag. Pre-check readonly: `select environment,last_synced_at from private.admin_payment_sync;`.
+El down retira solo la RPC y su cupo transitorio; se revierte la Edge junto con
+él. Sin producción vacía supuesta, ni importación/purga durante la migración.

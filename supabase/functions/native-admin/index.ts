@@ -62,6 +62,7 @@ export type AdminDeps = NativeAuthDeps & ChangeDeps & {
   ) => Promise<ObjectValue>;
   resolve?: typeof resolveNativeAccount;
   begin?: (actor: string) => Promise<boolean>;
+  paymentSyncBudget?: (actor: string, environment: string) => Promise<boolean>;
   execute?: (
     actor: string,
     issuer: string,
@@ -94,6 +95,21 @@ export async function gate(
 ): Promise<boolean> {
   const { data, error } = await rpc.rpc("native_admin_gate");
   if (error || typeof data !== "boolean") {
+    throw new NativeError(503, "bridge_unavailable");
+  }
+  return data;
+}
+
+async function paymentSyncBudget(
+  actor: string,
+  environment: string,
+): Promise<boolean> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "native_admin_payment_sync_budget",
+    { p_actor: actor, p_environment: environment },
+  );
+  if (error) throw error;
+  if (typeof data !== "boolean") {
     throw new NativeError(503, "bridge_unavailable");
   }
   return data;
@@ -484,6 +500,24 @@ export async function handleNativeAdmin(
         arguments_,
         environment,
       );
+    if (policy?.handler === "payments") {
+      const state = await run("get_payment_sync", {});
+      if (typeof state.needs_sync !== "boolean") {
+        throw new NativeError(503, "history_unavailable");
+      }
+      if (state.needs_sync) {
+        const allowed = await (deps.paymentSyncBudget ?? paymentSyncBudget)(
+          actor,
+          environment,
+        );
+        if (typeof allowed !== "boolean") {
+          throw new NativeError(503, "bridge_unavailable");
+        }
+        if (!allowed) throw new NativeError(429, "rate_limited");
+        await syncAdminPayments(run, environment, deps.productMap, deps.polar);
+      }
+      return respond({ ok: true });
+    }
     if (policy?.syncPayments) {
       await syncAdminPayments(run, environment, deps.productMap, deps.polar);
     }
@@ -780,6 +814,15 @@ export async function handleNativeAdmin(
         ) + 600;
         delete image.object_path;
       }
+    }
+    if (policy?.paymentRead) {
+      const state = environment === "sandbox"
+        ? await run("get_payment_sync", {})
+        : { needs_sync: false };
+      if (typeof state.needs_sync !== "boolean") {
+        throw new NativeError(503, "history_unavailable");
+      }
+      result.payment_sync_required = state.needs_sync;
     }
     return respond({ ...result, ok: true });
   } catch (error) {

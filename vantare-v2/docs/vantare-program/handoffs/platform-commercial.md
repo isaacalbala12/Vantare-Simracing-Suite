@@ -8945,3 +8945,24 @@ union all select 'linear_deliveries',outcome::text,count(*)
   P3 y su test/handoff quedan en el diff. Range-diff idéntico, sin conflictos;
   código Rust/Deno byte idéntico al validado check/Clippy/Nextest48/fmt/Deno3.
   No se repiten builds sin cambio de código/dependencias Rust; CI nueva pendiente.
+## VANTA-132 · paso8c · sync explícito y lecturas financieras puras (2026-11-04)
+
+- Desde nightly18fb6ca17, rama vantareapp/isa-1910-paso8c-sync-explicito, PR
+  independiente del paso6. RED Deno a1fbcedfe (4/4) y Rust00d0fd2c3: una respuesta
+  pendiente sobrescribía los hechos previos. Ambos casos pasan con el flujo nuevo.
+- Las tres consultas solo leen SQL/Clerk; no Polar. Si falta historial sandbox,
+  Gestión conserva hechos, pide confirmar sync, espera ACK y relee antes de
+  mostrar importes. Reintento visible; producción mantiene lectura sin importación.
+- RPC owner/sandbox, cuota transitoria una importación/minuto compartida entre
+  sesiones, sin PII. RLS/ACL explícitos y cuerpo completo; rollback retira tabla/RPC.
+  La paginación e importación previas se conservan, igual que la protección al pagar.
+- SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest46
+  PASS; check/Clippy finales en marcha. Deno último281 tras ajustar el código de
+  sandbox al contrato503 existente; ver gates finales en PR. Store falso/QA aislada.
+- Solo Isaac: SQL primero, Gestión compatible antes de Edge pura; confirmar que
+  usa el binario actualizado (el antiguo ignora el flag). Consultar admin_payment_sync
+  existente. Down junto con Edge anterior, solo descarta cuota transitoria. Sin
+  deploy/merge/release ni llamadas a producción, _shared, billing o licencias.
+- Falta el recorte mail_erasure_expire de mail_list: separar tras integrar paso6,
+  para no sobrescribir su wrapper SQL completo desde una rama independiente.
+  Paso11 continúa en R6/12.

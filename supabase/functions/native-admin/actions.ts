@@ -6,9 +6,10 @@ type ActionPolicy = {
   mutation?: false;
   mail?: "sql" | "edge";
   syncPayments?: boolean;
+  paymentRead?: boolean;
   enrich?: boolean;
   sandbox?: boolean;
-  handler?: "creator" | "account";
+  handler?: "creator" | "account" | "payments";
 };
 type ActionSpec = readonly [
   example: Params,
@@ -75,7 +76,7 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
   }, { mutation: false, enrich: true }],
   get_account: [{ account_id: id }, (p) => isUuid(p.account_id), {
     mutation: false,
-    syncPayments: true,
+    paymentRead: true,
     enrich: true,
   }],
   set_blocked: [
@@ -108,10 +109,11 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     MODULE_CAPABILITIES.includes(
       p.module as typeof MODULE_CAPABILITIES[number],
     )],
-  list_creators: [{}, () => true, { mutation: false, syncPayments: true }],
+  sync_payments: [{}, () => true, { sandbox: true, handler: "payments" }],
+  list_creators: [{}, () => true, { mutation: false, paymentRead: true }],
   get_creator: [{ creator_id: id }, (p) => isUuid(p.creator_id), {
     mutation: false,
-    syncPayments: true,
+    paymentRead: true,
     enrich: true,
   }],
   record_creator_payout: [{

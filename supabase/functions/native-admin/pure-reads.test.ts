@@ -1,20 +1,116 @@
-import { handleNativeAdmin, type AdminDeps } from "./index.ts";
-import { account, assert, authDeps, request } from "../native-account-authorize/testdata/auth.ts";
+import { type AdminDeps, handleNativeAdmin } from "./index.ts";
+import {
+  account,
+  assert,
+  authDeps,
+  request,
+} from "../native-account-authorize/testdata/auth.ts";
 const calls: string[] = [];
 function deps(): AdminDeps {
- return {...authDeps(), environment:"sandbox",gate:()=>Promise.resolve(true),resolve:()=>Promise.resolve(account),begin:()=>Promise.resolve(true),
-  execute:(_actor,_issuer,action)=>{calls.push(action);return Promise.resolve(action==="get_payment_sync"?{needs_sync:true}:action==="get_account"?{account:{account_id:account}}:action==="list_creators"?{creators:[]}:{creator:{creator_id:account}});},
-  polar:{fetchFn:()=>{throw new Error("pure reads must not call Polar");}}};
+  return {
+    ...authDeps(),
+    environment: "sandbox",
+    gate: () => Promise.resolve(true),
+    resolve: () => Promise.resolve(account),
+    begin: () => Promise.resolve(true),
+    execute: (_actor, _issuer, action) => {
+      calls.push(action);
+      return Promise.resolve(
+        action === "get_payment_sync"
+          ? { needs_sync: true }
+          : action === "get_account"
+          ? { account: { account_id: account } }
+          : action === "list_creators"
+          ? { creators: [] }
+          : { creator: { creator_id: account } },
+      );
+    },
+    polar: {
+      fetchFn: () => {
+        throw new Error("pure reads must not call Polar");
+      },
+    },
+  };
 }
-for(const [action,params] of [["get_account",{account_id:account}],["list_creators",{}],["get_creator",{creator_id:account}]] as const) {
- Deno.test("pending history remains a pure read: "+action,async()=>{
-  calls.length=0; const response=await handleNativeAdmin(request({version:1,action,...params}),deps());
-  assert(response.status===200); const body=await response.json();assert(body.payment_sync_required===true);
-  assert(!calls.some(x=>x.startsWith("sync_admin_")||x==="finish_payment_sync"));
- });
+for (
+  const [action, params] of [["get_account", { account_id: account }], [
+    "list_creators",
+    {},
+  ], ["get_creator", { creator_id: account }]] as const
+) {
+  Deno.test("pending history remains a pure read: " + action, async () => {
+    calls.length = 0;
+    const response = await handleNativeAdmin(
+      request({ version: 1, action, ...params }),
+      deps(),
+    );
+    assert(response.status === 200);
+    const body = await response.json();
+    assert(body.payment_sync_required === true);
+    assert(
+      !calls.some((x) =>
+        x.startsWith("sync_admin_") || x === "finish_payment_sync"
+      ),
+    );
+  });
 }
-Deno.test("explicit payment sync checks its own quota before any provider call",async()=>{
- const testDeps= {...deps(),paymentSyncBudget:()=>Promise.resolve(false)};
- const response=await handleNativeAdmin(request({version:1,action:"sync_payments"}),testDeps);
- assert(response.status===429);
+Deno.test("explicit payment sync checks its own quota before any provider call", async () => {
+  const testDeps = {
+    ...deps(),
+    paymentSyncBudget: () => Promise.resolve(false),
+  };
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "sync_payments" }),
+    testDeps,
+  );
+  assert(response.status === 429);
+});
+for (const outcome of [null, {}, "true", "throw"] as const) {
+  Deno.test(
+    "explicit sync fails closed on malformed quota ACK: " +
+      JSON.stringify(outcome),
+    async () => {
+      const testDeps = {
+        ...deps(),
+        paymentSyncBudget: () =>
+          outcome === "throw"
+            ? Promise.reject(new Error("quota down"))
+            : Promise.resolve(outcome as unknown as boolean),
+      };
+      const response = await handleNativeAdmin(
+        request({ version: 1, action: "sync_payments" }),
+        testDeps,
+      );
+      assert(response.status === 503);
+    },
+  );
+}
+Deno.test("production refuses sync before its quota or provider", async () => {
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "sync_payments" }),
+    {
+      ...deps(),
+      environment: "production",
+      paymentSyncBudget: () => {
+        throw new Error("must not reserve production quota");
+      },
+    },
+  );
+  assert(
+    response.status === 503 &&
+      (await response.json()).error === "admin_sandbox_required",
+  );
+});
+Deno.test("complete history ACK does not consume quota or call provider", async () => {
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "sync_payments" }),
+    {
+      ...deps(),
+      execute: () => Promise.resolve({ needs_sync: false }),
+      paymentSyncBudget: () => {
+        throw new Error("no work to reserve");
+      },
+    },
+  );
+  assert(response.status === 200);
 });

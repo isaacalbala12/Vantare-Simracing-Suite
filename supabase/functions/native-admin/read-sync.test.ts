@@ -15,11 +15,12 @@ for (
   ] as const
 ) {
   Deno.test(
-    "read retains payment sync until explicit sync is available: " +
+    "pure read → explicit sync → fresh read: " +
       action,
     async () => {
       const commands: string[] = [];
       let polar = 0;
+      let finished = false;
       const map = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
       const deps: AdminDeps = {
         ...authDeps(),
@@ -27,12 +28,14 @@ for (
         environment: "sandbox",
         gate: () => Promise.resolve(true),
         begin: () => Promise.resolve(true),
+        paymentSyncBudget: () => Promise.resolve(true),
         resolve: () => Promise.resolve(account),
         productMap: map,
         execute: (_actor, _issuer, command) => {
           commands.push(command);
+          if (command === "finish_payment_sync") finished = true;
           return Promise.resolve(
-            command === "get_payment_sync" ? { needs_sync: true } : {},
+            command === "get_payment_sync" ? { needs_sync: !finished } : {},
           );
         },
         polar: {
@@ -53,10 +56,36 @@ for (
         request({ version: 1, action, ...params }),
         deps,
       );
-      assert(response.status === 200);
       assert(
-        polar === 3 && JSON.stringify(commands) ===
-            JSON.stringify(["get_payment_sync", "finish_payment_sync", action]),
+        response.status === 200 &&
+          (await response.json()).payment_sync_required === true,
+      );
+      assert(polar === 0 && !finished);
+      const synced = await handleNativeAdmin(
+        request({ version: 1, action: "sync_payments" }),
+        deps,
+      );
+      assert(synced.status === 200 && finished);
+      const fresh = await handleNativeAdmin(
+        request({ version: 1, action, ...params }),
+        deps,
+      );
+      assert(
+        fresh.status === 200 &&
+          (await fresh.json()).payment_sync_required === false,
+      );
+      assert(
+        Number(polar) === 3 &&
+          JSON.stringify(commands) ===
+            JSON.stringify([
+              action,
+              "get_payment_sync",
+              "get_payment_sync",
+              "get_payment_sync",
+              "finish_payment_sync",
+              action,
+              "get_payment_sync",
+            ]),
       );
     },
   );

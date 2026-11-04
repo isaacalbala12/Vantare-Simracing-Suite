@@ -103,6 +103,13 @@
         "expected_enabled": false
       }
     },
+    "sync_payments": {
+      "mutation": true,
+      "fields": [],
+      "mail": false,
+      "environment": "sandbox",
+      "example": {}
+    },
     "list_creators": {
       "mutation": false,
       "fields": [],

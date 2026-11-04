@@ -478,6 +478,7 @@ pub enum Action {
         account_id: String,
         confirm_email: String,
     },
+    SyncPayments,
     ListCreators,
     GetCreator {
         creator_id: String,
@@ -538,6 +539,7 @@ impl Action {
             Self::SetModule { .. } => "set_module",
             Self::SetBlocked { .. } => "set_blocked",
             Self::DeleteAccount { .. } => "delete_account",
+            Self::SyncPayments => "sync_payments",
             Self::ListCreators => "list_creators",
             Self::GetCreator { .. } => "get_creator",
             Self::CreateCreator { .. } => "create_creator",
@@ -552,7 +554,8 @@ impl Action {
     pub fn mutation(&self) -> bool {
         matches!(
             self,
-            Self::MailForgetWaitlist { .. }
+            Self::SyncPayments
+                | Self::MailForgetWaitlist { .. }
                 | Self::MailCleanup
                 | Self::MailNew
                 | Self::MailSave { .. }
@@ -613,7 +616,10 @@ impl Action {
                         .bytes()
                         .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
             }
-            Self::ListCreators | Self::GetRollout | Self::SetRollout { .. } => true,
+            Self::SyncPayments
+            | Self::ListCreators
+            | Self::GetRollout
+            | Self::SetRollout { .. } => true,
             _ => return Err(Error::Protocol),
         };
         let valid = valid

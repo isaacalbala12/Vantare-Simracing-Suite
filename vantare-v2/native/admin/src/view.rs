@@ -552,6 +552,7 @@ impl Admin {
     fn interface_event(&mut self, event: &Event, cx: &mut Context<Self>) {
         match *event {
             Event::Back => {
+                self.state.pending_payment_read = None;
                 self.state.user = None;
                 self.state.creator = None;
                 self.state.report = None;
@@ -581,6 +582,7 @@ impl Admin {
             }
             Event::OpenDialog(dialog) => self.open_dialog(dialog, cx),
             Event::Screen(screen) => {
+                self.state.pending_payment_read = None;
                 self.zoomed = None;
                 self.state.screen = screen;
                 self.state.user = None;
@@ -847,6 +849,14 @@ impl Admin {
                     .child(heading(title, 30.))
                     .child(text(subtitle, 14., INK3)),
             )
+            .when(self.state.pending_payment_read.is_some(), |row| {
+                row.child(self.button(
+                    "sync-payments",
+                    "Sincronizar historial…",
+                    Event::Propose(Action::SyncPayments),
+                    cx,
+                ))
+            })
             .child(self.button("refresh", "Actualizar", Event::Reload, cx))
     }
     fn list_state(&self, empty: &str, cx: &mut Context<Self>) -> Option<Div> {

@@ -20,8 +20,6 @@ for (
       "account_conflict",
       "mail_erasure_pending",
     ].map((x) => [x, 409, "account_conflict"]),
-    ["admin:invalid_request", 400, "invalid_request"],
-    ["admin:confirmation_mismatch", 422, "confirmation_mismatch"],
   ] as const
 ) {
   Deno.test("typed SQL failure " + message, () => {
@@ -63,6 +61,7 @@ Deno.test("unknown and inherited SQL names use only fixed diagnostics and never 
         { message: "toString" },
         { message: "__proto__" },
         { message: "admin:constructor" },
+        ...["admin:invalid_request", "admin:confirmation_mismatch", "forbidden", "not_found", "invalid", "testing_owner_required", "testing_contribution_missing"].map((message) => ({ message })),
         null,
         new Error("private"),
       ]
@@ -74,7 +73,7 @@ Deno.test("unknown and inherited SQL names use only fixed diagnostics and never 
     console.warn = original;
   }
   assert(
-    logs.length === 6 && !JSON.stringify(logs).includes("private") &&
+    logs.length === 13 && !JSON.stringify(logs).includes("private") &&
       !JSON.stringify(logs).includes("secret"),
   );
 });

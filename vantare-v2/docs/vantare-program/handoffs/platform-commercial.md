@@ -8689,36 +8689,30 @@ union all select 'linear_deliveries',outcome::text,count(*)
 
 ## VANTA-132 · paso 8a, borrado compartido (2026-11-04)
 
-- PR [#1952](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1952), draft a nightlyc86d59e8c; rama/worktree propios.
-  Reserva autorizada: solo account-erasure.ts y clerk-webhook en la costura.
-- Un limpiador compartido para abortos/objetos y un comprobador de errores RPC.
-  Admin no importa el entrypoint Clerk; su lectura final reutiliza run. Firmado
-  S3 y reconocimiento NoSuchUpload idénticos byte a byte tras normalizar saltos.
-- Caracterización previa: siete casos del limpiador y 248 Deno PASS antes/después.
-  SDK/entrada de Storage typecheck y lint/fmt/diff PASS. RequestInit ambiguo del
-  test antiguo se lee como Request; aserciones del builtin node:assert/strict.
-  Se conserva el error inicial de tipos/lint. Sin dependencias nuevas.
-- Producción 1304 → 1296 (-8). Medición sin detección de renombres: cuenta el
-  archivo retirado y el nuevo; tests/docs por separado en PR. No SQL ni Rust:
-  gates SQL/compilación/telemetría/lifecycle omitidos por no cambiar esos ámbitos.
-  Transporte Storage probado con dobles; no stack Docker Storage disponible local.
-- No native-auth, SQL apply_clerk_user_event (#1949 abierto), billing/licencias,
-  secretos, Store real, servicios/configuración de producción, deploy o merge.
-  VANTA-132 En curso: continúa 8b, luego 10 y 6; 11 exclusivamente R6/12.
-
-### VANTA-132 · continuación efectiva del paso 8 (2026-11-04)
-
-- #1952 rebasado sobre nightly4405c7c1c, con #1949 integrado. Se mantiene un
-  solo limpiador en account-erasure; ninguna modificación de native-auth.
-- Tres RED previos reproducen importación oculta en get_account/list_creators/
-  get_creator; ahora leen solo SQL. Se conserva cobertura r1 de importación
-  de facturas/reembolsos y la barrera de historial incompleto antes de pagar.
-- 234 Deno PASS (admin/webhook); check de consumidores Storage/SDK y lint PASS.
-  El test r1 antiguo falló por exigir sincronizar al leer; se conserva como
-  test del importador. Primer intento tuvo import de fixture ausente, corregido.
-- Producción tocada 1304 →1295 (-9; +191/-200); tests/docs separados en PR.
-- Siguiente entrega: sync_payments explícito con llamador y cupo, y mail_list
-  sin mantenimiento implícito. Paso8 todavía incompleto; luego10 y6. La reserva
-  SQL de #1949 terminó; no se modifica aquí. Retención10 pendiente de decisión.
-- Sin SQL/Rust tocado: no gates de crates, lifecycle ni telemetría. Storage con
-  dobles; no Docker disponible ni servicios reales. Sin merge ni despliegue.
+- PR [#1952](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1952),
+  draft sobre nightly4405c7c1c; rama/worktree propios. #1949 integrado.
+- Un solo limpiador de abortos/objetos en account-erasure; admin deja de importar
+  el entrypoint Clerk. Reutiliza run para su lectura final. Firmado S3 y
+  reconocimiento NoSuchUpload idénticos tras normalizar saltos de línea.
+- Decisión de review: se retira de #1952 la conversión a lecturas puras.
+  get_account/list_creators/get_creator conservan exactamente el sync anterior;
+  tests de las tres lecturas y r1 lo verifican. Así el owner conserva el mismo
+  historial/comisión mientras no exista sync_payments y su botón nativo.
+- P2: webhook probado con sus defaults, sin deps.cleanup ni deps.apply,
+  RPC y transporte Storage falsos. Prueba drenar y ACK en orden, y RPC fallando
+  →503 aunque se drenen objetos independientes. Sin Docker ni red; se sustituye
+  la lectura de entorno sin leer ni guardar valores reales y se restaura siempre.
+- P3: secuencias exactas en seis fallos del limpiador; uploads fallidos exigen
+  cleanup_retry_required. Fallos de listar/borrar/ACK de objetos conservan su
+  error original y prueban que no hay ACK prematuro.
+- Caracterización previa de restauración: r1 RED; después 235 Deno PASS en
+  admin/webhook. SDK/entrada de Storage typecheck PASS. Gates de formato/lint
+  registrados en PR; se conservan errores previos en evidencia.
+- Producción 1304 →1296 (-8; +188/-196). Tests y docs medidos por separado en PR.
+  No SQL ni Rust: gates SQL/compilación/telemetría/lifecycle omitidos. Storage
+  con dobles; sin stack Docker local. HEAD publicado y CI vigentes en PR/issue.
+- Sin native-auth, SQL apply_clerk_user_event, billing/licencias, secretos,
+  Store real, servicios/configuración reales, deploy o merge. Plane En curso.
+- Sigue paso8b: lecturas puras JUNTO con sync_payments sandbox, confirmación,
+  cupo y llamador nativo; mail_list sin mantenimiento. Luego10 y6; 11 R6/12.
+  La elección de retención10 sigue pendiente; no se presume respuesta.

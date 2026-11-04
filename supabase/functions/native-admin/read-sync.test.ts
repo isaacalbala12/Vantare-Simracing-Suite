@@ -15,7 +15,7 @@ for (
   ] as const
 ) {
   Deno.test(
-    "pure read never imports payment history even before initial sync: " +
+    "read retains payment sync until explicit sync is available: " +
       action,
     async () => {
       const commands: string[] = [];
@@ -55,7 +55,8 @@ for (
       );
       assert(response.status === 200);
       assert(
-        polar === 0 && JSON.stringify(commands) === JSON.stringify([action]),
+        polar === 3 && JSON.stringify(commands) ===
+            JSON.stringify(["get_payment_sync", "finish_payment_sync", action]),
       );
     },
   );

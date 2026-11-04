@@ -94,8 +94,11 @@ for (
         "clerk_deletion_uploads",
         ...(failure === "clerk_deletion_uploads" ? [] : ["abort"]),
         ...(failure === "clerk_deletion_upload_completed"
-          ? ["clerk_deletion_upload_completed"] : []),
-        "clerk_deletion_objects", "remove", "clerk_deletion_completed",
+          ? ["clerk_deletion_upload_completed"]
+          : []),
+        "clerk_deletion_objects",
+        "remove",
+        "clerk_deletion_completed",
         "clerk_deletion_objects",
       ]);
     },
@@ -115,8 +118,11 @@ for (
       const { calls, run } = fixture(failure);
       await assertRejects(run, { message: failure });
       const sequence = [
-        "clerk_deletion_uploads", "abort", "clerk_deletion_upload_completed",
-        "clerk_deletion_uploads", "clerk_deletion_objects",
+        "clerk_deletion_uploads",
+        "abort",
+        "clerk_deletion_upload_completed",
+        "clerk_deletion_uploads",
+        "clerk_deletion_objects",
       ];
       if (failure !== "clerk_deletion_objects") sequence.push("remove");
       if (failure === "clerk_deletion_completed") {

@@ -177,9 +177,9 @@ Deno.test("Clerk default cleaner drains fake RPC queues before ACK and retries o
             : Response.json([]);
         }
         if (name === "clerk_deletion_objects") {
-          return Response.json(pending
-            ? [{ bucket_id: "evidence", name: "completed" }]
-            : []);
+          return Response.json(
+            pending ? [{ bucket_id: "evidence", name: "completed" }] : [],
+          );
         }
         if (name === "clerk_deletion_completed") {
           assertEquals(args.p_names, ["completed"]);
@@ -190,14 +190,21 @@ Deno.test("Clerk default cleaner drains fake RPC queues before ACK and retries o
         return Response.json(true);
       };
       // Neither apply nor cleanup is injected: use both production defaults.
-      const response = await handleClerkWebhook(signedRequest({
-        type: "user.deleted", timestamp: 1700000000000,
-        data: { id: "user_test", deleted: true },
-      }), { config });
+      const response = await handleClerkWebhook(
+        signedRequest({
+          type: "user.deleted",
+          timestamp: 1700000000000,
+          data: { id: "user_test", deleted: true },
+        }),
+        { config },
+      );
       assertEquals(response.status, fail ? 503 : 200);
       assertEquals(calls, [
-        "apply_clerk_user_event", "clerk_deletion_uploads",
-        "clerk_deletion_objects", "evidence", "clerk_deletion_completed",
+        "apply_clerk_user_event",
+        "clerk_deletion_uploads",
+        "clerk_deletion_objects",
+        "evidence",
+        "clerk_deletion_completed",
         "clerk_deletion_objects",
       ]);
       assertEquals(pending, false);

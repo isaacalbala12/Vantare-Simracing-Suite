@@ -3,6 +3,7 @@ import json
 import re
 from pathlib import Path
 from commercial_admin_audit_race import run_audit_erasure_races
+from lint_migrations import check_migration
 
 AUDIT_STEM = '20261104145436_isa_1910_admin_audit_minimal'
 AUDIT_SNAPSHOT = """select jsonb_build_object(
@@ -57,7 +58,7 @@ def seed_audit_upgrade(run, conn):
     readme=(root/'supabase/functions/native-admin/README.md').read_text(encoding='utf-8')
     precheck='select current_user,rolsuper'+readme.split('select current_user,rolsuper',1)[1].split('```',1)[0]
     counts=run('psql',*conn,'-c',precheck)
-    if 'sin_asociacion|2|2' not in counts.splitlines():
+    if 'efectos|2|2|2' not in counts.splitlines():
         raise RuntimeError('documented pre-check did not count closed/pending historical rows: '+counts)
 
 
@@ -70,6 +71,9 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline, bin_dir, e
         return run('psql',*conn,'-f',target)
     up = root/'supabase/migrations'/(AUDIT_STEM+'.sql')
     down = root/'supabase/rollbacks'/(AUDIT_STEM+'.down.sql')
+    policy_errors=check_migration(up,down)
+    if policy_errors: raise RuntimeError('admin audit ADR 0106: '+'; '.join(policy_errors))
+    print('Admin audit migration ADR 0106 lint PASS',flush=True)
     upgraded=run('psql',*conn,'-c',"""select
       (select target='erased' and before_value='{"enabled":false}'::jsonb
        and after_value='{"enabled":true}'::jsonb from public.admin_audit_log

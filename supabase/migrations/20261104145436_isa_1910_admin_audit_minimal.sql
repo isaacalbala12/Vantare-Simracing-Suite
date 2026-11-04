@@ -1,4 +1,4 @@
--- VANTA-132 / 10b. Role guard fixes new object owners to postgres. No purge during deployment. SQL and ACL are complete (ADR 0106).
+-- VANTA-132 / 10b. Role guard fixes new object owners to postgres. No purge during deployment.
 begin;
 set local lock_timeout='5s';
 do $role$
@@ -18,7 +18,7 @@ create table private.admin_audit_policy (
 -- Provisional decision. Isaac may change THIS parameter to 90; no other TTL.
 insert into private.admin_audit_policy values(true,365);
 alter table private.admin_audit_policy enable row level security;
-revoke all on private.admin_audit_policy from public,anon,authenticated,service_role;
+revoke all on table private.admin_audit_policy from public,anon,authenticated,service_role;
 
 -- A caller-controlled GUC cannot open the append-only barriers. The capability
 -- is private, transaction-scoped, and removed before returning to a caller.
@@ -27,9 +27,9 @@ create table private.admin_audit_maintenance_tx (
  maintenance boolean not null default true, target_account uuid
 );
 alter table private.admin_audit_maintenance_tx enable row level security;
-revoke all on private.admin_audit_maintenance_tx from public,anon,authenticated,service_role;
-create function private.admin_audit_maintenance() returns boolean
-language sql stable set search_path='' as $$
+revoke all on table private.admin_audit_maintenance_tx from public,anon,authenticated,service_role;
+create or replace function private.admin_audit_maintenance() returns boolean
+language sql stable security definer set search_path='' as $$
  select current_user='postgres' and exists(select 1 from private.admin_audit_maintenance_tx
  where transaction_id=pg_current_xact_id() and maintenance)
 $$;
@@ -42,7 +42,7 @@ drop index private.admin_effects_smtp_delivery_started;
 create unique index admin_effects_smtp_delivery_started on private.admin_effects(target_hash)
  where effect='brevo_smtp_send' and outcome='started' and target_hash<>'erased';
 -- Same status contract for sync and SMTP; DELETE distinguishes 404 success.
-create function private.mail_effect_valid(outcome text,status integer,erasure boolean)
+create or replace function private.mail_effect_valid(outcome text,status integer,erasure boolean)
 returns boolean language sql immutable set search_path='' as $$
  select coalesce(outcome in('started','succeeded','failed','unknown') and (status is null or status between 100 and 599)
  and case outcome when 'started' then status is null
@@ -52,7 +52,7 @@ returns boolean language sql immutable set search_path='' as $$
 $$;
 -- Shared durable append for the three actual Brevo recorders below. Provider
 -- outcome validation and source capability/owner checks stay at each entrypoint.
-create function private.append_mail_effect(event jsonb,account uuid) returns boolean
+create or replace function private.append_mail_effect(event jsonb,account uuid) returns boolean
 language plpgsql set search_path='' as $$
 declare e private.admin_effects:=jsonb_populate_record(null::private.admin_effects,event);
  initial private.admin_effects; stored private.admin_effects;
@@ -149,7 +149,7 @@ begin
   'action','mail_cleanup','effect','brevo_delete','target_hash',v_hash,'provider_status',p_provider_status),
   (select account_id from private.mail_contact_erasures where id=p_job));
 end$$;
-create function private.bind_admin_effect_account() returns trigger
+create or replace function private.bind_admin_effect_account() returns trigger
 language plpgsql security definer set search_path='' as $$
 declare initial private.admin_effects;
 begin
@@ -173,7 +173,7 @@ create trigger b_bind_admin_effect_account before insert on private.admin_effect
  for each row execute function private.bind_admin_effect_account();
 -- Keep the deployed validator complete and unchanged. The actual Edge now calls
 -- this account-bound entrypoint; the old service entrypoint fails closed on rollout.
-create function public.native_admin_record_effect(p_actor uuid,p_event jsonb,p_account uuid)
+create or replace function public.native_admin_record_effect(p_actor uuid,p_event jsonb,p_account uuid)
 returns boolean language plpgsql security definer set search_path='' as $$
 declare account uuid; result boolean;
 begin
@@ -195,7 +195,7 @@ revoke execute on function public.native_admin_record_effect(uuid,jsonb) from se
 revoke all on function public.native_admin_record_effect(uuid,jsonb,uuid) from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_record_effect(uuid,jsonb,uuid) to service_role;
 -- Deferred until after the recorder has checked the exact original intent hash.
-create function private.redact_closed_admin_effect() returns trigger
+create or replace function private.redact_closed_admin_effect() returns trigger
 language plpgsql security definer set search_path='' as $$
 declare previous boolean;
 begin
@@ -212,7 +212,7 @@ end $$;
 create constraint trigger redact_closed_admin_effect after insert on private.admin_effects
  deferrable initially deferred for each row when(new.outcome in('succeeded','failed','reconciled'))
  execute function private.redact_closed_admin_effect();
-create function private.admin_audit_fields(value jsonb,action text) returns jsonb
+create or replace function private.admin_audit_fields(value jsonb,action text) returns jsonb
 language sql immutable set search_path='' as $$
  select case when value is null or value='null'::jsonb then null
  when action='audit_prune' then (select coalesce(jsonb_object_agg(k,v),'{}'::jsonb)
@@ -235,7 +235,7 @@ language sql immutable set search_path='' as $$
    'status',case when value->>'status' in ('active','pending','draft','sending','sent','canceled',
      'submitted','validated','duplicate_linked','incomplete','closed','in_review','rejected','fixed','spam') then value->'status' end)) end
 $$;
-create function private.admin_audit_target(target text) returns text
+create or replace function private.admin_audit_target(target text) returns text
 language sql stable set search_path='' as $$
  select case when target='erased' then target
  when target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
@@ -247,7 +247,7 @@ language sql stable set search_path='' as $$
  when target in ('search_accounts','get_rollout','list_reports','list_creators','mail','contact','audit') then target
  else 'sha256:'||encode(sha256(convert_to(target,'UTF8')),'hex') end
 $$;
-create function private.admin_audit_minimize(entry anyelement,actor_key text,value_keys text[])
+create or replace function private.admin_audit_minimize(entry anyelement,actor_key text,value_keys text[])
 returns anyelement language sql stable set search_path='' as $$
  select jsonb_populate_record(entry,to_jsonb(entry)||jsonb_build_object(
   'target',private.admin_audit_target(to_jsonb(entry)->>'target'),actor_key,
@@ -257,7 +257,7 @@ returns anyelement language sql stable set search_path='' as $$
   (select jsonb_object_agg(k,private.admin_audit_fields(to_jsonb(entry)->k,to_jsonb(entry)->>'action'))
    from unnest(value_keys) k))
 $$;
-create function private.minimize_admin_audit() returns trigger
+create or replace function private.minimize_admin_audit() returns trigger
 language plpgsql security definer set search_path='' as $$
 declare account uuid; target uuid;
 begin
@@ -268,7 +268,7 @@ begin
  new:=private.admin_audit_minimize(new,tg_argv[0],string_to_array(tg_argv[1],','));
  return new;
 end $$;
-create function private.redact_deleted_account_audit() returns trigger
+create or replace function private.redact_deleted_account_audit() returns trigger
 language plpgsql security definer set search_path='' as $$
 begin
  perform pg_advisory_xact_lock(1910,10);
@@ -276,6 +276,8 @@ begin
  update public.admin_audit_log set target='erased'
  where target in (new.account_id::text,'sha256:'||encode(sha256(convert_to(new.account_id::text,'UTF8')),'hex'));
  -- Preserve only a nonidentifying marker on pending groups, never the UUID.
+ -- Wait for in-flight closures; the following UPDATE then gets a fresh snapshot.
+ perform 1 from private.admin_effects where target_account=new.account_id for update;
  update private.admin_effects e set target_account=null,erase_on_close=true,
  target_hash=case when exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
  and r.outcome in('succeeded','failed','reconciled')) then 'erased' else e.target_hash end
@@ -338,7 +340,7 @@ update private.mail_audit a set (actor,target,detail)=
  (select m.actor,m.target,m.detail from private.admin_audit_minimize(a,'actor',array['detail']) m);
 delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
 
-create function public.native_admin_prune_audit(p_actor uuid) returns jsonb
+create or replace function public.native_admin_prune_audit(p_actor uuid) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare cutoff timestamptz; ttl integer;
  admin_count integer; mail_count integer; effect_count integer;
@@ -351,7 +353,7 @@ begin
  -- SQL/mail entries describe committed transactions; external uncertainty is in effects.
  delete from public.admin_audit_log where occurred_at<cutoff;
  get diagnostics admin_count=row_count;
- delete from private.mail_audit where occurred_at<cutoff;
+ delete from private.mail_audit where occurred_at<cutoff and action<>'audit_prune';
  get diagnostics mail_count=row_count;
  with closed as materialized (
   select i.effect_id from private.admin_effects i where i.outcome='started'
@@ -372,5 +374,13 @@ revoke all on function private.admin_audit_maintenance(),private.admin_audit_fie
  from public,anon,authenticated,service_role;
 revoke all on function private.mail_effect_valid(text,integer,boolean),private.append_mail_effect(jsonb,uuid),private.bind_admin_effect_account(),
  private.redact_closed_admin_effect() from public,anon,authenticated,service_role;
+revoke all on table public.admin_audit_log,private.admin_effects from public,anon,authenticated,service_role;
+grant select on table public.admin_audit_log,private.admin_effects to service_role;
+revoke all on function public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer),
+ public.native_admin_record_mail_send(uuid,uuid,uuid,uuid,text,text,integer),
+ public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid) from public,anon,authenticated,service_role;
+grant execute on function public.native_admin_record_mail_sync(uuid,uuid,uuid,text,uuid,uuid,text,integer),
+ public.native_admin_record_mail_send(uuid,uuid,uuid,uuid,text,text,integer),
+ public.native_admin_record_mail_erasure(uuid,uuid,uuid,uuid,text,integer,uuid) to service_role;
 notify pgrst,'reload schema';
 commit;

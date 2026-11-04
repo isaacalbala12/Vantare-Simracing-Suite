@@ -733,6 +733,8 @@ begin
  update public.admin_audit_log set target='erased'
  where target in (new.account_id::text,'sha256:'||encode(sha256(convert_to(new.account_id::text,'UTF8')),'hex'));
  -- Preserve only a nonidentifying marker on pending groups, never the UUID.
+ -- Wait for in-flight closures; the following UPDATE then gets a fresh snapshot.
+ perform 1 from private.admin_effects where target_account=new.account_id for update;
  update private.admin_effects e set target_account=null,erase_on_close=true,
  target_hash=case when exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
  and r.outcome in('succeeded','failed','reconciled')) then 'erased' else e.target_hash end

@@ -35,7 +35,7 @@ $$;
 --
 
 CREATE FUNCTION private.admin_audit_maintenance() RETURNS boolean
-    LANGUAGE sql STABLE
+    LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO ''
     AS $$
  select current_user='postgres' and exists(select 1 from private.admin_audit_maintenance_tx
@@ -974,7 +974,7 @@ begin
  -- SQL/mail entries describe committed transactions; external uncertainty is in effects.
  delete from public.admin_audit_log where occurred_at<cutoff;
  get diagnostics admin_count=row_count;
- delete from private.mail_audit where occurred_at<cutoff;
+ delete from private.mail_audit where occurred_at<cutoff and action<>'audit_prune';
  get diagnostics mail_count=row_count;
  with closed as materialized (
   select i.effect_id from private.admin_effects i where i.outcome='started'

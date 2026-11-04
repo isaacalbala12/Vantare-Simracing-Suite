@@ -138,14 +138,33 @@ create policy testing_center_issues_select_own on public.testing_center_technica
 drop trigger a_account_write_barrier on public.testing_center_technical_issues;
 alter table public.testing_center_technical_issues
   drop constraint testing_center_technical_issues_report_id_fkey;
+-- Keep the tombstoned reporter as durable lineage after Clerk removes the v2
+-- contribution. This lets every retained child barrier reject later writes.
+alter table public.testing_center_technical_issues add column owner_account_id uuid;
+update public.testing_center_technical_issues i set owner_account_id=c.account_id
+  from public.testing_contributions c where c.id=i.contribution_id;
+alter table public.testing_center_technical_issues
+  drop constraint testing_center_issue_one_report;
 alter table public.testing_center_technical_issues
   add constraint testing_center_technical_issue_no_legacy_report_id
-  check (report_id is null);
+  check (report_id is null),
+  add constraint testing_center_issue_has_v2_lineage
+  check (contribution_id is not null or owner_account_id is not null);
 create trigger a_account_write_barrier before insert or update or delete
   on public.testing_center_technical_issues for each row
   execute function private.guard_account_write(
-    'select array_remove(array[(select account_id from public.testing_contributions where id=($1->>''contribution_id'')::uuid)],null)',
-    'select ($1->>''contribution_id'' is not null and not exists (select 1 from public.testing_contributions where id=($1->>''contribution_id'')::uuid))');
+    'select array_remove(array[coalesce(($1->>''owner_account_id'')::uuid,(select account_id from public.testing_contributions where id=($1->>''contribution_id'')::uuid))],null)',
+    'select ($1->>''contribution_id'' is not null and not exists (select 1 from public.testing_contributions where id=($1->>''contribution_id'')::uuid)) or ($1->>''contribution_id'' is not null and $1->>''owner_account_id'' is not null and (select account_id from public.testing_contributions where id=($1->>''contribution_id'')::uuid) is distinct from ($1->>''owner_account_id'')::uuid)');
+create or replace function private.testing_center_v2_owner(p_reference text) returns uuid
+language sql stable security definer set search_path='' as $$
+  select coalesce(i.owner_account_id,c.account_id) from public.testing_center_technical_issues i
+  left join public.testing_contributions c on c.id=i.contribution_id
+  left join public.testing_center_agent_jobs j on j.technical_issue_id=i.technical_issue_id
+  where p_reference in (i.technical_issue_id,j.job_key,i.contribution_id::text)
+  limit 1
+$$;
+revoke all on function private.testing_center_v2_owner(text)
+  from public,anon,authenticated,service_role;
 alter table public.testing_center_effect_outbox
   drop constraint testing_center_effect_outbox_primary_report_id_fkey;
 alter table public.testing_center_linear_projection_snapshots
@@ -178,6 +197,10 @@ declare r record;
         from public.testing_center_validations v
         join public.testing_center_candidate_builds c on c.candidate_id=v.candidate_id
         where v.validation_id=$1->>'rejection_validation_id'),
+      (select v.actor_user_id from public.testing_center_validations v
+        where v.validation_id=$1->>'validation_id'),
+      (select v.actor_user_id from public.testing_center_validations v
+        where v.validation_id=$1->>'rejection_validation_id'),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>'external_issue_id'),
@@ -203,8 +226,9 @@ begin
     order by t.tgrelid::regclass::text
   loop
     execute format('drop trigger a_account_write_barrier on %s',r.relation);
-    if not exists(select 1 from pg_trigger b
-      where b.tgrelid=r.relation and b.tgname='b_account_write_barrier_v2') then
+    if r.relation='public.testing_center_audit'::regclass
+      or not exists(select 1 from pg_trigger b
+        where b.tgrelid=r.relation and b.tgname='b_account_write_barrier_v2') then
       execute format('create trigger a_account_write_barrier before insert or update or delete
         on %s for each row execute function private.guard_account_write(%L,%L)',
         r.relation,owner_query,'select false');
@@ -284,6 +308,11 @@ begin
     delete from pilot_private.operations where account_id=account;
     delete from public.pilot_profiles where account_id=account;
     delete from public.testing_answers where account_id=account;
+    -- Keep technical issues and their actor barrier after report erasure.
+    update public.testing_center_technical_issues i
+      set owner_account_id=account,contribution_id=null
+      where i.contribution_id in (select id from public.testing_contributions
+        where account_id=account);
     delete from public.testing_contributions where account_id=account;
 
     update public.testing_center_memberships set active=false where user_id=account;
@@ -299,6 +328,10 @@ begin
   end if;
   return 'applied';
 end $function$;
+revoke all on function public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)
+  from public,anon,authenticated,service_role;
+grant execute on function public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)
+  to service_role;
 
 CREATE OR REPLACE FUNCTION private.storage_owner_accounts(p_row jsonb)
  RETURNS SETOF uuid
@@ -338,6 +371,8 @@ begin
   -- Deprecated owner may still be present in historical Storage rows.
   if nullif(p_row->>'owner','') is not null then return next (p_row->>'owner')::uuid; end if;
 end $function$;
+revoke all on function private.storage_owner_accounts(jsonb)
+  from public,anon,authenticated,service_role;
 
 
 drop table public.testing_center_evidence_outbox restrict;
@@ -356,18 +391,21 @@ drop table private.testing_center_legacy_archive restrict;
 -- SQL in function bodies and trigger arguments is opaque to pg_depend.
 do $no_dangling_legacy$
 declare v_references text;
+  forbidden_relations constant text :=
+    '((public\.|\m(from|join|update|into|references|table)\s+|,\s*)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M';
+  forbidden_calls constant text :=
+    '\mtesting_center_(report_submit_admitted|submit_report_with_evidence|finalize_screenshot|prepare_screenshot_batch|can_insert_evidence_object|record_posthog_evidence|set_posthog_consent|submit_report|triage_report|submit_report_without_transport_size|queue_codex_dry_run|load_codex_evidence|prepare_linear_projection|expire_posthog_evidence|authorize_posthog_linear_link|report_evidence_for_account|report_for_account|report_payload_for_account)\s*\(';
 begin
   select string_agg(reference,', ' order by reference) into v_references from (
     select 'trigger:'||t.tgrelid::regclass::text||'.'||t.tgname as reference
       from pg_trigger t where not t.tgisinternal
-        and encode(t.tgargs,'escape') ~
-          '((public\.|\m(from|join|update|into|references|table)\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M'
+        and (encode(t.tgargs,'escape') ~* forbidden_relations
+          or encode(t.tgargs,'escape') ~* forbidden_calls)
     union all
     select 'function:'||p.oid::regprocedure::text
       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
-        and pg_get_functiondef(p.oid) ~
-          '((public\.|\m(from|join|update|into|references|table)\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M'
+        and (p.prosrc ~* forbidden_relations or p.prosrc ~* forbidden_calls)
   ) live;
   if v_references is not null then
     raise exception 'legacy_retirement_dangling_catalog_reference'

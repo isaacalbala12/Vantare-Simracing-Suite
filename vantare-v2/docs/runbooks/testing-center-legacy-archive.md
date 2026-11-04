@@ -156,6 +156,12 @@ los demás para seguir la contribución v2; aborta si el catálogo conserva una
 referencia a una tabla retirada. El rollback restaura los 24 triggers afectados,
 las funciones y el esquema legacy vacío con sus permisos y políticas. No restaura datos
 porque el cierre exige cero antes de retirar las tablas.
+Para que `user.deleted` no choque con una issue v2, la issue conserva
+`owner_account_id` después de desvincular la contribución. Sus guardas y las
+de las tablas hijas siguen rechazando escrituras de la cuenta borrada. El
+rollback aborta si existe una issue así desvinculada: hace falta una decisión
+explícita sobre su destino antes de volver al esquema anterior, que exigía
+una contribución viva. No se recrea el informe borrado.
 Retira diez RPC de envío, triage, consentimiento PostHog y capturas del informe
 antiguo, más ocho funciones huérfanas de Codex, Linear, PostHog y admisión
 legacy. El rollback restaura sus definiciones, permisos y comentarios.

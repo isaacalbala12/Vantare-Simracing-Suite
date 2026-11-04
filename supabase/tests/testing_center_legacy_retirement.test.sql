@@ -1,6 +1,6 @@
 -- VANTA-131 / final 7b: v2 agent lineage remains readable only to its owner.
 begin;
-select plan(23);
+select plan(29);
 
 select ok(to_regclass('public.testing_center_reports') is null,'legacy report root retired');
 select ok(to_regclass('private.testing_center_legacy_archive') is null,'empty archive retired');
@@ -29,6 +29,9 @@ on conflict(issuer) do nothing;
 insert into public.profiles(id) values
  ('18960000-0000-4000-8000-000000000071'),
  ('18960000-0000-4000-8000-000000000072');
+insert into auth.users(id) values
+ ('18960000-0000-4000-8000-000000000071'),
+ ('18960000-0000-4000-8000-000000000072');
 insert into public.account_identities(issuer,subject,account_id) values
  ('https://fixtures.clerk.invalid','user_18960000000040008000000000000071',
   '18960000-0000-4000-8000-000000000071'),
@@ -41,6 +44,36 @@ insert into public.testing_center_technical_issues(
   technical_issue_id,contribution_id,state,flow_state,origin) values
  ('issue_v2_'||repeat('7',64),'18960000-0000-4000-8000-000000000073',
   'open','queued','orchestrator');
+insert into public.testing_center_candidate_builds
+  (candidate_id,technical_issue_id,channel,build_version,exact_sha,author_id,state)
+values('retirement-candidate','issue_v2_'||repeat('7',64),'testers',
+  'fixture',repeat('a',40),'candidate-author','pending');
+insert into public.testing_center_validations
+  (validation_id,candidate_id,channel,exact_sha,candidate_author_id,decision,
+   actor_id,actor_user_id,actor_role)
+values('retirement-validation','retirement-candidate','testers',repeat('a',40),
+  'candidate-author','accepted','fixture-actor',
+  '18960000-0000-4000-8000-000000000071','tester');
+insert into public.testing_center_validation_snapshots
+  (validation_id,technical_issue_id,candidate_id,channel,app_version,candidate_sha,
+   actor_id,actor_user_id,actor_role,decision,replay_key,decision_digest,
+   projection_digest,transport_digest,sanitized_projection,redacted_values,truncated_fields)
+values('retirement-validation','issue_v2_'||repeat('7',64),'retirement-candidate',
+  'testers','fixture',repeat('a',40),'18960000-0000-4000-8000-000000000072',
+  '18960000-0000-4000-8000-000000000072','tester','accepted',
+  'retirement-replay',repeat('1',64),repeat('2',64),repeat('3',64),'{}',0,0);
+insert into public.testing_center_promotions
+  (promotion_id,candidate_id,validation_id,from_channel,to_channel,exact_sha,
+   validated_sha,state)
+values('retirement-promotion','retirement-candidate','retirement-validation',
+  'testers','master',repeat('a',40),repeat('a',40),'pending');
+insert into public.testing_center_owner_dispositions
+  (disposition_id,rejection_validation_id,technical_issue_id,actor_id,actor_user_id,
+   disposition,reason,disposition_digest)
+values('disposition_'||repeat('9',64),'retirement-validation',
+  'issue_v2_'||repeat('7',64),'fixture-owner',
+  '18960000-0000-4000-8000-000000000072','dismiss_with_reason',
+  'fixture reason',repeat('8',64));
 select throws_ok($$insert into public.testing_center_technical_issues
   (technical_issue_id,report_id,state,flow_state,origin)
   values('issue_v2_'||repeat('8',64),'report_'||repeat('8',64),'open','queued','orchestrator')$$,
@@ -110,6 +143,28 @@ select is((select count(*)::integer from public.account_identities
 select ok(exists(select 1 from pg_trigger where tgname='a_account_write_barrier'
   and tgrelid='public.testing_center_audit'::regclass),
   'audit retains the actor write barrier alongside the v2 lineage barrier');
+select throws_ok($$update public.testing_center_effect_outbox
+  set attempt_count=attempt_count+1 where effect_id='effect_'||repeat('f',64)$$,
+  '28000');
+select throws_ok($$update public.testing_center_validations
+  set created_at=clock_timestamp() where validation_id='retirement-validation'$$,
+  '28000');
+select throws_ok($$insert into public.testing_center_audit
+  (audit_id,aggregate_id,from_state,to_state,origin,actor_id,actor_user_id,
+   actor_role,operation_digest)
+  values('retirement-deleted-actor','issue_v2_'||repeat('7',64),
+   'reported','queued','testing_center','fixture-actor',
+   '18960000-0000-4000-8000-000000000071','tester',repeat('d',64))$$,
+  '28000');
+select throws_ok($$update public.testing_center_validation_snapshots
+  set created_at=clock_timestamp() where validation_id='retirement-validation'$$,
+  '28000');
+select throws_ok($$update public.testing_center_promotions
+  set updated_at=clock_timestamp() where promotion_id='retirement-promotion'$$,
+  '28000');
+select throws_ok($$update public.testing_center_owner_dispositions
+  set created_at=clock_timestamp() where disposition_id='disposition_'||repeat('9',64)$$,
+  '28000');
 
 select * from finish();
 rollback;

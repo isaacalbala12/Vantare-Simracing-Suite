@@ -1124,3 +1124,24 @@ Las suites de informes legacy se marcan como históricas. La allowlist del Hub
 conserva por ahora los dos RPC de capturas porque `report/screenshots.rs` aún
 los invoca y `report/tests.rs` los caracteriza; las capturas siguen apagadas y
 el paso 6b debe cambiar esos clientes antes de quitar la allowlist.
+
+Re-review #1949: migración y down renombrados a `20261104120500`, después de
+`20261104110000_isa_1910_smtp_effects` en nightly. El test de caracterización
+reprodujo 23503 al borrar una cuenta con issue v2. El cierre conserva en la
+issue el UUID de su dueño y desvincula la contribución antes del borrado;
+`private.testing_center_v2_owner` mantiene la barrera de sus descendientes.
+El rollback aborta atómicamente si ya hay una issue desvinculada, para no
+resucitar el informe borrado. Audit conserva su guard de actor y las
+promotions, dispositions y snapshots también comprueban al actor de la
+validación referenciada. Las pruebas finales locales son 29/29, incluyendo
+seis rechazos 28000 tras tombstone, cuatro variantes del guard de catálogo,
+rollback exacto y rechazo atómico del rollback con issue desvinculada.
+`apply_clerk_user_event`, `storage_owner_accounts` y `v2_owner` tienen ACL
+explícita en up/down. Los dos RPC de capturas siguen en `bridge.rs` porque
+la ruta de `report/screenshots.rs` y sus pruebas aún los utilizan; retirar
+esa allowlist rompería el cliente antes del paso 6b. Sin despliegue ni
+llamadas a producción. Revalidar que el timestamp es posterior a todas las
+migraciones de nightly justo antes de integrar.
+Revisión publicada sobre `nightly@c86d59e8c` en
+[PR #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949).
+La CI de PostgreSQL 17 para este HEAD está pendiente al publicarlo.

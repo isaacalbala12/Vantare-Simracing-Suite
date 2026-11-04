@@ -198,7 +198,7 @@ $$;
   admin_report_root_applied=False
   owner_policy_previous=None
   owner_ack_previous=None
-  retirement_stem='20261104103100_isa_1896_legacy_retirement'
+  retirement_stem='20261104120500_isa_1896_legacy_retirement'
   retirement_before=None
   retirement_schema_before=None
   retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',
@@ -211,6 +211,10 @@ $$;
    snapshot=json.loads(run('psql',*conn,'-c',"""select jsonb_build_object(
      'clerk',pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure),
      'storage',pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),
+     'v2_owner',pg_get_functiondef('private.testing_center_v2_owner(text)'::regprocedure),
+     'clerk_acl',(select coalesce(proacl::text,'<null>') from pg_proc where oid='public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure),
+     'storage_acl',(select coalesce(proacl::text,'<null>') from pg_proc where oid='private.storage_owner_accounts(jsonb)'::regprocedure),
+     'v2_owner_acl',(select coalesce(proacl::text,'<null>') from pg_proc where oid='private.testing_center_v2_owner(text)'::regprocedure),
      'policy',(select to_jsonb(p) from pg_policies p where schemaname='public'
        and tablename='testing_center_technical_issues' and policyname='testing_center_issues_select_own'),
      'storage_policy',(select to_jsonb(p) from pg_policies p where schemaname='storage'
@@ -263,7 +267,7 @@ $$;
    )""").strip())
    # The replay also runs with CRLF SQL. Compare all nonblank source bytes,
    # while ignoring only source line endings and B03's blank-line whitespace.
-   for key in ('clerk','storage'):
+   for key in ('clerk','storage','v2_owner'):
     snapshot[key]=re.sub(r'(?m)^[ \t\r]+$', '', snapshot[key].replace('\r\n','\n'))
    if snapshot['rpcs'] is not None:
     for rpc in snapshot['rpcs']:
@@ -487,17 +491,21 @@ $$;
        env=ENV,capture_output=True,text=True)
      if denied.returncode==0 or 'legacy_retirement_requires_bypassrls' not in denied.stderr:
       raise RuntimeError('retirement role guard did not fail closed: '+denied.stderr)
-     run('psql',*conn,'-c',"""create function public.testing_center_legacy_reference_probe()
-       returns void language plpgsql as $$ begin
-         perform pg_catalog.to_regclass('public.testing_center_reports');
-       end $$""")
-     dangling=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',str(migration_source)],
-       env=ENV,capture_output=True,text=True)
-     if dangling.returncode==0 or 'legacy_retirement_dangling_catalog_reference' not in dangling.stderr:
-      raise RuntimeError('retirement catalog guard did not fail closed: '+dangling.stderr)
-     if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is not null").strip()!='t':
-      raise RuntimeError('failed catalog guard partially retired the schema')
-     run('psql',*conn,'-c','drop function public.testing_center_legacy_reference_probe()')
+     for reference in (
+       "perform pg_catalog.to_regclass('public.testing_center_reports');",
+       "perform pg_catalog.to_regclass('PUBLIC.TESTING_CENTER_REPORTS');",
+       'perform (select count(*) from pg_catalog.pg_class c, testing_center_reports r);',
+       "perform public.testing_center_load_codex_evidence('fixture');",
+     ):
+      run('psql',*conn,'-c',"""create function public.testing_center_legacy_reference_probe()
+        returns void language plpgsql as $$ begin """+reference+" end $$")
+      dangling=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',str(migration_source)],
+        env=ENV,capture_output=True,text=True)
+      if dangling.returncode==0 or 'legacy_retirement_dangling_catalog_reference' not in dangling.stderr:
+       raise RuntimeError('retirement catalog guard did not fail closed for '+reference+': '+dangling.stderr)
+      if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is not null").strip()!='t':
+       raise RuntimeError('failed catalog guard partially retired the schema')
+      run('psql',*conn,'-c','drop function public.testing_center_legacy_reference_probe()')
      references=run('psql',*conn,'-c',"""select jsonb_build_object(
        'triggers',(select coalesce(jsonb_agg(jsonb_build_object(
          'table',t.tgrelid::regclass::text,'name',t.tgname,
@@ -795,7 +803,32 @@ $$;
     raise RuntimeError('final 7b retained an obsolete report RPC')
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_retirement.test.sql')
    (OUT/'testing_center_legacy_retirement.test.sql.log').write_text(result)
-   if 'not ok ' in result or '1..18' not in result: raise RuntimeError(result)
+   if 'not ok ' in result or '1..29' not in result: raise RuntimeError(result)
+   run('psql',*conn,'-c',"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+     values('https://retirement.invalid',array['https://retirement.invalid'],true)
+     on conflict(issuer) do nothing;
+     insert into public.profiles(id) values('18960000-0000-4000-8000-000000000081');
+     insert into public.account_identities(issuer,subject,account_id)
+     values('https://retirement.invalid','user_18960000000040008000000000000081',
+       '18960000-0000-4000-8000-000000000081');
+     insert into public.testing_contributions(id,account_id,channel,title,body)
+     values('18960000-0000-4000-8000-000000000083',
+       '18960000-0000-4000-8000-000000000081','testers','Rollback fixture','Rollback fixture');
+     insert into public.testing_center_technical_issues(
+       technical_issue_id,contribution_id,state,flow_state,origin)
+     values('issue_v2_'||repeat('8',64),'18960000-0000-4000-8000-000000000083',
+       'open','queued','orchestrator');
+     select public.apply_clerk_user_event('retirement-rollback-delete',repeat('8',64),
+       'https://retirement.invalid','user_18960000000040008000000000000081',
+       'user.deleted',now(),null);""")
+   orphan_down=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+     str(ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))],
+     env=ENV,capture_output=True,text=True)
+   if orphan_down.returncode==0 or 'legacy_retirement_rollback_orphaned_v2_issue' not in orphan_down.stderr:
+    raise RuntimeError('rollback accepted a retained orphan issue: '+orphan_down.stderr)
+   if run('psql',*conn,'-c',"select to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
+    raise RuntimeError('orphan rollback guard changed the schema before aborting')
+   run('psql',*conn,'-c',"delete from public.testing_center_technical_issues where technical_issue_id='issue_v2_'||repeat('8',64)")
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(retirement_stem+'.down.sql'))
    retirement_after=retirement_snapshot()
    retirement_schema_after=retirement_schema()

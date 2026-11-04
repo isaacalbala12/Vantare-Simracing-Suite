@@ -2,6 +2,14 @@
 begin;
 set local lock_timeout='5s';
 set local check_function_bodies=false;
+do $rollback_guard$
+begin
+  if exists(select 1 from public.testing_center_technical_issues
+    where contribution_id is null) then
+    raise exception 'legacy_retirement_rollback_orphaned_v2_issue: retain technical issues until an explicit owner disposition'
+      using errcode='55000';
+  end if;
+end $rollback_guard$;
 lock table public.testing_center_technical_issues,
   public.testing_center_effect_outbox,
   public.testing_center_linear_projection_snapshots,
@@ -1394,6 +1402,12 @@ begin
     where p_row->>'bucket_id'='testing-center-evidence'
       and e.object_path=coalesce(p_row->>'name',p_row->>'key');
 end $function$;
+revoke all on function public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)
+  from public,anon,authenticated,service_role;
+grant execute on function public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)
+  to service_role;
+revoke all on function private.storage_owner_accounts(jsonb)
+  from public,anon,authenticated,service_role;
 
 CREATE OR REPLACE FUNCTION public.testing_center_submit_report_without_transport_size(p_contract_version text, p_channel text, p_action_text text, p_expected_text text, p_observed_text text, p_context_text text, p_app_version text, p_os_family text, p_os_version text, p_module text, p_include_diagnostic boolean, p_include_logs boolean, p_diagnostic_payload text, p_diagnostic_digest text, p_idempotency_key text)
  RETURNS TABLE(report_id text, report_state text, idempotent boolean, created_at timestamp with time zone)
@@ -2738,7 +2752,11 @@ create policy testing_center_evidence_insert_own_slot on storage.objects
   with check (public.testing_center_can_insert_evidence_object(bucket_id,name));
 -- Restore every retained account barrier from the pre-closure catalog.
 alter table public.testing_center_technical_issues
-  drop constraint testing_center_technical_issue_no_legacy_report_id;
+  drop constraint testing_center_technical_issue_no_legacy_report_id,
+  drop constraint testing_center_issue_has_v2_lineage;
+alter table public.testing_center_technical_issues
+  add constraint testing_center_issue_one_report
+  check ((report_id is null) <> (contribution_id is null));
 drop trigger if exists a_account_write_barrier on public.testing_center_agent_audit;
 CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.testing_center_agent_audit FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.testing_center_agent_jobs p4 cross join lateral (select a.account from public.testing_center_technical_issues p3 cross join lateral (select a.account from public.testing_center_reports p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''reporter_user_id'')::uuid) a(account) where p2.report_id=(to_jsonb(p3)->>''report_id'')::text) a(account) where p3.technical_issue_id=(to_jsonb(p4)->>''technical_issue_id'')::text) a(account) where p4.job_key=($1->>''job_key'')::text) owners(account)', 'select ($1->>''job_key'' is not null and not exists(select 1 from public.testing_center_agent_jobs p where p.job_key=($1->>''job_key'')::text))');
 drop trigger if exists a_account_write_barrier on public.testing_center_agent_callbacks;
@@ -2793,6 +2811,17 @@ drop trigger if exists a_account_write_barrier on public.testing_center_validati
 CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.testing_center_validation_snapshots FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''actor_user_id'')::uuid union select a.account from public.testing_center_technical_issues p3 cross join lateral (select a.account from public.testing_center_reports p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''reporter_user_id'')::uuid) a(account) where p2.report_id=(to_jsonb(p3)->>''report_id'')::text) a(account) where p3.technical_issue_id=($1->>''technical_issue_id'')::text union select a.account from public.testing_center_validations p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''actor_user_id'')::uuid) a(account) where p2.validation_id=($1->>''validation_id'')::text union select a.account from public.testing_center_validations p5 cross join lateral (select a.account from public.testing_center_candidate_builds p4 cross join lateral (select a.account from public.testing_center_technical_issues p3 cross join lateral (select a.account from public.testing_center_reports p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''reporter_user_id'')::uuid) a(account) where p2.report_id=(to_jsonb(p3)->>''report_id'')::text) a(account) where p3.technical_issue_id=(to_jsonb(p4)->>''technical_issue_id'')::text) a(account) where p4.candidate_id=(to_jsonb(p5)->>''candidate_id'')::text and p4.channel=(to_jsonb(p5)->>''channel'')::text and p4.exact_sha=(to_jsonb(p5)->>''exact_sha'')::text and p4.author_id=(to_jsonb(p5)->>''candidate_author_id'')::text) a(account) where p5.validation_id=($1->>''validation_id'')::text union select a.account from public.testing_center_candidate_builds p4 cross join lateral (select a.account from public.testing_center_technical_issues p3 cross join lateral (select a.account from public.testing_center_reports p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''reporter_user_id'')::uuid) a(account) where p2.report_id=(to_jsonb(p3)->>''report_id'')::text) a(account) where p3.technical_issue_id=(to_jsonb(p4)->>''technical_issue_id'')::text) a(account) where p4.candidate_id=($1->>''candidate_id'')::text and p4.channel=($1->>''channel'')::text and p4.exact_sha=($1->>''candidate_sha'')::text) owners(account)', 'select ($1->>''validation_id'' is not null and not exists(select 1 from public.testing_center_validations p where p.validation_id=($1->>''validation_id'')::text)) or ($1->>''technical_issue_id'' is not null and not exists(select 1 from public.testing_center_technical_issues p where p.technical_issue_id=($1->>''technical_issue_id'')::text)) or ($1->>''candidate_id'' is not null and $1->>''channel'' is not null and $1->>''candidate_sha'' is not null and not exists(select 1 from public.testing_center_candidate_builds p where p.candidate_id=($1->>''candidate_id'')::text and p.channel=($1->>''channel'')::text and p.exact_sha=($1->>''candidate_sha'')::text)) or ($1->>''actor_user_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''actor_user_id'')::uuid))');
 drop trigger if exists a_account_write_barrier on public.testing_center_validations;
 CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.testing_center_validations FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''actor_user_id'')::uuid union select a.account from public.testing_center_candidate_builds p4 cross join lateral (select a.account from public.testing_center_technical_issues p3 cross join lateral (select a.account from public.testing_center_reports p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''reporter_user_id'')::uuid) a(account) where p2.report_id=(to_jsonb(p3)->>''report_id'')::text) a(account) where p3.technical_issue_id=(to_jsonb(p4)->>''technical_issue_id'')::text) a(account) where p4.candidate_id=($1->>''candidate_id'')::text and p4.channel=($1->>''channel'')::text and p4.exact_sha=($1->>''exact_sha'')::text and p4.author_id=($1->>''candidate_author_id'')::text) owners(account)', 'select ($1->>''candidate_id'' is not null and $1->>''channel'' is not null and $1->>''exact_sha'' is not null and $1->>''candidate_author_id'' is not null and not exists(select 1 from public.testing_center_candidate_builds p where p.candidate_id=($1->>''candidate_id'')::text and p.channel=($1->>''channel'')::text and p.exact_sha=($1->>''exact_sha'')::text and p.author_id=($1->>''candidate_author_id'')::text)) or ($1->>''actor_user_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''actor_user_id'')::uuid))');
+create or replace function private.testing_center_v2_owner(p_reference text) returns uuid
+language sql stable security definer set search_path='' as $$
+  select c.account_id from public.testing_center_technical_issues i
+  join public.testing_contributions c on c.id=i.contribution_id
+  left join public.testing_center_agent_jobs j on j.technical_issue_id=i.technical_issue_id
+  where p_reference in (i.technical_issue_id,j.job_key,c.id::text)
+  limit 1
+$$;
+revoke all on function private.testing_center_v2_owner(text)
+  from public,anon,authenticated,service_role;
+alter table public.testing_center_technical_issues drop column owner_account_id;
 -- Restore the removed inert RPC bodies and their exact effective ACL.
 CREATE OR REPLACE FUNCTION private.testing_center_report_evidence_for_account(p_account uuid, p_contract_version text, p_channel text, p_action_text text, p_expected_text text, p_observed_text text, p_context_text text, p_app_version text, p_os_family text, p_os_version text, p_module text, p_include_diagnostic boolean, p_include_logs boolean, p_diagnostic_payload text, p_diagnostic_digest text, p_idempotency_key text, p_batch_id uuid)
  RETURNS TABLE(report_id text, report_state text, idempotent boolean, created_at timestamp with time zone)

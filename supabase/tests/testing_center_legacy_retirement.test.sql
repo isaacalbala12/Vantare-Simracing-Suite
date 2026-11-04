@@ -1,6 +1,6 @@
 -- VANTA-131 / final 7b: v2 agent lineage remains readable only to its owner.
 begin;
-select plan(18);
+select plan(23);
 
 select ok(to_regclass('public.testing_center_reports') is null,'legacy report root retired');
 select ok(to_regclass('private.testing_center_legacy_archive') is null,'empty archive retired');
@@ -91,6 +91,25 @@ select set_config('request.jwt.claims','{}',true);
 select is((select count(*)::integer from public.testing_center_technical_issues
   where technical_issue_id='issue_v2_'||repeat('7',64)),0,
   'missing identity cannot read issue');
+reset role;
+
+-- A Clerk tombstone must retain the technical issue without retaining the report.
+select lives_ok($$select public.apply_clerk_user_event(
+  'retirement-delete-71',repeat('a',64),'https://fixtures.clerk.invalid',
+  'user_18960000000040008000000000000071','user.deleted',now(),null)$$,
+  'Clerk deletion succeeds when a v2 contribution has a technical issue');
+select ok((select contribution_id is null from public.testing_center_technical_issues
+  where technical_issue_id='issue_v2_'||repeat('7',64)),
+  'technical issue remains after the account report is erased');
+select is((select count(*)::integer from public.testing_contributions
+  where account_id='18960000-0000-4000-8000-000000000071'),0,
+  'deleted account has no v2 contribution');
+select is((select count(*)::integer from public.account_identities
+  where account_id='18960000-0000-4000-8000-000000000071'
+    and deleted_at is not null),1,'Clerk account is tombstoned');
+select ok(exists(select 1 from pg_trigger where tgname='a_account_write_barrier'
+  and tgrelid='public.testing_center_audit'::regclass),
+  'audit retains the actor write barrier alongside the v2 lineage barrier');
 
 select * from finish();
 rollback;

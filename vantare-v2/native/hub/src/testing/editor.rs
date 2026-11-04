@@ -62,20 +62,14 @@ impl Editor {
                 .iter()
                 .position(|(key, _)| *key == values[4].as_str()),
         );
-        let labels = [
-            "Qué hiciste",
-            "Qué esperabas",
-            "Qué ocurrió",
-            "Contexto adicional · opcional",
-            "Módulo",
-        ];
+        let labels = crate::services::protocol::report_document::FIELD_PLACEHOLDERS;
         let inputs = std::array::from_fn(|index| {
             cx.new(|cx| {
                 if index < 4 {
                     Input::multiline(values[index].clone(), labels[index], cx)
                         .with_height(px(FIELD_HEIGHTS[index]))
                 } else {
-                    Input::new(values[index].clone(), labels[index], cx)
+                    Input::new(values[index].clone(), "Módulo", cx)
                 }
             })
         });

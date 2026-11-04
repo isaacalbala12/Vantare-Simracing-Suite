@@ -1,3 +1,4 @@
+pub(super) use crate::services::protocol::report_document::MODULES;
 use crate::services::protocol::report_document::{Fields, Preview};
 
 /// Mismo canal de build que Actualizaciones, también en las capturas QA.
@@ -11,25 +12,6 @@ pub(super) fn channel_label(channel: Option<&str>) -> String {
     }
     .into()
 }
-
-// Lista cerrada del servicio nativo y nombres del producto Wails.
-pub(super) const MODULES: [(&str, &str); 15] = [
-    ("unknown", "Sin determinar"),
-    ("hub", "Hub"),
-    ("launcher", "Launcher"),
-    ("settings", "Ajustes"),
-    ("overlay_studio", "Overlay Studio"),
-    ("overlay_runtime", "Overlays en pista"),
-    ("telemetry", "Telemetría"),
-    ("telemetry_analysis", "Análisis de telemetría"),
-    ("engineer", "Ingeniero"),
-    ("strategy", "Estrategia"),
-    ("calendar", "Calendario"),
-    ("billing", "Facturación"),
-    ("account", "Cuenta"),
-    ("updater", "Actualizaciones"),
-    ("testing_center", "Testing Center"),
-];
 
 /// Lee el contenido aprobado, también al reintentar; nunca el formulario actual.
 pub(super) fn preview_summary(preview: &Preview) -> Result<String, &'static str> {

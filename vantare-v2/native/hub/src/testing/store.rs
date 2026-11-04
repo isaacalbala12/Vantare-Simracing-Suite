@@ -17,7 +17,7 @@ pub const LABELS: [&str; 4] = [
 /// si la recuperacion aceptase mas que el envio, un texto recuperado se
 /// rechazaria para siempre al preparar el informe y el editor quedaria
 /// inservible hasta borrar el fichero a mano.
-pub(super) const FIELD_LIMITS: [usize; 4] = [2048, 2048, 2048, 4096];
+pub(super) use crate::services::protocol::report_document::FIELD_LIMITS;
 
 /// Limpia un campo visible del informe: quita las marcas invisibles y los
 /// controles, y recorta al limite del envio.

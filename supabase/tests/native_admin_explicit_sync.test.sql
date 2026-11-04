@@ -12,8 +12,8 @@ select ok(public.native_admin_payment_sync_budget('19100800-0000-4000-8000-00000
 select ok(not public.native_admin_payment_sync_budget('19100800-0000-4000-8000-000000000001','sandbox'),'repeated import has its own quota');
 update private.admin_payment_sync_budget set window_start=clock_timestamp()-interval '61 seconds';
 select ok(public.native_admin_payment_sync_budget('19100800-0000-4000-8000-000000000001','sandbox'),'expired window allows retry');
-select ok(not has_function_privilege('anon','public.native_admin_payment_sync_budget(uuid,text)','EXECUTE'),'anon cannot execute sync budget');
-select ok(not has_function_privilege('authenticated','public.native_admin_payment_sync_budget(uuid,text)','EXECUTE'),'authenticated cannot execute sync budget');
+select ok(not has_function_privilege('anon','public.native_admin_payment_sync_budget(uuid,text,uuid)','EXECUTE'),'anon cannot execute sync budget');
+select ok(not has_function_privilege('authenticated','public.native_admin_payment_sync_budget(uuid,text,uuid)','EXECUTE'),'authenticated cannot execute sync budget');
 select ok(not has_table_privilege('service_role','private.admin_payment_sync_budget','SELECT'),'quota table is not exposed to service role');
 select * from finish();
 rollback;

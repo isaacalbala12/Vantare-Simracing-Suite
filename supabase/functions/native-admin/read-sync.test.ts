@@ -29,6 +29,7 @@ for (
         gate: () => Promise.resolve(true),
         begin: () => Promise.resolve(true),
         paymentSyncBudget: () => Promise.resolve(true),
+        paymentSyncResult: () => Promise.resolve(true),
         resolve: () => Promise.resolve(account),
         productMap: map,
         execute: (_actor, _issuer, command) => {
@@ -53,7 +54,7 @@ for (
         },
       };
       const response = await handleNativeAdmin(
-        request({ version: 1, action, ...params }),
+        request({ version: 1, action, explicit_payments: true, ...params }),
         deps,
       );
       assert(
@@ -67,7 +68,7 @@ for (
       );
       assert(synced.status === 200 && finished);
       const fresh = await handleNativeAdmin(
-        request({ version: 1, action, ...params }),
+        request({ version: 1, action, explicit_payments: true, ...params }),
         deps,
       );
       assert(
@@ -78,13 +79,12 @@ for (
         Number(polar) === 3 &&
           JSON.stringify(commands) ===
             JSON.stringify([
+              "get_payment_sync",
               action,
-              "get_payment_sync",
-              "get_payment_sync",
               "get_payment_sync",
               "finish_payment_sync",
-              action,
               "get_payment_sync",
+              action,
             ]),
       );
     },

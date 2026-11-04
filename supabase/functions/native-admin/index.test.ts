@@ -781,6 +781,7 @@ Deno.test("r1: explicit sync imports invoices and refunds before the UI rereads 
   const actorDeps = deps({
     environment: "sandbox",
     paymentSyncBudget: () => Promise.resolve(true),
+    paymentSyncResult: () => Promise.resolve(true),
     productMap: map,
     polar: {
       getAccessToken: () => "fake",
@@ -854,7 +855,7 @@ Deno.test("r1: explicit sync imports invoices and refunds before the UI rereads 
     actorDeps,
   );
   const reread = await handleNativeAdmin(
-    request({ version: 1, action: "list_creators" }),
+    request({ version: 1, action: "list_creators", explicit_payments: true }),
     actorDeps,
   );
   assert(

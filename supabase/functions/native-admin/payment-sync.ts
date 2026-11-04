@@ -53,14 +53,19 @@ export async function polarPages(
   }
   throw new NativeError(503, "history_unavailable");
 }
+export async function needsPaymentSync(run: Execute): Promise<boolean> {
+  const state = await run("get_payment_sync", {});
+  if (typeof state.needs_sync !== "boolean") {
+    throw new NativeError(503, "history_unavailable");
+  }
+  return state.needs_sync;
+}
 export async function syncAdminPayments(
   run: Execute,
   environment: string,
   provided?: PolarProductMap,
   polar?: PolarClientDeps,
 ): Promise<void> {
-  const state = await run("get_payment_sync", {});
-  if (state.needs_sync !== true) return;
   // Production has no new remote reads/effects in this review candidate.
   if (environment !== "sandbox") return;
   const loaded = provided

@@ -551,6 +551,12 @@ impl Action {
             Self::SetReportStatus { .. } => "set_report_status",
         }
     }
+    pub fn explicit_payments(&self) -> bool {
+        matches!(
+            self,
+            Self::GetAccount { .. } | Self::ListCreators | Self::GetCreator { .. }
+        )
+    }
     pub fn mutation(&self) -> bool {
         matches!(
             self,
@@ -718,6 +724,9 @@ impl Client {
         }
         let mut payload = serde_json::to_value(action).map_err(|_| Error::Protocol)?;
         payload["version"] = 1.into();
+        if action.explicit_payments() {
+            payload["explicit_payments"] = true.into();
+        }
         let bytes = serde_json::to_vec(&payload).map_err(|_| Error::Protocol)?;
         let agent = if action.label().starts_with("mail_") {
             ureq::Agent::config_builder()

@@ -8981,3 +8981,25 @@ union all select 'linear_deliveries',outcome::text,count(*)
   retirada final y pruebas activas de cuota; solo señala derivados sin copiar.
   Se regeneran los nueve desde su artefacto13357045491 con PG17 fijado. Nueva
   CI pendiente tras publicar; el PR sigue draft, sin merge ni despliegue.
+
+### Re-review1963 (2026-11-04; sustituye el despliegue/contrato8c previo)
+
+- Rebase sobre1962 HEAD48b8a1d9f, conservando ambos lados. Orden de merge
+  1960→1962→1961→1963, timestamps intactos y PR contra nightly.
+- Opt-in de sobre explicit_payments:true, enviado por Gestión solo en las tres
+  lecturas financieras; sin campo/false se conserva el sync implícito anterior.
+  Se consulta la necesidad antes del dato, evita certificar una instantánea vieja
+  si otra sesión termina entretanto. needsPaymentSync evita la doble consulta.
+- Cupo y started atómicos en el journal admin_effects existente; succeeded/unknown
+  antes del ACK, cierre por intención sin owner vigente. Pendientes/reconcile y
+  retención365 de10b conservados. Namespace de hash técnico, sin PII/IDs externos.
+  Error de auditoría revierte cupo; sin actor/fecha/resultado no hay ACK de éxito.
+- accept_account vuelve inline; el parser mail existente entrega su ACK/relectura,
+  sin añadir un wrapper. Metadata opt-in y envío HTTP se prueban contra el fixture.
+- RED9546414ec:8 fallos antes de corregir. Deno298 PASS; SQL combinado6/8c/10b
+  LF y CRLF PASS, con rollback exacto/ACL/constraints/reapply y guard irreversible.
+  Native gates finales en marcha, solo admin/compilar.ps1/target aislado y QA falsa.
+- Solo Isaac despliega: SQL y enseguida Edge compatible/Gestión por1962. Un cliente
+  antiguo conserva lecturas/importación anteriores. Si ya existe evidencia sync,
+  el down aborta; conservar SQL y revertir Edge/corrección hacia delante, sin borrar.
+  Volcados PG17 tras integrar la pila; nada desplegado/fusionado por este worker.

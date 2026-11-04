@@ -873,21 +873,33 @@ approve, cancel ni al consultar campañas sending/completed.
 
 ### Lecturas de pagos y sync explícito (#1910, 8c)
 
-`get_account`, `list_creators` y `get_creator` no llaman a Polar. En sandbox
-anuncian `payment_sync_required` si falta la importación inicial. Gestión conserva
-los hechos anteriores, pide confirmar `sync_payments`, y solo tras el ACK relee
-la ficha/lista. Cancelar o fallar no sustituye importes; el botón Sincronizar
-historial permite reintentar. Logout y cambiar de contexto descartan la lectura
-pendiente. El caso completo/producción no añade llamadas a Polar.
+El opt-in es metadata de petición junto a version: `explicit_payments:true`,
+solo para get_account/list_creators/get_creator. Gestión nuevo lo envía; sin
+él (o false), Edge conserva el sync implícito anterior. Un cliente antiguo no
+recibe datos peores y no necesita actualizarse antes de la Edge compatible.
+Con true, se lee payment_sync_required antes del dato: incluso si otra sesión
+termina la importación entre ambas lecturas, Gestión conserva hechos previos,
+pide confirmar sync_payments y relee tras el ACK. Fallar/cancelar no los sustituye.
 
-`sync_payments {}` es owner/sandbox, con cupo propio SQL de una importación por
-minuto entre sesiones. Historial ya completo devuelve ACK sin cupo ni HTTP.
-Conserva la importación y sus límites/paginación existentes; registrar un pago
-conserva su protección previa. No cambia cálculo de comisiones, billing ni licencias.
+sync_payments es owner/sandbox y usa un cupo propio de un intento/minuto entre
+sesiones. needsPaymentSync consulta una sola vez el estado por camino; historial
+completo no usa cupo ni HTTP. La importación/paginación y la protección al pagar
+se conservan, sin cambiar billing/licencias. El opt-in no cambia la autenticación.
 
-Solo Isaac despliega: migración `20261104190009_isa_1910_admin_explicit_sync.sql`,
-Gestión compatible con el flag opcional y después la Edge. Verificar que usa
-Gestión actualizado antes de activar lecturas puras: un cliente antiguo ignora
-el flag. Pre-check readonly: `select environment,last_synced_at from private.admin_payment_sync;`.
-El down retira solo la RPC y su cupo transitorio; se revierte la Edge junto con
-él. Sin producción vacía supuesta, ni importación/purga durante la migración.
+El cupo ganador y started se guardan en la misma transacción en admin_effects.
+Si falla la auditoría, no se gasta cupo ni se llama a Polar. La Edge registra
+succeeded o unknown antes del ACK; el resultado exige la intención coincidente,
+no que el owner siga vigente. Reusa pendientes/reconcile y retención de10b:
+cerrados365 días, pendientes hasta reconciliar. El target_hash es un namespace
+fijo técnico, sin cuenta, correo, URL ni IDs de proveedor. actor, acción, fecha,
+request/effect UUID y resultado son la evidencia; no hay journal nuevo.
+
+Solo Isaac despliega: orden1960→1962→1961→1963, sin cambiar timestamps; migraciones
+antes de Edge y Gestión. Tras SQL, desplegar Edge compatible y Gestión enseguida
+por el contrato de confirmación de1962. Pre-check readonly:
+`select environment,last_synced_at from private.admin_payment_sync;`
+`select count(*) from private.admin_effects where action='sync_payments';`
+El down restaura constraints/ACL y retira las RPC/cupo solo sin esos efectos;
+con evidencia aborta antes del DDL: conservar SQL y revertir Edge o corregir hacia
+delante. No se borra evidencia para forzarlo. No presupone una base vacía.
+Volcados PG17 a regenerar tras integrar la pila, según orden del orquestador.

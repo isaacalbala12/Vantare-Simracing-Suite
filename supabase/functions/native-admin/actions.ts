@@ -264,13 +264,20 @@ export function validateAction(action: string, params: Params): void {
 }
 export function validateAdminRequest(
   body: Params,
-): { action: string; params: Params } {
-  const { version, action, ...params } = body;
+): { action: string; params: Params; explicitPayments: boolean } {
+  const { version, action, explicit_payments, ...params } = body;
   if (version !== 1 || typeof action !== "string") {
     throw new NativeError(400, "invalid_request");
   }
+  if (
+    explicit_payments !== undefined &&
+    (typeof explicit_payments !== "boolean" ||
+      !ACTIONS[action]?.[2]?.paymentRead)
+  ) {
+    throw new NativeError(400, "invalid_request");
+  }
   validateAction(action, params);
-  return { action, params };
+  return { action, params, explicitPayments: explicit_payments === true };
 }
 export function actionContract() {
   return {
@@ -282,6 +289,7 @@ export function actionContract() {
         [name, [example, , policy]],
       ) => [name, {
         mutation: policy?.mutation !== false,
+        explicit_payments: policy?.paymentRead === true,
         fields: Object.keys(example),
         mail: !!policy?.mail,
         environment: policy?.sandbox ? "sandbox" : "both",

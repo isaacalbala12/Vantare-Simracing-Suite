@@ -201,8 +201,15 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
                 .contains("authorization: bearer test-oauth-not-a-secret")
         );
         assert!(!headers.to_lowercase().contains("apikey:"));
+        let explicit = matches!(
+            &action,
+            Action::GetAccount { .. } | Action::ListCreators | Action::GetCreator { .. }
+        );
         let mut expected = serde_json::to_value(action).expect("action");
         expected["version"] = 1.into();
+        if explicit {
+            expected["explicit_payments"] = true.into();
+        }
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(body).expect("body"),
             expected
@@ -516,6 +523,12 @@ fn canonical_action_contract_covers_every_rust_wire_variant_and_field() {
         let action: Action =
             serde_json::from_value(wire.clone()).expect("canonical fields supported");
         assert_eq!(action.label(), name);
+        assert_eq!(
+            action.explicit_payments(),
+            spec["explicit_payments"]
+                .as_bool()
+                .expect("read capability")
+        );
         assert_eq!(
             action.mutation(),
             spec["mutation"].as_bool().expect("mutation")

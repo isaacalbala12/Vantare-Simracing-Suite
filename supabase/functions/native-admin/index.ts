@@ -1,3 +1,4 @@
+import { requireAudit } from "./effects.ts";
 import { adminFailure } from "./errors.ts";
 import {
   type ChangeDeps,
@@ -16,7 +17,7 @@ import {
   recordEffect,
 } from "./effects.ts";
 import { cleanupDeletedObjects } from "../_shared/account-erasure.ts";
-import { syncAdminPayments } from "./payment-sync.ts";
+import { needsPaymentSync, syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
 import type { PolarProductMap } from "../_shared/mapping.ts";
 import {
@@ -62,7 +63,16 @@ export type AdminDeps = NativeAuthDeps & ChangeDeps & {
   ) => Promise<ObjectValue>;
   resolve?: typeof resolveNativeAccount;
   begin?: (actor: string) => Promise<boolean>;
-  paymentSyncBudget?: (actor: string, environment: string) => Promise<boolean>;
+  paymentSyncBudget?: (
+    actor: string,
+    environment: string,
+    requestId: string,
+  ) => Promise<boolean>;
+  paymentSyncResult?: (
+    actor: string,
+    requestId: string,
+    outcome: "succeeded" | "unknown",
+  ) => Promise<boolean>;
   execute?: (
     actor: string,
     issuer: string,
@@ -103,16 +113,30 @@ export async function gate(
 async function paymentSyncBudget(
   actor: string,
   environment: string,
+  requestId: string,
 ): Promise<boolean> {
   const { data, error } = await getSupabaseAdmin().rpc(
     "native_admin_payment_sync_budget",
-    { p_actor: actor, p_environment: environment },
+    { p_actor: actor, p_environment: environment, p_request: requestId },
   );
   if (error) throw error;
   if (typeof data !== "boolean") {
     throw new NativeError(503, "bridge_unavailable");
   }
   return data;
+}
+
+async function paymentSyncResult(
+  actor: string,
+  requestId: string,
+  outcome: "succeeded" | "unknown",
+): Promise<boolean> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "native_admin_record_payment_sync",
+    { p_actor: actor, p_request: requestId, p_outcome: outcome },
+  );
+  if (error) throw error;
+  return data === true;
 }
 
 async function begin(actor: string): Promise<boolean> {
@@ -359,7 +383,9 @@ export async function handleNativeAdmin(
           : "invalid_request",
       );
     }
-    const { action, params } = validateAdminRequest(parsed.value);
+    const { action, params, explicitPayments } = validateAdminRequest(
+      parsed.value,
+    );
     timingAction = action;
     const adminAuth = deps.adminAuth ?? {
       enabled: Deno.env.get("CLERK_ADMIN_AUTH_ENABLED") === "true",
@@ -501,24 +527,52 @@ export async function handleNativeAdmin(
         environment,
       );
     if (policy?.handler === "payments") {
-      const state = await run("get_payment_sync", {});
-      if (typeof state.needs_sync !== "boolean") {
-        throw new NativeError(503, "history_unavailable");
-      }
-      if (state.needs_sync) {
+      if (await needsPaymentSync(run)) {
         const allowed = await (deps.paymentSyncBudget ?? paymentSyncBudget)(
           actor,
           environment,
+          requestId,
         );
         if (typeof allowed !== "boolean") {
           throw new NativeError(503, "bridge_unavailable");
         }
         if (!allowed) throw new NativeError(429, "rate_limited");
-        await syncAdminPayments(run, environment, deps.productMap, deps.polar);
+        // Winning quota committed started in the same SQL transaction.
+        const finish = (outcome: "succeeded" | "unknown") =>
+          requireAudit(
+            () =>
+              (deps.paymentSyncResult ?? paymentSyncResult)(
+                actor,
+                requestId,
+                outcome,
+              ),
+            "history_unavailable",
+          );
+        try {
+          await syncAdminPayments(
+            run,
+            environment,
+            deps.productMap,
+            deps.polar,
+          );
+        } catch (error) {
+          await finish("unknown");
+          throw error;
+        }
+        await finish("succeeded");
       }
       return respond({ ok: true });
     }
-    if (policy?.syncPayments) {
+    // Sample readiness before the data, so completion in another session cannot
+    // certify a response read from the older cache snapshot.
+    const paymentSyncRequired =
+      policy?.paymentRead && explicitPayments && environment === "sandbox"
+        ? await needsPaymentSync(run)
+        : false;
+    if (
+      (policy?.syncPayments || (policy?.paymentRead && !explicitPayments)) &&
+      await needsPaymentSync(run)
+    ) {
       await syncAdminPayments(run, environment, deps.productMap, deps.polar);
     }
     if (policy?.handler === "creator") {
@@ -815,14 +869,8 @@ export async function handleNativeAdmin(
         delete image.object_path;
       }
     }
-    if (policy?.paymentRead) {
-      const state = environment === "sandbox"
-        ? await run("get_payment_sync", {})
-        : { needs_sync: false };
-      if (typeof state.needs_sync !== "boolean") {
-        throw new NativeError(503, "history_unavailable");
-      }
-      result.payment_sync_required = state.needs_sync;
+    if (policy?.paymentRead && explicitPayments) {
+      result.payment_sync_required = paymentSyncRequired;
     }
     return respond({ ...result, ok: true });
   } catch (error) {

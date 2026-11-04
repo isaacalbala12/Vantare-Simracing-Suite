@@ -97,3 +97,82 @@ Deno.test("failed explicit sync records unknown without certifying history", asy
     response.status === 503 && JSON.stringify(f.outcomes) === '["unknown"]',
   );
 });
+Deno.test("read readiness is sampled before an overlapping completion", async () => {
+  const f = fixture();
+  let complete = false;
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "get_account",
+      account_id: account,
+      explicit_payments: true,
+    }),
+    {
+      ...f.deps,
+      execute: (_a, _i, command) => {
+        if (command === "get_payment_sync") {
+          return Promise.resolve({
+            needs_sync: !complete,
+          });
+        }
+        complete = true;
+        return Promise.resolve({ account: { account_id: account } });
+      },
+    },
+  );
+  assert(
+    response.status === 200 &&
+      (await response.json()).payment_sync_required === true,
+  );
+  assert(f.http() === 0);
+});
+Deno.test("explicit false preserves the legacy importer", async () => {
+  const f = fixture();
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "list_creators", explicit_payments: false }),
+    f.deps,
+  );
+  assert(
+    response.status === 200 && f.http() === 3 &&
+      !Object.hasOwn(await response.json(), "payment_sync_required"),
+  );
+});
+for (const result of [false, null, {}, "true", "throw"] as const) {
+  Deno.test(
+    "sync result ACK is strict: " + JSON.stringify(result),
+    async () => {
+      const f = fixture();
+      const response = await handleNativeAdmin(
+        request({ version: 1, action: "sync_payments" }),
+        {
+          ...f.deps,
+          paymentSyncResult: () =>
+            result === "throw"
+              ? Promise.reject(new Error("recorder down"))
+              : Promise.resolve(result as unknown as boolean),
+        },
+      );
+      assert(response.status === 503);
+    },
+  );
+}
+Deno.test("opt-in metadata is boolean and limited to financial reads", async () => {
+  for (
+    const body of [{
+      version: 1,
+      action: "get_account",
+      account_id: account,
+      explicit_payments: "true",
+    }, {
+      version: 1,
+      action: "set_tester",
+      account_id: account,
+      enabled: true,
+      explicit_payments: true,
+    }]
+  ) {
+    const f = fixture();
+    const response = await handleNativeAdmin(request(body), f.deps);
+    assert(response.status === 400 && f.http() === 0);
+  }
+});

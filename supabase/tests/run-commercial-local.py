@@ -20,7 +20,7 @@ from commercial_admin_minimal_audit import AUDIT_STEM, AUDIT_SNAPSHOT, run_minim
 from commercial_admin_owner_target import run_target_owner_race
 from commercial_admin_confirmations import STEM as CONFIRM_STEM, SNAPSHOT as CONFIRM_SNAPSHOT, run_confirmations
 
-from commercial_admin_explicit_sync import STEM as EXPLICIT_SYNC_STEM, run_explicit_sync
+from commercial_admin_explicit_sync import STEM as EXPLICIT_SYNC_STEM, SNAPSHOT as EXPLICIT_SYNC_SNAPSHOT, run_explicit_sync
 from commercial_admin_owner_policy import ACK_STEM, run_owner_ack_regressions, STEM as OWNER_POLICY_STEM, SNAPSHOT as OWNER_POLICY_SNAPSHOT, run_owner_policy_regressions
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
@@ -402,6 +402,8 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==EXPLICIT_SYNC_STEM and not args.schema_snapshot:
+    explicit_previous=run('psql',*conn,'-c',EXPLICIT_SYNC_SNAPSHOT)
    if m.stem==CONFIRM_STEM and not args.schema_snapshot:
     confirmation_previous=run('psql',*conn,'-c',CONFIRM_SNAPSHOT)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
@@ -596,7 +598,7 @@ $$;
     run_confirmations(run,conn,OUT,confirmation_previous,args.migration_newlines,BIN,ENV)
 
    if m.stem==EXPLICIT_SYNC_STEM and not args.schema_snapshot:
-    run_explicit_sync(run,conn,OUT,args.migration_newlines)
+    run_explicit_sync(run,conn,OUT,args.migration_newlines,explicit_previous)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem==acl_restatement_stem:

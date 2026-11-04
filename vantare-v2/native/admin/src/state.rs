@@ -239,10 +239,7 @@ impl State {
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<bool> {
-        if !matches!(
-            action,
-            Action::GetAccount { .. } | Action::ListCreators | Action::GetCreator { .. }
-        ) {
+        if !action.explicit_payments() {
             return Ok(false);
         }
         match response.get("payment_sync_required") {
@@ -267,14 +264,7 @@ impl State {
         response: &serde_json::Value,
     ) -> Result<Option<Action>> {
         if action.label().starts_with("mail_") {
-            self.accept_mail(action, response)?;
-            self.busy = false;
-            self.message = "Datos de correos confirmados".into();
-            return Ok(if matches!(action, Action::MailForgetWaitlist { .. }) {
-                Some(Action::MailList)
-            } else {
-                None
-            });
+            return self.accept_mail(action, response);
         }
         if self.defer_payment_read(action, response)? {
             return Ok(None);
@@ -291,7 +281,12 @@ impl State {
                 None
             }
             Action::GetAccount { account_id } => {
-                self.accept_account(account_id, response)?;
+                let user: User = field(response, "account")?;
+                if &user.account_id != account_id {
+                    return Err(Error::Protocol);
+                }
+                self.replace_user_row(&user);
+                self.user = Some(user);
                 None
             }
             Action::GetRollout => {
@@ -366,15 +361,6 @@ impl State {
         self.busy = false;
         self.message = "Datos confirmados por el servidor".into();
         Ok(reload)
-    }
-    fn accept_account(&mut self, account_id: &str, response: &serde_json::Value) -> Result<()> {
-        let user: User = field(response, "account")?;
-        if user.account_id != account_id {
-            return Err(Error::Protocol);
-        }
-        self.replace_user_row(&user);
-        self.user = Some(user);
-        Ok(())
     }
     fn accept_creator(&mut self, creator_id: &str, response: &serde_json::Value) -> Result<()> {
         let creator: Creator = field(response, "creator")?;

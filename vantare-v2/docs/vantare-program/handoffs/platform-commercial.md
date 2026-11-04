@@ -8663,7 +8663,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   de contactos. GREEN: 216 Deno; LF/CRLF 120 SQL y 19 Edge→SQL PASS; down/reapply,
   índice retirado al revertir y guards de retención PASS. Instancias paradas.
 - Check/lint/fmt/Python/diff PASS; native intacto. Producción 1422 → 1633 (+211;
-  +226/-15), tests +576/-4; docs +96/-1. HEAD final/CI en PR/issue. Cero despliegues.
+  +226/-15), tests +576/-4; docs +97/-1. HEAD final/CI en PR/issue. Cero despliegues.
 - #1948 corregido en e83faac5a; #1951 rebasado y en gates. Paso8 autorizado en
   account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
   No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.

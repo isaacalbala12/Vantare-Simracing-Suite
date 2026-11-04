@@ -1091,20 +1091,12 @@ purga requiere una decisión explícita de Isaac.
 
 Entrega 7b final: [PR draft #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949)
 contra `nightly@69827ca12`, rama
-`vantareapp/isa-1896-paso7b4-retirada-legacy`, HEAD inicial `653626ccc`.
+`vantareapp/isa-1896-paso7b4-retirada-legacy`, HEAD verificado `a68dbe1ea`.
 PostgreSQL local: harness histórico LF 134 rutas/795 comprobaciones PASS;
 esquema final LF y CRLF, 9 casos RLS/Storage, guard de archivo, rollback
-exacto y reaplicación PASS. `py_compile` y diff check PASS. CI pendiente.
+exacto y reaplicación PASS. `py_compile` y diff check PASS. CI comercial LF/CRLF PASS en PostgreSQL 17 (run 41813107183).
 Medida frente a nightly: producción SQL +278/−0; rollback SQL +2717/−0;
-tests y runner +247/−4; docs +68/−15; CI +12/−0. Sin despliegue,
+tests y runner +255/−4; docs +84/−15; CI +12/−0. Sin despliegue,
 llamadas a producción, merge ni release. El siguiente trabajo es la Fase A
 del paso 12, con ADR 0106 antes del lint y del generador de esquema.
-La primera CI de #1949 falló únicamente en el snapshot del rollback: el
-servidor desechable usa PostgreSQL 17 y el cliente `pg_dump` del runner era 16.
-El harness dirigido usa ahora el `pg_dump` de ese mismo contenedor para la
-comparación exacta; el harness histórico y los demás checks pasaron. Se
-requiere CI verde en el nuevo HEAD antes de integrar.
-El segundo intento en PG17 ya supera el problema de versión de `pg_dump`;
-detecta una diferencia en el snapshot posterior al down. El runner ahora
-informa la clave de catálogo o el objeto de esquema divergente sin volcar
-funciones completas, para corregir la causa exacta en la siguiente CI.
+La CI inicial detectó que el snapshot usaba `pg_dump` 16 contra PostgreSQL 17; el siguiente intento identificó cuatro triggers cuya cláusula `UNION` cambiaba de orden textual en el rollback. El `.down.sql` restaura ahora esas definiciones exactas. El replay histórico y el cierre final, incluido el snapshot exacto tras rollback, pasan en LF y CRLF en la CI de PostgreSQL 17.

@@ -61,3 +61,29 @@ PS 5.1 y PS 7. Logs `p7-review-check.log`, `p7-review-clippy.log` y
 `p7-review-lifecycle.log` bajo la misma raíz QA.
 Telemetría de Runtime con `compilar.ps1`, target propio y perfil `telemetria`:
 34/34 PASS (1 lento, 1 omitido por perfil); log `p7-review-telemetria.log`.
+
+## Re-review: BOM de PS 5.1 y cierre P3
+
+El CLI Rust `vantare-services --sign-update/--verify-update` descarta un único
+BOM UTF-8 inicial de stdin. La firma cubre los bytes del JSON sin BOM; una
+segunda marca se conserva y provoca rechazo de JSON. Un test unitario comprueba
+firma y verificación con/sin BOM usando solo semilla TEST. La ruta real de
+`sign-beta-manifest.ps1` usa `vantare-services.exe --sign-update` y una semilla
+TEST bajo QA; el verificador de matriz comprueba después firma y JSON con
+acentos. La verificación de producción rechaza esa firma de prueba.
+
+| Shell | Consola | Entrada observada | Resultado |
+| --- | --- | --- | --- |
+| Windows PowerShell 5.1 | cp 65001 | `EF-BB-BF` antes del JSON | PASS; `p7-review-bom-ps51.log` |
+| PowerShell 7 | UTF-8 | `C3-A1` para `á` | PASS; `p7-review-bom-ps7.log` |
+
+Ambas corridas incluyen las pruebas negativas de versión 65536, URL/SHA,
+recurso obligatorio ausente, ruta `layouts/`, recurso extra y ubicación de red;
+además comprueban que el build conserva `VANTARE_SCCACHE`,
+`VANTARE_CARGO_SLOTS` y `VANTARE_CARGO_MIN_GB`.
+
+Gates afectados: test unitario Services PASS; test de limpieza del temporal
+`hub-ready` tras fallo de rename PASS; fmt y Clippy `-D warnings` Services/Hub
+PASS mediante `compilar.ps1` y target propio. Quality y retirement PASS,
+471 archivos retenidos. El pin de captura apunta al ancestro nightly `076e64047`;
+el README anterior se conserva byte a byte en retirement.

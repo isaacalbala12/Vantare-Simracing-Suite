@@ -10,6 +10,12 @@ use zeroize::Zeroizing;
 const PUBLIC_KEY_BASE64: &str = "QcYuRiCPzjsM7JrNs1e/6DoGm+aCVmKItd6Y4nVofSs=";
 const LIMIT: usize = 65536;
 
+/// PS 5.1 may prepend UTF-8 BOM on redirected stdin. The BOM is transport,
+/// never part of the signed JSON bytes. Remove exactly one initial BOM.
+pub fn without_initial_bom(input: &[u8]) -> &[u8] {
+    input.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(input)
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SignedManifest {
@@ -75,6 +81,38 @@ pub fn sign_file(payload: &[u8], path: &std::path::Path) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn initial_bom_is_transport_and_never_signed() {
+        let key = SigningKey::from_bytes(&[42; 32]);
+        let payload = "{\"notes\":\"Actualización rápida para José\"}".as_bytes();
+        for input in [
+            payload.to_vec(),
+            [b"\xEF\xBB\xBF".as_slice(), payload].concat(),
+        ] {
+            let signed = sign(without_initial_bom(&input), &key).expect("sign JSON");
+            assert_eq!(
+                verify_with(
+                    without_initial_bom(&signed),
+                    &key.verifying_key().to_bytes()
+                )
+                .expect("verify JSON"),
+                payload
+            );
+            let signed_with_bom = [b"\xEF\xBB\xBF".as_slice(), signed.as_slice()].concat();
+            assert_eq!(
+                verify_with(
+                    without_initial_bom(&signed_with_bom),
+                    &key.verifying_key().to_bytes()
+                )
+                .expect("verify envelope with transport BOM"),
+                payload
+            );
+        }
+        assert_eq!(
+            without_initial_bom(b"\xEF\xBB\xBF\xEF\xBB\xBF{}"),
+            b"\xEF\xBB\xBF{}"
+        );
+    }
     #[test]
     fn signature_rejects_unsigned_modified_wrong_key_and_unknown_fields() {
         let mut seed = Zeroizing::new([0_u8; 32]);

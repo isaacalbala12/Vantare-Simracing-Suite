@@ -312,7 +312,7 @@
     },
     "native/hub/reference/README.md": {
       "source": "native/hub/reference/README.md",
-      "sha256": "ae8252830afb38cb66e006ccbe9e7201f4f56811856331ff39a1537d3c900c3c",
+      "sha256": "27f2d1c3a6adff716c9f19c68926975b1265e67bdfe666bafc2d4baf33bfcbf9",
       "source_sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25",
       "revisions": [
         {
@@ -321,6 +321,13 @@
             "#1655"
           ],
           "archived_original": "native/retirement/legacy-evidence/hub-capture-before-1655/README.md.txt"
+        },
+        {
+          "commit": "076e6404772878ed427c9f2ed1a43594dec5f2ed",
+          "issues": ["#1840"],
+          "previous_sha256": "ae8252830afb38cb66e006ccbe9e7201f4f56811856331ff39a1537d3c900c3c",
+          "source_archive": "native/retirement/legacy-evidence/hub-reference-readme-before-1929/README.md.txt",
+          "reason": "#1929 review: retired compare.ps1 and capture-alpha.ps1 are historical inert; previous reference instructions retained unchanged as evidence."
         }
       ]
     },
@@ -366,7 +373,7 @@
           "reason": "Orchestrator-authorized #1847 review: active capture tools load candidate with explicit Library and Root. Previous active bytes retained unchanged as inert .txt; source pins, prior revisions, corpora and visual baselines preserved."
         },
         {
-          "commit": "ea8d8344d9ff75e05fc2ba6440c6b976930db68b",
+          "commit": "076e6404772878ed427c9f2ed1a43594dec5f2ed",
           "issues": [
             "#1840"
           ],
@@ -466,7 +473,7 @@
           "reason": "Orchestrator-authorized #1847 review: active capture tools load candidate with explicit Library and Root. Previous active bytes retained unchanged as inert .txt; source pins, prior revisions, corpora and visual baselines preserved."
         },
         {
-          "commit": "ea8d8344d9ff75e05fc2ba6440c6b976930db68b",
+          "commit": "076e6404772878ed427c9f2ed1a43594dec5f2ed",
           "issues": [
             "#1840"
           ],
@@ -3747,6 +3754,10 @@
     "native/retirement/legacy-evidence/hub-capture-before-1929/capture-alpha.ps1.txt": {
       "source": "native/hub/reference/tools/capture-alpha.ps1",
       "sha256": "11bc601b1845cb7c42c890c0668d6bc2c1929ed922ccdf33cffb24b9dfc2c42d"
+    },
+    "native/retirement/legacy-evidence/hub-reference-readme-before-1929/README.md.txt": {
+      "source": "native/hub/reference/README.md",
+      "sha256": "ae8252830afb38cb66e006ccbe9e7201f4f56811856331ff39a1537d3c900c3c"
     }
   }
 }

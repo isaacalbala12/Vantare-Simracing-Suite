@@ -17,14 +17,15 @@ fn run() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     if input.len() > 65536 {
         return Err("fixture input too large".into());
     }
+    let input = input.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&input);
     let key = SigningKey::from_bytes(&[42; 32]);
     match std::env::args().nth(1).as_deref() {
         Some("--matrix-sign") => Ok(serde_json::to_vec(&Envelope {
-            payload: STANDARD.encode(&input),
-            signature: STANDARD.encode(key.sign(&input).to_bytes()),
+            payload: STANDARD.encode(input),
+            signature: STANDARD.encode(key.sign(input).to_bytes()),
         })?),
         Some("--verify-update") => {
-            let envelope: Envelope = serde_json::from_slice(&input)?;
+            let envelope: Envelope = serde_json::from_slice(input)?;
             let payload = STANDARD.decode(envelope.payload)?;
             let signature = Signature::from_slice(&STANDARD.decode(envelope.signature)?)?;
             key.verifying_key().verify_strict(&payload, &signature)?;

@@ -114,11 +114,11 @@ function Assert-BetaManifest([object]$Manifest) {
     $expected=@('channel','notes','product','schema','sha256','url','version')
     if(($fields -join ',') -cne ($expected -join ',')){throw 'Campos del manifiesto beta inválidos'}
     if(($Manifest.schema -isnot [int] -and $Manifest.schema -isnot [long]) -or $Manifest.schema -ne 1 -or $Manifest.product -cne 'vantare-native' -or $Manifest.channel -cne 'beta'){throw 'Manifiesto beta incompatible'}
-    if($Manifest.version -isnot [string] -or $Manifest.version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión beta inválida'}
+    if($Manifest.version -isnot [string] -or $Manifest.version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión beta inválida'}
     if(@($Manifest.version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión beta fuera de rango'}
-    if($Manifest.sha256 -isnot [string] -or $Manifest.sha256 -cnotmatch '^[0-9a-f]{64}$'){throw 'SHA beta inválido'}
+    if($Manifest.sha256 -isnot [string] -or $Manifest.sha256 -cnotmatch '^[0-9a-f]{64}\z'){throw 'SHA beta inválido'}
     if($Manifest.notes -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($Manifest.notes) -gt 8192){throw 'Notas beta inválidas'}
-    if($Manifest.url -isnot [string] -or $Manifest.url -cnotmatch '^https://github\.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v([0-9]+\.[0-9]+\.[0-9]+)/vantare-native-amd64-package\.zip$' -or $Matches[1] -cne $Manifest.version){throw 'URL beta inválida'}
+    if($Manifest.url -isnot [string] -or $Manifest.url -cnotmatch '^https://github\.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v([0-9]+\.[0-9]+\.[0-9]+)/vantare-native-amd64-package\.zip\z' -or $Matches[1] -cne $Manifest.version){throw 'URL beta inválida'}
 }
 
 function Assert-PublishArtifacts([string]$OutputDirectory) {

@@ -55,7 +55,12 @@ fn publish_ready(root: &Path, token: &str) -> std::io::Result<()> {
     let mut file = std::fs::File::create(&temporary)?;
     file.write_all(token.as_bytes())?;
     file.sync_all()?;
-    std::fs::rename(temporary, root.join("hub-ready"))
+    drop(file);
+    let result = std::fs::rename(&temporary, root.join("hub-ready"));
+    if result.is_err() {
+        let _ = std::fs::remove_file(temporary);
+    }
+    result
 }
 
 fn installed_hub(executable: &Path, root: &Path) -> Result<(), String> {
@@ -107,6 +112,20 @@ mod tests {
             std::fs::read_to_string(root.join("hub-ready")).unwrap(),
             "aabb"
         );
+        assert!(!root.join("hub-ready-aabb.tmp").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn failed_ready_rename_removes_temporary_file() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI QA root"))
+        } else {
+            std::path::PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent.join(format!("hub-ready-fail-{}", std::process::id()));
+        vantare_installer::engine::context::qa_path(&root).unwrap();
+        std::fs::create_dir_all(root.join("hub-ready")).unwrap();
+        assert!(publish_ready(&root, "aabb").is_err());
         assert!(!root.join("hub-ready-aabb.tmp").exists());
         std::fs::remove_dir_all(root).unwrap();
     }

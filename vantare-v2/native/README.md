@@ -371,9 +371,10 @@ GPUI no ofrece lectura de su textura en el binario normal de esta revisión.
 
 `--capture ESCENA --out PNG` del Hub, `--captura PNG` del Workshop y
 `--parity-capture PNG` de overlays siguen disponibles con la misma protección.
-Los comparadores `hub/reference/compare.ps1`, `capture-alpha.ps1`,
-`capture-native.ps1`, `ui/compare.ps1` y `ui/src/standings/capture-scenes.ps1`
-preparan manifiestos. Los scripts externos deben invocar el lote una vez,
+Los comparadores activos `hub/reference/capture-native.ps1`, `ui/compare.ps1`
+y `ui/src/standings/capture-scenes.ps1` preparan manifiestos.
+`hub/reference/compare.ps1` y `capture-alpha.ps1` son históricos inertes desde
+#1929; sus bytes anteriores están en retirement. Los scripts externos deben invocar el lote una vez,
 en lugar de un proceso por entrada. El mutex global y el turno `pantalla-ocupada` se comprueban dentro del proceso;
 no envolver la invocación con otro mutex del mismo nombre.
 El marcador es opcional; `VANTARE_CAPTURE_TURN_FILE` configura su ruta. Por

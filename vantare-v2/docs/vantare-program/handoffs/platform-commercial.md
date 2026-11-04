@@ -618,6 +618,15 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   #1929 se rebasa sobre ese SHA y porta el gate de exclusión de features y
   símbolos QA a `build-candidate.ps1`, al ZIP leído por el builder de Setup y
   al paso Windows de CI; el builder antiguo `candidate.ps1` sigue retirado.
+- Re-review #1929: PS 5.1 con cp 65001 antepone BOM de stdin. El CLI Rust de
+  firma/verificación elimina una sola marca inicial y firma solo el JSON. Ruta
+  real de firma con clave TEST y notas con acentos: PASS en PS 5.1 y PS 7;
+  unit test, Hub temporal, fmt/Clippy, calidad y 471 pins de retirement PASS.
+  Los P3 de README, pin ancestro, BOM de publish, variables de cola, regex,
+  versión, red e inventario tienen regresiones. Medición nueva: **10.263**
+  líneas de producción en el perímetro y **963** fuera, **11.226** total,
+  dentro de 10.300/11.250. Evidencia en
+  `native/packaging/matrix/evidence-1840-p7-review.md`.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

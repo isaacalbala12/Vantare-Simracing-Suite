@@ -1,5 +1,6 @@
 # Configuración pública de compilación: datos literales, nunca código PowerShell.
 function Import-NativeBuildConfig([string]$Path) {
+    $passthrough = @('VANTARE_SCCACHE', 'VANTARE_CARGO_SLOTS', 'VANTARE_CARGO_MIN_GB')
     $allowed = @('VANTARE_SUPABASE_URL', 'VANTARE_SUPABASE_ANON_KEY', 'VANTARE_LICENSE_PUBLIC_KEYS',
         'VANTARE_CLERK_ISSUER', 'VANTARE_CLERK_CLIENT_ID', 'VANTARE_CLERK_REDIRECT', 'VANTARE_CLERK_ACCOUNT_PORTAL_URL',
         'VANTARE_ACCOUNT_BRIDGE_URL', 'VANTARE_POSTHOG_KEY', 'VANTARE_ADMIN_URL',
@@ -34,7 +35,7 @@ function Import-NativeBuildConfig([string]$Path) {
         $previous[$entry.Name] = $entry.Value
     }
     try {
-        foreach ($entry in Get-ChildItem Env:VANTARE_*) { Remove-Item -LiteralPath ('Env:'+$entry.Name) }
+        foreach ($entry in Get-ChildItem Env:VANTARE_* | Where-Object { $_.Name -cnotin $passthrough }) { Remove-Item -LiteralPath ('Env:'+$entry.Name) }
         foreach ($name in $values.Keys) { [Environment]::SetEnvironmentVariable($name, $values[$name], 'Process') }
     } catch {
         Restore-NativeBuildConfig $previous

@@ -15,7 +15,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-config.ps1')
 . (Join-Path $PSScriptRoot 'no-qa.ps1')
 if($env:DUCKDB_LIB_DIR){throw 'Empaquetado exige DuckDB bundled'}
-if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión inválida'}
+if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión inválida'}
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
 $destination=Assert-BuildPath $OutputDirectory
 if((Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count){throw 'La salida debe estar vacía'}

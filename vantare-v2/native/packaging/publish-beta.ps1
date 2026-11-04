@@ -1,4 +1,4 @@
-# Builds reviewable artifacts and prints a release command; never publishes.
+﻿# Builds reviewable artifacts and prints a release command; never publishes.
 #requires -Version 5.1
 [CmdletBinding()]
 param(
@@ -13,7 +13,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
-if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión beta inválida'}
+if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión beta inválida'}
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión beta fuera de rango'}
 if([Text.Encoding]::UTF8.GetByteCount($Notes) -gt 8192){throw 'Notas demasiado grandes'}
 $output=Assert-BuildPath $OutputDirectory

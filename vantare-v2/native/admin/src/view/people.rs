@@ -480,6 +480,7 @@ impl Admin {
                                 account_id: user.account_id.clone(),
                                 module,
                                 enabled: !individual,
+                                expected_enabled: individual,
                             },
                             cx,
                         ))

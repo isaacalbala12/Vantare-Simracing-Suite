@@ -23,12 +23,14 @@ impl Admin {
             Some(Dialog::Report(_))=>("Cambiar estado del informe","Confirma el nuevo estado.".to_owned()),
             None=>("Confirmar cambio",match action {
                 Some(Action::MailCleanup)=>"Reintentará los borrados pendientes en Brevo. No envía correos ni afecta a contactos fuera de la cola.".into(),
-                Some(Action::MailApprove{..})=>format!("Confirmas el texto guardado en ES, EN, IT y PT-BR para {} personas con consentimiento en este grupo. El servidor vuelve a comprobarlo en cada tanda. Después pulsa Enviar siguiente tanda.",self.state.mail.campaign.as_ref().and_then(|c|self.state.mail.counts.get(&c.target_group)).copied().unwrap_or_default()),
+                Some(Action::MailApprove{expected_recipients,..})=>format!("Confirmas el texto guardado en ES, EN, IT y PT-BR para {expected_recipients} personas con consentimiento. Si la cifra cambia, tendrás que actualizar y confirmar de nuevo. Después pulsa Enviar siguiente tanda."),
+                Some(Action::MailCancel{..})=>"Se cancelará la campaña y se descartarán las entregas pendientes. Un correo que ya esté en envío puede terminar.".into(),
                 Some(Action::MailSendBatch{..})=>"Se enviará la siguiente tanda, hasta tres correos, de la campaña confirmada. Solo a personas que sigan teniendo consentimiento.".into(),
                 Some(Action::MailDraft{..})=>"Claude preparará cuatro borradores a partir del brief. Revisa su contenido antes de guardarlo. No envía correos.".into(),
                 Some(Action::SetTester{enabled,..})=>format!("{} el acceso de tester a esta persona.",if *enabled{"Activar"}else{"Desactivar"}),
                 Some(Action::SetModule{module,enabled,..})=>format!("{} el acceso propio a {}. Los accesos del plan o para todos se conservan.",if *enabled{"Activar"}else{"Desactivar"},module.label()),
-                Some(Action::SetRollout{module,enabled_for_all})=>format!("{} {} para todas las cuentas ({}). Los accesos propios se conservan.",if *enabled_for_all{"Activar"}else{"Desactivar"},module.label(),self.state.accounts_total),
+                Some(Action::SetRollout{module,enabled_for_all, ..
+})=>format!("{} {} para todas las cuentas ({}). Los accesos propios se conservan.",if *enabled_for_all{"Activar"}else{"Desactivar"},module.label(),self.state.accounts_total),
                 _=>"Confirma el cambio antes de guardarlo.".into(),
             }),
         };

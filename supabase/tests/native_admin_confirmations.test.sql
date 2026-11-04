@@ -23,9 +23,15 @@ select throws_ok($$select pg_temp.mail('mail_approve','{"campaign_id":"19100600-
 select is((select state from private.mail_campaigns where id='19100600-0000-4000-8000-000000000010'),'draft','failed approval preserves draft');
 select is((select count(*)::integer from private.mail_deliveries where campaign_id='19100600-0000-4000-8000-000000000010'),0,'failed approval does not queue deliveries');
 select lives_ok($$select pg_temp.mail('mail_approve','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1,"confirm":true,"expected_recipients":1}')$$,'matching count approves');
+create temporary table claimed as select (pg_temp.mail('mail_claim','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')->'delivery'->>'id')::uuid id;
+select ok((select id is not null from claimed),'sending campaign can claim a delivery');
+select throws_ok($$select pg_temp.mail('mail_cancel','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":2}')$$,
+ 'P0001','mail_revision_conflict','stale cancellation leaves the sending campaign intact');
 select lives_ok($$select pg_temp.mail('mail_cancel','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')$$,'owner can cancel a sending campaign');
 select is((select state from private.mail_campaigns where id='19100600-0000-4000-8000-000000000010'),'canceled','cancel is durable');
 select ok(not exists(select 1 from private.mail_deliveries where campaign_id='19100600-0000-4000-8000-000000000010' and status='pending'),'cancel skips pending deliveries');
+select is((pg_temp.mail('mail_can_send',jsonb_build_object('delivery_id',(select id from claimed)))->>'allowed')::boolean,false,
+ 'a claimed delivery cannot start HTTP after cancellation');
 select is(pg_temp.mail('mail_claim','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')->'delivery','null'::jsonb,'canceled campaign cannot claim another delivery');
 select lives_ok($$select pg_temp.mail('mail_cancel','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')$$,'cancel retry is idempotent');
 select is((select count(*)::integer from private.mail_audit where action='mail_cancel' and target='19100600-0000-4000-8000-000000000010'),1,'cancel retry does not duplicate its audit');

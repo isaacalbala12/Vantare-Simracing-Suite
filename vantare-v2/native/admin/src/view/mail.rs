@@ -88,6 +88,12 @@ impl MailEditor {
 }
 impl Admin {
     pub(super) fn mail_loaded(&mut self, action: &Action, cx: &mut Context<Self>) {
+        if self.state.demo
+            && let Some(c) = &self.state.mail.campaign
+        {
+            self.state.mail.recipients = self.state.mail.counts.get(&c.target_group).copied();
+        }
+
         if matches!(action, Action::MailDraft { .. }) {
             if let Some(content) = self.state.mail.generated.take() {
                 self.mail_editor.content = content;
@@ -101,6 +107,7 @@ impl Admin {
                 | Action::MailNew
                 | Action::MailSave { .. }
                 | Action::MailApprove { .. }
+                | Action::MailCancel { .. }
                 | Action::MailSendBatch { .. }
         ) && let Some(c) = &self.state.mail.campaign
         {
@@ -387,7 +394,8 @@ impl Admin {
                 Event::Mail(MailEvent::Save),
                 cx,
             ));
-            let ready = !dirty
+            let ready = self.state.mail.recipients.is_some()
+                && !dirty
                 && c.content.values().all(|t| {
                     !t.subject.trim().is_empty()
                         && !t.body.trim().is_empty()
@@ -401,6 +409,7 @@ impl Admin {
                         campaign_id: c.id.clone(),
                         revision: c.revision,
                         confirm: true,
+                        expected_recipients: self.state.mail.recipients.unwrap_or_default(),
                     }),
                     cx,
                 )
@@ -409,6 +418,15 @@ impl Admin {
                 }),
             );
         } else if c.state == "sending" {
+            top = top.child(self.button(
+                "mail-cancel",
+                "Cancelar campaña…",
+                Event::Propose(Action::MailCancel {
+                    campaign_id: c.id.clone(),
+                    revision: c.revision,
+                }),
+                cx,
+            ));
             top = top.child(self.button(
                 "mail-batch",
                 "Enviar siguiente tanda",
@@ -570,6 +588,7 @@ fn mail_status(state: &str) -> &str {
         "draft" => "Borrador",
         "sending" => "Confirmada · en tandas",
         "completed" => "Tandas terminadas",
+        "canceled" => "Cancelada",
         _ => "Desconocido",
     }
 }

@@ -18,6 +18,7 @@ from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_O
 from commercial_admin_report_root import run_admin_report_cutover
 from commercial_admin_minimal_audit import AUDIT_STEM, AUDIT_SNAPSHOT, run_minimal_audit, seed_audit_upgrade, audit_schema
 from commercial_admin_owner_target import run_target_owner_race
+from commercial_admin_confirmations import STEM as CONFIRM_STEM, SNAPSHOT as CONFIRM_SNAPSHOT, run_confirmations
 from commercial_admin_owner_policy import ACK_STEM, run_owner_ack_regressions, STEM as OWNER_POLICY_STEM, SNAPSHOT as OWNER_POLICY_SNAPSHOT, run_owner_policy_regressions
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
@@ -39,7 +40,7 @@ parser.add_argument('--legacy-retirement-inventory', action='store_true', help='
 parser.add_argument('--legacy-retirement-only', action='store_true', help='Replay full chain, then verify final 7b closure and rollback')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
-parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
+parser.add_argument('--admin-deno-bin', help='Only admin Edgeâ†’SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
@@ -325,7 +326,7 @@ $$;
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
-   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM) and not legacy_writers_enabled: continue
+   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM,CONFIRM_STEM) and not legacy_writers_enabled: continue
    if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
@@ -383,6 +384,8 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==CONFIRM_STEM and not args.schema_snapshot:
+    confirmation_previous=run('psql',*conn,'-c',CONFIRM_SNAPSHOT)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     audit_previous=run('psql',*conn,'-c',AUDIT_SNAPSHOT)
     # Match the Supabase PG17 image, not Ubuntu's PG16 pg_dump client.
@@ -558,6 +561,8 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if m.stem==CONFIRM_STEM and not args.schema_snapshot:
+    run_confirmations(run,conn,OUT,confirmation_previous,args.migration_newlines)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
@@ -1412,8 +1417,6 @@ $$;
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   if owner_policy_previous is not None: suites.append('native_admin_owner_policy.test.sql')
-  if (ROOT/'supabase/tests/native_admin_confirmations.test.sql').exists():
-   suites.append('native_admin_confirmations.test.sql')
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
    # whose membership is not granted to managed postgres by the product.

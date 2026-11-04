@@ -171,8 +171,8 @@ impl State {
             "La campaña ha cambiado. Actualiza y revisa el borrador antes de confirmar.".into()
         } else if error == Error::DeletionUnavailable {
             "El borrado aún no está disponible. Falta revisar y conectar su barrera.".into()
-        } else if error == Error::Conflict {
-            "La cuenta o el correo ha cambiado. Actualiza sus datos antes de confirmar.".into()
+        } else if matches!(error, Error::Conflict | Error::AccountConflict) {
+            "Los datos han cambiado. Actualiza y revisa el estado antes de confirmar.".into()
         } else if error == Error::RateLimited {
             "Espera un minuto antes de volver a intentarlo.".into()
         } else if error == Error::AccountChangeIncomplete {
@@ -487,6 +487,7 @@ impl State {
             Action::SetRollout {
                 module,
                 enabled_for_all,
+                ..
             } => {
                 if let Some(row) = self.rollout.iter_mut().find(|r| r.module == *module) {
                     row.enabled_for_all = *enabled_for_all;
@@ -687,11 +688,13 @@ mod tests {
             account_id: id,
             module: Module::Calendar,
             enabled: true,
+            expected_enabled: false,
         });
         let grants = s.user.as_ref().expect("demo user").modules.clone();
         s.demo_action(&Action::SetRollout {
             module: Module::Calendar,
             enabled_for_all: false,
+            expected_enabled: false,
         });
         assert_eq!(s.user.as_ref().expect("demo user").modules, grants);
         s.clear_private();

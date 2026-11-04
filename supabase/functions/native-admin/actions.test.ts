@@ -43,6 +43,7 @@ Deno.test("action characterization: statuses/modules match current accepted wire
         account_id: id,
         module,
         enabled: true,
+        expected_enabled: false,
       }).action === "set_module",
     );
   }

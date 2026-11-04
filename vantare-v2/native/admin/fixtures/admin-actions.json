@@ -91,14 +91,16 @@
       "fields": [
         "account_id",
         "module",
-        "enabled"
+        "enabled",
+        "expected_enabled"
       ],
       "mail": false,
       "environment": "both",
       "example": {
         "account_id": "19106900-0000-4000-8000-000000000001",
         "module": "vantare.module.analysis",
-        "enabled": true
+        "enabled": true,
+        "expected_enabled": false
       }
     },
     "list_creators": {
@@ -160,13 +162,15 @@
       "mutation": true,
       "fields": [
         "module",
-        "enabled_for_all"
+        "enabled_for_all",
+        "expected_enabled"
       ],
       "mail": false,
       "environment": "both",
       "example": {
         "module": "vantare.module.analysis",
-        "enabled_for_all": true
+        "enabled_for_all": true,
+        "expected_enabled": false
       }
     },
     "list_reports": {
@@ -300,14 +304,29 @@
       "fields": [
         "campaign_id",
         "revision",
-        "confirm"
+        "confirm",
+        "expected_recipients"
       ],
       "mail": true,
       "environment": "both",
       "example": {
         "campaign_id": "19106900-0000-4000-8000-000000000001",
         "revision": 1,
-        "confirm": true
+        "confirm": true,
+        "expected_recipients": 0
+      }
+    },
+    "mail_cancel": {
+      "mutation": true,
+      "fields": [
+        "campaign_id",
+        "revision"
+      ],
+      "mail": true,
+      "environment": "both",
+      "example": {
+        "campaign_id": "19106900-0000-4000-8000-000000000001",
+        "revision": 1
       }
     },
     "mail_send_batch": {

@@ -429,6 +429,11 @@ pub enum Action {
         campaign_id: String,
         revision: u32,
         confirm: bool,
+        expected_recipients: u32,
+    },
+    MailCancel {
+        campaign_id: String,
+        revision: u32,
     },
     MailSendBatch {
         campaign_id: String,
@@ -461,6 +466,7 @@ pub enum Action {
         account_id: String,
         module: Module,
         enabled: bool,
+        expected_enabled: bool,
     },
     SetBlocked {
         account_id: String,
@@ -491,6 +497,7 @@ pub enum Action {
     SetRollout {
         module: Module,
         enabled_for_all: bool,
+        expected_enabled: bool,
     },
     ListReports {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -521,6 +528,7 @@ impl Action {
             Self::MailGet { .. } => "mail_get",
             Self::MailSave { .. } => "mail_save",
             Self::MailApprove { .. } => "mail_approve",
+            Self::MailCancel { .. } => "mail_cancel",
             Self::MailSendBatch { .. } => "mail_send_batch",
             Self::MailDraft { .. } => "mail_draft",
             Self::MailSync { .. } => "mail_sync",
@@ -549,6 +557,7 @@ impl Action {
                 | Self::MailNew
                 | Self::MailSave { .. }
                 | Self::MailApprove { .. }
+                | Self::MailCancel { .. }
                 | Self::MailSendBatch { .. }
                 | Self::MailDraft { .. }
                 | Self::MailSync { .. }

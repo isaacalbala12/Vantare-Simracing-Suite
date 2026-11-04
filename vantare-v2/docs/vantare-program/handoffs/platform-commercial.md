@@ -8868,3 +8868,21 @@ union all select 'linear_deliveries',outcome::text,count(*)
   apply_clerk_user_event, billing, licencias, secretos ni producción. Sin deploy,
   merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
   UI/lecturas puras. El 11 sigue exclusivamente en R6/12.
+
+## VANTA-132 · paso 6 · confirmaciones y cancelar campañas (2026-11-04)
+
+- 10b cerrado: #1959 integrado en nightly18fb6ca17 con CI verde, confirmado por
+  el orquestador. Continúan paso6 y sync_payments/UI en PR separados desde esa base.
+- Rama vantareapp/isa-1910-paso6-confirmaciones. RED f558994ba: SQL falla10/18
+  y Deno2/2 antes del cambio. Estado esperado para rollout/acceso propio y cifra
+  real de la cola para aprobar, con conflicto409 y rollback de toda la operación.
+- Cancelación owner con revisión, idempotente, sin nuevos claims ni HTTP aún no
+  iniciados. Pending pasa a skipped; HTTP que ya salió puede terminar. Diálogo
+  muestra y envía la cifra del detalle. Sin dependencias nuevas ni cambios _shared.
+- SQL LF18 tests, down exacto de cuerpos/ACL/constraint y reaplicación PASS;
+  CRLF/casos adicionales y gates Rust en marcha. Deno273 PASS, cargo check del
+  único crate admin PASS; target propio, compilar.ps1, se cede cola entre gates.
+  Hereda matriz de abuso Hub/basura/no-owner/caducado de native-admin.
+- Despliegue exclusivo de Isaac: tras10b, migración181354 antes de Edge/Gestión.
+  Consultar estados existentes (producción tiene datos). Down rechaza canceled
+  antes del DDL; corrección hacia delante si ya existen. Sin deploy/merge/release.

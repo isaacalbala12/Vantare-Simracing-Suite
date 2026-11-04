@@ -187,6 +187,9 @@ Deno.test("R10 SQL E2E: active Gestión garbage cannot starve a real SQL owner",
   const { calls, call, used } = await fixture(true);
   const owner = await signedJwt();
   assert((await call(owner)).status === 200 && await used() === 1);
+  // Freeze this disposable counter window: the real clock may cross a minute
+  // during the abuse loop. Separate SQL tests exercise window rollover.
+  await sql("update private.native_admin_gate_rate set window_start=date_trunc('minute',clock_timestamp())+interval '1 day';");
   const forged = owner.replace(/\.[^.]+$/, "." + "A".repeat(342));
   const hub = await signedJwt({
     client_id: config.clientId,

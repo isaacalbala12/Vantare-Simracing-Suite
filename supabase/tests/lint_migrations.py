@@ -95,7 +95,7 @@ def revoke_roles(sql: str, kind: str, name: str) -> set[str]:
         if not re.search(r'(?<![\w.])' + re.escape(name.lower()) + suffix,
                          objects):
             continue
-        roles = {part.strip().strip('"').lower()
+        roles = {part.strip().strip('"\'').lower()
                  for part in match.group('roles').split(',')}
         if roles >= ROLES:
             return roles

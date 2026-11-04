@@ -5,6 +5,11 @@
 - Review Sonnet de #1960: `testing_center_validate_candidate` (ACL autenticado cerrado) y `testing_center_record_validation_projection` también reconocían la membresía owner antigua. Test previo RED 10/13; ahora usan `private.is_owner` y conservan tester/primary_tester. El rollback restaura la política de membresía y ACL; el cuerpo de la ruta autenticada usa `private.current_account()` por ADR 0106 en vez del `auth.uid()` histórico. PostgreSQL 16 LF/CRLF: disposición 9/9, validación 13/13, rollback/reaplicación y harness completo (134 rutas, 795 checks) PASS. El gate completo deshace #1960 antes del owner del paso 8. El ajuste del corte del lint 0106 espera decisión de Isaac sobre dos migraciones ya fusionadas que no cumplen la regla.
 - Quedan el enlace de capturas del paso 6 y los pasos 9, 10, 11 y 13. #1933 (pgcrypto) sigue abierto como preflight de despliegue. La Fase B del paso 12 necesita ventana y autorización de Isaac.
 
+## 2026-11-04 - #1933 / VANTA-131: contrato digest entre schemas
+
+- El SQL fusionado usa `public.digest` y `extensions.digest`; Billing contiene llamadas vivas al segundo nombre y permanece fuera del alcance de edición de R6. La migración incremental `20261104172000` toma `public.digest` como contrato para SQL nuevo y crea dos bridges `extensions.digest` solo si pgcrypto nativo está en `public`. Con pgcrypto en `extensions`, conserva los wrappers históricos y no cambia el esquema. El rollback retira solo bridges marcados y falla cerrado con dependencias o deriva.
+- Caracterización previa local PostgreSQL 16: layout `extensions` PASS, layout `public` RED. Tras el up/down/reapply ambos pasan; extensión ausente aborta con `55000`. CI probará los dos layouts en PostgreSQL 17 desechable. Consulta previa de solo lectura e interpretación: [pgcrypto-digest-contract.md](../../runbooks/pgcrypto-digest-contract.md). No se consulta ni cambia un entorno alojado.
+
 ## 2026-11-04 - #1896 / VANTA-131 paso 12, Fase A: lint e inmutabilidad
 
 - #1954 rebasado tras el merge de #1955 (`nightly@269d08d1b`). La CI aplica la ADR 0106 solo a migraciones posteriores a `20261104235959` y compara los SQL y rollbacks que ya existen en `origin/nightly`; si cambian, exige una migración nueva. La referencia ausente falla cerrada.

@@ -8735,6 +8735,9 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Paso10 sigue abierto: resúmenes mínimos, lectura owner, retención y target_hash.
   Plazo90/365 días consultado, sin respuesta todavía; no se aplica una purga.
   Luego6 y el corte conjunto sync_payments + UI + lecturas puras; 11 R6/12.
-- Producción tocada551 →543 (-8; +41/-49); tests+71/-0, docs+26/-0.
+- Producción tocada551 →543 (-8; +41/-49); tests+71/-0, docs+29/-0.
   Check de consumidores SDK/Storage, lint/fmt/diff PASS. Se retiene el intento
   inicial de check con dos rutas inexistentes; corregido usando entradas reales.
+- Paso10b local: tres RED SQL reproducen resumen completo, vínculo al objetivo
+  borrado y copia de su account_id. Flujo real de lápida anonimiza perfil;
+  auditoría conserva lo anterior. PostgreSQL desechable parado, sin purga.

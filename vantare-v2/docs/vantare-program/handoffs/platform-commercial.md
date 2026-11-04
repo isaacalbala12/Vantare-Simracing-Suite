@@ -7514,3 +7514,14 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   El propio gate vuelve a construir el paquete real en CI; verde aún pendiente.
 - No repetir gate completo local: el cambio es tooling; no Rust de producto.
   #1920 se rebasa por separado después del push. Plane sigue Por testear.
+
+### #1917 — rebase solicitado sobre 40a725910 (2026-11-04)
+
+- Conservados #1923/#1926 de nightly. Único conflicto en el harness comercial:
+  condición legacy_writers_enabled de nightly intacta, seguida de validación QA.
+  Árbol native idéntico al padre 7c9cd865a; sin cambio Rust ni recompilación nueva.
+- PASS: sintaxis Python, ayuda del harness con stdout UTF-8, predicado legacy de
+  nightly idéntico, config 26, scanner 7 y publisher 13. No gate completo local.
+  Evidencia stack-rebase-40a725910 bajo evidence/licencias-e2e.
+- #1920 se mantiene aparte, apilado sobre este HEAD; su base sigue en la rama de
+  #1917 hasta su merge, después nightly. HEAD/CI publicados en issues/PRs.

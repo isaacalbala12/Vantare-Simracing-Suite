@@ -55,7 +55,7 @@ Deno.test("canonical registry export matches the Rust wire fixture exactly", () 
 Deno.test("canonical action environments retain sandbox restrictions and closed unknown names", () => {
   for (const [action, spec] of Object.entries(contract.actions)) {
     assert(
-      (ACTIONS[action][3]?.sandbox === true) ===
+      (ACTIONS[action][2]?.sandbox === true) ===
         (spec.environment === "sandbox"),
     );
   }

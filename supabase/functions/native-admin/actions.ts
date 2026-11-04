@@ -3,6 +3,7 @@ import { isUuid } from "../_shared/request.ts";
 import { MODULE_CAPABILITIES } from "../_shared/license-credential.ts";
 type Params = Record<string, unknown>;
 type ActionPolicy = {
+  mutation?: false;
   mail?: "sql" | "edge";
   syncPayments?: boolean;
   enrich?: boolean;
@@ -10,7 +11,6 @@ type ActionPolicy = {
   handler?: "creator" | "account";
 };
 type ActionSpec = readonly [
-  mutation: boolean,
   example: Params,
   validate: (params: Params) => boolean,
   policy?: ActionPolicy,
@@ -65,22 +65,20 @@ const contentExample = Object.fromEntries(
   ),
 );
 export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
-  search_accounts: [false, { query: "", limit: 50, cursor: id }, (p) => {
+  search_accounts: [{ query: "", limit: 50, cursor: id }, (p) => {
     if (p.limit === undefined) p.limit = 50;
     return (p.query === "" || boundedText(p.query, 200)) &&
       (p.cursor === undefined ||
         (p.query === "" && isUuid(p.cursor))) &&
       Number.isInteger(p.limit) && Number(p.limit) >= 1 &&
       Number(p.limit) <= 50;
-  }, { enrich: true }],
-  get_account: [
-    false,
-    { account_id: id },
-    (p) => isUuid(p.account_id),
-    { syncPayments: true, enrich: true },
-  ],
+  }, { mutation: false, enrich: true }],
+  get_account: [{ account_id: id }, (p) => isUuid(p.account_id), {
+    mutation: false,
+    syncPayments: true,
+    enrich: true,
+  }],
   set_blocked: [
-    true,
     { account_id: id, blocked: true, reason: "fixture" },
     (p) =>
       isUuid(p.account_id) &&
@@ -89,7 +87,6 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     { sandbox: true, handler: "account" },
   ],
   delete_account: [
-    true,
     { account_id: id, confirm_email: "fixture@example.invalid" },
     (p) =>
       isUuid(p.account_id) &&
@@ -97,53 +94,50 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     { sandbox: true, handler: "account" },
   ],
   set_tester: [
-    true,
     { account_id: id, enabled: true },
     (p) => isUuid(p.account_id) && typeof p.enabled === "boolean",
   ],
-  set_module: [
-    true,
-    { account_id: id, module: MODULE_CAPABILITIES[0], enabled: true },
-    (p) =>
-      isUuid(p.account_id) &&
-      typeof p.enabled === "boolean" &&
-      MODULE_CAPABILITIES.includes(
-        p.module as typeof MODULE_CAPABILITIES[number],
-      ),
-  ],
-  list_creators: [false, {}, () => true, { syncPayments: true }],
-  get_creator: [
-    false,
-    { creator_id: id },
-    (p) => isUuid(p.creator_id),
-    { syncPayments: true, enrich: true },
-  ],
-  record_creator_payout: [
-    true,
-    { creator_id: id, amount_cents: 100, paid_at: "2026-11-04T00:00:00Z" },
-    (p) =>
-      isUuid(p.creator_id) &&
-      Number.isSafeInteger(p.amount_cents) &&
-      Number(p.amount_cents) > 0 &&
-      (p.paid_at === undefined ||
-        (boundedText(p.paid_at, 40) &&
-          Number.isFinite(Date.parse(String(p.paid_at))))),
-    { syncPayments: true },
-  ],
-  create_creator: [
-    true,
-    { name: "fixture", email: "fixture@example.invalid", code: "CREATOR" },
-    (p) =>
-      boundedText(p.name, 120) &&
-      boundedText(p.email, 320) &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(p.email)) &&
-      typeof p.code === "string" &&
-      /^[A-Z0-9]{3,32}$/.test(p.code),
-    { sandbox: true, handler: "creator" },
-  ],
-  get_rollout: [false, {}, () => true],
+  set_module: [{
+    account_id: id,
+    module: MODULE_CAPABILITIES[0],
+    enabled: true,
+  }, (p) =>
+    isUuid(p.account_id) &&
+    typeof p.enabled === "boolean" &&
+    MODULE_CAPABILITIES.includes(
+      p.module as typeof MODULE_CAPABILITIES[number],
+    )],
+  list_creators: [{}, () => true, { mutation: false, syncPayments: true }],
+  get_creator: [{ creator_id: id }, (p) => isUuid(p.creator_id), {
+    mutation: false,
+    syncPayments: true,
+    enrich: true,
+  }],
+  record_creator_payout: [{
+    creator_id: id,
+    amount_cents: 100,
+    paid_at: "2026-11-04T00:00:00Z",
+  }, (p) =>
+    isUuid(p.creator_id) &&
+    Number.isSafeInteger(p.amount_cents) &&
+    Number(p.amount_cents) > 0 &&
+    (p.paid_at === undefined ||
+      (boundedText(p.paid_at, 40) &&
+        Number.isFinite(Date.parse(String(p.paid_at))))), {
+    syncPayments: true,
+  }],
+  create_creator: [{
+    name: "fixture",
+    email: "fixture@example.invalid",
+    code: "CREATOR",
+  }, (p) =>
+    boundedText(p.name, 120) &&
+    boundedText(p.email, 320) &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(p.email)) &&
+    typeof p.code === "string" &&
+    /^[A-Z0-9]{3,32}$/.test(p.code), { sandbox: true, handler: "creator" }],
+  get_rollout: [{}, () => true, { mutation: false }],
   set_rollout: [
-    true,
     { module: MODULE_CAPABILITIES[0], enabled_for_all: true },
     (p) =>
       typeof p.enabled_for_all === "boolean" &&
@@ -151,7 +145,7 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
         p.module as typeof MODULE_CAPABILITIES[number],
       ),
   ],
-  list_reports: [false, { status: "submitted", limit: 50, cursor: id }, (p) => {
+  list_reports: [{ status: "submitted", limit: 50, cursor: id }, (p) => {
     if (p.limit === undefined) p.limit = 100;
     return Number.isInteger(p.limit) && Number(p.limit) >= 1 &&
       Number(p.limit) <= 100 &&
@@ -160,14 +154,12 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
           p.status as typeof REPORT_STATUSES[number],
         )) &&
       (p.cursor === undefined || boundedText(p.cursor, 256));
-  }, { enrich: true }],
-  get_report: [
-    false,
-    { report_id: id },
-    (p) => boundedText(p.report_id, 256),
-    { enrich: true },
-  ],
-  set_report_status: [true, {
+  }, { mutation: false, enrich: true }],
+  get_report: [{ report_id: id }, (p) => boundedText(p.report_id, 256), {
+    mutation: false,
+    enrich: true,
+  }],
+  set_report_status: [{
     report_id: id,
     status: "submitted",
     fixed_in_version: "1.2.3",
@@ -194,21 +186,20 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
         ))) &&
     (p.status !== "fixed" || p.fixed_in_version !== undefined)],
   mail_forget_waitlist: [
-    true,
     { email: "fixture@example.invalid", confirm: true },
     (p) =>
       p.confirm === true && typeof p.email === "string" &&
       p.email.length <= 320 && /^[^\s@]+@[^\s@]+[.][^\s@]+$/.test(p.email),
     { mail: "sql" },
   ],
-  mail_cleanup: [true, {}, () => true, { mail: "edge" }],
-  mail_list: [false, {}, () => true, { mail: "sql" }],
-  mail_new: [true, {}, () => true, { mail: "sql" }],
-  mail_get: [false, { campaign_id: id }, (p) => isUuid(p.campaign_id), {
+  mail_cleanup: [{}, () => true, { mail: "edge" }],
+  mail_list: [{}, () => true, { mutation: false, mail: "sql" }],
+  mail_new: [{}, () => true, { mail: "sql" }],
+  mail_get: [{ campaign_id: id }, (p) => isUuid(p.campaign_id), {
+    mutation: false,
     mail: "sql",
   }],
   mail_save: [
-    true,
     {
       campaign_id: id,
       revision: 1,
@@ -226,24 +217,24 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     { mail: "sql" },
   ],
   mail_approve: [
-    true,
     { campaign_id: id, revision: 1, confirm: true },
     (p) => campaign(p) && p.confirm === true,
     { mail: "sql" },
   ],
-  mail_send_batch: [true, { campaign_id: id, revision: 1 }, campaign, {
+  mail_send_batch: [{ campaign_id: id, revision: 1 }, campaign, {
     mail: "edge",
   }],
-  mail_draft: [
-    true,
-    { campaign_id: id, revision: 1, brief: "fixture", template: "news" },
-    (p) =>
-      campaign(p) && typeof p.brief === "string" && !!p.brief.trim() &&
-      p.brief.length <= 4000 && MAIL_TEMPLATES.includes(String(p.template)),
-    { mail: "edge" },
-  ],
+  mail_draft: [{
+    campaign_id: id,
+    revision: 1,
+    brief: "fixture",
+    template: "news",
+  }, (p) =>
+    campaign(p) && typeof p.brief === "string" && !!p.brief.trim() &&
+    p.brief.length <= 4000 && MAIL_TEMPLATES.includes(String(p.template)), {
+    mail: "edge",
+  }],
   mail_sync: [
-    true,
     { cursor: id },
     (p) => p.cursor === undefined || isUuid(p.cursor),
     { mail: "edge" },
@@ -253,7 +244,7 @@ export function validateAction(action: string, params: Params): void {
   if (!Object.hasOwn(ACTIONS, action)) {
     throw new NativeError(400, "invalid_request");
   }
-  const [, example, validate] = ACTIONS[action];
+  const [example, validate] = ACTIONS[action];
   if (
     Object.keys(params).some((key) => !Object.hasOwn(example, key)) ||
     !validate(params)
@@ -276,9 +267,9 @@ export function actionContract() {
     statuses: REPORT_STATUSES,
     actions: Object.fromEntries(
       Object.entries(ACTIONS).map((
-        [name, [mutation, example, , policy]],
+        [name, [example, , policy]],
       ) => [name, {
-        mutation,
+        mutation: policy?.mutation !== false,
         fields: Object.keys(example),
         mail: !!policy?.mail,
         environment: policy?.sandbox ? "sandbox" : "both",

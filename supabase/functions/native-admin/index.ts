@@ -327,7 +327,7 @@ export async function handleNativeAdmin(
     const parsed = await readJsonObject(counted, 128 * 1024);
     const mailRequest = parsed.ok && typeof parsed.value.action === "string" &&
       Object.hasOwn(ACTIONS, parsed.value.action) &&
-      !!ACTIONS[parsed.value.action][3]?.mail;
+      !!ACTIONS[parsed.value.action][2]?.mail;
     if (
       !mailRequest &&
       (receivedBytes > 8192 ||
@@ -446,7 +446,7 @@ export async function handleNativeAdmin(
     // Adding it before subjects would incorrectly return the owner in every search.
     users.set(actorUser.id, actorUser);
     const environment = deps.environment ?? requirePolarEnvironment();
-    const policy = ACTIONS[action][3];
+    const policy = ACTIONS[action][2];
     if (policy?.sandbox && environment !== "sandbox") {
       throw new NativeError(503, "admin_sandbox_required");
     }

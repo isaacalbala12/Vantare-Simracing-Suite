@@ -67,7 +67,7 @@ export async function executeMail(
     return v;
   };
   // Also checks Owner inside SQL, including before all provider calls and AI.
-  if (ACTIONS[action][3]?.mail === "sql") return await run(action, p);
+  if (ACTIONS[action][2]?.mail === "sql") return await run(action, p);
   await run("mail_list", {});
   if (action === "mail_cleanup") {
     return {

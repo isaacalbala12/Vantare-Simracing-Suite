@@ -1,5 +1,8 @@
 """Exact audit snapshots use the server image client in Docker CI."""
+import sys
 import unittest
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from commercial_admin_minimal_audit import audit_schema
 
 

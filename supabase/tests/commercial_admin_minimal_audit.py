@@ -20,11 +20,11 @@ AUDIT_SNAPSHOT = """select jsonb_build_object(
  from pg_proc p where p.oid='public.native_admin_execute(uuid,text,text,jsonb,text)'::regprocedure))"""
 
 
-def audit_schema(run, conn):
+def audit_schema(run, conn, container_dump=None):
     args=[]
     for option in ['-h','-p','-U','-d']:
         args.extend([option,conn[conn.index(option)+1]])
-    schema=run('pg_dump',*args,'--schema-only')
+    schema=container_dump() if container_dump else run('pg_dump',*args,'--schema-only')
     return re.sub(r'(?m)^\\(?:un)?restrict .*\n','',schema)
 
 
@@ -62,7 +62,7 @@ def seed_audit_upgrade(run, conn):
         raise RuntimeError('documented pre-check did not count closed/pending historical rows: '+counts)
 
 
-def run_minimal_audit(run, conn, out, before, schema_before, newline, bin_dir, env):
+def run_minimal_audit(run, conn, out, before, schema_before, newline, bin_dir, env, container_dump=None):
     root = Path(__file__).resolve().parents[2]
     def sql(path):
         target = out/('audit-'+path.name)
@@ -128,13 +128,13 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline, bin_dir, e
      insert into public.admin_audit_log(id,actor_account_id,action,target)
      values('19101090-0000-4000-8000-000000000013',null,'get_rollout','get_rollout');
      delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id(); commit;""")
-    active_schema=audit_schema(run,conn)
+    active_schema=audit_schema(run,conn,container_dump)
     try:
         sql(down)
     except RuntimeError as exc:
         if 'admin_audit_rollback_requires_backup' not in str(exc): raise
     else: raise RuntimeError('down accepted irreversible actor redaction')
-    if audit_schema(run,conn)!=active_schema: raise RuntimeError('rejected down changed schema')
+    if audit_schema(run,conn,container_dump)!=active_schema: raise RuntimeError('rejected down changed schema')
     run('psql',*conn,'-c',"""begin;
       insert into private.admin_audit_maintenance_tx default values;
       delete from public.admin_audit_log where id='19101090-0000-4000-8000-000000000013';
@@ -145,7 +145,7 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline, bin_dir, e
     (out/'audit-before.json').write_text(before,encoding='utf-8')
     (out/'audit-down.json').write_text(after,encoding='utf-8')
     if json.loads(after)!=json.loads(before): raise RuntimeError('audit rollback changed schema/ACL')
-    schema_after=audit_schema(run,conn)
+    schema_after=audit_schema(run,conn,container_dump)
     (out/'audit-schema.before.sql').write_text(schema_before,encoding='utf-8')
     (out/'audit-schema.down.sql').write_text(schema_after,encoding='utf-8')
     if schema_after!=schema_before: raise RuntimeError('audit rollback full schema dump differs')

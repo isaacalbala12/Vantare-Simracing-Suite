@@ -382,7 +382,10 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     audit_previous=run('psql',*conn,'-c',AUDIT_SNAPSHOT)
-    audit_schema_previous=audit_schema(run,conn)
+    # Match the Supabase PG17 image, not Ubuntu's PG16 pg_dump client.
+    audit_container_dump=(lambda: docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+     '-U','postgres','-d',database,'--schema-only')) if args.docker else None
+    audit_schema_previous=audit_schema(run,conn,audit_container_dump)
     seed_audit_upgrade(run,conn)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
@@ -553,7 +556,7 @@ $$;
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
-    run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV)
+    run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
     admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'

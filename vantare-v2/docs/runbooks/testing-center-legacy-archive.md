@@ -97,7 +97,8 @@ trunca a 1000. La fila original completa permanece en el archivo. El
 `.down.sql` retira solo las contribuciones mapeadas sin cambios posteriores,
 restaura primero el padre y después los hijos y verifica hashes. Omite y cuenta
 explícitamente filas cuyo dueño tenga `deleted_at` o no tenga perfil, sin
-resucitarlas, y deja el archivo intacto. Se aplica antes del PR de admin #1924 y antes de
+resucitarlas. También omite y cuenta una hija de otra cuenta cuyo padre FK
+fue borrado; la fila sigue en el archivo. Se aplica antes del PR de admin #1924 y antes de
 retirar tablas/RPC. El archivo se elimina solo en ese paso final. No hay
 despliegue automático ni llamada de este trabajo a producción.
 

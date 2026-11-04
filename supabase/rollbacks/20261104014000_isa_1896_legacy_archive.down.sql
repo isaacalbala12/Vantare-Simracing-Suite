@@ -51,6 +51,7 @@ declare
   v_skipped bigint;
   v_deleted_skipped bigint;
   v_orphan_skipped bigint;
+  v_missing_parent_skipped bigint;
 begin
   if to_regclass('private.testing_center_legacy_archive') is null
     or to_regclass('public.testing_center_reports') is null then
@@ -156,10 +157,39 @@ begin
     )
   ) select source_table,source_id,min(reason) from skipped
     group by source_table,source_id;
+  -- An occurrence from a live account can still point at an issue erased
+  -- with another account. Preserve its archive row but do not restore a
+  -- dangling foreign key into the drained legacy tables.
+  insert into pg_temp._legacy_skipped(source_table,source_id,reason)
+  select child.source_table,child.source_id,'missing_parent'
+  from private.testing_center_legacy_archive child
+  join pg_temp._legacy_relations child_rel
+    on child_rel.source_table=child.source_table
+  join pg_catalog.pg_constraint fk
+    on fk.contype='f' and fk.conrelid=child_rel.relid
+  join pg_temp._legacy_relations parent_rel on parent_rel.relid=fk.confrelid
+  where not exists(select 1 from unnest(fk.conkey) as key_att(attnum)
+    join pg_catalog.pg_attribute ca on ca.attrelid=fk.conrelid
+      and ca.attnum=key_att.attnum
+    where child."row"->>ca.attname is null)
+    and not exists(select 1 from private.testing_center_legacy_archive parent
+    where parent.source_table=parent_rel.source_table
+      and not exists(select 1 from unnest(fk.conkey,fk.confkey)
+        as key_pair(child_attnum,parent_attnum)
+        join pg_catalog.pg_attribute ca on ca.attrelid=fk.conrelid
+          and ca.attnum=key_pair.child_attnum
+        join pg_catalog.pg_attribute pa on pa.attrelid=fk.confrelid
+          and pa.attnum=key_pair.parent_attnum
+        where child."row"->ca.attname is null
+          or child."row"->ca.attname is distinct from parent."row"->pa.attname))
+  on conflict (source_table,source_id) do nothing;
   select count(*) into v_skipped from pg_temp._legacy_skipped;
   select count(*) into v_deleted_skipped from pg_temp._legacy_skipped
     where reason='deleted';
-  v_orphan_skipped:=v_skipped-v_deleted_skipped;
+  select count(*) into v_orphan_skipped from pg_temp._legacy_skipped
+    where reason='missing_profile';
+  select count(*) into v_missing_parent_skipped from pg_temp._legacy_skipped
+    where reason='missing_parent';
 
   if exists(select 1 from public.testing_center_reports) then
     raise exception 'legacy_archive_restore_parent_not_empty' using errcode='55000';
@@ -315,8 +345,8 @@ begin
         v_relation.source_table,v_actual,v_expected using errcode='55000';
     end if;
   end loop;
-  raise notice 'legacy_archive restored rows verified; skipped deleted-owner rows=%, missing-profile rows=%; archive retained',
-    v_deleted_skipped,v_orphan_skipped;
+  raise notice 'legacy_archive restored rows verified; skipped deleted-owner rows=%, missing-profile rows=%, missing-parent rows=%; archive retained',
+    v_deleted_skipped,v_orphan_skipped,v_missing_parent_skipped;
 end $restore$;
 
 commit;

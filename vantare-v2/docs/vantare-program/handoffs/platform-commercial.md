@@ -8664,6 +8664,6 @@ union all select 'linear_deliveries',outcome::text,count(*)
   índice retirado al revertir y guards de retención PASS. Instancias paradas.
 - Check/lint/fmt/Python/diff PASS; native intacto. Producción 1422 → 1633 (+211;
   +226/-15), tests +576/-4; docs +97/-1. HEAD final/CI en PR/issue. Cero despliegues.
-- #1948 corregido en e83faac5a; #1951 rebasado y en gates. Paso8 autorizado en
+- #1948 integrado en nightly28b1e8fa9; #1947 rebasado, 234 Deno PASS. Paso8 autorizado en
   account-erasure/clerk-webhook, con 7 caracterizaciones PASS y sin producto.
   No tocar apply_clerk_user_event (#1949) ni native-auth. 6/10 pendientes; 11 R6/12.

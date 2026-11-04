@@ -6,7 +6,7 @@
 ## 2026-11-04 - #1896 / VANTA-131 paso 12, Fase A: esquema derivado por dominio
 
 - PR draft #1955, rama `vantareapp/isa-1896-paso12c-schema`, rebasada sobre `nightly@27b02f475`: reproduce la cadena completa, incluido el cierre 7b, en PostgreSQL 17 local; escribe siete volcados de solo lectura en `supabase/schema/` y la CI falla si hay deriva. ACL, RLS, triggers, buckets, cron y semillas de política quedan representados. No cambia SQL de producto ni toca entornos alojados.
-- Evidencia local: el control previo detectó que omitir la migración 7b dejaba `testing_center_reports` en el volcado; con la corrección, la tabla y el archivo legacy no existen y el modo `check` coincide byte a byte. ADR 0106 y lint van en #1950 y #1954, respectivamente; Fase B de compactación queda solo propuesta y requiere ventana y autorización de Isaac.
+- Evidencia local: el control previo detectó que omitir la migración 7b dejaba `testing_center_reports` en el volcado; con la corrección, la tabla y el archivo legacy no existen y el modo `check` coincide byte a byte. La CI detectó el helper `vantare_test_dblink_connect` creado solo por su harness; el generador excluye exactamente esa función y ACL (test RED/GREEN, cinco tests). ADR 0106 y lint van en #1950 y #1954, respectivamente; Fase B de compactación queda solo propuesta y requiere ventana y autorización de Isaac.
 
 ## 2026-11-04 - #1896 / VANTA-131 7b3: endurecimiento del archivo
 

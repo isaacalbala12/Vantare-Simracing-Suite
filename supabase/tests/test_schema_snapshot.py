@@ -42,11 +42,13 @@ CREATE TABLE public.billing_orders (id uuid);
             'storage.buckets': [{'name': 'z', 'id': 'b'}, {'id': 'a', 'name': 'a'}],
             'cron.job': [{'jobname': 'sample', 'schedule': '0 * * * *'}],
             'public.policy_seeds': [{'key': 'sample', 'enabled': True}],
+            'private.billing_compensation_policy': [{'environment': 'sandbox', 'enabled': False}],
         }
         rendered = self.module.render_catalog_rows(rows)
         self.assertIn('storage.buckets', rendered['storage'])
         self.assertIn('cron.job', rendered['shared'])
         self.assertIn('policy_seeds', rendered['shared'])
+        self.assertIn('billing_compensation_policy', rendered['billing'])
         self.assertLess(rendered['storage'].index('"id": "a"'), rendered['storage'].index('"id": "b"'))
 
     def test_check_mode_detects_drift_without_rewriting(self):

@@ -7911,3 +7911,50 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   de shutdown introducida aquí evita demostrar el orden real. No equivale a un
   reset limpio válido. Retirarla del replay al integrar prerequisitos; el gate
   final debe aplicar la cadena completa sin revokes auxiliares antes del guard.
+
+## VANTA-132 · #1924 rebasado tras el 7b2 (2026-11-04)
+
+- Estado vigente: #1930 integrado por el orquestador en nightly
+  `fa2ab202c48bfae0c2dfcbd13a83845169c2fac7`. #1924 se rebasa sobre ese SHA,
+  conserva rama/worktree propios y sigue draft a nightly. Migración y rollback
+  renombrados a `20261104024000_isa_1910_admin_report_root`, después del archivo
+  R6 `20261104014000`. No se fusiona ni se despliega desde este worker.
+- Este apartado sustituye el inventario textual y el cierre auxiliar descritos
+  antes: guard determinista en el padre y sus siete hijas, todos vacíos; ningún
+  INSERT/UPDATE/DELETE/TRUNCATE efectivo para service_role, authenticated, anon,
+  PUBLIC o vantare_triage; siete RPC legacy por firma exacta de #1926 sin
+  EXECUTE para esos roles. SHARE en las ocho relaciones y SUPERUSER/BYPASSRLS
+  por FORCE RLS. No se escanean cuerpos ni se revocan permisos operativos.
+- Eliminada `pause_legacy_writers` y su módulo: revocaba Clerk. Ambos runners
+  aplican el orden real, sin ese shutdown. La cadena local pasa después del
+  7b2 real y comprueba que apply_clerk_user_event sigue ejecutable por
+  service_role. La CI Commercial recorre todas las migraciones en LF y CRLF;
+  marketing también hace replay completo. Los oráculos legacy se ejecutan
+  antes del corte o bajo los rollbacks reales, fuera del replay limpio.
+- Orden de despliegue: detener escritores (#1926); archivar/mapear, verificar y
+  vaciar (#1930/7b2); después #1924; retirada solo en el paso final de R6.
+  **El archivo y el borrado de cuentas dependen de que las tablas legacy y sus
+  FK sigan existiendo. #1924 no retira esas tablas.** La retirada final debe ir
+  junto con el archivo y el parche de apply_clerk_user_event, que también lee
+  screenshot_evidence y evidence_batches. Clerk conserva su permiso backend.
+- Caracterización previa del replay sin fixture `9b45a5b3a`: RED 55000 con el
+  inventario textual sobre funciones legítimas. Matriz de rechazo anterior al
+  cambio `2304019fc`. GREEN PostgreSQL 16.15 desechable LF y CRLF: cadena real,
+  cuatro suites acotadas/67 pgTAP, 204 rechazos atómicos (35 RPC, 160 privilegios,
+  siete hijas no vacías, parent no vacío y ejecutor sin bypass), cinco digests
+  exactos del down, reaplicación e índice usado en EXPLAIN JSON. Siguen pasando
+  los oráculos históricos y los gates de autoridad owner, las carreras admin
+  actor/target y seis carreras reales de journal/lease/reconcile.
+- Deno 2.7.13: 94 PASS, check/lint/fmt PASS; Edge→SQL 6/6 PASS en LF (JWT activo,
+  basura/Hub/non-owner/owner caducado y Hub opaco inactivo). Python PASS.
+  Fmt encontró CRLF locales tras rebase: normalizados, sin cambio semántico.
+  La prueba inicial de FORCE RLS necesitó permisos de lock en las ocho tablas;
+  fixture corregida sin debilitar la aserción. Logs RED y fallo conservados.
+  Instancias locales detenidas; evidencia isa-1910-paso7b/rebase-7b2 y
+  /tmp/admin-1924-final-{lf,crlf}. CI remota nueva pendiente al publicar.
+- Diff completo: única excepción deliberada de whitespace es el espacio del
+  rollback que conserva el digest `1b29a41006e451c36f8688a099a04780`.
+  Rust/check/Clippy/Nextest/lifecycle/telemetría omitidos: no cambia native.
+  Carrera del guard diferida por review; distinguir 409 queda paso 10; paso 11
+  sigue reservado a R6. Sin _shared/clerk-webhook, secretos, Store real,
+  billing/licencias, producción, despliegue, merge propio ni release.

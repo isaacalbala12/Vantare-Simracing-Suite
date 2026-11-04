@@ -1,8 +1,8 @@
 import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { cleanupDeletedObjects } from "./index.ts";
+  deepStrictEqual as assertEquals,
+  rejects as assertRejects,
+} from "node:assert/strict";
+import { cleanupDeletedObjects } from "../_shared/account-erasure.ts";
 import type { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 
 // All queues and Storage are synthetic. No env, credentials or network permissions.

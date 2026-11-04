@@ -1,8 +1,8 @@
 import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { abortStorageUpload } from "./storage-abort.ts";
+  deepStrictEqual as assertEquals,
+  rejects as assertRejects,
+} from "node:assert/strict";
+import { abortStorageUpload } from "../_shared/account-erasure.ts";
 const upload = {
   bucket_id: "testing-center-evidence",
   name: "folder/part + ñ.png",
@@ -44,14 +44,12 @@ Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only 
           config,
           () => Promise.resolve(new Response(null, { status })),
         ),
-      Error,
-      "storage_abort_failed",
+      { message: "storage_abort_failed" },
     );
   }
   await assertRejects(
     () => abortStorageUpload(upload, { ...config, tenant: "" }),
-    Error,
-    "storage_abort_not_configured",
+    { message: "storage_abort_not_configured" },
   );
 });
 
@@ -76,7 +74,6 @@ Deno.test("API abort succeeded but SQL ACK lost: exact NoSuchUpload can drain re
             headers: { "content-type": "application/xml" },
           }),
         )),
-    Error,
-    "storage_abort_failed",
+    { message: "storage_abort_failed" },
   );
 });

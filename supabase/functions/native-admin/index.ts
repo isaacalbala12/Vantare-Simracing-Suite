@@ -15,7 +15,7 @@ import {
   type EffectRecorder,
   recordEffect,
 } from "./effects.ts";
-import { cleanupDeletedObjects } from "../clerk-webhook/index.ts";
+import { cleanupDeletedObjects } from "../_shared/account-erasure.ts";
 import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
 import type { PolarProductMap } from "../_shared/mapping.ts";
@@ -755,14 +755,7 @@ export async function handleNativeAdmin(
     }
     const result = await timed(
       "postgres_action",
-      () =>
-        (deps.execute ?? execute)(
-          actor,
-          nativeConfig(deps).issuer,
-          action,
-          params,
-          environment,
-        ),
+      () => run(action, params),
     );
     if (policy?.enrich) {
       await timed("enrich_clerk", () => enrich(result, users, deps));

@@ -1,3 +1,69 @@
+import { getSupabaseAdmin } from "./supabase-admin.ts";
+
+export async function cleanupDeletedObjects(
+  issuer: string,
+  subject: string,
+  admin = getSupabaseAdmin(),
+  abort = abortStorageUpload,
+): Promise<void> {
+  const identity = { p_issuer: issuer, p_subject: subject };
+  async function call(name: string, args: Record<string, unknown> = {}) {
+    const { data, error } = await admin.rpc(name, { ...identity, ...args });
+    if (error) throw error;
+    return data;
+  }
+  // Retry deliveries drain the durable queue even after an idempotent SQL no-op.
+  let uploadsDrained = false;
+  for (let batch = 0; batch < 5; batch++) {
+    let uploads;
+    try {
+      uploads = await call("clerk_deletion_uploads");
+    } catch {
+      break;
+    }
+    // Abort/list/ACK failures keep uploads pending, but cannot retain unrelated
+    // completed objects. The webhook still returns 503 after the object drain.
+    if (!uploads?.length) {
+      uploadsDrained = true;
+      break;
+    }
+    let failed = false;
+    for (const upload of uploads) {
+      try {
+        await abort(upload);
+        await call("clerk_deletion_upload_completed", {
+          p_upload_id: upload.upload_id,
+        });
+      } catch {
+        failed = true;
+      }
+    }
+    if (failed) break;
+  }
+  for (let batch = 0; batch < 5; batch++) {
+    const data = await call("clerk_deletion_objects");
+    if (!data?.length) {
+      if (!uploadsDrained) throw new Error("cleanup_retry_required");
+      return;
+    }
+    const buckets = new Map<string, string[]>();
+    for (const row of data) {
+      const names = buckets.get(row.bucket_id) ?? [];
+      names.push(row.name);
+      buckets.set(row.bucket_id, names);
+    }
+    for (const [bucket, names] of buckets) {
+      const removed = await admin.storage.from(bucket).remove(names);
+      if (removed.error) throw removed.error;
+      await call("clerk_deletion_completed", {
+        p_bucket: bucket,
+        p_names: names,
+      });
+    }
+  }
+  throw new Error("cleanup_retry_required");
+}
+
 // Supabase S3 session authentication reuses the existing anon/service JWTs.
 // No SDK, S3 secret or direct SQL deletion of Storage data.
 const bytes = (value: string) => new TextEncoder().encode(value);

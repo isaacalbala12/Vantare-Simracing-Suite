@@ -1,10 +1,10 @@
 // Real SQL/PostgREST/Storage clients, with synthetic local credentials on stdin.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { handleClerkWebhook } from "../functions/clerk-webhook/index.ts";
 import {
+  abortStorageUpload,
   cleanupDeletedObjects,
-  handleClerkWebhook,
-} from "../functions/clerk-webhook/index.ts";
-import { abortStorageUpload } from "../functions/clerk-webhook/storage-abort.ts";
+} from "../functions/_shared/account-erasure.ts";
 
 const config = JSON.parse(await new Response(Deno.stdin.readable).text());
 for (const url of [config.dbUrl, config.storage.url]) {

@@ -253,6 +253,36 @@ $$;
                     and not (args.testing_identity or args.pilot_profile or args.b01))
    if archive_fixture:
     run('psql',*conn,'-f',ROOT/'supabase/tests/testing_center_legacy_archive.before.sql')
+    run('psql',*conn,'-c',"""insert into public.testing_center_evidence_batches
+      (batch_id,reporter_user_id,channel,idempotency_key,manifest_digest)
+      values('18960000-0000-4000-8000-000000000701',
+        '18960000-0000-4000-8000-0000000007b2','nightly',
+        '7b2-storage-guard',repeat('7',64));
+      insert into public.testing_center_screenshot_evidence
+      (evidence_id,batch_id,report_id,position,object_path,media_type,
+       byte_size,sha256,width,height)
+      values('18960000-0000-4000-8000-000000000702',
+        '18960000-0000-4000-8000-000000000701','report_'||repeat('7',64),
+        1,'v1/'||repeat('7',32)||'/18960000-0000-4000-8000-000000000701/'||
+        '18960000-0000-4000-8000-000000000702','image/jpeg',100,
+        repeat('7',64),10,10);""")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_storage_present' not in str(error): raise
+    else: raise RuntimeError('7b2 archived Storage-linked rows')
+    run('psql',*conn,'-c',"""delete from public.testing_center_screenshot_evidence
+      where evidence_id='18960000-0000-4000-8000-000000000702';
+      delete from public.testing_center_evidence_batches
+      where batch_id='18960000-0000-4000-8000-000000000701';""")
+    run('psql',*conn,'-c',"""insert into public.testing_center_effect_outbox
+      (effect_id,effect_key,effect_type,technical_issue_id,primary_report_id,state)
+      values('effect_'||repeat('7',64),'linear_issue_create:legacy7b2',
+        'linear_issue_create','legacy-7b2-issue','report_'||repeat('7',64),'pending');""")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_pending_effect' not in str(error): raise
+    else: raise RuntimeError('7b2 discarded a pending effect')
+    run('psql',*conn,'-c',"delete from public.testing_center_effect_outbox where effect_id='effect_'||repeat('7',64)")
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -300,6 +330,28 @@ $$;
       (select count(*) from public.testing_contributions where
         account_id='18960000-0000-4000-8000-0000000007b2')::text""").strip()
     assert unchanged=='7|0', 'failed 7b2 replay changed pilot rows'
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set "row"=pg_catalog.jsonb_set("row",'{reporter_id}',
+        '"changed"'::jsonb)
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    try: run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_hash_or_count_mismatch' not in str(error): raise
+    else: raise RuntimeError('changed archive JSON did not abort 7b2')
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set "row"=pg_catalog.jsonb_set("row",'{reporter_id}',
+        '"legacy-7b2"'::jsonb)
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
     run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
       set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
       where source_table='public.testing_center_reports'

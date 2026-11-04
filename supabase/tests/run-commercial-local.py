@@ -330,11 +330,13 @@ $$;
   channel_role_before=None
   channel_role_after=None
   erasure_previous=None
+  acl_restatement_stem='20261104181200_isa_1896_acl_restatement'
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    # Historical suites run against the pre-retirement schema. CI also replays
    # the complete chain with --legacy-retirement-only and tests the final state.
    if m.stem==retirement_stem and not (args.legacy_retirement_only or args.schema_snapshot or args.owner_disposition_only): continue
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
+   if m.stem==acl_restatement_stem and not legacy_writers_enabled: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
@@ -556,7 +558,6 @@ $$;
      (OUT/'retirement-live-references.before.json').write_text(references,encoding='utf-8')
    if m.stem==ERASURE_STEM:
     erasure_previous=json.loads(run('psql',*conn,'-c',ERASURE_CONSTRAINTS))
-   acl_restatement_stem='20261104181200_isa_1896_acl_restatement'
    acl_restatement_query="""select jsonb_object_agg(n.nspname||'.'||c.relname,
      coalesce(c.relacl::text,'<null>') order by n.nspname,c.relname)
      from pg_class c join pg_namespace n on n.oid=c.relnamespace

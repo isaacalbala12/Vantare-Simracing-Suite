@@ -6,7 +6,7 @@ import subprocess
 
 
 ROLES = {'public', 'anon', 'authenticated', 'service_role'}
-# The two migrations were merged before the real ADR 0106 cutoff was recorded.
+# The two migrations were merged before the lint entered CI with the real cut.
 # Only this diagnostic is waived; other checks (and merged-file immutability)
 # still apply to them.
 EXCEPTIONS = {
@@ -23,6 +23,7 @@ REVOKE = re.compile(
     r'\brevoke\s+all(?:\s+privileges)?\s+on\s+'
     r'(?P<kind>table|sequence|function)\s+'
     r'(?P<objects>[^;]+?)\s+from\s+(?P<roles>[^;]+);', re.I | re.S)
+EXECUTE_LITERAL = re.compile(r"\bexecute\s+'(?P<body>(?:''|[^'])*)'\s*;", re.I | re.S)
 
 
 def without_comments(source: str) -> str:
@@ -80,7 +81,11 @@ def without_comments(source: str) -> str:
 def revoke_roles(sql: str, kind: str, name: str) -> set[str]:
     expected_kind = 'function' if kind == 'function' else (
         'sequence' if kind == 'sequence' else 'table')
-    for match in REVOKE.finditer(sql):
+    # A constant EXECUTE string is executable SQL too. A concatenated string
+    # is deliberately excluded: its final ACL cannot be proved statically.
+    literal_sql = [match.group('body').replace("''", "'") + ';'
+                   for match in EXECUTE_LITERAL.finditer(sql)]
+    for match in (m for source in [*literal_sql, sql] for m in REVOKE.finditer(source)):
         if match.group('kind').lower() != expected_kind:
             continue
         objects = match.group('objects').lower()

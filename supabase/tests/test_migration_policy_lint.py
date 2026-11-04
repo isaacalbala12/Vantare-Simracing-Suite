@@ -74,7 +74,8 @@ class MigrationPolicyLintTests(unittest.TestCase):
         self.write_new(VALID + 'select auth.uid();\n')
         self.assertIn('auth.uid', self.lint().stdout)
         self.write_new('-- old auth.uid() is not executable\n' + VALID)
-        self.assertEqual(self.lint().returncode, 0)
+        result = self.lint()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_missing_acl_role_rejected(self):
         self.write_new(VALID.replace('public, anon, authenticated, service_role',
@@ -95,11 +96,29 @@ class MigrationPolicyLintTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('auth.uid() is forbidden', result.stdout)
                 self.assertNotIn('needs REVOKE ALL', result.stdout)
+                path.write_text('create function public.example() returns integer language sql as $$select 1$$;\n')
+                result = self.lint()
+                self.assertIn('must use create or replace', result.stdout)
                 path.rename(self.root / 'migrations' / name.replace('_isa_', '_other_isa_'))
                 result = self.lint()
                 self.assertIn('needs REVOKE ALL', result.stdout)
                 (self.root / 'migrations' / name.replace('_isa_', '_other_isa_')).unlink()
                 down.unlink()
+
+    def test_constant_execute_revoke_is_recognized(self):
+        self.write_new('''create or replace function public.example() returns integer language sql as $$select 1$$;
+do $$ begin execute 'revoke all on function public.example() from public, anon, authenticated, service_role'; end $$;
+''')
+        result = self.lint()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_concatenated_execute_revoke_is_rejected(self):
+        self.write_new('''create or replace function public.example() returns integer language sql as $$select 1$$;
+do $$ begin execute 'revoke all on function public.example() from public, anon, authenticated, ' || 'service_role'; end $$;
+''')
+        result = self.lint()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('needs REVOKE ALL', result.stdout)
 
     def test_create_function_without_full_replace_rejected(self):
         self.write_new(VALID.replace('create or replace function', 'create function'))

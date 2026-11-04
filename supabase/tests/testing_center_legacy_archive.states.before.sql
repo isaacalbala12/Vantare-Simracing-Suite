@@ -2,7 +2,8 @@
 begin;
 insert into public.profiles(id) values
  ('18960000-0000-4000-8000-0000000007b3'),
- ('18960000-0000-4000-8000-0000000007b5');
+ ('18960000-0000-4000-8000-0000000007b5')
+on conflict (id) do nothing;
 insert into private.clerk_issuers(issuer,authorized_parties,enabled)
 values('https://vanta131-archive-states.clerk.invalid',
  array['https://app.invalid'],true);

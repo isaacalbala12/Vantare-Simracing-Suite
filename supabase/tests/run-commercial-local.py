@@ -400,6 +400,7 @@ $$;
     if replay_ids!=mapped_ids: raise RuntimeError('legacy report IDs changed on replay')
     run('psql',*conn,'-c',"""create table private.vanta131_archive_restore_probe as
       select * from private.testing_center_legacy_archive;""")
+    run('psql',*conn,'-c',"insert into public.profiles(id) values('18960000-0000-4000-8000-0000000007b3') on conflict (id) do nothing")
     run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
       (source_table,source_id,"row",row_sha256)
       select source_table,'report_'||repeat('b',64),changed,
@@ -433,10 +434,25 @@ $$;
       (select count(*) from public.testing_contributions
         where account_id='18960000-0000-4000-8000-0000000007b2')::text""").strip()
     if erased!='0|2|0': raise RuntimeError('account erasure crossed owners or retained data: '+erased)
+    cross_owner_down=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
+      str(ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))],
+      env=ENV,capture_output=True,text=True)
+    if cross_owner_down.returncode or 'missing-parent rows=1' not in cross_owner_down.stderr:
+     raise RuntimeError('cross-owner rollback did not skip missing issue: '+cross_owner_down.stderr)
+    cross_owner_restored=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from public.testing_center_reports where
+        report_id='report_'||repeat('b',64))::text||'|'||
+      (select count(*) from public.testing_center_issue_occurrences where
+        report_id='report_'||repeat('b',64))::text""").strip()
+    if cross_owner_restored!='1|0':
+     raise RuntimeError('cross-owner rollback lost report or restored dangling issue')
+    run('psql',*conn,'-c',"""delete from public.testing_center_reports
+      where report_id='report_'||repeat('b',64);
+      delete from private.testing_center_legacy_archive
+      where source_id='report_'||repeat('b',64);""")
+    run('psql',*conn,'-f',migration_source)
     run('psql',*conn,'-c',"""insert into private.testing_center_legacy_archive
       select * from private.vanta131_archive_restore_probe;
-      delete from private.testing_center_legacy_archive
-      where source_id='report_'||repeat('b',64);
       drop table private.vanta131_archive_restore_probe;""")
     skipped=subprocess.run([str(BIN/'psql'),*map(str,conn),'-f',
       str(ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))],

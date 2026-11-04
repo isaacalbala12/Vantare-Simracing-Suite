@@ -1045,3 +1045,20 @@ Cierre local ronda 2: F1 17/17, F2 6/6, F3 8/8 más dos sesiones con fixed previ
 - Base nueva `origin/nightly@6e80ae71a`, con #1912 y #1913 de admin. El runner SQL conserva las suites de admin de nightly y añade las pruebas y rollbacks de 7a. El handoff conserva los cambios de ambos trabajos.
 - Admin ya había reservado ADR 0104; el diseño de informes del Testing Center pasa a ADR 0105, con el contenido aprobado intacto. Solo cambian el número, el nombre del archivo y su índice.
 - PostgreSQL local completo con las suites de admin y 7a: 133 rutas/789 checks PASS. Deno 39 PASS/1 omitido; Rust fmt y Clippy `-D warnings` para IPC, Services y Hub PASS; Nextest y CI remota pendientes. PR draft #1918 sin merge, release, despliegue ni llamada a producción.
+# 2026-11-04 · #1928 autoridad de canales
+
+Isaac decidió que solo `private.is_owner()` concede acceso owner a los canales. Una membresía `owner` antigua, incluso activa, no concede acceso después de revocar la asignación operativa. `tester` y `primary_tester` conservan su acceso de membresía. La migración #1928 fija esos dos roles en una lista explícita y tiene rollback; la matriz se caracterizó antes del SQL en PostgreSQL local. No cambia admin, billing ni el estado de capturas.
+
+PR draft [#1934](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1934) contra `nightly`, base `b50183217`, código `f7135b504`: caracterización previa 36/36, harness PostgreSQL local 134 rutas/795 comprobaciones PASS antes y después, rollback/reaplicación exactos PASS. CI pendiente; sin despliegue, merge ni release. La comprobación de pgcrypto está en [#1933](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1933); el estado actual de producción no se consultó.
+
+Review Sonnet de #1934: P1 real en los tres escritores de informes. Un test de envío por `testing_report_v2_submit_admitted` reprodujo 12 fallos de 16 antes de corregirlo: la membresía owner antigua enviaba, el owner operativo sin membresía no. La migración aplica la misma autoridad owner y los mismos canales tester en los tres escritores; su down restaura cuerpos y ACL exactos. Las dos rutas `service_role` de disposición y enlace PostHog quedan en [#1936](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1936), fuera de este PR.
+
+Verificación posterior: PostgreSQL local con migraciones LF y CRLF, 16/16 envíos y 134 rutas/795 comprobaciones PASS en ambos formatos; el runner compara `pg_get_functiondef` y `proacl` de las cuatro funciones antes del up y después del down. Sin producción ni despliegue.
+
+Código corregido `bb8e25d62`, publicado en la misma rama de #1934 contra `nightly@b50183217`; CI del nuevo HEAD pendiente. La issue #1928 y Plane VANTA-131 reflejan esta entrega.
+
+Tras integrar admin #1924 en `nightly@3397df2ea`, #1934 se rebasó conservando el gate real de admin y sus suites. El harness LF con la cadena 7b2→admin y la suite de envíos pasó; CRLF se repite sobre esa base. Sin merge propio, despliegue ni release.
+
+Tras #1939 (`nightly@d1616b2f7`), Isaac autorizó renombrar la migración y rollback de #1934 a `20261104084000`, posterior a `20261104070000` de admin. El runner conserva ambos lados, aplica rollback LIFO y prueba definiciones/ACL exactos de las cuatro funciones; PostgreSQL local LF pasó con 134 rutas/795 comprobaciones y 16 envíos. CRLF y CI del HEAD rebasado quedan por verificar antes de integrar.
+
+Tras #1941 (`nightly@937e55afd`), #1934 se rebasó y la migración/rollback pasó a `20261104084000`, posterior al ACK admin `20261104083000`. El runner revierte primero canales, luego ACK y política owner; conserva las pruebas de envío y rollback exacto. HEAD y CI actuales constan en el PR; sin despliegue ni merge.

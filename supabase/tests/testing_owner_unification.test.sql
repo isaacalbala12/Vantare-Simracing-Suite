@@ -1,25 +1,31 @@
 -- VANTA-131 step 8: the matrix characterized in the first commit now agrees.
 -- B is a membership-only owner created after the backfill; it has no authority.
 begin;
-select plan(23);
+select plan(36);
 insert into private.clerk_issuers(issuer,authorized_parties,enabled) values
  ('https://owner-vanta131.clerk.invalid',array['https://app.invalid'],true);
 insert into public.profiles(id) values
  ('13100000-0000-4000-8000-000000000001'),
  ('13100000-0000-4000-8000-000000000002'),
  ('13100000-0000-4000-8000-000000000003'),
- ('13100000-0000-4000-8000-000000000004');
+ ('13100000-0000-4000-8000-000000000004'),
+ ('13100000-0000-4000-8000-000000000005'),
+ ('13100000-0000-4000-8000-000000000006');
 insert into public.account_identities(issuer,subject,account_id) values
  ('https://owner-vanta131.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','13100000-0000-4000-8000-000000000001'),
  ('https://owner-vanta131.clerk.invalid','user_bbbbbbbbbbbbbbbbbbbbbbbbbbb','13100000-0000-4000-8000-000000000002'),
  ('https://owner-vanta131.clerk.invalid','user_ccccccccccccccccccccccccccc','13100000-0000-4000-8000-000000000003'),
- ('https://owner-vanta131.clerk.invalid','user_ddddddddddddddddddddddddddd','13100000-0000-4000-8000-000000000004');
+ ('https://owner-vanta131.clerk.invalid','user_ddddddddddddddddddddddddddd','13100000-0000-4000-8000-000000000004'),
+ ('https://owner-vanta131.clerk.invalid','user_eeeeeeeeeeeeeeeeeeeeeeeeeee','13100000-0000-4000-8000-000000000005'),
+ ('https://owner-vanta131.clerk.invalid','user_fffffffffffffffffffffffffff','13100000-0000-4000-8000-000000000006');
 select * from public.operational_access_set(
  '13100000-0000-4000-8000-000000000001','owner','grant',
  'test:vanta131','Owner characterization','test:vanta131-owner',null);
 insert into public.testing_center_memberships(user_id,actor_id,role) values
  ('13100000-0000-4000-8000-000000000002','vanta131-legacy-owner','owner'),
- ('13100000-0000-4000-8000-000000000004','vanta131-revoked-owner','owner');
+ ('13100000-0000-4000-8000-000000000004','vanta131-revoked-owner','owner'),
+ ('13100000-0000-4000-8000-000000000005','vanta131-tester','tester'),
+ ('13100000-0000-4000-8000-000000000006','vanta131-primary','primary_tester');
 select * from public.operational_access_set(
  '13100000-0000-4000-8000-000000000004','owner','grant',
  'test:vanta131','Revoked owner characterization','test:vanta131-revoked-grant',null);
@@ -58,6 +64,8 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(public.testing_center_current_role(),'owner',
  'Testing Center recognizes operational owner A without membership');
+select ok(public.testing_center_can_view_channel('nightly'), 'operational owner sees nightly');
+select ok(public.testing_center_can_view_channel('testers'), 'operational owner sees testers');
 select is(jsonb_array_length(public.testing_report_patch_candidates('1.2.3')),0,
  'operational owner can inspect patch candidates');
 reset role;
@@ -72,6 +80,8 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(public.testing_center_current_role(),null::text,
  'Testing Center rejects membership-only owner B');
+select ok(not public.testing_center_can_view_channel('nightly'), 'membership-only owner cannot see nightly');
+select ok(not public.testing_center_can_view_channel('testers'), 'membership-only owner cannot see testers');
 select throws_ok($$select public.testing_report_patch_candidates('1.2.3')$$,
  '42501','testing_owner_required','membership-only account cannot inspect fixes');
 select throws_ok($$select public.testing_report_fixed('13100000-0000-4000-8000-000000000099',
@@ -90,6 +100,7 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(public.testing_center_current_role(),null::text,
  'account C without membership or assignment has no owner role');
+select ok(not public.testing_center_can_view_channel('testers'), 'unassigned account cannot see testers');
 select throws_ok($$select public.testing_report_patch_candidates('1.2.3')$$,
  '42501','testing_owner_required','account C cannot inspect fixes');
 reset role;
@@ -98,6 +109,26 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(public.testing_center_current_role(),null::text,
  'revoked operational owner D cannot regain Testing Center role from membership');
+select ok(not public.testing_center_can_view_channel('nightly'), 'revoked owner cannot see nightly');
+select ok(not public.testing_center_can_view_channel('testers'), 'revoked owner cannot see testers');
+reset role;
+select set_config('request.jwt.claims',
+ '{"iss":"https://owner-vanta131.clerk.invalid","sub":"user_eeeeeeeeeeeeeeeeeeeeeeeeeee","role":"authenticated","sid":"sess_tester_e","azp":"https://app.invalid"}',true);
+set local role authenticated;
+select is(public.testing_center_current_role(),'tester', 'tester keeps its membership role');
+select ok(public.testing_center_can_view_channel('testers'), 'tester sees testers');
+select ok(not public.testing_center_can_view_channel('nightly'), 'tester cannot see nightly');
+reset role;
+select set_config('request.jwt.claims',
+ '{"iss":"https://owner-vanta131.clerk.invalid","sub":"user_fffffffffffffffffffffffffff","role":"authenticated","sid":"sess_primary_f","azp":"https://app.invalid"}',true);
+set local role authenticated;
+select is(public.testing_center_current_role(),'primary_tester', 'primary tester keeps its membership role');
+select ok(public.testing_center_can_view_channel('nightly'), 'primary tester sees nightly');
+reset role;
+select set_config('request.jwt.claims','{}',true);
+set local role anon;
+select ok(not has_function_privilege('anon','public.testing_center_can_view_channel(text)','execute'),
+ 'anonymous cannot call channel oracle');
 reset role;
 select * from finish();
 rollback;

@@ -38,6 +38,16 @@ select ok(to_regprocedure('public.is_active_owner(uuid)') is null,
  'public owner oracle is retired');
 select ok(not has_function_privilege('authenticated','private.is_owner(uuid)','execute'),
  'arbitrary account lookup is private');
+select ok(not has_function_privilege('anon','private.is_owner(uuid)','execute'),
+ 'anonymous cannot call the private owner oracle');
+select ok(not has_function_privilege('service_role','private.is_owner(uuid)','execute'),
+ 'service role cannot call the private owner oracle directly');
+update public.operational_access_assignments set expires_at=now()-interval '1 second'
+ where user_id='13100000-0000-4000-8000-000000000001' and role='owner';
+select ok(not private.is_owner('13100000-0000-4000-8000-000000000001'),
+ 'expired owner assignment has no authority');
+update public.operational_access_assignments set expires_at=null
+ where user_id='13100000-0000-4000-8000-000000000001' and role='owner';
 select lives_ok($$select private.native_admin_require_owner('13100000-0000-4000-8000-000000000001')$$,
  'admin recognizes operational owner A');
 select throws_ok($$select private.native_admin_require_owner('13100000-0000-4000-8000-000000000002')$$,

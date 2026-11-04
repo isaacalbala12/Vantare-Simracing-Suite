@@ -289,6 +289,7 @@ $$;
   if owner_enabled and not args.admin_effects_only:
    owner_stem='20261103225029_isa_1896_owner_unification'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
+   role_snapshot=run('psql',*conn,'-At','-c',"select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure").strip()
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_unification_rollback.test.sql')
    (OUT/'testing_owner_unification_rollback.test.sql.log').write_text(result)
    if 'not ok ' in result or '1..8' not in result:
@@ -315,6 +316,8 @@ $$;
       where user_id='13100000-0000-4000-8000-000000000009' and role='owner');""").strip()
    if migrated!='t': raise RuntimeError('step 8 legacy owner was not backfilled')
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
+   restored_role=run('psql',*conn,'-At','-c',"select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure").strip()
+   if restored_role!=role_snapshot: raise RuntimeError('step 8 rollback changed current_role definition or ACL')
    reverted=run('psql',*conn,'-At','-c',"""select (select status='revoked' and revoked_by='rollback:vanta131'
     from public.operational_access_assignments where user_id='13100000-0000-4000-8000-000000000009'
     and role='owner') and (select role='owner' from public.testing_center_memberships
@@ -323,6 +326,11 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_stem+'.sql'))
    if run('psql',*conn,'-At','-c',"select private.is_owner('13100000-0000-4000-8000-000000000009')").strip()!='t':
     raise RuntimeError('step 8 reapply did not restore legacy owner')
+   run('psql',*conn,'-c',"create function private.vanta131_owner_down_guard_probe() returns boolean language sql as 'select private.is_owner(null::uuid)'")
+   guard=subprocess.run([str(BIN/'psql'),*map(str,conn),'-v','ON_ERROR_STOP=1','-f',str(ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))],env=ENV,capture_output=True,text=True)
+   if guard.returncode==0 or 'owner_rollback_dependency' not in guard.stderr:
+    raise RuntimeError('step 8 rollback did not fail closed on dependent function: '+guard.stderr)
+   run('psql',*conn,'-c','drop function private.vanta131_owner_down_guard_probe()')
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))

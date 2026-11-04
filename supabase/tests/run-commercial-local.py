@@ -26,7 +26,7 @@ parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
-parser.add_argument('--admin-owner-only', action='store_true', help='Only admin owner authority SQL; all migrations replayed first')
+parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
@@ -642,7 +642,7 @@ $$;
   if admin_owner_previous is not None:
    suites += ['native_admin_owner_authority.test.sql']
   if args.admin_owner_only:
-   suites=['native_admin_owner_authority.test.sql']
+   suites=['native_admin_owner_authority.test.sql','commercial_testing_identity.test.sql']
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:

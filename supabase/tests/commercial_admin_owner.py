@@ -45,6 +45,11 @@ def run_admin_owner_precheck(run, conn, out, bin_dir, env):
     finally:
         if holder.poll() is None:
             holder.communicate('rollback;\n\\q\n',timeout=10)
+        # Other suites assert global report counts. Remove the committed report
+        # after releasing its locks, including on failure. Durable identities,
+        # like other race fixtures, live only until this disposable DB is dropped.
+        run('psql',*conn,'-c',f"delete from public.testing_contributions where id='{report}'")
+    assert run('psql',*conn,'-c',f"select count(*) from public.testing_contributions where id='{report}'").strip()=='0'
     print('Admin owner: non-owner denied while target UUID remains locked PASS',flush=True)
 
 

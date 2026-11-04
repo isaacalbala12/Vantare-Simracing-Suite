@@ -7611,3 +7611,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   verifica CI verde antes de revisar/integrar. Sin merge de PR ni despliegue.
 - #1924 continúa draft esperando 7b2; guard/timestamp y reset limpio se ajustan
   después, conforme a la lista de padre, siete hijas y RPC de capturas acordada.
+- CI 41761978834 detectó aislamiento de fixture: el precheck dejaba un informe
+  sintético y rompía el recuento global de commercial_testing_identity. Se limpia
+  ese informe en finally; las identidades durables solo viven hasta destruir la
+  base desechable. Sin debilitar barreras ni la aserción que detectó la fuga.
+  Gate acotado ampliado a autoridad + identidad: 98/98, precheck y tres carreras
+  PASS. El resultado final de CI corresponde al HEAD publicado en #1927.

@@ -8940,3 +8940,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Draft de seguimiento https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1967,
   código66afbd440 validado. Producción425→424(-1), tests+11, docs separados.
   Target/QA propios y compilar.ps1, cola cedida entre comandos; CI nueva pendiente.
+
+- Rebase1967 tras merge1962: base nightly7e40fdb7c (2026-11-05), solo los
+  P3 y su test/handoff quedan en el diff. Range-diff idéntico, sin conflictos;
+  código Rust/Deno byte idéntico al validado check/Clippy/Nextest48/fmt/Deno3.
+  No se repiten builds sin cambio de código/dependencias Rust; CI nueva pendiente.

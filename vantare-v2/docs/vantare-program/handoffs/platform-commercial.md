@@ -678,9 +678,13 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   conserva los 45 rechazos por motivo y el gate ZIP usa el extractor de Setup.
   **Punto 10 del Hub, re-review de #1945:** la ejecución directa del Hub
   instalado exige la raíz de datos de su generación antes de resolver rutas o
-  escribir. Si falta o difiere, abre el `Vantare.exe` raíz y termina; los
-  fallos al resolver rutas o abrir el lanzador quedan en el log. Las rutas se
-  canonicalizan y los tres consumidores usan una identidad instalada común.
+  escribir. Si falta o difiere, abre el `Vantare.exe` raíz con
+  `--root -Root <root>` y termina; limpia las variables heredadas de la sesión
+  y fija la raíz como directorio de trabajo. `VANTARE_HUB_REDIRECTED=1` evita
+  una segunda redirección y deja el motivo en el log. Los fallos al resolver
+  rutas o abrir el lanzador también quedan registrados. Los tres consumidores
+  comparten la canonicalización sin prefijo verbatim, para que Ajustes no
+  considere inválida una instalación real; el ID de generación exige minúsculas.
   El Hub de desarrollo conserva `%LOCALAPPDATA%`; un modo QA de solo lectura
   permite comprobarlo con el binario real sin abrir UI ni tocar registro.
   El paso 9 (renovación opcional tras confirmación) sigue aparcado; K3, retención
@@ -694,13 +698,18 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
   Paso 10 en [PR draft #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
-  contra nightly, código `74a075e3d`; revisión Sonnet corregida, CI pendiente
-  y Plane por revisar. Gates del Hub: fmt, check, Clippy y batería completa
-  verdes (595 correctos, 4 ignorados; suites adicionales correctas). El test
-  de proceso y el probe de desarrollo con `%LOCALAPPDATA%` QA pasan.
-  Producción tras esa revisión: **11.319/11.320**
-  (perímetro 10.221 Rust + 53 Cleanup; fuera 1.045: +82 en Hub y −22 por
-  unificar identidad instalada en el perímetro). Sin release; siguen pendientes
+  contra nightly, código `f2445c180`; revisión Sonnet corregida, CI pendiente
+  y Plane por revisar. El test de proceso comprueba argumentos, entorno,
+  directorio de trabajo, misma ruta con otra capitalización, 8.3 y junction
+  cuando Windows los admite, y la guarda de segunda redirección. La matriz
+  ejecuta el Hub y `Vantare.exe` reales: **14/14** checks del lanzador en QA.
+  Biblioteca Hub **596** tests correctos, 4 ignorados; binario **11/11**;
+  `development-fallback.ps1` PASS con Hub QA independiente. Fmt, Check y
+  Clippy `-D warnings` del Hub PASS con target propio.
+  Producción tras esa revisión: **11.358/11.360**
+  (perímetro 10.221 Rust + 53 Cleanup; fuera 1.084). Las 39 líneas nuevas
+  fuera del perímetro cubren canonicalización y redirección segura; el probe
+  de argumentos es fixture de tests. Sin release; siguen pendientes
   los dos gates manuales de Isaac.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de

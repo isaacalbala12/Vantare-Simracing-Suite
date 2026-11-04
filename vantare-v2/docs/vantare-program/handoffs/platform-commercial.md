@@ -8069,3 +8069,4 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   native. Sin secretos, Store real, producción, despliegue, merge propio ni
   release. VANTA-132 En curso: auditoría Brevo y pasos 6–10 pendientes; el 11
   permanece dentro de R6/12. No hay decisión nueva necesaria en este paso.
+- Medición frente a 3397df2ea: producción +100/−0 (up y down), tests +120/−2, docs +82/−0.

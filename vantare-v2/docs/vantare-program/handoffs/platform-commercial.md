@@ -7617,3 +7617,26 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   base desechable. Sin debilitar barreras ni la aserción que detectó la fuga.
   Gate acotado ampliado a autoridad + identidad: 98/98, precheck y tres carreras
   PASS. El resultado final de CI corresponde al HEAD publicado en #1927.
+
+### Cierre de entrega #1927 (2026-11-04)
+
+- Integración verificada en nightly b1e36c868a78ce9e746d5fb4a3d3546376a2e6b2,
+  PR #1927 fusionado por el orquestador a las 02:47:12 UTC. HEAD revisado
+  81e77217e22e3a2f53c207ee54aac17e93d5f723; seis checks SUCCESS, incluidos
+  [Commercial PostgreSQL LF/CRLF](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41762618795)
+  y [marketing PostgreSQL/E2E](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41762618925).
+- Entregada la costura owner de revisión: autoridad R6, rechazo previo sin locks
+  y comprobación bloqueada posterior, cuerpos/ACL con rollback exacto. Local:
+  autoridad+identidad 98/98 y Deno 94/94, guard y tres carreras PASS. Aislamiento
+  de fixture corregido antes de integrar. Medición final: producción +77/−0,
+  tests +278/−5 y docs +113/−0 frente a nightly 39b944d8c.
+- #1910 y VANTA-132 siguen abiertos/En curso por el resto del plan. #1924 sigue
+  draft esperando 7b2/#1930, abierto y en correcciones al verificar el cierre.
+  No rebasar aún. Cuando se integre: base nightly nueva, timestamp up/down
+  posterior al 7b2, guard de padre y siete hijas con cero filas/escrituras para
+  service_role/authenticated/anon/PUBLIC/vantare_triage; RPC legacy y de capturas
+  sin EXECUTE, incluidos prepare_screenshot_batch y finalize_screenshot.
+  Quitar el shutdown auxiliar del replay y validar la cadena limpia completa.
+- Sin despliegue, producción ni release. El worker no fusionó ningún PR.
+  Esta actualización de cierre es documental; sin repetir gates de producto,
+  Rust/lifecycle/telemetría. Verificación de enlaces, UTF-8 y diff del handoff.

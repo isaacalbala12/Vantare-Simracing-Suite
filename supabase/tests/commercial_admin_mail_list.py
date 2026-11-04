@@ -9,11 +9,14 @@ STEM='20261104215424_isa_1910_admin_mail_list_read'
 SNAPSHOT="""select jsonb_build_object('body',pg_get_functiondef(oid),'acl',proacl::text)
  from pg_proc where oid='public.mail_admin_execute(uuid,text,jsonb,text)'::regprocedure"""
 
-def prepare_mail_list(run,conn):
+def prepare_mail_list(run,conn,out,newlines):
     root=Path(__file__).resolve().parents[2]
     # Historical oracles unwind their SQL; restore the actual predecessors first.
     for stem in (AUDIT_STEM,CONFIRM_STEM):
-        run('psql',*conn,'-f',root/'supabase/migrations'/(stem+'.sql'))
+        replay=out/('mail-list-predecessor-'+stem+'.sql')
+        source=(root/'supabase/migrations'/(stem+'.sql')).read_text(encoding='utf-8')
+        replay.write_bytes(source.replace('\n','\r\n').encode() if newlines=='crlf' else source.encode())
+        run('psql',*conn,'-f',replay)
     return run('psql',*conn,'-c',SNAPSHOT)
 
 def run_mail_list(run,conn,out,newlines,previous):

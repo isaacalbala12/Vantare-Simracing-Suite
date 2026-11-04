@@ -9079,3 +9079,10 @@ union all select 'linear_deliveries',outcome::text,count(*)
   mail_cleanup manual no garantiza retención24h. No se cambia configuración.
 - Rama8d publicada sin PR aún; no despliegue/merge/release ni SaaS/Store/secretos. El11
   sigue exclusivamente en R6/12. Falta cerrar el seguimiento menor de1962.
+
+- Draft8d abierto tras merge1962: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1968.
+  Base nightly7e40fdb7c, sin conflictos; migración20261104215424 posterior190009.
+  El rebase descubrió que preparar predecesores desde archivos CRLF y probar down
+  LF daba una diferencia de cuerpo. Se reaplican con el mismo modo LF/CRLF del
+  replay, conservando comparación byte-exacta de cuerpo y ACL. No cambia producto.
+  Nuevo replay local/CI en curso; PG17 derivado pendiente de su artefacto CI.

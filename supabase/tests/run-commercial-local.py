@@ -408,7 +408,7 @@ $$;
     explicit_previous=run('psql',*conn,'-c',EXPLICIT_SYNC_SNAPSHOT)
 
    if m.stem==MAIL_LIST_STEM and not args.schema_snapshot:
-    mail_list_previous=prepare_mail_list(run,conn)
+    mail_list_previous=prepare_mail_list(run,conn,OUT,args.migration_newlines)
    if m.stem==CONFIRM_STEM and not args.schema_snapshot:
     confirmation_previous=run('psql',*conn,'-c',CONFIRM_SNAPSHOT)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:

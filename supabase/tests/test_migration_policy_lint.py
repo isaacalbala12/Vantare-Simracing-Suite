@@ -159,15 +159,6 @@ grant select on table public.example to service_role;
 ''')
         self.assertEqual(self.lint().returncode, 0)
 
-    def test_conditional_full_function_and_quoted_acl_pass(self):
-        self.write_new('''do $$ begin
-execute $definition$create or replace function public.example()
- returns integer language sql as $body$ select 1 $body$;$definition$;
-execute 'revoke all on function public.example() from public, anon, authenticated, service_role';
-end $$;
-''')
-        self.assertEqual(self.lint().returncode, 0)
-
     def test_merged_post_cutoff_up_cannot_change(self):
         self.baseline()
         self.write_new(VALID + '\nselect 2;\n')

@@ -1,4 +1,4 @@
-"""Check digest compatibility in disposable PostgreSQL with both pgcrypto layouts."""
+"""Probe digest signatures and SHA-256 vectors in disposable PostgreSQL."""
 import argparse
 import os
 import pathlib
@@ -14,6 +14,7 @@ UP = ROOT / 'supabase/migrations' / (STEM + '.sql')
 DOWN = ROOT / 'supabase/rollbacks' / (STEM + '.down.sql')
 COMPAT = ROOT / 'supabase/migrations/20260802095000_pgcrypto_public_compatibility.sql'
 CONTRACT = ROOT / 'supabase/tests/pgcrypto_contract.test.sql'
+RUNBOOK = ROOT / 'vantare-v2/docs/runbooks/pgcrypto-digest-contract.md'
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--pg-bin', type=pathlib.Path, required=True)
@@ -105,7 +106,7 @@ with tempfile.TemporaryDirectory(prefix='vantare-pgcrypto-') as temporary:
                 run('createdb', '-h', '127.0.0.1', '-p', port,
                     '-U', 'postgres', 'pgcrypto_missing')
             missing = psql('pgcrypto_missing', '-f', UP, check=False)
-            if missing.returncode == 0 or 'pgcrypto_digest_contract_missing' not in missing.stderr:
+            if missing.returncode == 0 or 'pgcrypto_digest_signature_missing' not in missing.stderr:
                 raise RuntimeError('missing extension did not fail closed: ' + missing.stderr)
             print('missing extension: 55000 PASS')
         for schema in ('extensions', 'public'):
@@ -118,8 +119,26 @@ with tempfile.TemporaryDirectory(prefix='vantare-pgcrypto-') as temporary:
             psql(database, '-c', 'create schema if not exists extensions; '
                  f'create extension pgcrypto with schema {schema};')
             psql(database, '-f', COMPAT)
-            check_args = ('-c', f"select set_config('fixture.pgcrypto_schema','{schema}',false)",
-                          '-f', CONTRACT)
+            inventory_sql = RUNBOOK.read_text(encoding='utf-8').split('```sql\n', 1)[1].split('\n```', 1)[0]
+            inventory = [line.split('|') for line in
+                         psql(database, '-At', '-c', inventory_sql).stdout.splitlines()]
+            if len(inventory) != 4:
+                raise RuntimeError('runbook inventory did not return four signatures')
+            origins = {row[0]: row[3] for row in inventory}
+            expected_origins = ({
+                'public.digest(text,text)': 'wrapper_or_other',
+                'public.digest(bytea,text)': 'wrapper_or_other',
+                'extensions.digest(text,text)': 'native_pgcrypto',
+                'extensions.digest(bytea,text)': 'native_pgcrypto',
+            } if schema == 'extensions' else {
+                'public.digest(text,text)': 'native_pgcrypto',
+                'public.digest(bytea,text)': 'native_pgcrypto',
+                'extensions.digest(text,text)': 'missing',
+                'extensions.digest(bytea,text)': 'missing',
+            })
+            if origins != expected_origins:
+                raise RuntimeError('runbook inventory misclassified signatures: ' + str(origins))
+            check_args = ('-f', CONTRACT)
             baseline = psql(database, *check_args, check=False)
             if schema == 'extensions' and baseline.returncode:
                 raise RuntimeError('hosted-layout baseline failed: ' + baseline.stderr)
@@ -128,18 +147,48 @@ with tempfile.TemporaryDirectory(prefix='vantare-pgcrypto-') as temporary:
             print(f'{schema} baseline: ' + ('PASS' if baseline.returncode == 0 else 'RED'))
             if args.baseline_only:
                 continue
+            digest_catalog = """select coalesce(jsonb_agg(jsonb_build_object(
+              'signature',p.oid::regprocedure::text,'body',pg_get_functiondef(p.oid),
+              'acl',p.proacl::text) order by p.oid),'[]'::jsonb)
+              from pg_proc p where p.oid in (
+                to_regprocedure('public.digest(text,text)'),
+                to_regprocedure('public.digest(bytea,text)'),
+                to_regprocedure('extensions.digest(text,text)'),
+                to_regprocedure('extensions.digest(bytea,text)'))"""
+            before = psql(database, '-At', '-c', digest_catalog).stdout
+            if schema == 'public':
+                rejected = psql(database, '-f', UP, check=False)
+                if rejected.returncode == 0 or 'pgcrypto_digest_signature_missing' not in rejected.stderr:
+                    raise RuntimeError('incomplete public layout did not fail closed: ' + rejected.stderr)
+                psql(database, '-f', DOWN)
+                if psql(database, '-At', '-c', digest_catalog).stdout != before:
+                    raise RuntimeError('failed probe or rollback changed public layout')
+                print('public layout: missing signatures rejected without a bridge PASS')
+                continue
             psql(database, '-f', UP)
             psql(database, *check_args)
             psql(database, '-f', DOWN)
-            remaining = psql(database, '-At', '-c',
-                "select to_regprocedure('public.digest(text,text)') is not null,"
-                "to_regprocedure('extensions.digest(text,text)') is not null")
-            expected = 't|t' if schema == 'extensions' else 't|f'
-            if remaining.stdout.strip() != expected:
-                raise RuntimeError(f'{schema} rollback left {remaining.stdout.strip()}, expected {expected}')
             psql(database, '-f', UP)
             psql(database, *check_args)
-            print(f'{schema} up/down/reapply: PASS')
+            if psql(database, '-At', '-c', digest_catalog).stdout != before:
+                raise RuntimeError('probe changed digest definitions or ACL')
+            print('extensions up/down/reapply: vector and definer PASS')
+        if not args.baseline_only:
+            for overload in ('text', 'bytea'):
+                database = 'pgcrypto_bad_' + overload
+                if args.docker:
+                    docker('createdb', '-U', 'postgres', '--template=template0', database)
+                else:
+                    run('createdb', '-h', '127.0.0.1', '-p', port, '-U', 'postgres', database)
+                psql(database, '-c', 'create schema extensions; create extension pgcrypto with schema extensions;')
+                psql(database, '-f', COMPAT)
+                psql(database, '-c', f"""create or replace function public.digest(data {overload}, algorithm text)
+                  returns bytea language sql immutable strict as $$
+                  select decode(repeat('00',32),'hex') $$""")
+                rejected = psql(database, '-f', UP, check=False)
+                if rejected.returncode == 0 or 'pgcrypto_digest_vector_mismatch' not in rejected.stderr:
+                    raise RuntimeError(overload + ' vector mismatch was not rejected: ' + rejected.stderr)
+                print(overload + ' tampered public digest: vector mismatch PASS')
     finally:
         if args.docker:
             subprocess.run(['docker', 'rm', '-f', container],

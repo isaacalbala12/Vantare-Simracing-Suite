@@ -66,8 +66,7 @@ CREATE FUNCTION public.visual_roadmap_sync(p_document jsonb) RETURNS uuid
     AS $$
 declare v_id uuid; v_old jsonb; v_removed integer; v_approved integer;
 begin
-  if not public.visual_roadmap_valid(p_document) or p_document->'schemaVersion' <> '2'::jsonb
-    or p_document->>'schemaVersion' <> '2'
+  if not public.visual_roadmap_valid(p_document) or p_document->>'schemaVersion' <> '2'
     or jsonb_array_length(p_document->'items')=0 then
     raise exception 'invalid_clickup_roadmap' using errcode = '22023';
   end if;

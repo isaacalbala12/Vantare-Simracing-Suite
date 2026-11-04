@@ -122,15 +122,15 @@ for (
     "account_deleted",
   ]
 ) {
-  Deno.test(`R10 P9 characterization: ${code} is reported as unavailable`, async () => {
+  Deno.test(`R10 P9 characterization: ${code} is a refreshable conflict`, async () => {
     const response = await handleNativeAdmin(
       rollout(),
       deps({
         execute: () => Promise.reject({ message: code }),
       }),
     );
-    assert(response.status === 503);
-    assert((await response.json()).error === "bridge_unavailable");
+    assert(response.status === 409);
+    assert((await response.json()).error === "account_conflict");
   });
 }
 
@@ -181,4 +181,9 @@ Deno.test("R10 P4 regression: durable intent and result precede unban state tran
       JSON.stringify(["started", "unban", "succeeded", "sql-audit-failure"]),
   );
   // SQL rollback on audit failure is verified by native_admin.test.sql.
+});
+
+Deno.test("SQLSTATE40001 without known message is a refreshable conflict",async()=>{
+ const response=await handleNativeAdmin(rollout(),deps({execute:()=>Promise.reject({code:"40001",message:"synthetic private detail"})}));
+ assert(response.status===409 && (await response.json()).error==="account_conflict");
 });

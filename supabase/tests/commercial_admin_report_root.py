@@ -27,9 +27,6 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
     previous = run('psql', *conn, '-c', fingerprints).strip()
     restored = json.loads(previous)
     assert {name: restored[name] for name in OLD_ADMIN_DIGESTS} == OLD_ADMIN_DIGESTS, 'rollback must restore all five exact pre-cutover digests'
-    signature=run('psql',*conn,'-c',"select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='testing_center_report_submit_admitted'").strip()
-    assert signature and '\n' not in signature
-
     def rejected_probe(label, setup, code, message):
         probe=out/(label+'.sql')
         probe.write_text('begin;\n'+setup+'\n\\ir '+str(up)+'\n',encoding='utf-8')
@@ -39,8 +36,36 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
         assert json.loads(run('psql',*conn,'-c',fingerprints)) == json.loads(previous), label+' changed definitions'
         assert run('psql',*conn,'-c',"select to_regclass('private.admin_effects_started_target_hash') is null").strip()=='t'
 
+    tables = ['testing_center_reports','testing_center_evidence',
+              'testing_center_technical_issues','testing_center_screenshot_evidence',
+              'testing_center_evidence_batches','testing_center_report_payloads',
+              'testing_center_report_submission_keys','testing_center_report_events']
+    signatures = [
+      'testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)',
+      'testing_center_triage_report(text)',
+      'testing_center_prepare_screenshot_batch(text,text,text,jsonb)',
+      'testing_center_finalize_screenshot(uuid,uuid)',
+      'testing_center_submit_report(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text)',
+      'testing_center_submit_report_with_evidence(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)',
+      'testing_center_submit_report_without_transport_size(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text)']
     for role in ['service_role','authenticated','anon','public','vantare_triage']:
-        rejected_probe('legacy-writer-'+role,'grant execute on function '+signature+' to '+role+';', '55000','native_admin_legacy_writers_still_callable')
+        for number, signature in enumerate(signatures):
+            rejected_probe('legacy-rpc-'+role+'-'+str(number),
+              'grant execute on function public.'+signature+' to '+role+';',
+              '55000','native_admin_legacy_writers_still_callable')
+        for table in tables:
+            for privilege in ['insert','update','delete','truncate']:
+                rejected_probe(table+'-'+role+'-'+privilege,
+                  'grant '+privilege+' on public.'+table+' to '+role+';',
+                  '55000','native_admin_legacy_table_still_writable')
+    # Isolate each child's emptiness check without inventing orphan records or
+    # disabling production FK/barrier triggers. Transactional substitute only.
+    for table in tables[1:]:
+        rejected_probe(table+'-nonempty',
+          'alter table public.'+table+' rename to fixture_original; '
+          'create table public.'+table+'(probe boolean); '
+          'insert into public.'+table+' values(true);',
+          '55000','native_admin_legacy_reports_require_r6_mapping')
     rejected_probe('force-rls-caller','grant all on public.testing_center_reports to authenticated; set local role authenticated;', '42501','native_admin_cutover_requires_bypassrls')
 
     # The transaction's only row is synthetic. A failure must roll it back too.

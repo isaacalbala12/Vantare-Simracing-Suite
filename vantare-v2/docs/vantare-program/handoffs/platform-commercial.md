@@ -8677,10 +8677,10 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Ejemplos generados desde actions.ts; ambos tests leen la fixture. Rust la carga
   una vez y compara variantes/campos Serde, serialización, mutación y enums.
   Se retira la caracterización redundante. paid_at opcional conserva vista None.
-- Review: 28 PASS/1 RED; después 227 Deno y check/lint/fmt PASS. Rust pendiente:
-  649 s de cola, sccache sin avance interrumpido solo en procesos del target propio;
-  reintento VANTARE_SCCACHE=0 por compilar.ps1, mismas raíces QA. Log conservado.
-- Replay admin/Edge y rollback de la entrega anterior PASS. Sin cambios SQL,
+- Review: 28 PASS/1 RED; después 227 Deno, 45 Nextest, check all-targets,
+  Clippy -D warnings y fmt PASS. Compilar.ps1, target/QA propios y cola liberada;
+  sccache interrumpido sin diagnóstico y reintento sin caché PASS, logs conservados.
+- Replay final admin/Edge, rollback/guards y seis carreras reales PASS. Sin cambios SQL,
   shared, billing/licencias, secretos, servicios reales, merge o despliegue.
 - VANTA-132 En curso: cerrar review 1951, ajustes SMTP1947 y paso8 autorizado;
   6/10 pendientes; 11 pertenece a R6/12. Native-auth y apply_clerk_user_event reservados.

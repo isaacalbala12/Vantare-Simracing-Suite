@@ -663,8 +663,39 @@ $$;
          'testing_center_(reports|evidence|technical_issues|screenshot_evidence|evidence_batches|report_payloads|report_submission_keys|report_events|legacy_archive)'
      order by 1""")
    (OUT/'legacy-retirement-functions.log').write_text(inventory)
+   external_dependencies=run('psql',*conn,'-c',"""select conrelid::regclass::text||'|'||conname||'|'||pg_get_constraintdef(c.oid)
+     from pg_constraint c where c.contype='f'
+       and c.confrelid=any(array[
+         'public.testing_center_reports'::regclass,
+         'public.testing_center_evidence'::regclass,
+         'public.testing_center_triage_results'::regclass,
+         'public.testing_center_issue_occurrences'::regclass,
+         'public.testing_center_posthog_consent_events'::regclass,
+         'public.testing_center_posthog_evidence'::regclass,
+         'public.testing_center_report_events'::regclass,
+         'public.testing_center_report_payloads'::regclass,
+         'public.testing_center_report_submission_keys'::regclass,
+         'public.testing_center_screenshot_evidence'::regclass,
+         'public.testing_center_evidence_batches'::regclass,
+         'public.testing_center_evidence_outbox'::regclass])
+       and c.conrelid<>all(array[
+         'public.testing_center_reports'::regclass,
+         'public.testing_center_evidence'::regclass,
+         'public.testing_center_triage_results'::regclass,
+         'public.testing_center_issue_occurrences'::regclass,
+         'public.testing_center_posthog_consent_events'::regclass,
+         'public.testing_center_posthog_evidence'::regclass,
+         'public.testing_center_report_events'::regclass,
+         'public.testing_center_report_payloads'::regclass,
+         'public.testing_center_report_submission_keys'::regclass,
+         'public.testing_center_screenshot_evidence'::regclass,
+         'public.testing_center_evidence_batches'::regclass,
+         'public.testing_center_evidence_outbox'::regclass])
+     order by 1""")
+   (OUT/'legacy-retirement-external-fks.log').write_text(external_dependencies)
    print(relations,flush=True)
    print(inventory,flush=True)
+   print(external_dependencies,flush=True)
    raise SystemExit(0)
   role_contract=run('psql',*conn,'-c',"""
    select count(*)=4 and bool_and(not (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)

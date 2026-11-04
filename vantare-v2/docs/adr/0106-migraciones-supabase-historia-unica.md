@@ -37,6 +37,9 @@ Un lint de CI aplicará estas reglas solo a migraciones **posteriores al corte
 del merge de esta ADR**. La historia previa conserva sus excepciones y sus
 rollbacks. El test `hub_server_acl_characterization.test.sql` del paso 0
 permanece como matriz esperada de permisos.
+El corte usa la fecha UTC del merge, 2026-11-04: las migraciones fechadas
+desde el 2026-11-05 quedan bajo el lint. Así no se reinterpretan los PR de
+R3 y R6 ya en revisión el día de la aceptación.
 
 ## Esquema vigente y límites
 

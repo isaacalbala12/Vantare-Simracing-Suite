@@ -98,6 +98,8 @@ def check_migration(path: pathlib.Path, rollback: pathlib.Path) -> list[str]:
         down = without_comments(rollback.read_text(encoding='utf-8'))
         if re.search(r'\bpg_get_functiondef\s*\(', down, re.I):
             errors.append(f'{rollback.name}: pg_get_functiondef is forbidden in new rollbacks')
+        if re.search(r'\bauth\s*\.\s*uid\s*\(', down, re.I):
+            errors.append(f'{rollback.name}: auth.uid() is forbidden in new rollbacks')
     sql = without_comments(path.read_text(encoding='utf-8'))
     if re.search(r'\bpg_get_functiondef\s*\(', sql, re.I):
         errors.append(f'{path.name}: pg_get_functiondef is forbidden in new migrations')

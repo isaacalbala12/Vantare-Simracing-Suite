@@ -17,7 +17,8 @@ create function pg_temp.audit_action(action text,params jsonb) returns jsonb lan
 $$;
 select lives_ok($$select pg_temp.audit_action('set_tester','{"enabled":true}')$$,
  'owner can change tester before erasure');
-select is((select count(*)::int from public.admin_audit_log where action='set_tester'),1,
+select is((select count(*)::int from public.admin_audit_log where action='set_tester'
+ and actor_account_id='19101000-0000-4000-8000-000000000001'),1,
  'successful mutation keeps its audit evidence');
 select ok(not exists(select 1 from public.admin_audit_log where action='set_tester'
  and (jsonb_path_exists(coalesce(before_value,'{}'),'$.**.payments')

@@ -1,4 +1,4 @@
-//! Solo lectura del horario publicado. Validación de agenda y caché en el Hub.
+//! Solo lectura del horario publicado; Services valida antes de entregar al Hub.
 use crate::{Error, Result, config::BuildConfig, http::Http};
 use chrono::{DateTime, NaiveTime, Utc};
 use serde::Deserialize;
@@ -12,7 +12,6 @@ struct Published {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 struct ScheduleContract {
     version: u32,
     timezone: String,
@@ -23,64 +22,67 @@ struct ScheduleContract {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 struct SeriesContract {
     id: String,
     name: String,
-    track: String,
-    vehicle_class: String,
-    license_label: String,
+    #[serde(rename = "track")]
+    _track: String,
+    #[serde(rename = "vehicleClass")]
+    _vehicle_class: String,
+    #[serde(rename = "licenseLabel")]
+    _license_label: String,
     recurrence: RecurrenceContract,
-    #[serde(default)]
-    classes: Vec<VehicleClassContract>,
-    #[serde(default)]
-    race_duration_min: Option<u32>,
-    #[serde(default)]
-    event_duration_min: Option<u32>,
-    #[serde(default)]
-    sessions: Vec<SessionContract>,
-    #[serde(default)]
-    tier: String,
-    #[serde(default)]
-    event_kind: String,
-    #[serde(default)]
-    format: String,
-    #[serde(default)]
-    setup: String,
-    #[serde(default)]
-    assists: String,
-    #[serde(default)]
-    tyre_warmers: bool,
-    #[serde(default)]
-    tyres: Option<u32>,
-    #[serde(default)]
-    splits: Option<u32>,
-    #[serde(default)]
-    safety_rating: String,
-    #[serde(default)]
-    ve_limit: Option<u32>,
-    #[serde(default)]
-    notes: Vec<String>,
-    #[serde(default)]
-    source: String,
-    #[serde(default)]
-    start_offset_minute: i64,
+    #[serde(default, rename = "classes")]
+    _classes: Vec<VehicleClassContract>,
+    #[serde(default, rename = "raceDurationMin")]
+    _race_duration_min: Option<u32>,
+    #[serde(default, rename = "eventDurationMin")]
+    _event_duration_min: Option<u32>,
+    #[serde(default, rename = "sessions")]
+    _sessions: Vec<SessionContract>,
+    #[serde(default, rename = "tier")]
+    _tier: String,
+    #[serde(default, rename = "eventKind")]
+    _event_kind: String,
+    #[serde(default, rename = "format")]
+    _format: String,
+    #[serde(default, rename = "setup")]
+    _setup: String,
+    #[serde(default, rename = "assists")]
+    _assists: String,
+    #[serde(default, rename = "tyreWarmers")]
+    _tyre_warmers: bool,
+    #[serde(default, rename = "tyres")]
+    _tyres: Option<u32>,
+    #[serde(default, rename = "splits")]
+    _splits: Option<u32>,
+    #[serde(default, rename = "safetyRating")]
+    _safety_rating: String,
+    #[serde(default, rename = "veLimit")]
+    _ve_limit: Option<u32>,
+    #[serde(default, rename = "notes")]
+    _notes: Vec<String>,
+    #[serde(default, rename = "source")]
+    _source: String,
+    #[serde(default, rename = "startOffsetMinute")]
+    _start_offset_minute: i64,
 }
 
 #[derive(Deserialize)]
-#[allow(dead_code)]
 struct VehicleClassContract {
-    name: String,
+    #[serde(rename = "name")]
+    _name: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 struct SessionContract {
-    name: String,
-    duration_min: u32,
-    #[serde(default)]
-    estimated: bool,
+    #[serde(rename = "name")]
+    _name: String,
+    #[serde(rename = "durationMin")]
+    _duration_min: u32,
+    #[serde(default, rename = "estimated")]
+    _estimated: bool,
 }
 
 #[derive(Deserialize)]
@@ -96,8 +98,7 @@ struct RecurrenceContract {
 }
 
 fn validate_schedule(value: &serde_json::Value) -> Result<()> {
-    let schedule: ScheduleContract =
-        serde_json::from_value(value.clone()).map_err(|_| Error::Protocol)?;
+    let schedule = ScheduleContract::deserialize(value).map_err(|_| Error::Protocol)?;
     let from = DateTime::parse_from_rfc3339(&schedule.valid_from).map_err(|_| Error::Protocol)?;
     let until = DateTime::parse_from_rfc3339(&schedule.valid_until).map_err(|_| Error::Protocol)?;
     if schedule.version != 1
@@ -124,17 +125,27 @@ fn validate_schedule(value: &serde_json::Value) -> Result<()> {
                     && recurrence
                         .times_utc
                         .iter()
-                        .all(|time| NaiveTime::parse_from_str(time, "%H:%M").is_ok()) => {}
+                        .all(|time| valid_clock_time(time)) => {}
             _ => return Err(Error::Protocol),
         }
     }
     Ok(())
 }
 
+fn valid_clock_time(time: &str) -> bool {
+    let bytes = time.as_bytes();
+    bytes.len() == 5
+        && bytes[2] == b':'
+        && [0, 1, 3, 4]
+            .iter()
+            .all(|&index| bytes[index].is_ascii_digit())
+        && NaiveTime::parse_from_str(time, "%H:%M").is_ok()
+}
+
 /// Portada de `RaceControl`: respaldo de solo lectura de las series diarias.
 pub const RACECONTROL_URL: &str = "https://racecontrol.gg/";
 
-/// Horario oficial y, solo si falta o está incompleto, el respaldo.
+/// Horario oficial y, si falta, es inválido o falla, el respaldo.
 /// Si el oficial falla pero el respaldo llega, se devuelve el respaldo solo.
 pub fn refresh(
     http: &Http,
@@ -143,10 +154,7 @@ pub fn refresh(
     now: DateTime<Utc>,
 ) -> Result<(Option<String>, Option<String>)> {
     let official = current(http, config);
-    let needs_backup = match &official {
-        Ok(Some(schedule)) => incomplete(schedule),
-        _ => true,
-    };
+    let needs_backup = !matches!(&official, Ok(Some(_)));
     let backup = if needs_backup {
         crate::racecontrol::fetch(http, racecontrol, now)
             .ok()
@@ -156,6 +164,10 @@ pub fn refresh(
     };
     let (schedule, fallback) = match official {
         Ok(schedule) => (schedule, backup),
+        Err(Error::Protocol) if backup.is_some() => {
+            eprintln!("calendar: agenda oficial inválida; usando respaldo RaceControl");
+            (None, backup)
+        }
         Err(_) if backup.is_some() => (None, backup),
         Err(error) => return Err(error),
     };
@@ -172,29 +184,6 @@ pub fn refresh(
         return Err(Error::TooLarge);
     }
     Ok((schedule, fallback))
-}
-
-/// Una serie sin horas (intervalo vacío o tandas sin días/horas) deja el horario incompleto.
-fn incomplete(schedule: &str) -> bool {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(schedule) else {
-        return true;
-    };
-    let Some(series) = value["series"].as_array() else {
-        return true;
-    };
-    series.iter().any(|series| {
-        let recurrence = &series["recurrence"];
-        match recurrence["kind"].as_str() {
-            Some("interval") => recurrence["intervalMinutes"]
-                .as_i64()
-                .is_none_or(|m| m <= 0),
-            Some("weekly-slots") => {
-                recurrence["days"].as_array().is_none_or(Vec::is_empty)
-                    || recurrence["timesUTC"].as_array().is_none_or(Vec::is_empty)
-            }
-            _ => true,
-        }
-    })
 }
 
 pub fn current(http: &Http, config: &BuildConfig) -> Result<Option<String>> {
@@ -229,6 +218,23 @@ mod tests {
     use super::*;
     use crate::test_http::Server;
 
+    fn corpus_document(case: &serde_json::Value) -> serde_json::Value {
+        let mut document = case["document"].clone();
+        if let Some(count) = case["seriesCount"].as_u64() {
+            let template = document["series"][0].clone();
+            document["series"] = serde_json::Value::Array(
+                (0..count)
+                    .map(|index| {
+                        let mut series = template.clone();
+                        series["id"] = serde_json::json!(format!("series-{index}"));
+                        series
+                    })
+                    .collect(),
+            );
+        }
+        document
+    }
+
     #[test]
     fn shared_calendar_corpus_is_checked_before_ipc() {
         let cases: serde_json::Value =
@@ -240,7 +246,7 @@ mod tests {
             .map(|case| {
                 (
                     200,
-                    serde_json::json!([{"schedule": case["document"]}]).to_string(),
+                    serde_json::json!([{"schedule": corpus_document(case)}]).to_string(),
                 )
             })
             .collect();
@@ -309,14 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn schedules_without_hours_are_incomplete() {
-        assert!(!incomplete(COMPLETE));
-        assert!(incomplete(NO_HOURS));
-        assert!(incomplete("no es json"));
-    }
-
-    #[test]
-    fn backup_is_fetched_only_when_official_is_missing_or_incomplete() {
+    fn backup_is_fetched_only_when_official_is_missing_or_invalid() {
         let rpc = |schedule: &str| format!(r#"[{{"schedule":{schedule}}}]"#);
         // Oficial completo: una sola petición y sin respaldo.
         let server = Server::start(vec![(200, rpc(COMPLETE))]);
@@ -327,11 +326,10 @@ mod tests {
         let (schedule, fallback) = refresh(&http, &config, &server.base, now()).expect("completo");
         assert!(schedule.is_some() && fallback.is_none());
         server.finish();
-        // Oficial incompleto: se pide también la portada.
+        // Oficial inválido: se pide también la portada.
         let server = Server::start(vec![(200, rpc(NO_HOURS)), (200, PAGE.into())]);
         config.supabase = Some(server.base.clone());
-        let (schedule, fallback) =
-            refresh(&http, &config, &server.base, now()).expect("incompleto");
+        let (schedule, fallback) = refresh(&http, &config, &server.base, now()).expect("inválido");
         assert!(schedule.is_none() && fallback.is_some_and(|f| f.contains("racecontrol")));
         server.finish();
         // Oficial caído y respaldo disponible: solo respaldo.
@@ -346,6 +344,22 @@ mod tests {
         assert_eq!(
             refresh(&http, &config, &server.base, now()),
             Err(Error::Offline)
+        );
+        server.finish();
+    }
+
+    #[test]
+    fn invalid_official_and_failed_backup_returns_protocol_error() {
+        let server = Server::start(vec![
+            (200, format!(r#"[{{"schedule":{NO_HOURS}}}]"#)),
+            (503, "{}".into()),
+        ]);
+        let mut config = BuildConfig::load();
+        config.supabase = Some(server.base.clone());
+        config.anon_key = Some("public-test-anon");
+        assert_eq!(
+            refresh(&Http::default(), &config, &server.base, now()),
+            Err(Error::Protocol)
         );
         server.finish();
     }

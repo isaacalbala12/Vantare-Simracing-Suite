@@ -272,10 +272,15 @@ impl Schedule {
                     if !recurrence.days.is_empty()
                         && !recurrence.times_utc.is_empty()
                         && recurrence.days.iter().all(|day| weekday(day).is_some())
-                        && recurrence
-                            .times_utc
-                            .iter()
-                            .all(|time| NaiveTime::parse_from_str(time, "%H:%M").is_ok()) => {}
+                        && recurrence.times_utc.iter().all(|time| {
+                            let bytes = time.as_bytes();
+                            bytes.len() == 5
+                                && bytes[2] == b':'
+                                && [0, 1, 3, 4]
+                                    .iter()
+                                    .all(|&index| bytes[index].is_ascii_digit())
+                                && NaiveTime::parse_from_str(time, "%H:%M").is_ok()
+                        }) => {}
                 _ => return Err(format!("recurrencia inválida: {}", series.id)),
             }
         }
@@ -416,7 +421,20 @@ mod tests {
             serde_json::from_str(include_str!("../../../../fixtures/calendar/cases.json"))
                 .expect("corpus");
         for case in cases.as_array().expect("casos") {
-            let document = serde_json::to_vec(&case["document"]).expect("json");
+            let mut value = case["document"].clone();
+            if let Some(count) = case["seriesCount"].as_u64() {
+                let template = value["series"][0].clone();
+                value["series"] = serde_json::Value::Array(
+                    (0..count)
+                        .map(|index| {
+                            let mut series = template.clone();
+                            series["id"] = serde_json::json!(format!("series-{index}"));
+                            series
+                        })
+                        .collect(),
+                );
+            }
+            let document = serde_json::to_vec(&value).expect("json");
             assert_eq!(
                 Schedule::parse(&document).is_ok(),
                 case["valid"].as_bool().expect("veredicto"),

@@ -59,3 +59,5 @@ pasaron con target propio y `compilar.ps1`; también `cargo fmt --check` y el
 gate lifecycle de runtime. Los tests de tooling y de exclusión QA pasaron en
 PS 5.1 y PS 7. Logs `p7-review-check.log`, `p7-review-clippy.log` y
 `p7-review-lifecycle.log` bajo la misma raíz QA.
+Telemetría de Runtime con `compilar.ps1`, target propio y perfil `telemetria`:
+34/34 PASS (1 lento, 1 omitido por perfil); log `p7-review-telemetria.log`.

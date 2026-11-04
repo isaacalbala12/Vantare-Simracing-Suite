@@ -1,3 +1,4 @@
+import { requireAudit } from "./effects.ts";
 import {
   drainMailErasures,
   type ErasureDeps,
@@ -94,26 +95,33 @@ export async function executeMail(
   };
   const sendAuditFailure = () =>
     new NativeError(503, "mail_send_audit_unavailable");
-  async function recordSend(
+  function recordMail(
+    effect: MailEffect,
     id: string,
-    delivery: string,
     outcome: string,
     status: number | null,
   ) {
-    try {
-      if (
-        await (deps.rpc ?? mailRpc)("native_admin_record_mail_send", {
+    const smtp = effect.kind === "brevo_smtp_send";
+    return requireAudit(() => {
+      if (!deps.actor) throw new Error("missing actor");
+      return (deps.rpc ?? mailRpc)(
+        `native_admin_record_mail_${smtp ? "send" : "sync"}`,
+        {
           p_actor: deps.actor,
           p_request: requestId,
           p_effect: id,
-          p_delivery: delivery,
-          p_environment: deps.environment,
           p_outcome: outcome,
           p_provider_status: status,
-        }) === true
-      ) return;
-    } catch { /* Fixed error only; no provider, identity or SQL details. */ }
-    throw sendAuditFailure();
+          ...(smtp
+            ? { p_delivery: effect.delivery, p_environment: deps.environment }
+            : {
+              p_kind: effect.kind,
+              p_contact: effect.contact,
+              p_lease: effect.lease,
+            }),
+        },
+      );
+    }, smtp ? "mail_send_audit_unavailable" : "mail_sync_audit_unavailable");
   }
   async function external(
     url: string,
@@ -127,26 +135,7 @@ export async function executeMail(
       ? effect.id
       : crypto.randomUUID();
     const record = async (outcome: string, status: number | null) => {
-      if (!effect) return;
-      if (effect.kind === "brevo_smtp_send") {
-        return await recordSend(effectId, effect.delivery, outcome, status);
-      }
-      try {
-        if (!deps.actor) throw new Error("missing actor");
-        if (
-          await (deps.rpc ?? mailRpc)("native_admin_record_mail_sync", {
-            p_actor: deps.actor,
-            p_request: requestId,
-            p_effect: effectId,
-            p_kind: effect.kind,
-            p_contact: effect.contact,
-            p_lease: effect.lease,
-            p_outcome: outcome,
-            p_provider_status: status,
-          }) === true
-        ) return;
-      } catch { /* Never expose identity, SQL or provider details. */ }
-      throw new NativeError(503, "mail_sync_audit_unavailable");
+      if (effect) await recordMail(effect, effectId, outcome, status);
     };
     const intentStarted = effect?.kind === "brevo_smtp_send"
       ? effect.startedAt
@@ -397,7 +386,7 @@ export async function executeMail(
     try {
       const allowed = await run("mail_can_send", { delivery_id: d.id });
       if (allowed.allowed !== true) {
-        await recordSend(effectId, d.id, "failed", null);
+        await recordMail(deliveryEffect, effectId, "failed", null);
         await run("mail_finish", {
           delivery_id: d.id,
           status: "skipped",
@@ -428,7 +417,7 @@ export async function executeMail(
         error.code === "mail_send_audit_unavailable"
       ) throw error;
       if (!deliveryEffect.dispatched) {
-        await recordSend(effectId, d.id, "failed", null);
+        await recordMail(deliveryEffect, effectId, "failed", null);
       }
       // Unknown transport outcome is never retried; quota remains consumed.
     }

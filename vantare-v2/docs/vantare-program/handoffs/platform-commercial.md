@@ -8720,3 +8720,18 @@ union all select 'linear_deliveries',outcome::text,count(*)
   La elección de retención10 sigue pendiente; no se presume respuesta.
 - Rebase tras #1951: conserva despacho de ACTIONS y sus cuatro syncPayments.
   README/handoff conservan contrato y limpiador; Rust y SQL intactos.
+
+## VANTA-132 · paso 10a, confirmación mínima del journal (2026-11-04)
+
+- Base nightlyf1aa42182, incluye #1951 y #1952. Rama/worktree propios paso10.
+- Un ACK estricto compartido en los llamadores reales de efectos y correo;
+  SMTP/sync comparten el mapeo de metadatos. Solo true confirma la escritura;
+  se conservan códigos propios, orden, tipos de efecto y comportamiento SQL.
+- Caracterización previa: 261 Deno admin PASS; matriz nueva de 12 fallos reales
+  de recorder (false/null/objeto/string, throw/reject), con HTTP/ACK impedidos.
+  Tras simplificar: 276 admin/webhook PASS, incluidos Hub/basura/no owner/caducado.
+- No cambia SQL, Rust ni _shared. Compilación/lifecycle/telemetría y PG omitidos
+  por ese motivo. Sin secretos, Store real, billing/licencias, SaaS ni deploy.
+- Paso10 sigue abierto: resúmenes mínimos, lectura owner, retención y target_hash.
+  Plazo90/365 días consultado, sin respuesta todavía; no se aplica una purga.
+  Luego6 y el corte conjunto sync_payments + UI + lecturas puras; 11 R6/12.

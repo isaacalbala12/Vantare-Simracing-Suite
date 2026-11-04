@@ -707,3 +707,11 @@ Su conversión a lecturas puras irá junto con `sync_payments`, su cupo propio y
 el botón/flujo nativo, para no mostrar comisiones menos completas entre entregas.
 El paso 8a de este PR contiene únicamente el limpiador compartido; quedan esas
 lecturas y retirar el mantenimiento implícito de `mail_list` en el paso 8b.
+
+### Confirmación común del journal · paso 10a
+
+Clerk/Polar/Storage y el correo usan la misma comprobación de ACK de auditoría:
+solo `true` confirma la escritura. Una excepción o cualquier otro valor impide
+el efecto o su ACK y conserva el código propio del camino. SMTP y sync comparten
+el mapeo de metadatos; no se cambian RPC, estados, orden ni permisos. La retención
+y la minimización de los resúmenes SQL siguen en el siguiente corte del paso 10.

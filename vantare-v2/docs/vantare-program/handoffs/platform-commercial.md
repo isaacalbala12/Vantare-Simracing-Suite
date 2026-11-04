@@ -9035,3 +9035,24 @@ union all select 'linear_deliveries',outcome::text,count(*)
   check/Clippy -D warnings/fmt y Nextest50 PASS (admin, compilar.ps1, QA propia).
   Producción4824→5044(+220), tests+532, down16 y derivados98 separados; docs aparte.
   Push único con rebase/P3/PG17. Nueva CI pendiente; sin merge ni despliegue.
+### Preparación8d y orden de cierre admin (2026-11-04)
+
+- Orquestador da LISTOS1962 e2e049d02 y1963 f1c17c3c9. No añadir commits1962.
+  Orden1962→1961→1963. Esperar aviso de1961 antes del rebase1963 sobre nightly.
+  En ese push: despliegue SQL→Edge→Gestión nuevo (el nuevo cliente contra Edge
+  viejo recibe400 por explicit_payments), retirar frase obsoleta de volcados,
+  unir requireAudit al import de effects y regenerar PG17. needsPaymentSync queda.
+- Seguimiento separado de1962: imports de confirmations.test.ts en cabecera,
+  demo MailApprove/MailCancel en brazos separados, recipients solo donde se usa
+  y retirar código muerto MailNew. No se incorpora al PR1962 aceptado.
+- Worktree8d desde origin/nightly91adfd786; test de caracterización SQL previo
+  native_admin_mail_list_purity.test.sql:4 RED/10. Abrir panel cambia la cola,
+  escribe erasure_failed y consume el trabajo de caducidad. No-owner, owner
+  caducado, permisos y mantenimiento explícito/idempotente ya pasan.
+- Evidencia local /tmp/isa-1910-paso8d-red: cadena completa y4 carreras de10b
+  pasan antes del RED esperado. PostgreSQL propio desechable, sin SaaS/secretos.
+  mail-cleanup/drainMailErasures ya llama expire antes de los flags de Brevo;
+  no hace falta otro worker ni tocar _shared. Corrección SQL pendiente de1962
+  para conservar su wrapper completo de confirmación/cancelación (ADR0106).
+- Este corte prepara tests, sin cambio de producción (0), sin migración nueva,
+  PR ni push. No ejecuta Rust: no cambia código Rust. No deploy/merge/release.

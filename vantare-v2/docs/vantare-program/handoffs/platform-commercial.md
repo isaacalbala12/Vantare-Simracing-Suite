@@ -9014,3 +9014,9 @@ union all select 'linear_deliveries',outcome::text,count(*)
   aparte; no se maquilla el resultado retirando protecciones o limpiando otro área.
 - Lint del SQL propio limpio; el barrido global10:55 aún señala10 errores en
   históricos SMTP/R6 de nightly, cubiertos por1960. No se editan históricos.
+
+- Cierre CI1963: rebase sobre1962 HEAD e2e049d02; volcados admin/mail del
+  replay PG17 fijado41907690699 (artefacto13361672383). LF/CRLF y marketing
+  pasaron; el único fallo Commercial era drift de esos dos derivados. No se
+  copian cambios testing de1960 ajenos a este PR. Nueva CI pendiente; producción
+  sigue4825→5045 (+220), sin cambios runtime, SQL ni timestamps en este cierre.

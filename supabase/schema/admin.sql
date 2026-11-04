@@ -955,10 +955,10 @@ end $$;
 
 --
 
--- Name: native_admin_payment_sync_budget(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: native_admin_payment_sync_budget(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text) RETURNS boolean
+CREATE FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text, p_request uuid DEFAULT gen_random_uuid()) RETURNS boolean
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
@@ -967,13 +967,19 @@ begin
  if p_actor is null or private.lock_account_write(p_actor) then raise exception 'native_admin_forbidden' using errcode='42501'; end if;
  perform private.native_admin_require_owner(p_actor);
  if p_environment is distinct from 'sandbox' then raise exception 'native_admin_forbidden' using errcode='42501'; end if;
+ if p_request is null then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  stamp:=clock_timestamp();
- -- One expensive import per rolling minute, shared by owner sessions.
  insert into private.admin_payment_sync_budget as budget(environment,window_start) values(p_environment,stamp)
  on conflict(environment) do update set window_start=excluded.window_start
  where budget.window_start<=excluded.window_start-interval '1 minute'
  returning environment into claimed;
- return claimed is not null;
+ if claimed is null then return false; end if;
+ -- Quota and journal intention commit atomically; no quota consumed without audit.
+ if not private.append_mail_effect(jsonb_build_object('request_id',p_request,'effect_id',p_request,'actor',p_actor,
+  'action','sync_payments','effect','polar_payment_sync','target_hash',
+  encode(sha256(convert_to('sync_payments:sandbox','UTF8')),'hex'),'outcome','started'),null) then
+  raise exception 'history_unavailable' using errcode='55000'; end if;
+ return true;
 end $$;
 
 
@@ -1285,6 +1291,26 @@ end $$;
 
 --
 
+-- Name: native_admin_record_payment_sync(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.native_admin_record_payment_sync(p_actor uuid, p_request uuid, p_outcome text) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+begin
+ if p_actor is null or p_request is null or p_outcome is null or p_outcome not in('succeeded','unknown') then
+  raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ -- Service supplies actor/request. The shared journal validates the committed
+ -- intention; closure does not require an owner that may have expired meanwhile.
+ return private.append_mail_effect(jsonb_build_object('request_id',p_request,'effect_id',p_request,'actor',p_actor,
+  'action','sync_payments','effect','polar_payment_sync','target_hash',
+  encode(sha256(convert_to('sync_payments:sandbox','UTF8')),'hex'),'outcome',p_outcome),null);
+end $$;
+
+
+--
+
 -- Name: native_admin_record_refund(text, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1455,8 +1481,8 @@ CREATE TABLE private.admin_effects (
     provider_status smallint,
     target_account uuid,
     erase_on_close boolean DEFAULT false NOT NULL,
-    CONSTRAINT admin_effects_action_check CHECK ((action = ANY (ARRAY['set_blocked'::text, 'delete_account'::text, 'mail_cleanup'::text, 'mail_sync'::text, 'mail_send_batch'::text]))),
-    CONSTRAINT admin_effects_effect_check CHECK ((effect = ANY (ARRAY['clerk_ban'::text, 'clerk_unban'::text, 'clerk_delete'::text, 'storage_cleanup'::text, 'polar_cancel'::text, 'brevo_delete'::text, 'brevo_contact_upsert'::text, 'brevo_contact_update'::text, 'brevo_smtp_send'::text]))),
+    CONSTRAINT admin_effects_action_check CHECK ((action = ANY (ARRAY['set_blocked'::text, 'delete_account'::text, 'mail_cleanup'::text, 'mail_sync'::text, 'mail_send_batch'::text, 'sync_payments'::text]))),
+    CONSTRAINT admin_effects_effect_check CHECK ((effect = ANY (ARRAY['clerk_ban'::text, 'clerk_unban'::text, 'clerk_delete'::text, 'storage_cleanup'::text, 'polar_cancel'::text, 'brevo_delete'::text, 'brevo_contact_upsert'::text, 'brevo_contact_update'::text, 'brevo_smtp_send'::text, 'polar_payment_sync'::text]))),
     CONSTRAINT admin_effects_outcome_check CHECK ((outcome = ANY (ARRAY['started'::text, 'succeeded'::text, 'unknown'::text, 'failed'::text, 'reconciled'::text]))),
     CONSTRAINT admin_effects_provider_status_check CHECK (((provider_status >= 100) AND (provider_status <= 599))),
     CONSTRAINT admin_effects_target_hash_check CHECK (((target_hash = 'erased'::text) OR (target_hash ~ '^[0-9a-f]{64}$'::text)))
@@ -2347,11 +2373,11 @@ GRANT ALL ON FUNCTION public.native_admin_gate() TO service_role;
 
 --
 
--- Name: FUNCTION native_admin_payment_sync_budget(p_actor uuid, p_environment text); Type: ACL; Schema: public; Owner: -
+-- Name: FUNCTION native_admin_payment_sync_budget(p_actor uuid, p_environment text, p_request uuid); Type: ACL; Schema: public; Owner: -
 --
 
-REVOKE ALL ON FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text) TO service_role;
+REVOKE ALL ON FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text, p_request uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text, p_request uuid) TO service_role;
 
 
 --
@@ -2432,6 +2458,15 @@ GRANT ALL ON FUNCTION public.native_admin_record_mail_sync(p_actor uuid, p_reque
 
 REVOKE ALL ON FUNCTION public.native_admin_record_payment(p_environment text, p_payment jsonb) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.native_admin_record_payment(p_environment text, p_payment jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_payment_sync(p_actor uuid, p_request uuid, p_outcome text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_payment_sync(p_actor uuid, p_request uuid, p_outcome text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_payment_sync(p_actor uuid, p_request uuid, p_outcome text) TO service_role;
 
 
 --

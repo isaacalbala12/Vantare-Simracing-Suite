@@ -131,6 +131,7 @@ def run_send_sql(run, conn, out, bin_dir, env):
     run('psql',*conn,'-f',up)
     run('psql',*conn,'-f',root/'supabase/rollbacks'/(SEND_STEM+'.down.sql'))
     assert run('psql',*conn,'-c',CONSTRAINTS)==before, 'SMTP down must restore exact old checks'
+    assert run('psql',*conn,'-c',"select to_regclass('private.admin_effects_smtp_delivery_started') is null").strip()=='t', 'SMTP down retained unique index'
     for signature in ['public.native_admin_claim_mail_send(uuid,uuid,uuid,uuid,integer,text)','public.native_admin_record_mail_send(uuid,uuid,uuid,uuid,text,text,integer)']:
         assert run('psql',*conn,'-c',"select to_regprocedure('"+signature+"') is null").strip()=='t'
     run('psql',*conn,'-f',up)

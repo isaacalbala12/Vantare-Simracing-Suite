@@ -666,3 +666,14 @@ Un cambio parcial siempre devuelve 503 `account_change_incomplete`; los demás
 `NativeError` se conservan. Desconocidos dan 503 y un diagnóstico fijo sin PII.
 No se aceptan prefijos ni nombres genéricos de errores externos. Sin migración;
 Isaac puede revertir la Edge al corte anterior.
+
+### Review SMTP: claim y límites previos al envío
+
+El claim conserva los errores SQL conocidos (revisión 409, permiso 403,
+inexistente 404, inválido 400); los demás son 503 de auditoría. Si falla el
+consentimiento o la firma de baja antes del HTTP, la intención se cierra como
+`failed` sin estado HTTP antes del ACK. No se envía tras 5 s desde el inicio del
+claim. El índice parcial único permite una sola intención por entrega y entorno,
+incluso si ya se cerró: ninguna entrega SMTP se reenvía automáticamente.
+`owner-alert-receiver` queda fuera de este journal: ya tiene su propia reserva
+persistente e `idempotencyKey`.

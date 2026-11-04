@@ -12,6 +12,9 @@ alter table private.admin_effects add constraint admin_effects_action_check
 alter table private.admin_effects drop constraint admin_effects_effect_check;
 alter table private.admin_effects add constraint admin_effects_effect_check
  check(effect in('clerk_ban','clerk_unban','clerk_delete','storage_cleanup','polar_cancel','brevo_delete','brevo_contact_upsert','brevo_contact_update','brevo_smtp_send'));
+-- A delivery is dispatched at most once, even after a terminal result/reconcile.
+create unique index if not exists admin_effects_smtp_delivery_started
+ on private.admin_effects(target_hash) where effect='brevo_smtp_send' and outcome='started';
 create or replace function public.native_admin_record_mail_send(
  p_actor uuid,p_request uuid,p_effect uuid,p_delivery uuid,p_environment text,
  p_outcome text,p_provider_status integer default null)

@@ -172,6 +172,8 @@ export async function executeMail(
     kind: "brevo_smtp_send";
     delivery: string;
     id: string;
+    startedAt: number;
+    dispatched: boolean;
   };
   const sendAuditFailure = () =>
     new NativeError(503, "mail_send_audit_unavailable");
@@ -229,21 +231,28 @@ export async function executeMail(
       } catch { /* Never expose identity, SQL or provider details. */ }
       throw new NativeError(503, "mail_sync_audit_unavailable");
     };
-    const intentStarted = now();
+    const intentStarted = effect?.kind === "brevo_smtp_send"
+      ? effect.startedAt
+      : now();
     if (effect?.kind !== "brevo_smtp_send") await record("started", null);
     // 5s dispatch + 4s HTTP < the erasure grace of 10s after the sync lease.
     if (
-      effect && effect.kind !== "brevo_smtp_send" &&
-      now() - intentStarted >= 5000
+      effect && now() - intentStarted >= 5000
     ) {
-      await record("failed", null); // Definitively not dispatched, no HTTP status.
-      throw new NativeError(503, "mail_sync_intent_expired");
+      if (effect.kind !== "brevo_smtp_send") await record("failed", null);
+      throw new NativeError(
+        503,
+        effect.kind === "brevo_smtp_send"
+          ? "mail_send_intent_expired"
+          : "mail_sync_intent_expired",
+      );
     }
     let status: number | null = null;
     let result: Obj = {};
     let failure: unknown;
     let providerFailed = false;
     try {
+      if (effect?.kind === "brevo_smtp_send") effect.dispatched = true;
       const response = await send(url, {
         method,
         headers: { "Content-Type": "application/json", ...headers },
@@ -423,6 +432,7 @@ export async function executeMail(
   let processed = 0;
   for (let i = 0; i < 3; i++) {
     const effectId = crypto.randomUUID();
+    const intentStarted = now();
     let claim: Obj;
     try {
       if (
@@ -440,7 +450,16 @@ export async function executeMail(
       if (!claim || typeof claim !== "object" || !("delivery" in claim)) {
         throw sendAuditFailure();
       }
-    } catch {
+    } catch (error) {
+      if (
+        error && typeof error === "object" && "message" in error &&
+        [
+          "mail_revision_conflict",
+          "native_admin_forbidden",
+          "native_admin_not_found",
+          "native_admin_invalid",
+        ].includes(String(error.message))
+      ) throw error;
       throw sendAuditFailure();
     }
     if (!claim.delivery) {
@@ -449,6 +468,13 @@ export async function executeMail(
     }
     const d = claim.delivery as { id: string; email: string; locale: string };
     const content = claim.content as { subject: string; body: string };
+    const deliveryEffect = {
+      kind: "brevo_smtp_send" as const,
+      delivery: d.id,
+      id: effectId,
+      startedAt: intentStarted,
+      dispatched: false,
+    };
     let status = "uncertain";
     let provider_id = "";
     try {
@@ -476,7 +502,7 @@ export async function executeMail(
           "X-Mailin-custom": `campaign-delivery:${d.id}`,
         },
         tags: ["vantare-marketing"],
-      }, { effect: { kind: "brevo_smtp_send", delivery: d.id, id: effectId } });
+      }, { effect: deliveryEffect });
       status = "accepted";
       provider_id = String(result.messageId).slice(0, 200);
     } catch (error) {
@@ -484,6 +510,9 @@ export async function executeMail(
         error instanceof NativeError &&
         error.code === "mail_send_audit_unavailable"
       ) throw error;
+      if (!deliveryEffect.dispatched) {
+        await recordSend(effectId, d.id, "failed", null);
+      }
       // Unknown transport outcome is never retried; quota remains consumed.
     }
     await run("mail_finish", { delivery_id: d.id, status, provider_id });

@@ -11,6 +11,7 @@ do $$begin
   raise exception 'mail_send_rollback_requires_retention' using errcode='55000';
  end if;
 end$$;
+drop index if exists private.admin_effects_smtp_delivery_started;
 drop function public.native_admin_claim_mail_send(uuid,uuid,uuid,uuid,integer,text);
 drop function public.native_admin_record_mail_send(uuid,uuid,uuid,uuid,text,text,integer);
 alter table private.admin_effects drop constraint admin_effects_action_check;

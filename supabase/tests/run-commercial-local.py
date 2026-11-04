@@ -553,7 +553,7 @@ $$;
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
-    run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines)
+    run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
     admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'

@@ -2,6 +2,7 @@
 import json
 import re
 from pathlib import Path
+from commercial_admin_audit_race import run_audit_erasure_races
 
 AUDIT_STEM = '20261104145436_isa_1910_admin_audit_minimal'
 AUDIT_SNAPSHOT = """select jsonb_build_object(
@@ -60,7 +61,7 @@ def seed_audit_upgrade(run, conn):
         raise RuntimeError('documented pre-check did not count closed/pending historical rows: '+counts)
 
 
-def run_minimal_audit(run, conn, out, before, schema_before, newline):
+def run_minimal_audit(run, conn, out, before, schema_before, newline, bin_dir, env):
     root = Path(__file__).resolve().parents[2]
     def sql(path):
         target = out/('audit-'+path.name)
@@ -115,6 +116,7 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
         (out/('audit-active-'+name+'.log')).write_text(result,encoding='utf-8')
         if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
         print('Audit active: '+name+' PASS',flush=True)
+    run_audit_erasure_races(run,conn,out,bin_dir,env)
     # A redacted actor cannot satisfy the predecessor's NOT NULL. Down must
     # fail before any DDL, not invent or restore an identifier.
     run('psql',*conn,'-c',"""begin;

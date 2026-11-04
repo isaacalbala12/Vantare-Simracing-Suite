@@ -42,6 +42,9 @@ select ok(not exists(select 1 from private.mail_audit where id='19101010-0000-40
  and detail::text like '%private%'),'consent audit does not retain free-text evidence');
 select throws_ok($$select public.native_admin_prune_audit('19101010-0000-4000-8000-000000000002')$$,
  '42501','native_admin_forbidden','non-owner cannot purge');
+insert into private.mail_audit(id,actor,action,target,detail,occurred_at) values
+ ('19101010-0000-4000-8000-000000000025','19101010-0000-4000-8000-000000000001','audit_prune','audit',
+ '{"retention_days":365,"admin":0,"mail":0,"effects":0}',clock_timestamp()-interval '400 days');
 select lives_ok($$select public.native_admin_prune_audit('19101010-0000-4000-8000-000000000001')$$,'owner can prune closed evidence');
 select ok(not exists(select 1 from public.admin_audit_log where id='19101010-0000-4000-8000-000000000021')
  and exists(select 1 from public.admin_audit_log where id='19101010-0000-4000-8000-000000000022'),
@@ -89,5 +92,9 @@ select ok(not exists(select 1 from pg_proc p where p.oid=any(array[
  or has_function_privilege('authenticated',p.oid,'EXECUTE')
  or has_function_privilege('service_role',p.oid,'EXECUTE'))),
  'shared minimizer and writer stay private, postgres-owned and with fixed search_path');
+select ok(exists(select 1 from private.mail_audit where id='19101010-0000-4000-8000-000000000025'),
+ 'old audit_prune trace survives both 365-day and 90-day evidence purges');
+select ok((select prosecdef from pg_proc where oid='private.admin_audit_maintenance()'::regprocedure),
+ 'private maintenance predicate can check its private table as definer');
 select * from finish();
 rollback;

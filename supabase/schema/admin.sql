@@ -871,8 +871,29 @@ CREATE FUNCTION public.native_admin_execute(p_actor uuid, p_issuer text, p_actio
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
-declare v_result jsonb; v_monthly uuid; v_annual uuid;
+declare v_result jsonb; v_monthly uuid; v_annual uuid; account uuid; current_enabled boolean;
 begin
+ if p_action in('set_module','set_rollout') then
+  if jsonb_typeof(p_params->'expected_enabled') is distinct from 'boolean' then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+  account:=case when p_action='set_module' then (p_params->>'account_id')::uuid else null end;
+  perform private.lock_accounts_before_rows(array[p_actor,account]);
+  perform private.native_admin_require_owner(p_actor);
+  if account is not null then
+   perform 1 from public.profiles where id=account for update;
+   if not found then raise exception 'native_admin_not_found' using errcode='P0002'; end if;
+  end if;
+  select enabled_for_all into current_enabled from public.module_rollout where module=p_params->>'module' for update;
+  if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+  if p_action='set_module' then
+   select exists(select 1 from public.billing_effective_access_grants
+    where user_id=account and environment=p_environment and status='active'
+     and (valid_until is null or valid_until>now()) and capability=p_params->>'module'
+     and provider='vantare' and source_type='support') into current_enabled;
+  end if;
+  if current_enabled is distinct from (p_params->>'expected_enabled')::boolean then
+   raise exception 'account_conflict' using errcode='40001'; end if;
+  return private.native_admin_execute_before_creator_coupon(p_actor,p_issuer,p_action,p_params-'expected_enabled',p_environment);
+ end if;
  if p_action='activate_creator' and p_params ? 'annual_discount_id' then
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_environment||':creator-coupons',0));
   v_monthly:=(p_params->>'discount_id')::uuid; v_annual:=(p_params->>'annual_discount_id')::uuid;

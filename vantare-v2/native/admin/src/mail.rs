@@ -52,7 +52,7 @@ impl Campaign {
             || self.name.chars().count() > 120
             || !TEMPLATES.iter().any(|(k, _)| *k == self.template)
             || !GROUPS.iter().any(|(k, _)| *k == self.target_group)
-            || !["draft", "sending", "completed"].contains(&self.state.as_str())
+            || !["draft", "sending", "completed", "canceled"].contains(&self.state.as_str())
             || (detail && !valid_content(&self.content))
         {
             return Err(Error::Protocol);
@@ -105,6 +105,7 @@ pub struct MailState {
     pub campaign: Option<Campaign>,
     pub counts: BTreeMap<String, u32>,
     pub quota: u32,
+    pub recipients: Option<u32>,
     pub history: Vec<serde_json::Value>,
     pub totals: BTreeMap<String, u32>,
     pub generated: Option<Content>,
@@ -195,8 +196,13 @@ impl crate::client::Action {
                 campaign_id,
                 revision,
                 confirm,
+                ..
             } => vantare_services::license::uuid(campaign_id) && *revision > 0 && *confirm,
-            Self::MailSendBatch {
+            Self::MailCancel {
+                campaign_id,
+                revision,
+            }
+            | Self::MailSendBatch {
                 campaign_id,
                 revision,
             } => vantare_services::license::uuid(campaign_id) && *revision > 0,
@@ -227,6 +233,10 @@ impl crate::state::State {
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<()> {
+        let recipients = response
+            .get("recipients")
+            .map(|_| field(response, "recipients"))
+            .transpose()?;
         match action {
             Action::MailForgetWaitlist { .. } => {}
             Action::MailList | Action::MailCleanup => {
@@ -254,6 +264,7 @@ impl crate::state::State {
             Action::MailGet { campaign_id }
             | Action::MailSave { campaign_id, .. }
             | Action::MailApprove { campaign_id, .. }
+            | Action::MailCancel { campaign_id, .. }
             | Action::MailSendBatch { campaign_id, .. } => {
                 let c: crate::mail::Campaign = field(response, "campaign")?;
                 c.validate(true)?;
@@ -281,6 +292,7 @@ impl crate::state::State {
                 if quota > 300 || history.len() > 100 {
                     return Err(Error::Protocol);
                 }
+                self.mail.recipients = recipients;
                 self.mail.campaign = Some(c);
                 self.mail.history = history;
                 self.mail.totals = totals;
@@ -289,6 +301,7 @@ impl crate::state::State {
             Action::MailNew => {
                 let c: crate::mail::Campaign = field(response, "campaign")?;
                 c.validate(true)?;
+                self.mail.recipients = recipients;
                 self.mail.campaign = Some(c);
                 self.mail.history.clear();
                 self.mail.totals.clear();
@@ -316,9 +329,14 @@ impl crate::state::State {
     }
     pub(crate) fn demo_mail_action(&mut self, action: &Action) {
         match action {
-            Action::MailApprove { .. } => {
+            Action::MailApprove { .. } | Action::MailCancel { .. } => {
                 if let Some(c) = &mut self.mail.campaign {
-                    c.state = "sending".into();
+                    c.state = if matches!(action, Action::MailApprove { .. }) {
+                        "sending"
+                    } else {
+                        "canceled"
+                    }
+                    .into();
                 }
             }
             Action::MailSendBatch { .. } => {
@@ -407,6 +425,47 @@ pub fn unsubscribe_label(locale: &str) -> &str {
 mod tests {
     use super::*;
     #[test]
+    fn campaign_count_is_bound_to_confirmation_and_canceled_ack_is_valid() {
+        let mut state = crate::state::State::new(true, crate::state::Screen::Mail);
+        let campaign = MailState::demo().campaigns.remove(0);
+        let id = campaign.id.clone();
+        let mut body = serde_json::json!({"id":campaign.id,"revision":campaign.revision,"name":campaign.name,"template":campaign.template,"target_group":campaign.target_group,"state":campaign.state,"content":campaign.content});
+        state
+            .accept_mail(
+                &Action::MailGet {
+                    campaign_id: id.clone(),
+                },
+                &serde_json::json!({"campaign":body,"recipients":7}),
+            )
+            .expect("detail count");
+        state
+            .propose(Action::MailApprove {
+                campaign_id: id.clone(),
+                revision: 1,
+                confirm: true,
+                expected_recipients: state.mail.recipients.expect("count"),
+            })
+            .expect("confirmation");
+        assert!(matches!(
+            state.confirmation,
+            Some(Action::MailApprove {
+                expected_recipients: 7,
+                ..
+            })
+        ));
+        body["state"] = "canceled".into();
+        state
+            .accept_mail(
+                &Action::MailCancel {
+                    campaign_id: id,
+                    revision: 1,
+                },
+                &serde_json::json!({"campaign":body,"recipients":8}),
+            )
+            .expect("canceled ACK");
+        assert_eq!(state.mail.campaign.expect("campaign").state, "canceled");
+    }
+    #[test]
     fn four_locales_and_safe_subjects_required() {
         let mut c = MailState::demo().campaigns.remove(0);
         assert!(c.validate(true).is_ok());
@@ -429,6 +488,7 @@ mod workflow_tests {
             campaign_id: state.mail.campaigns[0].id.clone(),
             revision: 1,
             confirm: true,
+            expected_recipients: 0,
         };
         assert!(state.confirm().is_err());
         state.propose(action.clone()).expect("valid confirmation");

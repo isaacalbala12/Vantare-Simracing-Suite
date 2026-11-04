@@ -8868,3 +8868,59 @@ union all select 'linear_deliveries',outcome::text,count(*)
   apply_clerk_user_event, billing, licencias, secretos ni producción. Sin deploy,
   merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
   UI/lecturas puras. El 11 sigue exclusivamente en R6/12.
+
+## VANTA-132 · paso 6 · [PR #1962](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1962) (2026-11-04)
+
+- 10b cerrado: #1959 integrado en nightly18fb6ca17 con CI verde, confirmado por
+  el orquestador. Continúan paso6 y sync_payments/UI en PR separados desde esa base.
+- Rama vantareapp/isa-1910-paso6-confirmaciones. RED f558994ba: SQL falla10/18
+  y Deno2/2 antes del cambio. Estado esperado para rollout/acceso propio y cifra
+  real de la cola para aprobar, con conflicto409 y rollback de toda la operación.
+- Cancelación owner con revisión, idempotente, sin nuevos claims ni HTTP aún no
+  iniciados. Pending pasa a skipped; HTTP que ya salió puede terminar. Diálogo
+  muestra y envía la cifra del detalle. Sin dependencias nuevas ni cambios _shared.
+- SQL LF18 y CRLF21 tests, down exacto de cuerpos/ACL/constraint, rechazo
+  atómico con canceled y reaplicación PASS. Clippy -D warnings y Nextest47 PASS. Deno273 PASS, cargo check del
+  único crate admin PASS; target propio, compilar.ps1, se cede cola entre gates.
+  Hereda matriz de abuso Hub/basura/no-owner/caducado de native-admin.
+- Despliegue exclusivo de Isaac: tras10b, migración181354 antes de Edge/Gestión.
+  Consultar estados existentes (producción tiene datos). Down rechaza canceled
+  antes del DDL; corrección hacia delante si ya existen. Sin deploy/merge/release.
+
+- Medición inicial del paso6 contra18fb6ca17: producción4950→5123 (+173), tests
+  +232, docs+40, rollback50 excluido. Se separan módulos cfg(test) y fixtures.
+- La primera CI encuentra el oráculo marketing con payload antiguo. Se prueba
+  primero el contrato final y su down/reapply en run-admin-local, y se baja solo
+  este adaptador antes de los oráculos históricos, igual que en Commercial.
+  Derivados PG17 pendientes de artefacto CI; el PR sigue draft. Próximo corte8c:
+  UI conserva hechos anteriores y pide sync si el servidor anuncia historial
+  sandbox pendiente; las lecturas no llaman a Polar. Producción conserva lecturas.
+
+- Derivados paso6 regenerados por el replay completo de CI41893318639, imagen
+  PG17 fijada y opciones verificadas por el generador; artefacto13354768687.
+  Commercial LF/CRLF, retirada final y marketing pasan; el check de derivados
+  detectaba solo los archivos aún no copiados. Se publica su salida exacta.
+  Native check/Clippy/Nextest47 pasan, sin Store real; nueva CI tras este push.
+
+### Re-review1962 (2026-11-04)
+
+- Orden fijado por orquestador:1960→1962→1961→1963. Timestamps intactos.
+- RED64e5ade46:4 fallos de conteo fuera de draft. Solo get/save draft cuentan;
+  recorte de lectura de recipients en cliente y demo. CAS individual conserva
+  locks y filtro, consultando grants directamente, sin cargar account_summary.
+- Cancelación por Edge real, draft/completed inválidos, claim→cancel→can_send
+  false→finish skipped sin dispatching. Dos órdenes reales en dos sesiones,
+  pg_stat_activity y bloqueo en PID exacto, fixture clonada local y retirada.
+- Lock timeout5s en up/down, mojibake y layout corregidos. El servidor compara
+  confirmación solo en set_module/set_rollout/mail_approve; Edge y Gestión deben
+  desplegarse justo después de SQL. No hay despliegue/merge/release del worker.
+
+- Gates re-review1962:SQL LF/CRLF30 y dos carreras PASS; Deno274, Clippy -D
+  warnings y Nextest47 PASS. Tooling31 PASS con TEMP/TMP en D tras C:lleno;
+  C recuperó4GB sin limpieza del worker. Rollback/cuerpos/
+  ACL/constraint y guard canceled conservados. Volcados PG17 tras integrar la pila,
+  según orden1960→1962→1961→1963, sin cambiar timestamps ni desplegar.
+
+- Cierre CI1962: run41902621733 pasó replay LF/CRLF y carreras; solo falló
+  derived schema drift admin/mail. Se incorporan volcados del replay PG17 fijado
+  (artefacto13359192619), sin cambios runtime ni timestamps. Nueva CI pendiente.

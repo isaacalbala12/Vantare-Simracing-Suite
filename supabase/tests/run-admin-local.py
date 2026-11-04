@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess,time,re,os,sys
 import argparse
+from commercial_admin_confirmations import STEM as CONFIRM_STEM, SNAPSHOT as CONFIRM_SNAPSHOT, run_confirmations
 args=argparse.ArgumentParser()
 args.add_argument('--output', type=Path, required=True)
 args.add_argument('--test', action='append')
@@ -31,11 +32,19 @@ try:
 create or replace function storage.foldername(text) returns text[] language sql immutable as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;"""
  (out/'baseline-sql-bootstrap.log').write_text(sql(bootstrap))
  for f in sorted((root/'supabase/migrations').glob('*.sql')):
+  if f.stem==CONFIRM_STEM: confirmation_previous=sql(CONFIRM_SNAPSHOT)
   source=f.read_text(encoding='utf-8')
   if opts.migration_newlines=='crlf': source=source.replace('\n','\r\n')
   try: (out/('baseline-'+f.name+'.log')).write_text(sql(source,'supabase_admin' if f.name=='20261010001000_visual_roadmap_clickup.sql' else 'postgres'))
   except Exception as e:
    (out/('baseline-'+f.name+'.log')).write_text(str(e)); raise
+ # Validate the final contract first, then unwind only this adapter for the
+ # historical marketing payload oracles. E2E below covers consent/erasure.
+ def confirmation_run(program,*arguments):
+  assert program=='psql'
+  source=arguments[arguments.index('-c')+1] if '-c' in arguments else Path(arguments[arguments.index('-f')+1]).read_text(encoding='utf-8')
+  return sql(source)
+ run_confirmations(confirmation_run,[],out,confirmation_previous,opts.migration_newlines)
  total=0
  for test in opts.test or ['native_admin.test.sql']:
   f=root/'supabase/tests'/test

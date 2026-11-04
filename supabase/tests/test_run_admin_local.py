@@ -23,7 +23,7 @@ class E2EDiagnostics(unittest.TestCase):
             return subprocess.CompletedProcess(args, 0, text, "")
         with tempfile.TemporaryDirectory() as tmp:
             stderr = StringIO()
-            with patch.object(sys, "argv", [str(RUNNER), "--output", tmp, "--mail-e2e"]), patch("subprocess.run", side_effect=command), redirect_stdout(StringIO()), redirect_stderr(stderr):
+            with patch.object(sys, "argv", [str(RUNNER), "--output", tmp, "--mail-e2e"]), patch("subprocess.run", side_effect=command), patch("commercial_admin_confirmations.run_confirmations"), redirect_stdout(StringIO()), redirect_stderr(stderr):
                 with self.assertRaises(RuntimeError):
                     runpy.run_path(str(RUNNER), run_name="__main__")
             self.assertIn(marker, stderr.getvalue())

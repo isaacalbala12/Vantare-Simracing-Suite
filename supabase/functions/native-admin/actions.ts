@@ -101,9 +101,10 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     account_id: id,
     module: MODULE_CAPABILITIES[0],
     enabled: true,
+    expected_enabled: false,
   }, (p) =>
     isUuid(p.account_id) &&
-    typeof p.enabled === "boolean" &&
+    typeof p.enabled === "boolean" && typeof p.expected_enabled === "boolean" &&
     MODULE_CAPABILITIES.includes(
       p.module as typeof MODULE_CAPABILITIES[number],
     )],
@@ -138,9 +139,14 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     /^[A-Z0-9]{3,32}$/.test(p.code), { sandbox: true, handler: "creator" }],
   get_rollout: [{}, () => true, { mutation: false }],
   set_rollout: [
-    { module: MODULE_CAPABILITIES[0], enabled_for_all: true },
+    {
+      module: MODULE_CAPABILITIES[0],
+      enabled_for_all: true,
+      expected_enabled: false,
+    },
     (p) =>
       typeof p.enabled_for_all === "boolean" &&
+      typeof p.expected_enabled === "boolean" &&
       MODULE_CAPABILITIES.includes(
         p.module as typeof MODULE_CAPABILITIES[number],
       ),
@@ -217,10 +223,14 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     { mail: "sql" },
   ],
   mail_approve: [
-    { campaign_id: id, revision: 1, confirm: true },
-    (p) => campaign(p) && p.confirm === true,
+    { campaign_id: id, revision: 1, confirm: true, expected_recipients: 0 },
+    (p) =>
+      campaign(p) && p.confirm === true &&
+      Number.isSafeInteger(p.expected_recipients) &&
+      Number(p.expected_recipients) >= 0,
     { mail: "sql" },
   ],
+  mail_cancel: [{ campaign_id: id, revision: 1 }, campaign, { mail: "sql" }],
   mail_send_batch: [{ campaign_id: id, revision: 1 }, campaign, {
     mail: "edge",
   }],

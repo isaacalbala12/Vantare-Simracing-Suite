@@ -193,18 +193,28 @@ const happy = [
     account_id: account,
     enabled: false,
   }],
-  ["set_module", { account_id: account, module, enabled: true }, {
+  ["set_module", {
+    account_id: account,
+    module,
+    enabled: true,
+    expected_enabled: false,
+  }, {
     account_id: account,
     module,
     enabled: true,
   }],
-  ["set_module", { account_id: account, module, enabled: false }, {
+  ["set_module", {
+    account_id: account,
+    module,
+    enabled: false,
+    expected_enabled: true,
+  }, {
     account_id: account,
     module,
     enabled: false,
   }],
   ["get_rollout", {}, { rollout: [{ module, enabled_for_all: false }] }],
-  ["set_rollout", { module, enabled_for_all: true }, {
+  ["set_rollout", { module, enabled_for_all: true, expected_enabled: false }, {
     rollout: { module, enabled_for_all: true },
   }],
   ["list_reports", { limit: 100, status: "submitted" }, {

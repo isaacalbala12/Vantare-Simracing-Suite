@@ -967,6 +967,7 @@ impl Admin {
                             Event::Propose(Action::SetRollout {
                                 module: row.module,
                                 enabled_for_all: !row.enabled_for_all,
+                                expected_enabled: row.enabled_for_all,
                             }),
                             cx,
                         )
@@ -1072,6 +1073,7 @@ impl Admin {
                             campaign_id: c.id,
                             revision: c.revision,
                             confirm: true,
+                            expected_recipients: self.state.mail.recipients.unwrap_or_default(),
                         })
                         .map_err(|_| "confirmación demo")?;
                 }

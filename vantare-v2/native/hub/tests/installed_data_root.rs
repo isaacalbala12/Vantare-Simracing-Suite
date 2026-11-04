@@ -78,6 +78,13 @@ fn installed_hub_requires_its_own_data_before_any_write() {
     let allowed = run(&installed, Some(&data));
     assert!(allowed.contains("uso: vantare-hub"), "{allowed}");
     assert!(!allowed.contains("abre Vantare desde su acceso directo"));
+    let version_ok = Command::new(&installed)
+        .arg("--version")
+        .env("VANTARE_NATIVE_DATA_ROOT", &data)
+        .output()
+        .expect("installed version");
+    assert!(version_ok.status.success());
+    assert!(!version_ok.stdout.is_empty());
 
     let development = qa.join("vantare-hub.exe");
     fs::copy(env!("CARGO_BIN_EXE_vantare-hub"), &development).expect("QA dev Hub");

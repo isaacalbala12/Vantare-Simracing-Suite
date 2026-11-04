@@ -71,6 +71,18 @@ $$ LANGUAGE plpgsql;
         self.assertFalse(any(line.endswith(' ') for line in
                              self.module.partition_dump(dump)['shared'].splitlines()))
 
+    def test_disposable_dblink_helper_is_not_product_schema(self):
+        dump = '''-- Name: vantare_test_dblink_connect(text, text); Type: FUNCTION; Schema: extensions; Owner: -
+CREATE FUNCTION extensions.vantare_test_dblink_connect(a text, b text) RETURNS text AS $$ select a $$ LANGUAGE sql;
+-- Name: FUNCTION vantare_test_dblink_connect(a text, b text); Type: ACL; Schema: extensions; Owner: -
+GRANT ALL ON FUNCTION extensions.vantare_test_dblink_connect(a text, b text) TO postgres;
+-- Name: real_function(); Type: FUNCTION; Schema: public; Owner: -
+CREATE FUNCTION public.real_function() RETURNS void AS $$ select null $$ LANGUAGE sql;
+'''
+        result = self.module.partition_dump(dump)['shared']
+        self.assertIn('real_function', result)
+        self.assertNotIn('vantare_test_dblink_connect', result)
+
 
 if __name__ == '__main__':
     unittest.main()

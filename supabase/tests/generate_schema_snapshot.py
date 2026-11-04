@@ -39,6 +39,9 @@ def partition_dump(dump):
     matches = list(HEADER.finditer(text))
     groups = {'shared': text[:matches[0].start()].strip() + '\n' if matches else text}
     for index, match in enumerate(matches):
+        # The Docker harness creates this connection helper only for local races.
+        if 'vantare_test_dblink_connect(' in match['name']:
+            continue
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         block = text[match.start():end].strip() + '\n'
         group = domain(match['name'], match['schema'], match['kind'], block)

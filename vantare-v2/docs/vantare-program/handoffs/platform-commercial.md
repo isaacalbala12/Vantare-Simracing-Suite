@@ -635,7 +635,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   VANTA-127 sigue En curso para el cierre del PR #1935. K3 quedó diferido;
   los límites del ZIP y el corte por checkpoint ya están implementados. El gate
   de VM sobre 975/988 reales continúa siendo condición de publicación.
-- Paso 8 en [PR draft #1935](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1935),
+- Paso 8 en [PR #1935](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1935),
   rama `vantareapp/isa-1840-paso8-retencion`, base nightly `8ca3e63be`:
   K3 queda diferido. El estado
   no conserva un SHA que atribuya las generaciones huérfanas y la poda segura
@@ -653,7 +653,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   nightly `3397df2ea` (#1920 y #1924): el único conflicto, en
   `build-installer.ps1`, conserva el gate de licencias de #1920 dentro de la
   configuración importada; `build-candidate.ps1` mantiene su gate de licencia.
-  `no-qa-tests.ps1` pasa tras el rebase. CI del nuevo HEAD pendiente.
+  `no-qa-tests.ps1` pasa tras el rebase. CI final 5/5 verde.
   Re-review: CI compila `verify-package` una vez y lo pasa al tooling; los doce
   rechazos exigen motivo concreto, incluido método 12 inspeccionado con
   `by_index_raw`. `build-installer.ps1` importa la configuración antes de
@@ -665,6 +665,36 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   comprobar miembros/hashes y no tocar `data/`; la matriz cubrirá manifiesto
   ajeno, corte antes/después del commit y reintento. Un manifiesto huérfano que
   solo se valida a sí mismo no confiere propiedad.
+- **Balance tras el paso 8 de #1840 / VANTA-127 (4-nov-2026):** #1935 fusionado
+  en nightly `a769fda06d81cb036f9f2e06899a7534b2f8a49a` con CI 5/5 verde.
+  Producción **14.180 → 11.259 líneas (−20,6 %)**: 10.243 Rust + 53 Cleanup
+  en el perímetro y 963 de la ruta nativa de actualización/sesión fuera de él.
+  Se retiraron LegacyRunner, candidate.ps1, beta.ps1, driver instalado,
+  NSIS/MSIX activos e inventarios heredados; Cleanup PowerShell mínimo permanece.
+  Setup/Uninstall, registro, feed, lanzador y sesión usan Rust. El corte real en
+  `staged` y `before-commit` ya no bloquea el arranque ni el siguiente update:
+  un marker sin commit se descarta y la huérfana autenticada se intenta borrar;
+  un archivo bloqueado deja aviso y no bloquea la recuperación. La matriz
+  conserva los 45 rechazos por motivo y el gate ZIP usa el extractor de Setup.
+  **Pendiente §4.2, punto 10 del Hub:** el lanzador fija
+  `VANTARE_NATIVE_DATA_ROOT` por generación y `vantare --session` rechaza su
+  ausencia o una ruta distinta, pero `vantare-hub.exe` ejecutado directamente
+  desde `generations/<id>/bin` todavía puede usar el respaldo de
+  `%LOCALAPPDATA%` de `ipc::paths::Root::from_env`. Alcance antes de empezar:
+  detectar el ejecutable instalado y rechazar sin escrituras una raíz ausente
+  o distinta; conservar el respaldo para el Hub de desarrollo y probar ambos
+  caminos con carpetas QA inyectadas. No se inicia sin revisión del orquestador.
+  El paso 9 (renovación opcional tras confirmación) sigue aparcado; K3, retención
+  de huérfanas históricas, exige diseño nuevo con SHA ligado al estado.
+  **Antes de publicar:** Isaac prueba Setup con bytes distribuidos sobre raíces
+  reales 0.0.975 y 0.0.988 en VM/cuenta aislada, documenta migración,
+  arranque o aviso Reparar y `data/` intacta; además incorpora la huella de la
+  clave *pública* de licencia de producción a
+  `native/packaging/production-license-keys.sha256` y valida el gate de
+  distribución. Ninguno de esos dos requisitos está acreditado por la CI.
+  Sin promoción a testers/master ni release. Balance documental en
+  [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
+  Plane VANTA-127 sigue «En curso» por el punto 10, sin iniciar ese cambio.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

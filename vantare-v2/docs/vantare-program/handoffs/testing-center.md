@@ -1056,3 +1056,5 @@ Review Sonnet de #1934: P1 real en los tres escritores de informes. Un test de e
 Verificación posterior: PostgreSQL local con migraciones LF y CRLF, 16/16 envíos y 134 rutas/795 comprobaciones PASS en ambos formatos; el runner compara `pg_get_functiondef` y `proacl` de las cuatro funciones antes del up y después del down. Sin producción ni despliegue.
 
 Código corregido `bb8e25d62`, publicado en la misma rama de #1934 contra `nightly@b50183217`; CI del nuevo HEAD pendiente. La issue #1928 y Plane VANTA-131 reflejan esta entrega.
+
+Tras integrar admin #1924 en `nightly@3397df2ea`, #1934 se rebasó conservando el gate real de admin y sus suites. El harness LF con la cadena 7b2→admin y la suite de envíos pasó; CRLF se repite sobre esa base. Sin merge propio, despliegue ni release.

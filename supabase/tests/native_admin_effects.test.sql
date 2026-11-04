@@ -2,7 +2,11 @@ begin;
 select no_plan();
 select ok(not has_function_privilege('anon','public.native_admin_record_effect(uuid,jsonb)','execute'),'anonymous cannot record');
 select ok(not has_function_privilege('authenticated','public.native_admin_record_effect(uuid,jsonb)','execute'),'authenticated cannot record');
-select ok(has_function_privilege('service_role','public.native_admin_record_effect(uuid,jsonb)','execute'),'service RPC only');
+select ok(case when to_regprocedure('public.native_admin_record_effect(uuid,jsonb,uuid)') is null
+ then has_function_privilege('service_role','public.native_admin_record_effect(uuid,jsonb)','execute')
+ else has_function_privilege('service_role','public.native_admin_record_effect(uuid,jsonb,uuid)','execute')
+ and not has_function_privilege('service_role','public.native_admin_record_effect(uuid,jsonb)','execute') end,
+ 'service uses the current recorder; unbound predecessor is closed after 10b');
 select ok(not has_table_privilege('service_role','private.admin_effects','insert'),'service cannot bypass validation');
 select ok((select relrowsecurity from pg_class where oid='private.admin_effects'::regclass),'private journal RLS');
 insert into public.profiles(id) values('00000000-0000-4000-8000-000000001915'),('00000000-0000-4000-8000-000000001916');

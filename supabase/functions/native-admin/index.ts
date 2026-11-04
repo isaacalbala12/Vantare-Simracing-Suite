@@ -450,11 +450,6 @@ export async function handleNativeAdmin(
     if (policy?.sandbox && environment !== "sandbox") {
       throw new NativeError(503, "admin_sandbox_required");
     }
-    const effect = effectAudit(
-      actor,
-      requestId,
-      deps.recordEffect ?? recordEffect,
-    );
     if (policy?.mail) {
       const runMail = (command: string, arguments_: ObjectValue) =>
         (deps.mailExecute ?? (async (actor, command, params, environment) => {
@@ -519,6 +514,12 @@ export async function handleNativeAdmin(
       });
     }
     if (policy?.handler === "account") {
+      const effect = effectAudit(
+        actor,
+        requestId,
+        deps.recordEffect ?? recordEffect,
+        String(params.account_id),
+      );
       const lease = action === "set_blocked"
         ? await (deps.claimChange ?? claimChange)(
           actor,

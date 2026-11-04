@@ -715,3 +715,129 @@ solo `true` confirma la escritura. Una excepción o cualquier otro valor impide
 el efecto o su ACK y conserva el código propio del camino. SMTP y sync comparten
 el mapeo de metadatos; no se cambian RPC, estados, orden ni permisos. La retención
 y la minimización de los resúmenes SQL siguen en el siguiente corte del paso 10.
+
+## Auditoría mínima y retención provisional · paso 10b
+
+`20261104145436_isa_1910_admin_audit_minimal` minimiza también las filas que ya
+existan: conserva indicadores de tester/módulos, estados y revisiones, sin copiar
+el resumen de la cuenta, pagos, grants completos, correos, nombres o notas libres.
+Los objetivos se seudonimizan; al marcar la identidad borrada se retira el vínculo
+al UUID en admin/correo. La operación real de borrado y sus barreras se conservan.
+No hay copia de seguridad de esos datos personales dentro del journal.
+
+La vista adicional se pospone: la purga opera sobre los tres journals existentes.
+Un `started` sin cierre o un `unknown` se conserva hasta reconciliarlo; el TTL de
+un efecto cerrado empieza en su último evento. Cada purga deja actor, fecha, TTL
+y conteos en `mail_audit` (`audit_prune`). La capacidad de mantenimiento vive en
+una tabla privada por transacción; un GUC del llamador no puede abrirla. Su
+predicado es SECURITY DEFINER, con search_path vacío y sin EXECUTE para la app,
+para consultar esa tabla privada desde los WHEN de las barreras. `audit_prune`
+queda excluido del TTL: su rastro se conserva sin caducidad automática.
+
+Al borrar una cuenta se retiran también los actores de admin/correo y los hashes
+de efectos cerrados. Los pendientes conservan el hash y una marca sin UUID hasta
+su cierre; la redacción se difiere hasta después de validar la intención original.
+El recorder nativo recibe la cuenta desde la acción validada. Los recorders Brevo
+asocian la capacidad actual de contacto/job/entrega antes de perder su origen.
+Los reintentos de ACK tras redactar un hash fallan cerrados; no se vuelve a enviar
+HTTP. El índice SMTP excluye `erased`: su contacto y entrega ya se han borrado.
+
+Históricos sin asociación verificable: los grupos cerrados pasan a
+`target_hash='erased'`, conservando las filas, acción, resultado y fecha. Los
+pendientes conservan el hash hasta reconciliarse; entonces también se redacta.
+No se exige mapeo previo. En el camino vivo, un contacto comprobado sin cuenta
+lleva `target_account=NULL` y `erase_on_close=false`: su hash cerrado permanece
+hasta el TTL. En el backfill no hay esa prueba del origen, por lo que se aplica
+la política conservadora de históricos sin asociación. El pre-check cuenta filas cerradas a redactar y filas
+pendientes que conservarán su hash y cerradas asociadas a cuentas ya borradas,
+después de intentar las mismas asociaciones
+por identidad/pago/contacto/job/entrega que usa el backfill.
+
+Los triggers de admin y mail usan una función parametrizada y el backfill llama
+al mismo minimizador de filas. Los tres recorders Brevo comparten validación de
+estados y escritura de intención/ACK; cada RPC conserva su control de owner y
+capacidad de origen. La vista adicional está retirada.
+
+Único parámetro de retención, **365 días por defecto y provisional**:
+
+```sql
+select closed_retention_days from private.admin_audit_policy where singleton;
+-- Solo Isaac: bajar a 90 sin editar la cadena histórica ni otros TTL.
+update private.admin_audit_policy set closed_retention_days=90 where singleton;
+```
+
+No se purgan filas al desplegar, al leer ni con un cron creado por este cambio.
+Isaac puede ejecutar/programar `native_admin_prune_audit('<OWNER_UUID>'::uuid)`.
+Es service-only y vuelve a comprobar owner vigente; el servicio confía en el actor
+que recibe del puente autenticado. El parámetro no se acepta desde el cliente.
+Se conservan todos los pendientes, sin importar su edad; se toma el lock de cada
+intención antes de eliminar su grupo cerrado y se omiten los grupos bloqueados.
+Purga y redacción se serializan por transacción, sin un bloqueo persistente.
+
+Despliegue por Isaac: después de las migraciones admin/Brevo/SMTP anteriores.
+Primero SQL, después native-admin: la RPC antigua sin cuenta queda revocada y una
+Edge antigua falla cerrada antes de llamar al proveedor. Producción tiene datos: comprobar
+rol `postgres` con BYPASSRLS/superuser y ejecutar este pre-check de solo lectura.
+`filas_fisicas` es el total que recorre/regraba el backfill; las otras columnas
+cuentan candidatos por motivo y pueden solaparse:
+
+```sql
+select current_user,rolsuper,rolbypassrls from pg_roles where rolname=current_user;
+with rows as (
+ select 'admin' journal,actor_account_id actor,target,before_value a,after_value b
+ from public.admin_audit_log
+ union all select 'mail',actor,target,detail,null from private.mail_audit
+)
+select journal,count(*) filas_fisicas,
+ count(*) filter(where exists(select 1 from jsonb_object_keys(
+  case when jsonb_typeof(a)='object' then a else '{}'::jsonb end ||
+  case when jsonb_typeof(b)='object' then b else '{}'::jsonb end) k
+  where k not in('enabled','modules','blocked','enabled_for_all','consent','revision','status',
+   'retention_days','admin','mail','effects'))) claves_fuera_lista,
+ count(*) filter(where target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') objetivos_uuid,
+ count(*) filter(where exists(select 1 from public.account_identities i where i.deleted_at is not null
+  and (i.account_id=actor or target=i.account_id::text or
+   target='sha256:'||encode(sha256(convert_to(i.account_id::text,'UTF8')),'hex')))) cuentas_borradas
+from rows group by journal;
+select effect,outcome,count(*) from private.admin_effects group by effect,outcome;
+select count(*) from private.admin_pending_effects;
+with accounts as (
+ select array['clerk_ban','clerk_unban','clerk_delete','storage_cleanup'] kinds,
+  encode(sha256(convert_to(subject,'UTF8')),'hex') hash,account_id account from public.account_identities
+ union all select array['polar_cancel'],encode(sha256(convert_to(subscription_id,'UTF8')),'hex'),account_id from private.admin_payments
+ union all select array['brevo_contact_upsert','brevo_contact_update'],
+  encode(sha256(convert_to('brevo_contact_sync:'||id::text||':'||sync_lease::text,'UTF8')),'hex'),coalesce(account_id,erasure_account)
+ from private.mail_contacts where sync_lease is not null
+ union all select array['brevo_delete'],encode(sha256(convert_to('brevo_delete:'||id::text||':'||lease::text,'UTF8')),'hex'),account_id
+ from private.mail_contact_erasures where lease is not null
+ union all select array['brevo_smtp_send'],encode(sha256(convert_to('brevo_smtp_send:'||m.environment||':'||d.id::text,'UTF8')),'hex'),
+  coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d
+ join private.mail_contacts c on c.email=d.email join private.mail_campaigns m on m.id=d.campaign_id
+), classified as (
+ select e.*,exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
+  and r.outcome in('succeeded','failed','reconciled')) closed,
+ exists(select 1 from accounts a where a.account is not null and e.effect=any(a.kinds) and a.hash=e.target_hash) associated,
+ exists(select 1 from accounts a join public.account_identities i on i.account_id=a.account
+  where i.deleted_at is not null and e.effect=any(a.kinds) and a.hash=e.target_hash) deleted_account
+ from private.admin_effects e
+)
+select 'efectos' criterio,
+ count(*) filter(where not associated and closed and target_hash<>'erased') cerradas_sin_asociacion_a_redactar,
+ count(*) filter(where not associated and not closed) pendientes_sin_asociacion_con_hash,
+ count(*) filter(where deleted_account and closed and target_hash<>'erased') cerradas_de_cuentas_borradas_a_redactar
+from classified;
+```
+
+**Irreversible: haz backup lógico de `admin_audit_log` y `mail_audit` antes.**
+Solo Isaac lo obtiene y custodia fuera del repo; el agente no consulta ni exporta
+producción. La redacción de hashes de efectos tampoco se puede deshacer.
+
+El cambio toma todos los locks DDL con NOWAIT: si no puede, aborta antes de editar;
+Isaac lo reintenta en una ventana sin lectores/escritores, no fuerza sesiones.
+El down restaura triggers, esquema y ACL exactos mientras los datos lo permiten;
+aborta atómicamente con `admin_audit_rollback_requires_backup` si ya hay actores
+redactados o efectos marcados/borrados, porque no se puede restaurar el NOT NULL
+ni el contrato anterior de hashes. No reconstruye PII ni evidencia purgada. La rutina de
+mantenimiento no deja su capacidad de escritura activada en el llamador.
+SMTP exige `deps.actor` antes del RPC de claim y de confirmar sus resultados.
+La lectura desde la app por el owner sigue en el siguiente corte del paso 10.

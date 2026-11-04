@@ -204,6 +204,23 @@ end $_$;
 
 --
 
+-- Name: mail_effect_valid(text, integer, boolean); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.mail_effect_valid(outcome text, status integer, erasure boolean) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    SET search_path TO ''
+    AS $$
+ select coalesce(outcome in('started','succeeded','failed','unknown') and (status is null or status between 100 and 599)
+ and case outcome when 'started' then status is null
+ when 'succeeded' then case when erasure then status in(204,404) else status between 200 and 299 end
+ when 'failed' then case when erasure then status in(401,403,422) else status is null or status in(400,401,403,404,422) end
+ else status is null or case when erasure then status not in(204,404,401,403,422) else status not in(400,401,403,404,422) end end,false)
+$$;
+
+
+--
+
 -- Name: mail_forget_deleted_account(); Type: FUNCTION; Schema: private; Owner: -
 --
 
@@ -796,6 +813,14 @@ ALTER TABLE ONLY private.mail_unsubscribe_rate
 
 --
 
+-- Name: mail_audit_target_lookup; Type: INDEX; Schema: private; Owner: -
+--
+
+CREATE INDEX mail_audit_target_lookup ON private.mail_audit USING btree (target);
+
+
+--
+
 -- Name: mail_contact_account; Type: INDEX; Schema: private; Owner: -
 --
 
@@ -876,10 +901,18 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON priv
 
 --
 
+-- Name: mail_audit b_minimize_mail_audit; Type: TRIGGER; Schema: private; Owner: -
+--
+
+CREATE TRIGGER b_minimize_mail_audit BEFORE INSERT ON private.mail_audit FOR EACH ROW EXECUTE FUNCTION private.minimize_admin_audit('actor', 'detail');
+
+
+--
+
 -- Name: mail_audit mail_audit_append_only; Type: TRIGGER; Schema: private; Owner: -
 --
 
-CREATE TRIGGER mail_audit_append_only BEFORE DELETE OR UPDATE ON private.mail_audit FOR EACH ROW EXECUTE FUNCTION public.operational_access_reject_audit_mutation();
+CREATE TRIGGER mail_audit_append_only BEFORE DELETE OR UPDATE ON private.mail_audit FOR EACH ROW WHEN ((NOT private.admin_audit_maintenance())) EXECUTE FUNCTION public.operational_access_reject_audit_mutation();
 
 
 --
@@ -1023,6 +1056,14 @@ REVOKE ALL ON FUNCTION private.mail_admin_execute_v1(p_actor uuid, p_action text
 --
 
 REVOKE ALL ON FUNCTION private.mail_admin_execute_v2(p_actor uuid, p_action text, p_params jsonb, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION mail_effect_valid(outcome text, status integer, erasure boolean); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.mail_effect_valid(outcome text, status integer, erasure boolean) FROM PUBLIC;
 
 
 --

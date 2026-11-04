@@ -1,4 +1,90 @@
 -- Generated from disposable PostgreSQL; read-only. Do not edit.
+-- Name: admin_audit_fields(jsonb, text); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.admin_audit_fields(value jsonb, action text) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    SET search_path TO ''
+    AS $$
+ select case when value is null or value='null'::jsonb then null
+ when action='audit_prune' then (select coalesce(jsonb_object_agg(k,v),'{}'::jsonb)
+ from jsonb_each(case when jsonb_typeof(value)='object' then value else '{}'::jsonb end) t(k,v)
+ where k in('retention_days','admin','mail','effects') and jsonb_typeof(v)='number')
+ when action='set_tester' and jsonb_typeof(value->'enabled')='boolean' then jsonb_build_object('enabled',value->'enabled')
+ when action='set_tester' then jsonb_build_object('enabled',coalesce(
+   (coalesce(value#>'{account,roles}',value->'roles','[]'::jsonb) ? 'tester'),false))
+ when action='set_module' then jsonb_build_object('modules',coalesce((
+   select jsonb_agg(module) from jsonb_array_elements(case
+    when jsonb_typeof(coalesce(value#>'{account,modules}',value->'modules'))='array'
+    then coalesce(value#>'{account,modules}',value->'modules') else '[]'::jsonb end) module
+   where module#>>'{}' in ('vantare.module.strategy','vantare.module.engineer',
+     'vantare.module.analysis','vantare.module.calendar')), '[]'::jsonb))
+ else jsonb_strip_nulls(jsonb_build_object(
+   'blocked',case when jsonb_typeof(value->'blocked')='boolean' then value->'blocked' end,
+   'enabled_for_all',case when jsonb_typeof(value->'enabled_for_all')='boolean' then value->'enabled_for_all' end,
+   'consent',case when jsonb_typeof(value->'consent')='boolean' then value->'consent' end,
+   'revision',case when jsonb_typeof(value->'revision')='number' then value->'revision' end,
+   'status',case when value->>'status' in ('active','pending','draft','sending','sent','canceled',
+     'submitted','validated','duplicate_linked','incomplete','closed','in_review','rejected','fixed','spam') then value->'status' end)) end
+$$;
+
+
+--
+
+-- Name: admin_audit_maintenance(); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.admin_audit_maintenance() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+ select current_user='postgres' and exists(select 1 from private.admin_audit_maintenance_tx
+ where transaction_id=pg_current_xact_id() and maintenance)
+$$;
+
+
+--
+
+-- Name: admin_audit_minimize(anyelement, text, text[]); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.admin_audit_minimize(entry anyelement, actor_key text, value_keys text[]) RETURNS anyelement
+    LANGUAGE sql STABLE
+    SET search_path TO ''
+    AS $$
+ select jsonb_populate_record(entry,to_jsonb(entry)||jsonb_build_object(
+  'target',private.admin_audit_target(to_jsonb(entry)->>'target'),actor_key,
+  case when exists(select 1 from public.account_identities i
+   where i.account_id=(to_jsonb(entry)->>actor_key)::uuid and i.deleted_at is not null)
+  then null else to_jsonb(entry)->actor_key end)||
+  (select jsonb_object_agg(k,private.admin_audit_fields(to_jsonb(entry)->k,to_jsonb(entry)->>'action'))
+   from unnest(value_keys) k))
+$$;
+
+
+--
+
+-- Name: admin_audit_target(text); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.admin_audit_target(target text) RETURNS text
+    LANGUAGE sql STABLE
+    SET search_path TO ''
+    AS $_$
+ select case when target='erased' then target
+ when target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+  case when exists(select 1 from public.account_identities i where i.account_id=target::uuid and i.deleted_at is not null)
+  then 'erased' else 'sha256:'||encode(sha256(convert_to((target::uuid)::text,'UTF8')),'hex') end
+ when target ~ '^sha256:[0-9a-f]{64}$' then case when exists(select 1 from public.account_identities i
+  where i.deleted_at is not null and target='sha256:'||encode(sha256(convert_to(i.account_id::text,'UTF8')),'hex'))
+  then 'erased' else target end
+ when target in ('search_accounts','get_rollout','list_reports','list_creators','mail','contact','audit') then target
+ else 'sha256:'||encode(sha256(convert_to(target,'UTF8')),'hex') end
+$_$;
+
+
+--
+
 -- Name: native_admin_account(uuid, text, text); Type: FUNCTION; Schema: private; Owner: -
 --
 
@@ -870,6 +956,42 @@ end $$;
 
 --
 
+-- Name: native_admin_prune_audit(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.native_admin_prune_audit(p_actor uuid) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare cutoff timestamptz; ttl integer;
+ admin_count integer; mail_count integer; effect_count integer;
+begin
+ perform private.native_admin_require_owner(p_actor);
+ select closed_retention_days into strict ttl from private.admin_audit_policy where singleton for share;
+ cutoff:=clock_timestamp()-make_interval(days=>ttl);
+ perform pg_advisory_xact_lock(1910,10);
+ insert into private.admin_audit_maintenance_tx default values;
+ -- SQL/mail entries describe committed transactions; external uncertainty is in effects.
+ delete from public.admin_audit_log where occurred_at<cutoff;
+ get diagnostics admin_count=row_count;
+ delete from private.mail_audit where occurred_at<cutoff and action<>'audit_prune';
+ get diagnostics mail_count=row_count;
+ with closed as materialized (
+  select i.effect_id from private.admin_effects i where i.outcome='started'
+   and exists(select 1 from private.admin_effects r where r.effect_id=i.effect_id and r.outcome in ('succeeded','failed','reconciled'))
+   and not exists(select 1 from private.admin_effects r where r.effect_id=i.effect_id and r.occurred_at>=cutoff)
+  for update of i skip locked
+ ) delete from private.admin_effects e using closed c where e.effect_id=c.effect_id;
+ get diagnostics effect_count=row_count;
+ delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
+ insert into private.mail_audit(actor,action,target,detail) values(p_actor,'audit_prune','audit',
+  jsonb_build_object('retention_days',ttl,'admin',admin_count,'mail',mail_count,'effects',effect_count));
+ return jsonb_build_object('admin',admin_count,'mail',mail_count,'effects',effect_count);
+end $$;
+
+
+--
+
 -- Name: native_admin_reconcile_effect(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -953,6 +1075,33 @@ $_$;
 
 --
 
+-- Name: native_admin_record_effect(uuid, jsonb, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb, p_account uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare account uuid; result boolean;
+begin
+ if not exists(select 1 from public.profiles where id=p_account) then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ for account in select distinct a from unnest(array[p_actor,p_account]) a where a is not null order by a loop
+  perform private.lock_account_write(account);
+ end loop;
+ if exists(select 1 from private.admin_effects where effect_id=(p_event->>'effect_id')::uuid
+  and outcome='started' and target_account is not null and target_account<>p_account) then
+  raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ insert into private.admin_audit_maintenance_tx(maintenance,target_account) values(false,p_account);
+ result:=public.native_admin_record_effect(p_actor,p_event);
+ delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
+ return result;
+exception when invalid_text_representation then
+ raise exception 'native_admin_invalid' using errcode='22023';
+end $$;
+
+
+--
+
 -- Name: native_admin_record_mail_erasure(uuid, uuid, uuid, uuid, text, integer, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -964,16 +1113,9 @@ declare
  -- Reserved technical actor, not a fabricated owner. Migration guards collision.
  v_actor uuid:=coalesce(p_actor,'00000000-0000-0000-0000-000000000000'::uuid);
  v_hash text;
- v_start private.admin_effects;
- v_existing private.admin_effects;
 begin
  if p_job is null or p_lease is null or p_request is null or p_effect is null
-  or p_outcome is null or p_outcome not in('started','succeeded','failed','unknown')
-  or (p_provider_status is not null and p_provider_status not between 100 and 599)
-  or (p_outcome='started' and p_provider_status is not null)
-  or (p_outcome='succeeded' and coalesce(p_provider_status,0) not in(204,404))
-  or (p_outcome='failed' and coalesce(p_provider_status,0) not in(401,403,422))
-  or (p_outcome='unknown' and coalesce(p_provider_status,0) in(204,404,401,403,422))
+  or not private.mail_effect_valid(p_outcome,p_provider_status,true)
   or p_actor='00000000-0000-0000-0000-000000000000'::uuid
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  v_hash:=encode(sha256(convert_to('brevo_delete:'||p_job::text||':'||p_lease::text,'UTF8')),'hex');
@@ -984,28 +1126,11 @@ begin
    where id=p_job and lease=p_lease and state='processing'
     and lease_until>clock_timestamp() for update;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- else
-  -- Result may close after owner/lease expiry, only for the exact durable intent.
-  select * into v_start from private.admin_effects
-   where effect_id=p_effect and outcome='started' for update;
-  if not found or v_start.actor<>v_actor or v_start.request_id<>p_request
-   or v_start.action<>'mail_cleanup' or v_start.effect<>'brevo_delete'
-   or v_start.target_hash<>v_hash
-  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  end if;
- if exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled') then
-  raise exception 'native_admin_invalid' using errcode='22023';
- end if;
- insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status)
- values(p_effect,p_outcome,p_request,v_actor,'mail_cleanup','brevo_delete',v_hash,p_provider_status)
- on conflict do nothing;
- select * into v_existing from private.admin_effects where effect_id=p_effect and outcome=p_outcome;
- if not found or v_existing.actor<>v_actor or v_existing.request_id<>p_request
-  or v_existing.action<>'mail_cleanup' or v_existing.effect<>'brevo_delete'
-  or v_existing.target_hash<>v_hash or v_existing.provider_status is distinct from p_provider_status
-  or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled')
- then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return true;
+ return private.append_mail_effect(jsonb_build_object(
+  'effect_id',p_effect,'outcome',p_outcome,'request_id',p_request,'actor',v_actor,
+  'action','mail_cleanup','effect','brevo_delete','target_hash',v_hash,'provider_status',p_provider_status),
+  (select account_id from private.mail_contact_erasures where id=p_job));
 end$$;
 
 
@@ -1026,16 +1151,11 @@ CREATE FUNCTION public.native_admin_record_mail_send(p_actor uuid, p_request uui
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
-declare v_hash text; v_start private.admin_effects; v_existing private.admin_effects;
+declare v_hash text;
 begin
  if p_actor is null or p_request is null or p_effect is null or p_delivery is null
   or p_environment is null or p_environment not in('sandbox','production')
-  or p_outcome is null or p_outcome not in('started','succeeded','failed','unknown')
-  or (p_provider_status is not null and p_provider_status not between 100 and 599)
-  or (p_outcome='started' and p_provider_status is not null)
-  or (p_outcome='succeeded' and coalesce(p_provider_status,0) not between 200 and 299)
-  or (p_outcome='failed' and p_provider_status is not null and p_provider_status not in(400,401,403,404,422))
-  or (p_outcome='unknown' and coalesce(p_provider_status,0) in(400,401,403,404,422))
+  or not private.mail_effect_valid(p_outcome,p_provider_status,false)
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  v_hash:=encode(sha256(convert_to('brevo_smtp_send:'||p_environment||':'||p_delivery::text,'UTF8')),'hex');
  if p_outcome='started' then
@@ -1044,24 +1164,11 @@ begin
    where d.id=p_delivery and d.status='dispatching' and d.reserved_at is not null
     and c.environment=p_environment and c.state='sending' and c.approved_by is not null for update of d;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- else
-  select * into v_start from private.admin_effects where effect_id=p_effect and outcome='started' for update;
-  if not found or v_start.actor<>p_actor or v_start.request_id<>p_request
-   or v_start.action<>'mail_send_batch' or v_start.effect<>'brevo_smtp_send' or v_start.target_hash<>v_hash
-  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  end if;
- if exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled') then
-  raise exception 'native_admin_invalid' using errcode='22023';
- end if;
- insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status)
- values(p_effect,p_outcome,p_request,p_actor,'mail_send_batch','brevo_smtp_send',v_hash,p_provider_status) on conflict do nothing;
- select * into v_existing from private.admin_effects where effect_id=p_effect and outcome=p_outcome;
- if not found or v_existing.actor<>p_actor or v_existing.request_id<>p_request
-  or v_existing.action<>'mail_send_batch' or v_existing.effect<>'brevo_smtp_send' or v_existing.target_hash<>v_hash
-  or v_existing.provider_status is distinct from p_provider_status
-  or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled')
- then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return true;
+ return private.append_mail_effect(jsonb_build_object(
+  'effect_id',p_effect,'outcome',p_outcome,'request_id',p_request,'actor',p_actor,
+  'action','mail_send_batch','effect','brevo_smtp_send','target_hash',v_hash,'provider_status',p_provider_status),
+  (select coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d join private.mail_contacts c on c.email=d.email where d.id=p_delivery));
 end$$;
 
 
@@ -1074,16 +1181,11 @@ CREATE FUNCTION public.native_admin_record_mail_sync(p_actor uuid, p_request uui
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
-declare v_hash text; v_start private.admin_effects; v_existing private.admin_effects;
+declare v_hash text;
 begin
  if p_actor is null or p_request is null or p_effect is null or p_contact is null or p_lease is null
   or p_kind is null or p_kind not in('brevo_contact_upsert','brevo_contact_update')
-  or p_outcome is null or p_outcome not in('started','succeeded','failed','unknown')
-  or (p_provider_status is not null and p_provider_status not between 100 and 599)
-  or (p_outcome='started' and p_provider_status is not null)
-  or (p_outcome='succeeded' and coalesce(p_provider_status,0) not between 200 and 299)
-  or (p_outcome='failed' and p_provider_status is not null and p_provider_status not in(400,401,403,404,422))
-  or (p_outcome='unknown' and coalesce(p_provider_status,0) in(400,401,403,404,422))
+  or not private.mail_effect_valid(p_outcome,p_provider_status,false)
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  v_hash:=encode(sha256(convert_to('brevo_contact_sync:'||p_contact::text||':'||p_lease::text,'UTF8')),'hex');
  if p_outcome='started' then
@@ -1091,24 +1193,11 @@ begin
   perform 1 from private.mail_contacts where id=p_contact and sync_lease=p_lease
    and sync_lease_until>clock_timestamp() for update;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- else
-  select * into v_start from private.admin_effects where effect_id=p_effect and outcome='started' for update;
-  if not found or v_start.actor<>p_actor or v_start.request_id<>p_request
-   or v_start.action<>'mail_sync' or v_start.effect<>p_kind or v_start.target_hash<>v_hash
-  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  end if;
- if exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled') then
-  raise exception 'native_admin_invalid' using errcode='22023';
- end if;
- insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status)
- values(p_effect,p_outcome,p_request,p_actor,'mail_sync',p_kind,v_hash,p_provider_status) on conflict do nothing;
- select * into v_existing from private.admin_effects where effect_id=p_effect and outcome=p_outcome;
- if not found or v_existing.actor<>p_actor or v_existing.request_id<>p_request
-  or v_existing.action<>'mail_sync' or v_existing.effect<>p_kind or v_existing.target_hash<>v_hash
-  or v_existing.provider_status is distinct from p_provider_status
-  or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled')
- then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return true;
+ return private.append_mail_effect(jsonb_build_object(
+  'effect_id',p_effect,'outcome',p_outcome,'request_id',p_request,'actor',p_actor,
+  'action','mail_sync','effect',p_kind,'target_hash',v_hash,'provider_status',p_provider_status),
+  (select coalesce(account_id,erasure_account) from private.mail_contacts where id=p_contact));
 end$$;
 
 
@@ -1228,6 +1317,31 @@ CREATE TABLE private.admin_account_deletions (
 
 --
 
+-- Name: admin_audit_maintenance_tx; Type: TABLE; Schema: private; Owner: -
+--
+
+CREATE TABLE private.admin_audit_maintenance_tx (
+    transaction_id xid8 DEFAULT pg_current_xact_id() NOT NULL,
+    maintenance boolean DEFAULT true NOT NULL,
+    target_account uuid
+);
+
+
+--
+
+-- Name: admin_audit_policy; Type: TABLE; Schema: private; Owner: -
+--
+
+CREATE TABLE private.admin_audit_policy (
+    singleton boolean DEFAULT true NOT NULL,
+    closed_retention_days integer NOT NULL,
+    CONSTRAINT admin_audit_policy_closed_retention_days_check CHECK (((closed_retention_days >= 1) AND (closed_retention_days <= 36500))),
+    CONSTRAINT admin_audit_policy_singleton_check CHECK (singleton)
+);
+
+
+--
+
 -- Name: admin_change_leases; Type: TABLE; Schema: private; Owner: -
 --
 
@@ -1294,11 +1408,13 @@ CREATE TABLE private.admin_effects (
     target_hash text NOT NULL,
     occurred_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
     provider_status smallint,
+    target_account uuid,
+    erase_on_close boolean DEFAULT false NOT NULL,
     CONSTRAINT admin_effects_action_check CHECK ((action = ANY (ARRAY['set_blocked'::text, 'delete_account'::text, 'mail_cleanup'::text, 'mail_sync'::text, 'mail_send_batch'::text]))),
     CONSTRAINT admin_effects_effect_check CHECK ((effect = ANY (ARRAY['clerk_ban'::text, 'clerk_unban'::text, 'clerk_delete'::text, 'storage_cleanup'::text, 'polar_cancel'::text, 'brevo_delete'::text, 'brevo_contact_upsert'::text, 'brevo_contact_update'::text, 'brevo_smtp_send'::text]))),
     CONSTRAINT admin_effects_outcome_check CHECK ((outcome = ANY (ARRAY['started'::text, 'succeeded'::text, 'unknown'::text, 'failed'::text, 'reconciled'::text]))),
     CONSTRAINT admin_effects_provider_status_check CHECK (((provider_status >= 100) AND (provider_status <= 599))),
-    CONSTRAINT admin_effects_target_hash_check CHECK ((target_hash ~ '^[0-9a-f]{64}$'::text))
+    CONSTRAINT admin_effects_target_hash_check CHECK (((target_hash = 'erased'::text) OR (target_hash ~ '^[0-9a-f]{64}$'::text)))
 );
 
 
@@ -1449,7 +1565,7 @@ CREATE TABLE private.native_admin_rate (
 
 CREATE TABLE public.admin_audit_log (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    actor_account_id uuid NOT NULL,
+    actor_account_id uuid,
     action text NOT NULL,
     target text NOT NULL,
     before_value jsonb,
@@ -1475,6 +1591,24 @@ ALTER TABLE ONLY private.admin_account_blocks
 
 ALTER TABLE ONLY private.admin_account_deletions
     ADD CONSTRAINT admin_account_deletions_pkey PRIMARY KEY (account_id);
+
+
+--
+
+-- Name: admin_audit_maintenance_tx admin_audit_maintenance_tx_pkey; Type: CONSTRAINT; Schema: private; Owner: -
+--
+
+ALTER TABLE ONLY private.admin_audit_maintenance_tx
+    ADD CONSTRAINT admin_audit_maintenance_tx_pkey PRIMARY KEY (transaction_id);
+
+
+--
+
+-- Name: admin_audit_policy admin_audit_policy_pkey; Type: CONSTRAINT; Schema: private; Owner: -
+--
+
+ALTER TABLE ONLY private.admin_audit_policy
+    ADD CONSTRAINT admin_audit_policy_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -1624,7 +1758,7 @@ CREATE INDEX admin_effects_request ON private.admin_effects USING btree (request
 -- Name: admin_effects_smtp_delivery_started; Type: INDEX; Schema: private; Owner: -
 --
 
-CREATE UNIQUE INDEX admin_effects_smtp_delivery_started ON private.admin_effects USING btree (target_hash) WHERE ((effect = 'brevo_smtp_send'::text) AND (outcome = 'started'::text));
+CREATE UNIQUE INDEX admin_effects_smtp_delivery_started ON private.admin_effects USING btree (target_hash) WHERE ((effect = 'brevo_smtp_send'::text) AND (outcome = 'started'::text) AND (target_hash <> 'erased'::text));
 
 
 --
@@ -1665,6 +1799,14 @@ CREATE INDEX admin_refunds_payment ON private.admin_payment_refunds USING btree 
 --
 
 CREATE INDEX admin_audit_actor_time ON public.admin_audit_log USING btree (actor_account_id, occurred_at DESC);
+
+
+--
+
+-- Name: admin_audit_target_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_audit_target_lookup ON public.admin_audit_log USING btree (target);
 
 
 --
@@ -1728,7 +1870,7 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON priv
 -- Name: admin_effects admin_effects_append_only; Type: TRIGGER; Schema: private; Owner: -
 --
 
-CREATE TRIGGER admin_effects_append_only BEFORE DELETE OR UPDATE ON private.admin_effects FOR EACH ROW EXECUTE FUNCTION public.operational_access_reject_audit_mutation();
+CREATE TRIGGER admin_effects_append_only BEFORE DELETE OR UPDATE ON private.admin_effects FOR EACH ROW WHEN ((NOT private.admin_audit_maintenance())) EXECUTE FUNCTION public.operational_access_reject_audit_mutation();
 
 
 --
@@ -1741,15 +1883,28 @@ CREATE TRIGGER admin_payout_append_only BEFORE DELETE OR UPDATE ON private.admin
 
 --
 
+-- Name: admin_effects b_bind_admin_effect_account; Type: TRIGGER; Schema: private; Owner: -
+--
+
+CREATE TRIGGER b_bind_admin_effect_account BEFORE INSERT ON private.admin_effects FOR EACH ROW EXECUTE FUNCTION private.bind_admin_effect_account();
+
+
+--
+
+-- Name: admin_effects redact_closed_admin_effect; Type: TRIGGER; Schema: private; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER redact_closed_admin_effect AFTER INSERT ON private.admin_effects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN ((new.outcome = ANY (ARRAY['succeeded'::text, 'failed'::text, 'reconciled'::text]))) EXECUTE FUNCTION private.redact_closed_admin_effect();
+
+
+--
+
 -- Name: admin_audit_log a_account_write_barrier; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.admin_audit_log FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select case when $1->>''action'' in (''search_accounts'',''get_account'',''get_rollout'',''list_reports'',''get_report'')
-     then array[($1->>''actor_account_id'')::uuid] else (select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''actor_account_id'')::uuid union
-        select p.id from public.profiles p where p.id=case when $1->>''target'' ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'' then ($1->>''target'')::uuid end
-        union select r.account_id from public.testing_contributions r where r.id=case when $1->>''target'' ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'' then ($1->>''target'')::uuid end
-        union select (v#>>''{}'')::uuid from jsonb_path_query($1,''$.**.account_id'') v
-        where v#>>''{}'' ~ ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'') owners(account)) end', 'select ($1->>''actor_account_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''actor_account_id'')::uuid))');
+CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.admin_audit_log FOR EACH ROW WHEN ((NOT private.admin_audit_maintenance())) EXECUTE FUNCTION private.guard_account_write('select case when $1->>''action'' in (''search_accounts'',''get_account'',''get_rollout'',''list_reports'',''get_report'')
+     then array[($1->>''actor_account_id'')::uuid] else (select array_agg(distinct account order by account) filter(where account is not null) from (select (v#>>''{}'')::uuid from jsonb_path_query($1,''$.**.account_id'') v
+        where v#>>''{}'' ~ ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'' union select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''actor_account_id'')::uuid union select p.id from public.profiles p where p.id=case when $1->>''target'' ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'' then ($1->>''target'')::uuid end union select r.account_id from public.testing_contributions r where r.id=case when $1->>''target'' ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'' then ($1->>''target'')::uuid end) owners(account)) end', 'select ($1->>''actor_account_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''actor_account_id'')::uuid))');
 
 
 --
@@ -1757,7 +1912,15 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
 -- Name: admin_audit_log admin_audit_append_only; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER admin_audit_append_only BEFORE DELETE OR UPDATE ON public.admin_audit_log FOR EACH ROW EXECUTE FUNCTION public.operational_access_reject_audit_mutation();
+CREATE TRIGGER admin_audit_append_only BEFORE DELETE OR UPDATE ON public.admin_audit_log FOR EACH ROW WHEN ((NOT private.admin_audit_maintenance())) EXECUTE FUNCTION public.operational_access_reject_audit_mutation();
+
+
+--
+
+-- Name: admin_audit_log b_minimize_admin_audit; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER b_minimize_admin_audit BEFORE INSERT ON public.admin_audit_log FOR EACH ROW EXECUTE FUNCTION private.minimize_admin_audit('actor_account_id', 'before_value,after_value');
 
 
 --
@@ -1852,6 +2015,20 @@ ALTER TABLE ONLY public.admin_audit_log
 
 --
 
+-- Name: admin_audit_maintenance_tx; Type: ROW SECURITY; Schema: private; Owner: -
+--
+
+ALTER TABLE private.admin_audit_maintenance_tx ENABLE ROW LEVEL SECURITY;
+
+--
+
+-- Name: admin_audit_policy; Type: ROW SECURITY; Schema: private; Owner: -
+--
+
+ALTER TABLE private.admin_audit_policy ENABLE ROW LEVEL SECURITY;
+
+--
+
 -- Name: admin_change_leases; Type: ROW SECURITY; Schema: private; Owner: -
 --
 
@@ -1877,6 +2054,38 @@ ALTER TABLE private.native_admin_gate_rate ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
+
+--
+
+-- Name: FUNCTION admin_audit_fields(value jsonb, action text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.admin_audit_fields(value jsonb, action text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION admin_audit_maintenance(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.admin_audit_maintenance() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION admin_audit_minimize(entry anyelement, actor_key text, value_keys text[]); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.admin_audit_minimize(entry anyelement, actor_key text, value_keys text[]) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION admin_audit_target(target text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.admin_audit_target(target text) FROM PUBLIC;
+
 
 --
 
@@ -2072,6 +2281,15 @@ GRANT ALL ON FUNCTION public.native_admin_preflight(p_issuer text, p_subject tex
 
 --
 
+-- Name: FUNCTION native_admin_prune_audit(p_actor uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_prune_audit(p_actor uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_prune_audit(p_actor uuid) TO service_role;
+
+
+--
+
 -- Name: FUNCTION native_admin_reconcile_effect(p_reviewer uuid, p_effect uuid); Type: ACL; Schema: public; Owner: -
 --
 
@@ -2085,7 +2303,15 @@ GRANT ALL ON FUNCTION public.native_admin_reconcile_effect(p_reviewer uuid, p_ef
 --
 
 REVOKE ALL ON FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_effect(p_actor uuid, p_event jsonb, p_account uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb, p_account uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb, p_account uuid) TO service_role;
 
 
 --
@@ -2167,3 +2393,6 @@ GRANT SELECT ON TABLE public.admin_audit_log TO service_role;
 
 
 --
+
+-- Catalog: private.admin_audit_policy (1 rows)
+-- {"closed_retention_days": 365, "singleton": true}

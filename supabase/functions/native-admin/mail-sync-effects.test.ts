@@ -185,3 +185,37 @@ for (const value of [false, null, {}, "true", "throw", "reject"]) {
     },
   );
 }
+
+for (
+  const [outcome, status] of [["succeeded", 200], ["failed", 403], [
+    "unknown",
+    503,
+  ]] as const
+) {
+  Deno.test(
+    "sync result recorder failure blocks ACK for " + outcome,
+    async () => {
+      const f = fixture();
+      const original = f.deps.rpc;
+      f.deps.rpc = (name, args) =>
+        args.p_outcome === outcome
+          ? Promise.resolve(false)
+          : original(name, args);
+      f.deps.fetch = () => {
+        f.trace.push("POST");
+        return Promise.resolve(Response.json({}, { status }));
+      };
+      let error: unknown;
+      try {
+        await executeMail("mail_sync", {}, f.run, f.deps as MailDeps);
+      } catch (caught) {
+        error = caught;
+      }
+      assert(
+        error instanceof NativeError &&
+          error.code === "mail_sync_audit_unavailable",
+      );
+      assert(JSON.stringify(f.trace) === '["started","POST"]');
+    },
+  );
+}

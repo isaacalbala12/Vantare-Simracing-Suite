@@ -8773,3 +8773,98 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Paso10b local: tres RED SQL reproducen resumen completo, vínculo al objetivo
   borrado y copia de su account_id. Flujo real de lápida anonimiza perfil;
   auditoría conserva lo anterior. PostgreSQL desechable parado, sin purga.
+
+## VANTA-132 · paso 10b · [PR #1959](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1959) (2026-11-04)
+
+- Re-review de f862ef666: corregida la carrera entre cierre de efecto y borrado.
+  La redacción toma FOR UPDATE sobre todos los eventos de la cuenta antes de
+  su UPDATE, que obtiene una instantánea nueva tras esperar. No cambia las RPC
+  de cierre ni el protocolo de intención/ACK. Código validado 07e0c2c22.
+- RED 72263d877: traza de purga caducada, predicado invoker y carrera real de
+  sync (el succeeded quedaba con hash y erase_on_close=false). GREEN: cuatro
+  sesiones R/D por separado cubren sync, SMTP, Brevo DELETE y reconcile.
+  pg_stat_activity prueba la espera sobre el PID que cierra; el borrado real
+  deja todos los hashes cerrados erased. En las cuatro, el pendiente de otra
+  cuenta A permanece idéntico, incluidos hash/target_account/erase_on_close.
+  Solo bases clonadas dentro del PostgreSQL desechable, eliminadas al terminar.
+- Lint de esta migración: 24 RED → 0 GREEN, sin excepción temporal. Todas las
+  funciones tienen CREATE OR REPLACE y cuerpo entero; tablas alteradas y las
+  tres RPC Brevo declaran REVOKE ALL de los cuatro roles y concesión exacta.
+  ACL final conservada: SELECT de service en admin_audit_log/admin_effects y
+  EXECUTE de service en las RPC. Se retira la cabecera que afirmaba completitud.
+  El harness aplica check_migration sobre el archivo real, también en CI.
+- Coordinación pendiente para el nuevo corte 20261104105500: el lint completo
+  detecta 10 errores en dos SQL ya integrados, SMTP 20261104110000 y retirada
+  R6 20261104120500. Ninguno pertenece al archivo de #1959; comunicado al
+  orquestador para el ajuste del lint. No se editan históricos integrados.
+- P3: audit_prune queda excluido de la purga, sin caducidad automática; conserva
+  actor/fecha/TTL/conteos y sigue redactando actores borrados. El predicado
+  privado admin_audit_maintenance es SECURITY DEFINER, search_path vacío y sin
+  EXECUTE para app; consulta su tabla de capacidad por transacción, no un GUC.
+- Pre-check readonly: tres recuentos de filas, cerradas sin asociación, pendientes
+  sin asociación y cerradas asociadas a cuenta borrada. Fixture 2/2/2 verificada
+  antes del up. Históricos cerrados sin asociación pasan a erased conservando
+  filas/acción/resultado/fecha; pendientes hasta reconcile. No exige mapeo.
+- Diferencia documentada: en vivo, un contacto comprobado sin cuenta conserva
+  target_account=NULL/erase_on_close=false y su hash hasta el TTL; el histórico
+  sin prueba de asociación se trata de forma conservadora y redacta al cerrar.
+- Recortes previos conservados: trigger parametrizado único para admin/mail;
+  INSERT y backfill usan el mismo minimizador. Los recorders Brevo comparten
+  estados y append/ACK, con owner/capacidad propios. Sin vista adicional;
+  DELETE por fecha de admin/mail y un DELETE de efectos, un UPDATE de backfill.
+- P1/P2 previos GREEN: tester idempotente con filas que sobreviven up/down/up;
+  borrado real retira target/actores admin/mail, también en INSERT posteriores.
+  Efectos pendientes pierden UUID de asociación y conservan hash hasta cierre.
+  Retención provisional 365 días, único parámetro bajable a 90 por Isaac; solo
+  cerrados desde último evento, con la excepción permanente de audit_prune.
+- Gates: SQL LF/CRLF, 26 mínimos + 30 retención/seguridad + 220 de ocho suites
+  activas; pre-check, cuatro carreras nuevas y seis previas PASS. pg_dump/ACL/
+  triggers exactos tras down, rechazo atómico del down y segunda pasada/reapply
+  PASS. Snapshots de nueve dominios regenerados, write/check independiente PASS.
+  25 tests de tooling/volcado, lint propio, Python/diff PASS. PostgreSQL local detenido.
+  Sin TS/Rust nuevo; Deno previo 285 PASS. Rust/telemetría/lifecycle omitidos.
+- CI anterior bloqueada por pg_dump16 del host contra servidor Supabase17
+  (run41876366815). Corregido en 48d552e31: el snapshot de auditoría usa el
+  pg_dump del contenedor, como los otros snapshots del runner, conservando
+  owner/ACL. RED de selección de backend antes del arreglo; dos tests GREEN
+  y replay local completo PASS. Docker no disponible localmente; queda la
+  confirmación del backend PG17 en CI. No se modifica el esquema de producto.
+- Drift de esquema del run41882845194: el replay completo Docker PG17 pasó,
+  pero los derivados locales PG16 omitían `SET transaction_timeout` y variaban
+  dos UNION generados por el catálogo. RED da657f930; corrección 2321a94d5.
+  Los nueve volcados se regeneran desde el artefacto13349898088 de ese replay
+  con la normalización del generador. No se modifican migraciones ni billing:
+  los cambios en sus derivados son exclusivamente orden de ramas de barrera.
+- Generación exige Docker con imagen17.6.1.165/digest fijado, servidor y
+  pg_dump17.6 y opciones --schema-only --no-owner; comprueba la imagen real
+  antes de escribir/comparar. Un test liga la fijación al workflow existente.
+  Se ordenan solo UNION externos en la agregación DISTINCT/ORDER BY de las
+  barreras; subconsultas, literales y UNION ALL se conservan. Fixtures reales
+  PG16/PG17 iguales e idempotentes; 31 tests tooling PASS. Docker no está
+  disponible localmente; la nueva CI debe confirmar el replay y el check.
+- Producción **915 → 1306 (+391)**: +10 frente a las 381 aceptadas, por espera
+  de cierre (+2, incluido comentario) y ACL explícita (+8). Rollback 191 aparte.
+  El +627 original incluía 188 de rollback; no se cuenta como producción.
+  Tests/docs/derivados separados en PR. No se aplana historia ni se adelanta 11.
+
+| Bloque físico | eff002c85 | Actual |
+| --- | ---: | ---: |
+| Funciones nuevas | 159 | 191 |
+| Tres RPC Brevo completas | 132 | 72 |
+| Triggers/barreras | 25 | 25 |
+| Backfill | 42 | 28 |
+| Guards | 11 | 6 |
+| Tablas, índices, ACL, transacción y comentarios | 65 | 64 |
+| TypeScript neto frente a nightly | 5 | 5 |
+| **Producción** | **439** | **391** |
+| Rollback, excluido | 188 | 191 |
+
+- Solo Isaac despliega: 7b1 → 7b2 → #1924 → owner → #1939 → #1941 → #1942 →
+  #1944 → #1946 → SMTP/#1947 → 10b. Pausar Clerk en 7b2; backup lógico admin/
+  mail antes del cambio irreversible y consultas previas; SQL antes de Edge.
+  La firma antigua sin cuenta queda revocada; Edge antigua falla antes de HTTP.
+  Down exacto cuando los datos lo permiten, o aborta antes de DDL por redacción.
+- Base nightly 6047b8ea6; PR draft, VANTA-132 En curso. Sin _shared,
+  apply_clerk_user_event, billing, licencias, secretos ni producción. Sin deploy,
+  merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
+  UI/lecturas puras. El 11 sigue exclusivamente en R6/12.

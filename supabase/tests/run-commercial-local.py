@@ -1,6 +1,7 @@
 """Disposable loopback PostgreSQL only. macOS/Linux; never accepts a DSN."""
 import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse, re
-from generate_schema_snapshot import compose, write_or_check
+from generate_schema_snapshot import (compose, write_or_check, SNAPSHOT_IMAGE,
+ SNAPSHOT_DUMP_OPTIONS, verify_snapshot_source)
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
@@ -15,6 +16,7 @@ from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 from commercial_admin_report_root import run_admin_report_cutover
+from commercial_admin_minimal_audit import AUDIT_STEM, AUDIT_SNAPSHOT, run_minimal_audit, seed_audit_upgrade, audit_schema
 from commercial_admin_owner_target import run_target_owner_race
 from commercial_admin_owner_policy import ACK_STEM, run_owner_ack_regressions, STEM as OWNER_POLICY_STEM, SNAPSHOT as OWNER_POLICY_SNAPSHOT, run_owner_policy_regressions
 parser=argparse.ArgumentParser()
@@ -62,6 +64,8 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
+if args.schema_snapshot and not args.docker:
+ parser.error('--schema-snapshot requires --docker with the pinned PostgreSQL image')
 if args.admin_erasure_only: args.admin_reports_only=True
 if args.admin_reports_only: args.admin_effects_only=True
 legacy_writers_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
@@ -123,7 +127,7 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
   # public fixture credentials, generated for no external database or service.
   try:
    docker('run','--rm','-d','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust',
-    '-p',f'127.0.0.1:{port}:5432','public.ecr.aws/supabase/postgres:17.6.1.165')
+    '-p',f'127.0.0.1:{port}:5432',SNAPSHOT_IMAGE)
    for attempt in range(120):
     if 'PostgreSQL init process complete' in docker('logs',container):
      ready=subprocess.run(['docker','exec',container,'pg_isready','-U','postgres'],capture_output=True)
@@ -321,7 +325,7 @@ $$;
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
-   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM) and not legacy_writers_enabled: continue
+   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM) and not legacy_writers_enabled: continue
    if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
@@ -379,6 +383,13 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==AUDIT_STEM and not args.schema_snapshot:
+    audit_previous=run('psql',*conn,'-c',AUDIT_SNAPSHOT)
+    # Match the Supabase PG17 image, not Ubuntu's PG16 pg_dump client.
+    audit_container_dump=(lambda: docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+     '-U','postgres','-d',database,'--schema-only')) if args.docker else None
+    audit_schema_previous=audit_schema(run,conn,audit_container_dump)
+    seed_audit_upgrade(run,conn)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
    channel_stem='20261104084000_isa_1928_channel_owner_authority'
@@ -547,6 +558,8 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if m.stem==AUDIT_STEM and not args.schema_snapshot:
+    run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem=='20261104024000_isa_1910_admin_report_root':
     admin_report_root_applied=True
     assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'
@@ -774,16 +787,16 @@ $$;
    # The runner owns a fresh loopback database; no DSN or hosted endpoint is accepted.
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null and to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
     raise RuntimeError('schema snapshot requires the final legacy retirement migration')
-   if args.docker:
-    dump=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
-     '-U','postgres','-d',database,'--schema-only','--no-owner')
-   else:
-    dump=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
-     '-d',database,'--schema-only','--no-owner')
+   dump=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+    '-U','postgres','-d',database,*SNAPSHOT_DUMP_OPTIONS)
+   image_id=docker('inspect','--format','{{.Image}}',container).strip()
+   image_digests=json.loads(docker('image','inspect',image_id,'--format','{{json .RepoDigests}}'))
+   verify_snapshot_source(dump,image_digests or [])
    catalog={}
    relations={
     'storage.buckets': "select id,name,public,file_size_limit,allowed_mime_types from storage.buckets",
     'cron.job': "select jobname,schedule,active,md5(command) as command_md5 from cron.job",
+    'private.admin_audit_policy': "select singleton,closed_retention_days from private.admin_audit_policy",
     'private.report_promotion_policy': "select singleton,reward_valid_months from private.report_promotion_policy",
     'private.billing_compensation_policy': "select environment,enabled,amount_basis from private.billing_compensation_policy",
     'private.report_promotion_catalog': "select environment,product_id,plan,normal_cents,launch_cents from private.report_promotion_catalog",

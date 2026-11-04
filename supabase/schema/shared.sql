@@ -146,6 +146,66 @@ $$;
 
 --
 
+-- Name: append_mail_effect(jsonb, uuid); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.append_mail_effect(event jsonb, account uuid) RETURNS boolean
+    LANGUAGE plpgsql
+    SET search_path TO ''
+    AS $$
+declare e private.admin_effects:=jsonb_populate_record(null::private.admin_effects,event);
+ initial private.admin_effects; stored private.admin_effects;
+begin
+ if e.outcome<>'started' then
+  select * into initial from private.admin_effects where effect_id=e.effect_id and outcome='started' for update;
+  if not found or (initial.actor,initial.request_id,initial.action,initial.effect,initial.target_hash)
+   is distinct from (e.actor,e.request_id,e.action,e.effect,e.target_hash)
+  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ end if;
+ if exists(select 1 from private.admin_effects where effect_id=e.effect_id and outcome='reconciled') then
+  raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status,target_account)
+ values(e.effect_id,e.outcome,e.request_id,e.actor,e.action,e.effect,e.target_hash,e.provider_status,account) on conflict do nothing;
+ select * into stored from private.admin_effects where effect_id=e.effect_id and outcome=e.outcome;
+ if not found or (stored.actor,stored.request_id,stored.action,stored.effect,stored.target_hash,stored.provider_status)
+  is distinct from (e.actor,e.request_id,e.action,e.effect,e.target_hash,e.provider_status)
+  or exists(select 1 from private.admin_effects where effect_id=e.effect_id and outcome='reconciled')
+ then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ return true;
+end $$;
+
+
+--
+
+-- Name: bind_admin_effect_account(); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.bind_admin_effect_account() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare initial private.admin_effects;
+begin
+ if new.outcome='started' then
+  if new.target_account is null then
+   select target_account into new.target_account from private.admin_audit_maintenance_tx
+    where transaction_id=pg_current_xact_id() and not maintenance;
+  end if;
+  if new.target_account is not null then
+   -- Trigger fallback never waits for a UUID after the RPC has locked rows.
+   new.erase_on_close:=private.lock_account_row_write(new.target_account);
+   if new.erase_on_close then new.target_account:=null; end if;
+  end if;
+ else
+  select * into initial from private.admin_effects where effect_id=new.effect_id and outcome='started';
+  new.target_account:=initial.target_account; new.erase_on_close:=initial.erase_on_close;
+ end if;
+ return new;
+end $$;
+
+
+--
+
 -- Name: claim_account_device(uuid, text); Type: FUNCTION; Schema: private; Owner: -
 --
 
@@ -570,6 +630,26 @@ end $$;
 
 --
 
+-- Name: minimize_admin_audit(); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.minimize_admin_audit() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $_$
+declare account uuid; target uuid;
+begin
+ if new.target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then target:=new.target::uuid; end if;
+ -- Nonwaiting UUID fallback serializes insert with erasure after any row locks.
+ for account in select distinct a from unnest(array[(to_jsonb(new)->>tg_argv[0])::uuid,target]) a
+  where a is not null order by a loop perform private.lock_account_row_write(account); end loop;
+ new:=private.admin_audit_minimize(new,tg_argv[0],string_to_array(tg_argv[1],','));
+ return new;
+end $_$;
+
+
+--
+
 -- Name: observe_checkout_payment_unchecked(text, uuid, uuid, uuid, uuid, uuid, bigint, text, text[], uuid, uuid); Type: FUNCTION; Schema: private; Owner: -
 --
 
@@ -612,6 +692,59 @@ CREATE FUNCTION private.record_web_purchase_erasure() RETURNS trigger
     AS $$
 begin
  if new.deleted_at is not null then perform private.enqueue_web_purchase_erasure(new.account_id); end if;
+ return new;
+end $$;
+
+
+--
+
+-- Name: redact_closed_admin_effect(); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.redact_closed_admin_effect() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare previous boolean;
+begin
+ perform 1 from private.admin_effects where effect_id=new.effect_id and outcome='started' for update;
+ if not exists(select 1 from private.admin_effects where effect_id=new.effect_id and erase_on_close) then return null; end if;
+ select maintenance into previous from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
+ insert into private.admin_audit_maintenance_tx(maintenance) values(true)
+ on conflict(transaction_id) do update set maintenance=true;
+ update private.admin_effects set target_hash='erased',target_account=null where effect_id=new.effect_id;
+ if previous is null then delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
+ else update private.admin_audit_maintenance_tx set maintenance=previous where transaction_id=pg_current_xact_id(); end if;
+ return null;
+end $$;
+
+
+--
+
+-- Name: redact_deleted_account_audit(); Type: FUNCTION; Schema: private; Owner: -
+--
+
+CREATE FUNCTION private.redact_deleted_account_audit() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+begin
+ perform pg_advisory_xact_lock(1910,10);
+ insert into private.admin_audit_maintenance_tx default values;
+ update public.admin_audit_log set target='erased'
+ where target in (new.account_id::text,'sha256:'||encode(sha256(convert_to(new.account_id::text,'UTF8')),'hex'));
+ -- Preserve only a nonidentifying marker on pending groups, never the UUID.
+ -- Wait for in-flight closures; the following UPDATE then gets a fresh snapshot.
+ perform 1 from private.admin_effects where target_account=new.account_id for update;
+ update private.admin_effects e set target_account=null,erase_on_close=true,
+ target_hash=case when exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
+ and r.outcome in('succeeded','failed','reconciled')) then 'erased' else e.target_hash end
+ where e.target_account=new.account_id;
+ update public.admin_audit_log set actor_account_id=null where actor_account_id=new.account_id;
+ update private.mail_audit set actor=null where actor=new.account_id;
+ update private.mail_audit set target='erased'
+ where target in (new.account_id::text,'sha256:'||encode(sha256(convert_to(new.account_id::text,'UTF8')),'hex'));
+ delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
  return new;
 end $$;
 
@@ -2265,7 +2398,7 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
 -- Name: race_schedule_publications a_account_write_barrier; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.race_schedule_publications FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''published_by'')::uuid union select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''created_by'')::uuid) owners(account)', 'select ($1->>''created_by'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''created_by'')::uuid)) or ($1->>''published_by'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''published_by'')::uuid))');
+CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.race_schedule_publications FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''created_by'')::uuid union select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''published_by'')::uuid) owners(account)', 'select ($1->>''created_by'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''created_by'')::uuid)) or ($1->>''published_by'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''published_by'')::uuid))');
 
 
 --
@@ -2273,7 +2406,7 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
 -- Name: rate_limits a_account_write_barrier; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.rate_limits FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''user_id'')::uuid union select a.account from public.licenses p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''user_id'')::uuid) a(account) where p2.id=($1->>''license_id'')::uuid) owners(account)', 'select ($1->>''license_id'' is not null and not exists(select 1 from public.licenses p where p.id=($1->>''license_id'')::uuid)) or ($1->>''user_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''user_id'')::uuid))');
+CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.rate_limits FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.licenses p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''user_id'')::uuid) a(account) where p2.id=($1->>''license_id'')::uuid union select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''user_id'')::uuid) owners(account)', 'select ($1->>''license_id'' is not null and not exists(select 1 from public.licenses p where p.id=($1->>''license_id'')::uuid)) or ($1->>''user_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''user_id'')::uuid))');
 
 
 --
@@ -2714,6 +2847,22 @@ GRANT ALL ON FUNCTION auth.uid() TO pilot_profile_writer;
 
 --
 
+-- Name: FUNCTION append_mail_effect(event jsonb, account uuid); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.append_mail_effect(event jsonb, account uuid) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION bind_admin_effect_account(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.bind_admin_effect_account() FROM PUBLIC;
+
+
+--
+
 -- Name: FUNCTION claim_account_device(v_user_id uuid, device_fingerprint text); Type: ACL; Schema: private; Owner: -
 --
 
@@ -2812,6 +2961,14 @@ REVOKE ALL ON FUNCTION private.lock_accounts_before_rows(p_accounts uuid[]) FROM
 
 --
 
+-- Name: FUNCTION minimize_admin_audit(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.minimize_admin_audit() FROM PUBLIC;
+
+
+--
+
 -- Name: FUNCTION observe_checkout_payment_unchecked(p_environment text, p_order_id uuid, p_checkout_id uuid, p_organization_id uuid, p_product_id uuid, p_subscription_id uuid, p_net_amount bigint, p_currency text, p_capabilities text[], p_attempt_id uuid, p_dispatch_token uuid); Type: ACL; Schema: private; Owner: -
 --
 
@@ -2824,6 +2981,22 @@ REVOKE ALL ON FUNCTION private.observe_checkout_payment_unchecked(p_environment 
 --
 
 REVOKE ALL ON FUNCTION private.record_web_purchase_erasure() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION redact_closed_admin_effect(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.redact_closed_admin_effect() FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION redact_deleted_account_audit(); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.redact_deleted_account_audit() FROM PUBLIC;
 
 
 --

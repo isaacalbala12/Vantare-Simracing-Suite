@@ -77,6 +77,14 @@ class MigrationPolicyLintTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('create or replace', result.stdout)
 
+    def test_declaration_without_function_body_rejected(self):
+        self.write_new('''create or replace function public.example() returns integer language sql;
+revoke all on function public.example() from public,anon,authenticated,service_role;
+''')
+        result = self.lint()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('full body', result.stdout)
+
     def test_altered_table_requires_explicit_acl(self):
         self.write_new('alter table public.example add column note text;\n')
         result = self.lint()

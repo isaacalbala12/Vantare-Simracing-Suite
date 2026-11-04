@@ -43,8 +43,8 @@ begin
   response:=response||jsonb_build_object('recipients',recipients);
  elsif p_action='mail_can_send' then
   response:=jsonb_build_object('allowed',response->'allowed'='true'::jsonb and exists(
-   select 1 from private.mail_deliveries d join private.mail_campaigns c on c.id=d.campaign_id
-   where d.id=(p_params->>'delivery_id')::uuid and c.state='sending'));
+   select 1 from private.mail_deliveries d join private.mail_campaigns campaign on campaign.id=d.campaign_id
+   where d.id=(p_params->>'delivery_id')::uuid and campaign.state='sending'));
  end if;
  if p_action='mail_list' then
   perform public.mail_erasure_expire();

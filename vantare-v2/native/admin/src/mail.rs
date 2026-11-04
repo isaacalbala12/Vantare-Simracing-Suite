@@ -431,15 +431,44 @@ mod tests {
     use super::*;
     #[test]
     fn campaign_count_is_bound_to_confirmation_and_canceled_ack_is_valid() {
-        let mut state = crate::state::State::demo();
-        let mut campaign = MailState::demo().campaigns.remove(0);
+        let mut state = crate::state::State::new(true, crate::state::Screen::Mail);
+        let campaign = MailState::demo().campaigns.remove(0);
         let id = campaign.id.clone();
-        state.accept_mail(&Action::MailGet { campaign_id: id.clone() }, &serde_json::json!({"campaign":campaign,"recipients":7})).expect("detail count");
-        state.propose(Action::MailApprove {campaign_id:id.clone(),revision:1,confirm:true,expected_recipients:state.mail.recipients.expect("count")}).expect("confirmation");
-        assert!(matches!(state.confirmation,Some(Action::MailApprove {expected_recipients:7,..})));
-        campaign.state = "canceled".into();
-        state.accept_mail(&Action::MailCancel {campaign_id:id,revision:1}, &serde_json::json!({"campaign":campaign,"recipients":8})).expect("canceled ACK");
-        assert_eq!(state.mail.campaign.expect("campaign").state,"canceled");
+        let mut body = serde_json::json!({"id":campaign.id,"revision":campaign.revision,"name":campaign.name,"template":campaign.template,"target_group":campaign.target_group,"state":campaign.state,"content":campaign.content});
+        state
+            .accept_mail(
+                &Action::MailGet {
+                    campaign_id: id.clone(),
+                },
+                &serde_json::json!({"campaign":body,"recipients":7}),
+            )
+            .expect("detail count");
+        state
+            .propose(Action::MailApprove {
+                campaign_id: id.clone(),
+                revision: 1,
+                confirm: true,
+                expected_recipients: state.mail.recipients.expect("count"),
+            })
+            .expect("confirmation");
+        assert!(matches!(
+            state.confirmation,
+            Some(Action::MailApprove {
+                expected_recipients: 7,
+                ..
+            })
+        ));
+        body["state"] = "canceled".into();
+        state
+            .accept_mail(
+                &Action::MailCancel {
+                    campaign_id: id,
+                    revision: 1,
+                },
+                &serde_json::json!({"campaign":body,"recipients":8}),
+            )
+            .expect("canceled ACK");
+        assert_eq!(state.mail.campaign.expect("campaign").state, "canceled");
     }
     #[test]
     fn four_locales_and_safe_subjects_required() {

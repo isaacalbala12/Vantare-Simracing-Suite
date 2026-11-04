@@ -8879,8 +8879,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Cancelación owner con revisión, idempotente, sin nuevos claims ni HTTP aún no
   iniciados. Pending pasa a skipped; HTTP que ya salió puede terminar. Diálogo
   muestra y envía la cifra del detalle. Sin dependencias nuevas ni cambios _shared.
-- SQL LF18 tests, down exacto de cuerpos/ACL/constraint y reaplicación PASS;
-  CRLF/casos adicionales y gates Rust en marcha. Deno273 PASS, cargo check del
+- SQL LF18 y CRLF21 tests, down exacto de cuerpos/ACL/constraint, rechazo
+  atómico con canceled y reaplicación PASS. Gates Rust finales en marcha. Deno273 PASS, cargo check del
   único crate admin PASS; target propio, compilar.ps1, se cede cola entre gates.
   Hereda matriz de abuso Hub/basura/no-owner/caducado de native-admin.
 - Despliegue exclusivo de Isaac: tras10b, migración181354 antes de Edge/Gestión.

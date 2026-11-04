@@ -8821,8 +8821,14 @@ union all select 'linear_deliveries',outcome::text,count(*)
   activas; pre-check, cuatro carreras nuevas y seis previas PASS. pg_dump/ACL/
   triggers exactos tras down, rechazo atómico del down y segunda pasada/reapply
   PASS. Snapshots de nueve dominios regenerados, write/check independiente PASS.
-  23 tests de tooling, lint propio, Python/diff PASS. PostgreSQL local detenido.
+  25 tests de tooling/volcado, lint propio, Python/diff PASS. PostgreSQL local detenido.
   Sin TS/Rust nuevo; Deno previo 285 PASS. Rust/telemetría/lifecycle omitidos.
+- CI anterior bloqueada por pg_dump16 del host contra servidor Supabase17
+  (run41876366815). Corregido en 48d552e31: el snapshot de auditoría usa el
+  pg_dump del contenedor, como los otros snapshots del runner, conservando
+  owner/ACL. RED de selección de backend antes del arreglo; dos tests GREEN
+  y replay local completo PASS. Docker no disponible localmente; queda la
+  confirmación del backend PG17 en CI. No se modifica el esquema de producto.
 - Producción **915 → 1306 (+391)**: +10 frente a las 381 aceptadas, por espera
   de cierre (+2, incluido comentario) y ACL explícita (+8). Rollback 191 aparte.
   El +627 original incluía 188 de rollback; no se cuenta como producción.

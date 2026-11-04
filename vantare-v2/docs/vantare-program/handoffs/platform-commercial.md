@@ -647,7 +647,11 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   la corrección; ahora el arranque elimina el marker y la generación staged
   ligada por SHA, y un segundo update funciona. PS 5.1/cp65001 y PS 7 pasan.
   Tope de producción autorizado **11.320** para CLI y bugfix: proyección actual
-  **11.254**, con 10.291 en el perímetro y 963 fuera. CI del nuevo HEAD pendiente.
+  **11.254**, con 10.291 en el perímetro y 963 fuera. Rebase posterior sobre
+  nightly `3397df2ea` (#1920 y #1924): el único conflicto, en
+  `build-installer.ps1`, conserva el gate de licencias de #1920 dentro de la
+  configuración importada; `build-candidate.ps1` mantiene su gate de licencia.
+  `no-qa-tests.ps1` pasa tras el rebase. CI del nuevo HEAD pendiente.
   Para retomar K3 hace falta guardar, antes de perder `previous`, el par
   generación + SHA-256 de su manifiesto en un estado ligado al commit y
   autenticado bajo `.operation.lock`. La poda debe aceptar solo esa referencia,

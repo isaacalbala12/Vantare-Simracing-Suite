@@ -1011,6 +1011,14 @@ end$$;
 
 --
 
+-- Name: FUNCTION native_admin_record_mail_erasure(p_job uuid, p_lease uuid, p_request uuid, p_effect uuid, p_outcome text, p_provider_status integer, p_actor uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.native_admin_record_mail_erasure(p_job uuid, p_lease uuid, p_request uuid, p_effect uuid, p_outcome text, p_provider_status integer, p_actor uuid) IS 'Existing admin journal; service queue lease proof. Null actor denotes maintenance (reserved nil UUID); owner actor rechecked for started.';
+
+
+--
+
 -- Name: native_admin_record_mail_send(uuid, uuid, uuid, uuid, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1869,5 +1877,293 @@ ALTER TABLE private.native_admin_gate_rate ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
+
+--
+
+-- Name: FUNCTION native_admin_account(p_account uuid, p_issuer text, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_account(p_account uuid, p_issuer text, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_account_before_1593(p_account uuid, p_issuer text, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_account_before_1593(p_account uuid, p_issuer text, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_account_before_1661_reports(p_account uuid, p_issuer text, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_account_before_1661_reports(p_account uuid, p_issuer text, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_account_deletion(p_actor uuid, p_account uuid, p_issuer text, p_hash text, p_subject text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_account_deletion(p_actor uuid, p_account uuid, p_issuer text, p_hash text, p_subject text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_account_summary(p_account uuid, p_issuer text, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_account_summary(p_account uuid, p_issuer text, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_account_v1(p_account uuid, p_issuer text, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_account_v1(p_account uuid, p_issuer text, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_commission_rate(p_period integer); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_commission_rate(p_period integer) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_creator(p_id uuid, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_creator(p_id uuid, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_creator_lines(p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_creator_lines(p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_creators(p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_creators(p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_execute_before_creator_coupon(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_execute_before_creator_coupon(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_execute_v1(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_execute_v1(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_reports(p_issuer text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_reports(p_issuer text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_require_owner(p_actor uuid); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_require_owner(p_actor uuid) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_review_report(p_actor uuid, p_id uuid, p_status text, p_version text, p_note text); Type: ACL; Schema: private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION private.native_admin_review_report(p_actor uuid, p_id uuid, p_status text, p_version text, p_note text) FROM PUBLIC;
+
+
+--
+
+-- Name: FUNCTION native_admin_begin(p_actor uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_begin(p_actor uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_begin(p_actor uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_claim_change(p_actor uuid, p_request uuid, p_account uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_claim_change(p_actor uuid, p_request uuid, p_account uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_claim_change(p_actor uuid, p_request uuid, p_account uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_claim_mail_erasure(p_request uuid, p_effect uuid, p_actor uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_claim_mail_erasure(p_request uuid, p_effect uuid, p_actor uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_claim_mail_erasure(p_request uuid, p_effect uuid, p_actor uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_claim_mail_send(p_actor uuid, p_request uuid, p_effect uuid, p_campaign uuid, p_revision integer, p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_claim_mail_send(p_actor uuid, p_request uuid, p_effect uuid, p_campaign uuid, p_revision integer, p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_claim_mail_send(p_actor uuid, p_request uuid, p_effect uuid, p_campaign uuid, p_revision integer, p_environment text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_execute(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_execute(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_execute(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_finish_change(p_actor uuid, p_issuer text, p_params jsonb, p_environment text, p_request uuid, p_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_finish_change(p_actor uuid, p_issuer text, p_params jsonb, p_environment text, p_request uuid, p_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_finish_change(p_actor uuid, p_issuer text, p_params jsonb, p_environment text, p_request uuid, p_token uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_gate(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_gate() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_gate() TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_preflight(p_issuer text, p_subject text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_preflight(p_issuer text, p_subject text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_preflight(p_issuer text, p_subject text) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_reconcile_effect(p_reviewer uuid, p_effect uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_reconcile_effect(p_reviewer uuid, p_effect uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_reconcile_effect(p_reviewer uuid, p_effect uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_effect(p_actor uuid, p_event jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_effect(p_actor uuid, p_event jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_mail_erasure(p_job uuid, p_lease uuid, p_request uuid, p_effect uuid, p_outcome text, p_provider_status integer, p_actor uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_mail_erasure(p_job uuid, p_lease uuid, p_request uuid, p_effect uuid, p_outcome text, p_provider_status integer, p_actor uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_mail_erasure(p_job uuid, p_lease uuid, p_request uuid, p_effect uuid, p_outcome text, p_provider_status integer, p_actor uuid) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_mail_send(p_actor uuid, p_request uuid, p_effect uuid, p_delivery uuid, p_environment text, p_outcome text, p_provider_status integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_mail_send(p_actor uuid, p_request uuid, p_effect uuid, p_delivery uuid, p_environment text, p_outcome text, p_provider_status integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_mail_send(p_actor uuid, p_request uuid, p_effect uuid, p_delivery uuid, p_environment text, p_outcome text, p_provider_status integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_mail_sync(p_actor uuid, p_request uuid, p_effect uuid, p_kind text, p_contact uuid, p_lease uuid, p_outcome text, p_provider_status integer); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_mail_sync(p_actor uuid, p_request uuid, p_effect uuid, p_kind text, p_contact uuid, p_lease uuid, p_outcome text, p_provider_status integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_mail_sync(p_actor uuid, p_request uuid, p_effect uuid, p_kind text, p_contact uuid, p_lease uuid, p_outcome text, p_provider_status integer) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_payment(p_environment text, p_payment jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_payment(p_environment text, p_payment jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_payment(p_environment text, p_payment jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_record_refund(p_environment text, p_refund jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_record_refund(p_environment text, p_refund jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_record_refund(p_environment text, p_refund jsonb) TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_release_change(p_actor uuid, p_request uuid, p_account uuid, p_token uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_release_change(p_actor uuid, p_request uuid, p_account uuid, p_token uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_release_change(p_actor uuid, p_request uuid, p_account uuid, p_token uuid) TO service_role;
+
+
+--
+
+-- Name: TABLE admin_effects; Type: ACL; Schema: private; Owner: -
+--
+
+GRANT SELECT ON TABLE private.admin_effects TO service_role;
+
+
+--
+
+-- Name: TABLE admin_pending_effects; Type: ACL; Schema: private; Owner: -
+--
+
+GRANT SELECT ON TABLE private.admin_pending_effects TO service_role;
+
+
+--
+
+-- Name: TABLE admin_audit_log; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT ON TABLE public.admin_audit_log TO service_role;
+
 
 --

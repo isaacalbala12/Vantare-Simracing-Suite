@@ -1,3 +1,8 @@
+## 2026-11-04 - #1896 / VANTA-131 paso 12, Fase A: lint e inmutabilidad
+
+- #1954 rebasado tras el merge de #1955 (`nightly@269d08d1b`). La CI aplica la ADR 0106 solo a migraciones posteriores a `20261104235959` y compara los SQL y rollbacks que ya existen en `origin/nightly`; si cambian, exige una migración nueva. La referencia ausente falla cerrada.
+- El generador deja `shared.sql` en 3.204 líneas (antes 7.570): correo y operaciones tienen archivos propios, y ACL/comentarios se asignan a su tabla o función. PostgreSQL 17 local reproduce la cadena y compara nueve volcados; tests de lint y generador pasan. No se cambia SQL de producto ni se llama a un entorno alojado.
+
 ## 2026-11-04 - #1896 / VANTA-131: excepción de inmutabilidad de 7b
 
 - #1953 fusionado en `nightly@7bd1e7596` enmendó la migración `20261104120500_isa_1896_legacy_retirement.sql` y su rollback después de #1949. El orquestador confirmó que **no se había desplegado en ningún entorno**; esa es la única razón para aceptar la enmienda.
@@ -1170,3 +1175,15 @@ sobre ese HEAD sin conflicto. PostgreSQL local LF y CRLF: prueba aislada
 PASS. Sin despliegue ni llamada a producción.
 [PR draft #1953](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1953)
 contra nightly; pendiente de la CI PG17 y revisión antes de integrar.
+
+Fase A del paso 12, lint: ADR 0106 quedó integrada en nightly. El corte es
+el final del 2026-11-04 UTC, fecha de su merge; así las migraciones de R3 y
+R6 que ya estaban en revisión ese día no se reinterpretan. Desde el
+2026-11-05, la CI exige `.down.sql`, función completa con ACL explícita de
+los cuatro roles, ACL de tablas/vistas/secuencias modificadas, y prohíbe
+`pg_get_functiondef` para parches y `auth.uid()` tanto en up como en down.
+El lint solo lee SQL y no accede a bases de datos. Unitarios 11/11 PASS;
+ejecución sobre la cadena actual 0 nuevas migraciones y 0 errores. El PR
+del lint va aislado del seguimiento 7b5 #1953; no cambia SQL de producto.
+[PR draft #1954](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1954)
+contra nightly; pendiente CI/review antes de integrar.

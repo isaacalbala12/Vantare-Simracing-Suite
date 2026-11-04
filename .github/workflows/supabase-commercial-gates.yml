@@ -23,6 +23,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Lint migrations after ADR 0106
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest supabase.tests.test_migration_policy_lint
+          # The ADR merged on 2026-11-04; in-flight SQL on that date is historical.
+          python3 supabase/tests/lint_migrations.py --cutoff 20261104235959 --baseline-ref origin/nightly
       - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
           deno-version: 2.7.13

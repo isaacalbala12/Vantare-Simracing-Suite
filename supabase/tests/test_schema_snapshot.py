@@ -83,6 +83,41 @@ CREATE FUNCTION public.real_function() RETURNS void AS $$ select null $$ LANGUAG
         self.assertIn('real_function', result)
         self.assertNotIn('vantare_test_dblink_connect', result)
 
+    def test_mail_and_operations_include_comments_and_acl(self):
+        dump = '''-- Name: mail_campaigns; Type: TABLE; Schema: private; Owner: -
+CREATE TABLE private.mail_campaigns (id uuid);
+-- Name: TABLE mail_campaigns; Type: COMMENT; Schema: private; Owner: -
+COMMENT ON TABLE private.mail_campaigns IS 'campaign';
+-- Name: TABLE mail_campaigns; Type: ACL; Schema: private; Owner: -
+GRANT SELECT ON TABLE private.mail_campaigns TO service_role;
+-- Name: operational_access_set(); Type: FUNCTION; Schema: public; Owner: -
+CREATE FUNCTION public.operational_access_set() RETURNS void AS $$ select null $$ LANGUAGE sql;
+-- Name: FUNCTION operational_access_set(); Type: COMMENT; Schema: public; Owner: -
+COMMENT ON FUNCTION public.operational_access_set() IS 'owner';
+-- Name: FUNCTION operational_access_set(); Type: ACL; Schema: public; Owner: -
+GRANT EXECUTE ON FUNCTION public.operational_access_set() TO service_role;
+'''
+        groups = self.module.partition_dump(dump)
+        self.assertIn('mail_campaigns', groups['mail'])
+        self.assertIn('COMMENT ON TABLE', groups['mail'])
+        self.assertIn('GRANT SELECT', groups['mail'])
+        self.assertIn('operational_access_set', groups['operations'])
+        self.assertIn('COMMENT ON FUNCTION', groups['operations'])
+        self.assertIn('GRANT EXECUTE', groups['operations'])
+
+    def test_comment_and_acl_follow_testing_table(self):
+        dump = '''-- Name: testing_contributions; Type: TABLE; Schema: public; Owner: -
+CREATE TABLE public.testing_contributions (id uuid);
+-- Name: TABLE testing_contributions; Type: COMMENT; Schema: public; Owner: -
+COMMENT ON TABLE public.testing_contributions IS 'report';
+-- Name: TABLE testing_contributions; Type: ACL; Schema: public; Owner: -
+GRANT SELECT ON TABLE public.testing_contributions TO authenticated;
+'''
+        groups = self.module.partition_dump(dump)
+        self.assertIn('COMMENT ON TABLE', groups['testing'])
+        self.assertIn('GRANT SELECT', groups['testing'])
+        self.assertNotIn('testing_contributions', groups.get('shared', ''))
+
 
 if __name__ == '__main__':
     unittest.main()

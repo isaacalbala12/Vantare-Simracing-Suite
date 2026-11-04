@@ -431,6 +431,14 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
 
 --
 
+-- Name: account_identities admin_audit_account_erasure; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER admin_audit_account_erasure AFTER UPDATE OF deleted_at ON public.account_identities FOR EACH ROW WHEN (((new.deleted_at IS NOT NULL) AND (old.deleted_at IS NULL))) EXECUTE FUNCTION private.redact_deleted_account_audit();
+
+
+--
+
 -- Name: account_identities mail_forget_deleted_account; Type: TRIGGER; Schema: public; Owner: -
 --
 

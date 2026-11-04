@@ -8799,7 +8799,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   SHARE ROW EXCLUSIVE. Guard exige postgres con BYPASSRLS/superuser, fijando
   propietario de objetos nuevos. Helpers privados sin EXECUTE de app, RPC
   service-only/owner vigente y search_path vacío. Funciones SQL completas.
-- Código validado 4da5d77bb; RED a21f3e1eb antes del cambio. LF/CRLF: 26 mínimos,
+- Código validado 5b2aee12f (contenido idéntico a 4da5d77bb); RED a21f3e1eb antes del cambio. LF/CRLF: 26 mínimos,
   28 de retención/seguridad, 220 de ocho suites activas, pre-check/históricos,
   pg_dump/ACL/triggers exactos tras down, rechazo atómico del down y segunda
   pasada/reapply PASS. Seis carreras existentes PASS. Python/diff PASS.
@@ -8836,7 +8836,14 @@ union all select 'linear_deliveries',outcome::text,count(*)
   SQL antes de native-admin. La firma antigua sin cuenta queda revocada;
   una Edge antigua falla cerrada antes de HTTP. Down exacto cuando los datos
   lo permiten; aborta antes de DDL si actores/hashes redactados impiden volver.
-- Base nightly 269d08d1b; PR draft, VANTA-132 En curso. Sin _shared,
+- Base nightly 6047b8ea6; PR draft, VANTA-132 En curso. Sin _shared,
   apply_clerk_user_event, billing, licencias, secretos ni producción. Sin deploy,
   merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
   UI/lecturas puras. El 11 sigue exclusivamente en R6/12.
+- Rebase tras #1954: se conserva el reparto en nueve dominios y se regeneran
+  los snapshots desde la cadena completa; write/check nuevo PASS. No hay cambios
+  de producto/tests respecto a bf63fb839. 23 tests de tooling y lint oficial
+  (corte 20261104235959, 0 SQL posteriores) PASS. Una exploración con corte
+  artificial 20261104145435 produjo 24 avisos de formato/ACL sobre este SQL del
+  día; ADR 0106 excluye expresamente los PR en revisión del 4-nov. Ese ensayo
+  no es un gate aplicable ni cambia permisos para silenciar el lint futuro.

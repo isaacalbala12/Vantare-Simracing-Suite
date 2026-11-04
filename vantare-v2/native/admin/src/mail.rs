@@ -466,6 +466,17 @@ mod tests {
         assert_eq!(state.mail.campaign.expect("campaign").state, "canceled");
     }
     #[test]
+    fn synchronization_does_not_parse_unrelated_recipient_count() {
+        let mut state = crate::state::State::new(true, crate::state::Screen::Mail);
+        state
+            .accept_mail(
+                &Action::MailSync { cursor: None },
+                &serde_json::json!({"next_cursor":null,"recipients":"unrelated metadata"}),
+            )
+            .expect("sync ACK has no recipient count");
+        assert!(state.mail.sync_cursor.is_none());
+    }
+    #[test]
     fn four_locales_and_safe_subjects_required() {
         let mut c = MailState::demo().campaigns.remove(0);
         assert!(c.validate(true).is_ok());

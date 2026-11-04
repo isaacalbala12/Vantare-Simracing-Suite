@@ -417,7 +417,7 @@ auditoría resuelve la cuenta de un informe desde la misma raíz nueva.
    service_role, authenticated y anon, también vía PUBLIC o roles heredados,
    de la RPC legacy y de los demás escritores/callers. Después mapea, verifica
    y vacía el origen. Este PR no revoca permisos ni copia o borra filas de R6.
-2. Aplicar `20261103224121_isa_1910_admin_report_root.sql` y publicar este PR.
+2. Aplicar `20261104024000_isa_1910_admin_report_root.sql` y publicar este PR.
    La migración bloquea escrituras al origen mientras verifica que esté vacío.
    Cualquier fila, también draft, aborta toda la transacción con
    `native_admin_legacy_reports_require_r6_mapping` (55000), antes de redefinir

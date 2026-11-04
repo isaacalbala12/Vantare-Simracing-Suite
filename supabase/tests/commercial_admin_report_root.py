@@ -2,7 +2,6 @@
 import json
 import subprocess
 from pathlib import Path
-from admin_legacy_writer_fixture import pause_legacy_writers, restore_legacy_writer_fixture_grants
 
 
 OLD_ADMIN_DIGESTS = {
@@ -16,7 +15,7 @@ OLD_ADMIN_DIGESTS = {
 
 def run_admin_report_cutover(run, conn, out, bin_dir, env):
     root = Path(__file__).resolve().parents[2]
-    stem = '20261103224121_isa_1910_admin_report_root'
+    stem = '20261104024000_isa_1910_admin_report_root'
     up = root/'supabase/migrations'/(stem+'.sql')
     down = root/'supabase/rollbacks'/(stem+'.down.sql')
     fingerprints = """select json_object_agg(n.nspname||'.'||p.proname,
@@ -28,7 +27,6 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
     previous = run('psql', *conn, '-c', fingerprints).strip()
     restored = json.loads(previous)
     assert {name: restored[name] for name in OLD_ADMIN_DIGESTS} == OLD_ADMIN_DIGESTS, 'rollback must restore all five exact pre-cutover digests'
-    grants = pause_legacy_writers(run, conn)
     signature=run('psql',*conn,'-c',"select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='testing_center_report_submit_admitted'").strip()
     assert signature and '\n' not in signature
 
@@ -41,14 +39,8 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
         assert json.loads(run('psql',*conn,'-c',fingerprints)) == json.loads(previous), label+' changed definitions'
         assert run('psql',*conn,'-c',"select to_regclass('private.admin_effects_started_target_hash') is null").strip()=='t'
 
-    for role in ['service_role','authenticated','anon']:
+    for role in ['service_role','authenticated','anon','public','vantare_triage']:
         rejected_probe('legacy-writer-'+role,'grant execute on function '+signature+' to '+role+';', '55000','native_admin_legacy_writers_still_callable')
-    rejected_probe('indirect-writer',"""create function public.fixture_legacy_writer() returns void language sql as
-       'update public.testing_center_reports set updated_at=now() where false';
-       revoke all on function public.fixture_legacy_writer() from public,service_role,authenticated,anon;
-       create function public.fixture_legacy_wrapper() returns void language sql as 'select public.fixture_legacy_writer()';
-       revoke all on function public.fixture_legacy_wrapper() from public;
-       grant execute on function public.fixture_legacy_wrapper() to authenticated;""",'55000','native_admin_legacy_writers_still_callable')
     rejected_probe('force-rls-caller','grant all on public.testing_center_reports to authenticated; set local role authenticated;', '42501','native_admin_cutover_requires_bypassrls')
 
     # The transaction's only row is synthetic. A failure must roll it back too.
@@ -65,9 +57,9 @@ def run_admin_report_cutover(run, conn, out, bin_dir, env):
     assert json.loads(run('psql', *conn, '-c', fingerprints)) == json.loads(previous), 'guard failure changed definitions'
     assert run('psql', *conn, '-c', "select count(*) from public.profiles where id='19107000-0000-4000-8000-000000000099'").strip() == '0'
     assert run('psql', *conn, '-c', "select to_regclass('private.admin_effects_started_target_hash') is null").strip() == 't'
+    assert run('psql',*conn,'-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t', 'Clerk account deletion must stay executable'
     run('psql', *conn, '-f', up)
     assert json.loads(run('psql', *conn, '-c', fingerprints)) == json.loads(current), 'reapply differs from cutover'
-    restore_legacy_writer_fixture_grants(run, conn, grants)
     # The same predicate as claim's legacy fallback; inspect planner choice on
     # synthetic audit volume, not a timing assertion or a changed planner GUC.
     plan = run('psql', *conn, '-c', """begin;

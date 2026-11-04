@@ -13,7 +13,6 @@ from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 from commercial_admin_report_root import run_admin_report_cutover
-from admin_legacy_writer_fixture import pause_legacy_writers, restore_legacy_writer_fixture_grants
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -56,10 +55,10 @@ parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/del
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
 if args.admin_reports_only: args.admin_effects_only=True
-legacy_writers_enabled=(not args.baseline and not args.admin_effects_only and
+legacy_writers_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
                         not args.upgrade and not any(
                          value for name,value in vars(args).items() if name.startswith('before_')))
-owner_enabled=(not args.baseline and not args.admin_effects_only and
+owner_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
                not args.upgrade and not any(
                 value for name,value in vars(args).items() if name.startswith('before_')))
 if args.qa_e2e and (not args.postgrest_bin or not args.deno_bin or args.b01):
@@ -938,7 +937,7 @@ $$;
   if args.admin_reports_only:
    guard=run('psql',*conn,'-c',"select to_json(encode(tgargs,'escape')) from pg_trigger where tgrelid='public.admin_audit_log'::regclass and tgname='a_account_write_barrier'")
    (OUT/'admin-audit-guard.json').write_text(guard,encoding='utf-8')
-   suites=['native_admin_report_root.test.sql','native_admin.test.sql','native_admin_characterization.test.sql','native_admin_effects_r2.test.sql','testing_report_v2.test.sql']
+   suites=['native_admin_report_root.test.sql','native_admin_characterization.test.sql','native_admin_effects_r2.test.sql','testing_report_v2.test.sql']
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:

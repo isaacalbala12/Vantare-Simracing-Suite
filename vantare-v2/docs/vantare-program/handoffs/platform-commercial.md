@@ -676,10 +676,13 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   un marker sin commit se descarta y la huérfana autenticada se intenta borrar;
   un archivo bloqueado deja aviso y no bloquea la recuperación. La matriz
   conserva los 45 rechazos por motivo y el gate ZIP usa el extractor de Setup.
-  **Punto 10 del Hub aprobado:** la ejecución directa del Hub instalado exige
-  la raíz de datos de su propia generación antes de resolver rutas o escribir;
-  el Hub de desarrollo conserva el respaldo a `%LOCALAPPDATA%`. La prueba de
-  proceso usa copias bajo QA y comprueba el rechazo sin archivos nuevos.
+  **Punto 10 del Hub, re-review de #1945:** la ejecución directa del Hub
+  instalado exige la raíz de datos de su generación antes de resolver rutas o
+  escribir. Si falta o difiere, abre el `Vantare.exe` raíz y termina; los
+  fallos al resolver rutas o abrir el lanzador quedan en el log. Las rutas se
+  canonicalizan y los tres consumidores usan una identidad instalada común.
+  El Hub de desarrollo conserva `%LOCALAPPDATA%`; un modo QA de solo lectura
+  permite comprobarlo con el binario real sin abrir UI ni tocar registro.
   El paso 9 (renovación opcional tras confirmación) sigue aparcado; K3, retención
   de huérfanas históricas, exige diseño nuevo con SHA ligado al estado.
   **Antes de publicar:** Isaac prueba Setup con bytes distribuidos sobre raíces
@@ -691,10 +694,14 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
   Paso 10 en [PR draft #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
-  contra nightly, código `3259b0ade`; CI pendiente y Plane por revisar.
-  Producción tras ese paso: **11.315/11.320**
-  (perímetro 10.243 Rust + 53 Cleanup; fuera 1.019, incluidas 56 líneas nuevas
-  del Hub). Sin release; siguen pendientes los dos gates manuales de Isaac.
+  contra nightly, código `74a075e3d`; revisión Sonnet corregida, CI pendiente
+  y Plane por revisar. Gates del Hub: fmt, check, Clippy y batería completa
+  verdes (595 correctos, 4 ignorados; suites adicionales correctas). El test
+  de proceso y el probe de desarrollo con `%LOCALAPPDATA%` QA pasan.
+  Producción tras esa revisión: **11.319/11.320**
+  (perímetro 10.221 Rust + 53 Cleanup; fuera 1.045: +82 en Hub y −22 por
+  unificar identidad instalada en el perímetro). Sin release; siguen pendientes
+  los dos gates manuales de Isaac.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

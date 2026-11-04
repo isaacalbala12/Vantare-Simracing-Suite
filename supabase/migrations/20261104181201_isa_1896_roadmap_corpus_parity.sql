@@ -22,7 +22,8 @@ begin
   -- v2 is also the native deny_unknown_fields contract. Reject metadata that
   -- could otherwise persist publicly while the strict readers reject it.
   if p_document->>'schemaVersion' = '2' and (
-    p_document->>'schemaVersion' <> '2'
+    p_document->'schemaVersion' <> '2'::jsonb
+    or p_document->>'schemaVersion' <> '2'
     or exists(select 1 from jsonb_object_keys(p_document) k
       where k not in ('schemaVersion', 'items'))) then
     return false;

@@ -250,6 +250,14 @@
       "expected": false
     },
     {
+      "name": "schema_string",
+      "path": [
+        "schemaVersion"
+      ],
+      "value": "2",
+      "expected": false
+    },
+    {
       "name": "schema_boolean",
       "path": [
         "schemaVersion"

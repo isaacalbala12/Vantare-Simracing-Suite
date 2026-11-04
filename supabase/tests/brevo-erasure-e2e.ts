@@ -270,3 +270,54 @@ Deno.test("real admin mail_cleanup records the verified actor and DELETE404", as
       !JSON.stringify(rows).includes("https://"),
   );
 });
+
+Deno.test("nine started recorder failures preserve pending job and attempts", async () => {
+  const id = await setup(6);
+  await sql(
+    `create function public.fixture_brevo_recorder_down() returns trigger language plpgsql as $$begin
+    if new.effect='brevo_delete' and new.outcome='started' then raise exception 'fixture_recorder_unavailable'; end if;
+    return new; end$$;
+    create trigger fixture_brevo_recorder_down before insert on private.admin_effects
+    for each row execute function public.fixture_brevo_recorder_down();`,
+  );
+  let http = 0;
+  const codes: unknown[] = [];
+  try {
+    for (let n = 0; n < 9; n++) {
+      // Simulate the next maintenance run after the old claim lease expired.
+      await sql(
+        "update private.mail_contact_erasures set lease_until=clock_timestamp()-interval '1 second' where id=" +
+          lit(id) + " and state='processing'",
+      );
+      const response = await handleMailCleanup(request(), {
+        env,
+        rpc,
+        fetch: () => {
+          http++;
+          return Promise.resolve(new Response(null, { status: 204 }));
+        },
+      });
+      codes.push((await response.json()).code);
+    }
+    const job = JSON.parse(
+      await sql(
+        "select to_json(j) from private.mail_contact_erasures j where id=" +
+          lit(id),
+      ),
+    );
+    assert(
+      job.state === "pending" && job.attempts === 0 && job.email &&
+        !job.failed_at,
+      "audit outage must not exhaust erasure attempts: " +
+        JSON.stringify({ state: job.state, attempts: job.attempts }),
+    );
+    assert(
+      http === 0 &&
+        codes.every((code) => code === "mail_cleanup_audit_unavailable"),
+    );
+  } finally {
+    await sql(
+      "drop trigger fixture_brevo_recorder_down on private.admin_effects; drop function public.fixture_brevo_recorder_down()",
+    );
+  }
+});

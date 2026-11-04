@@ -151,10 +151,11 @@ function Set-ZipHeader([string]$Path,[string]$Member,[int]$Offset,[byte[]]$Value
     if(-not $found){throw "Cabecera ZIP no encontrada: $Member"}
     [IO.File]::WriteAllBytes($Path,$bytes)
 }
-function Assert-PackageRejected([string]$Case,[string]$Path) {
+function Assert-PackageRejected([string]$Case,[string]$Path,[string]$Expected) {
     $rejected=$false
     try{Test-BuildPackage $Path '0.0.989' 'beta' $PackageVerifier|Out-Null}catch{
         if($_.Exception.Message -notlike 'Proceso rechazó la petición:*'){throw}
+        if(-not $_.Exception.Message.Contains($Expected)){throw "Rechazo inesperado en ${Case}: $($_.Exception.Message)"}
         $rejected=$true
     }
     if(-not $rejected){throw "Paquete inválido aceptado: $Case"}
@@ -172,26 +173,26 @@ New-BuildZip $packageTree (Join-Path $root 'portable-like.zip')
 $readZip=[IO.Compression.ZipFile]::OpenRead((Join-Path $root 'portable-like.zip'))
 try{if(-not $readZip.GetEntry('empty/.vantare-directory')){throw 'Portable perdió su carpeta de datos'}}finally{$readZip.Dispose()}
 foreach($case in @(
-    @{name='directory';extra='empty/';directory=$true},
-    @{name='device';member='NUL.exe'},
-    @{name='traversal';member='../escape.txt'},
-    @{name='absolute';member='/absolute.txt'},
-    @{name='env';member='.env'},
-    @{name='data';member='data/user.txt'},
-    @{name='case-duplicate';extra='bin/FIXTURE.txt'},
-    @{name='reparse';reparse=$true},
-    @{name='large-manifest';large=$true},
-    @{name='missing-field';missing=$true}
+    @{name='directory';extra='empty/';directory=$true;reason='Miembro ZIP no autorizado o duplicado'},
+    @{name='device';member='NUL.exe';reason='Lista de archivos inválida o duplicada'},
+    @{name='traversal';member='../escape.txt';reason='Lista de archivos inválida o duplicada'},
+    @{name='absolute';member='/absolute.txt';reason='Lista de archivos inválida o duplicada'},
+    @{name='env';member='.env';reason='Lista de archivos inválida o duplicada'},
+    @{name='data';member='data/user.txt';reason='Lista de archivos inválida o duplicada'},
+    @{name='case-duplicate';extra='bin/FIXTURE.txt';reason='Lista de archivos inválida o duplicada'},
+    @{name='reparse';reparse=$true;reason='Enlace ZIP rechazado'},
+    @{name='large-manifest';large=$true;reason='Manifiesto demasiado grande'},
+    @{name='missing-field';missing=$true;reason='Manifiesto, esquema o canal incompatible'}
 )){
     $item=New-FixturePackage -Name $case['name'] -Member $(if($case['member']){$case['member']}else{'bin/fixture.txt'}) -Extra $case['extra'] -Directory:([bool]$case['directory']) -LargeManifest:([bool]$case['large']) -MissingField:([bool]$case['missing']) -Reparse:([bool]$case['reparse'])
-    Assert-PackageRejected $case.name $item
+    Assert-PackageRejected $case.name $item $case.reason
 }
 $method=New-FixturePackage compression
-Set-ZipHeader $method 'bin/fixture.txt' 8 ([byte[]]@(99,0)) -Local
-Set-ZipHeader $method 'bin/fixture.txt' 10 ([byte[]]@(99,0))
-Assert-PackageRejected compression $method
+Set-ZipHeader $method 'bin/fixture.txt' 8 ([byte[]]@(12,0)) -Local
+Set-ZipHeader $method 'bin/fixture.txt' 10 ([byte[]]@(12,0))
+Assert-PackageRejected compression $method 'Compresión ZIP no compatible'
 $short=New-FixturePackage declared-short
 Set-ZipHeader $short 'bin/fixture.txt' 22 ([BitConverter]::GetBytes([uint32]1)) -Local
 Set-ZipHeader $short 'bin/fixture.txt' 24 ([BitConverter]::GetBytes([uint32]1))
-Assert-PackageRejected declared-short $short
+Assert-PackageRejected declared-short $short 'Tamaño ZIP extraído incorrecto'
 "PASS build-tooling: stdin=$stdinBytes; inventario, sidecars, manifiesto y firma QA"

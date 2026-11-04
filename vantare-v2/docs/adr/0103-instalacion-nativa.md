@@ -298,7 +298,8 @@ arranca motor 2. Si el primer motor 2 no confirma el arranque, no se vuelve a
 ejecutar el motor 1: se muestra un aviso que ofrece **Reparar**. La `data/` de
 la generación anterior se conserva intacta; ninguna elección automática de
 datos sustituye esa recuperación explícita. Las referencias de motor 1 pueden
-seguir en `state.json` para proteger sus datos hasta la retención del paso 8.
+seguir en `state.json` para proteger sus datos hasta una retención futura con
+SHA ligado al estado; K3 quedó diferido tras evaluar el paso 8.
 
 La prueba sobre las instalaciones reales 0.0.975 y 0.0.988 deja de bloquear la
 programación. **Bloquea la publicación** de cualquier release que contenga
@@ -344,6 +345,14 @@ El paso 8 concluye que un manifiesto autoconsistente no basta para atribuir
 propiedad sin un SHA ligado al estado; la retención necesita un diseño nuevo.
 Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
 residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
+
+El marker transitorio `boot-pending.json` de un update guarda además
+`stagedGeneration` y `manifestSha256` antes de mover el staged. Si el proceso
+muere antes del commit de `state.json`, el lanzador reconoce que la versión del
+marker no es la activa, verifica el SHA del manifiesto de esa generación y
+retira el intento. Si un lock impide borrar la huérfana, registra el fallo,
+retira el marker y permite arrancar y reintentar la actualización. Un marker
+post-commit sigue exigiendo confirmación o rollback normal.
 
 
 ### Poda adicional 5b autorizada

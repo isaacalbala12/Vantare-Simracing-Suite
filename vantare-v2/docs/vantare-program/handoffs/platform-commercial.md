@@ -632,8 +632,8 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   más 963 fuera = **11.226/11.250**, frente a 14.180 de partida (−20,9 %).
   Rust tests 3.690 y PowerShell tests/tooling 1.874, medidos aparte. El motor
   PowerShell y LegacyRunner están retirados; Cleanup mínimo permanece. Plane
-  VANTA-127 sigue En curso para el paso 8. Próximo trabajo: retención K3 si
-  cabe limpiamente, límites del ZIP y test de corte por checkpoint; el gate
+  VANTA-127 sigue En curso para el cierre del PR #1935. K3 quedó diferido;
+  los límites del ZIP y el corte por checkpoint ya están implementados. El gate
   de VM sobre 975/988 reales continúa siendo condición de publicación.
 - Paso 8 en [PR draft #1935](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1935),
   rama `vantareapp/isa-1840-paso8-retencion`, base nightly `8ca3e63be`:
@@ -647,11 +647,18 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   la corrección; ahora el arranque elimina el marker y la generación staged
   ligada por SHA, y un segundo update funciona. PS 5.1/cp65001 y PS 7 pasan.
   Tope de producción autorizado **11.320** para CLI y bugfix: proyección actual
-  **11.254**, con 10.291 en el perímetro y 963 fuera. Rebase posterior sobre
+  **11.259**, con 10.243 Rust + 53 Cleanup en el perímetro y 963 fuera. La
+  cifra 10.238 de la review anterior contaba solo Rust; 10.238 + 53 + 963 =
+  11.254. Rebase posterior sobre
   nightly `3397df2ea` (#1920 y #1924): el único conflicto, en
   `build-installer.ps1`, conserva el gate de licencias de #1920 dentro de la
   configuración importada; `build-candidate.ps1` mantiene su gate de licencia.
   `no-qa-tests.ps1` pasa tras el rebase. CI del nuevo HEAD pendiente.
+  Re-review: CI compila `verify-package` una vez y lo pasa al tooling; los doce
+  rechazos exigen motivo concreto, incluido método 12 inspeccionado con
+  `by_index_raw`. `build-installer.ps1` importa la configuración antes de
+  verificar y reutiliza su target. El corte `before-commit` también se recupera;
+  un binario huérfano bloqueado se deja con aviso y no impide retirar el marker.
   Para retomar K3 hace falta guardar, antes de perder `previous`, el par
   generación + SHA-256 de su manifiesto en un estado ligado al commit y
   autenticado bajo `.operation.lock`. La poda debe aceptar solo esa referencia,
@@ -826,7 +833,7 @@ Isaac autorizó retirar LegacyRunner en los pasos 6–7. La VM con el Setup dist
 
 5b, decisión de retirada autorizada: sin catálogo manual, solo active/previous
 ligados por SHA autorizan miembros. Los binarios huérfanos se conservan y el log
-debe indicar ruta y motivo; limpieza pendiente de decidir en el paso 8. Se mantienen
+debe indicar ruta y motivo; la limpieza K3 quedó diferida hasta ligar SHA al estado. Se mantienen
 los archivos ajenos de bin/. Test del residuo/diagnóstico y gates aún pendientes.
 
 

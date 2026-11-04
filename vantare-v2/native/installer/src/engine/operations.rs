@@ -732,8 +732,12 @@ pub fn discard_stale_boot_marker(root: &Path) -> Result<bool> {
                 };
                 if super::Manifest::authenticated(&orphan, &reference, &state.channel)
                     .is_ok_and(|manifest| manifest.version == marker["version"])
+                    && let Err(error) = disk::remove_owned_tree(&root, &orphan)
                 {
-                    disk::remove_owned_tree(&root, &orphan)?;
+                    eprintln!(
+                        "Arranque: no se pudo retirar la generación staged huérfana {}: {error}",
+                        orphan.display()
+                    );
                 }
             }
             disk::remove_file(&marker_path)?;

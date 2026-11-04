@@ -20,8 +20,9 @@ El inventario público cerrado está en `public-inventory.json`: diez EXE y 97 r
 extractor Rust autenticado que Setup. El build solo calcula el SHA del ZIP y
 comprueba su inventario público; los límites, rutas y hashes internos se validan
 en Rust. `New-BuildZip` no emite entradas de directorio.
-El portable lleva un archivo vacío en `data/` para que esa carpeta exista al
-extraer el ZIP sin depender de entradas de directorio.
+El archivo vacío `data/.vantare-directory` es parte del contrato del ZIP
+portable: conserva la carpeta `data/` al extraerlo sin entradas de directorio.
+Se conserva como dato opaco en futuras actualizaciones.
 
 El gate de distribución de #1917 se aplica a `build-candidate.ps1`: rechaza las features QA del grafo resuelto y rastrea marcadores QA en los EXE antes de copiarlos y en el árbol final. `build-installer.ps1` comprueba también los EXE del ZIP y de Setup/Uninstall. `native/scripts/check-qa-distribution.ps1` prueba el rechazo positivo y un paquete release bajo un target aislado en la CI.
 

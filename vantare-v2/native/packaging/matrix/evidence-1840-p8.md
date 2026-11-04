@@ -12,6 +12,9 @@ Los tests de extremo a extremo en PS 5.1 con cp 65001 y PS 7 aceptan un ZIP
 válido y rechazan doce variantes: compresión, directorio, NUL.exe, `..`, ruta
 absoluta, `.env`, `data`, duplicado por mayúsculas, reparse 0x400, manifiesto
 mayor de 64 KiB, tamaño declarado menor y campos obligatorios ausentes.
+La re-review exige un fragmento de causa concreto por variante. El método 12
+se inspecciona con `by_index_raw`, antes de que `zip` intente abrir un decoder,
+y llega al rechazo `Compresión ZIP no compatible` de `package.rs`.
 
 El test `abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state`
 ahora también mata el proceso hijo en `staged`, después de mover la generación
@@ -29,6 +32,9 @@ Ahora el marker atómico liga ID y SHA del manifiesto de la generación staged;
 el arranque comprueba que no hubo commit, elimina el marker y la generación
 autenticada, y el segundo update a 1.0.1 pasa. Los 31 tests activos de
 `installation_write` pasan tras el cambio.
+La repetición también cubre `before-commit`: con un miembro huérfano bloqueado,
+el borrado se registra como aviso, se quita el marker y el siguiente update
+funciona. `after-commit` conserva su confirmación/rollback normal.
 
 K3 se evaluó y no se incluyó: el estado no conserva el SHA de una generación
 huérfana, así que un manifiesto autoconsistente no prueba propiedad para
@@ -37,6 +43,8 @@ producción frente a un margen final de 24, y además podía bloquear el plazo d
 confirmación si se ejecutaba allí. Los binarios huérfanos siguen conservados
 con diagnóstico; todas las `data/` permanecen intactas. Requiere un diseño
 aprobado que establezca una vinculación fiable antes de purgarlos.
-La proyección actual del paso 8 es 10.291 líneas de producción en el perímetro
-más 963 fuera, **11.254/11.320**. El aumento autorizado cubre la recuperación
+La proyección actual del paso 8 es 10.296 líneas de producción en el perímetro
+más 963 fuera, **11.259/11.320** tras la re-review. La cifra de 10.238 Rust
+de la primera review omitía las 53 líneas de Cleanup: 10.238 + 53 + 963 =
+11.254 antes de estos ajustes. El aumento autorizado cubre la recuperación
 del corte y el modo CLI; tests y tooling se contabilizan aparte.

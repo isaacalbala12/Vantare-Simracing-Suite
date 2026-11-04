@@ -1199,7 +1199,7 @@ fn abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state() {
             fs::read(fixture.data().join("opaque.bin")).expect("data ready before activation"),
             b"opaque\0user\xffbytes"
         );
-        if point == "staged" {
+        if point != "after-commit" {
             let marker = fixture.root.join("boot-pending.json");
             assert!(marker.exists(), "crash left a pending trial before commit");
             let pending = disk::read_json(&marker, Some(4096)).unwrap();
@@ -1208,9 +1208,25 @@ fn abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state() {
                 .join("generations")
                 .join(pending["stagedGeneration"].as_str().unwrap());
             assert!(orphan.exists(), "staged generation reached disk");
+            let locked = if point == "before-commit" {
+                Some(
+                    fs::OpenOptions::new()
+                        .read(true)
+                        .share_mode(0)
+                        .open(orphan.join(&test_members()[0]))
+                        .expect("lock one orphan member"),
+                )
+            } else {
+                None
+            };
             assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
             assert!(!marker.exists(), "startup clears the uncommitted trial");
-            assert!(!orphan.exists(), "startup removes the authenticated orphan");
+            assert_eq!(
+                orphan.exists(),
+                locked.is_some(),
+                "failed cleanup is best effort"
+            );
+            drop(locked);
             let cancel = AtomicBool::new(false);
             let mut control = Control {
                 cancel: &cancel,

@@ -1054,3 +1054,5 @@ PR draft [#1934](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1
 Review Sonnet de #1934: P1 real en los tres escritores de informes. Un test de envío por `testing_report_v2_submit_admitted` reprodujo 12 fallos de 16 antes de corregirlo: la membresía owner antigua enviaba, el owner operativo sin membresía no. La migración aplica la misma autoridad owner y los mismos canales tester en los tres escritores; su down restaura cuerpos y ACL exactos. Las dos rutas `service_role` de disposición y enlace PostHog quedan en [#1936](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1936), fuera de este PR.
 
 Verificación posterior: PostgreSQL local con migraciones LF y CRLF, 16/16 envíos y 134 rutas/795 comprobaciones PASS en ambos formatos; el runner compara `pg_get_functiondef` y `proacl` de las cuatro funciones antes del up y después del down. Sin producción ni despliegue.
+
+Código corregido `bb8e25d62`, publicado en la misma rama de #1934 contra `nightly@b50183217`; CI del nuevo HEAD pendiente. La issue #1928 y Plane VANTA-131 reflejan esta entrega.

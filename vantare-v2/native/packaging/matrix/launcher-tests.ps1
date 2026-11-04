@@ -23,7 +23,10 @@ function Assert-Launch([bool]$Value,[string]$Message){if(-not $Value){throw "LAU
 function Wait-LaunchFile([string]$Path,$Process){
     $deadline=[DateTime]::UtcNow.AddSeconds(45)
     while(-not(Test-Path -LiteralPath $Path)){
-        if($Process.WaitForExit(20) -or [DateTime]::UtcNow -ge $deadline){throw "LAUNCHER_WAIT_FAILED: $Path"}
+        if($Process.WaitForExit(20) -or [DateTime]::UtcNow -ge $deadline){
+            if(-not $Process.HasExited){$Process.Kill();$Process.WaitForExit()}
+            throw "LAUNCHER_WAIT_FAILED: $Path $($Process.StandardError.ReadToEnd()) $($Process.StandardOutput.ReadToEnd())"
+        }
     }
 }
 function Invoke-Writer([string]$Action,[string]$Version=''){
@@ -43,6 +46,8 @@ function Start-Root([switch]$WrongToken) {
     $info.FileName=Join-Path $install 'Vantare.exe'
     $info.Arguments='--root -Root "'+$install+'" --background'
     $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+    $info.RedirectStandardOutput=$true
+    $info.RedirectStandardError=$true
     $info.EnvironmentVariables['TEMP']=$qa;$info.EnvironmentVariables['TMP']=$qa
     $info.EnvironmentVariables['LOCALAPPDATA']=$local
     $info.EnvironmentVariables['VANTARE_QA_LOCAL_APP_DATA']=$local

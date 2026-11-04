@@ -1,6 +1,7 @@
 # Test-only filesystem and process helpers. No installed PowerShell engine is loaded.
 #requires -Version 5.1
 Set-StrictMode -Version Latest
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 function Get-NativeHash([string]$Path) {
@@ -48,10 +49,17 @@ function Get-MatrixMembers {
 }
 function Open-NativeRoot([string]$Path,[switch]$Initialize) {
     $full=Assert-MatrixRoot $Path
-    if($Initialize){[IO.Directory]::CreateDirectory($full)|Out-Null}
+    if($Initialize){
+        [IO.Directory]::CreateDirectory($full)|Out-Null
+        [IO.File]::WriteAllText((Join-Path $full '.vantare-native'),'offline-candidate-v1')
+    }
     $full
 }
 function Set-NativeState([string]$Root,$State) {Write-NativeJson (Join-Path $Root 'state.json') $State}
+function Read-NativeState([string]$Root) {
+    $null=Assert-MatrixRoot $Root
+    Get-Content -LiteralPath (Join-Path $Root 'state.json') -Raw | ConvertFrom-Json
+}
 function Get-NativeDataIndex([string]$Root) {
     $entries=@(Get-ChildItem -LiteralPath $Root -Recurse -Force -ErrorAction SilentlyContinue | Sort-Object FullName | ForEach-Object {
         $relative=$_.FullName.Substring($Root.Length+1).Replace('\','/')

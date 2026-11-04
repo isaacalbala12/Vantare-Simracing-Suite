@@ -124,7 +124,14 @@ try {
             # Historical snapshots remain evidence. Only the operation outcome
             # and data invariants are contractual; JSON formatting is not.
             $old=$expected.PSObject.Properties[$name]
-            if ($null -eq $old -or $old.Value.exit -ne $row.exit -or $old.Value.existing_data_files -ne $row.existing_data_files) { throw "MATRIX_OUTCOME_CHANGED $name (logs: $caseRoot)" }
+            if($null -eq $old){throw "MATRIX_OUTCOME_CHANGED $name (logs: $caseRoot)"}
+            # Rust refuses rollback without boot-pending; the retired script returned success as a no-op.
+            $expectedExit=if($operation -ceq 'Rollback' -and $case -in @('rc-options','pending')){1}else{$old.Value.exit}
+            if ($expectedExit -ne $row.exit -or $old.Value.existing_data_files -ne $row.existing_data_files) { throw "MATRIX_OUTCOME_CHANGED $name (logs: $caseRoot)" }
+            if($operation -ceq 'Rollback' -and $case -in @('rc-options','pending')){
+                $beforeState=(Get-Content -LiteralPath (Join-Path $caseRoot 'before-state.json') -Raw|ConvertFrom-Json).sha256
+                if((Get-NativeHash (Join-Path $install 'state.json')) -cne $beforeState){throw 'MATRIX_REJECTED_ROLLBACK_CHANGED_STATE'}
+            }
             $requiresState=$operation -in @('Install','Repair','Update','Rollback')
             if($exitCode -eq 0 -and $operation -ceq 'Apply'){
                 $apply=Get-Content -LiteralPath (Join-Path $caseRoot 'apply-result.json') -Raw|ConvertFrom-Json

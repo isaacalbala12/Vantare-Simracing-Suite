@@ -41,6 +41,7 @@ try {
     if($Operation -in @('Check','Apply','Confirm','Timeout','Rollback')){
         if(-not $WriteEngine){throw 'MATRIX_NATIVE_WRITER_REQUIRED'}
         $beforeState=if(Test-Path -LiteralPath (Join-Path $qaInstallRoot 'state.json')){Get-NativeHash (Join-Path $qaInstallRoot 'state.json')}else{$null}
+        if($Operation -ceq 'Rollback'){Write-NativeJson (Join-Path $qaCaseRoot 'before-state.json') @{sha256=$beforeState}}
         $applied=Test-Path -LiteralPath (Join-Path $qaInstallRoot 'staging/pending.json')
         $contract=Join-Path $qaCaseRoot 'qa-action.json'
         Write-NativeJson $contract @{

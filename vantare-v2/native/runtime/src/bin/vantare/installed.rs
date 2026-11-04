@@ -322,12 +322,17 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     if !probe.is_file() {
         return Err(io_error("Falta Hub QA"));
     }
+    let (_, generation) = active(root)?;
+    let hub_image = generation.join("bin/vantare-hub.exe");
+    if !hub_image.is_file() {
+        return Err(io_error("Falta Hub QA en la generación activa"));
+    }
     let token =
         std::env::var("VANTARE_BOOT_TOKEN").map_err(|_| io_error("Falta token de arranque QA"))?;
     let mut hub = Service::new(
         "Hub QA",
         Program {
-            path: probe.to_path_buf(),
+            path: hub_image,
             args: vec![root.to_string_lossy().into_owned()],
         },
         0,

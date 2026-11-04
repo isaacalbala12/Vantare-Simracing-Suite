@@ -595,14 +595,27 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   no unificar `operations::install/update`, `root/ready/recover_boot`, la
   renovación de `Vantare.exe` ni la validación de `update_feed/stage`; tampoco
   retirar la compatibilidad Run/accesos 975/988 o `retained-data`.
-- WIP rebasado en `vantareapp/isa-1840-paso7-retirar-powershell` sobre
-  `a75c9b7aa`. Las formas de acceso y la raíz 975/988 se restauraron en el
-  árbol de trabajo conforme a la decisión vigente. La medición anterior a
-  los gates era **10.250** líneas del perímetro y **958** netas fuera,
-  **11.208** en total, dentro de los nuevos topes. Los P3 del paso 6 (sesión
-  real en la matriz, aislamiento del token y `rejectedVersion` tras crash)
-  están en este WIP; faltan su verificación final, PR draft y actualización
-  del HEAD. Plane VANTA-127 permanece En curso; sin merge ni release.
+- Paso 7 en `vantareapp/isa-1840-paso7-retirar-powershell`: se retiran
+  `candidate.ps1`, `beta.ps1`, NSIS, MSIX y sus pruebas huérfanas, conservando
+  `installer-cleanup.ps1`. Las formas de acceso y la raíz 975/988 se conservan.
+  Los P3 de la cola están implementados: sesión Rust real en la matriz, token
+  ausente en servicios que no son Hub y `rejectedVersion` tras caída en rollback.
+  La medición final es **10.250** líneas de producción del perímetro y **963**
+  fuera, **11.213** en total; dentro de 10.300 y 11.250. `qa_session` cuenta como
+  producción. Rust tests: **3.658**; PowerShell tests/tooling: **1.566**, medidos
+  aparte con `installer-lines.py --projection`.
+- QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
+  **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
+  lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.
+  Los casos `rc-options` y `pending` rechazan Rollback sin `boot-pending` y
+  preservan `state.json`; el antiguo script devolvía éxito sin operar.
+  Rust Installer **78/78**, `vantare.exe` **53/53**, lifecycle real **25/25**,
+  telemetría **10/10**; check, Clippy `-D warnings`, fmt y diff check pasan.
+  La batería Hub obtuvo 591 correctos, 4 ignorados y 2 smokes sin el binario
+  auxiliar Storage en el target; `core_e2e` de Runtime agotó dos veces sus
+  10 s sin recibir una foto, sin cambios en ese código. Ambos se declaran en
+  el PR draft y quedan para la CI; no se debilitaron ni omitieron tests.
+  Plane VANTA-127 permanece En curso; sin merge ni release.
 
 ### Paso 2 · ADR 0103 listo para revisión (1-nov-2026)
 

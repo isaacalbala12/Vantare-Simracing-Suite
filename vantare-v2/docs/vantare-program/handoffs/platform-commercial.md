@@ -8149,3 +8149,6 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Gates SQL/Rust/lifecycle/telemetría omitidos: no cambia schema ni native.
 - Evidencia isa-1910-paso5c. VANTA-132 En curso; integración Brevo y pasos6–10
   pendientes. Paso11 sigue exclusivamente en la base R6/12.
+- PR draft [#1942](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1942) a nightly,
+  código validado bca121f45; HEAD documental final publicado en el PR. CI pendiente.
+- Medición frente a d1616b2f7: producción +29/−0; tests +176/−0; docs +31/−0.

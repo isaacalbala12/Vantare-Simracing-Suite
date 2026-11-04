@@ -3,13 +3,15 @@
 Base nightly `8ca3e63be6ab90f149834039aeb60c7d7bb3a59f`, con #1929
 integrado y CI 5/5 verde. QA exclusivamente bajo `D:/VantareServer/qa/isa-1840`.
 
-El tooling de release valida antes de publicar los mismos límites numéricos
-del lector Rust: ZIP comprimido 128 MiB, miembro 256 MiB, suma 512 MiB y
-manifiesto 64 KiB. Comprueba los nombres exactos sin duplicados por mayúsculas,
-las rutas cerradas, los bits de enlace/reparse y los hashes, leyendo como máximo
-el tamaño declarado más un byte por miembro. Los tests PS 5.1 con cp 65001 y
-PS 7 pasan: paquete aceptado, enlace, tamaño declarado y límites rechazados.
-El ZIP release real de 0.0.989 pasó en ambos shells, sin escribir instalación.
+Tras review, `Test-BuildPackage` llama al ejemplo `verify-package`, que usa
+`engine::package::expand` y `Manifest::installed`, las mismas funciones que
+Setup. PowerShell calcula el SHA externo y mantiene las aserciones de inventario
+público; ya no reimplementa la extracción. `New-BuildZip` omite directorios;
+el portable incluye un archivo vacío en `data/` para conservar esa carpeta.
+Los tests de extremo a extremo en PS 5.1 con cp 65001 y PS 7 aceptan un ZIP
+válido y rechazan doce variantes: compresión, directorio, NUL.exe, `..`, ruta
+absoluta, `.env`, `data`, duplicado por mayúsculas, reparse 0x400, manifiesto
+mayor de 64 KiB, tamaño declarado menor y campos obligatorios ausentes.
 
 El test `abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state`
 ahora también mata el proceso hijo en `staged`, después de mover la generación
@@ -20,6 +22,13 @@ local pasó **1/1** en 5,03 s con `compilar.ps1`, target
 `C:/VantareServer/targets/isa-1840-p8` y raíces QA inyectadas. El intento
 anterior, detenido antes del primer checkpoint por `StorageFull`, queda como
 antecedente. La CI del PR repetirá el caso en `RUNNER_TEMP` aislado.
+La review reprodujo un segundo defecto en ese mismo corte: `boot-pending`
+refería 1.0.1 sin commit mientras `state.json` conservaba 1.0.0, y el arranque
+no lo descartaba. El test ampliado falló en esa condición antes del arreglo.
+Ahora el marker atómico liga ID y SHA del manifiesto de la generación staged;
+el arranque comprueba que no hubo commit, elimina el marker y la generación
+autenticada, y el segundo update a 1.0.1 pasa. Los 31 tests activos de
+`installation_write` pasan tras el cambio.
 
 K3 se evaluó y no se incluyó: el estado no conserva el SHA de una generación
 huérfana, así que un manifiesto autoconsistente no prueba propiedad para
@@ -28,3 +37,6 @@ producción frente a un margen final de 24, y además podía bloquear el plazo d
 confirmación si se ejecutaba allí. Los binarios huérfanos siguen conservados
 con diagnóstico; todas las `data/` permanecen intactas. Requiere un diseño
 aprobado que establezca una vinculación fiable antes de purgarlos.
+La proyección actual del paso 8 es 10.291 líneas de producción en el perímetro
+más 963 fuera, **11.254/11.320**. El aumento autorizado cubre la recuperación
+del corte y el modo CLI; tests y tooling se contabilizan aparte.

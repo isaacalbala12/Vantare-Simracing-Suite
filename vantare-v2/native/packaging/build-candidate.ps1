@@ -102,6 +102,8 @@ try{
     [IO.Directory]::CreateDirectory($generation)|Out-Null
     Copy-Item -Path (Join-Path $payload '*') -Destination $generation -Recurse
     [IO.Directory]::CreateDirectory((Join-Path $generation 'data'))|Out-Null
+    # The portable ZIP omits directory records; keep its initial data/ on extraction.
+    [IO.File]::WriteAllBytes((Join-Path $generation 'data/.vantare-directory'),[byte[]]::new(0))
     [IO.File]::WriteAllText((Join-Path $portableTree '.vantare-native'),'offline-candidate-v1')
     Write-BuildJson (Join-Path $portableTree 'state.json') @{schema=1;product='vantare-native';channel=$Channel;active=@{generation=$id;manifest_sha256=(Get-NativeHash (Join-Path $generation 'manifest.json'))};previous=$null}
     Copy-Item -LiteralPath (Join-Path $binDirectory 'vantare.exe') -Destination (Join-Path $portableTree 'Vantare.exe')

@@ -611,9 +611,9 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   anterior; cualquier corrección requiere otro paquete firmado. El builder
   comprueba el inventario cerrado de diez EXE, recursos y sidecars antes de
   preparar una publicación. La firma usa stdin UTF-8 sin BOM también en PS 5.1.
-  Siguen diferidos a un trabajo posterior la validación del ZIP con todos los
-  límites del lector Rust y el test de corte real por checkpoint; esta revisión
-  no modifica rollback ni resistencia a cortes.
+  El paso 8 sustituyó la validación ZIP duplicada en PowerShell por el extractor
+  Rust real y reprodujo un corte en `staged` con un proceso separado; la
+  recuperación descarta el intento sin commit y permite repetir el update.
 - #1917 está integrado en nightly `076e6404772878ed427c9f2ed1a43594dec5f2ed`.
   #1929 se rebasa sobre ese SHA y porta el gate de exclusión de features y
   símbolos QA a `build-candidate.ps1`, al ZIP leído por el builder de Setup y
@@ -640,12 +640,14 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   K3 queda diferido. El estado
   no conserva un SHA que atribuya las generaciones huérfanas y la poda segura
   probada necesitaba +49 líneas de producción con solo 24 de margen; no se
-  cambia la regla que conserva sus binarios y datos. El tooling ahora valida
-  el ZIP con los límites numéricos del lector Rust; el test de proceso real
-  incluye el checkpoint `staged`. PS 5.1/7 y ZIP release real pasan. Tras
-  liberar espacio en D:, el test local de corte real pasó **1/1** en 5,03 s
-  mediante `compilar.ps1` y target propio; CI del PR pendiente. El total de
-  producción permanece **11.226/11.250**.
+  cambia la regla que conserva sus binarios y datos. Tras revisión, el tooling
+  llama al extractor Rust real: el ZIP deja de tener directorios y doce
+  rechazos de extremo a extremo cubren método, rutas, duplicados, reparse,
+  tamaño y manifiesto. El corte real en `staged` reprodujo el bloqueo antes de
+  la corrección; ahora el arranque elimina el marker y la generación staged
+  ligada por SHA, y un segundo update funciona. PS 5.1/cp65001 y PS 7 pasan.
+  Tope de producción autorizado **11.320** para CLI y bugfix: proyección actual
+  **11.254**, con 10.291 en el perímetro y 963 fuera. CI del nuevo HEAD pendiente.
   Para retomar K3 hace falta guardar, antes de perder `previous`, el par
   generación + SHA-256 de su manifiesto en un estado ligado al commit y
   autenticado bajo `.operation.lock`. La poda debe aceptar solo esa referencia,

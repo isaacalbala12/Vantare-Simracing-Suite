@@ -1,6 +1,6 @@
 ﻿# Runs entirely under an injected QA root; no release is published.
 #requires -Version 5.1
-param([Parameter(Mandatory)][string]$QaRoot,[string]$Verifier,[string]$ServicesExecutable)
+param([Parameter(Mandatory)][string]$QaRoot,[string]$Verifier,[string]$ServicesExecutable,[string]$PackageVerifier)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
 . (Join-Path $PSScriptRoot 'build-config.ps1')
@@ -114,29 +114,84 @@ if($ServicesExecutable){
     $rejected=$false;try{Invoke-BuildProcess $ServicesExecutable @('--verify-update') $signed|Out-Null}catch{$rejected=$true}
     if(-not $rejected){throw 'Clave TEST aceptada por verificación de producción'}
 }
-$packageTree=Join-Path $root 'zip-limits-tree'
-[IO.Directory]::CreateDirectory((Join-Path $packageTree 'bin'))|Out-Null
-$resource=Join-Path $packageTree 'bin/fixture.txt'
-[IO.File]::WriteAllText($resource,'owned fixture',[Text.UTF8Encoding]::new($false))
-Write-BuildJson (Join-Path $packageTree 'manifest.json') @{schema=1;product='vantare-native';version='0.0.989';channel='beta';engine=2;files=@(@{path='bin/fixture.txt';size=(Get-Item $resource).Length;sha256=(Get-NativeHash $resource)})}
-$zipPath=Join-Path $root 'valid-package.zip'
-New-BuildZip $packageTree $zipPath
-$null=Test-BuildPackage $zipPath '0.0.989' 'beta'
-$readZip=[IO.Compression.ZipFile]::OpenRead($zipPath)
-try{
-    $rejected=$false;try{Get-BoundedZipHash ($readZip.GetEntry('bin/fixture.txt')) 1|Out-Null}catch{if($_.Exception.Message -notlike '*Tamaño ZIP extraído incorrecto*'){throw};$rejected=$true}
-    if(-not $rejected){throw 'Salida expandida por encima del tamaño declarado aceptada'}
-}finally{$readZip.Dispose()}
-$linkZip=Join-Path $root 'link-package.zip'
-Copy-Item -LiteralPath $zipPath -Destination $linkZip
-$archive=[IO.Compression.ZipFile]::Open($linkZip,[IO.Compression.ZipArchiveMode]::Update)
-try{$archive.GetEntry('bin/fixture.txt').ExternalAttributes=-1610612736}finally{$archive.Dispose()}
-$rejected=$false;try{Test-BuildPackage $linkZip '0.0.989' 'beta'|Out-Null}catch{if($_.Exception.Message -notlike '*Enlace ZIP rechazado*'){throw};$rejected=$true}
-if(-not $rejected){throw 'Enlace ZIP aceptado'}
-$rejected=$false;try{Assert-BuildArchiveLength (128MB+1)}catch{if($_.Exception.Message -notlike '*ZIP comprimido supera el límite*'){throw};$rejected=$true}
-if(-not $rejected){throw 'ZIP comprimido sobredimensionado aceptado'}
-$rejected=$false;try{Assert-BuildExpandedLength (256MB+1) (256MB+1)}catch{if($_.Exception.Message -notlike '*ZIP supera el límite de extracción*'){throw};$rejected=$true}
-if(-not $rejected){throw 'Miembro ZIP sobredimensionado aceptado'}
-$rejected=$false;try{Assert-BuildExpandedLength 1 (512MB+1)}catch{if($_.Exception.Message -notlike '*ZIP supera el límite de extracción*'){throw};$rejected=$true}
-if(-not $rejected){throw 'Suma ZIP sobredimensionada aceptada'}
+function New-FixturePackage([string]$Name,[string]$Member='bin/fixture.txt',[string]$Extra='',[switch]$Directory,[switch]$LargeManifest,[switch]$MissingField,[switch]$Reparse) {
+    $zipPath=Join-Path $root "$Name.zip"
+    $bytes=[Text.UTF8Encoding]::new($false).GetBytes('owned fixture')
+    $files=@(@{path=$Member;size=$bytes.Length;sha256=([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace('-','').ToLowerInvariant())})
+    if($Extra -and -not $Directory){$files+=@{path=$Extra;size=$bytes.Length;sha256=$files[0].sha256}}
+    $document=@{schema=1;product='vantare-native';candidate=$true;architecture='windows-x64';data_schema='opaque-v1';source_sha=('0'*40);source_dirty=$false;build_profile='Debug';version='0.0.989';channel='beta';engine=2;files=$files}
+    if($MissingField){$null=$document.Remove('architecture')}
+    $manifest=$document|ConvertTo-Json -Depth 20 -Compress
+    if($LargeManifest){$manifest+=' '*66000}
+    $zip=[IO.Compression.ZipFile]::Open($zipPath,[IO.Compression.ZipArchiveMode]::Create)
+    try{
+        foreach($entryName in @($Member,'manifest.json')+@($Extra|Where-Object {$_})){
+            $entry=$zip.CreateEntry($entryName)
+            if($Reparse -and $entryName -ceq $Member){$entry.ExternalAttributes=0x400}
+            $content=if($entryName -ceq 'manifest.json'){[Text.UTF8Encoding]::new($false).GetBytes($manifest)}else{$bytes}
+            $stream=$entry.Open();try{$stream.Write($content,0,$content.Length)}finally{$stream.Dispose()}
+        }
+    }finally{$zip.Dispose()}
+    $zipPath
+}
+function Set-ZipHeader([string]$Path,[string]$Member,[int]$Offset,[byte[]]$Value,[switch]$Local) {
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    $signature=if($Local){[byte[]]@(0x50,0x4b,0x03,0x04)}else{[byte[]]@(0x50,0x4b,0x01,0x02)}
+    $nameBytes=[Text.Encoding]::ASCII.GetBytes($Member)
+    $found=$false
+    for($i=0;$i -le $bytes.Length-46;$i++){
+        if($bytes[$i] -ne 0x50 -or $bytes[$i+1] -ne 0x4b -or $bytes[$i+2] -ne $signature[2] -or $bytes[$i+3] -ne $signature[3]){continue}
+        $nameStart=$i+$(if($Local){30}else{46})
+        if($nameStart+$nameBytes.Length -gt $bytes.Length){continue}
+        $name=[Text.Encoding]::ASCII.GetString($bytes,$nameStart,$nameBytes.Length)
+        if($name -cne $Member){continue}
+        [Array]::Copy($Value,0,$bytes,$i+$Offset,$Value.Length)
+        $found=$true;break
+    }
+    if(-not $found){throw "Cabecera ZIP no encontrada: $Member"}
+    [IO.File]::WriteAllBytes($Path,$bytes)
+}
+function Assert-PackageRejected([string]$Case,[string]$Path) {
+    $rejected=$false
+    try{Test-BuildPackage $Path '0.0.989' 'beta' $PackageVerifier|Out-Null}catch{
+        if($_.Exception.Message -notlike 'Proceso rechazó la petición:*'){throw}
+        $rejected=$true
+    }
+    if(-not $rejected){throw "Paquete inválido aceptado: $Case"}
+}
+$zipPath=New-FixturePackage valid
+Test-BuildPackage $zipPath '0.0.989' 'beta' $PackageVerifier|Out-Null
+$packageTree=Join-Path $root 'zip-empty-directory'
+[IO.Directory]::CreateDirectory((Join-Path $packageTree 'empty'))|Out-Null
+[IO.File]::WriteAllText((Join-Path $packageTree 'fixture.txt'),'x')
+New-BuildZip $packageTree (Join-Path $root 'no-dirs.zip')
+$readZip=[IO.Compression.ZipFile]::OpenRead((Join-Path $root 'no-dirs.zip'))
+try{if(@($readZip.Entries|Where-Object {$_.FullName.EndsWith('/')}).Count){throw 'New-BuildZip emitió directorios'}}finally{$readZip.Dispose()}
+[IO.File]::WriteAllBytes((Join-Path $packageTree 'empty/.vantare-directory'),[byte[]]::new(0))
+New-BuildZip $packageTree (Join-Path $root 'portable-like.zip')
+$readZip=[IO.Compression.ZipFile]::OpenRead((Join-Path $root 'portable-like.zip'))
+try{if(-not $readZip.GetEntry('empty/.vantare-directory')){throw 'Portable perdió su carpeta de datos'}}finally{$readZip.Dispose()}
+foreach($case in @(
+    @{name='directory';extra='empty/';directory=$true},
+    @{name='device';member='NUL.exe'},
+    @{name='traversal';member='../escape.txt'},
+    @{name='absolute';member='/absolute.txt'},
+    @{name='env';member='.env'},
+    @{name='data';member='data/user.txt'},
+    @{name='case-duplicate';extra='bin/FIXTURE.txt'},
+    @{name='reparse';reparse=$true},
+    @{name='large-manifest';large=$true},
+    @{name='missing-field';missing=$true}
+)){
+    $item=New-FixturePackage -Name $case['name'] -Member $(if($case['member']){$case['member']}else{'bin/fixture.txt'}) -Extra $case['extra'] -Directory:([bool]$case['directory']) -LargeManifest:([bool]$case['large']) -MissingField:([bool]$case['missing']) -Reparse:([bool]$case['reparse'])
+    Assert-PackageRejected $case.name $item
+}
+$method=New-FixturePackage compression
+Set-ZipHeader $method 'bin/fixture.txt' 8 ([byte[]]@(99,0)) -Local
+Set-ZipHeader $method 'bin/fixture.txt' 10 ([byte[]]@(99,0))
+Assert-PackageRejected compression $method
+$short=New-FixturePackage declared-short
+Set-ZipHeader $short 'bin/fixture.txt' 22 ([BitConverter]::GetBytes([uint32]1)) -Local
+Set-ZipHeader $short 'bin/fixture.txt' 24 ([BitConverter]::GetBytes([uint32]1))
+Assert-PackageRejected declared-short $short
 "PASS build-tooling: stdin=$stdinBytes; inventario, sidecars, manifiesto y firma QA"

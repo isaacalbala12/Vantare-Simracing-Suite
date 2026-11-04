@@ -1199,10 +1199,36 @@ fn abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state() {
             fs::read(fixture.data().join("opaque.bin")).expect("data ready before activation"),
             b"opaque\0user\xffbytes"
         );
+        if point == "staged" {
+            let marker = fixture.root.join("boot-pending.json");
+            assert!(marker.exists(), "crash left a pending trial before commit");
+            let pending = disk::read_json(&marker, Some(4096)).unwrap();
+            let orphan = fixture
+                .root
+                .join("generations")
+                .join(pending["stagedGeneration"].as_str().unwrap());
+            assert!(orphan.exists(), "staged generation reached disk");
+            assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+            assert!(!marker.exists(), "startup clears the uncommitted trial");
+            assert!(!orphan.exists(), "startup removes the authenticated orphan");
+            let cancel = AtomicBool::new(false);
+            let mut control = Control {
+                cancel: &cancel,
+                progress: &mut |_| {},
+                checkpoint: &mut |_| Ok(()),
+                warning: &mut |_| {},
+            };
+            operations::update(&fixture.root, &package.borrowed(), false, &mut control)
+                .expect("next update succeeds");
+            assert_eq!(
+                verified(&fixture.root).unwrap().installed_version(),
+                Some("1.0.1")
+            );
+        }
     }
 }
 
-// Deliberately not a standalone gate: the parent test runs this helper twice
+// Deliberately not a standalone gate: the parent test runs this helper three times
 // with an owned process and asserts its abrupt exit and committed disk bytes.
 #[test]
 #[ignore = "subprocess fixture for abrupt_process_exit_at_staged_and_commit"]
@@ -1315,7 +1341,7 @@ fn uninstall_keeps_unreferenced_binaries_with_their_path_and_reason_in_the_log()
             .iter()
             .any(|message| message.contains(&orphan.display().to_string())
                 && message.contains("sin referencia SHA")
-                && message.contains("paso 8"))
+                && message.contains("retención aplazada"))
     );
 }
 

@@ -23,7 +23,7 @@ if ($TestInstaller) {
     $null=Assert-MatrixRoot $output
 }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
-$package=Test-BuildPackage $archive $Version 'beta'
+$null=Test-BuildPackage $archive $Version 'beta'
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
 $oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
 $previousConfig=Import-NativeBuildConfig $ConfigFile

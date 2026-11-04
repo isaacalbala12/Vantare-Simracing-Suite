@@ -477,19 +477,13 @@ pub fn install(
         let _handles = disk::binary_guard(&root)?;
         control.copy()?;
         changed = true;
-        if updating {
-            disk::write_json(
-                &root.join("boot-pending.json"),
-                &json!({"schema":1,
-                "previous":previous.as_ref().map_or("",|reference|reference.generation.as_str()),"version":incoming.version}),
-            )?;
-        }
         let next = apply_generation(
             &root,
             &stage,
             &incoming,
             source.as_deref(),
             previous,
+            updating,
             control,
         )?;
         if incoming.engine() == 2 {
@@ -542,11 +536,19 @@ fn apply_generation(
     incoming: &super::Manifest,
     source: Option<&Path>,
     previous: Option<Generation>,
+    pending: bool,
     control: &mut Control<'_>,
 ) -> Result<State> {
     let id = disk::id()?;
     let generation = disk::generation(root, &id)?;
     fs::create_dir_all(root.join("generations"))?;
+    if pending {
+        disk::publish_json(
+            &root.join("boot-pending.json"),
+            &json!({"schema":1,"previous":previous.as_ref().map_or("",|reference|reference.generation.as_str()),
+                "version":incoming.version,"stagedGeneration":id,"manifestSha256":incoming.sha256()}),
+        )?;
+    }
     fs::rename(stage, &generation)?;
     if let Some(source) = source {
         disk::copy_data(source, &generation.join("data"))?;
@@ -610,19 +612,13 @@ pub fn update(
             "La actualización exige una versión mayor",
         )?;
         ensure(incoming.engine() == 2, "El feed exige motor 2")?;
-        let old = previous
-            .as_ref()
-            .map_or("", |reference| reference.generation.as_str());
-        disk::write_json(
-            &root.join("boot-pending.json"),
-            &json!({"schema":1,"previous":old,"version":incoming.version}),
-        )?;
         let next = apply_generation(
             &root,
             &stage,
             &incoming,
             Some(&view.data_path),
             previous,
+            true,
             control,
         )?;
         renew_launcher(&root, &next)?;
@@ -712,6 +708,38 @@ pub fn discard_stale_boot_marker(root: &Path) -> Result<bool> {
     let _operation = disk::lock(&root, ".operation.lock")?;
     let view = Installation::read(&root)?;
     let marker = disk::read_json(&marker_path, Some(4096))?;
+    if let Some((state, active)) = view.state.as_ref().zip(view.manifest.as_ref()) {
+        let id = marker["stagedGeneration"].as_str().unwrap_or("");
+        let sha = marker["manifestSha256"].as_str().unwrap_or("");
+        if marker["schema"] == 1
+            && marker["previous"] == state.active.generation
+            && marker["version"].as_str().is_some_and(|version| {
+                version != active.version && validation::version(version).is_ok()
+            })
+            && validation::hex(id, 32)
+            && validation::hex(sha, 64)
+            && state
+                .previous
+                .as_ref()
+                .is_none_or(|previous| previous.generation != id)
+            && state.active.generation != id
+        {
+            let orphan = disk::generation(&root, id)?;
+            if orphan.try_exists()? {
+                let reference = Generation {
+                    generation: id.to_owned(),
+                    manifest_sha256: Some(sha.to_owned()),
+                };
+                if super::Manifest::authenticated(&orphan, &reference, &state.channel)
+                    .is_ok_and(|manifest| manifest.version == marker["version"])
+                {
+                    disk::remove_owned_tree(&root, &orphan)?;
+                }
+            }
+            disk::remove_file(&marker_path)?;
+            return Ok(true);
+        }
+    }
     let stale = view
         .state
         .as_ref()
@@ -867,7 +895,7 @@ pub fn uninstall(
             .find(|reference| reference.generation == id);
         let Some(reference) = reference else {
             (control.warning)(&format!(
-                "Binarios conservados: {}; motivo: generación sin referencia SHA en active/previous (pendiente del paso 8)",
+                "Binarios conservados: {}; motivo: generación sin referencia SHA en active/previous (retención aplazada)",
                 directory.display()
             ));
             continue;

@@ -1090,7 +1090,7 @@ previa y el procedimiento para un archivo no vacío están en el runbook; la
 purga requiere una decisión explícita de Isaac.
 
 Entrega 7b final: [PR draft #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949)
-contra `nightly@df5ab7655`, rama
+contra `nightly@28b1e8fa9`, rama
 `vantareapp/isa-1896-paso7b4-retirada-legacy`, HEAD en el PR y checks del último push.
 PostgreSQL local: harness histórico LF 134 rutas/795 comprobaciones PASS;
 esquema final LF y CRLF, 18 casos RLS/Storage y escrituras, guard de archivo, rollback

@@ -1,6 +1,7 @@
 import {
-  executeMail,
+  executeMail as actualExecuteMail,
   mailContent,
+  type MailDeps,
   type MailRun,
   renderMail,
   validateMail,
@@ -24,6 +25,33 @@ import {
   authDeps,
   request,
 } from "../native-account-authorize/testdata/auth.ts";
+// Legacy behavior fixtures delegate the new atomic SQL boundary to their existing claim.
+function executeMail(
+  action: string,
+  params: Record<string, unknown>,
+  run: MailRun,
+  deps: MailDeps = {},
+) {
+  return actualExecuteMail(
+    action,
+    params,
+    run,
+    action === "mail_send_batch"
+      ? {
+        actor: id,
+        environment: "sandbox",
+        rpc: (name, args) =>
+          name === "native_admin_claim_mail_send"
+            ? run("mail_claim", {
+              campaign_id: args.p_campaign,
+              revision: args.p_revision,
+            })
+            : Promise.resolve(true),
+        ...deps,
+      }
+      : deps,
+  );
+}
 const id = "00000000-0000-4000-8000-000000001636";
 const p = { campaign_id: id, revision: 1 };
 const content = Object.fromEntries(

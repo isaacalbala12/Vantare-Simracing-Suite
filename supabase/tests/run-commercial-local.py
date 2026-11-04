@@ -13,6 +13,7 @@ from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 from commercial_admin_report_root import run_admin_report_cutover
+from commercial_admin_owner_policy import STEM as OWNER_POLICY_STEM, SNAPSHOT as OWNER_POLICY_SNAPSHOT, run_owner_policy_regressions
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -189,11 +190,13 @@ $$;
   legacy_acl_before=None
   admin_owner_previous=None
   admin_report_root_applied=False
+  owner_policy_previous=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
+   if m.stem==OWNER_POLICY_STEM and not legacy_writers_enabled: continue
    if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
@@ -337,6 +340,11 @@ $$;
     result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_legacy_admin_closed.test.sql')
     (OUT/'testing_legacy_admin_closed.pre-cutover.log').write_text(result,encoding='utf-8')
     assert 'not ok ' not in result and '# Looks like' not in result, result
+   if m.stem==OWNER_POLICY_STEM:
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests/native_admin_characterization.test.sql')
+    (OUT/'native_admin_characterization.before-owner-policy.log').write_text(result)
+    assert 'not ok ' not in result and '# Looks like' not in result, result
+    owner_policy_previous=json.loads(run('psql',*conn,'-c',OWNER_POLICY_SNAPSHOT))
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -599,6 +607,8 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if owner_enabled and not args.admin_effects_only:
+   if owner_policy_previous is not None:
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(OWNER_POLICY_STEM+'.down.sql'))
    owner_stem='20261103235000_isa_1896_owner_unification'
    admin_owner_current=None
    if admin_owner_previous is not None:
@@ -652,6 +662,8 @@ $$;
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(ADMIN_OWNER_STEM+'.sql'))
     if json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))!=admin_owner_current:
      raise RuntimeError('admin owner changed after dependency rollback/reapply')
+   if owner_policy_previous is not None:
+    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(OWNER_POLICY_STEM+'.sql'))
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))
@@ -903,6 +915,8 @@ $$;
    raise SystemExit(0)
   if legacy_writers_enabled:
    closed_stem='20261103231148_isa_1896_close_legacy_report_writers'
+   if owner_policy_previous is not None:
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(OWNER_POLICY_STEM+'.down.sql'))
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(closed_stem+'.down.sql'))
    assert legacy_acl_before is not None, 'missing pre-close relacl snapshot'
    assert run('psql',*conn,'-At','-c',legacy_acl_query)==legacy_acl_before, \
@@ -914,6 +928,8 @@ $$;
     if 'not ok ' in result or '# Looks like' in result:
      raise RuntimeError(name+' failed under writer rollback')
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(closed_stem+'.sql'))
+   if owner_policy_previous is not None:
+    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(OWNER_POLICY_STEM+'.sql'))
   suites=['clerk_identity_cutover_test.sql',
    'billing_owner_alert.test.sql',
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
@@ -921,7 +937,7 @@ $$;
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','visual_roadmap_clickup.test.sql']
   if not legacy_writers_enabled: suites.append('native_admin.test.sql')
-  if admin_report_root_applied: suites.append('native_admin_characterization.test.sql')
+  if admin_report_root_applied and owner_policy_previous is None: suites.append('native_admin_characterization.test.sql')
   if legacy_writers_enabled:
    suites+=['testing_legacy_writers_closed.test.sql']
   if owner_enabled: suites.append('testing_owner_unification.test.sql')
@@ -949,9 +965,11 @@ $$;
    guard=run('psql',*conn,'-c',"select to_json(encode(tgargs,'escape')) from pg_trigger where tgrelid='public.admin_audit_log'::regclass and tgname='a_account_write_barrier'")
    (OUT/'admin-audit-guard.json').write_text(guard,encoding='utf-8')
    suites=['native_admin_report_root.test.sql','native_admin_characterization.test.sql','native_admin_effects_r2.test.sql','testing_report_v2.test.sql']
-   suites+=['native_admin_owner_policy.test.sql']
+   if owner_policy_previous is not None:
+    suites.remove('native_admin_characterization.test.sql')
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
+  if owner_policy_previous is not None: suites.append('native_admin_owner_policy.test.sql')
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
    # whose membership is not granted to managed postgres by the product.
@@ -969,8 +987,15 @@ $$;
    print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
    raise SystemExit(0)
   if not args.baseline:
+   if owner_policy_previous is not None:
+    run_owner_policy_regressions(run,conn,OUT,BIN,ENV,owner_policy_previous)
    if legacy_writers_enabled and (args.admin_reports_only or not args.admin_effects_only):
-    run_admin_report_cutover(run,conn,OUT,BIN,ENV)
+    if owner_policy_previous is not None:
+     run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(OWNER_POLICY_STEM+'.down.sql'))
+    try: run_admin_report_cutover(run,conn,OUT,BIN,ENV)
+    finally:
+     if owner_policy_previous is not None:
+      run('psql',*conn,'-f',ROOT/'supabase/migrations'/(OWNER_POLICY_STEM+'.sql'))
    if args.admin_reports_only:
     run_admin_lock_order(BIN,conn,ENV,run,OUT)
    if args.deno_bin and not args.admin_effects_only:
@@ -999,6 +1024,8 @@ $$;
     # Run it with the 7b2 rollback, which restores B03 redaction; the 7b2
     # production state drains those tables and closes their API writers.
     if legacy_writers_enabled and (ROOT/'supabase/migrations'/(archive_stem+'.sql')).exists():
+     if owner_policy_previous is not None:
+      run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(OWNER_POLICY_STEM+'.down.sql'))
      run('psql',*conn,'-f',ROOT/'supabase/rollbacks/20261104024000_isa_1910_admin_report_root.down.sql')
      run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
      run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)

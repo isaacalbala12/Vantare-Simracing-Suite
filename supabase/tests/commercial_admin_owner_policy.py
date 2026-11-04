@@ -20,7 +20,7 @@ def run_owner_policy_regressions(run, conn, out, bin_dir, env, previous):
     run('psql',*conn,'-f',down)
     assert json.loads(run('psql',*conn,'-c',SNAPSHOT))==previous, 'policy down changed pre-step digests/ACL'
     probe=out/'owner-policy-drift.sql'
-    probe.write_text("""begin;
+    probe.write_text(r"""begin;
       do $drift$declare body text; begin
        body:=pg_get_functiondef('private.native_admin_account_summary(uuid,text,text)'::regprocedure);
        execute replace(body,$before$'owner',exists$before$,$after$'owner', exists$after$);

@@ -8037,3 +8037,35 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   caracterización; sin aplanar funciones ni tocar el paso 11 (base R6/12).
 - VANTA-132 permanece En curso: paso 4 restante, auditoría Brevo y pasos 6–10
   pendientes. Sin despliegue, producción, merge del worker ni release.
+
+## VANTA-132 · Paso 4 restante: autoridad única en admin (2026-11-04)
+
+- Base nightly 3397df2ea, rama vantareapp/isa-1910-paso4b-owner-unico y worktree
+  D:/VantareServer/worktrees/isa-1910-paso4b. Incluye el cierre documental de
+  #1924 anterior. #1927 ya hizo require_owner/review; este paso completa
+  protección de bloqueo/borrado, señal owner al cliente y set_tester.
+- private.is_owner decide autoridad y protección: owner caducado/revocado o
+  membresía legacy no protegen el objetivo ni autorizan actor. Owner activo y
+  protección de la propia cuenta conservados. Tester sobre owner activo es
+  no-op de asignación/membresía; no crea ni reescribe una membresía owner.
+- Se conserva la regla previa de no reemplazar implícitamente la asignación
+  owner caducada por tester: requiere revocación explícita. No se cambian esa
+  regla de negocio, las confirmaciones ni el entorno sandbox de ban/borrado.
+- Migración/rollback 20261104070000: cuatro sustituciones de fuente exacta con
+  guard de deriva 55000 y normalización CRLF/LF. Sin aplanar SQL, paso 11 fuera.
+  Ningún cambio a _shared/clerk-webhook, datos R6, tablas/FK ni billing/licencias.
+- Caracterización previa 4e86ea8a3: 26 checks, 21 PASS/5 RED. Se reforzó además
+  el timestamp histórico para probar que la membresía existente no se reescribe.
+  GREEN LF y CRLF: 26 checks nuevos; cuatro suites/80 checks finales y la
+  caracterización anterior de 13 checks conservada antes de la migración.
+- Rollback exacto de los cuatro cuerpos/ACL, reaplicación y rechazo atómico si
+  la segunda función deriva después de cambiar la primera PASS. Gate #1924
+  de 282 rechazos/índice/down/reaplicación conservado bajo rollback de policy.
+  Autoridad owner, locks actor/target y seis carreras journal/lease PASS.
+  Edge→SQL LF6/6 y Deno2.7.13 94 PASS (ambos modos, Hub/basura/owner caducado/
+  no owner). Python/diff PASS. Instancias locales detenidas; CI remota pendiente.
+- Evidencia D:/VantareServer/evidence/isa-1910-paso4b y /tmp/admin-1910-policy-*
+  desechables. Rust/check/Clippy/Nextest/lifecycle/telemetría omitidos: no cambia
+  native. Sin secretos, Store real, producción, despliegue, merge propio ni
+  release. VANTA-132 En curso: auditoría Brevo y pasos 6–10 pendientes; el 11
+  permanece dentro de R6/12. No hay decisión nueva necesaria en este paso.

@@ -23,11 +23,13 @@ if ($TestInstaller) {
     $null=Assert-MatrixRoot $output
 }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
-$package=Test-BuildPackage $archive $Version 'beta'
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
 $oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
+$oldTarget=$env:CARGO_TARGET_DIR
 $previousConfig=Import-NativeBuildConfig $ConfigFile
 try {
+if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
+$null=Test-BuildPackage $archive $Version 'beta'
 Assert-NativeDistributionArchive $archive -Registry $env:VANTARE_LICENSE_PUBLIC_KEYS
 foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
     $data=Join-Path $output ('.build-data/'+$pair[1])
@@ -83,5 +85,6 @@ try {
 }
 } finally {
     Restore-NativeBuildConfig $previousConfig
+    $env:CARGO_TARGET_DIR=$oldTarget
     $env:LOCALAPPDATA=$oldLocal;$env:APPDATA=$oldRoaming
 }

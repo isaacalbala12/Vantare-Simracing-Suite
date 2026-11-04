@@ -4,6 +4,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+$script:BuildPackageVerifier=$null
 
 function Assert-BuildPath([string]$Path) {
     if([string]::IsNullOrWhiteSpace($Path)){throw 'Ruta de build obligatoria'}
@@ -32,33 +33,28 @@ function New-BuildZip([string]$Directory,[string]$Destination) {
             $null=Assert-BuildPath $item.FullName
             $name=$item.FullName.Substring($directory.Length+1).Replace('\','/')
             if(-not $item.PSIsContainer){$null=[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$item.FullName,$name)}
-            elseif(-not @(Get-ChildItem -LiteralPath $item.FullName -Force).Count){$null=$zip.CreateEntry("$name/")}
         }
     }finally{$zip.Dispose()}
 }
-function Test-BuildPackage([string]$Archive,[string]$Version,[string]$Channel) {
+function Test-BuildPackage([string]$Archive,[string]$Version,[string]$Channel,[string]$Verifier) {
     $archive=Assert-BuildPath $Archive
-    $zip=[IO.Compression.ZipFile]::OpenRead($archive)
-    try{
-        $entries=@($zip.Entries|Where-Object {-not $_.FullName.EndsWith('/')})
-        $manifestEntry=@($entries|Where-Object {$_.FullName -ceq 'manifest.json'})
-        if($manifestEntry.Count -ne 1 -or $manifestEntry[0].Length -gt 65536){throw 'Manifiesto de paquete inválido'}
-        $reader=[IO.StreamReader]::new($manifestEntry[0].Open(),[Text.UTF8Encoding]::new($false))
-        try{$manifest=$reader.ReadToEnd()|ConvertFrom-Json}finally{$reader.Dispose()}
-        if($manifest.schema -ne 1 -or $manifest.product -cne 'vantare-native' -or $manifest.version -cne $Version -or $manifest.channel -cne $Channel -or $manifest.engine -ne 2){throw 'Versión o canal del paquete incompatibles'}
-        $names=@($entries|ForEach-Object {$_.FullName})
-        $expected=@($manifest.files|ForEach-Object {$_.path})+@('manifest.json')
-        if(@(Compare-Object $names $expected -CaseSensitive).Count -or @($names|Group-Object|Where-Object Count -gt 1).Count){throw 'Inventario del ZIP incompatible'}
-        foreach($member in $manifest.files){
-            $entry=@($entries|Where-Object {$_.FullName -ceq $member.path})[0]
-            if($entry.Length -ne $member.size){throw "Tamaño inválido: $($member.path)"}
-            $sha=[Security.Cryptography.SHA256]::Create()
-            $stream=$entry.Open()
-            try{$actual=[BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','').ToLowerInvariant()}finally{$stream.Dispose();$sha.Dispose()}
-            if($actual -cne $member.sha256){throw "Hash inválido: $($member.path)"}
-        }
-        $manifest
-    }finally{$zip.Dispose()}
+    if(-not $Verifier){
+        if($script:BuildPackageVerifier -and (Test-Path -LiteralPath $script:BuildPackageVerifier)){$Verifier=$script:BuildPackageVerifier}
+    }
+    if(-not $Verifier){
+        $native=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+        $priorTarget=$env:CARGO_TARGET_DIR
+        if(-not $priorTarget){$env:CARGO_TARGET_DIR=Join-Path ([IO.Path]::GetDirectoryName($archive)) 'target-verifier'}
+        $targetDirectory=[IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)
+        Push-Location $native
+        try{
+            & pwsh -NoProfile -File scripts/compilar.ps1 cargo build -p vantare-installer --example verify-package --no-default-features --features write-engine --target x86_64-pc-windows-msvc --locked --offline -j 2
+            if($LASTEXITCODE){throw 'Falló la compilación del verificador Rust'}
+        }finally{Pop-Location;$env:CARGO_TARGET_DIR=$priorTarget}
+        $Verifier=Join-Path $targetDirectory 'x86_64-pc-windows-msvc/debug/examples/verify-package.exe'
+        $script:BuildPackageVerifier=$Verifier
+    }
+    $null=Invoke-BuildProcess $Verifier @($archive,(Get-NativeHash $archive),$Version,$Channel) $null 120000
 }
 function Get-NativeDumpbin {
     $command=Get-Command dumpbin.exe -ErrorAction SilentlyContinue

@@ -1143,9 +1143,9 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
 }
 
 #[test]
-fn abrupt_process_exit_on_both_sides_of_commit_never_leaves_torn_state() {
+fn abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state() {
     let executable = std::env::current_exe().expect("owned libtest child");
-    for point in ["before-commit", "after-commit"] {
+    for point in ["staged", "before-commit", "after-commit"] {
         let fixture = Fixture::new();
         fixture
             .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
@@ -1183,13 +1183,13 @@ fn abrupt_process_exit_on_both_sides_of_commit_never_leaves_torn_state() {
         let view = verified(&fixture.root).expect("fully valid state after abrupt exit");
         assert_eq!(
             view.installed_version(),
-            Some(if point == "before-commit" {
-                "1.0.0"
-            } else {
+            Some(if point == "after-commit" {
                 "1.0.1"
+            } else {
+                "1.0.0"
             })
         );
-        if point == "before-commit" {
+        if point != "after-commit" {
             assert_eq!(
                 fs::read(fixture.root.join("state.json")).expect("old bytes untouched"),
                 old
@@ -1199,13 +1199,55 @@ fn abrupt_process_exit_on_both_sides_of_commit_never_leaves_torn_state() {
             fs::read(fixture.data().join("opaque.bin")).expect("data ready before activation"),
             b"opaque\0user\xffbytes"
         );
+        if point != "after-commit" {
+            let marker = fixture.root.join("boot-pending.json");
+            assert!(marker.exists(), "crash left a pending trial before commit");
+            let pending = disk::read_json(&marker, Some(4096)).unwrap();
+            let orphan = fixture
+                .root
+                .join("generations")
+                .join(pending["stagedGeneration"].as_str().unwrap());
+            assert!(orphan.exists(), "staged generation reached disk");
+            let locked = if point == "before-commit" {
+                Some(
+                    fs::OpenOptions::new()
+                        .read(true)
+                        .share_mode(0)
+                        .open(orphan.join(&test_members()[0]))
+                        .expect("lock one orphan member"),
+                )
+            } else {
+                None
+            };
+            assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+            assert!(!marker.exists(), "startup clears the uncommitted trial");
+            assert_eq!(
+                orphan.exists(),
+                locked.is_some(),
+                "failed cleanup is best effort"
+            );
+            drop(locked);
+            let cancel = AtomicBool::new(false);
+            let mut control = Control {
+                cancel: &cancel,
+                progress: &mut |_| {},
+                checkpoint: &mut |_| Ok(()),
+                warning: &mut |_| {},
+            };
+            operations::update(&fixture.root, &package.borrowed(), false, &mut control)
+                .expect("next update succeeds");
+            assert_eq!(
+                verified(&fixture.root).unwrap().installed_version(),
+                Some("1.0.1")
+            );
+        }
     }
 }
 
-// Deliberately not a standalone gate: the parent test runs this helper twice
+// Deliberately not a standalone gate: the parent test runs this helper three times
 // with an owned process and asserts its abrupt exit and committed disk bytes.
 #[test]
-#[ignore = "subprocess fixture for abrupt_process_exit_on_both_sides_of_commit"]
+#[ignore = "subprocess fixture for abrupt_process_exit_at_staged_and_commit"]
 fn checkpoint_process_worker() {
     let input = PathBuf::from(
         std::env::var_os("VANTARE_P4_CRASH_REQUEST").expect("explicit child request"),
@@ -1217,7 +1259,7 @@ fn checkpoint_process_worker() {
     qa_path(&root).expect("guarded root");
     qa_path(&archive).expect("guarded archive");
     let point = value["stopAt"].as_str().expect("checkpoint");
-    assert!(["before-commit", "after-commit"].contains(&point));
+    assert!(["staged", "before-commit", "after-commit"].contains(&point));
     let cancel = AtomicBool::new(false);
     let mut checkpoint = |actual: &str| {
         if actual == point {
@@ -1315,7 +1357,7 @@ fn uninstall_keeps_unreferenced_binaries_with_their_path_and_reason_in_the_log()
             .iter()
             .any(|message| message.contains(&orphan.display().to_string())
                 && message.contains("sin referencia SHA")
-                && message.contains("paso 8"))
+                && message.contains("retención aplazada"))
     );
 }
 

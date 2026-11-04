@@ -439,9 +439,11 @@ jobs:
           if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --bin vantare-services --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'real services signer build failed' }
+          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --example verify-package --no-default-features --features write-engine --locked --offline -j 4
+          if ($LASTEXITCODE) { throw 'real package verifier build failed' }
           foreach ($shell in @('powershell.exe', 'pwsh')) {
             $policy = if ($shell -eq 'powershell.exe') { @('-ExecutionPolicy', 'Bypass') } else { @() }
-            & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -ServicesExecutable "$env:CARGO_TARGET_DIR/debug/vantare-services.exe"
+            & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -ServicesExecutable "$env:CARGO_TARGET_DIR/debug/vantare-services.exe" -PackageVerifier "$env:CARGO_TARGET_DIR/debug/examples/verify-package.exe"
             if ($LASTEXITCODE) { throw "release tooling regression: $shell" }
           }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --example probe-read-matrix --locked --offline -j 4

@@ -663,7 +663,7 @@ momento.
 | 5 | **`engine::shell::sync`** idempotente (registro, Inicio, Escritorio, Startup, AUMID con `windows` 0.62 ya fijado en el lock; formas antiguas solo en la migración del Setup) | Refactor + simplificación | #1753, transacción por bytes, 3 escritores de `DisplayVersion` → 1 | Matriz de accesos/registro idéntica; `shortcut-branding-tests` pasan a Rust |
 | 6 | **Lanzador raíz `Vantare.exe` + `vantare --session`**; accesos al lanzador; `LegacyRunner` para motor 1 | Cambio de arquitectura (ADR) | `beta.ps1` Run/Check/Apply/Confirm, `beta.rs`, apretón del indicador; parte de #1748 | Matriz completa; arranque, plazo agotado y rollback a 975 real con el lanzador; 0 PowerShell en arranque normal |
 | 7 | **Retirar PowerShell del producto**: borrar scripts, operaciones muertas, NSIS, tests que leen texto; `Build` a herramienta de repo; README de `packaging` reescrito como contrato vigente | Eliminación | §4.2 | Inventario sin `.ps1`; gates verdes; matriz igual |
-| 8 | **Retención de generaciones** (decisión §4.7): retirar binarios de generaciones no referenciadas; los datos se conservan | Cambio de comportamiento | §2.4.8 | Matriz: tras 3 actualizaciones solo hay binarios de `active`/`previous` y todas las `data/` intactas |
+| 8 | **Retención de generaciones**, evaluada y aplazada: falta atribuir con SHA las generaciones ya huérfanas; se conservan binarios y datos | Cambio pendiente | §2.4.8 | Diseño nuevo y matriz antes de borrar cualquier `bin/` huérfano |
 | 9 | *(Opcional)* La sesión puede renovar `Vantare.exe` raíz tras un arranque confirmado, conservando la copia anterior | Decisión §4.7 | Elimina «reinstalar Setup para cambiar el arranque» | Matriz + fallo simulado del lanzador nuevo |
 
 Orden: 0 → 1a–1d (independientes; candidatos a la reconstrucción de RC9) → 2 → 3
@@ -856,8 +856,8 @@ Uninstall solo retira miembros de los manifiestos ligados por SHA a `active` o
 `previous` en el estado leído bajo bloqueo. Conserva los archivos ajenos de
 `bin/`. Una generación sin referencia SHA queda intacta, incluidos sus binarios:
 el log identifica su ruta y el motivo. No se añade ningún inventario ni marcador.
-Este residuo está autorizado y pendiente del paso 8; allí se decidirá si un
-manifiesto autoconsistente basta para retirar binarios de una generación huérfana.
+El paso 8 concluye que un manifiesto autoconsistente no basta para atribuir
+propiedad sin un SHA ligado al estado; la retención necesita un diseño nuevo.
 Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
 residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
 

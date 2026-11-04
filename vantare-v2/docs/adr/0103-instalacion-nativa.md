@@ -181,9 +181,11 @@ Su entrega depende de resolver el contrato de #1816 antes o junto a ese paso.
 Nunca se borran `generations/*/data/`, datos nativos externos ni datos Wails.
 La nueva generación copia y verifica datos; no sobrescribe los de una existente.
 Desinstalar exige instalación parada, retira binarios e integración propia,
-incluida Run, y conserva la referencia a los datos activos. La retención del
-paso 8 elimina automáticamente **solo binarios de generaciones no referenciadas**;
-no borra sus `data/`. Borrar datos requeriría otra acción explícita del usuario.
+incluida Run, y conserva la referencia a los datos activos. La retención prevista
+para el paso 8 se aplaza: una generación huérfana no conserva una vinculación
+SHA en el estado que atribuya sus binarios. Hasta diseñar esa vinculación se
+conservan sus binarios y todas las `data/`. Borrar datos requeriría otra acción
+explícita del usuario.
 Sin marcador de datos conservados, Setup adopta una copia única o copias
 idénticas; con copias distintas rechaza la operación sin escoger arbitrariamente.
 La sesión fija `VANTARE_NATIVE_DATA_ROOT`: un proceso instalado sin esa ruta
@@ -296,7 +298,8 @@ arranca motor 2. Si el primer motor 2 no confirma el arranque, no se vuelve a
 ejecutar el motor 1: se muestra un aviso que ofrece **Reparar**. La `data/` de
 la generación anterior se conserva intacta; ninguna elección automática de
 datos sustituye esa recuperación explícita. Las referencias de motor 1 pueden
-seguir en `state.json` para proteger sus datos hasta la retención del paso 8.
+seguir en `state.json` para proteger sus datos hasta una retención futura con
+SHA ligado al estado; K3 quedó diferido tras evaluar el paso 8.
 
 La prueba sobre las instalaciones reales 0.0.975 y 0.0.988 deja de bloquear la
 programación. **Bloquea la publicación** de cualquier release que contenga
@@ -338,10 +341,18 @@ Uninstall solo retira miembros de los manifiestos ligados por SHA a `active` o
 `previous` en el estado leído bajo bloqueo. Conserva los archivos ajenos de
 `bin/`. Una generación sin referencia SHA queda intacta, incluidos sus binarios:
 el log identifica su ruta y el motivo. No se añade ningún inventario ni marcador.
-Este residuo está autorizado y pendiente del paso 8; allí se decidirá si un
-manifiesto autoconsistente basta para retirar binarios de una generación huérfana.
+El paso 8 concluye que un manifiesto autoconsistente no basta para atribuir
+propiedad sin un SHA ligado al estado; la retención necesita un diseño nuevo.
 Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
 residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
+
+El marker transitorio `boot-pending.json` de un update guarda además
+`stagedGeneration` y `manifestSha256` antes de mover el staged. Si el proceso
+muere antes del commit de `state.json`, el lanzador reconoce que la versión del
+marker no es la activa, verifica el SHA del manifiesto de esa generación y
+retira el intento. Si un lock impide borrar la huérfana, registra el fallo,
+retira el marker y permite arrancar y reintentar la actualización. Un marker
+post-commit sigue exigiendo confirmación o rollback normal.
 
 
 ### Poda adicional 5b autorizada

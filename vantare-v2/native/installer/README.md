@@ -55,7 +55,8 @@ deriva los nombres de su manifiesto y mantiene límites y validación central de
 duplicados. Así un recurso nuevo no requiere modificar el instalador (#1795).
 Los archivos ajenos en bin/ se conservan al desinstalar. Los binarios de generaciones
 huérfanas sin referencia SHA también se conservan, con ruta y motivo en el log;
-su limpieza se decide en el paso 8. No se crea otra lista ni marcador.
+K3 se evaluó en el paso 8 y quedó diferido: falta atribuirlos con SHA antes de
+retirarlos. No se crea otra lista ni marcador.
 
 Context mantiene HKCU y carpetas QA inyectados y el guard. Dentro de ese contexto
 se usan los nombres del producto, sin identidad QA paralela. El validador Rust del

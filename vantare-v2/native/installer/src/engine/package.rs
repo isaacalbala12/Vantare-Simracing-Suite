@@ -74,7 +74,8 @@ pub fn expand(
     let mut seen = HashSet::new();
     let mut total = 0_u64;
     for index in 0..archive.len() {
-        let member = archive.by_index(index)?;
+        // Inspect metadata before zip tries to construct an unsupported decoder.
+        let member = archive.by_index_raw(index)?;
         ensure(
             allowed.contains(&member.name()) && seen.insert(member.name().to_owned()),
             "Miembro ZIP no autorizado o duplicado",

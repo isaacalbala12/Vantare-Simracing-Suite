@@ -59,6 +59,10 @@ required-features = ["write-engine"]
 name = "installer-write-matrix"
 required-features = ["write-engine", "test-installer"]
 
+[[example]]
+name = "verify-package"
+required-features = ["write-engine"]
+
 [[test]]
 name = "installation_write"
 required-features = ["write-engine"]

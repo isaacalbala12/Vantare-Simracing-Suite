@@ -28,6 +28,7 @@ language plpgsql security definer set search_path='' as $$
 declare reviewer uuid:=private.current_account(); target_account uuid;
 begin
  if reviewer is null then raise exception 'testing_owner_required' using errcode='42501'; end if;
+ if not private.is_owner(reviewer) then raise exception 'testing_owner_required' using errcode='42501'; end if;
  select account_id into target_account from public.testing_contributions where id=p_id;
  -- Collect actor and report owner before any assignment/contribution row lock.
  perform private.lock_accounts_before_rows(array[reviewer,target_account]);

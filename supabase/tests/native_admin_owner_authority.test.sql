@@ -1,4 +1,4 @@
--- VANTA-132: characterize both review entry points before owner unification.
+-- VANTA-132: operational owner authority for both review entry points.
 begin;
 select no_plan();
 insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://admin-owner.invalid',array['https://app.invalid'],true);

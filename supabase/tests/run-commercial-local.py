@@ -298,6 +298,11 @@ $$;
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if owner_enabled and not args.admin_effects_only:
    owner_stem='20261103235000_isa_1896_owner_unification'
+   admin_owner_current=None
+   if admin_owner_previous is not None:
+    # Respect the deployed dependency order: admin down, R6 down/up, admin up.
+    admin_owner_current=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(ADMIN_OWNER_STEM+'.down.sql'))
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
    role_snapshot=run('psql',*conn,'-At','-c',"select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure").strip()
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_unification_rollback.test.sql')
@@ -341,6 +346,10 @@ $$;
    if guard.returncode==0 or 'owner_rollback_dependency' not in guard.stderr:
     raise RuntimeError('step 8 rollback did not fail closed on dependent function: '+guard.stderr)
    run('psql',*conn,'-c','drop function private.vanta131_owner_down_guard_probe()')
+   if admin_owner_current is not None:
+    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(ADMIN_OWNER_STEM+'.sql'))
+    if json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))!=admin_owner_current:
+     raise RuntimeError('admin owner changed after dependency rollback/reapply')
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))

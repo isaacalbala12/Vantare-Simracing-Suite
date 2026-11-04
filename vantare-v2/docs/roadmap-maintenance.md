@@ -44,7 +44,10 @@ Los antiguos plan.md, docs/roadmap/roadmap.json y roadmap_digest.py siguen retir
 ni volver a publicarlos. GitHub Issues/Project Vantare conservan seguimiento interno.
 
 **Activación pendiente:** credenciales, roadmap.env, despliegue, timer y primera
-escritura requieren autorización separada. No hay migración nueva. Pasos exactos,
+escritura requieren autorización separada. El contrato del paso 10 añade
+`20261104181201_isa_1896_roadmap_corpus_parity` con rollback: rechaza títulos
+compuestos solo por espacios o tabulaciones como ya hacen Python y Rust. La
+RPC v1 y sus documentos históricos siguen admitidos. Pasos exactos,
 verificación/rollback y cambios de la web externa: [runbook](plane-roadmap-runbook.md).
 El retiro de la Action en esta rama no prueba que se haya desactivado en master.
 

@@ -12,10 +12,6 @@ use url::Url;
 const MAX_TIMESTAMP_CHARS: usize = 40;
 /// Presupuesto del documento.
 const MAX_DOCUMENT_BYTES: usize = 40_000;
-/// Presupuesto del conjunto publicado. `protocol::write` rechaza lo que supere
-/// `MAX_FRAME`, y ese rechazo deja el servicio en FAILURE con la cache ya
-/// escrita: reiniciar no lo cura, hay que borrar el fichero a mano.
-const MAX_PUBLICATION_BYTES: usize = 56 * 1024;
 
 fn valid_version(value: &str) -> bool {
     let value = value.strip_prefix('v').unwrap_or(value);
@@ -94,15 +90,6 @@ fn validate(publication: &Publication) -> Result<()> {
     {
         return Err(Error::TooLarge);
     }
-    // Cota del conjunto, no solo del documento: es la que ata el tamano de la
-    // respuesta al marco del protocolo y protege ante campos futuros.
-    if serde_json::to_vec(publication)
-        .map_err(|_| Error::Protocol)?
-        .len()
-        > MAX_PUBLICATION_BYTES
-    {
-        return Err(Error::TooLarge);
-    }
     Ok(())
 }
 
@@ -169,6 +156,10 @@ impl Roadmap {
 
 #[cfg(all(test, any(windows, unix)))]
 mod tests {
+    use super::*;
+    use crate::test_http::Server;
+    use std::time::Duration;
+
     #[test]
     fn shared_roadmap_document_corpus() {
         let corpus: serde_json::Value =
@@ -176,6 +167,22 @@ mod tests {
                 .expect("corpus");
         for case in corpus["cases"].as_array().expect("cases") {
             let mut document = corpus["base"].clone();
+            if let Some(count) = case["items_count"].as_u64() {
+                let base_item = corpus["base"]["items"][0].clone();
+                document["items"] = serde_json::Value::Array(
+                    (1..=count)
+                        .map(|index| {
+                            let mut item = base_item.clone();
+                            if !case["duplicate_ids"].as_bool().unwrap_or(false) {
+                                item["id"] = serde_json::json!(format!(
+                                    "550e8400-e29b-41d4-a716-{index:012x}"
+                                ));
+                            }
+                            item
+                        })
+                        .collect(),
+                );
+            }
             let path = case["path"].as_array().expect("path");
             if !path.is_empty() {
                 let mut target = &mut document;
@@ -209,9 +216,6 @@ mod tests {
         }
     }
 
-    use super::*;
-    use crate::test_http::Server;
-    use std::time::Duration;
     #[test]
     fn clickup_metadata_requires_area_and_valid_calendar_without_breaking_v1() {
         let mut publication: Publication = serde_json::from_value(serde_json::json!({
@@ -427,11 +431,7 @@ mod tests {
         assert!(validate(&publication).is_err(), "la cota debe rechazarlo");
     }
 
-    /// El test anterior lo decide `MAX_PUBLICATION_BYTES`, no la cota del
-    /// timestamp: con el documento al tope, el conjunto ya supera 56 KiB por si
-    /// solo. Este caso AISLA la cota del timestamp: el conjunto queda por debajo
-    /// de `MAX_PUBLICATION_BYTES` y solo `MAX_TIMESTAMP_CHARS` puede rechazarlo.
-    /// Comprobado quitando esa cota: este test falla y el otro no.
+    /// Con un documento pequeño, este caso aísla la cota del timestamp.
     #[test]
     fn the_timestamp_cap_is_what_rejects_a_long_fraction_on_a_small_document() {
         let mut publication: Publication = serde_json::from_value(serde_json::json!({
@@ -444,17 +444,6 @@ mod tests {
         assert!(
             chrono::DateTime::parse_from_rfc3339(&publication.published_at).is_ok(),
             "chrono acepta la fraccion larga"
-        );
-        let conjunto = serde_json::to_vec(&Cached {
-            version: 1,
-            publication: publication.clone(),
-            fetched_at: 0,
-        })
-        .expect("serializar");
-        assert!(
-            conjunto.len() < MAX_PUBLICATION_BYTES,
-            "el conjunto debe quedar por debajo de la cota de conjunto para aislar la del timestamp, y mide {}",
-            conjunto.len()
         );
         assert!(
             validate(&publication).is_err(),

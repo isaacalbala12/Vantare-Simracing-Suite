@@ -1522,6 +1522,10 @@ $$;
   roadmap_corpus=json.loads((ROOT/'vantare-v2/fixtures/roadmap/cases.json').read_text(encoding='utf-8'))
   for case in roadmap_corpus['cases']:
    roadmap_doc=json.loads(json.dumps(roadmap_corpus['base']))
+   if 'items_count' in case:
+    roadmap_doc['items']=[json.loads(json.dumps(roadmap_corpus['base']['items'][0])) for _ in range(case['items_count'])]
+    if not case.get('duplicate_ids'):
+     for index,item in enumerate(roadmap_doc['items'],1): item['id']=f'550e8400-e29b-41d4-a716-{index:012x}'
    if case['path']:
     target=roadmap_doc
     for key in case['path'][:-1]: target=target[key]

@@ -1,24 +1,310 @@
 {
   "base": {
     "schemaVersion": 2,
-    "items": [{
-      "id": "550e8400-e29b-41d4-a716-446655440001",
-      "section": "now",
-      "title": {"es": "Carrera", "en": "", "pt": "", "it": ""},
-      "body": {"es": "Disponible", "en": "", "pt": "", "it": ""},
-      "area": "Hub",
-      "version": null,
-      "dueDate": null
-    }]
+    "items": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440001",
+        "section": "now",
+        "title": {
+          "es": "Carrera",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Disponible",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Hub",
+        "version": null,
+        "dueDate": null
+      }
+    ]
   },
   "cases": [
-    {"name": "valid", "path": [], "expected": true},
-    {"name": "unknown_root", "path": ["unexpected"], "value": 1, "expected": false},
-    {"name": "unknown_item", "path": ["items", 0, "unexpected"], "value": 1, "expected": false},
-    {"name": "blank_title", "path": ["items", 0, "title", "es"], "value": "  ", "expected": false},
-    {"name": "bad_section", "path": ["items", 0, "section"], "value": "hidden", "expected": false},
-    {"name": "bad_version", "path": ["items", 0, "version"], "value": "foo", "expected": false},
-    {"name": "bad_date", "path": ["items", 0, "dueDate"], "value": "2026-02-30", "expected": false},
-    {"name": "null_area", "path": ["items", 0, "area"], "value": null, "expected": false}
+    {
+      "name": "valid",
+      "path": [],
+      "expected": true
+    },
+    {
+      "name": "unknown_root",
+      "path": [
+        "unexpected"
+      ],
+      "value": 1,
+      "expected": false
+    },
+    {
+      "name": "unknown_item",
+      "path": [
+        "items",
+        0,
+        "unexpected"
+      ],
+      "value": 1,
+      "expected": false
+    },
+    {
+      "name": "blank_title",
+      "path": [
+        "items",
+        0,
+        "title",
+        "es"
+      ],
+      "value": "  ",
+      "expected": false
+    },
+    {
+      "name": "bad_section",
+      "path": [
+        "items",
+        0,
+        "section"
+      ],
+      "value": "hidden",
+      "expected": false
+    },
+    {
+      "name": "bad_version",
+      "path": [
+        "items",
+        0,
+        "version"
+      ],
+      "value": "foo",
+      "expected": false
+    },
+    {
+      "name": "bad_date",
+      "path": [
+        "items",
+        0,
+        "dueDate"
+      ],
+      "value": "2026-02-30",
+      "expected": false
+    },
+    {
+      "name": "null_area",
+      "path": [
+        "items",
+        0,
+        "area"
+      ],
+      "value": null,
+      "expected": false
+    },
+    {
+      "name": "duplicate_id",
+      "items_count": 2,
+      "duplicate_ids": true,
+      "path": [],
+      "expected": false
+    },
+    {
+      "name": "bad_uuid",
+      "path": [
+        "items",
+        0,
+        "id"
+      ],
+      "value": "invalid-uuid",
+      "expected": false
+    },
+    {
+      "name": "uppercase_uuid",
+      "path": [
+        "items",
+        0,
+        "id"
+      ],
+      "value": "550E8400-e29b-41d4-a716-446655440001",
+      "expected": false
+    },
+    {
+      "name": "missing_title_locale",
+      "path": [
+        "items",
+        0,
+        "title"
+      ],
+      "value": {
+        "es": "Carrera",
+        "en": "",
+        "pt": ""
+      },
+      "expected": false
+    },
+    {
+      "name": "extra_title_locale",
+      "path": [
+        "items",
+        0,
+        "title"
+      ],
+      "value": {
+        "es": "Carrera",
+        "en": "",
+        "pt": "",
+        "it": "",
+        "fr": "X"
+      },
+      "expected": false
+    },
+    {
+      "name": "missing_body_locale",
+      "path": [
+        "items",
+        0,
+        "body"
+      ],
+      "value": {
+        "es": "Disponible",
+        "en": "",
+        "it": ""
+      },
+      "expected": false
+    },
+    {
+      "name": "extra_body_locale",
+      "path": [
+        "items",
+        0,
+        "body"
+      ],
+      "value": {
+        "es": "Disponible",
+        "en": "",
+        "pt": "",
+        "it": "",
+        "fr": "X"
+      },
+      "expected": false
+    },
+    {
+      "name": "title_120",
+      "path": [
+        "items",
+        0,
+        "title",
+        "es"
+      ],
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": true
+    },
+    {
+      "name": "title_121",
+      "path": [
+        "items",
+        0,
+        "title",
+        "es"
+      ],
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": false
+    },
+    {
+      "name": "body_600",
+      "path": [
+        "items",
+        0,
+        "body",
+        "es"
+      ],
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": true
+    },
+    {
+      "name": "body_601",
+      "path": [
+        "items",
+        0,
+        "body",
+        "es"
+      ],
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": false
+    },
+    {
+      "name": "area_blank",
+      "path": [
+        "items",
+        0,
+        "area"
+      ],
+      "value": "   ",
+      "expected": false
+    },
+    {
+      "name": "area_61",
+      "path": [
+        "items",
+        0,
+        "area"
+      ],
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": false
+    },
+    {
+      "name": "schema_boolean",
+      "path": [
+        "schemaVersion"
+      ],
+      "value": true,
+      "expected": false
+    },
+    {
+      "name": "schema_float",
+      "path": [
+        "schemaVersion"
+      ],
+      "value": 2.0,
+      "expected": false
+    },
+    {
+      "name": "schema_v3",
+      "path": [
+        "schemaVersion"
+      ],
+      "value": 3,
+      "expected": false
+    },
+    {
+      "name": "items_empty",
+      "items_count": 0,
+      "path": [],
+      "expected": true
+    },
+    {
+      "name": "items_41",
+      "items_count": 41,
+      "path": [],
+      "expected": false
+    },
+    {
+      "name": "title_tab",
+      "path": [
+        "items",
+        0,
+        "title",
+        "es"
+      ],
+      "value": "\t",
+      "expected": false
+    },
+    {
+      "name": "version_too_long",
+      "path": [
+        "items",
+        0,
+        "version"
+      ],
+      "value": "1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": false
+    }
   ]
 }

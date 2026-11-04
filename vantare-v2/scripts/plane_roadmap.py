@@ -22,7 +22,7 @@ class SyncError(ValueError):
 
 def validate_public_document(value):
     """Validate the public v2 document before writing publication SQL."""
-    if not isinstance(value, dict) or set(value) != {'schemaVersion', 'items'} or value['schemaVersion'] != 2:
+    if not isinstance(value, dict) or set(value) != {'schemaVersion', 'items'} or type(value['schemaVersion']) is not int or value['schemaVersion'] != 2:
         return False
     items = value['items']
     if not isinstance(items, list) or len(items) > 40:
@@ -44,7 +44,7 @@ def validate_public_document(value):
         if not isinstance(item['area'], str) or not 1 <= len(item['area'].strip()) <= 60:
             return False
         version = item.get('version')
-        if version is not None and (not isinstance(version, str) or not re.fullmatch(r'v?[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?', version)):
+        if version is not None and (not isinstance(version, str) or len(version) > 60 or not re.fullmatch(r'v?[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?', version)):
             return False
         due = item.get('dueDate')
         if due is not None:

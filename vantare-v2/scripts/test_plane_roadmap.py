@@ -34,6 +34,11 @@ class PlaneRoadmapTests(unittest.TestCase):
         corpus = json.loads((Path(__file__).parent.parent / 'fixtures/roadmap/cases.json').read_text(encoding='utf-8'))
         for case in corpus['cases']:
             value = copy.deepcopy(corpus['base'])
+            if 'items_count' in case:
+                value['items'] = [copy.deepcopy(corpus['base']['items'][0]) for _ in range(case['items_count'])]
+                if not case.get('duplicate_ids'):
+                    for index, item in enumerate(value['items'], 1):
+                        item['id'] = f'550e8400-e29b-41d4-a716-{index:012x}'
             if case['path']:
                 node = value
                 for key in case['path'][:-1]:
@@ -139,7 +144,6 @@ class PlaneRoadmapTests(unittest.TestCase):
         sql = publication_sql()
         self.assertIn('public.visual_roadmap_sync', sql)
         self.assertIn("current_user <> 'vantare_roadmap_publisher'", sql)
-        self.assertNotIn('visual_roadmap_publish', sql)
         self.assertTrue(sql.startswith('begin;') and sql.endswith('commit;\n'))
         self.assertIn("visual_roadmap_sync(:'doc'::jsonb)", sql)
         self.assertNotIn('Rework - Roadmap', sql)

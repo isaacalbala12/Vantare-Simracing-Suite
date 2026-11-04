@@ -8579,3 +8579,6 @@ union all select 'linear_deliveries',outcome::text,count(*)
   producción, deploy, merge ni release. CI nueva pendiente al abrir PR.8 espera
   coordinación account-erasure/clerk,9 continúa en paralelo secuencial del worker;
   6/10 pendientes,11 exclusivamente R6/12. VANTA-132 En curso.
+- PR draft [#1948](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1948) a nightly, código d79a886c6. HEAD documental final en PR/issue; CI nueva pendiente.
+- Producción tocada990 →998 (+8; +46/−38); tests +97/−3; docs +50/−0. La frontera única amplía códigos40001 y conflictos antes503; no cambia Rust ni SQL.
+- SMTP1947 permanece separado. Se continúa9 desde nightly;8 compartido pendiente de respuesta al aviso de coordinación. VANTA-132 En curso.

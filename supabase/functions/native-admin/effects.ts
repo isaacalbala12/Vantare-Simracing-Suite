@@ -40,6 +40,17 @@ export async function recordEffect(
   return data === true;
 }
 
+// A recorder must confirm the durable write, not merely resolve its RPC.
+export async function requireAudit(
+  write: () => Promise<unknown>,
+  code: string,
+) {
+  try {
+    if (await write() === true) return;
+  } catch { /* Never expose SQL, provider or identity details. */ }
+  throw new NativeError(503, code);
+}
+
 // Intents commit in their own RPC before touching a provider. A lost result ACK
 // leaves an identifiable pending intent; it never retries a remote write.
 export function effectAudit(
@@ -68,24 +79,16 @@ export function effectAudit(
       ).join(""),
       outcome: "started",
     };
-    const write = async (
+    const write = (
       outcome: EffectEvent["outcome"],
       provider_status?: number,
-    ) => {
-      try {
-        if (
-          await record(actor, {
-            ...event,
-            outcome,
-            ...(provider_status === undefined ? {} : { provider_status }),
-          }) === true
-        ) return;
-      } catch {
-        // The durable intent, if committed, is the recovery source. Do not log
-        // a provider/SQL error that could contain identities or request bodies.
-      }
-      throw new NativeError(503, "account_change_incomplete");
-    };
+    ) =>
+      requireAudit(() =>
+        record(actor, {
+          ...event,
+          outcome,
+          ...(provider_status === undefined ? {} : { provider_status }),
+        }), "account_change_incomplete");
     await write("started");
     let result: number | void;
     try {

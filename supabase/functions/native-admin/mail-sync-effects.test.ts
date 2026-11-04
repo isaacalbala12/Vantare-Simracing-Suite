@@ -155,3 +155,33 @@ Deno.test("sync dispatch before freshness boundary preserves the normal two requ
       f.trace.includes("ack"),
   );
 });
+
+for (const value of [false, null, {}, "true", "throw", "reject"]) {
+  Deno.test(
+    "sync audit confirmation accepts only true: " + JSON.stringify(value),
+    async () => {
+      const f = fixture();
+      const deps: MailDeps = {
+        ...f.deps,
+        rpc: () => {
+          if (value === "throw") throw new Error("private recorder");
+          if (value === "reject") {
+            return Promise.reject(new Error("private recorder"));
+          }
+          return Promise.resolve(value);
+        },
+      };
+      let error: unknown;
+      try {
+        await executeMail("mail_sync", {}, f.run, deps);
+      } catch (caught) {
+        error = caught;
+      }
+      assert(
+        error instanceof NativeError &&
+          error.code === "mail_sync_audit_unavailable",
+      );
+      assert(JSON.stringify(f.trace) === "[]");
+    },
+  );
+}

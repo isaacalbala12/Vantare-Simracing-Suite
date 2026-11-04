@@ -147,16 +147,18 @@ fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
     let junction = qa.join("generation-junction");
     let source = root.join("generations");
     let created = Command::new("cmd")
-        .args([
-            "/C",
-            &format!(
-                "mklink /J \"{}\" \"{}\"",
-                junction.display(),
-                source.display()
-            ),
-        ])
+        .args(["/C", "mklink", "/J"])
+        .arg(&junction)
+        .arg(&source)
         .output()
         .expect("junction probe");
+    if std::env::var("CI").as_deref() == Ok("true") {
+        assert!(
+            created.status.success(),
+            "junction fixture unavailable: {}",
+            String::from_utf8_lossy(&created.stderr)
+        );
+    }
     if created.status.success() {
         let linked = junction.join("0123456789abcdef0123456789abcdef/bin/vantare-hub.exe");
         assert!(run(&linked, None, &qa, false).status.success());

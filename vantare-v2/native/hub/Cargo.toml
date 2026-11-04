@@ -14,6 +14,10 @@ name = "root-launch-probe"
 path = "tests/support/root_launch_probe.rs"
 required-features = ["installer-qa"]
 
+[[test]]
+name = "installed_data_root"
+required-features = ["installer-qa"]
+
 [[example]]
 name = "ui-quality"
 required-features = ["parity-capture"]

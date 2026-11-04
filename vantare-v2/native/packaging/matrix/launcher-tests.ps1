@@ -109,6 +109,7 @@ try{
     }
     # A real installed Hub must reach the real root launcher and its QA session.
     $decoy=Join-Path $install 'generations/11111111111111111111111111111111'
+    try {
     [IO.Directory]::CreateDirectory((Join-Path $decoy 'bin'))|Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $decoy 'data'))|Out-Null
     $directHub=Join-Path $decoy 'bin/vantare-hub.exe'
@@ -137,9 +138,18 @@ try{
             Start-Sleep -Milliseconds 20
         } while([DateTime]::UtcNow -lt $deadline)
         Assert-Launch ($alive.Count -eq 0) 'redirected root launcher reaps its QA session'
-    }finally{$direct.Dispose()}
+    }finally{
+        if(-not $direct.HasExited){$direct.Kill();$direct.WaitForExit()}
+        $direct.Dispose()
+    }
     Remove-Item -LiteralPath (Join-Path $install 'app-open') -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath (Join-Path $install 'allow-exit') -ErrorAction SilentlyContinue
+    } finally {
+        $decoyFull=Assert-MatrixRoot $decoy
+        $qaPrefix=[IO.Path]::GetFullPath($qa).TrimEnd('\','/')+'\'
+        if(-not $decoyFull.StartsWith($qaPrefix,[StringComparison]::OrdinalIgnoreCase)){throw 'LAUNCHER_DECOY_OUTSIDE_QA'}
+        if(Test-Path -LiteralPath $decoyFull){Remove-Item -LiteralPath $decoyFull -Recurse -Force}
+    }
     $link=Join-Path $shell 'Startup/Vantare.lnk'
     Assert-Launch (Test-Path -LiteralPath $link) 'Run projects injected Startup shortcut'
     Invoke-Writer 'SetStartupOff'

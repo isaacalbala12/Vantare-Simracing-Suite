@@ -21,19 +21,19 @@ pub fn installed_generation(executable: &std::path::Path) -> Option<&std::path::
     .then_some(generation)
 }
 
-/// Canonicalize the running binary without passing Win32 verbatim paths to
-/// consumers that deliberately reject device paths.
+#[cfg(windows)]
+fn verbatim_drive(value: &str) -> Option<&str> {
+    let local = value.strip_prefix(r"\\?\")?;
+    matches!(local.as_bytes(), [drive, b':', b'\\', ..] if drive.is_ascii_alphabetic())
+        .then_some(local)
+}
+
+/// Canonicalize without passing Win32 drive-device paths to local consumers.
 pub fn canonical_executable(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     let canonical = std::fs::canonicalize(path)?;
     #[cfg(windows)]
     {
-        let Some(value) = canonical.to_str() else {
-            return Ok(canonical);
-        };
-        if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
-            return Ok(std::path::PathBuf::from(format!(r"\\{unc}")));
-        }
-        if let Some(local) = value.strip_prefix(r"\\?\") {
+        if let Some(local) = canonical.to_str().and_then(verbatim_drive) {
             return Ok(std::path::PathBuf::from(local));
         }
     }
@@ -51,6 +51,14 @@ fn installed_generation_requires_lowercase_id() {
     );
     assert!(installed_generation(lower).is_some());
     assert!(installed_generation(upper).is_none());
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn only_verbatim_drive_paths_lose_the_device_prefix() {
+    assert_eq!(verbatim_drive(r"\\?\C:\Vantare"), Some(r"C:\Vantare"));
+    assert_eq!(verbatim_drive(r"\\?\Volume{abcd}\Vantare"), None);
+    assert_eq!(verbatim_drive(r"\\?\UNC\server\share"), None);
 }
 
 pub mod calendar;

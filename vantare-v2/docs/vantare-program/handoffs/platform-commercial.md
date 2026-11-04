@@ -8774,7 +8774,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   borrado y copia de su account_id. Flujo real de lápida anonimiza perfil;
   auditoría conserva lo anterior. PostgreSQL desechable parado, sin purga.
 
-## VANTA-132 · paso 10b, minimización y retención (2026-11-04)
+## VANTA-132 · paso 10b · [PR #1959](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1959) (2026-11-04)
 
 - Decisión del orquestador: retención provisional365 días, único parámetro SQL
   private.admin_audit_policy.closed_retention_days. Isaac puede cambiarlo a90
@@ -8810,7 +8810,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Este corte de privacidad NO reduce producción; requiere funciones nuevas,
   backfill, ACL y down completos por ADR0106. No se presenta como reducción.
   Los volcados derivados se miden aparte; la reducción total del10 sigue pendiente.
-- Cifras del corte: SQL ejecutable+208; tests/tooling+312/-5; docs+92/-0.
+- Cifras del corte: SQL ejecutable+208; tests/tooling+312/-5; docs+93/-0.
   Snapshots derivados+378/-68 (no ejecutables, ADR0106); SQL físico neto+518.
   El cambio de testing derivado es solo orden UNION del generador; no fuente.
   write/check tras rebase PASS; no se editan los volcados a mano.
+- Código validado f0b74a0c9; HEAD documental y CI vigentes en el PR y en #1910.

@@ -1238,8 +1238,8 @@ owner y comparación de esquema. Sin despliegue ni merge de #1960.
 - El 13b principal sigue pendiente: importar `editor-draft.json` y `report-draft.json` al único borrador DPAPI de Services, preservar los originales como `.imported`, retirar la escritura de prosa en claro del Hub y resolver los casos de textos distintos. Se ha pedido a Isaac la decisión sobre conflictos y sobre el formulario local. #1966 (13a) aún espera integración.
 
 Paso 13a (contrato de borrador, previo a la migración de ficheros): `ipc`
-contiene la lista de módulos y los límites usados por el editor remoto de Hub
-y Services; sus placeholders los usa el editor remoto. El formulario local de
+contiene la lista de módulos y los límites usados por el editor remoto del Hub
+y el validador de Services; los placeholders los usa solo ese editor. El formulario local de
 diagnóstico conserva sus etiquetas hasta 13b. El puente deja de admitir dos rutas v1 sin llamadores;
 las rutas de capturas siguen porque Services aún las llama, aunque la subida
 permanece desactivada. La caracterización previa pasó en Hub (recovery 4/4 y
@@ -1254,3 +1254,6 @@ Rebase de [PR #1966](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pu
 sobre `nightly@902c9a2d8`, HEAD de código `95a7443ef`. Hub testing
 18/18, Services report 18/18, Clippy de IPC/Services/Hub y formato PASS.
 La CI del HEAD publicado queda pendiente; sin despliegue ni merge.
+Re-review de #1966: Services conserva el vector multibyte de 4098 bytes,
+además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
+`testing::model`. Test aislado de Hub y Services, Clippy y formato PASS.

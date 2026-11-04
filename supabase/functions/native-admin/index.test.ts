@@ -12,6 +12,7 @@ import {
   assert,
   authDeps,
   claims,
+  config,
   now,
   request,
   subject,
@@ -764,7 +765,7 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
   );
 });
 
-Deno.test("r1: first read synchronizes historical invoices and refunds before showing creator debt", async () => {
+Deno.test("r1: payment sync imports historical invoices and refunds before payout", async () => {
   const map = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON) as PolarProductMap;
   const writes: Record<string, unknown>[] = [];
   let finished = false;
@@ -838,12 +839,16 @@ Deno.test("r1: first read synchronizes historical invoices and refunds before sh
     assert(action === "list_creators" && finished);
     return Promise.resolve({ creators: [], totals: {} });
   };
-  const response = await handleNativeAdmin(
-    request({ version: 1, action: "list_creators" }),
-    actorDeps,
+  const { syncAdminPayments } = await import("./payment-sync.ts");
+  await syncAdminPayments(
+    (action, params) =>
+      actorDeps.execute!(account, config.issuer, action, params, "sandbox"),
+    "sandbox",
+    map,
+    actorDeps.polar,
   );
   assert(
-    response.status === 200 && writes.length === 1 &&
+    finished && writes.length === 1 &&
       writes[0].refunded_cents === 319 &&
       writes[0].paid_at === "2026-08-31T00:00:00Z",
   );

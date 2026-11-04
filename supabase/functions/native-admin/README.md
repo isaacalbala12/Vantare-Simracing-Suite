@@ -701,3 +701,10 @@ objetos, lÃ­mites de cinco tandas y ACK conservan su orden y sus reintentos.
 Los errores de una cola de uploads no impiden drenar los objetos completados.
 No cambia SQL, tampoco `apply_clerk_user_event`. Sin migraciÃ³n; Isaac despliega
 las dos Edge del corte aprobado. El resto de lecturas puras sigue en el paso 8b.
+
+### Paso 8: lecturas sin importación implícita
+
+`get_account`, `list_creators` y `get_creator` leen el historial local sin llamar
+a Polar ni escribir su ledger. El registro de pagos conserva la comprobación
+previa de historial completo. La acción explícita `sync_payments` y retirar la
+caducidad de `mail_list` siguen en la siguiente entrega del paso 8.

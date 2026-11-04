@@ -48,12 +48,9 @@ begin
     left join pg_roles grantee on grantee.oid=acl.grantee
     where c.oid=v_table and att.attnum>0 and not att.attisdropped
       and acl.grantee<>c.relowner and not coalesce(grantee.rolsuper,false)
-      and acl.privilege_type in ('INSERT','UPDATE'))
-   -- Also account for effective privileges inherited from another role.
-   or exists(select 1 from pg_roles principal join pg_class c on c.oid=v_table
-    where principal.oid<>c.relowner and not principal.rolsuper
-      and (has_table_privilege(principal.oid,v_table,'INSERT,UPDATE,DELETE,TRUNCATE')
-        or has_any_column_privilege(principal.oid,v_table,'INSERT,UPDATE'))) then
+      and acl.privilege_type in ('INSERT','UPDATE')
+      and case when acl.grantee=0 then true
+        else has_any_column_privilege(acl.grantee,v_table,'INSERT,UPDATE') end) then
    raise exception 'native_admin_legacy_table_still_writable'
     using errcode='55000',detail=v_table::text;
   end if;
@@ -89,9 +86,7 @@ begin
     left join pg_roles grantee on grantee.oid=acl.grantee
     where p.oid=v_function and acl.grantee<>p.proowner
       and not coalesce(grantee.rolsuper,false) and acl.privilege_type='EXECUTE')
-   or exists(select 1 from pg_roles principal join pg_proc p on p.oid=v_function
-    where principal.oid<>p.proowner and not principal.rolsuper
-      and has_function_privilege(principal.oid,v_function,'EXECUTE')) then
+   then
    raise exception 'native_admin_legacy_writers_still_callable'
     using errcode='55000',detail=v_signature;
   end if;

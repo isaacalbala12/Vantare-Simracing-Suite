@@ -1154,5 +1154,7 @@ issue conserva FK `owner_account_id → profiles(id) ON DELETE RESTRICT`; el
 guard de owner_dispositions también consulta al actor del snapshot citado.
 En el `.down.sql`, el guard de issues desvinculadas corre **después** de tomar
 el lock exclusivo, para que un borrado de cuenta no se cruce con el preflight.
-La preparación no se publica hasta que #1949 esté integrado; entonces se
-rebasará sobre `origin/nightly` actualizado y se abrirá un PR draft propio.
+#1949 quedó integrado en `nightly@4405c7c1c`; el seguimiento 7b5 se rebasó
+sobre ese HEAD sin conflicto. PostgreSQL local LF y CRLF: prueba aislada
+6/6, cierre 29/29, política Storage ausente, rollback exacto y reaplicación
+PASS. Sin despliegue ni llamada a producción.

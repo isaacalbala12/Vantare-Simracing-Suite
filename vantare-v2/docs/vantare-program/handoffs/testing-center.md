@@ -1088,3 +1088,14 @@ debe sustituir por el contrato v2 antes de activar capturas. El `.down.sql`
 recrea el esquema vacío y las funciones anteriores. La consulta
 previa y el procedimiento para un archivo no vacío están en el runbook; la
 purga requiere una decisión explícita de Isaac.
+
+Entrega 7b final: [PR draft #1949](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1949)
+contra `nightly@69827ca12`, rama
+`vantareapp/isa-1896-paso7b4-retirada-legacy`, HEAD inicial `653626ccc`.
+PostgreSQL local: harness histórico LF 134 rutas/795 comprobaciones PASS;
+esquema final LF y CRLF, 9 casos RLS/Storage, guard de archivo, rollback
+exacto y reaplicación PASS. `py_compile` y diff check PASS. CI pendiente.
+Medida frente a nightly: producción SQL +278/−0; rollback SQL +2717/−0;
+tests y runner +247/−4; docs +68/−15; CI +12/−0. Sin despliegue,
+llamadas a producción, merge ni release. El siguiente trabajo es la Fase A
+del paso 12, con ADR 0106 antes del lint y del generador de esquema.

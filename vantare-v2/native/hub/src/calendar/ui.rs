@@ -458,7 +458,7 @@ impl Calendar {
                 )
             };
             let source = if self.fallback_count() > 0 {
-                format!("LMU + RaceControl ({})", self.fallback_count())
+                format!("LMU + RaceControl no oficial ({})", self.fallback_count())
             } else {
                 "LMU oficial".to_owned()
             };
@@ -750,7 +750,7 @@ pub(super) fn render(
             "info",
             t(
                 format!(
-                    "Al horario oficial de LMU le faltan {n} series. Las completamos con RaceControl hasta que LMU las publique; van marcadas con RC."
+                    "Al horario oficial de LMU le faltan {n} series. Las completamos con RaceControl, una fuente no oficial, hasta que LMU las publique; van marcadas con RC."
                 ),
                 13.0, 400, chrome::skin(cx).text1, cx,
             ),

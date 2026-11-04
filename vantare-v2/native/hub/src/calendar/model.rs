@@ -410,6 +410,22 @@ impl Schedule {
 mod tests {
     use super::*;
 
+    #[test]
+    fn shared_calendar_corpus_matches_hub_parser() {
+        let cases: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../fixtures/calendar/cases.json"))
+                .expect("corpus");
+        for case in cases.as_array().expect("casos") {
+            let document = serde_json::to_vec(&case["document"]).expect("json");
+            assert_eq!(
+                Schedule::parse(&document).is_ok(),
+                case["valid"].as_bool().expect("veredicto"),
+                "{}",
+                case["name"].as_str().expect("nombre")
+            );
+        }
+    }
+
     pub(crate) const OCTOBER: &[u8] =
         include_bytes!("../../reference/fixtures/calendar-lmu-2026-10-06.json");
 

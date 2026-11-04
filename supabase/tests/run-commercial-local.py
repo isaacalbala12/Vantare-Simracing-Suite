@@ -587,6 +587,29 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if m.stem=='20261104194000_isa_1896_calendar_valid':
+    cases=json.loads((ROOT/'vantare-v2/fixtures/calendar/cases.json').read_text(encoding='utf-8'))
+    for case in cases:
+     payload=json.dumps(case['document'],separators=(',',':')).replace("'","''")
+     verdict=run('psql',*conn,'-c',f"select public.race_schedule_valid('{payload}'::jsonb)").strip()
+     if verdict!=('t' if case['valid'] else 'f'):
+      raise RuntimeError('calendar corpus disagreement: '+case['name'])
+    real=json.loads((ROOT/'vantare-v2/native/hub/reference/fixtures/calendar-lmu-2026-10-06.json').read_text(encoding='utf-8'))
+    payload=json.dumps(real,separators=(',',':')).replace("'","''")
+    if run('psql',*conn,'-c',f"select public.race_schedule_valid('{payload}'::jsonb)").strip()!='t':
+     raise RuntimeError('real October LMU publication failed calendar validator')
+    acl=run('psql',*conn,'-c',"""select
+      not has_function_privilege('anon','public.race_schedule_valid(jsonb)','EXECUTE')
+      and not has_function_privilege('authenticated','public.race_schedule_valid(jsonb)','EXECUTE')
+      and has_function_privilege('service_role','public.race_schedule_valid(jsonb)','EXECUTE')
+      and not exists(select 1 from pg_proc p, aclexplode(p.proacl) a
+        where p.oid='public.race_schedule_valid(jsonb)'::regprocedure and a.grantee=0)""").strip()
+    if acl!='t': raise RuntimeError('calendar validator ACL is not service-only')
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(m.stem+'.down.sql'))
+    if run('psql',*conn,'-c',"select to_regprocedure('public.race_schedule_valid(jsonb)') is null").strip()!='t':
+     raise RuntimeError('calendar validator rollback retained the function')
+    run('psql',*conn,'-f',migration_source)
+    print(f'Calendar shared corpus {len(cases)}/{len(cases)}, real LMU, ACL and rollback PASS',flush=True)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem==acl_restatement_stem:

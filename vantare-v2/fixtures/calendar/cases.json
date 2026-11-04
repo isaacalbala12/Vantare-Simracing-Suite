@@ -1,0 +1,72 @@
+[
+  {
+    "name": "interval",
+    "valid": true,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"lmgt3","name":"LMGT3","track":"Sebring","vehicleClass":"LMGT3","licenseLabel":"Bronze","recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "weekly",
+    "valid": true,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"weekly","name":"Weekly","track":"Spa","vehicleClass":"LMP2","licenseLabel":"Silver","recurrence":{"kind":"weekly-slots","days":["Mon","Fri"],"timesUTC":["20:00"]}}]}
+  },
+  {
+    "name": "wrong_version",
+    "valid": false,
+    "document": {"version":2,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "reversed_window",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-02T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "duplicate_id",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"interval","intervalMinutes":15}},{"id":"a","name":"B","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "no_series",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[]}
+  },
+  {
+    "name": "interval_zero",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"interval","intervalMinutes":0}}]}
+  },
+  {
+    "name": "weekly_bad_day",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"weekly-slots","days":["Funday"],"timesUTC":["20:00"]}}]}
+  },
+  {
+    "name": "weekly_bad_time",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"weekly-slots","days":["Mon"],"timesUTC":["25:00"]}}]}
+  },
+  {
+    "name": "rich_valid",
+    "valid": true,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"rich","name":"Rich","track":"T","vehicleClass":"C","licenseLabel":"L","classes":[{"name":"LMGT3"}],"raceDurationMin":45,"sessions":[{"name":"practice","durationMin":3,"estimated":false}],"tyreWarmers":true,"notes":["note"],"source":"official","startOffsetMinute":0,"recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "bad_optional_duration",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","eventDurationMin":"long","recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "bad_optional_class",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","classes":[{"name":5}],"recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "bad_optional_session",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","sessions":[{"name":"race","durationMin":-1}],"recurrence":{"kind":"interval","intervalMinutes":15}}]}
+  },
+  {
+    "name": "bad_interval_days_shape",
+    "valid": false,
+    "document": {"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"a","name":"A","track":"T","vehicleClass":"C","licenseLabel":"L","recurrence":{"kind":"interval","intervalMinutes":15,"days":"Mon"}}]}
+  }
+]

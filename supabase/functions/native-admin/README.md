@@ -464,3 +464,28 @@ La cobertura vigente es `native_admin_report_root.test.sql` con el harness de
 cutover y rollback. Los digests nuevos de `native_admin_characterization.test.sql`
 solo se seleccionan cuando el runner aplicó esa migración; los modos `before_*`
 conservan sus controles RED de barreras sin anticipar el nuevo esquema.
+
+## Autoridad owner · paso 4 de VANTA-132
+
+Tras R6 y #1927, `private.is_owner(uuid)` decide tanto el acceso del actor como
+la protección del objetivo y el campo `owner` del resumen enviado al cliente.
+La migración `20261104070000_isa_1910_admin_owner_policy.sql` conserva las capas
+SQL y todos los bloqueos: solo cambia cuatro fragmentos, con rechazo atómico
+55000 si su fuente ha cambiado. Normaliza CRLF/LF en fuente y fragmentos.
+
+Un owner activo sigue protegido frente a bloqueo y borrado; se conserva la
+protección de la propia cuenta. Un owner caducado o revocado y una membresía
+legacy owner no conceden esa protección ni acceso admin. Los demás requisitos
+de confirmación, identidad, sandbox y barrera de borrado siguen vigentes.
+`set_tester` sobre un owner activo no modifica su asignación ni su membresía:
+no crea ni reescribe `testing_center_memberships.role='owner'`. Los cambios de
+tester ordinarios siguen sincronizando su membresía tester/primary_tester.
+Se mantiene la salvaguarda previa que exige revocar expresamente una asignación
+owner caducada antes de reemplazarla por tester; no es autoridad para acceder.
+
+El rollback restaura exactamente los cuatro cuerpos anteriores y sus ACL.
+Orden al revertir dependencias: policy de este paso, report_root si procede,
+puente owner de #1927 y finalmente la autoridad R6. El gate conserva los
+oráculos anteriores antes del corte o bajo sus rollbacks reales y prueba el
+nuevo comportamiento en el esquema final. No cambia datos, permisos, billing,
+licencias, tablas legacy ni FK; el paso 11 sigue reservado a la base R6/12.

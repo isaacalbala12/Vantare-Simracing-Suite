@@ -8013,3 +8013,62 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Edge→SQL LF 6/6 PASS y ambas instancias detenidas. RED y primer rechazo de
   pg_write_all_data guardados en evidencia; no se oculta ningún fallo inicial.
 - Medición frente a 715c55cd8: producción +1038/−1; tests +247/−31; docs +256/−0.
+
+## VANTA-132 · Cierre de #1924 y continuación del paso 4 (2026-11-04)
+
+- #1924 integrado por el orquestador en nightly
+  `3397df2ea5e9222e30d1efb1f9ba8443924af944`; HEAD revisado
+  `97993db72ca9e763ed76bdf68d8959f7fd8ff1ac`. Seis checks SUCCESS verificados:
+  Commercial LF/CRLF [41780853304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41780853304),
+  marketing/promoción/bloqueantes [41780853272](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41780853272),
+  calidad [41780853118](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41780853118)
+  y GitGuardian. El control RED llegó a la barrera esperada y después corrió
+  el harness completo en ambos formatos; ya no queda la dependencia de CI.
+- Evidencia local conservada: cuatro suites/67 pgTAP, 282 rechazos atómicos,
+  cinco digests de rollback exactos/reaplicación, índice JSON, autoridad owner,
+  carreras actor/target y seis journal/lease; Edge→SQL 6/6 y Deno94 PASS.
+  Medición de esa entrega: producción +1038/−1; tests +247/−31; docs +256/−0.
+- El archivo y borrado Clerk siguen dependiendo de tablas legacy/FK, conservadas
+  por #1924. La retirada final de R6 debe resolver archivo y parche Clerk,
+  también screenshot_evidence/evidence_batches. No se retiran aquí.
+- Continúa paso 4 desde esa nightly en worktree propio isa-1910-paso4b, rama
+  vantareapp/isa-1910-paso4b-owner-unico: protección del objetivo y set_tester
+  deben usar private.is_owner. #1927 ya cerró require_owner/review. Primero
+  caracterización; sin aplanar funciones ni tocar el paso 11 (base R6/12).
+- VANTA-132 permanece En curso: paso 4 restante, auditoría Brevo y pasos 6–10
+  pendientes. Sin despliegue, producción, merge del worker ni release.
+
+## VANTA-132 · Paso 4 restante: autoridad única en admin (2026-11-04)
+
+- Base nightly 3397df2ea, rama vantareapp/isa-1910-paso4b-owner-unico y worktree
+  D:/VantareServer/worktrees/isa-1910-paso4b. Incluye el cierre documental de
+  #1924 anterior. #1927 ya hizo require_owner/review; este paso completa
+  protección de bloqueo/borrado, señal owner al cliente y set_tester.
+- private.is_owner decide autoridad y protección: owner caducado/revocado o
+  membresía legacy no protegen el objetivo ni autorizan actor. Owner activo y
+  protección de la propia cuenta conservados. Tester sobre owner activo es
+  no-op de asignación/membresía; no crea ni reescribe una membresía owner.
+- Se conserva la regla previa de no reemplazar implícitamente la asignación
+  owner caducada por tester: requiere revocación explícita. No se cambian esa
+  regla de negocio, las confirmaciones ni el entorno sandbox de ban/borrado.
+- Migración/rollback 20261104070000: cuatro sustituciones de fuente exacta con
+  guard de deriva 55000 y normalización CRLF/LF. Sin aplanar SQL, paso 11 fuera.
+  Ningún cambio a _shared/clerk-webhook, datos R6, tablas/FK ni billing/licencias.
+- Caracterización previa 4e86ea8a3: 26 checks, 21 PASS/5 RED. Se reforzó además
+  el timestamp histórico para probar que la membresía existente no se reescribe.
+  GREEN LF y CRLF: 26 checks nuevos; cuatro suites/80 checks finales y la
+  caracterización anterior de 13 checks conservada antes de la migración.
+- Rollback exacto de los cuatro cuerpos/ACL, reaplicación y rechazo atómico si
+  la segunda función deriva después de cambiar la primera PASS. Gate #1924
+  de 282 rechazos/índice/down/reaplicación conservado bajo rollback de policy.
+  Autoridad owner, locks actor/target y seis carreras journal/lease PASS.
+  Edge→SQL LF6/6 y Deno2.7.13 94 PASS (ambos modos, Hub/basura/owner caducado/
+  no owner). Python/diff PASS. Instancias locales detenidas; CI remota pendiente.
+- Evidencia D:/VantareServer/evidence/isa-1910-paso4b y /tmp/admin-1910-policy-*
+  desechables. Rust/check/Clippy/Nextest/lifecycle/telemetría omitidos: no cambia
+  native. Sin secretos, Store real, producción, despliegue, merge propio ni
+  release. VANTA-132 En curso: auditoría Brevo y pasos 6–10 pendientes; el 11
+  permanece dentro de R6/12. No hay decisión nueva necesaria en este paso.
+- Medición frente a 3397df2ea: producción +100/−0 (up y down), tests +120/−2, docs +84/−0.
+- PR draft [#1939](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1939) a nightly,
+  código validado d34ab62cf; HEAD documental final publicado en el PR. CI nueva en curso.

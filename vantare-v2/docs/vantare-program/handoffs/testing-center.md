@@ -1062,3 +1062,17 @@ Tras integrar admin #1924 en `nightly@3397df2ea`, #1934 se rebasó conservando e
 Tras #1939 (`nightly@d1616b2f7`), Isaac autorizó renombrar la migración y rollback de #1934 a `20261104084000`, posterior a `20261104070000` de admin. El runner conserva ambos lados, aplica rollback LIFO y prueba definiciones/ACL exactos de las cuatro funciones; PostgreSQL local LF pasó con 134 rutas/795 comprobaciones y 16 envíos. CRLF y CI del HEAD rebasado quedan por verificar antes de integrar.
 
 Tras #1941 (`nightly@937e55afd`), #1934 se rebasó y la migración/rollback pasó a `20261104084000`, posterior al ACK admin `20261104083000`. El runner revierte primero canales, luego ACK y política owner; conserva las pruebas de envío y rollback exacto. HEAD y CI actuales constan en el PR; sin despliegue ni merge.
+
+Paso 12, Fase A: la ADR 0106 fija la cadena histórica como única autoridad
+compartida por R6 y R3. Producción no está vacía: la reconstrucción aplicó
+96/96 migraciones el 19-oct y hubo cambios de pagos el 26-oct. El lint y el
+volcado local por dominio siguen en PR pequeños posteriores. La Fase B de
+compactación y `supabase migration repair` queda solo como propuesta: necesita
+ventana, comparación A=B=C con el esquema alojado y autorización de Isaac.
+La aceptó el orquestador en la revisión general de VANTA-131; Isaac aún la
+puede revisar. El texto de la ADR ya atribuye así la decisión.
+ADR en [PR draft #1950](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1950)
+contra `nightly@69827ca12`, rama `vantareapp/isa-1896-paso12a-adr`.
+Caracterización: la matriz ACL del paso 0 (39 permisos) permanece como
+oráculo; no cambia SQL ni sus tests. Medida: producción +0/−0, tests +0/−0,
+docs +68/−0 tras registrar este handoff. CI del último push pendiente; sin despliegue.

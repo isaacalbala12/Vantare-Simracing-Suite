@@ -29,3 +29,4 @@ Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto n
 - [ADR 0102: Modelo de acceso nativo](0102-modelo-acceso-nativo.md) — aceptado por el orquestador; implementación por pasos en #1827.
 - [ADR 0104: Identidad de Gestión y sesión en memoria](0104-identidad-admin-y-sesion-en-memoria.md) — aceptado en #1910; activación del cliente reservada a Isaac.
 - [ADR 0105: informe v2 del Testing Center](0105-testing-center-report-v2.md) — aceptado para 7a de #1896; retirada de tablas y RPC antiguos pendiente de 7b.
+- [ADR 0106: una cadena de migraciones Supabase y un esquema derivado](0106-migraciones-supabase-historia-unica.md) — Fase A de #1896, compartida con R3; sin compactación ni despliegue.

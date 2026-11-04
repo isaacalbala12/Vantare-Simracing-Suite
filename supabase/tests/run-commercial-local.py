@@ -11,6 +11,7 @@ from commercial_checkout_terminal import run_terminal_checkout_race
 from commercial_migration_lock import run_migration_lock_regression
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
+from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -25,6 +26,7 @@ parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
+parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
@@ -64,6 +66,7 @@ if args.qa_e2e:
  qa_output=pathlib.Path(args.output).resolve()
  if not qa_output.is_relative_to('/mnt/d/VantareServer/qa/licencias-e2e') or (qa_output/'qa-e2e-owned').read_bytes()!=b'VANTA-126 qa-e2e fixture':
   parser.error('--qa-e2e requires an owned directory under the dedicated QA root')
+admin_owner_enabled=owner_enabled
 if args.b01 and (not args.postgrest_bin or not args.deno_bin):
  parser.error('--b01 requires --postgrest-bin and --deno-bin')
 if args.b01:
@@ -181,9 +184,12 @@ $$;
     'testing_center_report_submission_keys','testing_center_report_events')
    order by c.relname"""
   legacy_acl_before=None
+  admin_owner_previous=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
+   # Same historical modes as the R6 authority prerequisite; full CI has none.
+   if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
    if args.before_testing_identity and 'testing_server_identity' in m.name: continue
@@ -236,10 +242,12 @@ $$;
    }
    if args.docker and m.name in existing_roles:
     run_existing_role_regression(run, conn, admin_conn(), migration_source, OUT, *existing_roles[m.name])
-   if 'isa_1770_terminal_checkout_attempts' in m.name and not args.admin_effects_only:
+   if 'isa_1770_terminal_checkout_attempts' in m.name and not (args.admin_effects_only or args.admin_owner_only):
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==ADMIN_OWNER_STEM:
+    admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -270,7 +278,9 @@ $$;
   """).strip()
   assert role_contract=='t', 'managed product role attributes changed'
   (OUT/'managed-role-contract.log').write_text('Four product roles: safe attributes PASS\n')
-  if not (args.baseline or args.before_write_barrier or args.before_testing_identity or args.admin_effects_only):
+  if admin_owner_previous is not None:
+   run_admin_owner_precheck(run,conn,OUT,BIN,ENV)
+  if not (args.baseline or args.before_write_barrier or args.before_testing_identity or args.admin_effects_only or args.admin_owner_only):
    admission='20261103093000_isa_1896_report_admission'
    run('psql',*conn,'-c',"""insert into private.testing_report_attempts
     (scope,subject,week_start,day_start,attempts) values
@@ -288,13 +298,18 @@ $$;
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if owner_enabled and not args.admin_effects_only:
    owner_stem='20261103235000_isa_1896_owner_unification'
+   admin_owner_current=None
+   if admin_owner_previous is not None:
+    # Respect the deployed dependency order: admin down, R6 down/up, admin up.
+    admin_owner_current=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(ADMIN_OWNER_STEM+'.down.sql'))
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
    role_snapshot=run('psql',*conn,'-At','-c',"select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p where p.oid='public.testing_center_current_role()'::regprocedure").strip()
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_unification_rollback.test.sql')
    (OUT/'testing_owner_unification_rollback.test.sql.log').write_text(result)
    if 'not ok ' in result or '1..8' not in result:
     raise RuntimeError('step 8 owner rollback failed')
-  if not args.baseline and not args.before_testing_identity and not args.admin_effects_only:
+  if not args.baseline and not args.before_testing_identity and not (args.admin_effects_only or args.admin_owner_only):
    for stem,suite,count in [
     ('20261103114000_isa_1896_calendar_acl','testing_step3_acl_rollback.test.sql',16),
     ('20261103114100_isa_1896_candidate_membership','testing_step3_channel_rollback.test.sql',1),
@@ -331,6 +346,10 @@ $$;
    if guard.returncode==0 or 'owner_rollback_dependency' not in guard.stderr:
     raise RuntimeError('step 8 rollback did not fail closed on dependent function: '+guard.stderr)
    run('psql',*conn,'-c','drop function private.vanta131_owner_down_guard_probe()')
+   if admin_owner_current is not None:
+    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(ADMIN_OWNER_STEM+'.sql'))
+    if json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))!=admin_owner_current:
+     raise RuntimeError('admin owner changed after dependency rollback/reapply')
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))
@@ -382,7 +401,7 @@ $$;
   if args.writers:
    run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
    raise SystemExit(0)
-  if not args.baseline and not args.admin_effects_only:
+  if not args.baseline and not (args.admin_effects_only or args.admin_owner_only):
    run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
   if args.concurrency:
    raise SystemExit(0)
@@ -620,7 +639,11 @@ $$;
   suites += ['native_admin_effects_review.test.sql']
   suites += ['native_admin_effects_review_rollback.test.sql']
   suites += ['native_admin_effects_r2.test.sql']
-  if args.admin_effects_only:
+  if admin_owner_previous is not None:
+   suites += ['native_admin_owner_authority.test.sql']
+  if args.admin_owner_only:
+   suites=['native_admin_owner_authority.test.sql','commercial_testing_identity.test.sql']
+  elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
@@ -632,6 +655,12 @@ $$;
    (OUT/(name+'.log')).write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
+  if admin_owner_previous is not None and not args.baseline:
+   run_admin_owner_regressions(run,conn,OUT,BIN,ENV,admin_owner_previous)
+  if args.admin_owner_only:
+   assert admin_owner_previous is not None, 'owner migration was not applied'
+   print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
+   raise SystemExit(0)
   if not args.baseline:
    if args.deno_bin and not args.admin_effects_only:
     diagnostic=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',

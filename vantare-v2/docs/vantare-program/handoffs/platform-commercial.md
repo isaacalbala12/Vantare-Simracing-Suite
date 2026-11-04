@@ -7525,3 +7525,95 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Evidencia stack-rebase-40a725910 bajo evidence/licencias-e2e.
 - #1920 se mantiene aparte, apilado sobre este HEAD; su base sigue en la rama de
   #1917 hasta su merge, después nightly. HEAD/CI publicados en issues/PRs.
+## VANTA-132 · Costura de autoridad owner con R6 (2026-11-04)
+
+- Encargo del orquestador: PR pequeño aparte para testing_contribution_review
+  y native_admin_require_owner. Rama vantareapp/isa-1910-paso4-owner-review y
+  worktree D:/VantareServer/worktrees/isa-1910-paso4 desde nightly cef0ec16c.
+  #1925 leído en bbac6c70c, sin modificarlo. No se completa el resto del paso 4.
+- Caracterización bb5d68d67 antes del producto: 16 PASS/9 RED de 25 casos.
+  La RPC vieja negaba al owner operativo sin membresía y aceptaba membresía
+  antigua con asignación caducada/revocada/otro rol. Incluye no-owner, claims
+  basura, revisión real/idempotente y ACL. No se modifica ninguna membresía.
+- Helper conserva sus bloqueos y consulta private.is_owner. RPC pública delega
+  al helper manteniendo error testing_owner_required, propuesta y ACL. Recoge
+  actor/target y bloquea UUID ordenados antes de filas; verifica de nuevo el
+  dueño del informe. Test de orden 03bbbb3db antes de corregir esa entrada:
+  RED con account_write_retry_before_rows en el camino sin bloqueo previo.
+- Migración posterior al timestamp de R6, con guard de autoridad ausente y
+  rollback de los dos cuerpos. Prerequisito real: integrar R6/#1925 y esta
+  costura como conjunto coordinado; aplicar R6 primero, admin después. Revertir
+  admin antes que R6. PR propio draft a nightly desde base nightly; CI depende
+  de R6 y no se presentará como cadena verde mientras falte esa migración.
+- Validación local en copia desechable: cadena completa de esta rama más el
+  archivo real owner_unification de #1925@bbac6c70c, sin sustituir autoridad ni
+  adelantar revokes. LF/CRLF: 25/25, guard 55000 atómico, dos cuerpos/ACL exactos
+  tras down, reapply y tres carreras observadas en pg_stat_activity PASS.
+  Deno 2.7.13 94/94, incluidos Hub, basura, caducado/no-owner. Python/diff PASS.
+  Instancias detenidas. Rust/lifecycle/telemetría omitidos: ningún crate cambia.
+  Evidencia D:/VantareServer/evidence/isa-1910-paso4. Sin servicios reales.
+- #1924 queda draft sin fusionar hasta nightly con #1926 y mapping/vaciado de
+  R6/7b. HEAD documental 237552f72. Después renombrar up/down a timestamp
+  posterior a ambos, rebasar y quitar el shutdown auxiliar del replay. CI hoy
+  recorre todas las migraciones en base nueva, pero esa fixture oculta el orden
+  inválido; NO demuestra reset limpio real ni autoriza integración.
+- Guard pendiente para ese rebase: tabla reports y siete hijas legacy
+  (evidence, technical_issues, screenshot_evidence, evidence_batches,
+  report_payloads, report_submission_keys, report_events): cero filas y ningún
+  INSERT/UPDATE/DELETE/TRUNCATE efectivo para service_role, authenticated, anon,
+  PUBLIC o vantare_triage; RPC legacy sin EXECUTE para esos roles. Revokes en
+  R6, no aquí. Se mantiene el guard de ejecutor BYPASSRLS/SUPERUSER.
+- Sin cambios _shared/clerk-webhook, billing/licencias, datos R6, dependencias,
+  Store real, secretos, producción, despliegue, merge ni release. Paso 11 en R6;
+  distinguir 409 y lectura/retención siguen en paso 10.
+- PR draft [#1927](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1927)
+  contra nightly; código validado d2c247ca7 y push verificado. Dependencia #1925
+  explícita. CI 41742042080 de ad02fb322 confirma el bloqueo esperado:
+  native_admin_requires_r6_owner_authority al aplicar toda la cadena sin R6.
+  No hay integración ni despliegue autorizado; no se debilita ese guard.
+
+### Pila de revisión #1925 + #1927 (2026-11-04)
+
+- #1927 rebasado sobre #1925@38ce76aa2, sin editar ese PR. Se incorpora también
+  nightly@40a725910 (#1926) en esta rama para resolver los conflictos y probar
+  la combinación real. Ambos SHA son ancestros; se conservan los dos lados del
+  runner y del handoff Testing Center. Sin cambio de comportamiento adicional.
+- Se mantiene destino nightly: workflows SQL filtran pull_request a nightly.
+  Se usa la alternativa de rebase local autorizada; CI validará ambos trabajos
+  en la cadena completa, sin sustituir private.is_owner ni adelantar revokes.
+  El anterior fallo por dependencia ausente queda como evidencia histórica.
+- Gate local sobre esta rama real: 25/25, rollback exacto/ACL, guard atómico,
+  reaplicación y tres carreras PASS; también conserva los checks de rollback
+  y cierre legacy de R6. Python/diff PASS. CI nueva pendiente. Rust y Deno no
+  repetidos: sin cambios nativos/Edge; los 94 Deno previos siguen referenciados.
+- #1924 continúa draft esperando 7b2. #1926 ya integrado: al rebasar #1924 tras
+  7b2, guard para padre, siete hijas y RPC legacy/capturas, incluidos
+  testing_center_prepare_screenshot_batch y testing_center_finalize_screenshot;
+  renombrar up/down detrás de los prerequisitos y retirar el shutdown auxiliar
+  del replay. No se hace ese rebase ni se cambia el guard todavía.
+
+### #1927 tras integrar #1925 y P3 de revisión (2026-11-04)
+
+- Rebase sobre nightly@39b944d8c: #1925 integrado, migración/rollback de R6
+  únicamente en 20261103235000. Se conservan cierre legacy, QA y ambos handoffs;
+  ya no se incluyen commits de R6 pendientes en el diff propio de #1927.
+- Test previo 4fe066062: con target bloqueado, no-owner intentaba tomar su UUID
+  y fallaba en 55P03. Chequeo sin locks con private.is_owner(reviewer) al principio
+  devuelve 42501/testing_owner_required; comprobación bloqueada del helper
+  conservada después. Se retira el comentario obsoleto del test de autoridad.
+- El harness respeta la nueva dependencia de rollback de R6: admin down antes
+  de R6 down/up; después admin up y comparación exacta de cuerpos/ACL. No se
+  debilita el guard owner_rollback_dependency de R6.
+- Código validado e77dffd60: gate local con rechazo sin locks, 25/25, rollback
+  exacto, reaplicación y tres carreras PASS. Deno 2.7.13 94/94, Python/diff PASS.
+  Instancia detenida; sin Rust/lifecycle/telemetría porque no cambia ningún crate.
+  Evidencia isa-1910-paso4/review-p3. HEAD/CI publicados en #1927; el orquestador
+  verifica CI verde antes de revisar/integrar. Sin merge de PR ni despliegue.
+- #1924 continúa draft esperando 7b2; guard/timestamp y reset limpio se ajustan
+  después, conforme a la lista de padre, siete hijas y RPC de capturas acordada.
+- CI 41761978834 detectó aislamiento de fixture: el precheck dejaba un informe
+  sintético y rompía el recuento global de commercial_testing_identity. Se limpia
+  ese informe en finally; las identidades durables solo viven hasta destruir la
+  base desechable. Sin debilitar barreras ni la aserción que detectó la fuga.
+  Gate acotado ampliado a autoridad + identidad: 98/98, precheck y tres carreras
+  PASS. El resultado final de CI corresponde al HEAD publicado en #1927.

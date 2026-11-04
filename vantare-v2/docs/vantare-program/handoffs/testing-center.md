@@ -1,3 +1,8 @@
+## 2026-11-04 - #1896 / VANTA-131: excepción de inmutabilidad de 7b
+
+- #1953 fusionado en `nightly@7bd1e7596` enmendó la migración `20261104120500_isa_1896_legacy_retirement.sql` y su rollback después de #1949. El orquestador confirmó que **no se había desplegado en ningún entorno**; esa es la única razón para aceptar la enmienda.
+- Desde este punto, una migración fusionada no se edita. Toda corrección se hace en una migración nueva con rollback. #1954 hará fallar la CI si cambia una migración posterior al corte ya presente en `origin/nightly`. #1955 debe entrar antes de seguir con #1954 y con el reparto de `shared.sql`.
+
 ## 2026-11-04 - #1896 / VANTA-131 7b3: endurecimiento del archivo
 
 - #1930 quedó fusionado en nightly@fa2ab202c. Draft PR #1932, rama vantareapp/isa-1896-paso7b3-archive-hardening, rebasada sobre origin/nightly@8ca3e63be (#1929 instalador). Fija el cuerpo B03 antes del up y después del down (solo normaliza líneas en blanco), el SHA-256 del tramo exacto de redacción y la propagación de `missing_parent`; el runbook aclara los bits de variante del UUID. PostgreSQL 16 local completo PASS: tamper del tramo rechazado, hija de efecto omitido no restaurada, 134 rutas/795 checks de concurrencia. CI nueva pendiente. Medida frente a nightly: producción +6/-1, rollback +34/-0, tests +61/-4, docs +6/-1 antes de este ajuste. El recorrido recursivo del archivo sigue siendo potencialmente cuadrático con muchos informes y queda como nota de rendimiento para el paso 12, sin cambiar la semántica aquí.

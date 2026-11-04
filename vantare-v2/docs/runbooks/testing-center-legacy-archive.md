@@ -113,6 +113,14 @@ concedidos; su diff no consulta `testing_center_promotions` ni
 
 ## Cierre 7b: comprobación previa para Isaac
 
+La migración `20261104120500_isa_1896_legacy_retirement.sql` y su
+`.down.sql` se enmendaron en #1953 después de fusionar #1949, **antes de
+cualquier despliegue en cualquier entorno**, según la confirmación del
+orquestador. Es una excepción puntual. A partir de ahora no se edita una
+migración fusionada: cada corrección se publica en una migración nueva con
+su propio rollback. El lint de la ADR 0106 bloquea cambios a migraciones
+posteriores al corte que ya existan en `origin/nightly`.
+
 Ejecutar solo en el entorno que Isaac vaya a desplegar, con el tráfico de
 informes y los borrados de Clerk pausados. El resultado esperado es **cero**
 en el archivo y en las doce tablas exclusivas del informe:

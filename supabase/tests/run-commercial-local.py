@@ -280,6 +280,8 @@ $$;
      if 'not ok ' in result or '# Looks like' in result:
       raise RuntimeError(name+' failed')
     archive_check('testing_center_legacy_archive.test.sql')
+    mapped_ids=run('psql',*conn,'-At','-c',"""select jsonb_object_agg(legacy_source_id,id order by legacy_source_id)
+      from public.testing_contributions where legacy_source_id is not null""").strip()
     run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
     archive_check('testing_center_legacy_archive.rollback.test.sql')
     run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
@@ -304,6 +306,9 @@ $$;
         and source_id='report_'||repeat('7',64)""")
     run('psql',*conn,'-f',migration_source)
     archive_check('testing_center_legacy_archive.test.sql')
+    replay_ids=run('psql',*conn,'-At','-c',"""select jsonb_object_agg(legacy_source_id,id order by legacy_source_id)
+      from public.testing_contributions where legacy_source_id is not null""").strip()
+    if replay_ids!=mapped_ids: raise RuntimeError('legacy report IDs changed on replay')
     # The rest of the commercial suite assumes an empty report catalogue.
     # Remove only this disposable characterization fixture after verifying it.
     run('psql',*conn,'-c',"""delete from public.testing_report_followup f

@@ -18,6 +18,12 @@ select is((select count(*)::integer from public.testing_contributions
  where legacy_source_id is not null and account_id=
  '18960000-0000-4000-8000-0000000007b2'),7,
  'all seven reports map despite the normal five-per-day quota');
+select ok(not exists(select 1 from public.testing_contributions
+ where legacy_source_id is not null and state='received'),
+ 'legacy reports never reenter the triage queue');
+select is((select state from public.testing_contributions
+ where legacy_source_id='report_'||repeat('7',64)),'reviewing',
+ 'submitted legacy report enters owner review');
 select is((select title from public.testing_contributions
  where legacy_source_id='report_'||repeat('7',64)),'Open the Hub',
  'the v2 title comes from the admitted legacy payload');

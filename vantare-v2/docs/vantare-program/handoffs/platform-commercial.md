@@ -8554,31 +8554,19 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Check/lint/fmt/Python/diff y471huellas PASS. Solo gates del alcance tocado; Rust omitido por no tocar native. Docker marketing local ausente; CI nueva pendiente de verificar.
 - Medición final vs2f49a57f1: producción +146/−34; tests +222/−9; docs +66/−2. Siguiente5eSMTP; VANTA-132 En curso.
 
-## VANTA-132 · paso7: errores tipados en la frontera (2026-11-04)
+## VANTA-132 · paso 7, errores tipados · review (2026-11-04)
 
-- Base origin/nightlycf41b7c30, rama vantareapp/isa-1910-paso7-errores y
-  worktree propio. SMTP ya está en PR draft1947 (HEAD31f817f72), separado.
-- Una función adminFailure sustituye las condiciones repartidas del catch.
-  Alias cerrados de SQL heredado y admin:<código público>, con NativeError;
-  40001/conflictos de informe/cupón/cuenta borrada ->409 account_conflict.
-  Cliente Rust existente distingue409 deOffline5xx; sin modificación nativa.
-  Confirmación422, owner403, inexistente404 e inválido400 conservados.
-- Desconocido ->503 y diagnóstico de nombre fijo, nunca mensaje/detalle SQL.
-  Claves de prototipo rechazadas. partialChange siempre503 material, incluso
-  ante40001: el owner no recibe una invitación a repetir tras un efecto incierto.
-  No se reescriben funciones SQL ni se añade una capa de despacho.
-- Caracterización previaf75af7424:5PASS/4RED. GREEN161Deno, tabla/códigos,
-  log sin PII, claves heredadas, error tipado preservado y parcial ante conflicto.
-  PostgreSQL local admin-reports-only: replay, down/reaplicación y autoridad,
-  locks/races, ambos modos OAuth/abuso y Edge→SQL PASS. Instancia parada.
-- Check/lint/fmt y471huellas PASS. Check aislado de index.ts detectó la librería
-  dom.iterable ausente en ese comando para polar.ts preexistente; check por la
-  entrada E2E canónica con esa referencia PASS. No se modifica shared/config.
-  Fallos conservados. Rust/lifecycle/telemetría omitidos por no tocar native.
-- Sin migración; sin shared/webhook, billing/licencias, secretos, Store real,
-  producción, deploy, merge ni release. CI nueva pendiente al abrir PR.8 espera
-  coordinación account-erasure/clerk,9 continúa en paralelo secuencial del worker;
-  6/10 pendientes,11 exclusivamente R6/12. VANTA-132 En curso.
-- PR draft [#1948](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1948) a nightly, código d79a886c6. HEAD documental final en PR/issue; CI nueva pendiente.
-- Producción tocada990 →998 (+8; +46/−38); tests +97/−3; docs +50/−0. La frontera única amplía códigos40001 y conflictos antes503; no cambia Rust ni SQL.
-- SMTP1947 permanece separado. Se continúa9 desde nightly;8 compartido pendiente de respuesta al aviso de coordinación. VANTA-132 En curso.
+- PR #1948 a nightly; base cf41b7c30, rama/worktree propios. Una tabla de nombres
+  SQL completos sustituye el catch repartido. Sin prefijos ni alias genéricos.
+- Aprobado: cupón/informe/cuenta borrada pasan de 503 a 409 para refrescar;
+  SQLSTATE 40001 también. Cambios parciales siguen en 503. Sin cambios Rust/SQL.
+- Se retiran testing_owner_required y testing_contribution_missing: el camino
+  admin bloquea el informe y comprueba owner/existencia antes de review_as;
+  sus fallos públicos son native_admin_forbidden/native_admin_not_found.
+- Caracterización previa f75af7424: 5 PASS/4 RED. Review: 16 PASS/1 RED antes de
+  retirar nombres especulativos. Replay local admin/Edge, down/guards y carreras
+  de la entrega anterior PASS; nuevos gates/medición y HEAD en PR/issue.
+- Desconocidos: 503 con diagnóstico fijo, sin PII. Sin shared, secretos, servicios
+  reales, deploy, merge ni release. Rust omitido porque native no cambia.
+- VANTA-132 En curso: revisar 1948, rebasar 1951 encima y corregir su contrato;
+  luego ajustes 1947 y paso 8 autorizado. 6/10 pendientes; 11 en R6/12.

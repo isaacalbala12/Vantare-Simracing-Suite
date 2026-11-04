@@ -1,4 +1,4 @@
-# Instalador nativo y paquete beta
+﻿# Instalador nativo y paquete beta
 
 El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el único motor instalado. El paquete contiene binarios Rust de motor 2, recursos y `manifest.json`; `candidate.ps1`, `beta.ps1` y NSIS ya no se distribuyen. `installer-cleanup.ps1` sigue siendo la excepción mínima y permanente para borrar el desinstalador después de que salga su proceso.
 
@@ -25,3 +25,26 @@ Antes de **publicar** cualquier release con motor 2 sin LegacyRunner, Isaac debe
 La [matriz](matrix/README.md) ejecuta las 88 combinaciones de ocho raíces y once operaciones, conserva los 45 rechazos por motivo, prueba la cadena real lanzador → sesión → Hub y verifica que los datos no cambian. Todo producto de prueba usa raíces bajo `D:/VantareServer/qa` o `RUNNER_TEMP` en CI, HKCU y carpetas inyectadas. Nunca se ejecutan Setup, Uninstall, beta.ps1 ni candidate.ps1 contra una instalación real.
 
 Compilar únicamente con `pwsh -NoProfile -File native/scripts/compilar.ps1`, target propio y la cola del repositorio. El workflow `branch-channel-gates.yml` construye los fixtures y ejecuta el guard antes de la matriz. La evidencia histórica de los pasos 3–5b permanece en `matrix/evidence-1840-*.md`; el contrato de arquitectura está en [ADR 0103](../../docs/adr/0103-instalacion-nativa.md) y [installer-design](../../docs/vantare-program/installer-design.md).
+
+### Alta de huellas públicas antes del RC
+
+Isaac debe añadir la huella de producción a `production-license-keys.sha256`
+antes del próximo RC. La lista vacía permanece fail-closed. Para obtener sólo
+el SHA-256 de los bytes públicos, suministrar por stdin la pública base64url
+o su pareja `kid:base64url`, nunca una privada ni un fichero de configuración:
+
+```powershell
+Get-Content -LiteralPath 'C:/ruta/public-license-key.txt' -Raw | pwsh -NoProfile -File native/packaging/license-key-fingerprint.ps1
+```
+
+El script sólo imprime la(s) huella(s); no consulta entorno/configuración ni
+añade nada a la lista. La incorporación se revisa por separado.
+
+El gate autocontenido `Assert-NativeDistributionLicensePackage` de `no-qa.ps1`
+valida las huellas del registro configurado, exige el registro literal en núcleo
+y services, y rechaza claves conocidas de test y marcadores QA en todos los EXE.
+`build-candidate.ps1` lo invoca antes de generar los ZIP. `build-installer.ps1`
+repite el gate sobre los EXE del ZIP antes de embeberlo; recibe el mismo
+`-ConfigFile` público que el candidato (`publish-beta.ps1` lo propaga).
+Sin registro sólo se permite el smoke sin autoridad; cualquier registro
+configurado exige una lista válida y no vacía. No se leen claves privadas.

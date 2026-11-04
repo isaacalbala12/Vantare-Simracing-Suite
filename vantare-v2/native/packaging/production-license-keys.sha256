@@ -1,0 +1,3 @@
+# SHA-256 lowercase hex of the 32 raw Ed25519 public-key bytes.
+# Only production license keys approved by Isaac belong here; never private keys.
+# No production fingerprint supplied: reject every configured registry.

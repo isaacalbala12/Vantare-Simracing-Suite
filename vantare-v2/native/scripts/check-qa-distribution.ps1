@@ -20,8 +20,12 @@ try {
     }
     $env:CARGO_TARGET_DIR=$target
     $jobs=if($env:CARGO_BUILD_JOBS){$env:CARGO_BUILD_JOBS}else{'2'}
-    & cargo build --release --locked --offline -p vantare-runtime -p vantare-services --features vantare-runtime/qa-e2e --bin vantare --bin vantare-core --bin vantare-services -j $jobs
-    if($LASTEXITCODE){throw 'QA negative-control build failed.'}
+    try {
+        # Fixture trust is scoped to this QA compiler child, never the caller session.
+        $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
+        & cargo build --release --locked --offline -p vantare-runtime -p vantare-services --features vantare-runtime/qa-e2e --bin vantare --bin vantare-core --bin vantare-services -j $jobs
+        if($LASTEXITCODE){throw 'QA negative-control build failed.'}
+    } finally {$env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore}
     foreach($name in @('vantare','vantare-core','vantare-services')) {
         $rejected=$false
         try { Assert-NativeDistributionBinary (Join-Path $target "release/$name.exe") }
@@ -40,6 +44,8 @@ try {
     # resource requires three numeric u16 components, even in this smoke package.
     $null=& (Join-Path $native 'packaging/build-candidate.ps1') -Version '0.0.0' -Channel nightly -OutputDirectory (Join-Path $target 'release-package') -BuildProfile Release -AllowDirty
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
+    & (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('actual-exe-controls-'+[guid]::NewGuid().ToString('N'))) -CleanExecutable (Join-Path $target 'release-package/payload/bin/vantare.exe') -FixtureExecutable (Join-Path $target 'release/vantare-core.exe')
+
 } finally {
     $env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore
     $env:VANTARE_QA_AMBIENT=$qaBefore

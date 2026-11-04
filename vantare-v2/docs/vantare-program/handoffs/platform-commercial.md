@@ -7706,3 +7706,117 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Sin despliegue, producción ni release. El worker no fusionó ningún PR.
   Esta actualización de cierre es documental; sin repetir gates de producto,
   Rust/lifecycle/telemetría. Verificación de enlaces, UTF-8 y diff del handoff.
+
+## VANTA-126 / #1919 — seguimiento P3 de #1917 (2026-11-03)
+
+- Encargo del orquestador tras revisión MERGE de #1917; éste sigue pendiente de
+  CI/integración. Rama separada vantareapp/isa-1919-license-release-allowlist sobre
+  7c9cd865a tras el rebase (4-nov), para un diff pequeño; PR apilado, pendiente retarget a nightly al integrar padre.
+- Negativos exigen incremento de peticiones HTTP y rechazo concreto del núcleo
+  rights-credential-invalid posterior al comando. El INFORME generado incluye el
+  motivo del NO VERIFICABLE del caso 7. README: licencia QA RFC8032 fija en repo;
+  sólo el JWT del backend y token de control son efímeros.
+- Gate de release: lista blanca pública de SHA-256 de los 32 bytes Ed25519,
+  validación del config y del registro kid:base64url compilado en cada EXE.
+  No basta bloquear RFC8032: se rechaza cualquier clave no aprobada. Se mantiene
+  también el scanner de marcas QA. Tests de mezcla, retirada y límite de buffer.
+- Falta recibir la huella pública autorizada de producción: plantilla y variables
+  públicas GitHub consultadas no contienen el registro. Lista vacía deniega todas;
+  sólo admite smoke sin registro (sin autoridad configurada). No inventar huellas
+  ni autorizar fixtures; no leer ninguna privada. PR no habilita release de producción
+  hasta confirmar e incorporar la(s) huella(s) mediante revisión.
+- PASS local: E2E con tres EXE previos, 12 PASA/1 NO VERIFICABLE/0 FALLA;
+  scanner 7 controles y lista blanca, publisher 13, sintaxis PS/Python. No Rust de
+  producto modificado, sin nueva compilación/gate completo; release real queda en CI.
+- Evidencia D:/VantareServer/evidence/licencias-e2e/followup-1919. Sin cuentas reales,
+  merge/promoción/release. Plane Por testear intacto. PR/HEAD y estado final en #1919.
+
+- Rebase de #1920 sobre el padre corregido 7c9cd865a: handoff del padre completo
+  conservado y sección P3 separada; los nueve archivos P3 mantienen su alcance.
+  Huellas de producción siguen pendientes, sin autorizar ninguna clave nueva.
+
+### #1920 — cambios de review Sonnet (2026-11-04)
+
+- P1 reproducido con vantare.exe real sin QA: el scanner anterior interpretaba
+  campos serde de Status como clave y rechazaba el EXE limpio. Nuevo patrón de
+  registro completo kid:key con límites exactos, 32 bytes base64url canónicos y
+  solapamiento suficiente para nombre/clave/contexto entre bloques. No se relaja
+  Ed25519 del producto; scanner inspecciona ASCII/Latin-1 porque Rust embebe el
+  registro ASCII de option_env! como UTF-8, no UTF-16.
+- Tests de serde, longitud/límites, clave truncada al final de bloque, offsets
+  realmente cruzados, EXE limpio real y EXE RFC8032 real. Ambos controles reales
+  se incorporan al gate de distribución, usando lista vacía aislada.
+- P2: **Isaac debe añadir la(s) huella(s) pública(s) de producción antes del
+  próximo RC**. La lista sigue vacía/fail-closed. No se ha leído configuración
+  real. license-key-fingerprint.ps1 recibe sólo pública por stdin y emite sólo
+  SHA-256, sin buscar entorno/configuración ni modificar la lista.
+- Padre #1917 aún abierto al empezar; #1920 permanece apilado y se cambiará a
+  nightly/rebasará cuando el padre se haya fusionado. HEAD/checks finales en #1919/PR.
+
+- Verificación local de la review: controles de scanner/lista blanca, serde,
+  límites exactos, base64 canónico, huella y dos EXE reales PASS. Se reutiliza el
+  vantare.exe normal ya compilado por los gates focales del padre (Rust sin
+  cambios en 7c9cd865a); el anterior scanner falla y el nuevo pasa. Núcleo QA
+  real RFC8032 rechazado. Reconstrucción redundante cancelada mientras esperaba
+  turno, sin saltar cola; CI construye de nuevo ambos controles optimizados.
+  Logs/hashes: D:/VantareServer/evidence/licencias-e2e/review-1920-r1.
+
+### #1920 — gate determinista y coordinación #1929 (2026-11-04)
+
+- Se elimina la heurística de registros en .rdata. Gate autocontenido
+  Assert-NativeDistributionLicensePackage en no-qa.ps1: valida huellas del
+  registro configurado; exige la cadena literal completa en vantare-core y
+  vantare-services; rechaza en todos los EXE claves conocidas de test y marcas
+  QA mediante bytes literales, sin límites de palabra. Supervisor vantare no
+  embebe registro (confirmado con artefactos QA existentes y option_env!).
+- known-test-license-keys versiona RFC8032, recovery-v1 y públicas de fixtures
+  fijos de firma. No se leen configuración ni privadas reales. Lista de
+  producción sigue vacía: cualquier registro configurado falla cerrado ante
+  lista vacía/ausente/malformada. Smoke CI sin registro no configura autoridad.
+  Isaac debe incorporar la(s) huella(s) de producción antes del próximo RC.
+- Tests locales sólo sobre ficheros de bytes: QA adyacente a texto, registro
+  aprobado presente/ausente, fuera de lista, Status, archivo de huellas inválido
+  y dos propietarios del registro. El EXE limpio real queda para CI distribution;
+  no se atribuye aquí una ejecución nueva de ese control ni E2E de producto.
+- candidate.ps1 tiene una sola llamada al gate, sin dependencia inversa desde
+  no-qa.ps1. Se respeta orden 1917 → 1929 → 1920: tras entrar #1929, trasladar
+  esa llamada a build-candidate.ps1. No se modifican MSIX, beta ni archivos
+  nuevos de #1929. Base #1920 se mantiene en rama de #1917 mientras esté abierto.
+
+### #1920 — padre integrado y base nightly (2026-11-04)
+
+- #1917 integrado por Isaac en nightly 076e64047. Los tres commits del seguimiento
+  se rebasan sin conflictos sobre ese SHA; range-diff idéntico, sin cambios de código.
+  El PR cambia su base a nightly. No se integra ni publica ninguna release aquí.
+- PASS: gate determinista (15 controles adyacentes, registro aprobado/ausente,
+  config y listas inválidas, Status, propietarios), huella y publisher 13;
+  diff sin errores y metadatos del native real intactos. Sin recompilación Rust:
+  EXE limpio real sigue reservado a CI distribution. Evidencia rebase-nightly-076e.
+- #1929 todavía abierto: la llamada única permanece en candidate.ps1. Pendiente
+  trasladarla a build-candidate.ps1 cuando se integre #1929 y volver a verificar;
+  se avisa al orquestador para decidir si revisa antes. Plane sigue Por testear.
+
+### #1920 — gate en los builders definitivos tras #1929 (2026-11-04)
+
+- Base nightly 8ca3e63be (#1929 integrado). Seguimiento rebasado; historial
+  anterior agrupado en un commit para resolver una sola vez los conflictos de
+  archivos retirados. Se conservan los builders/inventario/docs de nightly;
+  candidate.ps1 y publish-installer-tests.ps1 no se resucitan. Sin cambios Rust.
+- La llamada única Assert-NativeDistributionLicensePackage está en
+  build-candidate.ps1, antes de los ZIP. El gate ZIP de build-installer.ps1 usa
+  el mismo scanner literal de streams: valida huellas y presencia del registro
+  completo en core/services, y bloquea claves de test/marcas en todos los EXE.
+  -ConfigFile público llega desde publish-beta.ps1; entorno heredado sigue
+  limpiándose antes de cargarlo. Setup/Uninstall mantienen su control literal.
+- CI: ya existe Verify release package excludes QA feature and symbols,
+  conectado a gates.ps1 -Gate distribution. No hace falta otro paso: prueba el
+  candidato release real y los controles EXE limpio/QA además de tests ZIP.
+- PASS local: 15 marcadores/keys pegados y cruzando 64 KiB en archivos y ZIP,
+  ZIP aprobado, registro/owner ausente, config fuera de lista, listas inválidas,
+  Status, huella, build-tooling y sintaxis PS. Primer intento de build-tooling
+  rechazó DUCKDB_LIB_DIR heredado; segundo pasó sin esa variable en el hijo.
+  No nueva compilación Rust ni gate completo local; EXE real queda para CI.
+- Evidencia rebase-step7-8ca bajo evidence/licencias-e2e, INFORME actualizado.
+  Metadatos del native real intactos. Huellas de producción siguen pendientes
+  de Isaac antes del RC; no se lee configuración real. Plane Por testear intacto.
+  Listo para review final; HEAD/push/CI verificados y publicados en #1919/#1920.

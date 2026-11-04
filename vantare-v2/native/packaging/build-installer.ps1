@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
+    [string]$ConfigFile,
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
 )
 Set-StrictMode -Version Latest
@@ -23,11 +24,11 @@ if ($TestInstaller) {
 }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
 $package=Test-BuildPackage $archive $Version 'beta'
-Assert-NativeDistributionArchive $archive
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
 $oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
-$previousConfig=Import-NativeBuildConfig ''
+$previousConfig=Import-NativeBuildConfig $ConfigFile
 try {
+Assert-NativeDistributionArchive $archive -Registry $env:VANTARE_LICENSE_PUBLIC_KEYS
 foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
     $data=Join-Path $output ('.build-data/'+$pair[1])
     [IO.Directory]::CreateDirectory($data)|Out-Null

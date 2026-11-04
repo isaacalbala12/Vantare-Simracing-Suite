@@ -89,7 +89,9 @@ try{
     })
     $manifest=[ordered]@{schema=1;product='vantare-native';candidate=$true;channel=$Channel;version=$Version;source_sha=$sourceSha;source_dirty=$dirty;build_profile=$BuildProfile;architecture='windows-x64';data_schema='opaque-v1';engine=2;files=$files}
     Write-BuildJson (Join-Path $payload 'manifest.json') $manifest
-    Assert-NativeDistributionTree $payload
+    Assert-NativeDistributionLicensePackage -Registry $env:VANTARE_LICENSE_PUBLIC_KEYS -Executables @(
+        Get-ChildItem -LiteralPath $payload -Filter '*.exe' -File -Recurse | Select-Object -ExpandProperty FullName
+    )
     $package=Join-Path $destination 'vantare-native-amd64-package.zip'
     New-BuildZip $payload $package
     $null=Test-BuildPackage $package $Version $Channel

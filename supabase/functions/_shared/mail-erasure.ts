@@ -4,10 +4,18 @@ export type MailRpc = (
   name: string,
   args: Record<string, unknown>,
 ) => Promise<unknown>;
+export type ErasureAuditEvent = Readonly<{
+  job_id: string;
+  outcome: "started" | "succeeded" | "failed" | "unknown";
+  provider_status?: number;
+}>;
 export type ErasureDeps = {
   env?: (key: string) => string | undefined;
   fetch?: typeof fetch;
   rpc?: MailRpc;
+  // Optional until an authorized caller supplies its durable journal.
+  // No email, provider URL, lease or exception is exposed to the recorder.
+  audit?: (event: ErasureAuditEvent) => Promise<boolean>;
 };
 export async function mailRpc(
   name: string,
@@ -35,6 +43,16 @@ export async function drainMailErasures(
 ): Promise<{ processed: number }> {
   const env = deps.env ?? Deno.env.get;
   const rpc = deps.rpc ?? mailRpc;
+  const record = deps.audit;
+  const audit = async (event: ErasureAuditEvent) => {
+    if (!record) return;
+    try {
+      if (await record(event) === true) return;
+    } catch {
+      // A lost journal ACK must not expose provider/SQL details or continue.
+    }
+    throw new NativeError(503, "mail_cleanup_unconfirmed");
+  };
   await rpc("mail_erasure_expire", {});
   if (env("MARKETING_CLEANUP_ENABLED") !== "true" || !env("BREVO_API_KEY")) {
     throw new NativeError(503, "mail_cleanup_disabled");
@@ -47,6 +65,7 @@ export async function drainMailErasures(
     };
     if (!result.job) break;
     const job = result.job;
+    await audit({ job_id: job.id, outcome: "started" });
     let status = 0;
     try {
       const response = await (deps.fetch ?? fetch)(
@@ -65,6 +84,16 @@ export async function drainMailErasures(
     } catch {
       /* Transport outcome is retried safely with DELETE, never logged. */
     }
+    await audit({
+      job_id: job.id,
+      // Match the existing SQL queue ACK: only 204/404 complete erasure.
+      outcome: [204, 404].includes(status)
+        ? "succeeded"
+        : [401, 403, 422].includes(status)
+        ? "failed"
+        : "unknown",
+      ...(status > 0 ? { provider_status: status } : {}),
+    });
     const ack = await rpc("mail_erasure_finish", {
       p_id: job.id,
       p_lease: job.lease,

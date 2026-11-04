@@ -33,7 +33,11 @@ function auditedFixture(status = 204) {
         if (claimed) return Promise.resolve({ job: null });
         claimed = true;
         return Promise.resolve({
-          job: { id: job, lease: "private-lease", email: "old@example.invalid" },
+          job: {
+            id: job,
+            lease: "private-lease",
+            email: "old@example.invalid",
+          },
         });
       }
       assert(name === "mail_erasure_finish" && args.p_http_status === status);
@@ -42,7 +46,9 @@ function auditedFixture(status = 204) {
     },
     fetch: () => {
       trace.push("http");
-      if (status === 0) throw new Error("private transport old@example.invalid");
+      if (status === 0) {
+        throw new Error("private transport old@example.invalid");
+      }
       return Promise.resolve(new Response(null, { status }));
     },
   };
@@ -80,31 +86,34 @@ Deno.test("optional audit commits intent and provider result before queue ACK, w
 });
 for (const phase of ["started", "terminal"]) {
   for (const throws of [false, true]) {
-    Deno.test("audit failure is closed and sanitized: " + phase + "/" + throws, async () => {
-      const f = auditedFixture();
-      f.options.audit = (event) => {
-        f.events.push(event);
-        f.trace.push(event.outcome);
-        if ((event.outcome === "started") === (phase === "started")) {
-          if (throws) throw new Error("private recorder old@example.invalid");
-          return Promise.resolve(false);
+    Deno.test(
+      "audit failure is closed and sanitized: " + phase + "/" + throws,
+      async () => {
+        const f = auditedFixture();
+        f.options.audit = (event) => {
+          f.events.push(event);
+          f.trace.push(event.outcome);
+          if ((event.outcome === "started") === (phase === "started")) {
+            if (throws) throw new Error("private recorder old@example.invalid");
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(true);
+        };
+        let error: unknown;
+        try {
+          await drainMailErasures(f.options);
+        } catch (caught) {
+          error = caught;
         }
-        return Promise.resolve(true);
-      };
-      let error: unknown;
-      try {
-        await drainMailErasures(f.options);
-      } catch (caught) {
-        error = caught;
-      }
-      assert(
-        error instanceof NativeError && error.status === 503 &&
-          error.code === "mail_cleanup_unconfirmed" &&
-          !error.message.includes("old@example.invalid"),
-      );
-      assert(!f.trace.includes("finish"));
-      assert(f.trace.includes("http") === (phase === "terminal"));
-    });
+        assert(
+          error instanceof NativeError && error.status === 503 &&
+            error.code === "mail_cleanup_unconfirmed" &&
+            !error.message.includes("old@example.invalid"),
+        );
+        assert(!f.trace.includes("finish"));
+        assert(f.trace.includes("http") === (phase === "terminal"));
+      },
+    );
   }
 }
 Deno.test("SQL ACK failure preserves audit of the already accepted DELETE", async () => {
@@ -120,11 +129,59 @@ Deno.test("SQL ACK failure preserves audit of the already accepted DELETE", asyn
   } catch (caught) {
     error = caught;
   }
-  assert(error instanceof NativeError && error.code === "mail_cleanup_unconfirmed");
+  assert(
+    error instanceof NativeError && error.code === "mail_cleanup_unconfirmed",
+  );
   assert(
     JSON.stringify(f.trace) === '["started","http","succeeded"]' &&
       f.events[1].provider_status === 404,
   );
+});
+Deno.test("audit requires a real boolean ACK before HTTP", async () => {
+  for (const reply of [null, undefined, "true"]) {
+    const f = auditedFixture();
+    f.options.audit = (() =>
+      Promise.resolve(reply)) as unknown as typeof f.options.audit;
+    let error: unknown;
+    try {
+      await drainMailErasures(f.options);
+    } catch (caught) {
+      error = caught;
+    }
+    assert(
+      error instanceof NativeError &&
+        error.code === "mail_cleanup_unconfirmed" &&
+        !f.trace.includes("http") && !f.trace.includes("finish"),
+    );
+  }
+});
+Deno.test("invalid queue credentials never invoke audit, SQL or provider", async () => {
+  for (const token of ["opaque-hub-token", "garbage", "expired-owner-token"]) {
+    let calls = 0;
+    const response = await handleMailCleanup(
+      new Request("https://project.invalid/", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        body: '{"version":1}',
+      }),
+      {
+        env,
+        audit: () => {
+          calls++;
+          return Promise.resolve(true);
+        },
+        rpc: () => {
+          calls++;
+          return Promise.resolve(null);
+        },
+        fetch: () => {
+          calls++;
+          return Promise.resolve(new Response(null, { status: 204 }));
+        },
+      },
+    );
+    assert(response.status === 401 && calls === 0);
+  }
 });
 Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never sends", async () => {
   for (const status of [0, 401, 503, 204, 404]) {

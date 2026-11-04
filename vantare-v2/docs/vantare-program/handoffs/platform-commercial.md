@@ -8934,5 +8934,9 @@ union all select 'linear_deliveries',outcome::text,count(*)
   MailNew restablece None, sin intentar leer un campo que no recibe.
 - Caracterización6c715d895: un ACK sync con metadata recipients ajena fallaba
   Protocol. RED reproducido mediante compilar.ps1, target/QA propios, sin Store.
-  Deno3 PASS; check/Clippy/Nextest/fmt de admin en marcha. No SQL ni migraciones,
+  Deno3 y check/Clippy -D warnings/Nextest48/fmt admin PASS. No SQL ni migraciones,
   _shared, billing/licencias, despliegue/merge/release. Paso11 sigue R6/12.
+
+- Draft de seguimiento https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1967,
+  código66afbd440 validado. Producción425→424(-1), tests+11, docs separados.
+  Target/QA propios y compilar.ps1, cola cedida entre comandos; CI nueva pendiente.

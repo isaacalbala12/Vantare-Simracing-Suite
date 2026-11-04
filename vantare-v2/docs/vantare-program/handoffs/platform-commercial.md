@@ -8707,8 +8707,10 @@ union all select 'linear_deliveries',outcome::text,count(*)
   error original y prueban que no hay ACK prematuro.
 - Caracterización previa de restauración: r1 RED; después 235 Deno PASS en
   admin/webhook. SDK/entrada de Storage typecheck PASS. Gates de formato/lint
-  registrados en PR; se conservan errores previos en evidencia.
-- Producción 1304 →1296 (-8; +188/-196). Tests y docs medidos por separado en PR.
+  PASS; se conservan errores previos en evidencia.
+- Producción 1304 →1296 (-8; +188/-196); tests +320/-17, docs +48/-0.
+  El test de defaults vive aparte con firma HMAC y sin dependencia nueva;
+  lint/fmt/check PASS. Fallos previos de imports legacy y await retenidos.
   No SQL ni Rust: gates SQL/compilación/telemetría/lifecycle omitidos. Storage
   con dobles; sin stack Docker local. HEAD publicado y CI vigentes en PR/issue.
 - Sin native-auth, SQL apply_clerk_user_event, billing/licencias, secretos,

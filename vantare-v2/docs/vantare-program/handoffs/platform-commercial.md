@@ -8829,6 +8829,19 @@ union all select 'linear_deliveries',outcome::text,count(*)
   owner/ACL. RED de selección de backend antes del arreglo; dos tests GREEN
   y replay local completo PASS. Docker no disponible localmente; queda la
   confirmación del backend PG17 en CI. No se modifica el esquema de producto.
+- Drift de esquema del run41882845194: el replay completo Docker PG17 pasó,
+  pero los derivados locales PG16 omitían `SET transaction_timeout` y variaban
+  dos UNION generados por el catálogo. RED da657f930; corrección 2321a94d5.
+  Los nueve volcados se regeneran desde el artefacto13349898088 de ese replay
+  con la normalización del generador. No se modifican migraciones ni billing:
+  los cambios en sus derivados son exclusivamente orden de ramas de barrera.
+- Generación exige Docker con imagen17.6.1.165/digest fijado, servidor y
+  pg_dump17.6 y opciones --schema-only --no-owner; comprueba la imagen real
+  antes de escribir/comparar. Un test liga la fijación al workflow existente.
+  Se ordenan solo UNION externos en la agregación DISTINCT/ORDER BY de las
+  barreras; subconsultas, literales y UNION ALL se conservan. Fixtures reales
+  PG16/PG17 iguales e idempotentes; 31 tests tooling PASS. Docker no está
+  disponible localmente; la nueva CI debe confirmar el replay y el check.
 - Producción **915 → 1306 (+391)**: +10 frente a las 381 aceptadas, por espera
   de cierre (+2, incluido comentario) y ACL explícita (+8). Rollback 191 aparte.
   El +627 original incluía 188 de rollback; no se cuenta como producción.

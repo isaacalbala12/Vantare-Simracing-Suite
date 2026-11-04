@@ -635,6 +635,17 @@ $$;
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   if args.legacy_retirement_inventory:
+   retired_tables=[
+    'testing_center_reports','testing_center_evidence',
+    'testing_center_triage_results','testing_center_issue_occurrences',
+    'testing_center_posthog_consent_events','testing_center_posthog_evidence',
+    'testing_center_report_events','testing_center_report_payloads',
+    'testing_center_report_submission_keys','testing_center_screenshot_evidence',
+    'testing_center_evidence_batches','testing_center_evidence_outbox']
+   schema=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
+     '-d',database,'--schema-only','--no-owner',
+     *(argument for table in retired_tables for argument in ('-t','public.'+table)))
+   (OUT/'legacy-retirement-tables.schema.sql').write_text(schema)
    relations=run('psql',*conn,'-c',"""with recursive walk(relid,depth,path) as (
        select 'public.testing_center_reports'::regclass::oid,0,
          array['public.testing_center_reports'::regclass::oid]::oid[]

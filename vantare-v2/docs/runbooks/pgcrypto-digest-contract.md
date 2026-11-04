@@ -3,12 +3,12 @@
 La cadena histórica no fija el schema de pgcrypto. El contrato vigente para
 SQL nuevo es `public.digest(text,text)` y `public.digest(bytea,text)`. Si la
 extensión nativa vive en `extensions`, la migración histórica `20260802095000`
-ya crea esos wrappers. Si vive en `public`, `20261104172000` crea las dos
+ya crea esos wrappers. Si vive en `public`, `20261104182500` crea las dos
 firmas de `extensions.digest` como compatibilidad para los llamadores
 históricos. No se edita SQL fusionado de Billing ni Testing.
 
 Isaac puede ejecutar esta consulta **de solo lectura** en cada entorno antes
-del despliegue y otra vez después de `20261104172000`:
+del despliegue y otra vez después de `20261104182500`:
 
 ```sql
 select coalesce(n.nspname, '<missing>') as pgcrypto_native_schema,
@@ -26,7 +26,7 @@ firmas nativas y puede carecer de las de `extensions`. Después, las cuatro
 deben ser `true`. `<missing>` u otro schema detiene la migración con error
 `55000`; no se instala ni mueve la extensión automáticamente. El despliegue
 de la cadena desde cero sigue requiriendo pgcrypto en `extensions`, ya que
-SQL histórico anterior a `20261104172000` llama a ese schema.
+SQL histórico anterior a `20261104182500` llama a ese schema.
 
 El rollback no cambia la extensión nativa. Con pgcrypto en `extensions` no
 modifica nada; con pgcrypto en `public` retira solo los dos bridges marcados

@@ -9,7 +9,7 @@ import time
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-STEM = '20261104172000_isa_1933_pgcrypto_digest_contract'
+STEM = '20261104182500_isa_1933_pgcrypto_digest_contract'
 UP = ROOT / 'supabase/migrations' / (STEM + '.sql')
 DOWN = ROOT / 'supabase/rollbacks' / (STEM + '.down.sql')
 COMPAT = ROOT / 'supabase/migrations/20260802095000_pgcrypto_public_compatibility.sql'

@@ -6764,6 +6764,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -6804,6 +6806,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -6844,6 +6848,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -6884,6 +6890,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -6924,6 +6932,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -6964,6 +6974,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7004,6 +7016,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7044,6 +7058,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7084,6 +7100,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7124,6 +7142,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7164,6 +7184,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7204,6 +7226,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7252,6 +7276,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7292,6 +7318,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7332,6 +7360,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7380,6 +7410,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -7420,6 +7452,8 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
         where v.validation_id=$1->>''validation_id''),
       (select v.actor_user_id from public.testing_center_validations v
         where v.validation_id=$1->>''rejection_validation_id''),
+      (select s.actor_user_id from public.testing_center_validation_snapshots s
+        where s.validation_id=$1->>''rejection_validation_id''),
       (select private.testing_center_v2_owner(b.technical_issue_id)
         from public.testing_center_linear_issue_bindings b
         where b.external_issue_id::text=$1->>''external_issue_id''),
@@ -8039,6 +8073,15 @@ ALTER TABLE ONLY public.testing_center_promotions
 
 ALTER TABLE ONLY public.testing_center_technical_issues
     ADD CONSTRAINT testing_center_technical_issues_contribution_id_fkey FOREIGN KEY (contribution_id) REFERENCES public.testing_contributions(id) ON DELETE RESTRICT;
+
+
+--
+
+-- Name: testing_center_technical_issues testing_center_technical_issues_owner_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.testing_center_technical_issues
+    ADD CONSTRAINT testing_center_technical_issues_owner_account_id_fkey FOREIGN KEY (owner_account_id) REFERENCES public.profiles(id) ON DELETE RESTRICT;
 
 
 --

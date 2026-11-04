@@ -13,6 +13,7 @@ from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 from commercial_admin_report_root import run_admin_report_cutover
+from commercial_admin_owner_target import run_target_owner_race
 from commercial_admin_owner_policy import STEM as OWNER_POLICY_STEM, SNAPSHOT as OWNER_POLICY_SNAPSHOT, run_owner_policy_regressions
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
@@ -989,6 +990,11 @@ $$;
   if not args.baseline:
    if owner_policy_previous is not None:
     run_owner_policy_regressions(run,conn,OUT,BIN,ENV,owner_policy_previous)
+    run_target_owner_race(run,conn,OUT,BIN,ENV)
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests/native_admin_owner_ack.test.sql')
+    (OUT/'native_admin_owner_ack.test.sql.log').write_text(result)
+    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
+    print('native_admin_owner_ack.test.sql PASS',flush=True)
    if legacy_writers_enabled and (args.admin_reports_only or not args.admin_effects_only):
     if owner_policy_previous is not None:
      run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(OWNER_POLICY_STEM+'.down.sql'))

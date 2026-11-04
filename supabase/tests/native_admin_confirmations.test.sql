@@ -34,7 +34,7 @@ select is((pg_temp.mail('mail_can_send',jsonb_build_object('delivery_id',(select
  'a claimed delivery cannot start HTTP after cancellation');
 select is(pg_temp.mail('mail_claim','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')->'delivery','null'::jsonb,'canceled campaign cannot claim another delivery');
 select lives_ok($$select pg_temp.mail('mail_cancel','{"campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}')$$,'cancel retry is idempotent');
-select is((select count(*)::integer from private.mail_audit where action='mail_cancel' and target='19100600-0000-4000-8000-000000000010'),1,'cancel retry does not duplicate its audit');
+select is((select count(*)::integer from private.mail_audit where action='mail_cancel'),1,'cancel retry does not duplicate its audit');
 update public.module_rollout set enabled_for_all=true where module='vantare.module.strategy';
 select throws_ok($$select pg_temp.admin('set_rollout','{"module":"vantare.module.strategy","enabled_for_all":false,"expected_enabled":false}')$$,
  '40001','account_conflict','stale rollout confirmation conflicts');

@@ -8869,7 +8869,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
   UI/lecturas puras. El 11 sigue exclusivamente en R6/12.
 
-## VANTA-132 · paso 6 · confirmaciones y cancelar campañas (2026-11-04)
+## VANTA-132 · paso 6 · [PR #1962](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1962) (2026-11-04)
 
 - 10b cerrado: #1959 integrado en nightly18fb6ca17 con CI verde, confirmado por
   el orquestador. Continúan paso6 y sync_payments/UI en PR separados desde esa base.
@@ -8880,9 +8880,18 @@ union all select 'linear_deliveries',outcome::text,count(*)
   iniciados. Pending pasa a skipped; HTTP que ya salió puede terminar. Diálogo
   muestra y envía la cifra del detalle. Sin dependencias nuevas ni cambios _shared.
 - SQL LF18 y CRLF21 tests, down exacto de cuerpos/ACL/constraint, rechazo
-  atómico con canceled y reaplicación PASS. Gates Rust finales en marcha. Deno273 PASS, cargo check del
+  atómico con canceled y reaplicación PASS. Clippy -D warnings y Nextest47 PASS. Deno273 PASS, cargo check del
   único crate admin PASS; target propio, compilar.ps1, se cede cola entre gates.
   Hereda matriz de abuso Hub/basura/no-owner/caducado de native-admin.
 - Despliegue exclusivo de Isaac: tras10b, migración181354 antes de Edge/Gestión.
   Consultar estados existentes (producción tiene datos). Down rechaza canceled
   antes del DDL; corrección hacia delante si ya existen. Sin deploy/merge/release.
+
+- Medición inicial del paso6 contra18fb6ca17: producción4950→5123 (+173), tests
+  +232, docs+40, rollback50 excluido. Se separan módulos cfg(test) y fixtures.
+- La primera CI encuentra el oráculo marketing con payload antiguo. Se prueba
+  primero el contrato final y su down/reapply en run-admin-local, y se baja solo
+  este adaptador antes de los oráculos históricos, igual que en Commercial.
+  Derivados PG17 pendientes de artefacto CI; el PR sigue draft. Próximo corte8c:
+  UI conserva hechos anteriores y pide sync si el servidor anuncia historial
+  sandbox pendiente; las lecturas no llaman a Polar. Producción conserva lecturas.

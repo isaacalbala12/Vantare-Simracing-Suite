@@ -44,3 +44,20 @@ def run_owner_policy_regressions(run, conn, out, bin_dir, env, previous):
     for name in current:
         assert current[name]['acl']==previous[name]['acl'], 'policy changed ACL: '+name
     print('Admin owner policy: exact four-body rollback/ACL, four atomic drift cases and reapply PASS',flush=True)
+
+
+ACK_STEM = '20261104083000_isa_1910_admin_owner_ack'
+
+
+def run_owner_ack_regressions(run, conn, previous):
+    root=Path(__file__).resolve().parents[2]
+    current=json.loads(run('psql',*conn,'-c',SNAPSHOT))
+    run('psql',*conn,'-f',root/'supabase/rollbacks'/(ACK_STEM+'.down.sql'))
+    assert json.loads(run('psql',*conn,'-c',SNAPSHOT))==previous, 'ACK down changed pre-step bodies/ACL'
+    run('psql',*conn,'-f',root/'supabase/migrations'/(ACK_STEM+'.sql'))
+    assert json.loads(run('psql',*conn,'-c',SNAPSHOT))==current, 'ACK up differs on reapply'
+    for name in current:
+        assert current[name]['acl']==previous[name]['acl'], 'ACK changed ACL: '+name
+        if name!='native_admin_execute_v1':
+            assert current[name]==previous[name], 'ACK changed unrelated body: '+name
+    print('Admin owner ACK: exact rollback/ACL/reapply and unrelated bodies preserved PASS',flush=True)

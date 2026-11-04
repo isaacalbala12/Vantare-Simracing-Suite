@@ -79,5 +79,15 @@ select ok(exists(select 1 from private.mail_audit where action='audit_prune'
  and actor='19101010-0000-4000-8000-000000000001'
  and occurred_at is not null and detail ?& array['retention_days','admin','mail','effects']),
  'purge records actor date TTL and counts in the existing journal');
+select ok(not exists(select 1 from pg_proc p where p.oid=any(array[
+ 'private.admin_audit_minimize(anyelement,text,text[])'::regprocedure,
+ 'private.mail_effect_valid(text,integer,boolean)'::regprocedure,
+ 'private.append_mail_effect(jsonb,uuid)'::regprocedure]) and
+ (p.proowner<>(select oid from pg_roles where rolname='postgres')
+ or not p.proconfig @> array['search_path=""']
+ or has_function_privilege('anon',p.oid,'EXECUTE')
+ or has_function_privilege('authenticated',p.oid,'EXECUTE')
+ or has_function_privilege('service_role',p.oid,'EXECUTE'))),
+ 'shared minimizer and writer stay private, postgres-owned and with fixed search_path');
 select * from finish();
 rollback;

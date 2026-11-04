@@ -1,4 +1,4 @@
--- VANTA-132 / 10b. No purge during deployment. SQL and ACL are complete (ADR 0106).
+-- VANTA-132 / 10b. Role guard fixes new object owners to postgres. No purge during deployment. SQL and ACL are complete (ADR 0106).
 begin;
 set local lock_timeout='5s';
 do $role$
@@ -17,7 +17,6 @@ create table private.admin_audit_policy (
 );
 -- Provisional decision. Isaac may change THIS parameter to 90; no other TTL.
 insert into private.admin_audit_policy values(true,365);
-alter table private.admin_audit_policy owner to postgres;
 alter table private.admin_audit_policy enable row level security;
 revoke all on private.admin_audit_policy from public,anon,authenticated,service_role;
 
@@ -27,7 +26,6 @@ create table private.admin_audit_maintenance_tx (
  transaction_id xid8 primary key default pg_current_xact_id(),
  maintenance boolean not null default true, target_account uuid
 );
-alter table private.admin_audit_maintenance_tx owner to postgres;
 alter table private.admin_audit_maintenance_tx enable row level security;
 revoke all on private.admin_audit_maintenance_tx from public,anon,authenticated,service_role;
 create function private.admin_audit_maintenance() returns boolean
@@ -43,35 +41,49 @@ alter table private.admin_effects add constraint admin_effects_target_hash_check
 drop index private.admin_effects_smtp_delivery_started;
 create unique index admin_effects_smtp_delivery_started on private.admin_effects(target_hash)
  where effect='brevo_smtp_send' and outcome='started' and target_hash<>'erased';
--- Temporary backfill helper. Runtime RPCs bind source accounts by primary key.
-create function private.admin_effect_mail_account(kind text,hash text) returns uuid
-language sql stable set search_path='' as $$
- select account from (
- select coalesce(c.account_id,c.erasure_account) account from private.mail_contacts c
- where kind in('brevo_contact_upsert','brevo_contact_update')
- and hash=encode(sha256(convert_to('brevo_contact_sync:'||c.id::text||':'||c.sync_lease::text,'UTF8')),'hex')
- union select e.account_id from private.mail_contact_erasures e where kind='brevo_delete'
- and hash=encode(sha256(convert_to('brevo_delete:'||e.id::text||':'||e.lease::text,'UTF8')),'hex')
- union select coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d
- join private.mail_contacts c on c.email=d.email join private.mail_campaigns m on m.id=d.campaign_id
- where kind='brevo_smtp_send' and hash=encode(sha256(convert_to('brevo_smtp_send:'||m.environment||':'||d.id::text,'UTF8')),'hex')
- ) targets where account is not null limit 1
+-- Same status contract for sync and SMTP; DELETE distinguishes 404 success.
+create function private.mail_effect_valid(outcome text,status integer,erasure boolean)
+returns boolean language sql immutable set search_path='' as $$
+ select coalesce(outcome in('started','succeeded','failed','unknown') and (status is null or status between 100 and 599)
+ and case outcome when 'started' then status is null
+ when 'succeeded' then case when erasure then status in(204,404) else status between 200 and 299 end
+ when 'failed' then case when erasure then status in(401,403,422) else status is null or status in(400,401,403,404,422) end
+ else status is null or case when erasure then status not in(204,404,401,403,422) else status not in(400,401,403,404,422) end end,false)
 $$;
+-- Shared durable append for the three actual Brevo recorders below. Provider
+-- outcome validation and source capability/owner checks stay at each entrypoint.
+create function private.append_mail_effect(event jsonb,account uuid) returns boolean
+language plpgsql set search_path='' as $$
+declare e private.admin_effects:=jsonb_populate_record(null::private.admin_effects,event);
+ initial private.admin_effects; stored private.admin_effects;
+begin
+ if e.outcome<>'started' then
+  select * into initial from private.admin_effects where effect_id=e.effect_id and outcome='started' for update;
+  if not found or (initial.actor,initial.request_id,initial.action,initial.effect,initial.target_hash)
+   is distinct from (e.actor,e.request_id,e.action,e.effect,e.target_hash)
+  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ end if;
+ if exists(select 1 from private.admin_effects where effect_id=e.effect_id and outcome='reconciled') then
+  raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status,target_account)
+ values(e.effect_id,e.outcome,e.request_id,e.actor,e.action,e.effect,e.target_hash,e.provider_status,account) on conflict do nothing;
+ select * into stored from private.admin_effects where effect_id=e.effect_id and outcome=e.outcome;
+ if not found or (stored.actor,stored.request_id,stored.action,stored.effect,stored.target_hash,stored.provider_status)
+  is distinct from (e.actor,e.request_id,e.action,e.effect,e.target_hash,e.provider_status)
+  or exists(select 1 from private.admin_effects where effect_id=e.effect_id and outcome='reconciled')
+ then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ return true;
+end $$;
 -- Complete provider RPC bodies: bind the source by primary key, not hash scans.
 create or replace function public.native_admin_record_mail_sync(
  p_actor uuid,p_request uuid,p_effect uuid,p_kind text,p_contact uuid,p_lease uuid,
  p_outcome text,p_provider_status integer default null)
 returns boolean language plpgsql security definer set search_path='' as $$
-declare v_hash text; v_start private.admin_effects; v_existing private.admin_effects;
+declare v_hash text;
 begin
  if p_actor is null or p_request is null or p_effect is null or p_contact is null or p_lease is null
   or p_kind is null or p_kind not in('brevo_contact_upsert','brevo_contact_update')
-  or p_outcome is null or p_outcome not in('started','succeeded','failed','unknown')
-  or (p_provider_status is not null and p_provider_status not between 100 and 599)
-  or (p_outcome='started' and p_provider_status is not null)
-  or (p_outcome='succeeded' and coalesce(p_provider_status,0) not between 200 and 299)
-  or (p_outcome='failed' and p_provider_status is not null and p_provider_status not in(400,401,403,404,422))
-  or (p_outcome='unknown' and coalesce(p_provider_status,0) in(400,401,403,404,422))
+  or not private.mail_effect_valid(p_outcome,p_provider_status,false)
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  v_hash:=encode(sha256(convert_to('brevo_contact_sync:'||p_contact::text||':'||p_lease::text,'UTF8')),'hex');
  if p_outcome='started' then
@@ -79,40 +91,22 @@ begin
   perform 1 from private.mail_contacts where id=p_contact and sync_lease=p_lease
    and sync_lease_until>clock_timestamp() for update;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- else
-  select * into v_start from private.admin_effects where effect_id=p_effect and outcome='started' for update;
-  if not found or v_start.actor<>p_actor or v_start.request_id<>p_request
-   or v_start.action<>'mail_sync' or v_start.effect<>p_kind or v_start.target_hash<>v_hash
-  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  end if;
- if exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled') then
-  raise exception 'native_admin_invalid' using errcode='22023';
- end if;
- insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status,target_account)
- values(p_effect,p_outcome,p_request,p_actor,'mail_sync',p_kind,v_hash,p_provider_status,(select coalesce(account_id,erasure_account) from private.mail_contacts where id=p_contact)) on conflict do nothing;
- select * into v_existing from private.admin_effects where effect_id=p_effect and outcome=p_outcome;
- if not found or v_existing.actor<>p_actor or v_existing.request_id<>p_request
-  or v_existing.action<>'mail_sync' or v_existing.effect<>p_kind or v_existing.target_hash<>v_hash
-  or v_existing.provider_status is distinct from p_provider_status
-  or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled')
- then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return true;
+ return private.append_mail_effect(jsonb_build_object(
+  'effect_id',p_effect,'outcome',p_outcome,'request_id',p_request,'actor',p_actor,
+  'action','mail_sync','effect',p_kind,'target_hash',v_hash,'provider_status',p_provider_status),
+  (select coalesce(account_id,erasure_account) from private.mail_contacts where id=p_contact));
 end$$;
 
 create or replace function public.native_admin_record_mail_send(
  p_actor uuid,p_request uuid,p_effect uuid,p_delivery uuid,p_environment text,
  p_outcome text,p_provider_status integer default null)
 returns boolean language plpgsql security definer set search_path='' as $$
-declare v_hash text; v_start private.admin_effects; v_existing private.admin_effects;
+declare v_hash text;
 begin
  if p_actor is null or p_request is null or p_effect is null or p_delivery is null
   or p_environment is null or p_environment not in('sandbox','production')
-  or p_outcome is null or p_outcome not in('started','succeeded','failed','unknown')
-  or (p_provider_status is not null and p_provider_status not between 100 and 599)
-  or (p_outcome='started' and p_provider_status is not null)
-  or (p_outcome='succeeded' and coalesce(p_provider_status,0) not between 200 and 299)
-  or (p_outcome='failed' and p_provider_status is not null and p_provider_status not in(400,401,403,404,422))
-  or (p_outcome='unknown' and coalesce(p_provider_status,0) in(400,401,403,404,422))
+  or not private.mail_effect_valid(p_outcome,p_provider_status,false)
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  v_hash:=encode(sha256(convert_to('brevo_smtp_send:'||p_environment||':'||p_delivery::text,'UTF8')),'hex');
  if p_outcome='started' then
@@ -121,24 +115,11 @@ begin
    where d.id=p_delivery and d.status='dispatching' and d.reserved_at is not null
     and c.environment=p_environment and c.state='sending' and c.approved_by is not null for update of d;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- else
-  select * into v_start from private.admin_effects where effect_id=p_effect and outcome='started' for update;
-  if not found or v_start.actor<>p_actor or v_start.request_id<>p_request
-   or v_start.action<>'mail_send_batch' or v_start.effect<>'brevo_smtp_send' or v_start.target_hash<>v_hash
-  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  end if;
- if exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled') then
-  raise exception 'native_admin_invalid' using errcode='22023';
- end if;
- insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status,target_account)
- values(p_effect,p_outcome,p_request,p_actor,'mail_send_batch','brevo_smtp_send',v_hash,p_provider_status,(select coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d join private.mail_contacts c on c.email=d.email where d.id=p_delivery)) on conflict do nothing;
- select * into v_existing from private.admin_effects where effect_id=p_effect and outcome=p_outcome;
- if not found or v_existing.actor<>p_actor or v_existing.request_id<>p_request
-  or v_existing.action<>'mail_send_batch' or v_existing.effect<>'brevo_smtp_send' or v_existing.target_hash<>v_hash
-  or v_existing.provider_status is distinct from p_provider_status
-  or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled')
- then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return true;
+ return private.append_mail_effect(jsonb_build_object(
+  'effect_id',p_effect,'outcome',p_outcome,'request_id',p_request,'actor',p_actor,
+  'action','mail_send_batch','effect','brevo_smtp_send','target_hash',v_hash,'provider_status',p_provider_status),
+  (select coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d join private.mail_contacts c on c.email=d.email where d.id=p_delivery));
 end$$;
 
 create or replace function public.native_admin_record_mail_erasure(
@@ -149,16 +130,9 @@ declare
  -- Reserved technical actor, not a fabricated owner. Migration guards collision.
  v_actor uuid:=coalesce(p_actor,'00000000-0000-0000-0000-000000000000'::uuid);
  v_hash text;
- v_start private.admin_effects;
- v_existing private.admin_effects;
 begin
  if p_job is null or p_lease is null or p_request is null or p_effect is null
-  or p_outcome is null or p_outcome not in('started','succeeded','failed','unknown')
-  or (p_provider_status is not null and p_provider_status not between 100 and 599)
-  or (p_outcome='started' and p_provider_status is not null)
-  or (p_outcome='succeeded' and coalesce(p_provider_status,0) not in(204,404))
-  or (p_outcome='failed' and coalesce(p_provider_status,0) not in(401,403,422))
-  or (p_outcome='unknown' and coalesce(p_provider_status,0) in(204,404,401,403,422))
+  or not private.mail_effect_valid(p_outcome,p_provider_status,true)
   or p_actor='00000000-0000-0000-0000-000000000000'::uuid
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  v_hash:=encode(sha256(convert_to('brevo_delete:'||p_job::text||':'||p_lease::text,'UTF8')),'hex');
@@ -169,28 +143,11 @@ begin
    where id=p_job and lease=p_lease and state='processing'
     and lease_until>clock_timestamp() for update;
   if not found then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- else
-  -- Result may close after owner/lease expiry, only for the exact durable intent.
-  select * into v_start from private.admin_effects
-   where effect_id=p_effect and outcome='started' for update;
-  if not found or v_start.actor<>v_actor or v_start.request_id<>p_request
-   or v_start.action<>'mail_cleanup' or v_start.effect<>'brevo_delete'
-   or v_start.target_hash<>v_hash
-  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  end if;
- if exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled') then
-  raise exception 'native_admin_invalid' using errcode='22023';
- end if;
- insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status,target_account)
- values(p_effect,p_outcome,p_request,v_actor,'mail_cleanup','brevo_delete',v_hash,p_provider_status,(select account_id from private.mail_contact_erasures where id=p_job))
- on conflict do nothing;
- select * into v_existing from private.admin_effects where effect_id=p_effect and outcome=p_outcome;
- if not found or v_existing.actor<>v_actor or v_existing.request_id<>p_request
-  or v_existing.action<>'mail_cleanup' or v_existing.effect<>'brevo_delete'
-  or v_existing.target_hash<>v_hash or v_existing.provider_status is distinct from p_provider_status
-  or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='reconciled')
- then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return true;
+ return private.append_mail_effect(jsonb_build_object(
+  'effect_id',p_effect,'outcome',p_outcome,'request_id',p_request,'actor',v_actor,
+  'action','mail_cleanup','effect','brevo_delete','target_hash',v_hash,'provider_status',p_provider_status),
+  (select account_id from private.mail_contact_erasures where id=p_job));
 end$$;
 create function private.bind_admin_effect_account() returns trigger
 language plpgsql security definer set search_path='' as $$
@@ -220,8 +177,7 @@ create function public.native_admin_record_effect(p_actor uuid,p_event jsonb,p_a
 returns boolean language plpgsql security definer set search_path='' as $$
 declare account uuid; result boolean;
 begin
- if p_account is null or not exists(select 1 from public.profiles where id=p_account) then
-  raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ if not exists(select 1 from public.profiles where id=p_account) then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  for account in select distinct a from unnest(array[p_actor,p_account]) a where a is not null order by a loop
   perform private.lock_account_write(account);
  end loop;
@@ -238,7 +194,6 @@ end $$;
 revoke execute on function public.native_admin_record_effect(uuid,jsonb) from service_role;
 revoke all on function public.native_admin_record_effect(uuid,jsonb,uuid) from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_record_effect(uuid,jsonb,uuid) to service_role;
-alter function public.native_admin_record_effect(uuid,jsonb,uuid) owner to postgres;
 -- Deferred until after the recorder has checked the exact original intent hash.
 create function private.redact_closed_admin_effect() returns trigger
 language plpgsql security definer set search_path='' as $$
@@ -259,7 +214,7 @@ create constraint trigger redact_closed_admin_effect after insert on private.adm
  execute function private.redact_closed_admin_effect();
 create function private.admin_audit_fields(value jsonb,action text) returns jsonb
 language sql immutable set search_path='' as $$
- select case when value is null then null
+ select case when value is null or value='null'::jsonb then null
  when action='audit_prune' then (select coalesce(jsonb_object_agg(k,v),'{}'::jsonb)
  from jsonb_each(case when jsonb_typeof(value)='object' then value else '{}'::jsonb end) t(k,v)
  where k in('retention_days','admin','mail','effects') and jsonb_typeof(v)='number')
@@ -286,30 +241,31 @@ language sql stable set search_path='' as $$
  when target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
   case when exists(select 1 from public.account_identities i where i.account_id=target::uuid and i.deleted_at is not null)
   then 'erased' else 'sha256:'||encode(sha256(convert_to((target::uuid)::text,'UTF8')),'hex') end
- when target ~ '^sha256:[0-9a-f]{64}$' then target
+ when target ~ '^sha256:[0-9a-f]{64}$' then case when exists(select 1 from public.account_identities i
+  where i.deleted_at is not null and target='sha256:'||encode(sha256(convert_to(i.account_id::text,'UTF8')),'hex'))
+  then 'erased' else target end
  when target in ('search_accounts','get_rollout','list_reports','list_creators','mail','contact','audit') then target
  else 'sha256:'||encode(sha256(convert_to(target,'UTF8')),'hex') end
 $$;
+create function private.admin_audit_minimize(entry anyelement,actor_key text,value_keys text[])
+returns anyelement language sql stable set search_path='' as $$
+ select jsonb_populate_record(entry,to_jsonb(entry)||jsonb_build_object(
+  'target',private.admin_audit_target(to_jsonb(entry)->>'target'),actor_key,
+  case when exists(select 1 from public.account_identities i
+   where i.account_id=(to_jsonb(entry)->>actor_key)::uuid and i.deleted_at is not null)
+  then null else to_jsonb(entry)->actor_key end)||
+  (select jsonb_object_agg(k,private.admin_audit_fields(to_jsonb(entry)->k,to_jsonb(entry)->>'action'))
+   from unnest(value_keys) k))
+$$;
 create function private.minimize_admin_audit() returns trigger
 language plpgsql security definer set search_path='' as $$
-declare account uuid; actor uuid; target uuid;
+declare account uuid; target uuid;
 begin
- if tg_table_name='mail_audit' then actor:=new.actor; else actor:=new.actor_account_id; end if;
  if new.target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then target:=new.target::uuid; end if;
- -- Serialize insertion with erasure without waiting for UUIDs after row locks.
- for account in select distinct a from unnest(array[actor,target]) a where a is not null order by a loop
-  if private.lock_account_row_write(account) then
-   if account=target then new.target:='erased'; end if;
-   if tg_table_name='mail_audit' and account=actor then new.actor:=null; end if;
-  end if;
- end loop;
- if tg_table_name='mail_audit' then
-  new.detail:=private.admin_audit_fields(new.detail,new.action);
- else
-  new.before_value:=private.admin_audit_fields(new.before_value,new.action);
-  new.after_value:=private.admin_audit_fields(new.after_value,new.action);
- end if;
- new.target:=private.admin_audit_target(new.target);
+ -- Nonwaiting UUID fallback serializes insert with erasure after any row locks.
+ for account in select distinct a from unnest(array[(to_jsonb(new)->>tg_argv[0])::uuid,target]) a
+  where a is not null order by a loop perform private.lock_account_row_write(account); end loop;
+ new:=private.admin_audit_minimize(new,tg_argv[0],string_to_array(tg_argv[1],','));
  return new;
 end $$;
 create function private.redact_deleted_account_audit() returns trigger
@@ -332,9 +288,9 @@ begin
  return new;
 end $$;
 create trigger b_minimize_admin_audit before insert on public.admin_audit_log
- for each row execute function private.minimize_admin_audit();
+ for each row execute function private.minimize_admin_audit('actor_account_id','before_value,after_value');
 create trigger b_minimize_mail_audit before insert on private.mail_audit
- for each row execute function private.minimize_admin_audit();
+ for each row execute function private.minimize_admin_audit('actor','detail');
 create trigger admin_audit_account_erasure after update of deleted_at on public.account_identities
  for each row when(new.deleted_at is not null and old.deleted_at is null)
  execute function private.redact_deleted_account_audit();
@@ -361,31 +317,25 @@ update private.admin_effects e set target_account=i.account_id from public.accou
  and e.target_hash=encode(sha256(convert_to(i.subject,'UTF8')),'hex');
 update private.admin_effects e set target_account=p.account_id from private.admin_payments p
  where e.effect='polar_cancel' and e.target_hash=encode(sha256(convert_to(p.subscription_id,'UTF8')),'hex');
-update private.admin_effects set target_account=private.admin_effect_mail_account(effect,target_hash)
- where effect like 'brevo_%';
-drop function private.admin_effect_mail_account(text,text);
--- Rotated historical leases cannot be inverted. Refuse to hide an unknown mapping.
-do $$ begin
- if exists(select 1 from private.admin_effects where target_account is null) then
-  raise exception 'admin_effect_backfill_requires_mapping' using errcode='55000';
- end if;
-end $$;
+with accounts as (
+ select coalesce(account_id,erasure_account) account,encode(sha256(convert_to('brevo_contact_sync:'||id::text||':'||sync_lease::text,'UTF8')),'hex') hash
+ from private.mail_contacts where sync_lease is not null
+ union all select account_id,encode(sha256(convert_to('brevo_delete:'||id::text||':'||lease::text,'UTF8')),'hex')
+ from private.mail_contact_erasures where lease is not null
+ union all select coalesce(c.account_id,c.erasure_account),encode(sha256(convert_to('brevo_smtp_send:'||m.environment||':'||d.id::text,'UTF8')),'hex')
+ from private.mail_deliveries d join private.mail_contacts c on c.email=d.email join private.mail_campaigns m on m.id=d.campaign_id
+) update private.admin_effects e set target_account=a.account from accounts a where e.effect like 'brevo_%' and e.target_hash=a.hash;
+-- Unmapped or deleted account: erase closed hashes; pending hashes await closure.
 update private.admin_effects e set erase_on_close=true,target_account=null,
  target_hash=case when exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
  and r.outcome in('succeeded','failed','reconciled')) then 'erased' else e.target_hash end
- from public.account_identities i where i.deleted_at is not null and i.account_id=e.target_account;
-update public.admin_audit_log set before_value=private.admin_audit_fields(before_value,action),
- after_value=private.admin_audit_fields(after_value,action),target=private.admin_audit_target(target);
-update private.mail_audit set detail=private.admin_audit_fields(detail,action),target=private.admin_audit_target(target);
--- Also scrub a pseudonym left by an earlier up/down before account deletion.
-update public.admin_audit_log a set target='erased' from public.account_identities i
- where i.deleted_at is not null and a.target='sha256:'||encode(sha256(convert_to(i.account_id::text,'UTF8')),'hex');
-update private.mail_audit a set target='erased' from public.account_identities i
- where i.deleted_at is not null and a.target='sha256:'||encode(sha256(convert_to(i.account_id::text,'UTF8')),'hex');
-update public.admin_audit_log a set actor_account_id=null from public.account_identities i
- where i.deleted_at is not null and a.actor_account_id=i.account_id;
-update private.mail_audit a set actor=null from public.account_identities i
- where i.deleted_at is not null and a.actor=i.account_id;
+ where e.target_account is null or exists(select 1 from public.account_identities i
+  where i.deleted_at is not null and i.account_id=e.target_account);
+update public.admin_audit_log a set (actor_account_id,target,before_value,after_value)=
+ (select m.actor_account_id,m.target,m.before_value,m.after_value from
+  private.admin_audit_minimize(a,'actor_account_id',array['before_value','after_value']) m);
+update private.mail_audit a set (actor,target,detail)=
+ (select m.actor,m.target,m.detail from private.admin_audit_minimize(a,'actor',array['detail']) m);
 delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id();
 
 create function public.native_admin_prune_audit(p_actor uuid) returns jsonb
@@ -417,18 +367,10 @@ begin
 end $$;
 revoke all on function public.native_admin_prune_audit(uuid) from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_prune_audit(uuid) to service_role;
-alter function public.native_admin_prune_audit(uuid) owner to postgres;
 revoke all on function private.admin_audit_maintenance(),private.admin_audit_fields(jsonb,text),
- private.admin_audit_target(text),private.minimize_admin_audit(),private.redact_deleted_account_audit()
+ private.admin_audit_target(text),private.admin_audit_minimize(anyelement,text,text[]),private.minimize_admin_audit(),private.redact_deleted_account_audit()
  from public,anon,authenticated,service_role;
-alter function private.admin_audit_maintenance() owner to postgres;
-alter function private.admin_audit_fields(jsonb,text) owner to postgres;
-alter function private.admin_audit_target(text) owner to postgres;
-alter function private.minimize_admin_audit() owner to postgres;
-alter function private.redact_deleted_account_audit() owner to postgres;
-revoke all on function private.bind_admin_effect_account(),
+revoke all on function private.mail_effect_valid(text,integer,boolean),private.append_mail_effect(jsonb,uuid),private.bind_admin_effect_account(),
  private.redact_closed_admin_effect() from public,anon,authenticated,service_role;
-alter function private.bind_admin_effect_account() owner to postgres;
-alter function private.redact_closed_admin_effect() owner to postgres;
 notify pgrst,'reload schema';
 commit;

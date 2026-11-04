@@ -52,6 +52,12 @@ def seed_audit_upgrade(run, conn):
       'set_blocked','clerk_ban',repeat(hash,64),status,'2026-01-01T00:00:00Z'::timestamptz
       from (values(16,'started','f',null::smallint),(16,'failed','f',401),
        (17,'started','e',null::smallint),(17,'unknown','e',503)) f(n,outcome,hash,status);""")
+    root=Path(__file__).resolve().parents[2]
+    readme=(root/'supabase/functions/native-admin/README.md').read_text(encoding='utf-8')
+    precheck='select current_user,rolsuper'+readme.split('select current_user,rolsuper',1)[1].split('```',1)[0]
+    counts=run('psql',*conn,'-c',precheck)
+    if 'sin_asociacion|2|2' not in counts.splitlines():
+        raise RuntimeError('documented pre-check did not count closed/pending historical rows: '+counts)
 
 
 def run_minimal_audit(run, conn, out, before, schema_before, newline):
@@ -63,9 +69,6 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
         return run('psql',*conn,'-f',target)
     up = root/'supabase/migrations'/(AUDIT_STEM+'.sql')
     down = root/'supabase/rollbacks'/(AUDIT_STEM+'.down.sql')
-    readme=(root/'supabase/functions/native-admin/README.md').read_text(encoding='utf-8')
-    precheck='select current_user,rolsuper'+readme.split('select current_user,rolsuper',1)[1].split('```',1)[0]
-    run('psql',*conn,'-c',precheck)
     upgraded=run('psql',*conn,'-c',"""select
       (select target='erased' and before_value='{"enabled":false}'::jsonb
        and after_value='{"enabled":true}'::jsonb from public.admin_audit_log

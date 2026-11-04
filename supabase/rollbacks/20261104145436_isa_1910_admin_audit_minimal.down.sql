@@ -156,6 +156,8 @@ begin
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  return true;
 end$$;
+drop function private.append_mail_effect(jsonb,uuid);
+drop function private.mail_effect_valid(text,integer,boolean);
 alter table private.admin_effects drop column target_account;
 alter table private.admin_effects drop column erase_on_close;
 drop trigger admin_audit_account_erasure on public.account_identities;
@@ -179,6 +181,7 @@ drop index if exists public.admin_audit_target_lookup;
 drop index if exists private.mail_audit_target_lookup;
 drop function private.redact_deleted_account_audit();
 drop function private.minimize_admin_audit();
+drop function private.admin_audit_minimize(anyelement,text,text[]);
 drop function private.admin_audit_target(text);
 drop function private.admin_audit_fields(jsonb,text);
 drop function private.admin_audit_maintenance();

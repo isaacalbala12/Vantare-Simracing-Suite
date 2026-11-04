@@ -97,6 +97,19 @@ revoke all on function public.example() from public,anon,authenticated,service_r
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('.down.sql', result.stdout)
 
+    def test_rollback_cannot_use_auth_uid(self):
+        self.write_new(VALID, rollback='select auth.uid();\n')
+        result = self.lint()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('auth.uid', result.stdout)
+
+    def test_altered_table_with_explicit_acl_passes(self):
+        self.write_new('''alter table public.example add column note text;
+revoke all on table public.example from public,anon,authenticated,service_role;
+grant select on table public.example to service_role;
+''')
+        self.assertEqual(self.lint().returncode, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

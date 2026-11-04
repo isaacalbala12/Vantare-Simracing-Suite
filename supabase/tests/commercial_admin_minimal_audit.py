@@ -45,7 +45,13 @@ def seed_audit_upgrade(run, conn):
       select '19101090-0000-4000-8000-000000000014',outcome,
       '19101090-0000-4000-8000-000000000015','19101090-0000-4000-8000-000000000001',
       'set_blocked','clerk_ban',encode(sha256(convert_to('user_audit_upgrade','UTF8')),'hex')
-      from unnest(array['started','succeeded']) outcome;""")
+      from unnest(array['started','succeeded']) outcome;
+     insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash,provider_status,occurred_at)
+      select ('19101090-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,outcome,
+      '19101090-0000-4000-8000-000000000015','19101090-0000-4000-8000-000000000001',
+      'set_blocked','clerk_ban',repeat(hash,64),status,'2026-01-01T00:00:00Z'::timestamptz
+      from (values(16,'started','f',null::smallint),(16,'failed','f',401),
+       (17,'started','e',null::smallint),(17,'unknown','e',503)) f(n,outcome,hash,status);""")
 
 
 def run_minimal_audit(run, conn, out, before, schema_before, newline):
@@ -70,6 +76,25 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
     effect_upgrade=run('psql',*conn,'-c',"""select count(*)=2 and bool_and(target_hash='erased' and target_account is null and erase_on_close)
       from private.admin_effects where effect_id='19101090-0000-4000-8000-000000000014'""").strip()
     if effect_upgrade!='t': raise RuntimeError('nonempty effect backfill retained a deleted target')
+    unmapped=run('psql',*conn,'-c',"""select
+     (select count(*)=2 and bool_and(target_hash='erased' and action='set_blocked' and effect='clerk_ban'
+       and occurred_at='2026-01-01T00:00:00Z' and request_id='19101090-0000-4000-8000-000000000015'
+       and actor='19101090-0000-4000-8000-000000000001')
+      from private.admin_effects where effect_id='19101090-0000-4000-8000-000000000016'),
+     (select count(*)=2 and bool_and(target_hash=repeat('e',64) and occurred_at='2026-01-01T00:00:00Z')
+      from private.admin_effects where effect_id='19101090-0000-4000-8000-000000000017'),
+     (select provider_status=401 from private.admin_effects
+      where effect_id='19101090-0000-4000-8000-000000000016' and outcome='failed')""").strip()
+    if unmapped!='t|t|t': raise RuntimeError('unmapped historical policy changed evidence or pending hash: '+unmapped)
+    reconciled=run('psql',*conn,'-c',"""begin;
+     select * from public.operational_access_set('19101090-0000-4000-8000-000000000001',
+      'owner','grant','test:audit','Unmapped reconciliation','unmapped-reconcile',null);
+     select public.native_admin_reconcile_effect('19101090-0000-4000-8000-000000000001',
+      '19101090-0000-4000-8000-000000000017');
+     set constraints all immediate;
+     select count(*)=3 and bool_and(target_hash='erased') from private.admin_effects
+      where effect_id='19101090-0000-4000-8000-000000000017'; rollback;""")
+    if not reconciled.strip().endswith('t\nROLLBACK'): raise RuntimeError('unmapped pending hash survived reconcile: '+reconciled)
     for name in ['native_admin_minimal_audit.test.sql','native_admin_audit_retention.test.sql']:
         result=sql(root/'supabase/tests'/name)
         (out/(name+'.log')).write_text(result,encoding='utf-8')
@@ -77,7 +102,8 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
         print(name+' GREEN',flush=True)
     run('psql',*conn,'-c',"""begin;
       insert into private.admin_audit_maintenance_tx default values;
-      delete from private.admin_effects where effect_id='19101090-0000-4000-8000-000000000014';
+      delete from private.admin_effects where effect_id in('19101090-0000-4000-8000-000000000014',
+       '19101090-0000-4000-8000-000000000016','19101090-0000-4000-8000-000000000017');
       delete from private.admin_audit_maintenance_tx where transaction_id=pg_current_xact_id(); commit;""")
     for name in ['native_admin_effects.test.sql','native_admin_effects_r2.test.sql',
                  'native_admin_deletion_r4.test.sql','marketing_mail.test.sql','native_admin_reads_r3.test.sql',
@@ -114,19 +140,6 @@ def run_minimal_audit(run, conn, out, before, schema_before, newline):
     (out/'audit-schema.before.sql').write_text(schema_before,encoding='utf-8')
     (out/'audit-schema.down.sql').write_text(schema_after,encoding='utf-8')
     if schema_after!=schema_before: raise RuntimeError('audit rollback full schema dump differs')
-    unmapped=out/'audit-unmapped.sql'
-    fixture="""begin;
-      insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
-      values('19101090-0000-4000-8000-000000000016','started',
-      '19101090-0000-4000-8000-000000000015','19101090-0000-4000-8000-000000000001',
-      'set_blocked','clerk_ban',repeat('f',64));"""
-    unmapped.write_text(up.read_text(encoding='utf-8').replace('begin;',fixture,1),encoding='utf-8')
-    try:
-        run('psql',*conn,'-f',unmapped)
-    except RuntimeError as exc:
-        if 'admin_effect_backfill_requires_mapping' not in str(exc): raise
-    else: raise RuntimeError('up accepted an unverifiable legacy effect association')
-    if audit_schema(run,conn)!=schema_before: raise RuntimeError('rejected up changed schema')
     sql(up)
     second=run('psql',*conn,'-c',"""select after_value='{"enabled":true}'::jsonb
       from public.admin_audit_log where id='19101090-0000-4000-8000-000000000011'""").strip()

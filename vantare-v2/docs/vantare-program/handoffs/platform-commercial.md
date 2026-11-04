@@ -7591,3 +7591,23 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   testing_center_prepare_screenshot_batch y testing_center_finalize_screenshot;
   renombrar up/down detrás de los prerequisitos y retirar el shutdown auxiliar
   del replay. No se hace ese rebase ni se cambia el guard todavía.
+
+### #1927 tras integrar #1925 y P3 de revisión (2026-11-04)
+
+- Rebase sobre nightly@39b944d8c: #1925 integrado, migración/rollback de R6
+  únicamente en 20261103235000. Se conservan cierre legacy, QA y ambos handoffs;
+  ya no se incluyen commits de R6 pendientes en el diff propio de #1927.
+- Test previo 4fe066062: con target bloqueado, no-owner intentaba tomar su UUID
+  y fallaba en 55P03. Chequeo sin locks con private.is_owner(reviewer) al principio
+  devuelve 42501/testing_owner_required; comprobación bloqueada del helper
+  conservada después. Se retira el comentario obsoleto del test de autoridad.
+- El harness respeta la nueva dependencia de rollback de R6: admin down antes
+  de R6 down/up; después admin up y comparación exacta de cuerpos/ACL. No se
+  debilita el guard owner_rollback_dependency de R6.
+- Código validado e77dffd60: gate local con rechazo sin locks, 25/25, rollback
+  exacto, reaplicación y tres carreras PASS. Deno 2.7.13 94/94, Python/diff PASS.
+  Instancia detenida; sin Rust/lifecycle/telemetría porque no cambia ningún crate.
+  Evidencia isa-1910-paso4/review-p3. HEAD/CI publicados en #1927; el orquestador
+  verifica CI verde antes de revisar/integrar. Sin merge de PR ni despliegue.
+- #1924 continúa draft esperando 7b2; guard/timestamp y reset limpio se ajustan
+  después, conforme a la lista de padre, siete hijas y RPC de capturas acordada.

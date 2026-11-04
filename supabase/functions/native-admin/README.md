@@ -105,6 +105,8 @@ Un owner operativo sin membresía puede revisar; una membresía owner no autoriz
 si falta la asignación operativa o está caducada/revocada. No se escriben roles
 ni membresías. La RPC recoge actor y cuenta del informe antes de tomar filas,
 bloquea los UUID ordenados y vuelve a comprobar la cuenta del informe.
+Rechaza primero sin locks al no-owner; el helper vuelve a comprobar la autoridad
+con los bloqueos adquiridos, para cubrir una revocación concurrente.
 
 Instalar primero la migración owner de R6/#1925 y después
 `20261104005000_isa_1910_admin_owner_authority.sql`, dentro del conjunto acordado

@@ -8924,3 +8924,15 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Cierre CI1962: run41902621733 pasó replay LF/CRLF y carreras; solo falló
   derived schema drift admin/mail. Se incorporan volcados del replay PG17 fijado
   (artefacto13359192619), sin cambios runtime ni timestamps. Nueva CI pendiente.
+
+### Seguimiento menor de1962 (2026-11-04)
+
+- PR1962 e2e049d02 aceptado, sin nuevos commits. Rama separada paso6-p3
+  apilada temporalmente encima; destino nightly, depende de su integración.
+- Imports de confirmations.test.ts en cabecera. Demo MailApprove/MailCancel
+  con brazos explícitos. recipients solo se parsea en el brazo de detalle;
+  MailNew restablece None, sin intentar leer un campo que no recibe.
+- Caracterización6c715d895: un ACK sync con metadata recipients ajena fallaba
+  Protocol. RED reproducido mediante compilar.ps1, target/QA propios, sin Store.
+  Deno3 PASS; check/Clippy/Nextest/fmt de admin en marcha. No SQL ni migraciones,
+  _shared, billing/licencias, despliegue/merge/release. Paso11 sigue R6/12.

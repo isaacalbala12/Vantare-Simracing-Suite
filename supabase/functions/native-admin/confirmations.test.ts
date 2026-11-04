@@ -1,5 +1,11 @@
 import { validateAction } from "./actions.ts";
 import { strict as assert } from "node:assert";
+import { handleNativeAdmin } from "./index.ts";
+import {
+  account,
+  authDeps,
+  request,
+} from "../native-account-authorize/testdata/auth.ts";
 const id = "19100600-0000-4000-8000-000000000001";
 Deno.test("confirmation contract binds the visible prior state", () => {
   for (
@@ -41,12 +47,6 @@ Deno.test("confirmation contract accepts explicit expectations and campaign canc
     ] as const
   ) assert.doesNotThrow(() => validateAction(action, params));
 });
-import { handleNativeAdmin } from "./index.ts";
-import {
-  account,
-  authDeps,
-  request,
-} from "../native-account-authorize/testdata/auth.ts";
 Deno.test("campaign cancel traverses the real admin Edge dispatch", async () => {
   const calls: unknown[] = [];
   const response = await handleNativeAdmin(

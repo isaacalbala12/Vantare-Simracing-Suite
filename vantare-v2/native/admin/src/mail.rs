@@ -233,10 +233,6 @@ impl crate::state::State {
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<()> {
-        let recipients = response
-            .get("recipients")
-            .map(|_| field(response, "recipients"))
-            .transpose()?;
         match action {
             Action::MailForgetWaitlist { .. } => {}
             Action::MailList | Action::MailCleanup => {
@@ -292,7 +288,10 @@ impl crate::state::State {
                 if quota > 300 || history.len() > 100 {
                     return Err(Error::Protocol);
                 }
-                self.mail.recipients = recipients;
+                self.mail.recipients = response
+                    .get("recipients")
+                    .map(|_| field(response, "recipients"))
+                    .transpose()?;
                 self.mail.campaign = Some(c);
                 self.mail.history = history;
                 self.mail.totals = totals;
@@ -301,7 +300,7 @@ impl crate::state::State {
             Action::MailNew => {
                 let c: crate::mail::Campaign = field(response, "campaign")?;
                 c.validate(true)?;
-                self.mail.recipients = recipients;
+                self.mail.recipients = None;
                 self.mail.campaign = Some(c);
                 self.mail.history.clear();
                 self.mail.totals.clear();
@@ -329,14 +328,14 @@ impl crate::state::State {
     }
     pub(crate) fn demo_mail_action(&mut self, action: &Action) {
         match action {
-            Action::MailApprove { .. } | Action::MailCancel { .. } => {
+            Action::MailApprove { .. } => {
                 if let Some(c) = &mut self.mail.campaign {
-                    c.state = if matches!(action, Action::MailApprove { .. }) {
-                        "sending"
-                    } else {
-                        "canceled"
-                    }
-                    .into();
+                    c.state = "sending".into();
+                }
+            }
+            Action::MailCancel { .. } => {
+                if let Some(c) = &mut self.mail.campaign {
+                    c.state = "canceled".into();
                 }
             }
             Action::MailSendBatch { .. } => {

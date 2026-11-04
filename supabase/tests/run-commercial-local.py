@@ -1,6 +1,7 @@
 """Disposable loopback PostgreSQL only. macOS/Linux; never accepts a DSN."""
 import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse, re
-from generate_schema_snapshot import compose, write_or_check
+from generate_schema_snapshot import (compose, write_or_check, SNAPSHOT_IMAGE,
+ SNAPSHOT_DUMP_OPTIONS, verify_snapshot_source)
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
@@ -63,6 +64,8 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
+if args.schema_snapshot and not args.docker:
+ parser.error('--schema-snapshot requires --docker with the pinned PostgreSQL image')
 if args.admin_erasure_only: args.admin_reports_only=True
 if args.admin_reports_only: args.admin_effects_only=True
 legacy_writers_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
@@ -124,7 +127,7 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
   # public fixture credentials, generated for no external database or service.
   try:
    docker('run','--rm','-d','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust',
-    '-p',f'127.0.0.1:{port}:5432','public.ecr.aws/supabase/postgres:17.6.1.165')
+    '-p',f'127.0.0.1:{port}:5432',SNAPSHOT_IMAGE)
    for attempt in range(120):
     if 'PostgreSQL init process complete' in docker('logs',container):
      ready=subprocess.run(['docker','exec',container,'pg_isready','-U','postgres'],capture_output=True)
@@ -784,12 +787,11 @@ $$;
    # The runner owns a fresh loopback database; no DSN or hosted endpoint is accepted.
    if run('psql',*conn,'-c',"select to_regclass('public.testing_center_reports') is null and to_regclass('private.testing_center_legacy_archive') is null").strip()!='t':
     raise RuntimeError('schema snapshot requires the final legacy retirement migration')
-   if args.docker:
-    dump=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
-     '-U','postgres','-d',database,'--schema-only','--no-owner')
-   else:
-    dump=run('pg_dump','-h','127.0.0.1','-p',str(port),'-U','postgres',
-     '-d',database,'--schema-only','--no-owner')
+   dump=docker('exec',container,'pg_dump','-h','127.0.0.1','-p','5432',
+    '-U','postgres','-d',database,*SNAPSHOT_DUMP_OPTIONS)
+   image_id=docker('inspect','--format','{{.Image}}',container).strip()
+   image_digests=json.loads(docker('image','inspect',image_id,'--format','{{json .RepoDigests}}'))
+   verify_snapshot_source(dump,image_digests or [])
    catalog={}
    relations={
     'storage.buckets': "select id,name,public,file_size_limit,allowed_mime_types from storage.buckets",

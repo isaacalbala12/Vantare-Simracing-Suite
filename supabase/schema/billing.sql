@@ -4320,19 +4320,14 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
 -- Name: billing_webhook_inbox a_account_write_barrier; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.billing_webhook_inbox FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (
-        select c.user_id from public.billing_customers c
+CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.billing_webhook_inbox FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select b.user_id from public.billing_checkout_bindings b
+        where b.environment=$1->>''environment'' and b.provider_checkout_id=$1#>>''{payload,data,checkout_id}'' union select c.user_id from public.billing_customers c
         where c.provider=$1->>''provider'' and c.environment=$1->>''environment''
-          and c.provider_customer_id in ($1#>>''{payload,data,customer_id}'',$1#>>''{payload,data,customer,id}'')
-        union select b.user_id from public.billing_checkout_bindings b
-        where b.environment=$1->>''environment'' and b.provider_checkout_id=$1#>>''{payload,data,checkout_id}''
-        union select o.user_id from public.billing_orders o where o.provider=$1->>''provider''
+          and c.provider_customer_id in ($1#>>''{payload,data,customer_id}'',$1#>>''{payload,data,customer,id}'') union select o.user_id from public.billing_orders o where o.provider=$1->>''provider''
           and o.environment=$1->>''environment'' and o.provider_order_id in
-            ($1#>>''{payload,data,order_id}'',case when $1->>''event_type'' like ''order.%'' then $1#>>''{payload,data,id}'' end)
-        union select s.user_id from public.billing_subscriptions s where s.provider=$1->>''provider''
+            ($1#>>''{payload,data,order_id}'',case when $1->>''event_type'' like ''order.%'' then $1#>>''{payload,data,id}'' end) union select s.user_id from public.billing_subscriptions s where s.provider=$1->>''provider''
           and s.environment=$1->>''environment'' and s.provider_subscription_id in
-            ($1#>>''{payload,data,subscription_id}'',case when $1->>''event_type'' like ''subscription.%'' then $1#>>''{payload,data,id}'' end)
-      ) owners(account)', 'select false');
+            ($1#>>''{payload,data,subscription_id}'',case when $1->>''event_type'' like ''subscription.%'' then $1#>>''{payload,data,id}'' end)) owners(account)', 'select false');
 
 
 --
@@ -4368,7 +4363,7 @@ CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON publ
 -- Name: license_validations a_account_write_barrier; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.license_validations FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''user_id'')::uuid union select a.account from public.licenses p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''user_id'')::uuid) a(account) where p2.id=($1->>''license_id'')::uuid) owners(account)', 'select ($1->>''license_id'' is not null and not exists(select 1 from public.licenses p where p.id=($1->>''license_id'')::uuid)) or ($1->>''user_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''user_id'')::uuid))');
+CREATE TRIGGER a_account_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.license_validations FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.licenses p2 cross join lateral (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=(to_jsonb(p2)->>''user_id'')::uuid) a(account) where p2.id=($1->>''license_id'')::uuid union select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>''id'')::uuid as account) a(account) where p1.id=($1->>''user_id'')::uuid) owners(account)', 'select ($1->>''license_id'' is not null and not exists(select 1 from public.licenses p where p.id=($1->>''license_id'')::uuid)) or ($1->>''user_id'' is not null and not exists(select 1 from public.profiles p where p.id=($1->>''user_id'')::uuid))');
 
 
 --

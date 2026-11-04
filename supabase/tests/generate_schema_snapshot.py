@@ -7,6 +7,74 @@ import json
 import pathlib
 import re
 
+SNAPSHOT_IMAGE = 'public.ecr.aws/supabase/postgres:17.6.1.165'
+SNAPSHOT_DIGEST = 'sha256:28f0e16a019e648089fc1a6d333549a55548f6019c15ae4bd7cd58b989027518'
+SNAPSHOT_DUMP_OPTIONS = ('--schema-only', '--no-owner')
+
+
+def verify_snapshot_source(dump, image_digests):
+    for label in ('database', 'pg_dump'):
+        pattern = (r'^-- Dumped from database version (\S+)' if label == 'database'
+                   else r'^-- Dumped by pg_dump version (\S+)')
+        match = re.search(pattern, dump, re.M)
+        if not match or match[1] != '17.6':
+            raise ValueError(f'schema snapshot requires {label} 17.6')
+    if not any(value.endswith('@' + SNAPSHOT_DIGEST) for value in image_digests):
+        raise ValueError('schema snapshot requires the pinned Supabase image digest')
+
+
+def canonical_guard_union(query):
+    # Only this DISTINCT aggregate with ORDER BY is invariant to UNION order.
+    # Keep all other SQL, nested unions and quoted strings byte-for-byte.
+    prefix = 'select array_agg(distinct account order by account) filter(where account is not null) from ('
+    start = query.find(prefix)
+    if start < 0 or '\\' in query or '--' in query or '/*' in query:
+        return query
+    begin = start + len(prefix)
+    depth, quote, index, part = 0, None, begin, begin
+    branches = []
+    while index < len(query):
+        char = query[index]
+        if quote:
+            if char == quote:
+                if index + 1 < len(query) and query[index + 1] == quote:
+                    index += 2
+                    continue
+                quote = None
+        elif char in "'\"":
+            quote = char
+        elif char == '(':
+            depth += 1
+        elif char == ')':
+            if depth == 0:
+                if not query[index:].startswith(') owners(account)'):
+                    return query
+                branches.append(query[part:index].strip())
+                return query[:begin] + ' union '.join(sorted(branches)) + query[index:]
+            depth -= 1
+        elif depth == 0 and query[index - 1].isspace():
+            operator = re.match(r'\b(union|except|intersect)\b', query[index:], re.I)
+            if operator:
+                if operator[1].lower() != 'union':
+                    return query
+                end = index + len(operator[0])
+                if re.match(r'\s+all\b', query[end:], re.I):
+                    return query
+                if re.match(r'\s+distinct\b', query[end:], re.I):
+                    end += re.match(r'\s+distinct\b', query[end:], re.I).end()
+                branches.append(query[part:index].strip())
+                index = part = end
+                continue
+        index += 1
+    return query
+
+
+def canonical_guard_trigger(block):
+    if 'EXECUTE FUNCTION private.guard_account_write(' not in block:
+        return block
+    return re.sub(r"'(?:''|[^'])*'", lambda match: "'" + canonical_guard_union(
+        match[0][1:-1].replace("''", "'")).replace("'", "''") + "'", block)
+
 PREFIXES = (
     ('testing', ('testing_', 'testing_center_', 'report_', 'native_testing_')),
     ('billing', ('billing_', 'payment_', 'checkout_', 'license_', 'web_purchase_', 'stripe_')),
@@ -54,6 +122,8 @@ def partition_dump(dump):
             continue
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         block = text[match.start():end].strip() + '\n'
+        if match['kind'] == 'TRIGGER':
+            block = canonical_guard_trigger(block)
         group = domain(match['name'], match['schema'], match['kind'], block)
         groups.setdefault(group, '')
         groups[group] += '\n' + block

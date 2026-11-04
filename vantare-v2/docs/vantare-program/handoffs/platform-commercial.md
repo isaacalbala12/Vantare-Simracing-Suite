@@ -8139,7 +8139,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   comportamiento previo. La integración en native-admin queda fuera de esta
   entrega mientras se aclara la limitación de alcance con el orquestador.
 - Caracterización bcb34d5ca: cinco tests previos PASS y seis RED de hook antes
-  del cambio. GREEN: 13 tests del worker y 123 con consumidores mail/admin,
+  del cambio. GREEN: 13 tests del worker y 125 con consumidores mail/admin,
   ambos modos/abuso; check/lint/fmt/diff PASS. Primer gate de consumidores se
   ejecutó sin los permisos env acotados y falló; repetido con los cuatro nombres
   de configuración usados por los gates nativos, PASS. Fallo conservado.
@@ -8151,4 +8151,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   pendientes. Paso11 sigue exclusivamente en la base R6/12.
 - PR draft [#1942](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1942) a nightly,
   código validado bca121f45; HEAD documental final publicado en el PR. CI pendiente.
-- Medición frente a d1616b2f7: producción +29/−0; tests +176/−0; docs +31/−0.
+- Medición frente a 937e55afd: producción +29/−0; tests +176/−0; docs +34/−0.
+- Rebase final sobre nightly 937e55afd231826cabdd360b8a89520b6a430073, con #1941
+  integrado y sus seis checks verdes; conflicto solo de handoff, ambas evidencias
+  conservadas y fuente del hook idéntica. Gate final Deno125 PASS.

@@ -8947,16 +8947,18 @@ union all select 'linear_deliveries',outcome::text,count(*)
   No se repiten builds sin cambio de código/dependencias Rust; CI nueva pendiente.
 ## VANTA-132 · paso8c · sync explícito y lecturas financieras puras (2026-11-04)
 
+## VANTA-132 · paso8c · [PR #1963](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1963) (2026-11-04)
+
 - Desde nightly18fb6ca17, rama vantareapp/isa-1910-paso8c-sync-explicito, PR
   independiente del paso6. RED Deno a1fbcedfe (4/4) y Rust00d0fd2c3: una respuesta
   pendiente sobrescribía los hechos previos. Ambos casos pasan con el flujo nuevo.
-- Las tres consultas solo leen SQL/Clerk; no Polar. Si falta historial sandbox,
+- Las tres consultas no importan pagos ni llaman a Polar. Si falta historial sandbox,
   Gestión conserva hechos, pide confirmar sync, espera ACK y relee antes de
   mostrar importes. Reintento visible; producción mantiene lectura sin importación.
 - RPC owner/sandbox, cuota transitoria una importación/minuto compartida entre
   sesiones, sin PII. RLS/ACL explícitos y cuerpo completo; rollback retira tabla/RPC.
   La paginación e importación previas se conservan, igual que la protección al pagar.
-- SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest final en marcha; check PASS y Clippy final en marcha.
+- SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest47, check y Clippy -D warnings PASS.
   Deno281 PASS tras ajustar el código de
   sandbox al contrato503 existente; ver gates finales en PR. Store falso/QA aislada.
 - Solo Isaac: SQL primero, Gestión compatible antes de Edge pura; confirmar que
@@ -8966,3 +8968,16 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Falta el recorte mail_erasure_expire de mail_list: separar tras integrar paso6,
   para no sobrescribir su wrapper SQL completo desde una rama independiente.
   Paso11 continúa en R6/12.
+
+- Paso8c no reduce producción:4192→4324 (+132). Edge+43, cupo SQL+27,
+  contrato+2 y Rust/UI+60. El importador sigue siendo necesario para el pago
+  seguro; el flujo de confirmación/cupo/relectura evita la regresión rechazada
+  en1952. Tests+269, docs+43 y down4 separados; cifras finales en PR/issue.
+  Con8a(-8), el acumulado8 es+124: objetivo de reducción no alcanzado, explicitado
+  para revisión. No se incorpora una limpieza ajena para maquillar la medición.
+
+- Cierre8c: código c714cc8af validado con check/Clippy -D warnings/Nextest47;
+  Deno281 y tooling31 PASS. CI41895312336 pasa el replay completo LF/CRLF,
+  retirada final y pruebas activas de cuota; solo señala derivados sin copiar.
+  Se regeneran los nueve desde su artefacto13357045491 con PG17 fijado. Nueva
+  CI pendiente tras publicar; el PR sigue draft, sin merge ni despliegue.

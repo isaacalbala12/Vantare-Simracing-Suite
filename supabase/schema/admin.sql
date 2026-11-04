@@ -955,6 +955,30 @@ end $$;
 
 --
 
+-- Name: native_admin_payment_sync_budget(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare claimed text; stamp timestamptz;
+begin
+ if p_actor is null or private.lock_account_write(p_actor) then raise exception 'native_admin_forbidden' using errcode='42501'; end if;
+ perform private.native_admin_require_owner(p_actor);
+ if p_environment is distinct from 'sandbox' then raise exception 'native_admin_forbidden' using errcode='42501'; end if;
+ stamp:=clock_timestamp();
+ -- One expensive import per rolling minute, shared by owner sessions.
+ insert into private.admin_payment_sync_budget as budget(environment,window_start) values(p_environment,stamp)
+ on conflict(environment) do update set window_start=excluded.window_start
+ where budget.window_start<=excluded.window_start-interval '1 minute'
+ returning environment into claimed;
+ return claimed is not null;
+end $$;
+
+
+--
+
 -- Name: native_admin_preflight(text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1500,6 +1524,20 @@ CREATE TABLE private.admin_payment_sync (
 
 --
 
+-- Name: admin_payment_sync_budget; Type: TABLE; Schema: private; Owner: -
+--
+
+CREATE TABLE private.admin_payment_sync_budget (
+    environment text NOT NULL,
+    window_start timestamp with time zone NOT NULL,
+    CONSTRAINT admin_payment_sync_budget_environment_check CHECK ((environment = 'sandbox'::text))
+);
+
+ALTER TABLE ONLY private.admin_payment_sync_budget FORCE ROW LEVEL SECURITY;
+
+
+--
+
 -- Name: admin_payments; Type: TABLE; Schema: private; Owner: -
 --
 
@@ -1711,6 +1749,15 @@ ALTER TABLE ONLY private.admin_payment_issues
 
 ALTER TABLE ONLY private.admin_payment_refunds
     ADD CONSTRAINT admin_payment_refunds_pkey PRIMARY KEY (environment, refund_id);
+
+
+--
+
+-- Name: admin_payment_sync_budget admin_payment_sync_budget_pkey; Type: CONSTRAINT; Schema: private; Owner: -
+--
+
+ALTER TABLE ONLY private.admin_payment_sync_budget
+    ADD CONSTRAINT admin_payment_sync_budget_pkey PRIMARY KEY (environment);
 
 
 --
@@ -2064,6 +2111,13 @@ ALTER TABLE private.admin_effects ENABLE ROW LEVEL SECURITY;
 
 --
 
+-- Name: admin_payment_sync_budget; Type: ROW SECURITY; Schema: private; Owner: -
+--
+
+ALTER TABLE private.admin_payment_sync_budget ENABLE ROW LEVEL SECURITY;
+
+--
+
 -- Name: native_admin_gate_rate; Type: ROW SECURITY; Schema: private; Owner: -
 --
 
@@ -2289,6 +2343,15 @@ GRANT ALL ON FUNCTION public.native_admin_finish_change(p_actor uuid, p_issuer t
 
 REVOKE ALL ON FUNCTION public.native_admin_gate() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.native_admin_gate() TO service_role;
+
+
+--
+
+-- Name: FUNCTION native_admin_payment_sync_budget(p_actor uuid, p_environment text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.native_admin_payment_sync_budget(p_actor uuid, p_environment text) TO service_role;
 
 
 --

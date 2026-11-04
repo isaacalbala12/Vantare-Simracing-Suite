@@ -1048,3 +1048,5 @@ Cierre local ronda 2: F1 17/17, F2 6/6, F3 8/8 más dos sesiones con fixed previ
 # 2026-11-04 · #1928 autoridad de canales
 
 Isaac decidió que solo `private.is_owner()` concede acceso owner a los canales. Una membresía `owner` antigua, incluso activa, no concede acceso después de revocar la asignación operativa. `tester` y `primary_tester` conservan su acceso de membresía. La migración #1928 fija esos dos roles en una lista explícita y tiene rollback; la matriz se caracterizó antes del SQL en PostgreSQL local. No cambia admin, billing ni el estado de capturas.
+
+PR draft [#1934](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1934) contra `nightly`, base `b50183217`, código `f7135b504`: caracterización previa 36/36, harness PostgreSQL local 134 rutas/795 comprobaciones PASS antes y después, rollback/reaplicación exactos PASS. CI pendiente; sin despliegue, merge ni release. La comprobación de pgcrypto está en [#1933](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1933); el estado actual de producción no se consultó.

@@ -1099,3 +1099,8 @@ Medida frente a nightly: producción SQL +278/−0; rollback SQL +2717/−0;
 tests y runner +247/−4; docs +68/−15; CI +12/−0. Sin despliegue,
 llamadas a producción, merge ni release. El siguiente trabajo es la Fase A
 del paso 12, con ADR 0106 antes del lint y del generador de esquema.
+La primera CI de #1949 falló únicamente en el snapshot del rollback: el
+servidor desechable usa PostgreSQL 17 y el cliente `pg_dump` del runner era 16.
+El harness dirigido usa ahora el `pg_dump` de ese mismo contenedor para la
+comparación exacta; el harness histórico y los demás checks pasaron. Se
+requiere CI verde en el nuevo HEAD antes de integrar.

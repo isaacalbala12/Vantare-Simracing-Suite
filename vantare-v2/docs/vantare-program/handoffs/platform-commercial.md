@@ -8776,74 +8776,76 @@ union all select 'linear_deliveries',outcome::text,count(*)
 
 ## VANTA-132 · paso 10b · [PR #1959](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1959) (2026-11-04)
 
-- Política histórica decidida: cerrados sin asociación verificable pasan a
-  `target_hash=erased`, sin borrar filas ni acción/resultado/fecha. Los pendientes
-  conservan el hash hasta reconciliarse. No se exige mapeo ni queda ese bloqueo.
-  El pre-check de solo lectura cuenta ambos conjuntos y se prueba antes del up:
-  fixture no vacía con 2 filas cerradas y 2 pendientes; cierre posterior GREEN.
-- Recortes: los tres recorders Brevo pasan de 132 a 102 líneas, contando sus
-  dos helpers compartidos. Mantienen clasificación HTTP, owner/capacidad e
-  intención/ACK exactos. Un solo trigger parametrizado para admin y mail; el
-  mismo minimizador de filas sirve al INSERT y al backfill. Backfill de efectos
-  en un UPDATE; sin vista adicional ni guard que exija mapeo. La purga mantiene
-  DELETE por fecha de admin/mail y un único DELETE para grupos de efectos.
-- P1 anteriores siguen GREEN: tester idempotente en up/down/up con filas vivas;
-  borrado real retira target y actores de admin/mail, incluidos INSERT posteriores.
-  Efectos cerrados pierden hash; pendientes pierden asociación UUID y conservan
-  una marca para redactar al cerrar, después de validar el resultado original.
-- Retención provisional de 365 días en el único parámetro SQL
-  `private.admin_audit_policy.closed_retention_days`, bajable a 90 por Isaac.
-  Solo cerrados, desde último evento; pendientes hasta reconcile. Cada purga
-  deja actor/fecha/TTL/conteos en mail_audit. Sin cron ni purga durante despliegue.
-- Seguridad: tabla privada por transacción en lugar de GUC; identidades con
-  SHARE ROW EXCLUSIVE. Guard exige postgres con BYPASSRLS/superuser, fijando
-  propietario de objetos nuevos. Helpers privados sin EXECUTE de app, RPC
-  service-only/owner vigente y search_path vacío. Funciones SQL completas.
-- Código validado 5b2aee12f (contenido idéntico a 4da5d77bb); RED a21f3e1eb antes del cambio. LF/CRLF: 26 mínimos,
-  28 de retención/seguridad, 220 de ocho suites activas, pre-check/históricos,
-  pg_dump/ACL/triggers exactos tras down, rechazo atómico del down y segunda
-  pasada/reapply PASS. Seis carreras existentes PASS. Python/diff PASS.
-  schema/ solo regenerado desde cadena completa, write/check independiente PASS.
-  PostgreSQL local detenido. Sin TS/Rust nuevo en esta revisión; Deno previo
-  285 PASS; compilación/telemetría/lifecycle omitidos al no tocar crates.
-- Corrección de medición: la cifra +627 incluía **188 de rollbacks/**; se separan.
-  Producción física pasa de +439 a **+381** (915 → 1296), recorte real de 58.
-  Rollback actual 191, excluido; tests/docs/derivados separados en el PR.
+- Re-review de f862ef666: corregida la carrera entre cierre de efecto y borrado.
+  La redacción toma FOR UPDATE sobre todos los eventos de la cuenta antes de
+  su UPDATE, que obtiene una instantánea nueva tras esperar. No cambia las RPC
+  de cierre ni el protocolo de intención/ACK. Código validado 07e0c2c22.
+- RED 72263d877: traza de purga caducada, predicado invoker y carrera real de
+  sync (el succeeded quedaba con hash y erase_on_close=false). GREEN: cuatro
+  sesiones R/D por separado cubren sync, SMTP, Brevo DELETE y reconcile.
+  pg_stat_activity prueba la espera sobre el PID que cierra; el borrado real
+  deja todos los hashes cerrados erased. En las cuatro, el pendiente de otra
+  cuenta A permanece idéntico, incluidos hash/target_account/erase_on_close.
+  Solo bases clonadas dentro del PostgreSQL desechable, eliminadas al terminar.
+- Lint de esta migración: 24 RED → 0 GREEN, sin excepción temporal. Todas las
+  funciones tienen CREATE OR REPLACE y cuerpo entero; tablas alteradas y las
+  tres RPC Brevo declaran REVOKE ALL de los cuatro roles y concesión exacta.
+  ACL final conservada: SELECT de service en admin_audit_log/admin_effects y
+  EXECUTE de service en las RPC. Se retira la cabecera que afirmaba completitud.
+  El harness aplica check_migration sobre el archivo real, también en CI.
+- Coordinación pendiente para el nuevo corte 20261104105500: el lint completo
+  detecta 10 errores en dos SQL ya integrados, SMTP 20261104110000 y retirada
+  R6 20261104120500. Ninguno pertenece al archivo de #1959; comunicado al
+  orquestador para el ajuste del lint. No se editan históricos integrados.
+- P3: audit_prune queda excluido de la purga, sin caducidad automática; conserva
+  actor/fecha/TTL/conteos y sigue redactando actores borrados. El predicado
+  privado admin_audit_maintenance es SECURITY DEFINER, search_path vacío y sin
+  EXECUTE para app; consulta su tabla de capacidad por transacción, no un GUC.
+- Pre-check readonly: tres recuentos de filas, cerradas sin asociación, pendientes
+  sin asociación y cerradas asociadas a cuenta borrada. Fixture 2/2/2 verificada
+  antes del up. Históricos cerrados sin asociación pasan a erased conservando
+  filas/acción/resultado/fecha; pendientes hasta reconcile. No exige mapeo.
+- Diferencia documentada: en vivo, un contacto comprobado sin cuenta conserva
+  target_account=NULL/erase_on_close=false y su hash hasta el TTL; el histórico
+  sin prueba de asociación se trata de forma conservadora y redacta al cerrar.
+- Recortes previos conservados: trigger parametrizado único para admin/mail;
+  INSERT y backfill usan el mismo minimizador. Los recorders Brevo comparten
+  estados y append/ACK, con owner/capacidad propios. Sin vista adicional;
+  DELETE por fecha de admin/mail y un DELETE de efectos, un UPDATE de backfill.
+- P1/P2 previos GREEN: tester idempotente con filas que sobreviven up/down/up;
+  borrado real retira target/actores admin/mail, también en INSERT posteriores.
+  Efectos pendientes pierden UUID de asociación y conservan hash hasta cierre.
+  Retención provisional 365 días, único parámetro bajable a 90 por Isaac; solo
+  cerrados desde último evento, con la excepción permanente de audit_prune.
+- Gates: SQL LF/CRLF, 26 mínimos + 30 retención/seguridad + 220 de ocho suites
+  activas; pre-check, cuatro carreras nuevas y seis previas PASS. pg_dump/ACL/
+  triggers exactos tras down, rechazo atómico del down y segunda pasada/reapply
+  PASS. Snapshots de nueve dominios regenerados, write/check independiente PASS.
+  23 tests de tooling, lint propio, Python/diff PASS. PostgreSQL local detenido.
+  Sin TS/Rust nuevo; Deno previo 285 PASS. Rust/telemetría/lifecycle omitidos.
+- Producción **915 → 1306 (+391)**: +10 frente a las 381 aceptadas, por espera
+  de cierre (+2, incluido comentario) y ACL explícita (+8). Rollback 191 aparte.
+  El +627 original incluía 188 de rollback; no se cuenta como producción.
+  Tests/docs/derivados separados en PR. No se aplana historia ni se adelanta 11.
 
 | Bloque físico | eff002c85 | Actual |
 | --- | ---: | ---: |
-| Funciones nuevas | 159 | 189 |
-| Tres funciones Brevo redefinidas completas | 132 | 72 |
-| DDL de triggers/barreras | 25 | 25 |
-| Backfill, incluido helper temporal anterior | 42 | 28 |
-| Guards de rol/mapeo | 11 | 6 |
-| Tablas, índices, ACL, transacción y comentarios | 65 | 56 |
+| Funciones nuevas | 159 | 191 |
+| Tres RPC Brevo completas | 132 | 72 |
+| Triggers/barreras | 25 | 25 |
+| Backfill | 42 | 28 |
+| Guards | 11 | 6 |
+| Tablas, índices, ACL, transacción y comentarios | 65 | 64 |
 | TypeScript neto frente a nightly | 5 | 5 |
-| **Producción** | **439** | **381** |
-| Rollback, excluido de producción | 188 | 191 |
+| **Producción** | **439** | **391** |
+| Rollback, excluido | 188 | 191 |
 
-- Sigue por encima de +250 físicos; no se presenta como objetivo alcanzado.
-  Las funciones nuevas son: minimización compartida 56, asociación/borrado y
-  cierre diferido 71, mantenimiento/escritura/estados compartidos 35 y purga 27.
-  Cada bloque implementa las P1 acordadas o el TTL/rastro obligatorio. Las 72
-  de RPC conservan owner/lease y protocolo proveedor; las 28 de backfill sanea
-  producción con datos; las 25 de triggers mantienen barreras y la redacción
-  concurrente. Guards/ACL/DDL son necesarios para propiedad, permisos, erased
-  y unicidad SMTP. ADR 0106 exige cuerpos completos; no se aplana historia/11.
-- Solo Isaac despliega: cadena 7b1 → 7b2 → #1924 → owner → #1939 → #1941 →
-  #1942 → #1944 → #1946 → SMTP/#1947 → 10b. Pausar Clerk en 7b2. Backup lógico
-  admin_audit_log/mail_audit antes del cambio irreversible; ejecutar pre-check.
-  SQL antes de native-admin. La firma antigua sin cuenta queda revocada;
-  una Edge antigua falla cerrada antes de HTTP. Down exacto cuando los datos
-  lo permiten; aborta antes de DDL si actores/hashes redactados impiden volver.
+- Solo Isaac despliega: 7b1 → 7b2 → #1924 → owner → #1939 → #1941 → #1942 →
+  #1944 → #1946 → SMTP/#1947 → 10b. Pausar Clerk en 7b2; backup lógico admin/
+  mail antes del cambio irreversible y consultas previas; SQL antes de Edge.
+  La firma antigua sin cuenta queda revocada; Edge antigua falla antes de HTTP.
+  Down exacto cuando los datos lo permiten, o aborta antes de DDL por redacción.
 - Base nightly 6047b8ea6; PR draft, VANTA-132 En curso. Sin _shared,
   apply_clerk_user_event, billing, licencias, secretos ni producción. Sin deploy,
   merge o release. Sigue lectura owner del 10; después 6 y sync_payments con
   UI/lecturas puras. El 11 sigue exclusivamente en R6/12.
-- Rebase tras #1954: se conserva el reparto en nueve dominios y se regeneran
-  los snapshots desde la cadena completa; write/check nuevo PASS. No hay cambios
-  de producto/tests respecto a bf63fb839. 23 tests de tooling y lint oficial
-  (corte 20261104235959, 0 SQL posteriores) PASS. Una exploración con corte
-  artificial 20261104145435 produjo 24 avisos de formato/ACL sobre este SQL del
-  día; ADR 0106 excluye expresamente los PR en revisión del 4-nov. Ese ensayo
-  no es un gate aplicable ni cambia permisos para silenciar el lint futuro.

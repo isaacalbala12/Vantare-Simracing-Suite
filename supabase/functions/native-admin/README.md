@@ -729,7 +729,10 @@ La vista adicional se pospone: la purga opera sobre los tres journals existentes
 Un `started` sin cierre o un `unknown` se conserva hasta reconciliarlo; el TTL de
 un efecto cerrado empieza en su último evento. Cada purga deja actor, fecha, TTL
 y conteos en `mail_audit` (`audit_prune`). La capacidad de mantenimiento vive en
-una tabla privada por transacción; un GUC del llamador no puede abrirla.
+una tabla privada por transacción; un GUC del llamador no puede abrirla. Su
+predicado es SECURITY DEFINER, con search_path vacío y sin EXECUTE para la app,
+para consultar esa tabla privada desde los WHEN de las barreras. `audit_prune`
+queda excluido del TTL: su rastro se conserva sin caducidad automática.
 
 Al borrar una cuenta se retiran también los actores de admin/correo y los hashes
 de efectos cerrados. Los pendientes conservan el hash y una marca sin UUID hasta
@@ -742,8 +745,12 @@ HTTP. El índice SMTP excluye `erased`: su contacto y entrega ya se han borrado.
 Históricos sin asociación verificable: los grupos cerrados pasan a
 `target_hash='erased'`, conservando las filas, acción, resultado y fecha. Los
 pendientes conservan el hash hasta reconciliarse; entonces también se redacta.
-No se exige mapeo previo. El pre-check cuenta filas cerradas a redactar y filas
-pendientes que conservarán su hash, después de intentar las mismas asociaciones
+No se exige mapeo previo. En el camino vivo, un contacto comprobado sin cuenta
+lleva `target_account=NULL` y `erase_on_close=false`: su hash cerrado permanece
+hasta el TTL. En el backfill no hay esa prueba del origen, por lo que se aplica
+la política conservadora de históricos sin asociación. El pre-check cuenta filas cerradas a redactar y filas
+pendientes que conservarán su hash y cerradas asociadas a cuentas ya borradas,
+después de intentar las mismas asociaciones
 por identidad/pago/contacto/job/entrega que usa el backfill.
 
 Los triggers de admin y mail usan una función parametrizada y el backfill llama
@@ -806,15 +813,19 @@ with accounts as (
  union all select array['brevo_smtp_send'],encode(sha256(convert_to('brevo_smtp_send:'||m.environment||':'||d.id::text,'UTF8')),'hex'),
   coalesce(c.account_id,c.erasure_account) from private.mail_deliveries d
  join private.mail_contacts c on c.email=d.email join private.mail_campaigns m on m.id=d.campaign_id
-), unassociated as (
+), classified as (
  select e.*,exists(select 1 from private.admin_effects r where r.effect_id=e.effect_id
-  and r.outcome in('succeeded','failed','reconciled')) closed from private.admin_effects e
- where not exists(select 1 from accounts a where a.account is not null and e.effect=any(a.kinds) and a.hash=e.target_hash)
+  and r.outcome in('succeeded','failed','reconciled')) closed,
+ exists(select 1 from accounts a where a.account is not null and e.effect=any(a.kinds) and a.hash=e.target_hash) associated,
+ exists(select 1 from accounts a join public.account_identities i on i.account_id=a.account
+  where i.deleted_at is not null and e.effect=any(a.kinds) and a.hash=e.target_hash) deleted_account
+ from private.admin_effects e
 )
-select 'sin_asociacion' criterio,
- count(*) filter(where closed and target_hash<>'erased') cerradas_a_redactar,
- count(*) filter(where not closed) pendientes_con_hash
-from unassociated;
+select 'efectos' criterio,
+ count(*) filter(where not associated and closed and target_hash<>'erased') cerradas_sin_asociacion_a_redactar,
+ count(*) filter(where not associated and not closed) pendientes_sin_asociacion_con_hash,
+ count(*) filter(where deleted_account and closed and target_hash<>'erased') cerradas_de_cuentas_borradas_a_redactar
+from classified;
 ```
 
 **Irreversible: haz backup lógico de `admin_audit_log` y `mail_audit` antes.**

@@ -20,6 +20,29 @@ const ROOT: &str = "VANTARE_TEST_P2_ROOT";
 const COOPERATIVE: &str = "VANTARE_TEST_P2_COOPERATIVE";
 const OLD: &[u8] = br#"{"version":1,"updated_ms":1,"profiles":[]}"#;
 
+#[cfg(windows)]
+#[test]
+fn feed_shutdown_reaps_its_thread() {
+    let cancel = Arc::new(AtomicBool::new(false));
+    let observed = cancel.clone();
+    let thread = thread::spawn(move || {
+        while !observed.load(Ordering::Acquire) {
+            thread::park();
+        }
+    });
+    let mut workers = super::Workers {
+        feed: Some(super::Feed { cancel, thread }),
+        ..Default::default()
+    };
+    workers.request_shutdown();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !workers.poll_shutdown().expect("feed shutdown") {
+        assert!(Instant::now() < deadline, "feed did not stop");
+        thread::yield_now();
+    }
+    assert!(workers.feed.is_none());
+}
+
 struct OwnedProcess(Child);
 impl Drop for OwnedProcess {
     fn drop(&mut self) {

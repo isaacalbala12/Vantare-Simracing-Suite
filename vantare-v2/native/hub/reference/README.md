@@ -68,25 +68,14 @@ Las siete referencias de Strategy anteriores a v5 y sus escenas se retiraron.
 `tools/demo-states.json` conserva 41 escenas de las otras secciones. Las 19
 referencias `wails/strategy-v5-*.png` son las capturas aprobadas por Isaac de
 `pass-27-runtime-source-screen`, a **1672 × 941**, sin redimensionarlas.
-`compare.ps1 -StrategyV5A` mide Inicio, Combinación, Reglas, Pilotos, Sesiones,
-Carrera y Revisiones; `-Todas` incluye esas siete pantallas v5 junto al banco
-de las otras secciones. Los antiguos alias `strategy-*` sin `v5` se rechazan.
+El comparador PowerShell quedó archivado como evidencia histórica al retirar
+`candidate.ps1` en #1929. Sus comandos y resultados anteriores no son un gate
+ejecutable del instalador actual.
 
 ## Banco de paridad nativo
 
-En el directorio del checkout ejecuta:
-
-```powershell
-./native/hub/reference/compare.ps1 -Pantalla inicio-base
-./native/hub/reference/compare.ps1 -Todas -VerificarDeterminismo
-```
-
-El script compila `vantare-hub` con `parity-capture` y `-j 2`, captura el área
-cliente a 1440 × 900 y DPI 96 (100 %), compara RGBA con umbral 8 por canal
-mediante `native/ui/diff.py`, y deja candidatos, mapas y la tabla ordenada de
-mayor a menor diferencia en `C:/tmp/hub-banco-evidence/` (o en
-`$env:VANTARE_PARITY_OUT` si está definida, para ejecuciones simultáneas). El modo
-`-VerificarDeterminismo` repite `inicio-base` y exige SHA256 idénticos.
+El flujo histórico de captura y comparación se conserva en
+`native/retirement/legacy-evidence/hub-capture-before-1929/compare.ps1.txt`.
 `--capture` usa una raíz temporal exclusiva y no carga los archivos de usuario.
 
 Para verificar reflujo, `--size 900x600` o `--size 1280x720` cambia solamente

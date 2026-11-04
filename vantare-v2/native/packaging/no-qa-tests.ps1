@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$EvidenceDirectory)
+﻿param([Parameter(Mandatory)][string]$EvidenceDirectory)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'no-qa.ps1')
 [IO.Directory]::CreateDirectory($EvidenceDirectory)|Out-Null
@@ -19,4 +19,16 @@ foreach($fixture in $fixtures) {
 }
 [IO.File]::WriteAllText($exe,'clean inert fixture')
 Assert-NativeDistributionTree $EvidenceDirectory
-"$count fixture controls rejected across buffer boundary; clean EXE admitted PASS"
+$archiveTree=Join-Path $EvidenceDirectory 'archive-fixture'
+[IO.Directory]::CreateDirectory($archiveTree)|Out-Null
+$archiveExe=Join-Path $archiveTree 'Vantare.exe'
+[IO.File]::WriteAllText($archiveExe,'qa-e2e')
+$archive=Join-Path $EvidenceDirectory 'qa-package.zip'
+[IO.Compression.ZipFile]::CreateFromDirectory($archiveTree,$archive)
+$rejected=$false;try{Assert-NativeDistributionArchive $archive}catch{if($_.Exception.Message -ne 'QA executable in distribution payload.'){throw};$rejected=$true}
+if(-not $rejected){throw 'QA EXE escaped ZIP scan'}
+[IO.File]::Delete($archive)
+[IO.File]::WriteAllText($archiveExe,'clean inert fixture')
+[IO.Compression.ZipFile]::CreateFromDirectory($archiveTree,$archive)
+Assert-NativeDistributionArchive $archive
+"$count fixture controls rejected across buffer boundary; QA ZIP rejected, clean EXE and ZIP admitted PASS"

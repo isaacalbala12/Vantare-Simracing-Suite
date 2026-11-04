@@ -286,6 +286,10 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     if std::env::var_os("VANTARE_NATIVE_DATA_ROOT").as_deref() != Some(data.as_os_str()) {
         return Err(io_error("Raíz de datos de sesión incompatible"));
     }
+    #[cfg(feature = "installer-qa")]
+    if let Some(probe) = std::env::var_os("VANTARE_QA_SESSION_PROBE") {
+        return qa_session(&root, Path::new(&probe));
+    }
     let bin = image
         .parent()
         .ok_or_else(|| io_error("Falta bin de la sesión"))?;
@@ -304,6 +308,86 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     let mut config = super::parse(&command, bin).map_err(io_error)?;
     config.installation = Some(root);
     super::run(config)
+}
+
+#[cfg(feature = "installer-qa")]
+fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
+    use super::{Program, Service};
+    let context = Context::from_qa_env(root).map_err(io_error)?;
+    context.validate_root(root).map_err(io_error)?;
+    if !probe.is_file() {
+        return Err(io_error("Falta Hub QA"));
+    }
+    let (_, generation) = active(root)?;
+    let hub_image = generation.join("bin/vantare-hub.exe");
+    if !hub_image.is_file() {
+        return Err(io_error("Falta Hub QA en la generación activa"));
+    }
+    let token =
+        std::env::var("VANTARE_BOOT_TOKEN").map_err(|_| io_error("Falta token de arranque QA"))?;
+    let mut hub = Service::new(
+        "Hub QA",
+        Program {
+            path: hub_image,
+            args: vec![root.to_string_lossy().into_owned()],
+        },
+        0,
+    );
+    hub.boot_token = Some(
+        if std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some() {
+            format!(
+                "{}{}",
+                if token.starts_with('0') { '1' } else { '0' },
+                &token[1..]
+            )
+        } else {
+            token
+        },
+    );
+    hub.spawn()?;
+    let deadline = Instant::now() + Duration::from_mins(1);
+    while !root.join("app-open").exists() {
+        if hub
+            .child
+            .as_mut()
+            .expect("spawned Hub")
+            .try_wait()?
+            .is_some()
+            || Instant::now() >= deadline
+        {
+            return Err(io_error("Hub QA no abrió"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    if std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some() {
+        return Err(io_error("Hub QA publicó otro token"));
+    }
+    while !root.join("confirmation-complete").exists() {
+        if hub
+            .child
+            .as_mut()
+            .expect("spawned Hub")
+            .try_wait()?
+            .is_some()
+            || Instant::now() >= deadline
+        {
+            return Err(io_error("Hub QA no confirmó"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    while !root.join("allow-exit").exists() {
+        if Instant::now() >= deadline {
+            return Err(io_error("Sesión QA sin permiso de salida"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    drop(hub.child.as_mut().expect("spawned Hub").stdin.take());
+    let status = hub.child.as_mut().expect("spawned Hub").wait()?;
+    Ok(if status.success() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
@@ -445,7 +529,24 @@ mod tests {
         assert!(ready_token_matches(&root, "aabb"));
         clear_ready(&root).unwrap();
         assert!(!ready_token_matches(&root, "aabb"));
+        fs::write(root.join("hub-ready"), b"").unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
+        fs::write(root.join("hub-ready"), b"aa").unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
+        let mut child = Command::new(std::env::var("COMSPEC").unwrap())
+            .args(["/D", "/C", "ping -n 5 127.0.0.1 >NUL"])
+            .spawn()
+            .unwrap();
+        let start = Instant::now();
+        assert!(!ready(&root, &mut child, "aabb", Duration::from_millis(150)).unwrap());
+        assert!(start.elapsed() >= Duration::from_millis(150));
+        child.kill().unwrap();
+        child.wait().unwrap();
+        fs::write(root.join("hub-ready"), b"\xff").unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
+        clear_ready(&root).unwrap();
         fs::create_dir(root.join("hub-ready")).unwrap();
+        assert!(!ready_token_matches(&root, "aabb"));
         assert!(clear_ready(&root).is_err());
         fs::remove_dir(root.join("hub-ready")).unwrap();
         let temporary = root.join(format!("launcher-{}.tmp", "a".repeat(32)));

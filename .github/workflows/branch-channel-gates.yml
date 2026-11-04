@@ -318,21 +318,12 @@ jobs:
         if: needs.policy.outputs.native != 'false'
         run: ../supabase/functions/scripts/verify-deploy-surface.ps1
 
-      - name: Test Windows runner hooks and beta feed origin
+      - name: Test Windows runner hooks and static CRT
         if: needs.policy.outputs.native != 'false'
         run: |
           python -m unittest discover -s ../tools/ci-runners -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          # Windows PowerShell 5.1, el mismo host que ejecuta beta.ps1 instalado.
-          # Retired driver assertions are covered by native Installer tests and
-          # the guarded matrix below; do not run its old real-shell QA harnesses.
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/publish-installer-tests.ps1
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/run-historical-tests.ps1 -Root "$env:RUNNER_TEMP/historical-inventory"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1 -EvidenceDirectory "$env:RUNNER_TEMP/build-crt"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
@@ -397,7 +388,7 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: ./setup-duckdb.ps1
 
-      - name: Verify release package excludes QA feature and symbols
+      - name: Verify build-candidate release package excludes QA feature and symbols
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
@@ -446,6 +437,13 @@ jobs:
           $env:CARGO_TARGET_DIR = Join-Path (Get-Location) 'native/target/gates'
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --example matrix-verifier --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
+          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --bin vantare-services --locked --offline -j 4
+          if ($LASTEXITCODE) { throw 'real services signer build failed' }
+          foreach ($shell in @('powershell.exe', 'pwsh')) {
+            $policy = if ($shell -eq 'powershell.exe') { @('-ExecutionPolicy', 'Bypass') } else { @() }
+            & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -ServicesExecutable "$env:CARGO_TARGET_DIR/debug/vantare-services.exe"
+            if ($LASTEXITCODE) { throw "release tooling regression: $shell" }
+          }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --example probe-read-matrix --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix read probe build failed' }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --features write-engine,test-installer --example installer-write-matrix --locked --offline -j 4

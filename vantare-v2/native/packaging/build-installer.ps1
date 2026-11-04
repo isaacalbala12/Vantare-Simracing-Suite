@@ -9,35 +9,26 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$installerVersion=$Version; $installerOutput=$OutputDirectory; $installerProfile=$BuildProfile
+. (Join-Path $PSScriptRoot 'build-tooling.ps1')
 . (Join-Path $PSScriptRoot 'build-config.ps1')
 . (Join-Path $PSScriptRoot 'no-qa.ps1')
-$installerEnvironment=Import-NativeBuildConfig ''
-$installerLocal=$env:LOCALAPPDATA; $installerRoaming=$env:APPDATA
-try {
-$installerVersion=$Version; $installerOutput=$OutputDirectory; $installerProfile=$BuildProfile
-. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $installerOutput
 $Version=$installerVersion; $OutputDirectory=$installerOutput; $BuildProfile=$installerProfile
 foreach ($define in $Defines) { if ($define -ceq '/DTEST_INSTALLER') { $TestInstaller=$true } else { throw 'Define de instalador desconocido.' } }
 if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count) { throw 'Versión inválida.' }
-$output=Assert-NativePath $OutputDirectory
+$output=Assert-BuildPath $OutputDirectory
 if ($TestInstaller) {
     . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
     $null=Assert-MatrixRoot $output
 }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
-$checked=Join-Path $output ('.installer-check-'+[guid]::NewGuid().ToString('N'))
-try {
-    $package=Expand-NativePackage $archive (Get-NativeHash $archive) $checked 'beta'
-    Assert-NativeDistributionTree $checked
-    if($package.version -cne $Version){throw 'La versión del ZIP no coincide con el Setup.'}
-    if((Get-NativeHash (Join-Path $checked 'candidate.ps1')) -cne (Get-NativeHash (Join-Path $PSScriptRoot 'candidate.ps1'))){throw 'El bootstrap del ZIP y el del Setup deben ser idénticos.'}
-} finally {
-    $checked=[IO.Path]::GetFullPath($checked)
-    if(-not $checked.StartsWith($output+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($checked) -cnotmatch '^\.installer-check-[a-f0-9]{32}$'){throw 'Temporal del builder fuera de su raíz.'}
-    if(Test-Path -LiteralPath $checked){Assert-NativeTree $checked;Remove-Item -LiteralPath $checked -Recurse -Force}
-}
+$package=Test-BuildPackage $archive $Version 'beta'
+Assert-NativeDistributionArchive $archive
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
-foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))) {
+$oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
+$previousConfig=Import-NativeBuildConfig ''
+try {
+foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
     $data=Join-Path $output ('.build-data/'+$pair[1])
     [IO.Directory]::CreateDirectory($data)|Out-Null
     [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
@@ -62,19 +53,18 @@ try {
     if($BuildProfile -ceq 'Release'){$base+='--release'}
     $uninstallArgs=$base+@('--bin','vantare-uninstall')
     if($features){$uninstallArgs+=@('--features',$features)}
-    & cargo @uninstallArgs
+    & pwsh -NoProfile -File scripts/compilar.ps1 cargo @uninstallArgs
     if($LASTEXITCODE){throw 'Falló build del desinstalador.'}
     $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) 'x86_64-pc-windows-msvc'
     $dumpbin=Get-NativeDumpbin
     $uninstaller=Join-Path $output 'Uninstall.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-uninstall.exe')) -Destination $uninstaller
     Assert-NativeStaticCrt $uninstaller $dumpbin
-    Assert-NativeDistributionBinary $uninstaller
     $env:VANTARE_INSTALLER_ARCHIVE=$archive
     $env:VANTARE_INSTALLER_UNINSTALLER=$uninstaller
     $env:VANTARE_INSTALLER_SHA256=Get-NativeHash $archive
     $setupFeatures='setup-payload'+$(if($features){','+$features}else{''})
-    & cargo @base --bin vantare-setup --features $setupFeatures
+    & pwsh -NoProfile -File scripts/compilar.ps1 cargo @base --bin vantare-setup --features $setupFeatures
     if($LASTEXITCODE){throw 'Falló build del Setup con payload.'}
     $setup=Join-Path $output 'VantareSetup.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-setup.exe')) -Destination $setup
@@ -90,8 +80,7 @@ try {
     Pop-Location
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
 }
-
 } finally {
-    Restore-NativeBuildConfig $installerEnvironment
-    $env:LOCALAPPDATA=$installerLocal; $env:APPDATA=$installerRoaming
+    Restore-NativeBuildConfig $previousConfig
+    $env:LOCALAPPDATA=$oldLocal;$env:APPDATA=$oldRoaming
 }

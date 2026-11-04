@@ -14,7 +14,7 @@ if ($RegistryRoot -cnotmatch '^HKEY_CURRENT_USER\\Software\\VantareInstallerMatr
 Remove-PSDrive HKCU
 New-PSDrive -Name HKCU -PSProvider Registry -Root $RegistryRoot -Scope Global | Out-Null
 $qaImportCallerRoot=$Root
-. (Join-Path $script:Packaging 'beta.ps1') -Library -Root $qaInstallRoot
+. (Join-Path $PSScriptRoot 'support.ps1')
 $Operation=$qaRequestedOperation
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
@@ -38,9 +38,10 @@ Initialize-MatrixCase $Case $qaInstallRoot $Assets
 Write-NativeJson (Join-Path $qaCaseRoot 'before-data.json') (Get-MatrixData $qaInstallRoot)
 $null=Assert-MatrixRoot $qaInstallRoot
 try {
-    if($Operation -in @('Check','Apply','Confirm','Timeout')){
+    if($Operation -in @('Check','Apply','Confirm','Timeout','Rollback')){
         if(-not $WriteEngine){throw 'MATRIX_NATIVE_WRITER_REQUIRED'}
         $beforeState=if(Test-Path -LiteralPath (Join-Path $qaInstallRoot 'state.json')){Get-NativeHash (Join-Path $qaInstallRoot 'state.json')}else{$null}
+        if($Operation -ceq 'Rollback'){Write-NativeJson (Join-Path $qaCaseRoot 'before-state.json') @{sha256=$beforeState}}
         $applied=Test-Path -LiteralPath (Join-Path $qaInstallRoot 'staging/pending.json')
         $contract=Join-Path $qaCaseRoot 'qa-action.json'
         Write-NativeJson $contract @{
@@ -57,7 +58,6 @@ try {
         {$_ -in @('Probe','Install','Repair','Uninstall','Cleanup') -or ($_ -ceq 'Update' -and $WriteEngine)} {
             $engine=Join-Path $qaCaseRoot ('VantareSetup-'+$PID+'-1-1')
             [IO.Directory]::CreateDirectory($engine) | Out-Null
-            foreach ($name in @('beta.ps1','candidate.ps1')) { Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $engine }
             $version=if($Operation -ceq 'Repair'){'0.0.988'}else{'0.0.989'}
             Copy-Item -LiteralPath (Join-Path $Assets ('v'+$version.Split('.')[2]+'.zip')) -Destination (Join-Path $engine 'package.zip')
             Copy-Item -LiteralPath "$env:WINDIR/System32/cmd.exe" -Destination (Join-Path $engine 'Uninstall.exe')
@@ -89,8 +89,6 @@ try {
             & $WriteEngine $contract
             exit $LASTEXITCODE
         }
-        'Update' { $null=Update-NativeCandidate $qaInstallRoot (Join-Path $Assets 'v989.zip') (Get-NativeHash (Join-Path $Assets 'v989.zip')) }
-        'Rollback' { $null=Restore-NativeCandidate $qaInstallRoot }
         default { throw 'MATRIX_OPERATION_REJECTED' }
     }
     exit 0

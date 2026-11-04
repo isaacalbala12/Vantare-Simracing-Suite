@@ -63,7 +63,7 @@ fn owned(link: &Link, root: &Path) -> Result<bool> {
             ]
             .contains(&link.arguments)))
 }
-fn launch(root: &Path, _state: Option<&State>, startup: bool) -> Result<Link> {
+fn launch(root: &Path, startup: bool) -> Result<Link> {
     let target = root.join("Vantare.exe");
     ensure(target.is_file(), "Falta el lanzador raíz")?;
     Ok(Link {
@@ -131,7 +131,6 @@ fn optional(
     root: &Path,
     kind: &str,
     action: OptionalAction,
-    state: Option<&State>,
     warning: &mut dyn FnMut(&str),
 ) {
     let remove = action == OptionalAction::Remove;
@@ -162,7 +161,7 @@ fn optional(
         save(
             &path,
             root,
-            &launch(root, state, kind == "Startup")?,
+            &launch(root, kind == "Startup")?,
             true,
             warning,
         )?;
@@ -255,25 +254,24 @@ pub fn sync(
     }
     let _apartment = os::Apartment::new()?;
     let programs = folder(context, "Programs")?;
-    let Some(state) = state else {
+    if state.is_none() {
         remove_projection(root, context, &programs, options, warning)?;
         if !options.restoring {
             progress(crate::model::Progress::step("register", 88, false));
         }
         return Ok(());
-    };
+    }
     let version = version.expect("state projection");
     let run = legacy_run(context, root)?;
     let ui = prepare_projection(root, &programs.join(CURRENT), options, run.is_some())?;
     if !options.restoring {
         progress(crate::model::Progress::step("register", 93, false));
     }
-    project_links(root, &programs, state, warning)?;
+    project_links(root, &programs, warning)?;
     project_registration(root, context, version)?;
     project_preferences(
         root,
         context,
-        state,
         options.previous,
         ui.desktop,
         ui.autostart,
@@ -324,13 +322,12 @@ pub fn sync_running_with_context(
     let _apartment = os::Apartment::new()?;
     let programs = folder(context, "Programs")?;
     let mut warning = |message: &str| eprintln!("Registro: {message}");
-    project_links(&root, &programs, state, &mut warning)?;
+    project_links(&root, &programs, &mut warning)?;
     project_registration(&root, context, &manifest.version)?;
     let run = legacy_run(context, &root)?;
     project_preferences(
         &root,
         context,
-        state,
         None,
         ui.as_ref().is_some_and(|ui| ui.desktop),
         autostart,
@@ -367,7 +364,7 @@ fn remove_projection(
         remove_empty(&directory)?;
     }
     for kind in ["DesktopDirectory", "Startup"] {
-        optional(context, root, kind, OptionalAction::Remove, None, warning);
+        optional(context, root, kind, OptionalAction::Remove, warning);
     }
     if !options.restoring
         && let Some(ui) = options.previous
@@ -452,18 +449,13 @@ fn prepare_projection(
     disk::publish_json(&root.join("installer-ui.json"), &ui)?;
     Ok(ui)
 }
-fn project_links(
-    root: &Path,
-    programs: &Path,
-    state: &State,
-    warning: &mut dyn FnMut(&str),
-) -> Result<()> {
+fn project_links(root: &Path, programs: &Path, warning: &mut dyn FnMut(&str)) -> Result<()> {
     let current = programs.join(CURRENT);
     let old = programs.join(LEGACY);
     save(
         &current.join(MANDATORY[0]),
         root,
-        &launch(root, Some(state), false)?,
+        &launch(root, false)?,
         true,
         warning,
     )?;
@@ -525,7 +517,6 @@ fn project_registration(root: &Path, context: &Context, version: &str) -> Result
 fn project_preferences(
     root: &Path,
     context: &Context,
-    state: &State,
     previous: Option<&context::Options>,
     desktop: bool,
     autostart: bool,
@@ -556,7 +547,7 @@ fn project_preferences(
         ("DesktopDirectory", desktop_action),
         ("Startup", startup_action),
     ] {
-        optional(context, root, kind, action, Some(state), warning);
+        optional(context, root, kind, action, warning);
     }
     let startup_owned = owned_at(&folder(context, "Startup")?.join("Vantare.lnk"), root)?;
     if startup_owned != (autostart && !suppress) {
@@ -763,25 +754,11 @@ mod tests {
             .join("p5-startup-tests")
             .join(disk::id().expect("ID"));
         context::qa_path(&root).expect("QA guard");
-        let generation = "a".repeat(32);
-        let folder = root.join("generations").join(&generation);
-        fs::create_dir_all(folder.join("bin")).expect("owned generation");
-        let target = folder.join("bin/vantare.exe");
-        fs::write(&target, b"inert fixture").expect("target");
-        let state = State {
-            schema: 1,
-            product: "vantare-native".into(),
-            channel: "beta".into(),
-            active: super::super::Generation {
-                generation,
-                manifest_sha256: Some("a".repeat(64)),
-            },
-            previous: None,
-        };
         let launcher = root.join("Vantare.exe");
+        fs::create_dir_all(&root).expect("owned root");
         fs::write(&launcher, b"inert launcher").expect("root launcher");
-        let foreground = launch(&root, Some(&state), false).expect("Start menu");
-        let background = launch(&root, Some(&state), true).expect("Startup");
+        let foreground = launch(&root, false).expect("Start menu");
+        let background = launch(&root, true).expect("Startup");
         assert_eq!(foreground.target, launcher);
         assert_eq!(background.target, launcher);
         assert_eq!(

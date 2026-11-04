@@ -10,7 +10,7 @@ foreach($path in @($TestVerifier,$BootProbe,$WriteEngine,$RootLauncher)){
 }
 [IO.Directory]::CreateDirectory($qa)|Out-Null
 $script:Packaging=Split-Path $PSScriptRoot -Parent
-. (Join-Path $script:Packaging 'beta.ps1') -Library -Root $qa
+. (Join-Path $PSScriptRoot 'support.ps1')
 . (Join-Path $PSScriptRoot 'fixtures.ps1')
 $install=Join-Path $qa 'install';$assets=Join-Path $qa 'assets';$payload=Join-Path $qa 'payload'
 $shell=Join-Path $qa 'shell';$local=Join-Path $qa 'LocalAppData'
@@ -23,7 +23,10 @@ function Assert-Launch([bool]$Value,[string]$Message){if(-not $Value){throw "LAU
 function Wait-LaunchFile([string]$Path,$Process){
     $deadline=[DateTime]::UtcNow.AddSeconds(45)
     while(-not(Test-Path -LiteralPath $Path)){
-        if($Process.WaitForExit(20) -or [DateTime]::UtcNow -ge $deadline){throw "LAUNCHER_WAIT_FAILED: $Path"}
+        if($Process.WaitForExit(20) -or [DateTime]::UtcNow -ge $deadline){
+            if(-not $Process.HasExited){$Process.Kill();$Process.WaitForExit()}
+            throw "LAUNCHER_WAIT_FAILED: $Path $($Process.StandardError.ReadToEnd()) $($Process.StandardOutput.ReadToEnd())"
+        }
     }
 }
 function Invoke-Writer([string]$Action,[string]$Version=''){
@@ -43,11 +46,14 @@ function Start-Root([switch]$WrongToken) {
     $info.FileName=Join-Path $install 'Vantare.exe'
     $info.Arguments='--root -Root "'+$install+'" --background'
     $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+    $info.RedirectStandardOutput=$true
+    $info.RedirectStandardError=$true
     $info.EnvironmentVariables['TEMP']=$qa;$info.EnvironmentVariables['TMP']=$qa
     $info.EnvironmentVariables['LOCALAPPDATA']=$local
     $info.EnvironmentVariables['VANTARE_QA_LOCAL_APP_DATA']=$local
     $info.EnvironmentVariables['VANTARE_QA_REGISTRY_PREFIX']=$prefix
     $info.EnvironmentVariables['VANTARE_QA_SHELL_ROOT']=$shell
+    $info.EnvironmentVariables['VANTARE_QA_SESSION_PROBE']=$BootProbe
     if($WrongToken){$info.EnvironmentVariables['VANTARE_QA_WRONG_BOOT_TOKEN']='1'}
     [Diagnostics.Process]::Start($info)
 }
@@ -61,7 +67,7 @@ try{
     foreach($version in @('989','990')){
         $directory=Join-Path $assets ('v'+$version)
         New-MatrixPayload $directory ('0.0.'+$version) $TestVerifier
-        Copy-Item -LiteralPath $BootProbe -Destination (Join-Path $directory 'bin/vantare.exe') -Force
+        Copy-Item -LiteralPath $RootLauncher -Destination (Join-Path $directory 'bin/vantare.exe') -Force
         Copy-Item -LiteralPath $BootProbe -Destination (Join-Path $directory 'bin/vantare-hub.exe') -Force
         [IO.File]::WriteAllText((Join-Path $directory 'bin/vantare.exe.sha256'),((Get-NativeHash (Join-Path $directory 'bin/vantare.exe'))+'  vantare.exe'+"`n"))
         [IO.File]::WriteAllText((Join-Path $directory 'bin/vantare-hub.exe.sha256'),((Get-NativeHash (Join-Path $directory 'bin/vantare-hub.exe'))+'  vantare-hub.exe'+"`n"))
@@ -77,7 +83,6 @@ try{
         Write-NativeJson $manifestPath $manifest
         New-NativeZip $directory (Join-Path $assets ('v'+$version+'.zip'))
     }
-    foreach($name in @('candidate.ps1','beta.ps1')){Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $payload}
     Copy-Item -LiteralPath "$env:WINDIR/System32/cmd.exe" -Destination (Join-Path $payload 'Uninstall.exe')
     [IO.File]::WriteAllText((Join-Path $payload 'installer-notices.txt'),'QA fixture')
     foreach($version in @('989','990')){

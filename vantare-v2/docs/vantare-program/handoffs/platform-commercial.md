@@ -576,6 +576,72 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 
 ## Instalador · VANTA-127 / #1840
 
+### Decisión de presupuesto para el paso 7 (3-nov-2026)
+
+- #1908 está integrado en nightly `b78ca0149`; el paso 7 parte de `a75c9b7aa`,
+  que también incluye #1918. La medición final del paso 6 fue **11.944** líneas
+  en el perímetro de `installer-lines.py --projection` y **876** netas fuera:
+  **12.820** en total. La cifra **12.608** fue una revisión intermedia.
+- Isaac acepta el tamaño actual: paso 7 **≤10.300** líneas del perímetro y
+  **≤11.250** en total; final del paso 8, incluido K3 si sale limpio,
+  **≤11.250**. K1 ya no existe como ahorro: sus variantes se retiraron en
+  #1892 y la compatibilidad 975/988 permanece. No se hace otra pasada de
+  tamaño en este PR; cualquier rediseño futuro corresponde a la ronda general
+  con un diseño nuevo. Balance de referencia: 14.180 → aproximadamente
+  11.200 líneas (−21 %), sin LegacyRunner y con el mismo comportamiento.
+- El ciclo de `background::Feed` con `Workers` se simplificó y tiene regresión
+  de cancelación y recogida. `qa_session` sigue contando como producción.
+- Se descarta recortar a costa de la resistencia a cortes o del comportamiento:
+  no unificar `operations::install/update`, `root/ready/recover_boot`, la
+  renovación de `Vantare.exe` ni la validación de `update_feed/stage`; tampoco
+  retirar la compatibilidad Run/accesos 975/988 o `retained-data`.
+- Paso 7 en `vantareapp/isa-1840-paso7-retirar-powershell`: se retiran
+  `candidate.ps1`, `beta.ps1`, NSIS, MSIX y sus pruebas huérfanas, conservando
+  `installer-cleanup.ps1`. Las formas de acceso y la raíz 975/988 se conservan.
+  Los P3 de la cola están implementados: sesión Rust real en la matriz, token
+  ausente en servicios que no son Hub y `rejectedVersion` tras caída en rollback.
+  La revisión #1929 mide **10.258** líneas de producción del perímetro
+  (**10.205 Rust + 53 Cleanup PowerShell**) y **959** fuera, **11.217** en total;
+  dentro de 10.300 y 11.250. Frente al cierre anterior: +8 dentro y −4 fuera.
+  `qa_session` sigue contando como producción. Rust tests: **3.676**;
+  PowerShell tests/tooling: **1.829**, separados con
+  `installer-lines.py --base origin/nightly --projection`.
+- Revisión #1929: el rollback automático solo cubre un arranque pendiente que
+  todavía no se ha confirmado. Tras Confirm no hay rollback manual a la versión
+  anterior; cualquier corrección requiere otro paquete firmado. El builder
+  comprueba el inventario cerrado de diez EXE, recursos y sidecars antes de
+  preparar una publicación. La firma usa stdin UTF-8 sin BOM también en PS 5.1.
+  Siguen diferidos a un trabajo posterior la validación del ZIP con todos los
+  límites del lector Rust y el test de corte real por checkpoint; esta revisión
+  no modifica rollback ni resistencia a cortes.
+- #1917 está integrado en nightly `076e6404772878ed427c9f2ed1a43594dec5f2ed`.
+  #1929 se rebasa sobre ese SHA y porta el gate de exclusión de features y
+  símbolos QA a `build-candidate.ps1`, al ZIP leído por el builder de Setup y
+  al paso Windows de CI; el builder antiguo `candidate.ps1` sigue retirado.
+- Re-review #1929: PS 5.1 con cp 65001 antepone BOM de stdin. El CLI Rust de
+  firma/verificación elimina una sola marca inicial y firma solo el JSON. Ruta
+  real de firma con clave TEST y notas con acentos: PASS en PS 5.1 y PS 7;
+  unit test, Hub temporal, fmt/Clippy, calidad y 471 pins de retirement PASS.
+  Los P3 de README, pin ancestro, BOM de publish, variables de cola, regex,
+  versión, red e inventario tienen regresiones. Medición nueva: **10.263**
+  líneas de producción en el perímetro y **963** fuera, **11.226** total,
+  dentro de 10.300/11.250. Evidencia en
+  `native/packaging/matrix/evidence-1840-p7-review.md`.
+- QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
+  **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
+  lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.
+  Los casos `rc-options` y `pending` rechazan Rollback sin `boot-pending` y
+  preservan `state.json`; el antiguo script devolvía éxito sin operar.
+  Rust Installer **78/78**, `vantare.exe` **53/53**, lifecycle real **25/25**,
+  telemetría **10/10**; check, Clippy `-D warnings`, fmt y diff check pasan.
+  La batería Hub obtuvo 591 correctos, 4 ignorados y 2 smokes sin el binario
+  auxiliar Storage en el target; `core_e2e` de Runtime agotó dos veces sus
+  10 s sin recibir una foto, sin cambios en ese código. Ambos se declaran en
+  el [PR draft #1929](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1929)
+  y quedan para la CI; no se debilitaron ni omitieron tests. Base de la rama
+  `origin/nightly@40a725910`, código verificado `ad688a80e`; el PR sigue
+  abierto contra nightly. Plane VANTA-127 permanece En curso; sin merge ni release.
+
 ### Paso 2 · ADR 0103 listo para revisión (1-nov-2026)
 
 - Base nightly 5cc23113afae7cfa44429f225f0aeb5f770c061c, con 0–1d integrados.

@@ -283,7 +283,7 @@ pub(super) struct Retained {
     #[serde(skip)]
     pub version_parts: [u16; 3],
 }
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Installation {
     pub state: Option<State>,
     pub manifest: Option<Manifest>,
@@ -376,27 +376,25 @@ pub(super) fn verify_pe(path: &Path) -> Result<(), ReadError> {
 }
 
 pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>, ReadError> {
-    let mut pending = vec![(root.to_path_buf(), false)];
+    let mut pending = vec![root.to_path_buf()];
     let mut files = Vec::new();
-    while let Some((directory, in_data)) = pending.pop() {
+    while let Some(directory) = pending.pop() {
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
             let path = entry.path();
-            if !in_data {
-                require(
-                    !entry
-                        .file_name()
-                        .to_string_lossy()
-                        .to_ascii_lowercase()
-                        .starts_with(".env"),
-                    "Árbol .env rechazado antes de leerlo",
-                )?;
-            }
+            require(
+                !entry
+                    .file_name()
+                    .to_string_lossy()
+                    .to_ascii_lowercase()
+                    .starts_with(".env"),
+                "Árbol .env rechazado antes de leerlo",
+            )?;
             reject_links(&path).map_err(|_| ReadError::Invalid("Árbol con reparse point"))?;
-            let in_data = in_data || skip_data && path == root.join("data");
+            let in_data = skip_data && path == root.join("data");
             let is_directory = entry.file_type()?.is_dir();
             if is_directory && !in_data {
-                pending.push((path.clone(), in_data));
+                pending.push(path.clone());
             }
             if !in_data {
                 files.push((path, is_directory));
@@ -415,13 +413,8 @@ impl Installation {
     }
     fn read_inner(root: &Path, inspect_active: bool) -> Result<Self, ReadError> {
         let mut view = Self {
-            state: None,
-            manifest: None,
             data_path: root.join("generations"),
-            previous_warning: None,
-            previous_manifest: None,
-            original_state: None,
-            retained: None,
+            ..Self::default()
         };
         let Some(document) = read_state(root)? else {
             let path = root.join("retained-data.json");

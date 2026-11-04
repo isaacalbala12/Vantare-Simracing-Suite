@@ -744,64 +744,6 @@ mod tests {
     }
 
     #[test]
-    fn calendar_msix_probe_paths_are_exact_and_overlay_has_no_layout() {
-        let probe = include_str!("../../packaging/msix/verify.ps1");
-        let hub = probe
-            .lines()
-            .find(|line| line.trim_start().starts_with("$hubArguments ="))
-            .expect("argumentos reales del Hub MSIX");
-        let msix_path = |flag| {
-            hub.split_once(flag)
-                .expect("flag MSIX")
-                .1
-                .split_once("$data + '")
-                .expect("ruta MSIX")
-                .1
-                .split_once('"')
-                .expect("cierre del argumento MSIX")
-                .0
-                .trim_start_matches('/')
-        };
-        // Comparar las rutas completas evita que with_file_name oculte basura
-        // como hub" --layout " o layout.json" --engineer-settings ".
-        assert_eq!(msix_path("--data-dir"), "hub");
-        assert_eq!(msix_path("--layout"), "layout.json");
-        let root = std::env::temp_dir().join("vantare-calendar-msix-probe");
-        let options = parse(&[
-            "--data-dir".into(),
-            root.join(msix_path("--data-dir"))
-                .to_string_lossy()
-                .into_owned(),
-            "--layout".into(),
-            root.join(msix_path("--layout"))
-                .to_string_lossy()
-                .into_owned(),
-        ])
-        .expect("argumentos MSIX");
-        assert_eq!(options.data_dir, root.join("hub"));
-        assert_eq!(options.layout, root.join("layout.json"));
-        assert_eq!(
-            vantare_hub::calendar::Calendar::alert_path(&options.layout),
-            root.join("session-alerts-feed.json")
-        );
-        let runtime = probe
-            .lines()
-            .find(|line| line.trim_start().starts_with("$arguments ="))
-            .expect("argumentos reales del supervisor MSIX");
-        assert!(!runtime.contains("--layout"));
-        assert!(!probe.contains("VANTARE_NATIVE_DATA_ROOT"));
-        assert_eq!(
-            runtime
-                .rsplit_once(" -- ")
-                .expect("argumentos del overlay")
-                .1,
-            "4 --fuente pipe:' + $pipeName"
-        );
-        // El modo numérico no abre el layout ni consume su calendario. Este probe
-        // solo acredita activación/identidad/ventana, no paridad del feed.
-    }
-
-    #[test]
     fn calendar_without_overrides_uses_the_platform_native_directory() {
         let root = vantare_ui::paths::default_data_dir().expect("raíz de datos");
         let expected_layout = root.join("Vantare/native/layout.json");

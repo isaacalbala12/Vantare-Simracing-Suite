@@ -1,60 +1,37 @@
-﻿#requires -Version 5.1
+﻿# Builds reviewable artifacts and prints a release command; never publishes.
+#requires -Version 5.1
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [string]$Notes = '',
+    [string]$Notes='',
     [string]$ConfigFile,
     [Parameter(Mandatory)][string]$SigningKeyFile,
-    [string]$NsisCompiler = "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
-    [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
-    [switch]$AllowDirty,
-    [switch]$LegacyNsis
+    [ValidateSet('Debug','Release')][string]$BuildProfile='Release',
+    [switch]$AllowDirty
 )
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-$publishVersion = $Version
-$publishProfile = $BuildProfile
-$publishAllowDirty = $AllowDirty
-$publishOutput = $OutputDirectory
-$publishConfigFile = $ConfigFile
-. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
-. (Join-Path $PSScriptRoot 'build-config.ps1')
-$Version = $publishVersion
-$BuildProfile = $publishProfile
-$AllowDirty = $publishAllowDirty
-$OutputDirectory = $publishOutput
-$null = Read-BetaVersion $Version
-$output = Assert-NativePath $OutputDirectory
-$useLegacyNsis = [bool]$LegacyNsis -or $Version -ceq '0.0.976'
-if ($useLegacyNsis) { $compiler = Get-Command $NsisCompiler -ErrorAction Stop }
-. (Join-Path $PSScriptRoot 'no-qa.ps1')
-$publisherEnvironment=Import-NativeBuildConfig $publishConfigFile
-try {
-$artifacts = Build-NativeCandidate $output $Version 'beta' $BuildProfile ([bool]$AllowDirty) $publishConfigFile
-$manifest = [ordered]@{
-    schema = 1; product = 'vantare-native'; channel = 'beta'; version = $Version
-    url = "https://github.com/$script:BetaRepository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"
-    sha256 = $artifacts.sha256; notes = $Notes
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'build-tooling.ps1')
+if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión beta inválida'}
+if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión beta fuera de rango'}
+if([Text.Encoding]::UTF8.GetByteCount($Notes) -gt 8192){throw 'Notas demasiado grandes'}
+$output=Assert-BuildPath $OutputDirectory
+$artifacts=& (Join-Path $PSScriptRoot 'build-candidate.ps1') -Version $Version -Channel beta -OutputDirectory $output -BuildProfile $BuildProfile -ConfigFile $ConfigFile -AllowDirty:$AllowDirty
+$repository='isaacalbala12/Vantare-Downloads'
+$manifest=[ordered]@{
+    schema=1;product='vantare-native';channel='beta';version=$Version
+    url="https://github.com/$repository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"
+    sha256=$artifacts.sha256;notes=$Notes
 }
-$verifier = Join-Path $output 'payload/bin/vantare-services.exe'
-$json = Invoke-BetaManifestTool $verifier (ConvertTo-Json $manifest) $SigningKeyFile
-$null = Read-BetaManifest $json $false $verifier
-[IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'), $json, [Text.UTF8Encoding]::new($false))
-if ($useLegacyNsis) {
-    # #1565 conserva su corte 0.0.976; también sirve como rollback explícito.
-    & $compiler.Source "/DOUTPUT=$output" "/DBOOTSTRAP=$PSScriptRoot" "/DVERSION=$Version" "/DPACKAGE_SHA=$($artifacts.sha256)" (Join-Path $PSScriptRoot 'beta-installer.nsi')
-    if ($LASTEXITCODE) { throw 'Falló NSIS; no hay instalador listo.' }
-} else {
-    & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile
-    if (-not $?) { throw 'Falló el instalador propio; no hay Setup listo.' }
-}
-[IO.File]::WriteAllText((Join-Path $output 'vantare-native-amd64-package.zip.sha256'), "$($artifacts.sha256)  vantare-native-amd64-package.zip`n")
-$setup = Join-Path $output 'VantareSetup.exe'
-Assert-NativeDistributionBinary $setup
-[IO.File]::WriteAllText("$setup.sha256", "$(Get-NativeHash $setup)  VantareSetup.exe`n")
-# Solo imprime el comando; la publicación pertenece al orquestador.
-Write-Output "Listo: $output"
-Write-Output "gh release create native-beta-v$Version --repo $script:BetaRepository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-amd64-package.zip.sha256' '$output/vantare-native-beta.json'"
-
-} finally {Restore-NativeBuildConfig $publisherEnvironment}
+Assert-BetaManifest ([pscustomobject]$manifest)
+$verifier=Join-Path $output 'payload/bin/vantare-services.exe'
+$json=Invoke-BuildProcess $verifier @('--sign-update',(Assert-BuildPath $SigningKeyFile)) ($manifest|ConvertTo-Json -Compress)
+$verified=Invoke-BuildProcess $verifier @('--verify-update') $json|ConvertFrom-Json
+if($verified.version -cne $Version -or $verified.channel -cne 'beta' -or $verified.sha256 -cne $artifacts.sha256){throw 'Manifiesto firmado incompatible'}
+[IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'),$json,[Text.UTF8Encoding]::new($false))
+& (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile
+if(-not $?){throw 'Falló el instalador propio'}
+Assert-PublishArtifacts $output
+"Listo: $output"
+"gh release create native-beta-v$Version --repo $repository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-amd64-package.zip.sha256' '$output/vantare-native-beta.json'"

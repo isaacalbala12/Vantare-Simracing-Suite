@@ -75,11 +75,11 @@ mod platform {
         if !root.exists() {
             return Err("QA installation root missing".into());
         }
-        let view = Installation::read(root)?;
         let staging = root.join("staging");
         let pending = staging.join("pending.json");
         match action {
             "Check" => {
+                let view = Installation::read(root)?;
                 let state = view.state.as_ref().ok_or("active QA state required")?;
                 let manifest = view.manifest.as_ref().ok_or("active manifest required")?;
                 if manifest.engine() != 2 || state.channel != "beta" {
@@ -155,6 +155,10 @@ mod platform {
                 if !root.join("boot-pending.json").exists() {
                     return Err("no boot pending".into());
                 }
+                let _ = operations::rollback(root)?;
+                Ok(0)
+            }
+            "Rollback" => {
                 let _ = operations::rollback(root)?;
                 Ok(0)
             }

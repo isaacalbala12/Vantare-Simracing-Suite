@@ -1,6 +1,6 @@
 # Test fixtures; binaries are never launched as product applications.
 function New-MatrixPayload([string]$Destination,[string]$Version,[string]$Verifier) {
-    foreach ($member in Get-NativeMembers 'beta') {
+    foreach ($member in Get-MatrixMembers) {
         $file = Join-Path $Destination $member
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file)) | Out-Null
         if ($member -ceq 'bin/vantare-services.exe') { Copy-Item -LiteralPath $Verifier -Destination $file }
@@ -9,10 +9,9 @@ function New-MatrixPayload([string]$Destination,[string]$Version,[string]$Verifi
             $exe = $file.Substring(0,$file.Length-7)
             [IO.File]::WriteAllText($file,((Get-NativeHash $exe)+'  '+[IO.Path]::GetFileName($exe)+"`n"))
         }
-        elseif ($member -ceq 'candidate.ps1') { Copy-Item -LiteralPath "$script:Packaging/candidate.ps1" -Destination $file }
         else { [IO.File]::WriteAllText($file,'matrix fixture') }
     }
-    $files = @(Get-NativeMembers 'beta' | ForEach-Object {
+    $files = @(Get-MatrixMembers | ForEach-Object {
         $file=Join-Path $Destination $_
         @{path=$_;size=(Get-Item -LiteralPath $file).Length;sha256=(Get-NativeHash $file)}
     })
@@ -38,14 +37,11 @@ function Set-MatrixRegistration([string]$Install,[string]$Version) {
     foreach ($entry in @{InstallLocation=$Install;DisplayVersion=$Version;DisplayName='Vantare Native Beta'}.GetEnumerator()) {
         Set-ItemProperty -LiteralPath $key -Name $entry.Key -Value $entry.Value
     }
-    Sync-NativeRegistration $Install $Version
 }
 
 function Initialize-MatrixCase([string]$Case,[string]$Install,[string]$Assets) {
     if ($Case -ceq 'clean') { return }
     $null=Open-NativeRoot $Install -Initialize
-    Copy-Item -LiteralPath "$script:Packaging/beta.ps1" -Destination (Join-Path $Install 'beta.ps1')
-    Copy-Item -LiteralPath "$script:Packaging/candidate.ps1" -Destination (Join-Path $Install 'candidate.ps1')
     $legacy=$Case -in @('nsis975','nsis975-incomplete974')
     $source=if($legacy){Join-Path $Assets 'legacy'}else{Join-Path $Assets 'v988'}
     $active=Add-MatrixGeneration $Install ('a'*32) $source
@@ -60,10 +56,9 @@ function Initialize-MatrixCase([string]$Case,[string]$Install,[string]$Assets) {
     }
     Set-NativeState $Install @{schema=1;product='vantare-native';channel='beta';active=$active;previous=$previous}
     if ($Case -in @('retained','retained-no-marker')) {
-        Uninstall-Beta $Install
-        foreach ($bootstrap in @('beta.ps1','candidate.ps1')) { Remove-Item -LiteralPath (Join-Path $Install $bootstrap) }
-        if ($Case -ceq 'retained-no-marker') { Remove-Item -LiteralPath (Join-Path $Install 'retained-data.json') }
-        else {
+        Remove-Item -LiteralPath (Join-Path $Install 'state.json')
+        if ($Case -cne 'retained-no-marker') {
+            Write-NativeJson (Join-Path $Install 'retained-data.json') @{schema=1;generation=$active.generation;version='0.0.988'}
             # A stopped GPUI uninstall, ready for its deferred Cleanup helper.
             Copy-Item -LiteralPath "$env:WINDIR/System32/cmd.exe" -Destination (Join-Path $Install 'Uninstall.exe')
             Write-NativeJson (Join-Path $Install 'installer-cleanup.json') @{schema=1;sha256=(Get-NativeHash (Join-Path $Install 'Uninstall.exe'))}
@@ -88,8 +83,8 @@ function Initialize-MatrixCase([string]$Case,[string]$Install,[string]$Assets) {
         Copy-Item -LiteralPath (Join-Path $Assets 'v989.zip') -Destination (Join-Path $Install ('staging/'+$offer.sha256+'.zip'))
     }
     if ($Case -ceq 'boot') {
-        Write-BetaJson (Join-Path $Install 'boot-pending.json') @{schema=1;previous=$previous.generation;version='0.0.988'}
-        Set-BetaStatus $Install 'ready' 'fixture boot' '0.0.988' 'fixture notes'
+        Write-NativeJson (Join-Path $Install 'boot-pending.json') @{schema=1;previous=$previous.generation;version='0.0.988'}
+        Write-NativeJson (Join-Path $Install 'update-status.json') @{schema=1;state='ready';message='fixture boot';version='0.0.988';notes='fixture notes'}
     }
 }
 

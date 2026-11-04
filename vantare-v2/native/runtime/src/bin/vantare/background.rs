@@ -97,19 +97,17 @@ impl Workers {
                     done = false;
                 }
             }
-            if self
-                .feed
-                .as_ref()
-                .is_some_and(|feed| feed.thread.is_finished())
-            {
-                self.feed
-                    .take()
-                    .expect("feed finished")
-                    .thread
-                    .join()
-                    .map_err(|_| io::Error::other("Feed terminó con panic"))?;
-            } else if self.feed.is_some() {
-                done = false;
+            if let Some(feed) = &self.feed {
+                if feed.thread.is_finished() {
+                    self.feed
+                        .take()
+                        .expect("feed finished")
+                        .thread
+                        .join()
+                        .map_err(|_| io::Error::other("Feed terminó con panic"))?;
+                } else {
+                    done = false;
+                }
             }
         }
         #[cfg(test)]
@@ -147,10 +145,9 @@ impl Workers {
                 host.request_shutdown();
                 std::mem::forget(host);
             }
-            if let Some(feed) = self.feed.take() {
-                feed.request_shutdown();
-                std::mem::forget(feed);
-            }
+            // JoinHandle::drop detaches without waiting; process exit ends the
+            // already-cancelled feed thread and releases its OS resources.
+            self.feed.take();
         }
         #[cfg(test)]
         if let Some(worker) = self.fixture.take() {

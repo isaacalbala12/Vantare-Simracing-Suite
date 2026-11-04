@@ -1,0 +1,128 @@
+"""Real up/down and failed cutover; disposable loopback PostgreSQL only."""
+import json
+import subprocess
+from pathlib import Path
+
+
+OLD_ADMIN_DIGESTS = {
+    'private.native_admin_account_summary': 'decd6cccddd906376d34061623c826db',
+    'private.native_admin_account_v1': 'a7bba08ed56691c78f2c6b143fdf8c74',
+    'private.native_admin_execute_before_creator_coupon': '1b29a41006e451c36f8688a099a04780',
+    'private.native_admin_execute_v1': '5ce8f227132a712bad922f4e3b4a3867',
+    'private.native_admin_reports': '7d141578ea198f965244a8447c291c41',
+}
+
+
+def run_admin_report_cutover(run, conn, out, bin_dir, env):
+    root = Path(__file__).resolve().parents[2]
+    stem = '20261104024000_isa_1910_admin_report_root'
+    up = root/'supabase/migrations'/(stem+'.sql')
+    down = root/'supabase/rollbacks'/(stem+'.down.sql')
+    fingerprints = """select json_object_agg(n.nspname||'.'||p.proname,
+      md5(replace(pg_get_functiondef(p.oid),E'\\r\\n',E'\\n')))
+      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where p.prokind='f' and p.proname like 'native_admin%'"""
+    current = run('psql', *conn, '-c', fingerprints).strip()
+    run('psql', *conn, '-f', down)
+    previous = run('psql', *conn, '-c', fingerprints).strip()
+    restored = json.loads(previous)
+    assert {name: restored[name] for name in OLD_ADMIN_DIGESTS} == OLD_ADMIN_DIGESTS, 'rollback must restore all five exact pre-cutover digests'
+    def rejected_probe(label, setup, code, message):
+        probe=out/(label+'.sql')
+        probe.write_text('begin;\n'+setup+'\n\\ir '+str(up)+'\n',encoding='utf-8')
+        result=subprocess.run([str(bin_dir/'psql'),*conn,'-f',str(probe)],env=env,text=True,capture_output=True,timeout=20)
+        (out/(label+'.log')).write_text(result.stdout+result.stderr,encoding='utf-8')
+        assert result.returncode and code in result.stderr and message in result.stderr, (label,result.stdout,result.stderr)
+        assert json.loads(run('psql',*conn,'-c',fingerprints)) == json.loads(previous), label+' changed definitions'
+        assert run('psql',*conn,'-c',"select to_regclass('private.admin_effects_started_target_hash') is null").strip()=='t'
+
+    tables = ['testing_center_reports','testing_center_evidence',
+              'testing_center_technical_issues','testing_center_screenshot_evidence',
+              'testing_center_evidence_batches','testing_center_report_payloads',
+              'testing_center_report_submission_keys','testing_center_report_events']
+    signatures = [
+      'testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)',
+      'testing_center_triage_report(text)',
+      'testing_center_prepare_screenshot_batch(text,text,text,jsonb)',
+      'testing_center_finalize_screenshot(uuid,uuid)',
+      'testing_center_submit_report(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text)',
+      'testing_center_submit_report_with_evidence(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)',
+      'testing_center_submit_report_without_transport_size(text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text)']
+    for role in ['service_role','authenticated','anon','public','vantare_triage']:
+        for number, signature in enumerate(signatures):
+            rejected_probe('legacy-rpc-'+role+'-'+str(number),
+              'grant execute on function public.'+signature+' to '+role+';',
+              '55000','native_admin_legacy_writers_still_callable')
+        for table in tables:
+            for privilege in ['insert','update','delete','truncate']:
+                rejected_probe(table+'-'+role+'-'+privilege,
+                  'grant '+privilege+' on public.'+table+' to '+role+';',
+                  '55000','native_admin_legacy_table_still_writable')
+    for table in tables:
+        column=run('psql',*conn,'-At','-c',
+          "select quote_ident(attname) from pg_attribute where attrelid='public."+table+
+          "'::regclass and attnum>0 and not attisdropped order by attnum limit 1").strip()
+        for role in ['authenticated','public']:
+            for privilege in ['insert','update']:
+                rejected_probe('column-'+table+'-'+role+'-'+privilege,
+                  'grant '+privilege+'('+column+') on public.'+table+' to '+role+';',
+                  '55000','native_admin_legacy_table_still_writable')
+        for privilege in ['insert','update','delete','truncate']:
+            rejected_probe('arbitrary-role-'+table+'-'+privilege,
+              'grant '+privilege+' on public.'+table+' to authenticator;',
+              '55000','native_admin_legacy_table_still_writable')
+    for signature in signatures:
+        name=signature.split('(')[0]
+        for role in ['public','authenticator']:
+            rejected_probe('overload-'+name+'-'+role,
+              'create function public.'+name+'(integer) returns void language sql as $f$select$f$; '
+              'revoke all on function public.'+name+'(integer) from public; '
+              'grant execute on function public.'+name+'(integer) to '+role+';',
+              '55000','native_admin_legacy_writers_still_callable')
+    # Isolate each child's emptiness check without inventing orphan records or
+    # disabling production FK/barrier triggers. Transactional substitute only.
+    for table in tables[1:]:
+        rejected_probe(table+'-nonempty',
+          'alter table public.'+table+' rename to fixture_original; '
+          'create table public.'+table+'(probe boolean); '
+          'insert into public.'+table+' values(true);',
+          '55000','native_admin_legacy_reports_require_r6_mapping')
+    rejected_probe('force-rls-caller','grant all on '+','.join('public.'+table for table in tables)+' to authenticated; set local role authenticated;', '42501','native_admin_cutover_requires_bypassrls')
+
+    # The transaction's only row is synthetic. A failure must roll it back too.
+    probe = out/'legacy-guard-probe.sql'
+    probe.write_text("""begin;
+      insert into public.profiles(id) values('19107000-0000-4000-8000-000000000099');
+      insert into public.testing_center_reports(report_id,reporter_id,reporter_user_id,reporter_role,channel,state)
+        values('report_cutover_probe','fixture-admin','19107000-0000-4000-8000-000000000099','tester','nightly','submitted');
+      \\ir """+str(up)+'\n', encoding='utf-8')
+    result = subprocess.run([str(bin_dir/'psql'), *conn, '-f', str(probe)],
+                            env=env, text=True, capture_output=True, timeout=20)
+    (out/'legacy-guard-red.log').write_text(result.stdout+result.stderr, encoding='utf-8')
+    assert result.returncode != 0 and '55000' in result.stderr and 'native_admin_legacy_reports_require_r6_mapping' in result.stderr, result.stderr
+    assert json.loads(run('psql', *conn, '-c', fingerprints)) == json.loads(previous), 'guard failure changed definitions'
+    assert run('psql', *conn, '-c', "select count(*) from public.profiles where id='19107000-0000-4000-8000-000000000099'").strip() == '0'
+    assert run('psql', *conn, '-c', "select to_regclass('private.admin_effects_started_target_hash') is null").strip() == 't'
+    assert run('psql',*conn,'-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t', 'Clerk account deletion must stay executable'
+    run('psql', *conn, '-f', up)
+    assert json.loads(run('psql', *conn, '-c', fingerprints)) == json.loads(current), 'reapply differs from cutover'
+    # The same predicate as claim's legacy fallback; inspect planner choice on
+    # synthetic audit volume, not a timing assertion or a changed planner GUC.
+    plan = run('psql', *conn, '-c', """begin;
+      insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
+      select gen_random_uuid(),'started',gen_random_uuid(),'19107000-0000-4000-8000-000000000001',
+        'set_blocked','clerk_ban',md5(n::text)||md5((n+1)::text) from generate_series(1,5000)n;
+      analyze private.admin_effects;
+      explain (analyze,buffers,format json) select effect_id from private.admin_pending_effects
+        where target_hash=md5('2500')||md5('2501');
+      rollback;""")
+    (out/'target-hash-plan.log').write_text(plan, encoding='utf-8')
+    parsed, _ = json.JSONDecoder().raw_decode(plan[plan.index('['):])
+    def indexes(node):
+        if isinstance(node, dict):
+            yield node.get('Index Name')
+            for child in node.values(): yield from indexes(child)
+        elif isinstance(node, list):
+            for child in node: yield from indexes(child)
+    assert 'admin_effects_started_target_hash' in set(indexes(parsed)), 'target_hash plan must actually use the partial index'
+    print('Admin report cutover: legacy guard atomic, rollback/reapply and target_hash plan PASS', flush=True)

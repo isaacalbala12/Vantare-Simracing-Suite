@@ -1,3 +1,6 @@
+-- HISTORICAL: pre-#1924 legacy admin report contract; not a final-schema gate.
+-- Replay only against the original migration chain (before 20261104024000).
+-- Current report-root coverage: native_admin_report_root.test.sql.
 begin;
 select no_plan();
 insert into public.profiles(id) values('16275000-0000-4000-8000-000000000001'),('16275000-0000-4000-8000-000000000002'),('16275000-0000-4000-8000-000000000003');

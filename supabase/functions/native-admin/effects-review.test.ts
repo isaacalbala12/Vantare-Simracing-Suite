@@ -12,23 +12,37 @@ const target = "00000000-0000-4000-8000-000000001995";
 // R2: cleanup failure must preserve the original pre-effect error.
 Deno.test("5b R2: failed release never masks the original missing-account error", async () => {
   const f = fixture();
-  const response = await handleNativeAdmin(
-    request({
-      version: 1,
-      action: "set_blocked",
-      account_id: target,
-      blocked: false,
-    }),
-    {
-      ...f.deps,
-      execute: () => Promise.reject({ message: "native_admin_not_found" }),
-      releaseChange: () =>
-        Promise.reject(new Error("synthetic release failure")),
-    },
-  );
-  assert(
-    response.status === 404 && (await response.json()).error === "not_found",
-  );
+  const originalError = console.error;
+  const errors: string[] = [];
+  console.error = (...values: unknown[]) => {
+    errors.push(String(values[0]));
+  };
+  try {
+    const response = await handleNativeAdmin(
+      request({
+        version: 1,
+        action: "set_blocked",
+        account_id: target,
+        blocked: false,
+      }),
+      {
+        ...f.deps,
+        execute: () => Promise.reject({ message: "native_admin_not_found" }),
+        releaseChange: () =>
+          Promise.reject(new Error("synthetic release failure")),
+      },
+    );
+    assert(
+      response.status === 404 && (await response.json()).error === "not_found",
+    );
+    assert(
+      errors.length === 1 &&
+        JSON.parse(errors[0]).event === "native_admin_release_failed",
+    );
+    assert(!errors[0].includes("synthetic release failure"));
+  } finally {
+    console.error = originalError;
+  }
   assert(f.calls.length === 0);
 });
 function fixture(status = 200, blocked = false, sqlFailure = false) {

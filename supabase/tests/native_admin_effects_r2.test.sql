@@ -27,8 +27,9 @@ select throws_ok($$select public.native_admin_reconcile_effect('00000000-0000-40
 insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
  select '00000000-0000-4000-8000-000000001967',s,'00000000-0000-4000-8000-000000001962','00000000-0000-4000-8000-000000001960','set_blocked','clerk_ban',repeat('c',64) from unnest(array['started','failed']) s;
 select throws_ok($$select public.native_admin_reconcile_effect('00000000-0000-4000-8000-000000001960','00000000-0000-4000-8000-000000001967')$$,'22023','native_admin_invalid','failure cannot be reconciled');
+create temporary table r2_deleted_lease as select expires_at from private.admin_change_leases where account_id='00000000-0000-4000-8000-000000001961';
 insert into public.account_identities(issuer,subject,account_id,deleted_at) values('https://clerk.example.invalid','user_r2_deleted','00000000-0000-4000-8000-000000001961',now());
 select is(public.native_admin_release_change('00000000-0000-4000-8000-000000001960','00000000-0000-4000-8000-000000001964','00000000-0000-4000-8000-000000001961',(select token from r2_tokens)),true,'release on deleted account is harmless');
-select is((select count(*) from private.admin_change_leases where account_id='00000000-0000-4000-8000-000000001961'),1::bigint,'deleted account release does not write through the barrier');
+select is((select expires_at from private.admin_change_leases where account_id='00000000-0000-4000-8000-000000001961'),(select expires_at from r2_deleted_lease),'release leaves expires_at unchanged on deleted account');
 select * from finish();
 rollback;

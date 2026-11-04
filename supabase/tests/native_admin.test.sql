@@ -108,13 +108,16 @@ select throws_ok($$select public.testing_center_submit_report('testing-center.v1
 reset role;
 \endif
 
+-- Admin now uses the v2 root; retain the legacy RLS/intake tests above.
+select * from public.testing_report_v2_submit_admitted('00000000-0000-4000-8000-000000001452',
+ '{"contract_version":"testing.report.v2","report_id":"19107000-0000-4000-8000-000000000007","channel":"master","title":"Synthetic report","body":"Synthetic body","consent":true,"idempotency_key":"draft_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","variant":"simple"}');
 select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001456','https://clerk.admin.test','list_reports',
   '{"limit":100,"status":"submitted"}','production')$$,'list actual submitted report');
 select lives_ok(format($$select public.native_admin_execute('00000000-0000-4000-8000-000000001456','https://clerk.admin.test','get_report',%L,'production')$$,
-  jsonb_build_object('report_id',(select report_id from submitted))::text),'get actual report detail');
+  jsonb_build_object('report_id','19107000-0000-4000-8000-000000000007')::text),'get actual report detail');
 select lives_ok(format($$select public.native_admin_execute('00000000-0000-4000-8000-000000001456','https://clerk.admin.test','set_report_status',%L,'production')$$,
-  jsonb_build_object('report_id',(select report_id from submitted),'status','closed')::text),'close actual report');
-select is((select state from public.testing_center_reports where report_id = (select report_id from submitted)), 'closed','report status persisted');
+  jsonb_build_object('report_id','19107000-0000-4000-8000-000000000007','status','closed','reason','Synthetic review')::text),'close actual report');
+select is((select state from public.testing_contributions where id='19107000-0000-4000-8000-000000000007'), 'declined','unique report root review persisted');
 
 select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001456','https://clerk.admin.test','set_module',
   '{"account_id":"00000000-0000-4000-8000-000000001452","module":"vantare.module.engineer","enabled":true}','production')$$,'grant individual module');

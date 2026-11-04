@@ -39,6 +39,11 @@ select * from public.operational_access_set('{actor}','owner','grant','fixture:a
                 # delegation. This also works with nightly's inline mutations;
                 # no replacement lock or authorization is installed by the test.
                 marker = 'perform private.native_admin_require_owner(p_actor);'
+                if marker not in source:
+                    # Current public entry is the coupon wrapper. Follow its
+                    # unchanged delegation to the actual UUID/owner boundary.
+                    assert 'private.native_admin_execute_before_creator_coupon(p_actor,p_issuer,p_action,p_params,p_environment)' in source
+                    source = sql("select prosrc from pg_proc where oid='private.native_admin_execute_before_creator_coupon(uuid,text,text,jsonb,text)'::regprocedure")
                 prefix = source[:source.index(marker) + len(marker)]
                 args = f"p_actor uuid:='{actor}'; p_issuer text:='{issuer}'; p_action text:='set_tester'; p_params jsonb:='{params}'; p_environment text:='sandbox';"
                 prefix = prefix.replace('declare', 'declare\n' + args, 1)

@@ -12,6 +12,7 @@ from commercial_migration_lock import run_migration_lock_regression
 from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
+from commercial_admin_report_root import run_admin_report_cutover
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -25,6 +26,7 @@ parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
+parser.add_argument('--admin-reports-only', action='store_true', help='Admin report root and optional effect/lease regressions only')
 parser.add_argument('--admin-effects-only', action='store_true', help='Only admin effect/lease SQL suites, races and optional admin Edge E2E')
 parser.add_argument('--admin-owner-only', action='store_true', help='Admin owner and identity regression SQL; all migrations replayed first')
 parser.add_argument('--admin-deno-bin', help='Only admin Edge→SQL E2E, also accepts existing Windows Deno from WSL')
@@ -52,10 +54,11 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
-legacy_writers_enabled=(not args.baseline and not args.admin_effects_only and
+if args.admin_reports_only: args.admin_effects_only=True
+legacy_writers_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
                         not args.upgrade and not any(
                          value for name,value in vars(args).items() if name.startswith('before_')))
-owner_enabled=(not args.baseline and not args.admin_effects_only and
+owner_enabled=(not args.baseline and (not args.admin_effects_only or args.admin_reports_only) and
                not args.upgrade and not any(
                 value for name,value in vars(args).items() if name.startswith('before_')))
 if args.qa_e2e and (not args.postgrest_bin or not args.deno_bin or args.b01):
@@ -185,11 +188,13 @@ $$;
    order by c.relname"""
   legacy_acl_before=None
   admin_owner_previous=None
+  admin_report_root_applied=False
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
+   if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
    if args.before_testing_identity and 'testing_server_identity' in m.name: continue
@@ -327,6 +332,11 @@ $$;
         execute replace(definition,'expected_text=''Altered''',
           'expected_text=''Deleted''');
       end $restore$;""")
+   if m.stem=='20261104024000_isa_1910_admin_report_root':
+    assert (OUT/'20261104014000_isa_1896_legacy_archive.sql.log').exists(), 'admin cutover must follow actual 7b2 in the clean replay'
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_legacy_admin_closed.test.sql')
+    (OUT/'testing_legacy_admin_closed.pre-cutover.log').write_text(result,encoding='utf-8')
+    assert 'not ok ' not in result and '# Looks like' not in result, result
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
@@ -347,6 +357,11 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if m.stem=='20261104024000_isa_1910_admin_report_root':
+    admin_report_root_applied=True
+    assert run('psql',*conn,'-At','-c',"select has_function_privilege('service_role','public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','EXECUTE')").strip()=='t'
+    print('Clean chain: actual 7b2 then admin cutover; Clerk deletion remains executable PASS',flush=True)
+
    if archive_fixture:
     def archive_check(name):
      result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
@@ -906,10 +921,9 @@ $$;
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','visual_roadmap_clickup.test.sql']
   if not legacy_writers_enabled: suites.append('native_admin.test.sql')
-  suites.append('native_admin_characterization.test.sql')
+  if admin_report_root_applied: suites.append('native_admin_characterization.test.sql')
   if legacy_writers_enabled:
-   suites+=['testing_legacy_writers_closed.test.sql',
-            'testing_legacy_admin_closed.test.sql']
+   suites+=['testing_legacy_writers_closed.test.sql']
   if owner_enabled: suites.append('testing_owner_unification.test.sql')
   for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists() and not (legacy_writers_enabled and optional=='testing_report_rich_admission.test.sql'):
@@ -930,6 +944,11 @@ $$;
    suites += ['native_admin_owner_authority.test.sql']
   if args.admin_owner_only:
    suites=['native_admin_owner_authority.test.sql','commercial_testing_identity.test.sql']
+  if legacy_writers_enabled: suites += ['native_admin_report_root.test.sql']
+  if args.admin_reports_only:
+   guard=run('psql',*conn,'-c',"select to_json(encode(tgargs,'escape')) from pg_trigger where tgrelid='public.admin_audit_log'::regclass and tgname='a_account_write_barrier'")
+   (OUT/'admin-audit-guard.json').write_text(guard,encoding='utf-8')
+   suites=['native_admin_report_root.test.sql','native_admin_characterization.test.sql','native_admin_effects_r2.test.sql','testing_report_v2.test.sql']
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   for name in suites:
@@ -949,6 +968,10 @@ $$;
    print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
    raise SystemExit(0)
   if not args.baseline:
+   if legacy_writers_enabled and (args.admin_reports_only or not args.admin_effects_only):
+    run_admin_report_cutover(run,conn,OUT,BIN,ENV)
+   if args.admin_reports_only:
+    run_admin_lock_order(BIN,conn,ENV,run,OUT)
    if args.deno_bin and not args.admin_effects_only:
     diagnostic=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',
      '--config',str(ROOT/'supabase/functions/deno.json'),str(ROOT/'supabase/functions/_shared/polar-checkout-diagnostic.test.ts')],
@@ -975,6 +998,7 @@ $$;
     # Run it with the 7b2 rollback, which restores B03 redaction; the 7b2
     # production state drains those tables and closes their API writers.
     if legacy_writers_enabled and (ROOT/'supabase/migrations'/(archive_stem+'.sql')).exists():
+     run('psql',*conn,'-f',ROOT/'supabase/rollbacks/20261104024000_isa_1910_admin_report_root.down.sql')
      run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
      run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
     else:

@@ -7820,3 +7820,196 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Metadatos del native real intactos. Huellas de producción siguen pendientes
   de Isaac antes del RC; no se lee configuración real. Plane Por testear intacto.
   Listo para review final; HEAD/push/CI verificados y publicados en #1919/#1920.
+## VANTA-132 · Admin → testing_contributions (2026-11-03)
+
+- #1922 integrado por el orquestador en nightly cef0ec16c, re-review Sonnet
+  MERGE. Nuevo worktree D:/VantareServer/worktrees/isa-1910-paso7b y rama
+  vantareapp/isa-1910-paso7b-informes-admin desde ese SHA. #1918 ya integrado
+  como a75c9b7aa; contrato ADR 0105 / testing.report.v2.
+- Caracterización previa deac76b46: v2 lista/consulta/revisión/count y owner
+  vigentes protegidos; RED en cinco funciones y un trigger con referencias
+  legacy. Se retiran esas ramas sin aplanar las capas; paso 11 fuera. JSON Rust
+  y acciones no relacionadas conservados. Sin cambios de crates.
+- Guard cerrado aprobado por el orquestador: cualquier fila en
+  testing_center_reports aborta la migración, bajo lock SHARE, sin cambiar
+  definiciones ni esconder datos. No hay tabla de mapping ni escrituras R6.
+- Orden de despliegue obligatorio (Isaac/R6): primero detener escritores legacy
+  en R6/7b; después mapear, verificar y vaciar las filas de origen; después este
+  PR; al final retirar tablas/RPC antiguas en R6. Guard y rollback local se
+  prueban con rechazo atómico. Si R6 desea conservar origen, el orquestador
+  definirá antes un contrato de evidencia. Rollback admin restaura definiciones
+  y trigger, sin borrar datos; tras retirar tablas, restaurar primero R6.
+- P3 pedidos: assert de expires_at sin cambios al liberar en cuenta borrada;
+  fallback por target_hash sin historial de lease; índice parcial sobre
+  target_hash de intenciones started y plan local; segundo reconcile idempotente
+  sin filas duplicadas; diagnóstico de release con console.error. Diferenciar
+  409 sigue en paso 10, junto con lectura/retención. Otros P3 diferidos intactos.
+- Sin Store real, secretos, servicios/configuración de producción, _shared ni
+  clerk-webhook, billing/licencias, despliegue, merge propio ni release. Los
+  cambios de reports_count en definiciones de cuenta no cambian su lógica de
+  pagos/acceso. Pasos 4/11 conservan sus dependencias R6.
+- Gates de las rutas afectadas: Deno 2.7.13 94 PASS; check/lint/fmt/Python/diff
+  PASS. SQL admin y contrato v2: 5 suites/125 comprobaciones PASS; guard de origen no vacío con rechazo
+  atómico, rollback/reaplicación exacta y plan de índice PASS. Carreras actor/
+  objetivo en ambos órdenes frente a borrado, seis carreras de journal/lease
+  y E2E 6/6 PASS. Se actualizó el harness de locks para seguir la delegación
+  vigente del wrapper público, conservando las pausas y aserciones reales.
+  Instancias locales detenidas. Rust/lifecycle/telemetría omitidos: ningún crate
+  cambia. Evidencia D:/VantareServer/evidence/isa-1910-paso7b; CI nueva pendiente.
+- PR draft [#1924](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1924)
+  contra nightly, código validado 9c4adbe7f. Sin merge propio ni despliegue.
+
+### Review de #1924 · ajustes (2026-11-04)
+
+- Misma rama/PR. Caracterización b0647d0f0 previa a corregir producto: primer
+  RED por rollback no exacto; segundo RED por RPC legacy aún ejecutable.
+- Rollback conserva la línea con un espacio del cuerpo anterior. Se fijan los
+  cuatro digests históricos y el quinto de native_admin_reports; se exige
+  igualdad exacta después del down. DROP INDEX IF EXISTS permite índice ausente.
+  La advertencia de whitespace de esa única línea es intencional, requerida
+  para conservar el cuerpo byte a byte; no se cambia ninguna regla de lint.
+- **Histórico sustituido:** el catálogo textual y la fixture descritos en los
+  dos puntos siguientes ya no se usan. Rige el guard de ACL y nombres RPC de
+  la sección «Re-review de #1924»; no se escanean cuerpos ni se revoca Clerk.
+- Guard exige current_user SUPERUSER/BYPASSRLS antes de leer FORCE RLS. También
+  aborta si service_role/authenticated/anon conservan EXECUTE efectivo (PUBLIC
+  e herencia incluidos) de RPC legacy, otros escritores o callers indirectos.
+  Catálogo conservador: DML con referencia literal a testing_center_reports y
+  sus callers; solo excluye los dos cuerpos admin que aquí pierden esas ramas.
+  No hay REVOKE operativo aquí: R6/7b debe detener escritores primero, luego
+  mapear/verificar/vaciar origen; después este PR y al final retirar tablas/RPC.
+- El runner simula únicamente en fixture desechable los permisos cerrados de
+  R6, y los restaura para los oráculos históricos de intake/RLS. Probes de RPC
+  con los tres roles, escritor indirecto, ejecutor sin BYPASSRLS y origen no
+  vacío verifican rechazo sin cambios parciales. No son instrucciones de deploy.
+- EXPLAIN JSON debe contener el índice admin_effects_started_target_hash.
+  Trigger valida UUID antes del cast y compara id con UUID (sin id::text).
+  Test existente de fallo de release exige console.error y error original 404.
+- Diferido por revisión: test concurrente del guard. Distinguir 409 sigue en
+  paso 10; demás dependencias y P3 diferidos no cambian.
+- Gates de revisión: Deno 2.7.13 94/94; check/lint/fmt y Python PASS. PostgreSQL
+  16.15 LF y CRLF: cinco suites/125 comprobaciones por pasada, cinco rechazos
+  adicionales de permisos/ejecutor y origen no vacío, cinco digests exactos,
+  EXPLAIN y carreras PASS. E2E LF 6/6 PASS; no repetido en CRLF. Primer intento
+  E2E agotó 120s; repetición completa 15s PASS sin modificar producto ni timeout.
+  Instancias locales detenidas. diff --check solo avisa del espacio intencional
+  en down.sql:315. Rust/lifecycle/telemetría omitidos: ningún crate cambia.
+  Evidencia review-r1 dentro de isa-1910-paso7b. CI del nuevo HEAD pendiente.
+- CI 41738959614 detectó otro aplicador de schema: run-admin-local.py no simulaba
+  el prerrequisito R6 y recibió el rechazo esperado del guard. Se adapta la misma
+  fixture local a ese runner; sin cambios en marketing ni permisos operativos.
+  Python PASS; Docker local no disponible, validación real de ese runner en CI.
+  R6 debe revisar también los escritores enumerados en DETAIL, incluido
+  apply_clerk_user_event; cerrar solo la RPC de intake no basta para el guard.
+- Revisado #1925 de R6 en bbac6c70c, sin modificarlo. Su private.is_owner(uuid)
+  requiere una costura admin en PR pequeño aparte: testing_contribution_review
+  y native_admin_require_owner deben usar esa autoridad preservando bloqueos,
+  con caracterización/migración/rollback propios. No se mezcla en #1924;
+  coordinar la integración conjunta con el orquestador antes de declarar owner
+  único. #1925 sigue bloqueado por esa dependencia, no se integra aquí.
+- Decisión posterior del orquestador: #1924 permanece draft, sin fusionar hasta
+  que estén en nightly #1926 (cierre de escritores) y el mapping/vaciado R6/7b.
+  Entonces renombrar up/down con timestamp posterior a ambos y rebasar.
+  CI recorre todas las migraciones en base desechable, pero la fixture temporal
+  de shutdown introducida aquí evita demostrar el orden real. No equivale a un
+  reset limpio válido. Retirarla del replay al integrar prerequisitos; el gate
+  final debe aplicar la cadena completa sin revokes auxiliares antes del guard.
+
+## VANTA-132 · #1924 rebasado tras el 7b2 (2026-11-04)
+
+- Estado vigente: #1930 integrado por el orquestador en nightly
+  `fa2ab202c48bfae0c2dfcbd13a83845169c2fac7`. #1924 se rebasa sobre ese SHA,
+  conserva rama/worktree propios y sigue draft a nightly. Migración y rollback
+  renombrados a `20261104024000_isa_1910_admin_report_root`, después del archivo
+  R6 `20261104014000`. No se fusiona ni se despliega desde este worker.
+- Este apartado sustituye el inventario textual y el cierre auxiliar descritos
+  antes: guard determinista en el padre y sus siete hijas, todos vacíos; ningún
+  INSERT/UPDATE/DELETE/TRUNCATE efectivo para service_role, authenticated, anon,
+  PUBLIC o vantare_triage; siete RPC legacy por firma exacta de #1926 sin
+  EXECUTE para esos roles. SHARE en las ocho relaciones y SUPERUSER/BYPASSRLS
+  por FORCE RLS. No se escanean cuerpos ni se revocan permisos operativos.
+- Eliminada `pause_legacy_writers` y su módulo: revocaba Clerk. Ambos runners
+  aplican el orden real, sin ese shutdown. La cadena local pasa después del
+  7b2 real y comprueba que apply_clerk_user_event sigue ejecutable por
+  service_role. La CI Commercial recorre todas las migraciones en LF y CRLF;
+  marketing también hace replay completo. Los oráculos legacy se ejecutan
+  antes del corte o bajo los rollbacks reales, fuera del replay limpio.
+- Orden de despliegue: detener escritores (#1926); archivar/mapear, verificar y
+  vaciar (#1930/7b2); después #1924; retirada solo en el paso final de R6.
+  **El archivo y el borrado de cuentas dependen de que las tablas legacy y sus
+  FK sigan existiendo. #1924 no retira esas tablas.** La retirada final debe ir
+  junto con el archivo y el parche de apply_clerk_user_event, que también lee
+  screenshot_evidence y evidence_batches. Clerk conserva su permiso backend.
+- Caracterización previa del replay sin fixture `9b45a5b3a`: RED 55000 con el
+  inventario textual sobre funciones legítimas. Matriz de rechazo anterior al
+  cambio `2304019fc`. GREEN PostgreSQL 16.15 desechable LF y CRLF: cadena real,
+  cuatro suites acotadas/67 pgTAP, 204 rechazos atómicos (35 RPC, 160 privilegios,
+  siete hijas no vacías, parent no vacío y ejecutor sin bypass), cinco digests
+  exactos del down, reaplicación e índice usado en EXPLAIN JSON. Siguen pasando
+  los oráculos históricos y los gates de autoridad owner, las carreras admin
+  actor/target y seis carreras reales de journal/lease/reconcile.
+- Deno 2.7.13: 94 PASS, check/lint/fmt PASS; Edge→SQL 6/6 PASS en LF (JWT activo,
+  basura/Hub/non-owner/owner caducado y Hub opaco inactivo). Python PASS.
+  Fmt encontró CRLF locales tras rebase: normalizados, sin cambio semántico.
+  La prueba inicial de FORCE RLS necesitó permisos de lock en las ocho tablas;
+  fixture corregida sin debilitar la aserción. Logs RED y fallo conservados.
+  Instancias locales detenidas; evidencia isa-1910-paso7b/rebase-7b2 y
+  /tmp/admin-1924-final-{lf,crlf}. CI remota nueva pendiente al publicar.
+- Diff completo: única excepción deliberada de whitespace es el espacio del
+  rollback que conserva el digest `1b29a41006e451c36f8688a099a04780`.
+  Rust/check/Clippy/Nextest/lifecycle/telemetría omitidos: no cambia native.
+  Carrera del guard diferida por review; distinguir 409 queda paso 10; paso 11
+  sigue reservado a R6. Sin _shared/clerk-webhook, secretos, Store real,
+  billing/licencias, producción, despliegue, merge propio ni release.
+- Medición frente a fa2ab202c: producción +1013/−1 (incluye up y down),
+  tests +217/−30, documentación +193/−0. VANTA-132 permanece En curso por el
+  resto del diseño; issue #1910 / Project Vantare / area:plataforma, abierta.
+
+## VANTA-132 · Re-review de #1924 (2026-11-04)
+
+- Rebase sobre nightly `b5018321756b503bf8fe222206d519c73444c278`, preservando
+  las dos partes del conflicto del runner: preflight de redacción B03 de R6 y
+  caracterización legacy previa al cutover. Rama propia, PR draft a nightly.
+- P1 de CI 41772291482 confirmado: el control before_private_write_barriers
+  seleccionaba los digests posteriores a una migración que había omitido.
+  Ahora solo los selecciona si 024000 terminó de aplicarse. El control local
+  llega al RED esperado «all eleven later account-owned tables have the full
+  write barrier»; no se omite ni se debilita ese control en el workflow.
+- Guard sin lista fija de roles: aclexplode recorre las ACL de ocho tablas y
+  sus columnas, incluido PUBLIC; solo excluye dueño y superusuarios. Comprueba
+  has_any_column_privilege para los grantees de columna. Un permiso heredado
+  no crea otra vía: la ACL de su rol de origen también debe estar cerrada.
+  No se confunden los derechos implícitos de roles builtin como
+  pg_write_all_data con grants operativos en estas relaciones.
+- Las siete firmas canónicas deben existir; el catálogo pg_proc se recorre
+  por sus siete nombres públicos para cerrar también cualquier sobrecarga.
+  Se inspeccionan sus ACL, sin cuerpos. apply_clerk_user_event sigue fuera
+  de esa lista y conserva EXECUTE para service_role.
+- Tests previos `fb436214c`: INSERT por columna a authenticated pasa donde
+  debía abortar (RED). Añadidos grants de columna INSERT/UPDATE a authenticated
+  y PUBLIC en ocho tablas, cuatro grants de tabla a authenticator en cada
+  relación y sobrecargas de siete RPC para PUBLIC y authenticator.
+- native_admin_report_r5.test.sql y native_admin_final_decision_r4.test.sql
+  marcados históricos, solo para su esquema anterior a 024000; cobertura
+  final en native_admin_report_root y el harness de cutover/rollback. README
+  actualizado. **Toda instrucción anterior del handoff sobre catálogo textual
+  o pause_legacy_writers queda sustituida** por esta sección.
+- Se mantiene el orden #1926 → archivo/mapeo/vaciado 7b2 → #1924 → retirada
+  final R6. Las tablas legacy y FK permanecen: archivo y borrado de cuentas
+  dependen de ellas. Retirada final junto con archivo y parche Clerk, incluido
+  el acceso a screenshot_evidence y evidence_batches. #1924 no las retira.
+- PostgreSQL 16.15 desechable LF/CRLF: replay completo con 7b2 real y Clerk
+  ejecutable, cuatro suites/67 pgTAP, 282 rechazos atómicos (204 previos,
+  32 columnas, 32 grants de tabla a authenticator y 14 sobrecargas), cinco
+  digests exactos del rollback y reaplicación PASS. Índice EXPLAIN JSON,
+  autoridad owner, locks actor/target y seis carreras journal/lease PASS.
+- Python y diff PASS salvo el espacio histórico deliberado de down:315.
+  Sin Rust/lifecycle/telemetría: no cambia native. Los 94 tests Deno de la
+  entrega anterior siguen cubriendo el mismo código Edge sin cambios nuevos.
+  CI completa pendiente del HEAD publicado; no se afirma verde prematuramente.
+- Base final actualizada a nightly `715c55cd89034e5ae1a134eff15ef7975ca08434`
+  tras entrar #1920 mientras corrían los gates. Conflicto solo en handoff,
+  conservadas las dos entregas; supabase/ idéntico al código local validado.
+  Edge→SQL LF 6/6 PASS y ambas instancias detenidas. RED y primer rechazo de
+  pg_write_all_data guardados en evidencia; no se oculta ningún fallo inicial.
+- Medición frente a 715c55cd8: producción +1038/−1; tests +247/−31; docs +256/−0.

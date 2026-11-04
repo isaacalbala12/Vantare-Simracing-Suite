@@ -1170,3 +1170,13 @@ sobre ese HEAD sin conflicto. PostgreSQL local LF y CRLF: prueba aislada
 PASS. Sin despliegue ni llamada a producción.
 [PR draft #1953](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1953)
 contra nightly; pendiente de la CI PG17 y revisión antes de integrar.
+
+Fase A del paso 12, lint: ADR 0106 quedó integrada en nightly. El corte es
+el final del 2026-11-04 UTC, fecha de su merge; así las migraciones de R3 y
+R6 que ya estaban en revisión ese día no se reinterpretan. Desde el
+2026-11-05, la CI exige `.down.sql`, función completa con ACL explícita de
+los cuatro roles, ACL de tablas/vistas/secuencias modificadas, y prohíbe
+`pg_get_functiondef` para parches y `auth.uid()` tanto en up como en down.
+El lint solo lee SQL y no accede a bases de datos. Unitarios 11/11 PASS;
+ejecución sobre la cadena actual 0 nuevas migraciones y 0 errores. El PR
+del lint va aislado del seguimiento 7b5 #1953; no cambia SQL de producto.

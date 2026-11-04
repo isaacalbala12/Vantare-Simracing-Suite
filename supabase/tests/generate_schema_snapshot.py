@@ -33,7 +33,7 @@ def domain(name, schema='public', kind='', body=''):
 
 
 def partition_dump(dump):
-    lines = [line for line in dump.replace('\r\n', '\n').splitlines()
+    lines = [line.rstrip() for line in dump.replace('\r\n', '\n').splitlines()
              if not line.startswith(VOLATILE)]
     text = '\n'.join(lines).strip() + '\n'
     matches = list(HEADER.finditer(text))

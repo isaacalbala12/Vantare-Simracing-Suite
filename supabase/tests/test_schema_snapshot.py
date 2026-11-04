@@ -60,6 +60,17 @@ CREATE TABLE public.billing_orders (id uuid);
             self.assertEqual([], self.module.write_or_check(root, {'testing': 'new\n'}, check=False))
             self.assertEqual('new\n', (root / 'testing.sql').read_text())
 
+    def test_dump_does_not_preserve_trailing_space_inside_function_body(self):
+        dump = '''-- Name: example; Type: FUNCTION; Schema: private; Owner: -
+CREATE FUNCTION private.example() RETURNS void AS $$
+BEGIN\x20
+  RETURN;\x20
+END;
+$$ LANGUAGE plpgsql;
+'''
+        self.assertFalse(any(line.endswith(' ') for line in
+                             self.module.partition_dump(dump)['shared'].splitlines()))
+
 
 if __name__ == '__main__':
     unittest.main()

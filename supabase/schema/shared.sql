@@ -982,7 +982,7 @@ begin
     insert into public.profiles(id) values(account);
     insert into public.account_identities(issuer, subject, account_id) values($1, $2, account);
   end if;
-  if private.lock_account_write(account) then raise sqlstate '28000' using message='account_deleted'; end if; 
+  if private.lock_account_write(account) then raise sqlstate '28000' using message='account_deleted'; end if;
   if exists(select 1 from private.admin_account_blocks where account_id=account and blocked) then
    raise exception 'native_account_blocked' using errcode='42501'; end if;
   return account;

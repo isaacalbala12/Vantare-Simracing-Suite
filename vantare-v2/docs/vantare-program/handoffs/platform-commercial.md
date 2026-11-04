@@ -8956,8 +8956,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - RPC owner/sandbox, cuota transitoria una importación/minuto compartida entre
   sesiones, sin PII. RLS/ACL explícitos y cuerpo completo; rollback retira tabla/RPC.
   La paginación e importación previas se conservan, igual que la protección al pagar.
-- SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest46
-  PASS; check/Clippy finales en marcha. Deno último281 tras ajustar el código de
+- SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest final en marcha; check PASS y Clippy final en marcha.
+  Deno281 PASS tras ajustar el código de
   sandbox al contrato503 existente; ver gates finales en PR. Store falso/QA aislada.
 - Solo Isaac: SQL primero, Gestión compatible antes de Edge pura; confirmar que
   usa el binario actualizado (el antiguo ignora el flag). Consultar admin_payment_sync

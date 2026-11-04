@@ -291,12 +291,7 @@ impl State {
                 None
             }
             Action::GetAccount { account_id } => {
-                let user: User = field(response, "account")?;
-                if &user.account_id != account_id {
-                    return Err(Error::Protocol);
-                }
-                self.replace_user_row(&user);
-                self.user = Some(user);
+                self.accept_account(account_id, response)?;
                 None
             }
             Action::GetRollout => {
@@ -371,6 +366,15 @@ impl State {
         self.busy = false;
         self.message = "Datos confirmados por el servidor".into();
         Ok(reload)
+    }
+    fn accept_account(&mut self, account_id: &str, response: &serde_json::Value) -> Result<()> {
+        let user: User = field(response, "account")?;
+        if user.account_id != account_id {
+            return Err(Error::Protocol);
+        }
+        self.replace_user_row(&user);
+        self.user = Some(user);
+        Ok(())
     }
     fn accept_creator(&mut self, creator_id: &str, response: &serde_json::Value) -> Result<()> {
         let creator: Creator = field(response, "creator")?;
@@ -605,19 +609,30 @@ mod tests {
     use super::*;
     #[test]
     fn creator_reads_wait_for_history_and_quota_failure_preserves_facts() {
-        for detail in [false,true] {
-            let mut state=State::new(true,Screen::Creators);
-            state.demo=false;
-            let previous=state.creators.clone();
-            let creator=previous[0].clone();
-            state.creator=Some(creator.clone());
-            let action=if detail {Action::GetCreator{creator_id:creator.creator_id.clone()}} else {Action::ListCreators};
-            state.accept(&action,&serde_json::json!({"payment_sync_required":true,"creators":[]})).expect("deferred");
-            assert_eq!(state.creators,previous);
-            assert_eq!(state.creator,Some(creator));
+        for detail in [false, true] {
+            let mut state = State::new(true, Screen::Creators);
+            state.demo = false;
+            let previous = state.creators.clone();
+            let creator = previous[0].clone();
+            state.creator = Some(creator.clone());
+            let action = if detail {
+                Action::GetCreator {
+                    creator_id: creator.creator_id.clone(),
+                }
+            } else {
+                Action::ListCreators
+            };
+            state
+                .accept(
+                    &action,
+                    &serde_json::json!({"payment_sync_required":true,"creators":[]}),
+                )
+                .expect("deferred");
+            assert_eq!(state.creators, previous);
+            assert_eq!(state.creator, Some(creator));
             state.failed(Error::RateLimited);
-            assert_eq!(state.creators,previous);
-            assert_eq!(state.pending_payment_read,Some(action));
+            assert_eq!(state.creators, previous);
+            assert_eq!(state.pending_payment_read, Some(action));
             state.clear_private();
             assert!(state.pending_payment_read.is_none());
         }

@@ -499,14 +499,14 @@ $$;
          'has_v2',exists(select 1 from pg_trigger b where b.tgrelid=t.tgrelid
            and b.tgname='b_account_write_barrier_v2')) order by t.tgrelid::regclass::text),'[]'::jsonb)
          from pg_trigger t where not t.tgisinternal and t.tgname='a_account_write_barrier'
-           and encode(t.tgargs,'escape') ~ 'public\\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\\M'),
+           and encode(t.tgargs,'escape') ~ '(public\\.|\\m(from|join|update|into|references|table)\\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\\M'),
        'functions',(select coalesce(jsonb_agg(jsonb_build_object(
          'signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),
          'acl',coalesce(p.proacl::text,'<null>'),'comment',obj_description(p.oid,'pg_proc'))
          order by p.oid::regprocedure::text),'[]'::jsonb)
          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
          where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
-           and (pg_get_functiondef(p.oid) ~ '(public\\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\\.testing_center_legacy_archive)\\M'
+           and (pg_get_functiondef(p.oid) ~ '((public\\.|\\m(from|join|update|into|references|table)\\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\\.testing_center_legacy_archive)\\M'
              or p.proname='testing_center_queue_codex_dry_run')))""")
      (OUT/'retirement-live-references.before.json').write_text(references,encoding='utf-8')
    if m.stem==ERASURE_STEM:

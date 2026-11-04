@@ -1112,6 +1112,10 @@ snapshot antes/después, 18 pruebas finales y cinco escrituras reales.
 El runner inyecta además una función local con referencia opaca a la tabla
 retirada: el preflight de catálogo aborta atómicamente y el runner comprueba
 que la tabla siga existiendo antes de repetir el cierre limpio.
+La comprobación cubre nombres cualificados y referencias SQL sin esquema
+(`FROM`, `JOIN`, `UPDATE`, `INTO`, `REFERENCES`, `TABLE`). No interpreta como
+acceso SQL la comparación histórica de `tg_table_name` en la función compartida
+`private.guard_account_write`; esa rama ya no se ejecuta tras el DROP.
 Las suites de informes legacy se marcan como históricas. La allowlist del Hub
 conserva por ahora los dos RPC de capturas porque `report/screenshots.rs` aún
 los invoca y `report/tests.rs` los caracteriza; las capturas siguen apagadas y

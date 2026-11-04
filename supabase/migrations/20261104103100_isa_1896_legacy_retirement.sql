@@ -199,7 +199,7 @@ begin
         'testing_center_screenshot_evidence','testing_center_evidence_batches',
         'testing_center_evidence_outbox','testing_center_technical_issues')
       and encode(t.tgargs,'escape') ~
-        'public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\M'
+        '(public\.|\m(from|join|update|into|references|table)\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)\M'
     order by t.tgrelid::regclass::text
   loop
     execute format('drop trigger a_account_write_barrier on %s',r.relation);
@@ -355,15 +355,23 @@ drop table public.testing_center_reports restrict;
 drop table private.testing_center_legacy_archive restrict;
 -- SQL in function bodies and trigger arguments is opaque to pg_depend.
 do $no_dangling_legacy$
+declare v_references text;
 begin
-  if exists(select 1 from pg_trigger t where not t.tgisinternal
-      and encode(t.tgargs,'escape') ~
-        '(public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M')
-    or exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  select string_agg(reference,', ' order by reference) into v_references from (
+    select 'trigger:'||t.tgrelid::regclass::text||'.'||t.tgname as reference
+      from pg_trigger t where not t.tgisinternal
+        and encode(t.tgargs,'escape') ~
+          '((public\.|\m(from|join|update|into|references|table)\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M'
+    union all
+    select 'function:'||p.oid::regprocedure::text
+      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname not in ('pg_catalog','information_schema') and p.prokind='f'
         and pg_get_functiondef(p.oid) ~
-          '(public\.testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M') then
-    raise exception 'legacy_retirement_dangling_catalog_reference' using errcode='55000';
+          '((public\.|\m(from|join|update|into|references|table)\s+)testing_center_(reports|evidence|triage_results|issue_occurrences|posthog_consent_events|posthog_evidence|report_events|report_payloads|report_submission_keys|screenshot_evidence|evidence_batches|evidence_outbox)|private\.testing_center_legacy_archive)\M'
+  ) live;
+  if v_references is not null then
+    raise exception 'legacy_retirement_dangling_catalog_reference'
+      using errcode='55000',detail=v_references;
   end if;
 end $no_dangling_legacy$;
 commit;

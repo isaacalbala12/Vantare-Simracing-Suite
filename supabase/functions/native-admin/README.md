@@ -622,3 +622,24 @@ El gate observa en pg_stat_activity dos sesiones reales: revocación del owner
 objetivo confirmada permite set_blocked tras esperar; si revierte, sigue
 protegido. Cada uno de los cuatro hunks de policy tiene una prueba de deriva
 atómica independiente, además del rollback exacto y la reaplicación.
+
+## Errores de admin · paso7
+
+errors.ts es el único límite que convierte errores SQL en NativeError. Acepta
+los nombres estables heredados mediante una tabla cerrada y admin:<código>
+para los códigos públicos registrados. SQLSTATE40001 significa conflicto409,
+actualizar datos y revisar antes de repetir. creator_coupon_mismatch,
+admin_report_owner_changed y account_deleted también dejan de parecer una caída
+de red y devuelven account_conflict409. Confirmación incorrecta conserva422;
+forbidden403, not_found404 e invalid_request400 mantienen sus contratos.
+
+Una operación con cambio parcial conserva503 account_change_incomplete aunque
+el error SQL sea reintentable: no se repite ciegamente tras efectos externos.
+Los NativeError tipados conservan su resultado. Desconocidos dan503 y registran
+solo el nombre fijo native_admin_unknown_error, sin mensajes, SQL detail, correo
+ni URL. Las claves heredadas del prototipo no se aceptan como códigos.
+
+Rust ya traduce account_conflict/HTTP409 a AccountConflict (refrescar) y5xx a
+Offline; no requiere cambio ni nuevo protocolo. No se reescribe SQL histórico,
+se añaden capas ni se toca billing: la compatibilidad vive en esta frontera.
+Sin migración; backout por reversión de Edge al corte anterior, solo Isaac.

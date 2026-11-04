@@ -183,7 +183,16 @@ Deno.test("R10 P4 regression: durable intent and result precede unban state tran
   // SQL rollback on audit failure is verified by native_admin.test.sql.
 });
 
-Deno.test("SQLSTATE40001 without known message is a refreshable conflict",async()=>{
- const response=await handleNativeAdmin(rollout(),deps({execute:()=>Promise.reject({code:"40001",message:"synthetic private detail"})}));
- assert(response.status===409 && (await response.json()).error==="account_conflict");
+Deno.test("SQLSTATE40001 without known message is a refreshable conflict", async () => {
+  const response = await handleNativeAdmin(
+    rollout(),
+    deps({
+      execute: () =>
+        Promise.reject({ code: "40001", message: "synthetic private detail" }),
+    }),
+  );
+  assert(
+    response.status === 409 &&
+      (await response.json()).error === "account_conflict",
+  );
 });

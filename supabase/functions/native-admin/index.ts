@@ -1,3 +1,4 @@
+import { adminFailure } from "./errors.ts";
 import {
   type ChangeDeps,
   claimChange,
@@ -931,44 +932,7 @@ export async function handleNativeAdmin(
     }
     return respond({ ...result, ok: true });
   } catch (error) {
-    let failure = error instanceof NativeError
-      ? error
-      : new NativeError(503, "bridge_unavailable");
-    if (error && typeof error === "object" && "message" in error) {
-      if (error.message === "native_admin_forbidden") {
-        failure = new NativeError(403, "forbidden");
-      }
-      if (error.message === "native_admin_not_found") {
-        failure = new NativeError(404, "not_found");
-      }
-      if (
-        ["native_admin_invalid", "testing_review_invalid"].includes(
-          String(error.message),
-        )
-      ) {
-        failure = new NativeError(400, "invalid_request");
-      }
-      if (
-        [
-          "native_admin_owner_conflict",
-          "mail_revision_conflict",
-          "mail_contact_has_account",
-          "testing_review_conflict",
-          "testing_acceptance_limit",
-        ].includes(String(error.message))
-      ) {
-        failure = new NativeError(409, "account_conflict");
-      }
-    }
-    if (
-      error && typeof error === "object" && "message" in error &&
-      error.message === "native_admin_confirmation_mismatch"
-    ) {
-      failure = new NativeError(422, "confirmation_mismatch");
-    }
-    if (partialChange) {
-      failure = new NativeError(503, "account_change_incomplete");
-    }
+    const failure = adminFailure(error, partialChange);
     return respond({ ok: false, error: failure.code }, failure.status);
   } finally {
     // Fixed phase/action names only: no identities, emails, bodies, tokens or URLs.

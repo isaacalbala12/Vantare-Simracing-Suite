@@ -725,12 +725,24 @@ Los objetivos se seudonimizan; al marcar la identidad borrada se retira el vínc
 al UUID en admin/correo. La operación real de borrado y sus barreras se conservan.
 No hay copia de seguridad de esos datos personales dentro del journal.
 
-`private.admin_audit` es la lectura común de los tres journals existentes;
-la purga la consume sin crear un segundo almacén. Sus filas SQL/correo describen
-transacciones confirmadas; las dudas externas están en los efectos. Un `started`
-sin cierre o un `unknown` sigue pendiente hasta reconciliarlo. El TTL de un efecto
-cerrado se cuenta desde su último evento, incluida una reconciliación posterior.
-Actor y hashes siguen siendo datos seudonimizados, no anónimos.
+La vista adicional se pospone: la purga opera sobre los tres journals existentes.
+Un `started` sin cierre o un `unknown` se conserva hasta reconciliarlo; el TTL de
+un efecto cerrado empieza en su último evento. Cada purga deja actor, fecha, TTL
+y conteos en `mail_audit` (`audit_prune`). La capacidad de mantenimiento vive en
+una tabla privada por transacción; un GUC del llamador no puede abrirla.
+
+Al borrar una cuenta se retiran también los actores de admin/correo y los hashes
+de efectos cerrados. Los pendientes conservan el hash y una marca sin UUID hasta
+su cierre; la redacción se difiere hasta después de validar la intención original.
+El recorder nativo recibe la cuenta desde la acción validada. Los recorders Brevo
+asocian la capacidad actual de contacto/job/entrega antes de perder su origen.
+Los reintentos de ACK tras redactar un hash fallan cerrados; no se vuelve a enviar
+HTTP. El índice SMTP excluye `erased`: su contacto y entrega ya se han borrado.
+
+**Pendiente de decisión para datos históricos:** los leases Brevo antiguos no
+pueden reconstruirse. Por ahora el guard `admin_effect_backfill_requires_mapping`
+aborta antes de reescribir si queda cualquier efecto sin asociación verificable.
+No se borran hashes sin esa asociación ni se supone producción vacía.
 
 Único parámetro de retención, **365 días por defecto y provisional**:
 
@@ -749,20 +761,44 @@ intención antes de eliminar su grupo cerrado y se omiten los grupos bloqueados.
 Purga y redacción se serializan por transacción, sin un bloqueo persistente.
 
 Despliegue por Isaac: después de las migraciones admin/Brevo/SMTP anteriores.
-Primero SQL, después las Edge que correspondan. Producción tiene datos: comprobar
-rol `postgres` con BYPASSRLS/superuser y contar filas/pending antes del cambio:
+Primero SQL, después native-admin: la RPC antigua sin cuenta queda revocada y una
+Edge antigua falla cerrada antes de llamar al proveedor. Producción tiene datos: comprobar
+rol `postgres` con BYPASSRLS/superuser y ejecutar este pre-check de solo lectura.
+`filas_fisicas` es el total que recorre/regraba el backfill; las otras columnas
+cuentan candidatos por motivo y pueden solaparse:
 
 ```sql
 select current_user,rolsuper,rolbypassrls from pg_roles where rolname=current_user;
-select count(*) from public.admin_audit_log;
-select count(*) from private.mail_audit;
+with rows as (
+ select 'admin' journal,actor_account_id actor,target,before_value a,after_value b
+ from public.admin_audit_log
+ union all select 'mail',actor,target,detail,null from private.mail_audit
+)
+select journal,count(*) filas_fisicas,
+ count(*) filter(where exists(select 1 from jsonb_object_keys(
+  case when jsonb_typeof(a)='object' then a else '{}'::jsonb end ||
+  case when jsonb_typeof(b)='object' then b else '{}'::jsonb end) k
+  where k not in('enabled','modules','blocked','enabled_for_all','consent','revision','status',
+   'retention_days','admin','mail','effects'))) claves_fuera_lista,
+ count(*) filter(where target ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') objetivos_uuid,
+ count(*) filter(where exists(select 1 from public.account_identities i where i.deleted_at is not null
+  and (i.account_id=actor or target=i.account_id::text or
+   target='sha256:'||encode(sha256(convert_to(i.account_id::text,'UTF8')),'hex')))) cuentas_borradas
+from rows group by journal;
+select effect,outcome,count(*) from private.admin_effects group by effect,outcome;
 select count(*) from private.admin_pending_effects;
 ```
 
+**Irreversible: haz backup lógico de `admin_audit_log` y `mail_audit` antes.**
+Solo Isaac lo obtiene y custodia fuera del repo; el agente no consulta ni exporta
+producción. La redacción de hashes de efectos tampoco se puede deshacer.
+
 El cambio toma todos los locks DDL con NOWAIT: si no puede, aborta antes de editar;
 Isaac lo reintenta en una ventana sin lectores/escritores, no fuerza sesiones.
-El down restaura triggers, esquema y ACL exactos; no reconstruye PII minimizada
-ni evidencia ya purgada. Revertir no recupera datos borrados. La rutina de
+El down restaura triggers, esquema y ACL exactos mientras los datos lo permiten;
+aborta atómicamente con `admin_audit_rollback_requires_backup` si ya hay actores
+redactados o efectos marcados/borrados, porque no se puede restaurar el NOT NULL
+ni el contrato anterior de hashes. No reconstruye PII ni evidencia purgada. La rutina de
 mantenimiento no deja su capacidad de escritura activada en el llamador.
 SMTP exige `deps.actor` antes del RPC de claim y de confirmar sus resultados.
 La lectura desde la app por el owner sigue en el siguiente corte del paso 10.

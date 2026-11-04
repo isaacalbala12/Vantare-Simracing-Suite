@@ -622,3 +622,16 @@ El gate observa en pg_stat_activity dos sesiones reales: revocación del owner
 objetivo confirmada permite set_blocked tras esperar; si revierte, sigue
 protegido. Cada uno de los cuatro hunks de policy tiene una prueba de deriva
 atómica independiente, además del rollback exacto y la reaplicación.
+
+## Errores de admin · paso 7
+
+`errors.ts` traduce una lista cerrada de nombres SQL completos a `NativeError`.
+Cambio aprobado: `creator_coupon_mismatch`, `admin_report_owner_changed` y
+`account_deleted` pasan de 503 a 409 `account_conflict`; Rust indica refrescar.
+SQLSTATE `40001` también devuelve 409. Confirmación 422, permiso 403,
+inexistente 404 e inválido 400 conservan sus contratos.
+
+Un cambio parcial siempre devuelve 503 `account_change_incomplete`; los demás
+`NativeError` se conservan. Desconocidos dan 503 y un diagnóstico fijo sin PII.
+No se aceptan prefijos ni nombres genéricos de errores externos. Sin migración;
+Isaac puede revertir la Edge al corte anterior.

@@ -8595,3 +8595,21 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Gates finales: Deno141, LF/CRLF80SQL(27DELETE+53sync) y14E2E PASS, incluido400/404 repetidos sin pending y stale en POST/PUT. Rollback byte-exacto cuerpo/owner/ACL, reaplicación y guards de evidencia PASS; instancias paradas.
 - Check/lint/fmt/Python/diff y471huellas PASS. Solo gates del alcance tocado; Rust omitido por no tocar native. Docker marketing local ausente; CI nueva pendiente de verificar.
 - Medición final vs2f49a57f1: producción +146/−34; tests +222/−9; docs +66/−2. Siguiente5eSMTP; VANTA-132 En curso.
+
+## VANTA-132 · paso 7, errores tipados · review (2026-11-04)
+
+- PR #1948 a nightly; base cf41b7c30, rama/worktree propios. Una tabla de nombres
+  SQL completos sustituye el catch repartido. Sin prefijos ni alias genéricos.
+- Aprobado: cupón/informe/cuenta borrada pasan de 503 a 409 para refrescar;
+  SQLSTATE 40001 también. Cambios parciales siguen en 503. Sin cambios Rust/SQL.
+- Se retiran testing_owner_required y testing_contribution_missing: el camino
+  admin bloquea el informe y comprueba owner/existencia antes de review_as;
+  sus fallos públicos son native_admin_forbidden/native_admin_not_found.
+- Caracterización previa f75af7424: 5 PASS/4 RED. Review: 16 PASS/1 RED antes de
+  retirar nombres especulativos. Replay local admin/Edge, down/guards y carreras
+  de la entrega anterior PASS. Review final: 198 Deno, check/lint/fmt y 471 huellas PASS.
+- Producción 990 → 989 (-1); tests +104/-3; docs +31/-0. HEAD final en PR/issue.
+- Desconocidos: 503 con diagnóstico fijo, sin PII. Sin shared, secretos, servicios
+  reales, deploy, merge ni release. Rust omitido porque native no cambia.
+- VANTA-132 En curso: revisar 1948, rebasar 1951 encima y corregir su contrato;
+  luego ajustes 1947 y paso 8 autorizado. 6/10 pendientes; 11 en R6/12.

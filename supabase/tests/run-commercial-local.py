@@ -282,8 +282,43 @@ $$;
     archive_check('testing_center_legacy_archive.test.sql')
     run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
     archive_check('testing_center_legacy_archive.rollback.test.sql')
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=repeat('0',64)
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
+    try:
+     run('psql',*conn,'-f',migration_source)
+    except Exception as error:
+     if 'legacy_archive_hash_or_count_mismatch' not in str(error): raise
+    else:
+     raise RuntimeError('corrupt archive did not abort 7b2 atomically')
+    unchanged=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from public.testing_center_reports where
+        reporter_user_id='18960000-0000-4000-8000-0000000007b2')::text||'|'||
+      (select count(*) from public.testing_contributions where
+        account_id='18960000-0000-4000-8000-0000000007b2')::text""").strip()
+    assert unchanged=='7|0', 'failed 7b2 replay changed pilot rows'
+    run('psql',*conn,'-c',"""update private.testing_center_legacy_archive
+      set row_sha256=encode(public.digest(convert_to("row"::text,'UTF8'),'sha256'),'hex')
+      where source_table='public.testing_center_reports'
+        and source_id='report_'||repeat('7',64)""")
     run('psql',*conn,'-f',migration_source)
     archive_check('testing_center_legacy_archive.test.sql')
+    # The rest of the commercial suite assumes an empty report catalogue.
+    # Remove only this disposable characterization fixture after verifying it.
+    run('psql',*conn,'-c',"""delete from public.testing_report_followup f
+      using public.testing_contributions c
+      where f.contribution_id=c.id and c.legacy_source_id is not null;
+      delete from public.testing_contributions where legacy_source_id is not null;
+      delete from private.testing_center_legacy_archive;""")
+    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(archive_stem+'.down.sql'))
+    run('psql',*conn,'-f',migration_source)
+    empty=run('psql',*conn,'-At','-c',"""select
+      (select count(*) from public.testing_center_reports)::text||'|'||
+      (select count(*) from private.testing_center_legacy_archive)::text||'|'||
+      (select count(*) from public.testing_contributions
+        where legacy_source_id is not null)::text""").strip()
+    if empty!='0|0|0': raise RuntimeError('empty 7b2 migration changed rows: '+empty)
   # All four product principals must retain the same safe attributes after
   # the full managed replay, including the later CREATE ROLE statements.
   role_contract=run('psql',*conn,'-c',"""

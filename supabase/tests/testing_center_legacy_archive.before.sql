@@ -1,8 +1,5 @@
 -- Characterization fixture: a populated legacy report with direct and indirect children.
 begin;
-insert into auth.users(id,email) values
- ('18960000-0000-4000-8000-0000000007b2','legacy-7b2@example.invalid')
-on conflict (id) do nothing;
 insert into public.profiles(id) values
  ('18960000-0000-4000-8000-0000000007b2') on conflict (id) do nothing;
 insert into public.testing_center_reports
@@ -28,9 +25,20 @@ values ('legacy-7b2-issue','report_'||repeat('7',64),'open','reported','testing_
 insert into public.testing_center_codex_runs
  (run_id,technical_issue_id,attempt,state,origin)
 values ('legacy-7b2-run','legacy-7b2-issue',1,'queued','orchestrator');
-select case when (select count(*) from public.testing_center_reports
- where reporter_user_id='18960000-0000-4000-8000-0000000007b2')=7
- and (select count(*) from public.testing_center_codex_runs
- where run_id='legacy-7b2-run')=1 then true
- else 1/0=0 end as legacy_fixture_present;
+insert into public.testing_center_audit
+ (audit_id,aggregate_id,from_state,to_state,origin,actor_id,operation_digest)
+values ('legacy-7b2-audit','legacy-7b2-issue','reported','queued',
+ 'orchestrator','legacy-7b2-actor',repeat('7',64));
+insert into public.testing_center_idempotency
+ (idempotency_key,payload_digest,aggregate_id,from_state,to_state,origin)
+values ('legacy-7b2-key',repeat('7',64),'legacy-7b2-issue',
+ 'reported','queued','orchestrator');
+do $$ begin
+  if (select count(*) from public.testing_center_reports
+    where reporter_user_id='18960000-0000-4000-8000-0000000007b2')<>7
+    or (select count(*) from public.testing_center_codex_runs
+      where run_id='legacy-7b2-run')<>1 then
+    raise exception 'legacy_fixture_missing' using errcode='55000';
+  end if;
+end $$;
 commit;

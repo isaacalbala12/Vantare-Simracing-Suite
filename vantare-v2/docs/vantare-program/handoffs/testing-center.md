@@ -1,3 +1,9 @@
+## 2026-11-04 - #1896 / VANTA-131 7b2: archivar, mapear y vaciar legacy
+
+- Rama vantareapp/isa-1896-paso7b2-archive desde origin/nightly@40a725910. La migracion 20261104180000 archiva las filas completas de reports y todas las hijas por FK, incluidas las hijas logicas de issues, en private.testing_center_legacy_archive con PK (source_table,source_id), JSONB y SHA-256. Solo el owner de SQL puede leerla; no hay grants API. LOCK sobre padre e hijas en una transaccion.
+- Los report_<hash> admisibles se mapean una vez a testing_contributions con legacy_source_id, sin doble escritura. Titulo, cuerpo y metadatos caben en v2; el archivo conserva los originales y todas las filas no admisibles. Se verifican recuentos y hashes antes de vaciar hijas y padre. El rollback restaura padre y despues hijas y verifica los hashes; conserva el archivo hasta la retirada final de tablas. Consulta previa de solo lectura para Isaac en docs/runbooks/testing-center-legacy-archive.md.
+- Dependencia de despliegue: #1924 admin conserva el timestamp 20261103224121, anterior a #1926 y 7b2. VANTA-132 debe renombrarlo a un timestamp posterior a 20261104180000 antes de integrar/desplegar #1924; no se edita SQL admin en este PR. Orden: 7b2, #1924, retirada final. Capturas siguen desactivadas. Sin despliegue ni merge.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 6b: endurecimiento JPEG previo a la conexion
 
 - Draft PR #1923 contra nightly, rama vantareapp/isa-1896-paso6b-jpeg-hardening, base a75c9b7aa (#1918 integrado). El validador exige H/V 1..4, referencias DQT y DHT definidas, DHT de hasta 256 simbolos y rechaza RST sin DRI. Dos SOS y dimensiones cero quedan cubiertos por tests. Capturas siguen desactivadas.

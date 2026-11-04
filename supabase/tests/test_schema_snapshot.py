@@ -118,6 +118,54 @@ GRANT SELECT ON TABLE public.testing_contributions TO authenticated;
         self.assertIn('GRANT SELECT', groups['testing'])
         self.assertNotIn('testing_contributions', groups.get('shared', ''))
 
+    def test_real_pg16_pg17_guard_catalog_permutations_have_one_canonical_snapshot(self):
+        fixtures=MODULE.parent/'fixtures/schema'
+        left=self.module.partition_dump((fixtures/'pg16-guards.sql').read_text())
+        right=self.module.partition_dump((fixtures/'pg17-guards.sql').read_text())
+        self.assertEqual(left,right)
+        self.assertEqual(self.module.partition_dump(''.join(left.values())),left)
+
+    def test_guard_sort_keeps_nested_union_and_quoted_union_intact(self):
+        prefix="select array_agg(distinct account order by account) filter(where account is not null) from ("
+        a="select account from (select 1 union select 2) nested where label='union text'"
+        b="select account from profiles"
+        def trigger(branches, function='private.guard_account_write'):
+            query=prefix+' union '.join(branches)+') owners(account)'
+            return ("-- Name: profiles guard; Type: TRIGGER; Schema: public; Owner: -\n"
+                    "CREATE TRIGGER guard BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION "
+                    +function+"('"+query.replace("'","''")+"');\n")
+        self.assertEqual(self.module.partition_dump(trigger([a,b])),self.module.partition_dump(trigger([b,a])))
+        normalized=self.module.partition_dump(trigger([b,a]))['identity']
+        self.assertIn('select 1 union select 2',normalized)
+        self.assertIn("''union text''",normalized)
+        self.assertNotEqual(self.module.partition_dump(trigger([a,b],'private.other_guard')),
+                            self.module.partition_dump(trigger([b,a],'private.other_guard')))
+
+    def test_guard_union_all_and_plain_function_body_are_not_rewritten(self):
+        text="""-- Name: profiles guard; Type: TRIGGER; Schema: public; Owner: -
+CREATE TRIGGER guard BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION private.guard_account_write('select array_agg(distinct account order by account) filter(where account is not null) from (select 2 union all select 1) owners(account)');
+-- Name: raw(); Type: FUNCTION; Schema: public; Owner: -
+CREATE FUNCTION public.raw() RETURNS text LANGUAGE sql AS $$select 'select 2 union select 1'$$;
+"""
+        result=self.module.partition_dump(text)
+        self.assertIn('select 2 union all select 1',result['identity'])
+        self.assertIn('select 2 union select 1',result['shared'])
+
+    def test_snapshot_requires_exact_pinned_server_and_client_version(self):
+        dump='-- Dumped from database version 17.6\n-- Dumped by pg_dump version 17.6 (fixture)\n'
+        digest='fixture-registry@'+self.module.SNAPSHOT_DIGEST
+        self.module.verify_snapshot_source(dump,[digest])
+        for bad in [dump.replace('by pg_dump version 17.6','by pg_dump version 16.15'),
+                    dump.replace('database version 17.6','database version 17.7')]:
+            with self.assertRaises(ValueError): self.module.verify_snapshot_source(bad,[digest])
+        with self.assertRaises(ValueError): self.module.verify_snapshot_source(dump,['fixture@sha256:wrong'])
+
+    def test_workflow_uses_the_same_pinned_image(self):
+        workflow=MODULE.parents[2]/'.github/workflows/supabase-commercial-gates.yml'
+        text=workflow.read_text()
+        self.assertIn('image='+self.module.SNAPSHOT_IMAGE,text)
+        self.assertIn('digest='+self.module.SNAPSHOT_DIGEST,text)
+
 
 if __name__ == '__main__':
     unittest.main()

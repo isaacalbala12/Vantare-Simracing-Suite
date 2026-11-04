@@ -8810,3 +8810,7 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Este corte de privacidad NO reduce producción; requiere funciones nuevas,
   backfill, ACL y down completos por ADR0106. No se presenta como reducción.
   Los volcados derivados se miden aparte; la reducción total del10 sigue pendiente.
+- Cifras del corte: SQL ejecutable+208; tests/tooling+312/-5; docs+92/-0.
+  Snapshots derivados+378/-68 (no ejecutables, ADR0106); SQL físico neto+518.
+  El cambio de testing derivado es solo orden UNION del generador; no fuente.
+  write/check tras rebase PASS; no se editan los volcados a mano.

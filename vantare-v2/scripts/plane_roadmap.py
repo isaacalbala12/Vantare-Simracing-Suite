@@ -25,9 +25,7 @@ def validate_public_document(value):
     if not isinstance(value, dict) or set(value) != {'schemaVersion', 'items'} or type(value['schemaVersion']) is not int or value['schemaVersion'] != 2:
         return False
     items = value['items']
-    if not isinstance(items, list) or len(items) > 40:
-        return False
-    if len(json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8')) > 40000:
+    if not isinstance(items, list):
         return False
     ids = set()
     for item in items:

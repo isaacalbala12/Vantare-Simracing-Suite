@@ -34,6 +34,20 @@ fn valid_version(value: &str) -> bool {
         })
 }
 
+fn valid_due_date(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 10
+        && bytes.iter().enumerate().all(|(index, byte)| {
+            if matches!(index, 4 | 7) {
+                *byte == b'-'
+            } else {
+                byte.is_ascii_digit()
+            }
+        })
+        && &value[..4] != "0000"
+        && chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok()
+}
+
 fn validate(publication: &Publication) -> Result<()> {
     if !uuid(&publication.id)
         || publication.published_at.chars().count() > MAX_TIMESTAMP_CHARS
@@ -45,18 +59,14 @@ fn validate(publication: &Publication) -> Result<()> {
     }
     let mut ids = HashSet::new();
     for item in &publication.document.items {
-        if item
-            .area
-            .as_ref()
-            .is_some_and(|v| v.trim().is_empty() || v.chars().count() > 60 || v.contains('\0'))
-            || (publication.document.schema_version == 2 && item.area.is_none())
+        if item.area.as_ref().is_some_and(|v| {
+            v.trim().is_empty() || v.trim().chars().count() > 60 || v.contains('\0')
+        }) || (publication.document.schema_version == 2 && item.area.is_none())
             || item
                 .version
                 .as_ref()
                 .is_some_and(|v| v.len() > 60 || !valid_version(v))
-            || item.due_date.as_ref().is_some_and(|v| {
-                v.len() != 10 || chrono::NaiveDate::parse_from_str(v, "%Y-%m-%d").is_err()
-            })
+            || item.due_date.as_ref().is_some_and(|v| !valid_due_date(v))
         {
             return Err(Error::Protocol);
         }

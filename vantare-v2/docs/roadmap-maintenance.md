@@ -27,6 +27,8 @@ El corpus `fixtures/roadmap/cases.json` fija el contrato v2 en el publicador
 Python, `visual_roadmap_valid` y Services Rust. Los lectores v2 rechazan campos
 desconocidos: agregar uno exige una nueva `schemaVersion` y clientes preparados.
 La RPC v1 sigue disponible para builds instaladas.
+En Python, `validate_public_document` comprueba la forma; `document()` aplica
+los topes de 40 ítems y 40.000 bytes antes de entregar el documento al publicador.
 
 Límite estricto: 40 tareas y 40.000 bytes. Si se excede, **parar y preguntar a
 Isaac**, sin truncar ni ampliar esquema. Lectura incompleta, estado desconocido,
@@ -45,7 +47,7 @@ ni volver a publicarlos. GitHub Issues/Project Vantare conservan seguimiento int
 
 **Activación pendiente:** credenciales, roadmap.env, despliegue, timer y primera
 escritura requieren autorización separada. El contrato del paso 10 añade
-`20261104181201_isa_1896_roadmap_corpus_parity` con rollback: rechaza títulos
+`20261104231800_isa_1896_roadmap_corpus_parity` con rollback: rechaza títulos
 compuestos solo por espacios o tabulaciones como ya hacen Python y Rust. La
 RPC v1 y sus documentos históricos siguen admitidos. Pasos exactos,
 verificación/rollback y cambios de la web externa: [runbook](plane-roadmap-runbook.md).

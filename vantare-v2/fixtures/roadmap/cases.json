@@ -291,7 +291,8 @@
       "name": "items_41",
       "items_count": 41,
       "path": [],
-      "expected": false
+      "expected": false,
+      "expectedPython": true
     },
     {
       "name": "title_tab",
@@ -312,6 +313,47 @@
         "version"
       ],
       "value": "1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": false
+    },
+    {
+      "name": "area_trimmed_60",
+      "path": [
+        "items",
+        0,
+        "area"
+      ],
+      "value": " xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": true
+    },
+    {
+      "name": "title_nbsp",
+      "path": [
+        "items",
+        0,
+        "title",
+        "es"
+      ],
+      "value": " ",
+      "expected": false
+    },
+    {
+      "name": "date_year_zero",
+      "path": [
+        "items",
+        0,
+        "dueDate"
+      ],
+      "value": "0000-01-01",
+      "expected": false
+    },
+    {
+      "name": "date_signed_nonpadded",
+      "path": [
+        "items",
+        0,
+        "dueDate"
+      ],
+      "value": "+2026-1-01",
       "expected": false
     }
   ]

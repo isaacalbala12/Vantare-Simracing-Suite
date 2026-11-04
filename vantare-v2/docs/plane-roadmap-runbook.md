@@ -6,7 +6,7 @@ servidor puede crear el token Plane cuando reciba su autorización. Isaac debe
 autorizar por separado la primera escritura y la activación periódica.
 No hace falta un esquema nuevo ni se ejecuta ninguna migración de #1601.
 El paso 10 de VANTA-131 prepara una migración posterior del validador
-`visual_roadmap_valid` (`20261104181201`, con rollback). Isaac debe aplicarla
+`visual_roadmap_valid` (`20261104231800`, con rollback). Isaac debe aplicarla
 solo dentro de su orden de despliegue SQL autorizado antes de activar el
 publicador; este runbook no autoriza su aplicación.
 Los pasos de activación ClickUp de #1582 quedan sustituidos por estos. El

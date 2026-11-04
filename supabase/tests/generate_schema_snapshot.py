@@ -83,5 +83,3 @@ def write_or_check(directory, groups, check=False):
     for name, content in expected.items():
         (directory / name).write_text(content, encoding='utf-8', newline='\n')
     return []
-
-

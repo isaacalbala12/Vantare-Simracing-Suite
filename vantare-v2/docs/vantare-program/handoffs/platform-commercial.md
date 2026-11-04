@@ -690,8 +690,9 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   distribución. Ninguno de esos dos requisitos está acreditado por la CI.
   Sin promoción a testers/master ni release. Balance documental en
   [PR #1943](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1943);
-  Plane VANTA-127 sigue «En curso» hasta el PR del paso 10.
-  Producción proyectada tras ese paso: **11.315/11.320**
+  Paso 10 en [PR draft #1945](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1945)
+  contra nightly, código `3259b0ade`; CI pendiente y Plane por revisar.
+  Producción tras ese paso: **11.315/11.320**
   (perímetro 10.243 Rust + 53 Cleanup; fuera 1.019, incluidas 56 líneas nuevas
   del Hub). Sin release; siguen pendientes los dos gates manuales de Isaac.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:

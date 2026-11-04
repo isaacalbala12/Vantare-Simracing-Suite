@@ -8195,3 +8195,8 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - VANTA-132 En curso: auditoría SMTP/contactos y pasos6–10 pendientes; paso11
   sigue exclusivamente dentro de R6/12. PR #1942 continúa draft a nightly;
   SHA y métricas finales se registran en la entrega del PR y la issue.
+- Rebase final sobre nightly ccc9b2e5e (incluye #1934). Conflicto en tres
+  inicializadores del runner: conservados canales R6 y snapshot Brevo. Código
+  validado 502f3c444; métricas frente a esa base: producción +155/−3,
+  tests +542/−1, docs +118/−0. Calidad: 471 huellas PASS.
+- PR/issue/Plane registran el HEAD documental final; CI remota nueva pendiente.

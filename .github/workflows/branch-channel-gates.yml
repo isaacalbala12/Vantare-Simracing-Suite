@@ -388,7 +388,7 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: ./setup-duckdb.ps1
 
-      - name: Verify release package excludes QA feature and symbols
+      - name: Verify build-candidate release package excludes QA feature and symbols
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |

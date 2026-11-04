@@ -11,6 +11,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $installerVersion=$Version; $installerOutput=$OutputDirectory; $installerProfile=$BuildProfile
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
+. (Join-Path $PSScriptRoot 'build-config.ps1')
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
 $Version=$installerVersion; $OutputDirectory=$installerOutput; $BuildProfile=$installerProfile
 foreach ($define in $Defines) { if ($define -ceq '/DTEST_INSTALLER') { $TestInstaller=$true } else { throw 'Define de instalador desconocido.' } }
 if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count) { throw 'Versión inválida.' }
@@ -21,7 +23,16 @@ if ($TestInstaller) {
 }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
 $package=Test-BuildPackage $archive $Version 'beta'
+Assert-NativeDistributionArchive $archive
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
+$oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
+$previousConfig=Import-NativeBuildConfig ''
+try {
+foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
+    $data=Join-Path $output ('.build-data/'+$pair[1])
+    [IO.Directory]::CreateDirectory($data)|Out-Null
+    [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
+}
 $native=Split-Path $PSScriptRoot
 $saved=@{}
 $names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
@@ -58,6 +69,7 @@ try {
     $setup=Join-Path $output 'VantareSetup.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-setup.exe')) -Destination $setup
     foreach($exe in @($setup,$uninstaller)){
+        Assert-NativeDistributionBinary $exe
         Assert-NativeStaticCrt $exe $dumpbin
         $metadata=[Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
         if($metadata.ProductName -cne 'Vantare' -or $metadata.ProductVersion -cne $Version){throw 'Metadatos PE del instalador incorrectos.'}
@@ -67,4 +79,8 @@ try {
 } finally {
     Pop-Location
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
+}
+} finally {
+    Restore-NativeBuildConfig $previousConfig
+    $env:LOCALAPPDATA=$oldLocal;$env:APPDATA=$oldRoaming
 }

@@ -16,6 +16,8 @@ El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el ú
 
 El inventario público cerrado está en `public-inventory.json`: diez EXE y 97 recursos aprobados, sin `ui/fixtures/layouts/` ni `telemetry-real/`. Cada artefacto publicable, incluido Setup, exige su `.sha256`. `build-tooling-tests.ps1 -QaRoot <raíz QA>` verifica la entrada UTF-8, el inventario, los sidecars y el manifiesto; con `-Verifier <matrix-verifier.exe>` comprueba además la firma de ida y vuelta con acentos. Tras una actualización confirmada no hay rollback manual: una versión nueva requiere otro paquete firmado.
 
+El gate de distribución de #1917 se aplica a `build-candidate.ps1`: rechaza las features QA del grafo resuelto y rastrea marcadores QA en los EXE antes de copiarlos y en el árbol final. `build-installer.ps1` comprueba también los EXE del ZIP y de Setup/Uninstall. `native/scripts/check-qa-distribution.ps1` prueba el rechazo positivo y un paquete release bajo un target aislado en la CI.
+
 Antes de **publicar** cualquier release con motor 2 sin LegacyRunner, Isaac debe probar el Setup con los bytes distribuidos sobre raíces 0.0.975 y 0.0.988 reales en una VM o cuenta aislada y registrar la evidencia en [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840). La prueba es condición de publicación, no de programación ni de apertura del PR.
 
 ## QA

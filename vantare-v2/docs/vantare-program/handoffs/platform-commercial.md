@@ -600,10 +600,12 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   `installer-cleanup.ps1`. Las formas de acceso y la raíz 975/988 se conservan.
   Los P3 de la cola están implementados: sesión Rust real en la matriz, token
   ausente en servicios que no son Hub y `rejectedVersion` tras caída en rollback.
-  La medición final es **10.250** líneas de producción del perímetro y **963**
-  fuera, **11.213** en total; dentro de 10.300 y 11.250. `qa_session` cuenta como
-  producción. Rust tests: **3.658**; PowerShell tests/tooling: **1.566**, medidos
-  aparte con `installer-lines.py --projection`.
+  La revisión #1929 mide **10.258** líneas de producción del perímetro
+  (**10.205 Rust + 53 Cleanup PowerShell**) y **959** fuera, **11.217** en total;
+  dentro de 10.300 y 11.250. Frente al cierre anterior: +8 dentro y −4 fuera.
+  `qa_session` sigue contando como producción. Rust tests: **3.676**;
+  PowerShell tests/tooling: **1.829**, separados con
+  `installer-lines.py --base origin/nightly --projection`.
 - Revisión #1929: el rollback automático solo cubre un arranque pendiente que
   todavía no se ha confirmado. Tras Confirm no hay rollback manual a la versión
   anterior; cualquier corrección requiere otro paquete firmado. El builder
@@ -612,6 +614,10 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Siguen diferidos a un trabajo posterior la validación del ZIP con todos los
   límites del lector Rust y el test de corte real por checkpoint; esta revisión
   no modifica rollback ni resistencia a cortes.
+- #1917 está integrado en nightly `076e6404772878ed427c9f2ed1a43594dec5f2ed`.
+  #1929 se rebasa sobre ese SHA y porta el gate de exclusión de features y
+  símbolos QA a `build-candidate.ps1`, al ZIP leído por el builder de Setup y
+  al paso Windows de CI; el builder antiguo `candidate.ps1` sigue retirado.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

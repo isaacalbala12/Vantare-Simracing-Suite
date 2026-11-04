@@ -6,11 +6,14 @@ param(
     [Parameter(Mandatory)][ValidateSet('nightly','testers','master','beta')][string]$Channel,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile='Release',
+    [string]$ConfigFile,
     [switch]$AllowDirty
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
+. (Join-Path $PSScriptRoot 'build-config.ps1')
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
 if($env:DUCKDB_LIB_DIR){throw 'Empaquetado exige DuckDB bundled'}
 if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$'){throw 'Versión inválida'}
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
@@ -24,7 +27,15 @@ if($LASTEXITCODE -or ($dirty -and -not $AllowDirty)){throw 'Build exige checkout
 [IO.Directory]::CreateDirectory($destination)|Out-Null
 $oldVersion=$env:VANTARE_VERSION;$oldChannel=$env:VANTARE_BUILD_CHANNEL
 $oldTarget=$env:CARGO_TARGET_DIR;$oldFlags=$env:CARGO_ENCODED_RUSTFLAGS
+$oldLocal=$env:LOCALAPPDATA;$oldRoaming=$env:APPDATA
+$previousConfig=$null
 try{
+    $previousConfig=Import-NativeBuildConfig $ConfigFile
+    foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
+        $data=Join-Path $destination ('.build-data/'+$pair[1])
+        [IO.Directory]::CreateDirectory($data)|Out-Null
+        [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
+    }
     if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $destination 'target-build'}
     $env:VANTARE_VERSION=$Version;$env:VANTARE_BUILD_CHANNEL=$Channel
     $staticFlags='-C'+[char]31+'target-feature=+crt-static'
@@ -38,6 +49,7 @@ try{
         if($LASTEXITCODE){throw 'Falló la compilación offline'}
         $metadata=& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
         if($LASTEXITCODE){throw 'No se pudo leer cargo metadata'}
+        Assert-NativeDistributionFeatures @($metadata.resolve.nodes|ForEach-Object {$_.features})
     }finally{Pop-Location}
     $inventory=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
     $bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)}|Sort-Object -Unique)
@@ -50,6 +62,7 @@ try{
     $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) ('x86_64-pc-windows-msvc/'+$BuildProfile.ToLowerInvariant())
     foreach($bin in $bins){
         $source=Join-Path $target "$bin.exe"
+        Assert-NativeDistributionBinary $source
         Assert-NativeStaticCrt $source $dumpbin
         $embedded=Invoke-BuildProcess $source @('--version') $null
         if($embedded.Trim() -cne "Vantare Native $Version ($Channel)"){throw "Versión del binario incompatible: $bin"}
@@ -76,6 +89,7 @@ try{
     })
     $manifest=[ordered]@{schema=1;product='vantare-native';candidate=$true;channel=$Channel;version=$Version;source_sha=$sourceSha;source_dirty=$dirty;build_profile=$BuildProfile;architecture='windows-x64';data_schema='opaque-v1';engine=2;files=$files}
     Write-BuildJson (Join-Path $payload 'manifest.json') $manifest
+    Assert-NativeDistributionTree $payload
     $package=Join-Path $destination 'vantare-native-amd64-package.zip'
     New-BuildZip $payload $package
     $null=Test-BuildPackage $package $Version $Channel
@@ -96,6 +110,8 @@ try{
     }
     [pscustomobject]@{package=$package;sha256=$hash;portable=$portable;source_sha=$sourceSha;source_dirty=$dirty;build_profile=$BuildProfile}
 }finally{
+    Restore-NativeBuildConfig $previousConfig
+    $env:LOCALAPPDATA=$oldLocal;$env:APPDATA=$oldRoaming
     $env:VANTARE_VERSION=$oldVersion;$env:VANTARE_BUILD_CHANNEL=$oldChannel
     $env:CARGO_TARGET_DIR=$oldTarget;$env:CARGO_ENCODED_RUSTFLAGS=$oldFlags
 }

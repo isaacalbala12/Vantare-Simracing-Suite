@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([Parameter(Mandatory)][string]$TargetDirectory)
 $ErrorActionPreference='Stop'
 $target=[IO.Path]::GetFullPath($TargetDirectory)
@@ -33,13 +33,12 @@ try {
     catch {$rejected=$true}
     if(-not $rejected){throw 'QA feature negative control escaped.'}
     Remove-Item Env:DUCKDB_LIB_DIR -ErrorAction SilentlyContinue
-    . (Join-Path $native 'packaging/candidate.ps1') -NativeLibrary -NativeRoot (Join-Path $target 'unused-install-root')
     # Regression: an ambient public fixture key must never enter the package.
     $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
     $env:VANTARE_QA_AMBIENT='qa-fixture-public'
     # The runtime now links installer/write-engine (#1908): its Windows version
     # resource requires three numeric u16 components, even in this smoke package.
-    Build-NativeCandidate -Destination (Join-Path $target 'release-package') -CandidateVersion '0.0.0' -CandidateChannel nightly -Profile Release -PermitDirty $true
+    $null=& (Join-Path $native 'packaging/build-candidate.ps1') -Version '0.0.0' -Channel nightly -OutputDirectory (Join-Path $target 'release-package') -BuildProfile Release -AllowDirty
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
 } finally {
     $env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore

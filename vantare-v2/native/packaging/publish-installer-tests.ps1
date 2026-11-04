@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $root = Join-Path ([IO.Path]::GetTempPath()) ('vantare-publisher-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root) | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'publish-beta.ps1') -Destination $root
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'no-qa.ps1') -Destination $root
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $root 'beta.ps1'), @'
 param([switch]$Library,[Alias('Root')][string]$StubRoot)
@@ -22,6 +23,7 @@ function Invoke-BetaManifestTool($Verifier, $Json, $Key) { $Json }
 function Read-BetaManifest($Json, $Remote, $Verifier) { $Json | ConvertFrom-Json }
 '@, $utf8)
 [IO.File]::WriteAllText((Join-Path $root 'build-config.ps1'), @'
+function Import-NativeBuildConfig($Path) {@{}}
 function Restore-NativeBuildConfig($Config) {}
 '@, $utf8)
 [IO.File]::WriteAllText((Join-Path $root 'build-installer.ps1'), @'

@@ -97,6 +97,12 @@ use vantare_ipc::product;
 #[cfg(any(windows, unix))]
 fn main() -> std::process::ExitCode {
     use std::process::ExitCode;
+    #[cfg(feature = "qa-e2e")]
+    match vantare_ipc::qa::startup() {
+        Ok(true) => return ExitCode::SUCCESS,
+        Err(_) => return ExitCode::FAILURE,
+        Ok(false) => {}
+    }
     vantare_services::diagnostics::install_panic_hook("vantare-core");
 
     if product::print_version() {
@@ -175,6 +181,10 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
             (replay, speed)
         }
     };
+    #[cfg(feature = "qa-e2e")]
+    {
+        adapter = Box::new(vantare_runtime::qa::Fixture::wrap(adapter));
+    }
     let image = args
         .engineer_image
         .unwrap_or(std::env::current_exe()?.with_file_name("vantare-engineer.exe"));

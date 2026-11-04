@@ -8,6 +8,7 @@ publish.workspace = true
 [features]
 # Inert in distribution; deterministic transport faults in consumer tests.
 test-support = ["vantare-ipc/test-support"]
+qa-e2e = ["network", "vantare-ipc/qa-e2e"]
 default = ["network"]
 network = ["dep:ureq", "dep:url"]
 

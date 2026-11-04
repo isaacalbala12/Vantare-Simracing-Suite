@@ -11,6 +11,7 @@ param(
     [Alias('BuildProfile')][ValidateSet('Debug', 'Release')][string]$NativeBuildProfile = 'Release',
     [Alias('OutputDirectory')][string]$NativeOutput,
     [Alias('AllowDirty')][switch]$NativeAllowDirty,
+    [Alias('ConfigFile')][string]$NativeBuildConfig,
     [Alias('ApplicationArgs')][string[]]$NativeLaunchArgs = @(),
     [Alias('ProfileFiles')][string[]]$NativeProfileFiles = @(),
     [Alias('MonitorBounds')][double[]]$NativeBounds = @(),
@@ -1255,8 +1256,13 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
     } finally { $lock.Dispose() }
 }
 
-function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, [string]$CandidateChannel, [string]$Profile, [bool]$PermitDirty) {
+function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, [string]$CandidateChannel, [string]$Profile, [bool]$PermitDirty, [string]$BuildConfig = '') {
+    . (Join-Path $PSScriptRoot 'no-qa.ps1')
     if (Test-Path Env:DUCKDB_LIB_DIR) { throw [InvalidOperationException]::new('Empaquetado exige DuckDB bundled; retira DUCKDB_LIB_DIR del entorno de desarrollo.') }
+    . (Join-Path $PSScriptRoot 'build-config.ps1')
+    $buildEnvironment = Import-NativeBuildConfig $BuildConfig
+    $localBefore=$env:LOCALAPPDATA; $roamingBefore=$env:APPDATA
+    try {
     $native = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $sourceSha = (& git -C $native rev-parse HEAD).Trim()
     if ($LASTEXITCODE) { throw 'No se puede identificar el SHA fuente.' }
@@ -1266,6 +1272,11 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     $destination = Assert-NativePath $Destination
     if ((Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count) { throw 'La salida debe estar vacía para preservar evidencia anterior.' }
     [IO.Directory]::CreateDirectory($destination) | Out-Null
+    foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))) {
+        $data=Join-Path $destination ('.build-data/'+$pair[1])
+        [IO.Directory]::CreateDirectory($data)|Out-Null
+        [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
+    }
     Push-Location $native
     try {
         # La miniapp owner se construye aparte y nunca entra en el paquete público.
@@ -1294,6 +1305,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
+        Assert-NativeDistributionFeatures @($metadata.resolve.nodes | ForEach-Object { $_.features })
         $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cnotin @('vantare-admin', 'vantare-installer') } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
         Assert-NativeBuildInventory $bins
         $installerBins = @($metadata.packages | Where-Object name -CEQ 'vantare-installer' | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
@@ -1305,6 +1317,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses')) | Out-Null
     foreach ($bin in (Get-NativeBins $CandidateChannel)) {
         $source = Join-Path $metadata.target_directory ('x86_64-pc-windows-msvc/' + $Profile.ToLowerInvariant() + "/$bin.exe")
+        Assert-NativeDistributionBinary $source
         Assert-NativeStaticCrt $source $dumpbin
         $probe=Invoke-NativeProcess -Executable $source -Arguments @('--version')
         $embedded=$probe.Stdout.TrimEnd([char[]]"`r`n")
@@ -1332,6 +1345,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     $files = @((Get-NativeMembers $CandidateChannel) | ForEach-Object { $file = Get-Item -LiteralPath (Join-Path $payload $_); [ordered]@{ path = $_; size = $file.Length; sha256 = (Get-NativeHash $file.FullName) } })
     $manifest = [ordered]@{ schema = 1; product = 'vantare-native'; candidate = $true; channel = $CandidateChannel; version = $CandidateVersion; source_sha = $sourceSha; source_dirty = $dirty; build_profile = $Profile; architecture = 'windows-x64'; data_schema = 'opaque-v1'; engine = 2; files = $files }
     Write-NativeJson (Join-Path $payload 'manifest.json') $manifest
+    Assert-NativeDistributionTree $payload
     $package = Join-Path $destination 'vantare-native-amd64-package.zip'
     New-NativeZip $payload $package
     $hash = Get-NativeHash $package
@@ -1345,6 +1359,10 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         [IO.File]::WriteAllText("$artifact.sha256", "$(Get-NativeHash $artifact)  $([IO.Path]::GetFileName($artifact))`n", [Text.UTF8Encoding]::new($false))
     }
     [pscustomobject]@{ package = $package; sha256 = $hash; portable = $portable; installer = $installer; source_sha = $sourceSha; source_dirty = $dirty; build_profile = $Profile }
+    } finally {
+        Restore-NativeBuildConfig $buildEnvironment
+        $env:LOCALAPPDATA=$localBefore; $env:APPDATA=$roamingBefore
+    }
 }
 
 if ($NativeLibrary) { return }
@@ -1370,7 +1388,7 @@ switch ($NativeCommand) {
         $manifest = Read-NativeManifest $generation 'beta' $false -Installed
         Sync-NativeRegistration $NativeRoot $manifest.version -LaunchTarget $launchTarget
     }
-    'Build' { Build-NativeCandidate $NativeOutput $NativeVersion $NativeChannel $NativeBuildProfile ([bool]$NativeAllowDirty) }
+    'Build' { Build-NativeCandidate $NativeOutput $NativeVersion $NativeChannel $NativeBuildProfile ([bool]$NativeAllowDirty) $NativeBuildConfig }
     'Install' { Install-NativeCandidate $NativeRoot $NativeArchive $NativePackageHash $NativeChannel | ConvertTo-Json -Depth 5 }
     'Update' { Update-NativeCandidate $NativeRoot $NativeArchive $NativePackageHash | ConvertTo-Json -Depth 5 }
     'Rollback' { Restore-NativeCandidate $NativeRoot | ConvertTo-Json -Depth 5 }

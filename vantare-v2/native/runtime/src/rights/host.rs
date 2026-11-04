@@ -65,7 +65,10 @@ impl Host {
         let mut listener =
             Listener::new(&control::pipe_name(photo), Arc::clone(&stop), IO_TIMEOUT)?;
         let first = listener.instance()?;
+        #[cfg(not(feature = "qa-e2e"))]
         let start = Instant::now();
+        #[cfg(feature = "qa-e2e")]
+        let start = vantare_ipc::qa::instant();
         let timer = spawn_timer(
             Arc::clone(&state),
             Arc::clone(&latest),
@@ -319,7 +322,10 @@ fn respond(
     let mut state = state
         .lock()
         .map_err(|_| io::Error::other("derechos no disponibles"))?;
+    #[cfg(not(feature = "qa-e2e"))]
     let tick = start.elapsed();
+    #[cfg(feature = "qa-e2e")]
+    let tick = vantare_ipc::qa::instant().saturating_duration_since(start);
     let force = !matches!(request.command, Command::Read);
     let cached_install = matches!(request.command, Command::Install { .. });
     let result = match request.command {
@@ -433,7 +439,11 @@ fn spawn_timer(
                     );
                 }
                 if let Ok(mut state) = state.lock() {
-                    let _advanced = advance(&mut state, &latest.load(), start.elapsed(), false);
+                    #[cfg(not(feature = "qa-e2e"))]
+                    let tick = start.elapsed();
+                    #[cfg(feature = "qa-e2e")]
+                    let tick = vantare_ipc::qa::instant().saturating_duration_since(start);
+                    let _advanced = advance(&mut state, &latest.load(), tick, false);
                 }
                 if stop.wait(Duration::from_millis(250)) {
                     break;

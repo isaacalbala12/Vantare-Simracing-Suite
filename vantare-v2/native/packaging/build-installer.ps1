@@ -9,6 +9,11 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'build-config.ps1')
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
+$installerEnvironment=Import-NativeBuildConfig ''
+$installerLocal=$env:LOCALAPPDATA; $installerRoaming=$env:APPDATA
+try {
 $installerVersion=$Version; $installerOutput=$OutputDirectory; $installerProfile=$BuildProfile
 . (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $installerOutput
 $Version=$installerVersion; $OutputDirectory=$installerOutput; $BuildProfile=$installerProfile
@@ -23,6 +28,7 @@ $archive=Join-Path $output 'vantare-native-amd64-package.zip'
 $checked=Join-Path $output ('.installer-check-'+[guid]::NewGuid().ToString('N'))
 try {
     $package=Expand-NativePackage $archive (Get-NativeHash $archive) $checked 'beta'
+    Assert-NativeDistributionTree $checked
     if($package.version -cne $Version){throw 'La versión del ZIP no coincide con el Setup.'}
     if((Get-NativeHash (Join-Path $checked 'candidate.ps1')) -cne (Get-NativeHash (Join-Path $PSScriptRoot 'candidate.ps1'))){throw 'El bootstrap del ZIP y el del Setup deben ser idénticos.'}
 } finally {
@@ -31,6 +37,11 @@ try {
     if(Test-Path -LiteralPath $checked){Assert-NativeTree $checked;Remove-Item -LiteralPath $checked -Recurse -Force}
 }
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
+foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))) {
+    $data=Join-Path $output ('.build-data/'+$pair[1])
+    [IO.Directory]::CreateDirectory($data)|Out-Null
+    [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
+}
 $native=Split-Path $PSScriptRoot
 $saved=@{}
 $names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
@@ -58,6 +69,7 @@ try {
     $uninstaller=Join-Path $output 'Uninstall.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-uninstall.exe')) -Destination $uninstaller
     Assert-NativeStaticCrt $uninstaller $dumpbin
+    Assert-NativeDistributionBinary $uninstaller
     $env:VANTARE_INSTALLER_ARCHIVE=$archive
     $env:VANTARE_INSTALLER_UNINSTALLER=$uninstaller
     $env:VANTARE_INSTALLER_SHA256=Get-NativeHash $archive
@@ -67,6 +79,7 @@ try {
     $setup=Join-Path $output 'VantareSetup.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-setup.exe')) -Destination $setup
     foreach($exe in @($setup,$uninstaller)){
+        Assert-NativeDistributionBinary $exe
         Assert-NativeStaticCrt $exe $dumpbin
         $metadata=[Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
         if($metadata.ProductName -cne 'Vantare' -or $metadata.ProductVersion -cne $Version){throw 'Metadatos PE del instalador incorrectos.'}
@@ -76,4 +89,9 @@ try {
 } finally {
     Pop-Location
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
+}
+
+} finally {
+    Restore-NativeBuildConfig $installerEnvironment
+    $env:LOCALAPPDATA=$installerLocal; $env:APPDATA=$installerRoaming
 }

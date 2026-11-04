@@ -1,0 +1,10 @@
+{
+  "extends": "../functions/deno.json",
+  "lock": "../functions/deno.lock",
+  "imports": {
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.0"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "deno.unstable", "dom", "dom.iterable"]
+  }
+}

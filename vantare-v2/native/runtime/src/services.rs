@@ -25,6 +25,17 @@ type SigningIn = Arc<Mutex<Option<Instant>>>;
 const SIGN_IN_WINDOW: Duration = Duration::from_mins(10);
 const PURCHASE_CONFIRMATION_WINDOW: Duration = Duration::from_mins(10);
 
+#[cfg(not(feature = "qa-e2e"))]
+use std::time::Instant as RenewalClock;
+#[cfg(feature = "qa-e2e")]
+struct RenewalClock;
+#[cfg(feature = "qa-e2e")]
+impl RenewalClock {
+    fn now() -> Instant {
+        vantare_ipc::qa::instant()
+    }
+}
+
 /// Huella mínima en carrera, salvo que cerrar deje al usuario sin acceso:
 /// sin licencia válida guardada o con un acceso a medias se sigue sirviendo.
 fn closes_for_game(policy: &control::Policy, signing_in: bool) -> bool {
@@ -32,11 +43,11 @@ fn closes_for_game(policy: &control::Policy, signing_in: bool) -> bool {
 }
 fn signing_in(slot: &SigningIn) -> bool {
     slot.lock()
-        .is_ok_and(|until| until.is_some_and(|until| Instant::now() < until))
+        .is_ok_and(|until| until.is_some_and(|until| RenewalClock::now() < until))
 }
 fn set_signing_in(slot: &SigningIn, active: bool) {
     if let Ok(mut until) = slot.lock() {
-        *until = active.then(|| Instant::now() + SIGN_IN_WINDOW);
+        *until = active.then(|| RenewalClock::now() + SIGN_IN_WINDOW);
     }
 }
 pub fn pipe_name(photo: &str) -> String {
@@ -309,7 +320,7 @@ fn handle(
             control::wall_ms(),
         ) {
             (Ok(policy), Ok(wall)) => {
-                let now = Instant::now();
+                let now = RenewalClock::now();
                 #[cfg(test)]
                 let now = state.renewal_now.unwrap_or(now);
                 // Protect only an explicitly permitted live operation from a
@@ -375,7 +386,7 @@ fn handle_with(
         state.renewal.user_recovery();
     }
     if renewing {
-        state.renewal.attempted(Instant::now());
+        state.renewal.attempted(RenewalClock::now());
     }
     let confirming_login = matches!(command, Command::AccountPoll)
         && matches!(
@@ -385,7 +396,7 @@ fn handle_with(
         || matches!(&command, Command::AccountEmail { action } if !matches!(action, protocol::EmailAction::Cancel {}));
     let reply = dispatch(state, command);
     if purchase && matches!(reply, Reply::Checkout { .. }) {
-        state.purchase_until = Some(Instant::now() + PURCHASE_CONFIRMATION_WINDOW);
+        state.purchase_until = Some(RenewalClock::now() + PURCHASE_CONFIRMATION_WINDOW);
     }
     state.renewal.observe(&reply);
     if matches!(
@@ -413,7 +424,7 @@ fn handle_with(
     if renewing {
         state
             .renewal
-            .completed(renewal_outcome(&reply), Instant::now());
+            .completed(renewal_outcome(&reply), RenewalClock::now());
     }
     if manual_renewal || reset {
         remember_notice(state, &reply);
@@ -499,7 +510,7 @@ fn serve_command(
     let live_renewal = policy.live
         && automatic
         && control::wall_ms().is_ok_and(|wall| {
-            renewal::live_allowed(&policy, wall, state.renewal_origin(Instant::now()))
+            renewal::live_allowed(&policy, wall, state.renewal_origin(RenewalClock::now()))
         });
     if (policy.live && automatic && !live_renewal)
         || (closes_for_game(&policy, access_command(&command) && signing_in(signing)) && !automatic)
@@ -607,7 +618,7 @@ fn run_renewal(
     now: Instant,
     dispatch: impl FnOnce(&mut State, Command) -> Reply,
 ) -> Option<Reply> {
-    run_renewal_with_clock(state, policy, wall, now, dispatch, Instant::now)
+    run_renewal_with_clock(state, policy, wall, now, dispatch, RenewalClock::now)
 }
 fn run_renewal_with_clock(
     state: &mut State,
@@ -683,7 +694,7 @@ fn finish_for_game(state: &Mutex<State>, cancellation: &Cancellation, signing: &
                 let Ok(until) = signing.lock() else {
                     return false;
                 };
-                if until.is_some_and(|until| Instant::now() < until) {
+                if until.is_some_and(|until| RenewalClock::now() < until) {
                     return false;
                 }
                 // Access admission cannot race this cancellation. Other remote
@@ -715,7 +726,7 @@ fn spawn_timer(
         .name("services-game-exit".into())
         .spawn(move || {
             while !stop.wait(Duration::from_millis(250)) {
-                let now = Instant::now();
+                let now = RenewalClock::now();
                 let check = state.try_lock().is_ok_and(|state| {
                     (state.client.is_some() || state.renewal.signed_in())
                         && state.core_retry_at.is_none_or(|until| now >= until)

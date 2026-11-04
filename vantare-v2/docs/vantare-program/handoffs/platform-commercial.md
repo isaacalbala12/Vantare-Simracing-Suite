@@ -7448,3 +7448,80 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   comprobaciones PASS, seis carreras reales PASS, E2E 6/6 PASS. Check/lint/fmt,
   Python y diff PASS. Rollback/reaplicación incluidos; instancia local detenida.
   Evidencia review-r2 dentro de isa-1910-paso5b. CI del HEAD nuevo pendiente.
+
+## VANTA-126 / #1916 — revisión de seguridad R1 (2026-11-03)
+
+- PR draft [#1917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1917),
+  issue #1916 / Project Vantare / area:licencias, contra nightly 5f440c094.
+  #1915 cerrado por el orquestador y sustituido. Plane continúa Por testear.
+- La revisión invalida la cobertura anterior de distribución y las afirmaciones
+  completas de casos 5/7/9. El informe anterior se conserva separado; el vigente
+  está en D:/VantareServer/evidence/licencias-e2e/INFORME.md.
+- Candidate, Setup/Uninstall, publisher NSIS y MSIX limpian todas las variables
+  VANTARE_ heredadas antes de cargar configuración explícita. Se restauran al
+  salir. Sólo el hijo del script de build QA recibe la clave pública de fixture.
+- Scanner de todos los EXE del paquete: feature/identificadores QA, qa-rfc8032,
+  qa-fixture-public y clave RFC8032 en texto/bytes, también entre buffers.
+  Siete controles negativos y limpio PASS. Regresión de empaquetado release real
+  con entorno contaminado incluida en el gate de distribución y CI; su resultado
+  nuevo se debe comprobar, no se atribuye el PASS previo de ffda1768d a esta revisión.
+- Backend con realpath antes del límite, entorno limpio, lista de variables Deno,
+  volumen postgres 0700 y token aleatorio /qa/*. Sin chmod 777/allow-env abierto.
+- Retirado el interruptor QA del Feed. Caso 7 queda NO VERIFICABLE para
+  exclusividad de confirmación en UI; sólo acredita checkout sin concesión
+  inmediata y llegada posterior por Feed fresco. No se ejecuta renderer Hub.
+- Caso 5 exige binding ausente al recibir éxito, cierre abrupto y Feed válido
+  Gratis/NoCredential al restaurar; B no hereda Founders. Sin prueba de corte
+  eléctrico/fsync. Caso 9 separa pared +72h de monotónico 23h59m→24h01s.
+- Negativos: firma manipulada, binding ajeno y retroceso sólo de pared;
+  este último publica RecoveryRequired (ClockBehind corresponde a lápida futura).
+- Checks locales R1: config 26, CRT 27, publisher 13, scanner 7, formato y
+  Clippy QA de runtime/services/IPC, build de tres EXE y Deno fmt/lint/check PASS.
+  La preflight comercial local vuelve a ejecutar 197 tests. Completo/lifecycle
+  se delega a CI; no se repite el gate completo local por coordinación de cola.
+- E2E ampliado: 12 PASA / 1 NO VERIFICABLE / 0 FALLA (9 casos principales,
+  caso 7 parcial y tres negativos). Ejecución e2e-1916-63342a34f31b475e80fe677d02746da2,
+  tres EXE del árbol Rust d1f613317. Informe con hashes y observaciones sanitizadas.
+  Los 16 elementos reales conservan sus metadatos; no se leyó su contenido.
+  Worktree, targets y datos bajo raíz QA autorizada.
+- Sin cambios al verificador Ed25519/binding/TLS de producto, sin dependencias,
+  cuentas o instalación reales. Sin merge, promoción, release ni despliegue.
+
+### Rebase solicitado por el orquestador (2026-11-03)
+
+- #1917 rebasado desde f693c6b8e sobre nightly a75c9b7aa (#1908/#1918)
+  y después cef0ec16c (#1922), llegado durante el trabajo. En lo ajeno manda nightly.
+  Supervisor conserva installed/restart; la entrada QA opt-in coexiste y respeta
+  el formato. Handoff completo de nightly conservado y sección propia añadida.
+- Regresión local focal: config 26, marcas QA 7 y publisher 13 PASS.
+  Fmt/Clippy QA de runtime/services/IPC PASS; Nextest focal rights/renewal/IPC
+  135/135 PASS y corpus de telemetría runtime 34/34 PASS (1 lento/1 omitido).
+  Todo Rust por cola, jobs2 y target propio; sin gate completo local.
+  Metadatos reales intactos. HEAD publicado y CI vigentes en #1916/PR.
+- P3 (#1919 / draft #1920) sigue aparte: ni oráculo nuevo, nota generada,
+  aclaración de clave fija ni ALLOWLIST se incorporan a #1917.
+- Sin merge, release, cuentas o carpeta reales; Plane permanece Por testear.
+
+### #1917 — corrección del gate release tras #1908 (2026-11-04)
+
+- Run 41734825419 falló en el build del instalador: el smoke pasaba
+  VANTARE_VERSION=0.0.0-qa-exclusion, incompatible con su recurso Windows.
+  Reproducción real por compilar.ps1, installer sin UI + write-engine: exit 101
+  con InvalidDigit; con 0.0.0, exit 0. Logs en evidence/licencias-e2e/fix-version-1917.
+- Sólo se cambia la versión del candidato del gate a 0.0.0 (numérica). Sin
+  modificar parser/producto ni quitar controles negativos, entorno contaminado,
+  scanner o empaquetado real. Los siete controles negativos y sintaxis PS pasan.
+  El propio gate vuelve a construir el paquete real en CI; verde aún pendiente.
+- No repetir gate completo local: el cambio es tooling; no Rust de producto.
+  #1920 se rebasa por separado después del push. Plane sigue Por testear.
+
+### #1917 — rebase solicitado sobre 40a725910 (2026-11-04)
+
+- Conservados #1923/#1926 de nightly. Único conflicto en el harness comercial:
+  condición legacy_writers_enabled de nightly intacta, seguida de validación QA.
+  Árbol native idéntico al padre 7c9cd865a; sin cambio Rust ni recompilación nueva.
+- PASS: sintaxis Python, ayuda del harness con stdout UTF-8, predicado legacy de
+  nightly idéntico, config 26, scanner 7 y publisher 13. No gate completo local.
+  Evidencia stack-rebase-40a725910 bajo evidence/licencias-e2e.
+- #1920 se mantiene aparte, apilado sobre este HEAD; su base sigue en la rama de
+  #1917 hasta su merge, después nightly. HEAD/CI publicados en issues/PRs.

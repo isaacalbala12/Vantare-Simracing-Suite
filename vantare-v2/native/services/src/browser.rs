@@ -166,6 +166,10 @@ fn open_default(url: &url::Url) -> Result<()> {
 
 #[cfg(windows)]
 pub(crate) fn open(url: &url::Url) -> Result<()> {
+    #[cfg(feature = "qa-e2e")]
+    if crate::qa::active() {
+        return Err(Error::BrowserUnavailable);
+    }
     with_fallback(|| open_default(url), || registered::open(url))
 }
 

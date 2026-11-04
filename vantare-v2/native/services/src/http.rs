@@ -51,13 +51,14 @@ impl Response {
 
 impl Default for Http {
     fn default() -> Self {
+        let builder = ureq::Agent::config_builder()
+            .timeout_global(Some(Duration::from_secs(8)))
+            .max_redirects(0)
+            .http_status_as_error(false);
+        #[cfg(feature = "qa-e2e")]
+        let builder = builder.proxy(None);
         Self {
-            agent: ureq::Agent::config_builder()
-                .timeout_global(Some(Duration::from_secs(8)))
-                .max_redirects(0)
-                .http_status_as_error(false)
-                .build()
-                .into(),
+            agent: builder.build().into(),
             loopback_for_test: cfg!(test),
         }
     }
@@ -70,13 +71,20 @@ impl Http {
     }
 
     fn validate_url(&self, url: &Url) -> Result<()> {
+        #[cfg(feature = "qa-e2e")]
+        if crate::qa::endpoint(url.as_str()).is_err() {
+            return Err(Error::Unconfigured);
+        }
         if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
             return Err(Error::Unconfigured);
         }
         if url.scheme() == "https" {
             return Ok(());
         }
-        if self.loopback_for_test && url.scheme() == "http" && url.host_str() == Some("127.0.0.1") {
+        if (self.loopback_for_test || cfg!(feature = "qa-e2e"))
+            && url.scheme() == "http"
+            && url.host_str() == Some("127.0.0.1")
+        {
             return Ok(());
         }
         Err(Error::Unconfigured)

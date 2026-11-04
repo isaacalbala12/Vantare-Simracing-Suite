@@ -16,6 +16,12 @@ use vantare_services::{Error, Result, license::CredentialV1, storage::Store};
 mod tests;
 
 pub fn wall_now() -> DateTime<Utc> {
+    #[cfg(feature = "qa-e2e")]
+    return DateTime::from_timestamp_millis(
+        i64::try_from(vantare_ipc::qa::wall_ms().expect("qa-e2e wall")).expect("qa-e2e wall range"),
+    )
+    .expect("valid qa-e2e wall");
+    #[cfg(not(feature = "qa-e2e"))]
     std::time::SystemTime::now().into()
 }
 

@@ -1,13 +1,17 @@
 # Gates con DuckDB oficial, sin desactivar defaults ajenos a storage.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba')][string]$Gate,
+    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba', 'distribution')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
     [string]$TargetDirectory = 'target/gates'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ($Gate -eq 'distribution') {
+    & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
+    return
+}
 if ($Gate -eq 'prueba' -and -not $BuildConfig) { throw 'Prueba exige -BuildConfig con la configuración pública real.' }
 if ($BuildConfig -and $Gate -ne 'prueba') { throw '-BuildConfig solo se aplica al build prueba.' }
 if ($BuildConfig) { $BuildConfig = (Resolve-Path -LiteralPath $BuildConfig).Path }

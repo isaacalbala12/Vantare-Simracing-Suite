@@ -42,10 +42,11 @@ try {
 # Exercise the actual candidate builder's flags and finally paths without Rust
 # compilation. The real Release build is validated independently on its artifacts.
 $saved=@{}
-foreach($name in @('DUCKDB_LIB_DIR','CARGO_ENCODED_RUSTFLAGS','RUSTFLAGS','VANTARE_VERSION','VANTARE_BUILD_CHANNEL')){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
+foreach($name in @('DUCKDB_LIB_DIR','CARGO_ENCODED_RUSTFLAGS','RUSTFLAGS','VANTARE_VERSION','VANTARE_BUILD_CHANNEL','VANTARE_LICENSE_PUBLIC_KEYS','VANTARE_QA_AMBIENT')){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 function cargo {
     $script:seenArgs=@($args)
     $script:seenFlags=$env:CARGO_ENCODED_RUSTFLAGS
+    $script:inheritedQaSeen=[bool]($env:VANTARE_LICENSE_PUBLIC_KEYS -or $env:VANTARE_QA_AMBIENT)
     if($script:throwCargo){throw 'Deliberate command exception'}
     $global:LASTEXITCODE=17
 }
@@ -60,10 +61,13 @@ try {
     foreach($case in $cases){
         $index++
         $env:CARGO_ENCODED_RUSTFLAGS=$case.encoded;$env:RUSTFLAGS=$case.rust
+        $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
+        $env:VANTARE_QA_AMBIENT='qa-fixture-public'
         $env:VANTARE_VERSION='before';$env:VANTARE_BUILD_CHANNEL='before'
         $script:throwCargo=$case.throws
         $oldLocation=(Get-Location).Path
         Reject-Crt {Build-NativeCandidate (Join-Path $evidence "failed-$index") '0.0.979' 'beta' 'Release' $true|Out-Null} "Builder propagates cargo failure $index"
+        Assert-Crt (-not $script:inheritedQaSeen) "Builder strips inherited fixture key and unknown VANTARE variable $index"
         Assert-Crt ($script:seenFlags -ceq ($case.prefix+'-C'+[char]31+'target-feature=+crt-static')) "Distribution appends static CRT and preserves caller flags $index"
         Assert-Crt (($script:seenArgs -join ' ').Contains('--target x86_64-pc-windows-msvc') -and '--offline' -cin $script:seenArgs -and '--locked' -cin $script:seenArgs) "Target separates host/proc macros and retains offline lock $index"
         Assert-Crt ($env:CARGO_ENCODED_RUSTFLAGS -ceq $case.encoded -and $env:RUSTFLAGS -ceq $case.rust -and $env:VANTARE_VERSION -ceq 'before' -and $env:VANTARE_BUILD_CHANNEL -ceq 'before' -and (Get-Location).Path -ceq $oldLocation) "Failure restores flags, version, channel and location $index"
@@ -79,6 +83,7 @@ $dynamic=Join-Path $fixtureBin ($firstBin+'.exe')
 Copy-Item (Join-Path $evidence 'dynamic.exe') $dynamic
 $script:metadataFixture=@{
     target_directory=$fixtureTarget
+    resolve=@{nodes=@(@{features=@()})}
     workspace_members=@('fixture-app','fixture-installer')
     packages=@(
         @{id='fixture-app';name='fixture-app';targets=@(($script:NativeBuildBins+$script:NativePrivateBuildBins)|ForEach-Object{@{name=$_;kind=@('bin')}})},

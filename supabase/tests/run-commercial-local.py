@@ -1,5 +1,5 @@
 """Disposable loopback PostgreSQL only. macOS/Linux; never accepts a DSN."""
-import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse
+import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse, re
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
@@ -15,6 +15,8 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
 parser.add_argument('--output', required=True)
+parser.add_argument('--qa-e2e', action='store_true', help='Hold disposable local backend for the isolated native licensing runner')
+parser.add_argument('--qa-edge-origin')
 parser.add_argument('--migration-newlines', choices=['lf','crlf'], default='lf')
 parser.add_argument('--before-private-write-barriers', action='store_true', help='RED: omit only the #1702 private-table guards')
 parser.add_argument('--baseline', action='store_true')
@@ -51,6 +53,14 @@ args=parser.parse_args()
 legacy_writers_enabled=(not args.baseline and not args.admin_effects_only and
                         not args.upgrade and not any(
                          value for name,value in vars(args).items() if name.startswith('before_')))
+if args.qa_e2e and (not args.postgrest_bin or not args.deno_bin or args.b01):
+ parser.error('--qa-e2e requires --postgrest-bin and --deno-bin, without --b01')
+if args.qa_e2e:
+ if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]{1,5}',args.qa_edge_origin or ''):
+  parser.error('--qa-edge-origin must be explicit IPv4 HTTP loopback')
+ qa_output=pathlib.Path(args.output).resolve()
+ if not qa_output.is_relative_to('/mnt/d/VantareServer/qa/licencias-e2e') or (qa_output/'qa-e2e-owned').read_bytes()!=b'VANTA-126 qa-e2e fixture':
+  parser.error('--qa-e2e requires an owned directory under the dedicated QA root')
 if args.b01 and (not args.postgrest_bin or not args.deno_bin):
  parser.error('--b01 requires --postgrest-bin and --deno-bin')
 if args.b01:
@@ -66,7 +76,8 @@ ENV={k:v for k,v in os.environ.items() if not k.startswith(('PG','PGRST'))}
 if args.deno_bin and not args.baseline:
  edge_suites=['billing-webhook/process.test.ts','billing-reconcile/worker.test.ts',
   'license-credential/','native-license/']
- edge=subprocess.run([args.deno_bin,'test','--frozen','--allow-env','--allow-read',
+ edge_env='--allow-env=BILLING_OWNER_ALERT_SECRET,BILLING_OWNER_ALERT_URL,BILLING_RECONCILE_SECRET,CHECKOUT_CANCEL_URL,CHECKOUT_SUCCESS_URL,CLERK_ISSUER,CLERK_NATIVE_CLIENT_ID,CLERK_SECRET_KEY,OFFLINE_LICENSE_ED25519_PRIVATE_KEY,OFFLINE_LICENSE_KEY_ID,POLAR_ACCESS_TOKEN,POLAR_API_BASE_URL,POLAR_DEBUG_ERRORS,POLAR_ENVIRONMENT,POLAR_PRODUCT_MAP,POLAR_TRIAL_ANTI_ABUSE_CONFIRMED,POLAR_WEBHOOK_SECRET,POLAR_WEBHOOK_SECRET_FORMAT,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,SUPABASE_URL,DENO_DEPLOYMENT_ID,REPORT_PROMOTION_ENABLED' if args.qa_e2e else '--allow-env'
+ edge=subprocess.run([args.deno_bin,'test','--frozen',edge_env,'--allow-read',
   '--config',str(ROOT/'supabase/functions/deno.json'),
   *[str(ROOT/'supabase/functions'/suite) for suite in edge_suites]],
   env=ENV,capture_output=True,text=True,timeout=180)
@@ -110,7 +121,8 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
    raise
  else:
   run('initdb','-D',data,'-U','postgres','--auth-local=trust','--auth-host=trust','--encoding=UTF8','--no-locale')
-  run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} -k {tmp}','-w','start')
+  sockets='-c unix_socket_directories=' if args.qa_e2e else f'-k {tmp}'
+  run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} {sockets}','-w','start')
  conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d',database,'-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-At']
  def admin_conn():
   result=conn.copy()
@@ -345,7 +357,8 @@ $$;
     run('psql',*conn,'-c','grant select on public.profiles to authenticated')
    account=run('psql',*conn,'-c',"select public.native_resolve_account('https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa')").strip()
    if not args.before_b01 and not args.baseline:
-    run('psql',*conn,'-c',"update private.clerk_issuers set native_data_issuer='http://127.0.0.1:54321/native-data/v1' where issuer='https://fixture.clerk.invalid'")
+    native_origin=args.qa_edge_origin if args.qa_e2e else 'http://127.0.0.1:54321'
+    run('psql',*conn,'-c',f"update private.clerk_issuers set native_data_issuer='{native_origin}/native-data/v1' where issuer='https://fixture.clerk.invalid'")
    script=ROOT/'supabase/tests/commercial-bearers.ts'
    config=ROOT/'supabase/functions/deno.json'
    if args.deno_bin.endswith('.exe'):
@@ -357,6 +370,9 @@ $$;
    if args.signer_module: reads+=','+args.signer_module.removeprefix('file:///')
    generator=[args.deno_bin,'run','--cached-only','--no-lock','--allow-read='+reads,'--config',str(config),str(script),account]
    if args.signer_module: generator.append(args.signer_module)
+   if args.qa_e2e:
+    if not args.signer_module: generator.append(str(ROOT/'supabase/functions/native-account-authorize/index.ts'))
+    generator.append('--qa-e2e')
    tokens_result=subprocess.run(generator,env=ENV,capture_output=True,text=True,timeout=30)
    if tokens_result.returncode: raise RuntimeError('Bearer fixture generation failed: '+tokens_result.stderr)
    generated=json.loads(tokens_result.stdout)
@@ -383,6 +399,15 @@ $$;
       except OSError:
        if proc.poll() is not None: raise RuntimeError('PostgREST startup failed')
        time.sleep(.1) # TCP readiness; avoids repeated OpenAPI introspection.
+     if args.qa_e2e:
+      # Synthetic, ephemeral key only; never stdout or an evidence artifact.
+      (OUT/'qa-e2e-ready.json').write_text(json.dumps({'postgrest':f'http://127.0.0.1:{http_port}',
+       'pg_port':port,'account':account,'privateJwk':generated['qaPrivateJwk']}))
+      deadline=time.monotonic()+7200
+      while not (OUT/'qa-e2e-stop').exists():
+       if proc.poll() is not None or time.monotonic()>deadline: raise RuntimeError('QA backend stopped or timed out')
+       time.sleep(.1) # Operational stop-file readiness, not a licensing clock.
+      raise SystemExit(0)
      if args.baseline:
       def old_profile():
        req=urllib.request.Request(f'http://127.0.0.1:{http_port}/profiles?select=id',headers={'Authorization':'Bearer '+tokens['valid']})

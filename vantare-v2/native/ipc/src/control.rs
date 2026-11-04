@@ -1,6 +1,7 @@
 //! Plano de derechos: JSON acotado, distinto de adquisición, sin tokens.
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
+#[cfg(not(feature = "qa-e2e"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const VERSION: u32 = 7;
@@ -275,6 +276,9 @@ pub fn pipe_name(photo: &str) -> String {
     format!("{photo}-rights")
 }
 pub fn wall_ms() -> io::Result<u64> {
+    #[cfg(feature = "qa-e2e")]
+    return crate::qa::wall_ms();
+    #[cfg(not(feature = "qa-e2e"))]
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .ok()

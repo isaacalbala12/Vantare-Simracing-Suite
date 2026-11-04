@@ -34,6 +34,8 @@ pub mod process;
 pub mod racecontrol;
 pub use vantare_ipc::product;
 pub use vantare_ipc::services_protocol as protocol;
+#[cfg(feature = "qa-e2e")]
+pub mod qa;
 #[cfg(feature = "network")]
 pub mod report;
 #[cfg(feature = "network")]

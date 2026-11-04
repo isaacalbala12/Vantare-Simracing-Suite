@@ -966,7 +966,7 @@ $$;
    print('Admin owner targeted gate PASS; unrelated suites/races not selected',flush=True)
    raise SystemExit(0)
   if not args.baseline:
-   if args.admin_reports_only or not args.admin_effects_only:
+   if legacy_writers_enabled and (args.admin_reports_only or not args.admin_effects_only):
     run_admin_report_cutover(run,conn,OUT,BIN,ENV)
    if args.admin_reports_only:
     run_admin_lock_order(BIN,conn,ENV,run,OUT)

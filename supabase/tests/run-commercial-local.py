@@ -1412,6 +1412,8 @@ $$;
   elif args.admin_effects_only:
    suites=[name for name in suites if name.startswith("native_admin_effects")]
   if owner_policy_previous is not None: suites.append('native_admin_owner_policy.test.sql')
+  if (ROOT/'supabase/tests/native_admin_confirmations.test.sql').exists():
+   suites.append('native_admin_confirmations.test.sql')
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
    # whose membership is not granted to managed postgres by the product.

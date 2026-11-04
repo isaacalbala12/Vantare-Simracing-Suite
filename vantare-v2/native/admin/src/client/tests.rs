@@ -576,3 +576,16 @@ fn action_contract() -> &'static serde_json::Value {
         serde_json::from_str(include_str!("../../fixtures/admin-actions.json")).expect("contract")
     })
 }
+#[test]
+fn confirmation_payload_binds_expected_state() {
+    for body in [
+        serde_json::json!({"action":"set_module","account_id":"19100600-0000-4000-8000-000000000002","module":"vantare.module.strategy","enabled":true,"expected_enabled":false}),
+        serde_json::json!({"action":"set_rollout","module":"vantare.module.strategy","enabled_for_all":true,"expected_enabled":false}),
+        serde_json::json!({"action":"mail_approve","campaign_id":"19100600-0000-4000-8000-000000000010","revision":1,"confirm":true,"expected_recipients":1}),
+        serde_json::json!({"action":"mail_cancel","campaign_id":"19100600-0000-4000-8000-000000000010","revision":1}),
+    ] {
+        let action: Action = serde_json::from_value(body.clone()).expect("closed confirmation contract");
+        action.validate().expect("valid expectation");
+        assert_eq!(serde_json::to_value(action).expect("payload"), body);
+    }
+}

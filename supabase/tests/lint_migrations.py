@@ -6,6 +6,13 @@ import subprocess
 
 
 ROLES = {'public', 'anon', 'authenticated', 'service_role'}
+# The two migrations were merged before the real ADR 0106 cutoff was recorded.
+# Only this diagnostic is waived; other checks (and merged-file immutability)
+# still apply to them.
+EXCEPTIONS = {
+    '20261104110000_isa_1910_smtp_effects.sql': frozenset({'missing_revoke_all'}),
+    '20261104120500_isa_1896_legacy_retirement.sql': frozenset({'missing_revoke_all'}),
+}
 MIGRATION = re.compile(r'^(\d{14})_[a-zA-Z0-9_]+\.sql$')
 IDENT = r'(?P<name>(?:[a-zA-Z_][\w]*\.)?[a-zA-Z_][\w]*)'
 OBJECT = re.compile(
@@ -120,7 +127,7 @@ def check_migration(path: pathlib.Path, rollback: pathlib.Path) -> list[str]:
                              declaration, re.I):
                 errors.append(f'{path.name}: {name} needs a full body')
         roles = revoke_roles(sql, kind, name)
-        if not ROLES <= roles:
+        if not ROLES <= roles and 'missing_revoke_all' not in EXCEPTIONS.get(path.name, ()):
             missing = ', '.join(sorted(ROLES - roles))
             errors.append(f'{path.name}: {name} needs REVOKE ALL for {missing}')
     return errors

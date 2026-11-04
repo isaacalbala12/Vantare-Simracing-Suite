@@ -209,9 +209,17 @@ $$;
   retirement_before=None
   owner_disposition_stem='20261104164800_isa_1936_owner_disposition_authority'
   owner_disposition_before=None
+  owner_validation_before=None
   owner_disposition_snapshot="""select encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')
     ||'|'||coalesce(p.proacl::text,'<null>') from pg_proc p
     where p.oid='public.testing_center_record_owner_disposition(text,text,text,text,text,text,text,uuid)'::regprocedure"""
+  owner_validation_snapshot="""select jsonb_build_object(
+    'validate',pg_get_functiondef('public.testing_center_validate_candidate(text,text,text,text,text,text)'::regprocedure),
+    'validate_acl',(select coalesce(proacl::text,'<null>') from pg_proc
+      where oid='public.testing_center_validate_candidate(text,text,text,text,text,text)'::regprocedure),
+    'projection',pg_get_functiondef('public.testing_center_record_validation_projection(jsonb,text,text,text,text,uuid)'::regprocedure),
+    'projection_acl',(select coalesce(proacl::text,'<null>') from pg_proc
+      where oid='public.testing_center_record_validation_projection(jsonb,text,text,text,text,uuid)'::regprocedure))"""
   retirement_schema_before=None
   retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',
     'testing_center_issue_occurrences','testing_center_posthog_consent_events',
@@ -409,8 +417,10 @@ $$;
      'private.testing_contribution_submit_v2_for_account(uuid,uuid,text,text,text,jsonb,jsonb)'::regprocedure)"""
    if m.stem==channel_stem:
     channel_role_before=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
-   if m.stem==owner_disposition_stem and (args.owner_disposition_only or args.legacy_retirement_only):
+   if m.stem==owner_disposition_stem:
     owner_disposition_before=run('psql',*conn,'-At','-c',owner_disposition_snapshot).strip()
+    if args.owner_disposition_only:
+     owner_validation_before=json.loads(run('psql',*conn,'-At','-c',owner_validation_snapshot))
    archive_stem='20261104014000_isa_1896_legacy_archive'
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
@@ -802,15 +812,27 @@ $$;
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_disposition_authority.test.sql')
    if re.search(r'^not ok ',result,re.M):
     raise RuntimeError('owner disposition characterization failed:\n'+result)
+   validation=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_validation_authority.test.sql')
+   if re.search(r'^not ok ',validation,re.M):
+    raise RuntimeError('owner validation characterization failed:\n'+validation)
    if owner_disposition_before is not None:
     owner_disposition_down()
     restored=run('psql',*conn,'-At','-c',owner_disposition_snapshot).strip()
     if restored!=owner_disposition_before:
      raise RuntimeError('owner disposition rollback changed function or ACL')
+    restored_validation=json.loads(run('psql',*conn,'-At','-c',owner_validation_snapshot))
+    expected_validation=dict(owner_validation_before)
+    expected_validation['validate']=expected_validation['validate'].replace(
+     'v_user_id uuid := auth.uid();','v_user_id uuid := private.current_account();')
+    if restored_validation!=expected_validation:
+     raise RuntimeError('owner validation rollback changed body beyond identity or ACL')
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_disposition_stem+'.sql'))
     replay=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_disposition_authority.test.sql')
     if re.search(r'^not ok ',replay,re.M):
      raise RuntimeError('owner disposition reapply failed:\n'+replay)
+    replay=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_validation_authority.test.sql')
+    if re.search(r'^not ok ',replay,re.M):
+     raise RuntimeError('owner validation reapply failed:\n'+replay)
    print('Operational owner disposition boundary PASS',flush=True)
    raise SystemExit(0)
   if args.schema_snapshot:
@@ -1069,6 +1091,8 @@ $$;
   if owner_enabled and not args.admin_effects_only:
    owner_stem='20261103235000_isa_1896_owner_unification'
    admin_owner_current=None
+   if owner_disposition_before is not None:
+    owner_disposition_down()
    # Channel writers depend on private.is_owner; unwind them before step 8.
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(channel_stem+'.down.sql'))
    channel_predecessor=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
@@ -1139,6 +1163,8 @@ $$;
     actual=dict(line.split('|',1) for line in channel_restored.splitlines())
     raise RuntimeError('#1928 role contract lost after step 8 rollback/reapply: '+
                        ', '.join(name for name in expected if expected[name]!=actual.get(name)))
+   if owner_disposition_before is not None:
+    run('psql',*conn,'-f',OUT/'migration-sources'/(owner_disposition_stem+'.sql'))
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))

@@ -3181,6 +3181,7 @@ declare
   v_candidate public.testing_center_candidate_builds%rowtype;
   v_issue public.testing_center_technical_issues%rowtype;
   v_membership public.testing_center_memberships%rowtype;
+  v_has_membership boolean;
   v_existing public.testing_center_validation_snapshots%rowtype;
   v_validation_id text;
   v_replay_key text;
@@ -3261,8 +3262,16 @@ begin
 
   select * into v_membership from public.testing_center_memberships
   where user_id = p_actor_user_id and active for update;
-  if not found
-    or v_membership.actor_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  v_has_membership := found;
+  if private.is_owner(p_actor_user_id) then
+    v_membership.actor_id := coalesce(v_membership.actor_id, p_actor_user_id::text);
+    v_membership.role := 'owner';
+  elsif not v_has_membership
+    or coalesce(v_membership.role, '') not in ('tester', 'primary_tester') then
+    raise exception 'testing_center_validation_membership_invalid'
+      using errcode = '42501';
+  end if;
+  if v_membership.actor_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     or v_membership.role <> p_projection->>'actorRole' then
     raise exception 'testing_center_validation_membership_invalid'
       using errcode = '42501';
@@ -3639,7 +3648,10 @@ begin
   where membership.user_id = v_user_id
     and membership.active;
 
-  if not found then
+  if private.is_owner(v_user_id) then
+    v_actor_id := coalesce(v_actor_id, v_user_id::text);
+    v_role := 'owner';
+  elsif coalesce(v_role, '') not in ('tester', 'primary_tester') then
     raise exception 'testing_center_membership_required' using errcode = '42501';
   end if;
 

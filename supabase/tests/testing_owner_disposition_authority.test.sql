@@ -1,16 +1,18 @@
--- Characterization before VANTA-131/1936: a revoked operational owner still
--- passes the legacy membership gate, while an operational owner without a
--- Testing Center membership cannot record a disposition.
+-- VANTA-131/1936: operational owner authority for dispositions.
 begin;
-select plan(7);
+select plan(9);
 
 insert into public.profiles(id) values
  ('19360000-0000-4000-8000-000000000001'),
  ('19360000-0000-4000-8000-000000000002'),
- ('19360000-0000-4000-8000-000000000003');
+ ('19360000-0000-4000-8000-000000000003'),
+ ('19360000-0000-4000-8000-000000000004'),
+ ('19360000-0000-4000-8000-000000000005');
 insert into public.testing_center_memberships(user_id,actor_id,role) values
  ('19360000-0000-4000-8000-000000000002','19360000-0000-4000-8000-000000000002','owner'),
- ('19360000-0000-4000-8000-000000000003','19360000-0000-4000-8000-000000000003','tester');
+ ('19360000-0000-4000-8000-000000000003','19360000-0000-4000-8000-000000000003','tester'),
+ ('19360000-0000-4000-8000-000000000004','19360000-0000-4000-8000-000000000004','owner'),
+ ('19360000-0000-4000-8000-000000000005','19360000-0000-4000-8000-000000000005','owner');
 select * from public.operational_access_set(
  '19360000-0000-4000-8000-000000000001','owner','grant',
  'test:vanta1936','Owner without membership','test:vanta1936-a',null);
@@ -20,6 +22,12 @@ select * from public.operational_access_set(
 select * from public.operational_access_set(
  '19360000-0000-4000-8000-000000000002','owner','revoke',
  'test:vanta1936','Revoked owner','test:vanta1936-b-revoke',null);
+select * from public.operational_access_set(
+ '19360000-0000-4000-8000-000000000004','owner','grant',
+ 'test:vanta1936','Expired owner','test:vanta1936-d',null);
+update public.operational_access_assignments
+set granted_at=now()-interval '2 days',expires_at=now()-interval '1 day'
+where user_id='19360000-0000-4000-8000-000000000004';
 
 insert into public.testing_center_technical_issues(
  technical_issue_id,state,flow_state,origin,owner_account_id)
@@ -54,6 +62,12 @@ select ok(
   'execute')
  and not has_function_privilege('anon',
   'public.testing_center_record_owner_disposition(text,text,text,text,text,text,text,uuid)',
+  'execute')
+ and not has_function_privilege('authenticated',
+  'public.testing_center_record_owner_disposition(text,text,text,text,text,text,text,uuid)',
+  'execute')
+ and not has_function_privilege('public',
+  'public.testing_center_record_owner_disposition(text,text,text,text,text,text,text,uuid)',
   'execute'), 'only service_role can invoke the owner disposition boundary');
 select ok(private.is_owner('19360000-0000-4000-8000-000000000001')
  and not private.is_owner('19360000-0000-4000-8000-000000000002'),
@@ -83,6 +97,16 @@ select throws_ok($$
   'missing-validation',null,'stop_rollout','Tester denied',null,null,null,
   '19360000-0000-4000-8000-000000000003')
 $$,'42501',null,'tester account cannot act as owner');
+select throws_ok($$
+ select * from public.testing_center_record_owner_disposition(
+  'missing-validation',null,'stop_rollout','Expired owner denied',null,null,null,
+  '19360000-0000-4000-8000-000000000004')
+$$,'42501',null,'expired operational owner cannot record disposition');
+select throws_ok($$
+ select * from public.testing_center_record_owner_disposition(
+  'missing-validation',null,'stop_rollout','Membership only denied',null,null,null,
+  '19360000-0000-4000-8000-000000000005')
+$$,'42501',null,'legacy owner membership alone cannot record disposition');
 select is(pg_temp.capture_owner_disposition(),'stopped:false',
  'operational owner without membership records a real disposition');
 select is((select actor_id from public.testing_center_owner_dispositions

@@ -1,4 +1,6 @@
 -- Historical pre-7b corpus: the runner executes this before final legacy retirement.
+-- Historical TAU-07G contract suite. Current owner authority is covered by
+-- testing_owner_validation_authority.test.sql after the R6 owner cutover.
 begin;
 
 select plan(45);

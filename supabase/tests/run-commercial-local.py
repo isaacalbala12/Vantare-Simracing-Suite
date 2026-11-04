@@ -198,7 +198,7 @@ $$;
   admin_report_root_applied=False
   owner_policy_previous=None
   owner_ack_previous=None
-  retirement_stem='20261104104000_isa_1896_legacy_retirement'
+  retirement_stem='20261104103100_isa_1896_legacy_retirement'
   retirement_before=None
   retirement_schema_before=None
   retired_tables=['testing_center_reports','testing_center_evidence','testing_center_triage_results',

@@ -8686,3 +8686,22 @@ union all select 'linear_deliveries',outcome::text,count(*)
   native-auth y apply_clerk_user_event reservados.
 - Producción 3715 → 3774 (+59; +323/-264): ejemplos y despacho comunes;
   tests +569/-10; docs +37/-0 (antes +74). HEAD y gates finales en PR/issue.
+
+## VANTA-132 · paso 8a, borrado compartido (2026-11-04)
+
+- Base nightlyc86d59e8c (#1947 integrado); rama/worktree isa-1910-paso8-borrado.
+  Reserva autorizada: solo account-erasure.ts y clerk-webhook en la costura.
+- Un limpiador compartido para abortos/objetos y un comprobador de errores RPC.
+  Admin no importa el entrypoint Clerk; su lectura final reutiliza run. Firmado
+  S3 y reconocimiento NoSuchUpload idénticos byte a byte tras normalizar saltos.
+- Caracterización previa: siete casos del limpiador y 248 Deno PASS antes/después.
+  SDK/entrada de Storage typecheck y lint/fmt/diff PASS. RequestInit ambiguo del
+  test antiguo se lee como Request; aserciones del builtin node:assert/strict.
+  Se conserva el error inicial de tipos/lint. Sin dependencias nuevas.
+- Producción 1304 → 1296 (-8). Medición sin detección de renombres: cuenta el
+  archivo retirado y el nuevo; tests/docs por separado en PR. No SQL ni Rust:
+  gates SQL/compilación/telemetría/lifecycle omitidos por no cambiar esos ámbitos.
+  Transporte Storage probado con dobles; no stack Docker Storage disponible local.
+- No native-auth, SQL apply_clerk_user_event (#1949 abierto), billing/licencias,
+  secretos, Store real, servicios/configuración de producción, deploy o merge.
+  VANTA-132 En curso: continúa 8b, luego 10 y 6; 11 exclusivamente R6/12.

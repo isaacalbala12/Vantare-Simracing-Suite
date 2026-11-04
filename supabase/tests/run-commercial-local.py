@@ -192,7 +192,12 @@ $$;
   admin_owner_previous=None
   admin_report_root_applied=False
   owner_policy_previous=None
+<<<<<<< HEAD
   owner_ack_previous=None
+=======
+  channel_role_before=None
+  channel_role_after=None
+>>>>>>> 44146fc (fix: ordenar migración de canales tras admin owner policy)
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
@@ -259,7 +264,7 @@ $$;
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
    if m.stem==ADMIN_OWNER_STEM:
     admin_owner_previous=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))
-   channel_stem='20261104043200_isa_1928_channel_owner_authority'
+   channel_stem='20261104071000_isa_1928_channel_owner_authority'
    channel_role_snapshot_query="""select string_agg(
      p.oid::regprocedure::text||'|'||encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex')||'|'||coalesce(p.proacl::text,'<null>'),
      E'\\n' order by p.oid::regprocedure::text)
@@ -268,8 +273,8 @@ $$;
      'private.testing_report_submit_for_account(uuid,uuid,text,text,text,boolean)'::regprocedure,
      'private.testing_contribution_submit_for_account(uuid,uuid,text,text,text)'::regprocedure,
      'private.testing_contribution_submit_v2_for_account(uuid,uuid,text,text,text,jsonb,jsonb)'::regprocedure)"""
-   channel_role_before=(run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
-                        if m.stem==channel_stem else None)
+   if m.stem==channel_stem:
+    channel_role_before=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
    archive_stem='20261104014000_isa_1896_legacy_archive'
    archive_fixture=(m.name==archive_stem+'.sql' and legacy_writers_enabled
                     and not (args.testing_identity or args.pilot_profile or args.b01))
@@ -642,14 +647,18 @@ $$;
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if owner_enabled and not args.admin_effects_only:
-   if owner_policy_previous is not None:
-    owner_policy_down()
    owner_stem='20261103235000_isa_1896_owner_unification'
    admin_owner_current=None
    # Channel writers depend on private.is_owner; unwind them before step 8.
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(channel_stem+'.down.sql'))
-   if run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()!=channel_role_before:
-    raise RuntimeError('#1928 did not restore its predecessor before step 8 rollback')
+   channel_predecessor=run('psql',*conn,'-At','-c',channel_role_snapshot_query).strip()
+   if channel_predecessor!=channel_role_before:
+    expected=dict(line.split('|',1) for line in channel_role_before.splitlines())
+    actual=dict(line.split('|',1) for line in channel_predecessor.splitlines())
+    raise RuntimeError('#1928 did not restore its predecessor before step 8 rollback: '+
+                       ', '.join(name for name in expected if expected[name]!=actual.get(name)))
+   if owner_policy_previous is not None:
+    owner_policy_down()
    if admin_owner_previous is not None:
     # Respect the deployed dependency order: admin down, R6 down/up, admin up.
     admin_owner_current=json.loads(run('psql',*conn,'-c',ADMIN_OWNER_SNAPSHOT))

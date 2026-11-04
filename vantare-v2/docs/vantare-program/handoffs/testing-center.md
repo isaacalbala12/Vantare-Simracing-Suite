@@ -1104,3 +1104,7 @@ servidor desechable usa PostgreSQL 17 y el cliente `pg_dump` del runner era 16.
 El harness dirigido usa ahora el `pg_dump` de ese mismo contenedor para la
 comparación exacta; el harness histórico y los demás checks pasaron. Se
 requiere CI verde en el nuevo HEAD antes de integrar.
+El segundo intento en PG17 ya supera el problema de versión de `pg_dump`;
+detecta una diferencia en el snapshot posterior al down. El runner ahora
+informa la clave de catálogo o el objeto de esquema divergente sin volcar
+funciones completas, para corregir la causa exacta en la siguiente CI.

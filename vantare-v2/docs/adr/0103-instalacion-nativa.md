@@ -181,9 +181,11 @@ Su entrega depende de resolver el contrato de #1816 antes o junto a ese paso.
 Nunca se borran `generations/*/data/`, datos nativos externos ni datos Wails.
 La nueva generación copia y verifica datos; no sobrescribe los de una existente.
 Desinstalar exige instalación parada, retira binarios e integración propia,
-incluida Run, y conserva la referencia a los datos activos. La retención del
-paso 8 elimina automáticamente **solo binarios de generaciones no referenciadas**;
-no borra sus `data/`. Borrar datos requeriría otra acción explícita del usuario.
+incluida Run, y conserva la referencia a los datos activos. La retención prevista
+para el paso 8 se aplaza: una generación huérfana no conserva una vinculación
+SHA en el estado que atribuya sus binarios. Hasta diseñar esa vinculación se
+conservan sus binarios y todas las `data/`. Borrar datos requeriría otra acción
+explícita del usuario.
 Sin marcador de datos conservados, Setup adopta una copia única o copias
 idénticas; con copias distintas rechaza la operación sin escoger arbitrariamente.
 La sesión fija `VANTARE_NATIVE_DATA_ROOT`: un proceso instalado sin esa ruta
@@ -338,8 +340,8 @@ Uninstall solo retira miembros de los manifiestos ligados por SHA a `active` o
 `previous` en el estado leído bajo bloqueo. Conserva los archivos ajenos de
 `bin/`. Una generación sin referencia SHA queda intacta, incluidos sus binarios:
 el log identifica su ruta y el motivo. No se añade ningún inventario ni marcador.
-Este residuo está autorizado y pendiente del paso 8; allí se decidirá si un
-manifiesto autoconsistente basta para retirar binarios de una generación huérfana.
+El paso 8 concluye que un manifiesto autoconsistente no basta para atribuir
+propiedad sin un SHA ligado al estado; la retención necesita un diseño nuevo.
 Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
 residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
 

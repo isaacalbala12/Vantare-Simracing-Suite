@@ -114,4 +114,29 @@ if($ServicesExecutable){
     $rejected=$false;try{Invoke-BuildProcess $ServicesExecutable @('--verify-update') $signed|Out-Null}catch{$rejected=$true}
     if(-not $rejected){throw 'Clave TEST aceptada por verificación de producción'}
 }
+$packageTree=Join-Path $root 'zip-limits-tree'
+[IO.Directory]::CreateDirectory((Join-Path $packageTree 'bin'))|Out-Null
+$resource=Join-Path $packageTree 'bin/fixture.txt'
+[IO.File]::WriteAllText($resource,'owned fixture',[Text.UTF8Encoding]::new($false))
+Write-BuildJson (Join-Path $packageTree 'manifest.json') @{schema=1;product='vantare-native';version='0.0.989';channel='beta';engine=2;files=@(@{path='bin/fixture.txt';size=(Get-Item $resource).Length;sha256=(Get-NativeHash $resource)})}
+$zipPath=Join-Path $root 'valid-package.zip'
+New-BuildZip $packageTree $zipPath
+$null=Test-BuildPackage $zipPath '0.0.989' 'beta'
+$readZip=[IO.Compression.ZipFile]::OpenRead($zipPath)
+try{
+    $rejected=$false;try{Get-BoundedZipHash ($readZip.GetEntry('bin/fixture.txt')) 1|Out-Null}catch{if($_.Exception.Message -notlike '*Tamaño ZIP extraído incorrecto*'){throw};$rejected=$true}
+    if(-not $rejected){throw 'Salida expandida por encima del tamaño declarado aceptada'}
+}finally{$readZip.Dispose()}
+$linkZip=Join-Path $root 'link-package.zip'
+Copy-Item -LiteralPath $zipPath -Destination $linkZip
+$archive=[IO.Compression.ZipFile]::Open($linkZip,[IO.Compression.ZipArchiveMode]::Update)
+try{$archive.GetEntry('bin/fixture.txt').ExternalAttributes=-1610612736}finally{$archive.Dispose()}
+$rejected=$false;try{Test-BuildPackage $linkZip '0.0.989' 'beta'|Out-Null}catch{if($_.Exception.Message -notlike '*Enlace ZIP rechazado*'){throw};$rejected=$true}
+if(-not $rejected){throw 'Enlace ZIP aceptado'}
+$rejected=$false;try{Assert-BuildArchiveLength (128MB+1)}catch{if($_.Exception.Message -notlike '*ZIP comprimido supera el límite*'){throw};$rejected=$true}
+if(-not $rejected){throw 'ZIP comprimido sobredimensionado aceptado'}
+$rejected=$false;try{Assert-BuildExpandedLength (256MB+1) (256MB+1)}catch{if($_.Exception.Message -notlike '*ZIP supera el límite de extracción*'){throw};$rejected=$true}
+if(-not $rejected){throw 'Miembro ZIP sobredimensionado aceptado'}
+$rejected=$false;try{Assert-BuildExpandedLength 1 (512MB+1)}catch{if($_.Exception.Message -notlike '*ZIP supera el límite de extracción*'){throw};$rejected=$true}
+if(-not $rejected){throw 'Suma ZIP sobredimensionada aceptada'}
 "PASS build-tooling: stdin=$stdinBytes; inventario, sidecars, manifiesto y firma QA"

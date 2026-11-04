@@ -627,6 +627,22 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   líneas de producción en el perímetro y **963** fuera, **11.226** total,
   dentro de 10.300/11.250. Evidencia en
   `native/packaging/matrix/evidence-1840-p7-review.md`.
+- Paso 7 #1929 integrado en nightly `8ca3e63be6ab90f149834039aeb60c7d7bb3a59f`;
+  CI obligatoria 5/5 verde. Cierre: 10.263 líneas de producción del perímetro
+  más 963 fuera = **11.226/11.250**, frente a 14.180 de partida (−20,9 %).
+  Rust tests 3.690 y PowerShell tests/tooling 1.874, medidos aparte. El motor
+  PowerShell y LegacyRunner están retirados; Cleanup mínimo permanece. Plane
+  VANTA-127 sigue En curso para el paso 8. Próximo trabajo: retención K3 si
+  cabe limpiamente, límites del ZIP y test de corte por checkpoint; el gate
+  de VM sobre 975/988 reales continúa siendo condición de publicación.
+- Paso 8 en `vantareapp/isa-1840-paso8-retencion`: K3 queda diferido. El estado
+  no conserva un SHA que atribuya las generaciones huérfanas y la poda segura
+  probada necesitaba +49 líneas de producción con solo 24 de margen; no se
+  cambia la regla que conserva sus binarios y datos. El tooling ahora valida
+  el ZIP con los límites numéricos del lector Rust; el test de proceso real
+  incluye el checkpoint `staged`. PS 5.1/7 y ZIP release real pasan. Test local
+  de checkpoint bloqueado por D: lleno antes de ejecutarse; se comprobará en
+  CI. El total de producción permanece **11.226/11.250**.
 - QA final `D:/VantareServer/qa/isa-1840/p7-matrix-final-20261104-05`:
   **88/88** filas, **45/45** rechazos por motivo, **11/11** comprobaciones de
   lanzador y **38/38** de límites Windows; guard **7/7** y Cleanup **10/10**.

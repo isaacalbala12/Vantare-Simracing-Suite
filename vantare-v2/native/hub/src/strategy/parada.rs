@@ -230,7 +230,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                     cx,
                 )),
         )
-        .when(capture!(true, Some(!this.view_data.read_only)), |card| {
+        .when(capture!(true => !this.view_data.read_only), |card| {
             card.child(stop_controls(this, cx, index))
         })
         .when(this.edit_dirty, |card| {
@@ -252,7 +252,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                     energy,
                     tyres,
                     compound,
-                    capture!(orbit::DISABLED, Some(this.view_data.resource_opacity)),
+                    capture!(orbit::DISABLED => this.view_data.resource_opacity),
                     cx,
                 ))
                 .child(cost_grid(&values, cx)),

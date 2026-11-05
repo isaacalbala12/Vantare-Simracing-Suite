@@ -228,7 +228,7 @@ impl Strategy {
             self.running = false;
             match result {
                 Ok((outcome, edited)) => {
-                    if capture!(true, Some(!self.view_data.read_only)) {
+                    if capture!(true => !self.view_data.read_only) {
                         vantare_ui::analytics::record(
                             cx,
                             &vantare_services::diagnostics::Usage::FeatureUsed {
@@ -600,7 +600,7 @@ cálculo",
                     .child(self.timeline(outcome, cx).mt(px(1.0)));
             }
             details = details.child(self.exact_revisions(cx));
-            if capture!(true, Some(!self.view_data.read_only)) {
+            if capture!(true => !self.view_data.read_only) {
                 details = details.child(plan_condition(outcome, cx));
             }
         }
@@ -1060,10 +1060,7 @@ cálculo",
             .gap(px(1.0))
             .child(
                 orbit::text(
-                    capture!(
-                        "REVISIONES EXACTAS SELECCIONADAS",
-                        Some(self.view_data.revisions_heading)
-                    ),
+                    capture!("REVISIONES EXACTAS SELECCIONADAS" => self.view_data.revisions_heading),
                     12.0,
                     400,
                     orbit::ink(cx),

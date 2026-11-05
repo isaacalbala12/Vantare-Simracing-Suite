@@ -444,10 +444,7 @@ impl Strategy {
             .child(Self::combination_option_card(
                 "strategy-custom-event",
                 "Carrera personalizada",
-                capture!(
-                    "Elige coche, circuito y reglamento",
-                    Some(self.view_data.custom_description)
-                ),
+                capture!("Elige coche, circuito y reglamento" => self.view_data.custom_description),
                 "i-ajustes",
                 selected,
                 cx,
@@ -455,10 +452,7 @@ impl Strategy {
             .child(Self::combination_option_card(
                 "strategy-calendar-event",
                 "Calendario de Vantare",
-                capture!(
-                    "Selección de eventos no disponible",
-                    Some(self.view_data.calendar_description)
-                ),
+                capture!("Selección de eventos no disponible" => self.view_data.calendar_description),
                 "i-carreras",
                 false,
                 cx,
@@ -495,7 +489,7 @@ impl Strategy {
                     .flex_1()
                     .child(orbit::text(circuit, 22.0, 500, orbit::ink(cx), cx).w(px(175.0)))
                     .when_some(
-                        capture!(None::<&str>, Some(self.view_data.layout)),
+                        capture!(None::<&str> => self.view_data.layout),
                         |row, layout| {
                             row.child(
                                 orbit::text(layout, 13.0, 400, orbit::ink_2(cx), cx).w(px(113.0)),

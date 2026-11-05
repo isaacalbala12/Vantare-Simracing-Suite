@@ -139,6 +139,11 @@ export const ACTIONS: Readonly<Record<string, ActionSpec>> = {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(p.email)) &&
     typeof p.code === "string" &&
     /^[A-Z0-9]{3,32}$/.test(p.code), { sandbox: true, handler: "creator" }],
+  list_pending_effects: [
+    { cursor: id },
+    (p) => p.cursor === undefined || isUuid(p.cursor),
+    { mutation: false },
+  ],
   get_rollout: [{}, () => true, { mutation: false }],
   set_rollout: [
     {

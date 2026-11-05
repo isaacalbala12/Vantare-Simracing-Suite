@@ -169,6 +169,18 @@
         "code": "CREATOR"
       }
     },
+    "list_pending_effects": {
+      "mutation": false,
+      "explicit_payments": false,
+      "fields": [
+        "cursor"
+      ],
+      "mail": false,
+      "environment": "both",
+      "example": {
+        "cursor": "19106900-0000-4000-8000-000000000001"
+      }
+    },
     "get_rollout": {
       "mutation": false,
       "explicit_payments": false,

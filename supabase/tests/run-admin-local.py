@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess,time,re,os,sys
 import argparse
+from commercial_admin_pending_owner import STEM as PENDING_OWNER_STEM
 from commercial_admin_mail_list import STEM as MAIL_LIST_STEM
 from commercial_admin_confirmations import STEM as CONFIRM_STEM, SNAPSHOT as CONFIRM_SNAPSHOT, run_confirmations
 args=argparse.ArgumentParser()
@@ -33,7 +34,7 @@ try:
 create or replace function storage.foldername(text) returns text[] language sql immutable as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;"""
  (out/'baseline-sql-bootstrap.log').write_text(sql(bootstrap))
  for f in sorted((root/'supabase/migrations').glob('*.sql')):
-  if f.stem==MAIL_LIST_STEM: continue  # Historical marketing oracle; commercial gate validates 8d.
+  if f.stem in (MAIL_LIST_STEM,PENDING_OWNER_STEM): continue  # Historical marketing oracle; commercial gate validates later adapters.
   if f.stem==CONFIRM_STEM: confirmation_previous=sql(CONFIRM_SNAPSHOT)
   source=f.read_text(encoding='utf-8')
   if opts.migration_newlines=='crlf': source=source.replace('\n','\r\n')

@@ -1,3 +1,4 @@
+mod audit;
 mod creators;
 mod mail;
 use mail::{MailEditor, MailEvent};
@@ -37,6 +38,8 @@ enum Event {
     Filter(Option<Status>),
     Next,
     NextUsers,
+    NextEffects,
+    CopyEffect(usize),
     SelectUser(usize),
     SelectReport(usize),
     SelectCreator(usize),
@@ -242,6 +245,7 @@ impl Admin {
             Screen::Reports => self.reports_action(None),
             Screen::Creators => Action::ListCreators,
             Screen::Mail => Action::MailList,
+            Screen::Audit => Action::ListPendingEffects { cursor: None },
             Screen::Login => return,
         };
         self.read(action);
@@ -264,7 +268,7 @@ impl Admin {
     fn prefetch(&mut self) {
         let action = match self.state.screen {
             Screen::Users | Screen::Reports | Screen::Creators => Action::GetRollout,
-            Screen::Login | Screen::Mail => return,
+            Screen::Login | Screen::Mail | Screen::Audit => return,
             Screen::Rollout => self.reports_action(None),
         };
         if self.cache.get(&action, Instant::now()).is_none() {
@@ -455,7 +459,9 @@ impl Admin {
             | Event::DemoState(_)
             | Event::SelectCreator(_)
             | Event::OpenDialog(_)
-            | Event::Screen(_)) => self.interface_event(&event, cx),
+            | Event::Screen(_)
+            | Event::NextEffects
+            | Event::CopyEffect(_)) => self.interface_event(&event, cx),
             Event::Mail(event) => self.mail_event(event, cx),
             Event::Search => {
                 self.search_due = false;
@@ -556,6 +562,21 @@ impl Admin {
                 self.state.user = None;
                 self.state.creator = None;
                 self.state.report = None;
+            }
+            Event::NextEffects => {
+                if let Some(cursor) = self.state.effects_cursor.clone() {
+                    self.read(Action::ListPendingEffects {
+                        cursor: Some(cursor),
+                    });
+                }
+            }
+            Event::CopyEffect(index) => {
+                if let Some(row) = self.state.effects.get(index) {
+                    cx.write_to_clipboard(gpui::ClipboardItem::new_string(format!(
+                        "effect_id={} request_id={}",
+                        row.effect_id, row.request_id
+                    )));
+                }
             }
             Event::AccountFilter(filter) => self.account_filter = filter,
             Event::DemoState(state) if self.state.demo => {
@@ -1161,6 +1182,7 @@ impl Render for Admin {
                 Screen::Reports => self.reports(cx),
                 Screen::Rollout => self.rollout(cx),
                 Screen::Mail => self.mails(cx),
+                Screen::Audit => self.audit(cx),
                 Screen::Login => self.login(cx),
             };
             let mut content = column()

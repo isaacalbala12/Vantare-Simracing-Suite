@@ -1,5 +1,7 @@
 import { NativeError } from "../_shared/native-auth.ts";
 const failures: Record<string, readonly [number, string]> = {
+  native_admin_change_in_progress: [409, "account_change_in_progress"],
+  native_admin_effects_pending: [409, "account_effects_pending"],
   native_admin_forbidden: [403, "forbidden"],
   native_admin_not_found: [404, "not_found"],
   native_admin_invalid: [400, "invalid_request"],

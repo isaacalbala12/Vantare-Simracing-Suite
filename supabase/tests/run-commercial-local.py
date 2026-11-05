@@ -18,6 +18,7 @@ from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_O
 from commercial_admin_report_root import run_admin_report_cutover
 from commercial_admin_minimal_audit import AUDIT_STEM, AUDIT_SNAPSHOT, run_minimal_audit, seed_audit_upgrade, audit_schema
 from commercial_admin_owner_target import run_target_owner_race
+from commercial_admin_pending_owner import STEM as PENDING_OWNER_STEM, prepare_pending_owner, run_pending_owner
 from commercial_admin_mail_list import STEM as MAIL_LIST_STEM, prepare_mail_list, run_mail_list
 from commercial_admin_confirmations import STEM as CONFIRM_STEM, SNAPSHOT as CONFIRM_SNAPSHOT, run_confirmations
 
@@ -346,7 +347,7 @@ $$;
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
 
-   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM,CONFIRM_STEM,EXPLICIT_SYNC_STEM,MAIL_LIST_STEM) and not legacy_writers_enabled: continue
+   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM,CONFIRM_STEM,EXPLICIT_SYNC_STEM,MAIL_LIST_STEM,PENDING_OWNER_STEM) and not legacy_writers_enabled: continue
    if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
@@ -404,6 +405,8 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==PENDING_OWNER_STEM and not args.schema_snapshot:
+    pending_owner_previous=prepare_pending_owner(run,conn,OUT,args.migration_newlines)
    if m.stem==EXPLICIT_SYNC_STEM and not args.schema_snapshot:
     explicit_previous=run('psql',*conn,'-c',EXPLICIT_SYNC_SNAPSHOT)
 
@@ -599,6 +602,9 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+   if m.stem==PENDING_OWNER_STEM and not args.schema_snapshot:
+    run_pending_owner(run,conn,OUT,args.migration_newlines,pending_owner_previous)
+
    if m.stem==MAIL_LIST_STEM and not args.schema_snapshot:
     run_mail_list(run,conn,OUT,args.migration_newlines,mail_list_previous)
 

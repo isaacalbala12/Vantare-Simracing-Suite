@@ -352,7 +352,7 @@ impl Analysis {
             .child(rows)
             .child(
                 telemetry_text(
-                    "Fuente: archivos locales de LMU indexados en DuckDB (ADR 0005). El puente todavía no publica sesiones.",
+                    "Fuente: grabaciones nativas locales de Vantare. La grabación de series todavía no está conectada.",
                     10.5,
                     400,
                     orbit::ink_muted(cx),

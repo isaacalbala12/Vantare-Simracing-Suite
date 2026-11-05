@@ -51,35 +51,26 @@ el historial observado no sustituye al journal durable ni permite deducir
 mensajes omitidos entre polls. `observed_at_ms` es hora de observación del Hub.
 Consulta [el contrato vigente](engineer/MODEL.md) para frescura y campos ausentes.
 
-## Telemetría: `analysis::insights`
+## Telemetría: `analysis::model`
 
-Entrada: `Lap` y muestras de la API existente de storage (solo señales
-Reliable; las demás llegan como `None`). No hay generadores demo.
+El Hub lee resúmenes y muestras de grabaciones nativas mediante el helper
+read-only de storage. `Lap` conserva identidad, muestras, calidad y ventana
+observada; `Sample` expone números solo para señales Reliable. `project_laps`
+exige misma época/sesión/coche y proyecta gráficos de hasta 1024 puntos.
+Los huecos separan segmentos; no se inventan cobertura, circuitos ni causas.
 
-| Proyección | Forma y uso |
-| --- | --- |
-| `session_readouts` | `SessionReadout { key: SessionKey { epoch, session, car }, laps, sealed_laps, gap_laps, samples }`; agrupa vueltas por identidad nativa. |
-| `lap_readout` | `LapReadout { key, lap, sealed, gap, samples, observed_span_s, speed_mean_kmh }`. La ventana observada no es duración total. |
-| `readout_at` | Cursor normalizado/clamp sobre distancia observada. `Readout { distance_m, elapsed_s, speed_kmh, throttle_percent, brake_percent }`, todos `Option<f64>`. Metros del cursor y canales de la muestra previa, sin atravesar huecos; cero fiable permanece cero. |
-| `compare` | `Comparison { selected, reference, charts: Charts, sectors, insights }`; exige misma época/sesión/coche como `project_laps`. |
-| Sectores | Entrada `Sector { id, from_m, to_m }` con límites reales, únicos y ordenados, sin solapes. `SectorDelta { sector, delta_s, tone }`; delta A−B al final menos al inicio, solo con cobertura continua. No extrapola. |
-| Insights | `Insight { sector_id, from_m, to_m, delta_s, tone }`, ordenados por mayor pérdida. Umbrales productivos `Loss > 0.04`, `Gain < -0.02`, resto `Flat`. Son pérdidas/ganancias por tramo, no causas. |
-
-`model::project_delta` expone el cálculo existente sin submuestreo para validar
-cobertura del sector; `model::project` mantiene gráficos acotados a 1024 puntos.
-No se puede inferir un circuito ni sus sectores de la API actual: sin límites
-reales los sectores/insights quedan vacíos. Tampoco publica nombres de circuito,
-vehículo, fechas de sesión, duración completa, consistencia, curvas, volante o
-causas. No se copian tercios artificiales, escalas best/session/pro, mapa ni
-explicaciones de los tests demo del frontend.
+El módulo `analysis::insights` se retiró en #1974: no tenía consumidores de
+producto. La vista conserva su implementación actual y su demo explícita;
+no utiliza las proyecciones retiradas. La grabación de series pendiente se
+sigue en #1975.
 
 ## Verificación e integración
 
-Tests table-driven en `calendar/views/tests.rs`, `engineer/history.rs` y
-`analysis/insights/tests.rs`: rejillas/seguidas/categorías, slots de hoy,
+Tests table-driven en `calendar/views/tests.rs` y `engineer/history.rs`:
+rejillas/seguidas/categorías, slots de hoy,
 clasificación, offsets, DST 23/25/24.5 h, zoom, solapes, exportación congelada,
-deduplicación/retención, unidades/cursor, suma/ranking/tonos y ausencia ante
-huecos, cobertura parcial e identidad incompatible.
+deduplicación/retención. La lectura y los gráficos de series se prueban en
+`analysis/tests.rs`, con huecos e identidad incompatible.
 
 Gates y SHAs concretos se entregan al orquestador; logs completos fuera del repo
 en `C:/tmp/isa-1430-datos-hub-evidence/`. No hay validación visual ni prueba LMU,

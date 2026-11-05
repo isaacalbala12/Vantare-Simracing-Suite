@@ -77,7 +77,6 @@ struct RunContext {
     processes: processes::Shared,
     next_decision: AtomicU64,
     selected: Vec<usize>,
-    detached: bool,
 }
 impl RunContext {
     fn ask(
@@ -187,6 +186,19 @@ pub fn retry_steps(profile: &Profile, progress: &[Progress], scope: RetryScope) 
         .collect()
 }
 
+pub enum Found {
+    Snapshot(Discovery),
+    Scan,
+}
+impl Found {
+    fn resolve(self, apps: &[App]) -> Discovery {
+        match self {
+            Self::Snapshot(discovery) => discovery,
+            Self::Scan => Discovery::scan(apps, discovery::Sources::system()),
+        }
+    }
+}
+
 pub struct Chain {
     pub progress: Receiver<Progress>,
     cancel: Arc<Cancellation>,
@@ -197,52 +209,23 @@ impl Chain {
     pub fn start(
         document: Document,
         profile: Profile,
-        discovery: Discovery,
+        found: Found,
+        processes: processes::Shared,
+        selected: Option<Vec<usize>>,
     ) -> Result<Self, String> {
-        Self::start_with_processes(
-            document,
-            profile,
-            discovery,
-            Arc::new(Mutex::new(processes::Processes::default())),
-        )
+        Self::start_with_discovery(document, profile, processes, selected, move |apps| {
+            found.resolve(apps)
+        })
     }
-    pub fn start_with_processes(
+
+    fn start_with_discovery(
         document: Document,
         profile: Profile,
-        discovery: Discovery,
         processes: processes::Shared,
+        selected: Option<Vec<usize>>,
+        discover: impl FnOnce(&[App]) -> Discovery + Send + 'static,
     ) -> Result<Self, String> {
-        let selected = (0..profile.steps.len()).collect();
-        Self::start_selected(document, profile, discovery, processes, selected)
-    }
-    /// Las apps y sus reintentos quedan fuera del Job del Hub.
-    pub fn start_selected(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
-        processes: processes::Shared,
-        selected: Vec<usize>,
-    ) -> Result<Self, String> {
-        Self::start_mode(document, profile, discovery, processes, selected, true)
-    }
-    /// Apps del sim-rig fuera del Job del supervisor; su política Leave sigue siendo real.
-    pub fn start_detached(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
-        processes: processes::Shared,
-    ) -> Result<Self, String> {
-        let selected = (0..profile.steps.len()).collect();
-        Self::start_mode(document, profile, discovery, processes, selected, true)
-    }
-    fn start_mode(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
-        processes: processes::Shared,
-        selected: Vec<usize>,
-        detached: bool,
-    ) -> Result<Self, String> {
+        let selected = selected.unwrap_or_else(|| (0..profile.steps.len()).collect());
         if selected.is_empty()
             || selected.iter().any(|&index| index >= profile.steps.len())
             || selected.windows(2).any(|pair| pair[0] >= pair[1])
@@ -255,9 +238,7 @@ impl Chain {
         checked.profiles = vec![profile.clone()];
         checked.lmu_trigger_profile = None;
         checked.validate()?;
-        if profile.steps.is_empty() {
-            return Err("el perfil no tiene pasos".into());
-        }
+        let discovery = discover(&document.apps);
         let (sender, progress) = mpsc::channel();
         let cancel = Arc::new(Cancellation::default());
         let (answers, replies) = mpsc::channel();
@@ -268,7 +249,6 @@ impl Chain {
             processes,
             next_decision: AtomicU64::new(1),
             selected,
-            detached,
         };
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
@@ -334,7 +314,7 @@ fn emit(
         .is_ok()
 }
 
-fn command(executable: &std::path::Path, args: &[String], detached: bool) -> Result<Child, String> {
+fn command(executable: &std::path::Path, args: &[String]) -> Result<Child, String> {
     if !is_executable(executable) {
         return Err(format!("ejecutable ausente: {}", executable.display()));
     }
@@ -348,10 +328,9 @@ fn command(executable: &std::path::Path, args: &[String], detached: bool) -> Res
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        command.creation_flags(0x0800_0000 | if detached { 0x0100_0000 } else { 0 }); // CREATE_NO_WINDOW: no consola para helpers.
+        // CREATE_NO_WINDOW conserva las consolas ocultas; BREAKAWAY mantiene las apps fuera del Job.
+        command.creation_flags(0x0800_0000 | 0x0100_0000);
     }
-    #[cfg(not(windows))]
-    let _ = detached;
     command
         .spawn()
         .map_err(|e| format!("arrancar {}: {e}", executable.display()))
@@ -430,7 +409,7 @@ fn launch(
     let identity =
         std::fs::canonicalize(executable).map_err(|e| format!("identidad del ejecutable: {e}"))?;
     let (program, args, steam) = effective_command(app, step, discovery)?;
-    let child = command(program, &args, context.detached)?;
+    let child = command(program, &args)?;
     let pid = child.id();
     let dispatcher = if steam {
         Some(child)
@@ -879,7 +858,6 @@ mod trust_tests {
             processes: Arc::new(Mutex::new(processes::Processes::default())),
             next_decision: AtomicU64::new(1),
             selected: vec![0],
-            detached: false,
         };
         answers.send((1, Action::Cancel)).expect("cancel");
         assert!(review_at(&document, &profile, &discovery, &context, &root).is_err());

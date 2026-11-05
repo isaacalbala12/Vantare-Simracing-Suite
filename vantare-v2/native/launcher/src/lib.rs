@@ -199,9 +199,11 @@ impl Profile {
         if !valid_text(&self.name) {
             return Err("Nombre: indica entre 1 y 256 caracteres sin NUL".into());
         }
-        if self.steps.is_empty() {
-            return Err("Pasos: anade al menos una aplicacion".into());
-        }
+        let missing = match Document::launch_blocker(self, discovered) {
+            Some(LaunchBlocker::Empty) => return Err("Pasos: anade al menos una aplicacion".into()),
+            Some(LaunchBlocker::Missing(steps)) => steps.first().copied(),
+            None => None,
+        };
         let mut apps = HashSet::new();
         for (index, step) in self.steps.iter().enumerate() {
             if !self.advanced && !apps.insert(&step.app_id) {
@@ -210,10 +212,7 @@ impl Profile {
                     index + 1
                 ));
             }
-            if !discovered
-                .app(&step.app_id)
-                .is_some_and(|app| app.availability.launchable)
-            {
+            if missing == Some(index) {
                 return Err(format!("Paso {}: selecciona una app disponible", index + 1));
             }
         }
@@ -226,6 +225,12 @@ impl Profile {
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LaunchBlocker {
+    Empty,
+    Missing(Vec<usize>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -276,6 +281,27 @@ pub fn validate_args(args: &[String]) -> Result<(), String> {
 }
 
 impl Document {
+    pub fn launch_blocker(
+        profile: &Profile,
+        discovered: &discovery::Discovery,
+    ) -> Option<LaunchBlocker> {
+        if profile.steps.is_empty() {
+            return Some(LaunchBlocker::Empty);
+        }
+        let missing: Vec<_> = profile
+            .steps
+            .iter()
+            .enumerate()
+            .filter(|(_, step)| {
+                !discovered
+                    .app(&step.app_id)
+                    .is_some_and(|app| app.availability.launchable)
+            })
+            .map(|(index, _)| index)
+            .collect();
+        (!missing.is_empty()).then_some(LaunchBlocker::Missing(missing))
+    }
+
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, files::Error> {
         let value: serde_json::Value = serde_json::from_slice(bytes)
             .map_err(|error| files::Error::InvalidInput(format!("Launcher inválido: {error}")))?;

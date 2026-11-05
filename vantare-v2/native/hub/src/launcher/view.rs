@@ -1,7 +1,7 @@
 //! Presentación Orbit: estado persistido, borradores y progreso real.
 use super::{
-    App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
-    chain::{Action, Chain, Progress},
+    App, CATALOG, Document, LaunchBlocker, LmuTrigger, Profile, Step, Store,
+    chain::{Action, Chain, Found, Progress},
     discovery::{self, Discovery, Sources},
     policy::{Close, Failure, Running},
     processes,
@@ -830,12 +830,12 @@ impl Launcher {
         if self.capture != Capture::None {
             return;
         }
-        match Chain::start_selected(
+        match Chain::start(
             self.store.document.clone(),
             profile.clone(),
-            found,
+            Found::Snapshot(found),
             self.processes.clone(),
-            selected,
+            Some(selected),
         ) {
             Ok(chain) => {
                 vantare_ui::analytics::record(
@@ -1285,7 +1285,14 @@ mod tests {
                 args_override: None,
             });
             // Sin rutas descubiertas: falla y termina sin crear procesos ni decisiones.
-            let mut chain = Chain::start(document, profile, Discovery::default()).unwrap();
+            let mut chain = Chain::start(
+                document,
+                profile,
+                Found::Snapshot(Discovery::default()),
+                Default::default(),
+                None,
+            )
+            .unwrap();
             loop {
                 let event = chain
                     .progress

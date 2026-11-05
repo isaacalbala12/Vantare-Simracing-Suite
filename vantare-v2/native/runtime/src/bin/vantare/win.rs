@@ -247,7 +247,7 @@ mod launcher_job_tests {
     use std::sync::{Arc, Mutex, mpsc};
     use vantare_launcher::{
         Document, Profile, Step,
-        chain::Chain,
+        chain::{Chain, Found},
         discovery::{Discovery, Sources},
         processes::Processes,
     };
@@ -311,10 +311,22 @@ mod launcher_job_tests {
         });
         let found = Discovery::scan(&document.apps, Sources::default());
         let processes = Arc::new(Mutex::new(Processes::default()));
-        let chain = if std::env::var_os("VANTARE_R12_DETACHED").is_some() {
-            Chain::start_detached(document, profile, found, processes.clone())
+        let chain = if std::env::var_os("VANTARE_R12_ALL_STEPS").is_some() {
+            Chain::start(
+                document,
+                profile,
+                Found::Snapshot(found),
+                processes.clone(),
+                None,
+            )
         } else {
-            Chain::start_selected(document, profile, found, processes.clone(), vec![0])
+            Chain::start(
+                document,
+                profile,
+                Found::Snapshot(found),
+                processes.clone(),
+                Some(vec![0]),
+            )
         }
         .expect("operación aislada del arnés Job");
         let mut pid = None;
@@ -352,8 +364,8 @@ mod launcher_job_tests {
 
     #[test]
     fn chain_apps_survive_the_job_that_kills_a_direct_child() {
-        for detached_constructor in [false, true] {
-            assert!(survives_job_close(detached_constructor));
+        for all_steps in [false, true] {
+            assert!(survives_job_close(all_steps));
         }
     }
 
@@ -381,7 +393,7 @@ mod launcher_job_tests {
         job
     }
 
-    fn survives_job_close(detached_constructor: bool) -> bool {
+    fn survives_job_close(all_steps: bool) -> bool {
         use windows_sys::Win32::System::Threading::{
             OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess,
         };
@@ -411,12 +423,12 @@ mod launcher_job_tests {
                 "--nocapture",
             ])
             .env("VANTARE_R12_JOB_ROOT", &root)
-            .env_remove("VANTARE_R12_DETACHED")
+            .env_remove("VANTARE_R12_ALL_STEPS")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
-        if detached_constructor {
-            command.env("VANTARE_R12_DETACHED", "1");
+        if all_steps {
+            command.env("VANTARE_R12_ALL_STEPS", "1");
         }
         let mut helper = command.spawn().expect("operación aislada del arnés Job");
         // SAFETY: both handles are live and owned by this test; helper waits for the start handshake.

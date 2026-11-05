@@ -1,9 +1,10 @@
 //! El supervisor conserva atajos y cadenas aunque el Hub cierre su ventana.
 use super::{launcher, triggers_win};
+#[cfg(test)]
+use launcher::discovery::{Discovery, Sources};
 use launcher::{
     Document,
-    chain::{Action, Chain},
-    discovery::{Discovery, Sources},
+    chain::{Action, Chain, Found},
     files,
     triggers::Hotkey,
 };
@@ -358,12 +359,12 @@ impl Owner {
             self.status.error = Some("perfil inexistente".into());
             return;
         };
-        let discovery = Discovery::scan(&self.document.apps, Sources::system());
-        match Chain::start_detached(
+        match Chain::start(
             self.document.clone(),
             profile,
-            discovery,
+            Found::Scan,
             self.processes.clone(),
+            None,
         ) {
             Ok(chain) => {
                 self.status.error = None;
@@ -598,11 +599,12 @@ mod tests {
         }
         let found = Discovery::scan(&owner.document.apps, Sources::default());
         owner.chain = Some(
-            Chain::start_detached(
+            Chain::start(
                 owner.document.clone(),
                 profile,
-                found,
+                Found::Snapshot(found),
                 owner.processes.clone(),
+                None,
             )
             .expect("cadena QA"),
         );

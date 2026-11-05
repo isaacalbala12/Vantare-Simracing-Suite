@@ -4,6 +4,8 @@ use std::io::Write;
 use vantare_admin::{state::Screen, view::Admin};
 use vantare_hub::orbit;
 
+const SCREEN_HELP: &str = "pantalla: login | users | creators | rollout | reports | mail | audit";
+
 fn run() -> Result<(), String> {
     let mut demo = false;
     let mut diagnose = false;
@@ -24,12 +26,7 @@ fn run() -> Result<(), String> {
                     Some("reports") => Screen::Reports,
                     Some("mail") => Screen::Mail,
                     Some("audit") => Screen::Audit,
-                    _ => {
-                        return Err(
-                            "pantalla: login | users | creators | rollout | reports | mail | audit"
-                                .into(),
-                        );
-                    }
+                    _ => return Err(SCREEN_HELP.into()),
                 }
             }
             "--help" => {

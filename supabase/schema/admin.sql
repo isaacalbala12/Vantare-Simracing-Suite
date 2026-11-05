@@ -878,7 +878,6 @@ CREATE FUNCTION public.native_admin_execute(p_actor uuid, p_issuer text, p_actio
 declare v_result jsonb; v_monthly uuid; v_annual uuid; account uuid; current_enabled boolean;
 begin
  if p_action='list_pending_effects' then
-  perform private.lock_accounts_before_rows(array[p_actor]);
   perform private.native_admin_require_owner(p_actor);
   if p_issuer is null or p_issuer!~'^https://' or p_environment is null or p_environment not in('production','sandbox')
    or jsonb_typeof(p_params) is distinct from 'object' or p_params-array['cursor']<>'{}'

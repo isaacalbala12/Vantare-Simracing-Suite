@@ -1,5 +1,403 @@
 use super::remember_receipt;
 use crate::services::protocol::report_document::{Fields, Receipt};
+
+#[test]
+fn legacy_files_are_archived_only_after_protected_draft_ack() {
+    use super::*;
+    let root = std::env::temp_dir().join(format!("vanta-13b-ack-{}", std::process::id()));
+    let directory = root.join("testing-center");
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("editor-draft.json");
+    let fields = Fields {
+        action_text: "private-fixture".into(),
+        module: "hub".into(),
+        ..Default::default()
+    };
+    std::fs::write(
+        &path,
+        serde_json::json!({"version":1,"fields":fields}).to_string(),
+    )
+    .unwrap();
+    let cleanup = root.clone();
+    gpui_platform::headless().run(move |cx| {
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
+        remote.update(cx, |remote, cx| {
+            let (loaded, editor) = legacy_editor(&root, cx);
+            assert!(loaded.as_ref().is_ok_and(Option::is_some));
+            assert!(!editor.dirty);
+            remote.editor = crate::testing::Editor::new(fields.clone(), cx);
+            remote.editor.dirty = true;
+            remote.report_revision = Some(remote.editor.revision);
+            remote.imported_draft(None, String::new(), cx);
+            assert!(matches!(&remote.queued, Some(Command::DraftSave { fields: saved }) if saved == &fields));
+            assert!(path.exists());
+            assert!(!path.with_extension("json.imported").exists());
+            remote.imported_draft(Some(super::super::protocol::report_document::Draft {
+                schema_version: 1,
+                idempotency_key: "draft_fixture".into(),
+                fields: fields.clone(),
+                screenshots: Vec::new(),
+            }), "guardado".into(), cx);
+            assert!(!path.exists());
+            assert!(path.with_extension("json.imported").exists());
+            assert!(remote.legacy_draft.as_ref().is_ok_and(Option::is_none));
+        });
+        crate::quit_headless_test(cx);
+    });
+    assert!(
+        crate::testing::legacy_draft::LegacyDraft::load(&cleanup)
+            .unwrap()
+            .is_none()
+    );
+    std::fs::remove_dir_all(cleanup).unwrap();
+}
+
+#[test]
+fn different_protected_draft_wins_and_archives_plaintext() {
+    use super::*;
+    let root = std::env::temp_dir().join(format!("vanta-13b-existing-{}", std::process::id()));
+    let directory = root.join("testing-center");
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("editor-draft.json");
+    let legacy = Fields {
+        action_text: "legacy-private".into(),
+        module: "hub".into(),
+        ..Default::default()
+    };
+    let original = serde_json::json!({"version":1,"fields":legacy}).to_string();
+    std::fs::write(&path, &original).unwrap();
+    let cleanup = root.clone();
+    gpui_platform::headless().run(move |cx| {
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
+        remote.update(cx, |remote, cx| {
+            remote.editor = crate::testing::Editor::new(legacy.clone(), cx);
+            remote.editor.dirty = true;
+            remote.report_revision = Some(remote.editor.revision);
+            assert!(remote.editor.dirty);
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+            let protected = Fields {
+                action_text: "protected-private".into(),
+                module: "hub".into(),
+                ..Default::default()
+            };
+            remote.imported_draft(
+                Some(super::super::protocol::report_document::Draft {
+                    schema_version: 1,
+                    idempotency_key: "draft_fixture".into(),
+                    fields: protected.clone(),
+                    screenshots: Vec::new(),
+                }),
+                "loaded".into(),
+                cx,
+            );
+            assert!(!path.exists());
+            assert!(path.with_extension("json.imported").exists());
+            assert_eq!(remote.editor.fields(cx).action_text, protected.action_text);
+            assert_eq!(remote.editor.fields(cx).module, protected.module);
+            assert_eq!(
+                remote.editor.fields_snapshot(cx).context_text,
+                "Tipo: Algo falla\n"
+            );
+            assert_eq!(
+                std::fs::read_to_string(path.with_extension("json.imported")).unwrap(),
+                original
+            );
+        });
+        crate::quit_headless_test(cx);
+    });
+    std::fs::remove_dir_all(cleanup).unwrap();
+}
+
+#[test]
+fn archive_failure_still_loads_protected_draft_and_keeps_both_files() {
+    use super::*;
+    let root = std::env::temp_dir().join(format!("vanta-13b-collision-{}", std::process::id()));
+    let directory = root.join("testing-center");
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("editor-draft.json");
+    std::fs::write(&path, serde_json::json!({"version":1,"fields": Fields { action_text: "legacy".into(), module: "hub".into(), ..Default::default() }}).to_string()).unwrap();
+    std::fs::write(path.with_extension("json.imported"), b"unrelated archive").unwrap();
+    let cleanup = root.clone();
+    gpui_platform::headless().run(move |cx| {
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
+        remote.update(cx, |remote, cx| {
+            remote.report_revision = Some(remote.editor.revision);
+            remote.imported_draft(
+                Some(super::super::protocol::report_document::Draft {
+                    schema_version: 1,
+                    idempotency_key: "draft_fixture".into(),
+                    fields: Fields {
+                        action_text: "protected".into(),
+                        module: "hub".into(),
+                        ..Default::default()
+                    },
+                    screenshots: Vec::new(),
+                }),
+                "loaded".into(),
+                cx,
+            );
+            assert_eq!(remote.editor.fields(cx).action_text, "protected");
+            assert!(remote.editor.message.contains(".imported distinto"));
+            assert!(path.exists());
+            assert_eq!(
+                std::fs::read(path.with_extension("json.imported")).unwrap(),
+                b"unrelated archive"
+            );
+            remote.report_revision = Some(remote.editor.revision);
+            remote.imported_draft(
+                Some(super::super::protocol::report_document::Draft {
+                    schema_version: 1,
+                    idempotency_key: "draft_fixture".into(),
+                    fields: remote.editor.fields(cx),
+                    screenshots: Vec::new(),
+                }),
+                "cargado otra vez".into(),
+                cx,
+            );
+            assert!(!remote.editor.message.contains(".imported distinto"));
+        });
+        crate::quit_headless_test(cx);
+    });
+    std::fs::remove_dir_all(cleanup).unwrap();
+}
+
+#[test]
+fn pending_discard_and_existing_queue_do_not_import_legacy_draft() {
+    use super::*;
+    let root = std::env::temp_dir().join(format!("vanta-13b-queue-{}", std::process::id()));
+    let directory = root.join("testing-center");
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("editor-draft.json");
+    std::fs::write(&path, serde_json::json!({"version":1,"fields": Fields { action_text: "legacy".into(), module: "hub".into(), ..Default::default() }}).to_string()).unwrap();
+    let cleanup = root.clone();
+    gpui_platform::headless().run(move |cx| {
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
+        remote.update(cx, |remote, cx| {
+            remote.queued = Some(Command::DraftDiscard);
+            remote.report_revision = Some(remote.editor.revision);
+            remote.imported_draft(None, "loaded".into(), cx);
+            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(matches!(remote.legacy_status, LegacyStatus::Unchecked));
+            remote.queued = Some(Command::DraftSave {
+                fields: Fields::default(),
+            });
+            remote.imported_draft(None, "loaded".into(), cx);
+            assert!(remote.editor.message.contains("borrador del usuario"));
+            assert!(matches!(remote.legacy_status, LegacyStatus::Unchecked));
+            remote.queued = Some(Command::DraftDiscard);
+            remote.discard_pending = true;
+            remote.imported_draft(None, "discarded".into(), cx);
+            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(!path.exists());
+            assert!(path.with_extension("json.imported").exists());
+        });
+        crate::quit_headless_test(cx);
+    });
+    assert!(
+        crate::testing::legacy_draft::LegacyDraft::load(&cleanup)
+            .unwrap()
+            .is_none()
+    );
+    std::fs::remove_dir_all(cleanup).unwrap();
+}
+
+#[test]
+fn protected_save_failure_leaves_legacy_source_intact() {
+    use super::*;
+    let root = std::env::temp_dir().join(format!("vanta-13b-dpapi-fail-{}", std::process::id()));
+    let directory = root.join("testing-center");
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("editor-draft.json");
+    let original = serde_json::json!({"version":1,"fields": Fields { action_text: "legacy".into(), module: "hub".into(), ..Default::default() }}).to_string();
+    std::fs::write(&path, &original).unwrap();
+    let cleanup = root.clone();
+    gpui_platform::headless().run(move |cx| {
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
+        remote.update(cx, |remote, cx| {
+            remote.active = Area::Report;
+            remote.inflight = Inflight::User;
+            remote.report_revision = Some(remote.editor.revision);
+            remote.complete(
+                Reply::Draft {
+                    draft: None,
+                    message: "cargado".into(),
+                },
+                cx,
+            );
+            assert!(matches!(requests.try_recv(), Ok(Command::DraftSave { .. })));
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+            remote.complete(
+                Reply::Error {
+                    message: "No se pudo proteger".into(),
+                },
+                cx,
+            );
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+            assert!(!path.with_extension("json.imported").exists());
+        });
+        crate::quit_headless_test(cx);
+    });
+    std::fs::remove_dir_all(cleanup).unwrap();
+}
+
+#[test]
+fn final_save_acknowledges_only_the_requested_fields() {
+    use super::*;
+    gpui_platform::headless().run(move |cx| {
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote =
+            cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
+        remote.update(cx, |remote, cx| {
+            let fields = Fields {
+                action_text: "editado".into(),
+                context_text: "Tipo: Algo falla\n".into(),
+                module: "hub".into(),
+                ..Default::default()
+            };
+            remote.close_save_pending = true;
+            remote.close_save_fields = Some(fields.clone());
+            remote.report_revision = Some(remote.editor.revision);
+            remote.active = Area::Report;
+            remote.inflight = Inflight::User;
+            remote.complete(
+                Reply::Draft {
+                    draft: Some(super::super::protocol::report_document::Draft {
+                        schema_version: 1,
+                        idempotency_key: "draft_fixture".into(),
+                        fields: fields.clone(),
+                        screenshots: Vec::new(),
+                    }),
+                    message: "guardado".into(),
+                },
+                cx,
+            );
+            assert_eq!(remote.take_close_save_result(), Some(true));
+            assert_eq!(remote.editor.fields(cx), fields);
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn busy_services_defers_final_draft_save_without_overwriting_the_queue() {
+    use super::*;
+    gpui_platform::headless().run(move |cx| {
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote =
+            cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
+        remote.update(cx, |remote, cx| {
+            remote.inflight = Inflight::User;
+            remote.queued = Some(Command::DraftDiscard);
+            assert_eq!(remote.begin_close_save(cx), None);
+            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(requests.try_recv().is_err());
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn inflight_without_queue_defers_final_draft_save() {
+    use super::*;
+    gpui_platform::headless().run(move |cx| {
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote =
+            cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
+        remote.update(cx, |remote, cx| {
+            remote.inflight = Inflight::User;
+            assert!(remote.queued.is_none());
+            assert_eq!(remote.begin_close_save(cx), None);
+            assert!(requests.try_recv().is_err());
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn autosave_waits_two_seconds_and_never_replaces_a_queued_user_save() {
+    use super::*;
+    gpui_platform::headless().run(move |cx| {
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote =
+            cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
+        remote.update(cx, |remote, cx| {
+            let now = std::time::Instant::now();
+            remote.editor = crate::testing::Editor::new(
+                Fields {
+                    action_text: "new edit".into(),
+                    ..Default::default()
+                },
+                cx,
+            );
+            remote.editor.dirty = true;
+            remote.editor.revision = 1;
+            remote.autosave_epoch = 2;
+            remote.autosave_due = Some(now + DRAFT_AUTOSAVE_DELAY);
+            assert!(!remote.flush_draft_autosave(2, now + std::time::Duration::from_millis(1_999), cx));
+            assert!(remote.flush_draft_autosave(1, now + DRAFT_AUTOSAVE_DELAY, cx));
+            remote.queued = Some(Command::DraftSave {
+                fields: Fields::default(),
+            });
+            assert!(!remote.flush_draft_autosave(2, now + DRAFT_AUTOSAVE_DELAY, cx));
+            assert!(matches!(remote.queued, Some(Command::DraftSave { .. })));
+            assert!(requests.try_recv().is_err());
+            remote.queued = None;
+            remote.inflight = Inflight::User;
+            assert!(!remote.flush_draft_autosave(2, now + DRAFT_AUTOSAVE_DELAY, cx));
+            remote.inflight = Inflight::Idle;
+            assert!(remote.flush_draft_autosave(2, now + DRAFT_AUTOSAVE_DELAY, cx));
+            assert!(matches!(requests.try_recv(), Ok(Command::DraftSave { fields }) if fields.action_text == "new edit"));
+            assert_eq!(remote.report_revision, Some(1));
+            remote.complete(Reply::Error { message: "fixture".into() }, cx);
+            assert!(remote.editor.message.contains("No se pudo autoguardar"));
+            assert!(remote.editor.dirty);
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn autosave_reply_cannot_replace_a_later_edit() {
+    use super::*;
+    gpui_platform::headless().run(move |cx| {
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote =
+            cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
+        remote.update(cx, |remote, cx| {
+            remote.editor = crate::testing::Editor::new(
+                Fields {
+                    action_text: "later".into(),
+                    ..Default::default()
+                },
+                cx,
+            );
+            remote.editor.dirty = true;
+            remote.editor.revision = 2;
+            remote.report_revision = Some(1);
+            remote.imported_draft(
+                Some(super::super::protocol::report_document::Draft {
+                    schema_version: 1,
+                    idempotency_key: "draft_fixture".into(),
+                    fields: Fields {
+                        action_text: "earlier".into(),
+                        ..Default::default()
+                    },
+                    screenshots: Vec::new(),
+                }),
+                "guardado".into(),
+                cx,
+            );
+            assert_eq!(remote.editor.fields(cx).action_text, "later");
+            assert!(remote.editor.dirty);
+        });
+        crate::quit_headless_test(cx);
+    });
+}
 #[test]
 fn server_receipts_keep_identity_state_and_date_without_duplicating_retries() {
     let mut receipts = vec![];

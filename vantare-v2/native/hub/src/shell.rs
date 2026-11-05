@@ -40,15 +40,8 @@ pub(crate) use settings::releases::news_for_channel;
 mod shortcuts;
 mod sidebar;
 
-fn close_code(restart: bool, connected: bool) -> u8 {
-    if restart {
-        10
-    } else if connected {
-        11
-    } else {
-        0
-    }
-}
+mod close;
+use close::ForcedClose;
 
 #[derive(Clone)]
 pub struct Options {
@@ -98,6 +91,9 @@ pub(crate) struct Hub {
     connected_source: bool,
     connection_incompatible: bool,
     close_requested: bool,
+    close_save_pending: bool,
+    close_save_started: Option<Instant>,
+    close_without_draft: bool,
     restart_requested: bool,
     exit_code: std::rc::Rc<std::cell::Cell<u8>>,
     boot_confirmation:
@@ -107,9 +103,7 @@ pub(crate) struct Hub {
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), crate::files::Error> {
         // Studio confirma cada edición; guarda también los borradores locales pendientes.
-        self.remote.update(cx, |remote, cx| remote.persist(cx))?;
         self.strategy.update(cx, |strategy, _| strategy.persist())?;
-        self.testing.update(cx, |testing, _| testing.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
@@ -148,8 +142,7 @@ impl Hub {
             .launcher
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
         {
-            self.close_requested = false;
-            self.cancel_beta_restart();
+            self.abort_close();
         }
         if !self.shell.access.beta_visible(self.section) {
             self.section = Section::Home;
@@ -179,8 +172,7 @@ impl Hub {
                 cx.notify();
             }
             if close {
-                // Live solicita el mismo cierre protegido que el botón y la ventana.
-                self.close(cx);
+                self.forced_close(ForcedClose::Live, cx);
             }
         }
         let activity = self.subscriber.activity();
@@ -250,63 +242,6 @@ impl Hub {
                 }
             }
         });
-    }
-
-    fn close(&mut self, cx: &mut Context<Self>) {
-        if self.can_close(cx) {
-            cx.quit();
-        }
-    }
-
-    fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
-        self.close_requested = true;
-        if !self.launcher.update(cx, Launcher::can_close) {
-            return false;
-        }
-        if crate::installation::defer_close(&self.boot_confirmation, || {
-            // Tras liberar el préstamo de la ventana que recibió la X.
-            cx.defer(|cx| {
-                for handle in cx.windows() {
-                    let _ = handle.update(cx, |_, window, _| {
-                        vantare_ui::window_activation::hide(window);
-                    });
-                }
-            });
-        }) {
-            return false;
-        }
-        match self.save(cx) {
-            Ok(()) => {
-                if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
-                    let state = if self.connected_source {
-                        "live"
-                    } else {
-                        "idle"
-                    };
-                    if let Err(error) = std::fs::write(PathBuf::from(root).join("hub-exit"), state)
-                    {
-                        self.status = Some(format!("registrar cierre beta: {error}").into());
-                        self.close_requested = false;
-                        self.cancel_beta_restart();
-                        cx.notify();
-                        return false;
-                    }
-                }
-                self.exit_code
-                    .set(close_code(self.restart_requested, self.connected_source));
-                true
-            }
-            Err(error) => {
-                self.notifications.update(cx, |center, cx| {
-                    center.report("hub.save", error.to_string(), cx);
-                });
-                self.status = Some(error.into());
-                self.close_requested = false;
-                self.cancel_beta_restart();
-                cx.notify();
-                false
-            }
-        }
     }
 
     fn refresh_access(&mut self, cx: &mut Context<Self>) {
@@ -1374,6 +1309,16 @@ impl Hub {
             cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
         calendar.update(cx, |calendar, _| calendar.attach_remote(remote.clone()));
         cx.observe(&remote, |this, remote, cx| {
+            if this.close_save_pending
+                && let Some(saved) = remote.update(cx, |remote, _| remote.take_close_save_result())
+            {
+                this.close_save_pending = false;
+                if saved {
+                    this.close(cx);
+                } else {
+                    this.close_save_failed(cx);
+                }
+            }
             if this.capture.is_none() || this.live_capture_policy {
                 this.shell.access = remote.read(cx).navigation_access();
                 this.studio
@@ -1439,6 +1384,9 @@ impl Hub {
         })
         .detach();
         cx.on_app_quit(move |this, cx| {
+            if this.remote.read(cx).editor.dirty {
+                eprintln!("cierre con ediciones del informe sin guardar");
+            }
             this.finish_usage(cx);
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
@@ -1480,6 +1428,9 @@ impl Hub {
             connected_source: false,
             connection_incompatible: false,
             close_requested: false,
+            close_save_pending: false,
+            close_save_started: None,
+            close_without_draft: false,
             restart_requested: false,
             exit_code,
             boot_confirmation: std::rc::Rc::default(),
@@ -1881,13 +1832,6 @@ fn start_session_alerts(cx: &mut Context<Hub>) {
 #[cfg(test)]
 mod presentation_tests {
     use super::*;
-
-    #[test]
-    fn restart_to_apply_wins_over_connected_detach() {
-        assert_eq!(close_code(true, true), 10);
-        assert_eq!(close_code(false, true), 11);
-        assert_eq!(close_code(false, false), 0);
-    }
 
     #[test]
     fn only_workshop_occupies_the_whole_window() {

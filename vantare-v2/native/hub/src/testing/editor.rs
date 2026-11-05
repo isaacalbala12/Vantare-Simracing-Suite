@@ -106,6 +106,7 @@ impl Editor {
                 });
                 this.editor.dirty = true;
                 this.editor.revision = this.editor.revision.saturating_add(1);
+                this.arm_draft_autosave(cx);
                 cx.notify();
             })
             .detach();
@@ -135,6 +136,9 @@ impl Editor {
         }
     }
     pub fn fields(&self, cx: &Context<Remote>) -> Fields {
+        self.fields_snapshot(cx)
+    }
+    pub fn fields_snapshot(&self, cx: &gpui::App) -> Fields {
         let context = &self.inputs[3].read(cx).value;
         Fields {
             action_text: self.inputs[0].read(cx).value.clone(),

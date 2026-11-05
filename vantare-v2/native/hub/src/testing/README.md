@@ -14,7 +14,10 @@ Intake/capturas públicas dependen de #1602 y referencia PostHog de #1609.
 Ver [runbook vigente](../../../../docs/runbooks/testing-report-followup.md) y
 [handoff](../../../../docs/vantare-program/handoffs/testing-center.md).
 
-Las secciones siguientes conservan la evidencia y los límites de cortes anteriores.
+Las secciones siguientes son evidencia histórica de cortes anteriores. El formulario
+local y `report-draft.json` ya no se usan para editar ni guardar: sus datos válidos
+se importan una vez al borrador protegido de Services y los originales se archivan
+como `.imported`. El diagnóstico y su exportación manual siguen disponibles.
 
 ## Participación #1535
 
@@ -45,16 +48,31 @@ Consulta [la nota de paridad](PARITY.md) para el alcance vigente y sus límites.
 Este documento conserva la evidencia del diagnóstico y exportación locales;
 sus afirmaciones de ausencia de envío describen aquel corte anterior.
 
-El formulario principal pertenece a `Remote.editor`: guarda el borrador mediante
-el supervisor, prepara una vista previa y exige consentimiento para esa revisión.
-Al guardar o cerrar el Hub, el texto visible se conserva además en
-`testing-center/editor-draft.json`, bajo el directorio local del Hub. Admite
-campos incompletos dentro del límite del input y escritura atómica con conflicto
-por bytes. Reabrir recupera el texto con revisión/consentimiento vacíos y exige
-guardar el borrador remoto antes de preparar el envío. No se envía ni adjunta
-esta recuperación al diagnóstico. Un archivo inválido se conserva y se informa;
-si hay nuevas ediciones que no pueden guardarse, se bloquea el cierre normal/Live.
-El diagnóstico/exportación local tiene otro borrador y omite el texto privado.
+El formulario principal pertenece a `Remote.editor`: guarda un solo borrador
+protegido mediante Services, prepara una vista previa y exige consentimiento.
+Al iniciar, el Hub lee `editor-draft.json` y `report-draft.json` antiguos. Elige
+el válido más reciente (empate: editor); si otro está corrupto, lo deja intacto
+y avisa. Tras confirmar el mismo contenido en Services, archiva los originales
+en `.json.imported` sin sobrescribir archivos ajenos. Si ya hay un borrador
+protegido distinto, ese borrador manda y también se archivan los antiguos. Un
+descarte archiva los antiguos para que no reaparezcan al arrancar. Las diferencias
+se registran solo por nombre de campo; `Workshop` y `Notificaciones` pasan a
+`unknown` y el log registra solo el nombre del módulo.
+
+Los `.imported` contienen los bytes originales en claro en el PC del usuario,
+como los JSON previos; el orquestador aceptó conservarlos para evitar pérdida de
+datos. Si el archivado falla, el protegido se carga igualmente y el aviso se
+muestra una vez. El cierre normal intenta guardar las ediciones pendientes en
+Services; si falla o Services no responde en unos cinco segundos, ofrece
+«Reintentar» o «Cerrar sin guardar». Live y el reinicio por actualización omiten
+solo ese guardado y conservan el resto de comprobaciones del cierre. El apagado
+de Windows pasa por el callback síncrono de quit de GPUI, sin
+`on_window_should_close`. Por eso el editor autoguarda el borrador protegido
+dos segundos después de la última edición. Si Services está ocupado, espera su
+turno sin sustituir la orden pendiente; una respuesta antigua no pisa cambios
+posteriores. Un apagado o fallo del proceso puede perder las ediciones de esos
+dos segundos, o más si Services no consigue guardar.
+El panel local conserva el diagnóstico y la exportación manual sin prosa privada.
 Los inputs actuales vienen de Orbit y admiten texto multilínea/IME; no se usa el
 alias histórico del Launcher. La validación local no demuestra un envío real.
 
@@ -75,17 +93,15 @@ Este archivo es evidencia del worker, no otro handoff vivo del proyecto.
 ## Flujo y privacidad
 
 - Navegación `Testing Center`: informe privado, diagnóstico y exportación JSON.
-- Cuatro campos del informe y sección afectada. Guardado explícito y al cerrar
-  normalmente el Hub si hay cambios. Recargar descarta las ediciones en memoria
-  solo después de leer/validar el archivo. Vaciar formulario es una edición
-  guardable; no borra archivos ajenos. Borrador inválido se conserva.
-- `testing-center/report-draft.json` bajo el directorio Hub. Schema 1, campos
-  cerrados, 2048/2048/2048/4096 bytes UTF-8, archivo de hasta 16 KiB. No se porta
-  el idempotency key remoto: no hay operación de envío.
-- Reutiliza `files::save_with_limit`: temporal exclusivo, `sync_all`, reemplazo
-  atómico, lock cooperativo y comparación de bytes. Un editor externo debe
-  respetar el lock; no se promete CAS frente a escritores que lo ignoran entre
-  la comparación y el rename. Un lock tras un crash exige revisión manual.
+- En aquel corte había cuatro campos y sección afectada en un formulario local.
+  El guardado local, la recarga y el vaciado descritos entonces fueron retirados;
+  ahora el borrador protegido de Services es el único editor activo.
+- Histórico: `testing-center/report-draft.json` guardaba el borrador local en claro
+  con schema 1 y límites 2048/2048/2048/4096 bytes UTF-8 (16 KiB de archivo).
+  Ahora solo se lee para importarlo a Services; nunca se vuelve a escribir.
+- El guardado local de aquel corte usaba `files::save_with_limit` con temporal,
+  `sync_all`, reemplazo atómico, lock y comparación de bytes. Esa ruta de escritura
+  del borrador ya no está activa.
 - Diagnóstico bajo demanda, hashes fuera del hilo UI. Solo nueve nombres de
   binarios junto al Hub: Hub, supervisor, núcleo, overlays, Engineer, storage,
   Workshop y las grabadoras LMU/ACC.

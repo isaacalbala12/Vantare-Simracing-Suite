@@ -257,3 +257,62 @@ pub fn recordings(root: &Path) -> Result<Vec<PathBuf>, String> {
     paths.sort();
     Ok(paths)
 }
+
+#[cfg(test)]
+mod characterization {
+    use super::*;
+
+    #[test]
+    fn dropping_a_reader_after_cancellation_reaps_the_helper_and_releases_the_database_lock() {
+        let directory =
+            std::env::temp_dir().join(format!("vantare-summaries-cancel-{}", std::process::id()));
+        std::fs::create_dir(&directory).expect("temporal exclusivo");
+        let db = directory.join("recording.duckdb");
+        let exe = std::env::current_exe()
+            .expect("exe")
+            .parent()
+            .expect("deps")
+            .parent()
+            .expect("debug")
+            .join(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
+        assert!(
+            exe.is_file(),
+            "compila vantare-storage en el mismo target antes de esta prueba"
+        );
+        assert!(
+            Command::new(&exe)
+                .arg(&db)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .status()
+                .expect("crear DB")
+                .success()
+        );
+        let original = std::fs::read(&db).expect("original");
+        let cancel = Arc::new(AtomicBool::new(false));
+        let mut reader = Reader::open(&exe, &db, cancel.clone()).expect("reader real");
+        // La misma petición de summaries, despachada antes de cancelar. Separar
+        // dispatch/receive evita sleeps y carreras con la duración de la consulta.
+        writeln!(reader.input, "{}", json!(["summaries"])).expect("dispatch");
+        reader.input.flush().expect("flush");
+        cancel.store(true, Ordering::Release);
+        assert!(reader.receive().is_err());
+        drop(reader); // mata/recoge el hijo y une el pump sin esperar 30 s.
+        assert_eq!(std::fs::read(&db).expect("intacta"), original);
+        // Un lector read-only fugado permitiría otro lector, pero no este writer.
+        assert!(
+            Command::new(&exe)
+                .arg(&db)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .status()
+                .expect("writer tras cancelar")
+                .success()
+        );
+        let mut reopened = Reader::open(&exe, &db, Arc::new(AtomicBool::new(false)))
+            .expect("sin helper reteniendo el archivo");
+        assert_eq!(reopened.summaries().expect("lectura posterior").0, 0);
+        drop(reopened);
+        std::fs::remove_dir_all(directory).expect("limpiar fixture propia");
+    }
+}

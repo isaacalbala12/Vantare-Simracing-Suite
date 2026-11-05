@@ -168,6 +168,37 @@ fn killed_after_ack_recovers_the_wal_and_retry_never_duplicates_samples() {
     assert!(replay.recent().is_empty());
 }
 
+#[test]
+fn read_only_after_kill_with_pending_wal_preserves_the_original_files() {
+    let db = Database::new();
+    {
+        let mut owner = Process::start(&db.0);
+        assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+        owner.send(&json!(["append", payload()]));
+        assert_eq!(owner.response(), json!(["ack", 1]));
+        owner.child.kill().unwrap();
+        owner.child.wait().unwrap();
+    }
+    let wal = db.0.with_extension("duckdb.wal");
+    let original = std::fs::read(&db.0).unwrap();
+    let pending = std::fs::read(&wal).unwrap();
+    assert!(!pending.is_empty());
+    {
+        let mut reader =
+            SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &db.0).unwrap();
+        assert_eq!(reader.state().watermark, 1);
+        assert!(!reader.state().finished);
+        let page = reader.page(0, 16).unwrap();
+        assert_eq!(page.len(), 1);
+        assert_eq!(
+            page[0].to_bytes().unwrap(),
+            serde_json::to_vec(&payload()).unwrap()
+        );
+    }
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    assert_eq!(std::fs::read(wal).unwrap(), pending);
+}
+
 fn photo(index: u32, lap_samples: u32) -> Observation {
     let car = Car {
         id: CarId(7),
@@ -326,4 +357,77 @@ fn timeout_and_drop_cancel_idle_workers_without_leaking_the_database_owner() {
     assert_eq!(reader.state().watermark, 1);
     assert!(!reader.state().finished);
     assert_eq!(reader.state().tail_lost(), None);
+}
+
+// Estado construido: DB creada y confirmada por el motor, sin esquema de series.
+// Matar esta fixture no interrumpe Store::open; fija la reapertura de ese estado.
+#[test]
+#[ignore = "fixture hija de engine_database_without_series_schema"]
+fn engine_database_without_series_schema_fixture() {
+    let path = std::env::var_os("VANTARE_PARTIAL_CREATION_DB").unwrap();
+    let connection = duckdb::Connection::open(Path::new(&path)).unwrap();
+    connection.execute_batch("CHECKPOINT").unwrap();
+    println!("engine-without-series-schema");
+    std::io::stdout().flush().unwrap();
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line).unwrap();
+    drop(connection);
+}
+
+#[test]
+fn engine_database_without_series_schema_is_preserved_and_cannot_resume() {
+    let db = Database::new();
+    let mut child = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--ignored",
+            "--exact",
+            "engine_database_without_series_schema_fixture",
+            "--nocapture",
+        ])
+        .env("VANTARE_PARTIAL_CREATION_DB", &db.0)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let input = child.stdin.take().unwrap();
+    let output = BufReader::new(child.stdout.take().unwrap());
+    let mut fixture = Process {
+        child,
+        input,
+        output,
+    };
+    loop {
+        let mut line = String::new();
+        assert!(
+            fixture.output.read_line(&mut line).unwrap() > 0,
+            "fixture terminó antes de la barrera"
+        );
+        if line.trim().ends_with("engine-without-series-schema") {
+            break;
+        }
+    }
+    fixture.child.kill().unwrap();
+    fixture.child.wait().unwrap();
+    let original = std::fs::read(&db.0).unwrap();
+    for read_only in [true, false] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_vantare-storage"));
+        command.arg(&db.0).stdin(Stdio::null());
+        if read_only {
+            command.arg("--read-only");
+        }
+        let output = command.output().unwrap();
+        assert!(!output.status.success());
+        if read_only {
+            let frame: Value = serde_json::from_slice(output.stdout.trim_ascii()).unwrap();
+            assert_eq!(frame[0], "error");
+            // Código accidental: open_error reconoce el texto series_meta del motor.
+            assert_eq!(frame[1], "incompatible");
+        } else {
+            assert!(
+                output.stdout.is_empty(),
+                "RW falla sin ready ni código tipado"
+            );
+        }
+        assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    }
 }

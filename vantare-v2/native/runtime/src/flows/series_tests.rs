@@ -32,6 +32,28 @@ impl Adapter for LapReplay {
 }
 
 #[test]
+fn production_core_without_a_series_subscriber_still_retains_diagnostic_samples() {
+    let mut core = Core::new(7);
+    for index in 1_u32..=4 {
+        core.observe(lap_photo(
+            u64::from(index),
+            0,
+            f64::from(index),
+            f64::from(index),
+        ))
+        .unwrap();
+    }
+    core.observe(lap_photo(5, 1, 0.0, 0.0)).unwrap();
+    assert!(core.series().publication_status().is_none());
+    let sealed = core.series().sealed().unwrap();
+    let active = core.series().active().unwrap();
+    // Coste lógico actual, sin afirmar memoria RSS ni presupuesto físico.
+    assert_eq!(sealed.samples.len(), 4);
+    assert_eq!(active.samples.len(), 1);
+    assert_eq!(sealed.sealed_at, Some(5));
+}
+
+#[test]
 fn a_real_lmu_fixture_contributes_a_sample_without_inventing_a_closed_lap() {
     use crate::adapter::{Replay, ReplayEvent};
 

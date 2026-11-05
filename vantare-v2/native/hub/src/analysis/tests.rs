@@ -214,3 +214,26 @@ fn no_recordings_does_not_create_a_directory() {
     assert!(recordings(&directory).expect("vacío honesto").is_empty());
     assert!(!directory.exists());
 }
+
+#[test]
+fn catalog_at_256_succeeds_but_257_rejects_the_entire_catalog() {
+    let directory =
+        std::env::temp_dir().join(format!("vantare-hub-catalog-limit-{}", std::process::id()));
+    std::fs::create_dir(&directory).expect("temporal exclusivo");
+    for index in 0..256 {
+        std::fs::write(directory.join(format!("{index:03}.duckdb")), []).expect("fixture");
+    }
+    let paths = recordings(&directory).expect("256 admitidas");
+    assert_eq!(paths.len(), 256);
+    assert!(paths.windows(2).all(|pair| pair[0] < pair[1]));
+    std::fs::write(directory.join("256.duckdb"), []).expect("fixture 257");
+    assert!(
+        recordings(&directory).is_err(),
+        "comportamiento actual: no pagina ni trunca"
+    );
+    assert_eq!(
+        std::fs::read_dir(&directory).expect("intactas").count(),
+        257
+    );
+    std::fs::remove_dir_all(directory).expect("limpiar fixtures propias");
+}

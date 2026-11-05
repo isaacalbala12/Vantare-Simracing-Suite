@@ -3,6 +3,30 @@
 use super::*;
 
 #[test]
+fn actual_metadata_faults_expose_current_open_error_codes_without_matching_text() {
+    for (sql, code) in [
+        ("UPDATE series_meta SET watermark=1", "unreadable"),
+        (
+            "UPDATE series_meta SET schema_version='unknown-v2'",
+            "incompatible",
+        ),
+    ] {
+        let db = Database::new();
+        drop(Store::open(&db.0, false).unwrap());
+        let connection = Connection::open(&db.0).unwrap();
+        connection.execute_batch(sql).unwrap();
+        drop(connection);
+        let original = std::fs::read(&db.0).unwrap();
+        let mut output = Vec::new();
+        assert!(serve(&db.0, true, &b""[..], &mut output).is_err());
+        let frame: Value = serde_json::from_slice(output.trim_ascii()).unwrap();
+        assert_eq!(frame[0], "error");
+        assert_eq!(frame[1], code);
+        assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    }
+}
+
+#[test]
 fn paged_history_is_read_only_and_matches_live_analysis_with_quality_intact() {
     let db = Database::new();
     let mut live = SeriesAnalysis::new(4).unwrap();

@@ -948,7 +948,7 @@ mod scan_tests {
             document.clone(),
             profile.clone(),
             move |_| Discovery::default(),
-            Default::default(),
+            std::sync::Arc::default(),
             None,
         )
         .unwrap();
@@ -965,7 +965,7 @@ mod scan_tests {
                     held.recv().unwrap();
                     Discovery::scan(apps, discovery::Sources::default())
                 },
-                Default::default(),
+                std::sync::Arc::default(),
                 None,
             );
             assert!(

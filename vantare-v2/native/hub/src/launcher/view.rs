@@ -1116,7 +1116,14 @@ mod tests {
                 gpui_platform::current_platform(true).text_system(),
                 std::sync::Arc::new(crate::shell::assets::Icons),
             );
-            cx.update(|cx| cx.set_global(crate::orbit::theme::Theme::default()));
+            cx.update(|cx| {
+                cx.set_global(crate::orbit::theme::Theme::default());
+                cx.set_global(
+                    vantare_ui::theme::Design::default()
+                        .compiled()
+                        .expect("tokens del tema compilado"),
+                );
+            });
             let discovery = Discovery {
                 apps: vec![discovery::Detected {
                     id: "lmu".into(),

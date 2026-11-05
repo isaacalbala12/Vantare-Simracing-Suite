@@ -830,12 +830,12 @@ impl Launcher {
         if self.capture != Capture::None {
             return;
         }
-        match Chain::start_selected(
+        match Chain::start(
             self.store.document.clone(),
             profile.clone(),
-            found,
+            move |_| found,
             self.processes.clone(),
-            selected,
+            Some(selected),
         ) {
             Ok(chain) => {
                 vantare_ui::analytics::record(
@@ -1285,7 +1285,14 @@ mod tests {
                 args_override: None,
             });
             // Sin rutas descubiertas: falla y termina sin crear procesos ni decisiones.
-            let mut chain = Chain::start(document, profile, Discovery::default()).unwrap();
+            let mut chain = Chain::start(
+                document,
+                profile,
+                move |_| Discovery::default(),
+                std::sync::Arc::default(),
+                None,
+            )
+            .unwrap();
             loop {
                 let event = chain
                     .progress

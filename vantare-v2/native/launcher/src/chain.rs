@@ -77,7 +77,6 @@ struct RunContext {
     processes: processes::Shared,
     next_decision: AtomicU64,
     selected: Vec<usize>,
-    detached: bool,
 }
 impl RunContext {
     fn ask(
@@ -197,52 +196,11 @@ impl Chain {
     pub fn start(
         document: Document,
         profile: Profile,
-        discovery: Discovery,
-    ) -> Result<Self, String> {
-        Self::start_with_processes(
-            document,
-            profile,
-            discovery,
-            Arc::new(Mutex::new(processes::Processes::default())),
-        )
-    }
-    pub fn start_with_processes(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
+        found: impl FnOnce(&[App]) -> Discovery + Send + 'static,
         processes: processes::Shared,
+        selected: Option<Vec<usize>>,
     ) -> Result<Self, String> {
-        let selected = (0..profile.steps.len()).collect();
-        Self::start_selected(document, profile, discovery, processes, selected)
-    }
-    /// Las apps y sus reintentos quedan fuera del Job del Hub.
-    pub fn start_selected(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
-        processes: processes::Shared,
-        selected: Vec<usize>,
-    ) -> Result<Self, String> {
-        Self::start_mode(document, profile, discovery, processes, selected, true)
-    }
-    /// Apps del sim-rig fuera del Job del supervisor; su política Leave sigue siendo real.
-    pub fn start_detached(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
-        processes: processes::Shared,
-    ) -> Result<Self, String> {
-        let selected = (0..profile.steps.len()).collect();
-        Self::start_mode(document, profile, discovery, processes, selected, true)
-    }
-    fn start_mode(
-        document: Document,
-        profile: Profile,
-        discovery: Discovery,
-        processes: processes::Shared,
-        selected: Vec<usize>,
-        detached: bool,
-    ) -> Result<Self, String> {
+        let selected = selected.unwrap_or_else(|| (0..profile.steps.len()).collect());
         if selected.is_empty()
             || selected.iter().any(|&index| index >= profile.steps.len())
             || selected.windows(2).any(|pair| pair[0] >= pair[1])
@@ -255,9 +213,6 @@ impl Chain {
         checked.profiles = vec![profile.clone()];
         checked.lmu_trigger_profile = None;
         checked.validate()?;
-        if profile.steps.is_empty() {
-            return Err("el perfil no tiene pasos".into());
-        }
         let (sender, progress) = mpsc::channel();
         let cancel = Arc::new(Cancellation::default());
         let (answers, replies) = mpsc::channel();
@@ -268,11 +223,13 @@ impl Chain {
             processes,
             next_decision: AtomicU64::new(1),
             selected,
-            detached,
         };
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
-            .spawn(move || run(&document, &profile, &discovery, &context))
+            .spawn(move || {
+                let discovery = found(&document.apps);
+                run(&document, &profile, &discovery, &context);
+            })
             .map_err(|e| format!("arrancar cadena: {e}"))?;
         Ok(Self {
             progress,
@@ -334,7 +291,7 @@ fn emit(
         .is_ok()
 }
 
-fn command(executable: &std::path::Path, args: &[String], detached: bool) -> Result<Child, String> {
+fn command(executable: &std::path::Path, args: &[String]) -> Result<Child, String> {
     if !is_executable(executable) {
         return Err(format!("ejecutable ausente: {}", executable.display()));
     }
@@ -348,10 +305,9 @@ fn command(executable: &std::path::Path, args: &[String], detached: bool) -> Res
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        command.creation_flags(0x0800_0000 | if detached { 0x0100_0000 } else { 0 }); // CREATE_NO_WINDOW: no consola para helpers.
+        // CREATE_NO_WINDOW conserva las consolas ocultas; BREAKAWAY mantiene las apps fuera del Job.
+        command.creation_flags(0x0800_0000 | 0x0100_0000);
     }
-    #[cfg(not(windows))]
-    let _ = detached;
     command
         .spawn()
         .map_err(|e| format!("arrancar {}: {e}", executable.display()))
@@ -430,7 +386,7 @@ fn launch(
     let identity =
         std::fs::canonicalize(executable).map_err(|e| format!("identidad del ejecutable: {e}"))?;
     let (program, args, steam) = effective_command(app, step, discovery)?;
-    let child = command(program, &args, context.detached)?;
+    let child = command(program, &args)?;
     let pid = child.id();
     let dispatcher = if steam {
         Some(child)
@@ -879,7 +835,6 @@ mod trust_tests {
             processes: Arc::new(Mutex::new(processes::Processes::default())),
             next_decision: AtomicU64::new(1),
             selected: vec![0],
-            detached: false,
         };
         answers.send((1, Action::Cancel)).expect("cancel");
         assert!(review_at(&document, &profile, &discovery, &context, &root).is_err());
@@ -970,6 +925,90 @@ mod trust_tests {
             review_content(&document, &profile, &discovery)
                 .expect("changed profile")
                 .0
+        );
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+
+    #[test]
+    fn scanning_runs_off_the_caller_and_does_not_hold_up_constructor_return() {
+        let document = Document::default();
+        let mut profile = Profile::new("scan-qa".into(), "Scan QA".into());
+        profile.first_step_delay = 3600;
+        profile.steps.push(Step {
+            app_id: "obs".into(),
+            delay_seconds: 0,
+            args_override: None,
+        });
+        // Control positivo: el mismo documento/perfil es válido y no crea procesos.
+        let mut snapshot = Chain::start(
+            document.clone(),
+            profile.clone(),
+            move |_| Discovery::default(),
+            std::sync::Arc::default(),
+            None,
+        )
+        .unwrap();
+        snapshot.shutdown().unwrap();
+        let (entered, observed) = mpsc::channel();
+        let (release, held) = mpsc::channel();
+        let (returned, result) = mpsc::channel();
+        let caller = thread::spawn(move || {
+            let chain = Chain::start(
+                document,
+                profile,
+                move |apps| {
+                    entered.send(thread::current().id()).unwrap();
+                    held.recv().unwrap();
+                    Discovery::scan(apps, discovery::Sources::default())
+                },
+                std::sync::Arc::default(),
+                None,
+            );
+            assert!(
+                returned.send(chain).is_ok(),
+                "resultado del constructor entregado"
+            );
+        });
+        let caller_id = caller.thread().id();
+        let scanner_id = observed
+            .recv_timeout(Duration::from_secs(5))
+            .expect("entrar al scanner");
+        // Espera acotada a una señal, sin sleeps: el scanner sigue retenido por el canal.
+        // Si ya lo vemos en el caller, el defecto queda demostrado sin agotar el plazo.
+        let early = if scanner_id == caller_id {
+            None
+        } else {
+            result.recv_timeout(Duration::from_secs(5)).ok()
+        };
+        let returned_while_blocked = early.is_some();
+        if let Some(Ok(chain)) = &early {
+            chain.prepare_shutdown();
+        }
+        release
+            .send(())
+            .expect("liberar siempre antes de recoger los hilos");
+        let mut chain = early
+            .unwrap_or_else(|| {
+                result
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("constructor después de liberar el scanner")
+            })
+            .expect("fixture válido");
+        caller.join().expect("caller recogido");
+        chain
+            .shutdown()
+            .expect("worker recogido sin crear procesos");
+        assert_ne!(
+            scanner_id, caller_id,
+            "P7: el scanner ocupa el hilo que llama al constructor"
+        );
+        assert!(
+            returned_while_blocked,
+            "el constructor debe volver aun con el scanner retenido"
         );
     }
 }

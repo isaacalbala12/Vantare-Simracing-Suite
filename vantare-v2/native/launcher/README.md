@@ -10,6 +10,23 @@ conserva el hash y la ruta de confianza existentes. No depende de runtime
 ni ui. Sus pruebas de comportamiento existentes se ejecutan en el crate
 y en Hub; el lifecycle del supervisor verifica los procesos reales.
 
+`Chain::start(document, profile, found, processes, selected)` es el único
+constructor. `selected: None` ejecuta todos los pasos; `Some(indices)` conserva
+los índices originales al reintentar. En Windows las apps siempre usan
+breakaway para sobrevivir al Job del Hub o del supervisor; las políticas de
+cierre siguen actuando sólo sobre los handles propios.
+
+`found` es una función que recibe las apps y devuelve el discovery en el worker.
+El Hub entrega su foto con una función que la devuelve; el residente escanea
+allí las fuentes locales sin bloquear su bucle. `run` y `run_pass` gestionan
+la cancelación antes de lanzar el primer paso; el cierre recoge el worker.
+El scan conserva sus límites existentes de archivos y registro.
+
+`Profile::missing_steps` comparte la comprobación de disponibilidad entre editor
+y presentación. Cada sitio conserva su comprobación de perfil vacío y su mensaje.
+Busy y detección en curso son estados de la UI.
+La cadena mantiene su política por paso, incluido Continue ante una app ausente.
+
 Fuera de Windows, `discovery::running_all`/`running` devuelven un error
 `Unsupported` hasta implementar inspección real de procesos (#1542). Una
 lista vacía afirmaría ausencia sin comprobarla y permitiría eludir Reuse/Restart.

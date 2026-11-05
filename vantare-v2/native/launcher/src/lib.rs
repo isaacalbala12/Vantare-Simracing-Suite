@@ -195,6 +195,18 @@ impl Profile {
         profile.avg_chain_duration_ms = 0;
         profile
     }
+    pub fn missing_steps(&self, discovered: &discovery::Discovery) -> Vec<usize> {
+        self.steps
+            .iter()
+            .enumerate()
+            .filter(|(_, step)| {
+                !discovered
+                    .app(&step.app_id)
+                    .is_some_and(|app| app.availability.launchable)
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
     pub fn validate_editor(&self, discovered: &discovery::Discovery) -> Result<(), String> {
         if !valid_text(&self.name) {
             return Err("Nombre: indica entre 1 y 256 caracteres sin NUL".into());
@@ -202,6 +214,7 @@ impl Profile {
         if self.steps.is_empty() {
             return Err("Pasos: anade al menos una aplicacion".into());
         }
+        let missing = self.missing_steps(discovered).first().copied();
         let mut apps = HashSet::new();
         for (index, step) in self.steps.iter().enumerate() {
             if !self.advanced && !apps.insert(&step.app_id) {
@@ -210,10 +223,7 @@ impl Profile {
                     index + 1
                 ));
             }
-            if !discovered
-                .app(&step.app_id)
-                .is_some_and(|app| app.availability.launchable)
-            {
+            if missing == Some(index) {
                 return Err(format!("Paso {}: selecciona una app disponible", index + 1));
             }
         }

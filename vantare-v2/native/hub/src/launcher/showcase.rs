@@ -233,34 +233,25 @@ fn launch_block_reason(
     if profile.steps.is_empty() {
         return Some("Añade al menos una aplicación a este perfil.".into());
     }
-    let missing: Vec<_> = profile
-        .steps
-        .iter()
-        .filter(|step| {
-            !discovery
-                .apps
-                .iter()
-                .any(|app| app.id == step.app_id && app.availability.launchable)
-        })
-        .map(|step| {
+    let missing = profile.missing_steps(discovery);
+    if missing.is_empty() {
+        return None;
+    }
+    let names: Vec<_> = missing
+        .into_iter()
+        .map(|index| {
+            let id = &profile.steps[index].app_id;
             apps.iter()
-                .find(|app| app.id == step.app_id)
+                .find(|app| &app.id == id)
                 .map(|app| app.name.as_str())
-                .or_else(|| {
-                    CATALOG
-                        .iter()
-                        .find(|app| app.id == step.app_id)
-                        .map(|app| app.name)
-                })
+                .or_else(|| CATALOG.iter().find(|app| app.id == id).map(|app| app.name))
                 .unwrap_or("Aplicación sin configurar")
         })
         .collect();
-    (!missing.is_empty()).then(|| {
-        format!(
-            "No se puede lanzar: revisa las rutas de {} en Aplicaciones.",
-            missing.join(", ")
-        )
-    })
+    Some(format!(
+        "No se puede lanzar: revisa las rutas de {} en Aplicaciones.",
+        names.join(", ")
+    ))
 }
 
 pub(super) fn app_icon(app: &App, size: f32, cx: &gpui::App) -> Div {

@@ -437,13 +437,7 @@ fn availability(app: Option<&discovery::Detected>, scanning: bool) -> (&'static 
 }
 
 pub(super) fn launchable(profile: &Profile, discovered: &Discovery, busy: bool) -> bool {
-    !busy
-        && !profile.steps.is_empty()
-        && profile.steps.iter().all(|step| {
-            discovered
-                .app(&step.app_id)
-                .is_some_and(|app| app.availability.launchable)
-        })
+    !busy && !profile.steps.is_empty() && profile.missing_steps(discovered).is_empty()
 }
 
 impl Launcher {

@@ -298,11 +298,45 @@ mod tests {
 
     fn slow_offer() -> (String, std::thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
         let address = format!("http://{}", listener.local_addr().unwrap());
         let thread = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
+            // El cliente puede vencer antes de conectar o enviar. El arnés no
+            // puede retener join; los plazos de 20/500 ms del cliente no cambian.
+            let deadline = Instant::now() + Duration::from_secs(1);
+            let mut stream = loop {
+                match listener.accept() {
+                    Ok((stream, _)) => break stream,
+                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                        if Instant::now() >= deadline {
+                            return;
+                        }
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
+                    Err(error) => panic!("accept del arnés: {error}"),
+                }
+            };
+            stream.set_nonblocking(false).unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
             let mut request = [0; 512];
-            let _ = stream.read(&mut request).unwrap();
+            match stream.read(&mut request) {
+                Ok(0) => return,
+                Ok(_) => {}
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock
+                            | io::ErrorKind::TimedOut
+                            | io::ErrorKind::ConnectionReset
+                            | io::ErrorKind::ConnectionAborted
+                    ) =>
+                {
+                    return;
+                }
+                Err(error) => panic!("request del arnés: {error}"),
+            }
             // Deliberately longer than the short query budget used below.
             std::thread::sleep(Duration::from_millis(80));
             let _ = stream.write_all(
@@ -310,6 +344,53 @@ mod tests {
             );
         });
         (address, thread)
+    }
+
+    fn fixture_finished(server: &std::thread::JoinHandle<()>) -> bool {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        // Watchdog del arnés entre hilos; no cambia el plazo del cliente HTTP.
+        while !server.is_finished() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        server.is_finished()
+    }
+
+    #[test]
+    fn http_fixture_finishes_if_client_never_connects() {
+        let (url, server) = slow_offer();
+        let finished = fixture_finished(&server);
+        // Solo limpieza después de medir: evita dejar un accept bloqueado en la base roja.
+        let mut cleanup = (!finished)
+            .then(|| std::net::TcpStream::connect(url.strip_prefix("http://").unwrap()).unwrap());
+        if let Some(stream) = &mut cleanup {
+            stream
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .unwrap();
+        }
+        server.join().unwrap();
+        drop(cleanup);
+        assert!(
+            finished,
+            "el arnés no puede esperar indefinidamente si el cliente ya venció antes de conectar"
+        );
+    }
+
+    #[test]
+    fn http_fixture_finishes_if_connected_client_sends_nothing() {
+        let (url, server) = slow_offer();
+        let mut client =
+            std::net::TcpStream::connect(url.strip_prefix("http://").unwrap()).unwrap();
+        let finished = fixture_finished(&server);
+        if !finished {
+            client
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .unwrap();
+        }
+        server.join().unwrap();
+        assert!(
+            finished,
+            "el arnés también termina si se cancela después de conectar y antes de enviar"
+        );
     }
 
     #[test]

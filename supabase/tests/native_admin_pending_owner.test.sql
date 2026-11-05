@@ -1,0 +1,12 @@
+begin;
+select no_plan();
+insert into public.profiles(id) values('19101030-0000-4000-8000-000000000001'),('19101030-0000-4000-8000-000000000002'),('19101030-0000-4000-8000-000000000003');
+select * from public.operational_access_set('19101030-0000-4000-8000-000000000001','owner','grant','fixture','Pending owner one','pending-owner-one',null);
+select * from public.operational_access_set('19101030-0000-4000-8000-000000000002','owner','grant','fixture','Pending owner two','pending-owner-two',null);
+select lives_ok($$select public.native_admin_execute('19101030-0000-4000-8000-000000000001','https://fixture.invalid','list_pending_effects','{}','production')$$,'owner can read pending effects in production without a provider');
+create temporary table lease_token as select public.native_admin_claim_change('19101030-0000-4000-8000-000000000001','19101030-0000-4000-8000-000000000010','19101030-0000-4000-8000-000000000003') token;
+select throws_ok($$select public.native_admin_claim_change('19101030-0000-4000-8000-000000000002','19101030-0000-4000-8000-000000000011','19101030-0000-4000-8000-000000000003')$$,'40001','native_admin_change_in_progress','live lease has a distinct conflict');
+select public.native_admin_record_effect('19101030-0000-4000-8000-000000000001',jsonb_build_object('request_id','19101030-0000-4000-8000-000000000010','effect_id','19101030-0000-4000-8000-000000000020','action','set_blocked','effect','clerk_ban','target_hash',repeat('d',64),'outcome','started'),'19101030-0000-4000-8000-000000000003');
+select throws_ok($$select public.native_admin_claim_change('19101030-0000-4000-8000-000000000002','19101030-0000-4000-8000-000000000011','19101030-0000-4000-8000-000000000003')$$,'40001','native_admin_effects_pending','unresolved effects have a distinct conflict');
+select * from finish();
+rollback;

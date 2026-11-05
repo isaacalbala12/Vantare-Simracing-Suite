@@ -417,15 +417,6 @@ impl PendingEffect {
     pub fn valid(&self) -> bool {
         vantare_services::license::uuid(&self.effect_id)
             && vantare_services::license::uuid(&self.request_id)
-            && [&self.action, &self.effect].iter().all(|s| {
-                !s.is_empty()
-                    && s.len() <= 64
-                    && s.bytes()
-                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
-            })
-            && !self.occurred_at.is_empty()
-            && self.occurred_at.len() <= 40
-            && !self.occurred_at.chars().any(char::is_control)
             && matches!(self.outcome.as_str(), "pending" | "unknown")
             && self
                 .http_status

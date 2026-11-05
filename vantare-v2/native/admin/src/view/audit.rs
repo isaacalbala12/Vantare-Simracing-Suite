@@ -27,8 +27,11 @@ impl Admin {
                             .map_or_else(|| "sin respuesta".into(), |n| n.to_string())
                     )))
                     .child(text(&format!("Inicio: {}", row.occurred_at), 13., INK3))
-                    .child(text(&format!("Efecto: {}", row.effect_id), 12., INK3))
-                    .child(text(&format!("Petición: {}", row.request_id), 12., INK3))
+                    .child(text(
+                        &format!("Efecto: {} · Petición: {}", row.effect_id, row.request_id),
+                        12.,
+                        INK3,
+                    ))
                     .child(self.button(
                         "copy-effect",
                         "Copiar identificadores",

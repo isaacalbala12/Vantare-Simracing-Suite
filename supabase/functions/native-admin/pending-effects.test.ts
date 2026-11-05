@@ -71,7 +71,7 @@ for (const token of ["opaque-hub-fixture", "garbage"]) {
   });
 }
 for (const kind of ["non-owner", "expired owner"]) {
-  Deno.test("pending read refuses " + kind, async () => {
+  Deno.test("pending read maps injected forbidden for " + kind, async () => {
     const f = fixture();
     f.deps.begin = () => Promise.reject(new NativeError(403, "forbidden"));
     const response = await handleNativeAdmin(request(payload), f.deps);

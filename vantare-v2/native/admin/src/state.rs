@@ -394,12 +394,9 @@ impl State {
         if rows
             .iter()
             .any(|row| !row.valid() || cursor.is_some_and(|id| row.effect_id.as_str() <= id))
-            || rows
-                .windows(2)
-                .any(|pair| pair[0].effect_id >= pair[1].effect_id)
-            || next.as_ref().is_some_and(|id| {
-                rows.len() != 50 || rows.last().is_none_or(|row| &row.effect_id != id)
-            })
+            || next
+                .as_ref()
+                .is_some_and(|id| rows.last().is_none_or(|row| &row.effect_id != id))
         {
             return Err(Error::Protocol);
         }
@@ -992,6 +989,11 @@ mod pending_effect_tests {
         let page = serde_json::json!({"effects":[row(1)],"next_cursor":null});
         state.accept(&action, &page).expect("owner page");
         assert_eq!(state.effects.len(), 1);
+        let mut short_page = page.clone();
+        short_page["next_cursor"] = state.effects[0].effect_id.clone().into();
+        state
+            .accept(&action, &short_page)
+            .expect("cursor does not require a full page");
         let mut pii = page.clone();
         pii["effects"][0]["target_hash"] = "unexpected".into();
         assert_eq!(state.accept(&action, &pii), Err(Error::Protocol));

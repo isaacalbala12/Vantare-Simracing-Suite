@@ -940,14 +940,16 @@ la página anterior; salir/perder autoridad borra los datos de memoria. No hay
 reintento/reconcile desde esta pantalla: verificar proveedor y usar el procedimiento
 manual anterior. Reconciliar no vuelve a enviar SMTP.
 
-claim mantiene locks, lease y fencing. Ahora40001 distingue
-native_admin_change_in_progress →409 account_change_in_progress (esperar)
-y native_admin_effects_pending →409 account_effects_pending (consultar Auditoría
+claim mantiene locks, lease y fencing. Ahora 40001 distingue
+native_admin_change_in_progress → 409 account_change_in_progress (esperar)
+y native_admin_effects_pending → 409 account_effects_pending (consultar Auditoría
 y verificar antes de reconciliar). Un lease vigente pide esperar incluso con
 started en vuelo; tras liberar/caducar, un efecto sin cierre bloquea hasta
 reconciliar. El fallback para SQL anterior se conserva.
 
-Solo Isaac: migración después de215424, luego Edge y luego Gestión nuevo.
+Producción exige `CLERK_ADMIN_AUTH_ENABLED=true`, con el cliente Gestión ya
+configurado por Isaac; el modo Hub inactivo se conserva para compatibilidad.
+Solo Isaac: migración después de 215424 y de #1965 (231800), luego Edge y luego Gestión nuevo.
 Down restaura cuerpos/ACL completos sin borrar evidencia ni cambiar leases.
 Coordinar el rollback de Edge/Gestión porque SQL anterior no conoce la lectura.
 Producción tiene datos; no reset ni migración repair. Sin cambios de configuración.

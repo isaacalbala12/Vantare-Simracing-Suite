@@ -18,15 +18,23 @@ insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effe
  select effect_id,case when effect_id='19101030-0000-4000-8000-000000000101' then 'succeeded' when effect_id='19101030-0000-4000-8000-000000000102' then 'failed' else 'unknown' end,
  request_id,actor,action,effect,target_hash,case when effect_id='19101030-0000-4000-8000-000000000101' then 204 when effect_id='19101030-0000-4000-8000-000000000102' then 403 else 503 end from private.admin_effects where effect_id in
  ('19101030-0000-4000-8000-000000000101','19101030-0000-4000-8000-000000000102','19101030-0000-4000-8000-000000000103');
+-- A legacy/minimized pending row is readable without reintroducing its erased target.
+insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
+ values('19101030-0000-4000-8000-000000000999','started',gen_random_uuid(),
+ '19101030-0000-4000-8000-000000000001','set_blocked','clerk_ban','erased');
 create temporary table before_reads as select (select count(*) from private.admin_effects) effects,(select count(*) from public.admin_audit_log) audit;
 create temporary table page_one as select public.native_admin_execute('19101030-0000-4000-8000-000000000001','https://fixture.invalid','list_pending_effects','{}','production') data;
 create temporary table page_two as select public.native_admin_execute('19101030-0000-4000-8000-000000000001','https://fixture.invalid','list_pending_effects',jsonb_build_object('cursor',(select data->>'next_cursor' from page_one)),'production') data;
 select is((select jsonb_array_length(data->'effects') from page_one),50,'first owner page is bounded');
-select is((select jsonb_array_length(data->'effects') from page_two),4,'cursor reaches every remaining pending effect');
+select is((select jsonb_array_length(data->'effects') from page_two),5,'cursor reaches every remaining pending effect');
 select is((select data->'next_cursor' from page_two),'null'::jsonb,'last page clears cursor');
 select is((select count(*)::integer from (select e->>'effect_id' from page_one,jsonb_array_elements(data->'effects') e intersect select e->>'effect_id' from page_two,jsonb_array_elements(data->'effects') e) overlap),0,'pages do not repeat effects');
 select ok((select bool_and(e-array['effect_id','request_id','action','effect','occurred_at','outcome','http_status']='{}'::jsonb) from page_one,jsonb_array_elements(data->'effects') e),'whitelist exposes no actor/account/hash/provider identity');
 select ok((select exists(select 1 from jsonb_array_elements(data->'effects') e where e->>'outcome'='unknown' and e->>'http_status'='503') from page_one),'unknown result is visible with HTTP class');
+select is((select e from page_two,jsonb_array_elements(data->'effects') e where e->>'effect_id'='19101030-0000-4000-8000-000000000999'),
+ (select jsonb_build_object('effect_id',effect_id,'request_id',request_id,'action',action,'effect',effect,'occurred_at',occurred_at,'outcome','pending','http_status',null)
+ from private.admin_effects where effect_id='19101030-0000-4000-8000-000000000999' and target_hash='erased'),
+ 'erased target returns only the seven public fields, without target/hash/account/actor');
 select is((select count(*) from private.admin_effects),(select effects from before_reads),'owner reading writes no effects');
 select is((select count(*) from public.admin_audit_log),(select audit from before_reads),'owner reading writes no business audit');
 select throws_ok($$select public.native_admin_execute('19101030-0000-4000-8000-000000000003','https://fixture.invalid','list_pending_effects','{}','production')$$,'42501','native_admin_forbidden','non-owner cannot read effects');

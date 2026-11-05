@@ -157,28 +157,6 @@ fn star_mark(filled: bool) -> SvgMark {
     )
 }
 
-fn last_run(profiles: &[Profile]) -> Option<String> {
-    profiles
-        .iter()
-        .filter_map(|profile| {
-            chrono::DateTime::parse_from_rfc3339(profile.last_launched_at.as_deref()?).ok()
-        })
-        .max()
-        .map(|when| {
-            use chrono::Datelike;
-            let when = when.with_timezone(&chrono::Local);
-            let months = [
-                "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic",
-            ];
-            format!(
-                "{:02} {}, {}",
-                when.day(),
-                months[when.month0() as usize],
-                when.format("%H:%M")
-            )
-        })
-}
-
 pub(super) fn hotkey_keys(hotkey: &str) -> Vec<String> {
     hotkey
         .split('+')
@@ -194,14 +172,6 @@ pub(super) fn hotkey_keys(hotkey: &str) -> Vec<String> {
             }
         })
         .collect()
-}
-
-fn context_block(cx: &gpui::App) -> gpui::Div {
-    div()
-        .border_t_1()
-        .border_color(rgba(orbit::line_row(cx)))
-        .pt(px(16.0))
-        .px(px(2.0))
 }
 
 fn context_heading(label: &str, value: String, cx: &gpui::App) -> gpui::Div {
@@ -479,7 +449,7 @@ impl Launcher {
             .join(" → ")
     }
 
-    fn context_profiles(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
+    pub(crate) fn context_profiles(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
         let mut profiles = div().child(context_heading(
             "Perfiles",
             self.store.document.profiles.len().to_string(),
@@ -567,22 +537,6 @@ impl Launcher {
         profiles
     }
 
-    pub fn quick_profiles(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
-        self.context_profiles(query, cx)
-    }
-
-    /// La shell monta esta búsqueda en su ranura de acciones de Launcher.
-    pub fn topbar_actions(&self, available_width: f32, cx: &Context<Self>) -> gpui::Div {
-        // La ranura queda junto a las migas; este espacio centra el campo
-        // en la barra disponible sin alterar los controles comunes del marco.
-        div()
-            .w(px((available_width / 2.0 - orbit::TOPBAR_GUTTER).max(260.0)))
-            .min_w_0()
-            .flex()
-            .justify_end()
-            .child(self.application_search(cx))
-    }
-
     fn application_search(&self, cx: &Context<Self>) -> gpui::Div {
         div()
             .relative()
@@ -596,111 +550,6 @@ impl Launcher {
                         .top(px(10.0)),
                 )
             })
-    }
-
-    fn context_favorites(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
-        let mut favorites = div().child(context_heading(
-            "Favoritas",
-            self.store
-                .document
-                .apps
-                .iter()
-                .filter(|app| app.favorite)
-                .count()
-                .to_string(),
-            cx,
-        ));
-        let mut count = 0;
-        for (index, app) in self
-            .store
-            .document
-            .apps
-            .iter()
-            .filter(|app| app.favorite && matches_query(query, &[&app.name, category(app)]))
-            .enumerate()
-        {
-            count += 1;
-            let edit = app.clone();
-            favorites = favorites.child(
-                orbit::list_row(
-                    ("context-favorite", index),
-                    &app.name,
-                    category(app),
-                    false,
-                    true,
-                    cx,
-                )
-                .on_click(cx.listener(move |this, _, window, cx| {
-                    this.app_editor(Some(edit.clone()), window, cx);
-                })),
-            );
-        }
-        if count == 0 {
-            favorites = favorites.child(
-                text(
-                    "Sin favoritas: marca la estrella de una aplicación.",
-                    11.5,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                )
-                .line_height(px(17.25))
-                .mt(px(16.0)),
-            );
-        }
-        favorites
-    }
-
-    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
-    pub fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
-        let query = self.query.read(cx).value.clone();
-        let favorites = self.context_favorites(&query, cx);
-        let detected = self
-            .discovered
-            .apps
-            .iter()
-            .filter(|app| app.availability.found)
-            .count();
-        orbit::column(
-            "Launcher",
-            crate::version_label(),
-            cx,
-        )
-        .w(px(orbit::column_width(f32::from(
-            window.viewport_size().width,
-        ))))
-        .child(
-            div()
-                .id("launcher-context")
-                .flex_1()
-                .min_h_0()
-                .overflow_y_scroll()
-                .flex()
-                .flex_col()
-                .gap(px(21.0))
-                .pt(px(12.0))
-                .child(context_block(cx).child(self.context_profiles(&query, cx)))
-                .child(context_block(cx).child(favorites))
-                .child(
-                    context_block(cx)
-                        .child(context_heading(
-                            "Catálogo",
-                            format!("{} · {detected} detectadas", self.store.document.apps.len()),
-                            cx,
-                        ))
-                        .child(
-                            text(
-                                "La detección busca en el registro, Steam y los accesos directos.",
-                                11.5,
-                                400,
-                                orbit::ink_3(cx),
-                                cx,
-                            )
-                            .line_height(px(17.25))
-                            .mt(px(16.0)),
-                        ),
-                ),
-        )
     }
 
     fn catalog(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
@@ -1048,7 +897,7 @@ impl Launcher {
                     )),
                 )
         };
-        orbit::card("Progreso de la cadena", cx).child(progress.child(controls))
+        progress.child(controls)
     }
 }
 
@@ -1063,14 +912,6 @@ impl Render for Launcher {
         }
         if self.page == LauncherPage::Editor {
             return self.editor_page(cx).into_any_element();
-        }
-        if self.page == LauncherPage::History {
-            let adapt = self.adapt;
-            let (top, side, bottom) = adapt.padding();
-            return div().size_full().min_h_0().flex().flex_col().pt(px(top)).px(px(side)).pb(px(bottom)).gap(px(adapt.gap()))
-                .child(orbit::neo_page_header("Historial", "Último lanzamiento registrado de cada perfil; sin historial de intentos persistido.", self.adapt, cx))
-                .when_some(last_run(&self.store.document.profiles), |page, last| page.child(orbit::meta(&format!("Último lanzamiento · {last}"), 12.0, orbit::ink_3(cx), cx)))
-                .child(self.showcase_history(false, cx)).into_any_element();
         }
         let adapt = self.adapt;
         let (top, side, bottom) = adapt.padding();
@@ -1129,24 +970,6 @@ impl Render for Launcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn history_ignores_missing_and_invalid_dates_and_uses_latest_instant() {
-        let mut recent = Profile::new("recent".into(), "Recent".into());
-        recent.last_launched_at = Some("2026-07-07T17:42:00Z".into());
-        let expected = last_run(&[recent.clone()]);
-        assert!(
-            expected
-                .as_ref()
-                .is_some_and(|value| value.contains(" jul, "))
-        );
-        let mut earlier = Profile::new("earlier".into(), "Earlier".into());
-        earlier.last_launched_at = Some("2026-07-07T19:40:00+02:00".into());
-        let mut invalid = Profile::new("invalid".into(), "Invalid".into());
-        invalid.last_launched_at = Some("no es una fecha".into());
-        assert_eq!(last_run(&[earlier, recent, invalid.clone()]), expected);
-        assert_eq!(last_run(&[invalid]), None);
-        assert_eq!(last_run(&[]), None);
-    }
 
     #[test]
     fn shortcut_keeps_key_order_and_normalizes_display_names() {

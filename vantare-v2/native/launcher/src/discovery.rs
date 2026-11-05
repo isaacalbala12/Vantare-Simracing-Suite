@@ -8,9 +8,7 @@ use std::{
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[allow(clippy::struct_excessive_bools)] // Cuatro hechos independientes del contrato productivo.
 pub struct Availability {
-    pub catalogued: bool,
     pub found: bool,
     pub installed: bool,
     pub launchable: bool,
@@ -327,10 +325,7 @@ fn detect_app(
         id: app.id.clone(),
         executable: None,
         source: "catálogo",
-        availability: Availability {
-            catalogued: official.is_some(),
-            ..Availability::default()
-        },
+        availability: Availability::default(),
     };
     if let Some(path) = &app.executable {
         // Un override desaparecido conserva autoridad: nunca sustituirlo silenciosamente.

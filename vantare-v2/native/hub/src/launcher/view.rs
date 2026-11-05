@@ -58,7 +58,6 @@ enum Capture {
 enum LauncherPage {
     Showcase,
     Manage,
-    History,
     Editor,
 }
 
@@ -205,27 +204,21 @@ impl Launcher {
                 .store
                 .document
                 .profiles
-                .iter_mut()
+                .iter()
                 .find(|profile| profile.id == sample.id)
+                && let Some(ready) = sample.last_ready_steps
             {
-                profile.launch_count = sample.launch_count;
-                profile
-                    .last_launched_at
-                    .clone_from(&sample.last_launched_at);
-                profile.avg_chain_duration_ms = sample.avg_chain_duration_ms;
-                if let Some(ready) = sample.last_ready_steps {
-                    view.last_profile = Some(profile.clone());
-                    view.progress = (0..ready)
-                        .map(|step| Progress {
-                            step: Some(step),
-                            status: super::chain::Status::Ready,
-                            pid: None,
-                            message: "Perfil de ejemplo".into(),
-                            success: true,
-                            decision: None,
-                        })
-                        .collect();
-                }
+                view.last_profile = Some(profile.clone());
+                view.progress = (0..ready)
+                    .map(|step| Progress {
+                        step: Some(step),
+                        status: super::chain::Status::Ready,
+                        pid: None,
+                        message: "Perfil de ejemplo".into(),
+                        success: true,
+                        decision: None,
+                    })
+                    .collect();
             }
         }
         if create_profile {

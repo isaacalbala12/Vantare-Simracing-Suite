@@ -447,7 +447,7 @@ fn discovery_reads_real_known_registry_and_steam_trees_and_keeps_evidence_distin
         Some(game.clone())
     );
     let motec = &discovered.app("motec").expect("MoTeC").availability;
-    assert!(motec.catalogued && motec.found && !motec.installed && !motec.launchable);
+    assert!(motec.found && !motec.installed && !motec.launchable);
     fs::remove_file(game).expect("desaparece el ejecutable del juego");
     let discovered = Discovery::scan(
         &Document::default().apps,
@@ -459,7 +459,7 @@ fn discovery_reads_real_known_registry_and_steam_trees_and_keeps_evidence_distin
     let lmu = &discovered.app("lmu").expect("LMU").availability;
     assert!(lmu.installed && lmu.found && !lmu.launchable);
     let spotify = &discovered.app("spotify").expect("Spotify").availability;
-    assert!(spotify.catalogued && !spotify.found && !spotify.installed && !spotify.launchable);
+    assert!(!spotify.found && !spotify.installed && !spotify.launchable);
 }
 
 #[test]

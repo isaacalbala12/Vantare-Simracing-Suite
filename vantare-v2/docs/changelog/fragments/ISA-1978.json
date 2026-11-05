@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1978",
   "type": "fix",
-  "summary": "El Launcher respeta Dejar abiertas, evita relanzar perfiles al recargar con LMU abierto y permite descartar las decisiones del residente.",
+  "summary": "El Launcher respeta Dejar abiertas, evita relanzamientos y cadenas concurrentes y retira el historial que no se registraba.",
   "technicalNotes": [
     "El Launcher inicia las aplicaciones fuera del Job de la sesión, también al reintentar pasos.",
     "Se conservan los handles propios y las políticas de cierre del perfil.",
@@ -11,7 +11,8 @@
     "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo.",
     "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento.",
     "Lanzabilidad compartida y un solo constructor de cadena, siempre fuera del Job; el residente detecta apps en el worker y sigue atendiendo su bucle.",
-    "Las acciones del buzón usan identificadores estables; el estado running y un lock de cadena evitan dos lanzamientos concurrentes sobre el mismo documento, sin unir los dueños de procesos."
+    "Las acciones del buzón usan identificadores estables; el estado running y un lock de cadena evitan dos lanzamientos concurrentes sobre el mismo documento, sin unir los dueños de procesos.",
+    "Se retiran la pestaña Historial, Últimas veces y el código de presentación sin llamadas. El progreso real y los reintentos conservan una sección propia desplazable; todos los campos antiguos del documento se mantienen."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",
@@ -21,10 +22,11 @@
     "Verificar bytes originales intactos al leer un documento futuro o uno con procedencia Wails guardada.",
     "Comparar los bytes de los tres escritores reales con sus 18 capturas anteriores: seis combinaciones por escritor, incluido un perfil antiguo sin editar.",
     "Retener el scanner con un canal: debe ejecutarse fuera del caller y el constructor debe volver antes de liberarlo. Cancelar y recoger ambos hilos sin lanzar apps.",
-    "Verificar los ocho identificadores a través del drawer y el escritor reales del Hub, las respuestas residentes y la exclusión entre procesos; tras la caída del helper propio debe poder iniciarse otra cadena."
+    "Verificar los ocho identificadores a través del drawer y el escritor reales del Hub, las respuestas residentes y la exclusión entre procesos; tras la caída del helper propio debe poder iniciarse otra cadena.",
+    "Comprobar que Perfiles y Aplicaciones siguen disponibles, que la captura de Historial ya no existe y que un resultado fallido conserva progreso y reintentos; las 18 capturas del documento no cambian."
   ],
   "knownLimitations": [
     "Si LMU ya estaba abierto al arrancar el Hub, el trigger no lanza el perfil. Es el comportamiento intencionado de P5.",
-    "La retirada del historial y el README vigente corresponden al paso 7 pendiente de VANTA-136."
+    "Hub y residente conservan registros de procesos propios; el cambio a un solo dueño y el arranque con Windows por --background siguen aplazados."
   ]
 }

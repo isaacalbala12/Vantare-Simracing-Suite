@@ -1475,7 +1475,6 @@ fn create_launcher(
                     "launcher-reposo"
                         | "launcher-lanzando"
                         | "launcher-aplicaciones"
-                        | "launcher-historial"
                         | "launcher-editor"
                         | "launcher-listo"
                         | "launcher-cancelado"

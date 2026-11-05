@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { type AdminDeps, handleNativeAdmin } from "./index.ts";
+import { adminFailure } from "./errors.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import { account, authDeps, claims, config, request, user } from "../native-account-authorize/testdata/auth.ts";
 import { adminClient, publicKey, signedJwt } from "./jwt-fixture.ts";
@@ -48,3 +49,10 @@ Deno.test("pending cursor is a UUID and extra authority fields are rejected", as
     assert.equal(response.status, 400); assert.deepEqual(f.calls, []);
   }
 });
+
+for (const [sql, code] of [["native_admin_change_in_progress", "account_change_in_progress"], ["native_admin_effects_pending", "account_effects_pending"]]) {
+  Deno.test("distinct conflict response: " + sql, () => {
+    const error = adminFailure({ code: "40001", message: sql });
+    assert.equal(error.status, 409); assert.equal(error.code, code);
+  });
+}

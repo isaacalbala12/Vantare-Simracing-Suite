@@ -797,7 +797,10 @@ begin
    e.request_id=(select request_id from private.admin_change_leases where account_id=p_account)
    or e.target_hash in (select encode(sha256(convert_to(i.subject,'UTF8')),'hex')
                        from public.account_identities i where i.account_id=p_account))
- then return null; end if;
+ then
+  if exists(select 1 from private.admin_change_leases where account_id=p_account and expires_at>clock_timestamp()) then
+   raise exception 'native_admin_change_in_progress' using errcode='40001'; end if;
+  raise exception 'native_admin_effects_pending' using errcode='40001'; end if;
 
  insert into private.admin_change_leases as l(account_id,actor,request_id,token,expires_at)
  values(p_account,p_actor,p_request,gen_random_uuid(),clock_timestamp()+interval '480 seconds')
@@ -807,6 +810,7 @@ begin
  expires_at=case when l.expires_at>clock_timestamp() and l.actor=p_actor and l.request_id=p_request then l.expires_at else clock_timestamp()+interval '480 seconds' end
  where l.expires_at<=clock_timestamp() or (l.actor=p_actor and l.request_id=p_request)
  returning token into v_token;
+ if v_token is null then raise exception 'native_admin_change_in_progress' using errcode='40001'; end if;
  return v_token;
 end;
 $$;
@@ -870,9 +874,30 @@ end$$;
 CREATE FUNCTION public.native_admin_execute(p_actor uuid, p_issuer text, p_action text, p_params jsonb, p_environment text) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
-    AS $$
+    AS $_$
 declare v_result jsonb; v_monthly uuid; v_annual uuid; account uuid; current_enabled boolean;
 begin
+ if p_action='list_pending_effects' then
+  perform private.lock_accounts_before_rows(array[p_actor]);
+  perform private.native_admin_require_owner(p_actor);
+  if p_issuer is null or p_issuer!~'^https://' or p_environment is null or p_environment not in('production','sandbox')
+   or jsonb_typeof(p_params) is distinct from 'object' or p_params-array['cursor']<>'{}'
+   or (p_params ? 'cursor' and (jsonb_typeof(p_params->'cursor') is distinct from 'string'
+    or (p_params->>'cursor')!~*'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) then
+   raise exception 'native_admin_invalid' using errcode='22023'; end if;
+  with page as (
+   select effect_id,request_id,action,effect,occurred_at,latest_outcome,latest_provider_status
+   from private.admin_pending_effects where not(p_params ? 'cursor') or effect_id>(p_params->>'cursor')::uuid
+   order by effect_id limit 51
+  ), numbered as (select *,row_number() over(order by effect_id) n from page)
+  select jsonb_build_object('effects',coalesce(jsonb_agg(jsonb_build_object(
+   'effect_id',effect_id,'request_id',request_id,'action',action,'effect',effect,
+   'occurred_at',occurred_at,'outcome',latest_outcome,'http_status',latest_provider_status) order by effect_id)
+   filter(where n<=50),'[]'::jsonb),'next_cursor',
+   (select effect_id from numbered where n=50 and exists(select 1 from numbered where n=51)))
+  into v_result from numbered;
+  return v_result;
+ end if;
  if p_action in('set_module','set_rollout') then
   if jsonb_typeof(p_params->'expected_enabled') is distinct from 'boolean' then raise exception 'native_admin_invalid' using errcode='22023'; end if;
   account:=case when p_action='set_module' then (p_params->>'account_id')::uuid else null end;
@@ -906,7 +931,7 @@ begin
   return v_result;
  end if;
  return private.native_admin_execute_before_creator_coupon(p_actor,p_issuer,p_action,p_params,p_environment);
-end $$;
+end $_$;
 
 
 --

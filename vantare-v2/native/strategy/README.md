@@ -57,7 +57,7 @@ Análisis se sigue en #1980, dependiente de VANTA-133 / #1974.
 `ManualEvent` conserva las entradas como texto hasta confirmarlas. Sus campos
 tienen nombre; la lectura, creación, confirmación y preparación del cálculo
 se validan en este crate. Una edición fallida deja el documento intacto, sin
-rellenar números ausentes ni descartar dimensiones que el formulario no admite.
+rellenar números ausentes. Se conservan los rechazos del formulario anterior.
 
 Los documentos con proyección siguen abriéndose y guardándose sin modificar
 sus bytes; el cálculo manual conserva su rechazo explícito. La validación

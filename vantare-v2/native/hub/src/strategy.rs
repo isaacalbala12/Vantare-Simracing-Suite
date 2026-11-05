@@ -984,7 +984,7 @@ mod tests {
         append_manual_event(&mut doc, &event_fields()).expect("original");
         let bytes = doc.bytes().to_vec();
         for (index, invalid) in [
-            (0, ""),
+            (Field::Name, ""),
             (Field::DurationMinutes, "0"),
             (Field::DurationMinutes, "2.5"),
             (Field::FuelCapacityLiters, "-1"),

@@ -65,6 +65,11 @@ jobs:
           echo "b986c926cf16a1c5d97954c57d3a6edd894a5da225c3f3fc0c25dc4105009dd7  $archive" | sha256sum --check
           tar -xJf "$archive" -C "$RUNNER_TEMP/postgrest"
           "$RUNNER_TEMP/postgrest/postgrest" --version
+      - name: Verify pgcrypto probe in disposable PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 supabase/tests/run-pgcrypto-local.py --pg-bin "$(pg_config --bindir)" --docker
       - name: Cache native bearer fixture dependencies
         shell: bash
         run: |

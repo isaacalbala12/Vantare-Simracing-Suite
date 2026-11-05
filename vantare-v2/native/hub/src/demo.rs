@@ -454,11 +454,6 @@ pub struct CaptureState {
     pub strategy_page: Option<CaptureStrategyPage>,
 }
 
-pub use crate::strategy::view_data::{
-    PlanData as StrategyCaptureDemo, Sample as CaptureSample, SourceFile as CaptureSourceFile,
-    StintData as CaptureStint, StopData as CaptureStop,
-};
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureSettingsPage {
     Account,
@@ -915,9 +910,10 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "parity-capture")]
     #[test]
     fn strategy_capture_keeps_pass_27_values_separate_from_solver_inputs() {
-        let demo = StrategyCaptureDemo::load().expect("mock pass-27");
+        let demo = crate::strategy::view_data::PlanData::load().expect("mock pass-27");
         assert_eq!(demo.samples.len(), 12);
         assert_eq!(demo.samples[7].quality, "Desconocida");
         assert_eq!(demo.stints.len(), 3);

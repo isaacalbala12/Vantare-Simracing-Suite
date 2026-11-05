@@ -444,7 +444,10 @@ impl Strategy {
             .child(Self::combination_option_card(
                 "strategy-custom-event",
                 "Carrera personalizada",
-                self.view_data.custom_description,
+                capture!(
+                    "Elige coche, circuito y reglamento",
+                    Some(self.view_data.custom_description)
+                ),
                 "i-ajustes",
                 selected,
                 cx,
@@ -452,7 +455,10 @@ impl Strategy {
             .child(Self::combination_option_card(
                 "strategy-calendar-event",
                 "Calendario de Vantare",
-                self.view_data.calendar_description,
+                capture!(
+                    "Selección de eventos no disponible",
+                    Some(self.view_data.calendar_description)
+                ),
                 "i-carreras",
                 false,
                 cx,
@@ -488,9 +494,14 @@ impl Strategy {
                     .gap(px(18.0))
                     .flex_1()
                     .child(orbit::text(circuit, 22.0, 500, orbit::ink(cx), cx).w(px(175.0)))
-                    .when_some(self.view_data.layout, |row, layout| {
-                        row.child(orbit::text(layout, 13.0, 400, orbit::ink_2(cx), cx).w(px(113.0)))
-                    })
+                    .when_some(
+                        capture!(None::<&str>, Some(self.view_data.layout)),
+                        |row, layout| {
+                            row.child(
+                                orbit::text(layout, 13.0, 400, orbit::ink_2(cx), cx).w(px(113.0)),
+                            )
+                        },
+                    )
                     .child(orbit::text(category, 13.0, 400, orbit::ink_2(cx), cx).flex_1()),
             )
     }
@@ -498,18 +509,20 @@ impl Strategy {
     fn combination_choices(&self, cx: &gpui::App) -> gpui::Div {
         let event_available = self.current_event().is_some();
         let simulator = if event_available {
-            self.view_data
-                .simulator
-                .unwrap_or("Sin simulador seleccionado")
+            capture!("Sin simulador seleccionado", self.view_data.simulator)
         } else {
             "Sin simulador seleccionado"
         };
         let category = if self.fields[Field::Class].trim().is_empty() {
             "Sin categoría seleccionada".to_owned()
-        } else if let Some(car) = &self.view_data.car {
-            format!("{} · {car}", self.fields[Field::Class])
         } else {
-            self.fields[Field::Class].clone()
+            capture!(
+                self.fields[Field::Class].clone(),
+                self.view_data
+                    .car
+                    .as_ref()
+                    .map(|car| format!("{} · {car}", self.fields[Field::Class]))
+            )
         };
         let circuit = if self.fields[Field::Track].trim().is_empty() {
             "Sin circuito seleccionado".to_owned()
@@ -545,29 +558,36 @@ impl Strategy {
                 .child(orbit::text(simulator, 13.0, 600, orbit::ink(cx), cx)),
         );
         let category_control = surface()
-            .child(if self.view_data.car.is_some() {
-                orbit::text(category.clone(), 13.0, 500, orbit::ink(cx), cx)
-            } else {
-                div()
-                    .flex_1()
-                    .child(self.inputs[Field::Class as usize].clone())
-            })
+            .child(capture!(
+                {
+                    div()
+                        .flex_1()
+                        .child(self.inputs[Field::Class as usize].clone())
+                },
+                self.view_data
+                    .car
+                    .as_ref()
+                    .map(|_car| { orbit::text(category.clone(), 13.0, 500, orbit::ink(cx), cx) })
+            ))
             .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx).ml_auto());
         let circuit_control = surface()
-            .child(if let Some(layout) = self.view_data.layout {
-                orbit::text(
-                    format!("{circuit} · {layout}"),
-                    13.0,
-                    500,
-                    orbit::ink(cx),
-                    cx,
-                )
-                .flex_1()
-            } else {
-                div()
+            .child(capture!(
+                {
+                    div()
+                        .flex_1()
+                        .child(self.inputs[Field::Track as usize].clone())
+                },
+                self.view_data.layout.map(|layout| {
+                    orbit::text(
+                        format!("{circuit} · {layout}"),
+                        13.0,
+                        500,
+                        orbit::ink(cx),
+                        cx,
+                    )
                     .flex_1()
-                    .child(self.inputs[Field::Track as usize].clone())
-            })
+                })
+            ))
             .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx));
         gpui::div()
             .flex()
@@ -656,20 +676,21 @@ impl Strategy {
                 )
                 .line_height(px(18.0)),
             )
-            .child(if let Some(render) = self.view_data.text_control {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(14.0))
-                    .h(px(42.0))
-                    .child(
-                        orbit::text("Nombre de la carrera", 13.0, 400, orbit::ink_2(cx), cx)
-                            .w(px(220.0)),
-                    )
-                    .child(render(&self.fields[Field::Name], cx))
-            } else {
-                self.labeled_input("Nombre de la carrera", Field::Name, 220.0, cx)
-            })
+            .child(capture!(
+                { self.labeled_input("Nombre de la carrera", Field::Name, 220.0, cx) },
+                self.view_data.text_control.map(|render| {
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(14.0))
+                        .h(px(42.0))
+                        .child(
+                            orbit::text("Nombre de la carrera", 13.0, 400, orbit::ink_2(cx), cx)
+                                .w(px(220.0)),
+                        )
+                        .child(render(&self.fields[Field::Name], cx))
+                })
+            ))
             .child(
                 div()
                     .flex()
@@ -714,11 +735,12 @@ impl Strategy {
                             ),
                     )
                     .child(
-                        (if let Some(render) = self.view_data.rule_row {
-                            render(distance_label, &self.fields[distance_field], cx)
-                        } else {
-                            self.labeled_input(distance_label, distance_field, 205.0, cx)
-                        })
+                        (capture!(
+                            { self.labeled_input(distance_label, distance_field, 205.0, cx) },
+                            self.view_data.rule_row.map(|render| {
+                                render(distance_label, &self.fields[distance_field], cx)
+                            })
+                        ))
                         .flex_1()
                         .h(px(64.0))
                         .p(px(12.0))
@@ -754,67 +776,68 @@ impl Strategy {
                                 cx,
                             )),
                     )
-                    .child(if let Some(render) = self.view_data.resources {
-                        render(self, cx)
-                    } else {
-                        div()
-                            .flex()
-                            .gap(px(18.0))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .justify_between()
-                                    .h(px(234.0))
-                                    .child(self.labeled_input(
-                                        "Capacidad de combustible · L",
-                                        Field::FuelCapacityLiters,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(self.labeled_input(
-                                        "Consumo Fuel · L/v",
-                                        Field::FuelPerLapLiters,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(self.labeled_input(
-                                        "Reserva final · vueltas",
-                                        Field::ReserveLaps,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(div().h(px(44.0))),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .justify_between()
-                                    .h(px(234.0))
-                                    .child(self.labeled_input(
-                                        "Modo de variante",
-                                        Field::VariantMode,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(self.labeled_input(
-                                        "Capacidad VE · %",
-                                        Field::VeCapacityPercent,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(self.labeled_input(
-                                        "Consumo VE · %/v",
-                                        Field::VePerLapPercent,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(div().h(px(44.0))),
-                            )
-                    }),
+                    .child(capture!(
+                        {
+                            div()
+                                .flex()
+                                .gap(px(18.0))
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .flex_1()
+                                        .justify_between()
+                                        .h(px(234.0))
+                                        .child(self.labeled_input(
+                                            "Capacidad de combustible · L",
+                                            Field::FuelCapacityLiters,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Consumo Fuel · L/v",
+                                            Field::FuelPerLapLiters,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Reserva final · vueltas",
+                                            Field::ReserveLaps,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(div().h(px(44.0))),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .flex_1()
+                                        .justify_between()
+                                        .h(px(234.0))
+                                        .child(self.labeled_input(
+                                            "Modo de variante",
+                                            Field::VariantMode,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Capacidad VE · %",
+                                            Field::VeCapacityPercent,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Consumo VE · %/v",
+                                            Field::VePerLapPercent,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(div().h(px(44.0))),
+                                )
+                        },
+                        self.view_data.resources.map(|render| { render(self, cx) })
+                    )),
             )
             .child(advanced_section)
     }
@@ -839,9 +862,11 @@ impl Strategy {
 
     #[allow(clippy::too_many_lines)] // Mantiene el orden y las tarjetas del equipo en una vista.
     fn driver_fields(&self, cx: &gpui::App) -> gpui::Div {
-        if let Some(render) = self.view_data.drivers {
-            return render(self, cx);
-        }
+        capture!({
+            if let Some(render) = self.view_data.drivers {
+                return render(self, cx);
+            }
+        });
         let drivers = self
             .current_event()
             .and_then(|event| event["drivers"].as_array())

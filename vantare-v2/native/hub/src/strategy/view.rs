@@ -522,9 +522,7 @@ impl Strategy {
     }
     fn context_identity(&self) -> (&'static str, String, String) {
         let simulator = if self.current_event().is_some() {
-            self.view_data
-                .simulator
-                .unwrap_or("Sin simulador seleccionado")
+            capture!("Sin simulador seleccionado", self.view_data.simulator)
         } else {
             "Sin simulador seleccionado"
         };
@@ -537,10 +535,7 @@ impl Strategy {
             },
             |event| {
                 (
-                    self.view_data
-                        .car
-                        .clone()
-                        .unwrap_or_else(|| display(&event["cls"]["value"])),
+                    capture!(display(&event["cls"]["value"]), self.view_data.car.clone()),
                     display(&event["track"]["value"]),
                 )
             },

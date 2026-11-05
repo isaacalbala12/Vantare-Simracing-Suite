@@ -25,6 +25,24 @@ use vantare_strategy::{
     solver::{self, Input, SolverOutcome},
 };
 
+// Only the selected expression exists after cfg expansion.
+macro_rules! capture {
+    ($normal:expr, $capture:expr) => {{
+        #[cfg(feature = "parity-capture")]
+        {
+            $capture.unwrap_or_else(|| $normal)
+        }
+        #[cfg(not(feature = "parity-capture"))]
+        {
+            $normal
+        }
+    }};
+    ($capture:block) => {
+        #[cfg(feature = "parity-capture")]
+        $capture
+    };
+}
+
 #[path = "strategy/asistente.rs"]
 mod assistant;
 #[cfg(any(test, feature = "parity-capture"))]
@@ -33,7 +51,8 @@ mod captura;
 mod editor_view;
 mod parada;
 mod plan;
-pub(crate) mod view_data;
+#[cfg(feature = "parity-capture")]
+mod view_data;
 #[cfg(test)]
 use captura::capture_solver_input;
 #[cfg(test)]
@@ -72,8 +91,8 @@ pub struct Editor {
 }
 impl Editor {
     // Read after a successful open, before the recovery warning is consumed.
-    fn open_status(&self) -> String {
-        self.warning.as_ref().map_or_else(
+    fn take_open_status(&mut self) -> String {
+        self.warning.take().map_or_else(
             || "Documento cargado; procedencia y campos desconocidos conservados.".into(),
             |warning| format!("Se empezó un documento vacío. {warning}"),
         )
@@ -253,6 +272,7 @@ pub struct Strategy {
     garage: Option<Arc<RenderImage>>,
     garage_detail: Option<Arc<RenderImage>>,
     garage_veil: Option<Arc<RenderImage>>,
+    #[cfg(feature = "parity-capture")]
     view_data: view_data::ViewData,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
@@ -356,6 +376,7 @@ impl Strategy {
             garage,
             garage_detail,
             garage_veil,
+            #[cfg(feature = "parity-capture")]
             view_data: view_data::ViewData::default(),
             duration: None,
             event: 0,
@@ -500,12 +521,9 @@ impl Strategy {
                     this.invalidate();
                     this.load_fields(cx);
                     this.page = Page::Collection;
-                    this.status = this.editor.open_status();
+                    this.status = this.editor.take_open_status();
                 }
                 this.outcome(result, cx);
-                if let Some(warning) = this.editor.warning.take() {
-                    this.error = Some(warning.into());
-                }
             });
         })
         .detach();
@@ -845,22 +863,17 @@ impl Render for Strategy {
 #[cfg(test)]
 use vantare_strategy::document::new_event;
 #[cfg(test)]
-fn append_manual_event(doc: &mut Document, fields: &ManualEvent) -> Result<usize, String> {
-    fields.append(doc)
-}
-#[cfg(test)]
-fn confirm_metadata(
-    doc: &mut Document,
-    event: usize,
-    variant: usize,
-    fields: &ManualEvent,
-) -> Result<(), String> {
-    fields.confirm(doc, event, variant)
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn manual_fields_match_input_entity_indices() {
+        let fields = FIELDS.iter().map(|(field, _)| *field).collect::<Vec<_>>();
+        assert_eq!(fields.as_slice(), Field::ALL);
+        for (index, field) in fields.into_iter().enumerate() {
+            assert_eq!(field as usize, index);
+        }
+    }
+
     #[test]
     fn manual_duration_selects_matching_preset_or_custom_without_filling_empty_input() {
         assert_eq!(duration_selection(""), None);
@@ -940,9 +953,9 @@ mod tests {
     fn manual_creation_preserves_collection_selects_event_and_round_trips_confirmed_inputs() {
         let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
         let fields = event_fields();
-        assert_eq!(append_manual_event(&mut doc, &fields).expect("first"), 0);
+        assert_eq!(fields.append(&mut doc).expect("first"), 0);
         let first = doc.value()["events"][0].clone();
-        assert_eq!(append_manual_event(&mut doc, &fields).expect("second"), 1);
+        assert_eq!(fields.append(&mut doc).expect("second"), 1);
         assert_eq!(doc.value()["events"][0], first);
         assert_eq!(doc.value()["activeEventId"], "native-event-2");
         assert_eq!(doc.value()["events"][1]["activeStrategyId"], "variant-1");
@@ -970,7 +983,7 @@ mod tests {
         fields[Field::VariantNote] = "Ajustes revisados".into();
         fields[Field::VariantMode] = "wet".into();
         fields[Field::Team] = "Equipo local".into();
-        append_manual_event(&mut document, &fields).expect("evento");
+        fields.append(&mut document).expect("evento");
         let event = &document.value()["events"][0];
         assert_eq!(event["teamMode"]["value"], "solo");
         assert_eq!(event["team"]["value"], "Equipo local");
@@ -981,7 +994,7 @@ mod tests {
     #[test]
     fn invalid_manual_form_never_changes_existing_document_or_selection() {
         let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
-        append_manual_event(&mut doc, &event_fields()).expect("original");
+        event_fields().append(&mut doc).expect("original");
         let bytes = doc.bytes().to_vec();
         for (index, invalid) in [
             (Field::Name, ""),
@@ -995,10 +1008,7 @@ mod tests {
         ] {
             let mut fields = event_fields();
             fields[index] = invalid.into();
-            assert!(
-                append_manual_event(&mut doc, &fields).is_err(),
-                "field {index:?}"
-            );
+            assert!(fields.append(&mut doc).is_err(), "field {index:?}");
             assert_eq!(doc.bytes(), bytes);
         }
     }
@@ -1015,7 +1025,7 @@ mod tests {
         ] {
             fields[index].clear();
         }
-        append_manual_event(&mut doc, &fields).expect("minimal form");
+        fields.append(&mut doc).expect("minimal form");
         let event = &doc.value()["events"][0];
         assert!(event["planningInputs"].is_null());
         assert!(event["startAt"]["value"].is_null());
@@ -1025,18 +1035,18 @@ mod tests {
     fn metadata_confirmation_is_atomic_and_preserves_unchanged_evidence() {
         let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
         let mut fields = event_fields();
-        append_manual_event(&mut doc, &fields).expect("original");
+        fields.append(&mut doc).expect("original");
         fields[Field::VariantName] = "Base".into();
         fields[Field::VariantMode] = "dry".into();
         let original = doc.bytes().to_vec();
-        confirm_metadata(&mut doc, 0, 0, &fields).expect("unchanged");
+        fields.confirm(&mut doc, 0, 0).expect("unchanged");
         assert_eq!(doc.bytes(), original);
         fields[Field::Name] = "Nombre nuevo".into();
         fields[Field::VariantMode] = "invalid".into();
-        assert!(confirm_metadata(&mut doc, 0, 0, &fields).is_err());
+        assert!(fields.confirm(&mut doc, 0, 0).is_err());
         assert_eq!(doc.bytes(), original);
         fields[Field::VariantMode] = "dry".into();
-        confirm_metadata(&mut doc, 0, 0, &fields).expect("confirmed edit");
+        fields.confirm(&mut doc, 0, 0).expect("confirmed edit");
         assert_eq!(doc.value()["events"][0]["name"]["value"], "Nombre nuevo");
     }
     #[test]

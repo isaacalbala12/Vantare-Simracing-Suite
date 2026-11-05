@@ -261,7 +261,7 @@ impl Strategy {
                     .items_center()
                     .gap(px(12.0))
                     .child(orbit::text(
-                        self.view_data.draft_label,
+                        capture!("Borrador local", Some(self.view_data.draft_label)),
                         12.0,
                         400,
                         orbit::ink_2(cx),
@@ -367,9 +367,7 @@ impl Strategy {
         };
         let event_detail = [
             circuit,
-            self.view_data
-                .layout
-                .map_or(class, std::borrow::ToOwned::to_owned),
+            capture!(class, self.view_data.layout.map(str::to_owned)),
         ]
         .into_iter()
         .filter(|part| !part.is_empty())
@@ -400,8 +398,8 @@ impl Strategy {
             1 => "1 sesión seleccionada".to_owned(),
             count => format!("{count} sesiones seleccionadas"),
         };
-        let note_pending =
-            note.is_empty() && (selected_sessions == 0 || self.view_data.layout.is_some());
+        let note_pending = note.is_empty()
+            && (selected_sessions == 0 || capture!(false, Some(self.view_data.layout.is_some())));
         let note_detail = if note_pending {
             "Revisa las reglas y la telemetría antes de calcular.".to_owned()
         } else if note.is_empty() {
@@ -444,7 +442,10 @@ impl Strategy {
         } else {
             white_button("strategy-calculate", "Calcular estrategia", cx)
                 .tab_stop(false)
-                .opacity(self.view_data.disabled_calculate_opacity)
+                .opacity(capture!(
+                    orbit::DISABLED,
+                    Some(self.view_data.disabled_calculate_opacity)
+                ))
                 .cursor(gpui::CursorStyle::Arrow)
         };
         div()

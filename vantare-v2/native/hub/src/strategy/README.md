@@ -3,6 +3,8 @@
 `../strategy.rs` mantiene el editor, selección, controles, persistencia y ciclo
 cancelable del cálculo. `vantare-strategy` posee `ManualEvent`, documento y solver;
 el Hub no adquiere telemetría ni alimenta el widget `ui/src/fuel_strategy`.
+El Hub no traduce ediciones a punteros JSON: lo hace `ManualEvent` en el crate.
+Las lecturas JSON de solo lectura para presentar el documento permanecen aquí.
 
 - `asistente.rs`: creación de carrera; solo la preparación manual alimenta el cálculo.
 - `editor.rs` y `view.rs`: páginas, pestañas y navegación.
@@ -15,8 +17,10 @@ un plazo de 2 s; no confundir su certificado con precisión frente a carrera rea
 
 Las capturas no son datos reales. `captura.rs` prepara documentos, resultados y
 fragmentos de solo lectura bajo `parity-capture` (los helpers puros también se
-compilan en tests). Las vistas reciben `ViewData`; la construcción habitual
-conserva sus entradas editables y no carga fixtures de Strategy. El contrato de
+compilan en tests). `ViewData`, `PlanData` y sus cuatro structs solo existen con
+esa feature. El helper `capture!` elimina sus ramas al compilar sin ella: la
+construcción distribuida conserva las entradas editables y no incluye los DTO,
+punteros a función ni fixtures de Strategy. El contrato de
 Análisis nativo y la recuperación de Automático dependen de VANTA-133 / #1974 y #1980.
 
 VANTA-135 retira Automático, Datos, Revisiones y sus rutas de captura. El catálogo, los PNG

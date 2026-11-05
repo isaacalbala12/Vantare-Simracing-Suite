@@ -228,7 +228,7 @@ impl Strategy {
             self.running = false;
             match result {
                 Ok((outcome, edited)) => {
-                    if !self.view_data.read_only {
+                    if capture!(true, Some(!self.view_data.read_only)) {
                         vantare_ui::analytics::record(
                             cx,
                             &vantare_services::diagnostics::Usage::FeatureUsed {
@@ -367,21 +367,22 @@ cálculo",
         match state {
             PlanState::Idle => self.preflight_card(source_open, cx),
             PlanState::Loading | PlanState::Error => self.pending_plan_card(state,cx),
-            PlanState::Partial => if let Some(render) = self.view_data.partial { render(self, cx) } else { plan_card( cx).p(px(16.0))
+            PlanState::Partial => capture!({ plan_card( cx).p(px(16.0))
                 .child(orbit::text("Estrategia óptima no demostrada",16.0,700,orbit::ink(cx), cx))
-                .child(orbit::text("La búsqueda terminó sin demostrar optimalidad completa.",16.0,400,orbit::ink_2(cx), cx).mt(px(8.0))) },
+                .child(orbit::text("La búsqueda terminó sin demostrar optimalidad completa.",16.0,400,orbit::ink_2(cx), cx).mt(px(8.0))) }, self.view_data.partial.map(|render| { render(self, cx) })),
             PlanState::Calculated => certificate_card(self.result.as_ref().map(|outcome| &outcome.certificate), cx),
             PlanState::Editing => plan_card( cx).p(px(16.0)).child(orbit::text("El calendario ha cambiado. Recalcula para actualizar las métricas y el certificado.",16.0,400,orbit::ink_2(cx), cx)),
         }
     }
 
     fn preflight_card(&self, source_open: bool, cx: &gpui::App) -> Div {
-        let laps = self.view_data.laps.clone().unwrap_or_else(|| {
+        let laps = capture!(
             self.last_input.as_ref().map_or_else(
                 || self.fields[Field::RaceLaps].clone(),
                 |input| input.race_laps.to_string(),
-            )
-        });
+            ),
+            self.view_data.laps.clone()
+        );
         let drivers = self
             .current_event()
             .and_then(|event| event["drivers"].as_array());
@@ -398,9 +399,12 @@ cálculo",
                 "Combustible y energía virtual",
                 format!(
                     "Capacidad · {} L",
-                    self.view_data.plan.as_ref().map_or_else(
-                        || self.fields[Field::FuelCapacityLiters].clone(),
-                        |details| decimal(details.capacity_liters, 0)
+                    capture!(
+                        self.fields[Field::FuelCapacityLiters].clone(),
+                        self.view_data
+                            .plan
+                            .as_ref()
+                            .map(|details| decimal(details.capacity_liters, 0))
                     )
                 ),
             ),
@@ -454,10 +458,10 @@ cálculo",
         if loading {
             let laps = self.last_input.as_ref().map_or_else(
                 || {
-                    self.view_data
-                        .laps
-                        .clone()
-                        .unwrap_or_else(|| self.fields[Field::RaceLaps].clone())
+                    capture!(
+                        self.fields[Field::RaceLaps].clone(),
+                        self.view_data.laps.clone()
+                    )
                 },
                 |input| input.race_laps.to_string(),
             );
@@ -596,7 +600,7 @@ cálculo",
                     .child(self.timeline(outcome, cx).mt(px(1.0)));
             }
             details = details.child(self.exact_revisions(cx));
-            if !self.view_data.read_only {
+            if capture!(true, Some(!self.view_data.read_only)) {
                 details = details.child(plan_condition(outcome, cx));
             }
         }
@@ -634,9 +638,9 @@ cálculo",
                 }
             },
         );
-        let (seconds, reserve) = self.view_data.plan.as_ref().map_or(
+        let (seconds, reserve) = capture!(
             (plan.expected.total_seconds, reserve),
-            |details| {
+            self.view_data.plan.as_ref().map(|details| {
                 (
                     details.total_seconds,
                     format!(
@@ -645,7 +649,7 @@ cálculo",
                         decimal(details.required_laps, 0)
                     ),
                 )
-            },
+            },)
         );
         let laps = self
             .last_input
@@ -715,13 +719,16 @@ cálculo",
                                     .h(px(40.0))
                                     .w(px(140.0))
                                     .rounded(px(14.0))
-                                    .when(self.view_data.accept.is_none(), |button| {
-                                        button.opacity(orbit::DISABLED)
-                                    })
+                                    .when(
+                                        capture!(true, Some(self.view_data.accept.is_none())),
+                                        |button| button.opacity(orbit::DISABLED),
+                                    )
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        if let Some(action) = this.view_data.accept {
-                                            action(this, cx);
-                                        }
+                                        capture!({
+                                            if let Some(action) = this.view_data.accept {
+                                                action(this, cx);
+                                            }
+                                        });
                                     })),
                             )
                         },
@@ -821,19 +828,21 @@ cálculo",
     }
 
     pub(super) fn stint_values(&self, index: usize) -> [String; 4] {
-        if let Some(stint) = self
-            .view_data
-            .plan
-            .as_ref()
-            .and_then(|details| details.stints.get(index))
-        {
-            return [
-                stint.driver.clone(),
-                duration(stint.pace_seconds),
-                format!("{} L", decimal(stint.fuel_liters, 1)),
-                format!("{}%", decimal(stint.ve_percent, 1)),
-            ];
-        }
+        capture!({
+            if let Some(stint) = self
+                .view_data
+                .plan
+                .as_ref()
+                .and_then(|details| details.stints.get(index))
+            {
+                return [
+                    stint.driver.clone(),
+                    duration(stint.pace_seconds),
+                    format!("{} L", decimal(stint.fuel_liters, 1)),
+                    format!("{}%", decimal(stint.ve_percent, 1)),
+                ];
+            }
+        });
         let outcome = self.result.as_ref();
         let driver = outcome
             .and_then(|outcome| outcome.result.best.as_ref())
@@ -961,38 +970,42 @@ cálculo",
                 orbit::text("Pendiente de recálculo", 12.0, 400, orbit::ink_2(cx), cx).mt(px(14.0)),
             ));
         }
-        let rows = if let Some(details) = self
-            .view_data
-            .plan
-            .as_ref()
-            .and_then(|details| details.stops.get(index))
-        {
-            vec![
-                format!("Tiempo de pit: {}", duration(details.total_seconds)),
-                format!(
-                    "Fuel: {} → {} L",
-                    decimal(details.fuel_in, 1),
-                    decimal(details.fuel_out, 1)
-                ),
-                format!(
-                    "Energía virtual: {} → {}%",
-                    decimal(details.ve_in, 0),
-                    decimal(details.ve_out, 0)
-                ),
-            ]
-        } else if let Some(stop) = stop {
-            vec![
-                format!("Fuel añadido: {} L", decimal(stop.fuel_liters, 1)),
-                format!("Energía virtual añadida: {}%", decimal(stop.ve_percent, 1)),
-                if stop.change_tyres {
-                    "Cambio de neumáticos".into()
+        let rows = capture!(
+            {
+                if let Some(stop) = stop {
+                    vec![
+                        format!("Fuel añadido: {} L", decimal(stop.fuel_liters, 1)),
+                        format!("Energía virtual añadida: {}%", decimal(stop.ve_percent, 1)),
+                        if stop.change_tyres {
+                            "Cambio de neumáticos".into()
+                        } else {
+                            "Sin cambio de neumáticos".into()
+                        },
+                    ]
                 } else {
-                    "Sin cambio de neumáticos".into()
-                },
-            ]
-        } else {
-            vec!["Sin decisión factible de recursos".into()]
-        };
+                    vec!["Sin decisión factible de recursos".into()]
+                }
+            },
+            self.view_data
+                .plan
+                .as_ref()
+                .and_then(|details| details.stops.get(index))
+                .map(|details| {
+                    vec![
+                        format!("Tiempo de pit: {}", duration(details.total_seconds)),
+                        format!(
+                            "Fuel: {} → {} L",
+                            decimal(details.fuel_in, 1),
+                            decimal(details.fuel_out, 1)
+                        ),
+                        format!(
+                            "Energía virtual: {} → {}%",
+                            decimal(details.ve_in, 0),
+                            decimal(details.ve_out, 0)
+                        ),
+                    ]
+                })
+        );
         card =
             card.child(div().flex().flex_col().gap(px(6.0)).mt(px(14.0)).children(
                 rows.into_iter().map(|row| {
@@ -1048,7 +1061,10 @@ cálculo",
             .gap(px(1.0))
             .child(
                 orbit::text(
-                    self.view_data.revisions_heading,
+                    capture!(
+                        "REVISIONES EXACTAS SELECCIONADAS",
+                        Some(self.view_data.revisions_heading)
+                    ),
                     12.0,
                     400,
                     orbit::ink(cx),

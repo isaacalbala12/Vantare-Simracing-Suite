@@ -116,7 +116,8 @@ pub(super) fn capture_solver_input(
     Ok(input)
 }
 
-impl crate::demo::StrategyCaptureDemo {
+#[cfg(feature = "parity-capture")]
+impl super::view_data::PlanData {
     pub fn load() -> Result<Self, String> {
         serde_json::from_str(include_str!(
             "../../reference/fixtures/strategy-capture-demo.json"
@@ -161,7 +162,7 @@ impl Strategy {
             }
             crate::demo::CaptureStrategyPage::Career => Page::Editor(EditorTab::Carrera),
         };
-        match crate::demo::StrategyCaptureDemo::load() {
+        match super::view_data::PlanData::load() {
             Ok(demo) => strategy.view_data.plan = Some(demo),
             Err(error) => strategy.error = Some(error.into()),
         }

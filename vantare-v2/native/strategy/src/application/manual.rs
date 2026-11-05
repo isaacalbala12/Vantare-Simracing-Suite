@@ -6,167 +6,66 @@ use crate::{
 use serde_json::{Value, json};
 use std::ops::{Index, IndexMut};
 
-/// Text is retained until confirmation, including incomplete or invalid input.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ManualEvent {
-    pub name: String,
-    pub duration_minutes: String,
-    pub fuel_capacity_liters: String,
-    pub pit_transit_seconds: String,
-    pub track: String,
-    pub class: String,
-    pub variant_name: String,
-    pub variant_note: String,
-    pub variant_mode: String,
-    pub race_laps: String,
-    pub base_pace_seconds: String,
-    pub fuel_per_lap_liters: String,
-    pub ve_capacity_percent: String,
-    pub ve_per_lap_percent: String,
-    pub tyre_life_laps: String,
-    pub degradation_seconds: String,
-    pub refuel_rate: String,
-    pub ve_rate: String,
-    pub tyre_service_seconds: String,
-    pub formation_seconds: String,
-    pub fuel_step: String,
-    pub ve_step: String,
-    pub reserve_laps: String,
-    pub service_mode: String,
-    pub start_at: String,
-    pub team: String,
-    pub driver_name: String,
-    pub driver_initials: String,
+macro_rules! manual_fields {
+    ($( $variant:ident => $name:ident: $scalar:literal ),+ $(,)?) => {
+        /// Text is retained until confirmation, including incomplete or invalid input.
+        #[derive(Clone, Debug, Default, PartialEq, Eq)]
+        pub struct ManualEvent { $(pub $name: String,)+ }
+
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        #[repr(usize)]
+        pub enum ManualField { $($variant,)+ }
+
+        impl ManualField {
+            pub const ALL: &'static [Self] = &[$(Self::$variant,)+];
+            pub fn is_scalar(self) -> bool { match self { $(Self::$variant => $scalar,)+ } }
+        }
+        impl Index<ManualField> for ManualEvent {
+            type Output = String;
+            fn index(&self, field: ManualField) -> &String {
+                match field { $(ManualField::$variant => &self.$name,)+ }
+            }
+        }
+        impl IndexMut<ManualField> for ManualEvent {
+            fn index_mut(&mut self, field: ManualField) -> &mut String {
+                match field { $(ManualField::$variant => &mut self.$name,)+ }
+            }
+        }
+    };
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(usize)]
-pub enum ManualField {
-    Name,
-    DurationMinutes,
-    FuelCapacityLiters,
-    PitTransitSeconds,
-    Track,
-    Class,
-    VariantName,
-    VariantNote,
-    VariantMode,
-    RaceLaps,
-    BasePaceSeconds,
-    FuelPerLapLiters,
-    VeCapacityPercent,
-    VePerLapPercent,
-    TyreLifeLaps,
-    DegradationSeconds,
-    RefuelRate,
-    VeRate,
-    TyreServiceSeconds,
-    FormationSeconds,
-    FuelStep,
-    VeStep,
-    ReserveLaps,
-    ServiceMode,
-    StartAt,
-    Team,
-    DriverName,
-    DriverInitials,
+manual_fields! {
+    Name => name: false,
+    DurationMinutes => duration_minutes: false,
+    FuelCapacityLiters => fuel_capacity_liters: false,
+    PitTransitSeconds => pit_transit_seconds: false,
+    Track => track: false,
+    Class => class: false,
+    VariantName => variant_name: false,
+    VariantNote => variant_note: false,
+    VariantMode => variant_mode: false,
+    RaceLaps => race_laps: true,
+    BasePaceSeconds => base_pace_seconds: true,
+    FuelPerLapLiters => fuel_per_lap_liters: true,
+    VeCapacityPercent => ve_capacity_percent: true,
+    VePerLapPercent => ve_per_lap_percent: true,
+    TyreLifeLaps => tyre_life_laps: true,
+    DegradationSeconds => degradation_seconds: true,
+    RefuelRate => refuel_rate: true,
+    VeRate => ve_rate: true,
+    TyreServiceSeconds => tyre_service_seconds: true,
+    FormationSeconds => formation_seconds: true,
+    FuelStep => fuel_step: true,
+    VeStep => ve_step: true,
+    ReserveLaps => reserve_laps: true,
+    ServiceMode => service_mode: true,
+    StartAt => start_at: false,
+    Team => team: false,
+    DriverName => driver_name: false,
+    DriverInitials => driver_initials: false,
 }
 
 use ManualField as Field;
-
-impl ManualField {
-    pub fn is_scalar(self) -> bool {
-        matches!(
-            self,
-            Self::RaceLaps
-                | Self::BasePaceSeconds
-                | Self::FuelPerLapLiters
-                | Self::VeCapacityPercent
-                | Self::VePerLapPercent
-                | Self::TyreLifeLaps
-                | Self::DegradationSeconds
-                | Self::RefuelRate
-                | Self::VeRate
-                | Self::TyreServiceSeconds
-                | Self::FormationSeconds
-                | Self::FuelStep
-                | Self::VeStep
-                | Self::ReserveLaps
-                | Self::ServiceMode
-        )
-    }
-}
-
-impl Index<ManualField> for ManualEvent {
-    type Output = String;
-    fn index(&self, field: ManualField) -> &String {
-        match field {
-            Field::Name => &self.name,
-            Field::DurationMinutes => &self.duration_minutes,
-            Field::FuelCapacityLiters => &self.fuel_capacity_liters,
-            Field::PitTransitSeconds => &self.pit_transit_seconds,
-            Field::Track => &self.track,
-            Field::Class => &self.class,
-            Field::VariantName => &self.variant_name,
-            Field::VariantNote => &self.variant_note,
-            Field::VariantMode => &self.variant_mode,
-            Field::RaceLaps => &self.race_laps,
-            Field::BasePaceSeconds => &self.base_pace_seconds,
-            Field::FuelPerLapLiters => &self.fuel_per_lap_liters,
-            Field::VeCapacityPercent => &self.ve_capacity_percent,
-            Field::VePerLapPercent => &self.ve_per_lap_percent,
-            Field::TyreLifeLaps => &self.tyre_life_laps,
-            Field::DegradationSeconds => &self.degradation_seconds,
-            Field::RefuelRate => &self.refuel_rate,
-            Field::VeRate => &self.ve_rate,
-            Field::TyreServiceSeconds => &self.tyre_service_seconds,
-            Field::FormationSeconds => &self.formation_seconds,
-            Field::FuelStep => &self.fuel_step,
-            Field::VeStep => &self.ve_step,
-            Field::ReserveLaps => &self.reserve_laps,
-            Field::ServiceMode => &self.service_mode,
-            Field::StartAt => &self.start_at,
-            Field::Team => &self.team,
-            Field::DriverName => &self.driver_name,
-            Field::DriverInitials => &self.driver_initials,
-        }
-    }
-}
-
-impl IndexMut<ManualField> for ManualEvent {
-    fn index_mut(&mut self, field: ManualField) -> &mut String {
-        match field {
-            Field::Name => &mut self.name,
-            Field::DurationMinutes => &mut self.duration_minutes,
-            Field::FuelCapacityLiters => &mut self.fuel_capacity_liters,
-            Field::PitTransitSeconds => &mut self.pit_transit_seconds,
-            Field::Track => &mut self.track,
-            Field::Class => &mut self.class,
-            Field::VariantName => &mut self.variant_name,
-            Field::VariantNote => &mut self.variant_note,
-            Field::VariantMode => &mut self.variant_mode,
-            Field::RaceLaps => &mut self.race_laps,
-            Field::BasePaceSeconds => &mut self.base_pace_seconds,
-            Field::FuelPerLapLiters => &mut self.fuel_per_lap_liters,
-            Field::VeCapacityPercent => &mut self.ve_capacity_percent,
-            Field::VePerLapPercent => &mut self.ve_per_lap_percent,
-            Field::TyreLifeLaps => &mut self.tyre_life_laps,
-            Field::DegradationSeconds => &mut self.degradation_seconds,
-            Field::RefuelRate => &mut self.refuel_rate,
-            Field::VeRate => &mut self.ve_rate,
-            Field::TyreServiceSeconds => &mut self.tyre_service_seconds,
-            Field::FormationSeconds => &mut self.formation_seconds,
-            Field::FuelStep => &mut self.fuel_step,
-            Field::VeStep => &mut self.ve_step,
-            Field::ReserveLaps => &mut self.reserve_laps,
-            Field::ServiceMode => &mut self.service_mode,
-            Field::StartAt => &mut self.start_at,
-            Field::Team => &mut self.team,
-            Field::DriverName => &mut self.driver_name,
-            Field::DriverInitials => &mut self.driver_initials,
-        }
-    }
-}
 
 impl ManualEvent {
     pub fn read(doc: &Document, event_index: usize, variant_index: usize) -> Self {
@@ -472,12 +371,8 @@ impl ManualEvent {
         Ok(input)
     }
 
-    pub fn scalar_support(
-        &self,
-        doc: &Document,
-        event: usize,
-        variant: usize,
-    ) -> Result<(), String> {
+    #[cfg(test)]
+    fn scalar_support(&self, doc: &Document, event: usize, variant: usize) -> Result<(), String> {
         self.supported_input(doc, event, variant).map(|_| ())
     }
 

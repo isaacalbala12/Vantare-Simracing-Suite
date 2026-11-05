@@ -1156,7 +1156,6 @@ mod tests {
                 apps: vec![discovery::Detected {
                     id: "lmu".into(),
                     executable: None,
-                    source: "fixture QA sin escaneo",
                     availability: discovery::Availability::default(),
                 }],
                 ..Discovery::default()
@@ -1350,7 +1349,6 @@ mod tests {
                     launcher.discovered.apps = vec![discovery::Detected {
                         id: "obs".into(),
                         executable: None,
-                        source: "fixture sin procesos",
                         availability: discovery::Availability {
                             launchable: true,
                             ..Default::default()

@@ -998,7 +998,6 @@ mod tests {
         discovery.apps.push(discovery::Detected {
             id: "lmu".into(),
             executable: None,
-            source: "Steam",
             availability: discovery::Availability {
                 installed: true,
                 ..Default::default()
@@ -1020,7 +1019,6 @@ mod tests {
         let mut app = discovery::Detected {
             id: "lmu".into(),
             executable: None,
-            source: "Steam",
             availability: discovery::Availability::default(),
         };
         assert_eq!(availability(Some(&app), false).0, "CATÁLOGO");

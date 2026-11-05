@@ -18,7 +18,6 @@ pub struct Availability {
 pub struct Detected {
     pub id: String,
     pub executable: Option<PathBuf>,
-    pub source: &'static str,
     pub availability: Availability,
 }
 
@@ -260,7 +259,6 @@ impl Discovery {
         let mut acc = Detected {
             id: "acc".into(),
             executable: None,
-            source: "Steam",
             availability: Availability::default(),
         };
         detect_steam(
@@ -324,12 +322,10 @@ fn detect_app(
     let mut detected = Detected {
         id: app.id.clone(),
         executable: None,
-        source: "catálogo",
         availability: Availability::default(),
     };
     if let Some(path) = &app.executable {
         // Un override desaparecido conserva autoridad: nunca sustituirlo silenciosamente.
-        detected.source = "manual";
         detected.availability.found = path.exists();
         if is_executable(path) {
             detected.executable = Some(path.clone());
@@ -344,7 +340,6 @@ fn detect_app(
                 continue;
             }
             detected.availability.found = true;
-            detected.source = "registro";
             if let Some(path) = find(root, official.executables, warnings) {
                 detected.executable = Some(path);
                 break;
@@ -356,7 +351,6 @@ fn detect_app(
                     && let Some(path) = find(root, official.executables, warnings)
                 {
                     detected.executable = Some(path);
-                    detected.source = "ruta conocida";
                     detected.availability.found = true;
                     break;
                 }
@@ -370,7 +364,6 @@ fn detect_app(
                 .find_map(|exe| steam_files.get(&exe.to_ascii_lowercase()))
                 .cloned();
             if detected.executable.is_some() {
-                detected.source = "Steam";
                 detected.availability.found = true;
             }
         }
@@ -388,18 +381,8 @@ fn detect_app(
                 })
                 .cloned();
             if detected.executable.is_some() {
-                detected.source = "acceso directo";
                 detected.availability.found = true;
             }
-        }
-        if detected
-            .executable
-            .as_ref()
-            .and_then(|path| path.file_name())
-            .is_some_and(|name| app.id == "discord" && name.eq_ignore_ascii_case("Update.exe"))
-        {
-            // Discord usa Update.exe como bootstrapper; sus argumentos no son opcionales.
-            detected.source = "Discord updater";
         }
     }
     detected.availability.installed |= detected.executable.is_some();
@@ -449,7 +432,6 @@ fn detect_steam(
                     official.executables,
                     warnings,
                 );
-                detected.source = "Steam";
             }
         }
     }

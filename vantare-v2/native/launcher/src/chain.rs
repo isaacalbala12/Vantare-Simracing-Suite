@@ -813,7 +813,6 @@ mod trust_tests {
         discovery.apps.push(discovery::Detected {
             id: "obs".into(),
             executable: Some(root.join("must-not-execute.exe")),
-            source: "test",
             availability: discovery::Availability::default(),
         });
         let (sender, events) = mpsc::channel();
@@ -870,7 +869,6 @@ mod trust_tests {
         discovery.apps.push(discovery::Detected {
             id: "obs".into(),
             executable: Some(std::path::PathBuf::from("C:/Programs/obs.exe")),
-            source: "test",
             availability: discovery::Availability::default(),
         });
         let (hash, message) = review_content(&document, &profile, &discovery).expect("review");

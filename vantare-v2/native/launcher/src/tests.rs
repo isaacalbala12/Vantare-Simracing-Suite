@@ -208,14 +208,9 @@ fn steam_common_detects_non_game_catalog_apps_and_shortcuts_never_override_manua
         found.app("obs").expect("OBS").executable.as_ref(),
         Some(&obs)
     );
-    assert_eq!(found.app("obs").expect("OBS").source, "Steam");
     assert_eq!(
         found.app("spotify").expect("Spotify").executable.as_ref(),
         Some(&shortcut_target)
-    );
-    assert_eq!(
-        found.app("spotify").expect("Spotify").source,
-        "acceso directo"
     );
     let mut overridden = document;
     overridden
@@ -290,7 +285,6 @@ fn actual_lnk_is_read_without_modification_or_execution() {
             ..Default::default()
         },
     );
-    assert_eq!(found.app("obs").expect("app").source, "acceso directo");
     assert!(shortcuts::resolve(&[PathBuf::from(r"\\server\share\OBS.lnk")]).is_err());
 }
 
@@ -1484,7 +1478,6 @@ fn editor_preserves_first_step_error_before_a_later_duplicate() {
     found.apps.push(discovery::Detected {
         id: "obs".into(),
         executable: None,
-        source: "fixture sin acceso al sistema",
         availability: discovery::Availability {
             launchable: true,
             ..Default::default()

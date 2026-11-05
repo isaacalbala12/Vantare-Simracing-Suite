@@ -256,7 +256,7 @@ mod launcher_job_tests {
     fn app_waits_for_its_test_owner() {
         if std::env::var_os("VANTARE_R12_JOB_ROOT").is_some() {
             // Watchdog only: the owner normally terminates this isolated app by its retained handle.
-            std::thread::park_timeout(Duration::from_secs(60));
+            std::thread::park_timeout(Duration::from_mins(1));
         }
     }
 

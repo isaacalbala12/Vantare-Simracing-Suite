@@ -334,8 +334,8 @@ pendientes; este PR no cambia billing, licencias ni `_shared`/`clerk-webhook`.
 
 ## Auditoría y concurrencia · paso 5b (sustituye los detalles de 5a)
 
-La consulta de diagnóstico vigente es `private.admin_pending_effects`, privada
-y sin endpoint de lectura en la API:
+La consulta de diagnóstico es `private.admin_pending_effects`, que sigue privada.
+Gestión permite consultarla mediante la acción owner-only del paso 10c:
 incluye intenciones sin resultado y resultados `unknown` sin reconciliar.
 `succeeded` cierra una operación; `failed` distingue rechazos definitivos HTTP
 401/403/422; el número HTTP queda en `provider_status`. Un DELETE de Clerk con
@@ -360,9 +360,8 @@ select public.native_admin_reconcile_effect('<OWNER_REVISOR_UUID>'::uuid,
 ```
 
 `reconciled` añade un evento con el UUID del reviewer y conserva toda la
-evidencia original. No decide si repetir una escritura externa. La lectura
-desde la app por el owner y la retención de `target_hash` pertenecen al paso 10;
-no hay nuevo endpoint de lectura ni política de retención en este cambio.
+evidencia original. No decide si repetir una escritura externa. La lectura desde
+Gestión está en el paso 10c y la retención/redacción de `target_hash`, en el 10b.
 
 Ban y unban adquieren un lease por cuenta de 480 segundos, sin renovación:
 supera los [400 segundos máximos del worker hosted de Supabase](https://supabase.com/docs/guides/functions/limits)
@@ -598,10 +597,10 @@ restaurar el cuerpo byte a byte. La carrera del guard sigue diferida por review.
 El fallback de `claim` por `target_hash` está cubierto sin una fila de lease.
 Un índice parcial sobre ese hash para `outcome='started'` corresponde al
 predicado de la vista de pendientes y evita recorrer intenciones de otras
-cuentas. No cambia la retención ni expone lecturas al cliente. Segundo reconcile
+cuentas. La lectura owner se añade en el paso 10c; la vista sigue privada. Segundo reconcile
 es idempotente y conserva una sola fila; release en cuenta borrada conserva
 `expires_at`. Los fallos de release se registran con `console.error`, sin datos
-personales ni errores SQL. Distinguir los 409 sigue reservado al paso 10.
+personales ni errores SQL. El paso 10c distingue los 409 por operación en curso y por efectos pendientes.
 
 Los tests `native_admin_report_r5.test.sql` y
 `native_admin_final_decision_r4.test.sql` son históricos: solo se ejecutan contra
@@ -925,3 +924,28 @@ comprobación justo antes del despliegue. No modificar la tarea. Consulta readon
 y `Get-ScheduledTaskInfo -TaskPath '\' -TaskName 'Vantare-VANTA96-MailCleanup' | Select-Object LastRunTime,LastTaskResult,NextRunTime`.
 Este PR no crea ni cambia cron, flags ni configuración. El down restaura la llamada
 al mantenimiento en la lectura, sin convertir estados ni recuperar datos borrados.
+
+### Consulta owner de efectos pendientes · paso 10c
+
+`20261105025144_isa_1910_admin_pending_owner.sql` añade list_pending_effects al
+RPC existente, sin otra tabla ni journal. SQL comprueba owner vigente y devuelve
+hasta 50 pendientes por página, ordenados por effect_id; cursor UUID exclusivo.
+Solo entrega effect_id, request_id, acción, efecto, fecha, estado y HTTP. Excluye
+cuenta, actor, hashes, correos, URLs y valores de proveedor. No escribe auditoría
+ni resuelve cuentas. No-owner/caducado fallan; anon/authenticated siguen sin EXECUTE.
+
+Gestión ofrece Auditoría, Actualizar, Siguiente página y Copiar identificadores.
+La consulta no se cachea ni se anticipa en background. Datos inválidos conservan
+la página anterior; salir/perder autoridad borra los datos de memoria. No hay
+reintento/reconcile desde esta pantalla: verificar proveedor y usar el procedimiento
+manual anterior. Reconciliar no vuelve a enviar SMTP.
+
+claim mantiene locks, lease y fencing. Ahora40001 distingue
+native_admin_change_in_progress →409 account_change_in_progress (esperar)
+y native_admin_effects_pending →409 account_effects_pending (consultar Auditoría
+y verificar antes de reconciliar). El fallback para SQL anterior se conserva.
+
+Solo Isaac: migración después de215424, luego Edge y luego Gestión nuevo.
+Down restaura cuerpos/ACL completos sin borrar evidencia ni cambiar leases.
+Coordinar el rollback de Edge/Gestión porque SQL anterior no conoce la lectura.
+Producción tiene datos; no reset ni migración repair. Sin cambios de configuración.

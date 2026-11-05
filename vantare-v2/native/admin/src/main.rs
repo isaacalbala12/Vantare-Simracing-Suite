@@ -23,9 +23,11 @@ fn run() -> Result<(), String> {
                     Some("rollout") => Screen::Rollout,
                     Some("reports") => Screen::Reports,
                     Some("mail") => Screen::Mail,
+                    Some("audit") => Screen::Audit,
                     _ => {
                         return Err(
-                            "pantalla: login | users | creators | rollout | reports | mail".into(),
+                            "pantalla: login | users | creators | rollout | reports | mail | audit"
+                                .into(),
                         );
                     }
                 }
@@ -33,7 +35,7 @@ fn run() -> Result<(), String> {
             "--help" => {
                 let _written = writeln!(
                     std::io::stdout(),
-                    "vantare-admin [--demo] [--screen login|users|creators|rollout|reports|mail] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado|mail-editor|mail-confirm|mail-history|mail-forget|mail-cleanup] [--diagnose-owner]"
+                    "vantare-admin [--demo] [--screen login|users|creators|rollout|reports|mail|audit] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado|mail-editor|mail-confirm|mail-history|mail-forget|mail-cleanup] [--diagnose-owner]"
                 );
                 return Ok(());
             }

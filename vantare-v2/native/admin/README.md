@@ -202,3 +202,9 @@ Es metadata del sobre (como version), no un campo de las acciones SQL. El fixtur
 común valida qué acciones admiten el opt-in; las demás no lo envían. Edge compatible
 mantiene el sync implícito para ejecutables antiguos. La lectura del flag precede
 al dato; Gestión espera confirmación/ACK/relectura sin sustituir hechos previos.
+
+Auditoría (#1910,10c) consulta efectos pendientes del owner,50 por página, sin
+cache ni prefetch; Actualizar vuelve a la primera página. Copiar solo entrega
+UUID internos del efecto/petición. No muestra cuentas, hashes ni correo y no
+reconcilia/reenvía.401/403/logout vacían la lista. `--demo --screen audit` usa
+solo estado falso en memoria; no hay Store ni red. Despliegue SQL→Edge→Gestión.

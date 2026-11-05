@@ -1,5 +1,7 @@
 //! Estado comprobable sin ventana: nunca aplica cambios antes del ACK.
-use crate::client::{Action, Creator, CreatorLine, Module, Report, Rollout, Status, User, field};
+use crate::client::{
+    Action, Creator, CreatorLine, Module, PendingEffect, Report, Rollout, Status, User, field,
+};
 use vantare_services::{Error, Result};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -9,15 +11,17 @@ pub enum Screen {
     Reports,
     Creators,
     Mail,
+    Audit,
     Login,
 }
 impl Screen {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Users,
         Self::Creators,
         Self::Reports,
         Self::Rollout,
         Self::Mail,
+        Self::Audit,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -26,6 +30,7 @@ impl Screen {
             Self::Reports => "Informes",
             Self::Creators => "Creadores",
             Self::Mail => "Correos",
+            Self::Audit => "Auditoría",
             Self::Login => "Entrar",
         }
     }
@@ -39,6 +44,8 @@ pub struct State {
     pub message: String,
     pub confirmation: Option<Action>,
     pub pending_payment_read: Option<Action>,
+    pub effects: Vec<PendingEffect>,
+    pub effects_cursor: Option<String>,
     pub users: Vec<User>,
     pub creators: Vec<Creator>,
     pub creator: Option<Creator>,
@@ -70,6 +77,8 @@ impl State {
             message: String::new(),
             confirmation: None,
             pending_payment_read: None,
+            effects: vec![],
+            effects_cursor: None,
             users: vec![],
             creators: vec![],
             creator: None,
@@ -179,9 +188,10 @@ impl State {
             "Espera un minuto antes de volver a intentarlo.".into()
         } else if error == Error::AccountChangeIncomplete {
             "El bloqueo quedó incompleto. Consulta la cuenta y vuelve a confirmar para terminar la cancelación.".into()
+        } else if error == Error::Busy {
+            "Hay otra operación en curso. Espera y actualiza.".into()
         } else if error == Error::Uncertain {
-            "El resultado no está confirmado. Actualiza los datos antes de repetir el cambio."
-                .into()
+            "Hay un resultado sin confirmar. Consulta Auditoría y verifica el proveedor antes de reconciliar.".into()
         } else if error == Error::NotFound {
             "La persona, el creador o el informe ya no existe. Actualiza la lista.".into()
         } else if error == Error::Denied {
@@ -199,6 +209,8 @@ impl State {
     pub fn clear_private(&mut self) {
         self.mail = crate::mail::MailState::default();
         self.signed_in = false;
+        self.effects.clear();
+        self.effects_cursor = None;
         self.users.clear();
         self.creators.clear();
         self.creator = None;
@@ -289,6 +301,10 @@ impl State {
                 self.user = Some(user);
                 None
             }
+            Action::ListPendingEffects { cursor } => {
+                self.accept_effects(cursor, response)?;
+                None
+            }
             Action::GetRollout => {
                 let rows: Vec<Rollout> = field(response, "rollout")?;
                 if rows.len() != 4
@@ -361,6 +377,32 @@ impl State {
         self.busy = false;
         self.message = "Datos confirmados por el servidor".into();
         Ok(reload)
+    }
+    fn accept_effects(
+        &mut self,
+        cursor: &Option<String>,
+        response: &serde_json::Value,
+    ) -> Result<()> {
+        let rows: Vec<PendingEffect> = field(response, "effects")?;
+        let next: Option<String> = field(response, "next_cursor")?;
+        if rows.len() > 50 {
+            return Err(Error::TooLarge);
+        }
+        if rows
+            .iter()
+            .any(|row| !row.valid() || cursor.as_ref().is_some_and(|id| &row.effect_id <= id))
+            || rows
+                .windows(2)
+                .any(|pair| pair[0].effect_id >= pair[1].effect_id)
+            || next.as_ref().is_some_and(|id| {
+                rows.len() != 50 || rows.last().is_none_or(|row| &row.effect_id != id)
+            })
+        {
+            return Err(Error::Protocol);
+        }
+        self.effects = rows;
+        self.effects_cursor = next;
+        Ok(())
     }
     fn accept_creator(&mut self, creator_id: &str, response: &serde_json::Value) -> Result<()> {
         let creator: Creator = field(response, "creator")?;
@@ -931,5 +973,42 @@ mod tests {
             state.creators.is_empty() && state.creator.is_none() && state.creator_lines.is_empty()
         );
         assert!(state.account_counts.is_empty() && state.report_counts.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod pending_effect_tests {
+    use super::*;
+    fn row(id: u32) -> serde_json::Value {
+        serde_json::json!({"effect_id":format!("19101030-0000-4000-8000-{id:012}"),"request_id":"19101030-0000-4000-8000-000000000999","action":"set_blocked","effect":"clerk_ban","occurred_at":"2026-11-05T00:00:00+00:00","outcome":"unknown","http_status":503})
+    }
+    #[test]
+    fn pending_page_is_bounded_atomic_and_cleared_on_authority_loss() {
+        let mut state = State::new(true, Screen::Audit);
+        let action = Action::ListPendingEffects { cursor: None };
+        let page = serde_json::json!({"effects":[row(1)],"next_cursor":null});
+        state.accept(&action, &page).expect("owner page");
+        assert_eq!(state.effects.len(), 1);
+        let mut pii = page.clone();
+        pii["effects"][0]["target_hash"] = "unexpected".into();
+        assert_eq!(state.accept(&action, &pii), Err(Error::Protocol));
+        assert_eq!(state.effects.len(), 1);
+        let oversized = serde_json::json!({"effects":vec![row(2);51],"next_cursor":null});
+        assert_eq!(state.accept(&action, &oversized), Err(Error::TooLarge));
+        assert_eq!(
+            state.effects[0].effect_id,
+            "19101030-0000-4000-8000-000000000001"
+        );
+        let rows: Vec<_> = (1..=50).map(row).collect();
+        let cursor = "19101030-0000-4000-8000-000000000050";
+        let page = serde_json::json!({"effects":rows,"next_cursor":cursor});
+        state.accept(&action, &page).expect("complete page");
+        assert_eq!(state.effects_cursor.as_deref(), Some(cursor));
+        let next = Action::ListPendingEffects {
+            cursor: Some(cursor.into()),
+        };
+        assert_eq!(state.accept(&next, &page), Err(Error::Protocol));
+        state.failed(Error::Denied);
+        assert!(state.effects.is_empty() && state.effects_cursor.is_none());
     }
 }

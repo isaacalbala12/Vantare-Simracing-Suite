@@ -315,13 +315,23 @@ fn screenshots_are_bounded_and_downloaded_without_oauth() {
 
 #[test]
 fn account_errors_have_distinct_recoverable_messages() {
-    for (code, expected) in [
-        ("confirmation_mismatch", Error::ConfirmationMismatch),
-        ("account_change_incomplete", Error::AccountChangeIncomplete),
-        ("deletion_barrier_unavailable", Error::DeletionUnavailable),
+    for (code, status, expected) in [
+        ("confirmation_mismatch", 503, Error::ConfirmationMismatch),
+        (
+            "account_change_incomplete",
+            503,
+            Error::AccountChangeIncomplete,
+        ),
+        (
+            "deletion_barrier_unavailable",
+            503,
+            Error::DeletionUnavailable,
+        ),
+        ("account_change_in_progress", 409, Error::Busy),
+        ("account_effects_pending", 409, Error::Uncertain),
     ] {
         let body = format!(r#"{{"version":1,"ok":false,"error":"{code}"}}"#);
-        let (client, server) = serve(503, body.into_bytes());
+        let (client, server) = serve(status, body.into_bytes());
         assert_eq!(client.request("test", &Action::GetRollout), Err(expected));
         server.join().expect("server");
     }

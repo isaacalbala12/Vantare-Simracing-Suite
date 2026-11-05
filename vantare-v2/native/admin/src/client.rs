@@ -402,6 +402,36 @@ impl<'de> Deserialize<'de> for Report {
         })
     }
 }
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PendingEffect {
+    pub effect_id: String,
+    pub request_id: String,
+    pub action: String,
+    pub effect: String,
+    pub occurred_at: String,
+    pub outcome: String,
+    pub http_status: Option<u16>,
+}
+impl PendingEffect {
+    pub fn valid(&self) -> bool {
+        vantare_services::license::uuid(&self.effect_id)
+            && vantare_services::license::uuid(&self.request_id)
+            && [&self.action, &self.effect].iter().all(|s| {
+                !s.is_empty()
+                    && s.len() <= 64
+                    && s.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+            })
+            && !self.occurred_at.is_empty()
+            && self.occurred_at.len() <= 40
+            && !self.occurred_at.chars().any(char::is_control)
+            && matches!(self.outcome.as_str(), "pending" | "unknown")
+            && self
+                .http_status
+                .is_none_or(|status| (100..=599).contains(&status))
+    }
+}
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[cfg_attr(test, derive(Deserialize))]
 #[cfg_attr(test, serde(deny_unknown_fields))]
@@ -494,6 +524,10 @@ pub enum Action {
         #[serde(skip_serializing_if = "Option::is_none")]
         paid_at: Option<String>,
     },
+    ListPendingEffects {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cursor: Option<String>,
+    },
     GetRollout,
     SetRollout {
         module: Module,
@@ -544,6 +578,7 @@ impl Action {
             Self::GetCreator { .. } => "get_creator",
             Self::CreateCreator { .. } => "create_creator",
             Self::RecordCreatorPayout { .. } => "record_creator_payout",
+            Self::ListPendingEffects { .. } => "list_pending_effects",
             Self::GetRollout => "get_rollout",
             Self::SetRollout { .. } => "set_rollout",
             Self::ListReports { .. } => "list_reports",
@@ -598,6 +633,9 @@ impl Action {
                         .as_ref()
                         .is_none_or(|s| query.is_empty() && vantare_services::license::uuid(s))
             }
+            Self::ListPendingEffects { cursor } => cursor
+                .as_ref()
+                .is_none_or(|id| vantare_services::license::uuid(id)),
             Self::ListReports { limit, cursor, .. } => {
                 (1..=100).contains(limit) && cursor.as_ref().is_none_or(|s| bounded(s))
             }
@@ -764,6 +802,8 @@ impl Client {
                 }
                 Some("confirmation_mismatch") => Error::ConfirmationMismatch,
                 Some("account_conflict") => Error::AccountConflict,
+                Some("account_change_in_progress") => Error::Busy,
+                Some("account_effects_pending") => Error::Uncertain,
                 Some("rate_limited") => Error::RateLimited,
                 Some("deletion_barrier_unavailable") => Error::DeletionUnavailable,
                 Some("account_change_incomplete") => Error::AccountChangeIncomplete,

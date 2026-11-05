@@ -1,5 +1,5 @@
 use super::{Context, Duration, Hub, Instant, Launcher, PathBuf};
-use gpui::{App, PromptButton, PromptLevel};
+use gpui::{PromptButton, PromptLevel};
 
 fn close_code(restart: bool, connected: bool) -> u8 {
     if restart {

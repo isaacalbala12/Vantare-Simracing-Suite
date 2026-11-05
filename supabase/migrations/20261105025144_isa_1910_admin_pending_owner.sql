@@ -77,7 +77,10 @@ begin
    e.request_id=(select request_id from private.admin_change_leases where account_id=p_account)
    or e.target_hash in (select encode(sha256(convert_to(i.subject,'UTF8')),'hex')
                        from public.account_identities i where i.account_id=p_account))
- then raise exception 'native_admin_effects_pending' using errcode='40001'; end if;
+ then
+  if exists(select 1 from private.admin_change_leases where account_id=p_account and expires_at>clock_timestamp()) then
+   raise exception 'native_admin_change_in_progress' using errcode='40001'; end if;
+  raise exception 'native_admin_effects_pending' using errcode='40001'; end if;
 
  insert into private.admin_change_leases as l(account_id,actor,request_id,token,expires_at)
  values(p_account,p_actor,p_request,gen_random_uuid(),clock_timestamp()+interval '480 seconds')

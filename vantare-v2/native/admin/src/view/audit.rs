@@ -1,4 +1,5 @@
-use super::*;
+use super::{Admin, Event, INK3, column, empty_card, heading, muted, panel, text};
+use gpui::{Context, Div, InteractiveElement, ParentElement, Styled, px};
 impl Admin {
     pub(super) fn audit(&self, cx: &mut Context<Self>) -> Div {
         let mut body = column().child(self.page_head("Efectos pendientes", "Comprueba el proveedor antes de reconciliar. Esta pantalla solo consulta; no reenvía operaciones.", cx));

@@ -943,7 +943,9 @@ manual anterior. Reconciliar no vuelve a enviar SMTP.
 claim mantiene locks, lease y fencing. Ahora40001 distingue
 native_admin_change_in_progress →409 account_change_in_progress (esperar)
 y native_admin_effects_pending →409 account_effects_pending (consultar Auditoría
-y verificar antes de reconciliar). El fallback para SQL anterior se conserva.
+y verificar antes de reconciliar). Un lease vigente pide esperar incluso con
+started en vuelo; tras liberar/caducar, un efecto sin cierre bloquea hasta
+reconciliar. El fallback para SQL anterior se conserva.
 
 Solo Isaac: migración después de215424, luego Edge y luego Gestión nuevo.
 Down restaura cuerpos/ACL completos sin borrar evidencia ni cambiar leases.

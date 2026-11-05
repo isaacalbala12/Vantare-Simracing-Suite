@@ -302,25 +302,10 @@ impl State {
                 None
             }
             Action::ListPendingEffects { cursor } => {
-                self.accept_effects(cursor, response)?;
-                None
+                self.accept_effects(cursor.as_deref(), response)?
             }
             Action::GetRollout => {
-                let rows: Vec<Rollout> = field(response, "rollout")?;
-                if rows.len() != 4
-                    || Module::ALL
-                        .iter()
-                        .any(|m| rows.iter().filter(|r| r.module == *m).count() != 1)
-                {
-                    return Err(Error::Protocol);
-                }
-                self.accounts_total = response
-                    .get("accounts_total")
-                    .map(|v| serde_json::from_value(v.clone()))
-                    .transpose()
-                    .map_err(|_| Error::Protocol)?
-                    .unwrap_or(0);
-                self.rollout = rows;
+                self.accept_rollout(response)?;
                 None
             }
             Action::ListReports { .. } => {
@@ -378,11 +363,29 @@ impl State {
         self.message = "Datos confirmados por el servidor".into();
         Ok(reload)
     }
+    fn accept_rollout(&mut self, response: &serde_json::Value) -> Result<()> {
+        let rows: Vec<Rollout> = field(response, "rollout")?;
+        if rows.len() != 4
+            || Module::ALL
+                .iter()
+                .any(|m| rows.iter().filter(|r| r.module == *m).count() != 1)
+        {
+            return Err(Error::Protocol);
+        }
+        self.accounts_total = response
+            .get("accounts_total")
+            .map(|v| serde_json::from_value(v.clone()))
+            .transpose()
+            .map_err(|_| Error::Protocol)?
+            .unwrap_or(0);
+        self.rollout = rows;
+        Ok(())
+    }
     fn accept_effects(
         &mut self,
-        cursor: &Option<String>,
+        cursor: Option<&str>,
         response: &serde_json::Value,
-    ) -> Result<()> {
+    ) -> Result<Option<Action>> {
         let rows: Vec<PendingEffect> = field(response, "effects")?;
         let next: Option<String> = field(response, "next_cursor")?;
         if rows.len() > 50 {
@@ -390,7 +393,7 @@ impl State {
         }
         if rows
             .iter()
-            .any(|row| !row.valid() || cursor.as_ref().is_some_and(|id| &row.effect_id <= id))
+            .any(|row| !row.valid() || cursor.is_some_and(|id| row.effect_id.as_str() <= id))
             || rows
                 .windows(2)
                 .any(|pair| pair[0].effect_id >= pair[1].effect_id)
@@ -402,7 +405,7 @@ impl State {
         }
         self.effects = rows;
         self.effects_cursor = next;
-        Ok(())
+        Ok(None)
     }
     fn accept_creator(&mut self, creator_id: &str, response: &serde_json::Value) -> Result<()> {
         let creator: Creator = field(response, "creator")?;

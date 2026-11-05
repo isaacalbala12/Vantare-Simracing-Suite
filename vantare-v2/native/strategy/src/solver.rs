@@ -475,14 +475,16 @@ fn pit_seconds(input: &Input, fuel: i64, ve: i64) -> f64 {
         }
 }
 
-pub fn solve(input: &Input) -> Result<ResultV2, String> {
+#[cfg(test)]
+fn solve(input: &Input) -> Result<ResultV2, String> {
     solve_cancellable(input, &AtomicBool::new(false))
 }
 
 /// Bounded exact search in the supported scalar space; no result on exhaustion.
 /// Caller owns cancellation. This runs off the GPUI thread.
 #[allow(clippy::too_many_lines)] // Keep the bounded state-space walk in one place, rather than a search manager.
-pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
+#[cfg(test)]
+fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
     solve_internal(input, cancel, false, Some(input.budget.p95_millis))
         .map(|outcome| outcome.result)
 }

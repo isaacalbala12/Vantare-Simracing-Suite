@@ -29,6 +29,7 @@ fn start_in_store(store: &Store) -> Result<Chain, String> {
         |_| Discovery::default(),
         crate::processes::Shared::default(),
         None,
+        &store.path,
     )
 }
 

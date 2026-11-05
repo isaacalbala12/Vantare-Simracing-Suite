@@ -15,6 +15,7 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, Instant, SystemTime},
 };
+use vantare_ipc::launcher::is_fresh;
 
 struct AppDraft {
     id: Option<String>,
@@ -124,38 +125,15 @@ fn parse_args(value: &str) -> Result<Vec<String>, String> {
         .map_err(|error| format!("argumentos: usa un array JSON de strings: {error}"))
 }
 
-fn actions_from_labels(labels: &[String]) -> impl Iterator<Item = Action> + '_ {
-    [
-        Action::Trust,
-        Action::Reuse,
-        Action::Restart,
-        Action::Cancel,
-        Action::Stop,
-        Action::Continue,
-        Action::Leave,
-        Action::CloseStarted,
-    ]
-    .into_iter()
-    .filter(move |action| labels.iter().any(|label| label == action.label()))
-}
-
 /// Firma del fichero de estado resident: solo cambia al escribirse.
 fn resident_signature(settings: &Path) -> Option<(SystemTime, u64)> {
     let metadata = std::fs::metadata(vantare_ipc::launcher::status_path(settings)).ok()?;
     Some((metadata.modified().ok()?, metadata.len()))
 }
 
-/// Frescura exigida por `read_status`: versión 1 y menos de 3 s.
-fn resident_is_fresh(status: &vantare_ipc::launcher::Status) -> bool {
-    status.version == 1
-        && vantare_ipc::launcher::now_ms()
-            .checked_sub(status.updated_ms)
-            .is_some_and(|age| age < 3_000)
-}
-
 fn hotkey_status_text(status: Option<&vantare_ipc::launcher::Status>, id: &str) -> String {
     status
-        .filter(|status| resident_is_fresh(status))
+        .filter(|status| is_fresh(status))
         .and_then(|status| status.profiles.iter().find(|profile| profile.profile == id))
         .map_or_else(
             || "Registro no confirmado · abre Vantare desde el instalador".into(),
@@ -480,7 +458,7 @@ impl Launcher {
             DecisionOrigin::Resident(id) => {
                 let request = vantare_ipc::launcher::Request::Answer {
                     decision: id,
-                    action: action.label().into(),
+                    action,
                 };
                 let result = serde_json::to_vec(&request)
                     .map_err(|error| error.to_string())
@@ -551,7 +529,7 @@ impl Launcher {
         if let Some(status) = self
             .resident_status
             .as_ref()
-            .filter(|status| resident_is_fresh(status))
+            .filter(|status| is_fresh(status))
         {
             let error = status
                 .error
@@ -581,7 +559,10 @@ impl Launcher {
                 && let Some(decision) = &status.decision
                 && self.resident_answered != Some(decision.id)
             {
-                let actions = actions_from_labels(&decision.actions)
+                let actions = decision
+                    .actions
+                    .iter()
+                    .copied()
                     .take(self.form_actions.len())
                     .collect();
                 self.pending_decision = Some(PendingDecision {
@@ -743,7 +724,7 @@ impl Launcher {
         }
         self.resident_status
             .as_ref()
-            .filter(|status| resident_is_fresh(status))
+            .filter(|status| is_fresh(status))
     }
     pub(crate) fn global_hotkey_status(&self, id: &str) -> String {
         hotkey_status_text(self.resident_status.as_ref(), id)
@@ -830,12 +811,23 @@ impl Launcher {
         if self.capture != Capture::None {
             return;
         }
+        if self
+            .refresh_resident_status()
+            .is_some_and(|status| status.running)
+        {
+            self.report::<String>(
+                Err("ya hay una cadena residente activa; cancélala o espera".into()),
+                cx,
+            );
+            return;
+        }
         match Chain::start(
             self.store.document.clone(),
             profile.clone(),
             move |_| found,
             self.processes.clone(),
             Some(selected),
+            &self.store.path,
         ) {
             Ok(chain) => {
                 vantare_ui::analytics::record(
@@ -1204,12 +1196,13 @@ mod tests {
                     std::fs::File::create(vantare_ipc::launcher::status_path(&launcher.store.path))
                         .expect("preparar estado QA");
                 let status = Status {
-                    version: 1,
+                    version: vantare_ipc::launcher::VERSION,
                     updated_ms: vantare_ipc::launcher::now_ms(),
+                    running: true,
                     decision: Some(vantare_ipc::launcher::Decision {
                         id,
                         message: "Decisión residente QA".into(),
-                        actions: actions.iter().map(|action| action.label().into()).collect(),
+                        actions: actions.to_vec(),
                     }),
                     ..Status::default()
                 };
@@ -1243,7 +1236,7 @@ mod tests {
             panic!("debe responder a la decisión")
         };
         assert_eq!(decision, id);
-        assert_eq!(action, expected.label());
+        assert_eq!(action, expected);
         assert!(
             !launcher.exit_cancelled,
             "una decisión residente no es de salida"
@@ -1285,6 +1278,9 @@ mod tests {
     #[test]
     fn finished_hub_chain_keeps_the_resident_decision_and_its_drawer() {
         with_decision_window(|window, cx| {
+            let settings = window
+                .update(cx, |launcher, _, _| launcher.store.path.clone())
+                .expect("ruta del Hub QA");
             let document = Document::default();
             let mut profile = Profile::new("hub-qa".into(), "Cadena QA".into());
             profile.steps.push(Step {
@@ -1299,6 +1295,7 @@ mod tests {
                 move |_| Discovery::default(),
                 std::sync::Arc::default(),
                 None,
+                &settings,
             )
             .unwrap();
             loop {
@@ -1367,7 +1364,7 @@ mod tests {
                         },
                     }];
                     let mut status = serde_json::to_value(Status {
-                        version: 1,
+                        version: vantare_ipc::launcher::VERSION,
                         updated_ms: vantare_ipc::launcher::now_ms(),
                         ..Status::default()
                     })
@@ -1438,19 +1435,7 @@ mod tests {
     #[test]
     fn mailbox_actions_pass_through_the_real_drawer_and_answer_writer() {
         with_decision_window(|window, cx| {
-            for (index, expected) in [
-                Action::Trust,
-                Action::Reuse,
-                Action::Restart,
-                Action::Cancel,
-                Action::Stop,
-                Action::Continue,
-                Action::Leave,
-                Action::CloseStarted,
-            ]
-            .into_iter()
-            .enumerate()
-            {
+            for (index, expected) in Action::ALL.into_iter().enumerate() {
                 let id = u64::try_from(index).unwrap() + 100;
                 show_resident_decision(window, cx, id, &[expected]);
                 window
@@ -1461,39 +1446,6 @@ mod tests {
                     .expect("respuesta por el drawer real");
             }
         });
-    }
-
-    #[test]
-    fn launcher_action_labels_round_trip_through_hub_decoder() {
-        for expected in [
-            Action::Trust,
-            Action::Reuse,
-            Action::Restart,
-            Action::Cancel,
-            Action::Stop,
-            Action::Continue,
-            Action::Leave,
-            Action::CloseStarted,
-        ] {
-            let bytes = serde_json::to_vec(&vantare_ipc::launcher::Decision {
-                id: 42,
-                message: "Decisión del residente".into(),
-                actions: vec![expected.label().into(), "acción desconocida".into()],
-            })
-            .expect("decisión real del buzón");
-            let decision: vantare_ipc::launcher::Decision =
-                serde_json::from_slice(&bytes).expect("leer decisión real");
-            assert_eq!(decision.id, 42);
-            assert_eq!(
-                actions_from_labels(&decision.actions).collect::<Vec<_>>(),
-                [expected]
-            );
-        }
-        assert!(
-            actions_from_labels(&["acción desconocida".into()])
-                .next()
-                .is_none()
-        );
     }
 
     #[test]
@@ -1539,7 +1491,7 @@ mod tests {
                 status.decision = Some(vantare_ipc::launcher::Decision {
                     id: 7,
                     message: "¿Reutilizar?".into(),
-                    actions: vec![Action::Reuse.label().into()],
+                    actions: vec![Action::Reuse],
                 });
                 std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
                 launcher.poll_resident(cx);
@@ -1632,7 +1584,7 @@ mod tests {
 
     fn resident_test_status(updated_ms: u64, profile: &str, registered: bool) -> Status {
         Status {
-            version: 1,
+            version: vantare_ipc::launcher::VERSION,
             updated_ms,
             profiles: vec![Registration {
                 profile: profile.into(),
@@ -1670,9 +1622,9 @@ mod tests {
 
     #[test]
     fn cached_resident_status_serves_hotkeys_without_reparsing() {
-        assert!(!resident_is_fresh(&resident_test_status(0, "a", true)));
+        assert!(!is_fresh(&resident_test_status(0, "a", true)));
         let fresh = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
-        assert!(resident_is_fresh(&fresh));
+        assert!(is_fresh(&fresh));
         assert_eq!(
             hotkey_status_text(Some(&fresh), "a"),
             "Registrado en Windows"

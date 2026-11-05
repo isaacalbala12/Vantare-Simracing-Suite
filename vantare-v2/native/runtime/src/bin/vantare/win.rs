@@ -312,7 +312,14 @@ mod launcher_job_tests {
         let found = Discovery::scan(&document.apps, Sources::default());
         let processes = Arc::new(Mutex::new(Processes::default()));
         let chain = if std::env::var_os("VANTARE_R12_ALL_STEPS").is_some() {
-            Chain::start(document, profile, move |_| found, processes.clone(), None)
+            Chain::start(
+                document,
+                profile,
+                move |_| found,
+                processes.clone(),
+                None,
+                &root.join("launcher.json"),
+            )
         } else {
             Chain::start(
                 document,
@@ -320,6 +327,7 @@ mod launcher_job_tests {
                 move |_| found,
                 processes.clone(),
                 Some(vec![0]),
+                &root.join("launcher.json"),
             )
         }
         .expect("operación aislada del arnés Job");

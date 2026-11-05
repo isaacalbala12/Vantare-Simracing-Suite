@@ -10,7 +10,7 @@ conserva el hash y la ruta de confianza existentes. No depende de runtime
 ni ui. Sus pruebas de comportamiento existentes se ejecutan en el crate
 y en Hub; el lifecycle del supervisor verifica los procesos reales.
 
-`Chain::start(document, profile, found, processes, selected)` es el único
+`Chain::start(document, profile, found, processes, selected, settings)` es el único
 constructor. `selected: None` ejecuta todos los pasos; `Some(indices)` conserva
 los índices originales al reintentar. En Windows las apps siempre usan
 breakaway para sobrevivir al Job del Hub o del supervisor; las políticas de
@@ -21,6 +21,11 @@ El Hub entrega su foto con una función que la devuelve; el residente escanea
 allí las fuentes locales sin bloquear su bucle. `run` y `run_pass` gestionan
 la cancelación antes de lanzar el primer paso; el cierre recoge el worker.
 El scan conserva sus límites existentes de archivos y registro.
+
+`settings` identifica el documento compartido. Su lock de cadena es distinto del
+lock de guardado y vive solo mientras vive el worker: evita dos cadenas entre
+Hub/residente sin impedir editar perfiles. El SO lo libera si el dueño cae.
+Los registros de procesos siguen siendo propios; no cambia la autoridad de cierre.
 
 `Profile::missing_steps` comparte la comprobación de disponibilidad entre editor
 y presentación. Cada sitio conserva su comprobación de perfil vacío y su mensaje.

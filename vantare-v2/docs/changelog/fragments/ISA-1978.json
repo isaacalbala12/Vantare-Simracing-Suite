@@ -10,7 +10,8 @@
     "El descarte distingue cadena, residente y salida; mantiene el ID de la decisión y rechaza cancelaciones antiguas.",
     "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo.",
     "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento.",
-    "Lanzabilidad compartida y un solo constructor de cadena, siempre fuera del Job; el residente detecta apps en el worker y sigue atendiendo su bucle."
+    "Lanzabilidad compartida y un solo constructor de cadena, siempre fuera del Job; el residente detecta apps en el worker y sigue atendiendo su bucle.",
+    "Las acciones del buzón usan identificadores estables; el estado running y un lock de cadena evitan dos lanzamientos concurrentes sobre el mismo documento, sin unir los dueños de procesos."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",
@@ -19,10 +20,11 @@
     "Descartar una decisión residente debe escribir una sola respuesta, conservar su ID y no reabrir el drawer al sondear.",
     "Verificar bytes originales intactos al leer un documento futuro o uno con procedencia Wails guardada.",
     "Comparar los bytes de los tres escritores reales con sus 18 capturas anteriores: seis combinaciones por escritor, incluido un perfil antiguo sin editar.",
-    "Retener el scanner con un canal: debe ejecutarse fuera del caller y el constructor debe volver antes de liberarlo. Cancelar y recoger ambos hilos sin lanzar apps."
+    "Retener el scanner con un canal: debe ejecutarse fuera del caller y el constructor debe volver antes de liberarlo. Cancelar y recoger ambos hilos sin lanzar apps.",
+    "Verificar los ocho identificadores a través del drawer y el escritor reales del Hub, las respuestas residentes y la exclusión entre procesos; tras la caída del helper propio debe poder iniciarse otra cadena."
   ],
   "knownLimitations": [
     "Si LMU ya estaba abierto al arrancar el Hub, el trigger no lanza el perfil. Es el comportamiento intencionado de P5.",
-    "El protocolo tipado y la retirada del historial corresponden a los pasos 6-7 pendientes de VANTA-136."
+    "La retirada del historial y el README vigente corresponden al paso 7 pendiente de VANTA-136."
   ]
 }

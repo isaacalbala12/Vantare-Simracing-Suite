@@ -17,6 +17,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
+pub use vantare_ipc::launcher::Action;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -38,31 +39,6 @@ pub struct Progress {
     pub decision: Option<Decision>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Action {
-    Trust,
-    Reuse,
-    Restart,
-    Cancel,
-    Stop,
-    Continue,
-    Leave,
-    CloseStarted,
-}
-impl Action {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Trust => "Confiar y lanzar",
-            Self::Reuse => "Reutilizar",
-            Self::Restart => "Reiniciar",
-            Self::Cancel => "Cancelar",
-            Self::Stop => "Parar",
-            Self::Continue => "Continuar",
-            Self::Leave => "Dejar abiertas",
-            Self::CloseStarted => "Cerrar solo las iniciadas",
-        }
-    }
-}
 #[derive(Clone, Debug)]
 pub struct Decision {
     pub id: u64,
@@ -199,6 +175,7 @@ impl Chain {
         found: impl FnOnce(&[App]) -> Discovery + Send + 'static,
         processes: processes::Shared,
         selected: Option<Vec<usize>>,
+        settings: &std::path::Path,
     ) -> Result<Self, String> {
         let selected = selected.unwrap_or_else(|| (0..profile.steps.len()).collect());
         if selected.is_empty()
@@ -213,6 +190,18 @@ impl Chain {
         checked.profiles = vec![profile.clone()];
         checked.lmu_trigger_profile = None;
         checked.validate()?;
+        // Distinto del lock de guardado: editar el perfil sigue permitido durante la cadena.
+        let lease = std::fs::File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(settings.with_extension("chain-lock"))
+            .map_err(|error| format!("bloquear cadena Launcher: {error}"))?;
+        lease.try_lock().map_err(|error| match error {
+            std::fs::TryLockError::WouldBlock => "ya hay una cadena Launcher activa".into(),
+            std::fs::TryLockError::Error(error) => format!("bloquear cadena Launcher: {error}"),
+        })?;
         let (sender, progress) = mpsc::channel();
         let cancel = Arc::new(Cancellation::default());
         let (answers, replies) = mpsc::channel();
@@ -229,6 +218,7 @@ impl Chain {
             .spawn(move || {
                 let discovery = found(&document.apps);
                 run(&document, &profile, &discovery, &context);
+                drop(lease);
             })
             .map_err(|e| format!("arrancar cadena: {e}"))?;
         Ok(Self {
@@ -935,6 +925,12 @@ mod scan_tests {
 
     #[test]
     fn scanning_runs_off_the_caller_and_does_not_hold_up_constructor_return() {
+        let root = std::env::temp_dir().join(format!(
+            "launcher-scan-{}",
+            vantare_services::random_id().unwrap()
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let settings = root.join("launcher.json");
         let document = Document::default();
         let mut profile = Profile::new("scan-qa".into(), "Scan QA".into());
         profile.first_step_delay = 3600;
@@ -950,6 +946,7 @@ mod scan_tests {
             move |_| Discovery::default(),
             std::sync::Arc::default(),
             None,
+            &settings,
         )
         .unwrap();
         snapshot.shutdown().unwrap();
@@ -967,6 +964,7 @@ mod scan_tests {
                 },
                 std::sync::Arc::default(),
                 None,
+                &settings,
             );
             assert!(
                 returned.send(chain).is_ok(),
@@ -1002,6 +1000,7 @@ mod scan_tests {
         chain
             .shutdown()
             .expect("worker recogido sin crear procesos");
+        std::fs::remove_dir_all(root).unwrap();
         assert_ne!(
             scanner_id, caller_id,
             "P7: el scanner ocupa el hilo que llama al constructor"

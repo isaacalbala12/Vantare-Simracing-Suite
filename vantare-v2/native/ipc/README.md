@@ -1,5 +1,15 @@
 # ipc — fotos versionadas
 
+## Buzón del Launcher
+
+`launcher::Action` define ALL, id/from_id y la representación serializada; sus
+identificadores estables se usan en las decisiones y en `answer-v2`. Las etiquetas
+solo se muestran en UI. Una acción desconocida no se acepta como una respuesta.
+El estado local es versión 2, incluye running y comparte `launcher::is_fresh`
+(3 s, sin aceptar fechas futuras). `launch-v1` conserva su formato. Hub y residente
+pertenecen a la misma generación; este cambio del buzón efímero no modifica el
+formato ni los campos antiguos de `launcher.json`, que sigue en versión 1.
+
 ## Recuperación de documentos — #1869, paso 5
 
 `files::Doc<T>::open_or_quarantine` comparte la lectura acotada y la protección

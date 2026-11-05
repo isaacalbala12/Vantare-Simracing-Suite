@@ -178,21 +178,6 @@ struct Owner {
     close_on_exit: Arc<Mutex<Vec<String>>>,
 }
 
-fn action_from_label(label: &str) -> Option<Action> {
-    [
-        Action::Trust,
-        Action::Reuse,
-        Action::Restart,
-        Action::Cancel,
-        Action::Stop,
-        Action::Continue,
-        Action::Leave,
-        Action::CloseStarted,
-    ]
-    .into_iter()
-    .find(|candidate| candidate.label() == label)
-}
-
 impl Owner {
     fn new(path: PathBuf, startup: bool) -> Self {
         Self {
@@ -364,6 +349,7 @@ impl Owner {
             |apps| Discovery::scan(apps, Sources::system()),
             self.processes.clone(),
             None,
+            &self.path,
         ) {
             Ok(chain) => {
                 self.status.error = None;
@@ -392,14 +378,11 @@ impl Owner {
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
-                let cancel_dismissed = action == Action::Cancel.label()
+                let cancel_dismissed = action == Action::Cancel
                     && self.status.decision.as_ref().is_some_and(|current| {
                         current.id == decision
                             && !current.actions.contains(&action)
-                            && !current
-                                .actions
-                                .iter()
-                                .any(|label| label == Action::Leave.label())
+                            && !current.actions.contains(&Action::Leave)
                     });
                 let selected = self
                     .status
@@ -408,7 +391,7 @@ impl Owner {
                     .filter(|d| {
                         d.id == decision && (d.actions.contains(&action) || cancel_dismissed)
                     })
-                    .and_then(|_| action_from_label(&action));
+                    .map(|_| action);
                 if let (Some(chain), Some(action), Some(local_id)) =
                     (&self.chain, selected, self.chain_decision)
                 {
@@ -447,11 +430,7 @@ impl Owner {
                 self.status.decision = Some(Decision {
                     id: self.decision_serial,
                     message: decision.message,
-                    actions: decision
-                        .actions
-                        .iter()
-                        .map(|action| action.label().into())
-                        .collect(),
+                    actions: decision.actions,
                 });
             }
             changed = true;
@@ -464,6 +443,7 @@ impl Owner {
             }
             self.status.decision = None;
             self.chain_decision = None;
+            changed = true;
         }
         if changed {
             self.publish();
@@ -471,7 +451,8 @@ impl Owner {
     }
 
     fn publish(&mut self) {
-        self.status.version = 1;
+        self.status.version = vantare_ipc::launcher::VERSION;
+        self.status.running = self.chain.is_some();
         self.status.updated_ms = vantare_ipc::launcher::now_ms();
         self.write_status();
     }
@@ -498,34 +479,6 @@ impl Owner {
 mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
-
-    #[test]
-    fn launcher_action_labels_round_trip_through_resident_decoder() {
-        for expected in [
-            Action::Trust,
-            Action::Reuse,
-            Action::Restart,
-            Action::Cancel,
-            Action::Stop,
-            Action::Continue,
-            Action::Leave,
-            Action::CloseStarted,
-        ] {
-            let bytes = serde_json::to_vec(&Request::Answer {
-                decision: 42,
-                action: expected.label().into(),
-            })
-            .expect("petición real del buzón");
-            let Request::Answer { decision, action } =
-                serde_json::from_slice(&bytes).expect("leer petición real")
-            else {
-                panic!("Answer")
-            };
-            assert_eq!(decision, 42);
-            assert_eq!(action_from_label(&action), Some(expected));
-        }
-        assert_eq!(action_from_label("acción desconocida"), None);
-    }
 
     #[test]
     fn future_launcher_document_is_rejected_without_rewriting_it() {
@@ -604,6 +557,7 @@ mod tests {
                 move |_| found,
                 owner.processes.clone(),
                 None,
+                &owner.path,
             )
             .expect("cadena QA"),
         );
@@ -630,11 +584,7 @@ mod tests {
         owner.status.decision = Some(Decision {
             id: 42,
             message: decision.message,
-            actions: decision
-                .actions
-                .iter()
-                .map(|action| action.label().into())
-                .collect(),
+            actions: decision.actions,
         });
         owner
     }
@@ -683,7 +633,7 @@ mod tests {
                 request_path(&owner.path),
                 serde_json::to_vec(&Request::Answer {
                     decision: id,
-                    action: launcher::chain::Action::Cancel.label().into(),
+                    action: Action::Cancel,
                 })
                 .expect("petición QA"),
             )

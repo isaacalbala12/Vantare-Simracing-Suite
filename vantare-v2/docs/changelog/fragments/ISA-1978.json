@@ -12,7 +12,8 @@
     "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento.",
     "Lanzabilidad compartida y un solo constructor de cadena, siempre fuera del Job; el residente detecta apps en el worker y sigue atendiendo su bucle.",
     "Las acciones del buzón usan identificadores estables; el estado running y un lock de cadena evitan dos lanzamientos concurrentes sobre el mismo documento, sin unir los dueños de procesos.",
-    "Se retiran la pestaña Historial, Últimas veces y el código de presentación sin llamadas. El progreso real y los reintentos conservan una sección propia desplazable; todos los campos antiguos del documento se mantienen."
+    "Se retiran la pestaña Historial, Últimas veces y el código de presentación sin llamadas. El progreso real y los reintentos conservan una sección propia desplazable; todos los campos antiguos del documento se mantienen.",
+    "En Windows el archivo chain-lock se elimina al cerrarse el handle, incluso tras una caída. La apertura exclusiva impide que dos dueños bloqueen archivos distintos durante el relevo."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",

@@ -66,8 +66,10 @@ Retirar el importador no retira los perfiles ni la copia histórica guardada.
 
 El constructor `Chain::start` recibe también `settings: &Path` y crea
 `settings.with_extension("chain-lock")` antes de arrancar el worker. El handle
-mantiene la exclusión durante toda la cadena y el SO la libera al terminar o
-caer el proceso. El archivo vacío se conserva: borrarlo permitiría que otro
-proceso con el archivo anterior abierto y uno nuevo bloquearan identidades
-distintas. No contiene estado ni bloquea por sí mismo; solo cuenta el lock del
-handle. Es distinto del lock de guardado, por lo que el perfil sigue editable.
+mantiene la exclusión durante toda la cadena. En Windows se abre sin compartir
+con DELETE_ON_CLOSE: el SO elimina el archivo al cerrarse el handle, incluso
+tras una caída del proceso. OPEN_REPARSE_POINT evita seguir un enlace al limpiar.
+En Unix de desarrollo se conserva el archivo vacío para evitar la carrera entre
+un archivo anterior abierto y otro recreado; el SO libera el lock al cerrar.
+En ambos casos el archivo no guarda estado. El lock de guardado es distinto,
+por lo que el perfil sigue editable durante la cadena.

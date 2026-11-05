@@ -2,11 +2,6 @@
 use super::*;
 use gpui::{div, px, rgb, rgba};
 
-#[cfg(test)]
-thread_local! {
-    pub(super) static AUTOMATIC_PREPARATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum AssistantStep {
     Inicio,
@@ -59,65 +54,6 @@ impl AssistantStep {
 }
 
 impl Strategy {
-    pub(super) fn prepare_automatic(
-        &self,
-    ) -> Result<Option<application::AutomaticPreparation>, String> {
-        #[cfg(test)]
-        AUTOMATIC_PREPARATIONS.set(AUTOMATIC_PREPARATIONS.get() + 1);
-        let Some(event) = self.current_event() else {
-            return Ok(None);
-        };
-        let projection = &event["planningInputs"]["projection"];
-        if projection.is_null() {
-            return Ok(None);
-        }
-
-        let selected_sessions = event["combination"]["sessions"]
-            .as_array()
-            .ok_or("La carrera no tiene una selección de sesiones")?
-            .iter()
-            .filter(|session| session["included"] == true)
-            .map(|session| {
-                session["sessionId"]
-                    .as_str()
-                    .map(str::to_owned)
-                    .ok_or_else(|| "La selección contiene una sesión sin ID".to_owned())
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let source_revisions = serde_json::from_value::<Vec<application::AnalysisRevisionRef>>(
-            projection["sourceRevisions"].clone(),
-        )
-        .map_err(|_| "La proyección no contiene revisiones exactas".to_owned())?;
-        let climate_bucket = match event["strategies"][self.variant]["mode"]["value"]
-            .as_str()
-            .unwrap_or_default()
-        {
-            "dry" => application::ClimateBucket::Dry,
-            "humid" => application::ClimateBucket::Humid,
-            "wet" => application::ClimateBucket::Wet,
-            "eco" => return Err("El modo eco requiere un clima explícito".into()),
-            _ => return Err("La carrera no tiene un modo de clima reconocido".into()),
-        };
-        let virtual_energy = match event["strategies"][self.variant]["overrides"]
-            ["nativeScalarInput"]["ve_capacity_percent"]["value"]
-            .as_f64()
-        {
-            Some(value) if value > 0.0 => application::VirtualEnergyApplicability::Applicable,
-            Some(0.0) => application::VirtualEnergyApplicability::NotApplicable,
-            Some(_) => return Err("La capacidad de energía virtual no es válida".into()),
-            None => application::VirtualEnergyApplicability::Pending,
-        };
-
-        application::prepare_automatic(
-            &selected_sessions,
-            &source_revisions,
-            projection.clone(),
-            climate_bucket,
-            virtual_energy,
-        )
-        .map(Some)
-    }
-
     #[allow(clippy::too_many_lines)] // Mantiene unida la composición de un paso del asistente.
     pub(super) fn assistant_page(
         &self,
@@ -277,18 +213,26 @@ impl Strategy {
                             .border_color(rgba(orbit::line_strong(cx)))
                             .child(orbit::text("✓", 12.0, 600, orbit::ink_2(cx), cx)),
                     )
-                    .child(orbit::text("Originales intactos", 14.0, 500, orbit::ink_2(cx), cx)),
+                    .child(orbit::text(
+                        "Originales intactos",
+                        14.0,
+                        500,
+                        orbit::ink_2(cx),
+                        cx,
+                    )),
             )
             .child(
                 gpui::div()
                     .flex()
-                    .gap(px(18.0)).mt(px(-14.0))
+                    .gap(px(18.0))
+                    .mt(px(-14.0))
                     .child(
                         Self::assistant_footer_button(
                             "strategy-assistant-back",
                             "← Atrás",
                             false,
-                         cx)
+                            cx,
+                        )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(previous) = step.previous() {
                                 this.page = Page::Assistant(previous);
@@ -304,35 +248,17 @@ impl Strategy {
                         Self::assistant_footer_button(
                             "strategy-assistant-next",
                             if step == AssistantStep::Sesiones {
-                                if self.automatic {
-                                    "Abrir borrador →"
-                                } else {
-                                    "Crear carrera →"
-                                }
+                                "Crear carrera →"
                             } else {
                                 "Continuar →"
                             },
                             true,
-                         cx)
+                            cx,
+                        )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(next) = step.next() {
                                 this.page = Page::Assistant(next);
                                 this.error = None;
-                            } else if this.automatic {
-                                match this.prepare_automatic() {
-                                    Ok(Some(prepared)) => {
-                                        this.automatic_preparation = Some(prepared);
-                                        this.page = Page::Editor(EditorTab::Carrera);
-                                        this.status = "Proyección y revisiones exactas preparadas.".into();
-                                        this.error = None;
-                                    }
-                                    Ok(None) => {
-                                        this.error = Some(
-                                            "No hay una proyección con sesiones y revisiones exactas para preparar automáticamente.".into(),
-                                        );
-                                    }
-                                    Err(error) => this.error = Some(error.into()),
-                                }
                             } else {
                                 this.add_event(cx);
                             }
@@ -342,7 +268,7 @@ impl Strategy {
             );
 
         let body = match step {
-            AssistantStep::Inicio => self.start_choices(cx),
+            AssistantStep::Inicio => Self::start_choices(cx),
             AssistantStep::Combinacion => self.combination_choices(cx),
             AssistantStep::Reglas => self.rules_fields(cx),
             AssistantStep::Pilotos => self.driver_fields(cx),
@@ -460,41 +386,15 @@ impl Strategy {
             ))
     }
 
-    fn start_choices(&self, cx: &mut Context<Self>) -> gpui::Div {
-        gpui::div()
-            .flex()
-            .flex_col()
-            .gap(px(14.0))
-            .max_w(px(520.0))
-            .child(
-                Self::choice_card(
-                    "strategy-mode-manual",
-                    "Manual",
-                    "Configura el evento, el coche y el circuito. Después revisa tus datos.",
-                    "i-estrategia",
-                    !self.automatic,
-                    cx,
-                )
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.automatic = false;
-                    this.automatic_preparation = None;
-                    cx.notify();
-                })),
-            )
-            .child(
-                Self::choice_card(
-                    "strategy-mode-automatic",
-                    "Automático",
-                    "Parte de las sesiones disponibles para preparar tu carrera.",
-                    "i-comando",
-                    self.automatic,
-                    cx,
-                )
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.automatic = true;
-                    cx.notify();
-                })),
-            )
+    fn start_choices(cx: &mut Context<Self>) -> gpui::Div {
+        div().max_w(px(520.0)).child(Self::choice_card(
+            "strategy-mode-manual",
+            "Manual",
+            "Configura el evento, el coche y el circuito. Después revisa tus datos.",
+            "i-estrategia",
+            true,
+            cx,
+        ))
     }
 
     fn combination_option_card(
@@ -1384,44 +1284,15 @@ impl Strategy {
     }
 
     pub(super) fn session_sources(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let preparation = match &self.automatic_preparation {
-            Some(prepared) => Ok(Some(prepared)),
-            None if self.automatic => self
-                .automatic_preview
-                .get_or_init(|| self.prepare_automatic())
-                .as_ref()
-                .map(Option::as_ref),
-            None => Ok(None),
-        };
-        let linked_sessions = self.current_event().map_or(0, |event| {
-            event["combination"]["sessions"]
-                .as_array()
-                .map_or(0, |sessions| {
-                    sessions
-                        .iter()
-                        .filter(|session| session["included"] == true)
-                        .count()
-                })
-        });
-        let session_count = preparation
-            .as_ref()
-            .ok()
-            .and_then(Option::as_ref)
-            .map_or(linked_sessions, |prepared| prepared.source_revisions.len());
-        let status = preparation.as_ref().map_or_else(
-            |error| Some((*error).clone()),
-            |prepared| match prepared {
-                Some(prepared) if prepared.blockers.is_empty() => {
-                    Some("Preparación completa".to_owned())
-                }
-                Some(prepared) => Some(format!(
-                    "Preparación parcial · {} bloqueos",
-                    prepared.blockers.len()
-                )),
-                None if self.automatic => None,
-                None => Some("Modo manual · no requiere telemetría".to_owned()),
-            },
-        );
+        let session_count = self
+            .current_event()
+            .and_then(|event| event["combination"]["sessions"].as_array())
+            .map_or(0, |sessions| {
+                sessions
+                    .iter()
+                    .filter(|session| session["included"] == true)
+                    .count()
+            });
         let browse =
             super::editor_view::white_button("strategy-browse-sessions", "Buscar sesiones", cx)
                 .on_click(cx.listener(|this, _, _, cx| {
@@ -1468,9 +1339,7 @@ impl Strategy {
                 400,
                 orbit::ink_2(cx),
              cx))
-            .when_some(status.filter(|_| self.capture_demo().is_none()), |card, status| {
-                card.child(orbit::text(status, 13.0, 500, orbit::ink_3(cx), cx))
-            })
+            .child(orbit::text("Modo manual · no requiere telemetría", 13.0, 500, orbit::ink_3(cx), cx))
             .child(browse)
     }
 

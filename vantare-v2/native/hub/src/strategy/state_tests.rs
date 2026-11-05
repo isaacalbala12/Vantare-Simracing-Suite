@@ -353,9 +353,8 @@ fn isa1544_revisions_render_performs_no_repository_io() {
 }
 
 #[test]
-fn isa1544_automatic_sessions_prepare_once_until_inputs_change() {
-    with_strategy("automatic", |this, cx| {
-        this.automatic = true;
+fn r9_imported_projection_is_preserved_and_still_rejected_by_manual_calculation() {
+    with_strategy("r9-imported-projection", |this, cx| {
         let mut projection: Value = serde_json::from_str(include_str!(
             "../../../strategy/testdata/oracle/strategyinputprojection-v2-go.json"
         ))
@@ -376,27 +375,48 @@ fn isa1544_automatic_sessions_prepare_once_until_inputs_change() {
         ]});
         let mut document = Document::empty("2026-09-30T00:00:00Z").expect("document");
         document.append_event(&event).expect("automatic event");
+        let original = document.bytes().to_vec();
         this.editor.document = Some(document);
-        assert!(
-            this.prepare_automatic()
-                .expect("prepared projection")
-                .is_some()
-        );
-        assistant::AUTOMATIC_PREPARATIONS.set(0);
-        let _ = this.session_sources(cx);
-        let _ = this.session_sources(cx);
+        this.load_fields(cx);
+        assert!(this.prepare_input().is_err());
         assert_eq!(
-            assistant::AUTOMATIC_PREPARATIONS.get(),
-            1,
-            "unchanged render repeats preparation"
+            this.editor
+                .document
+                .as_ref()
+                .expect("imported document")
+                .bytes(),
+            original
         );
-        this.invalidate();
-        let _ = this.session_sources(cx);
+        let path = this.directory.join("projection.json");
+        this.editor
+            .save_as(path.clone())
+            .expect("save unchanged imported document");
+        let mut reopened = Editor::default();
+        reopened
+            .open(path.clone())
+            .expect("reopen imported document");
         assert_eq!(
-            assistant::AUTOMATIC_PREPARATIONS.get(),
-            2,
-            "changed inputs must prepare again"
+            reopened.document.as_ref().expect("document").bytes(),
+            original
         );
+        std::fs::remove_file(path).expect("remove own document");
+    });
+}
+
+#[test]
+fn r9_manual_wizard_creates_an_event_without_automatic_projection() {
+    with_strategy("r9-manual-wizard", |this, cx| {
+        for (index, value) in ["Carrera", "120", "90", "60"].into_iter().enumerate() {
+            this.fields[index] = value.into();
+        }
+        this.add_event(cx);
+        assert!(this.error.is_none());
+        assert_eq!(this.page, Page::Editor(EditorTab::Carrera));
+        assert_eq!(this.manual_source_status, SourceStatus::Open);
+        let event = this.current_event().expect("created event");
+        assert_eq!(event["name"]["value"], "Carrera");
+        assert!(event["planningInputs"]["projection"].is_null());
+        assert!(event["strategies"][0]["overrides"]["nativeScalarInput"].is_null());
     });
 }
 

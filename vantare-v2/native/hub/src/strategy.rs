@@ -175,7 +175,6 @@ pub struct Strategy {
     fields: Vec<String>,
     inputs: Vec<Entity<orbit::Input>>,
     page: Page,
-    automatic: bool,
     edit_mode: bool,
     rules_details_open: bool,
     garage: Option<Arc<RenderImage>>,
@@ -183,9 +182,6 @@ pub struct Strategy {
     garage_veil: Option<Arc<RenderImage>>,
     demo_car: Option<String>,
     capture_demo: Option<crate::demo::StrategyCaptureDemo>,
-    automatic_preparation: Option<application::AutomaticPreparation>,
-    automatic_preview:
-        std::cell::OnceCell<Result<Option<application::AutomaticPreparation>, String>>,
     revisions: revisions_view::State,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
@@ -284,12 +280,8 @@ impl Strategy {
             strategy.load_revisions(cx);
         }
         strategy.manual_source_status = SourceStatus::Open;
-        strategy.automatic = false;
         if let Err(error) = strategy.seed_capture_demo(cx) {
             strategy.error = Some(error.into());
-        }
-        if page == crate::demo::CaptureStrategyPage::AssistantSesiones {
-            strategy.automatic = true;
         }
         if matches!(
             page,
@@ -437,7 +429,6 @@ impl Strategy {
             fields: vec![String::new(); FIELDS.len()],
             inputs,
             page: Page::Collection,
-            automatic: false,
             edit_mode: false,
             rules_details_open: false,
             garage,
@@ -445,8 +436,6 @@ impl Strategy {
             garage_veil,
             demo_car: None,
             capture_demo: None,
-            automatic_preparation: None,
-            automatic_preview: std::cell::OnceCell::new(),
             revisions: revisions_view::State::default(),
             duration: None,
             event: 0,
@@ -499,8 +488,6 @@ impl Strategy {
         self.edit_dirty = false;
         self.edit_cost_seconds = None;
         self.edit_error = None;
-        self.automatic_preparation = None;
-        self.automatic_preview.take();
     }
 
     pub(super) fn set_review_source(

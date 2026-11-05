@@ -521,18 +521,6 @@ impl Strategy {
         let note = event.map_or_else(String::new, |event| {
             display(&event["strategies"][self.variant]["note"]["value"])
         });
-        let source_status =
-            self.automatic_preparation
-                .as_ref()
-                .map(|prepared| match prepared.status {
-                    application::AutomaticPreparationStatus::Ready => {
-                        "Preparación automática completa".to_owned()
-                    }
-                    application::AutomaticPreparationStatus::Partial => format!(
-                        "Preparación automática parcial · {} bloqueos",
-                        prepared.blockers.len()
-                    ),
-                });
         let driver_names = if drivers.is_empty() {
             "Sin pilotos guardados".to_owned()
         } else {
@@ -565,15 +553,15 @@ impl Strategy {
                         .count()
                 })
         });
-        let source_detail = source_status.unwrap_or_else(|| {
+        let source_detail =
             if event.is_some_and(|event| !event["planningInputs"]["projection"].is_null()) {
                 "Proyección guardada en el documento".to_owned()
             } else if selected_sessions > 0 {
-                "Revisa la cobertura de las sesiones antes de calcular.".to_owned()
+                "Sesiones conservadas en el documento importado; el cálculo usa entradas manuales."
+                    .to_owned()
             } else {
                 "Sin proyección de telemetría guardada".to_owned()
-            }
-        });
+            };
         let session_label = match selected_sessions {
             0 => "Sin sesiones seleccionadas".to_owned(),
             1 => "1 sesión seleccionada".to_owned(),

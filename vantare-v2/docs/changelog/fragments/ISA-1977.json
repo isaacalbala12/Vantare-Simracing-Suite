@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testing": [
+    "Crear una carrera manual desde el asistente y comprobar que abre Carrera.",
+    "Abrir y guardar un documento importado con proyección: debe conservar sus bytes y no calcular ignorando la proyección."
+  ],
+  "summary": "Strategy conserva la creación manual y retira la opción Automático, que aún no podía preparar carreras con sesiones nativas.",
+  "technicalNotes": [
+    "Se retiran la preparación automática y su estado del asistente.",
+    "Los documentos importados con proyección siguen abriéndose y guardándose sin cambios; el cálculo manual conserva su rechazo explícito."
+  ],
+  "type": "change",
+  "knownLimitations": [
+    "Automático volverá cuando Análisis nativo entregue datos; seguimiento en #1980, dependiente de VANTA-133.",
+    "Esta entrega no unifica los motores del solver."
+  ],
+  "issue": "ISA-1977"
+}

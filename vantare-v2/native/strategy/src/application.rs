@@ -5,14 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use super::solver::{self, Input, SolverOutcome};
 
-mod automatic;
 mod corrections;
 mod editing;
 pub mod repository;
-pub use automatic::{
-    AutomaticPreparation, AutomaticPreparationStatus, ClimateBucket, ProjectionFamily,
-    ProjectionFamilyCoverage, VirtualEnergyApplicability, prepare_automatic,
-};
 pub use corrections::{
     AnalysisConfidence, AnalysisProvenance, AnalysisValidity, ContinuousCoverage, CorrectionFamily,
     CorrectionSource, CoverageGap, FamilyCorrectionRequest, FamilyCorrectionTarget, FamilyUse,

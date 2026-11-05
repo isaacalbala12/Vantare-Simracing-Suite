@@ -331,7 +331,6 @@ impl Strategy {
                                 "Prepara la carrera con el asistente de cinco pasos.",
                                 button("strategy-new", "Nueva estrategia", cx).on_click(cx.listener(
                                     |this, _, _, cx| {
-                                        this.automatic = false;
                                         this.navigate(
                                             Page::Assistant(AssistantStep::Inicio),
                                             cx,
@@ -570,8 +569,6 @@ impl Strategy {
                 if let Err(error) = this.ensure_clean_form() {
                     this.error = Some(error.into());
                 } else {
-                    this.automatic = false;
-                    this.automatic_preparation = None;
                     this.page = Page::Assistant(AssistantStep::Inicio);
                     this.error = None;
                 }

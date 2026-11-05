@@ -415,6 +415,15 @@ impl Hub {
 
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+        #[cfg(feature = "parity-capture")]
+        if self.section == Section::Strategy
+            && self
+                .capture
+                .as_ref()
+                .is_some_and(|capture| capture.strategy_page.is_some())
+        {
+            return self.strategy.clone().into_any_element();
+        }
         if matches!(self.section, Section::Strategy | Section::Engineer) {
             return self.upcoming_page(cx).into_any_element();
         }

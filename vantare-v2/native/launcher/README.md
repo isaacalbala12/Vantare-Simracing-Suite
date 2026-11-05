@@ -16,14 +16,15 @@ los índices originales al reintentar. En Windows las apps siempre usan
 breakaway para sobrevivir al Job del Hub o del supervisor; las políticas de
 cierre siguen actuando sólo sobre los handles propios.
 
-`Found::Snapshot(discovery)` reutiliza la foto del Hub. `Found::Scan` resuelve
-las fuentes locales y el discovery en el worker de la cadena: no bloquea el
-bucle del residente. La cancelación se comprueba antes y después del scan; no
-se lanzan apps tras cancelarlo y el cierre recoge el worker. El scan conserva
-sus límites existentes de archivos y registro.
+`found` es una función que recibe las apps y devuelve el discovery en el worker.
+El Hub entrega su foto con una función que la devuelve; el residente escanea
+allí las fuentes locales sin bloquear su bucle. `run` y `run_pass` gestionan
+la cancelación antes de lanzar el primer paso; el cierre recoge el worker.
+El scan conserva sus límites existentes de archivos y registro.
 
-`Document::launch_blocker` comparte la comprobación de pasos y disponibilidad
-entre editor y presentación. Busy y detección en curso son estados de la UI.
+`Profile::missing_steps` comparte la comprobación de disponibilidad entre editor
+y presentación. Cada sitio conserva su comprobación de perfil vacío y su mensaje.
+Busy y detección en curso son estados de la UI.
 La cadena mantiene su política por paso, incluido Continue ante una app ausente.
 
 Fuera de Windows, `discovery::running_all`/`running` devuelven un error

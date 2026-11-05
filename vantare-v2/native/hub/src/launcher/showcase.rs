@@ -230,10 +230,13 @@ fn launch_block_reason(
     if scanning {
         return Some("Espera a que termine la detección de aplicaciones.".into());
     }
-    let missing = match Document::launch_blocker(profile, discovery)? {
-        LaunchBlocker::Empty => return Some("Añade al menos una aplicación a este perfil.".into()),
-        LaunchBlocker::Missing(steps) => steps,
-    };
+    if profile.steps.is_empty() {
+        return Some("Añade al menos una aplicación a este perfil.".into());
+    }
+    let missing = profile.missing_steps(discovery);
+    if missing.is_empty() {
+        return None;
+    }
     let names: Vec<_> = missing
         .into_iter()
         .map(|index| {

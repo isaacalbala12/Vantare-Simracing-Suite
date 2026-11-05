@@ -1,6 +1,6 @@
 use super::*;
 #[cfg(windows)]
-use chain::{Chain, Found, Status};
+use chain::{Chain, Status};
 use discovery::{Discovery, Sources};
 #[cfg(windows)]
 use std::path::Path;
@@ -590,14 +590,8 @@ fn imported_profile_waits_for_review_before_any_child_process() {
     let (document, mut profile, found) = process_fixture(&tree, 0);
     profile.imported = true;
     profile.id = format!("review-{}", vantare_services::random_id().expect("id"));
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    )
-    .expect("chain");
+    let chain =
+        Chain::start(document, profile, move |_| found, Default::default(), None).expect("chain");
     let event = chain
         .progress
         .recv_timeout(Duration::from_secs(5))
@@ -676,14 +670,8 @@ fn retry_policies_distinguish_failed_steps_whole_chain_and_ask() {
             already_running: policy::Running::Reuse,
             ..Default::default()
         });
-        let mut chain = Chain::start(
-            document,
-            profile,
-            Found::Snapshot(found),
-            Default::default(),
-            None,
-        )
-        .expect("chain");
+        let mut chain = Chain::start(document, profile, move |_| found, Default::default(), None)
+            .expect("chain");
         let events = collect(&chain);
         chain.shutdown().expect("join");
         for (step, expected) in [(0, first_count), (1, second_count)] {
@@ -709,7 +697,7 @@ fn selected_retry_keeps_original_indices_and_does_not_repeat_ready_steps() {
     let mut initial = Chain::start(
         document.clone(),
         profile.clone(),
-        Found::Snapshot(found),
+        move |_| found,
         Default::default(),
         None,
     )
@@ -725,14 +713,8 @@ fn selected_retry_keeps_original_indices_and_does_not_repeat_ready_steps() {
     profile.steps[1].args_override = Some(vec!["/d".into(), "/c".into(), "exit 0".into()]);
     let found = Discovery::scan(&document.apps, Sources::default());
     let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
-    let mut retried = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        shared,
-        Some(selected),
-    )
-    .expect("retry");
+    let mut retried =
+        Chain::start(document, profile, move |_| found, shared, Some(selected)).expect("retry");
     let events = collect(&retried);
     retried.shutdown().expect("join");
     assert!(!events.iter().any(|e| e.step == Some(0)));
@@ -763,14 +745,8 @@ fn running_ask_rejects_stale_answers_and_never_grants_external_ownership() {
         .expect("external child");
     let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
     profile.policy = Some(policy::Policy::default());
-    let mut chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        shared.clone(),
-        None,
-    )
-    .expect("chain");
+    let mut chain =
+        Chain::start(document, profile, move |_| found, shared.clone(), None).expect("chain");
     let mut decision = None;
     while decision.is_none() {
         decision = chain
@@ -825,14 +801,8 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
             already_running: policy::Running::Reuse,
             ..Default::default()
         });
-        let mut chain = Chain::start(
-            document,
-            profile,
-            Found::Snapshot(found),
-            Default::default(),
-            None,
-        )
-        .expect("chain");
+        let mut chain = Chain::start(document, profile, move |_| found, Default::default(), None)
+            .expect("chain");
         loop {
             if let Some(decision) = chain
                 .progress
@@ -870,14 +840,8 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
             ..Default::default()
         });
         let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
-        let mut chain = Chain::start(
-            document,
-            profile,
-            Found::Snapshot(found),
-            shared.clone(),
-            None,
-        )
-        .expect("chain");
+        let mut chain =
+            Chain::start(document, profile, move |_| found, shared.clone(), None).expect("chain");
         while chain
             .progress
             .recv_timeout(Duration::from_secs(5))
@@ -954,14 +918,8 @@ fn restart_requires_original_child_handle_and_transfers_ownership_to_new_child()
         cancel: policy::Close::Started,
         ..Default::default()
     });
-    let mut chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        shared.clone(),
-        None,
-    )
-    .expect("restart chain");
+    let mut chain = Chain::start(document, profile, move |_| found, shared.clone(), None)
+        .expect("restart chain");
     let launched = loop {
         let event = chain
             .progress
@@ -995,14 +953,8 @@ fn chains_run_real_processes_and_report_nonzero_exit_and_spawn_failure() {
     for exit in [0, 7] {
         let tree = Tree::new();
         let (document, profile, found) = process_fixture(&tree, exit);
-        let mut chain = Chain::start(
-            document,
-            profile,
-            Found::Snapshot(found),
-            Default::default(),
-            None,
-        )
-        .expect("cadena");
+        let mut chain = Chain::start(document, profile, move |_| found, Default::default(), None)
+            .expect("cadena");
         let events = collect(&chain);
         chain.shutdown().expect("join");
         assert!(
@@ -1032,14 +984,8 @@ fn chains_run_real_processes_and_report_nonzero_exit_and_spawn_failure() {
         b"not a PE executable",
     )
     .expect("archivo inválido real");
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    )
-    .expect("cadena");
+    let chain =
+        Chain::start(document, profile, move |_| found, Default::default(), None).expect("cadena");
     let events = collect(&chain);
     assert!(events.iter().any(|event| event.status == Status::Failed));
     assert!(!events.last().expect("fin").success);
@@ -1065,14 +1011,8 @@ fn cancellation_interrupts_delay_and_probe_without_starting_the_next_step() {
         let cleanup = ProcessCleanup(std::sync::Arc::new(std::sync::Mutex::new(
             processes::Processes::default(),
         )));
-        let mut chain = Chain::start(
-            document,
-            profile,
-            Found::Snapshot(found),
-            cleanup.0.clone(),
-            None,
-        )
-        .expect("cadena");
+        let mut chain = Chain::start(document, profile, move |_| found, cleanup.0.clone(), None)
+            .expect("cadena");
         let pending = chain
             .progress
             .recv_timeout(Duration::from_secs(5))
@@ -1119,14 +1059,8 @@ fn continue_policy_executes_next_step_and_retry_budget_is_exact() {
     let mut next = profile.steps[0].clone();
     next.args_override = Some(vec!["/d".into(), "/c".into(), "exit 0".into()]);
     profile.steps.push(next);
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    )
-    .expect("cadena");
+    let chain =
+        Chain::start(document, profile, move |_| found, Default::default(), None).expect("cadena");
     let events = collect(&chain);
     assert_eq!(
         events
@@ -1154,7 +1088,7 @@ fn stop_policy_does_not_execute_later_steps_and_vanished_executable_is_reported(
     let chain = Chain::start(
         document.clone(),
         profile.clone(),
-        Found::Snapshot(found),
+        move |_| found,
         Default::default(),
         None,
     )
@@ -1173,14 +1107,8 @@ fn stop_policy_does_not_execute_later_steps_and_vanished_executable_is_reported(
             .expect("ruta"),
     )
     .expect("ejecutable desaparece tras discovery");
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    )
-    .expect("cadena");
+    let chain =
+        Chain::start(document, profile, move |_| found, Default::default(), None).expect("cadena");
     let events = collect(&chain);
     assert!(!events.iter().any(|event| event.status == Status::Launching));
     assert!(events.iter().any(|event| event.status == Status::Failed));
@@ -1207,13 +1135,7 @@ fn reuse_observes_a_real_existing_process_and_does_not_spawn_another() {
         .expect("proceso externo real creado por el test");
     let pid = existing.id();
     profile.reuse_running = true;
-    let result = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    );
+    let result = Chain::start(document, profile, move |_| found, Default::default(), None);
     let events = result.as_ref().map(collect);
     existing
         .kill()
@@ -1289,14 +1211,8 @@ fn separate_process_owners_cannot_restart_each_others_app() {
     let found = Discovery::scan(&document.apps, Sources::default());
     let processes = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
     let _cleanup = ProcessCleanup(processes.clone());
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        processes.clone(),
-        None,
-    )
-    .expect("fixture de caracterización Launcher");
+    let chain = Chain::start(document, profile, move |_| found, processes.clone(), None)
+        .expect("fixture de caracterización Launcher");
     let events = collect(&chain);
     assert!(
         events
@@ -1354,14 +1270,8 @@ fn temporary_launch_does_not_consume_a_saved_profile_slot() {
         .collect();
     document.lmu_trigger_profile = Some("saved:0".into());
     document.validate().expect("configuración llena válida");
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    )
-    .expect("un lanzamiento no crea un perfil guardado");
+    let chain = Chain::start(document, profile, move |_| found, Default::default(), None)
+        .expect("un lanzamiento no crea un perfil guardado");
     assert!(collect(&chain).last().expect("fin").success);
 }
 
@@ -1495,14 +1405,8 @@ fn continue_policy_still_runs_the_next_step_when_discovery_lacks_the_first_app()
             args_override: None,
         },
     );
-    let chain = Chain::start(
-        document,
-        profile,
-        Found::Snapshot(found),
-        Default::default(),
-        None,
-    )
-    .expect("la cadena conserva Continue");
+    let chain = Chain::start(document, profile, move |_| found, Default::default(), None)
+        .expect("la cadena conserva Continue");
     let events = collect(&chain);
     assert!(
         events
@@ -1533,9 +1437,10 @@ fn cancellation_before_first_step_preserves_the_import_review_message() {
         let mut chain = Chain::start(
             document,
             profile,
-            Found::BlockedScan {
-                entered,
-                release: held,
+            move |apps| {
+                entered.send(std::thread::current().id()).unwrap();
+                held.recv().unwrap();
+                Discovery::scan(apps, Sources::default())
             },
             Default::default(),
             None,

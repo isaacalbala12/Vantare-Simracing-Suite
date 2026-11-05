@@ -1,7 +1,7 @@
 //! Presentación Orbit: estado persistido, borradores y progreso real.
 use super::{
-    App, CATALOG, Document, LaunchBlocker, LmuTrigger, Profile, Step, Store,
-    chain::{Action, Chain, Found, Progress},
+    App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
+    chain::{Action, Chain, Progress},
     discovery::{self, Discovery, Sources},
     policy::{Close, Failure, Running},
     processes,
@@ -833,7 +833,7 @@ impl Launcher {
         match Chain::start(
             self.store.document.clone(),
             profile.clone(),
-            Found::Snapshot(found),
+            move |_| found,
             self.processes.clone(),
             Some(selected),
         ) {
@@ -1288,7 +1288,7 @@ mod tests {
             let mut chain = Chain::start(
                 document,
                 profile,
-                Found::Snapshot(Discovery::default()),
+                move |_| Discovery::default(),
                 std::sync::Arc::default(),
                 None,
             )

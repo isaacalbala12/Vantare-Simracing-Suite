@@ -1,10 +1,9 @@
 //! El supervisor conserva atajos y cadenas aunque el Hub cierre su ventana.
 use super::{launcher, triggers_win};
-#[cfg(test)]
 use launcher::discovery::{Discovery, Sources};
 use launcher::{
     Document,
-    chain::{Action, Chain, Found},
+    chain::{Action, Chain},
     files,
     triggers::Hotkey,
 };
@@ -362,7 +361,7 @@ impl Owner {
         match Chain::start(
             self.document.clone(),
             profile,
-            Found::Scan,
+            |apps| Discovery::scan(apps, Sources::system()),
             self.processes.clone(),
             None,
         ) {
@@ -602,7 +601,7 @@ mod tests {
             Chain::start(
                 owner.document.clone(),
                 profile,
-                Found::Snapshot(found),
+                move |_| found,
                 owner.processes.clone(),
                 None,
             )

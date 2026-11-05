@@ -186,32 +186,6 @@ pub fn retry_steps(profile: &Profile, progress: &[Progress], scope: RetryScope) 
         .collect()
 }
 
-pub enum Found {
-    Snapshot(Discovery),
-    Scan,
-    #[cfg(test)]
-    BlockedScan {
-        entered: Sender<thread::ThreadId>,
-        release: Receiver<()>,
-    },
-}
-impl Found {
-    fn resolve(self, apps: &[App]) -> Discovery {
-        match self {
-            Self::Snapshot(discovery) => discovery,
-            Self::Scan => Discovery::scan(apps, discovery::Sources::system()),
-            #[cfg(test)]
-            Self::BlockedScan { entered, release } => {
-                entered
-                    .send(thread::current().id())
-                    .expect("scanner observado");
-                release.recv().expect("liberar scanner aislado");
-                Discovery::scan(apps, discovery::Sources::default())
-            }
-        }
-    }
-}
-
 pub struct Chain {
     pub progress: Receiver<Progress>,
     cancel: Arc<Cancellation>,
@@ -222,7 +196,7 @@ impl Chain {
     pub fn start(
         document: Document,
         profile: Profile,
-        found: Found,
+        found: impl FnOnce(&[App]) -> Discovery + Send + 'static,
         processes: processes::Shared,
         selected: Option<Vec<usize>>,
     ) -> Result<Self, String> {
@@ -253,16 +227,8 @@ impl Chain {
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
             .spawn(move || {
-                let discovery = if context.cancel.cancelled() {
-                    Discovery::default()
-                } else {
-                    found.resolve(&document.apps)
-                };
-                if context.cancel.cancelled() {
-                    finish(&profile, &context, false);
-                } else {
-                    run(&document, &profile, &discovery, &context);
-                }
+                let discovery = found(&document.apps);
+                run(&document, &profile, &discovery, &context);
             })
             .map_err(|e| format!("arrancar cadena: {e}"))?;
         Ok(Self {
@@ -981,7 +947,7 @@ mod scan_tests {
         let mut snapshot = Chain::start(
             document.clone(),
             profile.clone(),
-            Found::Snapshot(Discovery::default()),
+            move |_| Discovery::default(),
             Default::default(),
             None,
         )
@@ -994,9 +960,10 @@ mod scan_tests {
             let chain = Chain::start(
                 document,
                 profile,
-                Found::BlockedScan {
-                    entered,
-                    release: held,
+                move |apps| {
+                    entered.send(thread::current().id()).unwrap();
+                    held.recv().unwrap();
+                    Discovery::scan(apps, discovery::Sources::default())
                 },
                 Default::default(),
                 None,

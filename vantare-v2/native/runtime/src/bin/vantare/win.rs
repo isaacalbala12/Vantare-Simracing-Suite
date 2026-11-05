@@ -247,7 +247,7 @@ mod launcher_job_tests {
     use std::sync::{Arc, Mutex, mpsc};
     use vantare_launcher::{
         Document, Profile, Step,
-        chain::{Chain, Found},
+        chain::Chain,
         discovery::{Discovery, Sources},
         processes::Processes,
     };
@@ -312,18 +312,12 @@ mod launcher_job_tests {
         let found = Discovery::scan(&document.apps, Sources::default());
         let processes = Arc::new(Mutex::new(Processes::default()));
         let chain = if std::env::var_os("VANTARE_R12_ALL_STEPS").is_some() {
-            Chain::start(
-                document,
-                profile,
-                Found::Snapshot(found),
-                processes.clone(),
-                None,
-            )
+            Chain::start(document, profile, move |_| found, processes.clone(), None)
         } else {
             Chain::start(
                 document,
                 profile,
-                Found::Snapshot(found),
+                move |_| found,
                 processes.clone(),
                 Some(vec![0]),
             )

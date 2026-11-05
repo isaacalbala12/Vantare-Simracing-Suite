@@ -1,5 +1,205 @@
 use super::*;
 
+// R9: preserve the current persistence behavior before replacing the repository.
+struct R9Directory(PathBuf);
+
+impl R9Directory {
+    fn new() -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let path = std::env::temp_dir().join(format!(
+            "vantare-r9-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&path).expect("fresh test directory");
+        Self(path)
+    }
+}
+
+impl Drop for R9Directory {
+    fn drop(&mut self) {
+        std::fs::remove_dir_all(&self.0).expect("remove owned test directory");
+    }
+}
+
+#[test]
+fn r9_startup_prefers_saved_document_over_a_different_repository_draft() {
+    let directory = R9Directory::new();
+    let saved = Document::empty("2026-11-01T00:00:00Z").expect("saved document");
+    let draft = Document::empty("2026-11-02T00:00:00Z").expect("different draft");
+    let path = directory.0.join("strategy-v2.json");
+    std::fs::write(&path, saved.bytes()).expect("saved file");
+    let repository = application::repository::LocalRepository::open(&directory.0)
+        .expect("characterization fixture");
+    repository
+        .save_documents(
+            0,
+            &[String::from_utf8(draft.bytes().to_vec()).expect("characterization fixture")],
+            &[],
+        )
+        .expect("repository draft");
+    let (editor, error) = open_editor(&directory.0);
+    assert!(error.is_none());
+    assert_eq!(
+        editor
+            .document
+            .as_ref()
+            .expect("characterization fixture")
+            .bytes(),
+        saved.bytes()
+    );
+    assert_eq!(editor.path, Some(path));
+    assert!(!editor.dirty());
+}
+
+#[test]
+fn r9_repository_only_startup_has_no_path_and_cannot_persist_an_edit() {
+    let directory = R9Directory::new();
+    let draft = Document::empty("2026-11-02T00:00:00Z").expect("characterization fixture");
+    let repository = application::repository::LocalRepository::open(&directory.0)
+        .expect("characterization fixture");
+    repository
+        .save_documents(
+            0,
+            &[String::from_utf8(draft.bytes().to_vec()).expect("characterization fixture")],
+            &[],
+        )
+        .expect("characterization fixture");
+    let (mut editor, error) = open_editor(&directory.0);
+    assert!(error.is_none());
+    assert!(editor.path.is_none());
+    assert!(!editor.dirty());
+    editor
+        .document
+        .as_mut()
+        .expect("characterization fixture")
+        .set("/generatedAt", &json!("2026-11-03T00:00:00Z"))
+        .expect("characterization fixture");
+    assert!(editor.dirty());
+    assert!(editor.save().is_err());
+    assert!(!directory.0.join("strategy-v2.json").exists());
+}
+
+#[test]
+fn r9_corrupt_document_blocks_normal_save_and_preserves_original_bytes() {
+    let directory = R9Directory::new();
+    let path = directory.0.join("strategy-v2.json");
+    std::fs::write(&path, b"{").expect("characterization fixture");
+    let (mut editor, error) = open_editor(&directory.0);
+    assert!(error.is_some());
+    assert!(editor.document.is_none());
+    editor.create().expect("characterization fixture");
+    assert!(matches!(
+        editor.save_as(path.clone()),
+        Err(files::Error::Conflict { .. })
+    ));
+    assert!(editor.dirty());
+    assert_eq!(std::fs::read(path).expect("characterization fixture"), b"{");
+}
+
+#[test]
+fn r9_saving_repository_draft_keeps_document_dirty_and_saved_file_unchanged() {
+    with_strategy("r9-draft", |this, _cx| {
+        let directory = R9Directory::new();
+        this.directory = directory.0.clone();
+        this.editor.create().expect("characterization fixture");
+        let path = directory.0.join("strategy-v2.json");
+        this.editor
+            .save_as(path.clone())
+            .expect("characterization fixture");
+        let saved = std::fs::read(&path).expect("characterization fixture");
+        this.editor
+            .document
+            .as_mut()
+            .expect("characterization fixture")
+            .set("/generatedAt", &json!("2026-11-03T00:00:00Z"))
+            .expect("characterization fixture");
+        let edited = this
+            .editor
+            .document
+            .as_ref()
+            .expect("characterization fixture")
+            .value()
+            .clone();
+        this.save_application_draft()
+            .expect("characterization fixture");
+        assert!(this.editor.dirty());
+        assert_eq!(
+            std::fs::read(path).expect("characterization fixture"),
+            saved
+        );
+        let snapshot = application::repository::LocalRepository::open(&directory.0)
+            .expect("characterization fixture")
+            .load()
+            .expect("characterization fixture");
+        let draft = Document::parse(
+            snapshot
+                .drafts
+                .last()
+                .expect("characterization fixture")
+                .as_bytes(),
+        )
+        .expect("characterization fixture");
+        assert_eq!(draft.value(), &edited);
+        this.directory = std::env::temp_dir();
+    });
+}
+
+#[test]
+fn r9_native_manual_document_has_no_automatic_preparation_and_is_unchanged() {
+    with_strategy("r9-automatic", |this, cx| {
+        let mut document =
+            Document::empty("2026-11-02T00:00:00Z").expect("characterization fixture");
+        document
+            .append_event(&new_event("event", "Carrera", 120, 90.0, 60.0))
+            .expect("characterization fixture");
+        let bytes = document.bytes().to_vec();
+        this.editor.document = Some(document);
+        this.load_fields(cx);
+        assert!(
+            this.prepare_automatic()
+                .expect("characterization fixture")
+                .is_none()
+        );
+        assert_eq!(
+            this.editor
+                .document
+                .as_ref()
+                .expect("characterization fixture")
+                .bytes(),
+            bytes
+        );
+        assert!(this.automatic_preparation.is_none());
+    });
+}
+
+#[test]
+fn r9_strategy_persist_rejects_pending_form_and_unsaved_new_document() {
+    with_strategy("r9-persist", |this, _cx| {
+        this.editor.create().expect("characterization fixture");
+        let bytes = this
+            .editor
+            .document
+            .as_ref()
+            .expect("characterization fixture")
+            .bytes()
+            .to_vec();
+        this.form.dirty = true;
+        assert!(this.persist().is_err());
+        this.form.dirty = false;
+        assert!(this.persist().is_err());
+        assert_eq!(
+            this.editor
+                .document
+                .as_ref()
+                .expect("characterization fixture")
+                .bytes(),
+            bytes
+        );
+        assert!(this.editor.dirty());
+    });
+}
+
 fn with_strategy(name: &str, test: impl FnOnce(&mut Strategy, &mut Context<Strategy>) + 'static) {
     let directory =
         std::env::temp_dir().join(format!("vantare-1544-{name}-{}", std::process::id()));

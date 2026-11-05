@@ -111,6 +111,21 @@ fn parse_args(value: &str) -> Result<Vec<String>, String> {
         .map_err(|error| format!("argumentos: usa un array JSON de strings: {error}"))
 }
 
+fn actions_from_labels(labels: &[String]) -> impl Iterator<Item = Action> + '_ {
+    [
+        Action::Trust,
+        Action::Reuse,
+        Action::Restart,
+        Action::Cancel,
+        Action::Stop,
+        Action::Continue,
+        Action::Leave,
+        Action::CloseStarted,
+    ]
+    .into_iter()
+    .filter(move |action| labels.iter().any(|label| label == action.label()))
+}
+
 /// Firma del fichero de estado resident: solo cambia al escribirse.
 fn resident_signature(settings: &Path) -> Option<(SystemTime, u64)> {
     let metadata = std::fs::metadata(vantare_ipc::launcher::status_path(settings)).ok()?;
@@ -526,20 +541,9 @@ impl Launcher {
                 && let Some(decision) = &status.decision
                 && self.resident_answered != Some(decision.id)
             {
-                let actions = [
-                    Action::Trust,
-                    Action::Reuse,
-                    Action::Restart,
-                    Action::Cancel,
-                    Action::Stop,
-                    Action::Continue,
-                    Action::Leave,
-                    Action::CloseStarted,
-                ]
-                .into_iter()
-                .filter(|action| decision.actions.iter().any(|label| label == action.label()))
-                .take(self.form_actions.len())
-                .collect();
+                let actions = actions_from_labels(&decision.actions)
+                    .take(self.form_actions.len())
+                    .collect();
                 self.pending_decision = Some(Decision {
                     id: decision.id,
                     message: decision.message.clone(),
@@ -1096,6 +1100,39 @@ mod close_tests {
 mod tests {
     use super::*;
     use vantare_ipc::launcher::{Registration, Status};
+
+    #[test]
+    fn launcher_action_labels_round_trip_through_hub_decoder() {
+        for expected in [
+            Action::Trust,
+            Action::Reuse,
+            Action::Restart,
+            Action::Cancel,
+            Action::Stop,
+            Action::Continue,
+            Action::Leave,
+            Action::CloseStarted,
+        ] {
+            let bytes = serde_json::to_vec(&vantare_ipc::launcher::Decision {
+                id: 42,
+                message: "Decisión del residente".into(),
+                actions: vec![expected.label().into(), "acción desconocida".into()],
+            })
+            .expect("decisión real del buzón");
+            let decision: vantare_ipc::launcher::Decision =
+                serde_json::from_slice(&bytes).expect("leer decisión real");
+            assert_eq!(decision.id, 42);
+            assert_eq!(
+                actions_from_labels(&decision.actions).collect::<Vec<_>>(),
+                [expected]
+            );
+        }
+        assert!(
+            actions_from_labels(&["acción desconocida".into()])
+                .next()
+                .is_none()
+        );
+    }
 
     #[test]
     fn unchanged_resident_poll_keeps_the_cached_profile_storage() {

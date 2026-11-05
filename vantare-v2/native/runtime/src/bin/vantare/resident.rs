@@ -2,7 +2,7 @@
 use super::{launcher, triggers_win};
 use launcher::{
     Document,
-    chain::Chain,
+    chain::{Action, Chain},
     discovery::{Discovery, Sources},
     files,
     triggers::Hotkey,
@@ -176,6 +176,21 @@ struct Owner {
     chain_decision: Option<u64>,
     processes: launcher::processes::Shared,
     close_on_exit: Arc<Mutex<Vec<String>>>,
+}
+
+fn action_from_label(label: &str) -> Option<Action> {
+    [
+        Action::Trust,
+        Action::Reuse,
+        Action::Restart,
+        Action::Cancel,
+        Action::Stop,
+        Action::Continue,
+        Action::Leave,
+        Action::CloseStarted,
+    ]
+    .into_iter()
+    .find(|candidate| candidate.label() == label)
 }
 
 impl Owner {
@@ -385,20 +400,7 @@ impl Owner {
                     .decision
                     .as_ref()
                     .filter(|d| d.id == decision && d.actions.contains(&action))
-                    .and_then(|_| {
-                        [
-                            launcher::chain::Action::Trust,
-                            launcher::chain::Action::Reuse,
-                            launcher::chain::Action::Restart,
-                            launcher::chain::Action::Cancel,
-                            launcher::chain::Action::Stop,
-                            launcher::chain::Action::Continue,
-                            launcher::chain::Action::Leave,
-                            launcher::chain::Action::CloseStarted,
-                        ]
-                        .into_iter()
-                        .find(|candidate| candidate.label() == action)
-                    });
+                    .and_then(|_| action_from_label(&action));
                 if let (Some(chain), Some(action), Some(local_id)) =
                     (&self.chain, selected, self.chain_decision)
                 {
@@ -482,6 +484,34 @@ impl Owner {
 mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
+
+    #[test]
+    fn launcher_action_labels_round_trip_through_resident_decoder() {
+        for expected in [
+            Action::Trust,
+            Action::Reuse,
+            Action::Restart,
+            Action::Cancel,
+            Action::Stop,
+            Action::Continue,
+            Action::Leave,
+            Action::CloseStarted,
+        ] {
+            let bytes = serde_json::to_vec(&Request::Answer {
+                decision: 42,
+                action: expected.label().into(),
+            })
+            .expect("petición real del buzón");
+            let Request::Answer { decision, action } =
+                serde_json::from_slice(&bytes).expect("leer petición real")
+            else {
+                panic!("Answer")
+            };
+            assert_eq!(decision, 42);
+            assert_eq!(action_from_label(&action), Some(expected));
+        }
+        assert_eq!(action_from_label("acción desconocida"), None);
+    }
 
     #[test]
     fn future_launcher_document_is_rejected_without_rewriting_it() {

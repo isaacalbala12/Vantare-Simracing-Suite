@@ -1151,44 +1151,6 @@ fn lmu_trigger_seeds_first_observation_without_launching() {
     assert!(trigger.observe(true, true));
 }
 
-#[test]
-fn launcher_action_labels_round_trip_without_collisions() {
-    use chain::Action;
-    let actions = [
-        Action::Trust,
-        Action::Reuse,
-        Action::Restart,
-        Action::Cancel,
-        Action::Stop,
-        Action::Continue,
-        Action::Leave,
-        Action::CloseStarted,
-    ];
-    for action in actions {
-        let matches: Vec<_> = actions
-            .into_iter()
-            .filter(|candidate| candidate.label() == action.label())
-            .collect();
-        assert_eq!(matches, [action]);
-        let request = vantare_ipc::launcher::Request::Answer {
-            decision: 42,
-            action: action.label().into(),
-        };
-        let bytes = serde_json::to_vec(&request).expect("fixture de caracterización Launcher");
-        let parsed: vantare_ipc::launcher::Request =
-            serde_json::from_slice(&bytes).expect("fixture de caracterización Launcher");
-        let vantare_ipc::launcher::Request::Answer {
-            decision,
-            action: label,
-        } = parsed
-        else {
-            panic!("answer")
-        };
-        assert_eq!(decision, 42);
-        assert_eq!(label, action.label());
-    }
-}
-
 #[cfg(windows)]
 #[test]
 fn separate_process_owners_cannot_restart_each_others_app() {

@@ -1530,3 +1530,5 @@ fn cancellation_before_first_step_preserves_the_import_review_message() {
         );
     }
 }
+#[path = "concurrency_tests.rs"]
+mod concurrency_tests;

@@ -1329,6 +1329,39 @@ mod tests {
     }
 
     #[test]
+    fn concurrent_launch_is_blocked_when_the_resident_reports_a_running_chain() {
+        with_decision_window(|window, cx| {
+            window.update(cx, |launcher, _, cx| {
+                let mut profile = Profile::new("qa".into(), "QA".into());
+                profile.first_step_delay = 3600;
+                profile.steps.push(Step {
+                    app_id: "obs".into(), delay_seconds: 0, args_override: None,
+                });
+                launcher.store = Store::in_memory(launcher.store.path.clone(), Document {
+                    profiles: vec![profile.clone()], ..Document::default()
+                }).unwrap();
+                launcher.scanning = false;
+                launcher.discovered.apps = vec![discovery::Detected {
+                    id: "obs".into(), executable: None, source: "fixture sin procesos",
+                    availability: discovery::Availability { launchable: true, ..Default::default() },
+                }];
+                let mut status = serde_json::to_value(Status {
+                    version: 1, updated_ms: vantare_ipc::launcher::now_ms(), ..Status::default()
+                }).unwrap();
+                status["running"] = serde_json::Value::Bool(true);
+                std::fs::write(vantare_ipc::launcher::status_path(&launcher.store.path),
+                    serde_json::to_vec(&status).unwrap()).unwrap();
+                launcher.poll_resident(cx);
+                assert!(launcher.resident_status.is_some(), "estado fresco realmente leído");
+                launcher.start(profile, cx);
+                let blocked = launcher.chain.is_none();
+                if let Some(mut chain) = launcher.chain.take() { chain.shutdown().unwrap(); }
+                assert!(blocked, "no iniciar otra cadena si el residente ya tiene una activa");
+            }).unwrap();
+        });
+    }
+
+    #[test]
     fn explicit_resident_answer_uses_the_mailbox_and_is_not_reopened() {
         with_decision_window(|window, cx| {
             show_resident_decision(window, cx, 9, &[Action::Trust, Action::Cancel]);

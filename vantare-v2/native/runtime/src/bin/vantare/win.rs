@@ -352,31 +352,12 @@ mod launcher_job_tests {
 
     #[test]
     fn chain_apps_survive_the_job_that_kills_a_direct_child() {
-        for detached in [false, true] {
-            assert!(survives_job_close(detached));
+        for detached_constructor in [false, true] {
+            assert!(survives_job_close(detached_constructor));
         }
     }
 
-    fn survives_job_close(detached: bool) -> bool {
-        use windows_sys::Win32::System::Threading::{
-            OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess,
-        };
-        struct App(OwnedHandle);
-        impl Drop for App {
-            fn drop(&mut self) {
-                // SAFETY: retained handle belongs exclusively to the app created by this test.
-                unsafe {
-                    TerminateProcess(self.0.as_raw_handle(), 1);
-                }
-                wait_any(&[self.0.as_raw_handle()], Some(Duration::from_secs(10)))
-                    .expect("operación aislada del arnés Job");
-            }
-        }
-        let root = std::env::temp_dir().join(format!(
-            "r12-job-{}",
-            vantare_services::random_id().expect("operación aislada del arnés Job")
-        ));
-        std::fs::create_dir(&root).expect("operación aislada del arnés Job");
+    fn kill_on_close_job() -> OwnedHandle {
         // SAFETY: unnamed Job, zeroed SDK structure with its exact size; no real session is touched.
         let job = owned(unsafe { CreateJobObjectW(null(), null()) })
             .expect("operación aislada del arnés Job");
@@ -397,6 +378,30 @@ mod launcher_job_tests {
             },
             0
         );
+        job
+    }
+
+    fn survives_job_close(detached_constructor: bool) -> bool {
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess,
+        };
+        struct App(OwnedHandle);
+        impl Drop for App {
+            fn drop(&mut self) {
+                // SAFETY: retained handle belongs exclusively to the app created by this test.
+                unsafe {
+                    TerminateProcess(self.0.as_raw_handle(), 1);
+                }
+                wait_any(&[self.0.as_raw_handle()], Some(Duration::from_secs(10)))
+                    .expect("operación aislada del arnés Job");
+            }
+        }
+        let root = std::env::temp_dir().join(format!(
+            "r12-job-{}",
+            vantare_services::random_id().expect("operación aislada del arnés Job")
+        ));
+        std::fs::create_dir(&root).expect("operación aislada del arnés Job");
+        let job = kill_on_close_job();
         let mut command =
             Command::new(std::env::current_exe().expect("operación aislada del arnés Job"));
         command
@@ -410,7 +415,7 @@ mod launcher_job_tests {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
-        if detached {
+        if detached_constructor {
             command.env("VANTARE_R12_DETACHED", "1");
         }
         let mut helper = command.spawn().expect("operación aislada del arnés Job");

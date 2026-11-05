@@ -9030,3 +9030,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
   fijados). Comparadas todas sus entradas SQL:0 modificadas; solo se añade182500,
   el probe digest de1961 sin DDL. Los9 outputs coinciden byte por byte tras el
   rebase; no se generan con PG16 ni se inventa un diff. CI nueva verificará la cadena.
+
+- Cierre sobre e76d68fff: Deno298, tooling31, SQL combinado/rollback exacto,
+  check/Clippy -D warnings/fmt y Nextest50 PASS (admin, compilar.ps1, QA propia).
+  Producción4824→5044(+220), tests+532, down16 y derivados98 separados; docs aparte.
+  Push único con rebase/P3/PG17. Nueva CI pendiente; sin merge ni despliegue.

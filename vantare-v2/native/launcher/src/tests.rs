@@ -1142,7 +1142,6 @@ fn lmu_trigger_uses_rising_edges_and_can_be_disabled() {
 }
 
 #[test]
-#[ignore = "P5: first observation currently launches when LMU is already open"]
 fn lmu_trigger_seeds_first_observation_without_launching() {
     let mut trigger = LmuTrigger::default();
     assert!(!trigger.observe(true, true));

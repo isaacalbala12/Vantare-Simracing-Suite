@@ -226,18 +226,6 @@ impl Chain {
         processes: processes::Shared,
         selected: Option<Vec<usize>>,
     ) -> Result<Self, String> {
-        Self::start_with_discovery(document, profile, processes, selected, move |apps| {
-            found.resolve(apps)
-        })
-    }
-
-    fn start_with_discovery(
-        document: Document,
-        profile: Profile,
-        processes: processes::Shared,
-        selected: Option<Vec<usize>>,
-        discover: impl FnOnce(&[App]) -> Discovery + Send + 'static,
-    ) -> Result<Self, String> {
         let selected = selected.unwrap_or_else(|| (0..profile.steps.len()).collect());
         if selected.is_empty()
             || selected.iter().any(|&index| index >= profile.steps.len())
@@ -251,7 +239,6 @@ impl Chain {
         checked.profiles = vec![profile.clone()];
         checked.lmu_trigger_profile = None;
         checked.validate()?;
-        let discovery = discover(&document.apps);
         let (sender, progress) = mpsc::channel();
         let cancel = Arc::new(Cancellation::default());
         let (answers, replies) = mpsc::channel();
@@ -265,7 +252,18 @@ impl Chain {
         };
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
-            .spawn(move || run(&document, &profile, &discovery, &context))
+            .spawn(move || {
+                let discovery = if context.cancel.cancelled() {
+                    Discovery::default()
+                } else {
+                    found.resolve(&document.apps)
+                };
+                if context.cancel.cancelled() {
+                    finish(&profile, &context, false);
+                } else {
+                    run(&document, &profile, &discovery, &context);
+                }
+            })
             .map_err(|e| format!("arrancar cadena: {e}"))?;
         Ok(Self {
             progress,

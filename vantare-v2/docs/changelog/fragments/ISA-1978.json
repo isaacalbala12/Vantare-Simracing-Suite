@@ -9,7 +9,8 @@
     "La primera observación del trigger LMU establece su estado sin lanzar el perfil.",
     "El descarte distingue cadena, residente y salida; mantiene el ID de la decisión y rechaza cancelaciones antiguas.",
     "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo.",
-    "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento."
+    "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento.",
+    "Lanzabilidad compartida y un solo constructor de cadena, siempre fuera del Job; el residente detecta apps en el worker y sigue atendiendo su bucle."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",
@@ -17,10 +18,11 @@
     "Verificar que el primer estado LMU abierto no dispara el trigger y que el flanco cerrado-abierto posterior sí lo hace.",
     "Descartar una decisión residente debe escribir una sola respuesta, conservar su ID y no reabrir el drawer al sondear.",
     "Verificar bytes originales intactos al leer un documento futuro o uno con procedencia Wails guardada.",
-    "Comparar los bytes de los tres escritores reales con sus 18 capturas anteriores: seis combinaciones por escritor, incluido un perfil antiguo sin editar."
+    "Comparar los bytes de los tres escritores reales con sus 18 capturas anteriores: seis combinaciones por escritor, incluido un perfil antiguo sin editar.",
+    "Retener el scanner con un canal: debe ejecutarse fuera del caller y el constructor debe volver antes de liberarlo. Cancelar y recoger ambos hilos sin lanzar apps."
   ],
   "knownLimitations": [
     "Si LMU ya estaba abierto al arrancar el Hub, el trigger no lanza el perfil. Es el comportamiento intencionado de P5.",
-    "La lanzabilidad, el protocolo tipado y la retirada del historial corresponden a los pasos 5-7 pendientes de VANTA-136."
+    "El protocolo tipado y la retirada del historial corresponden a los pasos 6-7 pendientes de VANTA-136."
   ]
 }

@@ -13,9 +13,11 @@ El documento conserva bytes y campos no editados, incluso de importaciones Go.
 La validación completa 2.0/2.1 y los oráculos permanecen. El cálculo del Hub usa
 un plazo de 2 s; no confundir su certificado con precisión frente a carrera real.
 
-Las capturas no son datos reales. En este estado siguen mezcladas con las vistas;
-VANTA-135 las aislará bajo `parity-capture`. El contrato de Análisis nativo y la
-recuperación de Automático dependen de VANTA-133 / #1974 y #1980.
+Las capturas no son datos reales. `captura.rs` prepara documentos, resultados y
+fragmentos de solo lectura bajo `parity-capture` (los helpers puros también se
+compilan en tests). Las vistas reciben `ViewData`; la construcción habitual
+conserva sus entradas editables y no carga fixtures de Strategy. El contrato de
+Análisis nativo y la recuperación de Automático dependen de VANTA-133 / #1974 y #1980.
 
 VANTA-135 retira Automático, Datos, Revisiones y sus rutas de captura. El catálogo, los PNG
 y la fixture de revisión originales se conservan como referencias históricas

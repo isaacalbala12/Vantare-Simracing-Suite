@@ -513,8 +513,10 @@ impl Strategy {
             .child(self.result_card( cx)).child(Self::document_actions(cx))
     }
     fn context_identity(&self) -> (&'static str, String, String) {
-        let simulator = if self.current_event().is_some() && self.demo_car.is_some() {
-            "Le Mans Ultimate"
+        let simulator = if self.current_event().is_some() {
+            self.view_data
+                .simulator
+                .unwrap_or("Sin simulador seleccionado")
         } else {
             "Sin simulador seleccionado"
         };
@@ -527,7 +529,8 @@ impl Strategy {
             },
             |event| {
                 (
-                    self.demo_car
+                    self.view_data
+                        .car
                         .clone()
                         .unwrap_or_else(|| display(&event["cls"]["value"])),
                     display(&event["track"]["value"]),

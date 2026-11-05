@@ -228,7 +228,7 @@ impl Strategy {
             self.running = false;
             match result {
                 Ok((outcome, edited)) => {
-                    if self.capture_demo.is_none() {
+                    if !self.view_data.read_only {
                         vantare_ui::analytics::record(
                             cx,
                             &vantare_services::diagnostics::Usage::FeatureUsed {
@@ -367,24 +367,21 @@ cálculo",
         match state {
             PlanState::Idle => self.preflight_card(source_open, cx),
             PlanState::Loading | PlanState::Error => self.pending_plan_card(state,cx),
-            PlanState::Partial if self.capture_demo.is_some() => self.partial_capture_card(cx),
-            PlanState::Partial => plan_card( cx).p(px(16.0))
+            PlanState::Partial => if let Some(render) = self.view_data.partial { render(self, cx) } else { plan_card( cx).p(px(16.0))
                 .child(orbit::text("Estrategia óptima no demostrada",16.0,700,orbit::ink(cx), cx))
-                .child(orbit::text("La búsqueda terminó sin demostrar optimalidad completa.",16.0,400,orbit::ink_2(cx), cx).mt(px(8.0))),
+                .child(orbit::text("La búsqueda terminó sin demostrar optimalidad completa.",16.0,400,orbit::ink_2(cx), cx).mt(px(8.0))) },
             PlanState::Calculated => certificate_card(self.result.as_ref().map(|outcome| &outcome.certificate), cx),
             PlanState::Editing => plan_card( cx).p(px(16.0)).child(orbit::text("El calendario ha cambiado. Recalcula para actualizar las métricas y el certificado.",16.0,400,orbit::ink_2(cx), cx)),
         }
     }
 
     fn preflight_card(&self, source_open: bool, cx: &gpui::App) -> Div {
-        let laps = if self.capture_demo.is_some() {
-            "69".into()
-        } else {
+        let laps = self.view_data.laps.clone().unwrap_or_else(|| {
             self.last_input.as_ref().map_or_else(
                 || self.fields[9].clone(),
                 |input| input.race_laps.to_string(),
             )
-        };
+        });
         let drivers = self
             .current_event()
             .and_then(|event| event["drivers"].as_array());
@@ -401,9 +398,9 @@ cálculo",
                 "Combustible y energía virtual",
                 format!(
                     "Capacidad · {} L",
-                    self.capture_demo.as_ref().map_or_else(
+                    self.view_data.plan.as_ref().map_or_else(
                         || self.fields[2].clone(),
-                        |demo| decimal(demo.capacity_liters, 0)
+                        |details| decimal(details.capacity_liters, 0)
                     )
                 ),
             ),
@@ -457,11 +454,10 @@ cálculo",
         if loading {
             let laps = self.last_input.as_ref().map_or_else(
                 || {
-                    if self.capture_demo.is_some() {
-                        "69".into()
-                    } else {
-                        self.fields[9].clone()
-                    }
+                    self.view_data
+                        .laps
+                        .clone()
+                        .unwrap_or_else(|| self.fields[9].clone())
                 },
                 |input| input.race_laps.to_string(),
             );
@@ -489,22 +485,7 @@ cálculo",
             .child(self.state_footer(loading, cx))
     }
 
-    fn partial_capture_card(&self, cx: &mut Context<Self>) -> Div {
-        let Some(demo) = &self.capture_demo else {
-            return div();
-        };
-        plan_card( cx).child(div().flex().flex_col().p(px(16.0)).pb(px(12.0))
-            .child(orbit::text("La telemetría permite mostrar estas magnitudes, pero todavía no respalda una estrategia completa.",18.0,400,orbit::ink(cx), cx).line_height(px(20.0)))
-            .child(div().flex().items_center().gap(px(20.0)).mt(px(18.0))
-                .child(div().flex().flex_1().min_w_0().gap(px(10.0))
-                    .child(metric_card("Fuel por vuelta",format!("{} L",decimal(demo.fuel_per_lap,2)), cx).h(px(79.0)))
-                    .child(metric_card("Energía virtual por vuelta",format!("{}%",decimal(demo.ve_per_lap,2)), cx).h(px(79.0))))
-                .child(plan_card( cx).w(px(368.0)).h(px(85.0)).flex_none().p(px(18.0)).border_color(orbit::tint(orbit::carmine(cx),0.5)).bg(orbit::tint(orbit::carmine(cx),0.08))
-                    .child(orbit::text("Falta ritmo válido para la condición elegida",16.0,700,orbit::ink(cx), cx).line_height(px(23.2))))))
-            .child(stage_strip(false,false,false, cx)).child(self.state_footer(false,cx))
-    }
-
-    fn state_footer(&self, loading: bool, cx: &mut Context<Self>) -> Div {
+    pub(super) fn state_footer(&self, loading: bool, cx: &mut Context<Self>) -> Div {
         let action = if loading {
             secondary_action("strategy-plan-retry", "Cancelar", cx)
         } else {
@@ -615,7 +596,7 @@ cálculo",
                     .child(self.timeline(outcome, cx).mt(px(1.0)));
             }
             details = details.child(self.exact_revisions(cx));
-            if self.capture_demo.is_none() {
+            if !self.view_data.read_only {
                 details = details.child(plan_condition(outcome, cx));
             }
         }
@@ -653,19 +634,19 @@ cálculo",
                 }
             },
         );
-        let (seconds, reserve) =
-            self.capture_demo
-                .as_ref()
-                .map_or((plan.expected.total_seconds, reserve), |demo| {
-                    (
-                        demo.total_seconds,
-                        format!(
-                            "{} / {}",
-                            decimal(demo.reserve_laps, 2),
-                            decimal(demo.required_laps, 0)
-                        ),
-                    )
-                });
+        let (seconds, reserve) = self.view_data.plan.as_ref().map_or(
+            (plan.expected.total_seconds, reserve),
+            |details| {
+                (
+                    details.total_seconds,
+                    format!(
+                        "{} / {}",
+                        decimal(details.reserve_laps, 2),
+                        decimal(details.required_laps, 0)
+                    ),
+                )
+            },
+        );
         let laps = self
             .last_input
             .as_ref()
@@ -734,13 +715,12 @@ cálculo",
                                     .h(px(40.0))
                                     .w(px(140.0))
                                     .rounded(px(14.0))
-                                    .when(self.capture_demo.is_none(), |button| {
+                                    .when(self.view_data.accept.is_none(), |button| {
                                         button.opacity(orbit::DISABLED)
                                     })
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        if this.capture_demo.is_some() {
-                                            this.status = "Propuesta demo aceptada".into();
-                                            cx.notify();
+                                        if let Some(action) = this.view_data.accept {
+                                            action(this, cx);
                                         }
                                     })),
                             )
@@ -842,9 +822,10 @@ cálculo",
 
     pub(super) fn stint_values(&self, index: usize) -> [String; 4] {
         if let Some(stint) = self
-            .capture_demo
+            .view_data
+            .plan
             .as_ref()
-            .and_then(|demo| demo.stints.get(index))
+            .and_then(|details| details.stints.get(index))
         {
             return [
                 stint.driver.clone(),
@@ -980,22 +961,23 @@ cálculo",
                 orbit::text("Pendiente de recálculo", 12.0, 400, orbit::ink_2(cx), cx).mt(px(14.0)),
             ));
         }
-        let rows = if let Some(demo) = self
-            .capture_demo
+        let rows = if let Some(details) = self
+            .view_data
+            .plan
             .as_ref()
-            .and_then(|demo| demo.stops.get(index))
+            .and_then(|details| details.stops.get(index))
         {
             vec![
-                format!("Tiempo de pit: {}", duration(demo.total_seconds)),
+                format!("Tiempo de pit: {}", duration(details.total_seconds)),
                 format!(
                     "Fuel: {} → {} L",
-                    decimal(demo.fuel_in, 1),
-                    decimal(demo.fuel_out, 1)
+                    decimal(details.fuel_in, 1),
+                    decimal(details.fuel_out, 1)
                 ),
                 format!(
                     "Energía virtual: {} → {}%",
-                    decimal(demo.ve_in, 0),
-                    decimal(demo.ve_out, 0)
+                    decimal(details.ve_in, 0),
+                    decimal(details.ve_out, 0)
                 ),
             ]
         } else if let Some(stop) = stop {
@@ -1066,11 +1048,7 @@ cálculo",
             .gap(px(1.0))
             .child(
                 orbit::text(
-                    if self.capture_demo.is_some() {
-                        "REVISIONES EXACTAS UTILIZADAS"
-                    } else {
-                        "REVISIONES EXACTAS SELECCIONADAS"
-                    },
+                    self.view_data.revisions_heading,
                     12.0,
                     400,
                     orbit::ink(cx),
@@ -1172,7 +1150,7 @@ pub(super) fn fact(label: &str, value: String, cx: &gpui::App) -> Div {
         .child(orbit::text(value, 15.0, 700, orbit::ink(cx), cx).line_height(px(22.0)))
 }
 
-fn metric_card(label: &str, value: String, cx: &gpui::App) -> Div {
+pub(super) fn metric_card(label: &str, value: String, cx: &gpui::App) -> Div {
     plan_card(cx)
         .flex_1()
         .min_w_0()
@@ -1221,7 +1199,7 @@ fn timeline_item(card: Div, last: bool, cx: &gpui::App) -> Div {
         )
 }
 
-fn stage_strip(
+pub(super) fn stage_strip(
     first_complete: bool,
     second_active: bool,
     first_active: bool,

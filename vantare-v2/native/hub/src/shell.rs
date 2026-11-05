@@ -1345,13 +1345,16 @@ impl Hub {
             cx.notify();
         })
         .detach();
-        let strategy = cx.new(|cx| match &demo {
-            Some(_) => Strategy::new_demo(
-                strategy_dir,
-                capture.as_ref().and_then(|capture| capture.strategy_page),
-                cx,
-            ),
-            None => Strategy::new(strategy_dir, cx),
+        let strategy = cx.new(|cx| {
+            #[cfg(feature = "parity-capture")]
+            if demo.is_some() {
+                return Strategy::new_demo(
+                    strategy_dir,
+                    capture.as_ref().and_then(|capture| capture.strategy_page),
+                    cx,
+                );
+            }
+            Strategy::new(strategy_dir, cx)
         });
         let mut settings = settings::State::new(
             prefs,

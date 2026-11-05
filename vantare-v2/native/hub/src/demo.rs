@@ -454,68 +454,10 @@ pub struct CaptureState {
     pub strategy_page: Option<CaptureStrategyPage>,
 }
 
-// Escena de pass-27: mismos valores que recorded-strategy-harness y wails-runtime-mock.
-// Solo new_demo carga este DTO; la aplicación normal conserva la salida del solver.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct StrategyCaptureDemo {
-    pub total_seconds: f64,
-    pub reserve_laps: f64,
-    pub required_laps: f64,
-    pub capacity_liters: f64,
-    pub fuel_per_lap: f64,
-    pub ve_per_lap: f64,
-    pub stints: Vec<CaptureStint>,
-    pub stops: Vec<CaptureStop>,
-    pub samples: Vec<CaptureSample>,
-    pub files: Vec<CaptureSourceFile>,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureStint {
-    pub driver: String,
-    pub pace_seconds: f64,
-    pub fuel_liters: f64,
-    pub ve_percent: f64,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureStop {
-    pub lap: u32,
-    pub fuel_in: f64,
-    pub fuel_out: f64,
-    pub ve_in: f64,
-    pub ve_out: f64,
-    pub fuel_added: f64,
-    pub ve_added: f64,
-    pub transit_seconds: f64,
-    pub service_seconds: f64,
-    pub overlap_seconds: f64,
-    pub total_seconds: f64,
-    pub compound: String,
-    pub change_tyres: bool,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureSourceFile {
-    pub name: String,
-    pub details: String,
-    pub ready: bool,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureSample {
-    pub value: f64,
-    pub quality: String,
-}
-impl StrategyCaptureDemo {
-    pub fn load() -> Result<Self, String> {
-        serde_json::from_str(include_str!(
-            "../reference/fixtures/strategy-capture-demo.json"
-        ))
-        .map_err(|error| format!("escena pass-27 Strategy: {error}"))
-    }
-}
+pub use crate::strategy::view_data::{
+    PlanData as StrategyCaptureDemo, Sample as CaptureSample, SourceFile as CaptureSourceFile,
+    StintData as CaptureStint, StopData as CaptureStop,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureSettingsPage {

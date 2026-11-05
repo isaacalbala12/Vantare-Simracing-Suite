@@ -25,10 +25,15 @@ use vantare_strategy::{
 
 #[path = "strategy/asistente.rs"]
 mod assistant;
+#[cfg(any(test, feature = "parity-capture"))]
+mod captura;
 #[path = "strategy/editor.rs"]
 mod editor_view;
 mod parada;
 mod plan;
+pub(crate) mod view_data;
+#[cfg(test)]
+use captura::capture_solver_input;
 #[cfg(test)]
 mod state_tests;
 mod stint;
@@ -235,8 +240,7 @@ pub struct Strategy {
     garage: Option<Arc<RenderImage>>,
     garage_detail: Option<Arc<RenderImage>>,
     garage_veil: Option<Arc<RenderImage>>,
-    demo_car: Option<String>,
-    capture_demo: Option<crate::demo::StrategyCaptureDemo>,
+    view_data: view_data::ViewData,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
@@ -277,117 +281,6 @@ fn open_editor(directory: &std::path::Path) -> (Editor, Option<String>) {
 }
 
 impl Strategy {
-    pub fn new_demo(
-        directory: PathBuf,
-        page: Option<crate::demo::CaptureStrategyPage>,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        let mut strategy = Self::new(directory, cx);
-        let Some(page) = page else {
-            return strategy;
-        };
-        strategy.page = match page {
-            crate::demo::CaptureStrategyPage::PlanIdle
-            | crate::demo::CaptureStrategyPage::PlanLoading
-            | crate::demo::CaptureStrategyPage::PlanPartial
-            | crate::demo::CaptureStrategyPage::PlanError
-            | crate::demo::CaptureStrategyPage::PlanCalculated => Page::Editor(EditorTab::Plan),
-            crate::demo::CaptureStrategyPage::Stints => Page::Stints,
-            crate::demo::CaptureStrategyPage::Stops => Page::Stops,
-            crate::demo::CaptureStrategyPage::AssistantInicio => {
-                Page::Assistant(AssistantStep::Inicio)
-            }
-            crate::demo::CaptureStrategyPage::AssistantCombinacion => {
-                Page::Assistant(AssistantStep::Combinacion)
-            }
-            crate::demo::CaptureStrategyPage::AssistantReglas => {
-                Page::Assistant(AssistantStep::Reglas)
-            }
-            crate::demo::CaptureStrategyPage::AssistantPilotos => {
-                Page::Assistant(AssistantStep::Pilotos)
-            }
-            crate::demo::CaptureStrategyPage::AssistantSesiones => {
-                Page::Assistant(AssistantStep::Sesiones)
-            }
-            crate::demo::CaptureStrategyPage::Career => Page::Editor(EditorTab::Carrera),
-        };
-        match crate::demo::StrategyCaptureDemo::load() {
-            Ok(demo) => strategy.capture_demo = Some(demo),
-            Err(error) => strategy.error = Some(error.into()),
-        }
-        strategy.manual_source_status = SourceStatus::Open;
-        if let Err(error) = strategy.seed_capture_demo(cx) {
-            strategy.error = Some(error.into());
-        }
-        if matches!(
-            page,
-            crate::demo::CaptureStrategyPage::PlanIdle
-                | crate::demo::CaptureStrategyPage::PlanLoading
-                | crate::demo::CaptureStrategyPage::PlanPartial
-                | crate::demo::CaptureStrategyPage::PlanError
-                | crate::demo::CaptureStrategyPage::PlanCalculated
-                | crate::demo::CaptureStrategyPage::Stints
-                | crate::demo::CaptureStrategyPage::Stops
-        ) {
-            // Only the reference row rendered by the remaining plan captures.
-            strategy.source_revisions = vec![AnalysisRevisionRef {
-                session_id: "imola-race".into(),
-                base_digest: "0".repeat(64),
-                revision_id: "a".repeat(64),
-                snapshot_id: "b".repeat(64),
-            }];
-        }
-        if matches!(
-            page,
-            crate::demo::CaptureStrategyPage::PlanLoading
-                | crate::demo::CaptureStrategyPage::PlanPartial
-                | crate::demo::CaptureStrategyPage::PlanError
-                | crate::demo::CaptureStrategyPage::PlanCalculated
-                | crate::demo::CaptureStrategyPage::Stints
-                | crate::demo::CaptureStrategyPage::Stops
-        ) && let Err(error) = strategy.load_capture_plan(page)
-        {
-            strategy.error = Some(error.into());
-        }
-        strategy
-    }
-
-    fn load_capture_plan(&mut self, page: crate::demo::CaptureStrategyPage) -> Result<(), String> {
-        let input = capture_solver_input(page)?;
-        self.manual_source_status = SourceStatus::Open;
-
-        if page == crate::demo::CaptureStrategyPage::PlanLoading {
-            self.running = true;
-            self.status = "Calculando la estrategia demo…".into();
-            return Ok(());
-        }
-
-        let prepared = application::prepare_manual(input.clone())?;
-        let outcome = application::calculate(
-            &prepared,
-            self.manual_source_status,
-            &AtomicBool::new(false),
-        )?;
-        self.last_input = Some(input);
-        self.result = Some(outcome.clone());
-        self.status = match outcome.certificate.status {
-            solver::OptimalityStatus::Proven => "Cálculo demo completado.".into(),
-            solver::OptimalityStatus::NotProven => "Búsqueda demo parcial.".into(),
-            solver::OptimalityStatus::NoSolution => "La demo no tiene plan factible.".into(),
-        };
-
-        if matches!(
-            page,
-            crate::demo::CaptureStrategyPage::Stints | crate::demo::CaptureStrategyPage::Stops
-        ) {
-            let edited = stint::schedule_from_outcome(&outcome)?;
-            self.baseline_result = Some(outcome);
-            self.baseline_edited_plan = Some(edited.clone());
-            self.edited_plan = Some(edited);
-        }
-        Ok(())
-    }
-
     pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
         let (editor, error) = open_editor(&directory);
         let (garage, garage_error) = load_strategy_image(
@@ -450,8 +343,7 @@ impl Strategy {
             garage,
             garage_detail,
             garage_veil,
-            demo_car: None,
-            capture_demo: None,
+            view_data: view_data::ViewData::default(),
             duration: None,
             event: 0,
             variant: 0,
@@ -998,21 +890,6 @@ impl Strategy {
     }
 }
 
-fn capture_solver_input(page: crate::demo::CaptureStrategyPage) -> Result<Input, String> {
-    let mut input: Input = serde_json::from_str(include_str!(
-        "../reference/fixtures/strategy-solver-demo.json"
-    ))
-    .map_err(|error| format!("fixture demo solver: {error}"))?;
-    match page {
-        crate::demo::CaptureStrategyPage::PlanPartial => input.budget.max_candidates = 1,
-        crate::demo::CaptureStrategyPage::PlanError => {
-            input.event_rules.min_pit_stops = None;
-            input.event_rules.max_pit_stops = Some(0);
-        }
-        _ => {}
-    }
-    Ok(input)
-}
 impl Drop for Strategy {
     fn drop(&mut self) {
         self.cancellation.store(true, Ordering::Relaxed);

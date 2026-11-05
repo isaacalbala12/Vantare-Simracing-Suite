@@ -195,3 +195,11 @@ Hasta el paso 8, un campo nuevo con igual version puede ser rechazado por un
 lector estricto y archivado como corrupción. Por este riesgo de rollback,
 reducedMotion NO se añade al layout en 6. Store v2 publica appearance.json como
 espejo temporal solo al guardar Apariencia por acción del usuario.
+
+## Series compartidas — #1974, paso 3
+
+`ipc::series` posee LapSample/LapBlock, SeriesChunk, codec v1 y SeriesAnalysis.
+Es código puro movido desde runtime sin cambios de formato, topes ni cálculo.
+`runtime::flows` conserva los nombres públicos mediante reexports; adquisición,
+feed y procesos siguen en runtime. `serde_json/float_roundtrip` se activa aquí
+para conservar los f64 del golden LMU, incluido el caso de un ULP.

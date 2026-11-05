@@ -59,10 +59,10 @@ observada; `Sample` expone números solo para señales Reliable. `project_laps`
 exige misma época/sesión/coche y proyecta gráficos de hasta 1024 puntos.
 Los huecos separan segmentos; no se inventan cobertura, circuitos ni causas.
 
-El módulo `analysis::insights` se retiró en #1974: no tenía consumidores de
-producto. La vista conserva su implementación actual y su demo explícita;
-no utiliza las proyecciones retiradas. La grabación de series pendiente se
-sigue en #1975.
+La retirada de `analysis::insights`, sin consumidores de producto, se sigue
+en el [PR #1979](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1979);
+#1974 es la issue del recorrido. La vista usa `model` y conserva su demo
+explícita. La grabación de series pendiente se sigue en #1975.
 
 ## Verificación e integración
 
@@ -72,8 +72,7 @@ clasificación, offsets, DST 23/25/24.5 h, zoom, solapes, exportación congelada
 deduplicación/retención. La lectura y los gráficos de series se prueban en
 `analysis/tests.rs`, con huecos e identidad incompatible.
 
-Gates y SHAs concretos se entregan al orquestador; logs completos fuera del repo
-en `C:/tmp/isa-1430-datos-hub-evidence/`. No hay validación visual ni prueba LMU,
-audio o OBS. Notion no disponible, excepción explícita del encargo para usar
-GitHub #1430; seguimiento Notion sin actualizar. Solo commits locales, sin
-push, PR, merge, promoción ni release.
+Evidencia histórica de #1430: `C:/tmp/isa-1430-datos-hub-evidence/`.
+El seguimiento vigente de este recorrido es #1974 / Plane VANTA-133 y sus PR;
+los estados de aquella entrega no describen la rama actual. Los contratos y
+los tests no certifican juego físico LMU/OBS, audio ni aceptación visual.

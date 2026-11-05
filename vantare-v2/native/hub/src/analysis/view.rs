@@ -347,16 +347,23 @@ impl Analysis {
                     .px(px(9.0))
                     .pb(px(11.0))
                     .child(orbit::eyebrow("Sesiones", cx))
-                    .child(telemetry_mono(sessions.len().to_string(), 11.0, 400, orbit::ink_4(cx), cx)),
+                    .child(telemetry_mono(
+                        sessions.len().to_string(),
+                        11.0,
+                        400,
+                        orbit::ink_4(cx),
+                        cx,
+                    )),
             )
             .child(rows)
             .child(
                 telemetry_text(
-                    "Fuente: grabaciones nativas locales de Vantare. La grabación de series todavía no está conectada.",
+                    "Las grabaciones de vueltas llegarán en una próxima versión.",
                     10.5,
                     400,
                     orbit::ink_muted(cx),
-                 cx)
+                    cx,
+                )
                 .line_height(px(15.5))
                 .mt_auto()
                 .when(compact, |note| note.mt(px(8.0)))

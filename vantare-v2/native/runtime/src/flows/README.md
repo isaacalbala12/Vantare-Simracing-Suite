@@ -233,6 +233,9 @@ Los lectores admitidos y los rechazos se fijan en cada codec y sus tests.
 
 ## Codec y análisis compartido — ISA-1429
 
+El codec y el análisis viven en `ipc::series`; `runtime::flows` los reexporta
+para conservar sus consumidores. Adquisición, feed y worker no se trasladan.
+
 `SeriesChunk::to_bytes/from_bytes` usa UTF-8 JSON con esta envoltura v1:
 
 ```text
@@ -247,7 +250,7 @@ pedales fuera de 0–1, calidad inválida, secuencias repetidas/regresivas y
 retrocesos de progreso Reliable. `Unavailable` exige null y no equivale a cero.
 Las versiones futuras fallan cerradas: no se intenta un fallback.
 
-`serde_json/float_roundtrip`, activado en el manifest runtime existente, es
+`serde_json/float_roundtrip`, activado en el manifest de ipc, es
 necesario: el fixture LMU real perdía un ULP en distancia al decodificar con
 el parser por defecto. No añade paquetes ni modifica Cargo.lock. El test
 conserva igualdad exacta de chunk y resultado, sin relajar tolerancias.
@@ -326,4 +329,4 @@ igualdad exacta live/durable/replay. La vuelta parcial y gaps no se completan.
 `state.tail_lost()` distingue cola final perdida conocida de total desconocido
 tras EOF/caída; finished es cierre de productor, nunca promesa de sesión íntegra.
 El [crate storage](../../../storage/README.md) documenta protocolo y esquema.
-No dependencia de DuckDB en runtime: solo transporte stdio, sin editar IPC.
+No dependencia de DuckDB en runtime: solo transporte stdio, con codec y análisis puros en `ipc::series`.

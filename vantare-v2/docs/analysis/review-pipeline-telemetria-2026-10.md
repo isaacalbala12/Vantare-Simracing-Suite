@@ -37,6 +37,11 @@ del contrato de producto no demuestran drivers implementados.
 | Widgets | `domain/src/{standings,relative,delta,fuel_strategy,input_telemetry,pedals_telemetry,...}.rs`, `ui/src/` y sus hosts/registro | Snapshot neutral → proyecciones/ViewModels puros → pintores GPUI; no leen el simulador. |
 | Cierre | `runtime/src/shutdown.rs`, `runtime/src/bin/vantare/`, `flows/{host,series_worker}.rs` | Supervisor/Job y cancelación de transportes/workers; cada dueño debe cerrar su cola/disco. |
 
+La tabla conserva el mapa histórico de la base `69fa2d650` indicada arriba.
+La retirada posterior de `analysis::insights`, sin consumidores de producto,
+se sigue en el [PR #1979](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1979);
+#1974 es la issue de seguimiento, no un commit ni una prueba de integración.
+
 Las rutas de la tabla son relativas a `native/`. Journal JSONL y series DuckDB
 son contratos distintos. `--recording` del Core activa el journal; no demuestra
 que el launcher arranque SeriesWorker o grabe automáticamente una DB de series.

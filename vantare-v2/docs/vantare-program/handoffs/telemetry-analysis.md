@@ -1,81 +1,54 @@
 # Handoff vivo — Telemetry Analysis
 
-Estado de la base indicada; releer la issue antes de ejecutar.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/telemetry-analysis.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+## Resultado y autoridad
 
-## 1. Resultado
+VANTA-133 / [#1974](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1974): recorrido de análisis y almacenamiento. Encargo limitado a los pasos 0, 1 y 3 del diseño aprobado `D:/VantareServer/evidence/revision-general/analisis-DISENO.md`, sección (d), y a la revisión de Isaac del 2026-11-05. Paso 2 (conservar DuckDB o no) lo decide Isaac; pasos 4–8 sin iniciar.
 
-Análisis post-sesión y gráficos a partir de series locales con calidad/procedencia. La ruta nativa no es el helper Go/LMU del histórico. No convertir resúmenes de muestras en tiempos de vuelta o ritmo no demostrados.
+[Estado y evidencia anteriores completos](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/03d886f7b/vantare-v2/docs/vantare-program/handoffs/telemetry-analysis.md): conserva #1429, #1584, #1606, sus decisiones, límites y referencias históricas. Esta tanda no acredita su aceptación física ni reabre la ruta Go.
 
-## 2. Autoridad y lectura verificada
+## Estado real y canal
 
-Issue abierta [#1429](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1429), fase 4 de ADR 0099, y su [plan por fases](../../superpowers/plans/2026-09-29-arquitectura-rust-nativa.md) leídos antes del recorte. [Storage](../../../native/storage/README.md) y [Hub](../../../native/hub/README.md) fijan implementación actual; GitHub Project Vantare contiene el trabajo. #1561 registra/relee la actualización documental.
+- Paso 1: [PR #1979](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1979), HEAD `6dc831bad`. Sin commits tras la aprobación de Isaac; integrado por él en nightly mediante `e77d6ae19`.
+- Paso 0: [PR #1981](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1981), HEAD final `d81f26488`. CI completa verde, guard de arquitectura verde, sin dependencia de runtime en Hub; integrado por Isaac en nightly mediante `03d886f7b`.
+- Paso 3: [PR #1986](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1986), draft a nightly, rama `vantareapp/isa-1974-paso3-ipc-series`, base actualizada `03d886f7b`. HEAD y CI finales se verifican en el PR; resumen de código y gates en esta entrega.
 
-## 3. Estado real y canal
+No hay merge, promoción, release ni despliegue por este worker. La tanda solo llega a nightly en las fusiones verificadas de los pasos 0 y 1. Estado de VANTA-133: Por revisar, verificado al publicar el draft.
 
-#1606 / VANTA-46 Por revisar verificado, ronda 2, mismo PR draft #1616 a nightly:
-Sol confirma F5 parcial en gráficos. N3 reproduce seq1 fiable, seq2 omitida
-y seq3 fiable dentro de un chunk: DuckDB real→plot-page→Reader→proyección
-une ambos extremos (RED segmentos 1/1). Arreglo mínimo en Reader: aislar los
-puntos de chunks marcados gap, porque v1 no localiza el corte. Mantiene datos
-fiables, formato y límite de 1.000.000 incluyendo separadores; no cambia pintor
-ni diseño. Hub analysis 11/11 y Core/feed/codec 9/9 GREEN; fmt/check/Clippy, Nextest 1660/1660 (7 skips) y lifecycle 18/18 PASS; telemetría 25/25 PASS, 0 skips (ACC completo 901,336 s).
-Código probado `5a399f4b`; N1 `bb377104`, N2 `93230224`, N3 `5a399f4b`.
-Push/PR draft y Project Vantare In Review verificados; HEAD/CI finales en #1606 y buzón.
-La curva puede quedar como puntos aislados en todo chunk con gap, incluidos
-chunks posteriores si el flag sigue activo. No se inventa continuidad.
-Logs C:/tmp/1606-evidence/r2-*. Sin datos reales ni merge/promoción/release.
+## Cambios y comportamiento actual
 
-#1584 (2026-10-13), rama `vantareapp/isa-1584-duckdb-locked-windows` desde
-`origin/nightly@707514e296bdd3dcc07e14bfffa92b4171fa9749`: `open_error` reconoce
-«being used by another process» como `locked`. El binding DuckDB 1.10505.0
-conserva estado genérico y diagnóstico, sin código Win32 específico al abrir.
-Regresión con `DuckDBFailure`: falla antes (`unreadable`) y pasa después
-(`locked`), conservando el diagnóstico completo. Smoke Hub existente intacto.
-Fmt/check/Clippy PASS; Nextest 1627/1627 (7 skips) y lifecycle PASS por
-`C:/tmp/fase2/compilar.ps1`; integridad anti-slop/retirement PASS (456 huellas).
-PR a nightly con auto-merge autorizado por Isaac;
-SHA/PR/CI finales en [#1584](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1584)
-y `C:/tmp/buzon/1584.md`. No activa el runner Windows de #1565 ni acredita
-una nueva ejecución en SapphireOS.
+Se retira `analysis::insights` y sus tests tras comprobar cero consumidores externos al módulo/tests. Se corrigen los README y el texto de usuario: «Las grabaciones de vueltas llegarán en una próxima versión». La grabación de series sigue sin conectarse; [#1975](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1975) la registra sin implementarla.
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. Storage y Analysis nativos están presentes en el código; #1429 sigue OPEN. El estado antiguo TA-03E/TA-03F no describe la aplicación de esta base ni certifica su aceptación actual.
+La caracterización conserva seis casos: lectura tras kill con WAL sin modificar originales; DB del motor sin esquema de series; códigos reales de watermark/versión; drop que recoge helper y libera lock; catálogo 256/257; Core sin suscriptor que aún retiene muestras. No corrige producto. El caso sin esquema fabrica ese estado, no mata Store::open; `incompatible` es accidental por el texto `series_meta`. El test de cancelación no demuestra cancelar SQL largo.
 
-## 4. Decisiones cerradas
+Hueco 4: Isaac descarta añadir runtime como dev-dependency del Hub. El paso 3 comparte el contrato por construcción en `ipc::series`; probar ambos lectores sobre la misma grabación se difiere al 6C, si llega. No se declara probada aquí esa paridad entre clientes.
 
-- Recording opt-in: no activarlo al suscribir/arrancar Core.
-- Storage es el único dueño de DuckDB/SQL; un proceso y una conexión secuencial, protocolo acotado.
-- DB `vantare.series-db.v1`, payload SeriesChunk v1 independiente del DTO de fotos; no importar/migrar automáticamente una DB Go/LMU ajena.
-- ACK tras COMMIT; repetición idéntica idempotente, conflicto no aceptado. Watermark no significa ausencia de huecos.
-- `finished=false` no prueba writer vivo; attempted desconocido tras caída. Reliable conserva número; las otras calidades no se convierten en cero.
+`ipc::series` posee LapSample/LapBlock, SeriesChunk, codec v1, topes puros y SeriesAnalysis. `runtime::flows` reexporta los nombres anteriores; adquisición, feed y workers permanecen en runtime. IPC activa serde_json/float_roundtrip. No se modifica formato, cálculo, límites ni Cargo.lock. Hub y domain/ui no adquieren dependencia de runtime.
 
-## 5. Arquitectura y ownership
+## Evidencia y límites
 
-[Storage](../../../native/storage/README.md) posee tablas/codec; [reader Hub](../../../native/hub/src/analysis/reader.rs) lanza helper oculto `--read-only` y pagina fuera de render. [Analysis](../../../native/hub/src/analysis/mod.rs) presenta modelos/gráficos sin enlazar DuckDB/runtime. No leer almacenamiento privado de Strategy ni duplicar adquisición live.
+Paso 0: fmt/check/Clippy locales PASS, Nextest 1232/1232 (13 skips) y telemetría 34/34 (1 skip). CI del HEAD exacto d81f26488, run 41986851614: suite completa 2525/2525 (26 skips), lifecycle y cierre de procesos PASS; no se repite lifecycle local después de acreditarlo en esa CI.
 
-## 6. Evidencia y límites
+Paso 1: fmt/check/Clippy y Nextest Hub 631/631 (4 skips) PASS. CI completa de 6dc831bad verde, verificada tras la fusión.
 
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. Protocolos `summaries` y `plot-page` y sus límites se verifican en storage/reader; el README documenta páginas de 16 y resúmenes acotados. Los tests y corpus congelados prueban el contrato cubierto; los antiguos benchmarks Go/CGO/SBOM describen solo aquel helper y permanecen enlazados por SHA.
+Paso 3: código 5c3e9528e, fmt/check/Clippy y Nextest IPC/runtime/Hub 1325/1325 (13 skips) PASS. Guards de arquitectura PASS. Telemetría 34/34 (1 skip), overlays normal/QA y lifecycle 25/25 PASS sobre la misma producción/dependencias de runtime e IPC; la actualización de base solo incorpora un README y el test de caracterización, según paso3-rebase-production-identity.json.
 
-## 7. Riesgos y deuda
+Seis goldens anteriores/posteriores (manual y fixture LMU: chunk, vuelta y análisis) comparados byte a byte: 6/6, 1971 bytes en total, sin normalización ni tolerancias. Cuerpos del codec/análisis idénticos y cuatro archivos de tests existentes sin modificar. Logs, hashes, mediciones separadas de producción/tests/docs y omisiones en `D:/VantareServer/evidence/isa-1974` y en los PR.
 
-- P1: contenido externo/comunitario requiere sandbox real; Job Object no es sandbox. TA-03D/ISA-164 histórico no autoriza nuevos imports.
-- P2: locks, DB incompatible y cancelación deben conservar el archivo original y exponer causa real.
-- Aceptación funcional/Windows de #1429 y datos reales con procedencia, sin asumir éxito del gate de instalación antiguo.
-- No afirmar equivalencia completa entre DB de grabación nativa y 50 DuckDB LMU usados en el banco Strategy.
+Targets exclusivos en D:, compilación mediante native/scripts/compilar.ps1, gates limitados a crates afectados y cola cedida entre comandos. La limpieza de los targets se registra en paso0-clean.log, paso1-clean.log y paso3-clean.log, fuera del repo; el estado final se refleja en #1974 y en los PR. Aviso leaky del fixture de launcher existente conservado en la evidencia, sin cambiarlo dentro de este encargo.
 
-## 8. Issues terminadas, activas y pendientes
+No acredita juego físico LMU/ACC, OBS, audio, DPI, latencia ni aceptación visual. Un fixture y lifecycle no sustituyen esas pruebas.
 
-#1429 abierta es la referencia de implementación/aceptación nativa. #1459 es consumidor de evidencia histórica para Strategy, no propietario de DuckDB. TA-01..TA-05/ISA-122/124/126/135/164/168 y sus entregas quedan preservadas en el histórico, con su estado de aquel corte; no tratarlas como la tarea activa actual.
+## Contratos que se conservan
 
-## 9. Siguiente acción exacta
+- Recording opt-in; no activarlo al suscribir/arrancar Core.
+- Storage sigue siendo dueño de DuckDB/SQL, con proceso y conexión secuencial.
+- DB vantare.series-db.v1 y payload SeriesChunk v1; no migrar DB ajenas automáticamente.
+- ACK tras COMMIT, repetición idéntica idempotente y conflicto rechazado. Watermark no acredita ausencia de huecos; finished no acredita sesión íntegra.
+- Huecos explícitos; no inventar cobertura, ritmo, circuitos ni causas. Un chunk con gap puede quedar como puntos aislados según #1606.
+- Contenido externo requiere sandbox real; Job Object no lo sustituye. Locks, incompatibilidad y cancelación deben preservar originales y conservar la causa real.
 
-Revisar ronda 2 de #1606 publicada en PR draft #1616; revisión del orquestador,
-CI remota completa y QA física pendientes. N3 conserva puntos aislados en chunks
-con gap y no modifica el diseño ni el codec v1.
+## Siguiente acción
 
-Reconciliar #1429 con los criterios de fase 4: comprobar recording explícito, persistencia/reapertura/ACK, huecos, paginación, cancelación y lectura read-only en la build nativa autorizada. Pasar gates workspace/lifecycle y telemetría si cambia runtime/domain/IPC/testdata; documentar prueba real pendiente y aceptación en la issue. No reiniciar TA-03E/TA-03F Go a partir del handoff anterior.
+Isaac revisa el paso 3 y decide el paso 2 antes de autorizar más recorrido. La conexión de grabación requiere #1975 y autorización/medición propias. La prueba diferida del hueco 4 pertenece al 6C si se elige esa ruta. No comenzar los pasos 4–8 por este handoff.
 
-## 10. Última actualización
-
-2026-10-14 · GitHub #1606 / Plane VANTA-46 · Codex CLI. N3 RED real y GREEN, gates locales completos verdes, ronda 2 publicada para revisión y trackers verificados. #1584 se conserva como evidencia de la base; límites en §3. PR/SHA/CI se registran en la issue y el buzón. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+Última actualización: 2026-11-05 · VANTA-133 / #1974 · cierre único de la tanda de pasos 0, 1 y 3. Estado, HEAD, CI y medidas finales en la issue y los PR.

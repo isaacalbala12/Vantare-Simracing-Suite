@@ -1,9 +1,8 @@
-use super::model::FIELD_LIMITS;
 use super::{
     diagnostic::{Diagnostic, Module, Observed},
-    store::{self, Draft, LABELS, Store},
+    store,
 };
-use crate::orbit::{self, Input};
+use crate::orbit;
 use crate::services::{protocol::Command, view::Remote};
 use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*, px, rgba};
 #[cfg(any(feature = "parity-capture", test))]
@@ -26,17 +25,13 @@ pub struct Testing {
     pub(super) adapt: orbit::Adapt,
     pub(super) remote: Entity<Remote>,
     tabs: Entity<orbit::Choice>,
-    local_module: Entity<orbit::Choice>,
     local_open: bool,
     report_view: ReportView,
     expanded_receipt: Option<String>,
     pub observed: Observed,
-    store: Store,
     data: PathBuf,
     diagnostic: Option<Diagnostic>,
-    inputs: [Entity<Input>; 4],
     busy: bool,
-    diagnostic_tab: bool,
     status: String,
     error: Option<String>,
     channel_label: String,
@@ -99,36 +94,6 @@ impl Testing {
         })
         .detach();
         cx.observe(&remote, |_, _, cx| cx.notify()).detach();
-        let mut store = Store::new(&data);
-        let error = store.reload().err().map(|_| {
-            "No se pudo cargar el borrador. Se conserva el archivo; recarga antes de guardar."
-                .into()
-        });
-        let local_module = cx.new(|cx| {
-            orbit::Choice::new(
-                "Sección del borrador privado",
-                orbit::ChoiceKind::Dropdown,
-                Module::ALL
-                    .iter()
-                    .map(|module| orbit::OptionItem::new(module.label()))
-                    .collect(),
-                Module::ALL
-                    .iter()
-                    .position(|module| *module == store.draft.module),
-                window,
-                cx,
-            )
-        });
-        cx.subscribe(
-            &local_module,
-            |this, _, event: &orbit::ChoiceChanged, cx| {
-                if let Some(module) = Module::ALL.get(event.0) {
-                    this.store.draft.module = *module;
-                    cx.notify();
-                }
-            },
-        )
-        .detach();
         #[cfg(feature = "parity-capture")]
         let capture_questionnaire = if matches!(selected_capture_tab(&data), Some(1 | 3)) {
             remote.update(cx, |remote, _| {
@@ -149,32 +114,17 @@ impl Testing {
             adapt: orbit::Adapt::default(),
             remote,
             tabs,
-            local_module,
             local_open: false,
             report_view,
             expanded_receipt: None,
             observed: Observed::default(),
-            inputs: Self::inputs(&store.draft, cx),
-            store,
             data,
             diagnostic: None,
             busy: false,
-            diagnostic_tab: false,
-            status: "Borrador privado local. Guarda para continuar más tarde.".into(),
-            error,
+            status: "Diagnóstico local; el borrador se guarda protegido en Services.".into(),
+            error: None,
             channel_label,
             participation_form: super::participation::Form::new(capture_questionnaire, cx),
-        }
-    }
-    pub fn persist(&mut self) -> Result<(), crate::files::Error> {
-        if self.store.dirty() {
-            let result = self.store.save();
-            if let Err(error) = &result {
-                self.observed.error(Module::TestingCenter, error.kind());
-            }
-            result
-        } else {
-            Ok(())
         }
     }
     fn outcome(
@@ -186,37 +136,15 @@ impl Testing {
         self.error = result.err().map(|error| {
             self.observed.error(Module::TestingCenter, error.kind());
             if super::diagnostic::error_code(error.kind()) == super::diagnostic::ErrorCode::Conflict {
-                format!("Conflicto al guardar el borrador: {error}. Tus cambios siguen aquí; recarga el borrador o elige otro destino.")
+                format!("Conflicto al guardar la exportación: {error}. Elige otro destino.")
             } else if error.kind() == crate::files::Kind::InvalidInput {
-                "El borrador supera los límites indicados o contiene caracteres de control. Reduce el texto antes de guardar/exportar.".into()
-            } else { format!("No se pudo completar la operación del borrador: {error}. Se conservan los cambios y archivos anteriores.") }
+                "El informe supera los límites indicados o contiene caracteres de control. Reduce el texto antes de exportar.".into()
+            } else { format!("No se pudo completar la exportación: {error}. Se conservan los archivos anteriores.") }
         });
         if self.error.is_none() {
             self.status = message.into();
         }
         cx.notify();
-    }
-    fn save(&mut self, cx: &mut Context<Self>) {
-        let result = self.store.save();
-        self.outcome(result, "Borrador guardado de forma atómica.", cx);
-    }
-    fn reload(&mut self, cx: &mut Context<Self>) {
-        let result = self.store.reload();
-        if result.is_ok() {
-            self.inputs = Self::inputs(&self.store.draft, cx);
-            self.sync_local_module(cx);
-        }
-        self.outcome(result, "Borrador recargado desde disco.", cx);
-    }
-    fn sync_local_module(&mut self, cx: &mut Context<Self>) {
-        let selected = Module::ALL
-            .iter()
-            .position(|module| *module == self.store.draft.module);
-        self.local_module.update(cx, |control, cx| {
-            control.state.selected = selected;
-            control.state.close();
-            cx.notify();
-        });
     }
     fn refresh(&mut self, cx: &mut Context<Self>) {
         if self.busy {
@@ -239,7 +167,6 @@ impl Testing {
                 match result {
                     Ok(diagnostic) => {
                         this.diagnostic = Some(diagnostic);
-                        this.diagnostic_tab = true;
                         this.error = None;
                         this.status =
                             "Diagnóstico preparado en memoria. Revisa antes de exportar.".into();
@@ -260,7 +187,8 @@ impl Testing {
             cx.notify();
             return;
         };
-        let bytes = match store::export_bytes(&self.store.draft, diagnostic) {
+        let fields = self.remote.read(cx).editor.diagnostic_fields(cx);
+        let bytes = match store::export_bytes(&fields, diagnostic) {
             Ok(bytes) => bytes,
             Err(error) => {
                 self.outcome(Err(error), "", cx);
@@ -286,64 +214,6 @@ impl Testing {
             }
         })
         .detach();
-    }
-    fn inputs(draft: &Draft, cx: &mut Context<Self>) -> [Entity<Input>; 4] {
-        std::array::from_fn(|index| {
-            let input =
-                cx.new(|cx| Input::multiline(draft.fields[index].clone(), LABELS[index], cx));
-            cx.observe(&input, move |this, input, cx| {
-                // El campo compartido conserva selección/IME; los límites del informe
-                // se validan al guardar/exportar, sin truncar silenciosamente una edición.
-                this.store.draft.fields[index].clone_from(&input.read(cx).value);
-                cx.notify();
-            })
-            .detach();
-            input
-        })
-    }
-    fn form(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut body = orbit::card_body().child(orbit::setting_row(
-            "Sección afectada",
-            "Selecciona la sección del informe",
-            self.local_module.clone(),
-            cx,
-        ));
-        for (index, label) in LABELS.into_iter().enumerate() {
-            body = body.child(orbit::setting_row(
-                label,
-                &format!("Texto privado · máximo {} bytes", FIELD_LIMITS[index]),
-                div()
-                    .w(gpui::px(orbit::COLUMN_W * 1.5))
-                    .min_w_0()
-                    .child(self.inputs[index].clone()),
-                cx,
-            ));
-        }
-        orbit::card("Borrador de informe", cx).child(body).child(
-            orbit::card_body().child(
-                div()
-                    .flex()
-                    .gap(gpui::px(orbit::GUTTER / 2.0))
-                    .child(
-                        orbit::button("testing-save", "Guardar borrador", cx)
-                            .on_click(cx.listener(|this, _, _, cx| this.save(cx))),
-                    )
-                    .child(
-                        orbit::button("testing-reload", "Recargar y descartar cambios", cx)
-                            .on_click(cx.listener(|this, _, _, cx| this.reload(cx))),
-                    )
-                    .child(
-                        orbit::button("testing-new", "Vaciar formulario", cx).on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.store.draft = Draft::new();
-                                this.inputs = Self::inputs(&this.store.draft, cx);
-                                this.sync_local_module(cx);
-                                cx.notify();
-                            }),
-                        ),
-                    ),
-            ),
-        )
     }
     fn diagnostic(&self, cx: &gpui::App) -> gpui::Div {
         let mut body = orbit::card_body();
@@ -382,7 +252,8 @@ impl Testing {
             }
             body = body.child(orbit::text("Studio y Análisis: error no instrumentado. Ausencia de error no demuestra que una sección funcione.", 12.0, 400, orbit::ink_3(cx), cx));
             // La vista previa es exactamente el payload que genera el exportador.
-            if let Ok(bytes) = store::export_bytes(&self.store.draft, diagnostic) {
+            let fields = self.remote.read(cx).editor.diagnostic_fields(cx);
+            if let Ok(bytes) = store::export_bytes(&fields, diagnostic) {
                 body = body
                     .child(orbit::eyebrow("Contenido del JSON exportable", cx))
                     .child(orbit::text(
@@ -796,7 +667,7 @@ impl Testing {
                 .flex_1(),
             )
             .child(
-                orbit::button("testing-tools", "Borradores y diagnóstico", cx).on_click(
+                orbit::button("testing-tools", "Diagnóstico local", cx).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.local_open = !this.local_open;
                         cx.notify();
@@ -806,44 +677,13 @@ impl Testing {
     }
     fn local_tools(&self, cx: &mut Context<Self>) -> gpui::Div {
         div().flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0)).child(orbit::callout(
-            "Este borrador se guarda en tu equipo. El informe de diagnóstico no incluye el texto privado y no se adjunta automáticamente al envío.",
+            "El informe de diagnóstico no incluye el texto privado y no se adjunta automáticamente al envío.",
          cx))
         .child(
             div()
                 .flex()
                 .flex_wrap()
                 .gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(orbit::button("testing-load-report", "Cargar borrador", cx).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        this.remote.update(cx, |remote, cx| {
-                            remote.report_action(Command::DraftLoad, cx);
-                        });
-                    }),
-                ))
-                .child(orbit::button("testing-retry-report", "Revisar envío pendiente", cx).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        this.remote.update(cx, |remote, cx| {
-                            remote.editor.clear_approval(cx);
-                            remote.report_action(Command::ReportRetryPrepare, cx);
-                        });
-                    }),
-                ))
-                .child(
-                    orbit::button("testing-report-tab", "Borrador privado local", cx).on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.diagnostic_tab = false;
-                            cx.notify();
-                        }),
-                    ),
-                )
-                .child(
-                    orbit::button("testing-diagnostic-tab", "Diagnóstico", cx).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.diagnostic_tab = true;
-                            cx.notify();
-                        },
-                    )),
-                )
                 .child(
                     orbit::button(
                         "testing-prepare",
@@ -861,15 +701,7 @@ impl Testing {
                 ),
         )
         .child(orbit::text(
-            format!(
-                "{}{}",
-                self.status,
-                if self.store.dirty() {
-                    " · Cambios sin guardar"
-                } else {
-                    ""
-                }
-            ),
+            self.status.clone(),
             12.5,
             400,
             orbit::ink_2(cx),
@@ -877,11 +709,7 @@ impl Testing {
         .when_some(self.error.clone(), |view, error| {
             view.child(orbit::callout(error, cx))
         })
-        .child(if self.diagnostic_tab {
-            self.diagnostic( cx)
-        } else {
-            self.form(cx)
-        })
+        .child(self.diagnostic(cx))
     }
 }
 

@@ -1,18 +1,12 @@
 use super::diagnostic::{Diagnostic, Module, local_path};
-use crate::files;
+use crate::{files, services::protocol::report_document::Fields};
 use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
+#[cfg(test)]
+use std::{fs, path::PathBuf};
 
+#[cfg(test)]
 const LIMIT: u64 = 16 * 1024;
-pub const LABELS: [&str; 4] = [
-    "Qué estabas haciendo",
-    "Qué esperabas",
-    "Qué ocurrió",
-    "Contexto adicional",
-];
 /// Limites por campo del informe. Los comparten el borrador y la recuperacion:
 /// si la recuperacion aceptase mas que el envio, un texto recuperado se
 /// rechazaria para siempre al preparar el informe y el editor quedaria
@@ -55,6 +49,7 @@ pub struct Draft {
     pub fields: [String; 4],
 }
 impl Draft {
+    #[cfg(test)]
     pub fn new() -> Self {
         Self {
             schema_version: 1,
@@ -76,11 +71,13 @@ impl Draft {
         Ok(())
     }
 }
+#[cfg(test)]
 pub struct Store {
     pub draft: Draft,
     path: PathBuf,
     saved: Option<Vec<u8>>,
 }
+#[cfg(test)]
 impl Store {
     pub fn new(data: &Path) -> Self {
         Self {
@@ -111,13 +108,6 @@ impl Store {
         self.saved = Some(bytes);
         Ok(())
     }
-    pub fn dirty(&self) -> bool {
-        self.saved
-            .as_ref()
-            .map_or(self.draft != Draft::new(), |bytes| {
-                serde_json::from_slice::<Draft>(bytes).map_or(true, |draft| draft != self.draft)
-            })
-    }
     pub fn save(&mut self) -> Result<(), files::Error> {
         self.draft.validate()?;
         if !local_path(&self.path) {
@@ -133,21 +123,40 @@ impl Store {
 
 /// No se puede anonimizar un nombre arbitrario en prosa con garantías. Por eso
 /// la lista blanca exporta solo el módulo y la presencia de los campos privados.
-pub fn export_bytes(draft: &Draft, diagnostic: &Diagnostic) -> Result<Vec<u8>, files::Error> {
+pub fn export_bytes(fields: &Fields, diagnostic: &Diagnostic) -> Result<Vec<u8>, files::Error> {
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct Report<'a> {
         schema_version: u32,
-        module: Module,
+        module: &'a str,
         private_fields_present: [bool; 4],
         private_text: &'static str,
         diagnostic: &'a Diagnostic,
     }
-    draft.validate()?;
+    if !super::model::MODULES
+        .iter()
+        .any(|(id, _)| *id == fields.module)
+        || [
+            &fields.action_text,
+            &fields.expected_text,
+            &fields.observed_text,
+            &fields.context_text,
+        ]
+        .into_iter()
+        .zip(FIELD_LIMITS)
+        .any(|(text, limit)| *text != clean_field(text, limit))
+    {
+        return Err("Borrador inválido o fuera de límites".into());
+    }
     serde_json::to_vec_pretty(&Report {
         schema_version: 1,
-        module: draft.module,
-        private_fields_present: std::array::from_fn(|i| !draft.fields[i].is_empty()),
+        module: &fields.module,
+        private_fields_present: [
+            !fields.action_text.is_empty(),
+            !fields.expected_text.is_empty(),
+            !fields.observed_text.is_empty(),
+            !fields.context_text.is_empty(),
+        ],
         private_text: "omitted_for_privacy",
         diagnostic,
     })

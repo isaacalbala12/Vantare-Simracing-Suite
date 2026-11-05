@@ -12,6 +12,16 @@ use vantare_domain::{Snapshot, SourceKind, SourceState};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
+fn export_fields(draft: &Draft) -> crate::services::protocol::report_document::Fields {
+    crate::services::protocol::report_document::Fields {
+        action_text: draft.fields[0].clone(),
+        expected_text: draft.fields[1].clone(),
+        observed_text: draft.fields[2].clone(),
+        context_text: draft.fields[3].clone(),
+        module: "hub".into(),
+    }
+}
+
 #[test]
 fn review_r7_f9_fixed_with_legacy_receipt_never_shows_rejection() {
     use crate::services::protocol::{report_document::Receipt, testing_document::Contribution};
@@ -211,7 +221,7 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
         &observed,
         Instant::now(),
     );
-    let bytes = store::export_bytes(&draft, &diagnostic).expect("exportar");
+    let bytes = store::export_bytes(&export_fields(&draft), &diagnostic).expect("exportar");
     let text = String::from_utf8(bytes.clone()).expect("UTF-8");
     for secret in [
         "María",
@@ -283,6 +293,9 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
             "version"
         ]
     );
+    let mut invalid_module = export_fields(&draft);
+    invalid_module.module = private.into();
+    assert!(store::export_bytes(&invalid_module, &diagnostic).is_err());
 }
 
 #[test]
@@ -351,7 +364,13 @@ fn corrupt_unknown_and_oversized_drafts_are_preserved_and_never_exported() {
     }
     let mut draft = Draft::new();
     draft.fields[0] = "a".repeat(2049);
-    assert!(store::export_bytes(&draft, &diagnostic(&temp, &Observed::default())).is_err());
+    assert!(
+        store::export_bytes(
+            &export_fields(&draft),
+            &diagnostic(&temp, &Observed::default())
+        )
+        .is_err()
+    );
     draft.fields[0] = "á".repeat(1024);
     draft.validate().expect("UTF-8 dentro del límite");
     draft.fields[0].push('á');
@@ -377,8 +396,11 @@ fn failed_atomic_save_and_existing_export_never_overwrite_user_files() {
     store.save().expect("un temporal ajeno no debe bloquear");
     assert_ne!(fs::read(temp.draft()).expect("leer"), before);
     assert_eq!(store.draft.fields[0], "Después");
-    let bytes = store::export_bytes(&store.draft, &diagnostic(&temp, &Observed::default()))
-        .expect("exportar");
+    let bytes = store::export_bytes(
+        &export_fields(&store.draft),
+        &diagnostic(&temp, &Observed::default()),
+    )
+    .expect("exportar");
     let export = temp.0.join("report.json");
     store::export(&export, &bytes).expect("crear exportación");
     assert!(store::export(&export, b"replacement").is_err());

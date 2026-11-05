@@ -146,6 +146,12 @@ fn remember_receipt(
     }
 }
 pub(crate) mod pilot;
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LegacyStatus {
+    Unchecked,
+    Checked,
+}
+
 pub struct Remote {
     pub(crate) mail: mail::State,
     founders_language: founders::Language,
@@ -188,7 +194,8 @@ pub struct Remote {
     pub(crate) participation_pending: Option<u64>,
     pub(crate) participation_generation: u64,
     pub(crate) triage: crate::testing::TriageEditor,
-    recovery: Result<crate::testing::recovery::Recovery, String>,
+    legacy_draft: Result<Option<crate::testing::legacy_draft::LegacyDraft>, String>,
+    legacy_status: LegacyStatus,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     roadmap_requested: bool,
@@ -220,6 +227,28 @@ fn core_feed(pipe: &str) -> Option<vantare_ipc::control::Feed> {
     }
 }
 
+fn legacy_editor(
+    data: &std::path::Path,
+    cx: &mut Context<Remote>,
+) -> (
+    Result<Option<crate::testing::legacy_draft::LegacyDraft>, String>,
+    crate::testing::Editor,
+) {
+    let legacy = crate::testing::legacy_draft::LegacyDraft::load(data);
+    let fields = legacy
+        .as_ref()
+        .ok()
+        .and_then(Option::as_ref)
+        .map_or_else(crate::testing::empty_fields, |draft| draft.fields.clone());
+    let mut editor = crate::testing::Editor::new(fields, cx);
+    match &legacy {
+        Ok(Some(draft)) => editor.dirty = draft.fields != crate::testing::empty_fields(),
+        Err(error) => editor.message.clone_from(error),
+        Ok(None) => {}
+    }
+    (legacy, editor)
+}
+
 impl Remote {
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
@@ -229,18 +258,7 @@ impl Remote {
     }
 
     pub fn new(pipe: String, data: &std::path::Path, cx: &mut Context<Self>) -> Self {
-        let recovery = crate::testing::recovery::Recovery::load(data);
-        let mut editor = crate::testing::Editor::new(
-            recovery.as_ref().map_or_else(
-                |_| crate::testing::empty_fields(),
-                |store| store.fields.clone(),
-            ),
-            cx,
-        );
-        match &recovery {
-            Ok(store) => editor.dirty = store.fields != crate::testing::empty_fields(),
-            Err(error) => editor.message.clone_from(error),
-        }
+        let (legacy_draft, editor) = legacy_editor(data, cx);
         #[cfg(feature = "parity-capture")]
         if let Some(path) = std::env::var_os("VANTARE_TESTING_CAPTURE_PREVIEW")
             && let Ok(bytes) = crate::files::read(std::path::Path::new(&path), 32 * 1024)
@@ -309,7 +327,8 @@ impl Remote {
             participation_pending: None,
             participation_generation: 0,
             triage: crate::testing::TriageEditor::new(cx),
-            recovery,
+            legacy_draft,
+            legacy_status: LegacyStatus::Unchecked,
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
@@ -323,6 +342,9 @@ impl Remote {
             return remote;
         }
         remote.request(Command::Status, cx);
+        if remote.legacy_draft.as_ref().is_ok_and(Option::is_some) {
+            remote.queued = Some(Command::DraftLoad);
+        }
         remote
     }
 
@@ -518,14 +540,12 @@ impl Remote {
         self.requires_access() || self.working()
     }
 
-    /// Solo recuperación privada: guardar aquí no confirma el borrador remoto ni el envío.
-    pub(crate) fn persist(&mut self, cx: &Context<Self>) -> Result<(), crate::files::Error> {
-        let fields = self.editor.fields(cx);
-        match &mut self.recovery {
-            Ok(store) => store.save(fields),
-            Err(error) if self.editor.dirty => Err(error.clone().into()),
-            Err(_) => Ok(()), // Un archivo inválido sin nuevas ediciones se conserva intacto.
+    /// El cierre no crea una copia en claro: el usuario guarda mediante Services.
+    pub(crate) fn persist(&mut self, _cx: &Context<Self>) -> Result<(), crate::files::Error> {
+        if self.editor.dirty {
+            return Err("Guarda el borrador protegido antes de cerrar".into());
         }
+        Ok(())
     }
 
     pub fn cancel(&mut self) {
@@ -858,6 +878,51 @@ impl Remote {
         }
     }
 
+    fn imported_draft(
+        &mut self,
+        draft: Option<super::protocol::report_document::Draft>,
+        mut message: String,
+        cx: &mut Context<Self>,
+    ) {
+        if let Ok(Some(legacy)) = &self.legacy_draft {
+            if draft
+                .as_ref()
+                .is_some_and(|saved| saved.fields == legacy.fields)
+            {
+                match legacy.archive() {
+                    Ok(()) => {
+                        self.legacy_draft = Ok(None);
+                        message.push_str(" · originales antiguos archivados en este equipo");
+                    }
+                    Err(error) => {
+                        self.editor.message = error;
+                        self.legacy_status = LegacyStatus::Unchecked;
+                        return;
+                    }
+                }
+            } else if self.legacy_status == LegacyStatus::Unchecked && draft.is_none() {
+                self.legacy_status = LegacyStatus::Checked;
+                self.queued = Some(Command::DraftSave {
+                    fields: legacy.fields.clone(),
+                });
+                self.editor.message = "Importando borrador antiguo al almacén protegido".into();
+                return;
+            } else {
+                self.legacy_status = LegacyStatus::Checked;
+                if draft.is_some() {
+                    // Un DPAPI previo distinto gana; los dos JSON permanecen intactos
+                    // para revisión y nunca se pisan automáticamente.
+                    self.report_draft(draft, message, cx);
+                }
+                self.editor.message =
+                    "Ya existe otro borrador protegido; los antiguos se conservan para revisión"
+                        .into();
+                return;
+            }
+        }
+        self.report_draft(draft, message, cx);
+    }
+
     fn report_receipt(
         &mut self,
         receipt: &super::protocol::report_document::Receipt,
@@ -1106,7 +1171,7 @@ impl Remote {
                 );
             }
             Reply::Closed => self.message = "Servicios cerrado".into(),
-            Reply::Draft { draft, message } => self.report_draft(draft, message, cx),
+            Reply::Draft { draft, message } => self.imported_draft(draft, message, cx),
             Reply::ReportPreview { preview } => {
                 if self.report_revision == Some(self.editor.revision) {
                     self.editor.clear_approval(cx);
@@ -1181,6 +1246,26 @@ impl Remote {
                     cx,
                 ))
             })
+            .child(
+                div()
+                    .flex()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::button("report-load", "Cargar borrador", cx).on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.report_action(Command::DraftLoad, cx);
+                            },
+                        )),
+                    )
+                    .child(
+                        orbit::button("report-retry", "Revisar envío pendiente", cx).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.editor.clear_approval(cx);
+                                this.report_action(Command::ReportRetryPrepare, cx);
+                            }),
+                        ),
+                    ),
+            )
             .child(self.editor.render(compact, cx))
     }
 }

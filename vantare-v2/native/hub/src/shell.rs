@@ -109,7 +109,6 @@ impl Hub {
         // Studio confirma cada edición; guarda también los borradores locales pendientes.
         self.remote.update(cx, |remote, cx| remote.persist(cx))?;
         self.strategy.update(cx, |strategy, _| strategy.persist())?;
-        self.testing.update(cx, |testing, _| testing.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 

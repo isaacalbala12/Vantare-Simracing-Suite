@@ -646,7 +646,7 @@ pub(crate) fn fixture(
     send: SyncSender<Command>,
     data: &std::path::Path,
 ) -> Remote {
-    let recovery = crate::testing::recovery::Recovery::load(data);
+    let legacy_draft = crate::testing::legacy_draft::LegacyDraft::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
         mail: mail::State::default(),
@@ -685,7 +685,8 @@ pub(crate) fn fixture(
         participation_pending: None,
         participation_generation: 0,
         triage: crate::testing::TriageEditor::new(cx),
-        recovery,
+        legacy_draft,
+        legacy_status: LegacyStatus::Unchecked,
         publication: None,
         roadmap_message: "No hay una publicación válida guardada".into(),
         roadmap_requested: false,

@@ -135,6 +135,9 @@ impl Editor {
         }
     }
     pub fn fields(&self, cx: &Context<Remote>) -> Fields {
+        self.fields_snapshot(cx)
+    }
+    pub fn fields_snapshot(&self, cx: &gpui::App) -> Fields {
         let context = &self.inputs[3].read(cx).value;
         Fields {
             action_text: self.inputs[0].read(cx).value.clone(),
@@ -146,6 +149,13 @@ impl Editor {
             ),
             module: self.inputs[4].read(cx).value.clone(),
         }
+    }
+    pub(crate) fn diagnostic_fields(&self, cx: &gpui::App) -> Fields {
+        let mut fields = self.fields_snapshot(cx);
+        fields
+            .context_text
+            .clone_from(&self.inputs[3].read(cx).value);
+        fields
     }
     fn field(&self, index: usize, label: &str, compact: bool, cx: &Context<Remote>) -> gpui::Div {
         div()

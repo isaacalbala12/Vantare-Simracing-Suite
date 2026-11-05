@@ -45,16 +45,20 @@ Consulta [la nota de paridad](PARITY.md) para el alcance vigente y sus límites.
 Este documento conserva la evidencia del diagnóstico y exportación locales;
 sus afirmaciones de ausencia de envío describen aquel corte anterior.
 
-El formulario principal pertenece a `Remote.editor`: guarda el borrador mediante
-el supervisor, prepara una vista previa y exige consentimiento para esa revisión.
-Al guardar o cerrar el Hub, el texto visible se conserva además en
-`testing-center/editor-draft.json`, bajo el directorio local del Hub. Admite
-campos incompletos dentro del límite del input y escritura atómica con conflicto
-por bytes. Reabrir recupera el texto con revisión/consentimiento vacíos y exige
-guardar el borrador remoto antes de preparar el envío. No se envía ni adjunta
-esta recuperación al diagnóstico. Un archivo inválido se conserva y se informa;
-si hay nuevas ediciones que no pueden guardarse, se bloquea el cierre normal/Live.
-El diagnóstico/exportación local tiene otro borrador y omite el texto privado.
+El formulario principal pertenece a `Remote.editor`: guarda un solo borrador
+protegido mediante Services, prepara una vista previa y exige consentimiento.
+Al iniciar, el Hub lee una vez `editor-draft.json` y `report-draft.json` antiguos.
+Si ambos existen, elige el de mtime más reciente (empate: editor). Tras confirmar
+el mismo contenido en Services, mueve ambos originales a `.json.imported` sin
+sobrescribir archivos existentes. Los textos diferentes se registran solo por
+nombre de campo. `Workshop` y `Notificaciones` se importan como `unknown` y se
+registra solo el nombre del módulo. Un archivo inválido o cambiado se conserva.
+Los `.imported` conservan los bytes privados originales en el PC. Si ya existe
+un borrador protegido distinto, se muestra ese borrador y los JSON antiguos se
+dejan intactos para revisión; nunca se sobrescribe el protegido automáticamente.
+El cierre normal exige guardar cualquier edición pendiente en Services; no crea
+otra copia en claro. El panel local conserva el diagnóstico y la exportación
+manual sin prosa privada; ya no ofrece un segundo formulario de borrador.
 Los inputs actuales vienen de Orbit y admiten texto multilínea/IME; no se usa el
 alias histórico del Launcher. La validación local no demuestra un envío real.
 

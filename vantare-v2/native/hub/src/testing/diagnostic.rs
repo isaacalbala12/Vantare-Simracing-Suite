@@ -262,29 +262,22 @@ impl Diagnostic {
             core: observed.core(now),
             source: observed.source.clone(),
             binaries: binaries(root),
-            data_paths: [
-                ("hub", "<hub-data>", data.to_path_buf()),
-                (
-                    "draft",
-                    "<hub-data>/testing-center/report-draft.json",
-                    data.join("testing-center/report-draft.json"),
-                ),
-            ]
-            .into_iter()
-            .map(|(role, path, actual)| DataPath {
-                role,
-                path,
-                state: if local_path(&actual) {
-                    match fs::symlink_metadata(actual) {
-                        Ok(_) => "present",
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => "missing",
-                        _ => "unavailable",
-                    }
-                } else {
-                    "unavailable"
-                },
-            })
-            .collect(),
+            data_paths: [("hub", "<hub-data>", data.to_path_buf())]
+                .into_iter()
+                .map(|(role, path, actual)| DataPath {
+                    role,
+                    path,
+                    state: if local_path(&actual) {
+                        match fs::symlink_metadata(actual) {
+                            Ok(_) => "present",
+                            Err(error) if error.kind() == std::io::ErrorKind::NotFound => "missing",
+                            _ => "unavailable",
+                        }
+                    } else {
+                        "unavailable"
+                    },
+                })
+                .collect(),
             section_errors: observed.errors.clone(),
             // Estas secciones no exponen error tipado; no interpretar su texto de estado.
             uninstrumented_sections: [Module::Studio, Module::Analysis],

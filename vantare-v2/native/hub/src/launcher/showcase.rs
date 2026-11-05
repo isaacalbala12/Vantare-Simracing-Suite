@@ -171,35 +171,6 @@ fn card_state(events: &[Progress], running: bool) -> CardState {
     }
 }
 
-fn run_result(events: &[Progress]) -> Option<(&'static str, Tone)> {
-    use super::super::chain::Status;
-    let result = events
-        .iter()
-        .rev()
-        .find(|event| matches!(event.status, Status::Done | Status::Cancelled))?;
-    if result.status == Status::Cancelled {
-        Some(("Cancelado", Tone::Neutral))
-    } else if !result.success {
-        Some(("Falló", Tone::Danger))
-    } else if events.iter().any(|event| {
-        event.step.is_some_and(|step| {
-            events
-                .iter()
-                .filter(|candidate| {
-                    candidate.step == Some(step) && candidate.status == Status::Launching
-                })
-                .count()
-                > 1
-        })
-    }) {
-        Some(("Completado con reintentos", Tone::Warning))
-    } else if events.iter().any(|event| event.status == Status::Waiting) {
-        Some(("Requirió confirmación", Tone::Neutral))
-    } else {
-        Some(("Completado", Tone::Success))
-    }
-}
-
 fn toggle_quick(profile: &mut Profile, option: usize) {
     let mut policy = profile.effective_policy();
     match option {
@@ -374,7 +345,6 @@ impl Launcher {
         for (id, label, page) in [
             ("launcher-tab-profiles", "Perfiles", LauncherPage::Showcase),
             ("launcher-tab-apps", "Aplicaciones", LauncherPage::Manage),
-            ("launcher-tab-history", "Historial", LauncherPage::History),
         ] {
             tabs = tabs.child(
                 orbit::topbar_tab(id, label, self.page == page, cx).on_click(cx.listener(
@@ -409,7 +379,6 @@ impl Launcher {
         self.prepare_capture(false);
         match name {
             "launcher-aplicaciones" => self.page = LauncherPage::Manage,
-            "launcher-historial" => self.page = LauncherPage::History,
             "launcher-editor" => {
                 if let Some(profile) = self.showcase_profile().cloned() {
                     self.profile_editor(profile, window, cx);
@@ -1450,127 +1419,6 @@ impl Launcher {
         ))
     }
 
-    fn history_row(
-        profile: &Profile,
-        result: Option<(&str, Tone)>,
-        compact: bool,
-        cx: &gpui::App,
-    ) -> Div {
-        div()
-            .flex_none()
-            .flex()
-            .items_center()
-            .gap(px(8.0))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .when(compact, |row| {
-                        row.child(
-                            orbit::text(
-                                format!(
-                                    "{} · {}",
-                                    profile.name,
-                                    orbit::activity_time(
-                                        profile.last_launched_at.as_deref().unwrap_or_default(),
-                                        chrono::Local::now().fixed_offset()
-                                    )
-                                ),
-                                12.0,
-                                400,
-                                orbit::ink_2(cx),
-                                cx,
-                            )
-                            .text_ellipsis()
-                            .py(px(6.0)),
-                        )
-                    })
-                    .when(!compact, |row| {
-                        row.child(orbit::summary_row(
-                            profile.name.clone(),
-                            orbit::activity_time(
-                                profile.last_launched_at.as_deref().unwrap_or_default(),
-                                chrono::Local::now().fixed_offset(),
-                            ),
-                            "v-launch",
-                            cx,
-                        ))
-                    })
-                    .flex_1()
-                    .min_w_0(),
-            )
-            .when_some(result, |row, (label, tone)| {
-                row.child(orbit::pill(label, tone, cx))
-            })
-    }
-    /// Orden del historial: primero el lanzamiento más reciente como instante
-    /// real; lo ilegible queda al final, como en el resumen de Inicio.
-    fn history_instant(profile: &Profile) -> Option<i64> {
-        profile.last_launched_at.as_deref().and_then(|value| {
-            chrono::DateTime::parse_from_rfc3339(value)
-                .ok()
-                .map(|when| when.timestamp_millis())
-        })
-    }
-    fn sort_history(profiles: &mut Vec<&Profile>) {
-        profiles.sort_by_key(|profile| {
-            std::cmp::Reverse(Self::history_instant(profile).unwrap_or(i64::MIN))
-        });
-    }
-    pub(super) fn showcase_history(&self, compact: bool, cx: &mut Context<Self>) -> Div {
-        let mut card = div()
-            .flex()
-            .flex_col()
-            .flex_1()
-            .min_h_0()
-            .gap(px(12.0))
-            .min_h(px(80.0));
-        let mut rows = div().flex().flex_col().gap(px(8.0));
-        let mut profiles: Vec<_> = self
-            .store
-            .document
-            .profiles
-            .iter()
-            .filter(|profile| profile.last_launched_at.is_some())
-            .collect();
-        Self::sort_history(&mut profiles);
-        if profiles.is_empty() {
-            rows = rows.child(orbit::text(
-                "Todavía no has lanzado un perfil.",
-                13.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ));
-        }
-        let limit = if self.page == LauncherPage::History {
-            usize::MAX
-        } else {
-            self.adapt.rail_rows().unwrap_or(usize::MAX)
-        };
-        for profile in profiles.into_iter().take(limit) {
-            let result = self
-                .last_profile
-                .as_ref()
-                .filter(|last| last.id == profile.id)
-                .and_then(|_| run_result(&self.progress));
-            rows = rows.child(Self::history_row(profile, result, compact, cx));
-        }
-        if !self.progress.is_empty() && self.chain.is_none() && self.capture == Capture::None {
-            rows = rows.child(self.progress_panel(cx));
-        }
-        card = card.child(orbit::scroll_fade(
-            div()
-                .id("showcase-history")
-                .flex_1()
-                .min_h_0()
-                .overflow_y_scroll()
-                .child(rows),
-            cx.global::<orbit::design::Tokens>().colors.neo_bottom,
-        ));
-        card
-    }
-
     fn editor_rail(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
         let Some(draft) = &self.profile_draft else {
             return Vec::new();
@@ -1663,19 +1511,12 @@ impl Launcher {
                 cx,
             ))
         };
-        let history = self.showcase_history(true, cx);
         let all_apps = orbit::ghost_button("rail-all-apps", "Ver todas", cx).on_click(cx.listener(
             |this, _, _, cx| {
                 this.page = LauncherPage::Manage;
                 cx.notify();
             },
         ));
-        let all_history = orbit::ghost_button("rail-all-history", "Ver todo", cx).on_click(
-            cx.listener(|this, _, _, cx| {
-                this.page = LauncherPage::History;
-                cx.notify();
-            }),
-        );
         let mut sections = vec![
             orbit::RailSection::new("Tus aplicaciones", "gamepad", apps).action(all_apps),
             orbit::RailSection::new(
@@ -1688,11 +1529,20 @@ impl Launcher {
                 options,
             ),
         ];
-        if self.page != LauncherPage::History {
+        if !self.progress.is_empty() && self.chain.is_none() && self.capture == Capture::None {
             sections.push(
-                orbit::RailSection::new("Últimas veces", "clock", history)
-                    .grow()
-                    .action(all_history),
+                orbit::RailSection::new(
+                    "Progreso de la cadena",
+                    "v-launch",
+                    orbit::scroll_fade(
+                        div()
+                            .id("chain-progress-scroll")
+                            .overflow_y_scroll()
+                            .child(self.progress_panel(cx)),
+                        cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+                    ),
+                )
+                .grow(),
             );
         }
         sections
@@ -1891,66 +1741,6 @@ mod tests {
     }
 
     #[test]
-    fn run_pills_require_a_terminal_result_and_keep_recovered_retries() {
-        use super::super::super::chain::Status;
-        let event = |status, success| Progress {
-            step: Some(0),
-            status,
-            pid: None,
-            message: String::new(),
-            success,
-            decision: None,
-        };
-        let cases = [
-            (vec![], None),
-            (vec![event(Status::Launching, false)], None),
-            (
-                vec![
-                    event(Status::Launching, false),
-                    event(Status::Ready, true),
-                    event(Status::Done, true),
-                ],
-                Some("Completado"),
-            ),
-            (
-                vec![
-                    event(Status::Launching, false),
-                    event(Status::Failed, false),
-                    event(Status::Launching, false),
-                    event(Status::Ready, true),
-                    event(Status::Done, true),
-                ],
-                Some("Completado con reintentos"),
-            ),
-            (
-                vec![
-                    event(Status::Waiting, false),
-                    event(Status::Ready, true),
-                    event(Status::Done, true),
-                ],
-                Some("Requirió confirmación"),
-            ),
-            (vec![event(Status::Cancelled, false)], Some("Cancelado")),
-            (vec![event(Status::Done, false)], Some("Falló")),
-        ];
-        for (events, expected) in cases {
-            assert_eq!(run_result(&events).map(|(label, _)| label), expected);
-        }
-        // Dos pasos normales no son un reintento de la misma aplicación.
-        let mut second = event(Status::Launching, false);
-        second.step = Some(1);
-        assert_eq!(
-            run_result(&[
-                event(Status::Launching, false),
-                second,
-                event(Status::Done, true)
-            ])
-            .map(|result| result.0),
-            Some("Completado")
-        );
-    }
-
-    #[test]
     fn dropdowns_preserve_custom_delay_and_other_policy_preferences() {
         let mut profile = Profile::new("p".into(), "Perfil".into());
         let delays = [0, 5, 17];
@@ -2041,25 +1831,6 @@ mod tests {
         assert!(!profile.launch_on_windows_startup);
         assert_eq!(profile.effective_policy().cancel, original_cancel);
         assert!(profile.steps.is_empty());
-    }
-    #[test]
-    fn history_orders_by_instant_across_offsets_and_pushes_unreadable_last() {
-        let mut recent = Profile::new("recent".into(), "Reciente".into());
-        recent.last_launched_at = Some("2026-07-07T17:42:00Z".into());
-        // 17:40Z: anterior al reciente aunque su texto con offset ordene después.
-        let mut earlier = Profile::new("earlier".into(), "Anterior".into());
-        earlier.last_launched_at = Some("2026-07-07T19:40:00+02:00".into());
-        let mut invalid = Profile::new("invalid".into(), "Ilegible".into());
-        invalid.last_launched_at = Some("no es una fecha".into());
-        let mut profiles = vec![&earlier, &invalid, &recent];
-        Launcher::sort_history(&mut profiles);
-        assert_eq!(
-            profiles
-                .iter()
-                .map(|profile| profile.id.as_str())
-                .collect::<Vec<_>>(),
-            ["recent", "earlier", "invalid"]
-        );
     }
     #[test]
     fn retry_is_shown_only_after_a_second_launch_event_and_ready_wins() {

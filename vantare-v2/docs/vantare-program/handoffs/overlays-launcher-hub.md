@@ -1,3 +1,67 @@
+## VANTA-136 · R12: pasos 0–7 listos para revisar (2026-11-05)
+
+[#1978](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1978),
+area:launcher / GitHub Project Vantare. Plane **Por revisar** tras cerrar esta
+tanda; CI remota e integración corresponden a Isaac. Sin merge del worker.
+
+0–1 [#1982](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1982)
+y 2–3 [#1988](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1988)
+integrados como ea26af909 y 9f44c2cd5. 4
+[#1989](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1989)
+integrado con squash 1c1fed7dc; fuente aa98e51c0 congelada.
+5 [#1990](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1990):
+58f76534dc2e0f6495b8a4d331f83c46320585ea, aceptado por Isaac y publicado;
+pendiente de integración a la última verificación. Su rebase pedido por Isaac conserva idénticos los diez parches de
+07d7bda1f; range-diff registrado, sin cambios de código.
+
+6–7 [#1992](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1992),
+rama vantareapp/isa-1978-paso6-protocolo, worktree propio
+D:/VantareServer/worktrees/isa-1978-paso6, base 58f76534dc2e0f6495b8a4d331f83c46320585ea (#1990),
+sobre nightly 1c1fed7dc.
+Código probado 35acea07f9af77c69d059f95ca621d8d0fb5d2e1. El commit final solo añade este handoff;
+el HEAD vigente se verifica en #1992.
+Árbol native probado: b726aa6a389bcb566ee0ec3ee560bfa300468dbb.
+El cierre documental conserva exactamente ese árbol, sin otro build.
+
+Las apps salen del Job y conservan sus handles propios. El trigger LMU se
+siembra al arrancar y las decisiones distinguen origen y rechazan IDs antiguos.
+Lectura, política, lanzabilidad y constructor comunes. Las acciones del buzón
+usan IDs estables; running y exclusión por documento impiden cadenas simultáneas.
+Hub y residente conservan dueños separados. El lock Windows se elimina por el
+SO al cerrar el handle, incluso tras panic o muerte del proceso. En Unix de
+desarrollo se conserva el archivo vacío por la identidad del lock.
+
+Se retiran Historial, Últimas veces y presentación sin lectores; el panel real
+de progreso y los reintentos permanecen. La demo conserva los tres datos que
+lee Inicio. Se conservan todos los campos serializados y launcher.json v1.
+Las 18 capturas de los escritores reales siguen idénticas: SHA256
+987f5a47ffd19da41a2cdae8ac53df1c39229ceac44673f3f76e780911ce44fb.
+El buzón status v2/answer-v2 exige la misma generación de Hub y residente;
+la incompatibilidad temporal durante la actualización consta en knownLimitations.
+
+Caracterización previa por paso: fallos reproducidos antes de producción.
+Última review: Inicio 1 RED válido y lock 3 RED; después, 12 controles de Inicio
+más concurrencia y 7 controles de borrado/exclusión verdes. La decisión residente
+al terminar la cadena se protege con
+finished_hub_chain_keeps_the_resident_decision_and_its_drawer.
+Final: fmt/check/Clippy PASS; 1439/1439 suite y telemetría PASS, 13 exclusiones existentes; lifecycle 25/25 PASS.
+Cinco tests lentos y el aviso LEAK previo de ready_marker; salida global 0.
+No se añadieron ignores, excepciones ni plazos. Fallos y cancelaciones previos
+se conservan y no se atribuyen al HEAD final.
+Compilar.ps1, dos jobs, solo crates tocados y fixtures oficiales; QA exclusiva
+en D:/VantareServer/qa. Targets propios retirados y cola cedida.
+
+R12 completo, sumando solo sus cinco capas: **−310 líneas físicas
+netas de producción**; tests y docs separados en los PRs y #1978. No se cuentan
+cambios ajenos de nightly. Evidencia D:/VantareServer/evidence/isa-1978,
+con logs fallidos, cancelaciones por review, rangos Git y recibos de limpieza.
+No se probaron juegos/OBS reales ni Linux/macOS; pruebas Windows con procesos
+propios y ventanas headless. Sin release, despliegue, dependencias nuevas,
+subagentes ni cambios de registro, accesos directos o instalaciones reales.
+
+Paso 8/D1 **fuera** hasta coordinación R1/R2 y aviso previo. D3, Hub cliente de
+un único dueño, aplazado tras R2 paso 4. No iniciar ninguno con esta entrega.
+
 ## VANTA-130 · 8A integrado en nightly (3-nov-2026)
 
 Rama vantareapp/isa-1869-paso8-compatibilidad; worktree

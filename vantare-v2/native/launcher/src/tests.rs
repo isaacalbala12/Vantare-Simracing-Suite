@@ -208,14 +208,9 @@ fn steam_common_detects_non_game_catalog_apps_and_shortcuts_never_override_manua
         found.app("obs").expect("OBS").executable.as_ref(),
         Some(&obs)
     );
-    assert_eq!(found.app("obs").expect("OBS").source, "Steam");
     assert_eq!(
         found.app("spotify").expect("Spotify").executable.as_ref(),
         Some(&shortcut_target)
-    );
-    assert_eq!(
-        found.app("spotify").expect("Spotify").source,
-        "acceso directo"
     );
     let mut overridden = document;
     overridden
@@ -290,7 +285,13 @@ fn actual_lnk_is_read_without_modification_or_execution() {
             ..Default::default()
         },
     );
-    assert_eq!(found.app("obs").expect("app").source, "acceso directo");
+    let actual = found.app("obs").expect("app");
+    assert!(actual.availability.launchable);
+    let executable = actual.executable.as_ref().expect("resolved app");
+    assert_eq!(
+        fs::canonicalize(executable).unwrap(),
+        fs::canonicalize(&target).unwrap()
+    );
     assert!(shortcuts::resolve(&[PathBuf::from(r"\\server\share\OBS.lnk")]).is_err());
 }
 
@@ -447,7 +448,7 @@ fn discovery_reads_real_known_registry_and_steam_trees_and_keeps_evidence_distin
         Some(game.clone())
     );
     let motec = &discovered.app("motec").expect("MoTeC").availability;
-    assert!(motec.catalogued && motec.found && !motec.installed && !motec.launchable);
+    assert!(motec.found && !motec.installed && !motec.launchable);
     fs::remove_file(game).expect("desaparece el ejecutable del juego");
     let discovered = Discovery::scan(
         &Document::default().apps,
@@ -459,7 +460,7 @@ fn discovery_reads_real_known_registry_and_steam_trees_and_keeps_evidence_distin
     let lmu = &discovered.app("lmu").expect("LMU").availability;
     assert!(lmu.installed && lmu.found && !lmu.launchable);
     let spotify = &discovered.app("spotify").expect("Spotify").availability;
-    assert!(spotify.catalogued && !spotify.found && !spotify.installed && !spotify.launchable);
+    assert!(!spotify.found && !spotify.installed && !spotify.launchable);
 }
 
 #[test]
@@ -596,6 +597,7 @@ fn imported_profile_waits_for_review_before_any_child_process() {
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("chain");
     let event = chain
@@ -682,6 +684,7 @@ fn retry_policies_distinguish_failed_steps_whole_chain_and_ask() {
             move |_| found,
             std::sync::Arc::default(),
             None,
+            &tree.0.join("launcher.json"),
         )
         .expect("chain");
         let events = collect(&chain);
@@ -712,6 +715,7 @@ fn selected_retry_keeps_original_indices_and_does_not_repeat_ready_steps() {
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("chain");
     let events = collect(&initial);
@@ -725,8 +729,15 @@ fn selected_retry_keeps_original_indices_and_does_not_repeat_ready_steps() {
     profile.steps[1].args_override = Some(vec!["/d".into(), "/c".into(), "exit 0".into()]);
     let found = Discovery::scan(&document.apps, Sources::default());
     let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
-    let mut retried =
-        Chain::start(document, profile, move |_| found, shared, Some(selected)).expect("retry");
+    let mut retried = Chain::start(
+        document,
+        profile,
+        move |_| found,
+        shared,
+        Some(selected),
+        &tree.0.join("launcher.json"),
+    )
+    .expect("retry");
     let events = collect(&retried);
     retried.shutdown().expect("join");
     assert!(!events.iter().any(|e| e.step == Some(0)));
@@ -757,8 +768,15 @@ fn running_ask_rejects_stale_answers_and_never_grants_external_ownership() {
         .expect("external child");
     let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
     profile.policy = Some(policy::Policy::default());
-    let mut chain =
-        Chain::start(document, profile, move |_| found, shared.clone(), None).expect("chain");
+    let mut chain = Chain::start(
+        document,
+        profile,
+        move |_| found,
+        shared.clone(),
+        None,
+        &tree.0.join("launcher.json"),
+    )
+    .expect("chain");
     let mut decision = None;
     while decision.is_none() {
         decision = chain
@@ -819,6 +837,7 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
             move |_| found,
             std::sync::Arc::default(),
             None,
+            &tree.0.join("launcher.json"),
         )
         .expect("chain");
         loop {
@@ -858,8 +877,15 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
             ..Default::default()
         });
         let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
-        let mut chain =
-            Chain::start(document, profile, move |_| found, shared.clone(), None).expect("chain");
+        let mut chain = Chain::start(
+            document,
+            profile,
+            move |_| found,
+            shared.clone(),
+            None,
+            &tree.0.join("launcher.json"),
+        )
+        .expect("chain");
         while chain
             .progress
             .recv_timeout(Duration::from_secs(5))
@@ -936,8 +962,15 @@ fn restart_requires_original_child_handle_and_transfers_ownership_to_new_child()
         cancel: policy::Close::Started,
         ..Default::default()
     });
-    let mut chain = Chain::start(document, profile, move |_| found, shared.clone(), None)
-        .expect("restart chain");
+    let mut chain = Chain::start(
+        document,
+        profile,
+        move |_| found,
+        shared.clone(),
+        None,
+        &tree.0.join("launcher.json"),
+    )
+    .expect("restart chain");
     let launched = loop {
         let event = chain
             .progress
@@ -977,6 +1010,7 @@ fn chains_run_real_processes_and_report_nonzero_exit_and_spawn_failure() {
             move |_| found,
             std::sync::Arc::default(),
             None,
+            &tree.0.join("launcher.json"),
         )
         .expect("cadena");
         let events = collect(&chain);
@@ -1014,6 +1048,7 @@ fn chains_run_real_processes_and_report_nonzero_exit_and_spawn_failure() {
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("cadena");
     let events = collect(&chain);
@@ -1041,8 +1076,15 @@ fn cancellation_interrupts_delay_and_probe_without_starting_the_next_step() {
         let cleanup = ProcessCleanup(std::sync::Arc::new(std::sync::Mutex::new(
             processes::Processes::default(),
         )));
-        let mut chain = Chain::start(document, profile, move |_| found, cleanup.0.clone(), None)
-            .expect("cadena");
+        let mut chain = Chain::start(
+            document,
+            profile,
+            move |_| found,
+            cleanup.0.clone(),
+            None,
+            &tree.0.join("launcher.json"),
+        )
+        .expect("cadena");
         let pending = chain
             .progress
             .recv_timeout(Duration::from_secs(5))
@@ -1095,6 +1137,7 @@ fn continue_policy_executes_next_step_and_retry_budget_is_exact() {
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("cadena");
     let events = collect(&chain);
@@ -1127,6 +1170,7 @@ fn stop_policy_does_not_execute_later_steps_and_vanished_executable_is_reported(
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("cadena");
     let events = collect(&chain);
@@ -1149,6 +1193,7 @@ fn stop_policy_does_not_execute_later_steps_and_vanished_executable_is_reported(
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("cadena");
     let events = collect(&chain);
@@ -1183,6 +1228,7 @@ fn reuse_observes_a_real_existing_process_and_does_not_spawn_another() {
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     );
     let events = result.as_ref().map(collect);
     existing
@@ -1259,8 +1305,15 @@ fn separate_process_owners_cannot_restart_each_others_app() {
     let found = Discovery::scan(&document.apps, Sources::default());
     let processes = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
     let _cleanup = ProcessCleanup(processes.clone());
-    let chain = Chain::start(document, profile, move |_| found, processes.clone(), None)
-        .expect("fixture de caracterización Launcher");
+    let chain = Chain::start(
+        document,
+        profile,
+        move |_| found,
+        processes.clone(),
+        None,
+        &tree.0.join("launcher.json"),
+    )
+    .expect("fixture de caracterización Launcher");
     let events = collect(&chain);
     assert!(
         events
@@ -1324,6 +1377,7 @@ fn temporary_launch_does_not_consume_a_saved_profile_slot() {
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("un lanzamiento no crea un perfil guardado");
     assert!(collect(&chain).last().expect("fin").success);
@@ -1431,7 +1485,6 @@ fn editor_preserves_first_step_error_before_a_later_duplicate() {
     found.apps.push(discovery::Detected {
         id: "obs".into(),
         executable: None,
-        source: "fixture sin acceso al sistema",
         availability: discovery::Availability {
             launchable: true,
             ..Default::default()
@@ -1465,6 +1518,7 @@ fn continue_policy_still_runs_the_next_step_when_discovery_lacks_the_first_app()
         move |_| found,
         std::sync::Arc::default(),
         None,
+        &tree.0.join("launcher.json"),
     )
     .expect("la cadena conserva Continue");
     let events = collect(&chain);
@@ -1504,6 +1558,7 @@ fn cancellation_before_first_step_preserves_the_import_review_message() {
             },
             std::sync::Arc::default(),
             None,
+            &tree.0.join("launcher.json"),
         )
         .unwrap();
         observed
@@ -1530,3 +1585,5 @@ fn cancellation_before_first_step_preserves_the_import_review_message() {
         );
     }
 }
+#[path = "concurrency_tests.rs"]
+mod concurrency_tests;

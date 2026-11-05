@@ -10,7 +10,7 @@ conserva el hash y la ruta de confianza existentes. No depende de runtime
 ni ui. Sus pruebas de comportamiento existentes se ejecutan en el crate
 y en Hub; el lifecycle del supervisor verifica los procesos reales.
 
-`Chain::start(document, profile, found, processes, selected)` es el único
+`Chain::start(document, profile, found, processes, selected, settings)` es el único
 constructor. `selected: None` ejecuta todos los pasos; `Some(indices)` conserva
 los índices originales al reintentar. En Windows las apps siempre usan
 breakaway para sobrevivir al Job del Hub o del supervisor; las políticas de
@@ -21,6 +21,11 @@ El Hub entrega su foto con una función que la devuelve; el residente escanea
 allí las fuentes locales sin bloquear su bucle. `run` y `run_pass` gestionan
 la cancelación antes de lanzar el primer paso; el cierre recoge el worker.
 El scan conserva sus límites existentes de archivos y registro.
+
+`settings` identifica el documento compartido. Su lock de cadena es distinto del
+lock de guardado y vive solo mientras vive el worker: evita dos cadenas entre
+Hub/residente sin impedir editar perfiles. El SO lo libera si el dueño cae.
+Los registros de procesos siguen siendo propios; no cambia la autoridad de cierre.
 
 `Profile::missing_steps` comparte la comprobación de disponibilidad entre editor
 y presentación. Cada sitio conserva su comprobación de perfil vacío y su mensaje.
@@ -58,3 +63,13 @@ ya importados sigue marcándolos como imported y sus duplicados conservan esa
 procedencia; no se cambia el flujo de confianza o las políticas de ejecución.
 Eliminar el campo rompería documentos existentes con deny_unknown_fields.
 Retirar el importador no retira los perfiles ni la copia histórica guardada.
+
+El constructor `Chain::start` recibe también `settings: &Path` y crea
+`settings.with_extension("chain-lock")` antes de arrancar el worker. El handle
+mantiene la exclusión durante toda la cadena. En Windows se abre sin compartir
+con DELETE_ON_CLOSE: el SO elimina el archivo al cerrarse el handle, incluso
+tras una caída del proceso. OPEN_REPARSE_POINT evita seguir un enlace al limpiar.
+En Unix de desarrollo se conserva el archivo vacío para evitar la carrera entre
+un archivo anterior abierto y otro recreado; el SO libera el lock al cerrar.
+En ambos casos el archivo no guarda estado. El lock de guardado es distinto,
+por lo que el perfil sigue editable durante la cadena.

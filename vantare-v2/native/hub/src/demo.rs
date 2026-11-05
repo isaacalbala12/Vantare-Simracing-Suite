@@ -328,7 +328,6 @@ impl DemoData {
                     | "launcher-reposo"
                     | "launcher-lanzando"
                     | "launcher-aplicaciones"
-                    | "launcher-historial"
                     | "launcher-editor"
                     | "launcher-listo"
                     | "launcher-cancelado"
@@ -561,7 +560,6 @@ impl CaptureState {
                 "launcher-reposo"
                     | "launcher-lanzando"
                     | "launcher-aplicaciones"
-                    | "launcher-historial"
                     | "launcher-editor"
                     | "launcher-listo"
                     | "launcher-cancelado"
@@ -592,7 +590,6 @@ impl CaptureState {
             | "launcher-reposo"
             | "launcher-lanzando"
             | "launcher-aplicaciones"
-            | "launcher-historial"
             | "launcher-editor"
             | "launcher-listo"
             | "launcher-cancelado"
@@ -684,6 +681,14 @@ impl CaptureState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retired_launcher_history_has_no_capture_target_but_profiles_and_apps_remain() {
+        for name in ["launcher-reposo", "launcher-aplicaciones"] {
+            assert!(CaptureState::parse(name).is_ok(), "escena activa: {name}");
+        }
+        assert!(CaptureState::parse("launcher-historial").is_err());
+    }
 
     #[test]
     fn home_capture_states_are_explicit_and_empty_scenes_have_no_profiles() {

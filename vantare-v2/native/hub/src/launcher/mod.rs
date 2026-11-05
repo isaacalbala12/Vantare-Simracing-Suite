@@ -66,9 +66,7 @@ pub fn demo_discovery(data: &crate::demo::DemoData) -> discovery::Discovery {
             .map(|app| discovery::Detected {
                 id: app.id.clone(),
                 executable: None,
-                source: "fixture demo Wails",
                 availability: discovery::Availability {
-                    catalogued: true,
                     found: app.found,
                     installed: app.installed,
                     launchable: false,

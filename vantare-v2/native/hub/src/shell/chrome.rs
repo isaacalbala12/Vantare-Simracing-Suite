@@ -663,7 +663,7 @@ impl Hub {
             // Perfiles reales: se lanzan desde la columna (isa-1430 launcher-usabilidad).
             profiles = profiles.child(
                 self.launcher
-                    .update(cx, |launcher, cx| launcher.quick_profiles("", cx)),
+                    .update(cx, |launcher, cx| launcher.context_profiles("", cx)),
             );
         }
         div().flex().flex_col().child(heading).child(profiles)

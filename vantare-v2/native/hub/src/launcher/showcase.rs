@@ -2137,3 +2137,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "policy_bytes_tests.rs"]
+mod policy_bytes_tests;

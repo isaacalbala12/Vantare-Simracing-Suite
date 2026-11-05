@@ -912,6 +912,28 @@ mod trust_tests {
         std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]
+    fn loading_a_legacy_policy_keeps_the_reviewed_content_hash() {
+        let mut document = Document::default();
+        let mut profile = Profile::new("legacy".into(), "Revisado".into());
+        profile.imported = true;
+        profile.max_retries = 2;
+        profile.first_step_delay = 17;
+        document.profiles.push(profile);
+        let discovery = Discovery::default();
+        let before = review_content(&document, &document.profiles[0], &discovery)
+            .unwrap()
+            .0;
+        let loaded = Document::from_bytes(&serde_json::to_vec_pretty(&document).unwrap()).unwrap();
+        let after = review_content(&loaded, &loaded.profiles[0], &discovery)
+            .unwrap()
+            .0;
+        assert_eq!(
+            before, after,
+            "cargar no modifica las instrucciones ya revisadas"
+        );
+    }
+
+    #[test]
     fn reviewed_content_changes_with_profile_arguments_and_resolved_paths() {
         let mut document = Document::default();
         let mut profile = Profile::new("imported".into(), "Perfil externo".into());

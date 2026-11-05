@@ -1144,7 +1144,7 @@ mod tests {
     use super::*;
     use vantare_ipc::launcher::{Registration, Status};
 
-    fn with_decision_window(
+    pub(super) fn with_decision_window(
         test: impl FnOnce(gpui::WindowHandle<Launcher>, &mut gpui::HeadlessAppContext) + 'static,
     ) {
         gpui_platform::headless().run(move |app| {

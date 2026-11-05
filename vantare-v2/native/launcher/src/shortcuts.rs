@@ -322,7 +322,7 @@ mod trust_tests {
         use std::os::windows::process::CommandExt;
         let root = PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("Windows"))
             .join(format!("shortcut-real-{}", std::process::id()));
-        let outside = PathBuf::from(format!(r"C:\tmp\shortcut-outside-{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("shortcut-outside-{}", std::process::id()));
         fs::create_dir_all(root.join("shared")).expect("shared");
         fs::create_dir_all(&outside).expect("outside");
         let shared_link = root.join("shared/obs.lnk");

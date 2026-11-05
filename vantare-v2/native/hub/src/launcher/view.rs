@@ -1289,7 +1289,7 @@ mod tests {
                 document,
                 profile,
                 Found::Snapshot(Discovery::default()),
-                Default::default(),
+                std::sync::Arc::default(),
                 None,
             )
             .unwrap();

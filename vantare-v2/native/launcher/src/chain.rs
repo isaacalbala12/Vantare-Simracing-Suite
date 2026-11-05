@@ -609,6 +609,7 @@ fn review_content(
     content.launch_count = 0;
     content.last_launched_at = None;
     content.avg_chain_duration_ms = 0;
+    content.restore_legacy_policy();
     let bytes = serde_json::to_vec(&(content, commands, &discovery.steam_executable))
         .map_err(|e| format!("Revisar perfil: {e}"))?;
     Ok((vantare_services::content_hash(&bytes), message))

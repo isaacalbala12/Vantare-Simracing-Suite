@@ -154,6 +154,10 @@ pub struct Profile {
     pub avg_chain_duration_ms: u64,
     #[serde(default)]
     pub policy: Option<policy::Policy>,
+    /// Representación original nula; sólo para conservar bytes al guardar o revisar.
+    #[serde(skip)]
+    #[doc(hidden)]
+    pub policy_was_implicit: bool,
 }
 
 impl Profile {
@@ -177,6 +181,7 @@ impl Profile {
             last_launched_at: None,
             avg_chain_duration_ms: 0,
             policy: None,
+            policy_was_implicit: false,
         }
     }
 }
@@ -185,6 +190,7 @@ impl Profile {
     #[must_use]
     pub fn duplicate(&self, id: String) -> Self {
         let mut profile = self.clone();
+        profile.restore_legacy_policy();
         profile.id = id;
         profile.name = format!("{} (copia)", self.name);
         profile.favorite = false;
@@ -276,6 +282,12 @@ pub fn validate_args(args: &[String]) -> Result<(), String> {
 }
 
 impl Document {
+    fn normalize_policies(&mut self) {
+        for profile in &mut self.profiles {
+            profile.normalize_policy();
+        }
+    }
+
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, files::Error> {
         let value: serde_json::Value = serde_json::from_slice(bytes)
             .map_err(|error| files::Error::InvalidInput(format!("Launcher inválido: {error}")))?;
@@ -296,6 +308,7 @@ impl Document {
                     .any(|old| old["id"].as_str() == Some(profile.id.as_str()));
             }
         }
+        document.normalize_policies();
         Ok(document)
     }
 
@@ -443,8 +456,9 @@ pub struct Store {
 
 impl Store {
     /// Documento de demostración en memoria, sin leer ni escribir archivos.
-    pub fn in_memory(path: PathBuf, document: Document) -> Result<Self, String> {
+    pub fn in_memory(path: PathBuf, mut document: Document) -> Result<Self, String> {
         document.validate()?;
+        document.normalize_policies();
         Ok(Self {
             warning: None,
             document,
@@ -481,8 +495,11 @@ impl Store {
     }
 
     /// Confirmar en memoria solo después de escritura, sync y reemplazo atómicos.
-    pub fn replace(&mut self, document: Document) -> Result<(), files::Error> {
+    pub fn replace(&mut self, mut document: Document) -> Result<(), files::Error> {
         document.validate()?;
+        for profile in &mut document.profiles {
+            profile.restore_legacy_policy();
+        }
         let bytes = serde_json::to_vec_pretty(&document)
             .map_err(|e| format!("serializar Launcher: {e}"))?;
         files::save_with_limit(
@@ -491,6 +508,7 @@ impl Store {
             self.saved.as_deref(),
             files::MAX_DOCUMENT,
         )?;
+        document.normalize_policies();
         self.document = document;
         self.saved = Some(bytes);
         Ok(())

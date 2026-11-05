@@ -96,11 +96,7 @@ fn set_option(
         }
         _ => return Err(invalid()),
     }
-    profile.first_step_delay = policy.first_step_delay;
-    profile.max_retries = policy.max_retries;
-    profile.reuse_running = policy.already_running == Running::Reuse;
-    profile.continue_on_error = policy.failure == Failure::Continue;
-    profile.policy = Some(policy);
+    profile.set_policy(policy, LegacyFields::All);
     Ok(())
 }
 
@@ -210,7 +206,6 @@ fn toggle_quick(profile: &mut Profile, option: usize) {
         0 => {
             policy.max_retries = if policy.max_retries == 0 { 2 } else { 0 };
             policy.retry = super::super::policy::Retry::Failed;
-            profile.max_retries = policy.max_retries;
         }
         1 => {
             policy.exit = if policy.exit == Close::Started {
@@ -222,7 +217,7 @@ fn toggle_quick(profile: &mut Profile, option: usize) {
         2 => profile.launch_on_windows_startup = !profile.launch_on_windows_startup,
         _ => return,
     }
-    profile.policy = Some(policy);
+    profile.set_policy(policy, LegacyFields::Changed);
 }
 
 fn launch_block_reason(

@@ -1338,3 +1338,32 @@ fn step9_saved_archive_and_profile_provenance_survive_save_and_reopen() {
     assert!(loaded.document.profiles[0].imported);
     assert_eq!(loaded.document.profiles[0].notes, "Mi nota actual");
 }
+
+#[test]
+fn legacy_policy_normalizes_without_rewriting_untouched_bytes_or_duplicate_shape() {
+    let tree = Tree::new();
+    let mut profile = Profile::new("legacy".into(), "Antiguo".into());
+    profile.first_step_delay = 17;
+    profile.max_retries = 2;
+    profile.continue_on_error = true;
+    let document = Document {
+        profiles: vec![profile],
+        ..Document::default()
+    };
+    let bytes = serde_json::to_vec_pretty(&document).unwrap();
+    let path = tree.file("launcher.json", &bytes);
+    let mut store = Store::load(path.clone()).unwrap();
+    assert!(store.document.profiles[0].policy.is_some());
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+    let duplicate = store.document.profiles[0].duplicate("copy".into());
+    assert!(duplicate.policy.is_none());
+    assert_eq!(duplicate.effective_policy().first_step_delay, 17);
+    assert_eq!(duplicate.effective_policy().max_retries, 2);
+    store.replace(store.document.clone()).unwrap();
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+    assert!(store.document.profiles[0].policy.is_some());
+    let memory_path = tree.0.join("never-written.json");
+    let memory = Store::in_memory(memory_path.clone(), document).unwrap();
+    assert!(memory.document.profiles[0].policy.is_some());
+    assert!(!memory_path.exists());
+}

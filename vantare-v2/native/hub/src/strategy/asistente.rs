@@ -513,6 +513,7 @@ impl Strategy {
         } else {
             "Sin simulador seleccionado"
         };
+        #[cfg(feature = "parity-capture")]
         let category = if self.fields[Field::Class].trim().is_empty() {
             "Sin categoría seleccionada".to_owned()
         } else {
@@ -524,6 +525,7 @@ impl Strategy {
                     .map(|car| format!("{} · {car}", self.fields[Field::Class]))
             )
         };
+        #[cfg(feature = "parity-capture")]
         let circuit = if self.fields[Field::Track].trim().is_empty() {
             "Sin circuito seleccionado".to_owned()
         } else {

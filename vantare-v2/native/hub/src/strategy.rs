@@ -27,20 +27,18 @@ use vantare_strategy::{
 
 // Only the selected expression exists after cfg expansion.
 macro_rules! capture {
-    ($normal:expr, $capture:expr) => {{
+    ($normal:expr, $capture:expr) => { capture!($normal => $capture.unwrap_or_else(|| $normal)) };
+    ($normal:expr => $capture:expr) => {{
         #[cfg(feature = "parity-capture")]
         {
-            $capture.unwrap_or_else(|| $normal)
+            $capture
         }
         #[cfg(not(feature = "parity-capture"))]
         {
             $normal
         }
     }};
-    ($capture:block) => {
-        #[cfg(feature = "parity-capture")]
-        $capture
-    };
+    ($capture:block) => { capture!(() => $capture) };
 }
 
 #[path = "strategy/asistente.rs"]

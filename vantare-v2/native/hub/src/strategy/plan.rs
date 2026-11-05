@@ -714,23 +714,22 @@ cálculo",
                             .as_ref()
                             .is_some_and(|outcome| outcome.result.feasible),
                         |actions| {
-                            actions.child(
+                            let button =
                                 primary_action("strategy-accept-plan", "Aceptar propuesta", cx)
                                     .h(px(40.0))
                                     .w(px(140.0))
-                                    .rounded(px(14.0))
-                                    .when(
-                                        capture!(true, Some(self.view_data.accept.is_none())),
+                                    .rounded(px(14.0));
+                            actions.child(capture!(button.opacity(orbit::DISABLED) =>
+                                    button.when(
+                                        self.view_data.accept.is_none(),
                                         |button| button.opacity(orbit::DISABLED),
                                     )
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        capture!({
-                                            if let Some(action) = this.view_data.accept {
-                                                action(this, cx);
-                                            }
-                                        });
-                                    })),
-                            )
+                                        if let Some(action) = this.view_data.accept {
+                                            action(this, cx);
+                                        }
+                                    }))
+                            ))
                         },
                     ),
             )

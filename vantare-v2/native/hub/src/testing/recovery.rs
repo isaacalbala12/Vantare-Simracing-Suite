@@ -125,12 +125,48 @@ impl Recovery {
 
 #[cfg(test)]
 mod tests {
+    use super::super::{
+        diagnostic::Module,
+        store::{Draft as LocalDraft, Store as LocalStore},
+    };
     use super::*;
     fn directory(name: &str) -> PathBuf {
         let path =
             std::env::temp_dir().join(format!("hub-report-recovery-{}-{name}", std::process::id()));
         fs::create_dir_all(&path).expect("directorio propio");
         path
+    }
+    #[test]
+    fn characterization_two_plaintext_drafts_are_independent() {
+        let path = directory("two-legacy-drafts");
+        let mut editor = Recovery::load(&path).expect("editor draft");
+        editor
+            .save(Fields {
+                action_text: "editor text".into(),
+                ..empty_fields()
+            })
+            .expect("save editor");
+        let mut local = LocalStore::new(&path);
+        local.draft = LocalDraft {
+            schema_version: 1,
+            module: Module::Workshop,
+            fields: [
+                "local text".into(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ],
+        };
+        local.save().expect("save local");
+        assert_eq!(
+            Recovery::load(&path).expect("editor").fields.action_text,
+            "editor text"
+        );
+        local.reload().expect("local");
+        assert_eq!(local.draft.fields[0], "local text");
+        assert!(path.join("testing-center/editor-draft.json").exists());
+        assert!(path.join("testing-center/report-draft.json").exists());
+        fs::remove_dir_all(path).expect("clean fixture");
     }
     #[test]
     fn incomplete_private_text_survives_an_offline_close_and_reopen_without_consent() {

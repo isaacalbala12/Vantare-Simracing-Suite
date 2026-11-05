@@ -1268,6 +1268,47 @@ mod tests {
     }
 
     #[test]
+    fn demo_profiles_preserve_the_statistics_consumed_by_home() {
+        with_decision_window(|window, cx| {
+            let mut demo = crate::demo::DemoData::load().expect("demo real de Inicio");
+            assert!(demo.launcher.profiles.len() >= 2);
+            for (sample, launches) in demo.launcher.profiles.iter_mut().zip(17_u64..) {
+                sample.launch_count = launches;
+                sample.last_launched_at = Some("2026-11-05T12:34:00Z".into());
+                sample.avg_chain_duration_ms = 42_000;
+            }
+            // La copia también es necesaria si no hay progreso de ejemplo.
+            demo.launcher.profiles[0].last_ready_steps = None;
+            window
+                .update(cx, |launcher, window, cx| {
+                    let store = super::super::demo_store(launcher.store.path.clone(), &demo)
+                        .expect("perfiles de la demo");
+                    *launcher = Launcher::new_demo(store, &demo, false, window, cx);
+                    for sample in &demo.launcher.profiles {
+                        let profile = launcher
+                            .saved_profiles()
+                            .iter()
+                            .find(|profile| profile.id == sample.id)
+                            .expect("mismo perfil que leen home_recent y la tarjeta de Inicio");
+                        assert_eq!(
+                            (
+                                profile.launch_count,
+                                profile.last_launched_at.as_deref(),
+                                profile.avg_chain_duration_ms
+                            ),
+                            (
+                                sample.launch_count,
+                                sample.last_launched_at.as_deref(),
+                                sample.avg_chain_duration_ms
+                            )
+                        );
+                    }
+                })
+                .expect("constructor real de la demo en la ventana del Hub");
+        });
+    }
+
+    #[test]
     fn finished_hub_chain_keeps_the_resident_decision_and_its_drawer() {
         with_decision_window(|window, cx| {
             let settings = window

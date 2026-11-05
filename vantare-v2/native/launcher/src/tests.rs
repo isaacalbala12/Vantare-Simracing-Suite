@@ -1516,3 +1516,52 @@ fn continue_policy_still_runs_the_next_step_when_discovery_lacks_the_first_app()
     );
     assert!(!events.last().expect("resultado terminal").success);
 }
+
+#[cfg(windows)]
+#[test]
+fn cancellation_before_first_step_preserves_the_import_review_message() {
+    let tree = Tree::new();
+    for imported in [false, true] {
+        let (document, mut profile, _) = process_fixture(&tree, 0);
+        profile.imported = imported;
+        profile.id = format!(
+            "cancel-before-step-{}",
+            vantare_services::random_id().unwrap()
+        );
+        let (entered, observed) = std::sync::mpsc::channel();
+        let (release, held) = std::sync::mpsc::channel();
+        let mut chain = Chain::start(
+            document,
+            profile,
+            Found::BlockedScan {
+                entered,
+                release: held,
+            },
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        observed
+            .recv_timeout(Duration::from_secs(5))
+            .expect("scanner retenido");
+        chain.prepare_shutdown();
+        release.send(()).unwrap();
+        let events = collect(&chain);
+        chain.shutdown().unwrap();
+        assert!(
+            events
+                .iter()
+                .all(|event| event.pid.is_none() && event.status != Status::Launching)
+        );
+        let end = events.last().expect("cancelación observable");
+        assert_eq!(end.status, Status::Cancelled);
+        assert_eq!(
+            end.message,
+            if imported {
+                "Lanzamiento cancelado; no se abrió ninguna aplicación"
+            } else {
+                "Cadena cancelada"
+            }
+        );
+    }
+}

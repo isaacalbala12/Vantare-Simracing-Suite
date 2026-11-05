@@ -3,20 +3,9 @@
 use std::io;
 use std::sync::mpsc::{Receiver, SyncSender, TrySendError, sync_channel};
 
-use super::{LapBlock, Series};
+use super::{LapBlock, MAX_CHUNK_SAMPLES, Series, SeriesChunk};
 
-pub const MAX_CHUNK_SAMPLES: usize = 64;
 pub const MAX_QUEUED_CHUNKS: usize = 256;
-
-/// El bloque v1 contiene solo esta porción de la vuelta, a partir de `offset`.
-/// `index` identifica intentos, incluidos los perdidos; no es un ACK durable.
-#[derive(Debug, PartialEq)]
-pub struct SeriesChunk {
-    pub index: u64,
-    pub lost_before: u64,
-    pub offset: usize,
-    pub block: LapBlock,
-}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PublicationStatus {

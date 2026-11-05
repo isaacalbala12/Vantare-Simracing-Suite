@@ -28,6 +28,8 @@ pub mod files;
 pub mod paths;
 /// Identidad de producto compartida por todos los binarios.
 pub mod product;
+/// Codec y análisis puros de series, independientes del DTO de fotos.
+pub mod series;
 /// DTO del proceso de servicios, sin HTTP ni credenciales.
 pub mod services_protocol;
 

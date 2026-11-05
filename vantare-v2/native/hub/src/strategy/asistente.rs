@@ -507,7 +507,6 @@ impl Strategy {
         } else {
             "Sin simulador seleccionado"
         };
-        #[cfg(feature = "parity-capture")]
         let category = if self.fields[Field::Class].trim().is_empty() {
             "Sin categoría seleccionada".to_owned()
         } else {
@@ -519,7 +518,6 @@ impl Strategy {
                     .map(|car| format!("{} · {car}", self.fields[Field::Class]))
             )
         };
-        #[cfg(feature = "parity-capture")]
         let circuit = if self.fields[Field::Track].trim().is_empty() {
             "Sin circuito seleccionado".to_owned()
         } else {
@@ -673,7 +671,7 @@ impl Strategy {
                 .line_height(px(18.0)),
             )
             .child(capture!(
-                { self.labeled_input("Nombre de la carrera", Field::Name, 220.0, cx) },
+                self.labeled_input("Nombre de la carrera", Field::Name, 220.0, cx),
                 self.view_data.text_control.map(|render| {
                     div()
                         .flex()
@@ -732,7 +730,7 @@ impl Strategy {
                     )
                     .child(
                         (capture!(
-                            { self.labeled_input(distance_label, distance_field, 205.0, cx) },
+                            self.labeled_input(distance_label, distance_field, 205.0, cx),
                             self.view_data.rule_row.map(|render| {
                                 render(distance_label, &self.fields[distance_field], cx)
                             })

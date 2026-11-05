@@ -1141,6 +1141,116 @@ fn lmu_trigger_uses_rising_edges_and_can_be_disabled() {
     assert!(trigger.observe(true, true));
 }
 
+#[test]
+#[ignore = "P5: first observation currently launches when LMU is already open"]
+fn lmu_trigger_seeds_first_observation_without_launching() {
+    let mut trigger = LmuTrigger::default();
+    assert!(!trigger.observe(true, true));
+    assert!(!trigger.observe(true, true));
+    assert!(!trigger.observe(true, false));
+    assert!(trigger.observe(true, true));
+}
+
+#[test]
+fn launcher_action_labels_round_trip_without_collisions() {
+    use chain::Action;
+    let actions = [
+        Action::Trust,
+        Action::Reuse,
+        Action::Restart,
+        Action::Cancel,
+        Action::Stop,
+        Action::Continue,
+        Action::Leave,
+        Action::CloseStarted,
+    ];
+    for action in actions {
+        let matches: Vec<_> = actions
+            .into_iter()
+            .filter(|candidate| candidate.label() == action.label())
+            .collect();
+        assert_eq!(matches, [action]);
+        let request = vantare_ipc::launcher::Request::Answer {
+            decision: 42,
+            action: action.label().into(),
+        };
+        let bytes = serde_json::to_vec(&request).expect("fixture de caracterización Launcher");
+        let parsed: vantare_ipc::launcher::Request =
+            serde_json::from_slice(&bytes).expect("fixture de caracterización Launcher");
+        let vantare_ipc::launcher::Request::Answer {
+            decision,
+            action: label,
+        } = parsed
+        else {
+            panic!("answer")
+        };
+        assert_eq!(decision, 42);
+        assert_eq!(label, action.label());
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn separate_process_owners_cannot_restart_each_others_app() {
+    let tree = Tree::new();
+    let (mut document, profile, _) = process_fixture(&tree, 0);
+    document
+        .apps
+        .last_mut()
+        .expect("fixture de caracterización Launcher")
+        .args = vec![
+        "/d".into(),
+        "/c".into(),
+        "for /l %i in (1,1,20000000) do @rem".into(),
+    ];
+    let executable = document
+        .apps
+        .last()
+        .expect("fixture de caracterización Launcher")
+        .executable
+        .as_ref()
+        .expect("fixture de caracterización Launcher")
+        .clone();
+    let found = Discovery::scan(&document.apps, Sources::default());
+    let processes = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
+    let _cleanup = ProcessCleanup(processes.clone());
+    let chain = Chain::start_with_processes(document, profile, found, processes.clone())
+        .expect("fixture de caracterización Launcher");
+    let events = collect(&chain);
+    assert!(
+        events
+            .last()
+            .expect("fixture de caracterización Launcher")
+            .success
+    );
+    let pid = events
+        .iter()
+        .find_map(|event| event.pid)
+        .expect("fixture de caracterización Launcher");
+    let mut other = processes::Processes::default();
+    assert!(other.restart(&executable, &[pid]).is_err());
+    assert!(
+        processes
+            .lock()
+            .expect("fixture de caracterización Launcher")
+            .status(pid)
+            .expect("fixture de caracterización Launcher")
+            .is_none()
+    );
+    processes
+        .lock()
+        .expect("fixture de caracterización Launcher")
+        .restart(&executable, &[pid])
+        .expect("fixture de caracterización Launcher");
+    assert!(
+        !processes
+            .lock()
+            .expect("fixture de caracterización Launcher")
+            .has_profile("test")
+            .expect("fixture de caracterización Launcher")
+    );
+}
+
 #[cfg(windows)]
 #[test]
 fn network_paths_are_rejected_without_accessing_a_share() {

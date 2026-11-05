@@ -483,6 +483,56 @@ mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
 
+    #[test]
+    fn future_launcher_document_is_rejected_without_rewriting_it() {
+        let dir = std::env::temp_dir().join(format!(
+            "r12-future-{}",
+            vantare_services::random_id().expect("documento aislado del residente")
+        ));
+        fs::create_dir(&dir).expect("documento aislado del residente");
+        let path = dir.join("launcher.json");
+        let document = Document {
+            version: 2,
+            ..Document::default()
+        };
+        let bytes = serde_json::to_vec_pretty(&document).expect("documento aislado del residente");
+        fs::write(&path, &bytes).expect("documento aislado del residente");
+        let mut owner = Owner::new(path.clone(), false);
+        owner.reload();
+        assert!(owner.status.error.is_some());
+        assert!(owner.document.profiles.is_empty());
+        assert_eq!(
+            fs::read(&path).expect("documento aislado del residente"),
+            bytes
+        );
+        fs::remove_dir_all(dir).expect("documento aislado del residente");
+    }
+
+    #[test]
+    #[ignore = "P9: resident does not restore saved wails_import provenance"]
+    fn resident_restores_archived_import_provenance_without_rewriting() {
+        let dir = std::env::temp_dir().join(format!(
+            "r12-origin-{}",
+            vantare_services::random_id().expect("documento aislado del residente")
+        ));
+        fs::create_dir(&dir).expect("documento aislado del residente");
+        let path = dir.join("launcher.json");
+        let mut value =
+            serde_json::to_value(Document::default()).expect("documento aislado del residente");
+        value["profiles"] =
+            serde_json::json!([launcher::Profile::new("legacy".into(), "Importado".into())]);
+        value["wails_import"] = serde_json::json!({"source":"D:/VantareServer/qa/archive.json", "launcher":{"launcherProfiles":[{"id":"legacy"}]}});
+        let bytes = serde_json::to_vec_pretty(&value).expect("documento aislado del residente");
+        fs::write(&path, &bytes).expect("documento aislado del residente");
+        let mut owner = Owner::new(path.clone(), false);
+        owner.reload();
+        let imported = owner.document.profiles[0].imported;
+        let unchanged = fs::read(&path).expect("documento aislado del residente") == bytes;
+        fs::remove_dir_all(dir).expect("documento aislado del residente");
+        assert!(unchanged);
+        assert!(imported);
+    }
+
     struct ReleaseWorker(mpsc::Sender<()>);
     impl Drop for ReleaseWorker {
         fn drop(&mut self) {

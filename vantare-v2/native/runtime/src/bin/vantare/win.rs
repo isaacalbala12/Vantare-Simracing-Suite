@@ -238,3 +238,212 @@ pub(super) fn process_finished(handle: &OwnedHandle) -> bool {
         Ok(Some(_))
     )
 }
+
+#[cfg(test)]
+mod launcher_job_tests {
+    use super::*;
+    use std::io::{BufRead, Write};
+    use std::process::{Command, Stdio};
+    use std::sync::{Arc, Mutex, mpsc};
+    use vantare_launcher::{
+        Document, Profile, Step,
+        chain::Chain,
+        discovery::{Discovery, Sources},
+        processes::Processes,
+    };
+
+    #[test]
+    fn app_waits_for_its_test_owner() {
+        if std::env::var_os("VANTARE_R12_JOB_ROOT").is_some() {
+            // Watchdog only: the owner normally terminates this isolated app by its retained handle.
+            std::thread::park_timeout(Duration::from_secs(60));
+        }
+    }
+
+    #[test]
+    fn chain_helper() {
+        let Some(root) = std::env::var_os("VANTARE_R12_JOB_ROOT") else {
+            return;
+        };
+        let root = std::path::PathBuf::from(root);
+        let mut line = String::new();
+        std::io::stdin()
+            .read_line(&mut line)
+            .expect("operación aislada del arnés Job");
+        assert_eq!(line.trim(), "start"); // Parent has assigned this process to its Job.
+        let executable = root.join("app.exe");
+        std::fs::copy(
+            std::env::current_exe().expect("operación aislada del arnés Job"),
+            &executable,
+        )
+        .expect("operación aislada del arnés Job");
+        let mut document = Document::default();
+        let app_id = document
+            .add_app("QA".into(), executable)
+            .expect("operación aislada del arnés Job");
+        document
+            .apps
+            .last_mut()
+            .expect("operación aislada del arnés Job")
+            .args = vec![
+            "--exact".into(),
+            "win::launcher_job_tests::app_waits_for_its_test_owner".into(),
+            "--nocapture".into(),
+        ];
+        let mut profile = Profile::new("qa".into(), "QA".into());
+        profile.steps.push(Step {
+            app_id,
+            delay_seconds: 0,
+            args_override: None,
+        });
+        let found = Discovery::scan(&document.apps, Sources::default());
+        let processes = Arc::new(Mutex::new(Processes::default()));
+        let chain = if std::env::var_os("VANTARE_R12_DETACHED").is_some() {
+            Chain::start_detached(document, profile, found, processes.clone())
+        } else {
+            Chain::start_selected(document, profile, found, processes.clone(), vec![0])
+        }
+        .expect("operación aislada del arnés Job");
+        let mut pid = None;
+        loop {
+            let event = chain
+                .progress
+                .recv_timeout(Duration::from_secs(15))
+                .expect("operación aislada del arnés Job");
+            pid = event.pid.or(pid);
+            if event.status == vantare_launcher::chain::Status::Done {
+                assert!(event.success, "{}", event.message);
+                break;
+            }
+        }
+        println!("APP_PID={}", pid.expect("operación aislada del arnés Job"));
+        std::io::stdout()
+            .flush()
+            .expect("operación aislada del arnés Job");
+        line.clear();
+        let _read = std::io::stdin().read_line(&mut line);
+        processes
+            .lock()
+            .expect("operación aislada del arnés Job")
+            .close_profile("qa")
+            .expect("operación aislada del arnés Job");
+    }
+
+    #[test]
+    fn selected_chain_dies_with_job_but_detached_chain_survives() {
+        for detached in [false, true] {
+            assert_eq!(survives_job_close(detached), detached);
+        }
+    }
+
+    #[test]
+    #[ignore = "P1: Hub start_selected inherits KILL_ON_JOB_CLOSE"]
+    fn hub_selected_chain_survives_job_close() {
+        assert!(survives_job_close(false));
+    }
+
+    fn survives_job_close(detached: bool) -> bool {
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess,
+        };
+        struct App(OwnedHandle);
+        impl Drop for App {
+            fn drop(&mut self) {
+                // SAFETY: retained handle belongs exclusively to the app created by this test.
+                unsafe {
+                    TerminateProcess(self.0.as_raw_handle(), 1);
+                }
+                wait_any(&[self.0.as_raw_handle()], Some(Duration::from_secs(10)))
+                    .expect("operación aislada del arnés Job");
+            }
+        }
+        let root = std::env::temp_dir().join(format!(
+            "r12-job-{}",
+            vantare_services::random_id().expect("operación aislada del arnés Job")
+        ));
+        std::fs::create_dir(&root).expect("operación aislada del arnés Job");
+        // SAFETY: unnamed Job, zeroed SDK structure with its exact size; no real session is touched.
+        let job = owned(unsafe { CreateJobObjectW(null(), null()) })
+            .expect("operación aislada del arnés Job");
+        // SAFETY: this SDK structure permits zero initialization.
+        let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { zeroed() };
+        limits.BasicLimitInformation.LimitFlags =
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_BREAKAWAY_OK;
+        // SAFETY: live Job and SDK buffer, valid for this call.
+        assert_ne!(
+            unsafe {
+                SetInformationJobObject(
+                    job.as_raw_handle(),
+                    JobObjectExtendedLimitInformation,
+                    (&raw const limits).cast(),
+                    u32::try_from(size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>())
+                        .expect("operación aislada del arnés Job"),
+                )
+            },
+            0
+        );
+        let mut command =
+            Command::new(std::env::current_exe().expect("operación aislada del arnés Job"));
+        command
+            .args([
+                "--exact",
+                "win::launcher_job_tests::chain_helper",
+                "--nocapture",
+            ])
+            .env("VANTARE_R12_JOB_ROOT", &root)
+            .env_remove("VANTARE_R12_DETACHED")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit());
+        if detached {
+            command.env("VANTARE_R12_DETACHED", "1");
+        }
+        let mut helper = command.spawn().expect("operación aislada del arnés Job");
+        // SAFETY: both handles are live and owned by this test; helper waits for the start handshake.
+        assert_ne!(
+            unsafe { AssignProcessToJobObject(job.as_raw_handle(), helper.as_raw_handle()) },
+            0
+        );
+        helper
+            .stdin
+            .as_mut()
+            .expect("operación aislada del arnés Job")
+            .write_all(b"start\n")
+            .expect("operación aislada del arnés Job");
+        let stdout = helper
+            .stdout
+            .take()
+            .expect("operación aislada del arnés Job");
+        let (send, receive) = mpsc::channel();
+        let reader = std::thread::spawn(move || {
+            for line in std::io::BufReader::new(stdout).lines() {
+                let line = line.expect("operación aislada del arnés Job");
+                if let Some((_, pid)) = line.split_once("APP_PID=") {
+                    send.send(pid.parse::<u32>().expect("operación aislada del arnés Job"))
+                        .expect("operación aislada del arnés Job");
+                    return;
+                }
+            }
+        });
+        let pid = receive
+            .recv_timeout(Duration::from_secs(30))
+            .expect("operación aislada del arnés Job");
+        reader.join().expect("operación aislada del arnés Job");
+        // SAFETY: PID was published by our isolated helper; retain identity before closing the Job.
+        let app =
+            App(
+                owned(unsafe { OpenProcess(PROCESS_SYNCHRONIZE | PROCESS_TERMINATE, 0, pid) })
+                    .expect("operación aislada del arnés Job"),
+            );
+        assert!(!process_finished(&app.0));
+        drop(job);
+        helper.wait().expect("operación aislada del arnés Job");
+        // Timed wait observes OS termination after Job closure; no scheduling sleep or PID re-open.
+        let survived = wait_any(&[app.0.as_raw_handle()], Some(Duration::from_secs(1)))
+            .expect("operación aislada del arnés Job")
+            .is_none();
+        drop(app);
+        std::fs::remove_dir_all(root).expect("operación aislada del arnés Job");
+        survived
+    }
+}

@@ -680,20 +680,34 @@ mod tests {
             owner.status.decision.is_none(),
             "descartar debe cancelar esta decisión aunque Cancel no sea un botón"
         );
+        let mut cancelled = false;
         loop {
-            let progress = owner
+            let result = owner
                 .chain
                 .as_ref()
                 .expect("cadena")
                 .progress
-                .recv_timeout(Duration::from_secs(5))
-                .expect("cancelación observable");
-            assert_ne!(progress.step, Some(1), "no lanzar el siguiente paso");
-            if progress.status == launcher::chain::Status::Done {
-                assert!(!progress.success);
-                break;
+                .recv_timeout(Duration::from_secs(5));
+            match result {
+                Ok(progress) => {
+                    assert_ne!(progress.step, Some(1), "no lanzar el siguiente paso");
+                    if progress.step.is_none()
+                        && progress.status == launcher::chain::Status::Cancelled
+                    {
+                        assert!(!progress.success);
+                        cancelled = true;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    panic!("el worker debe terminar al cancelar")
+                }
             }
         }
+        assert!(
+            cancelled,
+            "evento terminal Cancelled antes del cierre del canal"
+        );
         owner
             .chain
             .take()

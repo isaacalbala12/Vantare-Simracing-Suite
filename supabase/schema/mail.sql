@@ -381,7 +381,6 @@ begin
    where d.id=(p_params->>'delivery_id')::uuid and campaign.state='sending'));
  end if;
  if p_action='mail_list' then
-  perform public.mail_erasure_expire();
   select coalesce(jsonb_agg(to_jsonb(f)),'[]') into failures from (
    select id,attempts,last_http_status,outcome as reason,failed_at from private.mail_contact_erasures
    where state='failed' order by failed_at,id limit 20

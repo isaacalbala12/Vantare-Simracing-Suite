@@ -12,6 +12,11 @@ use url::Url;
 const MAX_TIMESTAMP_CHARS: usize = 40;
 /// Presupuesto del documento.
 const MAX_DOCUMENT_BYTES: usize = 40_000;
+/// Presupuesto del conjunto publicado. `protocol::write` rechaza lo que supere
+/// `MAX_FRAME`, y ese rechazo deja el servicio en FAILURE con la cache ya
+/// escrita: reiniciar no lo cura, hay que borrar el fichero a mano.
+const MAX_PUBLICATION_BYTES: usize = 56 * 1024;
+const _: () = assert!(MAX_PUBLICATION_BYTES < crate::protocol::MAX_FRAME);
 
 fn valid_version(value: &str) -> bool {
     let value = value.strip_prefix('v').unwrap_or(value);
@@ -97,6 +102,14 @@ fn validate(publication: &Publication) -> Result<()> {
         .map_err(|_| Error::Protocol)?
         .len()
         > MAX_DOCUMENT_BYTES
+    {
+        return Err(Error::TooLarge);
+    }
+    // La cota del conjunto protege el frame IPC si se añaden campos futuros.
+    if serde_json::to_vec(publication)
+        .map_err(|_| Error::Protocol)?
+        .len()
+        > MAX_PUBLICATION_BYTES
     {
         return Err(Error::TooLarge);
     }
@@ -441,7 +454,7 @@ mod tests {
         assert!(validate(&publication).is_err(), "la cota debe rechazarlo");
     }
 
-    /// Con un documento pequeño, este caso aísla la cota del timestamp.
+    /// El conjunto queda por debajo de su cota; solo la del timestamp rechaza.
     #[test]
     fn the_timestamp_cap_is_what_rejects_a_long_fraction_on_a_small_document() {
         let mut publication: Publication = serde_json::from_value(serde_json::json!({
@@ -455,6 +468,13 @@ mod tests {
             chrono::DateTime::parse_from_rfc3339(&publication.published_at).is_ok(),
             "chrono acepta la fraccion larga"
         );
+        let conjunto = serde_json::to_vec(&Cached {
+            version: 1,
+            publication: publication.clone(),
+            fetched_at: 0,
+        })
+        .expect("serializar");
+        assert!(conjunto.len() < MAX_PUBLICATION_BYTES);
         assert!(
             validate(&publication).is_err(),
             "solo la cota del timestamp puede rechazar este caso"

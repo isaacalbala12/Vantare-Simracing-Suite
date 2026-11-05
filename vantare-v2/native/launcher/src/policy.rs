@@ -47,6 +47,14 @@ pub struct Policy {
 }
 
 impl super::Profile {
+    pub fn set_policy(&mut self, policy: Policy) {
+        self.first_step_delay = policy.first_step_delay;
+        self.max_retries = policy.max_retries;
+        self.reuse_running = policy.already_running == Running::Reuse;
+        self.continue_on_error = policy.failure == Failure::Continue;
+        self.policy = Some(policy);
+    }
+
     pub fn effective_policy(&self) -> Policy {
         self.policy.clone().unwrap_or(Policy {
             already_running: if self.reuse_running {

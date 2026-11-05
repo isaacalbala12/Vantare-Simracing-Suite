@@ -96,11 +96,7 @@ fn set_option(
         }
         _ => return Err(invalid()),
     }
-    profile.first_step_delay = policy.first_step_delay;
-    profile.max_retries = policy.max_retries;
-    profile.reuse_running = policy.already_running == Running::Reuse;
-    profile.continue_on_error = policy.failure == Failure::Continue;
-    profile.policy = Some(policy);
+    profile.set_policy(policy);
     Ok(())
 }
 
@@ -2137,3 +2133,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "policy_bytes_tests.rs"]
+mod policy_bytes_tests;

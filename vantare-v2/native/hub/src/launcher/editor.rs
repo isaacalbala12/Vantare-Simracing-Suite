@@ -838,10 +838,10 @@ impl Launcher {
             profile.advanced = draft.tabs.read(cx).state.selected == Some(1);
             profile.hotkey.clone_from(&draft.hotkey.read(cx).value);
             profile.launch_on_windows_startup = draft.autostart.read(cx).checked;
-            profile.first_step_delay = seconds(&draft.first_delay, cx);
-            profile.max_retries = u8::try_from(seconds(&draft.retries, cx))
-                .map_err(|error| format!("reintentos inválidos: {error}"))?;
             let mut policy = profile.effective_policy();
+            policy.first_step_delay = seconds(&draft.first_delay, cx);
+            policy.max_retries = u8::try_from(seconds(&draft.retries, cx))
+                .map_err(|error| format!("reintentos inválidos: {error}"))?;
             policy.failure = match draft.failure.read(cx).state.selected {
                 Some(1) => Failure::Stop,
                 Some(2) => Failure::Continue,
@@ -859,11 +859,7 @@ impl Launcher {
                 Some(2) => super::super::policy::Retry::All,
                 _ => super::super::policy::Retry::Ask,
             };
-            policy.first_step_delay = profile.first_step_delay;
-            policy.max_retries = profile.max_retries;
-            profile.continue_on_error = policy.failure == Failure::Continue;
-            profile.reuse_running = policy.already_running == Running::Reuse;
-            profile.policy = Some(policy);
+            profile.set_policy(policy);
             profile.steps = draft
                 .steps
                 .iter()

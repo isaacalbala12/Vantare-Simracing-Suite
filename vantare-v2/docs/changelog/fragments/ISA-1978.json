@@ -8,16 +8,19 @@
     "Se conservan los handles propios y las políticas de cierre del perfil.",
     "La primera observación del trigger LMU establece su estado sin lanzar el perfil.",
     "El descarte distingue cadena, residente y salida; mantiene el ID de la decisión y rechaza cancelaciones antiguas.",
-    "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo."
+    "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo.",
+    "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",
     "Repetir con Cerrar solo las iniciadas: la aplicación propia debe cerrarse.",
     "Verificar que el primer estado LMU abierto no dispara el trigger y que el flanco cerrado-abierto posterior sí lo hace.",
     "Descartar una decisión residente debe escribir una sola respuesta, conservar su ID y no reabrir el drawer al sondear.",
-    "Verificar bytes originales intactos al leer un documento futuro o uno con procedencia Wails guardada."
+    "Verificar bytes originales intactos al leer un documento futuro o uno con procedencia Wails guardada.",
+    "Comparar los bytes de los tres escritores reales con sus 18 capturas anteriores: seis combinaciones por escritor, incluido un perfil antiguo sin editar."
   ],
   "knownLimitations": [
-    "La política única, la lanzabilidad, el protocolo tipado y la retirada del historial corresponden a los pasos 4–7 pendientes de VANTA-136."
+    "Si LMU ya estaba abierto al arrancar el Hub, el trigger no lanza el perfil. Es el comportamiento intencionado de P5.",
+    "La lanzabilidad, el protocolo tipado y la retirada del historial corresponden a los pasos 5-7 pendientes de VANTA-136."
   ]
 }

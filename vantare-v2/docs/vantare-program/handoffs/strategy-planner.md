@@ -1,51 +1,54 @@
 # Handoff vivo — Strategy Planner
 
-Estado de la base indicada; releer la issue antes de ejecutar.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/strategy-planner.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+Estado del cierre de VANTA-135 / R9. Releer [#1977](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1977) antes de continuar. El seguimiento de la tarea vive en Plane, proyecto VANTA; GitHub y Project Vantare conservan código, ramas, PR y evidencia.
 
-## 1. Resultado
+## Resultado y canal real
 
-Documento único, preparación manual/asistida con procedencia y cálculo determinista con presupuestos explícitos. Strategy live mínimo está pospuesto tras beta (#1484); un plan factible no demuestra precisión ni optimalidad global.
+Strategy conserva un solo recorrido de preparación manual, con `ManualEvent` en el crate y un solo destino habitual, `strategy-v2.json`. El Hub no traduce ediciones a punteros JSON; conserva lecturas de solo lectura para presentar el documento. El solver, sus presupuestos y la cancelación no cambian.
 
-## 2. Autoridad y lectura verificada
+Isaac integró en nightly los pasos 0, 1, 3, 4 y 5: [#1983](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1983), [#1984](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1984), [#1985](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1985) y [#1987](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1987). Sus ramas quedaron congeladas. Base de la última entrega: `ad94ff022e001b3bca98ca502edf80162503ab6a`.
 
-Leídos [#1459](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1459) y [#1458](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1458) con rondas/fallos, [#1484](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1484) y [Strategy/README](../../../native/strategy/README.md). GitHub/Project Vantare contiene prioridades; [ADR 0006](../../adr/0006-strategy-planner-unified-domain-and-ownership.md) conserva ownership y [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md) el stack. #1561 registra/relee el cambio documental.
+Los pasos 6 y 7 se entregan en el PR draft [#1991](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1991), rama `vantareapp/isa-1977-paso6-7-manual`. Código validado: `b7fc63aa20d90f20d4d37697a24e6948fd8255e8`; el commit posterior de cierre solo actualiza este handoff.. El estado de integración y CI se consulta en el PR; entrega para revisión no significa merge, promoción ni release. El worker no fusionó, publicó ni desplegó.
 
-## 3. Estado real y canal
+## Decisiones vigentes
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. La base contiene solver nativo con semilla y tests; el antiguo «no entrega incumbent» de #1458 no describe todos los casos actuales. #1458 sigue abierta por calidad/estabilidad de búsqueda, #1459 por precisión. No ejecutar SDD Go/TS desde estados ISA-831/STR-09 antiguos.
+- Automático, correcciones heredadas, Datos y Revisiones retirados. Recuperar Automático depende de Análisis nativo, VANTA-133 / #1974 y [#1980](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1980).
+- `import_last_draft` lee v1/v2 y verifica el hash completo. Solo se consulta si falta el documento principal; si este existe, prevalece incluso sobre un borrador antiguo más reciente. `strategy-repository.json` queda intacto, sin escritura ni borrado.
+- Apertura mediante cuarentena común y guardado de bytes observados. Archivo dañado: documento vacío con aviso y copia durable; versiones futuras, conflictos y fallos de archivo siguen protegidos. Documentos 2.0/2.1 conservan procedencia, campos desconocidos y bytes no editados, incluida proyección importada que el formulario no calcula.
+- `captura.rs`, `ViewData`, `PlanData` y los DTO/callbacks de presentación solo se incluyen con `parity-capture`. La construcción distribuida conserva los controles reales. Una sola lista macro genera los 28 campos y sus accesos; un test fija el orden de las entidades.
+- Las referencias de pestañas retiradas son históricas. Los 471 archivos fijados, el manifiesto, el catálogo y la fixture de revisión permanecen intactos. Solo se añadieron referencias de inicio/sesiones fuera del manifiesto; las demás siguen vigentes.
+- Se conservaron `solve_v2`, usado por `search_budget`, y los escenarios. Solver extendido, corpus, manifiestos y `ui/src/fuel_strategy` intactos. Paso 8 excluido.
 
-## 4. Decisiones cerradas
+## Validación de la entrega
 
-- Documentos `strategy.v2`, esquemas 2.0.0/2.1.0; migración explícita sin inventar reglas.
-- Fuel/VE, formación, neumáticos, pilotos, clima y reglas mantienen unidades, calidad/procedencia y límites separados.
-- Revisión exacta y correcciones no destructivas; una selección no se sustituye por una fuente más reciente.
-- `proven`/`no_solution` se refieren al ámbito/discretización del certificado. Agotar presupuesto puede devolver incumbent con `not_proven`; cancelación/input inválido no publica plan.
-- Engineer propone, piloto acepta; LLM redacta, no resuelve. No solver paralelo ni imputación sintética de datos ausentes.
+Fmt, check y Clippy `-D warnings`, all-targets de Hub y Strategy, PASS; Nextest completo 699/699 PASS, cuatro lentos y cuatro omitidos heredados. La corrección posterior solo hace público el módulo QA bajo su feature; la proyección normal coincide byte a byte. Build `parity-capture` y sus dos tests PASS. Las 13 capturas nuevas de este código son idénticas en RGBA a la base nativa d019fb3d7: cero píxeles distintos, 1672×941 dark. Retirement 471 y quality-check PASS. Clippy adicional con la feature mantiene FAIL por los 17 diagnósticos heredados de #1648, sin avisos nuevos ni supresiones. Los gates normales finales se registran también sobre el HEAD del cierre en el PR.
 
-## 5. Arquitectura y ownership
+Caracterización antes de cambiar: seis handlers y nueve tests contrastados con la versión aceptada; los cambios de índices a `Field` son mecánicos y mantienen las aserciones. Auditoría independiente de entrada, evidencia, guardas y presupuesto PASS. Se buscaron consumidores de los benchmarks #1458/#1459 antes de retirar APIs.
 
-[Crate Strategy](../../../native/strategy/README.md) posee documento/repositorio/solver, sin runtime/GPUI. [Hub Strategy](../../../native/hub/src/strategy.rs) presenta edición/cálculo; consultas y guardado síncronos fuera de render/adquisición. Analysis posee histórico y no recibe ownership del solver. La generación del repositorio no es exclusión entre escritores independientes.
+Evidencia reproducible en `D:\VantareServer\evidence\isa-1977\`: logs, recibos de capturas, comparación RGBA, auditoría de alcance y contadores. La primera tanda que mostraba Próximamente está marcada inválida y no se usa como evidencia. Los targets propios se limpiaron al cerrar sus entregas; no se compartieron ni copiaron caches a evidencia.
 
-## 6. Evidencia y límites
+## Balance de todo R9
 
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. #1459 ronda 4: 50 sesiones originales, 232 replays y tests de procedencia; precisión estricta 2/4 planificadas, cobertura 4/7. La hipótesis capacity-ve no tiene holdout independiente posterior a seleccionarla. #1458 conserva witness/entradas selladas y comparación 112; semilla nativa con deadline acotado (≤200 ms) no garantiza incumbent en todo input. Evidencia `C:/tmp/isa-1459-evidence/round4/` y `C:/tmp/isa-1458-evidence/round2/`, registrada, no repetida aquí.
+Producción distribuida: **−4.041 líneas**. Producción física total: **−3.128**; tests: **−116**; documentación: **+106**; fixtures de texto: **0**. El balance incluye este único cierre documental. Detalle por PR y bases en `r9-balance-final.json`.
 
-## 7. Riesgos y deuda
+Las cifras suman los diffs propios de los PR frente a sus bases, sin incluir cambios ajenos de nightly. La producción distribuida cuenta líneas de fuente incluidas en Windows release sin tests ni `parity-capture`, con la misma proyección de cfg/helper en ambos lados y las macros contadas completas; no mide tamaño binario. La producción física cuenta también todo Rust de captura. Tests y documentación se miden aparte. Dos PNG nuevos: 298.196 bytes, separados de las líneas.
 
-- P1: carga/formato previos no certificados, consumo/ritmo transferidos y selección de hipótesis (#1459).
-- P2: incumbent inferior Fuji, explosión de frontera y estabilidad bajo carga (#1458). Fallo Fuji23h con candidate_budget_exhausted y repetición PASS se conservan; causa no demostrada.
-- No interpretar `not_proven` como inviabilidad ni aumentar presupuestos como arreglo.
-- Datos de entrenamiento/calibración no sustituyen holdout ni carrera real con predicción sellada.
+## Pendiente y siguiente acción
 
-## 8. Issues terminadas, activas y pendientes
+**7b requiere confirmación previa de Isaac y queda fuera de esta tanda cerrada.** `Hub::save` aún corta después de fallar Strategy y los errores de aplicación siguen sin el rework tipado del 7b. La caracterización real `49d7f2a43`, en el worktree aislado `D:\VantareServer\worktrees\isa-1977-paso7b`, reproduce el fallo esperado: Workshop no se guarda tras un conflicto de Strategy. No se corrigió producción ni se abrió PR de 7b.
 
-Activas abiertas: #1459 (banco/precisión), #1458 (búsqueda), #1484 (live tras beta). #1536/arreglos de integración cerrados en base. ISA-694, F0–F7b, T/STR y estados de revisiones antiguas permanecen por SHA, sin renumeración ni promoción inferida.
+Paso 9 aplazado: `seed.rs` conserva el límite de 200 ms incluso con `deadline=None`. Deuda conocida, no bloqueante para esta entrega. No relajar aserciones ni aumentar presupuestos como arreglo. Los tests 3 y 7 parciales y la ausencia del 6 en #1983 fueron aceptados por Isaac; no prueban equivalencia entre motores ni resuelven esa deuda.
 
-## 9. Siguiente acción exacta
+Isaac revisa #1991 e integra cuando corresponda; el worker espera confirmación antes de 7b. VANTA-135 pasa a Por revisar con este límite explícito. No hay promoción a testers/master, release ni despliegue autorizados por cerrar la tanda.
 
-#1459: obtener carga y condiciones previas certificadas, validar capacity-ve en holdout independiente y medir predicción sellada frente a carrera sin usar datos objetivo. #1458: reproducir el fallo de presupuesto bajo carga con la entrada exacta, medir tiempo a incumbent/calidad/frontera/memoria y preservar witness/contratos; no relajar aserciones. Ejecutar tests focales/oráculos y gates nativos en la rama de área. #1484 espera planificación posterior a beta.
+## Banco, precisión y live
 
-## 10. Última actualización
+[#1458](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1458), [#1459](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1459) y [#1484](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1484) siguen abiertos. R9 no cambia su alcance ni acredita precisión física: `proven`/`no_solution` se limitan al modelo y discretización certificados; `not_proven` no demuestra inviabilidad. El estratega mínimo live permanece después de la beta.
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+Se conserva la evidencia histórica de Fuji, fronteras, calibración y holdout: [handoff anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ad94ff022e001b3bca98ca502edf80162503ab6a/vantare-v2/docs/vantare-program/handoffs/strategy-planner.md) e [histórico por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/strategy-planner.md). No se repitieron esas mediciones en R9. El siguiente trabajo de precisión requiere condiciones previas certificadas, holdout independiente y predicción sellada; el de búsqueda debe preservar witness, límites de memoria y fallos bajo carga.
+
+## Ownership y última actualización
+
+[Strategy](../../../native/strategy/README.md) posee documento/importador/solver, sin runtime ni GPUI. [Hub Strategy](../../../native/hub/src/strategy/README.md) presenta controles, persistencia y ciclo cancelable. Análisis posee histórico; Engineer propone y el piloto acepta. No se inventan datos ausentes ni un solver paralelo.
+
+5 de noviembre de 2026 · VANTA-135 / GitHub #1977 · Codex. Una única actualización de este handoff al cerrar la tanda; detalle de cada entrega en las issues y PR.

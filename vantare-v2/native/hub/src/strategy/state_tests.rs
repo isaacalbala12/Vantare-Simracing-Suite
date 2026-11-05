@@ -6,13 +6,18 @@ struct R9Directory(PathBuf);
 impl R9Directory {
     fn new() -> Self {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-        let path = std::env::temp_dir().join(format!(
-            "vantare-r9-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir(&path).expect("fresh test directory");
-        Self(path)
+        loop {
+            let path = std::env::temp_dir().join(format!(
+                "vantare-r9-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            match std::fs::create_dir(&path) {
+                Ok(()) => return Self(path),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(error) => panic!("fresh test directory: {error}"),
+            }
+        }
     }
 }
 
@@ -52,8 +57,9 @@ fn r9_strategy_persist_rejects_pending_form_and_unsaved_new_document() {
 }
 
 fn with_strategy(name: &str, test: impl FnOnce(&mut Strategy, &mut Context<Strategy>) + 'static) {
-    let directory =
-        std::env::temp_dir().join(format!("vantare-1544-{name}-{}", std::process::id()));
+    let scope = R9Directory::new();
+    let directory = scope.0.join(name);
+    std::fs::create_dir(&directory).expect("isolated Strategy directory");
     gpui_platform::headless().run(move |cx| {
         orbit::theme::apply(
             orbit::theme::AppearanceSettings::default(),
@@ -85,28 +91,28 @@ fn editable_plan(this: &mut Strategy, cx: &mut Context<Strategy>) {
 #[test]
 fn isa1544_metadata_confirmation_preserves_edits_on_save_and_reload() {
     with_strategy("metadata", |this, cx| {
-        let mut fields = vec![String::new(); FIELDS.len()];
+        let mut fields = ManualEvent::default();
         for (index, value) in [
-            (0, "Carrera"),
-            (1, "120"),
-            (2, "90"),
-            (3, "60"),
-            (24, "2026-09-30T17:00:00+02:00"),
-            (25, "Equipo"),
-            (26, "Piloto"),
-            (27, "PI"),
+            (Field::Name, "Carrera"),
+            (Field::DurationMinutes, "120"),
+            (Field::FuelCapacityLiters, "90"),
+            (Field::PitTransitSeconds, "60"),
+            (Field::StartAt, "2026-09-30T17:00:00+02:00"),
+            (Field::Team, "Equipo"),
+            (Field::DriverName, "Piloto"),
+            (Field::DriverInitials, "PI"),
         ] {
             fields[index] = value.into();
         }
         let mut document = Document::empty("2026-09-30T00:00:00Z").expect("document");
-        append_manual_event(&mut document, &fields).expect("event");
+        fields.append(&mut document).expect("event");
         this.editor.document = Some(document);
         this.load_fields(cx);
         for (index, value) in [
-            (24, "2026-10-10T18:00:00Z"),
-            (25, "Equipo nuevo"),
-            (26, "Piloto nuevo"),
-            (27, "PN"),
+            (Field::StartAt, "2026-10-10T18:00:00Z"),
+            (Field::Team, "Equipo nuevo"),
+            (Field::DriverName, "Piloto nuevo"),
+            (Field::DriverInitials, "PN"),
         ] {
             this.fields[index] = value.into();
         }
@@ -243,7 +249,12 @@ fn r9_imported_projection_is_preserved_and_still_rejected_by_manual_calculation(
 #[test]
 fn r9_manual_wizard_creates_an_event_without_automatic_projection() {
     with_strategy("r9-manual-wizard", |this, cx| {
-        for (index, value) in ["Carrera", "120", "90", "60"].into_iter().enumerate() {
+        for (index, value) in [
+            (Field::Name, "Carrera"),
+            (Field::DurationMinutes, "120"),
+            (Field::FuelCapacityLiters, "90"),
+            (Field::PitTransitSeconds, "60"),
+        ] {
             this.fields[index] = value.into();
         }
         this.add_event(cx);
@@ -298,37 +309,48 @@ fn isa1544_optional_metadata_keeps_absence_and_invalid_date_is_atomic() {
     let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
     doc.append_event(&new_event("event", "Carrera", 120, 90.0, 60.0))
         .expect("event");
-    let mut fields = vec![String::new(); FIELDS.len()];
+    let mut fields = ManualEvent::default();
     for (index, value) in [
-        (0, "Carrera"),
-        (1, "120"),
-        (2, "90"),
-        (3, "60"),
-        (6, "Base"),
-        (8, "dry"),
+        (Field::Name, "Carrera"),
+        (Field::DurationMinutes, "120"),
+        (Field::FuelCapacityLiters, "90"),
+        (Field::PitTransitSeconds, "60"),
+        (Field::VariantName, "Base"),
+        (Field::VariantMode, "dry"),
     ] {
         fields[index] = value.into();
     }
     let original = doc.bytes().to_vec();
-    confirm_metadata(&mut doc, 0, 0, &fields).expect("empty optional fields");
+    fields
+        .confirm(&mut doc, 0, 0)
+        .expect("empty optional fields");
     assert_eq!(doc.bytes(), original);
-    fields[0] = "Nombre editado".into();
-    fields[24] = "2026-10-10 18:00".into();
-    fields[25] = "Equipo editado".into();
-    assert!(confirm_metadata(&mut doc, 0, 0, &fields).is_err());
+    fields[Field::Name] = "Nombre editado".into();
+    fields[Field::StartAt] = "2026-10-10 18:00".into();
+    fields[Field::Team] = "Equipo editado".into();
+    assert!(fields.confirm(&mut doc, 0, 0).is_err());
     assert_eq!(doc.bytes(), original);
-    fields[24] = "2026-10-10T18:00:00Z".into();
-    fields[26] = "Nuevo piloto".into();
-    fields[27] = "NP".into();
-    confirm_metadata(&mut doc, 0, 0, &fields).expect("insert optional metadata");
+    fields[Field::StartAt] = "2026-10-10T18:00:00Z".into();
+    fields[Field::DriverName] = "Nuevo piloto".into();
+    fields[Field::DriverInitials] = "NP".into();
+    fields
+        .confirm(&mut doc, 0, 0)
+        .expect("insert optional metadata");
     let event = &doc.value()["events"][0];
     assert_eq!(event["team"]["value"], "Equipo editado");
     assert_eq!(event["drivers"][0]["name"]["value"], "Nuevo piloto");
     assert_eq!(event["drivers"][0]["ini"]["value"], "NP");
-    for field in &mut fields[24..28] {
-        field.clear();
+    for field in [
+        Field::StartAt,
+        Field::Team,
+        Field::DriverName,
+        Field::DriverInitials,
+    ] {
+        fields[field].clear();
     }
-    confirm_metadata(&mut doc, 0, 0, &fields).expect("clear optional metadata");
+    fields
+        .confirm(&mut doc, 0, 0)
+        .expect("clear optional metadata");
     let event = &doc.value()["events"][0];
     assert!(event["startAt"]["value"].is_null());
     assert_eq!(event["team"]["value"], "");
@@ -398,6 +420,44 @@ fn r9_import_creates_the_primary_once_and_keeps_the_legacy_bytes() {
 }
 
 #[test]
+fn r9_save_as_failure_during_startup_import_preserves_pending_document_and_repository() {
+    let directory = R9Directory::new();
+    let repository = directory.0.join("strategy-repository.json");
+    std::fs::write(&repository, R9_NATIVE_REPOSITORY).expect("legacy source");
+    let imported = application::repository::import_last_draft(&directory.0)
+        .expect("verified import")
+        .expect("draft");
+    let path = directory.0.join("strategy-v2.json");
+    // The OS lock makes the real startup import fail at its first save_as.
+    let lock = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(directory.0.join("strategy-v2.json.lock"))
+        .expect("lock fixture");
+    lock.try_lock().expect("hold the destination lock");
+    let (mut editor, error) = open_editor(&directory.0);
+    assert!(error.is_some());
+    assert!(editor.path.is_none());
+    assert!(editor.saved.is_none());
+    assert!(editor.dirty());
+    assert_eq!(
+        editor.document.as_ref().expect("retained draft").bytes(),
+        imported
+    );
+    assert!(!path.exists());
+    assert_eq!(
+        std::fs::read(repository).expect("legacy source"),
+        R9_NATIVE_REPOSITORY
+    );
+    drop(lock);
+    editor
+        .save_as(path.clone())
+        .expect("retry the pending import");
+    assert_eq!(std::fs::read(path).expect("native destination"), imported);
+    assert!(!editor.dirty());
+}
+
+#[test]
 fn r9_bad_legacy_hash_never_creates_a_primary_or_rewrites_the_source() {
     let directory = R9Directory::new();
     let repository = directory.0.join("strategy-repository.json");
@@ -441,6 +501,23 @@ fn r9_damaged_primary_is_archived_exactly_before_normal_save_can_recover() {
     assert_eq!(std::fs::read(&path).expect("original until save"), damaged);
     let archive = directory.0.join("strategy-v2.json.invalid");
     assert_eq!(std::fs::read(&archive).expect("durable archive"), damaged);
+    let mut ui_editor = Editor::default();
+    ui_editor
+        .open(path.clone())
+        .expect("recovered through the open action");
+    let status = ui_editor.take_open_status();
+    assert!(status.starts_with("Se empezó un documento vacío."));
+    assert!(status.contains(archive.to_string_lossy().as_ref()));
+    assert!(
+        ui_editor.warning.is_none(),
+        "the warning is consumed by status"
+    );
+    assert!(
+        ui_editor.document.as_ref().expect("empty recovery").value()["events"]
+            .as_array()
+            .expect("events")
+            .is_empty()
+    );
     editor.save().expect("normal recovery save");
     assert!(!editor.dirty());
     let bytes = std::fs::read(&path).expect("saved default");

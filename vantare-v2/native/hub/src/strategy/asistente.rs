@@ -437,18 +437,18 @@ impl Strategy {
             )
     }
 
-    fn combination_event_options(&self, selected: bool, cx: &gpui::App) -> gpui::Div {
+    fn combination_event_options(
+        selected: bool,
+        cx: &gpui::App,
+        #[cfg(feature = "parity-capture")] view_data: &super::view_data::ViewData,
+    ) -> gpui::Div {
         div()
             .flex()
             .gap(px(12.0))
             .child(Self::combination_option_card(
                 "strategy-custom-event",
                 "Carrera personalizada",
-                if self.capture_demo().is_some() {
-                    "Elige tu combinación"
-                } else {
-                    "Elige coche, circuito y reglamento"
-                },
+                capture!("Elige coche, circuito y reglamento" => view_data.custom_description),
                 "i-ajustes",
                 selected,
                 cx,
@@ -456,18 +456,19 @@ impl Strategy {
             .child(Self::combination_option_card(
                 "strategy-calendar-event",
                 "Calendario de Vantare",
-                if self.capture_demo().is_some() {
-                    "Parte de un evento publicado"
-                } else {
-                    "Selección de eventos no disponible"
-                },
+                capture!("Selección de eventos no disponible" => view_data.calendar_description),
                 "i-carreras",
                 false,
                 cx,
             ))
     }
 
-    fn combination_summary(&self, circuit: String, category: String, cx: &gpui::App) -> gpui::Div {
+    fn combination_summary(
+        circuit: String,
+        category: String,
+        cx: &gpui::App,
+        #[cfg(feature = "parity-capture")] view_data: &super::view_data::ViewData,
+    ) -> gpui::Div {
         div()
             .flex()
             .flex_col()
@@ -496,35 +497,41 @@ impl Strategy {
                     .gap(px(18.0))
                     .flex_1()
                     .child(orbit::text(circuit, 22.0, 500, orbit::ink(cx), cx).w(px(175.0)))
-                    .when_some(self.capture_demo(), |row, demo| {
-                        row.child(
-                            orbit::text(demo.track_layout, 13.0, 400, orbit::ink_2(cx), cx)
-                                .w(px(113.0)),
-                        )
+                    .when_some(capture!(None::<&str> => view_data.layout), |row, layout| {
+                        row.child(orbit::text(layout, 13.0, 400, orbit::ink_2(cx), cx).w(px(113.0)))
                     })
                     .child(orbit::text(category, 13.0, 400, orbit::ink_2(cx), cx).flex_1()),
             )
     }
 
-    fn combination_choices(&self, cx: &gpui::App) -> gpui::Div {
-        let event_available = self.current_event().is_some();
-        let simulator = if event_available && self.demo_car.is_some() {
-            "Le Mans Ultimate"
+    fn combination_identity(&self, event_available: bool) -> (&'static str, String, String) {
+        let simulator = if event_available {
+            capture!("Sin simulador seleccionado", self.view_data.simulator)
         } else {
             "Sin simulador seleccionado"
         };
-        let category = if self.fields[5].trim().is_empty() {
+        let category = if self.fields[Field::Class].trim().is_empty() {
             "Sin categoría seleccionada".to_owned()
-        } else if let Some(car) = &self.demo_car {
-            format!("{} · {car}", self.fields[5])
         } else {
-            self.fields[5].clone()
+            capture!(
+                self.fields[Field::Class].clone(),
+                self.view_data
+                    .car
+                    .as_ref()
+                    .map(|car| format!("{} · {car}", self.fields[Field::Class]))
+            )
         };
-        let circuit = if self.fields[4].trim().is_empty() {
+        let circuit = if self.fields[Field::Track].trim().is_empty() {
             "Sin circuito seleccionado".to_owned()
         } else {
-            self.fields[4].clone()
+            self.fields[Field::Track].clone()
         };
+        (simulator, category, circuit)
+    }
+
+    fn combination_choices(&self, cx: &gpui::App) -> gpui::Div {
+        let event_available = self.current_event().is_some();
+        let (simulator, category, circuit) = self.combination_identity(event_available);
         let row = |label: &str, control: gpui::Div| {
             div()
                 .flex()
@@ -554,25 +561,36 @@ impl Strategy {
                 .child(orbit::text(simulator, 13.0, 600, orbit::ink(cx), cx)),
         );
         let category_control = surface()
-            .child(if self.demo_car.is_some() {
-                orbit::text(category.clone(), 13.0, 500, orbit::ink(cx), cx)
-            } else {
-                div().flex_1().child(self.inputs[5].clone())
-            })
+            .child(capture!(
+                {
+                    div()
+                        .flex_1()
+                        .child(self.inputs[Field::Class as usize].clone())
+                },
+                self.view_data
+                    .car
+                    .as_ref()
+                    .map(|_car| { orbit::text(category.clone(), 13.0, 500, orbit::ink(cx), cx) })
+            ))
             .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx).ml_auto());
         let circuit_control = surface()
-            .child(if let Some(demo) = self.capture_demo() {
-                orbit::text(
-                    format!("{circuit} · {}", demo.track_layout),
-                    13.0,
-                    500,
-                    orbit::ink(cx),
-                    cx,
-                )
-                .flex_1()
-            } else {
-                div().flex_1().child(self.inputs[4].clone())
-            })
+            .child(capture!(
+                {
+                    div()
+                        .flex_1()
+                        .child(self.inputs[Field::Track as usize].clone())
+                },
+                self.view_data.layout.map(|layout| {
+                    orbit::text(
+                        format!("{circuit} · {layout}"),
+                        13.0,
+                        500,
+                        orbit::ink(cx),
+                        cx,
+                    )
+                    .flex_1()
+                })
+            ))
             .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx));
         gpui::div()
             .flex()
@@ -580,7 +598,7 @@ impl Strategy {
             .gap(px(12.0))
             .max_w(px(720.0))
             .child(orbit::eyebrow("EVENTO", cx))
-            .child(self.combination_event_options(event_available, cx))
+            .child(capture!(Self::combination_event_options(event_available, cx) => Self::combination_event_options(event_available, cx, &self.view_data)))
             .child(
                 div()
                     .flex()
@@ -593,13 +611,17 @@ impl Strategy {
                     .child(row("Categoría / coche", category_control))
                     .child(row("Circuito / trazado", circuit_control)),
             )
-            .child(self.combination_summary(circuit, category, cx))
+            .child(capture!(Self::combination_summary(circuit, category, cx) => Self::combination_summary(circuit, category, cx, &self.view_data)))
     }
 
     #[allow(clippy::too_many_lines)] // Mantiene juntos los campos de un único paso del asistente.
     fn rules_fields(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let laps_selected = !self.fields[9].trim().is_empty();
-        let distance_field = if laps_selected { 9 } else { 1 };
+        let laps_selected = !self.fields[Field::RaceLaps].trim().is_empty();
+        let distance_field = if laps_selected {
+            Field::RaceLaps
+        } else {
+            Field::DurationMinutes
+        };
         let distance_unit = if laps_selected { "vueltas" } else { "minutos" };
         let distance_label = if laps_selected {
             "Distancia · vueltas"
@@ -610,9 +632,9 @@ impl Strategy {
             .flex()
             .gap(px(12.0))
             .p(px(18.0))
-            .child(self.field(3, cx).flex_1())
-            .child(self.field(16, cx).flex_1())
-            .child(self.field(24, cx).flex_1());
+            .child(self.field(Field::PitTransitSeconds, cx).flex_1())
+            .child(self.field(Field::RefuelRate, cx).flex_1())
+            .child(self.field(Field::StartAt, cx).flex_1());
         let advanced_section = div()
             .flex()
             .flex_col()
@@ -657,20 +679,21 @@ impl Strategy {
                 )
                 .line_height(px(18.0)),
             )
-            .child(if self.capture_demo().is_some() {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(14.0))
-                    .h(px(42.0))
-                    .child(
-                        orbit::text("Nombre de la carrera", 13.0, 400, orbit::ink_2(cx), cx)
-                            .w(px(220.0)),
-                    )
-                    .child(super::editor_view::demo_control(&self.fields[0], cx))
-            } else {
-                self.labeled_input("Nombre de la carrera", 0, 220.0, cx)
-            })
+            .child(capture!(
+                self.labeled_input("Nombre de la carrera", Field::Name, 220.0, cx),
+                self.view_data.text_control.map(|render| {
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(14.0))
+                        .h(px(42.0))
+                        .child(
+                            orbit::text("Nombre de la carrera", 13.0, 400, orbit::ink_2(cx), cx)
+                                .w(px(220.0)),
+                        )
+                        .child(render(&self.fields[Field::Name], cx))
+                })
+            ))
             .child(
                 div()
                     .flex()
@@ -715,11 +738,12 @@ impl Strategy {
                             ),
                     )
                     .child(
-                        (if self.capture_demo().is_some() {
-                            Self::demo_rule_row(distance_label, &self.fields[distance_field], cx)
-                        } else {
-                            self.labeled_input(distance_label, distance_field, 205.0, cx)
-                        })
+                        (capture!(
+                            self.labeled_input(distance_label, distance_field, 205.0, cx),
+                            self.view_data.rule_row.map(|render| {
+                                render(distance_label, &self.fields[distance_field], cx)
+                            })
+                        ))
                         .flex_1()
                         .h(px(64.0))
                         .p(px(12.0))
@@ -755,382 +779,76 @@ impl Strategy {
                                 cx,
                             )),
                     )
-                    .child(if let Some(demo) = self.capture_demo() {
-                        Self::demo_resource_fields(demo, cx)
-                    } else {
-                        div()
-                            .flex()
-                            .gap(px(18.0))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .justify_between()
-                                    .h(px(234.0))
-                                    .child(self.labeled_input(
-                                        "Capacidad de combustible · L",
-                                        2,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(self.labeled_input("Consumo Fuel · L/v", 11, 205.0, cx))
-                                    .child(self.labeled_input(
-                                        "Reserva final · vueltas",
-                                        22,
-                                        205.0,
-                                        cx,
-                                    ))
-                                    .child(div().h(px(44.0))),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .justify_between()
-                                    .h(px(234.0))
-                                    .child(self.labeled_input("Modo de variante", 8, 205.0, cx))
-                                    .child(self.labeled_input("Capacidad VE · %", 12, 205.0, cx))
-                                    .child(self.labeled_input("Consumo VE · %/v", 13, 205.0, cx))
-                                    .child(div().h(px(44.0))),
-                            )
-                    }),
+                    .child(capture!(
+                        {
+                            div()
+                                .flex()
+                                .gap(px(18.0))
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .flex_1()
+                                        .justify_between()
+                                        .h(px(234.0))
+                                        .child(self.labeled_input(
+                                            "Capacidad de combustible · L",
+                                            Field::FuelCapacityLiters,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Consumo Fuel · L/v",
+                                            Field::FuelPerLapLiters,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Reserva final · vueltas",
+                                            Field::ReserveLaps,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(div().h(px(44.0))),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .flex_1()
+                                        .justify_between()
+                                        .h(px(234.0))
+                                        .child(self.labeled_input(
+                                            "Modo de variante",
+                                            Field::VariantMode,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Capacidad VE · %",
+                                            Field::VeCapacityPercent,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(self.labeled_input(
+                                            "Consumo VE · %/v",
+                                            Field::VePerLapPercent,
+                                            205.0,
+                                            cx,
+                                        ))
+                                        .child(div().h(px(44.0))),
+                                )
+                        },
+                        self.view_data.resources.map(|render| { render(self, cx) })
+                    )),
             )
             .child(advanced_section)
-    }
-
-    fn demo_rule_row(label: &str, value: &(impl ToString + ?Sized), cx: &gpui::App) -> gpui::Div {
-        div()
-            .flex()
-            .items_center()
-            .gap(px(12.0))
-            .h(px(44.0))
-            .child(orbit::text(label.to_owned(), 13.0, 400, orbit::ink_2(cx), cx).w(px(205.0)))
-            .child(super::editor_view::demo_control(value, cx))
-    }
-
-    fn demo_resource_fields(demo: &super::editor_view::CaptureDemo, cx: &gpui::App) -> gpui::Div {
-        let left = div()
-            .flex()
-            .flex_col()
-            .flex_1()
-            .justify_between()
-            .h(px(234.0))
-            .child(Self::demo_rule_row(
-                "Capacidad de combustible · L",
-                &110,
-                cx,
-            ))
-            .child(Self::demo_rule_row(
-                "Combustible inicial · L",
-                &demo.fuel_initial,
-                cx,
-            ))
-            .child(Self::demo_rule_row(
-                "Reserva de combustible · L",
-                &demo.fuel_reserve,
-                cx,
-            ))
-            .child(div().h(px(44.0)));
-        let right = div()
-            .flex()
-            .flex_col()
-            .flex_1()
-            .justify_between()
-            .h(px(234.0))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(12.0))
-                    .h(px(44.0))
-                    .child(
-                        orbit::text("Energía virtual", 13.0, 400, orbit::ink_2(cx), cx)
-                            .w(px(205.0)),
-                    )
-                    .child(
-                        super::editor_view::demo_control("Aplica", cx).child(orbit::text(
-                            "⌄",
-                            16.0,
-                            500,
-                            orbit::ink(cx),
-                            cx,
-                        )),
-                    ),
-            )
-            .child(Self::demo_rule_row(
-                "Capacidad de energía · %",
-                &demo.energy_capacity,
-                cx,
-            ))
-            .child(Self::demo_rule_row(
-                "Energía inicial · %",
-                &demo.energy_initial,
-                cx,
-            ))
-            .child(Self::demo_rule_row(
-                "Reserva de energía · %",
-                &demo.energy_reserve,
-                cx,
-            ));
-        div().flex().gap(px(18.0)).child(left).child(right)
-    }
-
-    #[allow(clippy::too_many_lines)] // Composición de las tres tarjetas de la fixture aprobada.
-    fn demo_driver_fields(
-        &self,
-        demo: &super::editor_view::CaptureDemo,
-        cx: &gpui::App,
-    ) -> gpui::Div {
-        let names = self
-            .current_event()
-            .and_then(|event| event["drivers"].as_array())
-            .map_or_else(Vec::new, |drivers| {
-                drivers
-                    .iter()
-                    .map(|driver| display(&driver["name"]["value"]))
-                    .collect::<Vec<_>>()
-            });
-        let mut order = div().flex().gap(px(8.0));
-        let mut cards = div().flex().items_start().gap(px(14.0));
-        for (index, name) in names.iter().enumerate() {
-            order = order.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .flex_1()
-                    .min_w_0()
-                    .gap(px(10.0))
-                    .h(px(50.0))
-                    .px(px(9.0))
-                    .rounded(px(7.0))
-                    .border_1()
-                    .border_color(rgba(orbit::line(cx)))
-                    .bg(rgb(crate::orbit::legacy_rgb(0x000b_0d0f, cx)))
-                    .child(
-                        orbit::text((index + 1).to_string(), 16.0, 400, orbit::ink_2(cx), cx)
-                            .w(px(16.0))
-                            .mr(px(6.0)),
-                    )
-                    .child(
-                        orbit::text(name.clone(), 16.0, 700, orbit::ink(cx), cx)
-                            .flex_1()
-                            .min_w_0(),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap(px(5.0))
-                            .children(["↑", "↓"].into_iter().map(|arrow| {
-                                super::editor_view::demo_control(arrow, cx)
-                                    .flex_none()
-                                    .w(px(34.0))
-                                    .h(px(38.0))
-                                    .rounded(px(12.0))
-                                    .opacity(0.5)
-                            })),
-                    ),
-            );
-            let role = if index == 0 {
-                "PILOTO PRINCIPAL".to_owned()
-            } else {
-                format!("RELEVO {index}")
-            };
-            let mut limits = div().flex().flex_col().gap(px(8.0)).mt(px(-4.0));
-            for (offset, labels) in [
-                ["Mínimo · vueltas", "Máximo · vueltas"],
-                ["Máximo seguido · minutos", "Máximo total · minutos"],
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                limits = limits.child(div().flex().gap(px(8.0)).children(
-                    labels.into_iter().enumerate().map(|(column, label)| {
-                        div()
-                            .flex()
-                            .flex_col()
-                            .flex_1()
-                            .min_w_0()
-                            .gap(px(4.0))
-                            .child(
-                                orbit::text(label, 12.0, 400, orbit::ink_2(cx), cx)
-                                    .h(px(30.0))
-                                    .line_height(px(15.0)),
-                            )
-                            .child(super::editor_view::demo_control(
-                                &demo.driver_limits[offset * 2 + column],
-                                cx,
-                            ))
-                    }),
-                ));
-            }
-            let card = div()
-                .flex()
-                .flex_col()
-                .flex_1()
-                .min_w_0()
-                .gap(px(14.0))
-                .p(px(18.0))
-                .pt(px(17.0))
-                .rounded(px(10.0))
-                .border_1()
-                .border_color(rgba(orbit::line_strong(cx)))
-                .bg(rgb(crate::orbit::legacy_rgb(0x000b_0d0f, cx)))
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .h(px(38.0))
-                        .child(orbit::tracked_text(
-                            role,
-                            10.5,
-                            400,
-                            orbit::ink_2(cx),
-                            1.2,
-                            cx,
-                        ))
-                        .child(
-                            super::editor_view::demo_control("Quitar piloto", cx)
-                                .rounded(px(14.0))
-                                .opacity(0.6)
-                                .flex_none()
-                                .w(px(102.0))
-                                .h(px(38.0)),
-                        ),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(12.0))
-                        .h(px(42.0))
-                        .child(
-                            orbit::text("Nombre del piloto", 13.0, 400, orbit::ink_2(cx), cx)
-                                .w(px(123.0)),
-                        )
-                        .child(super::editor_view::demo_control(name, cx)),
-                )
-                .child(limits)
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .pt(px(12.0))
-                        .border_t_1()
-                        .border_color(rgba(orbit::line(cx)))
-                        .child(orbit::text("▶", 11.0, 400, orbit::ink(cx), cx))
-                        .child(
-                            orbit::text("Tramos no disponibles", 14.5, 650, orbit::ink(cx), cx)
-                                .line_height(px(24.0)),
-                        ),
-                )
-                .child(
-                    (if index == 0 {
-                        orbit::text(
-                            "Ritmo pendiente de validar con sus sesiones.",
-                            13.0,
-                            400,
-                            orbit::ink_2(cx),
-                            cx,
-                        )
-                    } else {
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap(px(8.0))
-                            .child(orbit::text(
-                                "Fuente de ritmo",
-                                13.0,
-                                400,
-                                orbit::ink_2(cx),
-                                cx,
-                            ))
-                            .child(
-                                super::editor_view::demo_control(
-                                    "Estimar a partir de Isaac Albalá",
-                                    cx,
-                                )
-                                .child(orbit::text(
-                                    "⌄",
-                                    16.0,
-                                    500,
-                                    orbit::ink_2(cx),
-                                    cx,
-                                )),
-                            )
-                            .child(
-                                div()
-                                    .h(px(20.0))
-                                    .mt(px(8.0))
-                                    .border_t_1()
-                                    .border_color(rgba(orbit::line(cx))),
-                            )
-                    })
-                    .mt(px(-8.0)),
-                );
-            cards = cards.child(card);
-        }
-        div()
-            .flex()
-            .flex_col()
-            .gap(px(14.0))
-            .max_w(px(980.0))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .justify_between()
-                    .h(px(156.0))
-                    .p(px(22.0))
-                    .rounded(px(10.0))
-                    .border_1()
-                    .border_color(rgba(orbit::line_strong(cx)))
-                    .bg(rgb(crate::orbit::legacy_rgb(0x0010_1214, cx)))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(32.0))
-                            .h(px(48.0))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .gap(px(4.0)).relative().top(px(-2.0))
-                                    .child(orbit::text(
-                                        "Criterio de asignación",
-                                        16.0,
-                                        600,
-                                        orbit::ink(cx),
-                                     cx).line_height(px(24.0)))
-                                    .child(orbit::text(
-                                        "El motor repetirá esta secuencia y respetará sus límites.",
-                                        13.0,
-                                        400,
-                                        orbit::ink_2(cx),
-                                     cx).line_height(px(19.5))),
-                            )
-                            .child(orbit::text("Orden de pilotos", 13.0, 400, orbit::ink_2(cx), cx))
-                            .child(
-                                super::editor_view::demo_control("Rotación fijada", cx).px(px(16.0))
-                                    .flex_none()
-                                    .w(px(147.0))
-                                    .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx)),
-                            ),
-                    )
-                    .child(order.relative().top(px(1.0))),
-            )
-            .child(cards)
     }
 
     fn labeled_input(
         &self,
         label: &str,
-        index: usize,
+        index: Field,
         label_width: f32,
         cx: &gpui::App,
     ) -> gpui::Div {
@@ -1142,14 +860,16 @@ impl Strategy {
             .child(
                 orbit::text(label.to_owned(), 14.0, 500, orbit::ink_2(cx), cx).w(px(label_width)),
             )
-            .child(div().flex_1().child(self.inputs[index].clone()))
+            .child(div().flex_1().child(self.inputs[index as usize].clone()))
     }
 
     #[allow(clippy::too_many_lines)] // Mantiene el orden y las tarjetas del equipo en una vista.
     fn driver_fields(&self, cx: &gpui::App) -> gpui::Div {
-        if let Some(demo) = self.capture_demo() {
-            return self.demo_driver_fields(demo, cx);
-        }
+        capture!({
+            if let Some(render) = self.view_data.drivers {
+                return render(self, cx);
+            }
+        });
         let drivers = self
             .current_event()
             .and_then(|event| event["drivers"].as_array())
@@ -1217,7 +937,9 @@ impl Strategy {
                 .bg(rgba(crate::orbit::legacy_rgba(0x0809_0be8, cx)))
                 .child(orbit::eyebrow(role, cx));
             if index == 0 {
-                card = card.child(self.field(26, cx)).child(self.field(27, cx));
+                card = card
+                    .child(self.field(Field::DriverName, cx))
+                    .child(self.field(Field::DriverInitials, cx));
             } else {
                 card = card
                     .child(orbit::eyebrow("NOMBRE DEL PILOTO", cx))

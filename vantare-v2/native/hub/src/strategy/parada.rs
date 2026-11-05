@@ -157,32 +157,40 @@ fn stop_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strategy
 }
 
 fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Div {
-    let demo = this
-        .capture_demo
+    #[cfg(feature = "parity-capture")]
+    let details = this
+        .view_data
+        .plan
         .as_ref()
-        .and_then(|demo| demo.stops.get(index));
+        .and_then(|details| details.stops.get(index));
     let stop = this
         .result
         .as_ref()
         .and_then(|outcome| outcome.result.pit_stops.get(index));
-    let fuel = demo
-        .map(|demo| demo.fuel_added)
-        .or_else(|| stop.map(|stop| stop.fuel_liters));
-    let energy = demo
-        .map(|demo| demo.ve_added)
-        .or_else(|| stop.map(|stop| stop.ve_percent));
-    let tyres = demo
-        .map(|demo| demo.change_tyres)
-        .or_else(|| stop.map(|stop| stop.change_tyres));
-    let compound = demo.map_or("Sin dato", |demo| demo.compound.as_str());
-    let costs = demo.map_or([None; 4], |demo| {
-        [
-            Some(demo.transit_seconds),
-            Some(demo.service_seconds),
-            Some(-demo.overlap_seconds),
-            Some(demo.total_seconds),
-        ]
-    });
+    let fuel = capture!(
+        stop.map(|stop| stop.fuel_liters),
+        details.map(|details| Some(details.fuel_added))
+    );
+    let energy = capture!(
+        stop.map(|stop| stop.ve_percent),
+        details.map(|details| Some(details.ve_added))
+    );
+    let tyres = capture!(
+        stop.map(|stop| stop.change_tyres),
+        details.map(|details| Some(details.change_tyres))
+    );
+    let compound = capture!("Sin dato", details.map(|details| details.compound.as_str()));
+    let costs = capture!(
+        [None; 4],
+        details.map(|details| {
+            [
+                Some(details.transit_seconds),
+                Some(details.service_seconds),
+                Some(-details.overlap_seconds),
+                Some(details.total_seconds),
+            ]
+        })
+    );
     let values = costs.map(|cost| {
         cost.map_or_else(
             || "Sin dato".into(),
@@ -222,7 +230,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                     cx,
                 )),
         )
-        .when(this.capture_demo.is_none(), |card| {
+        .when(capture!(true => !this.view_data.read_only), |card| {
             card.child(stop_controls(this, cx, index))
         })
         .when(this.edit_dirty, |card| {
@@ -244,7 +252,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                     energy,
                     tyres,
                     compound,
-                    this.capture_demo.is_some(),
+                    capture!(orbit::DISABLED => this.view_data.resource_opacity),
                     cx,
                 ))
                 .child(cost_grid(&values, cx)),
@@ -256,7 +264,7 @@ fn stop_resources(
     energy: Option<f64>,
     tyres: Option<bool>,
     compound: &str,
-    demo: bool,
+    resource_opacity: f32,
     cx: &gpui::App,
 ) -> Div {
     div()
@@ -304,7 +312,7 @@ fn stop_resources(
                             orbit::ink(cx),
                             cx,
                         ))
-                        .opacity(if demo { 1.0 } else { orbit::DISABLED }),
+                        .opacity(resource_opacity),
                 ),
         )
         .child(
@@ -368,9 +376,11 @@ fn cost_grid(values: &[String; 4], cx: &gpui::App) -> Div {
 }
 
 fn service_label(this: &Strategy, index: usize) -> &'static str {
-    if this.capture_demo.is_some() {
-        return "Servicios en paralelo";
-    }
+    capture!({
+        if let Some(label) = this.view_data.service_label {
+            return label;
+        }
+    });
     match this
         .result
         .as_ref()

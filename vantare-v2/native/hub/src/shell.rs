@@ -415,6 +415,15 @@ impl Hub {
 
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+        #[cfg(feature = "parity-capture")]
+        if self.section == Section::Strategy
+            && self
+                .capture
+                .as_ref()
+                .is_some_and(|capture| capture.strategy_page.is_some())
+        {
+            return self.strategy.clone().into_any_element();
+        }
         if matches!(self.section, Section::Strategy | Section::Engineer) {
             return self.upcoming_page(cx).into_any_element();
         }
@@ -1198,7 +1207,8 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let mut hub = Self::build(loaded, section, access, failure, window, cx);
+        let exit_code = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut hub = Self::build(loaded, section, access, failure, exit_code, window, cx);
         hub.settings_zoom_restore(window);
         hub
     }
@@ -1335,13 +1345,16 @@ impl Hub {
             cx.notify();
         })
         .detach();
-        let strategy = cx.new(|cx| match &demo {
-            Some(_) => Strategy::new_demo(
-                strategy_dir,
-                capture.as_ref().and_then(|capture| capture.strategy_page),
-                cx,
-            ),
-            None => Strategy::new(strategy_dir, cx),
+        let strategy = cx.new(|cx| {
+            #[cfg(feature = "parity-capture")]
+            if demo.is_some() {
+                return Strategy::new_demo(
+                    strategy_dir,
+                    capture.as_ref().and_then(|capture| capture.strategy_page),
+                    cx,
+                );
+            }
+            Strategy::new(strategy_dir, cx)
         });
         let mut settings = settings::State::new(
             prefs,

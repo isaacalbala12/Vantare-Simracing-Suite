@@ -17,6 +17,7 @@
   ],
   "type": "change",
   "knownLimitations": [
+    "Si ya existe strategy-v2.json, un borrador más reciente del repositorio antiguo no se importa; el repositorio queda intacto.",
     "Automático volverá cuando Análisis nativo entregue datos; seguimiento en #1980, dependiente de VANTA-133.",
     "Esta entrega no unifica los motores del solver."
   ],

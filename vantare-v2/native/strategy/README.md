@@ -54,6 +54,11 @@ importados. Se retiran Automático, Datos y las correcciones heredadas de Go:
 no tenían productor nativo ni alimentaban al cálculo. El futuro contrato con
 Análisis se sigue en #1980, dependiente de VANTA-133 / #1974.
 
+`ManualEvent` conserva las entradas como texto hasta confirmarlas. Sus campos
+tienen nombre; la lectura, creación, confirmación y preparación del cálculo
+se validan en este crate. Una edición fallida deja el documento intacto, sin
+rellenar números ausentes. Se conservan los rechazos del formulario anterior.
+
 Los documentos con proyección siguen abriéndose y guardándose sin modificar
 sus bytes; el cálculo manual conserva su rechazo explícito. La validación
 completa 2.0/2.1 permanece. `recalculate_edited_plan` valida y reproduce
@@ -66,6 +71,8 @@ el documento importado no puede superar 12 MiB. Solo se consulta si no existe
 `strategy-v2.json`: el Hub valida el documento nativo y crea ese fichero con
 el guardado común observado. Los borradores antiguos `strategy.v1` no se
 convierten a `strategy.v2`.
+Si ya existe el documento principal, prevalece incluso sobre un borrador
+heredado más reciente: ese borrador no se importa y el repositorio queda intacto.
 
 Hub utiliza un único fichero para guardar. Si está dañado, la apertura común
 conserva una copia durable antes de permitir su recuperación; el guardado sigue

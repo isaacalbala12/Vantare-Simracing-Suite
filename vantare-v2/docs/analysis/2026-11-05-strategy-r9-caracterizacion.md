@@ -7,7 +7,7 @@ Siete tests de caracterización, sin cambiar producción:
 - El fichero principal prevalece sobre un borrador diferente.
 - Un borrador importado al arranque no tiene ruta para persistir ediciones.
 - Un fichero dañado impide guardar en la ruta normal y conserva sus bytes.
-- Guardar borrador mantiene dirty y no cambia el fichero principal.
+- **Histórico (antes del paso 5):** guardar borrador mantiene dirty y no cambia el fichero principal.
 - Un documento manual nativo no produce preparación automática ni cambia sus bytes.
 - Persistir rechaza un formulario pendiente y un documento nuevo sin ruta.
 - El corpus por vueltas sin deadline agota un presupuesto numérico de trabajo de forma repetible, sin cambiar la entrada.

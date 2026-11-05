@@ -372,10 +372,10 @@ impl Strategy {
             )
             .child(pending("strategy-migrate", "Migrar datos antiguos", cx))
     }
-    pub(super) fn field(&self, index: usize, cx: &gpui::App) -> gpui::Div {
+    pub(super) fn field(&self, index: Field, cx: &gpui::App) -> gpui::Div {
         column()
-            .child(orbit::eyebrow(FIELDS[index].0, cx))
-            .child(self.inputs[index].clone())
+            .child(orbit::eyebrow(FIELDS[index as usize].1, cx))
+            .child(self.inputs[index as usize].clone())
     }
     fn event_form(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
         if self.duration.is_none() {
@@ -394,7 +394,7 @@ impl Strategy {
             });
             cx.subscribe(&duration, |this, _, event: &ChoiceChanged, cx| {
                 if let Some(minutes) = DURATIONS.get(event.0) {
-                    this.fields[1] = minutes.to_string();
+                    this.fields[Field::DurationMinutes] = minutes.to_string();
                     this.form.dirty = true;
                     this.sync_inputs(cx);
                 }
@@ -413,30 +413,38 @@ impl Strategy {
                     orbit::ink_3(cx),
                     cx,
                 ))
-                .child(row().child(self.field(0, cx)).child(self.field(4, cx)))
-                .child(row().child(self.field(5, cx)).child(self.field(24, cx)))
+                .child(
+                    row()
+                        .child(self.field(Field::Name, cx))
+                        .child(self.field(Field::Track, cx)),
+                )
+                .child(
+                    row()
+                        .child(self.field(Field::Class, cx))
+                        .child(self.field(Field::StartAt, cx)),
+                )
                 .child(
                     row()
                         .child(
                             column()
                                 .child(orbit::eyebrow("Duración", cx))
                                 .children(self.duration.clone())
-                                .child(self.inputs[1].clone())
+                                .child(self.inputs[Field::DurationMinutes as usize].clone())
                                 .child(orbit::chip("Manual", Tone::Neutral, cx)),
                         )
-                        .child(column().child(self.field(2, cx)).child(orbit::chip(
-                            "Manual",
-                            Tone::Neutral,
-                            cx,
-                        ))),
+                        .child(
+                            column()
+                                .child(self.field(Field::FuelCapacityLiters, cx))
+                                .child(orbit::chip("Manual", Tone::Neutral, cx)),
+                        ),
                 )
                 .child(
                     row()
-                        .child(column().child(self.field(3, cx)).child(orbit::chip(
-                            "Manual",
-                            Tone::Neutral,
-                            cx,
-                        )))
+                        .child(
+                            column()
+                                .child(self.field(Field::PitTransitSeconds, cx))
+                                .child(orbit::chip("Manual", Tone::Neutral, cx)),
+                        )
                         .child(column().child(orbit::eyebrow("Equipo", cx)).child(pending(
                             "strategy-team-name",
                             "Equipo",
@@ -446,10 +454,10 @@ impl Strategy {
                 .child(orbit::eyebrow("Pilotos", cx))
                 .child(
                     row()
-                        .child(self.field(26, cx))
-                        .child(self.field(27, cx))
-                        .child(self.field(10, cx))
-                        .child(self.field(11, cx)),
+                        .child(self.field(Field::DriverName, cx))
+                        .child(self.field(Field::DriverInitials, cx))
+                        .child(self.field(Field::BasePaceSeconds, cx))
+                        .child(self.field(Field::FuelPerLapLiters, cx)),
                 )
                 .child(pending("strategy-add-driver", "Añadir piloto", cx))
                 .child(
@@ -491,18 +499,18 @@ impl Strategy {
         }
         orbit::card("Estrategias", cx).child(body)
     }
-    fn field_group(&self, title: &str, range: std::ops::Range<usize>, cx: &gpui::App) -> gpui::Div {
+    fn field_group(&self, title: &str, fields: &[Field], cx: &gpui::App) -> gpui::Div {
         orbit::card(title, cx).child(
             orbit::card_body()
                 .gap(px(orbit::RADIUS_CONTROL))
-                .children(range.map(|index| self.field(index, cx))),
+                .children(fields.iter().map(|field| self.field(*field, cx))),
         )
     }
     pub(super) fn workspace(&self, cx: &mut Context<Self>) -> gpui::Div {
         column().child(self.variants(cx))
             .child(orbit::callout("Cálculo manual escalar. Telemetría, forecast, pilotos múltiples, inventario, ahorro e incertidumbre · pendiente. Escribe todos los números; 0 desactiva VE/vida/reserva.", cx))
-            .child(row().child(column().child(self.field_group("Evento", 0..6, cx)).child(self.field_group("Variante", 6..9, cx)))
-                .child(column().child(self.field_group("Ritmo y recursos", 9..16, cx)).child(self.field_group("Boxes y reservas", 16..24, cx))))
+            .child(row().child(column().child(self.field_group("Evento", &[Field::Name, Field::DurationMinutes, Field::FuelCapacityLiters, Field::PitTransitSeconds, Field::Track, Field::Class], cx)).child(self.field_group("Variante", &[Field::VariantName, Field::VariantNote, Field::VariantMode], cx)))
+                .child(column().child(self.field_group("Ritmo y recursos", &[Field::RaceLaps, Field::BasePaceSeconds, Field::FuelPerLapLiters, Field::VeCapacityPercent, Field::VePerLapPercent, Field::TyreLifeLaps, Field::DegradationSeconds], cx)).child(self.field_group("Boxes y reservas", &[Field::RefuelRate, Field::VeRate, Field::TyreServiceSeconds, Field::FormationSeconds, Field::FuelStep, Field::VeStep, Field::ReserveLaps, Field::ServiceMode], cx))))
             .child(row().flex_wrap()
                 .child(button("strategy-confirm-event", "Confirmar evento y variante", cx).on_click(cx.listener(|this, _, _, cx| this.confirm_event(cx))))
                 .child(button("strategy-calculate", if self.running { "Calculando…" } else { "Confirmar entradas y calcular" }, cx)
@@ -513,8 +521,8 @@ impl Strategy {
             .child(self.result_card( cx)).child(Self::document_actions(cx))
     }
     fn context_identity(&self) -> (&'static str, String, String) {
-        let simulator = if self.current_event().is_some() && self.demo_car.is_some() {
-            "Le Mans Ultimate"
+        let simulator = if self.current_event().is_some() {
+            capture!("Sin simulador seleccionado", self.view_data.simulator)
         } else {
             "Sin simulador seleccionado"
         };
@@ -527,9 +535,7 @@ impl Strategy {
             },
             |event| {
                 (
-                    self.demo_car
-                        .clone()
-                        .unwrap_or_else(|| display(&event["cls"]["value"])),
+                    capture!(display(&event["cls"]["value"]), self.view_data.car.clone()),
                     display(&event["track"]["value"]),
                 )
             },

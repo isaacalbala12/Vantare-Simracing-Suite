@@ -275,6 +275,8 @@ impl Remote {
     pub fn new(pipe: String, data: &std::path::Path, cx: &mut Context<Self>) -> Self {
         let (legacy_draft, editor) = legacy_editor(data, cx);
         #[cfg(feature = "parity-capture")]
+        let mut editor = editor;
+        #[cfg(feature = "parity-capture")]
         if let Some(path) = std::env::var_os("VANTARE_TESTING_CAPTURE_PREVIEW")
             && let Ok(bytes) = crate::files::read(std::path::Path::new(&path), 32 * 1024)
             && let Ok(preview) = serde_json::from_slice::<

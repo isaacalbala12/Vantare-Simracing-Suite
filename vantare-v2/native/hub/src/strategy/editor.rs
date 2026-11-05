@@ -2,52 +2,6 @@
 use super::*;
 use gpui::{div, px, rgb, rgba};
 
-// Valores visibles en la demo aprobada; no representan telemetría real.
-pub(super) struct CaptureDemo {
-    pub(super) track_layout: &'static str,
-    pub(super) fuel_initial: u16,
-    pub(super) fuel_reserve: u16,
-    pub(super) energy_capacity: u16,
-    pub(super) energy_initial: u16,
-    pub(super) energy_reserve: u16,
-    pub(super) driver_limits: [u16; 4],
-    pub(super) session_name: &'static str,
-}
-
-const CAPTURE_DEMO: CaptureDemo = CaptureDemo {
-    track_layout: "GP",
-    fuel_initial: 106,
-    fuel_reserve: 3,
-    energy_capacity: 100,
-    energy_initial: 96,
-    energy_reserve: 4,
-    driver_limits: [15, 30, 55, 120],
-    session_name: "2026-09-15_Imola_Race.duckdb",
-};
-
-pub(super) fn demo_control(value: &(impl ToString + ?Sized), cx: &gpui::App) -> gpui::Div {
-    div()
-        .flex()
-        .items_center()
-        .justify_between()
-        .flex_1()
-        .min_w_0()
-        .h(px(42.0))
-        .px(px(12.0))
-        .rounded(px(7.0))
-        .border_1()
-        .border_color(rgba(orbit::line_strong(cx)))
-        .bg(rgb(crate::orbit::legacy_rgb(0x000b_0d0f, cx)))
-        .child(orbit::text(value.to_string(), 13.0, 400, orbit::ink(cx), cx).line_height(px(19.5)))
-}
-
-fn demo_selected_sessions() -> Value {
-    serde_json::json!({
-        "combinationId": "demo-imola-gp-lmgt3",
-        "sessions": [{"sessionId": CAPTURE_DEMO.session_name, "included": true}]
-    })
-}
-
 /// Acción clara Orbit: compuesta aquí porque `primary_button` fija el color del hijo.
 pub(super) fn white_button(
     id: &'static str,
@@ -78,75 +32,6 @@ pub(super) fn white_button(
             cx.global::<crate::orbit::theme::Theme>().primary_ink,
             cx,
         ))
-}
-
-// La fixture se prepara con el contrato nativo, sin proyección ni resultado.
-fn capture_document(
-    demo: &crate::demo::DemoData,
-) -> Result<(Document, Vec<String>, usize), String> {
-    let event = &demo.strategy.event;
-    let plan = demo
-        .strategy
-        .plans
-        .first()
-        .ok_or("La demo no tiene una estrategia")?;
-    let mut fields = vec![String::new(); FIELDS.len()];
-    for (index, value) in [
-        (0, event.name.clone()),
-        (1, event.duration_minute.to_string()),
-        (2, event.tank_liters.to_string()),
-        (3, event.pit_seconds.to_string()),
-        (4, event.track.clone()),
-        (5, event.vehicle_class.clone()),
-        (6, plan.name.clone()),
-        (7, plan.note.clone()),
-        (8, plan.mode.clone()),
-        (25, event.team.clone()),
-    ] {
-        fields[index] = value;
-    }
-    // Valores visibles en las capturas v5 aprobadas de Carrera y Reglas.
-    fields[0] = "4 Horas de Imola · LMGT3".into();
-    fields[2] = "110".into();
-    fields[7].clear();
-    fields[9] = "69".into();
-    if let Some(driver) = demo.strategy.drivers.first() {
-        fields[26].clone_from(&driver.name);
-        fields[27].clone_from(&driver.initials);
-    }
-
-    let mut document = Document::empty(&demo.fixed_now()?.to_rfc3339())?;
-    let event_index = append_manual_event(&mut document, &fields)?;
-    let drivers = demo
-            .strategy
-            .drivers
-            .iter()
-            .enumerate()
-            .map(|(order, driver)| {
-                serde_json::json!({
-                    "id": driver.id.clone(),
-                    "order": order,
-                    "name": vantare_strategy::document::manual(serde_json::json!(driver.name.clone())),
-                    "ini": vantare_strategy::document::manual(serde_json::json!(driver.initials.clone())),
-                    "cls": vantare_strategy::document::manual(serde_json::json!(driver.class.clone())),
-                })
-            })
-            .collect::<Vec<_>>();
-    let driver_order = demo
-        .strategy
-        .drivers
-        .iter()
-        .map(|driver| driver.id.clone())
-        .collect::<Vec<_>>();
-    let mut value = document.value().clone();
-    let event_value = &mut value["events"][event_index];
-    event_value["drivers"] = serde_json::json!(drivers);
-    event_value["combination"] = demo_selected_sessions();
-    event_value["strategies"][0]["order"] = serde_json::json!(driver_order);
-    event_value["teamMode"] = vantare_strategy::document::manual(serde_json::json!("team"));
-    document = Document::parse(&serde_json::to_vec(&value).map_err(|error| error.to_string())?)?;
-
-    Ok((document, fields, event_index))
 }
 
 pub(super) fn secondary_button(
@@ -226,26 +111,6 @@ impl EditorTab {
 }
 
 impl Strategy {
-    pub(super) fn capture_demo(&self) -> Option<&'static CaptureDemo> {
-        self.demo_car.as_ref().map(|_| &CAPTURE_DEMO)
-    }
-
-    pub(super) fn seed_capture_demo(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
-        let demo = crate::demo::DemoData::load()?;
-        let (document, fields, event_index) = capture_document(&demo)?;
-
-        self.editor.saved = Some(document.bytes().to_vec());
-        self.editor.document = Some(document);
-        self.editor.path = None;
-        self.demo_car = Some(demo.strategy.event.car.clone());
-        self.event = event_index;
-        self.variant = 0;
-        self.fields = fields;
-        self.sync_inputs(cx);
-        self.status = "Escena Strategy cargada desde los datos demo del Hub.".into();
-        Ok(())
-    }
-
     #[allow(clippy::too_many_lines)] // Mantiene juntas las cuatro rutas y su navegación por pestañas.
     pub(super) fn editor_page(
         &self,
@@ -366,12 +231,15 @@ impl Strategy {
                     .child(tabs)
                     .child(content.flex_1().min_h(px(0.0)))
                     .when(tab == EditorTab::Carrera, |page| {
-                        page.child(self.editor_footer(cx))
+                        page.child(capture!(Self::editor_footer(cx) => Self::editor_footer(cx, &self.view_data)))
                     }),
             )
     }
 
-    fn editor_footer(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn editor_footer(
+        cx: &mut Context<Self>,
+        #[cfg(feature = "parity-capture")] view_data: &super::view_data::ViewData,
+    ) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -396,11 +264,7 @@ impl Strategy {
                     .items_center()
                     .gap(px(12.0))
                     .child(orbit::text(
-                        if self.capture_demo().is_some() {
-                            "Borrador guardado"
-                        } else {
-                            "Borrador local"
-                        },
+                        capture!("Borrador local" => view_data.draft_label),
                         12.0,
                         400,
                         orbit::ink_2(cx),
@@ -469,7 +333,7 @@ impl Strategy {
         let tank = event
             .and_then(|event| event["tankLiters"]["value"].as_f64())
             .map_or_else(String::new, |liters| liters.to_string());
-        let laps = if self.fields[9].trim().is_empty() {
+        let laps = if self.fields[Field::RaceLaps].trim().is_empty() {
             event.map_or_else(String::new, |event| {
                 display(
                     &event["strategies"][self.variant]["overrides"]["nativeScalarInput"][
@@ -478,7 +342,7 @@ impl Strategy {
                 )
             })
         } else {
-            self.fields[9].clone()
+            self.fields[Field::RaceLaps].clone()
         };
         let drivers = event
             .and_then(|event| event["drivers"].as_array())
@@ -506,8 +370,7 @@ impl Strategy {
         };
         let event_detail = [
             circuit,
-            self.capture_demo()
-                .map_or(class, |demo| demo.track_layout.to_owned()),
+            capture!(class, self.view_data.layout.map(str::to_owned)),
         ]
         .into_iter()
         .filter(|part| !part.is_empty())
@@ -538,8 +401,8 @@ impl Strategy {
             1 => "1 sesión seleccionada".to_owned(),
             count => format!("{count} sesiones seleccionadas"),
         };
-        let note_pending =
-            note.is_empty() && (selected_sessions == 0 || self.capture_demo().is_some());
+        let note_pending = note.is_empty()
+            && (selected_sessions == 0 || capture!(false => self.view_data.layout.is_some()));
         let note_detail = if note_pending {
             "Revisa las reglas y la telemetría antes de calcular.".to_owned()
         } else if note.is_empty() {
@@ -566,7 +429,7 @@ impl Strategy {
             format!("Tu estrategia · {event_name} · {class_name}")
         };
         let calculation_ready = self.input().is_ok()
-            && self.fields[8].trim() == "dry"
+            && self.fields[Field::VariantMode].trim() == "dry"
             && event.is_some_and(|event| event["source"]["value"] == "custom");
         let plan_action = if self.result.is_some() {
             orbit::button("strategy-open-plan", "Ver Plan →", cx).on_click(cx.listener(
@@ -582,11 +445,7 @@ impl Strategy {
         } else {
             white_button("strategy-calculate", "Calcular estrategia", cx)
                 .tab_stop(false)
-                .opacity(if self.capture_demo().is_some() {
-                    0.55
-                } else {
-                    orbit::DISABLED
-                })
+                .opacity(capture!(orbit::DISABLED => self.view_data.disabled_calculate_opacity))
                 .cursor(gpui::CursorStyle::Arrow)
         };
         div()
@@ -771,43 +630,5 @@ impl Strategy {
                             ),
                     ),
             )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn approved_demo_selects_imola_without_inventing_a_projection_or_solver_input() {
-        let demo = crate::demo::DemoData::load().expect("demo");
-        let (document, fields, index) = capture_document(&demo).expect("documento nativo");
-        let event = &document.value()["events"][index];
-        assert_eq!(fields[0], "4 Horas de Imola · LMGT3");
-        assert_eq!(fields[2], "110");
-        assert_eq!(fields[9], "69");
-        assert_eq!(CAPTURE_DEMO.track_layout, "GP");
-        assert_eq!(
-            event["combination"]["sessions"][0]["sessionId"],
-            CAPTURE_DEMO.session_name
-        );
-        assert_eq!(event["combination"]["sessions"][0]["included"], true);
-        assert_eq!(event["drivers"].as_array().expect("pilotos").len(), 3);
-        assert!(event["planningInputs"]["projection"].is_null());
-        assert!(event["strategies"][0]["overrides"]["nativeScalarInput"].is_null());
-        assert!(fields[10..24].iter().all(String::is_empty));
-        assert_eq!(
-            (CAPTURE_DEMO.fuel_initial, CAPTURE_DEMO.fuel_reserve),
-            (106, 3)
-        );
-        assert_eq!(
-            (
-                CAPTURE_DEMO.energy_capacity,
-                CAPTURE_DEMO.energy_initial,
-                CAPTURE_DEMO.energy_reserve
-            ),
-            (100, 96, 4)
-        );
-        assert_eq!(CAPTURE_DEMO.driver_limits, [15, 30, 55, 120]);
     }
 }

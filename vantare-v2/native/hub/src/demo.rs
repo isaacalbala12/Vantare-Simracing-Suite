@@ -454,69 +454,6 @@ pub struct CaptureState {
     pub strategy_page: Option<CaptureStrategyPage>,
 }
 
-// Escena de pass-27: mismos valores que recorded-strategy-harness y wails-runtime-mock.
-// Solo new_demo carga este DTO; la aplicación normal conserva la salida del solver.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct StrategyCaptureDemo {
-    pub total_seconds: f64,
-    pub reserve_laps: f64,
-    pub required_laps: f64,
-    pub capacity_liters: f64,
-    pub fuel_per_lap: f64,
-    pub ve_per_lap: f64,
-    pub stints: Vec<CaptureStint>,
-    pub stops: Vec<CaptureStop>,
-    pub samples: Vec<CaptureSample>,
-    pub files: Vec<CaptureSourceFile>,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureStint {
-    pub driver: String,
-    pub pace_seconds: f64,
-    pub fuel_liters: f64,
-    pub ve_percent: f64,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureStop {
-    pub lap: u32,
-    pub fuel_in: f64,
-    pub fuel_out: f64,
-    pub ve_in: f64,
-    pub ve_out: f64,
-    pub fuel_added: f64,
-    pub ve_added: f64,
-    pub transit_seconds: f64,
-    pub service_seconds: f64,
-    pub overlap_seconds: f64,
-    pub total_seconds: f64,
-    pub compound: String,
-    pub change_tyres: bool,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureSourceFile {
-    pub name: String,
-    pub details: String,
-    pub ready: bool,
-}
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CaptureSample {
-    pub value: f64,
-    pub quality: String,
-}
-impl StrategyCaptureDemo {
-    pub fn load() -> Result<Self, String> {
-        serde_json::from_str(include_str!(
-            "../reference/fixtures/strategy-capture-demo.json"
-        ))
-        .map_err(|error| format!("escena pass-27 Strategy: {error}"))
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureSettingsPage {
     Account,
@@ -971,21 +908,6 @@ mod tests {
         ] {
             assert!(CaptureState::parse(name).is_err(), "{name}");
         }
-    }
-
-    #[test]
-    fn strategy_capture_keeps_pass_27_values_separate_from_solver_inputs() {
-        let demo = StrategyCaptureDemo::load().expect("mock pass-27");
-        assert_eq!(demo.samples.len(), 12);
-        assert_eq!(demo.samples[7].quality, "Desconocida");
-        assert_eq!(demo.stints.len(), 3);
-        assert_eq!(demo.stints[0].driver, "Isaac Albalá");
-        assert_eq!(
-            demo.stops.iter().map(|stop| stop.lap).collect::<Vec<_>>(),
-            [23, 46]
-        );
-        assert!((demo.total_seconds - 7357.57).abs() < 0.001);
-        assert!((demo.reserve_laps - 1.14).abs() < 0.001);
     }
 
     #[test]

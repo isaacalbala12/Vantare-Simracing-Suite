@@ -50,7 +50,7 @@ mod editor_view;
 mod parada;
 mod plan;
 #[cfg(feature = "parity-capture")]
-mod view_data;
+pub mod view_data;
 #[cfg(test)]
 use captura::capture_solver_input;
 #[cfg(test)]

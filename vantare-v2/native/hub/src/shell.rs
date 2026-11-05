@@ -1198,7 +1198,8 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let mut hub = Self::build(loaded, section, access, failure, window, cx);
+        let exit_code = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut hub = Self::build(loaded, section, access, failure, exit_code, window, cx);
         hub.settings_zoom_restore(window);
         hub
     }

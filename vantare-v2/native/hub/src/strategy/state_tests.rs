@@ -243,7 +243,12 @@ fn r9_imported_projection_is_preserved_and_still_rejected_by_manual_calculation(
 #[test]
 fn r9_manual_wizard_creates_an_event_without_automatic_projection() {
     with_strategy("r9-manual-wizard", |this, cx| {
-        for (index, value) in ["Carrera", "120", "90", "60"].into_iter().enumerate() {
+        for (index, value) in [
+            (Field::Name, "Carrera"),
+            (Field::DurationMinutes, "120"),
+            (Field::FuelCapacityLiters, "90"),
+            (Field::PitTransitSeconds, "60"),
+        ] {
             this.fields[index] = value.into();
         }
         this.add_event(cx);

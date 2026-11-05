@@ -101,9 +101,9 @@ fn garage_veil_visible(page: Page) -> bool {
 }
 fn garage_background_kind(page: Page) -> Option<GarageBackground> {
     match page {
-        Page::Editor(EditorTab::Datos | EditorTab::Plan | EditorTab::Revisiones)
-        | Page::Stints
-        | Page::Stops => Some(GarageBackground::Detail),
+        Page::Editor(EditorTab::Plan | EditorTab::Revisiones) | Page::Stints | Page::Stops => {
+            Some(GarageBackground::Detail)
+        }
         Page::Editor(EditorTab::Carrera) => Some(GarageBackground::Career),
         Page::Assistant(_) => Some(GarageBackground::Standard),
         _ => None,
@@ -331,7 +331,6 @@ impl Strategy {
                                 "Prepara la carrera con el asistente de cinco pasos.",
                                 button("strategy-new", "Nueva estrategia", cx).on_click(cx.listener(
                                     |this, _, _, cx| {
-                                        this.automatic = false;
                                         this.navigate(
                                             Page::Assistant(AssistantStep::Inicio),
                                             cx,
@@ -570,8 +569,6 @@ impl Strategy {
                 if let Err(error) = this.ensure_clean_form() {
                     this.error = Some(error.into());
                 } else {
-                    this.automatic = false;
-                    this.automatic_preparation = None;
                     this.page = Page::Assistant(AssistantStep::Inicio);
                     this.error = None;
                 }
@@ -683,11 +680,6 @@ impl Strategy {
                 f32::from(window.viewport_size().height),
                 cx,
             ),
-            Page::Editor(EditorTab::Datos)
-                if self.data.sources_open() && self.capture_demo.is_some() =>
-            {
-                self.capture_sources_page(f32::from(window.viewport_size().height), cx)
-            }
             Page::Editor(tab) => {
                 self.editor_page(tab, f32::from(window.viewport_size().height), cx)
             }
@@ -735,7 +727,10 @@ mod tests {
     #[test]
     fn assistant_and_editor_routes_have_explicit_tabs() {
         assert_eq!(AssistantStep::ALL.len(), 5);
-        assert_eq!(EditorTab::ALL.len(), 4);
+        assert_eq!(
+            EditorTab::ALL.map(EditorTab::label),
+            ["Carrera", "Plan", "Revisiones"]
+        );
         assert_eq!(
             Page::Assistant(AssistantStep::Pilotos),
             Page::Assistant(AssistantStep::Pilotos)
@@ -770,7 +765,6 @@ mod tests {
             Page::Collection,
             Page::Assistant(AssistantStep::Inicio),
             Page::Editor(EditorTab::Carrera),
-            Page::Editor(EditorTab::Datos),
             Page::Editor(EditorTab::Revisiones),
         ] {
             assert!(!garage_veil_visible(page));
@@ -788,7 +782,6 @@ mod tests {
             Some(GarageBackground::Career)
         );
         for page in [
-            Page::Editor(EditorTab::Datos),
             Page::Editor(EditorTab::Plan),
             Page::Editor(EditorTab::Revisiones),
             Page::Stints,

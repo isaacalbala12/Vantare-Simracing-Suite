@@ -38,6 +38,7 @@ fn r9_no_deadline_lap_corpus_exhausts_work_budget_repeatably() {
         assert_eq!(json!(input), original);
     }
 }
+
 fn fields(actual: &Value, expected: &Value, path: &str) {
     match expected {
         Value::Object(map) => {

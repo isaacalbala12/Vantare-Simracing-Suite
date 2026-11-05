@@ -101,7 +101,7 @@ fn garage_veil_visible(page: Page) -> bool {
 }
 fn garage_background_kind(page: Page) -> Option<GarageBackground> {
     match page {
-        Page::Editor(EditorTab::Plan | EditorTab::Revisiones) | Page::Stints | Page::Stops => {
+        Page::Editor(EditorTab::Plan) | Page::Stints | Page::Stops => {
             Some(GarageBackground::Detail)
         }
         Page::Editor(EditorTab::Carrera) => Some(GarageBackground::Career),
@@ -727,17 +727,14 @@ mod tests {
     #[test]
     fn assistant_and_editor_routes_have_explicit_tabs() {
         assert_eq!(AssistantStep::ALL.len(), 5);
-        assert_eq!(
-            EditorTab::ALL.map(EditorTab::label),
-            ["Carrera", "Plan", "Revisiones"]
-        );
+        assert_eq!(EditorTab::ALL.map(EditorTab::label), ["Carrera", "Plan"]);
         assert_eq!(
             Page::Assistant(AssistantStep::Pilotos),
             Page::Assistant(AssistantStep::Pilotos)
         );
         assert_ne!(
             Page::Editor(EditorTab::Carrera),
-            Page::Editor(EditorTab::Revisiones)
+            Page::Editor(EditorTab::Plan)
         );
     }
 
@@ -765,7 +762,6 @@ mod tests {
             Page::Collection,
             Page::Assistant(AssistantStep::Inicio),
             Page::Editor(EditorTab::Carrera),
-            Page::Editor(EditorTab::Revisiones),
         ] {
             assert!(!garage_veil_visible(page));
         }
@@ -781,12 +777,7 @@ mod tests {
             garage_background_kind(Page::Editor(EditorTab::Carrera)),
             Some(GarageBackground::Career)
         );
-        for page in [
-            Page::Editor(EditorTab::Plan),
-            Page::Editor(EditorTab::Revisiones),
-            Page::Stints,
-            Page::Stops,
-        ] {
+        for page in [Page::Editor(EditorTab::Plan), Page::Stints, Page::Stops] {
             assert_eq!(garage_background_kind(page), Some(GarageBackground::Detail));
         }
         assert_eq!(garage_background_kind(Page::Collection), None);

@@ -212,17 +212,15 @@ fn career_row(
 pub(super) enum EditorTab {
     Carrera,
     Plan,
-    Revisiones,
 }
 
 impl EditorTab {
-    pub(super) const ALL: [Self; 3] = [Self::Carrera, Self::Plan, Self::Revisiones];
+    pub(super) const ALL: [Self; 2] = [Self::Carrera, Self::Plan];
 
     pub(super) fn label(self) -> &'static str {
         match self {
             Self::Carrera => "Carrera",
             Self::Plan => "Plan",
-            Self::Revisiones => "Revisiones",
         }
     }
 }
@@ -263,7 +261,6 @@ impl Strategy {
                 Page::Stops => self.pit_editor_page(cx),
                 _ => self.plan_page(cx),
             }),
-            EditorTab::Revisiones => self.revisions_page(cx),
         };
         let mut tabs = div()
             .flex()
@@ -275,7 +272,6 @@ impl Strategy {
             let id = match item {
                 EditorTab::Carrera => "strategy-tab-career",
                 EditorTab::Plan => "strategy-tab-plan",
-                EditorTab::Revisiones => "strategy-tab-revisions",
             };
             tabs = tabs.child(
                 div()
@@ -288,7 +284,6 @@ impl Strategy {
                     .w(px(match item {
                         EditorTab::Carrera => 104.0,
                         EditorTab::Plan => 95.0,
-                        EditorTab::Revisiones => 129.0,
                     }))
                     .px(px(24.0))
                     .flex()
@@ -316,9 +311,6 @@ impl Strategy {
                         if let Err(error) = this.ensure_clean_form() {
                             this.error = Some(error.into());
                         } else {
-                            if item == EditorTab::Revisiones {
-                                this.load_revisions(cx);
-                            }
                             this.page = Page::Editor(item);
                             this.edit_mode = false;
                             this.error = None;
@@ -431,27 +423,6 @@ impl Strategy {
                             cx.notify();
                         }))
                         .w(px(191.0))
-                        .h(px(46.0)),
-                    )
-                    .child(
-                        if self.capture_demo().is_some() {
-                            white_button("strategy-save-draft", "Guardar revisión", cx)
-                                .tab_stop(false)
-                                .opacity(0.55)
-                                .cursor(gpui::CursorStyle::Arrow)
-                        } else {
-                            button("strategy-save-draft", "Guardar borrador", cx).on_click(
-                                cx.listener(|this, _, _, cx| {
-                                    this.error =
-                                        this.save_application_draft().err().map(Into::into);
-                                    if this.error.is_none() {
-                                        this.load_revisions(cx);
-                                    }
-                                    cx.notify();
-                                }),
-                            )
-                        }
-                        .w(px(161.0))
                         .h(px(46.0)),
                     ),
             )

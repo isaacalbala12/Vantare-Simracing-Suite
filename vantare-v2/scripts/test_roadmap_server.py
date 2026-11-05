@@ -33,7 +33,16 @@ case "$tool" in
     if [[ "$*" = *publish_plane_roadmap.py* && "$TEST_FAILURE" = limit ]]; then
       echo 'Roadmap supera 40 tareas o 40 KB; parar y pedir decisión a Isaac'; exit 1
     fi
-    if [[ "$*" = *verify_roadmap_tls.py* && "$TEST_FAILURE" = tls ]]; then exit 1; fi ;;
+    if [[ "$*" = *verify_roadmap_tls.py* && "$TEST_FAILURE" = tls ]]; then exit 1; fi
+    if [[ "$*" = *publish_plane_roadmap.py* ]]; then
+      while (( $# )); do
+        case "$1" in
+          --output) printf '%s' '{"schemaVersion":2,"items":[]}' > "$2"; shift 2 ;;
+          --sql-output) printf '%s' "select public.visual_roadmap_sync(:'doc'::jsonb);" > "$2"; shift 2 ;;
+          *) shift ;;
+        esac
+      done
+    fi ;;
   psql)
     [[ -z "${PLANE_API_KEY:-}" && -n "${PGPASSWORD:-}" ]] || exit 1
     [[ "$PGSSLMODE" = verify-full ]] || exit 1
@@ -69,6 +78,7 @@ esac
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertLess(calls.index('publish_plane_roadmap.py'), calls.index('verify_roadmap_tls.py'))
         self.assertLess(calls.index('verify_roadmap_tls.py'), calls.index('psql '))
+        self.assertIn('doc={"schemaVersion":2,"items":[]}', calls)
         self.assertIn('node --test', calls)
         self.assertNotIn('fixture-key', result.stdout + result.stderr + calls)
         self.assertNotIn('fixture-password', result.stdout + result.stderr + calls)

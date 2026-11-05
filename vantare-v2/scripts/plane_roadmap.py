@@ -7,6 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from datetime import date
 
 STATUS = {'por hacer': 'next', 'para claude': 'now', 'en curso': 'now',
           'por revisar': 'now', 'por testear': 'now', 'entregado': 'done'}
@@ -17,6 +18,49 @@ NAMESPACE = uuid.UUID('78c38d96-f693-5707-86f7-b30dde54b0ee')
 
 class SyncError(ValueError):
     """Sanitized, actionable source failure; never includes API responses."""
+
+
+def validate_public_document(value):
+    """Validate the public v2 document before writing publication SQL."""
+    if not isinstance(value, dict) or set(value) != {'schemaVersion', 'items'} or type(value['schemaVersion']) is not int or value['schemaVersion'] != 2:
+        return False
+    items = value['items']
+    if not isinstance(items, list):
+        return False
+    ids = set()
+    for item in items:
+        if not isinstance(item, dict) or not {'id', 'section', 'title', 'body', 'area'}.issubset(item) or \
+                set(item) - {'id', 'section', 'title', 'body', 'area', 'version', 'dueDate'}:
+            return False
+        try:
+            key = str(uuid.UUID(item['id']))
+        except (TypeError, ValueError, AttributeError):
+            return False
+        if key != item['id'] or key in ids or item['section'] not in ('now', 'next', 'later', 'done'):
+            return False
+        ids.add(key)
+        if not isinstance(item['area'], str) or not 1 <= len(item['area'].strip()) <= 60:
+            return False
+        version = item.get('version')
+        if version is not None and (not isinstance(version, str) or len(version) > 60 or not re.fullmatch(r'v?[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?', version)):
+            return False
+        due = item.get('dueDate')
+        if due is not None:
+            if not isinstance(due, str) or not re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}', due):
+                return False
+            try:
+                date.fromisoformat(due)
+            except ValueError:
+                return False
+        for field, limit in (('title', 120), ('body', 600)):
+            text = item[field]
+            if not isinstance(text, dict) or set(text) != {'es', 'en', 'pt', 'it'}:
+                return False
+            if any(not isinstance(text[locale], str) or len(text[locale]) > limit for locale in text):
+                return False
+        if not item['title']['es'].strip():
+            return False
+    return True
 
 
 def normalized(text):
@@ -178,6 +222,8 @@ def document(snapshot):
             raise SyncError('Roadmap supera 40 tareas o 40 KB; parar y pedir decisión a Isaac')
         if not items:
             raise SyncError('Roadmap vacío; conservar publicación anterior y pedir decisión')
+        if not validate_public_document(result):
+            raise SyncError('Documento público no cumple el contrato')
         return result
     except (KeyError, TypeError, AttributeError):
         raise SyncError('Fuente Plane incompleta o inválida') from None

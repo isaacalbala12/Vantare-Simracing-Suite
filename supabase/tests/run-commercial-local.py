@@ -1519,6 +1519,21 @@ $$;
    (OUT/(name+'.log')).write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
+  roadmap_corpus=json.loads((ROOT/'vantare-v2/fixtures/roadmap/cases.json').read_text(encoding='utf-8'))
+  for case in roadmap_corpus['cases']:
+   roadmap_doc=json.loads(json.dumps(roadmap_corpus['base']))
+   if 'items_count' in case:
+    roadmap_doc['items']=[json.loads(json.dumps(roadmap_corpus['base']['items'][0])) for _ in range(case['items_count'])]
+    if not case.get('duplicate_ids'):
+     for index,item in enumerate(roadmap_doc['items'],1): item['id']=f'550e8400-e29b-41d4-a716-{index:012x}'
+   if case['path']:
+    target=roadmap_doc
+    for key in case['path'][:-1]: target=target[key]
+    target[case['path'][-1]]=case['value']
+   literal=json.dumps(roadmap_doc,ensure_ascii=False).replace("'","''")
+   accepted=run('psql',*conn,'-c',f"select public.visual_roadmap_valid('{literal}'::jsonb)").strip()=='t'
+   assert accepted==case['expected'], 'roadmap corpus: '+case['name']
+  print(f"Roadmap SQL corpus {len(roadmap_corpus['cases'])}/{len(roadmap_corpus['cases'])} PASS",flush=True)
   if admin_owner_previous is not None and not args.baseline:
    run_admin_owner_regressions(run,conn,OUT,BIN,ENV,admin_owner_previous)
   if args.admin_owner_only:

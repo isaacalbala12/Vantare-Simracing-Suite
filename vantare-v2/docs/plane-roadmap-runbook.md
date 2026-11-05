@@ -5,6 +5,10 @@ Preparado, **no ejecutado**. El OK de implementación/PR no autoriza credenciale
 servidor puede crear el token Plane cuando reciba su autorización. Isaac debe
 autorizar por separado la primera escritura y la activación periódica.
 No hace falta un esquema nuevo ni se ejecuta ninguna migración de #1601.
+El paso 10 de VANTA-131 prepara una migración posterior del validador
+`visual_roadmap_valid` (`20261104231800`, con rollback). Isaac debe aplicarla
+solo dentro de su orden de despliegue SQL autorizado antes de activar el
+publicador; este runbook no autoriza su aplicación.
 Los pasos de activación ClickUp de #1582 quedan sustituidos por estos. El
 orquestador debe cerrar/sustituir ese PR para que no vuelva a instalar el escritor
 ClickUp; no fusionarlo después de #1601 sin reconciliar su contenido.
@@ -147,7 +151,8 @@ journalctl -u vantare-roadmap.service -n 20 --no-pager
 ```
 
 El servicio prepara el documento de nuevo, valida TLS verify-full y llama solo
-`visual_roadmap_sync`. Si falla, parar y revisar privadamente: no repetir con
+`visual_roadmap_sync`. Entrega el JSON a `psql` mediante la variable `doc` y
+`:'doc'::jsonb`, sin concatenarlo en el SQL generado. Si falla, parar y revisar privadamente: no repetir con
 credenciales administrativas ni debilitar TLS. El log no imprime SQL/respuestas.
 Comparar lectura pública en app y web: mismos IDs/nombres/columnas. Repetir sin
 cambios debe conservar ID/fecha de publicación; cambiar una tarea de producto

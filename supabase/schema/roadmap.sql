@@ -141,7 +141,7 @@ begin
         or exists(select 1 from jsonb_object_keys(item->'body') k
           where k not in ('es','en','pt','it'))
         or jsonb_typeof(item->'area') is distinct from 'string'
-        or length(trim(item->>'area')) not between 1 and 60
+        or length(btrim(item->>'area', E' \t\n\r\f\v' || U&'\0085\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000')) not between 1 and 60
         or (item->>'version' is not null and
           (length(item->>'version') > 60 or item->>'version' !~ '^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.-]+)?$'))
         or (item->>'dueDate' is not null and item->>'dueDate' !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') then
@@ -157,7 +157,7 @@ begin
     foreach locale in array array['es', 'en', 'pt', 'it'] loop
       if jsonb_typeof(item->'title'->locale) is distinct from 'string'
         or length(item->'title'->>locale) > 120
-        or (locale = 'es' and length(trim(item->'title'->>locale)) = 0)
+        or (locale = 'es' and length(btrim(item->'title'->>locale, E' \t\n\r\f\v' || U&'\0085\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000')) = 0)
         or jsonb_typeof(item->'body'->locale) is distinct from 'string'
         or length(item->'body'->>locale) > 600 then
         return false;

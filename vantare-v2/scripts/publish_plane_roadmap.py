@@ -6,10 +6,8 @@ from pathlib import Path
 from plane_roadmap import Plane, SyncError, document, fetch
 
 
-def publication_sql(document):
-    value = json.dumps(document, ensure_ascii=False).replace("'", "''")
-    return f"""begin;
-set local standard_conforming_strings = on;
+def publication_sql():
+    return """begin;
 set local statement_timeout = '30s';
 do $role_guard$
 begin
@@ -18,7 +16,7 @@ begin
   end if;
 end
 $role_guard$;
-select public.visual_roadmap_sync('{value}'::jsonb);
+select public.visual_roadmap_sync(:'doc'::jsonb);
 commit;
 """
 
@@ -38,7 +36,7 @@ def main():
         result = document(snapshot)
         args.output.write_text(json.dumps(result, ensure_ascii=False), encoding='utf-8')
         if args.sql_output:
-            args.sql_output.write_text(publication_sql(result), encoding='utf-8')
+            args.sql_output.write_text(publication_sql(), encoding='utf-8')
         print(f"Roadmap preparado: {len(result['items'])} tareas; sin escritura remota")
     except SyncError as error:
         parser.exit(1, f'{error}\n')

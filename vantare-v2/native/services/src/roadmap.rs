@@ -16,6 +16,42 @@ const MAX_DOCUMENT_BYTES: usize = 40_000;
 /// `MAX_FRAME`, y ese rechazo deja el servicio en FAILURE con la cache ya
 /// escrita: reiniciar no lo cura, hay que borrar el fichero a mano.
 const MAX_PUBLICATION_BYTES: usize = 56 * 1024;
+const _: () = assert!(MAX_PUBLICATION_BYTES < crate::protocol::MAX_FRAME);
+
+fn valid_version(value: &str) -> bool {
+    let value = value.strip_prefix('v').unwrap_or(value);
+    let (core, suffix) = value
+        .split_once('-')
+        .map_or((value, None), |(a, b)| (a, Some(b)));
+    let mut parts = core.split('.');
+    (0..3).all(|_| {
+        parts
+            .next()
+            .is_some_and(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
+    }) && parts.next().is_none()
+        && suffix.is_none_or(|part| {
+            !part.is_empty()
+                && part.bytes().all(|byte| {
+                    byte.is_ascii_lowercase()
+                        || byte.is_ascii_digit()
+                        || matches!(byte, b'.' | b'-')
+                })
+        })
+}
+
+fn valid_due_date(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 10
+        && bytes.iter().enumerate().all(|(index, byte)| {
+            if matches!(index, 4 | 7) {
+                *byte == b'-'
+            } else {
+                byte.is_ascii_digit()
+            }
+        })
+        && &value[..4] != "0000"
+        && chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok()
+}
 
 fn validate(publication: &Publication) -> Result<()> {
     if !uuid(&publication.id)
@@ -28,21 +64,14 @@ fn validate(publication: &Publication) -> Result<()> {
     }
     let mut ids = HashSet::new();
     for item in &publication.document.items {
-        if item
-            .area
-            .as_ref()
-            .is_some_and(|v| v.trim().is_empty() || v.chars().count() > 60 || v.contains('\0'))
-            || (publication.document.schema_version == 2 && item.area.is_none())
-            || item.version.as_ref().is_some_and(|v| {
-                v.is_empty()
-                    || v.len() > 60
-                    || !v
-                        .bytes()
-                        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-'))
-            })
-            || item.due_date.as_ref().is_some_and(|v| {
-                v.len() != 10 || chrono::NaiveDate::parse_from_str(v, "%Y-%m-%d").is_err()
-            })
+        if item.area.as_ref().is_some_and(|v| {
+            v.trim().is_empty() || v.trim().chars().count() > 60 || v.contains('\0')
+        }) || (publication.document.schema_version == 2 && item.area.is_none())
+            || item
+                .version
+                .as_ref()
+                .is_some_and(|v| v.len() > 60 || !valid_version(v))
+            || item.due_date.as_ref().is_some_and(|v| !valid_due_date(v))
         {
             return Err(Error::Protocol);
         }
@@ -76,8 +105,7 @@ fn validate(publication: &Publication) -> Result<()> {
     {
         return Err(Error::TooLarge);
     }
-    // Cota del conjunto, no solo del documento: es la que ata el tamano de la
-    // respuesta al marco del protocolo y protege ante campos futuros.
+    // La cota del conjunto protege el frame IPC si se añaden campos futuros.
     if serde_json::to_vec(publication)
         .map_err(|_| Error::Protocol)?
         .len()
@@ -128,7 +156,7 @@ impl Roadmap {
         let url = base
             .join("rest/v1/rpc/visual_roadmap_current_v2")
             .map_err(|_| Error::Unconfigured)?;
-        // POST is an explicitly read-only RPC. One request per manual refresh.
+        // POST is an explicitly read-only RPC. Automatic refresh runs every 300 seconds.
         let mut rows: Vec<Publication> = http
             .post_json(&url, &serde_json::json!({}), Some(anon), Some(anon))?
             .success()?
@@ -154,6 +182,63 @@ mod tests {
     use super::*;
     use crate::test_http::Server;
     use std::time::Duration;
+
+    #[test]
+    fn shared_roadmap_document_corpus() {
+        let corpus: serde_json::Value =
+            serde_json::from_str(include_str!("../../../fixtures/roadmap/cases.json"))
+                .expect("corpus");
+        for case in corpus["cases"].as_array().expect("cases") {
+            let mut document = corpus["base"].clone();
+            if let Some(count) = case["items_count"].as_u64() {
+                let base_item = corpus["base"]["items"][0].clone();
+                document["items"] = serde_json::Value::Array(
+                    (1..=count)
+                        .map(|index| {
+                            let mut item = base_item.clone();
+                            if !case["duplicate_ids"].as_bool().unwrap_or(false) {
+                                item["id"] = serde_json::json!(format!(
+                                    "550e8400-e29b-41d4-a716-{index:012x}"
+                                ));
+                            }
+                            item
+                        })
+                        .collect(),
+                );
+            }
+            let path = case["path"].as_array().expect("path");
+            if !path.is_empty() {
+                let mut target = &mut document;
+                for key in &path[..path.len() - 1] {
+                    target = if let Some(index) = key.as_u64() {
+                        &mut target[usize::try_from(index).expect("índice")]
+                    } else {
+                        &mut target[key.as_str().expect("key")]
+                    };
+                }
+                let key = &path[path.len() - 1];
+                if let Some(index) = key.as_u64() {
+                    target[usize::try_from(index).expect("índice")] = case["value"].clone();
+                } else {
+                    target[key.as_str().expect("key")] = case["value"].clone();
+                }
+            }
+            let publication = serde_json::json!({
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "published_at": "2026-10-13T00:00:00Z",
+                "document": document
+            });
+            let accepted = serde_json::from_value::<super::Publication>(publication)
+                .is_ok_and(|value| super::validate(&value).is_ok());
+            assert_eq!(
+                accepted,
+                case["expected"].as_bool().unwrap(),
+                "{}",
+                case["name"]
+            );
+        }
+    }
+
     #[test]
     fn clickup_metadata_requires_area_and_valid_calendar_without_breaking_v1() {
         let mut publication: Publication = serde_json::from_value(serde_json::json!({
@@ -369,11 +454,7 @@ mod tests {
         assert!(validate(&publication).is_err(), "la cota debe rechazarlo");
     }
 
-    /// El test anterior lo decide `MAX_PUBLICATION_BYTES`, no la cota del
-    /// timestamp: con el documento al tope, el conjunto ya supera 56 KiB por si
-    /// solo. Este caso AISLA la cota del timestamp: el conjunto queda por debajo
-    /// de `MAX_PUBLICATION_BYTES` y solo `MAX_TIMESTAMP_CHARS` puede rechazarlo.
-    /// Comprobado quitando esa cota: este test falla y el otro no.
+    /// El conjunto queda por debajo de su cota; solo la del timestamp rechaza.
     #[test]
     fn the_timestamp_cap_is_what_rejects_a_long_fraction_on_a_small_document() {
         let mut publication: Publication = serde_json::from_value(serde_json::json!({
@@ -393,11 +474,7 @@ mod tests {
             fetched_at: 0,
         })
         .expect("serializar");
-        assert!(
-            conjunto.len() < MAX_PUBLICATION_BYTES,
-            "el conjunto debe quedar por debajo de la cota de conjunto para aislar la del timestamp, y mide {}",
-            conjunto.len()
-        );
+        assert!(conjunto.len() < MAX_PUBLICATION_BYTES);
         assert!(
             validate(&publication).is_err(),
             "solo la cota del timestamp puede rechazar este caso"

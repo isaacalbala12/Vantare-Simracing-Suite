@@ -23,6 +23,12 @@ Nombre exacto, incluido el tipo: «Rework - Roadmap» no se reformatea ni traduc
 `later` legado se agrupa en Planeado. IDs estables del UUID Plane, orden por
 sequence_id/UUID. area contiene los modules de producto; version/dueDate quedan
 null si no hay datos aprobados. La compatibilidad IPC v6/JSON v1-v2 no cambia.
+El corpus `fixtures/roadmap/cases.json` fija el contrato v2 en el publicador
+Python, `visual_roadmap_valid` y Services Rust. Los lectores v2 rechazan campos
+desconocidos: agregar uno exige una nueva `schemaVersion` y clientes preparados.
+La RPC v1 sigue disponible para builds instaladas.
+En Python, `validate_public_document` comprueba la forma; `document()` aplica
+los topes de 40 ítems y 40.000 bytes antes de entregar el documento al publicador.
 
 Límite estricto: 40 tareas y 40.000 bytes. Si se excede, **parar y preguntar a
 Isaac**, sin truncar ni ampliar esquema. Lectura incompleta, estado desconocido,
@@ -40,7 +46,10 @@ Los antiguos plan.md, docs/roadmap/roadmap.json y roadmap_digest.py siguen retir
 ni volver a publicarlos. GitHub Issues/Project Vantare conservan seguimiento interno.
 
 **Activación pendiente:** credenciales, roadmap.env, despliegue, timer y primera
-escritura requieren autorización separada. No hay migración nueva. Pasos exactos,
+escritura requieren autorización separada. El contrato del paso 10 añade
+`20261104231800_isa_1896_roadmap_corpus_parity` con rollback: rechaza títulos
+compuestos solo por espacios o tabulaciones como ya hacen Python y Rust. La
+RPC v1 y sus documentos históricos siguen admitidos. Pasos exactos,
 verificación/rollback y cambios de la web externa: [runbook](plane-roadmap-runbook.md).
 El retiro de la Action en esta rama no prueba que se haya desactivado en master.
 

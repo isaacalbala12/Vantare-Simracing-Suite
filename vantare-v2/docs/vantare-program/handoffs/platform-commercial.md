@@ -8924,3 +8924,24 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - Cierre CI1962: run41902621733 pasó replay LF/CRLF y carreras; solo falló
   derived schema drift admin/mail. Se incorporan volcados del replay PG17 fijado
   (artefacto13359192619), sin cambios runtime ni timestamps. Nueva CI pendiente.
+
+### Seguimiento menor de1962 (2026-11-04)
+
+- PR1962 e2e049d02 aceptado, sin nuevos commits. Rama separada paso6-p3
+  apilada temporalmente encima; destino nightly, depende de su integración.
+- Imports de confirmations.test.ts en cabecera. Demo MailApprove/MailCancel
+  con brazos explícitos. recipients solo se parsea en el brazo de detalle;
+  MailNew restablece None, sin intentar leer un campo que no recibe.
+- Caracterización6c715d895: un ACK sync con metadata recipients ajena fallaba
+  Protocol. RED reproducido mediante compilar.ps1, target/QA propios, sin Store.
+  Deno3 y check/Clippy -D warnings/Nextest48/fmt admin PASS. No SQL ni migraciones,
+  _shared, billing/licencias, despliegue/merge/release. Paso11 sigue R6/12.
+
+- Draft de seguimiento https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1967,
+  código66afbd440 validado. Producción425→424(-1), tests+11, docs separados.
+  Target/QA propios y compilar.ps1, cola cedida entre comandos; CI nueva pendiente.
+
+- Rebase1967 tras merge1962: base nightly7e40fdb7c (2026-11-05), solo los
+  P3 y su test/handoff quedan en el diff. Range-diff idéntico, sin conflictos;
+  código Rust/Deno byte idéntico al validado check/Clippy/Nextest48/fmt/Deno3.
+  No se repiten builds sin cambio de código/dependencias Rust; CI nueva pendiente.

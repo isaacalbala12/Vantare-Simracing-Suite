@@ -1,5 +1,43 @@
 use super::*;
 
+#[test]
+fn r9_no_deadline_lap_corpus_exhausts_work_budget_repeatably() {
+    for laps in [240, 960] {
+        let mut input: Input =
+            serde_json::from_str(include_str!("../../testdata/fuji-1450-input.json"))
+                .expect("frozen Fuji input");
+        input.extra.remove("raceDurationSeconds");
+        input.race_laps = laps;
+        input.budget.p95_millis = 20_000;
+        input.budget.max_candidates = 1;
+        let original = json!(input);
+        let first = solve_v2_without_deadline(&input).expect("bounded lap search");
+        assert_eq!(first.certificate.status, OptimalityStatus::NotProven);
+        assert_eq!(
+            first.certificate.reason.as_deref(),
+            Some("candidate_budget_exhausted")
+        );
+        assert_eq!(first.certificate.explored_work_items, 2);
+        assert!(
+            !first
+                .certificate
+                .proof
+                .as_ref()
+                .expect("proof")
+                .search_completed
+        );
+        for _ in 0..3 {
+            let next = solve_v2_without_deadline(&input).expect("repeat bounded search");
+            assert_eq!(next.certificate.reason, first.certificate.reason);
+            assert_eq!(
+                next.certificate.explored_work_items,
+                first.certificate.explored_work_items
+            );
+            assert_eq!(json!(next.result), json!(first.result));
+        }
+        assert_eq!(json!(input), original);
+    }
+}
 fn fields(actual: &Value, expected: &Value, path: &str) {
     match expected {
         Value::Object(map) => {

@@ -369,7 +369,7 @@ impl Strategy {
             circuit,
             self.view_data
                 .layout
-                .map_or(class, |layout| layout.to_owned()),
+                .map_or(class, std::borrow::ToOwned::to_owned),
         ]
         .into_iter()
         .filter(|part| !part.is_empty())

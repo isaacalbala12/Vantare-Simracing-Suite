@@ -1,3 +1,5 @@
+> **VANTA-132:** estado vigente y despliegue en [el cierre de la tanda](#vanta-132--cierre-de-la-tanda-adminowner-2026-11-05). Sus entradas anteriores son evidencia histórica.
+
 ## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner
 
 - Rama `vantareapp/isa-1878-instant-tests`, base
@@ -9035,3 +9037,189 @@ union all select 'linear_deliveries',outcome::text,count(*)
   check/Clippy -D warnings/fmt y Nextest50 PASS (admin, compilar.ps1, QA propia).
   Producción4824→5044(+220), tests+532, down16 y derivados98 separados; docs aparte.
   Push único con rebase/P3/PG17. Nueva CI pendiente; sin merge ni despliegue.
+
+
+## VANTA-132 — Cierre de la tanda admin/owner (2026-11-05)
+
+[Issue #1910](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1910),
+Project Vantare, `area:plataforma`. Entrega para **Por revisar**, sin despliegue.
+Este cierre sustituye los estados «siguiente», «pendiente» y los órdenes parciales
+anteriores de VANTA-132; conserva abajo/en el historial la evidencia de cada corte.
+Base de este PR documental: `nightly@88a1378a7`, con #1965 integrado.
+Último código: [#1971](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1971),
+HEAD `a20cafa60`, rebasado sobre esa misma base, todavía pendiente de integración.
+Los otros 22 PR de la tanda están fusionados; no se afirma que #1971 lo esté.
+
+| Paso | Resultado para Isaac | PR de referencia |
+| --- | --- | --- |
+| 0–3 | Caracterización previa; cliente Gestión JWT separado y desactivado hasta configurarlo; sesión en memoria/migración solo al activar Gestión; cupo Clerk y verificación local antes de gastar cupo en modo activo. El modo Hub conserva su comportamiento mientras está inactivo. | #1911, #1912, #1913 |
+| 4 | Autoridad única R6 para owner; protección del owner vivo, ACK explícito de tester sin modificarlo, carreras y borrado propio/caducado cubiertos. | #1927, #1939, #1941 |
+| 5 | Un journal para Clerk, Storage, Polar y Brevo (DELETE, contactos y SMTP); intención antes del HTTP, resultado antes del ACK, pendientes/reconcile y lease con fencing. Caer la auditoría de DELETE no consume intentos. Bajas también auditadas; el consentimiento local impide envíos. | #1921, #1922, #1942, #1944, #1946, #1947 |
+| 6 | CAS en módulos/rollout, destinatarios confirmados al aprobar y cancelación de campañas con revisión; un HTTP ya en vuelo puede acabar. | #1962, #1967 |
+| 7 y 9 | Errores recuperables tipados y un contrato de acciones para validación/despacho; fixture compartido con Rust. | #1948, #1951 |
+| 8 | Borrado compartido admin/webhook; informes solo sobre testing_contributions; sync_payments explícito con confirmación/UI y lecturas puras mediante opt-in. Edge conserva sync implícito para clientes antiguos. mail_list solo consulta; el scheduler mantiene la limpieza. | #1924, #1952, #1963, #1968 |
+| 10 | Minimización, redacción de cuentas borradas/actores/hashes cerrados, TTL provisional de 365 días y purga trazada. Pendientes conservados hasta reconcile. Auditoría owner de solo lectura y 409 distintos por lease o efecto pendiente. | #1957, #1959, #1971 |
+
+No queda código del plan 0–10 pendiente de implementar. Quedan revisar/integrar
+#1971 y este cierre, y la activación/despliegue de Isaac. **Paso 11 excluido:**
+aplanado SQL/base de migraciones exclusivamente en R6/12; no se adelanta aquí.
+Se conservan los P3 diferidos aceptados: set_blocked sin token durante un solape
+de despliegue, limpieza de leases caducados y 503 si falla release tras un cambio
+correcto. La ventana SQL con workers parados evita el solape; no se presentan
+como riesgos ya corregidos ni se abre código adicional fuera de esta tanda.
+
+### Balance y evidencia
+
+Foto de los archivos de runtime tocados: **9173 → 11342 líneas**, desde la base
+previa a #1911 (`6a461ccf0`) hasta #1971 rebasado. Excluye fixtures, tests.rs y
+módulos cfg(test). Incluye 152 líneas netas de otros PR en archivos compartidos;
+por eso no se atribuye toda la diferencia a esta tarea. Sumando únicamente los
+deltas de sus 22 squash integrados y #1971 contra su base:
+
+| Categoría | Añadidas | Retiradas | Neto |
+| --- | ---: | ---: | ---: |
+| Producción runtime | 2854 | 837 | +2017 |
+| Producción: migraciones de la tanda | 1946 | 0 | +1946 |
+| **Producción total atribuible** | **4800** | **837** | **+3963** |
+| Tests y tooling de tests | 8547 | 202 | +8345 |
+| Docs antes de este cierre | 2304 | 18 | +2286 |
+| Rollbacks, aparte de producción | 1144 | 0 | +1144 |
+| Volcados derivados, sin contarlos dos veces | 765 | 116 | +649 |
+
+**No se alcanza reducción global de producción.** El alcance terminó incluyendo
+cliente/sesión propios, controles de abuso, journal duradero, concurrencia,
+retención y nuevas operaciones/UI, además del refactor. La cadena histórica es
+aditiva y ADR 0106 exige cuerpos SQL completos; no se borró para mejorar la cifra.
+Las simplificaciones reales son un borrado compartido, un contrato de acciones,
+un journal y la retirada de mantenimiento de lecturas. #1971 baja 3593 → 3581
+respecto a su review: **3333 → 3581 (+248)** frente a su base; tests +263, docs +36,
+rollback 75 y derivado 24 separados. Este PR de cierre: producción/tests +0;
+docs +188, sin compilación por ser exclusivamente documental.
+
+Últimos gates del código, antes del rebase: Deno 308, SQL LF/CRLF 20,
+tooling 34, lint ADR 0106, fmt/Clippy y Nextest admin **51/51 PASS**. Rust solo
+por compilar.ps1, target/QA propios y cola liberada; sin sccache/incremental en
+la repetición final. Se conservan las invocaciones fallidas/canceladas en la
+issue; no se tocaron daemon, cola ni Store reales. Native admin y la migración
+025144 son idénticos tras el rebase: no se recompila por cambiar solo Git/docs.
+Tras el rebase: LF/CRLF 20 y corpus roadmap 33 PASS. La CI comercial de #1971
+(run 41969360275) pasa, incluidos los nueve derivados PG17 sin regeneración.
+Estado del gate agregado y runs en #1971/#1910; no se declara verde si está pendiente.
+Sin cambios de runtime/domain/ipc/testdata propios en este remate: sin repetición
+de telemetría/lifecycle. Revisión Sonnet LISTO sobre b754ab468; recortes posteriores
+solicitados por el orquestador. QA de cuentas/proveedores reales sigue siendo Isaac.
+
+### Despliegues de Isaac: orden completo y bloqueos
+
+**Todo sigue pendiente de verificación/aplicación por Isaac; no es evidencia de
+que falte cada archivo en producción.** Producción se reconstruyó en octubre y
+contiene datos. Leer el historial, confirmar backups y aplicar únicamente lo
+pendiente, con **toda la cadena** de dependencias, nunca archivos sueltos/repair/reset.
+No desplegar código de #1971 hasta su integración y CI aceptadas.
+
+La secuencia manual anterior «7b1 → 7b2 → #1924 → owner» describía fases,
+no timestamps. En un lote limpio owner va antes de 7b2. Esta lista usa el orden
+real de archivos; no renombra historia ni promete otro orden de db push.
+Las migraciones R6 ajenas intercaladas también se revisan con su runbook.
+
+| Orden SQL | Migración/versiones | Comprobación antes de seguir |
+| --- | --- | --- |
+| 1 | 20261103152000 — admin_gate (#1912) | Recuperación del contador/cupo y modo de autenticación preparados. |
+| 2 | 20261103190000 y 20261103190100 — report_v2/agent_v2_read (#1918, R6) | DTO/raíz testing_contributions y dependencias R6 anteriores. |
+| 3 | 20261103212343, 20261103214115 — admin_effects/review (#1921/#1922) | Journal, pendientes, lease/fencing y reconcile disponibles. |
+| 4 | 20261103231148 — close_legacy_report_writers (#1926, 7b1) | Padre, siete hijas y todas las firmas de RPC legacy sin escritores. Clerk conserva EXECUTE. |
+| 5 | 20261103235000, 20261104005000 — owner_unification/admin_owner_authority (#1925/#1927) | Revisar grants vigentes/caducados y backfill de owner. |
+| 6 | 20261104014000 — legacy_archive (#1930, 7b2) | **Pausar Clerk/borrados y drenar peticiones**; conservar/reintentar eventos. Revisar colas y NOTICE de archivo/mapeo/vaciado. Reanudar tras commit o aborto resuelto, sin perder user.deleted. |
+| 7 | 20261104024000 — admin_report_root (#1924) | Padre y siete hijas vacíos, ACL tabla/columna y RPC cerrados; apply_clerk_user_event ejecutable. Este paso no retira tablas/FK. |
+| 8 | 20261104070000, 20261104083000 — owner_policy/owner_ack (#1939/#1941) | Owner protegido y ACK tester explícito. |
+| 9 | 20261104084000 — channel_owner_authority (#1934, R6) | Costura de canales con la autoridad única. |
+| 10 | 20261104095000 — brevo_erasure_journal (#1942) | Pausar worker durante SQL; si auditoría falla, sin DELETE ni consumo de intento. |
+| 11 | 20261104100000, 20261104103000 — sync_journal/sync_limits (#1944/#1946) | Bajas auditadas, rechazos definitivos y límite previo al HTTP. |
+| 12 | 20261104110000 — smtp_effects (#1947) | Pausar envíos; actor, claim auditado e idempotencia por entrega. |
+| 13 | 20261104120500 — legacy_retirement (#1949, R6) | **Archivo no vacío o filas/efectos pendientes: STOP.** Inspección y decisión de Isaac/R6; no purgar para forzar el guard. Archivo/FK y parche Clerk se coordinan aquí, no en #1924. |
+| 14 | 20261104145436 — admin_audit_minimal (#1959) | Pre-check y backup lógico admin_audit_log/mail_audit: redacción irreversible. Ventana sin escritores/lectores; DDL NOWAIT puede abortar. |
+| 15 | 20261104164800 — owner_disposition_authority (#1960) | Autoridad operativa vigente, según R6. |
+| 16 | 20261104181200 — acl_restatement (R6) | ACL explícitas de la cadena. |
+| 17 | 20261104181354 — admin_confirmations (#1962) | Revisar estados de campañas; después actualizar contrato Edge/cliente. |
+| 18 | 20261104182500 — pgcrypto_digest_contract (#1961) | Probe pgcrypto de la cadena R6. |
+| 19 | 20261104190009 — admin_explicit_sync (#1963) | Estado/cupo de sync y journal; no empeorar clientes antiguos. |
+| 20 | 20261104215424 — admin_mail_list_read (#1968) | **Bloqueante:** tarea programada `\Vantare-VANTA96-MailCleanup` activa, cada minuto, `scheduler.py --mail-only`, último resultado 0. Verificar antes de SQL; no modificar la tarea. |
+| 21 | 20261104231800 — roadmap_corpus_parity (#1965, R6) | Corpus/variable psql compatibles. |
+| 22 | 20261105025144 — admin_pending_owner (#1971) | Lectura owner y errores distintos; validar después del lote completo. |
+
+- [ ] Inventario/backup y todas las comprobaciones SQL anteriores terminados.
+- [ ] **Después del SQL, desplegar Edge antes que Gestión nuevo:** native-admin,
+  mail-cleanup y clerk-webhook del corte coordinado. Mantener admin, envíos/sync
+  y limpieza parados durante su ventana SQL. Gestión nuevo contra Edge viejo
+  envía explicit_payments y recibe 400; no invertir el orden.
+- [ ] Cliente Clerk «Vantare Gestión» JWT separado del Hub, typ real at+jwt,
+  issuer/aud o azp correctos y TTL de 5 minutos. Solo Isaac configura IDs/flags
+  fuera del repo. Producción exige CLERK_ADMIN_AUTH_ENABLED=true y configuración
+  coherente del cliente; el modo Hub inactivo solo conserva compatibilidad.
+- [ ] Comprobar tarea MailCleanup de nuevo tras reanudar y ejecutar QA autorizado:
+  Hub/basura/no owner/caducado rechazados con Gestión activa; owner protegido;
+  pendientes visibles, 409 explicables, cancelación y sync explícito sin datos peores.
+- [ ] Registrar SQL/Edge/cliente y SHA realmente desplegados, sin marcar estas casillas
+  a partir de los tests sintéticos del worker. MFA de la cuenta owner: Isaac.
+
+### Consultas previas, retención y reversión
+
+Estas consultas solo leen metadatos/conteos; ejecutarlas únicamente por Isaac,
+con rol verificado. Primero identificar qué etapas existen para no consultar
+columnas/tablas aún no creadas o ya retiradas:
+
+```sql
+select current_user, rolsuper, rolbypassrls from pg_roles where rolname=current_user;
+select version from supabase_migrations.schema_migrations
+ where version >= '20261103000000' order by version;
+select name, to_regclass(name) as relation from unnest(array[
+ 'public.testing_center_reports','private.testing_center_legacy_archive',
+ 'private.admin_effects','private.mail_audit','private.admin_audit_policy']) name;
+```
+
+Para las etapas aún pendientes, usar los SELECT del checklist histórico de esta
+misma página (recuentos padre/siete hijas, ACL de tabla/columna/PUBLIC/roles y
+sobrecargas RPC, colas del subárbol, archivo/hashes y asignaciones owner).
+Antes de 7b2 resolver pendientes y comprobar evidencia Storage; no vaciarla a ciegas.
+Tras 7b2 verificar mapeo/archivo y ocho conteos cero antes de #1924.
+Antes de 120500, si ya existe el archivo:
+
+```sql
+select count(*) as archived_rows from private.testing_center_legacy_archive;
+-- No cero implica bloqueo de R6: no borrar para poder desplegar.
+```
+
+Antes de 10b, ejecutar el pre-check readonly de
+[native-admin, auditoría mínima](../../../../supabase/functions/native-admin/README.md#auditoría-mínima-y-retención-provisional--paso-10b):
+claves fuera de whitelist, target UUID, cuentas ya borradas, hashes cerrados sin
+asociación verificable y cerrados asociados a cuentas borradas. Conservar el
+recuento y backup lógico de admin_audit_log/mail_audit antes de reescribir.
+Los cerrados sin asociación pasan a erased; los pendientes no se borran ni se
+redactan hasta reconciliar. En el camino vivo, un contacto sin cuenta solo puede
+redactarse cuando haya una asociación verificable; diferencia documentada en 10b.
+Revisar también campañas y sync, cuando existan sus tablas:
+
+```sql
+select state,count(*) from private.mail_campaigns group by state;
+select environment,last_synced_at from private.admin_payment_sync;
+select closed_retention_days from private.admin_audit_policy where singleton;
+select count(*) as pending_effects from private.admin_pending_effects;
+```
+
+Retención **365 días, provisional**, en un único parámetro
+private.admin_audit_policy.closed_retention_days. Isaac puede bajarlo a 90.
+La purga solo afecta grupos cerrados; pendientes hasta reconcile, sin cron nuevo
+ni purga al leer/desplegar. audit_prune conserva actor/fecha/TTL/conteos y no
+caduca con ese mismo TTL. El respaldo de limpieza de correo es el scheduler,
+no el panel. No ejecutar ejemplos UPDATE/purga como si fueran pre-checks.
+
+Cada migración admin tiene rollback; respetar sus guards de evidencia. Con filas
+brevo_delete, el down de #1942 ya no sirve: revocar las RPC nuevas y revertir Edge,
+conservando journal; antes de revertir #1942 hay que revertir #1946 y #1944.
+Con canceled, evidencia sync o redacción irreversible, usar corrección hacia delante
+según README, nunca borrar datos para forzar down. Revertir también el contrato
+Edge/Gestión si se retiran las lecturas nuevas. Legacy/archivo: runbook R6 y pausa
+Clerk correspondiente; no recomponer identidades/PII desde suposiciones.
+
+Sin merge, release, promoción, despliegue, consultas/cambios de producción,
+servicios reales, secretos, .env ni DPAPI por este worker. No subagentes.

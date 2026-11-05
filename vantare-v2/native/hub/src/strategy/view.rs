@@ -727,7 +727,10 @@ mod tests {
     #[test]
     fn assistant_and_editor_routes_have_explicit_tabs() {
         assert_eq!(AssistantStep::ALL.len(), 5);
-        assert_eq!(EditorTab::ALL.len(), 4);
+        assert_eq!(
+            EditorTab::ALL.map(EditorTab::label),
+            ["Carrera", "Plan", "Revisiones"]
+        );
         assert_eq!(
             Page::Assistant(AssistantStep::Pilotos),
             Page::Assistant(AssistantStep::Pilotos)

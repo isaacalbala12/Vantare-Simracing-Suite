@@ -1400,6 +1400,22 @@ mod tests {
     }
 
     #[test]
+    fn mailbox_actions_pass_through_the_real_drawer_and_answer_writer() {
+        with_decision_window(|window, cx| {
+            for (index, expected) in [Action::Trust, Action::Reuse, Action::Restart,
+                Action::Cancel, Action::Stop, Action::Continue, Action::Leave,
+                Action::CloseStarted].into_iter().enumerate() {
+                let id = u64::try_from(index).unwrap() + 100;
+                show_resident_decision(window, cx, id, &[expected]);
+                window.update(cx, |launcher, window, cx| {
+                    launcher.answer_decision(expected, window, cx);
+                    assert_resident_answer(launcher, cx, id, expected);
+                }).expect("respuesta por el drawer real");
+            }
+        });
+    }
+
+    #[test]
     fn launcher_action_labels_round_trip_through_hub_decoder() {
         for expected in [
             Action::Trust,

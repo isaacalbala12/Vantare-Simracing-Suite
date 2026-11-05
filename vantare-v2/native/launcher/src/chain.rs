@@ -189,12 +189,25 @@ pub fn retry_steps(profile: &Profile, progress: &[Progress], scope: RetryScope) 
 pub enum Found {
     Snapshot(Discovery),
     Scan,
+    #[cfg(test)]
+    BlockedScan {
+        entered: Sender<thread::ThreadId>,
+        release: Receiver<()>,
+    },
 }
 impl Found {
     fn resolve(self, apps: &[App]) -> Discovery {
         match self {
             Self::Snapshot(discovery) => discovery,
             Self::Scan => Discovery::scan(apps, discovery::Sources::system()),
+            #[cfg(test)]
+            Self::BlockedScan { entered, release } => {
+                entered
+                    .send(thread::current().id())
+                    .expect("scanner observado");
+                release.recv().expect("liberar scanner aislado");
+                Discovery::scan(apps, discovery::Sources::default())
+            }
         }
     }
 }
@@ -948,6 +961,89 @@ mod trust_tests {
             review_content(&document, &profile, &discovery)
                 .expect("changed profile")
                 .0
+        );
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+
+    #[test]
+    fn scanning_runs_off_the_caller_and_does_not_hold_up_constructor_return() {
+        let document = Document::default();
+        let mut profile = Profile::new("scan-qa".into(), "Scan QA".into());
+        profile.first_step_delay = 3600;
+        profile.steps.push(Step {
+            app_id: "obs".into(),
+            delay_seconds: 0,
+            args_override: None,
+        });
+        // Control positivo: el mismo documento/perfil es válido y no crea procesos.
+        let mut snapshot = Chain::start(
+            document.clone(),
+            profile.clone(),
+            Found::Snapshot(Discovery::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        snapshot.shutdown().unwrap();
+        let (entered, observed) = mpsc::channel();
+        let (release, held) = mpsc::channel();
+        let (returned, result) = mpsc::channel();
+        let caller = thread::spawn(move || {
+            let chain = Chain::start(
+                document,
+                profile,
+                Found::BlockedScan {
+                    entered,
+                    release: held,
+                },
+                Default::default(),
+                None,
+            );
+            assert!(
+                returned.send(chain).is_ok(),
+                "resultado del constructor entregado"
+            );
+        });
+        let caller_id = caller.thread().id();
+        let scanner_id = observed
+            .recv_timeout(Duration::from_secs(5))
+            .expect("entrar al scanner");
+        // Espera acotada a una señal, sin sleeps: el scanner sigue retenido por el canal.
+        // Si ya lo vemos en el caller, el defecto queda demostrado sin agotar el plazo.
+        let early = if scanner_id == caller_id {
+            None
+        } else {
+            result.recv_timeout(Duration::from_secs(5)).ok()
+        };
+        let returned_while_blocked = early.is_some();
+        if let Some(Ok(chain)) = &early {
+            chain.prepare_shutdown();
+        }
+        release
+            .send(())
+            .expect("liberar siempre antes de recoger los hilos");
+        let mut chain = early
+            .unwrap_or_else(|| {
+                result
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("constructor después de liberar el scanner")
+            })
+            .expect("fixture válido");
+        caller.join().expect("caller recogido");
+        chain
+            .shutdown()
+            .expect("worker recogido sin crear procesos");
+        assert_ne!(
+            scanner_id, caller_id,
+            "P7: el scanner ocupa el hilo que llama al constructor"
+        );
+        assert!(
+            returned_while_blocked,
+            "el constructor debe volver aun con el scanner retenido"
         );
     }
 }

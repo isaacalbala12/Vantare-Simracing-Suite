@@ -263,7 +263,7 @@ mod characterization {
     use super::*;
 
     #[test]
-    fn cancellation_after_summaries_dispatch_reaps_the_helper_and_preserves_the_database() {
+    fn dropping_a_reader_after_cancellation_reaps_the_helper_and_releases_the_database_lock() {
         let directory =
             std::env::temp_dir().join(format!("vantare-summaries-cancel-{}", std::process::id()));
         std::fs::create_dir(&directory).expect("temporal exclusivo");
@@ -275,6 +275,10 @@ mod characterization {
             .parent()
             .expect("debug")
             .join(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
+        assert!(
+            exe.is_file(),
+            "compila vantare-storage en el mismo target antes de esta prueba"
+        );
         assert!(
             Command::new(&exe)
                 .arg(&db)

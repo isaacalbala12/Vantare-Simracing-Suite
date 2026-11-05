@@ -359,15 +359,15 @@ fn timeout_and_drop_cancel_idle_workers_without_leaking_the_database_owner() {
     assert_eq!(reader.state().tail_lost(), None);
 }
 
-// Proceso fixture controlado por el test padre: permite cortar exactamente
-// después de crear el archivo del motor y antes de crear series_meta.
+// Estado construido: DB creada y confirmada por el motor, sin esquema de series.
+// Matar esta fixture no interrumpe Store::open; fija la reapertura de ese estado.
 #[test]
-#[ignore = "fixture hija de interrupted_creation_before_series_meta"]
-fn partial_creation_fixture() {
+#[ignore = "fixture hija de engine_database_without_series_schema"]
+fn engine_database_without_series_schema_fixture() {
     let path = std::env::var_os("VANTARE_PARTIAL_CREATION_DB").unwrap();
     let connection = duckdb::Connection::open(Path::new(&path)).unwrap();
     connection.execute_batch("CHECKPOINT").unwrap();
-    println!("creation-before-series-meta");
+    println!("engine-without-series-schema");
     std::io::stdout().flush().unwrap();
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).unwrap();
@@ -375,13 +375,13 @@ fn partial_creation_fixture() {
 }
 
 #[test]
-fn interrupted_creation_before_series_meta_is_preserved_and_cannot_resume() {
+fn engine_database_without_series_schema_is_preserved_and_cannot_resume() {
     let db = Database::new();
     let mut child = Command::new(std::env::current_exe().unwrap())
         .args([
             "--ignored",
             "--exact",
-            "partial_creation_fixture",
+            "engine_database_without_series_schema_fixture",
             "--nocapture",
         ])
         .env("VANTARE_PARTIAL_CREATION_DB", &db.0)
@@ -402,7 +402,7 @@ fn interrupted_creation_before_series_meta_is_preserved_and_cannot_resume() {
             fixture.output.read_line(&mut line).unwrap() > 0,
             "fixture terminó antes de la barrera"
         );
-        if line.trim().ends_with("creation-before-series-meta") {
+        if line.trim().ends_with("engine-without-series-schema") {
             break;
         }
     }
@@ -420,6 +420,7 @@ fn interrupted_creation_before_series_meta_is_preserved_and_cannot_resume() {
         if read_only {
             let frame: Value = serde_json::from_slice(output.stdout.trim_ascii()).unwrap();
             assert_eq!(frame[0], "error");
+            // Código accidental: open_error reconoce el texto series_meta del motor.
             assert_eq!(frame[1], "incompatible");
         } else {
             assert!(

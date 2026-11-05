@@ -25,6 +25,12 @@ fn lap_photo(index: u64, lap: u32, distance: f64, elapsed: f64) -> Observation {
 /// con 0 vueltas completadas. No se modifica ni convierte una captura LMU.
 struct LapReplay(VecDeque<Observation>);
 
+impl Adapter for LapReplay {
+    fn poll(&mut self, _now: Duration) -> Result<Option<Observation>, AdapterError> {
+        Ok(self.0.pop_front())
+    }
+}
+
 #[test]
 fn production_core_without_a_series_subscriber_still_retains_diagnostic_samples() {
     let mut core = Core::new(7);
@@ -41,17 +47,10 @@ fn production_core_without_a_series_subscriber_still_retains_diagnostic_samples(
     assert!(core.series().publication_status().is_none());
     let sealed = core.series().sealed().unwrap();
     let active = core.series().active().unwrap();
+    // Coste lógico actual, sin afirmar memoria RSS ni presupuesto físico.
     assert_eq!(sealed.samples.len(), 4);
     assert_eq!(active.samples.len(), 1);
     assert_eq!(sealed.sealed_at, Some(5));
-    // Coste lógico actual, sin afirmar memoria RSS ni presupuesto físico.
-    assert_eq!(sealed.samples.len() + active.samples.len(), 5);
-}
-
-impl Adapter for LapReplay {
-    fn poll(&mut self, _now: Duration) -> Result<Option<Observation>, AdapterError> {
-        Ok(self.0.pop_front())
-    }
 }
 
 #[test]

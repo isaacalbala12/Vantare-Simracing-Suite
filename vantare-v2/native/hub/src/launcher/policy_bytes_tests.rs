@@ -120,12 +120,6 @@ fn three_policy_writers_preserve_the_18_pre_refactor_json_byte_captures() {
                 actual.push(bytes);
             }
         }
-        let receipt = std::path::PathBuf::from(
-            std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("QA aislada"),
-        )
-        .join("launcher-policy-captured.json");
-        std::fs::create_dir_all(receipt.parent().unwrap()).unwrap();
-        std::fs::write(receipt, serde_json::to_vec_pretty(&actual).unwrap()).unwrap();
         let expected: Vec<String> =
             serde_json::from_str(include_str!("policy-bytes.json")).unwrap();
         assert_eq!(actual.len(), 18);

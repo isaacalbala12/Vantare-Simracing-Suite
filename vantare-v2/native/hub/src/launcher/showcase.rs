@@ -96,7 +96,7 @@ fn set_option(
         }
         _ => return Err(invalid()),
     }
-    profile.set_policy(policy, LegacyFields::All);
+    profile.set_policy(policy);
     Ok(())
 }
 
@@ -206,6 +206,7 @@ fn toggle_quick(profile: &mut Profile, option: usize) {
         0 => {
             policy.max_retries = if policy.max_retries == 0 { 2 } else { 0 };
             policy.retry = super::super::policy::Retry::Failed;
+            profile.max_retries = policy.max_retries;
         }
         1 => {
             policy.exit = if policy.exit == Close::Started {
@@ -217,7 +218,7 @@ fn toggle_quick(profile: &mut Profile, option: usize) {
         2 => profile.launch_on_windows_startup = !profile.launch_on_windows_startup,
         _ => return,
     }
-    profile.set_policy(policy, LegacyFields::Changed);
+    profile.policy = Some(policy);
 }
 
 fn launch_block_reason(

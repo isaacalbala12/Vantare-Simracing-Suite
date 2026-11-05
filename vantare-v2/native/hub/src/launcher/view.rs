@@ -3,7 +3,7 @@ use super::{
     App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
     chain::{Action, Chain, Progress},
     discovery::{self, Discovery, Sources},
-    policy::{Close, Failure, LegacyFields, Running},
+    policy::{Close, Failure, Running},
     processes,
 };
 use crate::orbit::{self, Input, button};

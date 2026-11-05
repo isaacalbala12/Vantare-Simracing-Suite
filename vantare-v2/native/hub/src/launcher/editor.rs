@@ -859,7 +859,7 @@ impl Launcher {
                 Some(2) => super::super::policy::Retry::All,
                 _ => super::super::policy::Retry::Ask,
             };
-            profile.set_policy(policy, LegacyFields::All);
+            profile.set_policy(policy);
             profile.steps = draft
                 .steps
                 .iter()

@@ -9,7 +9,7 @@
     "La primera observación del trigger LMU establece su estado sin lanzar el perfil.",
     "El descarte distingue cadena, residente y salida; mantiene el ID de la decisión y rechaza cancelaciones antiguas.",
     "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo.",
-    "Una politica normalizada en memoria y un solo escritor de espejos antiguos; se conserva la representacion original nula al guardar perfiles sin editar y al revisar la confianza."
+    "Un unico set_policy sincroniza editor y desplegables; los controles rapidos conservan sus escrituras parciales y los lectores siguen usando effective_policy, sin normalizar ni restaurar el documento."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",

@@ -14,7 +14,7 @@ impl R9Directory {
             ));
             match std::fs::create_dir(&path) {
                 Ok(()) => return Self(path),
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
                 Err(error) => panic!("fresh test directory: {error}"),
             }
         }

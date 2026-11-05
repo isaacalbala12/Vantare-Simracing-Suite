@@ -6,13 +6,18 @@ struct R9Directory(PathBuf);
 impl R9Directory {
     fn new() -> Self {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-        let path = std::env::temp_dir().join(format!(
-            "vantare-r9-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir(&path).expect("fresh test directory");
-        Self(path)
+        loop {
+            let path = std::env::temp_dir().join(format!(
+                "vantare-r9-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            match std::fs::create_dir(&path) {
+                Ok(()) => return Self(path),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("fresh test directory: {error}"),
+            }
+        }
     }
 }
 
@@ -52,8 +57,9 @@ fn r9_strategy_persist_rejects_pending_form_and_unsaved_new_document() {
 }
 
 fn with_strategy(name: &str, test: impl FnOnce(&mut Strategy, &mut Context<Strategy>) + 'static) {
-    let directory =
-        std::env::temp_dir().join(format!("vantare-1544-{name}-{}", std::process::id()));
+    let scope = R9Directory::new();
+    let directory = scope.0.join(name);
+    std::fs::create_dir(&directory).expect("isolated Strategy directory");
     gpui_platform::headless().run(move |cx| {
         orbit::theme::apply(
             orbit::theme::AppearanceSettings::default(),

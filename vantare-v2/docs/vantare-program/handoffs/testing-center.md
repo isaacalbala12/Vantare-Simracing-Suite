@@ -1236,3 +1236,24 @@ owner y comparación de esquema. Sin despliegue ni merge de #1960.
 
 - [Draft #1970](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1970), rama `vantareapp/isa-1896-paso13b-protected-draft`, base `origin/nightly@3521af1c8`. Services ya no construye ni pasa el nombre del perfil a triage: ese parámetro se descartaba. Se retira `triage/redaction.rs`, compilado solo en tests; las pruebas que verifican el paquete real se conservan. Caracterización previa del paquete cerrado: 1/1; tras el cambio: triage 19/19, Clippy Services `-D warnings` y formato PASS. Producción +0/−11; tests +3/−433; docs +4/−0. Sin SQL, despliegue ni cambios en capturas.
 - El 13b principal sigue pendiente: importar `editor-draft.json` y `report-draft.json` al único borrador DPAPI de Services, preservar los originales como `.imported`, retirar la escritura de prosa en claro del Hub y resolver los casos de textos distintos. Se ha pedido a Isaac la decisión sobre conflictos y sobre el formulario local. #1966 (13a) aún espera integración.
+
+Paso 13a (contrato de borrador, previo a la migración de ficheros): `ipc`
+contiene la lista de módulos y los límites usados por el editor remoto del Hub
+y el validador de Services; los placeholders los usa solo ese editor. El formulario local de
+diagnóstico conserva sus etiquetas hasta 13b. El puente deja de admitir dos rutas v1 sin llamadores;
+las rutas de capturas siguen porque Services aún las llama, aunque la subida
+permanece desactivada. La caracterización previa pasó en Hub (recovery 4/4 y
+testing 17/17); tras el cambio pasaron Hub testing 18/18 y Services report
+18/18. El test nuevo comprueba IDs de módulos únicos y el rechazo de 4097
+bytes en Hub y Services; Services conserva además el vector multibyte de
+4098 bytes. El siguiente grupo debe importar
+`editor-draft.json` y `report-draft.json` al borrador protegido de Services;
+la política para borradores distintos está pendiente de decisión del
+orquestador. Ningún cambio de este grupo escribe ni migra ficheros.
+Rebase de [PR #1966](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1966)
+sobre `nightly@902c9a2d8`, HEAD de código `95a7443ef`. Hub testing
+18/18, Services report 18/18, Clippy de IPC/Services/Hub y formato PASS.
+La CI del HEAD publicado queda pendiente; sin despliegue ni merge.
+Re-review de #1966: Services conserva el vector multibyte de 4098 bytes,
+además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
+`testing::model`. Test aislado de Hub y Services, Clippy y formato PASS.

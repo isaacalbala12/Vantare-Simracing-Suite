@@ -117,13 +117,11 @@ impl DataSession {
                 | "rest/v1/rpc/reset_active_device"
                 | "rest/v1/rpc/testing_center_prepare_screenshot_batch"
                 | "rest/v1/rpc/testing_center_finalize_screenshot"
-                | "rest/v1/rpc/testing_participation_current"
                 | "rest/v1/rpc/testing_participation_current_v2"
                 | "functions/v1/testing-report-submit"
                 | "rest/v1/rpc/testing_report_credit"
                 | "rest/v1/rpc/testing_report_notice_read"
                 | "rest/v1/rpc/testing_answer_save"
-                | "rest/v1/rpc/testing_contribution_submit"
                 | "rest/v1/rpc/pilot_profile_load"
                 | "rest/v1/rpc/pilot_profile_save"
         ) {

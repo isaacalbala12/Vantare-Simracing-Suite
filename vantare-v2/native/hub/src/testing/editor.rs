@@ -5,7 +5,7 @@ use crate::{
     services::{
         protocol::{
             Command,
-            report_document::{Fields, Preview, ScreenshotPreview},
+            report_document::{FIELD_PLACEHOLDERS, Fields, Preview, ScreenshotPreview},
         },
         view::Remote,
     },
@@ -62,20 +62,14 @@ impl Editor {
                 .iter()
                 .position(|(key, _)| *key == values[4].as_str()),
         );
-        let labels = [
-            "Qué hiciste",
-            "Qué esperabas",
-            "Qué ocurrió",
-            "Contexto adicional · opcional",
-            "Módulo",
-        ];
+        let labels = FIELD_PLACEHOLDERS;
         let inputs = std::array::from_fn(|index| {
             cx.new(|cx| {
                 if index < 4 {
                     Input::multiline(values[index].clone(), labels[index], cx)
                         .with_height(px(FIELD_HEIGHTS[index]))
                 } else {
-                    Input::new(values[index].clone(), labels[index], cx)
+                    Input::new(values[index].clone(), "Módulo", cx)
                 }
             })
         });
@@ -390,8 +384,8 @@ impl Editor {
                 div()
                     .flex()
                     .gap(px(orbit::GUTTER / 2.0))
-                    .child(self.field(1, "Qué esperabas", compact, cx))
-                    .child(self.field(3, "Contexto adicional · opcional", compact, cx)),
+                    .child(self.field(1, FIELD_PLACEHOLDERS[1], compact, cx))
+                    .child(self.field(3, FIELD_PLACEHOLDERS[3], compact, cx)),
             );
         if self.dirty {
             body = body.child(div().flex().justify_end().child(

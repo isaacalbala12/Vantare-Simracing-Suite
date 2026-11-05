@@ -21,6 +21,31 @@ pub struct ReportV2 {
 /// Temporal containment until the server validates uploaded evidence (VANTA-131).
 pub const SCREENSHOTS_AVAILABLE: bool = false;
 
+pub const FIELD_LIMITS: [usize; 4] = [2048, 2048, 2048, 4096];
+pub const FIELD_PLACEHOLDERS: [&str; 4] = [
+    "Qué hiciste",
+    "Qué esperabas",
+    "Qué ocurrió",
+    "Contexto adicional · opcional",
+];
+pub const MODULES: [(&str, &str); 15] = [
+    ("unknown", "Sin determinar"),
+    ("hub", "Hub"),
+    ("launcher", "Launcher"),
+    ("settings", "Ajustes"),
+    ("overlay_studio", "Overlay Studio"),
+    ("overlay_runtime", "Overlays en pista"),
+    ("telemetry", "Telemetría"),
+    ("telemetry_analysis", "Análisis de telemetría"),
+    ("engineer", "Ingeniero"),
+    ("strategy", "Estrategia"),
+    ("calendar", "Calendario"),
+    ("billing", "Facturación"),
+    ("account", "Cuenta"),
+    ("updater", "Actualizaciones"),
+    ("testing_center", "Testing Center"),
+];
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Fields {

@@ -2,6 +2,7 @@
 use crate::protocol::DraftState;
 use crate::protocol::report_document::SCREENSHOTS_AVAILABLE;
 pub use crate::protocol::report_document::{Draft, Fields, Preview, Receipt};
+use crate::protocol::report_document::{FIELD_LIMITS, MODULES};
 use crate::storage::Read as Stored;
 use crate::{Error, Result, account::Identity, bridge::DataRequest, storage::Store};
 use serde::{Deserialize, Serialize};
@@ -9,23 +10,6 @@ use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};
 pub mod screenshots;
 
-const MODULES: [&str; 15] = [
-    "hub",
-    "launcher",
-    "settings",
-    "overlay_studio",
-    "overlay_runtime",
-    "telemetry",
-    "telemetry_analysis",
-    "engineer",
-    "strategy",
-    "calendar",
-    "billing",
-    "account",
-    "updater",
-    "testing_center",
-    "unknown",
-];
 fn hex_id(value: &str, prefix: &str) -> bool {
     value.strip_prefix(prefix).is_some_and(|value| {
         value.len() == 64
@@ -36,16 +20,19 @@ fn hex_id(value: &str, prefix: &str) -> bool {
 }
 fn fields_valid(fields: &Fields, required: bool) -> Result<()> {
     for (value, limit) in [
-        (&fields.action_text, 2048),
-        (&fields.expected_text, 2048),
-        (&fields.observed_text, 2048),
-        (&fields.context_text, 4096),
-    ] {
+        &fields.action_text,
+        &fields.expected_text,
+        &fields.observed_text,
+        &fields.context_text,
+    ]
+    .into_iter()
+    .zip(FIELD_LIMITS)
+    {
         if value.len() > limit || value.contains('\0') {
             return Err(Error::TooLarge);
         }
     }
-    if !MODULES.contains(&fields.module.as_str())
+    if !MODULES.iter().any(|(id, _)| *id == fields.module)
         || (required
             && [
                 &fields.action_text,

@@ -114,6 +114,20 @@ fn report_form_uses_wails_utf8_limits_and_optional_context() {
 }
 
 #[test]
+fn shared_draft_contract_has_unique_modules_and_rejects_4097_bytes_in_hub() {
+    use super::model::{FIELD_LIMITS, MODULES};
+    let ids: std::collections::HashSet<_> = MODULES.iter().map(|(id, _)| id).collect();
+    assert_eq!(ids.len(), MODULES.len());
+    let mut fields = super::empty_fields();
+    fields.action_text = "abc".into();
+    fields.expected_text = "abc".into();
+    fields.observed_text = "abc".into();
+    fields.context_text = "x".repeat(FIELD_LIMITS[3] + 1);
+    assert_eq!(fields.context_text.len(), 4097);
+    assert!(super::model::field_errors(&fields)[3].is_some());
+}
+
+#[test]
 fn report_send_requires_the_exact_reviewed_preview_and_fresh_consent() {
     use super::model::{Consent, can_send};
     use crate::services::protocol::report_document::Preview;

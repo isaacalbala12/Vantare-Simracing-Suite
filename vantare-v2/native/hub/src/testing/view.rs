@@ -1,3 +1,4 @@
+use super::model::FIELD_LIMITS;
 use super::{
     diagnostic::{Diagnostic, Module, Observed},
     store::{self, Draft, LABELS, Store},
@@ -310,11 +311,7 @@ impl Testing {
         for (index, label) in LABELS.into_iter().enumerate() {
             body = body.child(orbit::setting_row(
                 label,
-                if index == 3 {
-                    "Texto privado · máximo 4096 bytes"
-                } else {
-                    "Texto privado · máximo 2048 bytes"
-                },
+                &format!("Texto privado · máximo {} bytes", FIELD_LIMITS[index]),
                 div()
                     .w(gpui::px(orbit::COLUMN_W * 1.5))
                     .min_w_0()

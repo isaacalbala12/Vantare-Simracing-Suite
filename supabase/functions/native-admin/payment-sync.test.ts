@@ -1,4 +1,4 @@
-import { syncAdminPayments } from "./payment-sync.ts";
+import { needsPaymentSync, syncAdminPayments } from "./payment-sync.ts";
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
 import { assert } from "../native-account-authorize/testdata/auth.ts";
 
@@ -67,18 +67,11 @@ Deno.test("r3: malformed refund marks only its invoice and history still finishe
   assert(actions.at(-1)?.action === "finish_payment_sync");
 });
 
-Deno.test("r3: completed ledger never reads Polar on a normal account read", async () => {
-  await syncAdminPayments(
-    (action) => {
+Deno.test("r3: completed ledger needs no import", async () => {
+  assert(
+    !await needsPaymentSync((action) => {
       assert(action === "get_payment_sync");
       return Promise.resolve({ needs_sync: false });
-    },
-    "sandbox",
-    undefined,
-    {
-      fetchFn: () => {
-        throw new Error("unexpected Polar read");
-      },
-    },
+    }),
   );
 });

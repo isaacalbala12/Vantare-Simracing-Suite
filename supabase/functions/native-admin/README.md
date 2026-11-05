@@ -858,7 +858,7 @@ cancelar. Un HTTP que ya salió puede terminar. Gestión ofrece Cancelar campañ
 con confirmación y admite el ACK canceled.
 
 Solo Isaac despliega: primero `20261104181354_isa_1910_admin_confirmations.sql`,
-desplegar Edge y Gestión con el contrato nuevo justo después de la migración.
+desplegar primero Edge y después Gestión nuevo con el contrato actualizado.
 Hasta completar ambos, el contrato anterior no permite aprobar/cambiar módulos.
 No presupone una base vacía.
 Pre-check readonly: `select state,count(*) from private.mail_campaigns group by state;`.
@@ -870,3 +870,36 @@ La comparación de estado en servidor se limita a set_module, set_rollout y
 mail_approve. Los demás diálogos son confirmaciones en Gestión; mantienen sus
 validaciones propias de owner/revisión. recipients no se cuenta en new,
 approve, cancel ni al consultar campañas sending/completed.
+
+### Lecturas de pagos y sync explícito (#1910, 8c)
+
+El opt-in es metadata de petición junto a version: `explicit_payments:true`,
+solo para get_account/list_creators/get_creator. Gestión nuevo lo envía; sin
+él (o false), Edge conserva el sync implícito anterior. Un cliente antiguo no
+recibe datos peores y no necesita actualizarse antes de la Edge compatible.
+Con true, se lee payment_sync_required antes del dato: incluso si otra sesión
+termina la importación entre ambas lecturas, Gestión conserva hechos previos,
+pide confirmar sync_payments y relee tras el ACK. Fallar/cancelar no los sustituye.
+
+sync_payments es owner/sandbox y usa un cupo propio de un intento/minuto entre
+sesiones. needsPaymentSync consulta una sola vez el estado por camino; historial
+completo no usa cupo ni HTTP. La importación/paginación y la protección al pagar
+se conservan, sin cambiar billing/licencias. El opt-in no cambia la autenticación.
+
+El cupo ganador y started se guardan en la misma transacción en admin_effects.
+Si falla la auditoría, no se gasta cupo ni se llama a Polar. La Edge registra
+succeeded o unknown antes del ACK; el resultado exige la intención coincidente,
+no que el owner siga vigente. Reusa pendientes/reconcile y retención de10b:
+cerrados365 días, pendientes hasta reconciliar. El target_hash es un namespace
+fijo técnico, sin cuenta, correo, URL ni IDs de proveedor. actor, acción, fecha,
+request/effect UUID y resultado son la evidencia; no hay journal nuevo.
+
+Solo Isaac despliega: orden1960→1962→1961→1963, sin cambiar timestamps; migraciones
+en orden SQL → Edge → Gestión nuevo. Gestión nuevo envía explicit_payments:
+contra Edge viejo recibe400. Actualizar Edge primero conserva el sync implícito
+para clientes antiguos. Pre-check readonly:
+`select environment,last_synced_at from private.admin_payment_sync;`
+`select count(*) from private.admin_effects where action='sync_payments';`
+El down restaura constraints/ACL y retira las RPC/cupo solo sin esos efectos;
+con evidencia aborta antes del DDL: conservar SQL y revertir Edge o corregir hacia
+delante. No se borra evidencia para forzarlo. No presupone una base vacía.

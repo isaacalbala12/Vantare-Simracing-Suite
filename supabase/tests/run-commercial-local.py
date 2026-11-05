@@ -19,6 +19,8 @@ from commercial_admin_report_root import run_admin_report_cutover
 from commercial_admin_minimal_audit import AUDIT_STEM, AUDIT_SNAPSHOT, run_minimal_audit, seed_audit_upgrade, audit_schema
 from commercial_admin_owner_target import run_target_owner_race
 from commercial_admin_confirmations import STEM as CONFIRM_STEM, SNAPSHOT as CONFIRM_SNAPSHOT, run_confirmations
+
+from commercial_admin_explicit_sync import STEM as EXPLICIT_SYNC_STEM, SNAPSHOT as EXPLICIT_SYNC_SNAPSHOT, run_explicit_sync
 from commercial_admin_owner_policy import ACK_STEM, run_owner_ack_regressions, STEM as OWNER_POLICY_STEM, SNAPSHOT as OWNER_POLICY_SNAPSHOT, run_owner_policy_regressions
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
@@ -342,7 +344,7 @@ $$;
    if not owner_enabled and 'isa_1928_channel_owner_authority' in m.name: continue
    # Same historical modes as the R6 authority prerequisite; full CI has none.
    if m.stem==ADMIN_OWNER_STEM and not admin_owner_enabled: continue
-   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM,CONFIRM_STEM) and not legacy_writers_enabled: continue
+   if m.stem in (OWNER_POLICY_STEM,ACK_STEM,ERASURE_STEM,SYNC_STEM,LIMITS_STEM,SEND_STEM,AUDIT_STEM,CONFIRM_STEM,EXPLICIT_SYNC_STEM) and not legacy_writers_enabled: continue
    if m.stem=='20261104024000_isa_1910_admin_report_root' and not legacy_writers_enabled: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
@@ -400,6 +402,8 @@ $$;
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    if legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name:
     legacy_acl_before=run('psql',*conn,'-At','-c',legacy_acl_query)
+   if m.stem==EXPLICIT_SYNC_STEM and not args.schema_snapshot:
+    explicit_previous=run('psql',*conn,'-c',EXPLICIT_SYNC_SNAPSHOT)
    if m.stem==CONFIRM_STEM and not args.schema_snapshot:
     confirmation_previous=run('psql',*conn,'-c',CONFIRM_SNAPSHOT)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
@@ -592,6 +596,9 @@ $$;
    (OUT/(m.name+'.log')).write_text(result)
    if m.stem==CONFIRM_STEM and not args.schema_snapshot:
     run_confirmations(run,conn,OUT,confirmation_previous,args.migration_newlines,BIN,ENV)
+
+   if m.stem==EXPLICIT_SYNC_STEM and not args.schema_snapshot:
+    run_explicit_sync(run,conn,OUT,args.migration_newlines,explicit_previous)
    if m.stem==AUDIT_STEM and not args.schema_snapshot:
     run_minimal_audit(run,conn,OUT,audit_previous,audit_schema_previous,args.migration_newlines,BIN,ENV,audit_container_dump)
    if m.stem==acl_restatement_stem:

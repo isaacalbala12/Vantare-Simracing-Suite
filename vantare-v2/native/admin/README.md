@@ -196,3 +196,9 @@ previas y con tope tres. E/S y rename fallido siguen siendo errores.
 [actions.ts](../../../supabase/functions/native-admin/actions.ts) genera la
 [fixture](fixtures/admin-actions.json) compartida con Deno. Rust la carga una vez
 para comprobar variantes, campos, serialización, mutación y enums; sin Store real.
+
+El cliente anuncia explicit_payments:true solo en las tres lecturas de pagos.
+Es metadata del sobre (como version), no un campo de las acciones SQL. El fixture
+común valida qué acciones admiten el opt-in; las demás no lo envían. Edge compatible
+mantiene el sync implícito para ejecutables antiguos. La lectura del flag precede
+al dato; Gestión espera confirmación/ACK/relectura sin sustituir hechos previos.

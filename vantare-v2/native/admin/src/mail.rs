@@ -232,7 +232,7 @@ impl crate::state::State {
         &mut self,
         action: &Action,
         response: &serde_json::Value,
-    ) -> Result<()> {
+    ) -> Result<Option<Action>> {
         match action {
             Action::MailForgetWaitlist { .. } => {}
             Action::MailList | Action::MailCleanup => {
@@ -324,7 +324,13 @@ impl crate::state::State {
             }
             _ => return Err(Error::Protocol),
         }
-        Ok(())
+        self.busy = false;
+        self.message = "Datos de correos confirmados".into();
+        Ok(if matches!(action, Action::MailForgetWaitlist { .. }) {
+            Some(Action::MailList)
+        } else {
+            None
+        })
     }
     pub(crate) fn demo_mail_action(&mut self, action: &Action) {
         match action {

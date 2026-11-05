@@ -8945,3 +8945,93 @@ union all select 'linear_deliveries',outcome::text,count(*)
   P3 y su test/handoff quedan en el diff. Range-diff idéntico, sin conflictos;
   código Rust/Deno byte idéntico al validado check/Clippy/Nextest48/fmt/Deno3.
   No se repiten builds sin cambio de código/dependencias Rust; CI nueva pendiente.
+## VANTA-132 · paso8c · sync explícito y lecturas financieras puras (2026-11-04)
+
+## VANTA-132 · paso8c · [PR #1963](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1963) (2026-11-04)
+
+- Desde nightly18fb6ca17, rama vantareapp/isa-1910-paso8c-sync-explicito, PR
+  independiente del paso6. RED Deno a1fbcedfe (4/4) y Rust00d0fd2c3: una respuesta
+  pendiente sobrescribía los hechos previos. Ambos casos pasan con el flujo nuevo.
+- Las tres consultas no importan pagos ni llaman a Polar. Si falta historial sandbox,
+  Gestión conserva hechos, pide confirmar sync, espera ACK y relee antes de
+  mostrar importes. Reintento visible; producción mantiene lectura sin importación.
+- RPC owner/sandbox, cuota transitoria una importación/minuto compartida entre
+  sesiones, sin PII. RLS/ACL explícitos y cuerpo completo; rollback retira tabla/RPC.
+  La paginación e importación previas se conservan, igual que la protección al pagar.
+- SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest47, check y Clippy -D warnings PASS.
+  Deno281 PASS tras ajustar el código de
+  sandbox al contrato503 existente; ver gates finales en PR. Store falso/QA aislada.
+- Solo Isaac: SQL → Edge → Gestión nuevo; el nuevo contra Edge viejo recibe400.
+  Actualizar primero Edge conserva el cliente antiguo. Consultar admin_payment_sync
+  existente. Down junto con Edge anterior, solo descarta cuota transitoria. Sin
+  deploy/merge/release ni llamadas a producción, _shared, billing o licencias.
+- Falta el recorte mail_erasure_expire de mail_list: separar tras integrar paso6,
+  para no sobrescribir su wrapper SQL completo desde una rama independiente.
+  Paso11 continúa en R6/12.
+
+- Paso8c no reduce producción:4192→4324 (+132). Edge+43, cupo SQL+27,
+  contrato+2 y Rust/UI+60. El importador sigue siendo necesario para el pago
+  seguro; el flujo de confirmación/cupo/relectura evita la regresión rechazada
+  en1952. Tests+269, docs+43 y down4 separados; cifras finales en PR/issue.
+  Con8a(-8), el acumulado8 es+124: objetivo de reducción no alcanzado, explicitado
+  para revisión. No se incorpora una limpieza ajena para maquillar la medición.
+
+- Cierre8c: código c714cc8af validado con check/Clippy -D warnings/Nextest47;
+  Deno281 y tooling31 PASS. CI41895312336 pasa el replay completo LF/CRLF,
+  retirada final y pruebas activas de cuota; solo señala derivados sin copiar.
+  Se regeneran los nueve desde su artefacto13357045491 con PG17 fijado. Nueva
+  CI pendiente tras publicar; el PR sigue draft, sin merge ni despliegue.
+
+### Re-review1963 (2026-11-04; sustituye el despliegue/contrato8c previo)
+
+- Rebase sobre1962 HEAD48b8a1d9f, conservando ambos lados. Orden de merge
+  1960→1962→1961→1963, timestamps intactos y PR contra nightly.
+- Opt-in de sobre explicit_payments:true, enviado por Gestión solo en las tres
+  lecturas financieras; sin campo/false se conserva el sync implícito anterior.
+  Se consulta la necesidad antes del dato, evita certificar una instantánea vieja
+  si otra sesión termina entretanto. needsPaymentSync evita la doble consulta.
+- Cupo y started atómicos en el journal admin_effects existente; succeeded/unknown
+  antes del ACK, cierre por intención sin owner vigente. Pendientes/reconcile y
+  retención365 de10b conservados. Namespace de hash técnico, sin PII/IDs externos.
+  Error de auditoría revierte cupo; sin actor/fecha/resultado no hay ACK de éxito.
+- accept_account vuelve inline; el parser mail existente entrega su ACK/relectura,
+  sin añadir un wrapper. Metadata opt-in y envío HTTP se prueban contra el fixture.
+- RED9546414ec:8 fallos antes de corregir. Deno298 PASS; SQL combinado6/8c/10b
+  LF y CRLF PASS, con rollback exacto/ACL/constraints/reapply y guard irreversible.
+  Native check/Clippy -D warnings/Nextest49/fmt PASS, solo admin mediante
+  compilar.ps1, target aislado y QA falsa; se cede la cola entre comandos.
+  Tooling31 PASS. Sin runtime/domain/ipc/testdata: telemetría/lifecycle no aplican.
+- Solo Isaac despliega: SQL → Edge → Gestión nuevo, por1962. Un cliente
+  antiguo conserva lecturas/importación anteriores. Si ya existe evidencia sync,
+  el down aborta; conservar SQL y revertir Edge/corrección hacia delante, sin borrar.
+  Nada desplegado/fusionado por este worker.
+
+- Medición8c contra1962 HEAD48b8a1d9f: producción4825→5045 (+220):
+  Edge/contrato106, SQL53, Rust/UI61. Tests+532; down16 y derivados63 aparte.
+  El incremento no satisface el descenso pedido: compatibilidad opt-in y journal
+  son requisitos de la review; se conserva el importador de pago seguro.
+  Sin consultas duplicadas de readiness ni wrapper accept_account. Docs se miden
+  aparte; no se maquilla el resultado retirando protecciones o limpiando otro área.
+- Lint del SQL propio limpio; el barrido global10:55 aún señala10 errores en
+  históricos SMTP/R6 de nightly, cubiertos por1960. No se editan históricos.
+
+- Cierre CI1963: rebase sobre1962 HEAD e2e049d02; volcados admin/mail del
+  replay PG17 fijado41907690699 (artefacto13361672383). LF/CRLF y marketing
+  pasaron; el único fallo Commercial era drift de esos dos derivados. No se
+  copian cambios testing de1960 ajenos a este PR. Nueva CI pendiente; producción
+  sigue4825→5045 (+220), sin cambios runtime, SQL ni timestamps en este cierre.
+
+- Rebase1963 sobre nightly e76d68fff (1961 ya integrado): conserva P3 de1967
+  en mail.rs y su test; ACK/relectura siguen en el parser existente. needsPaymentSync
+  mantiene sus3 usos. Un solo import effects.ts; README/handoff fijan despliegue
+  SQL → Edge → Gestión nuevo para evitar400 por explicit_payments contra Edge viejo.
+
+- PG17: los9 derivados se recuperan del replay verde41918479810 (imagen/digest
+  fijados). Comparadas todas sus entradas SQL:0 modificadas; solo se añade182500,
+  el probe digest de1961 sin DDL. Los9 outputs coinciden byte por byte tras el
+  rebase; no se generan con PG16 ni se inventa un diff. CI nueva verificará la cadena.
+
+- Cierre sobre e76d68fff: Deno298, tooling31, SQL combinado/rollback exacto,
+  check/Clippy -D warnings/fmt y Nextest50 PASS (admin, compilar.ps1, QA propia).
+  Producción4824→5044(+220), tests+532, down16 y derivados98 separados; docs aparte.
+  Push único con rebase/P3/PG17. Nueva CI pendiente; sin merge ni despliegue.

@@ -774,12 +774,14 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
   );
 });
 
-Deno.test("r1: first read synchronizes historical invoices and refunds before showing creator debt", async () => {
+Deno.test("r1: explicit sync imports invoices and refunds before the UI rereads creator debt", async () => {
   const map = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON) as PolarProductMap;
   const writes: Record<string, unknown>[] = [];
   let finished = false;
   const actorDeps = deps({
     environment: "sandbox",
+    paymentSyncBudget: () => Promise.resolve(true),
+    paymentSyncResult: () => Promise.resolve(true),
     productMap: map,
     polar: {
       getAccessToken: () => "fake",
@@ -827,7 +829,7 @@ Deno.test("r1: first read synchronizes historical invoices and refunds before sh
   });
   actorDeps.execute = (_a, _i, action, params) => {
     if (action === "get_payment_sync") {
-      return Promise.resolve({ needs_sync: true });
+      return Promise.resolve({ needs_sync: !finished });
     }
     if (action === "resolve_payment_account") {
       return Promise.resolve({ account_id: target });
@@ -849,8 +851,16 @@ Deno.test("r1: first read synchronizes historical invoices and refunds before sh
     return Promise.resolve({ creators: [], totals: {} });
   };
   const response = await handleNativeAdmin(
-    request({ version: 1, action: "list_creators" }),
+    request({ version: 1, action: "sync_payments" }),
     actorDeps,
+  );
+  const reread = await handleNativeAdmin(
+    request({ version: 1, action: "list_creators", explicit_payments: true }),
+    actorDeps,
+  );
+  assert(
+    reread.status === 200 &&
+      (await reread.json()).payment_sync_required === false,
   );
   assert(
     response.status === 200 && writes.length === 1 &&

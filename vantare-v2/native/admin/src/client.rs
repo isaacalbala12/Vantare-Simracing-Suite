@@ -478,6 +478,7 @@ pub enum Action {
         account_id: String,
         confirm_email: String,
     },
+    SyncPayments,
     ListCreators,
     GetCreator {
         creator_id: String,
@@ -538,6 +539,7 @@ impl Action {
             Self::SetModule { .. } => "set_module",
             Self::SetBlocked { .. } => "set_blocked",
             Self::DeleteAccount { .. } => "delete_account",
+            Self::SyncPayments => "sync_payments",
             Self::ListCreators => "list_creators",
             Self::GetCreator { .. } => "get_creator",
             Self::CreateCreator { .. } => "create_creator",
@@ -549,10 +551,17 @@ impl Action {
             Self::SetReportStatus { .. } => "set_report_status",
         }
     }
+    pub fn explicit_payments(&self) -> bool {
+        matches!(
+            self,
+            Self::GetAccount { .. } | Self::ListCreators | Self::GetCreator { .. }
+        )
+    }
     pub fn mutation(&self) -> bool {
         matches!(
             self,
-            Self::MailForgetWaitlist { .. }
+            Self::SyncPayments
+                | Self::MailForgetWaitlist { .. }
                 | Self::MailCleanup
                 | Self::MailNew
                 | Self::MailSave { .. }
@@ -613,7 +622,10 @@ impl Action {
                         .bytes()
                         .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
             }
-            Self::ListCreators | Self::GetRollout | Self::SetRollout { .. } => true,
+            Self::SyncPayments
+            | Self::ListCreators
+            | Self::GetRollout
+            | Self::SetRollout { .. } => true,
             _ => return Err(Error::Protocol),
         };
         let valid = valid
@@ -712,6 +724,9 @@ impl Client {
         }
         let mut payload = serde_json::to_value(action).map_err(|_| Error::Protocol)?;
         payload["version"] = 1.into();
+        if action.explicit_payments() {
+            payload["explicit_payments"] = true.into();
+        }
         let bytes = serde_json::to_vec(&payload).map_err(|_| Error::Protocol)?;
         let agent = if action.label().starts_with("mail_") {
             ureq::Agent::config_builder()

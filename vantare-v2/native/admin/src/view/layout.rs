@@ -23,6 +23,7 @@ impl Admin {
             Some(Dialog::Report(_))=>("Cambiar estado del informe","Confirma el nuevo estado.".to_owned()),
             None=>("Confirmar cambio",match action {
                 Some(Action::MailCleanup)=>"Reintentará los borrados pendientes en Brevo. No envía correos ni afecta a contactos fuera de la cola.".into(),
+                Some(Action::SyncPayments)=>"Importar el historial pendiente de Polar sandbox. Al terminar se releerán los datos antes de mostrar importes. Si falla, se conservan los datos anteriores. Una importación por minuto.".into(),
                 Some(Action::MailApprove{expected_recipients,..})=>format!("Confirmas el texto guardado en ES, EN, IT y PT-BR para {expected_recipients} personas con consentimiento. Si la cifra cambia, tendrás que actualizar y confirmar de nuevo. Después pulsa Enviar siguiente tanda."),
                 Some(Action::MailCancel{..})=>"Se cancelará la campaña y se descartarán las entregas pendientes. Un correo que ya esté en envío puede terminar.".into(),
                 Some(Action::MailSendBatch{..})=>"Se enviará la siguiente tanda, hasta tres correos, de la campaña confirmada. Solo a personas que sigan teniendo consentimiento.".into(),

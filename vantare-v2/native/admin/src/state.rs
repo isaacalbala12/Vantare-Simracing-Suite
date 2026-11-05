@@ -38,6 +38,7 @@ pub struct State {
     pub busy: bool,
     pub message: String,
     pub confirmation: Option<Action>,
+    pub pending_payment_read: Option<Action>,
     pub users: Vec<User>,
     pub creators: Vec<Creator>,
     pub creator: Option<Creator>,
@@ -68,6 +69,7 @@ impl State {
             busy: false,
             message: String::new(),
             confirmation: None,
+            pending_payment_read: None,
             users: vec![],
             creators: vec![],
             creator: None,
@@ -211,6 +213,7 @@ impl State {
         self.rollout.clear();
         self.cursor = None;
         self.users_cursor = None;
+        self.pending_payment_read = None;
         self.confirmation = None;
     }
 
@@ -231,22 +234,48 @@ impl State {
             .enumerate()
             .filter(|(_, report)| self.filter.is_none_or(|status| status == report.status))
     }
+    fn defer_payment_read(
+        &mut self,
+        action: &Action,
+        response: &serde_json::Value,
+    ) -> Result<bool> {
+        if !action.explicit_payments() {
+            return Ok(false);
+        }
+        match response.get("payment_sync_required") {
+            Some(serde_json::Value::Bool(true)) => {
+                self.pending_payment_read = Some(action.clone());
+                self.confirmation = Some(Action::SyncPayments);
+                self.busy = false;
+                self.message =
+                    "Confirma la importación del historial antes de consultar importes".into();
+                Ok(true)
+            }
+            None | Some(serde_json::Value::Bool(false)) => {
+                self.pending_payment_read = None;
+                Ok(false)
+            }
+            _ => Err(Error::Protocol),
+        }
+    }
     pub fn accept(
         &mut self,
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<Option<Action>> {
         if action.label().starts_with("mail_") {
-            self.accept_mail(action, response)?;
-            self.busy = false;
-            self.message = "Datos de correos confirmados".into();
-            return Ok(if matches!(action, Action::MailForgetWaitlist { .. }) {
-                Some(Action::MailList)
-            } else {
-                None
-            });
+            return self.accept_mail(action, response);
+        }
+        if self.defer_payment_read(action, response)? {
+            return Ok(None);
         }
         let reload = match action {
+            Action::SyncPayments => {
+                if response.get("ok") != Some(&serde_json::Value::Bool(true)) {
+                    return Err(Error::Protocol);
+                }
+                self.pending_payment_read.take()
+            }
             Action::SearchAccounts { query, .. } => {
                 self.accept_accounts(query, response)?;
                 None
@@ -564,6 +593,73 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn creator_reads_wait_for_history_and_quota_failure_preserves_facts() {
+        for detail in [false, true] {
+            let mut state = State::new(true, Screen::Creators);
+            state.demo = false;
+            let previous = state.creators.clone();
+            let creator = previous[0].clone();
+            state.creator = Some(creator.clone());
+            let action = if detail {
+                Action::GetCreator {
+                    creator_id: creator.creator_id.clone(),
+                }
+            } else {
+                Action::ListCreators
+            };
+            state
+                .accept(
+                    &action,
+                    &serde_json::json!({"payment_sync_required":true,"creators":[]}),
+                )
+                .expect("deferred");
+            assert_eq!(state.creators, previous);
+            assert_eq!(state.creator, Some(creator));
+            state.failed(Error::RateLimited);
+            assert_eq!(state.creators, previous);
+            assert_eq!(state.pending_payment_read, Some(action));
+            state.clear_private();
+            assert!(state.pending_payment_read.is_none());
+        }
+    }
+    #[test]
+    fn pending_payment_history_requires_confirmation_without_replacing_facts() {
+        let mut state = State::new(true, Screen::Users);
+        state.demo = false;
+        let previous = state.users[0].clone();
+        state.user = Some(previous.clone());
+        let mut incoming = previous.clone();
+        incoming.name = Some("Must wait for history".into());
+        let read = Action::GetAccount {
+            account_id: previous.account_id.clone(),
+        };
+        assert!(
+            state
+                .accept(
+                    &read,
+                    &serde_json::json!({"account":incoming,"payment_sync_required":true})
+                )
+                .expect("defer read")
+                .is_none()
+        );
+        assert_eq!(state.user, Some(previous.clone()));
+        let sync = state.confirmation.clone().expect("sync confirmation");
+        assert_eq!(sync.label(), "sync_payments");
+        assert_eq!(
+            state
+                .accept(&sync, &serde_json::json!({"ok":true}))
+                .expect("sync ACK"),
+            Some(read.clone())
+        );
+        state
+            .accept(
+                &read,
+                &serde_json::json!({"account":incoming,"payment_sync_required":false}),
+            )
+            .expect("fresh data");
+        assert_eq!(state.user, Some(incoming));
+    }
     #[test]
     fn empty_search_lists_accounts_and_cursor_does_not_leak_to_filtered_search() {
         let action = Action::SearchAccounts {

@@ -21,6 +21,7 @@
   "actions": {
     "search_accounts": {
       "mutation": false,
+      "explicit_payments": false,
       "fields": [
         "query",
         "limit",
@@ -36,6 +37,7 @@
     },
     "get_account": {
       "mutation": false,
+      "explicit_payments": true,
       "fields": [
         "account_id"
       ],
@@ -47,6 +49,7 @@
     },
     "set_blocked": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "account_id",
         "blocked",
@@ -62,6 +65,7 @@
     },
     "delete_account": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "account_id",
         "confirm_email"
@@ -75,6 +79,7 @@
     },
     "set_tester": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "account_id",
         "enabled"
@@ -88,6 +93,7 @@
     },
     "set_module": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "account_id",
         "module",
@@ -103,8 +109,17 @@
         "expected_enabled": false
       }
     },
+    "sync_payments": {
+      "mutation": true,
+      "explicit_payments": false,
+      "fields": [],
+      "mail": false,
+      "environment": "sandbox",
+      "example": {}
+    },
     "list_creators": {
       "mutation": false,
+      "explicit_payments": true,
       "fields": [],
       "mail": false,
       "environment": "both",
@@ -112,6 +127,7 @@
     },
     "get_creator": {
       "mutation": false,
+      "explicit_payments": true,
       "fields": [
         "creator_id"
       ],
@@ -123,6 +139,7 @@
     },
     "record_creator_payout": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "creator_id",
         "amount_cents",
@@ -138,6 +155,7 @@
     },
     "create_creator": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "name",
         "email",
@@ -153,6 +171,7 @@
     },
     "get_rollout": {
       "mutation": false,
+      "explicit_payments": false,
       "fields": [],
       "mail": false,
       "environment": "both",
@@ -160,6 +179,7 @@
     },
     "set_rollout": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "module",
         "enabled_for_all",
@@ -175,6 +195,7 @@
     },
     "list_reports": {
       "mutation": false,
+      "explicit_payments": false,
       "fields": [
         "status",
         "limit",
@@ -190,6 +211,7 @@
     },
     "get_report": {
       "mutation": false,
+      "explicit_payments": false,
       "fields": [
         "report_id"
       ],
@@ -201,6 +223,7 @@
     },
     "set_report_status": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "report_id",
         "status",
@@ -218,6 +241,7 @@
     },
     "mail_forget_waitlist": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "email",
         "confirm"
@@ -231,6 +255,7 @@
     },
     "mail_cleanup": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [],
       "mail": true,
       "environment": "both",
@@ -238,6 +263,7 @@
     },
     "mail_list": {
       "mutation": false,
+      "explicit_payments": false,
       "fields": [],
       "mail": true,
       "environment": "both",
@@ -245,6 +271,7 @@
     },
     "mail_new": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [],
       "mail": true,
       "environment": "both",
@@ -252,6 +279,7 @@
     },
     "mail_get": {
       "mutation": false,
+      "explicit_payments": false,
       "fields": [
         "campaign_id"
       ],
@@ -263,6 +291,7 @@
     },
     "mail_save": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "campaign_id",
         "revision",
@@ -301,6 +330,7 @@
     },
     "mail_approve": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "campaign_id",
         "revision",
@@ -318,6 +348,7 @@
     },
     "mail_cancel": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "campaign_id",
         "revision"
@@ -331,6 +362,7 @@
     },
     "mail_send_batch": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "campaign_id",
         "revision"
@@ -344,6 +376,7 @@
     },
     "mail_draft": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "campaign_id",
         "revision",
@@ -361,6 +394,7 @@
     },
     "mail_sync": {
       "mutation": true,
+      "explicit_payments": false,
       "fields": [
         "cursor"
       ],

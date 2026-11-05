@@ -1198,6 +1198,11 @@ mod tests {
     ) -> Entity<editor::LauncherDrawer> {
         window
             .update(cx, |launcher, window, cx| {
+                use std::io::Write as _;
+                // Abrir/truncar puede bloquear bajo E/S; fechar después de preparar el archivo.
+                let mut status_file =
+                    std::fs::File::create(vantare_ipc::launcher::status_path(&launcher.store.path))
+                        .expect("preparar estado QA");
                 let status = Status {
                     version: 1,
                     updated_ms: vantare_ipc::launcher::now_ms(),
@@ -1208,13 +1213,16 @@ mod tests {
                     }),
                     ..Status::default()
                 };
-                std::fs::write(
-                    vantare_ipc::launcher::status_path(&launcher.store.path),
-                    serde_json::to_vec(&status).expect("estado QA"),
-                )
-                .expect("publicar estado QA");
+                status_file
+                    .write_all(&serde_json::to_vec(&status).expect("estado QA"))
+                    .expect("publicar estado QA");
+                drop(status_file);
                 launcher.poll_resident(cx);
-                assert!(launcher.pending_decision.is_some());
+                assert!(
+                    launcher.pending_decision.is_some(),
+                    "decisión {id}; estado {:?}",
+                    launcher.resident_status
+                );
                 launcher.open_form(window, cx);
                 launcher.form_layer.clone().expect("drawer residente")
             })
@@ -1331,33 +1339,61 @@ mod tests {
     #[test]
     fn concurrent_launch_is_blocked_when_the_resident_reports_a_running_chain() {
         with_decision_window(|window, cx| {
-            window.update(cx, |launcher, _, cx| {
-                let mut profile = Profile::new("qa".into(), "QA".into());
-                profile.first_step_delay = 3600;
-                profile.steps.push(Step {
-                    app_id: "obs".into(), delay_seconds: 0, args_override: None,
-                });
-                launcher.store = Store::in_memory(launcher.store.path.clone(), Document {
-                    profiles: vec![profile.clone()], ..Document::default()
-                }).unwrap();
-                launcher.scanning = false;
-                launcher.discovered.apps = vec![discovery::Detected {
-                    id: "obs".into(), executable: None, source: "fixture sin procesos",
-                    availability: discovery::Availability { launchable: true, ..Default::default() },
-                }];
-                let mut status = serde_json::to_value(Status {
-                    version: 1, updated_ms: vantare_ipc::launcher::now_ms(), ..Status::default()
-                }).unwrap();
-                status["running"] = serde_json::Value::Bool(true);
-                std::fs::write(vantare_ipc::launcher::status_path(&launcher.store.path),
-                    serde_json::to_vec(&status).unwrap()).unwrap();
-                launcher.poll_resident(cx);
-                assert!(launcher.resident_status.is_some(), "estado fresco realmente leído");
-                launcher.start(profile, cx);
-                let blocked = launcher.chain.is_none();
-                if let Some(mut chain) = launcher.chain.take() { chain.shutdown().unwrap(); }
-                assert!(blocked, "no iniciar otra cadena si el residente ya tiene una activa");
-            }).unwrap();
+            window
+                .update(cx, |launcher, _, cx| {
+                    let mut profile = Profile::new("qa".into(), "QA".into());
+                    profile.first_step_delay = 3600;
+                    profile.steps.push(Step {
+                        app_id: "obs".into(),
+                        delay_seconds: 0,
+                        args_override: None,
+                    });
+                    launcher.store = Store::in_memory(
+                        launcher.store.path.clone(),
+                        Document {
+                            profiles: vec![profile.clone()],
+                            ..Document::default()
+                        },
+                    )
+                    .unwrap();
+                    launcher.scanning = false;
+                    launcher.discovered.apps = vec![discovery::Detected {
+                        id: "obs".into(),
+                        executable: None,
+                        source: "fixture sin procesos",
+                        availability: discovery::Availability {
+                            launchable: true,
+                            ..Default::default()
+                        },
+                    }];
+                    let mut status = serde_json::to_value(Status {
+                        version: 1,
+                        updated_ms: vantare_ipc::launcher::now_ms(),
+                        ..Status::default()
+                    })
+                    .unwrap();
+                    status["running"] = serde_json::Value::Bool(true);
+                    std::fs::write(
+                        vantare_ipc::launcher::status_path(&launcher.store.path),
+                        serde_json::to_vec(&status).unwrap(),
+                    )
+                    .unwrap();
+                    launcher.poll_resident(cx);
+                    assert!(
+                        launcher.resident_status.is_some(),
+                        "estado fresco realmente leído"
+                    );
+                    launcher.start(profile, cx);
+                    let blocked = launcher.chain.is_none();
+                    if let Some(mut chain) = launcher.chain.take() {
+                        chain.shutdown().unwrap();
+                    }
+                    assert!(
+                        blocked,
+                        "no iniciar otra cadena si el residente ya tiene una activa"
+                    );
+                })
+                .unwrap();
         });
     }
 
@@ -1402,15 +1438,27 @@ mod tests {
     #[test]
     fn mailbox_actions_pass_through_the_real_drawer_and_answer_writer() {
         with_decision_window(|window, cx| {
-            for (index, expected) in [Action::Trust, Action::Reuse, Action::Restart,
-                Action::Cancel, Action::Stop, Action::Continue, Action::Leave,
-                Action::CloseStarted].into_iter().enumerate() {
+            for (index, expected) in [
+                Action::Trust,
+                Action::Reuse,
+                Action::Restart,
+                Action::Cancel,
+                Action::Stop,
+                Action::Continue,
+                Action::Leave,
+                Action::CloseStarted,
+            ]
+            .into_iter()
+            .enumerate()
+            {
                 let id = u64::try_from(index).unwrap() + 100;
                 show_resident_decision(window, cx, id, &[expected]);
-                window.update(cx, |launcher, window, cx| {
-                    launcher.answer_decision(expected, window, cx);
-                    assert_resident_answer(launcher, cx, id, expected);
-                }).expect("respuesta por el drawer real");
+                window
+                    .update(cx, |launcher, window, cx| {
+                        launcher.answer_decision(expected, window, cx);
+                        assert_resident_answer(launcher, cx, id, expected);
+                    })
+                    .expect("respuesta por el drawer real");
             }
         });
     }

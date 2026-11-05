@@ -641,12 +641,15 @@ mod tests {
 
     #[test]
     fn concurrent_status_clears_running_when_the_finished_worker_has_no_events_left() {
-        let root = std::env::temp_dir().join(format!("resident-running-{}",
-            vantare_services::random_id().unwrap()));
+        let root = std::env::temp_dir().join(format!(
+            "resident-running-{}",
+            vantare_services::random_id().unwrap()
+        ));
         fs::create_dir(&root).unwrap();
         let mut owner = failure_decision_owner(&root);
         let read_running = |settings: &std::path::Path| {
-            let value: serde_json::Value = serde_json::from_slice(&fs::read(status_path(settings)).unwrap()).unwrap();
+            let value: serde_json::Value =
+                serde_json::from_slice(&fs::read(status_path(settings)).unwrap()).unwrap();
             value["running"].clone()
         };
         owner.publish();
@@ -656,7 +659,10 @@ mod tests {
         let _drained: Vec<_> = chain.progress.try_iter().collect();
         assert!(chain.finished());
         owner.progress();
-        assert!(owner.chain.is_none(), "se recoge el worker aunque no queden eventos");
+        assert!(
+            owner.chain.is_none(),
+            "se recoge el worker aunque no queden eventos"
+        );
         let after_finished = read_running(&owner.path);
         drop(owner);
         fs::remove_dir_all(root).unwrap();

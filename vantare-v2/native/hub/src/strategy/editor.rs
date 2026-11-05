@@ -231,12 +231,15 @@ impl Strategy {
                     .child(tabs)
                     .child(content.flex_1().min_h(px(0.0)))
                     .when(tab == EditorTab::Carrera, |page| {
-                        page.child(self.editor_footer(cx))
+                        page.child(capture!(Self::editor_footer(cx) => Self::editor_footer(cx, &self.view_data)))
                     }),
             )
     }
 
-    fn editor_footer(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn editor_footer(
+        cx: &mut Context<Self>,
+        #[cfg(feature = "parity-capture")] view_data: &super::view_data::ViewData,
+    ) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -261,7 +264,7 @@ impl Strategy {
                     .items_center()
                     .gap(px(12.0))
                     .child(orbit::text(
-                        capture!("Borrador local" => self.view_data.draft_label),
+                        capture!("Borrador local" => view_data.draft_label),
                         12.0,
                         400,
                         orbit::ink_2(cx),

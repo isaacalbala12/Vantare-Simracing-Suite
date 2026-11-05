@@ -437,14 +437,18 @@ impl Strategy {
             )
     }
 
-    fn combination_event_options(&self, selected: bool, cx: &gpui::App) -> gpui::Div {
+    fn combination_event_options(
+        selected: bool,
+        cx: &gpui::App,
+        #[cfg(feature = "parity-capture")] view_data: &super::view_data::ViewData,
+    ) -> gpui::Div {
         div()
             .flex()
             .gap(px(12.0))
             .child(Self::combination_option_card(
                 "strategy-custom-event",
                 "Carrera personalizada",
-                capture!("Elige coche, circuito y reglamento" => self.view_data.custom_description),
+                capture!("Elige coche, circuito y reglamento" => view_data.custom_description),
                 "i-ajustes",
                 selected,
                 cx,
@@ -452,14 +456,19 @@ impl Strategy {
             .child(Self::combination_option_card(
                 "strategy-calendar-event",
                 "Calendario de Vantare",
-                capture!("Selección de eventos no disponible" => self.view_data.calendar_description),
+                capture!("Selección de eventos no disponible" => view_data.calendar_description),
                 "i-carreras",
                 false,
                 cx,
             ))
     }
 
-    fn combination_summary(&self, circuit: String, category: String, cx: &gpui::App) -> gpui::Div {
+    fn combination_summary(
+        circuit: String,
+        category: String,
+        cx: &gpui::App,
+        #[cfg(feature = "parity-capture")] view_data: &super::view_data::ViewData,
+    ) -> gpui::Div {
         div()
             .flex()
             .flex_col()
@@ -488,20 +497,14 @@ impl Strategy {
                     .gap(px(18.0))
                     .flex_1()
                     .child(orbit::text(circuit, 22.0, 500, orbit::ink(cx), cx).w(px(175.0)))
-                    .when_some(
-                        capture!(None::<&str> => self.view_data.layout),
-                        |row, layout| {
-                            row.child(
-                                orbit::text(layout, 13.0, 400, orbit::ink_2(cx), cx).w(px(113.0)),
-                            )
-                        },
-                    )
+                    .when_some(capture!(None::<&str> => view_data.layout), |row, layout| {
+                        row.child(orbit::text(layout, 13.0, 400, orbit::ink_2(cx), cx).w(px(113.0)))
+                    })
                     .child(orbit::text(category, 13.0, 400, orbit::ink_2(cx), cx).flex_1()),
             )
     }
 
-    fn combination_choices(&self, cx: &gpui::App) -> gpui::Div {
-        let event_available = self.current_event().is_some();
+    fn combination_identity(&self, event_available: bool) -> (&'static str, String, String) {
         let simulator = if event_available {
             capture!("Sin simulador seleccionado", self.view_data.simulator)
         } else {
@@ -523,6 +526,12 @@ impl Strategy {
         } else {
             self.fields[Field::Track].clone()
         };
+        (simulator, category, circuit)
+    }
+
+    fn combination_choices(&self, cx: &gpui::App) -> gpui::Div {
+        let event_available = self.current_event().is_some();
+        let (simulator, category, circuit) = self.combination_identity(event_available);
         let row = |label: &str, control: gpui::Div| {
             div()
                 .flex()
@@ -589,7 +598,7 @@ impl Strategy {
             .gap(px(12.0))
             .max_w(px(720.0))
             .child(orbit::eyebrow("EVENTO", cx))
-            .child(self.combination_event_options(event_available, cx))
+            .child(capture!(Self::combination_event_options(event_available, cx) => Self::combination_event_options(event_available, cx, &self.view_data)))
             .child(
                 div()
                     .flex()
@@ -602,7 +611,7 @@ impl Strategy {
                     .child(row("Categoría / coche", category_control))
                     .child(row("Circuito / trazado", circuit_control)),
             )
-            .child(self.combination_summary(circuit, category, cx))
+            .child(capture!(Self::combination_summary(circuit, category, cx) => Self::combination_summary(circuit, category, cx, &self.view_data)))
     }
 
     #[allow(clippy::too_many_lines)] // Mantiene juntos los campos de un único paso del asistente.

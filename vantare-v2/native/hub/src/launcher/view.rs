@@ -1275,6 +1275,53 @@ mod tests {
     }
 
     #[test]
+    fn finished_hub_chain_keeps_the_resident_decision_and_its_drawer() {
+        with_decision_window(|window, cx| {
+            let document = Document::default();
+            let mut profile = Profile::new("hub-qa".into(), "Cadena QA".into());
+            profile.steps.push(Step {
+                app_id: "obs".into(),
+                delay_seconds: 0,
+                args_override: None,
+            });
+            // Sin rutas descubiertas: falla y termina sin crear procesos ni decisiones.
+            let mut chain = Chain::start(document, profile, Discovery::default()).unwrap();
+            loop {
+                let event = chain
+                    .progress
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("fin observable de la cadena QA");
+                assert!(event.decision.is_none());
+                if event.status == super::super::chain::Status::Done {
+                    break;
+                }
+            }
+            chain.shutdown().expect("worker QA recogido");
+            assert!(chain.finished());
+            let drawer = show_resident_decision(window, cx, 1, &[Action::Trust, Action::Cancel]);
+            window
+                .update(cx, |launcher, _, cx| {
+                    launcher.chain = Some(chain);
+                    launcher.tick(cx);
+                    assert!(
+                        launcher.chain.is_none(),
+                        "tick ha recogido la cadena del Hub"
+                    );
+                    assert_eq!(
+                        launcher.pending_decision.as_ref().map(|d| d.origin),
+                        Some(DecisionOrigin::Resident(1))
+                    );
+                    assert_eq!(
+                        launcher.form_layer.as_ref().map(Entity::entity_id),
+                        Some(drawer.entity_id()),
+                        "el drawer no se borra ni se reconstruye"
+                    );
+                })
+                .expect("tick real tras terminar la cadena del Hub");
+        });
+    }
+
+    #[test]
     fn explicit_resident_answer_uses_the_mailbox_and_is_not_reopened() {
         with_decision_window(|window, cx| {
             show_resident_decision(window, cx, 9, &[Action::Trust, Action::Cancel]);

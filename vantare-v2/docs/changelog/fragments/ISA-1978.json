@@ -20,6 +20,7 @@
     "Comparar los bytes de los tres escritores reales con sus 18 capturas anteriores: seis combinaciones por escritor, incluido un perfil antiguo sin editar."
   ],
   "knownLimitations": [
+    "Si LMU ya estaba abierto al arrancar el Hub, el trigger no lanza el perfil. Es el comportamiento intencionado de P5.",
     "La lanzabilidad, el protocolo tipado y la retirada del historial corresponden a los pasos 5-7 pendientes de VANTA-136."
   ]
 }

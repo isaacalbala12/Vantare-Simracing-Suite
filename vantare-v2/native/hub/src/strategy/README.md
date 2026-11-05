@@ -22,8 +22,17 @@ Análisis nativo y la recuperación de Automático dependen de VANTA-133 / #1974
 VANTA-135 retira Automático, Datos, Revisiones y sus rutas de captura. El catálogo, los PNG
 y la fixture de revisión originales se conservan como referencias históricas
 inertes, con las huellas fijadas por `native/retirement/manifest.json` intactas.
-Las capturas `asistente-inicio` y `asistente-sesiones` se regenerarán en el
-paso 6; las demás referencias siguen vigentes.
+El paso 6 añade referencias nuevas de
+[inicio](../../reference/strategy-vanta135/strategy-v5-asistente-inicio.png) y
+[sesiones](../../reference/strategy-vanta135/strategy-v5-asistente-sesiones.png):
+reflejan la retirada de Automático y de la preparación con sesiones. Los originales
+protegidos quedan intactos y las demás referencias siguen vigentes.
+
+Las 13 escenas nativas se capturaron antes y después de mover la demo y tipar
+el formulario: 1672×941, dark, cero píxeles distintos en todas ellas. Evidencia
+externa: `D:\VantareServer\evidence\isa-1977\paso67-pixel-comparison.json`,
+HEAD previo `d019fb3d7` y posterior `42b808141`. Las dos referencias nuevas
+son copias exactas de la tanda posterior; no se retocaron las imágenes.
 
 El único destino habitual es `strategy-v2.json`. Si falta, el importador de
 solo lectura verifica v1/v2 y crea el documento nativo una vez. Nunca modifica

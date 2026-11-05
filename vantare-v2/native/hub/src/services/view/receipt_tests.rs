@@ -96,7 +96,10 @@ fn different_protected_draft_wins_and_archives_plaintext() {
             assert!(path.with_extension("json.imported").exists());
             assert_eq!(remote.editor.fields(cx).action_text, protected.action_text);
             assert_eq!(remote.editor.fields(cx).module, protected.module);
-            assert!(remote.editor.fields_snapshot(cx).context_text.is_empty());
+            assert_eq!(
+                remote.editor.fields_snapshot(cx).context_text,
+                "Tipo: Algo falla\n"
+            );
             assert_eq!(
                 std::fs::read_to_string(path.with_extension("json.imported")).unwrap(),
                 original
@@ -224,6 +227,7 @@ fn final_save_acknowledges_only_the_requested_fields() {
         remote.update(cx, |remote, cx| {
             let fields = Fields {
                 action_text: "editado".into(),
+                context_text: "Tipo: Algo falla\n".into(),
                 module: "hub".into(),
                 ..Default::default()
             };

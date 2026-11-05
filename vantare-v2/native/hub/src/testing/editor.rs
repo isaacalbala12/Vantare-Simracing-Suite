@@ -106,6 +106,7 @@ impl Editor {
                 });
                 this.editor.dirty = true;
                 this.editor.revision = this.editor.revision.saturating_add(1);
+                this.arm_draft_autosave(cx);
                 cx.notify();
             })
             .detach();

@@ -66,7 +66,12 @@ muestra una vez. El cierre normal intenta guardar las ediciones pendientes en
 Services; si falla o Services no responde en unos cinco segundos, ofrece
 «Reintentar» o «Cerrar sin guardar». Live y el reinicio por actualización omiten
 solo ese guardado y conservan el resto de comprobaciones del cierre. El apagado
-de Windows pasa por el callback de quit de GPUI, sin `on_window_should_close`.
+de Windows pasa por el callback síncrono de quit de GPUI, sin
+`on_window_should_close`. Por eso el editor autoguarda el borrador protegido
+dos segundos después de la última edición. Si Services está ocupado, espera su
+turno sin sustituir la orden pendiente; una respuesta antigua no pisa cambios
+posteriores. Un apagado o fallo del proceso puede perder las ediciones de esos
+dos segundos, o más si Services no consigue guardar.
 El panel local conserva el diagnóstico y la exportación manual sin prosa privada.
 Los inputs actuales vienen de Orbit y admiten texto multilínea/IME; no se usa el
 alias histórico del Launcher. La validación local no demuestra un envío real.

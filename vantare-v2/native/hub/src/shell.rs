@@ -50,6 +50,13 @@ fn close_code(restart: bool, connected: bool) -> u8 {
     }
 }
 
+fn write_hub_exit(root: &std::path::Path, connected: bool) -> std::io::Result<()> {
+    std::fs::write(
+        root.join("hub-exit"),
+        if connected { "live" } else { "idle" },
+    )
+}
+
 const CLOSE_SAVE_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Copy)]
@@ -67,6 +74,16 @@ impl ForcedClose {
 
 fn close_save_expired(started: Option<Instant>, now: Instant) -> bool {
     started.is_some_and(|started| now.saturating_duration_since(started) >= CLOSE_SAVE_TIMEOUT)
+}
+
+fn reset_close_attempt(requested: &mut bool, started: &mut Option<Instant>, skip_draft: &mut bool) {
+    *requested = false;
+    *started = None;
+    *skip_draft = false;
+}
+
+fn needs_close_draft_save(skip_draft: bool, dirty: bool) -> bool {
+    !skip_draft && dirty
 }
 
 #[derive(Clone)]
@@ -168,9 +185,7 @@ impl Hub {
             .launcher
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
         {
-            self.close_requested = false;
-            self.close_save_started = None;
-            self.cancel_beta_restart();
+            self.abort_close();
         }
         if !self.shell.access.beta_visible(self.section) {
             self.section = Section::Home;
@@ -288,6 +303,15 @@ impl Hub {
         self.close(cx);
     }
 
+    fn abort_close(&mut self) {
+        reset_close_attempt(
+            &mut self.close_requested,
+            &mut self.close_save_started,
+            &mut self.close_without_draft,
+        );
+        self.cancel_beta_restart();
+    }
+
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
         self.close_requested = true;
         if self.close_save_pending {
@@ -312,7 +336,7 @@ impl Hub {
         }) {
             return false;
         }
-        if !self.close_without_draft && self.remote.read(cx).editor.dirty {
+        if needs_close_draft_save(self.close_without_draft, self.remote.read(cx).editor.dirty) {
             let now = Instant::now();
             if close_save_expired(self.close_save_started, now) {
                 self.close_save_failed(cx);
@@ -332,20 +356,13 @@ impl Hub {
         self.close_save_started = None;
         match self.save(cx) {
             Ok(()) => {
-                if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
-                    let state = if self.connected_source {
-                        "live"
-                    } else {
-                        "idle"
-                    };
-                    if let Err(error) = std::fs::write(PathBuf::from(root).join("hub-exit"), state)
-                    {
-                        self.status = Some(format!("registrar cierre beta: {error}").into());
-                        self.close_requested = false;
-                        self.cancel_beta_restart();
-                        cx.notify();
-                        return false;
-                    }
+                if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
+                    && let Err(error) = write_hub_exit(&PathBuf::from(root), self.connected_source)
+                {
+                    self.status = Some(format!("registrar cierre beta: {error}").into());
+                    self.abort_close();
+                    cx.notify();
+                    return false;
                 }
                 self.exit_code
                     .set(close_code(self.restart_requested, self.connected_source));
@@ -356,8 +373,7 @@ impl Hub {
                     center.report("hub.save", error.to_string(), cx);
                 });
                 self.status = Some(error.into());
-                self.close_requested = false;
-                self.cancel_beta_restart();
+                self.abort_close();
                 cx.notify();
                 false
             }
@@ -365,9 +381,7 @@ impl Hub {
     }
 
     fn close_save_failed(&mut self, cx: &mut Context<Self>) {
-        self.close_requested = false;
-        self.close_save_started = None;
-        self.cancel_beta_restart();
+        self.abort_close();
         // La X aún presta su ventana al callback: abrir el diálogo al liberar ese préstamo.
         let hub = cx.entity().downgrade();
         cx.defer(move |cx| {
@@ -2015,6 +2029,58 @@ mod presentation_tests {
             now + Duration::from_millis(4_999)
         ));
         assert!(close_save_expired(Some(now), now + Duration::from_secs(5)));
+    }
+
+    fn assert_abort_restores_normal_close(skip_draft: bool, started: Option<Instant>) {
+        let mut requested = true;
+        let mut started = started;
+        let mut skip_draft = skip_draft;
+        reset_close_attempt(&mut requested, &mut started, &mut skip_draft);
+        assert!(!requested);
+        assert!(started.is_none());
+        assert!(!skip_draft);
+        assert!(needs_close_draft_save(skip_draft, true));
+    }
+
+    #[test]
+    fn launcher_cancel_restores_draft_guard_for_the_next_x() {
+        assert_abort_restores_normal_close(true, None);
+    }
+
+    #[test]
+    fn hub_exit_write_failure_restores_draft_guard_for_the_next_x() {
+        assert_abort_restores_normal_close(true, None);
+    }
+
+    #[test]
+    fn hub_save_failure_restores_draft_guard_for_the_next_x() {
+        assert_abort_restores_normal_close(true, None);
+    }
+
+    #[test]
+    fn close_without_saving_then_cancel_restores_draft_guard() {
+        assert_abort_restores_normal_close(true, Some(Instant::now()));
+    }
+
+    #[test]
+    fn live_and_restart_skip_only_the_draft_gate() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-close-policy-{}",
+            vantare_services::random_id().expect("id")
+        ));
+        std::fs::create_dir(&root).unwrap();
+        for (reason, restart_exit) in [(ForcedClose::Live, 11), (ForcedClose::Restart, 10)] {
+            let (mut skip, mut restart) = (false, false);
+            reason.prepare(&mut skip, &mut restart);
+            assert!(!needs_close_draft_save(skip, true));
+            assert_eq!(close_code(restart, true), restart_exit);
+            write_hub_exit(&root, true).unwrap();
+            assert_eq!(
+                std::fs::read_to_string(root.join("hub-exit")).unwrap(),
+                "live"
+            );
+        }
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

@@ -185,6 +185,9 @@ pub struct Remote {
     active: Area,
     calendar_target: Option<gpui::WeakEntity<crate::calendar::Calendar>>,
     report_revision: Option<u64>,
+    autosave_epoch: u64,
+    autosave_due: Option<std::time::Instant>,
+    autosave_pending: bool,
     close_save_pending: bool,
     close_save_fields: Option<super::protocol::report_document::Fields>,
     close_save_result: Option<bool>,
@@ -214,6 +217,8 @@ pub struct Remote {
 // Margen para el cache de 1 s del núcleo, el tick de shell y la entrega IPC;
 // no amplía la caducidad de 2 s que impone Policy::current_at.
 const LICENSE_POLL: std::time::Duration = std::time::Duration::from_millis(500);
+const DRAFT_AUTOSAVE_DELAY: std::time::Duration = std::time::Duration::from_secs(2);
+const DRAFT_AUTOSAVE_RETRY: std::time::Duration = std::time::Duration::from_millis(250);
 
 fn core_feed(pipe: &str) -> Option<vantare_ipc::control::Feed> {
     let image = default_binary().ok()?.with_file_name("vantare-core.exe");
@@ -330,6 +335,9 @@ impl Remote {
             active: Area::Account,
             calendar_target: None,
             report_revision: None,
+            autosave_epoch: 0,
+            autosave_due: None,
+            autosave_pending: false,
             close_save_pending: false,
             close_save_fields: None,
             close_save_result: None,
@@ -571,6 +579,61 @@ impl Remote {
             return Some(false);
         }
         Some(true)
+    }
+
+    pub(crate) fn arm_draft_autosave(&mut self, cx: &mut Context<Self>) {
+        self.autosave_epoch = self.autosave_epoch.wrapping_add(1);
+        let epoch = self.autosave_epoch;
+        self.autosave_due = Some(std::time::Instant::now() + DRAFT_AUTOSAVE_DELAY);
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(DRAFT_AUTOSAVE_DELAY).await;
+            loop {
+                let done = this
+                    .update(cx, |remote, cx| {
+                        remote.flush_draft_autosave(epoch, std::time::Instant::now(), cx)
+                    })
+                    .unwrap_or(true);
+                if done {
+                    break;
+                }
+                cx.background_executor().timer(DRAFT_AUTOSAVE_RETRY).await;
+            }
+        })
+        .detach();
+    }
+
+    fn flush_draft_autosave(
+        &mut self,
+        epoch: u64,
+        now: std::time::Instant,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if epoch != self.autosave_epoch || !self.editor.dirty {
+            return true;
+        }
+        let Some(due) = self.autosave_due else {
+            return true;
+        };
+        if now < due || self.inflight != Inflight::Idle || self.queued.is_some() {
+            return false;
+        }
+        self.autosave_due = None;
+        let fields = self.editor.fields(cx);
+        self.report_revision = Some(self.editor.revision);
+        self.autosave_pending = true;
+        self.request_with_kind(
+            Command::DraftSave { fields },
+            Some(Inflight::Background),
+            cx,
+        );
+        if self.inflight != Inflight::Background {
+            self.autosave_pending = false;
+            self.editor.error = true;
+            self.editor.message =
+                "No se pudo iniciar el autoguardado; el texto sigue en el editor".into();
+            cx.notify();
+        }
+        true
     }
 
     pub(crate) fn take_close_save_result(&mut self) -> Option<bool> {
@@ -958,7 +1021,13 @@ impl Remote {
                 }
             } else if self.legacy_status == LegacyStatus::Unchecked && draft.is_none() {
                 if self.queued.is_some() {
-                    self.editor.message = "La importación espera a la operación pendiente".into();
+                    self.editor.message = if matches!(self.queued, Some(Command::DraftSave { .. }))
+                    {
+                        "El borrador del usuario se está guardando; después se importará el antiguo"
+                    } else {
+                        "La importación espera a la operación pendiente"
+                    }
+                    .into();
                     return;
                 }
                 self.legacy_status = LegacyStatus::Checked;
@@ -1038,6 +1107,8 @@ impl Remote {
         let mut profile_changed = false;
         let mut missing_profile = false;
         let failed = matches!(&reply, Reply::Error { .. } | Reply::LicenseFailure { .. });
+        let draft_reply = matches!(&reply, Reply::Draft { .. });
+        let autosave_reply = std::mem::take(&mut self.autosave_pending);
         // Una acción de email en vuelo deshabilita el formulario; un error de
         // transporte no debe dejarlo así hasta pulsar «Volver».
         let email_waiting = self.email.is_some() && self.inflight == Inflight::User;
@@ -1154,6 +1225,10 @@ impl Remote {
                 }
             }
             // La consulta periódica no pisa el resultado de una acción del usuario.
+            Reply::Error { .. } if background && autosave_reply => {
+                self.editor.error = true;
+                self.editor.message = "No se pudo autoguardar; el texto sigue en el editor".into();
+            }
             Reply::Error { .. } | Reply::License { .. } | Reply::LicenseFailure { .. }
                 if background => {}
             Reply::Status { message, .. } | Reply::Error { message } => {
@@ -1271,6 +1346,8 @@ impl Remote {
         let next = next_request(next, &mut self.queued, self.calendar_target.is_some())
             .or_else(|| missing_profile.then_some(Command::AccountProfileRefresh));
         let notify = !quiet
+            || draft_reply
+            || autosave_reply
             || roadmap_background
             || profile_changed
             || access_before != self.navigation_access()

@@ -1,8 +1,6 @@
 //! Local preparation and exact retries. The model never runs on the tester's PC.
 mod capture;
 mod evidence;
-#[cfg(test)]
-mod redaction;
 use crate::{
     Error, Result,
     bridge::DataRequest,
@@ -27,7 +25,6 @@ pub(crate) struct Input<'a> {
     pub body: &'a str,
     pub selection: Selection,
     pub consent: bool,
-    pub private_names: &'a [String],
 }
 impl Triage {
     pub(crate) fn cancel(&mut self) {
@@ -118,7 +115,6 @@ impl Triage {
             body,
             selection,
             consent,
-            private_names: _private_names,
         } = input;
         self.prepared = None;
         if !consent || !matches!(channel, "testers" | "nightly") {

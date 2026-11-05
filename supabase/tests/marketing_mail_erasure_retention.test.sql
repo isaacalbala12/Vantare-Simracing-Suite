@@ -25,8 +25,8 @@ select public.mail_record_consent(null,'expired@example.invalid','en',true,'veri
 select public.mail_forget_waitlist('expired@example.invalid');
 create temporary table aged as select id from private.mail_contact_erasures where email='expired@example.invalid';
 update private.mail_contact_erasures set created_at=now()-interval '25 hours' where id=(select id from aged);
--- Reading the Owner panel also expires age-limited rows even when delivery flags are disabled.
-select pg_temp.mail();
+-- Explicit maintenance expires age-limited rows independently of the read-only panel.
+select public.mail_erasure_expire();
 select is((select state from private.mail_contact_erasures where id=(select id from aged)),'failed','24h retention expires independently of attempts');
 select is((select email from private.mail_contact_erasures where id=(select id from aged)),null,'expired address is purged');
 select is((select attempts from private.mail_contact_erasures where id=(select id from aged)),0,'expiry performs no provider HTTP');

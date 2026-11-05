@@ -10,7 +10,7 @@ use gpui::{
     SvgRenderer, Window, div, prelude::*,
 };
 use serde_json::Value;
-#[cfg(any(test, feature = "parity-capture"))]
+#[cfg(test)]
 use serde_json::json;
 
 use crate::{

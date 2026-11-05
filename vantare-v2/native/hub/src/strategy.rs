@@ -29,8 +29,6 @@ mod assistant;
 mod editor_view;
 mod parada;
 mod plan;
-#[path = "strategy/revisiones.rs"]
-mod revisions_view;
 #[cfg(test)]
 mod state_tests;
 mod stint;
@@ -62,6 +60,8 @@ pub struct Editor {
     pub document: Option<Document>,
     path: Option<PathBuf>,
     saved: Option<Vec<u8>>,
+    damaged_observed: Option<Vec<u8>>,
+    warning: Option<String>,
 }
 impl Editor {
     pub fn dirty(&self) -> bool {
@@ -73,11 +73,57 @@ impl Editor {
         if self.dirty() {
             return Err("Guarda o descarta los cambios antes de abrir otro documento".into());
         }
-        let bytes = files::read(&path, LIMIT)?;
-        let doc = Document::parse(&bytes)?;
-        self.document = Some(doc);
+        std::fs::metadata(&path).map_err(|error| error.to_string())?;
+        let opened = vantare_ipc::files::Doc::open_or_quarantine(
+            &path,
+            &vantare_ipc::files::Options {
+                limit: LIMIT,
+                ..Default::default()
+            },
+            |bytes| {
+                let value: Value = serde_json::from_slice(bytes)
+                    .map_err(|error| files::Error::InvalidInput(error.to_string()))?;
+                for (field, supported) in [
+                    ("contractVersion", &["strategy.v2"][..]),
+                    ("schemaVersion", &["2.0.0", "2.1.0"][..]),
+                ] {
+                    if let Some(version) = value[field].as_str()
+                        && !supported.contains(&version)
+                    {
+                        return Err(files::Error::Unsupported(format!(
+                            "{field} {version}: original protegido"
+                        )));
+                    }
+                }
+                Document::parse(bytes)
+                    .map(Some)
+                    .map_err(files::Error::InvalidInput)
+            },
+            || None,
+        );
+        // No observed bytes means recovery was unsafe (future version, read or
+        // archive failure). Keep the currently open document untouched.
+        let observed = opened.observed.ok_or_else(|| {
+            opened
+                .warning
+                .clone()
+                .unwrap_or_else(|| "Documento no disponible".into())
+        })?;
+        let recovered = opened.value.is_none();
+        let document = match opened.value {
+            Some(document) => document,
+            None => Document::empty(&chrono::Utc::now().to_rfc3339())?,
+        };
+        self.document = Some(document);
         self.path = Some(path);
-        self.saved = Some(bytes);
+        if recovered {
+            self.saved = None;
+            self.damaged_observed = Some(observed);
+        } else {
+            self.saved = Some(observed);
+            self.damaged_observed = None;
+        }
+        self.warning = opened.warning;
         Ok(())
     }
     pub fn create(&mut self) -> Result<(), String> {
@@ -88,6 +134,8 @@ impl Editor {
         self.document = Some(Document::empty(&timestamp)?);
         self.saved = None;
         self.path = None;
+        self.damaged_observed = None;
+        self.warning = None;
         Ok(())
     }
     pub fn save(&mut self) -> Result<(), files::Error> {
@@ -101,8 +149,15 @@ impl Editor {
             .path
             .as_ref()
             .ok_or("Elige Guardar como para este documento nuevo")?;
-        files::save_with_limit(path, doc.bytes(), self.saved.as_deref(), LIMIT)?;
+        files::save_with_limit(
+            path,
+            doc.bytes(),
+            self.damaged_observed.as_deref().or(self.saved.as_deref()),
+            LIMIT,
+        )?;
         self.saved = Some(doc.bytes().to_vec());
+        self.damaged_observed = None;
+        self.warning = None;
         Ok(())
     }
     pub fn save_as(&mut self, path: PathBuf) -> Result<(), files::Error> {
@@ -114,6 +169,8 @@ impl Editor {
         files::save_with_limit(&path, doc.bytes(), None, LIMIT)?;
         self.path = Some(path);
         self.saved = Some(doc.bytes().to_vec());
+        self.damaged_observed = None;
+        self.warning = None;
         Ok(())
     }
     pub fn discard(&mut self) -> Result<(), String> {
@@ -122,6 +179,8 @@ impl Editor {
         } else {
             self.document = None;
             self.path = None;
+            self.damaged_observed = None;
+            self.warning = None;
         }
         Ok(())
     }
@@ -178,7 +237,6 @@ pub struct Strategy {
     garage_veil: Option<Arc<RenderImage>>,
     demo_car: Option<String>,
     capture_demo: Option<crate::demo::StrategyCaptureDemo>,
-    revisions: revisions_view::State,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
@@ -203,26 +261,18 @@ pub struct Strategy {
 fn open_editor(directory: &std::path::Path) -> (Editor, Option<String>) {
     let mut editor = Editor::default();
     let path = directory.join("strategy-v2.json");
-    let error =
-        if path.exists() {
-            editor.open(path).err()
-        } else {
-            match application::repository::LocalRepository::open(directory)
-                .and_then(|repository| repository.load())
-            {
-                Ok(snapshot) => snapshot.drafts.last().and_then(|draft| {
-                    match Document::parse(draft.as_bytes()) {
-                        Ok(document) => {
-                            editor.document = Some(document);
-                            editor.saved = Some(draft.as_bytes().to_vec());
-                            None
-                        }
-                        Err(error) => Some(error),
-                    }
-                }),
-                Err(error) => Some(error),
+    let result = if path.exists() {
+        editor.open(path)
+    } else {
+        application::repository::import_last_draft(directory).and_then(|draft| {
+            if let Some(bytes) = draft {
+                editor.document = Some(Document::parse(&bytes)?);
+                editor.save_as(path).map_err(|error| error.to_string())?;
             }
-        };
+            Ok(())
+        })
+    };
+    let error = result.err().or_else(|| editor.warning.take());
     (editor, error)
 }
 
@@ -260,14 +310,10 @@ impl Strategy {
                 Page::Assistant(AssistantStep::Sesiones)
             }
             crate::demo::CaptureStrategyPage::Career => Page::Editor(EditorTab::Carrera),
-            crate::demo::CaptureStrategyPage::Revisions => Page::Editor(EditorTab::Revisiones),
         };
         match crate::demo::StrategyCaptureDemo::load() {
             Ok(demo) => strategy.capture_demo = Some(demo),
             Err(error) => strategy.error = Some(error.into()),
-        }
-        if page == crate::demo::CaptureStrategyPage::Revisions {
-            strategy.load_revisions(cx);
         }
         strategy.manual_source_status = SourceStatus::Open;
         if let Err(error) = strategy.seed_capture_demo(cx) {
@@ -406,7 +452,6 @@ impl Strategy {
             garage_veil,
             demo_car: None,
             capture_demo: None,
-            revisions: revisions_view::State::default(),
             duration: None,
             event: 0,
             variant: 0,
@@ -606,6 +651,9 @@ impl Strategy {
                         "Documento cargado; procedencia y campos desconocidos conservados.".into();
                 }
                 this.outcome(result, cx);
+                if let Some(warning) = this.editor.warning.take() {
+                    this.error = Some(warning.into());
+                }
             });
         })
         .detach();
@@ -1442,7 +1490,7 @@ mod tests {
         );
         restarted.discard().expect("discard");
         assert_eq!(restarted.document.as_ref().expect("doc").bytes(), original);
-        assert!(restarted.open(path.clone()).is_err());
+        assert!(restarted.open(directory.join("missing.json")).is_err());
         assert_eq!(restarted.document.as_ref().expect("doc").bytes(), original);
         std::fs::remove_file(path).expect("remove own file");
         std::fs::remove_dir_all(directory).expect("limpiar temporal");

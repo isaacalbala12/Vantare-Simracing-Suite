@@ -25,129 +25,6 @@ impl Drop for R9Directory {
 }
 
 #[test]
-fn r9_startup_prefers_saved_document_over_a_different_repository_draft() {
-    let directory = R9Directory::new();
-    let saved = Document::empty("2026-11-01T00:00:00Z").expect("saved document");
-    let draft = Document::empty("2026-11-02T00:00:00Z").expect("different draft");
-    let path = directory.0.join("strategy-v2.json");
-    std::fs::write(&path, saved.bytes()).expect("saved file");
-    let repository = application::repository::LocalRepository::open(&directory.0)
-        .expect("characterization fixture");
-    repository
-        .save_documents(
-            0,
-            &[String::from_utf8(draft.bytes().to_vec()).expect("characterization fixture")],
-            &[],
-        )
-        .expect("repository draft");
-    let (editor, error) = open_editor(&directory.0);
-    assert!(error.is_none());
-    assert_eq!(
-        editor
-            .document
-            .as_ref()
-            .expect("characterization fixture")
-            .bytes(),
-        saved.bytes()
-    );
-    assert_eq!(editor.path, Some(path));
-    assert!(!editor.dirty());
-}
-
-#[test]
-fn r9_repository_only_startup_has_no_path_and_cannot_persist_an_edit() {
-    let directory = R9Directory::new();
-    let draft = Document::empty("2026-11-02T00:00:00Z").expect("characterization fixture");
-    let repository = application::repository::LocalRepository::open(&directory.0)
-        .expect("characterization fixture");
-    repository
-        .save_documents(
-            0,
-            &[String::from_utf8(draft.bytes().to_vec()).expect("characterization fixture")],
-            &[],
-        )
-        .expect("characterization fixture");
-    let (mut editor, error) = open_editor(&directory.0);
-    assert!(error.is_none());
-    assert!(editor.path.is_none());
-    assert!(!editor.dirty());
-    editor
-        .document
-        .as_mut()
-        .expect("characterization fixture")
-        .set("/generatedAt", &json!("2026-11-03T00:00:00Z"))
-        .expect("characterization fixture");
-    assert!(editor.dirty());
-    assert!(editor.save().is_err());
-    assert!(!directory.0.join("strategy-v2.json").exists());
-}
-
-#[test]
-fn r9_corrupt_document_blocks_normal_save_and_preserves_original_bytes() {
-    let directory = R9Directory::new();
-    let path = directory.0.join("strategy-v2.json");
-    std::fs::write(&path, b"{").expect("characterization fixture");
-    let (mut editor, error) = open_editor(&directory.0);
-    assert!(error.is_some());
-    assert!(editor.document.is_none());
-    editor.create().expect("characterization fixture");
-    assert!(matches!(
-        editor.save_as(path.clone()),
-        Err(files::Error::Conflict { .. })
-    ));
-    assert!(editor.dirty());
-    assert_eq!(std::fs::read(path).expect("characterization fixture"), b"{");
-}
-
-#[test]
-fn r9_saving_repository_draft_keeps_document_dirty_and_saved_file_unchanged() {
-    with_strategy("r9-draft", |this, _cx| {
-        let directory = R9Directory::new();
-        let original_directory = std::mem::replace(&mut this.directory, directory.0.clone());
-        this.editor.create().expect("characterization fixture");
-        let path = directory.0.join("strategy-v2.json");
-        this.editor
-            .save_as(path.clone())
-            .expect("characterization fixture");
-        let saved = std::fs::read(&path).expect("characterization fixture");
-        this.editor
-            .document
-            .as_mut()
-            .expect("characterization fixture")
-            .set("/generatedAt", &json!("2026-11-03T00:00:00Z"))
-            .expect("characterization fixture");
-        let edited = this
-            .editor
-            .document
-            .as_ref()
-            .expect("characterization fixture")
-            .value()
-            .clone();
-        this.save_application_draft()
-            .expect("characterization fixture");
-        assert!(this.editor.dirty());
-        assert_eq!(
-            std::fs::read(path).expect("characterization fixture"),
-            saved
-        );
-        let snapshot = application::repository::LocalRepository::open(&directory.0)
-            .expect("characterization fixture")
-            .load()
-            .expect("characterization fixture");
-        let draft = Document::parse(
-            snapshot
-                .drafts
-                .last()
-                .expect("characterization fixture")
-                .as_bytes(),
-        )
-        .expect("characterization fixture");
-        assert_eq!(draft.value(), &edited);
-        this.directory = original_directory;
-    });
-}
-
-#[test]
 fn r9_strategy_persist_rejects_pending_form_and_unsaved_new_document() {
     with_strategy("r9-persist", |this, _cx| {
         this.editor.create().expect("characterization fixture");
@@ -313,20 +190,6 @@ fn isa1544_cancel_manual_recalculation_preserves_edits_inputs_and_baselines() {
 }
 
 #[test]
-fn isa1544_revisions_render_performs_no_repository_io() {
-    with_strategy("revisions", |this, cx| {
-        revisions_view::REPOSITORY_READS.set(0);
-        let _ = this.revisions_page(cx);
-        let _ = this.revisions_page(cx);
-        assert_eq!(
-            revisions_view::REPOSITORY_READS.get(),
-            0,
-            "render must not open/load the repository"
-        );
-    });
-}
-
-#[test]
 fn r9_imported_projection_is_preserved_and_still_rejected_by_manual_calculation() {
     with_strategy("r9-imported-projection", |this, cx| {
         let mut projection: Value = serde_json::from_str(include_str!(
@@ -473,26 +336,170 @@ fn isa1544_optional_metadata_keeps_absence_and_invalid_date_is_atomic() {
     assert_eq!(event["drivers"][0]["ini"]["value"], "");
 }
 
+// Frozen fixture hash is verified by the importer; no test uses a store writer.
+const R9_NATIVE_REPOSITORY: &[u8] = br#"{"repositoryVersion":"strategy.repository.v2","hashAlgorithm":"sha256:strategy-repository-json-v1","generation":7,"drafts":[{"contractVersion":"strategy.v2","schemaVersion":"2.1.0","generatedAt":"2026-11-02T00:00:00Z","events":[]}],"revisions":[],"contentHash":"2d45eef82a1abe00512e21d5ddc81ae224b3074fafb8ca29dc675df8341a5039"}"#;
+
 #[test]
-fn isa1544_revision_load_discards_stale_results_and_keeps_read_error() {
-    with_strategy("revision-state", |this, cx| {
-        this.revisions.generation = 2;
-        this.finish_revisions_load(2, Err("repository invalid".into()), cx);
-        let snapshot = application::repository::RepositorySnapshot {
-            generation: 1,
-            drafts: vec![],
-            revisions: vec![],
-        };
-        this.finish_revisions_load(1, Ok(snapshot.clone()), cx);
+fn r9_primary_document_wins_and_never_consults_the_legacy_repository() {
+    let directory = R9Directory::new();
+    let path = directory.0.join("strategy-v2.json");
+    let saved = Document::empty("2026-11-01T00:00:00Z").expect("saved");
+    std::fs::write(&path, saved.bytes()).expect("primary");
+    let repository = directory.0.join("strategy-repository.json");
+    std::fs::write(&repository, b"corrupt legacy source").expect("legacy source");
+    let (editor, error) = open_editor(&directory.0);
+    assert!(error.is_none());
+    assert_eq!(
+        editor.document.as_ref().expect("primary").bytes(),
+        saved.bytes()
+    );
+    assert_eq!(editor.path, Some(path));
+    assert!(!editor.dirty());
+    assert_eq!(
+        std::fs::read(repository).expect("untouched"),
+        b"corrupt legacy source"
+    );
+}
+
+#[test]
+fn r9_import_creates_the_primary_once_and_keeps_the_legacy_bytes() {
+    let directory = R9Directory::new();
+    let repository = directory.0.join("strategy-repository.json");
+    std::fs::write(&repository, R9_NATIVE_REPOSITORY).expect("legacy source");
+    let path = directory.0.join("strategy-v2.json");
+    let (mut editor, error) = open_editor(&directory.0);
+    assert!(error.is_none(), "{error:?}");
+    let imported = editor.document.as_ref().expect("imported").bytes().to_vec();
+    assert_eq!(editor.path, Some(path.clone()));
+    assert!(!editor.dirty());
+    assert_eq!(std::fs::read(&path).expect("primary"), imported);
+    assert_eq!(
+        std::fs::read(&repository).expect("untouched"),
+        R9_NATIVE_REPOSITORY
+    );
+    editor
+        .document
+        .as_mut()
+        .expect("imported")
+        .set("/generatedAt", &json!("2026-11-03T00:00:00Z"))
+        .expect("edit");
+    editor.save().expect("normal save after import");
+    let edited = editor.document.as_ref().expect("edited").bytes().to_vec();
+    let (restarted, error) = open_editor(&directory.0);
+    assert!(error.is_none());
+    assert_eq!(
+        restarted.document.as_ref().expect("reopened").bytes(),
+        edited
+    );
+    assert_eq!(
+        std::fs::read(repository).expect("untouched after restart"),
+        R9_NATIVE_REPOSITORY
+    );
+}
+
+#[test]
+fn r9_bad_legacy_hash_never_creates_a_primary_or_rewrites_the_source() {
+    let directory = R9Directory::new();
+    let repository = directory.0.join("strategy-repository.json");
+    let bytes = String::from_utf8(R9_NATIVE_REPOSITORY.to_vec())
+        .expect("fixture")
+        .replace("2026-11-02", "2026-11-03");
+    std::fs::write(&repository, &bytes).expect("corrupt hash");
+    let (editor, error) = open_editor(&directory.0);
+    assert!(error.is_some());
+    assert!(editor.document.is_none());
+    assert!(!directory.0.join("strategy-v2.json").exists());
+    assert_eq!(
+        std::fs::read(repository).expect("untouched"),
+        bytes.as_bytes()
+    );
+}
+
+#[test]
+fn r9_import_never_invents_a_native_conversion_for_a_go_v1_draft() {
+    let directory = R9Directory::new();
+    let source = include_bytes!("../../../strategy/testdata/oracle/repository-v1-go.json");
+    let repository = directory.0.join("strategy-repository.json");
+    std::fs::write(&repository, source).expect("Go source");
+    let (editor, error) = open_editor(&directory.0);
+    assert!(error.is_some());
+    assert!(editor.document.is_none());
+    assert!(!directory.0.join("strategy-v2.json").exists());
+    assert_eq!(std::fs::read(repository).expect("untouched"), source);
+}
+
+#[test]
+fn r9_damaged_primary_is_archived_exactly_before_normal_save_can_recover() {
+    let directory = R9Directory::new();
+    let path = directory.0.join("strategy-v2.json");
+    let damaged = b"{ damaged \xff";
+    std::fs::write(&path, damaged).expect("damaged document");
+    let (mut editor, warning) = open_editor(&directory.0);
+    assert!(warning.is_some());
+    assert!(editor.dirty());
+    assert_eq!(editor.path, Some(path.clone()));
+    assert_eq!(std::fs::read(&path).expect("original until save"), damaged);
+    let archive = directory.0.join("strategy-v2.json.invalid");
+    assert_eq!(std::fs::read(&archive).expect("durable archive"), damaged);
+    editor.save().expect("normal recovery save");
+    assert!(!editor.dirty());
+    let bytes = std::fs::read(&path).expect("saved default");
+    Document::parse(&bytes).expect("valid recovered document");
+    assert_eq!(std::fs::read(archive).expect("archive retained"), damaged);
+}
+
+#[test]
+fn r9_recovery_save_checks_the_observed_damaged_bytes() {
+    let directory = R9Directory::new();
+    let path = directory.0.join("strategy-v2.json");
+    std::fs::write(&path, b"{").expect("damaged");
+    let (mut editor, warning) = open_editor(&directory.0);
+    assert!(warning.is_some());
+    std::fs::write(&path, b"external edit").expect("concurrent change");
+    assert!(matches!(editor.save(), Err(files::Error::Conflict { .. })));
+    assert!(editor.dirty());
+    assert_eq!(std::fs::read(path).expect("protected"), b"external edit");
+    assert_eq!(
+        std::fs::read(directory.0.join("strategy-v2.json.invalid")).expect("archive"),
+        b"{"
+    );
+}
+
+#[test]
+fn r9_future_versions_and_unavailable_archive_preserve_the_current_editor() {
+    let directory = R9Directory::new();
+    let path = directory.0.join("strategy-v2.json");
+    let mut editor = Editor::default();
+    editor.create().expect("current document");
+    editor
+        .save_as(directory.0.join("current.json"))
+        .expect("current saved");
+    let current = editor.document.as_ref().expect("current").bytes().to_vec();
+    for (field, version) in [
+        ("contractVersion", "strategy.v3"),
+        ("schemaVersion", "9.0.0"),
+    ] {
+        let mut future = serde_json::from_slice::<Value>(&current).expect("fixture");
+        future[field] = json!(version);
+        let bytes = serde_json::to_vec(&future).expect("future document");
+        std::fs::write(&path, &bytes).expect("future source");
+        assert!(editor.open(path.clone()).is_err());
         assert_eq!(
-            this.revisions.snapshot,
-            Some(Err("repository invalid".into()))
+            editor.document.as_ref().expect("current retained").bytes(),
+            current
         );
-        this.revisions.generation = 3;
-        this.finish_revisions_load(3, Ok(snapshot.clone()), cx);
-        assert_eq!(this.revisions.snapshot, Some(Ok(snapshot)));
-        revisions_view::REPOSITORY_READS.set(0);
-        let _ = this.revisions_page(cx);
-        assert_eq!(revisions_view::REPOSITORY_READS.get(), 0);
-    });
+        assert_eq!(std::fs::read(&path).expect("future retained"), bytes);
+        assert!(!directory.0.join("strategy-v2.json.invalid").exists());
+    }
+    std::fs::write(&path, b"{").expect("damaged source");
+    let lock =
+        std::fs::File::create(directory.0.join("strategy-v2.json.lock")).expect("busy archive");
+    lock.lock().expect("hold archive lock");
+    assert!(editor.open(path.clone()).is_err());
+    assert_eq!(
+        editor.document.as_ref().expect("current retained").bytes(),
+        current
+    );
+    assert_eq!(std::fs::read(path).expect("original retained"), b"{");
+    assert!(!directory.0.join("strategy-v2.json.invalid").exists());
 }

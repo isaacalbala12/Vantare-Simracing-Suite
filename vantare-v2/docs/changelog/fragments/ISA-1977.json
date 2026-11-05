@@ -3,13 +3,17 @@
   "testing": [
     "Crear una carrera manual desde el asistente y comprobar que abre Carrera.",
     "Abrir y guardar un documento importado con proyección: debe conservar sus bytes y no calcular ignorando la proyección.",
-    "Comprobar que no aparecen Datos ni un botón que lleve a esa pestaña; las capturas retiradas ya no son rutas válidas."
+    "Comprobar que no aparecen Datos ni un botón que lleve a esa pestaña; las capturas retiradas ya no son rutas válidas.",
+    "Guardar una carrera importada del repositorio y reiniciar: debe reabrirse el mismo documento; el repositorio original queda intacto.",
+    "Abrir un documento dañado, comprobar su copia .invalid y guardar la recuperación sin perder esa copia."
   ],
-  "summary": "Strategy conserva la creación manual y retira Automático y la pestaña Datos, que todavía no recibían sesiones nativas para el cálculo.",
+  "summary": "Strategy conserva la creación manual, simplifica el guardado a un documento y retira Automático, Datos y Revisiones sin productor nativo.",
   "technicalNotes": [
     "Se retiran la preparación automática y su estado del asistente.",
     "Los documentos importados con proyección siguen abriéndose y guardándose sin cambios; el cálculo manual conserva su rechazo explícito.",
-    "Se retiran las correcciones por familia y su contrato Go; el documento completo y la validación de proyecciones importadas permanecen."
+    "Se retiran las correcciones por familia y su contrato Go; el documento completo y la validación de proyecciones importadas permanecen.",
+    "Un único documento strategy-v2.json; importador heredado v1/v2 con hash y sin escritura, sin pestaña Revisiones ni Guardar borrador.",
+    "La recuperación conserva bytes dañados antes del guardado observado; versiones no compatibles y fallos de archivo quedan protegidos."
   ],
   "type": "change",
   "knownLimitations": [

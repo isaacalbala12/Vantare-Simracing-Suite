@@ -1,8 +1,8 @@
 # Strategy nativo — ISA-1427 / referencia #1393
 
 El crate `vantare-strategy` pertenece al workspace `native/` y Hub lo importa
-como dependencia. Contiene documentos, preparación manual, repositorio local,
-edición y cálculo sin runtime ni GPUI.
+como dependencia. Contiene documentos, preparación manual, importación de
+borradores, edición y cálculo sin runtime ni GPUI.
 El cálculo con presupuesto numérico tiene un orden determinista; un deadline
 real puede interrumpirlo en distintos puntos según la carga del equipo.
 
@@ -59,12 +59,18 @@ sus bytes; el cálculo manual conserva su rechazo explícito. La validación
 completa 2.0/2.1 permanece. `recalculate_edited_plan` valida y reproduce
 stints/paradas editados.
 
-El repositorio local guarda drafts y revisiones con generaciones, hash y
-reemplazo atómico; migra v1 a v2 conservando el contrato JSON/hash de Go y
-valida antes de publicar la migración. La lectura se acota a 64 MiB+1 y rechaza
-entradas superiores a 64 MiB. Las operaciones son síncronas: el caller debe
-situarlas fuera del renderizado/adquisición. El control de generación no
-constituye exclusión entre escritores independientes.
+`import_last_draft` lee el último borrador del repositorio heredado v1/v2 tras
+verificar su hash completo. No crea directorios, migra, escribe ni borra ese
+fichero. La lectura se acota a 64 MiB+1 y rechaza entradas superiores a 64 MiB;
+el documento importado no puede superar 12 MiB. Solo se consulta si no existe
+`strategy-v2.json`: el Hub valida el documento nativo y crea ese fichero con
+el guardado común observado. Los borradores antiguos `strategy.v1` no se
+convierten a `strategy.v2`.
+
+Hub utiliza un único fichero para guardar. Si está dañado, la apertura común
+conserva una copia durable antes de permitir su recuperación; el guardado sigue
+comprobando los bytes observados. Las versiones no compatibles y los fallos al
+archivar quedan protegidos. Ya no hay pestaña Revisiones ni «Guardar borrador».
 
 Hub usa el camino manual y presenta resultados probados, parciales o sin solución.
 Este crate no proporciona adquisición de Analysis, catálogos firmados ni su

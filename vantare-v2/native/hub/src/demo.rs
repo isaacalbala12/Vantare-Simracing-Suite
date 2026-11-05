@@ -52,7 +52,6 @@ const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
     "strategy-v5-asistente-pilotos",
     "strategy-v5-asistente-sesiones",
     "strategy-v5-carrera",
-    "strategy-v5-revisiones",
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -545,7 +544,6 @@ pub enum CaptureStrategyPage {
     AssistantPilotos,
     AssistantSesiones,
     Career,
-    Revisions,
 }
 
 fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
@@ -556,7 +554,6 @@ fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
         "strategy-v5-asistente-pilotos" => Some(CaptureStrategyPage::AssistantPilotos),
         "strategy-v5-asistente-sesiones" => Some(CaptureStrategyPage::AssistantSesiones),
         "strategy-v5-carrera" => Some(CaptureStrategyPage::Career),
-        "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
         "strategy-plan-reposo" | "strategy-v5-plan-reposo" => Some(CaptureStrategyPage::PlanIdle),
         "strategy-plan-cargando" | "strategy-v5-plan-cargando" => {
             Some(CaptureStrategyPage::PlanLoading)
@@ -995,6 +992,7 @@ mod tests {
     fn r9_retired_data_screens_are_not_capture_routes() {
         for name in [
             "strategy-datos-vacio",
+            "strategy-v5-revisiones",
             "strategy-v5-datos-fuentes",
             "strategy-v5-datos-vueltas",
             "strategy-v5-datos-avanzado",

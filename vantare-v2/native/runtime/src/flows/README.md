@@ -1,9 +1,11 @@
 # Flujos de eventos — ISA-1425 / ISA-1428 / ADR 0099 §2
 
 Journal neutral con codec acotado de eventos `wire` y consumidor separado en
-`native/engineer/`. El named pipe de producto y el flag CLI del núcleo aún no
-se conectan (propiedad de otros workers). `Core::new` deja recording desactivado.
-`Core::with_flows(epoch, retention, Some(path))` es el opt-in de recording.
+`native/engineer/`. El servicio conecta el pipe de eventos y el flag
+`vantare-core --recording <JSONL>` activa su dueño de I/O fuera de adquisición.
+`Core::new` deja recording desactivado. `Core::with_flows(..., Some(path))` y
+`events_mut().persist()` se conservan como costura de pruebas; en producto
+escribe la réplica de `EventHost`. No se cambia esa ruta en R8.
 La época la inyecta el propietario y debe crecer al reiniciar; no se lee reloj
 de pared.
 
@@ -33,7 +35,9 @@ escritura también se prueban con archivos reales.
 
 ## Eventos
 
-Solo entrada/salida de boxes del jugador. `Core::observe` compara fotos
+El journal guarda boxes v1 y hechos v3 de vuelta, bandera, sesión y fuente
+(ver `event.rs` y `facts_tests.rs`). Para los cambios de boxes,
+`Core::observe` compara fotos
 consecutivas ya saneadas: misma época, sesión y coche, y dos estados de boxes
 `Reliable`. La primera foto, ausencia, obsolescencia, estimación, cambio de
 sesión/coche y rechazo no fabrican eventos. `sequence` es la revisión de la
@@ -52,15 +56,16 @@ motivo y base nueva. Antes de reconocer el hueco se reconstruye desde la foto
 actual; se omiten también los eventos retenidos anteriores a esa base. No se
 deducen hechos a través del hueco.
 
-Observar solo encola en memoria. El propietario llama a
-`core.events_mut().persist()` **fuera del hilo de adquisición**. Solo tras
-`sync_all` se avanza `durable_cursor`. El núcleo no lanza un worker ni configura
-su cadencia: esa integración pertenece a fases posteriores. Un consumidor
-durable lee disco fuera de adquisición, en memoria constante. La búsqueda es
-lineal; no hay índice especulativo.
+Observar solo encola en memoria. En producto `EventHost` replica y confirma
+el journal en su hilo de I/O; la costura `core.events_mut().persist()` queda
+para pruebas fuera de adquisición. Solo tras `sync_all` se avanza
+`durable_cursor`. Un consumidor durable lee disco fuera de adquisición, en
+memoria constante. La búsqueda es lineal; no hay índice especulativo.
 
-El fichero tiene un único propietario por contrato. JSONL v1, un array por
-evento: `[1, index, epoch, sequence, session_id, car_id, was_in_pits, in_pits]`.
+El fichero tiene un único propietario por contrato. JSONL con un array por
+evento: boxes conserva `[1, index, epoch, sequence, session_id, car_id,
+was_in_pits, in_pits]`; los hechos usan `[3, index, epoch, sequence,
+session_id, kind]` (`event.rs`). Las bases de segmento usan v2.
 Máximo 256 bytes por registro; índices contiguos y épocas no decrecientes.
 Reabrir recupera el prefijo completo. Una cola sin newline no fue confirmada y
 se sella añadiendo `\tABORTED\n`, sin truncar ni reescribir bytes; jamás se
@@ -80,9 +85,9 @@ Es una frontera histórica; no representa la foto actual ni autoriza a inferir
 hechos entre épocas. En modo volátil la base sí es la cola de la foto actual.
 
 Seguimiento: [GitHub #1425](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1425).
-Notion no disponible en este encargo; Isaac autoriza continuar solo con GitHub.
-La entrega local queda pendiente de revisión del orquestador y de restablecer
-el seguimiento Notion; no acredita cierre de fase ni promoción de canal.
+Plane recoge el encargo y sus estados; GitHub Issues/Project Vantare, el código
+y sus PR. El handoff de análisis enlaza la evidencia; no acredita por sí solo
+aceptación física, cierre de fase ni promoción de canal.
 
 Las pruebas usan observaciones sintéticas, sin acreditar LMU físico ni caída
 abrupta de Windows. Sí ejercitan fichero real, cierre/reapertura del núcleo,
@@ -217,6 +222,14 @@ parciales/cierre, saturación/desconexión, configuración única, hueco y cambi
 de identidad; los goldens LapBlock v1 anteriores siguen obligatorios.
 El [microplan](../../../../docs/superpowers/plans/2026-09-30-fase-4-series-grabacion-analisis.md)
 registra la autorización DuckDB y los presupuestos físicos pendientes.
+
+## Versiones independientes
+
+El wire de eventos v1, los registros de eventos v1/v3, LapBlock v1,
+SeriesChunk v1 y el resumen `series-summary.v1` versionan contratos distintos.
+Cambiar forma o semántica de uno exige una versión nueva de ese contrato y
+sus goldens; mover código o cambiar la versión de producto no la incrementa.
+Los lectores admitidos y los rechazos se fijan en cada codec y sus tests.
 
 ## Codec y análisis compartido — ISA-1429
 

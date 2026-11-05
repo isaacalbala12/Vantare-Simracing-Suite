@@ -37,7 +37,8 @@ overrides QA de native/LocalAppData/AppData.
 
 ## Mapa de crates
 
-El workspace tiene 14 crates; `default-members` excluye storage, admin e installer.
+El workspace tiene 14 crates y ocho `default-members`, definidos en `Cargo.toml`.
+Storage, admin e installer no forman parte de esa selección predeterminada.
 
 | Crate | Contiene |
 | --- | --- |

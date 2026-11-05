@@ -1,7 +1,7 @@
 # Almacenamiento de series — ISA-1429
 
 Crate y proceso bajo demanda: `vantare-storage <ruta.duckdb> [--read-only]`.
-Ningún paquete vivo depende de storage/DuckDB. El workspace tiene nueve
+Ningún paquete vivo depende de storage/DuckDB. El workspace tiene 14
 miembros y ocho default-members; storage se excluye del build por defecto para
 no compilar DuckDB bundled. Compilarlo explícitamente con `--offline -j 4`
 o mediante los gates `--workspace`. El test de aislamiento descubre todos los
@@ -65,8 +65,10 @@ exactamente ese chunk es seguro.
 
 Recording no se activa al suscribir ni al arrancar Core. El llamador debe
 arrancar este binario explícitamente fuera de adquisición, consumir el
-Receiver en un worker y flush al parar. La integración Hub es fase 5 y el
-journal fase 3; el launcher actual sigue sin arrancar este proceso.
+Receiver en un worker y flush al parar. El Hub ya descubre grabaciones
+nativas y lanza el lector read-only en segundo plano. El supervisor todavía
+no conecta el escritor de series: pendiente en [#1975](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1975),
+sin implementación ni decisión sobre DuckDB en este paso.
 
 El cliente en `runtime::flows` usa únicamente dependencias que runtime ya tenía.
 `SeriesWorker::start(exe, db, receiver)` devuelve sin esperar ready; un hilo

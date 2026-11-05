@@ -587,13 +587,12 @@ pub fn is_local_path(path: &Path) -> bool {
 
 #[derive(Default)]
 pub struct LmuTrigger {
-    was_open: bool,
+    was_open: Option<bool>,
 }
 impl LmuTrigger {
     pub fn observe(&mut self, enabled: bool, open: bool) -> bool {
-        let launch = enabled && open && !self.was_open;
-        self.was_open = enabled && open;
-        launch
+        let previous = self.was_open.replace(enabled && open);
+        enabled && open && previous == Some(false)
     }
 }
 

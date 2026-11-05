@@ -395,16 +395,35 @@ impl Owner {
         match request {
             Ok(Request::Launch { profile }) => self.launch(&profile),
             Ok(Request::Answer { decision, action }) => {
+                // El descarte de Fallo/Continuar cancela, aunque no tenga botón Cancel.
+                // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
+                let cancel_dismissed = action == Action::Cancel.label()
+                    && self.status.decision.as_ref().is_some_and(|current| {
+                        current.id == decision
+                            && !current.actions.contains(&action)
+                            && !current
+                                .actions
+                                .iter()
+                                .any(|label| label == Action::Leave.label())
+                    });
                 let selected = self
                     .status
                     .decision
                     .as_ref()
-                    .filter(|d| d.id == decision && d.actions.contains(&action))
+                    .filter(|d| {
+                        d.id == decision && (d.actions.contains(&action) || cancel_dismissed)
+                    })
                     .and_then(|_| action_from_label(&action));
                 if let (Some(chain), Some(action), Some(local_id)) =
                     (&self.chain, selected, self.chain_decision)
                 {
-                    match chain.answer(local_id, action) {
+                    let result = if cancel_dismissed {
+                        chain.cancel();
+                        Ok(())
+                    } else {
+                        chain.answer(local_id, action)
+                    };
+                    match result {
                         Ok(()) => {
                             self.status.decision = None;
                             self.chain_decision = None;
@@ -563,13 +582,7 @@ mod tests {
         assert!(imported);
     }
 
-    #[test]
-    fn dismiss_cancel_stops_the_matching_failure_decision_but_rejects_a_stale_one() {
-        let root = std::env::temp_dir().join(format!(
-            "resident-dismiss-{}",
-            vantare_services::random_id().expect("id QA")
-        ));
-        fs::create_dir(&root).expect("raíz QA");
+    fn failure_decision_owner(root: &std::path::Path) -> Owner {
         let mut owner = Owner::new(root.join("launcher.json"), false);
         let mut profile = launcher::Profile::new("qa".into(), "QA".into());
         profile.policy = Some(launcher::policy::Policy {
@@ -628,6 +641,17 @@ mod tests {
                 .map(|action| action.label().into())
                 .collect(),
         });
+        owner
+    }
+
+    #[test]
+    fn dismiss_cancel_stops_the_matching_failure_decision_but_rejects_a_stale_one() {
+        let root = std::env::temp_dir().join(format!(
+            "resident-dismiss-{}",
+            vantare_services::random_id().expect("id QA")
+        ));
+        fs::create_dir(&root).expect("raíz QA");
+        let mut owner = failure_decision_owner(&root);
         for id in [41, 42] {
             fs::write(
                 request_path(&owner.path),

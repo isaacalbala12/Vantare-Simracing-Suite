@@ -10,9 +10,8 @@ real puede interrumpirlo en distintos puntos según la carga del equipo.
 
 Lee documentos `strategy.v2` con esquema `2.0.0` y `2.1.0`. Los documentos
 nuevos usan `2.1.0`, que permite reglas de evento con evidencia, ventanas de
-parada, límites de piloto y compuestos permitidos por clima. La migración de
-`2.0.0` a `2.1.0` es explícita, idempotente y no añade reglas. `2.0.0` no admite
-el campo `rules`.
+parada, límites de piloto y compuestos permitidos por clima. La lectura de ambas versiones conserva los bytes originales; no se convierte
+el esquema al abrirlo. `2.0.0` no admite el campo `rules`.
 
 Las ediciones validan el documento completo antes de guardar y conservan los
 bytes de campos no editados. Las seis entradas de
@@ -32,8 +31,10 @@ incompatibles en escalares ni inventa evidencia para datos ausentes.
 certificado de optimalidad. `proven` y `no_solution` se refieren al ámbito y
 la discretización efectiva del certificado. Al vencer presupuesto o deadline
 devuelve el mejor plan completo encontrado con `not_proven`, si existe;
-una cancelación o un input inválido falla sin publicar resultado. La API de
-compatibilidad `solve_cancellable` mantiene el error ante agotamiento.
+una cancelación o un input inválido falla sin publicar resultado. Los helpers de compatibilidad escalar solo se compilan en los tests del
+oráculo; no forman parte de la API de producción. `solve_v2` se conserva por
+los benchmarks y tests de #1458. Las APIs de escenarios se conservan: el
+solver extendido queda fuera de este recorrido.
 La búsqueda extendida conserva motivos y prueba explícitos cuando no puede
 certificar optimalidad; no se promete un óptimo para todo input aceptado.
 
@@ -62,7 +63,12 @@ entradas superiores a 64 MiB. Las operaciones son síncronas: el caller debe
 situarlas fuera del renderizado/adquisición. El control de generación no
 constituye exclusión entre escritores independientes.
 
-Hub consume estas APIs y presenta resultados probados, parciales o sin solución.
+Hub usa realmente el camino manual y presenta resultados probados, parciales
+o sin solución. La preparación automática carece de productor nativo y su
+resultado no se conecta al cálculo. Las correcciones familiares solo reciben
+fuentes de demo y no se guardan ni intervienen en el solver. Su retirada está
+autorizada en los siguientes pasos de VANTA-135; no son integración con Análisis
+nativo ya disponible.
 Este crate no proporciona adquisición de Analysis, catálogos firmados ni su
 transporte, y no certifica por sí solo la integración visual/operativa de Hub.
 La UI v5 Go completa queda fuera de este corte.

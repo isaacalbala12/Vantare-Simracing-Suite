@@ -49,20 +49,6 @@ impl Document {
         self.value["schemaVersion"].as_str().unwrap_or_default()
     }
 
-    /// Explicitly upgrades a legacy 2.0 document to the schema that supports
-    /// event rules. It leaves the event data unchanged and adds no rule values.
-    pub fn migrate_rules_v2(&self) -> Result<Self, String> {
-        match self.schema_version() {
-            SCHEMA_VERSION_V2 => {
-                let mut migrated = self.clone();
-                migrated.set("/schemaVersion", &json!(SCHEMA_VERSION_V2_RULES))?;
-                Ok(migrated)
-            }
-            SCHEMA_VERSION_V2_RULES => Ok(self.clone()),
-            _ => Err("unsupported_schema_version".into()),
-        }
-    }
-
     /// JSON pointer (RFC 6901). Validates the whole candidate before committing.
     /// Untouched tokens retain whitespace, decimal spelling and unknown fields.
     pub fn set(&mut self, pointer: &str, value: &Value) -> Result<(), String> {
@@ -1064,32 +1050,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    #[test]
-    fn legacy_document_migration_is_explicit_and_does_not_add_rules() {
-        let old_bytes = serde_json::to_vec(&json!({
-            "contractVersion":"strategy.v2",
-            "schemaVersion":SCHEMA_VERSION_V2,
-            "generatedAt":"2026-09-30T00:00:00Z",
-            "events":[new_event("event", "Carrera", 60, 90.0, 30.0)]
-        }))
-        .expect("legacy fixture");
-        let old = Document::parse(&old_bytes).expect("legacy 2.0 document");
-        assert_eq!(old.schema_version(), SCHEMA_VERSION_V2);
-        assert_eq!(old.bytes(), old_bytes);
-
-        let migrated = old.migrate_rules_v2().expect("explicit migration");
-        assert_eq!(migrated.schema_version(), SCHEMA_VERSION_V2_RULES);
-        assert!(migrated.value()["events"][0]["rules"].is_null());
-        assert_eq!(old.schema_version(), SCHEMA_VERSION_V2);
-        assert_eq!(old.bytes(), old_bytes);
-        assert_eq!(
-            migrated
-                .migrate_rules_v2()
-                .expect("idempotent migration")
-                .bytes(),
-            migrated.bytes()
-        );
     }
 }

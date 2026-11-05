@@ -1,4 +1,3 @@
-import { requireAudit } from "./effects.ts";
 import { adminFailure } from "./errors.ts";
 import {
   type ChangeDeps,
@@ -15,6 +14,7 @@ import {
   EffectFailure,
   type EffectRecorder,
   recordEffect,
+  requireAudit,
 } from "./effects.ts";
 import { cleanupDeletedObjects } from "../_shared/account-erasure.ts";
 import { needsPaymentSync, syncAdminPayments } from "./payment-sync.ts";

@@ -8961,8 +8961,8 @@ union all select 'linear_deliveries',outcome::text,count(*)
 - SQL LF/CRLF10 checks + rollback/reapply y lint0106 propio PASS. Native Nextest47, check y Clippy -D warnings PASS.
   Deno281 PASS tras ajustar el código de
   sandbox al contrato503 existente; ver gates finales en PR. Store falso/QA aislada.
-- Solo Isaac: SQL primero, Gestión compatible antes de Edge pura; confirmar que
-  usa el binario actualizado (el antiguo ignora el flag). Consultar admin_payment_sync
+- Solo Isaac: SQL → Edge → Gestión nuevo; el nuevo contra Edge viejo recibe400.
+  Actualizar primero Edge conserva el cliente antiguo. Consultar admin_payment_sync
   existente. Down junto con Edge anterior, solo descarta cuota transitoria. Sin
   deploy/merge/release ni llamadas a producción, _shared, billing o licencias.
 - Falta el recorte mail_erasure_expire de mail_list: separar tras integrar paso6,
@@ -9001,10 +9001,10 @@ union all select 'linear_deliveries',outcome::text,count(*)
   Native check/Clippy -D warnings/Nextest49/fmt PASS, solo admin mediante
   compilar.ps1, target aislado y QA falsa; se cede la cola entre comandos.
   Tooling31 PASS. Sin runtime/domain/ipc/testdata: telemetría/lifecycle no aplican.
-- Solo Isaac despliega: SQL y enseguida Edge compatible/Gestión por1962. Un cliente
+- Solo Isaac despliega: SQL → Edge → Gestión nuevo, por1962. Un cliente
   antiguo conserva lecturas/importación anteriores. Si ya existe evidencia sync,
   el down aborta; conservar SQL y revertir Edge/corrección hacia delante, sin borrar.
-  Volcados PG17 tras integrar la pila; nada desplegado/fusionado por este worker.
+  Nada desplegado/fusionado por este worker.
 
 - Medición8c contra1962 HEAD48b8a1d9f: producción4825→5045 (+220):
   Edge/contrato106, SQL53, Rust/UI61. Tests+532; down16 y derivados63 aparte.
@@ -9020,3 +9020,13 @@ union all select 'linear_deliveries',outcome::text,count(*)
   pasaron; el único fallo Commercial era drift de esos dos derivados. No se
   copian cambios testing de1960 ajenos a este PR. Nueva CI pendiente; producción
   sigue4825→5045 (+220), sin cambios runtime, SQL ni timestamps en este cierre.
+
+- Rebase1963 sobre nightly e76d68fff (1961 ya integrado): conserva P3 de1967
+  en mail.rs y su test; ACK/relectura siguen en el parser existente. needsPaymentSync
+  mantiene sus3 usos. Un solo import effects.ts; README/handoff fijan despliegue
+  SQL → Edge → Gestión nuevo para evitar400 por explicit_payments contra Edge viejo.
+
+- PG17: los9 derivados se recuperan del replay verde41918479810 (imagen/digest
+  fijados). Comparadas todas sus entradas SQL:0 modificadas; solo se añade182500,
+  el probe digest de1961 sin DDL. Los9 outputs coinciden byte por byte tras el
+  rebase; no se generan con PG16 ni se inventa un diff. CI nueva verificará la cadena.

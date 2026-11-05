@@ -858,7 +858,7 @@ cancelar. Un HTTP que ya salió puede terminar. Gestión ofrece Cancelar campañ
 con confirmación y admite el ACK canceled.
 
 Solo Isaac despliega: primero `20261104181354_isa_1910_admin_confirmations.sql`,
-desplegar Edge y Gestión con el contrato nuevo justo después de la migración.
+desplegar primero Edge y después Gestión nuevo con el contrato actualizado.
 Hasta completar ambos, el contrato anterior no permite aprobar/cambiar módulos.
 No presupone una base vacía.
 Pre-check readonly: `select state,count(*) from private.mail_campaigns group by state;`.
@@ -895,11 +895,11 @@ fijo técnico, sin cuenta, correo, URL ni IDs de proveedor. actor, acción, fech
 request/effect UUID y resultado son la evidencia; no hay journal nuevo.
 
 Solo Isaac despliega: orden1960→1962→1961→1963, sin cambiar timestamps; migraciones
-antes de Edge y Gestión. Tras SQL, desplegar Edge compatible y Gestión enseguida
-por el contrato de confirmación de1962. Pre-check readonly:
+en orden SQL → Edge → Gestión nuevo. Gestión nuevo envía explicit_payments:
+contra Edge viejo recibe400. Actualizar Edge primero conserva el sync implícito
+para clientes antiguos. Pre-check readonly:
 `select environment,last_synced_at from private.admin_payment_sync;`
 `select count(*) from private.admin_effects where action='sync_payments';`
 El down restaura constraints/ACL y retira las RPC/cupo solo sin esos efectos;
 con evidencia aborta antes del DDL: conservar SQL y revertir Edge o corregir hacia
 delante. No se borra evidencia para forzarlo. No presupone una base vacía.
-Volcados PG17 a regenerar tras integrar la pila, según orden del orquestador.

@@ -215,6 +215,7 @@ impl Chain {
         let selected = (0..profile.steps.len()).collect();
         Self::start_selected(document, profile, discovery, processes, selected)
     }
+    /// Las apps y sus reintentos quedan fuera del Job del Hub.
     pub fn start_selected(
         document: Document,
         profile: Profile,
@@ -222,7 +223,7 @@ impl Chain {
         processes: processes::Shared,
         selected: Vec<usize>,
     ) -> Result<Self, String> {
-        Self::start_mode(document, profile, discovery, processes, selected, false)
+        Self::start_mode(document, profile, discovery, processes, selected, true)
     }
     /// Apps del sim-rig fuera del Job del supervisor; su política Leave sigue siendo real.
     pub fn start_detached(

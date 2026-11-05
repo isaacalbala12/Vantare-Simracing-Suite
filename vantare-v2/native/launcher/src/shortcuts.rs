@@ -322,7 +322,12 @@ mod trust_tests {
         use std::os::windows::process::CommandExt;
         let root = PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("Windows"))
             .join(format!("shortcut-real-{}", std::process::id()));
-        let outside = PathBuf::from(format!(r"C:\tmp\shortcut-outside-{}", std::process::id()));
+        // TEMP puede estar bajo USERPROFILE (confiable); el control debe quedar fuera.
+        let qa = PathBuf::from(std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("raíz QA"));
+        let outside = qa
+            .parent()
+            .expect("directorio padre de QA")
+            .join(format!("shortcut-outside-{}", std::process::id()));
         fs::create_dir_all(root.join("shared")).expect("shared");
         fs::create_dir_all(&outside).expect("outside");
         let shared_link = root.join("shared/obs.lnk");
@@ -331,6 +336,7 @@ mod trust_tests {
         fs::write(&private_link, b"fixture").expect("link");
         let target = outside.join("obs64.exe");
         fs::write(&target, b"fixture").expect("target");
+        let outside_was_trusted = crate::is_trusted_install_path(&target);
         let junction = root.join("escape");
         let status = std::process::Command::new("cmd.exe")
             .args(["/c", "mklink", "/J"])
@@ -350,6 +356,7 @@ mod trust_tests {
         fs::remove_dir(&junction).expect("unlink junction only");
         fs::remove_dir_all(&root).expect("cleanup trusted fixture");
         fs::remove_dir_all(&outside).expect("cleanup outside fixture");
+        assert!(!outside_was_trusted, "el control QA debe ser no confiable");
         assert!(!escaped);
         assert!(private && other_drive && allowed);
     }

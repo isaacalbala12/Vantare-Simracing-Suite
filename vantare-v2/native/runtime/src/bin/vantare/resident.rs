@@ -2,7 +2,7 @@
 use super::{launcher, triggers_win};
 use launcher::{
     Document,
-    chain::Chain,
+    chain::{Action, Chain},
     discovery::{Discovery, Sources},
     files,
     triggers::Hotkey,
@@ -176,6 +176,21 @@ struct Owner {
     chain_decision: Option<u64>,
     processes: launcher::processes::Shared,
     close_on_exit: Arc<Mutex<Vec<String>>>,
+}
+
+fn action_from_label(label: &str) -> Option<Action> {
+    [
+        Action::Trust,
+        Action::Reuse,
+        Action::Restart,
+        Action::Cancel,
+        Action::Stop,
+        Action::Continue,
+        Action::Leave,
+        Action::CloseStarted,
+    ]
+    .into_iter()
+    .find(|candidate| candidate.label() == label)
 }
 
 impl Owner {
@@ -385,20 +400,7 @@ impl Owner {
                     .decision
                     .as_ref()
                     .filter(|d| d.id == decision && d.actions.contains(&action))
-                    .and_then(|_| {
-                        [
-                            launcher::chain::Action::Trust,
-                            launcher::chain::Action::Reuse,
-                            launcher::chain::Action::Restart,
-                            launcher::chain::Action::Cancel,
-                            launcher::chain::Action::Stop,
-                            launcher::chain::Action::Continue,
-                            launcher::chain::Action::Leave,
-                            launcher::chain::Action::CloseStarted,
-                        ]
-                        .into_iter()
-                        .find(|candidate| candidate.label() == action)
-                    });
+                    .and_then(|_| action_from_label(&action));
                 if let (Some(chain), Some(action), Some(local_id)) =
                     (&self.chain, selected, self.chain_decision)
                 {
@@ -482,6 +484,84 @@ impl Owner {
 mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
+
+    #[test]
+    fn launcher_action_labels_round_trip_through_resident_decoder() {
+        for expected in [
+            Action::Trust,
+            Action::Reuse,
+            Action::Restart,
+            Action::Cancel,
+            Action::Stop,
+            Action::Continue,
+            Action::Leave,
+            Action::CloseStarted,
+        ] {
+            let bytes = serde_json::to_vec(&Request::Answer {
+                decision: 42,
+                action: expected.label().into(),
+            })
+            .expect("petición real del buzón");
+            let Request::Answer { decision, action } =
+                serde_json::from_slice(&bytes).expect("leer petición real")
+            else {
+                panic!("Answer")
+            };
+            assert_eq!(decision, 42);
+            assert_eq!(action_from_label(&action), Some(expected));
+        }
+        assert_eq!(action_from_label("acción desconocida"), None);
+    }
+
+    #[test]
+    fn future_launcher_document_is_rejected_without_rewriting_it() {
+        let dir = std::env::temp_dir().join(format!(
+            "r12-future-{}",
+            vantare_services::random_id().expect("documento aislado del residente")
+        ));
+        fs::create_dir(&dir).expect("documento aislado del residente");
+        let path = dir.join("launcher.json");
+        let document = Document {
+            version: 2,
+            ..Document::default()
+        };
+        let bytes = serde_json::to_vec_pretty(&document).expect("documento aislado del residente");
+        fs::write(&path, &bytes).expect("documento aislado del residente");
+        let mut owner = Owner::new(path.clone(), false);
+        owner.reload();
+        assert!(owner.status.error.is_some());
+        assert!(owner.document.profiles.is_empty());
+        assert_eq!(
+            fs::read(&path).expect("documento aislado del residente"),
+            bytes
+        );
+        fs::remove_dir_all(dir).expect("documento aislado del residente");
+    }
+
+    #[test]
+    #[ignore = "P9: resident does not restore saved wails_import provenance"]
+    fn resident_restores_archived_import_provenance_without_rewriting() {
+        let dir = std::env::temp_dir().join(format!(
+            "r12-origin-{}",
+            vantare_services::random_id().expect("documento aislado del residente")
+        ));
+        fs::create_dir(&dir).expect("documento aislado del residente");
+        let path = dir.join("launcher.json");
+        let mut value =
+            serde_json::to_value(Document::default()).expect("documento aislado del residente");
+        value["profiles"] =
+            serde_json::json!([launcher::Profile::new("legacy".into(), "Importado".into())]);
+        value["wails_import"] = serde_json::json!({"source":"D:/VantareServer/qa/archive.json", "launcher":{"launcherProfiles":[{"id":"legacy"}]}});
+        let bytes = serde_json::to_vec_pretty(&value).expect("documento aislado del residente");
+        fs::write(&path, &bytes).expect("documento aislado del residente");
+        let mut owner = Owner::new(path.clone(), false);
+        owner.reload();
+        let imported = owner.document.profiles[0].imported;
+        let unchanged = fs::read(&path).expect("documento aislado del residente") == bytes;
+        fs::remove_dir_all(dir).expect("documento aislado del residente");
+        assert!(unchanged);
+        assert!(imported);
+    }
 
     struct ReleaseWorker(mpsc::Sender<()>);
     impl Drop for ReleaseWorker {

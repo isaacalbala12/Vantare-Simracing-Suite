@@ -599,6 +599,10 @@ impl CaptureState {
 
     #[allow(clippy::too_many_lines)] // Catálogo cerrado de escenas QA y sus estados de presentación.
     pub fn parse(name: &str) -> Result<Self, String> {
+        #[derive(Deserialize)]
+        struct Screen {
+            name: String,
+        }
         // The frozen historical catalog still lists these retired screens.
         if matches!(
             name,
@@ -612,10 +616,6 @@ impl CaptureState {
                 | "strategy-v5-datos-avanzado"
         ) {
             return Err(format!("pantalla Strategy retirada: {name}"));
-        }
-        #[derive(Deserialize)]
-        struct Screen {
-            name: String,
         }
         let screens: Vec<Screen> =
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;

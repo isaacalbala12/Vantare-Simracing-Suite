@@ -1338,3 +1338,63 @@ fn step9_saved_archive_and_profile_provenance_survive_save_and_reopen() {
     assert!(loaded.document.profiles[0].imported);
     assert_eq!(loaded.document.profiles[0].notes, "Mi nota actual");
 }
+
+#[test]
+fn editor_preserves_first_step_error_before_a_later_duplicate() {
+    let mut profile = Profile::new("p".into(), "Perfil".into());
+    let step = Step {
+        app_id: "obs".into(),
+        delay_seconds: 17,
+        args_override: None,
+    };
+    profile.steps = vec![step.clone(), step];
+    let mut found = Discovery::default();
+    assert_eq!(
+        profile.validate_editor(&found),
+        Err("Paso 1: selecciona una app disponible".into())
+    );
+    found.apps.push(discovery::Detected {
+        id: "obs".into(),
+        executable: None,
+        source: "fixture sin acceso al sistema",
+        availability: discovery::Availability {
+            launchable: true,
+            ..Default::default()
+        },
+    });
+    assert_eq!(
+        profile.validate_editor(&found),
+        Err("Paso 2: las apps repetidas requieren modo avanzado".into())
+    );
+    profile.advanced = true;
+    assert!(profile.validate_editor(&found).is_ok());
+}
+
+#[cfg(windows)]
+#[test]
+fn continue_policy_still_runs_the_next_step_when_discovery_lacks_the_first_app() {
+    let tree = Tree::new();
+    let (document, mut profile, found) = process_fixture(&tree, 0);
+    profile.continue_on_error = true;
+    profile.steps.insert(
+        0,
+        Step {
+            app_id: "obs".into(),
+            delay_seconds: 0,
+            args_override: None,
+        },
+    );
+    let chain = Chain::start(document, profile, found).expect("la cadena conserva Continue");
+    let events = collect(&chain);
+    assert!(
+        events
+            .iter()
+            .any(|e| e.step == Some(0) && e.status == Status::Failed)
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| e.step == Some(1) && e.status == Status::Ready)
+    );
+    assert!(!events.last().expect("resultado terminal").success);
+}

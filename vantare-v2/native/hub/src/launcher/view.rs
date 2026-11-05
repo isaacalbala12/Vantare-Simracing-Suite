@@ -1433,6 +1433,51 @@ mod tests {
     }
 
     #[test]
+    fn completed_chain_keeps_its_progress_section_without_persistent_history() {
+        with_decision_window(|window, cx| {
+            window
+                .update(cx, |launcher, window, cx| {
+                    let mut profile = Profile::new("failed-qa".into(), "Fallido QA".into());
+                    profile.steps.push(Step {
+                        app_id: "obs".into(),
+                        delay_seconds: 0,
+                        args_override: None,
+                    });
+                    launcher.last_profile = Some(profile);
+                    launcher.progress = vec![Progress {
+                        step: Some(0),
+                        status: super::super::chain::Status::Failed,
+                        pid: None,
+                        message: "Fallo QA sin abrir procesos".into(),
+                        success: false,
+                        decision: None,
+                    }];
+                    assert_eq!(
+                        super::super::chain::retry_steps(
+                            launcher.last_profile.as_ref().unwrap(),
+                            &launcher.progress,
+                            super::super::chain::RetryScope::Failed
+                        ),
+                        [0]
+                    );
+                    let sections = launcher.rail_sections(window, cx);
+                    assert!(
+                        sections
+                            .iter()
+                            .any(|section| section.title.as_ref() == "Progreso de la cadena"),
+                        "el resultado real y los reintentos conservan una sección propia"
+                    );
+                    assert!(
+                        sections
+                            .iter()
+                            .all(|section| section.title.as_ref() != "Últimas veces")
+                    );
+                })
+                .expect("secciones reales del Launcher");
+        });
+    }
+
+    #[test]
     fn mailbox_actions_pass_through_the_real_drawer_and_answer_writer() {
         with_decision_window(|window, cx| {
             for (index, expected) in Action::ALL.into_iter().enumerate() {

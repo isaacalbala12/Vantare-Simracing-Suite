@@ -160,3 +160,21 @@ fn concurrent_cross_process_owner_releases_the_lock_after_a_crash() {
         "otro proceso no puede ejecutar una cadena del mismo documento"
     );
 }
+
+#[test]
+fn concurrent_edit_is_saved_while_the_chain_is_waiting() {
+    let tree = Tree::new();
+    let owned = store(&tree.0.join("editing"));
+    let mut active = waiting(&owned);
+    let mut editor = Store::in_memory(owned.path.clone(), owned.document.clone()).unwrap();
+    let mut document = editor.document.clone();
+    document.profiles[0].name = "Editado durante la cadena".into();
+    let saved = editor.replace(document);
+    active.shutdown().unwrap();
+    saved.expect("editar no espera al lock de la cadena");
+    let reopened = Store::load(owned.path).unwrap();
+    assert_eq!(
+        reopened.document.profiles[0].name,
+        "Editado durante la cadena"
+    );
+}

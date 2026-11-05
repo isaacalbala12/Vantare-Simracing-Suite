@@ -312,6 +312,53 @@ mod tests {
         (address, thread)
     }
 
+    fn fixture_finished(server: &std::thread::JoinHandle<()>) -> bool {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        // Watchdog del arnés entre hilos; no cambia el plazo del cliente HTTP.
+        while !server.is_finished() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        server.is_finished()
+    }
+
+    #[test]
+    fn http_fixture_finishes_if_client_never_connects() {
+        let (url, server) = slow_offer();
+        let finished = fixture_finished(&server);
+        // Solo limpieza después de medir: evita dejar un accept bloqueado en la base roja.
+        let mut cleanup = (!finished)
+            .then(|| std::net::TcpStream::connect(url.strip_prefix("http://").unwrap()).unwrap());
+        if let Some(stream) = &mut cleanup {
+            stream
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .unwrap();
+        }
+        server.join().unwrap();
+        drop(cleanup);
+        assert!(
+            finished,
+            "el arnés no puede esperar indefinidamente si el cliente ya venció antes de conectar"
+        );
+    }
+
+    #[test]
+    fn http_fixture_finishes_if_connected_client_sends_nothing() {
+        let (url, server) = slow_offer();
+        let mut client =
+            std::net::TcpStream::connect(url.strip_prefix("http://").unwrap()).unwrap();
+        let finished = fixture_finished(&server);
+        if !finished {
+            client
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .unwrap();
+        }
+        server.join().unwrap();
+        assert!(
+            finished,
+            "el arnés también termina si se cancela después de conectar y antes de enviar"
+        );
+    }
+
     #[test]
     fn package_download_has_a_separate_longer_deadline() {
         assert!(PACKAGE_TIMEOUT > QUERY_TIMEOUT);

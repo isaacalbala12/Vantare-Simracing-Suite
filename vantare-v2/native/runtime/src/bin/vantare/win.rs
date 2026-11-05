@@ -330,14 +330,13 @@ mod launcher_job_tests {
     }
 
     #[test]
-    fn selected_chain_dies_with_job_but_detached_chain_survives() {
+    fn selected_and_detached_chains_survive_job_close() {
         for detached in [false, true] {
-            assert_eq!(survives_job_close(detached), detached);
+            assert!(survives_job_close(detached));
         }
     }
 
     #[test]
-    #[ignore = "P1: Hub start_selected inherits KILL_ON_JOB_CLOSE"]
     fn hub_selected_chain_survives_job_close() {
         assert!(survives_job_close(false));
     }

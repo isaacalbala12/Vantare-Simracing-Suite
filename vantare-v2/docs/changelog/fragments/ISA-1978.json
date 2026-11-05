@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1978",
+  "type": "fix",
+  "summary": "Las aplicaciones que lanzas desde el Hub respetan la opción Dejar abiertas al cerrar Vantare.",
+  "technicalNotes": [
+    "El Launcher inicia las aplicaciones fuera del Job de la sesión, también al reintentar pasos.",
+    "Se conservan los handles propios y las políticas de cierre del perfil."
+  ],
+  "testing": [
+    "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",
+    "Repetir con Cerrar solo las iniciadas: la aplicación propia debe cerrarse."
+  ],
+  "knownLimitations": [
+    "El trigger LMU al recargar, las decisiones del residente y los demás pasos de VANTA-136 se entregan por separado."
+  ]
+}

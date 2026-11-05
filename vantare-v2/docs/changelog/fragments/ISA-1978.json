@@ -2,16 +2,22 @@
   "schemaVersion": 1,
   "issue": "ISA-1978",
   "type": "fix",
-  "summary": "Las aplicaciones que lanzas desde el Hub respetan la opción Dejar abiertas al cerrar Vantare.",
+  "summary": "El Launcher respeta Dejar abiertas, evita relanzar perfiles al recargar con LMU abierto y permite descartar las decisiones del residente.",
   "technicalNotes": [
     "El Launcher inicia las aplicaciones fuera del Job de la sesión, también al reintentar pasos.",
-    "Se conservan los handles propios y las políticas de cierre del perfil."
+    "Se conservan los handles propios y las políticas de cierre del perfil.",
+    "La primera observación del trigger LMU establece su estado sin lanzar el perfil.",
+    "El descarte distingue cadena, residente y salida; mantiene el ID de la decisión y rechaza cancelaciones antiguas.",
+    "Hub y residente usan Document::from_bytes para validar versiones y restaurar la procedencia guardada, sin reescribir el documento al leerlo."
   ],
   "testing": [
     "En una raíz QA, lanzar una aplicación de prueba desde un perfil con Dejar abiertas y cerrar Vantare: debe seguir abierta.",
-    "Repetir con Cerrar solo las iniciadas: la aplicación propia debe cerrarse."
+    "Repetir con Cerrar solo las iniciadas: la aplicación propia debe cerrarse.",
+    "Verificar que el primer estado LMU abierto no dispara el trigger y que el flanco cerrado-abierto posterior sí lo hace.",
+    "Descartar una decisión residente debe escribir una sola respuesta, conservar su ID y no reabrir el drawer al sondear.",
+    "Verificar bytes originales intactos al leer un documento futuro o uno con procedencia Wails guardada."
   ],
   "knownLimitations": [
-    "El trigger LMU al recargar, las decisiones del residente y los demás pasos de VANTA-136 se entregan por separado."
+    "La política única, la lanzabilidad, el protocolo tipado y la retirada del historial corresponden a los pasos 4–7 pendientes de VANTA-136."
   ]
 }

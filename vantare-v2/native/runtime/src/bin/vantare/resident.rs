@@ -253,13 +253,8 @@ impl Owner {
         let parsed = if missing {
             Ok(Document::default())
         } else {
-            serde_json::from_slice::<Document>(&bytes)
-                .map_err(|error| format!("Launcher inválido: {error}"))
-        }
-        .and_then(|document| {
-            document.validate()?;
-            Ok(document)
-        });
+            Document::from_bytes(&bytes).map_err(|error| error.to_string())
+        };
         let document = match parsed {
             Ok(document) => document,
             Err(error) => {
@@ -395,7 +390,7 @@ impl Owner {
         match request {
             Ok(Request::Launch { profile }) => self.launch(&profile),
             Ok(Request::Answer { decision, action }) => {
-                // El descarte de Fallo/Continuar cancela, aunque no tenga botón Cancel.
+                // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
                 let cancel_dismissed = action == Action::Cancel.label()
                     && self.status.decision.as_ref().is_some_and(|current| {
@@ -558,7 +553,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "P9: resident does not restore saved wails_import provenance"]
     fn resident_restores_archived_import_provenance_without_rewriting() {
         let dir = std::env::temp_dir().join(format!(
             "r12-origin-{}",

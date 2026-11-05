@@ -1,7 +1,7 @@
 //! Resultado Strategy: estado, certificado y revisiones exactas del solver.
 use gpui::{Context, Div, ParentElement, Styled, div, prelude::*, px, rgb, rgba};
 
-use super::{Page, Strategy, orbit};
+use super::{Field, Page, Strategy, orbit};
 use std::sync::{Arc, atomic::AtomicBool};
 use vantare_strategy::{
     application::{self, SourceStatus},
@@ -350,7 +350,7 @@ cálculo",
                     )
                     .child(
                         read_only_select(
-                            if self.fields[8] == "wet" {
+                            if self.fields[Field::VariantMode] == "wet" {
                                 "Mojado"
                             } else {
                                 "Seco"
@@ -378,7 +378,7 @@ cálculo",
     fn preflight_card(&self, source_open: bool, cx: &gpui::App) -> Div {
         let laps = self.view_data.laps.clone().unwrap_or_else(|| {
             self.last_input.as_ref().map_or_else(
-                || self.fields[9].clone(),
+                || self.fields[Field::RaceLaps].clone(),
                 |input| input.race_laps.to_string(),
             )
         });
@@ -399,7 +399,7 @@ cálculo",
                 format!(
                     "Capacidad · {} L",
                     self.view_data.plan.as_ref().map_or_else(
-                        || self.fields[2].clone(),
+                        || self.fields[Field::FuelCapacityLiters].clone(),
                         |details| decimal(details.capacity_liters, 0)
                     )
                 ),
@@ -457,7 +457,7 @@ cálculo",
                     self.view_data
                         .laps
                         .clone()
-                        .unwrap_or_else(|| self.fields[9].clone())
+                        .unwrap_or_else(|| self.fields[Field::RaceLaps].clone())
                 },
                 |input| input.race_laps.to_string(),
             );

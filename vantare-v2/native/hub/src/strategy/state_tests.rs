@@ -85,16 +85,16 @@ fn editable_plan(this: &mut Strategy, cx: &mut Context<Strategy>) {
 #[test]
 fn isa1544_metadata_confirmation_preserves_edits_on_save_and_reload() {
     with_strategy("metadata", |this, cx| {
-        let mut fields = vec![String::new(); FIELDS.len()];
+        let mut fields = ManualEvent::default();
         for (index, value) in [
-            (0, "Carrera"),
-            (1, "120"),
-            (2, "90"),
-            (3, "60"),
-            (24, "2026-09-30T17:00:00+02:00"),
-            (25, "Equipo"),
-            (26, "Piloto"),
-            (27, "PI"),
+            (Field::Name, "Carrera"),
+            (Field::DurationMinutes, "120"),
+            (Field::FuelCapacityLiters, "90"),
+            (Field::PitTransitSeconds, "60"),
+            (Field::StartAt, "2026-09-30T17:00:00+02:00"),
+            (Field::Team, "Equipo"),
+            (Field::DriverName, "Piloto"),
+            (Field::DriverInitials, "PI"),
         ] {
             fields[index] = value.into();
         }
@@ -103,10 +103,10 @@ fn isa1544_metadata_confirmation_preserves_edits_on_save_and_reload() {
         this.editor.document = Some(document);
         this.load_fields(cx);
         for (index, value) in [
-            (24, "2026-10-10T18:00:00Z"),
-            (25, "Equipo nuevo"),
-            (26, "Piloto nuevo"),
-            (27, "PN"),
+            (Field::StartAt, "2026-10-10T18:00:00Z"),
+            (Field::Team, "Equipo nuevo"),
+            (Field::DriverName, "Piloto nuevo"),
+            (Field::DriverInitials, "PN"),
         ] {
             this.fields[index] = value.into();
         }
@@ -298,35 +298,40 @@ fn isa1544_optional_metadata_keeps_absence_and_invalid_date_is_atomic() {
     let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
     doc.append_event(&new_event("event", "Carrera", 120, 90.0, 60.0))
         .expect("event");
-    let mut fields = vec![String::new(); FIELDS.len()];
+    let mut fields = ManualEvent::default();
     for (index, value) in [
-        (0, "Carrera"),
-        (1, "120"),
-        (2, "90"),
-        (3, "60"),
-        (6, "Base"),
-        (8, "dry"),
+        (Field::Name, "Carrera"),
+        (Field::DurationMinutes, "120"),
+        (Field::FuelCapacityLiters, "90"),
+        (Field::PitTransitSeconds, "60"),
+        (Field::VariantName, "Base"),
+        (Field::VariantMode, "dry"),
     ] {
         fields[index] = value.into();
     }
     let original = doc.bytes().to_vec();
     confirm_metadata(&mut doc, 0, 0, &fields).expect("empty optional fields");
     assert_eq!(doc.bytes(), original);
-    fields[0] = "Nombre editado".into();
-    fields[24] = "2026-10-10 18:00".into();
-    fields[25] = "Equipo editado".into();
+    fields[Field::Name] = "Nombre editado".into();
+    fields[Field::StartAt] = "2026-10-10 18:00".into();
+    fields[Field::Team] = "Equipo editado".into();
     assert!(confirm_metadata(&mut doc, 0, 0, &fields).is_err());
     assert_eq!(doc.bytes(), original);
-    fields[24] = "2026-10-10T18:00:00Z".into();
-    fields[26] = "Nuevo piloto".into();
-    fields[27] = "NP".into();
+    fields[Field::StartAt] = "2026-10-10T18:00:00Z".into();
+    fields[Field::DriverName] = "Nuevo piloto".into();
+    fields[Field::DriverInitials] = "NP".into();
     confirm_metadata(&mut doc, 0, 0, &fields).expect("insert optional metadata");
     let event = &doc.value()["events"][0];
     assert_eq!(event["team"]["value"], "Equipo editado");
     assert_eq!(event["drivers"][0]["name"]["value"], "Nuevo piloto");
     assert_eq!(event["drivers"][0]["ini"]["value"], "NP");
-    for field in &mut fields[24..28] {
-        field.clear();
+    for field in [
+        Field::StartAt,
+        Field::Team,
+        Field::DriverName,
+        Field::DriverInitials,
+    ] {
+        fields[field].clear();
     }
     confirm_metadata(&mut doc, 0, 0, &fields).expect("clear optional metadata");
     let event = &doc.value()["events"][0];
@@ -398,6 +403,40 @@ fn r9_import_creates_the_primary_once_and_keeps_the_legacy_bytes() {
 }
 
 #[test]
+fn r9_save_as_failure_after_import_preserves_pending_document_and_both_files() {
+    let directory = R9Directory::new();
+    let repository = directory.0.join("strategy-repository.json");
+    std::fs::write(&repository, R9_NATIVE_REPOSITORY).expect("legacy source");
+    let imported = application::repository::import_last_draft(&directory.0)
+        .expect("verified import")
+        .expect("draft");
+    let mut editor = Editor {
+        document: Some(Document::parse(&imported).expect("native draft")),
+        ..Editor::default()
+    };
+    // The destination appears between importing and the first observed save.
+    let path = directory.0.join("strategy-v2.json");
+    std::fs::write(&path, b"appeared during import").expect("unobserved destination");
+    let error = editor.save_as(path.clone()).expect_err("conflict");
+    assert!(error.kind().is_conflict());
+    assert!(editor.path.is_none());
+    assert!(editor.saved.is_none());
+    assert!(editor.dirty());
+    assert_eq!(
+        editor.document.as_ref().expect("retained draft").bytes(),
+        imported
+    );
+    assert_eq!(
+        std::fs::read(path).expect("destination"),
+        b"appeared during import"
+    );
+    assert_eq!(
+        std::fs::read(repository).expect("legacy source"),
+        R9_NATIVE_REPOSITORY
+    );
+}
+
+#[test]
 fn r9_bad_legacy_hash_never_creates_a_primary_or_rewrites_the_source() {
     let directory = R9Directory::new();
     let repository = directory.0.join("strategy-repository.json");
@@ -441,6 +480,19 @@ fn r9_damaged_primary_is_archived_exactly_before_normal_save_can_recover() {
     assert_eq!(std::fs::read(&path).expect("original until save"), damaged);
     let archive = directory.0.join("strategy-v2.json.invalid");
     assert_eq!(std::fs::read(&archive).expect("durable archive"), damaged);
+    let mut ui_editor = Editor::default();
+    ui_editor
+        .open(path.clone())
+        .expect("recovered through the open action");
+    let status = ui_editor.open_status();
+    assert!(status.starts_with("Se empezó un documento vacío."));
+    assert!(status.contains(archive.to_string_lossy().as_ref()));
+    assert!(
+        ui_editor.document.as_ref().expect("empty recovery").value()["events"]
+            .as_array()
+            .expect("events")
+            .is_empty()
+    );
     editor.save().expect("normal recovery save");
     assert!(!editor.dirty());
     let bytes = std::fs::read(&path).expect("saved default");

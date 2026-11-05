@@ -504,17 +504,17 @@ impl Strategy {
         } else {
             "Sin simulador seleccionado"
         };
-        let category = if self.fields[5].trim().is_empty() {
+        let category = if self.fields[Field::Class].trim().is_empty() {
             "Sin categoría seleccionada".to_owned()
         } else if let Some(car) = &self.view_data.car {
-            format!("{} · {car}", self.fields[5])
+            format!("{} · {car}", self.fields[Field::Class])
         } else {
-            self.fields[5].clone()
+            self.fields[Field::Class].clone()
         };
-        let circuit = if self.fields[4].trim().is_empty() {
+        let circuit = if self.fields[Field::Track].trim().is_empty() {
             "Sin circuito seleccionado".to_owned()
         } else {
-            self.fields[4].clone()
+            self.fields[Field::Track].clone()
         };
         let row = |label: &str, control: gpui::Div| {
             div()
@@ -548,7 +548,9 @@ impl Strategy {
             .child(if self.view_data.car.is_some() {
                 orbit::text(category.clone(), 13.0, 500, orbit::ink(cx), cx)
             } else {
-                div().flex_1().child(self.inputs[5].clone())
+                div()
+                    .flex_1()
+                    .child(self.inputs[Field::Class as usize].clone())
             })
             .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx).ml_auto());
         let circuit_control = surface()
@@ -562,7 +564,9 @@ impl Strategy {
                 )
                 .flex_1()
             } else {
-                div().flex_1().child(self.inputs[4].clone())
+                div()
+                    .flex_1()
+                    .child(self.inputs[Field::Track as usize].clone())
             })
             .child(orbit::text("⌄", 16.0, 500, orbit::ink_2(cx), cx));
         gpui::div()
@@ -589,8 +593,12 @@ impl Strategy {
 
     #[allow(clippy::too_many_lines)] // Mantiene juntos los campos de un único paso del asistente.
     fn rules_fields(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let laps_selected = !self.fields[9].trim().is_empty();
-        let distance_field = if laps_selected { 9 } else { 1 };
+        let laps_selected = !self.fields[Field::RaceLaps].trim().is_empty();
+        let distance_field = if laps_selected {
+            Field::RaceLaps
+        } else {
+            Field::DurationMinutes
+        };
         let distance_unit = if laps_selected { "vueltas" } else { "minutos" };
         let distance_label = if laps_selected {
             "Distancia · vueltas"
@@ -601,9 +609,9 @@ impl Strategy {
             .flex()
             .gap(px(12.0))
             .p(px(18.0))
-            .child(self.field(3, cx).flex_1())
-            .child(self.field(16, cx).flex_1())
-            .child(self.field(24, cx).flex_1());
+            .child(self.field(Field::PitTransitSeconds, cx).flex_1())
+            .child(self.field(Field::RefuelRate, cx).flex_1())
+            .child(self.field(Field::StartAt, cx).flex_1());
         let advanced_section = div()
             .flex()
             .flex_col()
@@ -658,9 +666,9 @@ impl Strategy {
                         orbit::text("Nombre de la carrera", 13.0, 400, orbit::ink_2(cx), cx)
                             .w(px(220.0)),
                     )
-                    .child(render(&self.fields[0], cx))
+                    .child(render(&self.fields[Field::Name], cx))
             } else {
-                self.labeled_input("Nombre de la carrera", 0, 220.0, cx)
+                self.labeled_input("Nombre de la carrera", Field::Name, 220.0, cx)
             })
             .child(
                 div()
@@ -761,14 +769,19 @@ impl Strategy {
                                     .h(px(234.0))
                                     .child(self.labeled_input(
                                         "Capacidad de combustible · L",
-                                        2,
+                                        Field::FuelCapacityLiters,
                                         205.0,
                                         cx,
                                     ))
-                                    .child(self.labeled_input("Consumo Fuel · L/v", 11, 205.0, cx))
+                                    .child(self.labeled_input(
+                                        "Consumo Fuel · L/v",
+                                        Field::FuelPerLapLiters,
+                                        205.0,
+                                        cx,
+                                    ))
                                     .child(self.labeled_input(
                                         "Reserva final · vueltas",
-                                        22,
+                                        Field::ReserveLaps,
                                         205.0,
                                         cx,
                                     ))
@@ -781,9 +794,24 @@ impl Strategy {
                                     .flex_1()
                                     .justify_between()
                                     .h(px(234.0))
-                                    .child(self.labeled_input("Modo de variante", 8, 205.0, cx))
-                                    .child(self.labeled_input("Capacidad VE · %", 12, 205.0, cx))
-                                    .child(self.labeled_input("Consumo VE · %/v", 13, 205.0, cx))
+                                    .child(self.labeled_input(
+                                        "Modo de variante",
+                                        Field::VariantMode,
+                                        205.0,
+                                        cx,
+                                    ))
+                                    .child(self.labeled_input(
+                                        "Capacidad VE · %",
+                                        Field::VeCapacityPercent,
+                                        205.0,
+                                        cx,
+                                    ))
+                                    .child(self.labeled_input(
+                                        "Consumo VE · %/v",
+                                        Field::VePerLapPercent,
+                                        205.0,
+                                        cx,
+                                    ))
                                     .child(div().h(px(44.0))),
                             )
                     }),
@@ -791,11 +819,10 @@ impl Strategy {
             .child(advanced_section)
     }
 
-    #[allow(clippy::too_many_lines)] // Composición de las tres tarjetas de la fixture aprobada.
     fn labeled_input(
         &self,
         label: &str,
-        index: usize,
+        index: Field,
         label_width: f32,
         cx: &gpui::App,
     ) -> gpui::Div {
@@ -807,7 +834,7 @@ impl Strategy {
             .child(
                 orbit::text(label.to_owned(), 14.0, 500, orbit::ink_2(cx), cx).w(px(label_width)),
             )
-            .child(div().flex_1().child(self.inputs[index].clone()))
+            .child(div().flex_1().child(self.inputs[index as usize].clone()))
     }
 
     #[allow(clippy::too_many_lines)] // Mantiene el orden y las tarjetas del equipo en una vista.
@@ -882,7 +909,9 @@ impl Strategy {
                 .bg(rgba(crate::orbit::legacy_rgba(0x0809_0be8, cx)))
                 .child(orbit::eyebrow(role, cx));
             if index == 0 {
-                card = card.child(self.field(26, cx)).child(self.field(27, cx));
+                card = card
+                    .child(self.field(Field::DriverName, cx))
+                    .child(self.field(Field::DriverInitials, cx));
             } else {
                 card = card
                     .child(orbit::eyebrow("NOMBRE DEL PILOTO", cx))

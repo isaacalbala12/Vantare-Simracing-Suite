@@ -9,18 +9,20 @@ use gpui::{
     Context, Entity, Image, ImageFormat, IntoElement, PathPromptOptions, Render, RenderImage,
     SvgRenderer, Window, div, prelude::*,
 };
-use serde_json::{Value, json};
+use serde_json::Value;
+#[cfg(any(test, feature = "parity-capture"))]
+use serde_json::json;
 
 use crate::{
     files,
     orbit::{self, button},
 };
 use vantare_strategy::{
-    application::{self, AnalysisRevisionRef, EditedPlan, SourceStatus},
-    document::{Document, new_event},
-    solver::{
-        self, Budget, Discretization, Formation, Input, PitCost, Rules, Scalar, SolverOutcome,
+    application::{
+        self, AnalysisRevisionRef, EditedPlan, ManualEvent, ManualField as Field, SourceStatus,
     },
+    document::Document,
+    solver::{self, Input, SolverOutcome},
 };
 
 #[path = "strategy/asistente.rs"]
@@ -69,6 +71,14 @@ pub struct Editor {
     warning: Option<String>,
 }
 impl Editor {
+    // Read after a successful open, before the recovery warning is consumed.
+    fn open_status(&self) -> String {
+        self.warning.as_ref().map_or_else(
+            || "Documento cargado; procedencia y campos desconocidos conservados.".into(),
+            |warning| format!("Se empezó un documento vacío. {warning}"),
+        )
+    }
+
     pub fn dirty(&self) -> bool {
         self.document
             .as_ref()
@@ -197,42 +207,45 @@ struct FormState {
     scalar_dirty: bool,
 }
 
-const FIELDS: &[(&str, &str)] = &[
-    ("Nombre de la carrera", "name"),
-    ("Duración (min)", "durationMin"),
-    ("Depósito (L)", "tankLiters"),
-    ("Tránsito boxes (s)", "pitLossSeconds"),
-    ("Circuito", "track"),
-    ("Clase", "cls"),
-    ("Nombre variante", "variantName"),
-    ("Nota variante", "variantNote"),
-    ("Modo variante (dry / humid / wet / eco)", "variantMode"),
-    ("Distancia · vueltas", "raceLaps"),
-    ("Ritmo (s/v)", "pace"),
-    ("Consumo Fuel (L/v)", "fuelPerLap"),
-    ("Capacidad VE (%)", "veCapacity"),
-    ("Consumo VE (%/v)", "vePerLap"),
-    ("Vida neumático (v; 0 sin límite)", "tyreLife"),
-    ("Degradación (s/v)", "degradation"),
-    ("Repostaje (L/s)", "refuelRate"),
-    ("Recarga VE (%/s)", "veRate"),
-    ("Neumáticos en boxes (s)", "tyreService"),
-    ("Formación (s)", "formation"),
-    ("Paso Fuel (L)", "fuelStep"),
-    ("Paso VE (%)", "veStep"),
-    ("Reserva final (v)", "reserve"),
-    ("Servicio (parallel / sequential)", "serviceMode"),
-    ("Salida (RFC 3339 con zona; opcional)", "startAt"),
-    ("Equipo", "team"),
-    ("Piloto", "driverName"),
-    ("Iniciales", "driverInitials"),
+const FIELDS: &[(Field, &str)] = &[
+    (Field::Name, "Nombre de la carrera"),
+    (Field::DurationMinutes, "Duración (min)"),
+    (Field::FuelCapacityLiters, "Depósito (L)"),
+    (Field::PitTransitSeconds, "Tránsito boxes (s)"),
+    (Field::Track, "Circuito"),
+    (Field::Class, "Clase"),
+    (Field::VariantName, "Nombre variante"),
+    (Field::VariantNote, "Nota variante"),
+    (
+        Field::VariantMode,
+        "Modo variante (dry / humid / wet / eco)",
+    ),
+    (Field::RaceLaps, "Distancia · vueltas"),
+    (Field::BasePaceSeconds, "Ritmo (s/v)"),
+    (Field::FuelPerLapLiters, "Consumo Fuel (L/v)"),
+    (Field::VeCapacityPercent, "Capacidad VE (%)"),
+    (Field::VePerLapPercent, "Consumo VE (%/v)"),
+    (Field::TyreLifeLaps, "Vida neumático (v; 0 sin límite)"),
+    (Field::DegradationSeconds, "Degradación (s/v)"),
+    (Field::RefuelRate, "Repostaje (L/s)"),
+    (Field::VeRate, "Recarga VE (%/s)"),
+    (Field::TyreServiceSeconds, "Neumáticos en boxes (s)"),
+    (Field::FormationSeconds, "Formación (s)"),
+    (Field::FuelStep, "Paso Fuel (L)"),
+    (Field::VeStep, "Paso VE (%)"),
+    (Field::ReserveLaps, "Reserva final (v)"),
+    (Field::ServiceMode, "Servicio (parallel / sequential)"),
+    (Field::StartAt, "Salida (RFC 3339 con zona; opcional)"),
+    (Field::Team, "Equipo"),
+    (Field::DriverName, "Piloto"),
+    (Field::DriverInitials, "Iniciales"),
 ];
 
 #[allow(clippy::struct_excessive_bools)] // Modo, edición, formulario y solver son estados independientes.
 pub struct Strategy {
     editor: Editor,
     directory: PathBuf,
-    fields: Vec<String>,
+    fields: ManualEvent,
     inputs: Vec<Entity<orbit::Input>>,
     page: Page,
     edit_mode: bool,
@@ -303,20 +316,20 @@ impl Strategy {
         };
         let inputs = FIELDS
             .iter()
-            .enumerate()
-            .map(|(index, (label, _))| {
+            .map(|(field, label)| {
+                let field = *field;
                 let input = cx.new(|cx| orbit::Input::new(String::new(), label, cx));
                 cx.observe(&input, move |this, input, cx| {
                     let value = input.read(cx).value.clone();
-                    if this.fields[index] != value {
-                        this.fields[index] = value;
+                    if this.fields[field] != value {
+                        this.fields[field] = value;
                         this.form.dirty = true;
-                        this.form.scalar_dirty |= (9..24).contains(&index);
-                        if index == 1
+                        this.form.scalar_dirty |= field.is_scalar();
+                        if field == Field::DurationMinutes
                             && this.page == Page::Create
                             && let Some(duration) = &this.duration
                         {
-                            let selected = duration_selection(&this.fields[1]);
+                            let selected = duration_selection(&this.fields[Field::DurationMinutes]);
                             duration.update(cx, |duration, cx| {
                                 duration.state.selected = selected;
                                 duration.state.active = selected;
@@ -335,7 +348,7 @@ impl Strategy {
         let mut this = Self {
             editor,
             directory,
-            fields: vec![String::new(); FIELDS.len()],
+            fields: ManualEvent::default(),
             inputs,
             page: Page::Collection,
             edit_mode: false,
@@ -408,73 +421,21 @@ impl Strategy {
         })
     }
     fn load_fields(&mut self, cx: &mut Context<Self>) {
-        self.fields.fill(String::new());
         self.form.dirty = false;
         self.form.scalar_dirty = false;
-        let Some(doc) = &self.editor.document else {
-            self.sync_inputs(cx);
-            return;
-        };
-        let event = &doc.value()["events"][self.event];
-        for (index, (_, field)) in FIELDS.iter().take(6).enumerate() {
-            self.fields[index] = display(&event[field]["value"]);
-        }
-        self.fields[24] = display(&event["startAt"]["value"]);
-        self.fields[25] = display(&event["team"]["value"]);
-        self.fields[26] = display(&event["drivers"][0]["name"]["value"]);
-        self.fields[27] = display(&event["drivers"][0]["ini"]["value"]);
-        for (index, key) in [(10, "base_pace_seconds"), (11, "fuel_per_lap_liters")] {
-            self.fields[index] = display(&event["planningInputs"]["overrides"][key]["value"]);
-        }
-        let variant = &event["strategies"][self.variant];
-        for (index, field) in [(6, "name"), (7, "note"), (8, "mode")] {
-            self.fields[index] = display(&variant[field]["value"]);
-        }
-        if let Ok(input) =
-            serde_json::from_value::<Input>(variant["overrides"]["nativeScalarInput"].clone())
-        {
-            self.fields[9] = input.race_laps.to_string();
-            let scalars = [
-                input.base_lap_seconds.value,
-                input.fuel_per_lap_liters.value,
-                input.ve_capacity_percent.value,
-                input.ve_per_lap_percent.value,
-                input.tyre_life_laps.value,
-                input.degradation_per_lap_seconds.value,
-                input.pit_cost.refuel_rate_l_per_s.value,
-                input.pit_cost.ve_rate_p_per_s.value,
-                input.pit_cost.tyre_seconds.value,
-                input.formation.seconds.value,
-                input.discretization.fuel_liters,
-                input.discretization.ve_percent,
-            ];
-            for (index, value) in scalars.into_iter().enumerate() {
-                self.fields[10 + index] = value.to_string();
-            }
-            self.fields[22] = display(&input.fuel_reserve["laps"]["value"]);
-            self.fields[23] = input.pit_cost.service_mode;
-        }
+        self.fields = self
+            .editor
+            .document
+            .as_ref()
+            .map_or_else(ManualEvent::default, |doc| {
+                ManualEvent::read(doc, self.event, self.variant)
+            });
         self.sync_inputs(cx);
     }
     fn choose(&mut self, event: usize, variant: usize, cx: &mut Context<Self>) {
         let result = self.ensure_clean_form().and_then(|()| {
             let doc = self.editor.document.as_mut().ok_or("Documento ausente")?;
-            let event_value = doc.value()["events"]
-                .as_array()
-                .and_then(|a| a.get(event))
-                .ok_or("Evento ausente")?;
-            let id = event_value["id"].clone();
-            let variant_id = event_value["strategies"]
-                .as_array()
-                .and_then(|a| a.get(variant))
-                .map(|v| v["id"].clone());
-            let mut next = doc.clone();
-            next.put("/activeEventId", &id)?;
-            if let Some(id) = variant_id {
-                next.put(&format!("/events/{event}/activeStrategyId"), &id)?;
-            }
-            *doc = next;
-            Ok(())
+            application::select_event(doc, event, variant)
         });
         if result.is_ok() {
             self.event = event;
@@ -539,8 +500,7 @@ impl Strategy {
                     this.invalidate();
                     this.load_fields(cx);
                     this.page = Page::Collection;
-                    this.status =
-                        "Documento cargado; procedencia y campos desconocidos conservados.".into();
+                    this.status = this.editor.open_status();
                 }
                 this.outcome(result, cx);
                 if let Some(warning) = this.editor.warning.take() {
@@ -617,7 +577,7 @@ impl Strategy {
             .document
             .as_mut()
             .ok_or_else(|| "Documento ausente".into())
-            .and_then(|doc| confirm_metadata(doc, self.event, self.variant, &self.fields));
+            .and_then(|doc| self.fields.confirm(doc, self.event, self.variant));
         if result.is_ok() {
             self.form.dirty = self.form.scalar_dirty;
             self.status =
@@ -627,10 +587,10 @@ impl Strategy {
         self.outcome(result, cx);
     }
     fn sync_inputs(&self, cx: &mut Context<Self>) {
-        for (index, input) in self.inputs.iter().enumerate() {
-            if input.read(cx).value != self.fields[index] {
+        for ((field, _), input) in FIELDS.iter().zip(&self.inputs) {
+            if input.read(cx).value != self.fields[*field] {
                 input.update(cx, |input, cx| {
-                    input.set_value(self.fields[index].clone(), cx);
+                    input.set_value(self.fields[*field].clone(), cx);
                 });
             }
         }
@@ -641,7 +601,7 @@ impl Strategy {
                 Some(doc) => doc.clone(),
                 None => Document::empty(&chrono::Utc::now().to_rfc3339())?,
             };
-            let index = append_manual_event(&mut next, &self.fields)?;
+            let index = self.fields.append(&mut next)?;
             self.editor.document = Some(next);
             self.manual_source_status = SourceStatus::Open;
             self.event = index;
@@ -661,154 +621,15 @@ impl Strategy {
             .get(self.event)
     }
     fn input(&self) -> Result<Input, String> {
-        let n = |index: usize| parse_number(&self.fields[index]);
-        let race = self.fields[9]
-            .trim()
-            .parse::<u32>()
-            .map_err(|_| "Vueltas enteras requeridas")?;
-        let reserve = vantare_strategy::document::manual(json!(n(22)?));
-        let evidence = reserve["evidence"].clone();
-        let input = Input {
-            contract_version: "strategy.solver.v2".into(),
-            race_laps: race,
-            base_lap_seconds: Scalar::manual(n(10)?),
-            pit_cost: PitCost {
-                transit_seconds: Scalar::manual(n(3)?),
-                refuel_rate_l_per_s: Scalar::manual(n(16)?),
-                ve_rate_p_per_s: Scalar::manual(n(17)?),
-                tyre_seconds: Scalar::manual(n(18)?),
-                service_mode: self.fields[23].trim().into(),
-            },
-            formation: Formation {
-                seconds: Scalar::manual(n(19)?),
-                presence: "valid".into(),
-            },
-            event_rules: Rules::default(),
-            budget: Budget {
-                p95_millis: 2000,
-                max_candidates: 250_000,
-                max_iterations: 1_000_000,
-            },
-            fuel_capacity_liters: Scalar::manual(n(2)?),
-            ve_capacity_percent: Scalar::manual(n(12)?),
-            tyre_life_laps: Scalar::manual(n(14)?),
-            fuel_per_lap_liters: Scalar::manual(n(11)?),
-            ve_per_lap_percent: Scalar::manual(n(13)?),
-            degradation_per_lap_seconds: Scalar::manual(n(15)?),
-            discretization: Discretization {
-                fuel_liters: n(20)?,
-                ve_percent: n(21)?,
-            },
-            fuel_reserve: json!({"kind":"laps","laps":reserve,"selection":evidence}),
-            virtual_energy_reserve: Value::Null,
-            extra: std::collections::BTreeMap::new(),
-        };
-        input.validate()?;
-        Ok(input)
+        self.fields.to_input()
     }
     fn prepare_input(&mut self) -> Result<Input, String> {
-        let event = self
-            .current_event()
+        let doc = self
+            .editor
+            .document
+            .as_mut()
             .ok_or("Selecciona un evento con variante")?;
-        // Never silently solve an imported forecast/rules/projection as a dry
-        // scalar race. Those dimensions must be ported before this UI uses them.
-        if event["source"]["value"] != "custom"
-            || event["planningInputs"]["overrides"]
-                .as_object()
-                .is_some_and(|a| {
-                    a.keys().any(|key| {
-                        !["base_pace_seconds", "fuel_per_lap_liters"].contains(&key.as_str())
-                    })
-                })
-            || event["weatherScenarios"]
-                .as_array()
-                .is_some_and(|a| !a.is_empty())
-            || !event["planningInputs"]["projection"].is_null()
-            || event["drivers"].as_array().is_some_and(|a| a.len() > 1)
-            || event["availability"]
-                .as_object()
-                .is_some_and(|a| !a.is_empty())
-            || event["tyreInventory"]["sets"]
-                .as_array()
-                .is_some_and(|a| !a.is_empty())
-            || event["tyreInventory"]["byCompound"]
-                .as_object()
-                .is_some_and(|a| !a.is_empty())
-        {
-            return Err("Este evento tiene clima, proyección, pilotos, disponibilidad o inventario que el solver escalar aún no admite".into());
-        }
-        let input = self.input()?;
-        let pointer = format!(
-            "/events/{}/strategies/{}/overrides",
-            self.event, self.variant
-        );
-        let doc = self.editor.document.as_mut().ok_or("Documento ausente")?;
-        let variant = doc
-            .value()
-            .pointer(&format!(
-                "/events/{}/strategies/{}",
-                self.event, self.variant
-            ))
-            .ok_or("Variante ausente")?;
-        if let Ok(previous) =
-            serde_json::from_value::<Input>(variant["overrides"]["nativeScalarInput"].clone())
-        {
-            previous.validate()?;
-            if previous.event_rules.min_pit_stops.is_some()
-                || previous.event_rules.max_pit_stops.is_some()
-                || !previous.event_rules.required_windows.is_empty()
-                || !previous.event_rules.extra.is_empty()
-                || !previous.extra.is_empty()
-                || !previous.virtual_energy_reserve.is_null()
-                || previous.fuel_reserve["kind"]
-                    .as_str()
-                    .is_some_and(|kind| kind != "laps")
-            {
-                return Err("La entrada guardada tiene reglas o reservas que este formulario aún no edita; no se sustituyen por un cálculo sin ellas".into());
-            }
-        } else if !variant["overrides"]["nativeScalarInput"].is_null() {
-            return Err("Datos guardados ilegibles; se conservan sin sobrescribir".into());
-        }
-        if self.fields[8].trim() != "dry"
-            || variant["mode"]["value"] != "dry"
-            || variant["tyres"].as_object().is_some_and(|a| !a.is_empty())
-            || variant["overrides"]
-                .as_object()
-                .is_some_and(|a| a.keys().any(|key| key != "nativeScalarInput"))
-        {
-            return Err("La variante contiene modo, neumáticos o restricciones aún no portados; se conservan, pero no se ignoran al calcular".into());
-        }
-        let mut next = doc.clone();
-        confirm_metadata(&mut next, self.event, self.variant, &self.fields)?;
-        let planning = format!("/events/{}/planningInputs", self.event);
-        if next.value().pointer(&planning).is_none_or(Value::is_null) {
-            next.put(&planning, &json!({}))?;
-        }
-        if next
-            .value()
-            .pointer(&format!("{planning}/overrides"))
-            .is_none_or(Value::is_null)
-        {
-            next.put(&format!("{planning}/overrides"), &json!({}))?;
-        }
-        for (key, value) in [
-            ("base_pace_seconds", input.base_lap_seconds.value),
-            ("fuel_per_lap_liters", input.fuel_per_lap_liters.value),
-        ] {
-            next.put(
-                &format!("{planning}/overrides/{key}"),
-                &manual_override(value),
-            )?;
-        }
-        if next.value().pointer(&pointer).is_none_or(Value::is_null) {
-            next.put(&pointer, &json!({}))?;
-        }
-        next.put(
-            &format!("{pointer}/nativeScalarInput"),
-            &serde_json::to_value(&input).map_err(|e| e.to_string())?,
-        )?;
-        *doc = next;
-        Ok(input)
+        self.fields.prepare(doc, self.event, self.variant)
     }
     fn calculate(&mut self, cx: &mut Context<Self>) {
         if self.running {
@@ -907,16 +728,6 @@ fn duration_selection(value: &str) -> Option<usize> {
             .unwrap_or(DURATIONS.len()),
     )
 }
-fn parse_number(value: &str) -> Result<f64, String> {
-    let number = value
-        .trim()
-        .parse::<f64>()
-        .map_err(|_| "Entrada numérica explícita requerida")?;
-    if !number.is_finite() {
-        return Err("Número no finito".into());
-    }
-    Ok(number)
-}
 fn display(value: &Value) -> String {
     value.as_str().map_or_else(
         || {
@@ -928,134 +739,6 @@ fn display(value: &Value) -> String {
         },
         str::to_owned,
     )
-}
-
-/// Only confirmed user values enter the V2 document; no solver defaults here.
-fn append_manual_event(doc: &mut Document, fields: &[String]) -> Result<usize, String> {
-    let name = fields[0].trim();
-    if name.is_empty() {
-        return Err("Nombre del evento requerido".into());
-    }
-    let duration = fields[1]
-        .trim()
-        .parse::<u32>()
-        .map_err(|_| "Duración entera requerida")?;
-    let tank = parse_number(&fields[2])?;
-    let pit = parse_number(&fields[3])?;
-    let events = doc.value()["events"]
-        .as_array()
-        .map_or(&[][..], Vec::as_slice);
-    let index = events.len();
-    let id = (1..=index + 1)
-        .map(|n| format!("native-event-{n}"))
-        .find(|id| !events.iter().any(|event| event["id"] == id.as_str()))
-        .ok_or("No se pudo crear ID")?;
-    let mut event = new_event(&id, name, duration, tank, pit);
-    event["teamMode"] = vantare_strategy::document::manual(json!("solo"));
-    for (index, key) in [(4, "track"), (5, "cls"), (25, "team")] {
-        event[key] = vantare_strategy::document::manual(json!(fields[index].trim()));
-    }
-    for (index, key) in [(6, "name"), (7, "note"), (8, "mode")] {
-        if !fields[index].trim().is_empty() {
-            event["strategies"][0][key] =
-                vantare_strategy::document::manual(json!(fields[index].trim()));
-        }
-    }
-    if !fields[24].trim().is_empty() {
-        chrono::DateTime::parse_from_rfc3339(fields[24].trim())
-            .map_err(|_| "Salida requerida en RFC 3339 con zona horaria")?;
-        event["startAt"] = vantare_strategy::document::manual(json!(fields[24].trim()));
-    }
-    for (index, key) in [(26, "name"), (27, "ini")] {
-        if !fields[index].trim().is_empty() {
-            event["drivers"][0][key] =
-                vantare_strategy::document::manual(json!(fields[index].trim()));
-        }
-    }
-    let mut overrides = serde_json::Map::new();
-    for (index, key) in [(10, "base_pace_seconds"), (11, "fuel_per_lap_liters")] {
-        if !fields[index].trim().is_empty() {
-            overrides.insert(key.into(), manual_override(parse_number(&fields[index])?));
-        }
-    }
-    if !overrides.is_empty() {
-        event["planningInputs"] = json!({"overrides": overrides});
-    }
-    // Commit all edits together: failed validation leaves the collection intact.
-    let mut next = doc.clone();
-    next.append_event(&event)?;
-    next.put("/activeEventId", &json!(id))?;
-    next.put(
-        &format!("/events/{index}/activeStrategyId"),
-        &json!("variant-1"),
-    )?;
-    *doc = next;
-    Ok(index)
-}
-
-fn manual_override(value: f64) -> Value {
-    let scalar = Scalar::manual(value);
-    json!({"value": value, "presence": "valid", "provenance": scalar.provenance, "confidence": scalar.confidence})
-}
-
-fn confirm_metadata(
-    doc: &mut Document,
-    event: usize,
-    variant: usize,
-    fields: &[String],
-) -> Result<(), String> {
-    let mut next = doc.clone();
-    for (index, (_, key)) in FIELDS.iter().take(9).enumerate() {
-        let pointer = if index < 6 {
-            format!("/events/{event}/{key}")
-        } else {
-            let key = ["name", "note", "mode"][index - 6];
-            format!("/events/{event}/strategies/{variant}/{key}")
-        };
-        let value = match index {
-            1 => json!(
-                fields[index]
-                    .trim()
-                    .parse::<u32>()
-                    .map_err(|_| "Duración entera requerida")?
-            ),
-            2 | 3 => json!(parse_number(&fields[index])?),
-            _ => json!(fields[index].trim()),
-        };
-        if next.value().pointer(&format!("{pointer}/value")) != Some(&value) {
-            next.edit_sourced(&pointer, &value)?;
-        }
-    }
-    for (index, key) in [(24, "startAt"), (25, "team"), (26, "name"), (27, "ini")] {
-        let pointer = if index < 26 {
-            format!("/events/{event}/{key}")
-        } else {
-            format!("/events/{event}/drivers/0/{key}")
-        };
-        let entered = fields[index].trim();
-        let previous = next.value().pointer(&format!("{pointer}/value"));
-        if previous.is_none() && entered.is_empty() {
-            continue;
-        }
-        let value = if index == 24 && entered.is_empty() {
-            Value::Null
-        } else {
-            if index == 24 {
-                chrono::DateTime::parse_from_rfc3339(entered)
-                    .map_err(|_| "Salida requerida en RFC 3339 con zona horaria")?;
-            }
-            json!(entered)
-        };
-        if previous != Some(&value) {
-            if previous.is_some() {
-                next.edit_sourced(&pointer, &value)?;
-            } else {
-                next.put(&pointer, &vantare_strategy::document::manual(value))?;
-            }
-        }
-    }
-    *doc = next;
-    Ok(())
 }
 
 impl Strategy {
@@ -1160,6 +843,22 @@ impl Render for Strategy {
 }
 
 #[cfg(test)]
+use vantare_strategy::document::new_event;
+#[cfg(test)]
+fn append_manual_event(doc: &mut Document, fields: &ManualEvent) -> Result<usize, String> {
+    fields.append(doc)
+}
+#[cfg(test)]
+fn confirm_metadata(
+    doc: &mut Document,
+    event: usize,
+    variant: usize,
+    fields: &ManualEvent,
+) -> Result<(), String> {
+    fields.confirm(doc, event, variant)
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
@@ -1218,20 +917,20 @@ mod tests {
             solver::OptimalityStatus::NoSolution
         );
     }
-    fn event_fields() -> Vec<String> {
-        let mut fields = vec![String::new(); FIELDS.len()];
+    fn event_fields() -> ManualEvent {
+        let mut fields = ManualEvent::default();
         for (index, value) in [
-            (0, "Carrera manual"),
-            (1, "120"),
-            (2, "90"),
-            (3, "60"),
-            (4, "Imola"),
-            (5, "LMGT3"),
-            (10, "105"),
-            (11, "2.8"),
-            (24, "2026-09-30T17:00:00+02:00"),
-            (26, "Piloto"),
-            (27, "PI"),
+            (Field::Name, "Carrera manual"),
+            (Field::DurationMinutes, "120"),
+            (Field::FuelCapacityLiters, "90"),
+            (Field::PitTransitSeconds, "60"),
+            (Field::Track, "Imola"),
+            (Field::Class, "LMGT3"),
+            (Field::BasePaceSeconds, "105"),
+            (Field::FuelPerLapLiters, "2.8"),
+            (Field::StartAt, "2026-09-30T17:00:00+02:00"),
+            (Field::DriverName, "Piloto"),
+            (Field::DriverInitials, "PI"),
         ] {
             fields[index] = value.into();
         }
@@ -1249,7 +948,7 @@ mod tests {
         assert_eq!(doc.value()["events"][1]["activeStrategyId"], "variant-1");
         let restarted = Document::parse(doc.bytes()).expect("round trip");
         let event = &restarted.value()["events"][1];
-        assert_eq!(event["startAt"]["value"], fields[24]);
+        assert_eq!(event["startAt"]["value"], fields[Field::StartAt]);
         assert_eq!(event["drivers"][0]["name"]["value"], "Piloto");
         assert_eq!(event["teamMode"]["value"], "solo");
         assert_eq!(
@@ -1267,10 +966,10 @@ mod tests {
     fn manual_creation_persists_explicit_variant_and_team_metadata() {
         let mut document = Document::empty("2026-09-30T00:00:00Z").expect("document");
         let mut fields = event_fields();
-        fields[6] = "Lluvia".into();
-        fields[7] = "Ajustes revisados".into();
-        fields[8] = "wet".into();
-        fields[25] = "Equipo local".into();
+        fields[Field::VariantName] = "Lluvia".into();
+        fields[Field::VariantNote] = "Ajustes revisados".into();
+        fields[Field::VariantMode] = "wet".into();
+        fields[Field::Team] = "Equipo local".into();
         append_manual_event(&mut document, &fields).expect("evento");
         let event = &document.value()["events"][0];
         assert_eq!(event["teamMode"]["value"], "solo");
@@ -1286,19 +985,19 @@ mod tests {
         let bytes = doc.bytes().to_vec();
         for (index, invalid) in [
             (0, ""),
-            (1, "0"),
-            (1, "2.5"),
-            (2, "-1"),
-            (3, "NaN"),
-            (10, "0"),
-            (11, "-2"),
-            (24, "2026-09-30 17:00"),
+            (Field::DurationMinutes, "0"),
+            (Field::DurationMinutes, "2.5"),
+            (Field::FuelCapacityLiters, "-1"),
+            (Field::PitTransitSeconds, "NaN"),
+            (Field::BasePaceSeconds, "0"),
+            (Field::FuelPerLapLiters, "-2"),
+            (Field::StartAt, "2026-09-30 17:00"),
         ] {
             let mut fields = event_fields();
             fields[index] = invalid.into();
             assert!(
                 append_manual_event(&mut doc, &fields).is_err(),
-                "field {index}"
+                "field {index:?}"
             );
             assert_eq!(doc.bytes(), bytes);
         }
@@ -1307,7 +1006,13 @@ mod tests {
     fn empty_optional_inputs_are_not_filled_with_example_data() {
         let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
         let mut fields = event_fields();
-        for index in [10, 11, 24, 26, 27] {
+        for index in [
+            Field::BasePaceSeconds,
+            Field::FuelPerLapLiters,
+            Field::StartAt,
+            Field::DriverName,
+            Field::DriverInitials,
+        ] {
             fields[index].clear();
         }
         append_manual_event(&mut doc, &fields).expect("minimal form");
@@ -1321,16 +1026,16 @@ mod tests {
         let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
         let mut fields = event_fields();
         append_manual_event(&mut doc, &fields).expect("original");
-        fields[6] = "Base".into();
-        fields[8] = "dry".into();
+        fields[Field::VariantName] = "Base".into();
+        fields[Field::VariantMode] = "dry".into();
         let original = doc.bytes().to_vec();
         confirm_metadata(&mut doc, 0, 0, &fields).expect("unchanged");
         assert_eq!(doc.bytes(), original);
-        fields[0] = "Nombre nuevo".into();
-        fields[8] = "invalid".into();
+        fields[Field::Name] = "Nombre nuevo".into();
+        fields[Field::VariantMode] = "invalid".into();
         assert!(confirm_metadata(&mut doc, 0, 0, &fields).is_err());
         assert_eq!(doc.bytes(), original);
-        fields[8] = "dry".into();
+        fields[Field::VariantMode] = "dry".into();
         confirm_metadata(&mut doc, 0, 0, &fields).expect("confirmed edit");
         assert_eq!(doc.value()["events"][0]["name"]["value"], "Nombre nuevo");
     }
@@ -1371,15 +1076,5 @@ mod tests {
         assert_eq!(restarted.document.as_ref().expect("doc").bytes(), original);
         std::fs::remove_file(path).expect("remove own file");
         std::fs::remove_dir_all(directory).expect("limpiar temporal");
-    }
-    #[test]
-    fn numbers_are_explicit_and_nonfinite_values_are_rejected() {
-        for invalid in ["", "NaN", "inf", "text"] {
-            assert!(parse_number(invalid).is_err());
-        }
-        assert_eq!(
-            parse_number("0").expect("explicit zero").to_bits(),
-            0.0_f64.to_bits()
-        );
     }
 }

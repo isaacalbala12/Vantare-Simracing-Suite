@@ -1,7 +1,7 @@
 # Strategy del Hub
 
-`../strategy.rs` mantiene el editor, selección, formulario, persistencia y ciclo
-cancelable del cálculo. El crate `vantare-strategy` posee documento y solver;
+`../strategy.rs` mantiene el editor, selección, controles, persistencia y ciclo
+cancelable del cálculo. El crate `vantare-strategy` posee `ManualEvent`, documento y solver;
 el Hub no adquiere telemetría ni alimenta el widget `ui/src/fuel_strategy`.
 
 - `asistente.rs`: creación de carrera; solo la preparación manual alimenta el cálculo.

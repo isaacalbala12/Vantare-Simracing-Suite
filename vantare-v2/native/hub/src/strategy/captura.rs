@@ -36,43 +36,36 @@ fn demo_selected_sessions() -> Value {
 }
 
 // La fixture se prepara con el contrato nativo, sin proyección ni resultado.
-// La fixture se prepara con el contrato nativo, sin proyección ni resultado.
 pub(super) fn capture_document(
     demo: &crate::demo::DemoData,
-) -> Result<(Document, Vec<String>, usize), String> {
+) -> Result<(Document, ManualEvent, usize), String> {
     let event = &demo.strategy.event;
     let plan = demo
         .strategy
         .plans
         .first()
         .ok_or("La demo no tiene una estrategia")?;
-    let mut fields = vec![String::new(); FIELDS.len()];
-    for (index, value) in [
-        (0, event.name.clone()),
-        (1, event.duration_minute.to_string()),
-        (2, event.tank_liters.to_string()),
-        (3, event.pit_seconds.to_string()),
-        (4, event.track.clone()),
-        (5, event.vehicle_class.clone()),
-        (6, plan.name.clone()),
-        (7, plan.note.clone()),
-        (8, plan.mode.clone()),
-        (25, event.team.clone()),
-    ] {
-        fields[index] = value;
-    }
     // Valores visibles en las capturas v5 aprobadas de Carrera y Reglas.
-    fields[0] = "4 Horas de Imola · LMGT3".into();
-    fields[2] = "110".into();
-    fields[7].clear();
-    fields[9] = "69".into();
+    let mut fields = ManualEvent {
+        name: "4 Horas de Imola · LMGT3".into(),
+        duration_minutes: event.duration_minute.to_string(),
+        fuel_capacity_liters: "110".into(),
+        pit_transit_seconds: event.pit_seconds.to_string(),
+        track: event.track.clone(),
+        class: event.vehicle_class.clone(),
+        variant_name: plan.name.clone(),
+        variant_mode: plan.mode.clone(),
+        team: event.team.clone(),
+        race_laps: "69".into(),
+        ..ManualEvent::default()
+    };
     if let Some(driver) = demo.strategy.drivers.first() {
-        fields[26].clone_from(&driver.name);
-        fields[27].clone_from(&driver.initials);
+        fields[Field::DriverName].clone_from(&driver.name);
+        fields[Field::DriverInitials].clone_from(&driver.initials);
     }
 
     let mut document = Document::empty(&demo.fixed_now()?.to_rfc3339())?;
-    let event_index = append_manual_event(&mut document, &fields)?;
+    let event_index = fields.append(&mut document)?;
     let drivers = demo
             .strategy
             .drivers
@@ -373,7 +366,7 @@ impl Strategy {
         div().flex().gap(px(18.0)).child(left).child(right)
     }
 
-    #[allow(clippy::too_many_lines)] // ComposiciÃ³n de las tres tarjetas de la fixture aprobada.
+    #[allow(clippy::too_many_lines)] // Composición de las tres tarjetas de la fixture aprobada.
     fn demo_driver_fields(&self, demo: &CaptureDemo, cx: &gpui::App) -> gpui::Div {
         let names = self
             .current_event()
@@ -651,9 +644,9 @@ mod tests {
         let demo = crate::demo::DemoData::load().expect("demo");
         let (document, fields, index) = capture_document(&demo).expect("documento nativo");
         let event = &document.value()["events"][index];
-        assert_eq!(fields[0], "4 Horas de Imola · LMGT3");
-        assert_eq!(fields[2], "110");
-        assert_eq!(fields[9], "69");
+        assert_eq!(fields[Field::Name], "4 Horas de Imola · LMGT3");
+        assert_eq!(fields[Field::FuelCapacityLiters], "110");
+        assert_eq!(fields[Field::RaceLaps], "69");
         assert_eq!(CAPTURE_DEMO.track_layout, "GP");
         assert_eq!(
             event["combination"]["sessions"][0]["sessionId"],
@@ -663,7 +656,26 @@ mod tests {
         assert_eq!(event["drivers"].as_array().expect("pilotos").len(), 3);
         assert!(event["planningInputs"]["projection"].is_null());
         assert!(event["strategies"][0]["overrides"]["nativeScalarInput"].is_null());
-        assert!(fields[10..24].iter().all(String::is_empty));
+        assert!(
+            [
+                Field::BasePaceSeconds,
+                Field::FuelPerLapLiters,
+                Field::VeCapacityPercent,
+                Field::VePerLapPercent,
+                Field::TyreLifeLaps,
+                Field::DegradationSeconds,
+                Field::RefuelRate,
+                Field::VeRate,
+                Field::TyreServiceSeconds,
+                Field::FormationSeconds,
+                Field::FuelStep,
+                Field::VeStep,
+                Field::ReserveLaps,
+                Field::ServiceMode
+            ]
+            .iter()
+            .all(|field| fields[*field].is_empty())
+        );
         assert_eq!(
             (CAPTURE_DEMO.fuel_initial, CAPTURE_DEMO.fuel_reserve),
             (106, 3)

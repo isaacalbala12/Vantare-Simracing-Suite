@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use super::solver::{self, Input, SolverOutcome};
 
 mod editing;
+mod manual;
+pub use manual::{ManualEvent, ManualField, select_event};
 pub mod repository;
 pub use editing::{EditedPlan, recalculate_edited_plan};
 

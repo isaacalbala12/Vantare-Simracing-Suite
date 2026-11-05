@@ -1,4 +1,4 @@
-//! PresentaciÃ³n compartida. Las fuentes preparan datos y fragmentos de solo lectura;
+//! Presentación compartida. Las fuentes preparan datos y fragmentos de solo lectura;
 //! las vistas no conocen escenas, fixtures ni el modo de captura.
 type TextControl = fn(&str, &gpui::App) -> gpui::Div;
 type RuleRow = fn(&str, &str, &gpui::App) -> gpui::Div;

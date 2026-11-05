@@ -330,7 +330,7 @@ impl Strategy {
         let tank = event
             .and_then(|event| event["tankLiters"]["value"].as_f64())
             .map_or_else(String::new, |liters| liters.to_string());
-        let laps = if self.fields[9].trim().is_empty() {
+        let laps = if self.fields[Field::RaceLaps].trim().is_empty() {
             event.map_or_else(String::new, |event| {
                 display(
                     &event["strategies"][self.variant]["overrides"]["nativeScalarInput"][
@@ -339,7 +339,7 @@ impl Strategy {
                 )
             })
         } else {
-            self.fields[9].clone()
+            self.fields[Field::RaceLaps].clone()
         };
         let drivers = event
             .and_then(|event| event["drivers"].as_array())
@@ -428,7 +428,7 @@ impl Strategy {
             format!("Tu estrategia · {event_name} · {class_name}")
         };
         let calculation_ready = self.input().is_ok()
-            && self.fields[8].trim() == "dry"
+            && self.fields[Field::VariantMode].trim() == "dry"
             && event.is_some_and(|event| event["source"]["value"] == "custom");
         let plan_action = if self.result.is_some() {
             orbit::button("strategy-open-plan", "Ver Plan →", cx).on_click(cx.listener(

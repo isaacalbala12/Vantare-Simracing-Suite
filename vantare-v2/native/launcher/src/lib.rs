@@ -276,6 +276,29 @@ pub fn validate_args(args: &[String]) -> Result<(), String> {
 }
 
 impl Document {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, files::Error> {
+        let value: serde_json::Value = serde_json::from_slice(bytes)
+            .map_err(|error| files::Error::InvalidInput(format!("Launcher inválido: {error}")))?;
+        vantare_ipc::files::future_version(&value, "version", 1)?;
+        // Leer los bytes originales conserva el rechazo de campos duplicados.
+        let mut document: Self = serde_json::from_slice(bytes)
+            .map_err(|error| files::Error::InvalidInput(format!("Launcher inválido: {error}")))?;
+        document.validate()?;
+        if let Some(imported) = document
+            .wails_import
+            .as_ref()
+            .and_then(|import| import.launcher.get("launcherProfiles"))
+            .and_then(serde_json::Value::as_array)
+        {
+            for profile in &mut document.profiles {
+                profile.imported |= imported
+                    .iter()
+                    .any(|old| old["id"].as_str() == Some(profile.id.as_str()));
+            }
+        }
+        Ok(document)
+    }
+
     pub fn fresh_install() -> Self {
         let mut document = Self::default();
         for (id, name, apps) in [
@@ -446,38 +469,14 @@ impl Store {
         let opened = files::Doc::open_or_quarantine(
             &path,
             &vantare_ipc::files::Options::default(),
-            |bytes| {
-                let value: serde_json::Value = serde_json::from_slice(bytes)
-                    .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
-                vantare_ipc::files::future_version(&value, "version", 1)?;
-                let document: Document = serde_json::from_slice(bytes)
-                    .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
-                document.validate()?;
-                Ok(document)
-            },
+            Document::from_bytes,
             Document::default,
         );
-        let mut document = opened.value;
-        let saved = opened.observed;
-        // Conserva el origen al editar o duplicar perfiles importados por versiones anteriores.
-        if let Some(imported) = document
-            .wails_import
-            .as_ref()
-            .and_then(|import| import.launcher.get("launcherProfiles"))
-            .and_then(serde_json::Value::as_array)
-        {
-            for profile in &mut document.profiles {
-                profile.imported |= imported
-                    .iter()
-                    .any(|old| old["id"].as_str() == Some(profile.id.as_str()));
-            }
-        }
-        document.validate()?;
         Ok(Self {
             warning: opened.warning,
-            document,
+            document: opened.value,
             path,
-            saved,
+            saved: opened.observed,
         })
     }
 
@@ -587,13 +586,12 @@ pub fn is_local_path(path: &Path) -> bool {
 
 #[derive(Default)]
 pub struct LmuTrigger {
-    was_open: bool,
+    was_open: Option<bool>,
 }
 impl LmuTrigger {
     pub fn observe(&mut self, enabled: bool, open: bool) -> bool {
-        let launch = enabled && open && !self.was_open;
-        self.was_open = enabled && open;
-        launch
+        let previous = self.was_open.replace(enabled && open);
+        enabled && open && previous == Some(false)
     }
 }
 

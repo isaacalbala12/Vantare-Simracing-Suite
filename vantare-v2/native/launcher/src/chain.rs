@@ -546,18 +546,7 @@ fn probe(
 }
 
 fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &RunContext) {
-    if (profile.imported
-        || document.wails_import.as_ref().is_some_and(|import| {
-            import
-                .launcher
-                .get("launcherProfiles")
-                .and_then(serde_json::Value::as_array)
-                .is_some_and(|profiles| {
-                    profiles
-                        .iter()
-                        .any(|old| old["id"].as_str() == Some(profile.id.as_str()))
-                })
-        }))
+    if profile.imported
         && let Err(message) = review_import(document, profile, discovery, context)
     {
         emit(

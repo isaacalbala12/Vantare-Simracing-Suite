@@ -126,6 +126,21 @@ fn legacy_import_keeps_its_origin_when_duplicated_without_marking_local_profiles
 }
 
 #[test]
+fn document_reader_protects_future_schema_and_rejects_duplicate_fields() {
+    assert!(matches!(
+        Document::from_bytes(br#"{"version":99,"futureData":true}"#),
+        Err(files::Error::Unsupported(_))
+    ));
+    let valid = serde_json::to_vec(&Document::default()).expect("documento válido");
+    let mut duplicate = br#"{"version":1,"#.to_vec();
+    duplicate.extend_from_slice(&valid[1..]);
+    assert!(matches!(
+        Document::from_bytes(&duplicate),
+        Err(files::Error::InvalidInput(_))
+    ));
+}
+
+#[test]
 fn hotkeys_normalize_win32_codes_and_reject_reserved_unknown_or_duplicate_modifiers() {
     let key = triggers::Hotkey::parse(" SHIFT + Ctrl + 1 ")
         .expect("parse")
@@ -1142,7 +1157,6 @@ fn lmu_trigger_uses_rising_edges_and_can_be_disabled() {
 }
 
 #[test]
-#[ignore = "P5: first observation currently launches when LMU is already open"]
 fn lmu_trigger_seeds_first_observation_without_launching() {
     let mut trigger = LmuTrigger::default();
     assert!(!trigger.observe(true, true));

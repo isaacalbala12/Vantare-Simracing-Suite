@@ -253,13 +253,8 @@ impl Owner {
         let parsed = if missing {
             Ok(Document::default())
         } else {
-            serde_json::from_slice::<Document>(&bytes)
-                .map_err(|error| format!("Launcher inválido: {error}"))
-        }
-        .and_then(|document| {
-            document.validate()?;
-            Ok(document)
-        });
+            Document::from_bytes(&bytes).map_err(|error| error.to_string())
+        };
         let document = match parsed {
             Ok(document) => document,
             Err(error) => {
@@ -395,16 +390,35 @@ impl Owner {
         match request {
             Ok(Request::Launch { profile }) => self.launch(&profile),
             Ok(Request::Answer { decision, action }) => {
+                // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
+                // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
+                let cancel_dismissed = action == Action::Cancel.label()
+                    && self.status.decision.as_ref().is_some_and(|current| {
+                        current.id == decision
+                            && !current.actions.contains(&action)
+                            && !current
+                                .actions
+                                .iter()
+                                .any(|label| label == Action::Leave.label())
+                    });
                 let selected = self
                     .status
                     .decision
                     .as_ref()
-                    .filter(|d| d.id == decision && d.actions.contains(&action))
+                    .filter(|d| {
+                        d.id == decision && (d.actions.contains(&action) || cancel_dismissed)
+                    })
                     .and_then(|_| action_from_label(&action));
                 if let (Some(chain), Some(action), Some(local_id)) =
                     (&self.chain, selected, self.chain_decision)
                 {
-                    match chain.answer(local_id, action) {
+                    let result = if cancel_dismissed {
+                        chain.cancel();
+                        Ok(())
+                    } else {
+                        chain.answer(local_id, action)
+                    };
+                    match result {
                         Ok(()) => {
                             self.status.decision = None;
                             self.chain_decision = None;
@@ -539,7 +553,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "P9: resident does not restore saved wails_import provenance"]
     fn resident_restores_archived_import_provenance_without_rewriting() {
         let dir = std::env::temp_dir().join(format!(
             "r12-origin-{}",
@@ -561,6 +574,141 @@ mod tests {
         fs::remove_dir_all(dir).expect("documento aislado del residente");
         assert!(unchanged);
         assert!(imported);
+    }
+
+    fn failure_decision_owner(root: &std::path::Path) -> Owner {
+        let mut owner = Owner::new(root.join("launcher.json"), false);
+        let mut profile = launcher::Profile::new("qa".into(), "QA".into());
+        profile.policy = Some(launcher::policy::Policy {
+            failure: launcher::policy::Failure::Ask,
+            ..launcher::policy::Policy::default()
+        });
+        for name in ["fallo", "no-lanzar"] {
+            let executable = root.join(format!("{name}.exe"));
+            fs::write(&executable, b"invalid QA PE").expect("fixture");
+            let app_id = owner
+                .document
+                .add_app(name.into(), executable)
+                .expect("app QA");
+            profile.steps.push(launcher::Step {
+                app_id,
+                delay_seconds: 0,
+                args_override: None,
+            });
+        }
+        let found = Discovery::scan(&owner.document.apps, Sources::default());
+        owner.chain = Some(
+            Chain::start_detached(
+                owner.document.clone(),
+                profile,
+                found,
+                owner.processes.clone(),
+            )
+            .expect("cadena QA"),
+        );
+        let decision = loop {
+            let progress = owner
+                .chain
+                .as_ref()
+                .expect("cadena")
+                .progress
+                .recv_timeout(Duration::from_secs(5))
+                .expect("decisión tras fallo de spawn");
+            if let Some(decision) = progress.decision {
+                break decision;
+            }
+        };
+        assert_eq!(
+            decision.actions,
+            [
+                launcher::chain::Action::Stop,
+                launcher::chain::Action::Continue
+            ]
+        );
+        owner.chain_decision = Some(decision.id);
+        owner.status.decision = Some(Decision {
+            id: 42,
+            message: decision.message,
+            actions: decision
+                .actions
+                .iter()
+                .map(|action| action.label().into())
+                .collect(),
+        });
+        owner
+    }
+
+    #[test]
+    fn dismiss_cancel_stops_the_matching_failure_decision_but_rejects_a_stale_one() {
+        let root = std::env::temp_dir().join(format!(
+            "resident-dismiss-{}",
+            vantare_services::random_id().expect("id QA")
+        ));
+        fs::create_dir(&root).expect("raíz QA");
+        let mut owner = failure_decision_owner(&root);
+        for id in [41, 42] {
+            fs::write(
+                request_path(&owner.path),
+                serde_json::to_vec(&Request::Answer {
+                    decision: id,
+                    action: launcher::chain::Action::Cancel.label().into(),
+                })
+                .expect("petición QA"),
+            )
+            .expect("buzón QA");
+            owner.request();
+            if id == 41 {
+                assert_eq!(
+                    owner
+                        .status
+                        .decision
+                        .as_ref()
+                        .expect("no cancelar otro ID")
+                        .id,
+                    42
+                );
+                assert!(!owner.chain.as_ref().expect("cadena esperando").finished());
+            }
+        }
+        assert!(
+            owner.status.decision.is_none(),
+            "descartar debe cancelar esta decisión aunque Cancel no sea un botón"
+        );
+        let mut cancelled = false;
+        loop {
+            let result = owner
+                .chain
+                .as_ref()
+                .expect("cadena")
+                .progress
+                .recv_timeout(Duration::from_secs(5));
+            match result {
+                Ok(progress) => {
+                    assert_ne!(progress.step, Some(1), "no lanzar el siguiente paso");
+                    if progress.step.is_none()
+                        && progress.status == launcher::chain::Status::Cancelled
+                    {
+                        assert!(!progress.success);
+                        cancelled = true;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    panic!("el worker debe terminar al cancelar")
+                }
+            }
+        }
+        assert!(
+            cancelled,
+            "evento terminal Cancelled antes del cierre del canal"
+        );
+        owner
+            .chain
+            .take()
+            .expect("cadena")
+            .shutdown()
+            .expect("join QA");
+        fs::remove_dir_all(root).expect("limpiar QA");
     }
 
     struct ReleaseWorker(mpsc::Sender<()>);

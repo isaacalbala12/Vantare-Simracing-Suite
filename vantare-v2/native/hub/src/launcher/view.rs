@@ -1,7 +1,7 @@
 //! Presentación Orbit: estado persistido, borradores y progreso real.
 use super::{
     App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
-    chain::{Action, Chain, Decision, Progress},
+    chain::{Action, Chain, Progress},
     discovery::{self, Discovery, Sources},
     policy::{Close, Failure, Running},
     processes,
@@ -61,6 +61,19 @@ enum LauncherPage {
     Editor,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DecisionOrigin {
+    Chain(u64),
+    Resident(u64),
+    Exit,
+}
+
+struct PendingDecision {
+    origin: DecisionOrigin,
+    message: String,
+    actions: Vec<Action>,
+}
+
 pub struct Launcher {
     adapt: orbit::Adapt,
     page: LauncherPage,
@@ -70,8 +83,8 @@ pub struct Launcher {
     selected_profile: Option<String>,
     store: Store,
     processes: processes::Shared,
-    pending_decision: Option<Decision>,
-    resident_decision: Option<u64>,
+    pending_decision: Option<PendingDecision>,
+    // Última respuesta enviada: el estado puede repetirla hasta que el residente la consuma.
     resident_answered: Option<u64>,
     resident_error: Option<crate::files::Failure>,
     resident_status: Option<vantare_ipc::launcher::Status>,
@@ -258,7 +271,6 @@ impl Launcher {
             store,
             processes: std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default())),
             pending_decision: None,
-            resident_decision: None,
             resident_answered: None,
             resident_error: None,
             resident_status: None,
@@ -415,8 +427,8 @@ impl Launcher {
                     && processes.has_profile(&profile.id)?
                     && self.exit_answer.is_none()
                 {
-                    self.pending_decision = Some(Decision {
-                        id: 0,
+                    self.pending_decision = Some(PendingDecision {
+                        origin: DecisionOrigin::Exit,
                         message: "¿Cerrar las aplicaciones iniciadas por Vantare antes de salir?"
                             .into(),
                         actions: vec![Action::Leave, Action::CloseStarted, Action::Cancel],
@@ -452,36 +464,64 @@ impl Launcher {
             self.pending_decision = Some(decision);
             return;
         }
-        if decision.id == 0 {
-            if action == Action::Cancel {
-                self.exit_cancelled = true;
-            } else {
-                self.exit_answer = Some(action);
-            }
-        } else if self.resident_decision == Some(decision.id) {
-            let request = vantare_ipc::launcher::Request::Answer {
-                decision: decision.id,
-                action: action.label().into(),
-            };
-            let result = serde_json::to_vec(&request)
-                .map_err(|error| error.to_string())
-                .and_then(|bytes| {
-                    super::files::save(
-                        &vantare_ipc::launcher::request_path(&self.store.path),
-                        &bytes,
-                        None,
-                    )
-                });
-            self.resident_decision = None;
-            if result.is_ok() {
-                self.resident_answered = Some(decision.id);
-            }
-            self.report(result, cx);
-        } else if let Some(chain) = &self.chain {
-            let result = chain.answer(decision.id, action);
-            self.report(result, cx);
-        }
+        self.answer_origin(decision.origin, action, cx);
         self.close_form(window, cx);
+    }
+
+    fn answer_origin(&mut self, origin: DecisionOrigin, action: Action, cx: &mut Context<Self>) {
+        match origin {
+            DecisionOrigin::Exit => {
+                if action == Action::Cancel {
+                    self.exit_cancelled = true;
+                } else {
+                    self.exit_answer = Some(action);
+                }
+            }
+            DecisionOrigin::Resident(id) => {
+                let request = vantare_ipc::launcher::Request::Answer {
+                    decision: id,
+                    action: action.label().into(),
+                };
+                let result = serde_json::to_vec(&request)
+                    .map_err(|error| error.to_string())
+                    .and_then(|bytes| {
+                        super::files::save(
+                            &vantare_ipc::launcher::request_path(&self.store.path),
+                            &bytes,
+                            None,
+                        )
+                    });
+                if result.is_ok() {
+                    self.resident_answered = Some(id);
+                }
+                self.report(result, cx);
+            }
+            DecisionOrigin::Chain(id) => {
+                if let Some(chain) = &self.chain {
+                    let result = chain.answer(id, action);
+                    self.report(result, cx);
+                }
+            }
+        }
+    }
+
+    fn dismiss_decision(&mut self, cx: &mut Context<Self>) {
+        let Some(decision) = self.pending_decision.take() else {
+            return;
+        };
+        let leave = decision.actions.contains(&Action::Leave);
+        if matches!(decision.origin, DecisionOrigin::Chain(_)) && !leave {
+            if let Some(chain) = &self.chain {
+                chain.cancel();
+            }
+        } else {
+            let action = if decision.origin != DecisionOrigin::Exit && leave {
+                Action::Leave
+            } else {
+                Action::Cancel
+            };
+            self.answer_origin(decision.origin, action, cx);
+        }
     }
 
     pub(super) fn decision_form(&self, cx: &Context<Self>) -> gpui::Div {
@@ -544,12 +584,11 @@ impl Launcher {
                 let actions = actions_from_labels(&decision.actions)
                     .take(self.form_actions.len())
                     .collect();
-                self.pending_decision = Some(Decision {
-                    id: decision.id,
+                self.pending_decision = Some(PendingDecision {
+                    origin: DecisionOrigin::Resident(decision.id),
                     message: decision.message.clone(),
                     actions,
                 });
-                self.resident_decision = Some(decision.id);
                 cx.notify();
             }
         }
@@ -562,7 +601,11 @@ impl Launcher {
             if !events.is_empty() {
                 for event in &events {
                     if let Some(decision) = &event.decision {
-                        self.pending_decision = Some(decision.clone());
+                        self.pending_decision = Some(PendingDecision {
+                            origin: DecisionOrigin::Chain(decision.id),
+                            message: decision.message.clone(),
+                            actions: decision.actions.clone(),
+                        });
                     }
                 }
                 self.progress.extend(events);
@@ -577,7 +620,7 @@ impl Launcher {
                 if self
                     .pending_decision
                     .as_ref()
-                    .is_some_and(|decision| decision.id != 0)
+                    .is_some_and(|decision| matches!(decision.origin, DecisionOrigin::Chain(_)))
                 {
                     self.pending_decision = None;
                     self.form_layer = None;
@@ -1101,6 +1144,174 @@ mod tests {
     use super::*;
     use vantare_ipc::launcher::{Registration, Status};
 
+    fn with_decision_window(
+        test: impl FnOnce(gpui::WindowHandle<Launcher>, &mut gpui::HeadlessAppContext) + 'static,
+    ) {
+        gpui_platform::headless().run(move |app| {
+            let root = std::env::temp_dir().join(format!(
+                "launcher-decisions-{}",
+                vantare_services::random_id().expect("id QA")
+            ));
+            std::fs::create_dir(&root).expect("directorio QA");
+            let store = Store::in_memory(root.join("launcher.json"), Document::default())
+                .expect("documento QA");
+            let mut cx = gpui::HeadlessAppContext::with_asset_source(
+                gpui_platform::current_platform(true).text_system(),
+                std::sync::Arc::new(crate::shell::assets::Icons),
+            );
+            cx.update(|cx| {
+                cx.set_global(crate::orbit::theme::Theme::default());
+                cx.set_global(
+                    vantare_ui::theme::Design::default()
+                        .compiled()
+                        .expect("tokens del tema compilado"),
+                );
+            });
+            let discovery = Discovery {
+                apps: vec![discovery::Detected {
+                    id: "lmu".into(),
+                    executable: None,
+                    source: "fixture QA sin escaneo",
+                    availability: discovery::Availability::default(),
+                }],
+                ..Discovery::default()
+            };
+            let window = cx
+                .open_window(gpui::size(gpui::px(960.0), gpui::px(640.0)), |_, cx| {
+                    cx.new(|cx| Launcher::build(store, Some(discovery), cx))
+                })
+                .expect("ventana de TestPlatform");
+            test(window, &mut cx);
+            cx.update_window(window.into(), |_, window, _| window.remove_window())
+                .expect("cerrar ventana QA");
+            drop(cx);
+            std::fs::remove_dir_all(root).expect("limpiar ficheros QA");
+            crate::quit_headless_test(app);
+        });
+    }
+
+    fn show_resident_decision(
+        window: gpui::WindowHandle<Launcher>,
+        cx: &mut gpui::HeadlessAppContext,
+        id: u64,
+        actions: &[Action],
+    ) -> Entity<editor::LauncherDrawer> {
+        window
+            .update(cx, |launcher, window, cx| {
+                let status = Status {
+                    version: 1,
+                    updated_ms: vantare_ipc::launcher::now_ms(),
+                    decision: Some(vantare_ipc::launcher::Decision {
+                        id,
+                        message: "Decisión residente QA".into(),
+                        actions: actions.iter().map(|action| action.label().into()).collect(),
+                    }),
+                    ..Status::default()
+                };
+                std::fs::write(
+                    vantare_ipc::launcher::status_path(&launcher.store.path),
+                    serde_json::to_vec(&status).expect("estado QA"),
+                )
+                .expect("publicar estado QA");
+                launcher.poll_resident(cx);
+                assert!(launcher.pending_decision.is_some());
+                launcher.open_form(window, cx);
+                launcher.form_layer.clone().expect("drawer residente")
+            })
+            .expect("abrir decisión QA")
+    }
+
+    fn assert_resident_answer(
+        launcher: &mut Launcher,
+        cx: &mut Context<Launcher>,
+        id: u64,
+        expected: Action,
+    ) {
+        let path = vantare_ipc::launcher::request_path(&launcher.store.path);
+        let request: vantare_ipc::launcher::Request =
+            serde_json::from_slice(&std::fs::read(&path).expect("respuesta real en el buzón"))
+                .expect("petición real");
+        let vantare_ipc::launcher::Request::Answer { decision, action } = request else {
+            panic!("debe responder a la decisión")
+        };
+        assert_eq!(decision, id);
+        assert_eq!(action, expected.label());
+        assert!(
+            !launcher.exit_cancelled,
+            "una decisión residente no es de salida"
+        );
+        launcher.poll_resident(cx);
+        assert!(
+            launcher.pending_decision.is_none(),
+            "no debe reaparecer al sondear"
+        );
+        assert!(launcher.form_layer.is_none());
+        std::fs::remove_file(path).expect("recoger respuesta QA");
+    }
+
+    #[test]
+    fn dismissing_resident_decisions_answers_once_and_does_not_reopen_them() {
+        with_decision_window(|window, cx| {
+            for (id, actions, expected) in [
+                (7, vec![Action::Trust, Action::Cancel], Action::Cancel),
+                (10, vec![Action::Stop, Action::Continue], Action::Cancel),
+                (8, vec![Action::Leave, Action::CloseStarted], Action::Leave),
+                (
+                    0,
+                    vec![Action::Leave, Action::CloseStarted, Action::Cancel],
+                    Action::Leave,
+                ),
+            ] {
+                let drawer = show_resident_decision(window, cx, id, &actions);
+                // Escape, el botón X y el cierre exterior emiten este mismo evento del drawer.
+                drawer.update(cx, |_, cx| cx.emit(orbit::Dismissed));
+                window
+                    .update(cx, |launcher, _, cx| {
+                        assert_resident_answer(launcher, cx, id, expected);
+                    })
+                    .expect("respuesta al descarte");
+            }
+        });
+    }
+
+    #[test]
+    fn explicit_resident_answer_uses_the_mailbox_and_is_not_reopened() {
+        with_decision_window(|window, cx| {
+            show_resident_decision(window, cx, 9, &[Action::Trust, Action::Cancel]);
+            window
+                .update(cx, |launcher, window, cx| {
+                    launcher.answer_decision(Action::Trust, window, cx);
+                    assert_resident_answer(launcher, cx, 9, Action::Trust);
+                })
+                .expect("respuesta explícita");
+        });
+    }
+
+    #[test]
+    fn dismissing_exit_decision_cancels_exit_without_sending_a_resident_request() {
+        with_decision_window(|window, cx| {
+            let drawer = window
+                .update(cx, |launcher, window, cx| {
+                    launcher.pending_decision = Some(PendingDecision {
+                        origin: DecisionOrigin::Exit,
+                        message: "Salida QA".into(),
+                        actions: vec![Action::Leave, Action::CloseStarted, Action::Cancel],
+                    });
+                    launcher.open_form(window, cx);
+                    launcher.form_layer.clone().expect("drawer salida")
+                })
+                .expect("decisión de salida");
+            drawer.update(cx, |_, cx| cx.emit(orbit::Dismissed));
+            window
+                .update(cx, |launcher, _, _| {
+                    assert!(launcher.take_exit_cancelled());
+                    assert!(launcher.pending_decision.is_none());
+                    assert!(!vantare_ipc::launcher::request_path(&launcher.store.path).exists());
+                })
+                .expect("descarte de salida");
+        });
+    }
+
     #[test]
     fn launcher_action_labels_round_trip_through_hub_decoder() {
         for expected in [
@@ -1186,7 +1397,10 @@ mod tests {
                     Some("registro denegado")
                 );
                 assert_eq!(launcher.status, "Esperando decisión");
-                assert_eq!(launcher.pending_decision.as_ref().expect("decisión").id, 7);
+                assert_eq!(
+                    launcher.pending_decision.as_ref().expect("decisión").origin,
+                    DecisionOrigin::Resident(7)
+                );
                 launcher.pending_decision = None;
                 launcher.resident_answered = Some(7);
                 launcher.poll_resident(cx);

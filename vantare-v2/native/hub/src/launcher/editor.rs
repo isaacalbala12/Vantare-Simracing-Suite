@@ -578,18 +578,7 @@ impl Launcher {
         let layer = cx
             .new(|cx| LauncherDrawer::new(label.into(), host.into(), footer, targets, window, cx));
         cx.subscribe(&layer, |this, _, _: &orbit::Dismissed, cx| {
-            if let Some(decision) = this.pending_decision.take() {
-                if decision.id == 0 {
-                    this.exit_cancelled = true;
-                } else if let Some(chain) = &this.chain {
-                    if decision.actions.contains(&Action::Leave) {
-                        let result = chain.answer(decision.id, Action::Leave);
-                        this.report(result, cx);
-                    } else {
-                        chain.cancel();
-                    }
-                }
-            }
+            this.dismiss_decision(cx);
             this.app_draft = None;
             this.profile_draft = None;
             this.pending_app_removal = None;

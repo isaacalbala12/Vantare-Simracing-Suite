@@ -8,8 +8,8 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 use gpui::{
-    App, Context, Entity, FocusHandle, IntoElement, Render, Window, WindowOptions, div, prelude::*,
-    px,
+    App, Context, Entity, FocusHandle, IntoElement, PromptButton, PromptLevel, Render, Window,
+    WindowOptions, div, prelude::*, px,
 };
 use vantare_ipc::Subscriber;
 
@@ -98,6 +98,8 @@ pub(crate) struct Hub {
     connected_source: bool,
     connection_incompatible: bool,
     close_requested: bool,
+    close_save_pending: bool,
+    close_without_draft: bool,
     restart_requested: bool,
     exit_code: std::rc::Rc<std::cell::Cell<u8>>,
     boot_confirmation:
@@ -107,7 +109,6 @@ pub(crate) struct Hub {
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), crate::files::Error> {
         // Studio confirma cada edición; guarda también los borradores locales pendientes.
-        self.remote.update(cx, |remote, cx| remote.persist(cx))?;
         self.strategy.update(cx, |strategy, _| strategy.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
@@ -178,8 +179,9 @@ impl Hub {
                 cx.notify();
             }
             if close {
-                // Live solicita el mismo cierre protegido que el botón y la ventana.
-                self.close(cx);
+                // Live no espera IPC ni un diálogo: el cierre forzado siempre avanza.
+                self.exit_code.set(close_code(false, self.connected_source));
+                cx.quit();
             }
         }
         let activity = self.subscriber.activity();
@@ -259,6 +261,9 @@ impl Hub {
 
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
         self.close_requested = true;
+        if self.close_save_pending {
+            return false;
+        }
         if !self.launcher.update(cx, Launcher::can_close) {
             return false;
         }
@@ -272,6 +277,17 @@ impl Hub {
                 }
             });
         }) {
+            return false;
+        }
+        if !self.close_without_draft && self.remote.read(cx).editor.dirty {
+            match self
+                .remote
+                .update(cx, |remote, cx| remote.begin_close_save(cx))
+            {
+                Some(true) => self.close_save_pending = true,
+                Some(false) => self.close_save_failed(cx),
+                None => {}
+            }
             return false;
         }
         match self.save(cx) {
@@ -306,6 +322,42 @@ impl Hub {
                 false
             }
         }
+    }
+
+    fn close_save_failed(&mut self, cx: &mut Context<Self>) {
+        self.close_requested = false;
+        // La X aún presta su ventana al callback: abrir el diálogo al liberar ese préstamo.
+        let hub = cx.entity().downgrade();
+        cx.defer(move |cx| {
+            let Some(window) = cx.windows().into_iter().next() else {
+                return;
+            };
+            let Ok(prompt) = window.update(cx, |_, window, cx| {
+                window.prompt(
+                    PromptLevel::Warning,
+                    "No se pudo guardar el borrador protegido",
+                    Some("Hay ediciones sin guardar."),
+                    &[
+                        PromptButton::ok("Reintentar"),
+                        PromptButton::cancel("Cerrar sin guardar"),
+                    ],
+                    cx,
+                )
+            }) else {
+                return;
+            };
+            cx.spawn(async move |cx| {
+                if let Ok(choice) = prompt.await {
+                    let _ = hub.update(cx, |this, cx| {
+                        if choice == 1 {
+                            this.close_without_draft = true;
+                        }
+                        this.close(cx);
+                    });
+                }
+            })
+            .detach();
+        });
     }
 
     fn refresh_access(&mut self, cx: &mut Context<Self>) {
@@ -1373,6 +1425,17 @@ impl Hub {
             cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
         calendar.update(cx, |calendar, _| calendar.attach_remote(remote.clone()));
         cx.observe(&remote, |this, remote, cx| {
+            if this.close_save_pending {
+                if let Some(saved) = remote.update(cx, |remote, _| remote.take_close_save_result())
+                {
+                    this.close_save_pending = false;
+                    if saved {
+                        this.close(cx);
+                    } else {
+                        this.close_save_failed(cx);
+                    }
+                }
+            }
             if this.capture.is_none() || this.live_capture_policy {
                 this.shell.access = remote.read(cx).navigation_access();
                 this.studio
@@ -1438,6 +1501,9 @@ impl Hub {
         })
         .detach();
         cx.on_app_quit(move |this, cx| {
+            if this.remote.read(cx).editor.dirty {
+                eprintln!("cierre con ediciones del informe sin guardar");
+            }
             this.finish_usage(cx);
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
@@ -1479,6 +1545,8 @@ impl Hub {
             connected_source: false,
             connection_incompatible: false,
             close_requested: false,
+            close_save_pending: false,
+            close_without_draft: false,
             restart_requested: false,
             exit_code,
             boot_confirmation: std::rc::Rc::default(),

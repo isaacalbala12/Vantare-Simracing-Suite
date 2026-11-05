@@ -184,6 +184,10 @@ pub struct Remote {
     active: Area,
     calendar_target: Option<gpui::WeakEntity<crate::calendar::Calendar>>,
     report_revision: Option<u64>,
+    close_save_pending: bool,
+    close_save_fields: Option<super::protocol::report_document::Fields>,
+    close_save_result: Option<bool>,
+    discard_pending: bool,
     pub(crate) editor: crate::testing::Editor,
     pub(crate) report_receipts: Vec<(
         super::protocol::report_document::Fields,
@@ -242,7 +246,11 @@ fn legacy_editor(
         .map_or_else(crate::testing::empty_fields, |draft| draft.fields.clone());
     let mut editor = crate::testing::Editor::new(fields, cx);
     match &legacy {
-        Ok(Some(draft)) => editor.dirty = draft.fields != crate::testing::empty_fields(),
+        Ok(Some(draft)) => {
+            if let Some(warning) = &draft.warning {
+                editor.message.clone_from(warning);
+            }
+        }
         Err(error) => editor.message.clone_from(error),
         Ok(None) => {}
     }
@@ -320,6 +328,10 @@ impl Remote {
             active: Area::Account,
             calendar_target: None,
             report_revision: None,
+            close_save_pending: false,
+            close_save_fields: None,
+            close_save_result: None,
+            discard_pending: false,
             editor,
             report_receipts: Vec::new(),
             participation: crate::services::protocol::testing_document::Participation::default(),
@@ -540,12 +552,26 @@ impl Remote {
         self.requires_access() || self.working()
     }
 
-    /// El cierre no crea una copia en claro: el usuario guarda mediante Services.
-    pub(crate) fn persist(&mut self, _cx: &Context<Self>) -> Result<(), crate::files::Error> {
-        if self.editor.dirty {
-            return Err("Guarda el borrador protegido antes de cerrar".into());
+    /// None indica que otra operación debe terminar antes de guardar.
+    pub(crate) fn begin_close_save(&mut self, cx: &mut Context<Self>) -> Option<bool> {
+        if self.inflight != Inflight::Idle || self.queued.is_some() {
+            return None;
         }
-        Ok(())
+        self.close_save_pending = true;
+        self.close_save_result = None;
+        let fields = self.editor.fields(cx);
+        self.close_save_fields = Some(fields.clone());
+        self.request(Command::DraftSave { fields }, cx);
+        if self.inflight == Inflight::Idle {
+            self.close_save_pending = false;
+            self.close_save_fields = None;
+            return Some(false);
+        }
+        Some(true)
+    }
+
+    pub(crate) fn take_close_save_result(&mut self) -> Option<bool> {
+        self.close_save_result.take()
     }
 
     pub fn cancel(&mut self) {
@@ -654,6 +680,7 @@ impl Remote {
     }
 
     fn dispatch_with_kind(&mut self, command: Command, kind: Option<Inflight>) -> bool {
+        let discard = matches!(command, Command::DraftDiscard);
         if matches!(command, Command::AccountCancel) {
             self.access.requested(&command);
         }
@@ -710,6 +737,7 @@ impl Remote {
             .is_some_and(|send| send.try_send(command).is_ok())
         {
             self.inflight = inflight;
+            self.discard_pending = discard;
             true
         } else {
             self.message = "Operación en curso".into();
@@ -885,6 +913,16 @@ impl Remote {
         cx: &mut Context<Self>,
     ) {
         if let Ok(Some(legacy)) = &self.legacy_draft {
+            if let Some(warning) = &legacy.warning {
+                message = format!("{message} · {warning}");
+            }
+        }
+        if self.discard_pending {
+            self.legacy_status = LegacyStatus::Checked;
+            self.report_draft(draft, message, cx);
+            return;
+        }
+        if let Ok(Some(legacy)) = &self.legacy_draft {
             if draft
                 .as_ref()
                 .is_some_and(|saved| saved.fields == legacy.fields)
@@ -895,12 +933,14 @@ impl Remote {
                         message.push_str(" · originales antiguos archivados en este equipo");
                     }
                     Err(error) => {
-                        self.editor.message = error;
-                        self.legacy_status = LegacyStatus::Unchecked;
-                        return;
+                        message = format!("{message} · {error}");
+                        self.legacy_status = LegacyStatus::Checked;
                     }
                 }
-            } else if self.legacy_status == LegacyStatus::Unchecked && draft.is_none() {
+            } else if self.legacy_status == LegacyStatus::Unchecked
+                && draft.is_none()
+                && self.queued.is_none()
+            {
                 self.legacy_status = LegacyStatus::Checked;
                 self.queued = Some(Command::DraftSave {
                     fields: legacy.fields.clone(),
@@ -910,14 +950,16 @@ impl Remote {
             } else {
                 self.legacy_status = LegacyStatus::Checked;
                 if draft.is_some() {
-                    // Un DPAPI previo distinto gana; los dos JSON permanecen intactos
-                    // para revisión y nunca se pisan automáticamente.
-                    self.report_draft(draft, message, cx);
+                    match legacy.archive() {
+                        Ok(()) => {
+                            self.legacy_draft = Ok(None);
+                            message.push_str(
+                                " · borradores antiguos archivados; prevalece el protegido",
+                            );
+                        }
+                        Err(error) => message = format!("{message} · {error}"),
+                    }
                 }
-                self.editor.message =
-                    "Ya existe otro borrador protegido; los antiguos se conservan para revisión"
-                        .into();
-                return;
             }
         }
         self.report_draft(draft, message, cx);
@@ -1064,6 +1106,16 @@ impl Remote {
         if !background && matches!(self.active, Area::Calendar) {
             self.calendar_reply(reply.clone(), cx);
         }
+        if self.close_save_pending {
+            self.close_save_result = Some(
+                matches!(&reply, Reply::Draft { draft: Some(saved), .. }
+                if self.close_save_fields.as_ref() == Some(&saved.fields))
+                    && self.report_revision == Some(self.editor.revision),
+            );
+            self.close_save_pending = false;
+            self.close_save_fields = None;
+        }
+        let was_discard = self.discard_pending;
         match reply {
             Reply::Pilot { state, message } => self.accept_pilot(state, message, next.as_ref()),
             Reply::Checkout { url } => {
@@ -1188,6 +1240,9 @@ impl Remote {
                 receipt,
                 draft_state,
             } => self.report_receipt(&receipt, draft_state, cx),
+        }
+        if was_discard {
+            self.discard_pending = false;
         }
         let next = next_request(next, &mut self.queued, self.calendar_target.is_some())
             .or_else(|| missing_profile.then_some(Command::AccountProfileRefresh));

@@ -1,6 +1,6 @@
 use super::{
     diagnostic::{self, Diagnostic, Module, Observed},
-    store::{self, Draft, Store},
+    store::{self, Draft},
 };
 use std::{
     fs,
@@ -182,9 +182,6 @@ impl Temp {
         fs::create_dir(&path).expect("crear directorio aislado");
         Self(path)
     }
-    fn draft(&self) -> PathBuf {
-        self.0.join("testing-center/report-draft.json")
-    }
 }
 impl Drop for Temp {
     fn drop(&mut self) {
@@ -213,7 +210,10 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
         ..Default::default()
     });
     observed.snapshot(&snapshot);
-    let mut draft = Draft::new();
+    let mut draft = Draft {
+        schema_version: 1,
+        ..Draft::default()
+    };
     draft.fields = std::array::from_fn(|_| private.into());
     let diagnostic = Diagnostic::collect(
         &temp.0,
@@ -325,44 +325,12 @@ fn observed_core_silence_does_not_invent_connection_or_source_freshness() {
 }
 
 #[test]
-fn private_draft_roundtrips_and_byte_conflicts_preserve_both_edits() {
+fn oversized_drafts_are_rejected_before_export() {
     let temp = Temp::new();
-    let mut first = Store::new(&temp.0);
-    first.reload().expect("sin archivo");
-    first.draft.fields[0] = "Abrí Studio".into();
-    first.save().expect("guardar");
-    let mut second = Store::new(&temp.0);
-    second.reload().expect("cargar");
-    assert_eq!(second.draft.fields[0], "Abrí Studio");
-    first.draft.fields[2] = "Error al guardar".into();
-    first.save().expect("guardar segunda edición");
-    let saved = fs::read(temp.draft()).expect("leer");
-    second.draft.fields[2] = "Mi edición sin guardar".into();
-    assert!(second.save().is_err());
-    assert_eq!(fs::read(temp.draft()).expect("leer"), saved);
-    assert_eq!(second.draft.fields[2], "Mi edición sin guardar");
-    second.reload().expect("recargar explícitamente");
-    assert_eq!(second.draft.fields[2], "Error al guardar");
-    let mut whitespace_edit = saved.clone();
-    whitespace_edit.push(b'\n');
-    fs::write(temp.draft(), &whitespace_edit).expect("cambio externo solo de bytes");
-    assert!(second.save().is_err());
-    assert_eq!(fs::read(temp.draft()).expect("leer"), whitespace_edit);
-}
-
-#[test]
-fn corrupt_unknown_and_oversized_drafts_are_preserved_and_never_exported() {
-    let temp = Temp::new();
-    fs::create_dir(temp.0.join("testing-center")).expect("directorio");
-    for bytes in [b"{".to_vec(), b"{\"schemaVersion\":1,\"module\":\"hub\",\"fields\":[\"\",\"\",\"\",\"\"],\"token\":\"private\"}".to_vec(), vec![b' '; 16385]] {
-        fs::write(temp.draft(), &bytes).expect("corrupto");
-        let mut store = Store::new(&temp.0);
-        assert!(store.reload().is_err());
-        store.draft.fields[0] = "Mi edición".into();
-        assert!(store.save().is_err());
-        assert_eq!(fs::read(temp.draft()).expect("leer"), bytes);
-    }
-    let mut draft = Draft::new();
+    let mut draft = Draft {
+        schema_version: 1,
+        ..Draft::default()
+    };
     draft.fields[0] = "a".repeat(2049);
     assert!(
         store::export_bytes(
@@ -378,26 +346,14 @@ fn corrupt_unknown_and_oversized_drafts_are_preserved_and_never_exported() {
 }
 
 #[test]
-fn failed_atomic_save_and_existing_export_never_overwrite_user_files() {
+fn existing_export_never_overwrites_user_files() {
     let temp = Temp::new();
-    let mut store = Store::new(&temp.0);
-    store.draft.fields[0] = "Antes".into();
-    store.save().expect("guardar");
-    let before = fs::read(temp.draft()).expect("leer");
-    fs::write(
-        temp.0.join("testing-center/report-draft.json.tmp"),
-        b"temporal ajeno",
-    )
-    .expect("temporal");
-    store.draft.fields[0] = "Después".into();
-    // Un temporal ajeno con el nombre del temporal ya NO bloquea: el temporal
-    // real lleva pid y contador. Antes bastaba `touch <doc>.tmp` para que todo
-    // guardado de ese documento fallara para siempre.
-    store.save().expect("un temporal ajeno no debe bloquear");
-    assert_ne!(fs::read(temp.draft()).expect("leer"), before);
-    assert_eq!(store.draft.fields[0], "Después");
+    let draft = Draft {
+        schema_version: 1,
+        ..Draft::default()
+    };
     let bytes = store::export_bytes(
-        &export_fields(&store.draft),
+        &export_fields(&draft),
         &diagnostic(&temp, &Observed::default()),
     )
     .expect("exportar");
@@ -418,7 +374,6 @@ fn unc_and_device_paths_are_rejected_before_io() {
     ] {
         assert!(!diagnostic::local_path(Path::new(path)));
         assert!(store::export(Path::new(path), b"{}").is_err());
-        assert!(Store::new(Path::new(path)).reload().is_err());
         assert!(
             diagnostic::binaries(Path::new(path))
                 .iter()
@@ -537,23 +492,6 @@ fn testing_capture_entrypoint_accepts_the_four_views_and_rejects_unknown_screens
         );
     }
     assert!(CaptureState::parse("testing-center-inventado").is_err());
-}
-
-#[test]
-fn review_conflict_in_testing_center_keeps_its_diagnostic_classification() {
-    let temp = Temp::new();
-    let mut store = Store::new(&temp.0);
-    store.save().expect("initial draft");
-    fs::write(temp.draft(), b"external edit").expect("external writer");
-    let error = store.save().expect_err("stale draft");
-    assert_eq!(
-        super::diagnostic::error_code(error.kind()),
-        super::diagnostic::ErrorCode::Conflict
-    );
-    assert_eq!(
-        fs::read(temp.draft()).expect("external kept"),
-        b"external edit"
-    );
 }
 
 #[test]

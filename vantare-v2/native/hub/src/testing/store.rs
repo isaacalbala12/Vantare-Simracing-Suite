@@ -1,17 +1,12 @@
 use super::diagnostic::{Diagnostic, Module, local_path};
-use crate::{files, services::protocol::report_document::Fields};
-use serde::{Deserialize, Serialize};
-use std::path::Path;
-#[cfg(test)]
-use std::{fs, path::PathBuf};
-
-#[cfg(test)]
-const LIMIT: u64 = 16 * 1024;
 /// Limites por campo del informe. Los comparten el borrador y la recuperacion:
 /// si la recuperacion aceptase mas que el envio, un texto recuperado se
 /// rechazaria para siempre al preparar el informe y el editor quedaria
 /// inservible hasta borrar el fichero a mano.
 use super::model::FIELD_LIMITS;
+use crate::{files, services::protocol::report_document::Fields};
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Limpia un campo visible del informe: quita las marcas invisibles y los
 /// controles, y recorta al limite del envio.
@@ -49,13 +44,6 @@ pub struct Draft {
     pub fields: [String; 4],
 }
 impl Draft {
-    #[cfg(test)]
-    pub fn new() -> Self {
-        Self {
-            schema_version: 1,
-            ..Self::default()
-        }
-    }
     pub fn validate(&self) -> Result<(), files::Error> {
         if self.schema_version != 1
             || self
@@ -71,56 +59,6 @@ impl Draft {
         Ok(())
     }
 }
-#[cfg(test)]
-pub struct Store {
-    pub draft: Draft,
-    path: PathBuf,
-    saved: Option<Vec<u8>>,
-}
-#[cfg(test)]
-impl Store {
-    pub fn new(data: &Path) -> Self {
-        Self {
-            draft: Draft::new(),
-            path: data.join("testing-center/report-draft.json"),
-            saved: None,
-        }
-    }
-    pub fn reload(&mut self) -> Result<(), files::Error> {
-        if !local_path(&self.path) {
-            return Err("El borrador requiere una ruta local".into());
-        }
-        let bytes = match fs::symlink_metadata(&self.path) {
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                self.draft = Draft::new();
-                self.saved = None;
-                return Ok(());
-            }
-            Ok(info) if info.is_file() && !info.file_type().is_symlink() => {
-                files::read(&self.path, LIMIT)?
-            }
-            _ => return Err("No se pudo leer el borrador local".into()),
-        };
-        let draft: Draft = serde_json::from_slice(&bytes)
-            .map_err(|_| "Borrador inválido; se conserva el archivo")?;
-        draft.validate()?;
-        self.draft = draft;
-        self.saved = Some(bytes);
-        Ok(())
-    }
-    pub fn save(&mut self) -> Result<(), files::Error> {
-        self.draft.validate()?;
-        if !local_path(&self.path) {
-            return Err("El borrador requiere una ruta local".into());
-        }
-        let bytes = serde_json::to_vec_pretty(&self.draft)
-            .map_err(|_| "No se pudo codificar el borrador")?;
-        files::save_with_limit(&self.path, &bytes, self.saved.as_deref(), LIMIT)?;
-        self.saved = Some(bytes);
-        Ok(())
-    }
-}
-
 /// No se puede anonimizar un nombre arbitrario en prosa con garantías. Por eso
 /// la lista blanca exporta solo el módulo y la presencia de los campos privados.
 pub fn export_bytes(fields: &Fields, diagnostic: &Diagnostic) -> Result<Vec<u8>, files::Error> {
@@ -177,23 +115,6 @@ pub fn export(path: &Path, bytes: &[u8]) -> Result<(), files::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn step6_draft_conflict_preserves_private_text_and_names_the_document() {
-        let root = std::env::temp_dir().join(format!("vantare-step6-draft-{}", std::process::id()));
-        let mut first = Store::new(&root);
-        let mut stale = Store::new(&root);
-        first.draft.fields[0] = "texto guardado".into();
-        first.save().unwrap();
-        stale.draft.fields[0] = "mi borrador pendiente".into();
-        let error = stale.save().unwrap_err();
-        assert!(error.kind().is_conflict());
-        assert!(error.to_string().contains("report-draft.json"));
-        assert_eq!(stale.draft.fields[0], "mi borrador pendiente");
-        stale.reload().unwrap();
-        assert_eq!(stale.draft.fields[0], "texto guardado");
-        std::fs::remove_dir_all(root).unwrap();
-    }
 
     #[test]
     fn cleaning_a_report_field_keeps_formatting_and_drops_invisibles() {

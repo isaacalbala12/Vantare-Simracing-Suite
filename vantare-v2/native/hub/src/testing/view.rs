@@ -187,7 +187,7 @@ impl Testing {
             cx.notify();
             return;
         };
-        let fields = self.remote.read(cx).editor.diagnostic_fields(cx);
+        let fields = self.remote.read(cx).editor.fields_snapshot(cx);
         let bytes = match store::export_bytes(&fields, diagnostic) {
             Ok(bytes) => bytes,
             Err(error) => {
@@ -252,7 +252,7 @@ impl Testing {
             }
             body = body.child(orbit::text("Studio y Análisis: error no instrumentado. Ausencia de error no demuestra que una sección funcione.", 12.0, 400, orbit::ink_3(cx), cx));
             // La vista previa es exactamente el payload que genera el exportador.
-            let fields = self.remote.read(cx).editor.diagnostic_fields(cx);
+            let fields = self.remote.read(cx).editor.fields_snapshot(cx);
             if let Ok(bytes) = store::export_bytes(&fields, diagnostic) {
                 body = body
                     .child(orbit::eyebrow("Contenido del JSON exportable", cx))

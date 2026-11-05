@@ -14,7 +14,10 @@ Intake/capturas públicas dependen de #1602 y referencia PostHog de #1609.
 Ver [runbook vigente](../../../../docs/runbooks/testing-report-followup.md) y
 [handoff](../../../../docs/vantare-program/handoffs/testing-center.md).
 
-Las secciones siguientes conservan la evidencia y los límites de cortes anteriores.
+Las secciones siguientes son evidencia histórica de cortes anteriores. El formulario
+local y `report-draft.json` ya no se usan para editar ni guardar: sus datos válidos
+se importan una vez al borrador protegido de Services y los originales se archivan
+como `.imported`. El diagnóstico y su exportación manual siguen disponibles.
 
 ## Participación #1535
 
@@ -83,9 +86,9 @@ Este archivo es evidencia del worker, no otro handoff vivo del proyecto.
   normalmente el Hub si hay cambios. Recargar descarta las ediciones en memoria
   solo después de leer/validar el archivo. Vaciar formulario es una edición
   guardable; no borra archivos ajenos. Borrador inválido se conserva.
-- `testing-center/report-draft.json` bajo el directorio Hub. Schema 1, campos
-  cerrados, 2048/2048/2048/4096 bytes UTF-8, archivo de hasta 16 KiB. No se porta
-  el idempotency key remoto: no hay operación de envío.
+- Histórico: `testing-center/report-draft.json` guardaba el borrador local en claro
+  con schema 1 y límites 2048/2048/2048/4096 bytes UTF-8 (16 KiB de archivo).
+  Ahora solo se lee para importarlo a Services; nunca se vuelve a escribir.
 - Reutiliza `files::save_with_limit`: temporal exclusivo, `sync_all`, reemplazo
   atómico, lock cooperativo y comparación de bytes. Un editor externo debe
   respetar el lock; no se promete CAS frente a escritores que lo ignoran entre

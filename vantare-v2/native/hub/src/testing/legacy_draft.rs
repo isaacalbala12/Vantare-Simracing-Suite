@@ -35,6 +35,7 @@ pub(crate) struct LegacyDraft {
     selected: usize,
     pub(crate) fields: Fields,
     pub(crate) differing: Vec<&'static str>,
+    pub(crate) warning: Option<String>,
 }
 
 fn read(path: &Path, limit: u64) -> Result<Option<(Vec<u8>, SystemTime)>, String> {
@@ -154,15 +155,23 @@ fn differing(a: &Fields, b: &Fields) -> Vec<&'static str> {
 impl LegacyDraft {
     pub(crate) fn load(data: &Path) -> Result<Option<Self>, String> {
         let base = data.join("testing-center");
-        let sources: Vec<_> = [
-            editor(base.join("editor-draft.json"))?,
-            local(base.join("report-draft.json"))?,
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+        let mut warning = None;
+        let mut sources = Vec::new();
+        for result in [
+            editor(base.join("editor-draft.json")),
+            local(base.join("report-draft.json")),
+        ] {
+            match result {
+                Ok(Some(source)) => sources.push(source),
+                Ok(None) => {}
+                Err(error) => {
+                    eprintln!("{error}");
+                    warning = Some(error);
+                }
+            }
+        }
         if sources.is_empty() {
-            return Ok(None);
+            return warning.map_or(Ok(None), Err);
         }
         let selected = usize::from(sources.len() == 2 && sources[1].modified > sources[0].modified);
         let fields = sources[selected].fields.clone();
@@ -171,11 +180,20 @@ impl LegacyDraft {
         } else {
             Vec::new()
         };
+        if !differing.is_empty() {
+            eprintln!("borradores antiguos distintos en: {}", differing.join(","));
+        }
+        for source in &sources {
+            if let Some(module) = source.mapped_module {
+                eprintln!("módulo antiguo asignado a Sin determinar: {module}");
+            }
+        }
         Ok(Some(Self {
             sources,
             selected,
             fields,
             differing,
+            warning,
         }))
     }
 
@@ -189,9 +207,16 @@ impl LegacyDraft {
         for source in &self.sources {
             let target = source.path.with_extension("json.imported");
             let current = fs::symlink_metadata(&source.path).ok();
-            let target_free = matches!(fs::symlink_metadata(&target),
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound);
-            if !target_free
+            let target_matches = fs::symlink_metadata(&target).ok().is_some_and(|info| {
+                info.is_file()
+                    && !info.file_type().is_symlink()
+                    && files::read(&target, source.bytes.len() as u64)
+                        .ok()
+                        .as_deref()
+                        == Some(&source.bytes)
+            });
+            let target_free = matches!(fs::symlink_metadata(&target), Err(error) if error.kind() == std::io::ErrorKind::NotFound);
+            if !(target_free || target_matches)
                 || !current.as_ref().is_some_and(|info| {
                     info.is_file()
                         && !info.file_type().is_symlink()
@@ -210,21 +235,22 @@ impl LegacyDraft {
             let target = source.path.with_extension("json.imported");
             // hard_link crea el destino de forma exclusiva, incluso si otro
             // proceso lo crea después del preflight. Ningún original se pisa.
-            fs::hard_link(&source.path, &target)
-                .map_err(|_| "No se pudo archivar el borrador antiguo")?;
+            if !target.exists() {
+                fs::hard_link(&source.path, &target)
+                    .map_err(|_| "No se pudo archivar el borrador antiguo")?;
+            }
+            if !fs::symlink_metadata(&target)
+                .ok()
+                .is_some_and(|info| info.is_file() && !info.file_type().is_symlink())
+                || files::read(&target, source.bytes.len() as u64)
+                    .ok()
+                    .as_deref()
+                    != Some(&source.bytes)
+            {
+                return Err("El archivo archivado cambió; se conserva el original".into());
+            }
             fs::remove_file(&source.path)
                 .map_err(|_| "El archivo se creó, pero no se pudo retirar el original")?;
-        }
-        if !self.differing.is_empty() {
-            eprintln!(
-                "borradores antiguos distintos en: {}",
-                self.differing.join(",")
-            );
-        }
-        for source in &self.sources {
-            if let Some(module) = source.mapped_module {
-                eprintln!("módulo antiguo asignado a Sin determinar: {module}");
-            }
         }
         Ok(())
     }
@@ -326,7 +352,11 @@ mod tests {
         let local_path = base.join("report-draft.json");
         fs::write(
             &local_path,
-            serde_json::to_vec(&store::Draft::new()).unwrap(),
+            serde_json::to_vec(&store::Draft {
+                schema_version: 1,
+                ..store::Draft::default()
+            })
+            .unwrap(),
         )
         .unwrap();
         let time = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(100);
@@ -348,7 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn malformed_legacy_file_aborts_without_touching_either_original() {
+    fn malformed_legacy_file_leaves_corrupt_source_and_imports_valid_one() {
         let root = std::env::temp_dir().join(format!("vanta-13b-invalid-{}", std::process::id()));
         let base = root.join("testing-center");
         fs::create_dir_all(&base).unwrap();
@@ -357,12 +387,19 @@ mod tests {
         fs::write(&editor_path, b"invalid").unwrap();
         fs::write(
             &local_path,
-            serde_json::to_vec(&store::Draft::new()).unwrap(),
+            serde_json::to_vec(&store::Draft {
+                schema_version: 1,
+                ..store::Draft::default()
+            })
+            .unwrap(),
         )
         .unwrap();
-        assert!(LegacyDraft::load(&root).is_err());
+        let chosen = LegacyDraft::load(&root).unwrap().unwrap();
+        assert!(chosen.warning.is_some());
+        chosen.archive().unwrap();
         assert_eq!(fs::read(&editor_path).unwrap(), b"invalid");
-        assert!(local_path.exists());
+        assert!(!local_path.exists());
+        assert!(local_path.with_extension("json.imported").exists());
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -387,6 +424,68 @@ mod tests {
         assert!(chosen.archive().is_err());
         assert!(source.exists());
         assert_eq!(fs::read(&archive).unwrap(), b"previous private archive");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn identical_archive_from_interrupted_move_finishes_without_overwrite() {
+        let root =
+            std::env::temp_dir().join(format!("vanta-13b-interrupted-{}", std::process::id()));
+        let base = root.join("testing-center");
+        fs::create_dir_all(&base).unwrap();
+        let path = base.join("editor-draft.json");
+        fs::write(
+            &path,
+            serde_json::to_vec(&EditorFixture {
+                version: 1,
+                fields: &empty_fields(),
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        let chosen = LegacyDraft::load(&root).unwrap().unwrap();
+        fs::hard_link(&path, path.with_extension("json.imported")).unwrap();
+        chosen.archive().unwrap();
+        assert!(!path.exists());
+        assert!(path.with_extension("json.imported").exists());
+        assert!(LegacyDraft::load(&root).unwrap().is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn partial_archive_keeps_remaining_source_recoverable() {
+        let root = std::env::temp_dir().join(format!("vanta-13b-partial-{}", std::process::id()));
+        let base = root.join("testing-center");
+        fs::create_dir_all(&base).unwrap();
+        let editor = base.join("editor-draft.json");
+        let local = base.join("report-draft.json");
+        fs::write(
+            &editor,
+            serde_json::to_vec(&EditorFixture {
+                version: 1,
+                fields: &empty_fields(),
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            &local,
+            serde_json::to_vec(&store::Draft {
+                schema_version: 1,
+                ..store::Draft::default()
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        let chosen = LegacyDraft::load(&root).unwrap().unwrap();
+        fs::hard_link(&editor, editor.with_extension("json.imported")).unwrap();
+        fs::remove_file(&editor).unwrap();
+        assert!(chosen.archive().is_err());
+        let remaining = LegacyDraft::load(&root).unwrap().unwrap();
+        remaining.archive().unwrap();
+        assert!(!local.exists());
+        assert!(editor.with_extension("json.imported").exists());
+        assert!(local.with_extension("json.imported").exists());
         fs::remove_dir_all(root).unwrap();
     }
 }

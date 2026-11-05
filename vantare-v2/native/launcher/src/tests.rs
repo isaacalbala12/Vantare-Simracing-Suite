@@ -285,6 +285,13 @@ fn actual_lnk_is_read_without_modification_or_execution() {
             ..Default::default()
         },
     );
+    let actual = found.app("obs").expect("app");
+    assert!(actual.availability.launchable);
+    let executable = actual.executable.as_ref().expect("resolved app");
+    assert_eq!(
+        fs::canonicalize(executable).unwrap(),
+        fs::canonicalize(&target).unwrap()
+    );
     assert!(shortcuts::resolve(&[PathBuf::from(r"\\server\share\OBS.lnk")]).is_err());
 }
 

@@ -65,6 +65,37 @@ fn concurrent_owners_of_the_same_settings_are_rejected_until_the_worker_exits() 
     );
 }
 
+#[cfg(windows)]
+#[test]
+fn concurrent_lock_file_is_removed_after_worker_shutdown() {
+    let tree = Tree::new();
+    let owned = store(&tree.0.join("removed-lock"));
+    let mut active = waiting(&owned);
+    active.shutdown().unwrap();
+    assert!(!owned.path.with_extension("chain-lock").exists());
+    let mut next = waiting(&owned);
+    next.shutdown().unwrap();
+    assert!(!owned.path.with_extension("chain-lock").exists());
+}
+
+#[cfg(windows)]
+#[test]
+fn concurrent_lock_file_is_removed_when_the_worker_panics() {
+    let tree = Tree::new();
+    let owned = store(&tree.0.join("panicked-worker"));
+    let mut active = Chain::start(
+        owned.document.clone(),
+        owned.document.profiles[0].clone(),
+        |_| panic!("caída del scanner aislado"),
+        crate::processes::Shared::default(),
+        None,
+        &owned.path,
+    )
+    .unwrap();
+    assert!(active.shutdown().is_err());
+    assert!(!owned.path.with_extension("chain-lock").exists());
+}
+
 #[test]
 fn concurrent_owners_of_independent_settings_remain_independent() {
     let tree = Tree::new();
@@ -153,6 +184,8 @@ fn concurrent_cross_process_owner_releases_the_lock_after_a_crash() {
         .kill()
         .expect("simular caída solo del helper propio");
     helper.0.wait().expect("recoger helper propio");
+    #[cfg(windows)]
+    assert!(!owned.path.with_extension("chain-lock").exists());
     let mut after_crash = waiting(&owned);
     after_crash.shutdown().unwrap();
     assert!(

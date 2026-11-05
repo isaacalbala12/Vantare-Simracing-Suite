@@ -210,17 +210,13 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
         ..Default::default()
     });
     observed.snapshot(&snapshot);
-    let mut draft = Draft {
+    let draft = Draft {
         schema_version: 1,
+        fields: std::array::from_fn(|_| private.into()),
         ..Draft::default()
     };
-    draft.fields = std::array::from_fn(|_| private.into());
-    let diagnostic = Diagnostic::collect(
-        &temp.0,
-        Path::new("C:/Users/María/secret.txt"),
-        &observed,
-        Instant::now(),
-    );
+    let input = Path::new("C:/Users/María/secret.txt");
+    let diagnostic = Diagnostic::collect(&temp.0, input, &observed, Instant::now());
     let bytes = store::export_bytes(&export_fields(&draft), &diagnostic).expect("exportar");
     let text = String::from_utf8(bytes.clone()).expect("UTF-8");
     for secret in [

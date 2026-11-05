@@ -282,7 +282,7 @@ impl Hub {
         if !self.close_without_draft && self.remote.read(cx).editor.dirty {
             match self
                 .remote
-                .update(cx, |remote, cx| remote.begin_close_save(cx))
+                .update(cx, crate::services::view::Remote::begin_close_save)
             {
                 Some(true) => self.close_save_pending = true,
                 Some(false) => self.close_save_failed(cx),
@@ -1425,15 +1425,14 @@ impl Hub {
             cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
         calendar.update(cx, |calendar, _| calendar.attach_remote(remote.clone()));
         cx.observe(&remote, |this, remote, cx| {
-            if this.close_save_pending {
-                if let Some(saved) = remote.update(cx, |remote, _| remote.take_close_save_result())
-                {
-                    this.close_save_pending = false;
-                    if saved {
-                        this.close(cx);
-                    } else {
-                        this.close_save_failed(cx);
-                    }
+            if this.close_save_pending
+                && let Some(saved) = remote.update(cx, |remote, _| remote.take_close_save_result())
+            {
+                this.close_save_pending = false;
+                if saved {
+                    this.close(cx);
+                } else {
+                    this.close_save_failed(cx);
                 }
             }
             if this.capture.is_none() || this.live_capture_policy {

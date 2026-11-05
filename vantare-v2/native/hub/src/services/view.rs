@@ -152,6 +152,7 @@ enum LegacyStatus {
     Checked,
 }
 
+#[allow(clippy::struct_excessive_bools)] // Estado independiente de cuenta, conexión, informe y publicación.
 pub struct Remote {
     pub(crate) mail: mail::State,
     founders_language: founders::Language,
@@ -912,10 +913,10 @@ impl Remote {
         mut message: String,
         cx: &mut Context<Self>,
     ) {
-        if let Ok(Some(legacy)) = &self.legacy_draft {
-            if let Some(warning) = &legacy.warning {
-                message = format!("{message} · {warning}");
-            }
+        if let Ok(Some(legacy)) = &self.legacy_draft
+            && let Some(warning) = &legacy.warning
+        {
+            message = format!("{message} · {warning}");
         }
         if self.discard_pending {
             self.legacy_status = LegacyStatus::Checked;

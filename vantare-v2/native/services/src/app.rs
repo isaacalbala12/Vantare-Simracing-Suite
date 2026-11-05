@@ -874,18 +874,11 @@ impl App {
                 selection,
                 consent,
             } => {
-                let names = self
-                    .account
-                    .as_ref()
-                    .and_then(|a| a.profile())
-                    .map(|p| vec![p.name.clone()])
-                    .unwrap_or_default();
                 let input = crate::triage::Input {
                     title: &title,
                     body: &body,
                     selection,
                     consent,
-                    private_names: &names,
                 };
                 Ok(Reply::TriagePreview {
                     preview: self

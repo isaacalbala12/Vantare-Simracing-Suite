@@ -57,7 +57,7 @@ fn f7_system_projection_keeps_numbers_and_closed_values_only() {
 }
 
 #[test]
-fn f7_closed_session_metadata_is_independent_of_profile_names() {
+fn f7_closed_session_metadata_retains_its_catalog_keys() {
     let mut triage = Triage::default();
     triage.record(100, true, "report-send");
     let preview = triage
@@ -71,12 +71,6 @@ fn f7_closed_session_metadata_is_independent_of_profile_names() {
                     items: [Item::Session].into_iter().collect(),
                 },
                 consent: true,
-                private_names: &[
-                    "type".into(),
-                    "fingerprint".into(),
-                    "at".into(),
-                    "ServicesCommandFailure".into(),
-                ],
             },
             100,
             |system| Ok(observed_fixture(system)),
@@ -218,7 +212,6 @@ fn review_r7_f8_real_preview_is_preserved_for_combined_sql_admission() {
                     items: [Item::Session, Item::AppLog].into_iter().collect(),
                 },
                 consent: true,
-                private_names: &[],
             },
             100,
             |system| Ok(observed_fixture(system)),
@@ -318,14 +311,6 @@ fn review_r3_f4_structural_json_before_preview() {
     .expect("shared synthetic cases");
     for case in cases.as_array().expect("cases") {
         let raw = case["input"].as_str().expect("input");
-        let clean = redaction::clean(raw, &[]);
-        assert_eq!(
-            clean,
-            case["expected"].as_str().expect("expected"),
-            "{}",
-            case["name"]
-        );
-        assert_eq!(redaction::clean(&clean, &[]), clean);
         if raw.chars().count() <= 120 {
             let preview = prepared_text(raw);
             for secret in case["secrets"].as_array().expect("secrets") {
@@ -347,27 +332,13 @@ fn review_r4_f5_shared_export_fields_and_secret_property() {
     .expect("shared F5 fixtures");
     for case in cases.as_array().expect("cases") {
         let raw = case["input"].as_str().expect("input");
-        let clean = redaction::external_text(raw, &[], 120);
-        assert_eq!(
-            clean,
-            case["expected"].as_str().expect("expected"),
-            "{}",
-            case["name"]
-        );
-        assert_eq!(redaction::external_text(&clean, &[], 120), clean);
         for secret in case["secrets"].as_array().expect("secrets") {
             let secret = secret.as_str().expect("secret");
-            assert!(!clean.contains(secret), "{}", case["name"]);
             if raw.chars().count() <= 120 {
                 assert!(!prepared_text(raw).contains(secret), "{}", case["name"]);
             }
         }
     }
-    assert_eq!(redaction::external_text("a\n b\r\n c", &[], 4), "a b ");
-    assert_eq!(
-        redaction::external_text(&"x".repeat(500), &[], 120),
-        "x".repeat(120)
-    );
 }
 
 #[test]
@@ -451,14 +422,8 @@ fn review_r2_f1_json_representations_are_removed_before_preview() {
                 !prepared_text(&raw).contains(secret),
                 "label {label}, depth {depth}"
             );
-            let clean = redaction::clean(&raw, &[]);
-            assert_eq!(redaction::clean(&clean, &[]), clean);
         }
     }
-    assert_eq!(
-        redaction::clean(r"ERROR unicode=\u00e9 public=context", &[]),
-        r"ERROR unicode=\u00e9 public=context"
-    );
 }
 
 #[test]
@@ -496,10 +461,6 @@ fn review_p1_2_account_label_variants_are_removed_before_preview() {
             "account label: {label}"
         );
     }
-    assert_eq!(
-        redaction::clean("accountIdentity=public-context", &[]),
-        "accountIdentity=public-context"
-    );
 }
 
 #[test]
@@ -515,8 +476,6 @@ fn review_p1_3_foreign_unc_profile_is_removed_before_preview() {
             "foreign UNC profile survived"
         );
         assert!(value.contains("ServicesCommandFailure"));
-        let clean = redaction::clean(raw, &[]);
-        assert_eq!(redaction::clean(&clean, &[]), clean);
     }
 }
 
@@ -535,7 +494,6 @@ fn prepared_text(raw: &str) -> String {
                     items: [Item::AppLog, Item::Session].into_iter().collect(),
                 },
                 consent: true,
-                private_names: &[],
             },
             100,
             |system| Ok(observed_fixture(system)),
@@ -545,7 +503,7 @@ fn prepared_text(raw: &str) -> String {
 }
 
 #[test]
-fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
+fn review_r2_f3_private_text_is_removed_and_retries_exact_preview() {
     let title = "::1 ".repeat(30);
     let body = "::1 ".repeat(250).trim().to_owned();
     assert_eq!(title.chars().count(), 120);
@@ -562,7 +520,6 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
                     items: std::collections::BTreeSet::new(),
                 },
                 consent: true,
-                private_names: &[],
             },
             100,
             |system| Ok(observed_fixture(system)),
@@ -577,7 +534,7 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
             value.trim().chars().count()
         );
         assert!(!value.contains("::1"));
-        assert_eq!(value, redaction::REMOVED);
+        assert_eq!(value, LOCAL_TEXT_LABEL);
     }
     let expected =
         serde_json::to_vec(&report_v2(&preview.packet, "testers").unwrap()).expect("JSON");
@@ -649,7 +606,6 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
                         items: [Item::AppLog, Item::Session].into_iter().collect(),
                     },
                     consent: true,
-                    private_names: &[],
                 },
                 now,
                 |system| Ok(observed_fixture(system)),
@@ -738,7 +694,6 @@ fn prepared_context_uses_supplied_observations_and_capture_errors_clear_consent(
             items: [Item::System].into_iter().collect(),
         },
         consent: true,
-        private_names: &[],
     };
     let preview = triage
         .prepare_with_capture("account", "testers", input(), 100, |system| {

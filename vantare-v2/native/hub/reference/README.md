@@ -182,3 +182,12 @@ reconciliar estas referencias con las entregas posteriores de otros workers.
 Notion no se leyó ni actualizó, por la excepción explícita de Isaac; su
 seguimiento no se declara completado. La issue técnica es
 [#1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430).
+
+## VANTA-135 · Referencias Strategy retiradas
+
+Datos y Automático dejan de ser referencia por las decisiones D1, D2 y D4.
+Las rutas de captura de Datos se retiran; sus PNG quedan como archivo histórico.
+Las demás referencias se conservan. Las diferencias de navegación por retirar
+la pestaña y su botón se registran como cambio intencionado; no se regeneran
+referencias para ocultarlo. La extracción de la demo se verifica después contra
+las capturas anteriores a ese movimiento.

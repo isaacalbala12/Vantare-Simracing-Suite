@@ -323,7 +323,7 @@ impl Strategy {
                         cx,
                     ))
                     .child(
-                        super::datos::tight_title(state.title(), 44.0, 400, 2.2, cx)
+                        tight_title(state.title(), 44.0, 400, 2.2, cx)
                             .line_height(px(52.8))
                             .relative()
                             .top(px(2.0)),
@@ -409,10 +409,7 @@ cálculo",
             ),
             (
                 "Fuente de datos",
-                format!(
-                    "{} sesión seleccionada",
-                    self.data.selected_revisions().len()
-                ),
+                format!("{} sesión seleccionada", self.source_revisions.len()),
             ),
             (
                 "Prepara tu equipo",
@@ -472,10 +469,7 @@ cálculo",
                 div().flex().children(
                     [
                         ("Evento", format!("{laps} vueltas")),
-                        (
-                            "Fuente de datos",
-                            self.data.selected_revisions().len().to_string(),
-                        ),
+                        ("Fuente de datos", self.source_revisions.len().to_string()),
                         (
                             "Prepara tu equipo",
                             self.current_event()
@@ -514,7 +508,7 @@ cálculo",
         let action = if loading {
             secondary_action("strategy-plan-retry", "Cancelar", cx)
         } else {
-            super::datos::primary_action("strategy-plan-retry", "Reintentar cálculo", cx)
+            primary_action("strategy-plan-retry", "Reintentar cálculo", cx)
         };
         div()
             .flex()
@@ -736,25 +730,19 @@ cálculo",
                             .is_some_and(|outcome| outcome.result.feasible),
                         |actions| {
                             actions.child(
-                                super::datos::primary_action(
-                                    "strategy-accept-plan",
-                                    "Aceptar propuesta",
-                                    cx,
-                                )
-                                .h(px(40.0))
-                                .w(px(140.0))
-                                .rounded(px(14.0))
-                                .when(self.capture_demo.is_none(), |button| {
-                                    button.opacity(orbit::DISABLED)
-                                })
-                                .on_click(cx.listener(
-                                    |this, _, _, cx| {
+                                primary_action("strategy-accept-plan", "Aceptar propuesta", cx)
+                                    .h(px(40.0))
+                                    .w(px(140.0))
+                                    .rounded(px(14.0))
+                                    .when(self.capture_demo.is_none(), |button| {
+                                        button.opacity(orbit::DISABLED)
+                                    })
+                                    .on_click(cx.listener(|this, _, _, cx| {
                                         if this.capture_demo.is_some() {
                                             this.status = "Propuesta demo aceptada".into();
                                             cx.notify();
                                         }
-                                    },
-                                )),
+                                    })),
                             )
                         },
                     ),
@@ -811,7 +799,7 @@ cálculo",
                             .on_click(cx.listener(|this, _, _, cx| this.reset_plan_edit(cx))),
                     )
                     .child(
-                        super::datos::primary_action(recalculate_id, recalculate_label, cx)
+                        primary_action(recalculate_id, recalculate_label, cx)
                             .h(px(40.0))
                             .when(!self.edit_dirty || self.running, |button| {
                                 button.bg(rgb(0x008b_8889)).border_color(rgb(0x008b_8889))
@@ -1139,7 +1127,7 @@ pub(super) fn edit_heading(title: &str, cx: &gpui::App) -> Div {
             cx,
         ))
         .child(
-            super::datos::tight_title(title, 34.0, 400, 2.0, cx)
+            tight_title(title, 34.0, 400, 2.0, cx)
                 .line_height(px(40.8))
                 .relative()
                 .top(px(2.0)),
@@ -1461,6 +1449,27 @@ pub(super) fn secondary_action(
             orbit::ink_2(cx),
             cx,
         ))
+}
+
+fn primary_action(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
+    orbit::primary_button(id, "", cx)
+        .aria_label(label.to_owned())
+        .child(orbit::text(
+            label.to_owned(),
+            12.0,
+            600,
+            cx.global::<crate::orbit::theme::Theme>().primary_ink,
+            cx,
+        ))
+}
+
+// Orbit no expone tracking negativo; el margen mantiene la escala tipográfica de v5.
+fn tight_title(title: &str, size: f32, weight: u16, tracking: f32, cx: &gpui::App) -> Div {
+    div().flex().children(title.chars().map(|letter| {
+        orbit::text(letter.to_string(), size, weight, orbit::ink(cx), cx)
+            .flex_none()
+            .mr(px(-tracking))
+    }))
 }
 
 #[cfg(test)]

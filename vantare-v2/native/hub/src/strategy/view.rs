@@ -101,9 +101,9 @@ fn garage_veil_visible(page: Page) -> bool {
 }
 fn garage_background_kind(page: Page) -> Option<GarageBackground> {
     match page {
-        Page::Editor(EditorTab::Datos | EditorTab::Plan | EditorTab::Revisiones)
-        | Page::Stints
-        | Page::Stops => Some(GarageBackground::Detail),
+        Page::Editor(EditorTab::Plan | EditorTab::Revisiones) | Page::Stints | Page::Stops => {
+            Some(GarageBackground::Detail)
+        }
         Page::Editor(EditorTab::Carrera) => Some(GarageBackground::Career),
         Page::Assistant(_) => Some(GarageBackground::Standard),
         _ => None,
@@ -680,11 +680,6 @@ impl Strategy {
                 f32::from(window.viewport_size().height),
                 cx,
             ),
-            Page::Editor(EditorTab::Datos)
-                if self.data.sources_open() && self.capture_demo.is_some() =>
-            {
-                self.capture_sources_page(f32::from(window.viewport_size().height), cx)
-            }
             Page::Editor(tab) => {
                 self.editor_page(tab, f32::from(window.viewport_size().height), cx)
             }
@@ -767,7 +762,6 @@ mod tests {
             Page::Collection,
             Page::Assistant(AssistantStep::Inicio),
             Page::Editor(EditorTab::Carrera),
-            Page::Editor(EditorTab::Datos),
             Page::Editor(EditorTab::Revisiones),
         ] {
             assert!(!garage_veil_visible(page));
@@ -785,7 +779,6 @@ mod tests {
             Some(GarageBackground::Career)
         );
         for page in [
-            Page::Editor(EditorTab::Datos),
             Page::Editor(EditorTab::Plan),
             Page::Editor(EditorTab::Revisiones),
             Page::Stints,

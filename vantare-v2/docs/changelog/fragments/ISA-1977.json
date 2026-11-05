@@ -2,12 +2,14 @@
   "schemaVersion": 1,
   "testing": [
     "Crear una carrera manual desde el asistente y comprobar que abre Carrera.",
-    "Abrir y guardar un documento importado con proyección: debe conservar sus bytes y no calcular ignorando la proyección."
+    "Abrir y guardar un documento importado con proyección: debe conservar sus bytes y no calcular ignorando la proyección.",
+    "Comprobar que no aparecen Datos ni un botón que lleve a esa pestaña; las capturas retiradas ya no son rutas válidas."
   ],
-  "summary": "Strategy conserva la creación manual y retira la opción Automático, que aún no podía preparar carreras con sesiones nativas.",
+  "summary": "Strategy conserva la creación manual y retira Automático y la pestaña Datos, que todavía no recibían sesiones nativas para el cálculo.",
   "technicalNotes": [
     "Se retiran la preparación automática y su estado del asistente.",
-    "Los documentos importados con proyección siguen abriéndose y guardándose sin cambios; el cálculo manual conserva su rechazo explícito."
+    "Los documentos importados con proyección siguen abriéndose y guardándose sin cambios; el cálculo manual conserva su rechazo explícito.",
+    "Se retiran las correcciones por familia y su contrato Go; el documento completo y la validación de proyecciones importadas permanecen."
   ],
   "type": "change",
   "knownLimitations": [

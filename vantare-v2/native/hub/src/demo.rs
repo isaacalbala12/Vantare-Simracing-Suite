@@ -2,11 +2,9 @@
 use crate::Section;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use vantare_strategy::application::CorrectionSource;
 
 const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
-const STRATEGY_REVIEW: &str = include_str!("../reference/fixtures/strategy-review-demo.json");
 const QUALITY_CAPTURES: &[&str] = &[
     "onboarding-0",
     "onboarding-1",
@@ -41,10 +39,6 @@ const QUALITY_CAPTURES: &[&str] = &[
     "studio-en-vivo",
 ];
 const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
-    "strategy-v5-datos-vacio",
-    "strategy-v5-datos-fuentes",
-    "strategy-v5-datos-vueltas",
-    "strategy-v5-datos-avanzado",
     "strategy-v5-plan-reposo",
     "strategy-v5-plan-cargando",
     "strategy-v5-plan-parcial",
@@ -461,20 +455,6 @@ pub struct CaptureState {
     pub strategy_page: Option<CaptureStrategyPage>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct StrategyReviewDemo {
-    pub label: String,
-    pub source: CorrectionSource,
-}
-
-pub fn strategy_review_demo() -> Result<StrategyReviewDemo, String> {
-    let mut demo: StrategyReviewDemo = serde_json::from_str(STRATEGY_REVIEW)
-        .map_err(|error| format!("fixture demo Strategy: {error}"))?;
-    demo.source.revision.base_digest = demo.source.base.digest()?;
-    Ok(demo)
-}
-
 // Escena de pass-27: mismos valores que recorded-strategy-harness y wails-runtime-mock.
 // Solo new_demo carga este DTO; la aplicación normal conserva la salida del solver.
 #[derive(Clone, Debug, Deserialize)]
@@ -552,10 +532,6 @@ pub enum CaptureSettingsPage {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureStrategyPage {
-    DataEmpty,
-    DataSources,
-    DataLaps,
-    DataAdvanced,
     PlanIdle,
     PlanLoading,
     PlanPartial,
@@ -581,16 +557,6 @@ fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
         "strategy-v5-asistente-sesiones" => Some(CaptureStrategyPage::AssistantSesiones),
         "strategy-v5-carrera" => Some(CaptureStrategyPage::Career),
         "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
-        "strategy-datos-vacio" | "strategy-v5-datos-vacio" => Some(CaptureStrategyPage::DataEmpty),
-        "strategy-datos-fuentes" | "strategy-v5-datos-fuentes" => {
-            Some(CaptureStrategyPage::DataSources)
-        }
-        "strategy-datos-vueltas" | "strategy-v5-datos-vueltas" => {
-            Some(CaptureStrategyPage::DataLaps)
-        }
-        "strategy-datos-avanzado" | "strategy-v5-datos-avanzado" => {
-            Some(CaptureStrategyPage::DataAdvanced)
-        }
         "strategy-plan-reposo" | "strategy-v5-plan-reposo" => Some(CaptureStrategyPage::PlanIdle),
         "strategy-plan-cargando" | "strategy-v5-plan-cargando" => {
             Some(CaptureStrategyPage::PlanLoading)
@@ -934,10 +900,6 @@ mod tests {
             Some(CaptureStrategyPage::AssistantInicio)
         );
         for (name, page) in [
-            ("strategy-datos-vacio", CaptureStrategyPage::DataEmpty),
-            ("strategy-datos-fuentes", CaptureStrategyPage::DataSources),
-            ("strategy-datos-vueltas", CaptureStrategyPage::DataLaps),
-            ("strategy-datos-avanzado", CaptureStrategyPage::DataAdvanced),
             ("strategy-plan-reposo", CaptureStrategyPage::PlanIdle),
             ("strategy-plan-cargando", CaptureStrategyPage::PlanLoading),
             ("strategy-plan-parcial", CaptureStrategyPage::PlanPartial),
@@ -1006,18 +968,15 @@ mod tests {
     }
 
     #[test]
-    fn strategy_review_demo_uses_a_valid_exact_analysis_source() {
-        let demo = strategy_review_demo().expect("fuente demo válida");
-        assert_eq!(demo.label, "2026-09-15 · Imola Race");
-        assert_eq!(
-            demo.source.revision.base_digest,
-            demo.source.base.digest().unwrap()
-        );
-        assert_eq!(
-            demo.source.revision.session_id,
-            demo.source.validity.session_id
-        );
-        assert_eq!(demo.source.validity.laps.len(), 25);
+    fn r9_retired_data_screens_are_not_capture_routes() {
+        for name in [
+            "strategy-datos-vacio",
+            "strategy-v5-datos-fuentes",
+            "strategy-v5-datos-vueltas",
+            "strategy-v5-datos-avanzado",
+        ] {
+            assert!(CaptureState::parse(name).is_err(), "{name}");
+        }
     }
 
     #[test]

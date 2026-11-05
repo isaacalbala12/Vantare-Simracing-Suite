@@ -374,7 +374,7 @@ fn r9_imported_projection_is_preserved_and_still_rejected_by_manual_calculation(
             {"sessionId":"sess-125", "included":true}
         ]});
         let mut document = Document::empty("2026-09-30T00:00:00Z").expect("document");
-        document.append_event(&event).expect("automatic event");
+        document.append_event(&event).expect("imported event");
         let original = document.bytes().to_vec();
         this.editor.document = Some(document);
         this.load_fields(cx);

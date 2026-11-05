@@ -16,10 +16,7 @@ use crate::{
     orbit::{self, button},
 };
 use vantare_strategy::{
-    application::{
-        self, AnalysisRevisionRef, CorrectionSource, EditedPlan, PreparedFamilyCorrection,
-        SourceStatus,
-    },
+    application::{self, AnalysisRevisionRef, EditedPlan, SourceStatus},
     document::{Document, new_event},
     solver::{
         self, Budget, Discretization, Formation, Input, PitCost, Rules, Scalar, SolverOutcome,
@@ -28,7 +25,6 @@ use vantare_strategy::{
 
 #[path = "strategy/asistente.rs"]
 mod assistant;
-mod datos;
 #[path = "strategy/editor.rs"]
 mod editor_view;
 mod parada;
@@ -193,8 +189,6 @@ pub struct Strategy {
     last_input: Option<Input>,
     manual_source_status: SourceStatus,
     source_revisions: Vec<AnalysisRevisionRef>,
-    data: datos::State,
-    correction_reason: Entity<orbit::Input>,
     edited_plan: Option<EditedPlan>,
     baseline_edited_plan: Option<EditedPlan>,
     baseline_result: Option<SolverOutcome>,
@@ -243,10 +237,6 @@ impl Strategy {
             return strategy;
         };
         strategy.page = match page {
-            crate::demo::CaptureStrategyPage::DataEmpty
-            | crate::demo::CaptureStrategyPage::DataSources
-            | crate::demo::CaptureStrategyPage::DataLaps
-            | crate::demo::CaptureStrategyPage::DataAdvanced => Page::Editor(EditorTab::Datos),
             crate::demo::CaptureStrategyPage::PlanIdle
             | crate::demo::CaptureStrategyPage::PlanLoading
             | crate::demo::CaptureStrategyPage::PlanPartial
@@ -285,19 +275,21 @@ impl Strategy {
         }
         if matches!(
             page,
-            crate::demo::CaptureStrategyPage::DataSources
-                | crate::demo::CaptureStrategyPage::DataLaps
-                | crate::demo::CaptureStrategyPage::DataAdvanced
-                | crate::demo::CaptureStrategyPage::PlanIdle
+            crate::demo::CaptureStrategyPage::PlanIdle
                 | crate::demo::CaptureStrategyPage::PlanLoading
                 | crate::demo::CaptureStrategyPage::PlanPartial
                 | crate::demo::CaptureStrategyPage::PlanError
                 | crate::demo::CaptureStrategyPage::PlanCalculated
                 | crate::demo::CaptureStrategyPage::Stints
                 | crate::demo::CaptureStrategyPage::Stops
-        ) && let Err(error) = strategy.load_capture_review(page)
-        {
-            strategy.error = Some(error.into());
+        ) {
+            // Only the reference row rendered by the remaining plan captures.
+            strategy.source_revisions = vec![AnalysisRevisionRef {
+                session_id: "imola-race".into(),
+                base_digest: "0".repeat(64),
+                revision_id: "a".repeat(64),
+                snapshot_id: "b".repeat(64),
+            }];
         }
         if matches!(
             page,
@@ -312,24 +304,6 @@ impl Strategy {
             strategy.error = Some(error.into());
         }
         strategy
-    }
-
-    fn load_capture_review(
-        &mut self,
-        page: crate::demo::CaptureStrategyPage,
-    ) -> Result<(), String> {
-        let mut demo = crate::demo::strategy_review_demo()?;
-        demo.source.validity.laps.truncate(5);
-        let revisions = vec![demo.source.revision.clone()];
-        self.set_review_source(demo.label, demo.source, revisions, &[])?;
-        let (selected_lap, advanced, sources_open) = match page {
-            crate::demo::CaptureStrategyPage::DataSources => (None, false, true),
-            crate::demo::CaptureStrategyPage::DataAdvanced => (None, true, false),
-            _ => (None, false, false),
-        };
-        self.data
-            .set_capture_view(0, selected_lap, advanced, sources_open);
-        Ok(())
     }
 
     fn load_capture_plan(&mut self, page: crate::demo::CaptureStrategyPage) -> Result<(), String> {
@@ -419,10 +393,6 @@ impl Strategy {
                 input
             })
             .collect();
-        let correction_reason =
-            cx.new(|cx| orbit::Input::multiline(String::new(), "Motivo de corrección", cx));
-        cx.observe(&correction_reason, |_, _, cx| cx.notify())
-            .detach();
         let mut this = Self {
             editor,
             directory,
@@ -451,8 +421,6 @@ impl Strategy {
             last_input: None,
             manual_source_status,
             source_revisions: Vec::new(),
-            data: datos::State::default(),
-            correction_reason,
             edited_plan: None,
             baseline_edited_plan: None,
             baseline_result: None,
@@ -488,20 +456,6 @@ impl Strategy {
         self.edit_dirty = false;
         self.edit_cost_seconds = None;
         self.edit_error = None;
-    }
-
-    pub(super) fn set_review_source(
-        &mut self,
-        label: String,
-        source: CorrectionSource,
-        selected_revisions: Vec<AnalysisRevisionRef>,
-        saved: &[PreparedFamilyCorrection],
-    ) -> Result<(), String> {
-        self.data.load(label, source, selected_revisions, saved)?;
-        self.invalidate();
-        self.error = None;
-        self.source_revisions = self.data.selected_revisions().to_vec();
-        Ok(())
     }
 
     fn ensure_clean_form(&self) -> Result<(), String> {

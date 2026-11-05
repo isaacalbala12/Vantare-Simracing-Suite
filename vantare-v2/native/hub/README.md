@@ -424,7 +424,7 @@ No hay publicación, Discord, zonas distintas de UTC ni recordatorios.
 | Testing Center | Editor del servicio de reportes y diagnóstico local separado; [contrato](src/testing/README.md). |
 | Cuenta / licencias / roadmap | DTO/IPC al supervisor; sin red/tokens; inputs de email transitorios; `src/services`. |
 | Launcher | Catálogo, perfiles, cadenas y política de cierre; [contrato](src/launcher/README.md). |
-| Strategy | Documento y solver local, datos/revisiones y editor; `src/strategy.rs`. |
+| Strategy | Documento y solver local, revisiones y editor; `src/strategy.rs`. |
 | Análisis | Lectura acotada y cancelable mediante el helper de storage; `src/analysis`. |
 | Engineer | Report v2 con frescura, entregas observadas y ajustes para su propietario; [contrato](src/engineer/MODEL.md). |
 

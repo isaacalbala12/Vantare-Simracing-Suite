@@ -2,7 +2,7 @@
 
 El crate `vantare-strategy` pertenece al workspace `native/` y Hub lo importa
 como dependencia. Contiene documentos, preparación manual,
-correcciones, repositorio local, edición y cálculo sin runtime ni GPUI.
+repositorio local, edición y cálculo sin runtime ni GPUI.
 El cálculo con presupuesto numérico tiene un orden determinista; un deadline
 real puede interrumpirlo en distintos puntos según la carga del equipo.
 
@@ -54,8 +54,10 @@ La preparación automática se ha retirado: Análisis nativo aún no produce sus
 entradas y el resultado anterior no alimentaba al cálculo. Volverá con #1980,
 bloqueada por VANTA-133 / #1974. Los documentos Go con proyección siguen
 abriéndose y guardándose sin modificar sus bytes; el cálculo manual los rechaza.
-Las correcciones de familias comprueban precondiciones e intervalos temporales,
-se preparan contra una revisión exacta y se reaplican sin cambiar otras familias.
+La pestaña Datos y el contrato de correcciones heredado de Go se han retirado.
+El futuro contrato de entrada de Análisis nativo se define en #1980, dependiente
+de VANTA-133 / #1974. Se conserva la validación de proyecciones en documentos
+2.1 importados, sin inventar una conexión nativa ni cambiar sus bytes.
 `recalculate_edited_plan` valida y reproduce stints/paradas editados.
 
 El repositorio local guarda drafts y revisiones con generaciones, hash y

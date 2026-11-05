@@ -1293,15 +1293,6 @@ impl Strategy {
                     .filter(|session| session["included"] == true)
                     .count()
             });
-        let browse =
-            super::editor_view::white_button("strategy-browse-sessions", "Buscar sesiones", cx)
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.page = Page::Editor(EditorTab::Datos);
-                    this.error = None;
-                    cx.notify();
-                }))
-                .w(px(128.0))
-                .h(px(40.0));
         div()
             .flex()
             .flex_col()
@@ -1318,7 +1309,7 @@ impl Strategy {
                     .flex()
                     .items_center()
                     .gap(px(10.0))
-                    .child(orbit::text("Telemetría registrada", 17.0, 600, orbit::ink(cx), cx))
+                    .child(orbit::text("Sesiones guardadas en el documento", 17.0, 600, orbit::ink(cx), cx))
                     .child(
                         div()
                             .px(px(8.0))
@@ -1334,13 +1325,12 @@ impl Strategy {
                     ),
             )
             .child(orbit::text(
-                "Los originales se conservan. Abre hasta cuatro sesiones para revisarlas y elige después cuáles utilizar.",
+                "Configura los valores de la carrera a mano. La conexión con las sesiones de Análisis estará disponible más adelante.",
                 15.0,
                 400,
                 orbit::ink_2(cx),
              cx))
             .child(orbit::text("Modo manual · no requiere telemetría", 13.0, 500, orbit::ink_3(cx), cx))
-            .child(browse)
     }
 
     fn choice_card(

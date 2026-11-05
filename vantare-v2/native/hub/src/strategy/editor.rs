@@ -211,18 +211,16 @@ fn career_row(
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum EditorTab {
     Carrera,
-    Datos,
     Plan,
     Revisiones,
 }
 
 impl EditorTab {
-    pub(super) const ALL: [Self; 4] = [Self::Carrera, Self::Datos, Self::Plan, Self::Revisiones];
+    pub(super) const ALL: [Self; 3] = [Self::Carrera, Self::Plan, Self::Revisiones];
 
     pub(super) fn label(self) -> &'static str {
         match self {
             Self::Carrera => "Carrera",
-            Self::Datos => "Datos",
             Self::Plan => "Plan",
             Self::Revisiones => "Revisiones",
         }
@@ -260,7 +258,6 @@ impl Strategy {
         let content = match tab {
             EditorTab::Carrera if self.edit_mode => self.edit_workspace(cx),
             EditorTab::Carrera => self.career_overview(cx),
-            EditorTab::Datos => div().flex().flex_col().child(self.data_page(cx)),
             EditorTab::Plan => div().flex().flex_col().child(match self.page {
                 Page::Stints => self.stint_editor_page(cx),
                 Page::Stops => self.pit_editor_page(cx),
@@ -273,11 +270,10 @@ impl Strategy {
             .gap(px(8.0))
             .border_b_1()
             .border_color(rgba(orbit::line(cx)));
-        for (index, item) in EditorTab::ALL.into_iter().enumerate() {
+        for item in EditorTab::ALL {
             let selected = item == tab;
             let id = match item {
                 EditorTab::Carrera => "strategy-tab-career",
-                EditorTab::Datos => "strategy-tab-data",
                 EditorTab::Plan => "strategy-tab-plan",
                 EditorTab::Revisiones => "strategy-tab-revisions",
             };
@@ -289,7 +285,11 @@ impl Strategy {
                     .aria_selected(selected)
                     .tab_index(0)
                     .h(px(42.0))
-                    .w(px([104.0, 90.0, 95.0, 129.0][index]))
+                    .w(px(match item {
+                        EditorTab::Carrera => 104.0,
+                        EditorTab::Plan => 95.0,
+                        EditorTab::Revisiones => 129.0,
+                    }))
                     .px(px(24.0))
                     .flex()
                     .items_center()
@@ -723,14 +723,7 @@ impl Strategy {
                                                      cx)),
                                             )
                                             .child(
-                                                secondary_button("strategy-review-data", "Revisar", 14.0, cx)
-                                                    .on_click(cx.listener(|this, _, _, cx| {
-                                                        this.page = Page::Editor(EditorTab::Datos);
-                                                        this.error = None;
-                                                        cx.notify();
-                                                    }))
-                                                    .w(px(112.0))
-                                                    .h(px(46.0)),
+                                                div(),
                                             ),
                                     )
                                     .child(div().h(px(1.0)).bg(rgba(orbit::line(cx))))

@@ -50,18 +50,24 @@ sus afirmaciones de ausencia de envío describen aquel corte anterior.
 
 El formulario principal pertenece a `Remote.editor`: guarda un solo borrador
 protegido mediante Services, prepara una vista previa y exige consentimiento.
-Al iniciar, el Hub lee una vez `editor-draft.json` y `report-draft.json` antiguos.
-Si ambos existen, elige el de mtime más reciente (empate: editor). Tras confirmar
-el mismo contenido en Services, mueve ambos originales a `.json.imported` sin
-sobrescribir archivos existentes. Los textos diferentes se registran solo por
-nombre de campo. `Workshop` y `Notificaciones` se importan como `unknown` y se
-registra solo el nombre del módulo. Un archivo inválido o cambiado se conserva.
-Los `.imported` conservan los bytes privados originales en el PC. Si ya existe
-un borrador protegido distinto, se muestra ese borrador y los JSON antiguos se
-dejan intactos para revisión; nunca se sobrescribe el protegido automáticamente.
-El cierre normal exige guardar cualquier edición pendiente en Services; no crea
-otra copia en claro. El panel local conserva el diagnóstico y la exportación
-manual sin prosa privada; ya no ofrece un segundo formulario de borrador.
+Al iniciar, el Hub lee `editor-draft.json` y `report-draft.json` antiguos. Elige
+el válido más reciente (empate: editor); si otro está corrupto, lo deja intacto
+y avisa. Tras confirmar el mismo contenido en Services, archiva los originales
+en `.json.imported` sin sobrescribir archivos ajenos. Si ya hay un borrador
+protegido distinto, ese borrador manda y también se archivan los antiguos. Un
+descarte archiva los antiguos para que no reaparezcan al arrancar. Las diferencias
+se registran solo por nombre de campo; `Workshop` y `Notificaciones` pasan a
+`unknown` y el log registra solo el nombre del módulo.
+
+Los `.imported` contienen los bytes originales en claro en el PC del usuario,
+como los JSON previos; el orquestador aceptó conservarlos para evitar pérdida de
+datos. Si el archivado falla, el protegido se carga igualmente y el aviso se
+muestra una vez. El cierre normal intenta guardar las ediciones pendientes en
+Services; si falla o Services no responde en unos cinco segundos, ofrece
+«Reintentar» o «Cerrar sin guardar». Live y el reinicio por actualización omiten
+solo ese guardado y conservan el resto de comprobaciones del cierre. El apagado
+de Windows pasa por el callback de quit de GPUI, sin `on_window_should_close`.
+El panel local conserva el diagnóstico y la exportación manual sin prosa privada.
 Los inputs actuales vienen de Orbit y admiten texto multilínea/IME; no se usa el
 alias histórico del Launcher. La validación local no demuestra un envío real.
 
@@ -82,17 +88,15 @@ Este archivo es evidencia del worker, no otro handoff vivo del proyecto.
 ## Flujo y privacidad
 
 - Navegación `Testing Center`: informe privado, diagnóstico y exportación JSON.
-- Cuatro campos del informe y sección afectada. Guardado explícito y al cerrar
-  normalmente el Hub si hay cambios. Recargar descarta las ediciones en memoria
-  solo después de leer/validar el archivo. Vaciar formulario es una edición
-  guardable; no borra archivos ajenos. Borrador inválido se conserva.
+- En aquel corte había cuatro campos y sección afectada en un formulario local.
+  El guardado local, la recarga y el vaciado descritos entonces fueron retirados;
+  ahora el borrador protegido de Services es el único editor activo.
 - Histórico: `testing-center/report-draft.json` guardaba el borrador local en claro
   con schema 1 y límites 2048/2048/2048/4096 bytes UTF-8 (16 KiB de archivo).
   Ahora solo se lee para importarlo a Services; nunca se vuelve a escribir.
-- Reutiliza `files::save_with_limit`: temporal exclusivo, `sync_all`, reemplazo
-  atómico, lock cooperativo y comparación de bytes. Un editor externo debe
-  respetar el lock; no se promete CAS frente a escritores que lo ignoran entre
-  la comparación y el rename. Un lock tras un crash exige revisión manual.
+- El guardado local de aquel corte usaba `files::save_with_limit` con temporal,
+  `sync_all`, reemplazo atómico, lock y comparación de bytes. Esa ruta de escritura
+  del borrador ya no está activa.
 - Diagnóstico bajo demanda, hashes fuera del hilo UI. Solo nueve nombres de
   binarios junto al Hub: Hub, supervisor, núcleo, overlays, Engineer, storage,
   Workshop y las grabadoras LMU/ACC.

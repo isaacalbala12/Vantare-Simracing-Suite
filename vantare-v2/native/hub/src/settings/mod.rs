@@ -1,5 +1,5 @@
 //! Ajustes compone Orbit; únicamente escribe preferencias con contrato nativo.
-use super::Hub;
+use super::{ForcedClose, Hub};
 use crate::{
     orbit,
     testing::diagnostic::{Diagnostic, Module, Observed, SectionError},
@@ -516,8 +516,7 @@ impl Hub {
 
     fn settings_restart(&mut self, cx: &mut Context<Self>) {
         if std::env::var_os("VANTARE_BETA_ROOT").is_some() {
-            self.restart_requested = true;
-            self.close(cx);
+            self.forced_close(ForcedClose::Restart, cx);
         } else {
             self.settings.status = Some("Instalación beta no disponible".into());
             cx.notify();

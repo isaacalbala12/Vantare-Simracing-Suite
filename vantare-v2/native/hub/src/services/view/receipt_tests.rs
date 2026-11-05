@@ -140,12 +140,24 @@ fn archive_failure_still_loads_protected_draft_and_keeps_both_files() {
                 cx,
             );
             assert_eq!(remote.editor.fields(cx).action_text, "protected");
-            assert!(remote.editor.message.contains("conserva"));
+            assert!(remote.editor.message.contains(".imported distinto"));
             assert!(path.exists());
             assert_eq!(
                 std::fs::read(path.with_extension("json.imported")).unwrap(),
                 b"unrelated archive"
             );
+            remote.report_revision = Some(remote.editor.revision);
+            remote.imported_draft(
+                Some(super::super::protocol::report_document::Draft {
+                    schema_version: 1,
+                    idempotency_key: "draft_fixture".into(),
+                    fields: remote.editor.fields(cx),
+                    screenshots: Vec::new(),
+                }),
+                "cargado otra vez".into(),
+                cx,
+            );
+            assert!(!remote.editor.message.contains(".imported distinto"));
         });
         crate::quit_headless_test(cx);
     });
@@ -169,13 +181,20 @@ fn pending_discard_and_existing_queue_do_not_import_legacy_draft() {
             remote.report_revision = Some(remote.editor.revision);
             remote.imported_draft(None, "loaded".into(), cx);
             assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(matches!(remote.legacy_status, LegacyStatus::Unchecked));
             remote.discard_pending = true;
             remote.imported_draft(None, "discarded".into(), cx);
             assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
-            assert!(path.exists());
+            assert!(!path.exists());
+            assert!(path.with_extension("json.imported").exists());
         });
         crate::quit_headless_test(cx);
     });
+    assert!(
+        crate::testing::legacy_draft::LegacyDraft::load(&cleanup)
+            .unwrap()
+            .is_none()
+    );
     std::fs::remove_dir_all(cleanup).unwrap();
 }
 
@@ -190,25 +209,27 @@ fn protected_save_failure_leaves_legacy_source_intact() {
     std::fs::write(&path, &original).unwrap();
     let cleanup = root.clone();
     gpui_platform::headless().run(move |cx| {
-        let (send, _requests) = mpsc::sync_channel(8);
+        let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
             remote.active = Area::Report;
             remote.inflight = Inflight::User;
-            remote.close_save_pending = true;
-            remote.close_save_fields = Some(Fields {
-                action_text: "legacy".into(),
-                module: "hub".into(),
-                ..Default::default()
-            });
             remote.report_revision = Some(remote.editor.revision);
+            remote.complete(
+                Reply::Draft {
+                    draft: None,
+                    message: "cargado".into(),
+                },
+                cx,
+            );
+            assert!(matches!(requests.try_recv(), Ok(Command::DraftSave { .. })));
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
             remote.complete(
                 Reply::Error {
                     message: "No se pudo proteger".into(),
                 },
                 cx,
             );
-            assert_eq!(remote.take_close_save_result(), Some(false));
             assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
             assert!(!path.with_extension("json.imported").exists());
         });
@@ -250,6 +271,24 @@ fn final_save_acknowledges_only_the_requested_fields() {
             );
             assert_eq!(remote.take_close_save_result(), Some(true));
             assert_eq!(remote.editor.fields(cx), fields);
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn busy_services_defers_final_draft_save_without_overwriting_the_queue() {
+    use super::*;
+    gpui_platform::headless().run(move |cx| {
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote =
+            cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
+        remote.update(cx, |remote, cx| {
+            remote.inflight = Inflight::User;
+            remote.queued = Some(Command::DraftDiscard);
+            assert_eq!(remote.begin_close_save(cx), None);
+            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(requests.try_recv().is_err());
         });
         crate::quit_headless_test(cx);
     });

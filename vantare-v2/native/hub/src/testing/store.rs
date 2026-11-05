@@ -1,8 +1,6 @@
 use super::diagnostic::{Diagnostic, Module, local_path};
-/// Limites por campo del informe. Los comparten el borrador y la recuperacion:
-/// si la recuperacion aceptase mas que el envio, un texto recuperado se
-/// rechazaria para siempre al preparar el informe y el editor quedaria
-/// inservible hasta borrar el fichero a mano.
+/// Los límites del informe sirven para validar la importación del borrador
+/// antiguo y la exportación manual. El editor activo guarda en Services.
 use super::model::FIELD_LIMITS;
 use crate::{files, services::protocol::report_document::Fields};
 use serde::{Deserialize, Serialize};

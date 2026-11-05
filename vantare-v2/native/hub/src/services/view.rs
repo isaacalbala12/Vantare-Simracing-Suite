@@ -201,6 +201,7 @@ pub struct Remote {
     pub(crate) triage: crate::testing::TriageEditor,
     legacy_draft: Result<Option<crate::testing::legacy_draft::LegacyDraft>, String>,
     legacy_status: LegacyStatus,
+    legacy_archive_warned: bool,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     roadmap_requested: bool,
@@ -342,6 +343,7 @@ impl Remote {
             triage: crate::testing::TriageEditor::new(cx),
             legacy_draft,
             legacy_status: LegacyStatus::Unchecked,
+            legacy_archive_warned: false,
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
@@ -919,6 +921,19 @@ impl Remote {
             message = format!("{message} · {warning}");
         }
         if self.discard_pending {
+            if let Ok(Some(legacy)) = &self.legacy_draft {
+                match legacy.archive() {
+                    Ok(()) => {
+                        self.legacy_draft = Ok(None);
+                        message.push_str(" · borrador antiguo archivado");
+                    }
+                    Err(error) if !self.legacy_archive_warned => {
+                        message = format!("{message} · {error}");
+                        self.legacy_archive_warned = true;
+                    }
+                    Err(_) => {}
+                }
+            }
             self.legacy_status = LegacyStatus::Checked;
             self.report_draft(draft, message, cx);
             return;
@@ -934,14 +949,18 @@ impl Remote {
                         message.push_str(" · originales antiguos archivados en este equipo");
                     }
                     Err(error) => {
-                        message = format!("{message} · {error}");
+                        if !self.legacy_archive_warned {
+                            message = format!("{message} · {error}");
+                            self.legacy_archive_warned = true;
+                        }
                         self.legacy_status = LegacyStatus::Checked;
                     }
                 }
-            } else if self.legacy_status == LegacyStatus::Unchecked
-                && draft.is_none()
-                && self.queued.is_none()
-            {
+            } else if self.legacy_status == LegacyStatus::Unchecked && draft.is_none() {
+                if self.queued.is_some() {
+                    self.editor.message = "La importación espera a la operación pendiente".into();
+                    return;
+                }
                 self.legacy_status = LegacyStatus::Checked;
                 self.queued = Some(Command::DraftSave {
                     fields: legacy.fields.clone(),
@@ -958,7 +977,11 @@ impl Remote {
                                 " · borradores antiguos archivados; prevalece el protegido",
                             );
                         }
-                        Err(error) => message = format!("{message} · {error}"),
+                        Err(error) if !self.legacy_archive_warned => {
+                            message = format!("{message} · {error}");
+                            self.legacy_archive_warned = true;
+                        }
+                        Err(_) => {}
                     }
                 }
             }

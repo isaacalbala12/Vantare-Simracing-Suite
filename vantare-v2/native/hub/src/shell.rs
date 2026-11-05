@@ -50,6 +50,25 @@ fn close_code(restart: bool, connected: bool) -> u8 {
     }
 }
 
+const CLOSE_SAVE_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[derive(Clone, Copy)]
+enum ForcedClose {
+    Live,
+    Restart,
+}
+
+impl ForcedClose {
+    fn prepare(self, close_without_draft: &mut bool, restart_requested: &mut bool) {
+        *close_without_draft = true;
+        *restart_requested |= matches!(self, Self::Restart);
+    }
+}
+
+fn close_save_expired(started: Option<Instant>, now: Instant) -> bool {
+    started.is_some_and(|started| now.saturating_duration_since(started) >= CLOSE_SAVE_TIMEOUT)
+}
+
 #[derive(Clone)]
 pub struct Options {
     pub controlled: bool,
@@ -99,6 +118,7 @@ pub(crate) struct Hub {
     connection_incompatible: bool,
     close_requested: bool,
     close_save_pending: bool,
+    close_save_started: Option<Instant>,
     close_without_draft: bool,
     restart_requested: bool,
     exit_code: std::rc::Rc<std::cell::Cell<u8>>,
@@ -149,6 +169,7 @@ impl Hub {
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
         {
             self.close_requested = false;
+            self.close_save_started = None;
             self.cancel_beta_restart();
         }
         if !self.shell.access.beta_visible(self.section) {
@@ -179,9 +200,7 @@ impl Hub {
                 cx.notify();
             }
             if close {
-                // Live no espera IPC ni un diálogo: el cierre forzado siempre avanza.
-                self.exit_code.set(close_code(false, self.connected_source));
-                cx.quit();
+                self.forced_close(ForcedClose::Live, cx);
             }
         }
         let activity = self.subscriber.activity();
@@ -259,9 +278,23 @@ impl Hub {
         }
     }
 
+    fn forced_close(&mut self, reason: ForcedClose, cx: &mut Context<Self>) {
+        if self.remote.read(cx).editor.dirty {
+            eprintln!("cierre forzado con ediciones del informe sin guardar");
+        }
+        reason.prepare(&mut self.close_without_draft, &mut self.restart_requested);
+        self.close_save_pending = false;
+        self.close_save_started = None;
+        self.close(cx);
+    }
+
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
         self.close_requested = true;
         if self.close_save_pending {
+            if close_save_expired(self.close_save_started, Instant::now()) {
+                self.close_save_pending = false;
+                self.close_save_failed(cx);
+            }
             return false;
         }
         if !self.launcher.update(cx, Launcher::can_close) {
@@ -280,6 +313,12 @@ impl Hub {
             return false;
         }
         if !self.close_without_draft && self.remote.read(cx).editor.dirty {
+            let now = Instant::now();
+            if close_save_expired(self.close_save_started, now) {
+                self.close_save_failed(cx);
+                return false;
+            }
+            self.close_save_started.get_or_insert(now);
             match self
                 .remote
                 .update(cx, crate::services::view::Remote::begin_close_save)
@@ -290,6 +329,7 @@ impl Hub {
             }
             return false;
         }
+        self.close_save_started = None;
         match self.save(cx) {
             Ok(()) => {
                 if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
@@ -326,6 +366,8 @@ impl Hub {
 
     fn close_save_failed(&mut self, cx: &mut Context<Self>) {
         self.close_requested = false;
+        self.close_save_started = None;
+        self.cancel_beta_restart();
         // La X aún presta su ventana al callback: abrir el diálogo al liberar ese préstamo.
         let hub = cx.entity().downgrade();
         cx.defer(move |cx| {
@@ -1545,6 +1587,7 @@ impl Hub {
             connection_incompatible: false,
             close_requested: false,
             close_save_pending: false,
+            close_save_started: None,
             close_without_draft: false,
             restart_requested: false,
             exit_code,
@@ -1953,6 +1996,25 @@ mod presentation_tests {
         assert_eq!(close_code(true, true), 10);
         assert_eq!(close_code(false, true), 11);
         assert_eq!(close_code(false, false), 0);
+        let (mut skip, mut restart) = (false, false);
+        ForcedClose::Live.prepare(&mut skip, &mut restart);
+        assert!(skip);
+        assert!(!restart);
+        skip = false;
+        ForcedClose::Restart.prepare(&mut skip, &mut restart);
+        assert!(skip);
+        assert!(restart);
+    }
+
+    #[test]
+    fn busy_services_gets_five_seconds_before_the_close_dialog() {
+        let now = Instant::now();
+        assert!(!close_save_expired(None, now + Duration::from_secs(6)));
+        assert!(!close_save_expired(
+            Some(now),
+            now + Duration::from_millis(4_999)
+        ));
+        assert!(close_save_expired(Some(now), now + Duration::from_secs(5)));
     }
 
     #[test]

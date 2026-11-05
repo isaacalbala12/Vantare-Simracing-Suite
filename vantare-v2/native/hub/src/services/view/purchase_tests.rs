@@ -691,6 +691,7 @@ pub(crate) fn fixture(
         triage: crate::testing::TriageEditor::new(cx),
         legacy_draft,
         legacy_status: LegacyStatus::Unchecked,
+        legacy_archive_warned: false,
         publication: None,
         roadmap_message: "No hay una publicación válida guardada".into(),
         roadmap_requested: false,

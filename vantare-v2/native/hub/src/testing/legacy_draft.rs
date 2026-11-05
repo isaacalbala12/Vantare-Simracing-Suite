@@ -195,7 +195,7 @@ impl LegacyDraft {
         }))
     }
 
-    /// Se llama solo después de confirmar en Services el mismo contenido DPAPI.
+    /// Se llama tras confirmar el borrador protegido o el descarte en Services.
     pub(crate) fn archive(&self) -> Result<(), String> {
         let order = if self.sources.len() == 2 {
             vec![1 - self.selected, self.selected]
@@ -214,16 +214,19 @@ impl LegacyDraft {
                         == Some(&source.bytes)
             });
             let target_free = matches!(fs::symlink_metadata(&target), Err(error) if error.kind() == std::io::ErrorKind::NotFound);
-            if !(target_free || target_matches)
-                || !current.as_ref().is_some_and(|info| {
-                    info.is_file()
-                        && !info.file_type().is_symlink()
-                        && info.modified().ok() == Some(source.modified)
-                })
-                || files::read(&source.path, source.bytes.len() as u64)
-                    .ok()
-                    .as_deref()
-                    != Some(&source.bytes)
+            if !(target_free || target_matches) {
+                return Err(
+                    "Ya existe un .imported distinto; se conserva el borrador antiguo".into(),
+                );
+            }
+            if !current.as_ref().is_some_and(|info| {
+                info.is_file()
+                    && !info.file_type().is_symlink()
+                    && info.modified().ok() == Some(source.modified)
+            }) || files::read(&source.path, source.bytes.len() as u64)
+                .ok()
+                .as_deref()
+                != Some(&source.bytes)
             {
                 return Err("El borrador antiguo cambió; se conserva el archivo".into());
             }
@@ -422,7 +425,7 @@ mod tests {
         .unwrap();
         fs::write(&archive, b"previous private archive").unwrap();
         let chosen = LegacyDraft::load(&root).unwrap().unwrap();
-        assert!(chosen.archive().is_err());
+        assert!(chosen.archive().unwrap_err().contains(".imported distinto"));
         assert!(source.exists());
         assert_eq!(fs::read(&archive).unwrap(), b"previous private archive");
         fs::remove_dir_all(root).unwrap();

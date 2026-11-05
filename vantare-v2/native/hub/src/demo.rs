@@ -599,6 +599,20 @@ impl CaptureState {
 
     #[allow(clippy::too_many_lines)] // Catálogo cerrado de escenas QA y sus estados de presentación.
     pub fn parse(name: &str) -> Result<Self, String> {
+        // The frozen historical catalog still lists these retired screens.
+        if matches!(
+            name,
+            "strategy-datos-vacio"
+                | "strategy-datos-fuentes"
+                | "strategy-datos-vueltas"
+                | "strategy-datos-avanzado"
+                | "strategy-v5-datos-vacio"
+                | "strategy-v5-datos-fuentes"
+                | "strategy-v5-datos-vueltas"
+                | "strategy-v5-datos-avanzado"
+        ) {
+            return Err(format!("pantalla Strategy retirada: {name}"));
+        }
         #[derive(Deserialize)]
         struct Screen {
             name: String,
@@ -865,6 +879,16 @@ mod tests {
         for screen in screens {
             let name = screen["name"].as_str().expect("nombre").to_owned();
             assert!(names.insert(name.clone()), "pantalla duplicada: {name}");
+            if matches!(
+                name.as_str(),
+                "strategy-datos-vacio"
+                    | "strategy-datos-fuentes"
+                    | "strategy-datos-vueltas"
+                    | "strategy-datos-avanzado"
+            ) {
+                assert!(CaptureState::parse(&name).is_err(), "retirada: {name}");
+                continue;
+            }
             assert!(CaptureState::parse(&name).is_ok(), "{name}");
         }
         assert_eq!(

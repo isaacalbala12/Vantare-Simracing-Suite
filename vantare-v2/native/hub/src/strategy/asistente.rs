@@ -213,26 +213,18 @@ impl Strategy {
                             .border_color(rgba(orbit::line_strong(cx)))
                             .child(orbit::text("✓", 12.0, 600, orbit::ink_2(cx), cx)),
                     )
-                    .child(orbit::text(
-                        "Originales intactos",
-                        14.0,
-                        500,
-                        orbit::ink_2(cx),
-                        cx,
-                    )),
+                    .child(orbit::text("Originales intactos", 14.0, 500, orbit::ink_2(cx), cx)),
             )
             .child(
                 gpui::div()
                     .flex()
-                    .gap(px(18.0))
-                    .mt(px(-14.0))
+                    .gap(px(18.0)).mt(px(-14.0))
                     .child(
                         Self::assistant_footer_button(
                             "strategy-assistant-back",
                             "← Atrás",
                             false,
-                            cx,
-                        )
+                         cx)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(previous) = step.previous() {
                                 this.page = Page::Assistant(previous);
@@ -253,8 +245,7 @@ impl Strategy {
                                 "Continuar →"
                             },
                             true,
-                            cx,
-                        )
+                         cx)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(next) = step.next() {
                                 this.page = Page::Assistant(next);
@@ -387,7 +378,7 @@ impl Strategy {
     }
 
     fn start_choices(cx: &mut Context<Self>) -> gpui::Div {
-        div().max_w(px(520.0)).child(Self::choice_card(
+        div().max_w(px(520.0)).child(Self::manual_info_card(
             "strategy-mode-manual",
             "Manual",
             "Configura el evento, el coche y el circuito. Después revisa tus datos.",
@@ -1333,7 +1324,7 @@ impl Strategy {
             .child(orbit::text("Modo manual · no requiere telemetría", 13.0, 500, orbit::ink_3(cx), cx))
     }
 
-    fn choice_card(
+    fn manual_info_card(
         id: &'static str,
         title: &str,
         help: &str,
@@ -1343,11 +1334,7 @@ impl Strategy {
     ) -> gpui::Stateful<gpui::Div> {
         gpui::div()
             .id(id)
-            .role(gpui::Role::Button)
             .aria_label(format!("{title}. {help}"))
-            .aria_selected(selected)
-            .tab_index(0)
-            .cursor_pointer()
             .flex()
             .items_center()
             .gap(px(24.0))

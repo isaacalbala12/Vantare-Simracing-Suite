@@ -395,6 +395,42 @@ fn r9_manual_wizard_creates_an_event_without_automatic_projection() {
 }
 
 #[test]
+fn r9_unknown_automatic_and_correction_fields_survive_open_and_normal_save() {
+    let directory = R9Directory::new();
+    for schema in ["2.0.0", "2.1.0"] {
+        let path = directory.0.join(format!("unknown-{schema}.json"));
+        let original = format!(
+            r#"{{"contractVersion":"strategy.v2","schemaVersion":"{schema}","generatedAt":"2026-11-01T00:00:00Z","events":[], "automatic":{{ "future":1.2300 }},"corrections":[{{ "unknown":true,"note":"legacy" }}]}}"#
+        );
+        std::fs::write(&path, &original).expect("legacy extensions");
+        let mut editor = Editor::default();
+        editor.open(path.clone()).expect("open unknown extensions");
+        assert_eq!(
+            editor.document.as_ref().expect("document").bytes(),
+            original.as_bytes()
+        );
+        editor
+            .document
+            .as_mut()
+            .expect("document")
+            .set("/generatedAt", &json!("2026-11-02T00:00:00Z"))
+            .expect("edit a known field");
+        editor.save().expect("normal save");
+        let expected = original.replace("2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z");
+        assert_eq!(
+            std::fs::read(&path).expect("saved extensions"),
+            expected.as_bytes()
+        );
+        let mut reopened = Editor::default();
+        reopened.open(path).expect("reopen extensions");
+        assert_eq!(
+            reopened.document.as_ref().expect("reopened").bytes(),
+            expected.as_bytes()
+        );
+    }
+}
+
+#[test]
 fn isa1544_optional_metadata_keeps_absence_and_invalid_date_is_atomic() {
     let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
     doc.append_event(&new_event("event", "Carrera", 120, 90.0, 60.0))

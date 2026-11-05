@@ -34,7 +34,6 @@ pub(crate) struct LegacyDraft {
     sources: Vec<Source>,
     selected: usize,
     pub(crate) fields: Fields,
-    pub(crate) differing: Vec<&'static str>,
     pub(crate) warning: Option<String>,
 }
 
@@ -192,7 +191,6 @@ impl LegacyDraft {
             sources,
             selected,
             fields,
-            differing,
             warning,
         }))
     }
@@ -321,7 +319,10 @@ mod tests {
             module_id(Module::Notifications),
             ("unknown", Some("Notificaciones"))
         );
-        assert_eq!(chosen.differing, ["module", "action_text"]);
+        assert_eq!(
+            differing(&chosen.sources[0].fields, &chosen.sources[1].fields),
+            ["module", "action_text"]
+        );
         assert!(editor_path.exists() && local_path.exists());
         chosen.archive().unwrap();
         assert!(!editor_path.exists() && !local_path.exists());

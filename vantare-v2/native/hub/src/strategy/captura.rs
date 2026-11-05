@@ -640,6 +640,22 @@ fn accept_proposal(this: &mut Strategy, cx: &mut Context<Strategy>) {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "parity-capture")]
+    #[test]
+    fn strategy_capture_keeps_pass_27_values_separate_from_solver_inputs() {
+        let demo = crate::strategy::view_data::PlanData::load().expect("mock pass-27");
+        assert_eq!(demo.samples.len(), 12);
+        assert_eq!(demo.samples[7].quality, "Desconocida");
+        assert_eq!(demo.stints.len(), 3);
+        assert_eq!(demo.stints[0].driver, "Isaac Albalá");
+        assert_eq!(
+            demo.stops.iter().map(|stop| stop.lap).collect::<Vec<_>>(),
+            [23, 46]
+        );
+        assert!((demo.total_seconds - 7357.57).abs() < 0.001);
+        assert!((demo.reserve_laps - 1.14).abs() < 0.001);
+    }
+
     #[test]
     fn approved_demo_selects_imola_without_inventing_a_projection_or_solver_input() {
         let demo = crate::demo::DemoData::load().expect("demo");

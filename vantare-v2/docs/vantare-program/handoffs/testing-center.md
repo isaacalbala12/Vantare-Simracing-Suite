@@ -1,3 +1,44 @@
+# Handoff vivo · VANTA-131 / recorrido Hub ↔ servidor
+
+## Cierre de la tanda · 2026-11-05
+
+Autoridad: [issue #1896](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1896), diseño `D:\VantareServer\evidence\revision-general\hub-servidor-DISENO.md` y decisiones posteriores del orquestador. Este bloque sustituye el estado de las entradas históricas inferiores. [#1972](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1972) fue aprobado por el orquestador en `a30830dbd`; el gate de tamaño de Hub exigió extraer el cierre a `shell/close.rs` en `a7be4a8a5`. El PR sigue a la espera de CI y merge de Isaac; sus cambios y sus líneas se incluyen aquí como cierre previsto, sin afirmar integración en `nightly`.
+
+**Código R6 terminado:** pasos 0–5a, 6a y endurecimiento estructural de JPEG, 7a/7b, 8, 9 (validación en Services), 10, 12 Fase A y 13. El informe nuevo escribe solo en `testing_contributions`; el agente v2 lo lee, pero jobs y callbacks siguen inertes. Se retiraron las tablas exclusivas del informe legacy; `technical_issues` y `agent_jobs` permanecen. Hay un solo editor y borrador DPAPI en el Hub, con importación de JSON antiguos y autoguardado a los dos segundos. Los originales `.imported` siguen en claro en el PC del usuario, decisión aceptada por el orquestador para no perder datos. Triage no exporta texto libre por construcción; `tools/triage/*-cases.json` sigue en uso. Capturas desactivadas.
+
+**Fuera de esta tanda:** el enlace de subida firmada del paso 6b y la activación de capturas; el paso 11 y el publicador del calendario pertenecen a VANTA-132; la Fase B del paso 12 (compactar bases y `migration repair` con equivalencia A=B=C) requiere ventana y autorización de Isaac. La RPC v1 del roadmap se conserva para builds instaladas. Los cuatro casos equivalentes de aborto de #1972 están reunidos en un test tabulado. [#1928](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1928) está cerrada; [#1933](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1933) sigue abierta como preflight de pgcrypto por entorno, no como permiso para editar migraciones fusionadas.
+
+### Balance de líneas de producción
+
+Se suma el diff de cada commit de PR R6 contra su padre en `nightly`, más #1972, separando Rust bajo `#[cfg(test)]`, archivos de tests y documentación. **Producción incluye migraciones, rollbacks y tooling;** los volcados derivados de `supabase/schema/` cuentan como documentación. No se atribuyen cambios de VANTA-132 ni de otros proyectos.
+
+| Entrega | PR | Producción + / − | Neto |
+| --- | --- | ---: | ---: |
+| 0–3, caracterización, capturas contenidas, admisión y ACL | #1897, #1899–#1901 | +472 / −69 | +403 |
+| 4–5a, verificador y retiradas | #1902–#1903 | +58 / −6120 | −6062 |
+| 6a y validador JPEG, aún sin subida | #1906, #1923, #1969 | +208 / −10 | +198 |
+| 7a/7b, informe único y retiro legacy | #1918, #1926, #1930, #1932, #1949, #1953 | +5692 / −279 | +5413 |
+| 8, autoridad owner | #1925, #1934, #1960 | +1758 / −2 | +1756 |
+| 9, calendario en Services | #1964 | +156 / −37 | +119 |
+| 10, corpus roadmap | #1965 | +313 / −35 | +278 |
+| 12A y pgcrypto | #1950, #1954–#1955, #1961 | +45 / −0 | +45 |
+| 13, borrador y retirada inerte | #1966, #1970, #1972 | +837 / −585 | +252 |
+| **Total R6** | | **+9539 / −7137** | **+2402** |
+
+De ese neto, los archivos `supabase/rollbacks/*.down.sql` aportan **+5223 / −8 = +5215** líneas. Sin esos rollbacks, el código y SQL de ejecución bajan **2813** líneas netas. No se compactó la cadena histórica: producción se reconstruyó con ella y la Fase B se aplazó.
+
+### Despliegue futuro: orden y comprobaciones de Isaac
+
+Ningún PR de R6 aplicó SQL, desplegó Edge o llamó a producción. Isaac decide entorno y ventana; `supabase db push` debe respetar **todos** los timestamps de la cadena histórica, incluidos los PR de admin y billing intercalados. El orden de los hitos de R6 es:
+
+1. **Preflight de solo lectura:** comprobar firmas y vector de pgcrypto con [la consulta](../../runbooks/pgcrypto-digest-contract.md); revisar la matriz ACL, membresías y [cuota](../../runbooks/testing-center-admission-1896.md). Leer la consulta por tabla del subárbol en [7b2](../../runbooks/testing-center-legacy-archive.md) y confirmar que no hay capturas, objetos Storage ni colas pendientes. Verificar que el rol de despliegue puede ejecutar `DROP POLICY` y `LOCK ... IN SHARE MODE` sobre `storage.objects`.
+2. **Pausar escrituras:** tráfico de informes v2, webhook de Clerk y borrados de cuenta durante 7b2 y su eventual rollback. No activar capturas ni jobs/callbacks. Aplicar por timestamp la admisión `20261103093000` antes de la Edge nueva; después ACL/membresía `114000`/`114100` y contrato v2 `190000`/`190100`.
+3. **Cerrar y migrar legacy:** `20261103231148` (7b1: REVOKE de escritores), `235000` (owner R6), `20261104005000` (owner admin), `014000` (7b2: lock, archivo, mapeo, verificación y vaciado). Repetir recuentos y hashes. Si hay filas en el archivo, detenerse: su purga necesita decisión explícita de Isaac.
+4. **Admin y retiro:** `20261104024000` (#1924: admin lee/escribe `testing_contributions`), luego las migraciones owner/admin posteriores, `084000` (#1934: canales), y `120500` (7b final, enmendada por #1953 antes de todo despliegue). Comprobar cero en archivo, doce tablas legacy, referencias, bucket y uploads con [la consulta final](../../runbooks/testing-center-legacy-archive.md). La retirada conserva la rama técnica v2 y deja Linear/outbox inertes.
+5. **Resto de la cadena y clientes:** aplicar las migraciones posteriores en orden, incluidas `164800` (owner disposition), `181200` (ACL), `182500` (sonda pgcrypto) y `231800` (paridad roadmap). Desplegar `testing-report-submit` solo después de su SQL de admisión y contrato v2; después distribuir juntos Hub y Services compatibles. Verificar envío simple y triage, reintento, owner revocado, borrado de cuenta y lectura del agente en el entorno autorizado. Reanudar Clerk e informes al terminar las comprobaciones. Las capturas siguen apagadas.
+
+La retirada operativa de funciones desplegadas del piloto (`testing-center-feedback`, `linear-webhook`, `linear-worker`), secretos `LINEAR_*` y webhook de Linear la ejecuta solo Isaac; los comandos exactos están en la issue #1896. La migración `120500` se enmendó antes de todo despliegue según #1953; desde entonces **ninguna migración fusionada se edita**. Toda corrección nueva va en otra migración con rollback. Este orden es una guía para un despliegue autorizado, no prueba que se haya ejecutado.
+
 ## 2026-11-04 - #1896 / VANTA-131 paso 8b: disposición owner operativa
 
 - #1928 se cerró porque #1934 ya está en nightly. De #1936, el cierre 7b retiró `testing_center_authorize_posthog_linear_link`; seguía viva `testing_center_record_owner_disposition` con autorización por membresía owner antigua. El test previo falló 4/7: owner revocado aceptado por la puerta antigua y owner operativo sin membresía rechazado.

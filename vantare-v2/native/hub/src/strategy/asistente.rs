@@ -73,7 +73,7 @@ impl Strategy {
         let (title, description) = match step {
             AssistantStep::Inicio => (
                 "Prepara tu próxima\ncarrera",
-                "Elige cómo empezar. Construye tu estrategia con sesiones registradas.",
+                "Configura tu estrategia con los datos manuales de la carrera.",
             ),
             AssistantStep::Combinacion => (
                 "Elige tu combinación",
@@ -88,8 +88,8 @@ impl Strategy {
                 "Asigna tu piloto principal y prepara los relevos de resistencia.",
             ),
             AssistantStep::Sesiones => (
-                "Elige tu telemetría",
-                "Revisa las sesiones compatibles y confirma cuáles utilizar en tu estrategia.",
+                "Revisa los datos",
+                "Revisa los datos de la carrera antes de terminar la configuración manual.",
             ),
         };
         let mut progress = gpui::div()

@@ -721,9 +721,6 @@ impl Strategy {
                                                         400,
                                                         orbit::ink_2(cx),
                                                      cx)),
-                                            )
-                                            .child(
-                                                div(),
                                             ),
                                     )
                                     .child(div().h(px(1.0)).bg(rgba(orbit::line(cx))))

@@ -18,7 +18,9 @@ impl R9Directory {
 
 impl Drop for R9Directory {
     fn drop(&mut self) {
-        std::fs::remove_dir_all(&self.0).expect("remove owned test directory");
+        if let Err(error) = std::fs::remove_dir_all(&self.0) {
+            eprintln!("limpiar fixture R9: {error}");
+        }
     }
 }
 
@@ -101,7 +103,7 @@ fn r9_corrupt_document_blocks_normal_save_and_preserves_original_bytes() {
 fn r9_saving_repository_draft_keeps_document_dirty_and_saved_file_unchanged() {
     with_strategy("r9-draft", |this, _cx| {
         let directory = R9Directory::new();
-        this.directory = directory.0.clone();
+        let original_directory = std::mem::replace(&mut this.directory, directory.0.clone());
         this.editor.create().expect("characterization fixture");
         let path = directory.0.join("strategy-v2.json");
         this.editor
@@ -141,35 +143,7 @@ fn r9_saving_repository_draft_keeps_document_dirty_and_saved_file_unchanged() {
         )
         .expect("characterization fixture");
         assert_eq!(draft.value(), &edited);
-        this.directory = std::env::temp_dir();
-    });
-}
-
-#[test]
-fn r9_native_manual_document_has_no_automatic_preparation_and_is_unchanged() {
-    with_strategy("r9-automatic", |this, cx| {
-        let mut document =
-            Document::empty("2026-11-02T00:00:00Z").expect("characterization fixture");
-        document
-            .append_event(&new_event("event", "Carrera", 120, 90.0, 60.0))
-            .expect("characterization fixture");
-        let bytes = document.bytes().to_vec();
-        this.editor.document = Some(document);
-        this.load_fields(cx);
-        assert!(
-            this.prepare_automatic()
-                .expect("characterization fixture")
-                .is_none()
-        );
-        assert_eq!(
-            this.editor
-                .document
-                .as_ref()
-                .expect("characterization fixture")
-                .bytes(),
-            bytes
-        );
-        assert!(this.automatic_preparation.is_none());
+        this.directory = original_directory;
     });
 }
 

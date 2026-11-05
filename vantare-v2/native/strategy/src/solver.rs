@@ -480,9 +480,8 @@ fn solve(input: &Input) -> Result<ResultV2, String> {
     solve_cancellable(input, &AtomicBool::new(false))
 }
 
-/// Bounded exact search in the supported scalar space; no result on exhaustion.
-/// Caller owns cancellation. This runs off the GPUI thread.
-#[allow(clippy::too_many_lines)] // Keep the bounded state-space walk in one place, rather than a search manager.
+/// Test-only compatibility helper for the frozen scalar oracle.
+/// Production consumers use the certified V2 API instead.
 #[cfg(test)]
 fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
     solve_internal(input, cancel, false, Some(input.budget.p95_millis))

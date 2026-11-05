@@ -27,6 +27,7 @@
   ],
   "knownLimitations": [
     "Si LMU ya estaba abierto al arrancar el Hub, el trigger no lanza el perfil. Es el comportamiento intencionado de P5.",
-    "Hub y residente conservan registros de procesos propios; el cambio a un solo dueño y el arranque con Windows por --background siguen aplazados."
+    "Hub y residente conservan registros de procesos propios; el cambio a un solo dueño y el arranque con Windows por --background siguen aplazados.",
+    "Durante una actualización parcial, un Hub y un residente de generaciones distintas no reconocen status v2/answer-v2 y no se ven por ese buzón. La actualización debe completar ambos; launcher.json sigue en versión 1."
   ]
 }

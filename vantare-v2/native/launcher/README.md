@@ -63,3 +63,11 @@ ya importados sigue marcándolos como imported y sus duplicados conservan esa
 procedencia; no se cambia el flujo de confianza o las políticas de ejecución.
 Eliminar el campo rompería documentos existentes con deny_unknown_fields.
 Retirar el importador no retira los perfiles ni la copia histórica guardada.
+
+El constructor `Chain::start` recibe también `settings: &Path` y crea
+`settings.with_extension("chain-lock")` antes de arrancar el worker. El handle
+mantiene la exclusión durante toda la cadena y el SO la libera al terminar o
+caer el proceso. El archivo vacío se conserva: borrarlo permitiría que otro
+proceso con el archivo anterior abierto y uno nuevo bloquearan identidades
+distintas. No contiene estado ni bloquea por sí mismo; solo cuenta el lock del
+handle. Es distinto del lock de guardado, por lo que el perfil sigue editable.

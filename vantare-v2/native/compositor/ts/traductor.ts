@@ -8,11 +8,16 @@ export class ErrorTraduccion extends Error {
   readonly fichero: string;
   readonly linea: number;
   readonly columna: number;
-  constructor(readonly codigo: Codigo, nodo: ts.Node, mensaje: string) {
-    const fuente = nodo.getSourceFile();
-    const pos = fuente.getLineAndCharacterOfPosition(nodo.getStart(fuente));
-    super(`${fuente.fileName}:${pos.line + 1}:${pos.character + 1}: ${codigo}: ${mensaje}`);
-    this.fichero = path.resolve(fuente.fileName); this.linea = pos.line + 1; this.columna = pos.character + 1;
+  constructor(readonly codigo: Codigo, fichero: string, posicion: ts.LineAndCharacter, mensaje: string, readonly codigoTs?: number) {
+    super(`${fichero}:${posicion.line + 1}:${posicion.character + 1}: ${codigo}: ${mensaje}`);
+    this.fichero = path.resolve(fichero); this.linea = posicion.line + 1; this.columna = posicion.character + 1;
+  }
+}
+export class ErroresTipo extends ErrorTraduccion {
+  constructor(readonly diagnosticos: readonly ErrorTraduccion[]) {
+    const primero = diagnosticos[0];
+    super('TIPO', primero.fichero, { line: primero.linea - 1, character: primero.columna - 1 }, 'Errores de TypeScript');
+    this.message = diagnosticos.map(d => d.message).join('\n');
   }
 }
 type Json = string | number | boolean | Json[] | { [key: string]: Json };
@@ -20,19 +25,45 @@ type Objeto = { [key: string]: Json };
 const api = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../receta/index.ts');
 const generado = path.resolve(path.dirname(api), '../generado');
 
-export function traducir(fichero: string): Objeto {
-  const programa = ts.createProgram([path.resolve(fichero)], {
+export class Traductor {
+  private anterior?: ts.SemanticDiagnosticsBuilderProgram;
+  private readonly opciones: ts.CompilerOptions = {
     strict: true, noEmit: true, target: ts.ScriptTarget.ES2023,
     module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
     jsx: ts.JsxEmit.Preserve, types: [], skipLibCheck: false,
-  });
+  };
+  private readonly host = ts.createCompilerHost(this.opciones);
+  constructor() {
+    const fuentes = new Map<string, ts.SourceFile & { version: string }>();
+    this.host.getSourceFile = (nombre, lenguaje, onError) => {
+      const texto = this.host.readFile(nombre);
+      if (texto === undefined) { onError?.(`No se puede leer ${nombre}`); return undefined; }
+      const previa = fuentes.get(nombre);
+      if (previa?.text === texto) return previa;
+      const fuente = Object.assign(ts.createSourceFile(nombre, texto, lenguaje, true), { version: String(Number(previa?.version ?? 0) + 1) });
+      fuentes.set(nombre, fuente);
+      return fuente;
+    };
+  }
+  traducir(fichero: string): Objeto {
+    this.anterior = ts.createSemanticDiagnosticsBuilderProgram([path.resolve(fichero)], this.opciones, this.host, this.anterior);
+    return emitir(fichero, this.anterior);
+  }
+}
+export function traducir(fichero: string): Objeto { return new Traductor().traducir(fichero); }
+
+function emitir(fichero: string, builder: ts.SemanticDiagnosticsBuilderProgram): Objeto {
+  const programa = builder.getProgram();
   const fuente = programa.getSourceFile(path.resolve(fichero));
   if (!fuente) throw new Error(`No se puede leer ${fichero}.`);
   const checker = programa.getTypeChecker();
   const constantes = new Map<string, ts.Expression>();
   let modelo = '';
   let raiz: ts.Expression | undefined;
-  function fallo(codigo: Codigo, nodo: ts.Node, mensaje: string): never { throw new ErrorTraduccion(codigo, nodo, mensaje); }
+  function fallo(codigo: Codigo, nodo: ts.Node, mensaje: string): never {
+    const f = nodo.getSourceFile();
+    throw new ErrorTraduccion(codigo, f.fileName, f.getLineAndCharacterOfPosition(nodo.getStart(f)), mensaje);
+  }
   // Da primero las sugerencias de marcado, incluso si tsc también rechaza la expresión.
   function revisar(n: ts.Node): void {
     if (n.kind === ts.SyntaxKind.AnyKeyword || ts.isTypeAssertionExpression(n) || ts.isAsExpression(n) && n.type.getText(fuente) !== 'const') fallo('TIPO', n, 'No desactives el contrato con any o as; usa sus tipos generados.');
@@ -109,7 +140,14 @@ export function traducir(fichero: string): Objeto {
       return;
     }
     if (ts.isArrayLiteralExpression(n)) { n.elements.forEach(literal); return; }
-    if (ts.isIdentifier(n) && constantes.has(n.text) || ts.isPropertyAccessExpression(n) && n.getText(fuente).startsWith('tokens.')) return;
+    if (ts.isIdentifier(n) && constantes.has(n.text)) {
+      if (resolviendo.has(n.text)) fallo('CONSTANTE', n, 'Evita referencias circulares entre constantes.');
+      resolviendo.add(n.text);
+      literal(constantes.get(n.text)!);
+      resolviendo.delete(n.text);
+      return;
+    }
+    if (ts.isPropertyAccessExpression(n) && n.getText(fuente).startsWith('tokens.')) return;
     if (ts.isStringLiteral(n) || ts.isNumericLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || n.kind === ts.SyntaxKind.TrueKeyword || n.kind === ts.SyntaxKind.FalseKeyword || ts.isPrefixUnaryExpression(n) && n.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(n.operand)) return;
     fallo('CONSTANTE', n, 'Las constantes solo contienen literales y tokens; enlaza el modelo directamente en JSX.');
   }
@@ -181,28 +219,31 @@ export function traducir(fichero: string): Objeto {
       if (nombre === 'Overlay') {
         if (nodos.length !== 1) fallo('SINTAXIS', n, 'Overlay necesita exactamente una raíz.');
         salida.receta = 1; salida.raiz = nodos[0];
-      } else salida.hijos = nodos;
+      } else if (ts.isJsxElement(n)) salida.hijos = nodos;
     }
     return salida;
   }
   if (!raiz || !modelo) fallo('MODELO', fuente, 'Importa m del contrato generado y exporta por defecto un Overlay.');
   // Validar también constantes no utilizadas: no son una vía para introducir código.
-  for (const [nombre, expr] of constantes) { literal(expr); valor(expr); if (nombre === 'm' || nombre === 'tokens') fallo('CONSTANTE', expr, 'No ocultes m ni tokens.'); }
-  const resultado = nodo(raiz);
-  if (resultado.tipo !== 'overlay') fallo('SINTAXIS', raiz, 'La raíz debe ser Overlay.');
+  for (const [nombre, expr] of constantes) { literal(expr); if (nombre === 'm' || nombre === 'tokens') fallo('CONSTANTE', expr, 'No ocultes m ni tokens.'); }
   let contrato: { modelo: string };
   try {
     contrato = JSON.parse(readFileSync(path.resolve(generado, '../../modelos', modelo + '.modelo.json'), 'utf8')) as { modelo: string };
   } catch {
     return fallo('MODELO', raiz, 'No existe un contrato JSON válido para el modelo importado; genera los tipos desde modelos/*.modelo.json.');
   }
-  if (resultado.modelo !== contrato.modelo) fallo('MODELO', raiz, 'El nombre y versión del modelo de Overlay deben coincidir con el contrato importado.');
-  const diagnosticos = ts.getPreEmitDiagnostics(programa);
+  const diagnosticos = ts.sortAndDeduplicateDiagnostics([
+    ...builder.getOptionsDiagnostics(), ...builder.getGlobalDiagnostics(),
+    ...builder.getSyntacticDiagnostics(), ...builder.getSemanticDiagnostics(),
+  ]);
   if (diagnosticos.length) {
-    const d = diagnosticos[0];
-    const f = d.file ?? fuente;
-    const ubicacion = { ...f, getSourceFile: () => f, getStart: () => d.start ?? 0 } as ts.Node;
-    fallo('TIPO', ubicacion, ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+    throw new ErroresTipo(diagnosticos.map(d => {
+      const f = d.file ?? fuente;
+      return new ErrorTraduccion('TIPO', f.fileName, f.getLineAndCharacterOfPosition(d.start ?? 0), ts.flattenDiagnosticMessageText(d.messageText, '\n'), d.code);
+    }));
   }
+  const resultado = nodo(raiz);
+  if (resultado.tipo !== 'overlay') fallo('SINTAXIS', raiz, 'La raíz debe ser Overlay.');
+  if (resultado.modelo !== contrato.modelo) fallo('MODELO', raiz, 'El nombre y versión del modelo de Overlay deben coincidir con el contrato importado.');
   return resultado;
 }

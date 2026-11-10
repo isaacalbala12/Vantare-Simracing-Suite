@@ -26,7 +26,8 @@ sus tokens. Para conservar esa selección, compila después con `npx tsc`
 Después de cambiar contratos o sistema,
 repite `npm run build` y reinicia el vigilante.
 
-El ejemplo es deliberadamente pequeño, no el relativo completo. Importa
+`pruebas/ejemplo.tsx` es un ejemplo pequeño. `pruebas/relativo.tsx` es la
+equivalencia de la receta directa vigente, utilizada como regresión. Importa
 `m` desde el modelo generado y componentes, condiciones y `tokens` desde
 `receta/index.js`. Exporta un único `<Overlay>` por defecto, con una raíz.
 Para estilos compartidos usa `const estilo = {...} satisfies Estilo` e importa
@@ -44,16 +45,42 @@ parámetro se conserva en `como`. `no(m.en_garaje)` genera `!en_garaje`;
 que todos sus valores tienen token en el sistema generado.
 
 Los errores tienen `codigo`, `fichero`, `linea` y `columna` (base uno), más una
-sugerencia. El CLI devuelve código 1 al fallar y escribe tiempo en ms al
+sugerencia. Un fallo de tipos devuelve `ErroresTipo.diagnosticos`, con **todos**
+los diagnósticos de tsc y su `codigoTs` original; el CLI imprime cada posición.
+Las restricciones propias del marcado tienen prioridad sobre la comprobación
+de tipos. Los diagnósticos globales de tsc sin fichero se sitúan en la entrada,
+línea 1, columna 1. El CLI devuelve código 1 al fallar y escribe tiempo en ms al
 acertar. El vigilante escucha el directorio, filtra el nombre de entrada y
 descarta eventos repetidos del mismo contenido. Escribe un temporal y lo renombra
 al terminar; un error conserva la última receta válida. Ctrl+C cierra la escucha.
 No vigila cambios en contratos/sistema/API. No admite imports de código ajeno.
+Reutiliza un `Traductor` por sesión: conserva el programa incremental de
+TypeScript y las fuentes versionadas. Los diagnósticos semánticos de fuentes
+sin cambios se conservan; solo se analiza de nuevo el contenido cambiado.
 
 Las pruebas comparan objetos JSON con la receta equivalente versionada,
-verifican errores tipados con posición y miden diez guardados esperando el
+verifican errores tipados con posición y miden veinte guardados del relativo esperando el
 mensaje real de escritura, sin pausas artificiales. Incluyen guardados mediante
-renombrado y una edición inválida seguida de recuperación.
+renombrado y ediciones inválidas de marcado y de tipos seguidas de recuperación.
+Imprimen mediana y p95 (rango más próximo: muestra 19 de 20 ordenadas).
+El tiempo comienza antes de guardar y termina al recibir el ACK de JSON escrito;
+la carga inicial de TypeScript no forma parte de esos veinte guardados.
+
+Correspondencia con `RECETA.md`, revisada campo a campo:
+
+| Receta | API TSX |
+| --- | --- |
+| `receta`, `tipo`, `nombre`, `modelo`, `visible`, `entrada`, `salida`, `raiz` | Versión 1 y tipo overlay emitidos; props del mismo nombre; raíz = hijo único. |
+| Comunes: `id`, `estilo`, `estados`, `transiciones`, `capa`, `visible`, `bucle` | Props opcionales del mismo nombre. |
+| Caja `hijos` | Hijos JSX; `<Caja/>` omite `hijos`, `<Caja></Caja>` emite `[]`. |
+| Texto `texto` | Contenido de Texto, literal o enlace/plantilla. |
+| Lista `de`, `como`, `clave`, `plantilla`, `entrada`, `salida`, `movimiento` | Props; `como` es el parámetro hijo y `plantilla` su cuerpo JSX. |
+| Estilo: `ancho`, `alto`, `min_ancho`, `max_ancho`, `direccion`, `alinear`, `justificar`, `hueco`, `relleno`, `crecer`, `encoger`, `posicion`, `arriba`, `izquierda`, `derecha`, `abajo` | Mismos nombres, enumerados, medidas y cardinalidades de relleno. |
+| Estilo: `fondo`, `borde`, `radio`, `sombra`, `opacidad`, `tipo`, `color`, `alinear_texto` | Mismos nombres; degradado lineal, tokens por familia y cardinalidades de radio. |
+| Estado `cuando`, `estilo`, `bucle` | Condición obligatoria; estilo y bucle opcionales. |
+| Bucle `propiedad`, `valores`, `duracion`, `cuando` | Primeros tres obligatorios; condición opcional, también dentro de un estado. |
+| Transición token, `{duracion, curva, retardo?}`, `{muelle: {rigidez, amortiguacion}}` | Las tres variantes; curvas nombradas o tupla Bézier. |
+| Entrada `{desde, transicion}`, salida `{hacia, transicion}` | Mismos nombres, propiedades compuestas en desde/hacia. |
 
 La validación final de límites, rangos numéricos, identidad de nodos y tokens
 resueltos corresponde al cargador estricto de recetas. Esta entrega no prueba

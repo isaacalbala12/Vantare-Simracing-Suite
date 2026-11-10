@@ -20,7 +20,7 @@
   "raiz": {
     "tipo": "caja",
     "estilo": {
-      "fondo": "$color.panel",
+      "fondo": "$color.panel.arriba",
       "hueco": "$medida.hueco"
     },
     "hijos": [
@@ -69,7 +69,7 @@
               "tipo": "texto",
               "estilo": {
                 "color": "$color.clase.{fila.clase}",
-                "tipo": "$tipo.fila"
+                "tipo": "$tipo.piloto"
               },
               "texto": "P{fila.posicion} {fila.piloto}"
             }

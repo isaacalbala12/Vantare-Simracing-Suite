@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { traducir, ErrorTraduccion } from '../dist/traductor.js';
+import { traducir, ErrorTraduccion, ErroresTipo } from '../dist/traductor.js';
 
 const ejemplo = fileURLToPath(new URL('ejemplo.tsx', import.meta.url));
 const temporal = fileURLToPath(new URL('.temporal-caso.tsx', import.meta.url));
@@ -22,9 +22,9 @@ test('const literales, tokens, condiciones y enlaces se sustituyen', () => {
 });
 test('estilos tipados, degradado, transiciones y muelle se conservan', () => {
   const obtenido = caso(`import type { Estilo } from '../receta/index.js';
-const estilo = { ancho: '100%', radio: 0, fondo: {lineal: {angulo: 90, paradas: [[tokens.color.panel, 0], [tokens.color.texto, 1]]}} } satisfies Estilo;
+const estilo = { ancho: '100%', radio: 0, fondo: {lineal: {angulo: 90, paradas: [[tokens.color.panel.arriba, 0], [tokens.color.texto, 1]]}} } satisfies Estilo;
 ` + overlay('<Caja id="panel" estilo={estilo} transiciones={{opacidad: {duracion: 200, curva: [0, 0, 1, 1], retardo: 10}, y: {muelle: {rigidez: 100, amortiguacion: 20}}}}/>'));
-  assert.deepEqual(obtenido.raiz.hijos[0], {tipo: 'caja', id: 'panel', estilo: {ancho: '100%', radio: 0, fondo: {lineal: {angulo: 90, paradas: [['$color.panel', 0], ['$color.texto', 1]]}}}, transiciones: {opacidad: {duracion: 200, curva: [0,0,1,1], retardo: 10}, y: {muelle: {rigidez: 100, amortiguacion: 20}}}, hijos: []});
+  assert.deepEqual(obtenido.raiz.hijos[0], {tipo: 'caja', id: 'panel', estilo: {ancho: '100%', radio: 0, fondo: {lineal: {angulo: 90, paradas: [['$color.panel.arriba', 0], ['$color.texto', 1]]}}}, transiciones: {opacidad: {duracion: 200, curva: [0,0,1,1], retardo: 10}, y: {muelle: {rigidez: 100, amortiguacion: 20}}}, });
 });
 const errores = [
   ['TERNARIO', overlay('{m.en_garaje ? <Caja/> : <Caja/>}')],
@@ -73,5 +73,32 @@ test('contrato inexistente produce error tipado en el fichero de autor', () => {
   assert.throws(() => caso(overlay(''), 'inventado'), e => {
     assert.ok(e instanceof ErrorTraduccion); assert.equal(e.codigo, 'MODELO');
     assert.equal(e.linea, 3); return true;
+  });
+});
+
+test('TSX del relativo equivale exactamente a la receta directa vigente', () => {
+  assert.deepEqual(traducir(fileURLToPath(new URL('relativo.tsx', import.meta.url))), JSON.parse(readFileSync(new URL('../../recetas/relativo.receta.json', import.meta.url), 'utf8')));
+});
+test('un estado puede tener solo bucle y los bucles no necesitan cuando', () => {
+  const resultado = caso(overlay('<Caja estados={[{cuando: m.marca, bucle: {propiedad: "opacidad", valores: [0, 1], duracion: 200}}]} bucle={{propiedad: "opacidad", valores: [1, 0], duracion: 300}}/>'));
+  assert.deepEqual(resultado.raiz.hijos[0], {tipo: 'caja', estados: [{cuando: 'marca', bucle: {propiedad: 'opacidad', valores: [0,1], duracion: 200}}], bucle: {propiedad: 'opacidad', valores: [1,0], duracion: 300}});
+});
+test('devuelve todos los errores tsc con código y posición propios', () => {
+  const codigo = overlay('<Texto estilo={{color: "#fff", alto: 24}}>{m.no_existe}</Texto>');
+  const fuente = imports + codigo;
+  assert.throws(() => caso(codigo), error => {
+    assert.ok(error instanceof ErroresTipo);
+    assert.equal(error.diagnosticos.length, 3);
+    const esperados = [['color:', 2322], ['alto:', 2322], ['no_existe', 2339]];
+    for (const [i, diagnostico] of error.diagnosticos.entries()) {
+      const [campo, codigoTs] = esperados[i];
+      const antes = fuente.slice(0, fuente.indexOf(campo)).split('\n');
+      assert.equal(diagnostico.codigoTs, codigoTs);
+      assert.equal(diagnostico.fichero, temporal);
+      assert.equal(diagnostico.linea, antes.length);
+      assert.equal(diagnostico.columna, antes.at(-1).length + 1);
+      assert.ok(error.message.includes(diagnostico.message));
+    }
+    return true;
   });
 });

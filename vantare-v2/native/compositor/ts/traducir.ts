@@ -1,6 +1,6 @@
 import { watch, writeFileSync, renameSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { traducir } from './traductor.js';
+import { Traductor } from './traductor.js';
 
 const args = process.argv.slice(2);
 const entrada = args[0];
@@ -10,6 +10,7 @@ if (!entrada || indice !== 1 || !salida || args.some((a, i) => i > 2 && a !== '-
   console.error('Uso: node ts/dist/traducir.js <entrada.tsx> -o <salida.receta.json> [--vigilar]');
   process.exitCode = 1;
 } else {
+  const traductor = new Traductor();
   let ultimo: string | undefined;
   function ejecutar(): void {
     const inicio = performance.now();
@@ -17,7 +18,7 @@ if (!entrada || indice !== 1 || !salida || args.some((a, i) => i > 2 && a !== '-
       const contenido = readFileSync(entrada, 'utf8');
       if (contenido === ultimo) return;
       ultimo = contenido;
-      const receta = traducir(entrada);
+      const receta = traductor.traducir(entrada);
       const temporal = salida + '.tmp';
       writeFileSync(temporal, JSON.stringify(receta, null, 2) + '\n');
       renameSync(temporal, salida);

@@ -21,11 +21,12 @@ export interface Estilo {
 }
 interface Entrada { desde: Compuestas; transicion: Transicion }
 interface Salida { hacia: Compuestas; transicion: Transicion }
+interface Bucle { cuando?: boolean; propiedad: Propiedad; valores: number[]; duracion: number }
 interface Comunes {
   id?: string; estilo?: Estilo; capa?: boolean; visible?: boolean;
-  estados?: { cuando: boolean; estilo: Estilo }[];
+  estados?: { cuando: boolean; estilo?: Estilo; bucle?: Bucle }[];
   transiciones?: Partial<Record<Propiedad, Transicion>>;
-  bucle?: { cuando: boolean; propiedad: Propiedad; valores: number[]; duracion: number };
+  bucle?: Bucle;
 }
 // Estos marcadores nunca se ejecutan: el traductor solo lee su AST.
 export interface Nodo { readonly __nodo: unique symbol }

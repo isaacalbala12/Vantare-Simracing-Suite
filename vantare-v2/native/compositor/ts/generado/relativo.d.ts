@@ -16,6 +16,7 @@ readonly "piloto": string;
 readonly "detalle": string;
 readonly "vueltas": string;
 readonly "vueltas_visible": boolean;
+readonly "vueltas_tipo": "ninguna" | "abajo" | "arriba";
 readonly "gap": string;
 readonly "clase": "hyper" | "lmp" | "gt" | "otra";
 readonly "lado": "delante" | "jugador" | "detras";

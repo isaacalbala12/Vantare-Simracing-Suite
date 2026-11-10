@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "target": "ES2023", "module": "NodeNext", "moduleResolution": "NodeNext",
+    "strict": true, "outDir": "dist", "rootDir": ".", "declaration": true,
+    "noUnusedLocals": true, "noUnusedParameters": true, "skipLibCheck": false
+  },
+  "include": ["*.ts", "receta/**/*.ts", "generado/**/*.ts"]
+}

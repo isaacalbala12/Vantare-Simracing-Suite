@@ -1,0 +1,81 @@
+{
+  "tipo": "overlay",
+  "nombre": "muestra",
+  "modelo": "relativo/1",
+  "visible": "!en_garaje",
+  "entrada": {
+    "desde": {
+      "opacidad": 0,
+      "y": -8
+    },
+    "transicion": "$mov.aparecer"
+  },
+  "salida": {
+    "hacia": {
+      "opacidad": 0
+    },
+    "transicion": "$mov.aparecer"
+  },
+  "receta": 1,
+  "raiz": {
+    "tipo": "caja",
+    "estilo": {
+      "fondo": "$color.panel.arriba",
+      "hueco": "$medida.hueco"
+    },
+    "hijos": [
+      {
+        "tipo": "lista",
+        "de": "filas",
+        "clave": "id",
+        "entrada": {
+          "desde": {
+            "opacidad": 0
+          },
+          "transicion": "$mov.aparecer"
+        },
+        "salida": {
+          "hacia": {
+            "opacidad": 0
+          },
+          "transicion": "$mov.aparecer"
+        },
+        "movimiento": "$mov.aparecer",
+        "como": "fila",
+        "plantilla": {
+          "tipo": "caja",
+          "capa": true,
+          "visible": "!fila.vacio",
+          "estados": [
+            {
+              "cuando": "fila.lado=jugador",
+              "estilo": {
+                "opacidad": 1
+              }
+            }
+          ],
+          "bucle": {
+            "cuando": "fila.cerca",
+            "propiedad": "opacidad",
+            "valores": [
+              0.35,
+              1,
+              0.35
+            ],
+            "duracion": 800
+          },
+          "hijos": [
+            {
+              "tipo": "texto",
+              "estilo": {
+                "color": "$color.clase.{fila.clase}",
+                "tipo": "$tipo.piloto"
+              },
+              "texto": "P{fila.posicion} {fila.piloto}"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

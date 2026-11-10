@@ -1,0 +1,13 @@
+{
+  "name": "vantare-compositor-traductor",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "generar": "node generar.mjs",
+    "build": "npm run generar && tsc",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node --test pruebas/*.test.mjs"
+  },
+  "devDependencies": { "typescript": "5.9.3" }
+}

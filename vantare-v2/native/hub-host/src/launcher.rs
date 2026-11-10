@@ -404,6 +404,36 @@ mod windows_tests {
         }
     }
     #[test]
+    fn malformed_ids_empty_profiles_and_protected_documents_have_no_effects() {
+        let root = Root::new();
+        let path = root.path.join("launcher.json");
+        let mut document = Document::fresh_install();
+        document.profiles[0].steps.clear();
+        let bytes = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let revision = vantare_services::content_hash(&bytes);
+        for id in [
+            "bad\0id".to_owned(),
+            "x".repeat(ID_LIMIT + 1),
+            "creator".to_owned(),
+        ] {
+            assert_eq!(
+                launch(&path, &core(), &id, &revision),
+                Err(HostError::Denied)
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), bytes);
+            assert!(!mailbox::request_path(&path).exists());
+        }
+        let protected = br#"{"version":999}"#;
+        std::fs::write(&path, protected).unwrap();
+        assert_eq!(
+            launch(&path, &core(), "creator", &revision),
+            Err(HostError::Protected)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), protected);
+        assert!(!mailbox::request_path(&path).exists());
+    }
+    #[test]
     fn launch_checks_revision_identity_resident_and_exclusive_mailbox() {
         let root = Root::new();
         let path = root.path.join("launcher.json");

@@ -530,6 +530,12 @@ impl Session {
                             value: self.launcher_reader.view(),
                         },
                     },
+                    Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
+                        id,
+                        error: HostError::LauncherConflict {
+                            current: self.launcher_reader.view(),
+                        },
+                    },
                     Err(error) => HostToUi::Failure { id, error },
                 };
                 frame::write(pipe, &message)
@@ -553,6 +559,12 @@ impl Session {
                         id,
                         result: Reply::LauncherLaunch { accepted },
                     },
+                    Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
+                        id,
+                        error: HostError::LauncherConflict {
+                            current: self.launcher_reader.view(),
+                        },
+                    },
                     Err(error) => HostToUi::Failure { id, error },
                 };
                 frame::write(pipe, &message)
@@ -561,6 +573,7 @@ impl Session {
         }
     }
     fn launcher_snapshot(&mut self, pipe: &mut Pipe, id: u32) -> io::Result<()> {
+        self.launcher_reader.rescan();
         frame::write(
             pipe,
             &HostToUi::Response {

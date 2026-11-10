@@ -36,7 +36,7 @@ export function AppMark({
     </span>
   );
 }
-function Circuit() {
+export function Circuit() {
   return (
     <svg className="v-launcher-circuit" viewBox={circuit[0]} aria-hidden="true">
       <path
@@ -61,12 +61,16 @@ export function LauncherProfiles({
   onSelect,
   onLaunch,
   onReload,
+  onEdit,
+  onNew,
 }: {
   view: LauncherView;
   selected?: string;
   pending: boolean;
   error?: string;
   accepted: boolean;
+  onEdit?: (id: string) => void;
+  onNew?: () => void;
   onSelect: (id: string) => void;
   onLaunch: (profile: LauncherProfile) => void;
   onReload: () => void;
@@ -88,7 +92,9 @@ export function LauncherProfiles({
           <h1>{text.title}</h1>
           <p>{text.description}</p>
         </div>
-        <Button disabled>{text.newProfile}</Button>
+        <Button disabled={!onNew || pending} onClick={onNew}>
+          {text.newProfile}
+        </Button>
       </header>
       {error && (
         <Callout
@@ -142,6 +148,7 @@ export function LauncherProfiles({
                 <span>
                   <Button
                     variant="primary"
+                    className="v-launcher-launch"
                     disabled={
                       !profile.launchable ||
                       view.protected ||
@@ -157,7 +164,12 @@ export function LauncherProfiles({
                   </Button>
                 </span>
               </Tooltip>
-              <Button disabled>{text.edit}</Button>
+              <Button
+                disabled={!onEdit || pending || view.running}
+                onClick={() => onEdit?.(profile.id)}
+              >
+                {text.edit}
+              </Button>
               <Tooltip label={text.rehearseUnavailable}>
                 <span>
                   <Button disabled>{text.rehearse}</Button>
@@ -190,6 +202,13 @@ export function LauncherProfiles({
                   aria-pressed={item.id === profile.id}
                   disabled={pending || view.running}
                   onClick={() => onSelect(item.id)}
+                  onDoubleClick={() => onEdit?.(item.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && onEdit) {
+                      event.preventDefault();
+                      onEdit(item.id);
+                    }
+                  }}
                 >
                   <div
                     className={`v-launcher-cover${item.favorite ? " v-launcher-cover--favorite" : ""}`}
@@ -216,7 +235,8 @@ export function LauncherProfiles({
               <button
                 type="button"
                 className="v-launcher-profile v-launcher-profile--new"
-                disabled
+                onClick={onNew}
+                disabled={!onNew || pending}
               >
                 {text.newProfile}
               </button>

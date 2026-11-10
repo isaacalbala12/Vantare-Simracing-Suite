@@ -611,3 +611,10 @@ caliente para pruebas de producto. No distribuyas este perfil ni lo uses para
 comparar CPU, memoria o fluidez: para ello sigue usando Release con DuckDB bundled.
 Las reglas de herencia y overrides son las estándar de
 [Cargo](https://doc.rust-lang.org/cargo/reference/profiles.html).
+
+La CI prepara MSVC x64 con el Developer PowerShell instalado y configura
+`CC`/`CXX` con sccache, respetando valores previos. `RUSTC_WRAPPER` solo no
+cubre el MSVC autodetectado por cc 1.5.1. El gate de distribución comprueba un
+acierto C++ real y que el objeto restaurado conserve su SHA-256; la distribución
+Release conserva CRT estático y DuckDB bundled. No se habilita esta configuración
+en el Mac ni se cambia el compilador de C++ del producto.

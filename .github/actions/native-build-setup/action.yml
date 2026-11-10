@@ -35,6 +35,9 @@ runs:
       uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad
       with:
         version: v0.18.0
+    - name: Cache native MSVC C and C++ compilations
+      shell: pwsh
+      run: . "$env:GITHUB_WORKSPACE/vantare-v2/native/scripts/setup-msvc-cache.ps1"
     - name: Fetch locked native dependencies
       shell: pwsh
       working-directory: vantare-v2/native

@@ -339,3 +339,41 @@ dependencias calientes: **3,99 s**. Ambos builds PASS; no se abre la aplicación
 ni se afirma paridad funcional con Windows. La prueba Windows de 241,22 s
 construía todos los binarios por defecto; no es un antes/después equivalente
 al único binario macOS. El target propio se eliminó y el checkout quedó limpio.
+
+### Cierre real de #2003 y siguiente prueba de C++
+
+#2003 a2ea8cab3, ejecución 42773878313: todos los jobs y agregado PASS.
+Inicio de policy 07:14:19 UTC → cierre agregado 07:58:20: **44 min 01 s**;
+baseline completo #1997 **57 min 24 s**. No se alcanza todavía <15 min.
+Instalación 18 min 50 s, builder archivado 12 min 03 s, suite 7 min 42 s;
+distribución QA determina el final con 43 min 08 s. El orquestador fusionó
+#2003 como 479cca4bf; este worker no hace merge.
+
+Timings vivos Release con cuatro jobs y sccache: control QA 229,38 s;
+candidato limpio 2005,79 s; candidato con registro TEST rechazado 239,43 s.
+El mayor nodo del limpio es **libduckdb-sys, build-script C++: 1186,67 s**;
+Hub 209,42 s, UI 135,98 s, GPUI 91,75 s. Son nodos que pueden solaparse:
+no se suman sus duraciones como tiempo de reloj. El timeout de 90 min tiene
+ahora una ejecución completa de 43 min 08 s como referencia y margen para
+caché fría. El timeout anterior era un deadlock; no se confunden ambas causas.
+
+La estadística de distribución solo tenía peticiones Rust. cc 1.5.1 no aplica
+su fallback RUSTC_WRAPPER cuando ya ha detectado MSVC automáticamente. Se
+prepara el entorno oficial de Visual Studio y CC/CXX explícitos con sccache,
+sin cambiar compilador, flags ni CRT. Prueba C++ real en este servidor,
+por compilar.ps1: primer objeto 2,28 s → segundo servido de caché 0,14 s,
+SHA-256 idéntico; un daemon y puerto propios, sin parar el de otros workers.
+Esta fixture no equivale todavía a medir DuckDB: se exige CI Release real
+antes de atribuirle ahorro al candidato completo. Las mediciones Windows
+se conservan para Isaac.
+
+Sccache 0.19 real en Windows, ejecución 42778628365, versión comprobada:
+Core sin caché 119,48 s; 0.18 primer/segundo target 30,41/28,47 s;
+0.19 primer/segundo 140,84/70,33 s. Builds PASS, pero no gana en esta prueba:
+se conserva 0.18 en el flujo normal. La primera tentativa 42777765416 estaba
+sombreada por PATH y seguía ejecutando 0.18; queda excluida de la comparación.
+El script corregido usa la ruta exacta y rechaza una versión equivocada.
+[0.19](https://github.com/mozilla/sccache/releases/tag/v0.19.0) no incluye
+el arreglo de reintentos GHA, integrado después en
+[#2911](https://github.com/mozilla/sccache/pull/2911); no se atribuyen a 0.19
+mejoras de red no probadas aquí.

@@ -15,6 +15,15 @@ use std::{
     time::{Duration, Instant},
 };
 use vantare_ipc::transport::{Event as Stop, Listener, Pipe};
+#[cfg(feature = "qa-e2e")]
+fn qa_phase(args: &Args, phase: &str) -> io::Result<()> {
+    use std::io::Write as _;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(args.data.join("hub-host-qa.log"))?;
+    writeln!(file, "{phase}")
+}
 struct UiChild(Child);
 impl Drop for UiChild {
     fn drop(&mut self) {
@@ -109,7 +118,12 @@ fn spawn_ui(
     }
     #[cfg(not(feature = "qa-e2e"))]
     command.stderr(Stdio::null());
-    Ok((UiChild(command.spawn()?), ui))
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-ui-spawn")?;
+    let child = command.spawn()?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "ui-spawned")?;
+    Ok((UiChild(child), ui))
 }
 fn accept_ui(
     args: &Args,
@@ -186,6 +200,8 @@ fn accept_ui(
             if !authenticated(&value, token) {
                 return Err(io::ErrorKind::PermissionDenied.into());
             }
+            #[cfg(feature = "qa-e2e")]
+            qa_phase(args, "ui-authenticated")?;
             return Ok(Some((pipe, reader)));
         }
     }
@@ -435,10 +451,18 @@ pub fn run(args: &Args) -> io::Result<()> {
     else {
         return Ok(());
     };
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-core-start")?;
+    let core = Core::start(&args.pipe, directory)?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-settings-load")?;
+    let settings = Settings::load(args);
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "settings-loaded")?;
     let mut session = Session {
         launcher: args.launcher.clone(),
-        core: Core::start(&args.pipe, directory)?,
-        settings: Settings::load(args),
+        core,
+        settings,
         confirmation: ready::Ready::from_executable(&executable)?,
         current: protocol::CoreStatus::default(),
         last: None,
@@ -448,7 +472,11 @@ pub fn run(args: &Args) -> io::Result<()> {
         sim_subscribed: false,
         handshaken: false,
     };
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-hello")?;
     frame::write(&mut pipe, &protocol::hello(&session.settings.view())?)?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "hello-sent")?;
     while child.0.try_wait()?.is_none() && session.tick(args, &mut pipe)? {
         if let Some(message) = reader.next::<UiToHost>(&mut pipe)?
             && !session.receive(&mut pipe, &message)?

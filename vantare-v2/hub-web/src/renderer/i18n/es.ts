@@ -120,7 +120,7 @@ export const settingsText = {
     "Se ha detectado un problema al recuperar los ajustes. Revisa los valores antes de guardar.",
   "settings.failed": "No se pudo guardar el cambio",
   "settings.failedHelp":
-    "Los valores confirmados se conservan. Reintenta o descarta el cambio pendiente antes de cerrar.",
+    "Los valores confirmados se conservan. Reintenta o descarta el cambio pendiente antes de seguir o cerrar.",
   "settings.unavailable": "No se pudieron cargar los ajustes",
   "settings.reload": "Volver a cargar",
   "general.interface": "Interfaz",

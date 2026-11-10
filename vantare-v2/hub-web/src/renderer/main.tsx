@@ -34,7 +34,11 @@ function Content() {
         <Callout title={host.hello.demo ? es.mock : es.coreUnavailable} />
       </ContentStack>
     );
-  return <Shell />;
+  return (
+    <SettingsProvider>
+      <Shell />
+    </SettingsProvider>
+  );
 }
 function App() {
   const [cache] = useState(
@@ -53,18 +57,16 @@ function App() {
   return (
     <QueryClientProvider client={cache}>
       <HostProvider>
-        <SettingsProvider>
-          <UiProvider>
-            <CSPProvider disableStyleElements>
-              <TooltipProvider delay={400}>
-                <ToastProvider>
-                  <Content />
-                  <ToastViewport closeLabel={specimen.close} />
-                </ToastProvider>
-              </TooltipProvider>
-            </CSPProvider>
-          </UiProvider>
-        </SettingsProvider>
+        <UiProvider>
+          <CSPProvider disableStyleElements>
+            <TooltipProvider delay={400}>
+              <ToastProvider>
+                <Content />
+                <ToastViewport closeLabel={specimen.close} />
+              </ToastProvider>
+            </TooltipProvider>
+          </CSPProvider>
+        </UiProvider>
       </HostProvider>
     </QueryClientProvider>
   );

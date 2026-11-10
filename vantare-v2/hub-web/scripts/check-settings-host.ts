@@ -67,6 +67,10 @@ export async function checkSettingsHost(
       15000,
       "installer disables startup",
     );
+    await assert.rejects(
+      readFile(join(context.shellRoot, "Startup/Vantare.lnk")),
+      { code: "ENOENT" },
+    );
     await writeFile(
       join(evidence, "startup-native.json"),
       JSON.stringify({
@@ -177,12 +181,33 @@ export async function checkSettingsHost(
     5000,
     "palette acknowledged before keyboard edit",
   );
+  await page.bringToFront();
   await slider.focus();
-  await until(
-    () => slider.evaluate((input) => document.activeElement === input),
-    5000,
-    "slider keyboard focus",
-  );
+  try {
+    await until(
+      () =>
+        slider.evaluate((input) => input.ownerDocument.activeElement === input),
+      5000,
+      "slider keyboard focus",
+    );
+  } catch (error) {
+    await writeFile(
+      join(evidence, "slider-focus.json"),
+      JSON.stringify(
+        await slider.evaluate((input) => ({
+          active: input.ownerDocument.activeElement?.outerHTML,
+          own: input.outerHTML,
+          thumb: input.closest(".v-slider-thumb")?.outerHTML,
+          hasFocus: input.ownerDocument.hasFocus(),
+          disabled: input instanceof HTMLInputElement && input.disabled,
+        })),
+        null,
+        2,
+      ),
+    );
+    await page.screenshot({ path: join(evidence, "slider-focus.png") });
+    throw error;
+  }
   await page.keyboard.press("ArrowRight");
   await until(
     async () => (await readDocument()).appearance.contrast === 101,

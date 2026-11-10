@@ -29,7 +29,7 @@ export function General() {
   });
   if (!state.view) return null;
   const view = state.view;
-  const disabled = state.pending || view.protected;
+  const disabled = state.pending || view.protected || Boolean(state.error);
   const options = densities.map((value) => ({
     value,
     label: t(`general.${value}`),

@@ -32,7 +32,7 @@ function AppearanceSlider({
       value={preview}
       min={field === "contrast" ? 80 : 50}
       max={field === "contrast" ? 120 : 100}
-      disabled={state.pending || state.view?.protected}
+      disabled={state.pending || state.view?.protected || Boolean(state.error)}
       onChange={(value) => {
         setPreview(value);
         if (state.view)
@@ -60,7 +60,7 @@ export function Appearance() {
   if (!state.view) return null;
   const view = state.view;
   const appearance = view.appearance;
-  const disabled = state.pending || view.protected;
+  const disabled = state.pending || view.protected || Boolean(state.error);
   const scheme = appearance.scheme === "system" ? system : appearance.scheme;
   return (
     <>

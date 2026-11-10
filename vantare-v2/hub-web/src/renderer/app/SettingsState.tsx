@@ -133,9 +133,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       (mutation.variables && "patch" in mutation.variables
         ? mutation.variables.patch.field
         : undefined) ?? failed.current?.field,
-    error:
-      error ?? (query.error instanceof HostFailure ? query.error : undefined),
-    update: (patch) => run({ patch }),
+    error,
+    update: (patch) => {
+      if (!failed.current) run({ patch });
+    },
     retry: () => {
       if (query.data?.canRetry) run({ retry: true });
       else if (failed.current) run({ patch: failed.current });

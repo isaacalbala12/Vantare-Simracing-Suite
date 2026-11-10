@@ -39,7 +39,11 @@ export function Settings() {
               <Button onClick={state.retry} busy={state.pending}>
                 {t("settings.retry")}
               </Button>
-              <Button variant="ghost" onClick={state.discard}>
+              <Button
+                variant="ghost"
+                onClick={state.discard}
+                disabled={state.pending}
+              >
                 {t("settings.discard")}
               </Button>
             </ActionGroup>

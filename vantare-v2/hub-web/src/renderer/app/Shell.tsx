@@ -33,6 +33,11 @@ export function Shell() {
   const host = useHost();
   const toast = useToastManager();
   const settings = useSettings();
+  const editBlocked =
+    !settings.view ||
+    settings.pending ||
+    settings.view.protected ||
+    Boolean(settings.error);
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
     queryFn: async () => offline,
@@ -58,7 +63,13 @@ export function Shell() {
     }
   }
   function zoom(direction: -1 | 0 | 1) {
-    if (!settings.view || settings.pending || settings.view.protected) return;
+    if (
+      !settings.view ||
+      settings.pending ||
+      settings.view.protected ||
+      settings.error
+    )
+      return;
     const index = zoomLevels.indexOf(settings.view.zoom);
     const value =
       direction === 0
@@ -69,7 +80,12 @@ export function Shell() {
     settings.update({ field: "zoom", value });
   }
   function toggleTheme() {
-    if (settings.view && !settings.pending && !settings.view.protected)
+    if (
+      settings.view &&
+      !settings.pending &&
+      !settings.view.protected &&
+      !settings.error
+    )
       settings.update({
         field: "scheme",
         value:
@@ -119,7 +135,8 @@ export function Shell() {
         ["+", "=", "-", "0"].includes(key) &&
         settings.view &&
         !settings.pending &&
-        !settings.view.protected
+        !settings.view.protected &&
+        !settings.error
       ) {
         event.preventDefault();
         zoom(key === "0" ? 0 : key === "-" ? -1 : 1);
@@ -188,6 +205,7 @@ export function Shell() {
                   {
                     id: "theme",
                     label: t("shell.toggleTheme"),
+                    disabled: editBlocked,
                     run: toggleTheme,
                   },
                   {
@@ -208,16 +226,19 @@ export function Shell() {
                   {
                     id: "zoom-less",
                     label: t("general.zoomLess"),
+                    disabled: editBlocked,
                     run: () => zoom(-1),
                   },
                   {
                     id: "zoom-more",
                     label: t("general.zoomMore"),
+                    disabled: editBlocked,
                     run: () => zoom(1),
                   },
                   {
                     id: "zoom-reset",
                     label: t("general.zoomReset"),
+                    disabled: editBlocked,
                     run: () => zoom(0),
                   },
                   {
@@ -272,11 +293,7 @@ export function Shell() {
                 <IconButton
                   label={t("shell.toggleTheme")}
                   onClick={toggleTheme}
-                  disabled={
-                    !settings.view ||
-                    settings.pending ||
-                    settings.view.protected
-                  }
+                  disabled={editBlocked}
                 >
                   <Icon name="v-palette" />
                 </IconButton>

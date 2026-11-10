@@ -167,6 +167,7 @@ try {
     .getByRole("alert")
     .filter({ hasText: "Los ajustes han cambiado" });
   await conflict.waitFor();
+  assert.equal(await minimized.isDisabled(), true);
   assert.equal(
     await page
       .getByRole("switch", { name: "Avisos de actualización", exact: true })

@@ -106,7 +106,7 @@ export async function checkSettingsHost(
     "first save acknowledged before shortcut",
   );
   const scale = await page.evaluate(() => devicePixelRatio);
-  await page.getByRole("heading", { name: "Ajustes", exact: true }).focus();
+  await page.getByRole("heading", { name: "General", exact: true }).focus();
   await page.keyboard.press("Control+=");
   await until(
     async () => (await readDocument()).zoom === 110,

@@ -38,15 +38,19 @@ entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la venta
 
 ## Comprobaciones locales
 
-Desde `vantare-v2`, con target propio en D: y a través de la cola:
+Desde `vantare-v2`, usando los slots persistentes en D: del README nativo:
 
 ```powershell
-$env:CARGO_TARGET_DIR = 'D:\VantareServer\targets\isa-1995-puente'
-pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/hub-host/check.ps1
+$env:VANTARE_TARGET_ROOT='D:/VantareServer/targets'
+pwsh -NoProfile -File native/scripts/comprobar.ps1 hub-host
+pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/hub-host/check.ps1 -ArtifactDirectory D:/VantareServer/qa/isa-1995-host-tools
 ```
 
 Para regenerar tipos, sustituir el script final por `regenerate-and-check.ps1`.
 Este actualiza los bindings y luego ejecuta las mismas comprobaciones.
+La copia del ejecutable se hace dentro de la reserva: no se consume un binario
+del slot después de liberarlo, porque otro checkout puede limpiarlo.
+Para los smokes fijar `VANTARE_HUB_HOST_BINARY` a esa copia en QA.
 `check.ps1` usa `qa-e2e` para la automatización local: activa CDP de Chromium
 solo en loopback. **Ese feature no se habilita en distribución.** No abre el
 inspector de Node ni cambia los fuses cerrados.

@@ -1,0 +1,57 @@
+[package]
+name = "vantare-compositor"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.95"
+publish = false
+description = "Prueba #2022: compositor propio de overlays (DirectComposition + Direct2D/DirectWrite)."
+
+# Prueba aislada (#2022): workspace propio. No es miembro del workspace de
+# native, no entra en default-members, en la CI ni en el instalador.
+[workspace]
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+taffy = { version = "0.15.1", default-features = false, features = ["std", "flexbox", "taffy_tree"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_DirectComposition",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Imaging",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Performance",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# Solo el ejemplo (el «doble del núcleo») lee fotos reales; el motor no conoce el dominio.
+[dev-dependencies]
+vantare-domain = { path = "../domain" }
+vantare-ipc = { path = "../ipc" }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[profile.dev]
+debug = 0
+[profile.dev.package."*"]
+debug = 0

@@ -8,6 +8,7 @@ function Set-VantareSlotWorkspace {
     if ((Test-Path -LiteralPath $stamp) -and
         [IO.File]::ReadAllText($stamp) -ceq $root) { return }
     if (-not (Test-Path -LiteralPath (Join-Path $Target 'CACHEDIR.TAG'))) {
+        [IO.Directory]::CreateDirectory($Target) | Out-Null
         # The queue creates its stamps/tmp before Cargo's first invocation.
         # Cargo refuses clean on that fresh directory; never manufacture its tag.
         $unknown = @(Get-ChildItem -LiteralPath $Target -Force | Where-Object {

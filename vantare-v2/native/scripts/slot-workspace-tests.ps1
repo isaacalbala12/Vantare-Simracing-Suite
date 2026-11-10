@@ -6,6 +6,9 @@ $target = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('fresh-slot-' 
 [IO.Directory]::CreateDirectory((Join-Path $target 'tmp')) | Out-Null
 [IO.File]::WriteAllText((Join-Path $target '.vantare-last-build'), 'queue stamp')
 function cargo { throw 'Un target nuevo no debe invocar cargo clean.' }
+Set-VantareSlotWorkspace -Target (Join-Path $target 'new-explicit-target') -NativeRoot $PSScriptRoot
+Remove-Item -LiteralPath (Join-Path $target 'new-explicit-target/.vantare-workspace')
+[IO.Directory]::Delete((Join-Path $target 'new-explicit-target'))
 Set-VantareSlotWorkspace -Target $target -NativeRoot $PSScriptRoot
 if ([IO.File]::ReadAllText((Join-Path $target '.vantare-workspace')) -cne $PSScriptRoot) {
     throw 'No se ha registrado el primer checkout.'

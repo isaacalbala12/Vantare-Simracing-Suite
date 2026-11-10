@@ -1,7 +1,9 @@
-# native — aplicación Rust (ADR 0099)
+# native — núcleo y overlays Rust (ADR 0099 / 0107)
+
+ADR 0107 congela el Hub GPUI; su reemplazo web vive fuera de `native/`.
 
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
-cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2` (o `CARGO_BUILD_JOBS` de la máquina, ver «Workers»).
+cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. La cola asigna un target persistente configurable (D: en el servidor); ver «Workers».
 
 ## Rutas locales — #1869, paso 3
 
@@ -38,7 +40,7 @@ overrides QA de native/LocalAppData/AppData.
 ## Mapa de crates
 
 El workspace tiene 14 crates. La selección `default-members` enumera ocho:
-`domain`, `runtime`, `ipc`, `ui`, `hub`, `engineer`, `services` y `strategy`.
+`domain`, `runtime`, `ipc`, `ui`, `engineer`, `services`, `strategy` y `launcher`.
 Los demás pueden compilarse como dependencias; no estar en esa lista no los
 excluye del grafo de compilación.
 
@@ -257,8 +259,10 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 > por PR). El desarrollo local en Linux/macOS sigue soportado por la base Unix (#1437) y este README, pero
 > ya no lo verifica la CI: si se retoma, volver a añadir el job (histórico en el cuaderno de #1654).
 
-La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
-completo:
+La base Unix (#1437) cubre desarrollo en Linux y macOS. La medición actual
+verifica las bibliotecas domain/ipc/strategy/runtime; la integración completa
+está bloqueada por el fallo Unix de [#2004](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2004).
+El soporte histórico incluye
 los 14 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
 cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
 un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
@@ -473,10 +477,9 @@ Para una ubicación distinta, usa `gates.ps1 -DuckDbDirectory` o `DUCKDB_LIB_DIR
 El script reactiva `/default` de todos los miembros excepto storage, incluidos
 los crates futuros: así no se apagan silenciosamente otros defaults. Si cambia
 el default de storage, falla y pide revisar la selección. `DUCKDB_LIB_DIR` por sí
-sola no desactiva `bundled`. Usa exclusivamente `native/target/gates`, dentro del
-worktree, para no mezclar artefactos de features distintas con el build habitual.
-Restaura el entorno al terminar; ese subdirectorio también cuenta en el disco del
-worktree. Los ejecutables que usen
+sola no desactiva `bundled`. Usa el target persistente que asigna `compilar.ps1`; Cargo distingue las features
+y perfiles en sus huellas de compilación.
+Restaura el entorno al terminar; los datos QA cuentan en el target del slot. Los ejecutables que usen
 DuckDB necesitan esa DLL en `PATH` o junto al `.exe`. Para distribuir se sigue
 usando `cargo build --workspace --bins --release -j 2`. Candidate y MSIX rechazan
 un entorno con `DUCKDB_LIB_DIR` definida antes de compilar o crear artefactos;
@@ -484,167 +487,106 @@ retírala con `Remove-Item Env:DUCKDB_LIB_DIR` en la terminal de distribución.
 En Linux/macOS, la biblioteca oficial equivalente debe estar también en la ruta
 de bibliotecas del cargador de su sistema; esta variante se verificó en Windows.
 
-## Workers: caché y limpieza (#1465)
+## Workers: caché y limpieza (#1993)
 
-Los gates (salvo el build `prueba`) fijan `VANTARE_NATIVE_DATA_ROOT`,
-`LOCALAPPDATA` y `APPDATA` en `<TargetDirectory>/qa-data` y restauran el entorno al acabar,
-también en fallo. En tests o con `services/test-support`, la raíz de diagnóstico
-rechaza la falta de override antes de recurrir a datos instalados (#1869, P1 QA).
-Los tests del Hub activan esa feature ya existente: `cfg(test)` no se propaga a
-dependencias. El arnés headless recibe su Store de privacidad por `Loaded`;
-construirlo sin demo/captura no autoriza resolver una raíz real.
-
-Dev/test omiten símbolos de las dependencias (`profile.dev.package."*".debug = 0`).
-Los crates propios conservan fichero y línea en sus trazas; depurar internamente
-una dependencia requiere volver a activar sus símbolos. Release no cambia.
-
-**Tests.** En nextest `-j` es `--test-threads`, no los jobs de compilación:
-`gates.ps1` compila con los jobs de `CARGO_BUILD_JOBS` (2 si no está definida;
-en nextest como `--build-jobs`) y ejecuta con los hilos de `.config/nextest.toml`
-(4). `NEXTEST_TEST_THREADS` tiene prioridad sobre ese valor (CI también lo fija
-en 4 desde #1654 r3). Siete tests con plazos de reloj duros de 1-3 s (`ipc`,
-`launcher` y `runtime`) piden todos los hilos (`threads-required`): corren solos
-y primero (`priority`), así que sus plazos no dependen de la CPU que quede ni de
-cuántos hilos se usen. Si aparecen intermitentes en CI, volver a 2 hilos y
-anotarlo en el cuaderno de #1654. Para un `cargo nextest` a mano, usa
-`--build-jobs`, no `-j`. El banco `engineer::recovery` también corre solo y
-primero: su Host/hijo refrescan una política con TTL de 2 s. La contención del
-runner no debe convertir la prueba de checkpoint en pérdida de licencia; TTL,
-aserciones, tests de revocación y número de intentos se conservan.
-
-**Sccache.** `compilar.ps1` lo activa solo si está instalado (`VANTARE_SCCACHE=0`
-lo apaga). Cada worktree conserva su target propio; sccache solo comparte las
-dependencias de crates.io/git. Los crates del workspace y `vendor/gpui_windows`
-son incrementales y no se cachean; tampoco binarios, proc macros ni build scripts.
-En Windows las DLL de proc macros cambian en cada target (marca de tiempo y GUID
-del PDB, también con `/Brepro`), así que los crates que usan derives fallan la
-caché entre worktrees: en el servidor, ~75 % de hits en el primer build de un
-worktree nuevo. La clave incluye `CARGO_TARGET_DIR` y `CARGO_INCREMENTAL`: no los
-fijes por worker (parten la caché). Pasa el target con `--target-dir`, como hace
-gates con `target/gates`; así gates y los
-targets propios comparten la caché
-([implementación fijada](https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs)).
-En cambio `CARGO_BUILD_JOBS`, `CARGO_MAKEFLAGS` y `CARGO_REGISTRIES_*` quedan
-fuera de la clave (mismo fichero): bajarlos cuando aprieta la memoria **no** parte
-la caché. Aun así, para una tanda concreta se prefieren los jobs por línea de
-comandos (`gates.ps1 -Jobs N`, #1654 ronda 11).
-Para editar widgets con el watcher de Workshop conserva incremental.
-
-Medido en el servidor (#1654 r4, `sccache --show-stats`): 523 aciertos / 200
-fallos (72,3 %) y la caché **llena** (5 GiB de 5 GiB, expulsa la entrada más
-antigua). Los no cacheables son por diseño: `crate-type` (binarios y proc macros),
-`incremental` (crates propios y el fork vendorizado) y `multiple input files`.
-
-**Limpieza.** `scripts/limpiar-targets.ps1` borra los targets de Cargo (directorios
-con su `CACHEDIR.TAG`) que no compilan desde hace más de `-Dias` días. Simula por
-defecto; con `-Aplicar` borra. Nunca toca un target con un build en marcha
-(`.cargo-lock` abierto), enlaces ni rutas fuera de `-Raiz`. Todo es regenerable.
+Desde `vantare-v2/`:
 
 ```powershell
-pwsh -NoProfile -File native/scripts/limpiar-targets.ps1 -Raiz C:\VantareServer\targets,C:\VantareServer\wt -Dias 7
+pwsh -NoProfile -File native/scripts/comprobar.ps1 runtime
+# Un comando específico, siempre dentro de la cola:
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare-core -j 4
 ```
 
-### Configuración de máquina (servidor de workers)
+`comprobar` ejecuta Clippy (incluye tipos) y Nextest del crate y sus dependientes
+directos, excluyendo siempre `vantare-hub` y `vantare-admin`. Un cambio en el
+núcleo o en `ui` no los compila ni los prueba en local. Cargo resuelve sus
+dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes transitivos y excluye Hub/Admin, salvo
+cambios explícitos en esos productos. Push a nightly/testers, promociones y
+merge_group comprueban el workspace completo.
+Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
+workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
+cuando el diff pertenece a crates conocidos.
+En CI, los consumidores legacy omitidos por el filtro rápido reciben `cargo
+check` de biblioteca/binarios, sin sus tests: por ejemplo strategy y storage
+comprueban Hub/Admin. También se comprueban ante cambios de domain/ipc/services/ui.
+Esto conserva compatibilidad sin añadir Hub/Admin al flujo local de workers.
+Los tests de procesos de Runtime preparan también el ejecutable Services.
+El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
+Nextest usa `--build-jobs`; `-j` controla hilos de test.
 
-En el servidor (`SapphireOS`) está aplicado:
+`VANTARE_TARGET_ROOT` configura la raíz de slots (proceso o Machine en Windows).
+Sin ella se usa `LocalApplicationData/Vantare/targets`; GitHub usa RUNNER_TEMP.
+Se respeta SCCACHE_DIR ya definido; sin él se consulta Machine y después
+LocalApplicationData/Vantare/sccache. Este servidor tiene VANTARE_TARGET_ROOT=
+`D:/VantareServer/targets` y SCCACHE_DIR=`D:/VantareServer/cache/sccache` en Machine.
 
-- Variables de máquina `VANTARE_CARGO_SLOTS=2`, `VANTARE_CARGO_MIN_GB=4`,
-  `CARGO_BUILD_JOBS=2` y `SCCACHE_CACHE_SIZE=5G`. La cola admite el primer worker con
-  `VANTARE_CARGO_MIN_GB` libres y exige `jobs × VANTARE_CARGO_JOB_GB +
-  VANTARE_CARGO_RESERVE_GB` (por defecto 2 × 1,5 + 1 = 4 GB) más por cada worker que ya
-  está compilando: con 16 GB y los agentes abiertos, dos workers a la vez mandaban la
-  memoria a swap (pico medido 19 GB comprometidos en #1654 r3), así que el segundo
-  espera a que el primero deje aire. Toda la caché de dev, test y prueba ocupó 1,5 GB;
-  sccache expulsa lo más antiguo al llenarse (`%LOCALAPPDATA%\Mozilla\sccache`).
-- Slots por memoria **comprometida** (#1654 r12). Además del aire libre, la cola mira
-  cuánta memoria está comprometida (límite de commit menos lo libre de ese límite) en
-  cada vuelta: con `VANTARE_CARGO_COMMIT_2GB` (14 GB por defecto; Machine > proceso >
-  por defecto, releído sin reiniciar T3) deja pasar 2 workers por debajo del umbral y
-  solo 1 a partir de él, nunca 0 ni más de `VANTARE_CARGO_SLOTS`. En el servidor el
-  comprometido vive por encima de 14 GB casi siempre (pico de 23,2 GB con 8 `rustc`
-  simultáneos; log `C:\VantareServer\logs\carga-2026-10.log`), así que en la práctica
-  se pasa de 2 a 1 worker como máximo. El log dice en cada intento el comprometido,
-  el umbral, sus slots efectivos y el motivo. Es conservador: si un worker entró con
-  2 slots y sigue en el hueco 1, cuenta como ocupado y el efectivo de 1 no deja
-  entrar a otro hasta que termine (así nunca se supera el tope efectivo).
-- Jobs de compilación bajo el mismo comprometido: palanca documentada, **hoy no-op**.
-  Con el comprometido muy alto, además de dejar 1 slot se pueden bajar los jobs
-  (`gates.ps1 -Jobs 1`, #1654 ronda 11, pasando `-j`/`--build-jobs` a cargo; o
-  `CARGO_BUILD_JOBS=1`). En el servidor `CARGO_BUILD_JOBS` ya es 2, así que una regla
-  que bajase a 2 no cambiaría nada; solo sirve si se sube el tope o en otra máquina.
-  La cola **no** lo automatiza: recortar jobs no parte la caché de sccache (ver
-  «Sccache»), pero alarga la compilación y hay que medirlo con el medidor de #1654
-  antes de fijarlo.
-- Tarea `\Vantare\LimpiarTargets` (diaria 05:30, SYSTEM): ejecuta el script del
-  checkout de integración con `-Raiz C:\VantareServer\targets,C:\VantareServer\wt
-  -Dias 7 -Aplicar` y anexa la salida a `C:\VantareServer\logs\limpiar-targets.log`.
-  El checkout de integración no se limpia.
+La cola admite como máximo dos compilaciones. CARGO_BUILD_JOBS de Machine tiene
+prioridad sobre el del proceso; en este servidor Machine fija 4. Usar `CARGO_BUILD_JOBS=4` en este
+servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
+ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
+evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
+reserva del ancestro. Sccache local usa `D:/VantareServer/cache/sccache` (30 GB, puerto 4227) y es opcional;
+Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
+se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
+`VANTARE_SCCACHE=0` permite repetir un fallo conservando su primera evidencia.
 
-Para replicarlo en otro PC Windows (PowerShell como administrador):
+Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB.
+El tamaño se mide como máximo una vez por hora; entre medidas se usa su sello.
+Los enlaces se comprueban antes de borrar. Solo
+se limpia bajo el mutex correspondiente, sin enlaces ni locks Cargo abiertos;
+menos de 15 GB libres en D: detiene la compilación local. El runner alojado
+reserva 2 GB en el volumen temporal. Los targets explícitos se
+reservan para mediciones o distribución, absolutos en el volumen configurado; no los limpia
+el slot automáticamente. No se borran targets ajenos.
 
-```powershell
-[Environment]::SetEnvironmentVariable('VANTARE_CARGO_SLOTS', '2', 'Machine')
-[Environment]::SetEnvironmentVariable('VANTARE_CARGO_COMMIT_2GB', '14', 'Machine') # 16 GB; por encima, 1 solo worker
-[Environment]::SetEnvironmentVariable('CARGO_BUILD_JOBS', '2', 'Machine') # 16 GB; la cola limita por RAM
-[Environment]::SetEnvironmentVariable('SCCACHE_CACHE_SIZE', '5G', 'Machine')
-$script = '<checkout>\vantare-v2\native\scripts\limpiar-targets.ps1'
-$arg = "-NoProfile -NonInteractive -Command `"& '$script' -Raiz <targets>,<worktrees> -Dias 7 -Aplicar`""
-Register-ScheduledTask -TaskPath '\Vantare\' -TaskName LimpiarTargets -User SYSTEM `
-    -Action (New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument $arg) `
-    -Trigger (New-ScheduledTaskTrigger -Daily -At 05:30)
+La CI usa exclusivamente `windows-latest` y rutas bajo `RUNNER_TEMP`. Instala
+Nextest precompilado, ejecuta Clippy y construye un archivo de tests. Suite,
+telemetría y los arneses lifecycle de Runtime/Engineer se ejecutan en jobs paralelos sin recompilar;
+los overlays normal/QA se compilan en otro builder paralelo y
+distribución/instalación corre en paralelo cuando el diff lo exige y siempre
+en integración. El check obligatorio agrega todos sus resultados. El Hub web
+no dispara Rust salvo cambios en `native/` o entradas globales del build.
+
+La caché de GitHub comparte el límite de 10 GB del repo: registro/git con
+actions/cache y artefactos de compilador con sccache GHA, sin duplicar targets.
+El registro se indexa por Cargo.lock; sccache conserva una versión fija y decide
+la reutilización por los inputs del compilador. Los PR pueden restaurar su base
+nightly. CI desactiva incremental; local lo conserva. Los archivos de tests
+son artefactos del mismo SHA, con retención de un día, no cachés de otra rama.
+
+La cola PowerShell usa Win32 y no se ejecuta en macOS. Alternativa desde
+`native/`, con target propio y cuatro jobs (Runtime y dependientes directos
+Engineer/Storage; `python3 scripts/affected-crates.py --crate vantare-runtime`
+calcula la selección, incluidos los puentes entre procesos):
+
+```bash
+export CARGO_TARGET_DIR="$HOME/target-<worker>" CARGO_BUILD_JOBS=4
+export VANTARE_NATIVE_DATA_ROOT="$CARGO_TARGET_DIR/qa-data"
+mkdir -p "$VANTARE_NATIVE_DATA_ROOT"
+cargo clippy -p vantare-runtime -p vantare-engineer -p vantare-storage --lib --locked --offline -j 4 -- -D warnings
+cargo test -p vantare-runtime -p vantare-engineer -p vantare-storage --lib --locked --offline -j 4
 ```
 
-En macOS (sin `compilar.ps1`): `export SCCACHE_CACHE_SIZE=5G`, `CARGO_BUILD_JOBS`
-según núcleos y RAM, y
-`export RUSTC_WRAPPER=sccache` en `~/.zprofile`, y la limpieza con PowerShell
-(`brew install powershell`) desde `crontab -e`:
-`30 5 * * * pwsh -NoProfile -File <checkout>/vantare-v2/native/scripts/limpiar-targets.ps1 -Raiz <targets> -Dias 7 -Aplicar`.
+Esto comprueba bibliotecas, no sustituye los procesos y gates de Windows.
+La integración Unix completa está bloqueada por #2004. Para eliminar targets
+antiguos de Windows, `scripts/limpiar-targets.ps1 -Raiz <raíces> -Dias 7` simula
+la limpieza; `-Aplicar` la ejecuta. Solo detecta targets con CACHEDIR.TAG:
+`isa-1993-baseline`, que no tiene ese fichero, queda fuera. No usarlo sobre
+targets ajenos. La tarea
+del servidor `\Vantare\LimpiarTargets` conserva esa limpieza periódica;
+la limpieza por slot es independiente. Los targets de medición de VANTA-137
+se dejan para Isaac, conforme a su instrucción.
 
-### Medidas en el servidor (4 núcleos/8 hilos, 16 GB)
+Opcional en Mac: con LLVM en PATH, cargo-xwin 0.23.1 y el target MSVC de Rust
+1.95 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`
+comprueba bibliotecas del núcleo para Windows. Usa un target propio; bórralo al
+terminar. No ejecuta Windows ni sustituye su CI. El build nativo macOS completo
+conserva el fallo Unix registrado en #2004.
 
-Un worker con el servidor libre, comandos de gates con DuckDB oficial. «Antes»:
-nightly 79a1ace66 sin sccache (`-j 2` de nextest = 2 hilos de test y compilación
-con los 8 hilos). «Después»: esta configuración, caché sccache ya llena por otro
-worktree y `CARGO_BUILD_JOBS=4`.
-
-Tabla de #1465/#1642 (15-oct, **antes de #1651 y #1654**): las filas de la suite,
-`telemetria` y `CARGO_BUILD_JOBS` quedaron desfasadas al retirar los tests de
-triage con PowerShell (#1651) y al pasar la máquina a 2 jobs con la cola por RAM
-(#1654 r3). Pendientes de re-medir con la configuración actual; el cuaderno de
-#1654 guarda el protocolo y los números de CI.
-
-| Medida | Antes | Después |
-| --- | --- | --- |
-| Worktree nuevo → `check --workspace --all-targets` | 272 s | 129 s |
-| `clippy` tras ese check | 79 s | 55 s |
-| Worktree nuevo → nextest en verde | 765 s | 614 s |
-| … de ellos, ejecutar la suite | 461–482 s | 343 s |
-| Gate `telemetria` (ejecución) | 1190 s | 531 s |
-| Editar `ui` → `check` incremental | 16 s | 11 s |
-| Editar `ui` → recompilar tests | 44 s | 30 s |
-| `vantare-hub`, perfil `prueba`, worktree nuevo | 626 s | 351 s |
-| Dos workers a la vez, build de tests en frío (sin caché) | 842 s | 625 s |
-| Disco: check + clippy + nextest | 7,6 GB | 7,6 GB |
-
-Lo que más pesa, medido en los logs de CI de la r1 (#1654, 2 hilos de test): la
-suite (137 s Windows / 83 s Linux) la dominan `go_physical_tyre_parity` (27 s), los
-seis `strategy::state_tests::isa1544_*` de hub (6–9 s cada uno, y cada uno ejecuta
-el solver completo), `mutated_and_truncated_real_frames_never_panic` (8+8 s),
-`actual_lnk_is_read_without_modification_or_execution` (10 s) y
-`golden_corpora_reach_every_widget_through_the_pipe_without_hiding_current_values`
-(6–8 s). En `telemetria` manda un solo test, `acc_real_corpus_matches_frozen_dtos`
-(208 s Windows / 160 s Linux), que es un replay secuencial con hash acumulado y
-comparación frame a frame: **no se puede paralelizar** sin cambiar la evidencia.
-Los tests de triage ya no lanzan `powershell.exe` (#1651).
-
-Medido y no aplicado: `[profile.test] incremental = false` ahorra 2,2 GB y 20 s
-en frío pero recompilar tests tras editar pasa de 48 s a 78 s; `debug = 0` en los
-crates propios ahorra 0,9 GB y 5 s pero quita fichero/línea de las trazas.
-`cargo build -p vantare-hub` recompilaba ~25 crates frente a `--workspace` porque
-cambiaban las features unificadas (`resolver.feature-unification` aún es inestable);
-desde #1654 r3 hub declara `network` explícito, así que `-p vantare-hub` compila solo
-y ya no recompila services y sus dependientes al alternar (quedan las diferencias de
-`--all-targets` y `test-support`).
+Las mediciones están en
+[el expediente de #1993](../docs/analysis/1993-compilaciones.md). Release conserva
+sus requisitos de distribución y DuckDB bundled. Los datos QA quedan bajo el
+target de compilación; no se usan datos reales de usuarios.
 
 ## Build para probar con Isaac (#1465)
 
@@ -652,10 +594,10 @@ Desde `native/`, con la configuración pública real cargada por el mismo loader
 del empaquetado (se valida como datos; nunca se ejecuta ni se imprimen valores):
 
 ```powershell
-.\gates.ps1 prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-clerk.env
+pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File gates.ps1 -Gate prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-public.cfg
 ```
 
-Produce los once binarios públicos en `target/gates/prueba/`, excluye admin y
+Produce los once binarios públicos en `D:/VantareServer/targets/slot-N/prueba/`, excluye admin y
 copia la DLL oficial de DuckDB junto a los ejecutables. Dev/test y prueba tienen
 perfiles distintos; el target de gates sigue separado del Release de distribución.
 El perfil hereda Release, sin LTO, con optimización baja e incremental en el código
@@ -663,7 +605,8 @@ propio; GPUI/dependencias y Strategy conservan optimización alta. El script res
 configuración, PATH, target e incremental incluso si falla. Sccache es opcional;
 su primera carga para este perfil no sustituye el build en frío.
 
-Para arrancar el Hub: `./target/gates/prueba/vantare-hub.exe`. Conserva esta copia
+Para arrancar el Hub, usa `D:/VantareServer/targets/slot-N/prueba/vantare-hub.exe`
+(el comando imprime el slot elegido). Conserva esta copia
 caliente para pruebas de producto. No distribuyas este perfil ni lo uses para
 comparar CPU, memoria o fluidez: para ello sigue usando Release con DuckDB bundled.
 Las reglas de herencia y overrides son las estándar de

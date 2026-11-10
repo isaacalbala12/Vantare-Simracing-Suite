@@ -1,3 +1,30 @@
+## VANTA-137 · Compilación Rust y fiabilidad de CI (2026-11-10)
+
+[#1993](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1993),
+area:plataforma / Project Vantare / Plane VANTA-137. ADR 0107 cancela partir el
+Hub: Orbit queda congelado sin PR en `D:/VantareServer/worktrees/isa-1993-orbit`.
+No forma parte de esta entrega; no se modifica UI, GPUI ni el Hub congelado.
+
+Orden de revisión: [#2007](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2007)
+(independiente, #2006, 9fb72da36); [#1997](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1997)
+(perfiles, 44263d117, CI verde verificada); [#2003](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2003)
+(tooling/CI, implementación 35163bfa0 antes de este cierre documental). Los HEAD
+remotos y checks vigentes se verifican en esos PR antes de fusionar. Sin merge,
+release ni despliegue del worker. Descripción de #1993 e informe final contienen
+el cierre de CI y la tabla definitiva; [mediciones y procedimiento](../../analysis/1993-compilaciones.md).
+
+Workers: comprobar por crate/dependientes directos, sin Hub/Admin; dos slots como
+máximo en D:, cuatro jobs, caché local 30 GiB en D:. GitHub usa windows-latest y
+RUNNER_TEMP, nunca runner propio público. Clippy, archivo de tests y ejecución
+paralela con ambos lifecycle; overlays y distribución tienen builders separados.
+El check obligatorio agrega todos los jobs aplicables. Hub web no dispara Rust.
+
+Verificado local: Runtime/dependientes 930 PASS, 14 exclusiones existentes;
+471 huellas conservadas. Rebuild Runtime 5,90 s y tests --lib 8,91 s; limpio de
+ocho default-members 267,74 s. M5: núcleo nativo limpio 19,17 s; check MSVC de
+bibliotecas 13,71 s con SDK descargado. Integración Unix bloqueada por #2004.
+#2006: 1/200 RED → 200/200 PASS paralelos y 57/57 Launcher, sin cambio de producción.
+
 ## VANTA-136 · R12: pasos 0–7 listos para revisar (2026-11-05)
 
 [#1978](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1978),

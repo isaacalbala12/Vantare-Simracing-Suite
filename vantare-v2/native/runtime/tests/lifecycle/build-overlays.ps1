@@ -11,8 +11,9 @@ $artifacts = @()
 Push-Location $nativeRoot
 try {
     foreach ($variant in @('normal', 'qa')) {
+        $minimum = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { 2GB } else { 15GB }
         if ($target.StartsWith('D:', [StringComparison]::OrdinalIgnoreCase) -and
-            (Get-PSDrive D).Free -lt 15GB) { throw 'D: menos de 15 GB libres; no se borra nada.' }
+            (Get-PSDrive D).Free -lt $minimum) { throw "D: menos de $($minimum / 1GB) GB libres; no se borra nada." }
         $build = @('build', '-p', 'vantare-ui', '--bin', 'vantare-overlays',
             '--target-dir', $target, '--locked', '--offline', '-j', $jobs)
         if ($variant -ceq 'qa') { $build += @('--features', 'parity-capture') }

@@ -46,6 +46,8 @@ IGNORED_PREFIXES = (
     "supabase/",
     "tools/",
     "vantare-v2/docs/",
+    "vantare-v2/hub-web/",
+    ".github/workflows/hub-web.yml",
 )
 # Excepciones dentro de las zonas ignoradas: el trabajo de Windows ejecuta los
 # tests de `tools/ci-runners` y no puede saltárselos.
@@ -57,6 +59,8 @@ IGNORED_SUFFIXES = (".md",)
 # cambia de dependencias, ampliar esta lista con ellas.
 TELEMETRY_PREFIXES = (
     "vantare-v2/native/domain/",
+    "vantare-v2/native/installer/",
+    "vantare-v2/native/build-support/",
     "vantare-v2/native/ipc/",
     "vantare-v2/native/launcher/",
     "vantare-v2/native/profiling/",
@@ -112,7 +116,13 @@ def _is_ignored(path: str) -> bool:
 
 def _needs_telemetry(path: str) -> bool:
     """¿Esta ruta obliga a repetir el corpus de telemetría? (AGENTS.md, #1498)."""
-    return path.startswith(TELEMETRY_PREFIXES)
+    global_inputs = (
+        'vantare-v2/native/Cargo.', 'vantare-v2/native/rust-toolchain.',
+        'vantare-v2/native/.cargo/', 'vantare-v2/native/scripts/',
+        'vantare-v2/native/gates.ps1', '.github/workflows/branch-channel-gates.yml',
+        '.github/actions/native-build-setup/',
+    )
+    return path.startswith(TELEMETRY_PREFIXES + global_inputs)
 
 
 def classify_paths(paths: Iterable[str]) -> NativeGateScope:

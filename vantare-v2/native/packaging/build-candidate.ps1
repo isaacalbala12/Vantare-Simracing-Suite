@@ -45,7 +45,8 @@ try{
     else{$env:CARGO_ENCODED_RUSTFLAGS=$staticFlags}
     Push-Location $native
     try{
-        $args=@('build','--workspace','--exclude','vantare-admin','--exclude','vantare-installer','--bins','--target','x86_64-pc-windows-msvc','--locked','--offline','-j','2')
+        # The queue exports Machine > process jobs; do not override it with -j 2.
+        $args=@('build','--workspace','--exclude','vantare-admin','--exclude','vantare-installer','--bins','--target','x86_64-pc-windows-msvc','--locked','--offline','--timings')
         if($BuildProfile -ceq 'Release'){$args+='--release'}
         & pwsh -NoProfile -File scripts/compilar.ps1 cargo @args
         if($LASTEXITCODE){throw 'Falló la compilación offline'}

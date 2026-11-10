@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,37 @@ from native_gate_scope import classify_paths  # noqa: E402
 
 
 class ClassifyPathsTest(unittest.TestCase):
+    def test_workflow_diff_keeps_native_deletion_alongside_web_change(self) -> None:
+        workflow = (Path(__file__).resolve().parents[1] / 'workflows/branch-channel-gates.yml').read_text(encoding='utf-8')
+        line = next(line.strip() for line in workflow.splitlines() if 'if ! git diff' in line)
+        command = shlex.split(line.removeprefix('if ! ').split(' > ')[0])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.check_output(['git', '-C', directory, *args])
+            git('init', '--quiet')
+            native = root / 'vantare-v2/native/runtime/src/removed.rs'
+            web = root / 'vantare-v2/hub-web/src/main.ts'
+            native.parent.mkdir(parents=True)
+            web.parent.mkdir(parents=True)
+            native.write_text('fn removed() {}', encoding='utf-8')
+            web.write_text('before', encoding='utf-8')
+            git('add', '.')
+            git('-c', 'user.name=QA', '-c', 'user.email=qa@example.invalid',
+                '-c', 'core.hooksPath=', 'commit', '--quiet', '-m', 'before')
+            base = git('rev-parse', 'HEAD').decode().strip()
+            native.unlink()
+            web.write_text('after', encoding='utf-8')
+            git('add', '-A')
+            git('-c', 'user.name=QA', '-c', 'user.email=qa@example.invalid',
+                '-c', 'core.hooksPath=', 'commit', '--quiet', '-m', 'after')
+            arguments = [base if token == '$diff_base' else 'HEAD' if token == '$GITHUB_SHA' else token for token in command[1:]]
+            paths = git(*arguments).decode().strip('\0').split('\0')
+            scope = classify_paths(paths)
+            self.assertTrue(scope.native)
+            self.assertTrue(scope.telemetria)
+            self.assertIn('vantare-v2/native/runtime/src/removed.rs', scope.native_paths)
+
     def test_docs_only_skips_the_native_gates(self) -> None:
         scope = classify_paths(
             [
@@ -48,6 +80,17 @@ class ClassifyPathsTest(unittest.TestCase):
         self.assertEqual(scope.native_paths, ())
         self.assertFalse(scope.telemetria)
         self.assertEqual(scope.telemetria_paths, ())
+
+    def test_electron_hub_is_independent_until_native_changes(self) -> None:
+        paths = ['vantare-v2/hub-web/src/main/index.ts', '.github/workflows/hub-web.yml']
+        self.assertFalse(classify_paths(paths).native)
+        self.assertTrue(classify_paths(paths + ['vantare-v2/native/ipc/src/lib.rs']).native)
+
+    def test_compiler_and_gate_inputs_repeat_the_corpus(self) -> None:
+        for path in ['vantare-v2/native/Cargo.toml', 'vantare-v2/native/Cargo.lock',
+                     'vantare-v2/native/.cargo/config.toml', 'vantare-v2/native/scripts/ci-gates.ps1',
+                     '.github/workflows/branch-channel-gates.yml']:
+            self.assertTrue(classify_paths([path]).telemetria, path)
 
     def test_ci_runner_hooks_never_skip_the_native_gates(self) -> None:
         scope = classify_paths(["tools/ci-runners/cleanup.py"])

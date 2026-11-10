@@ -1,6 +1,7 @@
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
+import re
 import unittest
 
 import validate_branch_channels as vbc
@@ -61,27 +62,23 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertNotIn("github.event.pull_request.base.sha", workflow)
         self.assertIn('throw "automatic frontend scope retired', workflow)
         for line in workflow.splitlines():
-            if "uses:" in line:
+            if "uses:" in line and "uses: ./" not in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
         for required in (
             "Native format and blocking gates",
             "native/retirement/verify.py",
         ):
             self.assertIn(required, workflow)
-        # El bucle fija las coberturas: check, clippy, captura (banco QA del
-        # instalador con parity-capture, #1735), lifecycle y la
-        # suite. La suite es `completa` (suite + corpus de telemetría) cuando el
-        # clasificador no descarta el corpus, y `test` (solo suite) cuando
-        # ninguna ruta cambiada toca runtime, domain, ipc ni testdata
-        # (#1654 ronda 12). La unión de `test` y `completa` es la de hoy.
-        self.assertIn(
-            "foreach ($gate in @('check', 'clippy', 'captura', $suite, 'lifecycle'))",
-            workflow,
-        )
-        self.assertIn(
-            "$suite = if ($env:TELEMETRIA_SCOPE -eq 'false') { 'test' } else { 'completa' }",
-            workflow,
-        )
+        native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
+        gates = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
+        self.assertIn("scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1", workflow)
+        for gate in ("clippy", "captura", "archive"):
+            self.assertIn(f"-Gate {gate}", gates)
+        self.assertIn("telemetry = [bool]$Telemetry", gates)
+        self.assertIn('--legacy-check', gates)
+        self.assertIn('-Gate check -Packages $legacyChecks -PublicTargetsOnly', gates)
+        self.assertIn('lifecycle = ($lifecycle.Count -gt 0)', gates)
+        self.assertIn("if ($env:TELEMETRIA_SCOPE -ne 'false')", workflow)
         self.assertIn(
             "telemetria: ${{ steps.native_scope.outputs.telemetria }}", workflow
         )
@@ -101,9 +98,50 @@ class ValidateBranchChannelsTest(unittest.TestCase):
 
     def test_blocking_native_gates_preserve_all_tests(self) -> None:
         workflow = (Path(__file__).resolve().parents[1] / "workflows/branch-channel-gates.yml").read_text(encoding="utf-8")
-        self.assertIn("./setup-duckdb.ps1", workflow)
-        self.assertIn("./gates.ps1 -Gate $gate", workflow)
-        self.assertIn('if ($LASTEXITCODE) { throw "native $gate failed" }', workflow)
+        setup = (Path(__file__).resolve().parents[1] / 'actions/native-build-setup/action.yml').read_text(encoding='utf-8')
+        self.assertIn('./setup-duckdb.ps1', setup)
+        self.assertIn('fallback: none', setup)
+        self.assertNotIn('cargo install', setup)
+        self.assertIn('SCCACHE_GHA_VERSION=vanta137-v1', setup)
+        self.assertNotIn('SCCACHE_GHA_VERSION=vanta137-$', setup)
+        self.assertIn('RUSTUP_TOOLCHAIN=1.95.0', setup)
+        self.assertIn('rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy --no-self-update', setup)
+        self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
+        for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests'):
+            self.assertIn(test, workflow)
+        for job in ('policy', 'product', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
+            block = re.split(r'\n  \S', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
+            self.assertRegex(block, r'timeout-minutes: [1-9][0-9]*')
+        archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_tests:', 1)[0]
+        self.assertIn('overwrite: true', archive)
+        for line in setup.splitlines():
+            if 'uses:' in line:
+                self.assertRegex(line, r'uses: [^@]+@[0-9a-f]{40}$')
+        native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
+        gates = (native / "gates.ps1").read_text(encoding="utf-8")
+        ci = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
+        self.assertIn("if ($LASTEXITCODE) { throw 'Native blocking gates failed' }", workflow)
+        self.assertIn('throw "Gate $Gate falló (código $LASTEXITCODE)."', gates)
+        reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
+        self.assertIn('debug/ci-lifecycle/manifest.json', reuse)
+        self.assertIn('foreach ($artifact in $lifecycle', reuse)
+        self.assertIn('needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
+        distribution = re.split(r'\n  \S', workflow.split('\n  native_distribution:\n', 1)[1], maxsplit=1)[0]
+        installation = re.split(r'\n  \S', workflow.split('\n  native_installation:\n', 1)[1], maxsplit=1)[0]
+        self.assertIn('-Gate distribution', distribution)
+        self.assertNotIn('ci-installation.ps1', distribution)
+        self.assertIn('ci-installation.ps1', installation)
+        self.assertNotIn('-Gate distribution', installation)
+        self.assertIn('needs: policy', distribution)
+        self.assertIn('needs: policy', installation)
+        self.assertIn('if: always()', workflow)
+        self.assertIn('native_ci_results.py', workflow)
+        self.assertIn("-Gate captura", ci)
+        self.assertIn('-Gate archive', ci)
+        self.assertIn("'telemetria'", reuse)
+        self.assertIn("'default'", reuse)
+        self.assertNotIn("--exclude", ci)
+        self.assertNotIn("--skip", ci)
         self.assertNotIn("--exclude", workflow)
         self.assertNotIn("--skip", workflow)
         self.assertNotIn("continue-on-error", workflow)

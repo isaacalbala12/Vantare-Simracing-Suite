@@ -209,14 +209,26 @@ conservan sus instrucciones propias.
 
 ## Compilación Rust (`native/`)
 
-Desde `vantare-v2/`, compilar siempre mediante
-`pwsh -NoProfile -File native/scripts/compilar.ps1 <comando> [args...]`,
-con target propio y `-j 2`, o los jobs de `CARGO_BUILD_JOBS` si la máquina la
-define (el servidor usa 4); en nextest van en `--build-jobs`, porque su `-j` son
-hilos de test. La cola limita slots y RAM; usa sccache si está instalado.
-Si falla sin diagnóstico del compilador, repetir con
-`VANTARE_SCCACHE=0` y conservar el fallo en la evidencia (#1465).
-No compartir targets ni copiar su caché a carpetas de evidencia.
+En Windows, desde `vantare-v2/`, el worker usa
+`pwsh -NoProfile -File native/scripts/comprobar.ps1 <crate>`: Clippy y tests del
+crate y sus dependientes directos, excluyendo siempre Hub y Admin. Clippy incluye la comprobación de tipos.
+Para comandos específicos, usar `native/scripts/compilar.ps1 <comando> [args...]`.
+La cola permite como máximo dos compilaciones y asigna un target persistente
+por slot bajo `VANTARE_TARGET_ROOT`, reutilizado entre ramas. En este servidor
+Machine lo fija a `D:/VantareServer/targets`; nunca C:. Otros PC usan por defecto
+LocalApplicationData/Vantare/targets. Se respeta SCCACHE_DIR configurado.
+No pasar targets por rama salvo mediciones aisladas. Limpieza automática del
+slot inactivo: más de 20 GB o 14 días sin uso. No borrar targets ajenos.
+Usar cuatro jobs en este servidor (`CARGO_BUILD_JOBS=4`); nextest los recibe en
+`--build-jobs`. La CI alojada en GitHub valida el diff y dependientes transitivos; nightly y
+merge_group validan el workspace entero. Usa RUNNER_TEMP, Nextest precompilado,
+sccache GHA y tests archivados para suite/telemetría/lifecycle en paralelo.
+No registrar runners propios para este repositorio público.
+Si falla sin diagnóstico del compilador, repetir con `VANTARE_SCCACHE=0` y
+conservar ambos resultados. Detalles y límites en `native/README.md`.
+La cola PowerShell es solo Windows. En macOS se usa el flujo de bibliotecas
+con target propio y cuatro jobs descrito en `native/README.md`, sección Workers;
+la integración Windows sigue siendo obligatoria en CI.
 
 ## Testing
 

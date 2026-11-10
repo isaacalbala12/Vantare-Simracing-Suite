@@ -12,12 +12,15 @@ export function Button({
   busy = false,
   disabled,
   children,
+  className,
   ...props
 }: ButtonProps) {
   return (
     <BaseButton
       {...props}
-      className={`v-button v-button--${variant} v-button--${size}`}
+      className={(state) =>
+        `v-button v-button--${variant} v-button--${size} ${typeof className === "function" ? className(state) : (className ?? "")}`
+      }
       disabled={disabled || busy}
       aria-busy={busy || undefined}
     >
@@ -31,6 +34,7 @@ export function Button({
 export function IconButton({
   label,
   children,
+  className,
   ...props
 }: Omit<ButtonProps, "aria-label"> & { label: string; children: ReactNode }) {
   return (

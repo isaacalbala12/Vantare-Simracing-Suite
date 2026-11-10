@@ -50,7 +50,7 @@ function App() {
   }, []);
   return (
     <>
-      <header>{es.title}</header>
+      <header className="v-app-header">{es.title}</header>
       <main>
         {new URLSearchParams(location.search).get("escena") === "specimen" ? (
           <Suspense fallback={<p role="status">{es.loading}</p>}>

@@ -78,3 +78,5 @@ del build se conserva en la evidencia. Specimen se carga con React.lazy.
 
 Para mantener también la caché de transformación de Bun en D:, fijar
 BUN_RUNTIME_TRANSPILER_CACHE_PATH=D:/VantareServer/cache/bun-transpiler.
+
+La ruta `?escena=specimen` es una escena de QA incluida en el paquete para revisar controles, paletas y accesibilidad con datos simulados.

@@ -1,5 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { Icon, type IconName } from "../assets/icons/Icon";
 import { Button, IconButton } from "./Button";
 import { Dialog } from "./Layers";
@@ -47,6 +47,14 @@ export function Sidebar({
   footer: ReactNode;
 }) {
   const nav = useRef<HTMLElement>(null);
+  const ids = groups.flatMap((group) => group.items.map((item) => item.id));
+  const [cursor, setCursor] = useState({ active, id: active });
+  const focused =
+    cursor.active === active && ids.includes(cursor.id)
+      ? cursor.id
+      : ids.includes(active)
+        ? active
+        : ids[0];
   function navigate(event: React.KeyboardEvent<HTMLElement>) {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     const buttons = Array.from(
@@ -63,7 +71,11 @@ export function Sidebar({
           ? buttons.length - 1
           : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) %
             buttons.length;
-    buttons[next]?.focus();
+    const target = buttons[next];
+    if (target) {
+      setCursor({ active, id: target.dataset.nav ?? active });
+      target.focus();
+    }
   }
   return (
     <nav
@@ -84,7 +96,8 @@ export function Sidebar({
               aria-label={item.label}
               aria-disabled={Boolean(item.locked)}
               title={item.locked}
-              tabIndex={active === item.id ? 0 : -1}
+              tabIndex={focused === item.id ? 0 : -1}
+              onFocus={() => setCursor({ active, id: item.id })}
               onClick={() => {
                 if (!item.locked) onSelect(item.id);
               }}
@@ -119,7 +132,12 @@ export function ContextRail({
       aria-label={label}
       className={`v-context${collapsed ? " v-context--collapsed" : ""}`}
     >
-      <IconButton label={toggleLabel} variant="ghost" onClick={onToggle}>
+      <IconButton
+        label={toggleLabel}
+        variant="ghost"
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+      >
         <Icon name="i-panel" />
       </IconButton>
       {!collapsed && children}

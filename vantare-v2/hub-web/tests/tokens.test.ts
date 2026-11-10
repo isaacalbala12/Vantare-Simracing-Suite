@@ -50,6 +50,27 @@ describe("exported Vantare tokens", () => {
               `${palette}/${scheme}: ${foreground}/${background}`,
             ).toBeGreaterThanOrEqual(4.5);
   });
+  it("keeps control indicators and primary button labels distinguishable in every theme", () => {
+    for (const [palette, schemes] of Object.entries(tokens.themes))
+      for (const [scheme, values] of Object.entries(schemes)) {
+        for (const role of ["accent", "accent-bright"])
+          expect(
+            contrast(values[role], values["surface-1"]),
+            `${palette}/${scheme}: ${role}`,
+          ).toBeGreaterThanOrEqual(3);
+        for (const stop of values["grad-button"].match(/#[0-9a-f]{6}/gi) ?? [])
+          expect(
+            contrast(values["text-on-accent"], stop),
+            `${palette}/${scheme}: button label`,
+          ).toBeGreaterThanOrEqual(3);
+      }
+    expect(Number(tokens.primitives["z-popover"])).toBeGreaterThan(
+      Number(tokens.primitives["z-modal"]),
+    );
+    expect(Number(tokens.primitives["z-popover"])).toBeLessThan(
+      Number(tokens.primitives["z-toast"]),
+    );
+  });
   it("keeps generated CSS synchronized", async () => {
     const result = render(tokens);
     expect(
@@ -58,6 +79,12 @@ describe("exported Vantare tokens", () => {
         "utf8",
       ),
     ).toBe(result.css);
+    expect(
+      await readFile(
+        new URL("../src/renderer/design/generated/tokens.ts", import.meta.url),
+        "utf8",
+      ),
+    ).toBe(result.typescript);
     expect(
       await readFile(
         new URL("../src/renderer/design/generated/theme.css", import.meta.url),

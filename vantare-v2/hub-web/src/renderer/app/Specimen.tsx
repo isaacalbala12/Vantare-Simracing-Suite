@@ -39,6 +39,7 @@ export function Specimen() {
   const [value, setValue] = useState(100);
   const [search, setSearch] = useState("");
   const [scheme, setScheme] = useState("dark");
+  const [dialogScheme, setDialogScheme] = useState("dark");
   const [tab, setTab] = useState("general");
   const [palette, setPalette] = useState("vantare");
   const [commandsOpen, setCommandsOpen] = useState(false);
@@ -167,6 +168,12 @@ export function Specimen() {
             closeLabel={t.close}
           >
             <Input label={t.name} />
+            <Select
+              label={t.dialogSelect}
+              options={options}
+              value={dialogScheme}
+              onChange={setDialogScheme}
+            />
           </Dialog>
           <AlertDialog
             title={t.dialogTitle}

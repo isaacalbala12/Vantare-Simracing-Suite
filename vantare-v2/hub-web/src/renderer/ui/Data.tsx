@@ -2,7 +2,6 @@ import { Avatar as BaseAvatar } from "@base-ui/react/avatar";
 import { Progress as BaseProgress } from "@base-ui/react/progress";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type CSSProperties, type ReactNode, useRef } from "react";
-import design from "../../../design/tokens.json";
 export function Card({
   title,
   actions,
@@ -145,7 +144,16 @@ export function Table({
   const virtual = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scroll.current,
-    estimateSize: () => design.primitives["row-h"],
+    estimateSize: () => {
+      const height = Number.parseFloat(
+        getComputedStyle(
+          scroll.current ?? document.documentElement,
+        ).getPropertyValue("--row-h"),
+      );
+      if (!Number.isFinite(height) || height <= 0)
+        throw new Error("Missing --row-h token");
+      return height;
+    },
     overscan: 5,
     enabled: rows.length > 200,
   });
@@ -193,8 +201,8 @@ export function Table({
             {rows.length ? (
               shown.map(({ row, index }) => (
                 <tr key={row.id} aria-rowindex={index + 2}>
-                  {row.cells.map((cell, index) => (
-                    <td key={columns[index]?.key}>{cell}</td>
+                  {columns.map((column, index) => (
+                    <td key={column.key}>{row.cells[index]}</td>
                   ))}
                 </tr>
               ))

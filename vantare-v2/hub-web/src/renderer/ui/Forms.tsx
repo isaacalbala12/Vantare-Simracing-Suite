@@ -302,7 +302,7 @@ export function Tabs({
 }) {
   return (
     <BaseTabs.Root value={value} onValueChange={(v) => onChange(String(v))}>
-      <BaseTabs.List className="v-tabs" aria-label={label}>
+      <BaseTabs.List className="v-tabs" aria-label={label} activateOnFocus>
         {items.map((item) => (
           <BaseTabs.Tab
             className="v-tab"

@@ -4,7 +4,7 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { Toast as BaseToast } from "@base-ui/react/toast";
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
-import type { ReactNode } from "react";
+import { type HTMLAttributes, isValidElement, type ReactNode } from "react";
 import { Icon } from "../assets/icons/Icon";
 export function Tooltip({
   label,
@@ -49,8 +49,15 @@ export function Dialog({
 }) {
   return (
     <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
-      <BaseDialog.Trigger className="v-button v-button--neutral">
-        {trigger}
+      <BaseDialog.Trigger
+        className="v-button v-button--neutral"
+        render={
+          isValidElement<HTMLAttributes<HTMLElement>>(trigger)
+            ? trigger
+            : undefined
+        }
+      >
+        {isValidElement(trigger) ? undefined : trigger}
       </BaseDialog.Trigger>
       <BaseDialog.Portal>
         <BaseDialog.Backdrop className="v-backdrop" />
@@ -83,8 +90,15 @@ export function AlertDialog({
 }) {
   return (
     <BaseAlertDialog.Root>
-      <BaseAlertDialog.Trigger className="v-button">
-        {trigger}
+      <BaseAlertDialog.Trigger
+        className="v-button"
+        render={
+          isValidElement<HTMLAttributes<HTMLElement>>(trigger)
+            ? trigger
+            : undefined
+        }
+      >
+        {isValidElement(trigger) ? undefined : trigger}
       </BaseAlertDialog.Trigger>
       <BaseAlertDialog.Portal>
         <BaseAlertDialog.Backdrop className="v-backdrop" />

@@ -50,6 +50,7 @@ export const specimen = {
   retry: "Reintentar",
   beta: "BETA",
   dialog: "Abrir diálogo",
+  dialogSelect: "Esquema del diálogo",
   dialogTitle: "Cambios sin guardar",
   dialogDescription: "Puedes seguir editando o cerrar este ejemplo.",
   close: "Cerrar",

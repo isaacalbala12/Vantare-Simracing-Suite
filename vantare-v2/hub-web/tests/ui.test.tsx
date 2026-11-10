@@ -8,7 +8,16 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Button } from "../src/renderer/ui/Button";
 import { Avatar, Callout, Table } from "../src/renderer/ui/Data";
-import { Input, Segmented, Slider, Switch } from "../src/renderer/ui/Forms";
+import {
+  Checkbox,
+  Input,
+  RadioGroup,
+  Segmented,
+  Slider,
+  Switch,
+  Tabs,
+} from "../src/renderer/ui/Forms";
+import { Sidebar } from "../src/renderer/ui/Frame";
 import { Dialog, TooltipProvider } from "../src/renderer/ui/Layers";
 
 function Demo() {
@@ -26,8 +35,129 @@ function Demo() {
   );
 }
 
+function Radios() {
+  const [value, setValue] = useState("a");
+  return (
+    <RadioGroup
+      label="Tema"
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: "a", label: "Oscuro" },
+        { value: "b", label: "Claro" },
+      ]}
+    />
+  );
+}
+function DemoTabs() {
+  const [value, setValue] = useState("a");
+  return (
+    <Tabs
+      label="Secciones"
+      value={value}
+      onChange={setValue}
+      items={[
+        { value: "a", label: "General", content: "Contenido general" },
+        {
+          value: "b",
+          label: "Apariencia",
+          content: "Contenido apariencia",
+        },
+      ]}
+    />
+  );
+}
+
 afterEach(cleanup);
 describe("public component behavior", () => {
+  it("preserves caller classes and custom dialog triggers", async () => {
+    render(
+      <Dialog
+        title="Custom"
+        description="Trigger"
+        trigger={<Button className="custom">Abrir</Button>}
+        closeLabel="Cerrar"
+      >
+        <Input label="Dato" />
+      </Dialog>,
+    );
+    const button = screen.getByRole("button", { name: "Abrir" });
+    expect(button.classList.contains("custom")).toBe(true);
+    expect(button.querySelector("button")).toBeNull();
+    await userEvent.click(button);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+  it("keeps one sidebar tab stop when the active section is hidden and moves it with arrows, Home and End", async () => {
+    render(
+      <Sidebar
+        label="Secciones"
+        groups={[
+          {
+            label: "Principal",
+            items: [
+              { id: "a", label: "Inicio", icon: "i-panel" },
+              { id: "b", label: "Ajustes", icon: "i-ajustes" },
+            ],
+          },
+        ]}
+        active="hidden"
+        collapsed={false}
+        onSelect={() => {}}
+        footer={null}
+      />,
+    );
+    const first = screen.getByRole("button", { name: "Inicio" }),
+      last = screen.getByRole("button", { name: "Ajustes" });
+    expect(first.tabIndex).toBe(0);
+    first.focus();
+    for (const [key, target] of [
+      ["{ArrowDown}", last],
+      ["{Home}", first],
+      ["{End}", last],
+      ["{ArrowUp}", first],
+    ] as const) {
+      await userEvent.keyboard(key);
+      expect(document.activeElement).toBe(target);
+      expect(target.tabIndex).toBe(0);
+    }
+    expect(last.tabIndex).toBe(-1);
+  });
+  it("toggles a checkbox with the keyboard and blocks a disabled one", async () => {
+    const changed = vi.fn();
+    render(
+      <>
+        <Checkbox label="Informes" onCheckedChange={changed} />
+        <Checkbox label="Bloqueado" disabled onCheckedChange={changed} />
+      </>,
+    );
+    screen.getByRole("checkbox", { name: "Informes" }).focus();
+    await userEvent.keyboard(" ");
+    expect(changed.mock.calls[0][0]).toBe(true);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bloqueado" }));
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+  it("changes radio selection with arrow keys", async () => {
+    render(<Radios />);
+    screen.getByRole("radio", { name: "Oscuro" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(
+      screen.getByRole("radio", { name: "Claro" }).getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+  it("activates tabs on arrow focus and supports Home/End", async () => {
+    render(<DemoTabs />);
+    screen.getByRole("tab", { name: "General" }).focus();
+    for (const [key, label] of [
+      ["{ArrowRight}", "Apariencia"],
+      ["{Home}", "General"],
+      ["{End}", "Apariencia"],
+    ]) {
+      await userEvent.keyboard(key);
+      expect(
+        screen.getByRole("tab", { name: label }).getAttribute("aria-selected"),
+      ).toBe("true");
+    }
+  });
   it("preserves native icon geometry when sizing the outer SVG", () => {
     const { container } = render(<Icon name="i-panel" />);
     expect(container.querySelector("svg")?.getAttribute("width")).toBe("20");

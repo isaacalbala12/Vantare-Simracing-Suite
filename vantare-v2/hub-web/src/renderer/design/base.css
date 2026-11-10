@@ -11,7 +11,7 @@ html {
 body {
   margin: 0;
 }
-header {
+.v-app-header {
   height: var(--topbar-h);
   padding-inline: var(--space-9);
   display: flex;

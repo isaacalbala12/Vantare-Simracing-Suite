@@ -132,13 +132,13 @@ public static class HubMeasure {
             if([Console]::ReadLine() -ne 'ready'){throw 'Driver did not confirm Settings'}
             Start-Sleep -Seconds 10 # Defined idle settling period, not a readiness heuristic.
             $family=[HubMeasure]::Family($process.Id)
-            $before=@{};$workingSet=0L
-            foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$before[$id]=$item.TotalProcessorTime.TotalMilliseconds;$workingSet+=$item.WorkingSet64}
+            $before=@{};$workingSet=0L;$details=@()
+            foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$before[$id]=$item.TotalProcessorTime.TotalMilliseconds;$workingSet+=$item.WorkingSet64;$details+=@{pid=$id;name=$item.ProcessName;workingSetBytes=$item.WorkingSet64}}
             $cpuWatch=[Diagnostics.Stopwatch]::StartNew()
             Start-Sleep -Seconds 5 # Defined idle CPU sampling window.
             $cpu=0.0
             foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$cpu+=$item.TotalProcessorTime.TotalMilliseconds-$before[$id]}
-            @{phase='idle';app=$application.name;mode=$mode;iteration=$iteration;workingSetBytes=$workingSet;processes=@($family);cpuOneCorePercent=100*$cpu/$cpuWatch.Elapsed.TotalMilliseconds} | ConvertTo-Json -Compress | Write-Output
+            @{phase='idle';app=$application.name;mode=$mode;iteration=$iteration;workingSetBytes=$workingSet;processes=@($family);processMetrics=$details;cpuOneCorePercent=100*$cpu/$cpuWatch.Elapsed.TotalMilliseconds} | ConvertTo-Json -Depth 5 -Compress | Write-Output
             if([Console]::ReadLine() -ne 'stop'){throw 'Driver did not confirm metrics'}
             $process.StandardInput.Close()
             if(-not $process.WaitForExit(10000)){throw 'Controlled close deadline'}

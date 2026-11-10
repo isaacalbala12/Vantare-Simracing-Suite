@@ -13,4 +13,10 @@ Copy-Item -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'release/vantare-hub-hos
 & cargo build --manifest-path $manifest --release -p vantare-hub --bin vantare-hub -j $env:CARGO_BUILD_JOBS
 if($LASTEXITCODE){exit $LASTEXITCODE}
 Copy-Item -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'release/vantare-hub.exe') -Destination (Join-Path $destination 'vantare-hub-gpui.exe')
+$inventory=Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '../../native/packaging/public-inventory.json') | ConvertFrom-Json
+foreach($resource in $inventory.resources){
+    $target=Join-Path $destination ('fixtures/'+$resource)
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))|Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot ('../../native/ui/fixtures/'+$resource)) -Destination $target
+}
 exit 0

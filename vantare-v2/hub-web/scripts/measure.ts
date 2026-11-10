@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { cpus, release, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -57,6 +57,15 @@ async function main() {
   await mkdir(hubData, { recursive: true });
   await mkdir(gpuiData, { recursive: true });
   await mkdir(join(qa, "tmp"), { recursive: true });
+  // Explicit QA input for both applications; never an empty Hub-created layout.
+  await cp(
+    resolve("../native/ui/fixtures/layout.json"),
+    join(generation, "data/layout.json"),
+  );
+  await cp(
+    resolve("../native/ui/fixtures/layout.json"),
+    join(gpuiData, "layout.json"),
+  );
   const environment: Record<string, string> = {};
   for (const name of [
     "SystemRoot",
@@ -199,6 +208,11 @@ async function main() {
         driver.stdin.write("ready\n");
       } else if (event.phase === "idle") {
         if (browser) {
+          const browserSession = await browser.newBrowserCDPSession();
+          event.processInfo = (
+            await browserSession.send("SystemInfo.getProcessInfo")
+          ).processInfo;
+          await browserSession.detach();
           const context = browser.contexts()[0];
           const page = context.pages()[0];
           const session = await context.newCDPSession(page);

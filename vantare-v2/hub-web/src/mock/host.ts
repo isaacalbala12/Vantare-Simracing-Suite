@@ -49,6 +49,8 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
   }
 }
 export function createMockHost(sceneName = "ajustes-base") {
+  const visual = /^visual-(dark|light):(ajustes-con-diseno)$/.exec(sceneName);
+  sceneName = visual?.[2] ?? sceneName;
   const core = structuredClone(coreScene) as CoreStatus;
   let pilot = structuredClone(
     pilotFixture,
@@ -92,6 +94,14 @@ export function createMockHost(sceneName = "ajustes-base") {
   let settings = structuredClone(
     sceneName === "ajustes-protegidos" ? protectedScene : settingsScene,
   ) as SettingsView;
+  if (visual) {
+    settings.appearance.scheme = visual[1] as "dark" | "light";
+    settings.startup.supported = true;
+    core.rights = "connected";
+    core.services = "connected";
+    core.access.verified = true;
+    core.access.tester = true;
+  }
   if (
     sceneName === "ajustes-con-diseno" ||
     sceneName === "ajustes-layout-protegido"

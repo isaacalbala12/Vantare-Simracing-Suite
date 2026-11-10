@@ -2,6 +2,7 @@ import type { Page } from "playwright-core";
 import { roadmapScenes } from "./roadmap.ts";
 import { upcomingScenes } from "./upcoming.ts";
 import { testingScenes } from "./testing-scenes.ts";
+import { upcomingScenes } from "./upcoming.ts";
 
 export interface VisualScene {
   mock: string;

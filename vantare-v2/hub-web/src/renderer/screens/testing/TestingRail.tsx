@@ -1,5 +1,5 @@
-import { testingText as text } from "./es";
 import { TestingRailSection } from "../../ui/TestingLayout";
+import { testingText as text } from "./es";
 import { useReports } from "./ReportsState";
 
 export function TestingRail() {

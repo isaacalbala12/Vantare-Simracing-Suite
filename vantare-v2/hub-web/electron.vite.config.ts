@@ -11,7 +11,11 @@ export default defineConfig({
     },
   },
   renderer: {
+    define: { "process.env.NODE_ENV": JSON.stringify("production") },
     root: "src/renderer",
-    build: { rollupOptions: { input: resolve("src/renderer/index.html") } },
+    build: {
+      minify: true,
+      rollupOptions: { input: resolve("src/renderer/index.html") },
+    },
   },
 });

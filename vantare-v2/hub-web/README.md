@@ -32,6 +32,9 @@ contextBridge como valor de retorno de una promesa.
 
 Electron 45.2.3 figura como Latest Stable (4-nov-2026) en
 https://releases.electronjs.org/release/v45.2.3.
+La documentación oficial declara Windows 10 y posteriores como plataformas admitidas:
+https://github.com/electron/electron/blob/main/README.md#platform-support.
+
 Windows 10 22H2: pendiente prueba manual por Isaac en equipo o VM:
 arranque, fuentes de respaldo, controles de ventana y escalados 100/125/150 %.
 La ejecución en Windows Server no acredita Windows 10.

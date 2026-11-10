@@ -188,7 +188,7 @@ se corrigieron y se repitió el check sin cambiar código de comportamiento.
 
 ## CPU histórica retirada
 
-Las conversiones de TotalProcessorTime no se conservan como dato secundario: no son válidas. La nueva campaña publica ciclos/s y ciclos/foto. Los cocientes por Present de abajo se conservan solo como registro dev descartado y no son comparables entre motores.
+Las conversiones de TotalProcessorTime no se conservan como dato secundario: no son válidas. La nueva campaña publica ciclos/s y ciclos/foto. Los cocientes por Present también se han retirado porque no son comparables entre motores.
 
 ## Campaña cruda dev descartada (10-nov-2026)
 
@@ -198,12 +198,7 @@ núcleo fijo `a77b1e288f9bf4992f53f7df43b9a94695b27d22ee293c3675162e31077beaf7`.
 Resúmenes completos versionados en `measurements/raw-cycles-baseline-*.json`;
 CSV y logs íntegros en `D:/VantareServer/evidence/isa-1996/raw-cycles-baseline-*`.
 
-| Widgets / fases | Ciclos CPU / DXGI Present estable | Privada media MiB | Present estables | Widgets notificados / snapshot cambiado | Widgets pintados / snapshot pintado |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 1 / sí | Sin cociente: reposo | 81,06 | 0 | 1,000 | 1,000 |
-| 4 / sí | 13.627.950 | 80,87 | 1.186 | 1,006 | 1,006 |
-| 4 / no | Contador Present apagado | 81,10 | — | — | — |
-| 22 / sí | 49.652.692 | 84,05 | 1.187 | 7,031 | 7,036 |
+La tabla histórica por Present se ha retirado: ese denominador no permite comparar motores.
 
 El caso de un widget deja de presentar una vez asentado. El radar cambia con
 la posición espacial; las posiciones de tabla y el acelerador de este corpus

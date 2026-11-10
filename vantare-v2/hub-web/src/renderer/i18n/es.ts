@@ -100,6 +100,7 @@ export const paletteNames = {
 } as const;
 
 export const settingsText = {
+  "settings.results": "Pestañas disponibles",
   "updates.restarting": "Reiniciando…",
   "updates.restartVeto":
     "El Hub sigue abierto. Resuelve los cambios pendientes y vuelve a intentar el reinicio.",

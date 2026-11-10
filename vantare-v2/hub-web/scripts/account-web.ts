@@ -6,6 +6,7 @@ import { chromium } from "playwright-core";
 import { preview } from "vite";
 import { pilotLimits } from "../src/contract/generated/contract.ts";
 import { t } from "../src/renderer/i18n/es.ts";
+import { checkPhotoRejection } from "./check-photo-rejection.ts";
 import { until } from "./wait-for.ts";
 
 const evidence = resolve(
@@ -37,6 +38,7 @@ try {
     exact: true,
   });
   await name.fill("Piloto del rediseño QA");
+  await checkPhotoRejection(page);
   const png = await page.evaluate(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 600;

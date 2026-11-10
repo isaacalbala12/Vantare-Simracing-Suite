@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Page } from "playwright-core";
 import { pilotLimits } from "../src/contract/generated/contract.ts";
 import { t } from "../src/renderer/i18n/es.ts";
+import { checkPhotoRejection } from "./check-photo-rejection.ts";
 import { until } from "./wait-for.ts";
 export async function checkPilotCore(page: Page, evidence: string) {
   await page
@@ -28,6 +29,7 @@ export async function checkPilotCore(page: Page, evidence: string) {
   await page
     .getByRole("textbox", { name: t("pilot.description"), exact: true })
     .fill("Guardado por IPC local, sin cuenta ni red");
+  await checkPhotoRejection(page);
   const png = await page.evaluate(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 600;

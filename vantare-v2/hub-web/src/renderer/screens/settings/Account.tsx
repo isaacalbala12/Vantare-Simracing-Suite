@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   type PilotFields,
   pilotCountries,
+  pilotLimits,
 } from "../../../contract/generated/contract";
 import { isPilotFields } from "../../../contract/pilot-validation";
 import { useHost } from "../../app/Host";
@@ -84,7 +85,10 @@ export function Account() {
         )}
         {state.dirty && <Callout title={t("pilot.unsaved")} />}
         {!valid && <Callout tone="warn" title={t("pilot.invalid")} />}
-        <SettingRow label={t("pilot.photo")} description={t("pilot.photoHelp")}>
+        <SettingRow
+          label={t("pilot.photo")}
+          description={`${t("pilot.photoHelp")} ${pilotLimits.sourceBytes / (1024 * 1024)} MiB · ${pilotLimits.sourceSide} × ${pilotLimits.sourceSide} px`}
+        >
           <Avatar
             label={draft.publicName || t("pilot.title")}
             initials={draft.publicName.slice(0, 2).toUpperCase() || "?"}

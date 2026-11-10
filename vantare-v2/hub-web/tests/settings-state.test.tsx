@@ -654,6 +654,8 @@ describe("pilot editor over the simulated host", () => {
       { target: { value: "zzzzzz" } },
     );
     await screen.findByText(t("settings.noResults"));
+    await screen.findByText(t("pilot.unsaved"));
+    expect(screen.getByText(`${t("settings.results")}: 0`)).toBeTruthy();
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: t("settings.clearSearch") }));

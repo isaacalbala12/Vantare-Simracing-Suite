@@ -7,6 +7,10 @@ use image::{ImageFormat, ImageReader, Limits, codecs::jpeg::JpegEncoder};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+pub const MAX_SOURCE_BYTES: usize = 5 * 1024 * 1024;
+pub const MAX_SOURCE_SIDE: u32 = 4096;
+pub const PHOTO_SIDE: u32 = 256;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Crop {
     pub x: f32,
@@ -55,7 +59,11 @@ pub fn crop_photo(bytes: &[u8], crop: Crop) -> Result<PilotPhoto> {
             length,
             length,
         )
-        .resize_exact(256, 256, image::imageops::FilterType::Lanczos3)
+        .resize_exact(
+            PHOTO_SIDE,
+            PHOTO_SIDE,
+            image::imageops::FilterType::Lanczos3,
+        )
         .to_rgb8();
     let mut jpeg = Vec::new();
     for quality in [80, 65, 50, 35, 20] {
@@ -73,7 +81,7 @@ pub fn crop_photo(bytes: &[u8], crop: Crop) -> Result<PilotPhoto> {
 }
 
 fn decode_source(bytes: &[u8]) -> Result<image::DynamicImage> {
-    if bytes.is_empty() || bytes.len() > 5 * 1024 * 1024 {
+    if bytes.is_empty() || bytes.len() > MAX_SOURCE_BYTES {
         return Err(Error::TooLarge);
     }
     let format = image::guess_format(bytes).map_err(|_| Error::Protocol)?;
@@ -82,8 +90,8 @@ fn decode_source(bytes: &[u8]) -> Result<image::DynamicImage> {
     }
     let mut reader = ImageReader::with_format(std::io::Cursor::new(bytes), format);
     let mut limits = Limits::default();
-    limits.max_image_width = Some(4096);
-    limits.max_image_height = Some(4096);
+    limits.max_image_width = Some(MAX_SOURCE_SIDE);
+    limits.max_image_height = Some(MAX_SOURCE_SIDE);
     limits.max_alloc = Some(128 * 1024 * 1024);
     reader.limits(limits);
     reader.decode().map_err(|_| Error::Protocol)
@@ -107,12 +115,12 @@ pub fn validate(profile: &PilotProfile) -> Result<()> {
         }
         let mut reader = ImageReader::with_format(std::io::Cursor::new(jpeg), ImageFormat::Jpeg);
         let mut limits = Limits::default();
-        limits.max_image_width = Some(256);
-        limits.max_image_height = Some(256);
+        limits.max_image_width = Some(PHOTO_SIDE);
+        limits.max_image_height = Some(PHOTO_SIDE);
         limits.max_alloc = Some(1024 * 1024);
         reader.limits(limits);
         let image = reader.decode().map_err(|_| Error::Protocol)?;
-        if image.width() != 256 || image.height() != 256 {
+        if image.width() != PHOTO_SIDE || image.height() != PHOTO_SIDE {
             return Err(Error::Protocol);
         }
     }

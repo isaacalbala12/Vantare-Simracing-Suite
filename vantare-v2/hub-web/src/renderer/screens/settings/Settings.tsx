@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from "react";
+import { usePilot } from "../../app/PilotState";
 import { useSettings } from "../../app/SettingsState";
 import { settingsText, t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
@@ -33,6 +34,7 @@ const Diagnostics = lazy(() =>
 );
 export function Settings() {
   const state = useSettings();
+  const pilot = usePilot();
   const [tab, setTab] = useState("general");
   const [search, setSearch] = useState("");
 
@@ -172,6 +174,25 @@ export function Settings() {
         value={search}
         onChange={setSearch}
       />
+      <p
+        role="status"
+        aria-live="polite"
+      >{`${t("settings.results")}: ${visible.length}`}</p>
+      {pilot.dirty && selected !== "account" && (
+        <Callout
+          title={t("pilot.unsaved")}
+          actions={
+            <Button
+              onClick={() => {
+                setSearch("");
+                setTab("account");
+              }}
+            >
+              {t("settings.account")}
+            </Button>
+          }
+        />
+      )}
       {failure && (
         <Callout
           tone="err"

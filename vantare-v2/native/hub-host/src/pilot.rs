@@ -10,7 +10,7 @@ pub const DESCRIPTION_LIMIT: usize = 280;
 pub const FAVORITE_LIMIT: usize = 120;
 pub const SIMULATOR_LIMIT: usize = 64;
 pub const SIMULATOR_COUNT: usize = 16;
-pub const PHOTO_SIDE: u16 = 256;
+pub use vantare_services::pilot::{MAX_SOURCE_BYTES, MAX_SOURCE_SIDE, PHOTO_SIDE};
 pub const MAX_PHOTO_BYTES: usize = vantare_ipc::services_protocol::pilot_document::MAX_PHOTO_BYTES;
 
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

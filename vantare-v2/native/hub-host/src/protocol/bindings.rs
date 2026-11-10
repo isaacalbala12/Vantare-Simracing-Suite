@@ -92,7 +92,7 @@ fn append_constants(text: &mut String) {
     constants!("pilotCountries", crate::pilot::countries());
     constants!(
         "pilotLimits",
-        serde_json::json!({"name":crate::pilot::NAME_LIMIT,"description":crate::pilot::DESCRIPTION_LIMIT,"favorite":crate::pilot::FAVORITE_LIMIT,"simulator":crate::pilot::SIMULATOR_LIMIT,"simulators":crate::pilot::SIMULATOR_COUNT,"photoBytes":crate::pilot::MAX_PHOTO_BYTES,"photoSide":crate::pilot::PHOTO_SIDE})
+        serde_json::json!({"name":crate::pilot::NAME_LIMIT,"description":crate::pilot::DESCRIPTION_LIMIT,"favorite":crate::pilot::FAVORITE_LIMIT,"simulator":crate::pilot::SIMULATOR_LIMIT,"simulators":crate::pilot::SIMULATOR_COUNT,"photoBytes":crate::pilot::MAX_PHOTO_BYTES,"photoSide":crate::pilot::PHOTO_SIDE,"sourceBytes":crate::pilot::MAX_SOURCE_BYTES,"sourceSide":crate::pilot::MAX_SOURCE_SIDE})
     );
     constants!("releaseChannels", crate::updates::RELEASE_CHANNELS);
     constants!("releaseKinds", crate::updates::RELEASE_KINDS);

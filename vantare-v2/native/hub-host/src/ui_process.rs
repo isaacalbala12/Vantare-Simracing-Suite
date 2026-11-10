@@ -303,11 +303,11 @@ impl Session {
                     Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
                 ) if expected == id => {
                     let value = crate::privacy::MailView { consent };
-                    Ok(match kind {
-                        RemoteKind::MailGet => Reply::MailGet { value },
-                        RemoteKind::MailSet => Reply::MailSet { value },
-                        _ => return Err(io::ErrorKind::InvalidData.into()),
-                    })
+                    match kind {
+                        RemoteKind::MailGet => Ok(Reply::MailGet { value }),
+                        RemoteKind::MailSet => Ok(Reply::MailSet { value }),
+                        _ => Err(HostError::Denied),
+                    }
                 }
                 (
                     Some((expected, kind)),
@@ -315,12 +315,14 @@ impl Session {
                 ) if expected == id => {
                     let value = crate::pilot::view(&state);
                     let reply = match kind {
-                        RemoteKind::PilotLoad => Reply::PilotLoad { value },
-                        RemoteKind::PilotSave => Reply::PilotSave { value },
-                        _ => return Err(io::ErrorKind::InvalidData.into()),
+                        RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
+                        RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
+                        _ => Err(HostError::Denied),
                     };
-                    self.pilot = Some(state);
-                    Ok(reply)
+                    if reply.is_ok() {
+                        self.pilot = Some(state);
+                    }
+                    reply
                 }
                 (_, Err(error)) => Err(error),
                 _ => Err(HostError::Denied),

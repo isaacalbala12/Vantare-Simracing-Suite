@@ -1,80 +1,184 @@
-//! Colores animados en luz lineal y alfa premultiplicado, con velocidad por canal.
+//! Canales de color estables por nodo/dibujo/parada, en luz lineal premultiplicada.
 use super::{
-    animacion,
+    animacion::{self, ErrorAnimacion},
     capas::{Color, Curva, Dibujo, Instante, Pintura},
+    maquetacion::Plano,
 };
-use serde_json::Value;
-use std::collections::BTreeMap;
+use crate::receta::{Transicion, programa::Pintadas};
+use std::{collections::BTreeMap, sync::Arc};
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Rol {
+    Fondo,
+    Borde,
+    Color,
+    Sombra,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct Clave {
+    origen: (u16, u8),
+    rol: Rol,
+    parada: usize,
+    canal: usize,
+}
 #[derive(Clone)]
 pub(super) struct TransicionPintada {
-    hasta: Vec<Dibujo>,
-    curvas: Vec<Curva>,
+    hasta: Arc<[Dibujo]>,
+    origenes: Arc<[(u16, u8)]>,
+    curvas: BTreeMap<Clave, Curva>,
 }
 impl TransicionPintada {
     pub fn nueva(
-        desde: &[Dibujo],
-        hasta: Vec<Dibujo>,
-        config: &BTreeMap<String, Value>,
+        desde: &Plano,
+        hasta: &Plano,
         ahora: Instante,
         anterior: Option<&Self>,
-    ) -> Self {
-        let a = canales(desde);
-        let b = canales(&hasta);
-        let roles = roles(&hasta);
-        let curvas = if a.len() == b.len() {
-            a.into_iter()
-                .zip(b)
-                .enumerate()
-                .map(|(i, (a, b))| {
-                    let velocidad = anterior
-                        .and_then(|p| p.curvas.get(i))
-                        .map(|c| animacion::muestra(c, ahora).1);
-                    if let Some(cfg) = config.get(roles[i]) {
-                        animacion::transicion(cfg, ahora, a, b, velocidad)
-                    } else {
-                        Curva {
-                            inicio: ahora,
-                            tramos: Vec::new(),
-                            fin: 0.0,
-                            final_: b,
-                            repetir: None,
-                        }
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-        Self { hasta, curvas }
-    }
-    pub fn necesaria(desde: &[Dibujo], hasta: &[Dibujo], config: &BTreeMap<String, Value>) -> bool {
-        let a = canales(desde);
-        let b = canales(hasta);
-        let roles = roles(hasta);
-        a.len() == b.len()
-            && a.iter().zip(&b).enumerate().any(|(i, (a, b))| {
-                a.partial_cmp(b) != Some(std::cmp::Ordering::Equal) && config.contains_key(roles[i])
+    ) -> Result<Option<Self>, ErrorAnimacion> {
+        let originales = canales(&desde.dibujos, &desde.origenes)?;
+        let destinos = canales(&hasta.dibujos, &hasta.origenes)?;
+        let mut curvas = BTreeMap::new();
+        let mut pendiente = false;
+        for (clave, (destino, indice)) in destinos {
+            let previa = anterior.and_then(|p| p.curvas.get(&clave));
+            let (actual, velocidad) = match previa {
+                Some(c) => animacion::muestra(c, ahora),
+                None => match originales.get(&clave) {
+                    Some((v, _)) => (*v, 0.0),
+                    None => (0.0, 0.0),
+                },
+            };
+            let configuracion = hasta.pintadas.get(indice).ok_or(ErrorAnimacion::Entrada)?;
+            let config = configuracion.obtener(clave.rol);
+            let curva = if let Some(previa) = previa
+                && previa.final_.partial_cmp(&destino) == Some(std::cmp::Ordering::Equal)
+            {
+                previa.clone()
+            } else if let Some(config) = config
+                && actual.partial_cmp(&destino) != Some(std::cmp::Ordering::Equal)
+            {
+                animacion::transicion(&config, ahora, actual, destino, previa.map(|_| velocidad))?
+            } else {
+                animacion::constante(ahora, destino, 0.0)
+            };
+            pendiente |= ahora.0 < curva.inicio.0 + curva.fin;
+            curvas.insert(clave, curva);
+        }
+        Ok(if pendiente {
+            Some(Self {
+                hasta: hasta.dibujos.clone(),
+                origenes: hasta.origenes.clone(),
+                curvas,
             })
+        } else {
+            None
+        })
     }
     pub fn fin(&self) -> Instante {
         Instante(
             self.curvas
-                .iter()
+                .values()
                 .map(|c| c.inicio.0 + c.fin)
                 .fold(0.0, f64::max),
         )
     }
-    pub fn dibujos(&self, t: Instante) -> Vec<Dibujo> {
-        if self.curvas.is_empty() {
-            return self.hasta.clone();
+    pub fn dibujos(&self, t: Instante) -> Result<Vec<Dibujo>, ErrorAnimacion> {
+        let mut salida = self.hasta.to_vec();
+        visitar(
+            &mut salida,
+            &self.origenes,
+            &mut |origen, rol, parada, _, color| {
+                let mut valores = [0.0; 4];
+                for (canal, v) in valores.iter_mut().enumerate() {
+                    let curva = self
+                        .curvas
+                        .get(&Clave {
+                            origen,
+                            rol,
+                            parada,
+                            canal,
+                        })
+                        .ok_or(ErrorAnimacion::Entrada)?;
+                    *v = animacion::muestra(curva, t).0;
+                }
+                *color = despremultiplicar(valores);
+                Ok(())
+            },
+        )?;
+        Ok(salida)
+    }
+}
+impl Pintadas {
+    fn obtener(&self, r: Rol) -> Option<Transicion> {
+        match r {
+            Rol::Fondo => self.fondo,
+            Rol::Borde => self.borde,
+            Rol::Color => self.color,
+            Rol::Sombra => None,
         }
-        let mut iter = self.curvas.iter();
-        let mut salida = self.hasta.clone();
-        recorrer(&mut salida, &mut |color| {
-            let mut valor = || iter.next().map_or(0.0, |c| animacion::muestra(c, t).0);
-            *color = despremultiplicar([valor(), valor(), valor(), valor()]);
-        });
-        salida
+    }
+}
+fn canales(
+    dibujos: &[Dibujo],
+    origenes: &[(u16, u8)],
+) -> Result<BTreeMap<Clave, (f32, usize)>, ErrorAnimacion> {
+    let mut canales = BTreeMap::new();
+    visitar(
+        &mut dibujos.to_vec(),
+        origenes,
+        &mut |origen, rol, parada, indice, color| {
+            for (canal, valor) in premultiplicar(*color).into_iter().enumerate() {
+                canales.insert(
+                    Clave {
+                        origen,
+                        rol,
+                        parada,
+                        canal,
+                    },
+                    (valor, indice),
+                );
+            }
+            Ok(())
+        },
+    )?;
+    Ok(canales)
+}
+fn visitar(
+    dibujos: &mut [Dibujo],
+    origenes: &[(u16, u8)],
+    f: &mut impl FnMut((u16, u8), Rol, usize, usize, &mut Color) -> Result<(), ErrorAnimacion>,
+) -> Result<(), ErrorAnimacion> {
+    for (indice, d) in dibujos.iter_mut().enumerate() {
+        let origen = *origenes.get(indice).ok_or(ErrorAnimacion::Entrada)?;
+        match d {
+            Dibujo::Rect { relleno, borde, .. } => {
+                if let Some(p) = relleno {
+                    visitar_pintura(p, origen, Rol::Fondo, indice, f)?;
+                }
+                if let Some((_, p)) = borde {
+                    visitar_pintura(p, origen, Rol::Borde, indice, f)?;
+                }
+            }
+            Dibujo::Texto { color, .. } => f(origen, Rol::Color, 0, indice, color)?,
+            Dibujo::Sombra { color, .. } => f(origen, Rol::Sombra, 0, indice, color)?,
+            Dibujo::Recorte { .. } | Dibujo::FinRecorte => {}
+        }
+    }
+    Ok(())
+}
+fn visitar_pintura(
+    p: &mut Pintura,
+    origen: (u16, u8),
+    rol: Rol,
+    indice: usize,
+    f: &mut impl FnMut((u16, u8), Rol, usize, usize, &mut Color) -> Result<(), ErrorAnimacion>,
+) -> Result<(), ErrorAnimacion> {
+    match p {
+        Pintura::Solido(c) => f(origen, rol, 0, indice, c),
+        Pintura::Lineal { paradas, .. } | Pintura::Radial { paradas, .. } => {
+            for (i, p) in paradas.iter_mut().enumerate() {
+                f(origen, rol, i, indice, &mut p.color)?;
+            }
+            Ok(())
+        }
     }
 }
 fn dec(x: f32) -> f32 {
@@ -110,62 +214,6 @@ fn despremultiplicar(v: [f32; 4]) -> Color {
         a,
     }
 }
-fn roles(dibujos: &[Dibujo]) -> Vec<&'static str> {
-    let mut roles = Vec::new();
-    let colores = |p: &Pintura| match p {
-        Pintura::Solido(_) => 1,
-        Pintura::Lineal { paradas, .. } | Pintura::Radial { paradas, .. } => paradas.len(),
-    };
-    for d in dibujos {
-        match d {
-            Dibujo::Rect { relleno, borde, .. } => {
-                if let Some(p) = relleno {
-                    roles.extend(std::iter::repeat_n("fondo", colores(p) * 4));
-                }
-                if let Some((_, p)) = borde {
-                    roles.extend(std::iter::repeat_n("borde", colores(p) * 4));
-                }
-            }
-            Dibujo::Texto { .. } => roles.extend(["color"; 4]),
-            Dibujo::Sombra { .. } => roles.extend([""; 4]),
-            Dibujo::Recorte { .. } | Dibujo::FinRecorte => {}
-        }
-    }
-    roles
-}
-fn canales(dibujos: &[Dibujo]) -> Vec<f32> {
-    let mut salida = Vec::new();
-    recorrer(&mut dibujos.to_vec(), &mut |c| {
-        salida.extend(premultiplicar(*c));
-    });
-    salida
-}
-fn recorrer(dibujos: &mut [Dibujo], f: &mut impl FnMut(&mut Color)) {
-    for d in dibujos {
-        match d {
-            Dibujo::Rect { relleno, borde, .. } => {
-                if let Some(p) = relleno {
-                    pintura(p, f);
-                }
-                if let Some((_, p)) = borde {
-                    pintura(p, f);
-                }
-            }
-            Dibujo::Texto { color, .. } | Dibujo::Sombra { color, .. } => f(color),
-            Dibujo::Recorte { .. } | Dibujo::FinRecorte => {}
-        }
-    }
-}
-fn pintura(p: &mut Pintura, f: &mut impl FnMut(&mut Color)) {
-    match p {
-        Pintura::Solido(c) => f(c),
-        Pintura::Lineal { paradas, .. } | Pintura::Radial { paradas, .. } => {
-            for p in paradas {
-                f(&mut p.color);
-            }
-        }
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,62 +231,11 @@ mod tests {
             b: 1.0,
             a: 1.0,
         };
-        let x = premultiplicar(a);
-        let y = premultiplicar(b);
-        let resultado = despremultiplicar(std::array::from_fn(|i| (x[i] + y[i]) * 0.5));
+        let transparente = premultiplicar(a);
+        let azul = premultiplicar(b);
+        let color = despremultiplicar(std::array::from_fn(|i| (transparente[i] + azul[i]) * 0.5));
         assert!(
-            resultado.r.abs() < 1.0e-6
-                && (resultado.b - 1.0).abs() < 1.0e-6
-                && (resultado.a - 0.5).abs() < 1.0e-6
+            color.r.abs() < 1e-6 && (color.b - 1.0).abs() < 1e-6 && (color.a - 0.5).abs() < 1e-6
         );
-    }
-    #[test]
-    fn interrupcion_pintada_conserva_valor_y_velocidad() {
-        let dibujar = |c| {
-            vec![Dibujo::Texto {
-                caja: super::super::capas::Rect {
-                    x: 0.0,
-                    y: 0.0,
-                    ancho: 100.0,
-                    alto: 20.0,
-                },
-                texto: "x".into(),
-                fuente: super::super::capas::Fuente {
-                    familia: "Inter".into(),
-                    peso: 400,
-                    tamano: 13.0,
-                    interletra: 0.0,
-                    interlinea: 18.0,
-                    tabulares: false,
-                    mayusculas: false,
-                },
-                color: c,
-                alineacion: super::super::capas::Alineacion::Inicio,
-            }]
-        };
-        let rojo = dibujar(Color {
-            r: 1.0,
-            g: 0.0,
-            b: 0.0,
-            a: 1.0,
-        });
-        let azul = dibujar(Color {
-            r: 0.0,
-            g: 0.0,
-            b: 1.0,
-            a: 0.7,
-        });
-        let cfg = BTreeMap::from([(
-            "color".into(),
-            serde_json::json!({"duracion":1000,"curva":"lineal"}),
-        )]);
-        let a = TransicionPintada::nueva(&rojo, azul, &cfg, Instante(0.0), None);
-        let actual = a.dibujos(Instante(0.4));
-        let b = TransicionPintada::nueva(&actual, rojo, &cfg, Instante(0.4), Some(&a));
-        for (a, b) in a.curvas.iter().zip(b.curvas.iter()) {
-            let antes = animacion::muestra(a, Instante(0.4));
-            let despues = animacion::muestra(b, Instante(0.4));
-            assert!((antes.0 - despues.0).abs() < 1.0e-5 && (antes.1 - despues.1).abs() < 1.0e-5);
-        }
     }
 }

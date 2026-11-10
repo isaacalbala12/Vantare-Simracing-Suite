@@ -5,8 +5,6 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Receta {
-    #[serde(skip)]
-    pub(crate) contrato_validado: Option<Contrato>,
     pub receta: u32,
     pub tipo: String,
     pub nombre: String,
@@ -107,9 +105,9 @@ pub struct Estilo {
     #[serde(default)]
     pub relleno: Option<Value>,
     #[serde(default)]
-    pub crecer: Option<f32>,
+    pub crecer: Option<Value>,
     #[serde(default)]
-    pub encoger: Option<f32>,
+    pub encoger: Option<Value>,
     #[serde(default)]
     pub posicion: Option<String>,
     #[serde(default)]
@@ -146,11 +144,9 @@ pub struct Estilo {
     pub giro: Option<Value>,
 }
 impl Estilo {
-    pub(crate) fn valores(&self) -> BTreeMap<String, Value> {
-        match serde_json::to_value(self) {
-            Ok(Value::Object(m)) => m.into_iter().filter(|(_, v)| !v.is_null()).collect(),
-            _ => BTreeMap::new(),
-        }
+    pub(crate) fn valores(&self) -> Result<BTreeMap<String, Value>, serde_json::Error> {
+        let mapa: BTreeMap<String, Value> = serde_json::from_value(serde_json::to_value(self)?)?;
+        Ok(mapa.into_iter().filter(|(_, v)| !v.is_null()).collect())
     }
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -179,6 +175,8 @@ pub struct Lista {
 /// Los namespaces propios son deliberadamente abiertos; sus hojas se validan como medidas.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Sistema {
+    #[serde(skip)]
+    pub(crate) origen: Option<String>,
     pub sistema: u32,
     pub nombre: String,
     pub fuentes: Vec<String>,

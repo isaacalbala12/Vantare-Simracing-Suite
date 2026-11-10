@@ -33,7 +33,7 @@ fn carga(r: &Value, s: &Value) -> Result<Carga, Vec<vantare_compositor::receta::
 }
 fn escenario(r: &Value) -> Escena {
     let c = carga(r, &sistema()).expect("fixture de prueba valido");
-    Escena::nueva(c.receta, c.sistema)
+    Escena::nueva(c.receta)
 }
 fn datos() -> Value {
     serde_json::from_str(include_str!("fixtures/datos.json")).expect("fixture de prueba valido")
@@ -190,7 +190,8 @@ fn listas_flip_y_fantasma() {
             .any(|o| matches!(o, Operacion::Quitar { .. }))
     );
     assert!(
-        e.avanzar(Instante(1.3), &Fijo)
+        e.avanzar(Instante(1.3))
+            .unwrap()
             .operaciones
             .iter()
             .any(|o| matches!(o, Operacion::Quitar { .. }))
@@ -214,15 +215,23 @@ fn estados_solo_compuesta_sin_repintar() {
 #[test]
 fn interrupcion_c1() {
     let cfg = json!({"duracion":1000,"curva":[0.2,0.7,0.7,1.0]});
-    let anterior = animacion::transicion(&cfg, Instante(0.0), 0.0, 100.0, None);
+    let anterior = animacion::transicion(
+        &vantare_compositor::receta::leer_transicion(&cfg).expect("transicion de prueba valida"),
+        Instante(0.0),
+        0.0,
+        100.0,
+        None,
+    )
+    .unwrap();
     let (valor_antes, velocidad_antes) = animacion::muestra(&anterior, Instante(0.4));
     let siguiente = animacion::transicion(
-        &cfg,
+        &vantare_compositor::receta::leer_transicion(&cfg).expect("transicion de prueba valida"),
         Instante(0.4),
         valor_antes,
         -50.0,
         Some(velocidad_antes),
-    );
+    )
+    .unwrap();
     let (valor_despues, velocidad_despues) = animacion::muestra(&siguiente, Instante(0.4));
     assert!((valor_antes - valor_despues).abs() < 1.0e-5);
     assert!((velocidad_antes - velocidad_despues).abs() < 0.001);
@@ -236,7 +245,15 @@ fn bezier_error_menor_medio_por_ciento() {
         [0.0, 1.0, 1.0, 0.0],
     ] {
         let cfg = json!({"duracion":1000,"curva":puntos});
-        let c = animacion::transicion(&cfg, Instante(0.0), 0.0, 1.0, None);
+        let c = animacion::transicion(
+            &vantare_compositor::receta::leer_transicion(&cfg)
+                .expect("transicion de prueba valida"),
+            Instante(0.0),
+            0.0,
+            1.0,
+            None,
+        )
+        .unwrap();
         for i in 0..=4000_u16 {
             let t = f32::from(i) / 4000.0;
             let exacto = bezier_exacta(puntos, f64::from(t));
@@ -252,7 +269,15 @@ fn bezier_error_menor_medio_por_ciento() {
 fn muelle_contra_referencia_y_c1() {
     for amortiguacion in [10.0, 20.0, 35.0] {
         let cfg = json!({"muelle":{"rigidez":100,"amortiguacion":amortiguacion}});
-        let curva = animacion::transicion(&cfg, Instante(0.0), 0.0, 1.0, Some(0.4));
+        let curva = animacion::transicion(
+            &vantare_compositor::receta::leer_transicion(&cfg)
+                .expect("transicion de prueba valida"),
+            Instante(0.0),
+            0.0,
+            1.0,
+            Some(0.4),
+        )
+        .unwrap();
         for i in 0..1000_u16 {
             let t = f32::from(i) / 1000.0;
             let referencia = animacion::muelle(100.0, amortiguacion, -1.0, 0.4, t).0 + 1.0;
@@ -260,8 +285,15 @@ fn muelle_contra_referencia_y_c1() {
             assert!((referencia - actual).abs() < 0.005);
         }
         let (valor_antes, velocidad_antes) = animacion::muestra(&curva, Instante(0.3));
-        let nueva =
-            animacion::transicion(&cfg, Instante(0.3), valor_antes, 0.0, Some(velocidad_antes));
+        let nueva = animacion::transicion(
+            &vantare_compositor::receta::leer_transicion(&cfg)
+                .expect("transicion de prueba valida"),
+            Instante(0.3),
+            valor_antes,
+            0.0,
+            Some(velocidad_antes),
+        )
+        .unwrap();
         let (valor_despues, velocidad_despues) = animacion::muestra(&nueva, Instante(0.3));
         assert!(
             (valor_antes - valor_despues).abs() < 1.0e-5
@@ -285,16 +317,16 @@ fn bucle_sale_sin_salto() {
             _ => None,
         })
         .unwrap();
-    let antes = e.valor(id, Propiedad::Opacidad, Instante(0.3));
+    let antes = e.valor(id, Propiedad::Opacidad, Instante(0.3)).unwrap();
     m["activo"] = json!(false);
     let l = e.actualizar(&m, Instante(0.3), &Fijo).unwrap();
-    assert!((e.valor(id, Propiedad::Opacidad, Instante(0.3)) - antes).abs() < 1.0e-5);
+    assert!((e.valor(id, Propiedad::Opacidad, Instante(0.3)).unwrap() - antes).abs() < 1.0e-5);
     assert!(
         l.operaciones
             .iter()
             .any(|o| matches!(o,Operacion::Animar{curva,..} if curva.repetir.is_none()))
     );
-    assert!((e.valor(id, Propiedad::Opacidad, Instante(2.0)) - 1.0).abs() < 1.0e-5);
+    assert!((e.valor(id, Propiedad::Opacidad, Instante(2.0)).unwrap() - 1.0).abs() < 1.0e-5);
 }
 #[test]
 fn cambio_sistema_funde_y_retira() {
@@ -316,7 +348,14 @@ fn cambio_sistema_funde_y_retira() {
             _ => None,
         })
         .unwrap();
-    assert!((escena.valor(raiz_nueva, Propiedad::Opacidad, Instante(1.6)) - 1.0).abs() < 1.0e-5);
+    assert!(
+        (escena
+            .valor(raiz_nueva, Propiedad::Opacidad, Instante(1.6))
+            .unwrap()
+            - 1.0)
+            .abs()
+            < 1.0e-5
+    );
     assert!(
         lote.operaciones
             .iter()
@@ -330,7 +369,8 @@ fn cambio_sistema_funde_y_retira() {
     );
     assert!(
         escena
-            .avanzar(Instante(1.6), &Fijo)
+            .avanzar(Instante(1.6))
+            .unwrap()
             .operaciones
             .iter()
             .any(|o| matches!(o, Operacion::Quitar { id: CapaId(1) }))
@@ -375,11 +415,16 @@ fn visibilidad_raiz_entrada_salida_e_interrupcion() {
             ..
         }
     )));
-    let antes = e.valor(CapaId(1), Propiedad::Y, Instante(1.2));
+    let antes = e.valor(CapaId(1), Propiedad::Y, Instante(1.2)).unwrap();
     m["visible"] = json!(true);
     e.actualizar(&m, Instante(1.2), &Fijo).unwrap();
-    assert!((e.valor(CapaId(1), Propiedad::Y, Instante(1.2)) - antes).abs() < 1.0e-5);
-    assert!(e.valor(CapaId(1), Propiedad::Y, Instante(2.0)).abs() < 1.0e-5);
+    assert!((e.valor(CapaId(1), Propiedad::Y, Instante(1.2)).unwrap() - antes).abs() < 1.0e-5);
+    assert!(
+        e.valor(CapaId(1), Propiedad::Y, Instante(2.0))
+            .unwrap()
+            .abs()
+            < 1.0e-5
+    );
 }
 #[test]
 fn pintadas_programan_solo_la_capa_afectada() {
@@ -391,16 +436,16 @@ fn pintadas_programan_solo_la_capa_afectada() {
     e.actualizar(&m, Instante(0.0), &Fijo).unwrap();
     m["activo"] = json!(true);
     e.actualizar(&m, Instante(1.0), &Fijo).unwrap();
-    assert!(e.proximo_fotograma().unwrap().0 > 1.0);
-    let l = e.avanzar(Instante(1.2), &Fijo);
+    assert_eq!(e.proximo_fotograma(), Some(Instante(1.0)));
+    let l = e.avanzar(Instante(1.2)).unwrap();
     assert!(matches!(
         l.operaciones.as_slice(),
         [Operacion::Pintar { id: CapaId(1), .. }]
     ));
-    assert!(e.proximo_fotograma().unwrap().0 > 1.2);
-    e.avanzar(Instante(1.6), &Fijo);
+    assert_eq!(e.proximo_fotograma(), Some(Instante(1.2)));
+    e.avanzar(Instante(1.6)).unwrap();
     assert!(e.proximo_fotograma().is_none());
-    assert!(e.avanzar(Instante(1.7), &Fijo).operaciones.is_empty());
+    assert!(e.avanzar(Instante(1.7)).unwrap().operaciones.is_empty());
 }
 #[test]
 fn profundidad_tamano_fuentes_y_modelo_invalido() {
@@ -428,9 +473,9 @@ fn profundidad_tamano_fuentes_y_modelo_invalido() {
 fn cambio_invalido_conserva_escena() {
     let mut e = escenario(&receta());
     e.actualizar(&datos(), Instante(0.0), &Fijo).unwrap();
-    let mut nuevo = carga(&receta(), &sistema()).unwrap().receta;
-    nuevo.raiz.texto = Some("{ausente}".into());
-    assert!(e.cambiar_receta(nuevo, Instante(1.0), &Fijo).is_err());
+    let mut sistema = carga(&receta(), &sistema()).unwrap().sistema;
+    sistema.color.remove("a");
+    assert!(e.cambiar_sistema(sistema, Instante(1.0), &Fijo).is_err());
     assert!(
         e.actualizar(&datos(), Instante(1.1), &Fijo)
             .unwrap()
@@ -438,7 +483,6 @@ fn cambio_invalido_conserva_escena() {
             .is_empty()
     );
 }
-
 #[test]
 fn texto_recibe_la_caja_disponible_para_el_recorte() {
     let mut escena = escenario(&receta());
@@ -464,7 +508,14 @@ fn texto_recibe_la_caja_disponible_para_el_recorte() {
 #[test]
 fn retardo_conserva_c1_y_el_plazo() {
     let cfg = json!({"duracion":500,"retardo":200,"curva":"lineal"});
-    let c = animacion::transicion(&cfg, Instante(1.0), 0.5, 1.0, Some(0.4));
+    let c = animacion::transicion(
+        &vantare_compositor::receta::leer_transicion(&cfg).expect("transicion de prueba valida"),
+        Instante(1.0),
+        0.5,
+        1.0,
+        Some(0.4),
+    )
+    .unwrap();
     let inicial = animacion::muestra(&c, Instante(1.0));
     assert!((inicial.0 - 0.5).abs() < 1.0e-6 && (inicial.1 - 0.4).abs() < 1.0e-6);
     let antes = animacion::muestra(&c, Instante(1.2 - 1.0e-6));
@@ -476,7 +527,14 @@ fn retardo_conserva_c1_y_el_plazo() {
 fn bezier_error_relativo_en_recorridos_pequenos() {
     let puntos = [0.42, 0.0, 1.0, 1.0];
     let cfg = json!({"duracion":1000,"curva":puntos});
-    let c = animacion::transicion(&cfg, Instante(0.0), 0.99, 1.0, None);
+    let c = animacion::transicion(
+        &vantare_compositor::receta::leer_transicion(&cfg).expect("transicion de prueba valida"),
+        Instante(0.0),
+        0.99,
+        1.0,
+        None,
+    )
+    .unwrap();
     for i in 0..=2000 {
         let t = f64::from(i) / 2000.0;
         let exacto = 0.99 + 0.01 * bezier_exacta(puntos, t);
@@ -493,7 +551,12 @@ fn un_bucle_no_muestra_una_raiz_oculta() {
     let mut m = datos();
     m["visible"] = json!(false);
     e.actualizar(&m, Instante(0.0), &Fijo).unwrap();
-    assert!(e.valor(CapaId(1), Propiedad::Opacidad, Instante(2.0)).abs() < 1.0e-6);
+    assert!(
+        e.valor(CapaId(1), Propiedad::Opacidad, Instante(2.0))
+            .unwrap()
+            .abs()
+            < 1.0e-6
+    );
 }
 
 #[test]
@@ -502,7 +565,7 @@ fn documentos_minimos_v1() {
     let s = r#"{"sistema":1,"nombre":"minimo","fuentes":[]}"#;
     let m = r#"{"modelo":"minima/1","campos":{}}"#;
     let c = cargar(("r.json", r), ("s.json", s), ("m.json", m)).unwrap();
-    let mut escena = Escena::nueva(c.receta, c.sistema);
+    let mut escena = Escena::nueva(c.receta);
     assert!(escena.actualizar(&json!({}), Instante(0.0), &Fijo).is_ok());
 }
 #[test]
@@ -587,12 +650,20 @@ fn reaparecer_durante_salida_recupera_identidad_y_c1() {
     assert!((antes.0 - despues.0).abs() < 1.0e-5 && (antes.1 - despues.1).abs() < 1.0e-5);
     assert!(
         !escena
-            .avanzar(Instante(2.0), &Fijo)
+            .avanzar(Instante(2.0))
+            .unwrap()
             .operaciones
             .iter()
             .any(|operacion| matches!(operacion,Operacion::Quitar {id} if *id==id_fila))
     );
-    assert!((escena.valor(id_fila, Propiedad::Opacidad, Instante(2.0)) - 1.0).abs() < 1.0e-5);
+    assert!(
+        (escena
+            .valor(id_fila, Propiedad::Opacidad, Instante(2.0))
+            .unwrap()
+            - 1.0)
+            .abs()
+            < 1.0e-5
+    );
 }
 fn bezier_exacta(puntos: [f32; 4], tiempo: f64) -> f64 {
     let [x1, y1, x2, y2] = puntos.map(f64::from);
@@ -613,7 +684,15 @@ fn bezier_exacta(puntos: [f32; 4], tiempo: f64) -> f64 {
 fn muelle_contra_integracion_runge_kutta() {
     for amortiguacion in [10.0, 20.0, 35.0] {
         let cfg = json!({"muelle":{"rigidez":100,"amortiguacion":amortiguacion}});
-        let curva = animacion::transicion(&cfg, Instante(0.0), 0.0, 1.0, Some(0.4));
+        let curva = animacion::transicion(
+            &vantare_compositor::receta::leer_transicion(&cfg)
+                .expect("transicion de prueba valida"),
+            Instante(0.0),
+            0.0,
+            1.0,
+            Some(0.4),
+        )
+        .unwrap();
         let (mut posicion, mut velocidad) = (0.0, 0.4);
         let paso = 0.0001;
         let aceleracion = |pos, vel| 100.0 * (1.0 - pos) - amortiguacion * vel;

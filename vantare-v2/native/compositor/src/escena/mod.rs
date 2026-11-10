@@ -1,18 +1,20 @@
-//! Receta + sistema de diseño + modelo → operaciones sobre capas.
-//! Implementación: ver `README.md` del crate («Escena»).
+//! Ejecutor de un programa compilado. El único JSON leído en carrera es el modelo.
 pub mod animacion;
-#[rustfmt::skip]
 pub mod capas;
 mod maquetacion;
 mod pintura;
-use crate::receta::{Receta, Sistema};
-use capas::Fuente;
-use capas::{CapaId, Curva, Instante, Lote, Operacion, Propiedad};
-use maquetacion::{Plano, nombre, propiedad};
+use crate::receta::{
+    Diagnostico, Programa, Sistema, Transicion,
+    programa::{PROPIEDADES, REPOSO, indice_propiedad},
+};
+use capas::{CapaId, Curva, Fuente, Instante, Lote, Operacion, Propiedad};
+use maquetacion::{Clave, Plano};
 use serde_json::Value;
-use std::collections::BTreeMap;
-/// Mide una línea de texto con la fuente ya resuelta: (ancho, alto) en DIP.
-/// La implementa DirectWrite en la plataforma; los tests usan un medidor fijo.
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
+
 pub trait Medidor {
     fn medir(&self, texto: &str, fuente: &Fuente) -> (f32, f32);
 }
@@ -22,113 +24,159 @@ pub enum CausaModelo {
     Identidad,
     Limite,
     Maquetacion,
+    Instante,
+    Diseno,
+    Animacion,
+    Jerarquia,
+    Capa,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ErrorModelo {
     pub puntero: String,
     pub causa: CausaModelo,
+    pub detalle: String,
 }
 impl ErrorModelo {
-    fn enlace(p: &str) -> Self {
+    fn nueva(p: &str, causa: CausaModelo, detalle: &str) -> Self {
         Self {
             puntero: p.into(),
-            causa: CausaModelo::Enlace,
+            causa,
+            detalle: detalle.into(),
         }
     }
-    fn identidad(p: &str) -> Self {
-        Self {
-            puntero: p.into(),
-            causa: CausaModelo::Identidad,
-        }
+    pub(crate) fn enlace(p: &str) -> Self {
+        Self::nueva(
+            p,
+            CausaModelo::Enlace,
+            "Corrige el modelo según el campo y tipo declarados en el contrato; los números están acotados a ±1000000.",
+        )
     }
-    fn limite(p: &str) -> Self {
-        Self {
-            puntero: p.into(),
-            causa: CausaModelo::Limite,
-        }
+    pub(crate) fn identidad(p: &str) -> Self {
+        Self::nueva(
+            p,
+            CausaModelo::Identidad,
+            "Usa una clave escalar única por elemento de lista.",
+        )
     }
-    fn layout(p: &str) -> Self {
-        Self {
-            puntero: p.into(),
-            causa: CausaModelo::Maquetacion,
-        }
+    pub(crate) fn limite(p: &str) -> Self {
+        Self::nueva(
+            p,
+            CausaModelo::Limite,
+            "Reduce el modelo: 64 elementos por lista, 256 capas y 4096 nodos expandidos.",
+        )
+    }
+    pub(crate) fn layout(p: &str) -> Self {
+        Self::nueva(
+            p,
+            CausaModelo::Maquetacion,
+            "Revisa tamaños y medición: deben ser finitos y estar entre 0 y 1000000.",
+        )
+    }
+    fn animacion(p: &str, e: animacion::ErrorAnimacion) -> Self {
+        Self::nueva(p, CausaModelo::Animacion, &e.to_string())
+    }
+    fn diseno(errores: &[Diagnostico]) -> Self {
+        let puntero = errores.first().map_or("", |e| e.puntero.as_str());
+        Self::nueva(
+            puntero,
+            CausaModelo::Diseno,
+            &errores
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
     }
 }
 impl std::fmt::Display for ErrorModelo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {:?}; corrige el modelo conforme al contrato y a los límites de RECETA.md",
-            self.puntero, self.causa
-        )
+        write!(f, "{}: {:?}: {}", self.puntero, self.causa, self.detalle)
     }
 }
 impl std::error::Error for ErrorModelo {}
+fn instante(ahora: Instante) -> Result<(), ErrorModelo> {
+    if ahora.0.is_finite() && ahora.0.abs() <= 1.0e12 {
+        Ok(())
+    } else {
+        Err(ErrorModelo::nueva(
+            "/ahora",
+            CausaModelo::Instante,
+            "Usa un instante finito y representable del reloj del compositor (±1e12 segundos).",
+        ))
+    }
+}
 #[derive(Clone)]
 struct Viva {
     id: CapaId,
+    padre: Option<CapaId>,
     plano: Plano,
-    curvas: Vec<(Propiedad, Curva)>,
+    curvas: [Option<Curva>; 5],
     pintada: Option<pintura::TransicionPintada>,
 }
 impl Viva {
-    fn muestra(&self, p: Propiedad, t: Instante) -> (f32, f32) {
-        self.curvas.iter().find(|(k, _)| *k == p).map_or_else(
-            || {
-                (
-                    self.plano
-                        .valores
-                        .iter()
-                        .find(|(k, _)| *k == p)
-                        .map_or(0.0, |(_, v)| *v),
-                    0.0,
-                )
-            },
-            |(_, c)| animacion::muestra(c, t),
-        )
+    fn muestra(&self, i: usize, t: Instante) -> (f32, f32) {
+        match &self.curvas[i] {
+            Some(c) => animacion::muestra(c, t),
+            None => (self.plano.valores[i], 0.0),
+        }
     }
-    fn animar(&mut self, p: Propiedad, c: Curva, lote: &mut Lote) {
-        self.curvas.retain(|(k, _)| *k != p);
-        self.curvas.push((p, c.clone()));
+    fn animar(
+        &mut self,
+        i: usize,
+        config: &Transicion,
+        ahora: Instante,
+        extremos: (f32, f32),
+        velocidad: Option<f32>,
+        lote: &mut Lote,
+    ) -> Result<(), ErrorModelo> {
+        let (desde, hasta) = extremos;
+        let curva = animacion::transicion(config, ahora, desde, hasta, velocidad)
+            .map_err(|e| ErrorModelo::animacion(&self.plano.puntero, e))?;
+        self.curva(i, curva, lote);
+        Ok(())
+    }
+    fn curva(&mut self, i: usize, curva: Curva, lote: &mut Lote) {
+        self.curvas[i] = Some(curva.clone());
         lote.operaciones.push(Operacion::Animar {
             id: self.id,
-            propiedad: p,
-            curva: c,
+            propiedad: PROPIEDADES[i],
+            curva,
         });
     }
+    fn activa(&self, i: usize, t: Instante) -> bool {
+        self.curvas[i]
+            .as_ref()
+            .is_some_and(|c| c.repetir.is_some() || t.0 < c.inicio.0 + c.fin)
+    }
 }
+#[derive(Clone)]
 struct Fantasma {
-    viva: Viva,
+    vivas: Vec<Viva>,
+    raiz: CapaId,
     fin: Instante,
-    quitar: bool,
     recuperable: bool,
 }
-/// Estado del compositor puro. El anfitrión suministra todos los instantes.
+#[derive(Clone)]
 pub struct Escena {
-    receta: Receta,
-    sistema: Sistema,
-    modelo: Option<Value>,
-    vivas: BTreeMap<String, Viva>,
+    programa: Programa,
+    modelo: Option<Arc<Value>>,
+    vivas: BTreeMap<Clave, Viva>,
     fantasmas: Vec<Fantasma>,
     siguiente: u32,
     ultimo: Instante,
-}
-fn defecto() -> Value {
-    serde_json::json!({"duracion":180,"curva":"salida"})
-}
-fn config(s: &Sistema, v: Option<&Value>) -> Value {
-    v.and_then(|x| s.resolver(x)).unwrap_or_else(defecto)
+    ordenes: BTreeMap<Option<CapaId>, Vec<CapaId>>,
 }
 impl Escena {
-    pub fn nueva(receta: Receta, sistema: Sistema) -> Self {
+    /// Solo acepta programas opacos producidos por `receta::cargar`.
+    pub fn nueva(programa: Programa) -> Self {
         Self {
-            receta,
-            sistema,
+            programa,
             modelo: None,
             vivas: BTreeMap::new(),
             fantasmas: Vec::new(),
             siguiente: 1,
             ultimo: Instante(0.0),
+            ordenes: BTreeMap::new(),
         }
     }
     pub fn actualizar(
@@ -137,514 +185,37 @@ impl Escena {
         ahora: Instante,
         medidor: &dyn Medidor,
     ) -> Result<Lote, ErrorModelo> {
-        if !ahora.0.is_finite() {
-            return Err(ErrorModelo::enlace("/ahora"));
+        instante(ahora)?;
+        if self.modelo.as_deref() == Some(modelo) {
+            return self.avanzar(ahora);
         }
-        let planos = maquetacion::maquetar(&self.receta, &self.sistema, modelo, medidor)?;
+        let planos = maquetacion::maquetar(&self.programa, modelo, medidor)?;
+        // La copia transaccional comparte programa, modelo y dibujos mediante referencias contadas.
+        let mut siguiente = self.clone();
+        let mut lote = Lote::default();
+        siguiente.purgar(ahora, &mut lote);
         let nuevas = planos
             .iter()
             .filter(|p| {
-                !self.vivas.contains_key(&p.clave)
-                    && !self
+                !siguiente.vivas.contains_key(&p.clave)
+                    && !siguiente
                         .fantasmas
                         .iter()
-                        .any(|f| f.recuperable && f.viva.plano.clave == p.clave)
+                        .any(|f| f.recuperable && f.vivas.iter().any(|v| v.plano.clave == p.clave))
             })
             .count();
-        if self.vivas.len() + self.fantasmas.len() + nuevas > 256 {
-            return Err(ErrorModelo::limite("/capas"));
-        }
-        if u32::try_from(planos.len())
-            .ok()
-            .and_then(|n| self.siguiente.checked_add(n))
-            .is_none()
-        {
-            return Err(ErrorModelo::limite("/capas"));
-        }
-        let mut lote = self.avanzar(ahora, medidor);
-        self.aplicar(planos, ahora, &mut lote);
-        self.modelo = Some(modelo.clone());
+        siguiente.limite(nuevas)?;
+        siguiente.aplicar(planos, ahora, &mut lote)?;
+        siguiente.pintar(ahora, &mut lote)?;
+        siguiente.ultimo = ahora;
+        siguiente.modelo = Some(Arc::new(modelo.clone()));
+        *self = siguiente;
         Ok(lote)
     }
-    fn aplicar(&mut self, planos: Vec<Plano>, ahora: Instante, lote: &mut Lote) {
-        let mut anteriores = std::mem::take(&mut self.vivas);
-        self.recuperar(&planos, &mut anteriores);
-        let mut ordenes = BTreeMap::new();
-        for plano in planos {
-            let orden = ordenes.entry(plano.padre.clone()).or_insert(0_u32);
-            let posicion = *orden;
-            *orden += 1;
-            let clave = plano.clave.clone();
-            let viva = if let Some(viva) = anteriores.remove(&clave) {
-                self.modificar(viva, plano, ahora, lote)
-            } else {
-                self.crear(plano, posicion, ahora, lote)
-            };
-            self.vivas.insert(clave, viva);
-        }
-        self.retirar(anteriores, ahora, lote);
-    }
-    fn recuperar(&mut self, planos: &[Plano], anteriores: &mut BTreeMap<String, Viva>) {
-        for mut fantasma in std::mem::take(&mut self.fantasmas) {
-            let clave = &fantasma.viva.plano.clave;
-            if fantasma.recuperable
-                && !anteriores.contains_key(clave)
-                && planos.iter().any(|p| p.clave == *clave)
-            {
-                for (p, curva) in &fantasma.viva.curvas {
-                    if let Some((_, valor)) =
-                        fantasma.viva.plano.valores.iter_mut().find(|(k, _)| k == p)
-                    {
-                        *valor = curva.final_;
-                    }
-                }
-                anteriores.insert(clave.clone(), fantasma.viva);
-            } else {
-                self.fantasmas.push(fantasma);
-            }
-        }
-    }
-    fn modificar(&self, mut viva: Viva, plano: Plano, ahora: Instante, lote: &mut Lote) -> Viva {
-        if viva.plano.rect != plano.rect {
-            lote.operaciones.push(Operacion::Colocar {
-                id: viva.id,
-                rect: plano.rect,
-            });
-            if let Some(t) = &plano.movimiento {
-                let (actual, v) = viva.muestra(Propiedad::Y, ahora);
-                let desde = actual + viva.plano.rect.y - plano.rect.y;
-                let destino = plano
-                    .valores
-                    .iter()
-                    .find(|(k, _)| *k == Propiedad::Y)
-                    .map_or(0.0, |(_, v)| *v);
-                viva.animar(
-                    Propiedad::Y,
-                    animacion::transicion(
-                        &config(&self.sistema, Some(t)),
-                        ahora,
-                        desde,
-                        destino,
-                        Some(v),
-                    ),
-                    lote,
-                );
-            }
-        }
-        if viva.plano.dibujos != plano.dibujos {
-            let configs = plano
-                .transiciones
-                .iter()
-                .filter(|(k, _)| ["fondo", "color", "borde"].contains(&k.as_str()))
-                .map(|(k, v)| (k.clone(), config(&self.sistema, Some(v))))
-                .collect();
-            let desde = viva
-                .pintada
-                .as_ref()
-                .map_or_else(|| viva.plano.dibujos.clone(), |p| p.dibujos(ahora));
-            if pintura::TransicionPintada::necesaria(&desde, &plano.dibujos, &configs) {
-                viva.pintada = Some(pintura::TransicionPintada::nueva(
-                    &desde,
-                    plano.dibujos.clone(),
-                    &configs,
-                    ahora,
-                    viva.pintada.as_ref(),
-                ));
-            } else {
-                viva.pintada = None;
-                lote.operaciones.push(Operacion::Pintar {
-                    id: viva.id,
-                    dibujos: plano.dibujos.clone(),
-                });
-            }
-        }
-        self.propiedades(&mut viva, &plano, ahora, lote);
-        viva.plano = plano;
-        viva
-    }
-    fn visibilidad(
-        &self,
-        viva: &mut Viva,
-        plano: &Plano,
-        ahora: Instante,
-        lote: &mut Lote,
-    ) -> bool {
-        let visible = |p: &Plano| {
-            p.valores
-                .iter()
-                .find(|(k, _)| *k == Propiedad::Opacidad)
-                .is_none_or(|(_, v)| *v > 0.0)
-        };
-        let cambio_visible = visible(&viva.plano) != visible(plano);
-        if cambio_visible {
-            let aparicion = if visible(plano) {
-                plano.entrada.as_ref()
-            } else {
-                plano.salida.as_ref()
-            };
-            if let Some(a) = aparicion {
-                let mapa = if visible(plano) { &a.desde } else { &a.hacia };
-                for (k, v) in mapa {
-                    if let Some(p) = propiedad(k) {
-                        let (actual, velocidad) = viva.muestra(p, ahora);
-                        let destino = if visible(plano) {
-                            plano
-                                .valores
-                                .iter()
-                                .find(|(k, _)| *k == p)
-                                .map_or(0.0, |(_, v)| *v)
-                        } else {
-                            *v
-                        };
-                        let desde = if visible(plano)
-                            && !viva.curvas.iter().any(|(k, curva)| {
-                                *k == p
-                                    && (curva.repetir.is_some()
-                                        || ahora.0 < curva.inicio.0 + curva.fin)
-                            }) {
-                            *v
-                        } else {
-                            actual
-                        };
-                        viva.animar(
-                            p,
-                            animacion::transicion(
-                                &config(&self.sistema, a.transicion.as_ref()),
-                                ahora,
-                                desde,
-                                destino,
-                                Some(velocidad),
-                            ),
-                            lote,
-                        );
-                    }
-                }
-            }
-        }
-        cambio_visible
-    }
-    fn propiedades(&self, viva: &mut Viva, plano: &Plano, ahora: Instante, lote: &mut Lote) {
-        let cambio_visible = self.visibilidad(viva, plano, ahora, lote);
-        let visible = |p: &Plano| {
-            p.valores
-                .iter()
-                .find(|(k, _)| *k == Propiedad::Opacidad)
-                .is_none_or(|(_, v)| *v > 0.0)
-        };
-        for (p, destino) in &plano.valores {
-            if *p == Propiedad::Y && plano.movimiento.is_some() && viva.plano.rect != plano.rect {
-                continue;
-            }
-            if cambio_visible
-                && (if visible(plano) {
-                    plano.entrada.as_ref()
-                } else {
-                    plano.salida.as_ref()
-                })
-                .is_some_and(|a| {
-                    a.desde.contains_key(nombre(*p)) || a.hacia.contains_key(nombre(*p))
-                })
-            {
-                continue;
-            }
-            let anterior = viva
-                .plano
-                .valores
-                .iter()
-                .find(|(k, _)| k == p)
-                .map_or(0.0, |(_, v)| *v);
-            let bucle_antes = viva
-                .plano
-                .bucle
-                .as_ref()
-                .filter(|b| propiedad(&b.propiedad) == Some(*p));
-            let bucle_despues = plano
-                .bucle
-                .as_ref()
-                .filter(|b| propiedad(&b.propiedad) == Some(*p));
-            let cambio_bucle = bucle_antes != bucle_despues;
-            if anterior.partial_cmp(destino) != Some(std::cmp::Ordering::Equal) || cambio_bucle {
-                let (actual, v) = viva.muestra(*p, ahora);
-                if let Some(b) = bucle_despues {
-                    viva.animar(
-                        *p,
-                        animacion::bucle_desde(&b.valores, b.duracion / 1000.0, ahora, actual, v),
-                        lote,
-                    );
-                } else if let Some(t) = plano.transiciones.get(nombre(*p)).or({
-                    if cambio_bucle
-                        || viva.curvas.iter().any(|(k, c)| {
-                            k == p && (c.repetir.is_some() || ahora.0 < c.inicio.0 + c.fin)
-                        })
-                    {
-                        Some(&Value::Null)
-                    } else {
-                        None
-                    }
-                }) {
-                    viva.animar(
-                        *p,
-                        animacion::transicion(
-                            &config(&self.sistema, Some(t)),
-                            ahora,
-                            actual,
-                            *destino,
-                            Some(v),
-                        ),
-                        lote,
-                    );
-                } else {
-                    viva.curvas.retain(|(k, _)| k != p);
-                    lote.operaciones.push(Operacion::Fijar {
-                        id: viva.id,
-                        propiedad: *p,
-                        valor: *destino,
-                    });
-                }
-            }
-        }
-    }
-    fn crear(&mut self, plano: Plano, orden: u32, ahora: Instante, lote: &mut Lote) -> Viva {
-        let id = CapaId(self.siguiente);
-        self.siguiente += 1;
-        let padre = plano
-            .padre
-            .as_ref()
-            .and_then(|p| self.vivas.get(p))
-            .map(|v| v.id);
-        lote.operaciones.push(Operacion::Crear { id, padre, orden });
-        lote.operaciones.push(Operacion::Colocar {
-            id,
-            rect: plano.rect,
-        });
-        lote.operaciones.push(Operacion::Pintar {
-            id,
-            dibujos: plano.dibujos.clone(),
-        });
-        let mut viva = Viva {
-            id,
-            plano,
-            curvas: Vec::new(),
-            pintada: None,
-        };
-        for (p, v) in viva.plano.valores.clone() {
-            lote.operaciones.push(Operacion::Fijar {
-                id,
-                propiedad: p,
-                valor: v,
-            });
-        }
-        if let Some(a) = viva.plano.entrada.clone() {
-            for (k, desde) in a.desde {
-                if let Some(p) = propiedad(&k) {
-                    let hasta = viva.muestra(p, ahora).0;
-                    viva.animar(
-                        p,
-                        animacion::transicion(
-                            &config(&self.sistema, a.transicion.as_ref()),
-                            ahora,
-                            desde,
-                            hasta,
-                            None,
-                        ),
-                        lote,
-                    );
-                }
-            }
-        }
-        if let Some(b) = viva.plano.bucle.clone()
-            && let Some(p) = propiedad(&b.propiedad)
-        {
-            let (actual, v) = viva.muestra(p, ahora);
-            viva.animar(
-                p,
-                animacion::bucle_desde(&b.valores, b.duracion / 1000.0, ahora, actual, v),
-                lote,
-            );
-        }
-        viva
-    }
-    fn retirar(
-        &mut self,
-        mut anteriores: BTreeMap<String, Viva>,
-        ahora: Instante,
-        lote: &mut Lote,
-    ) {
-        let raices = anteriores
-            .iter()
-            .filter(|(_, v)| {
-                v.plano
-                    .padre
-                    .as_ref()
-                    .is_none_or(|p| !anteriores.contains_key(p))
-            })
-            .map(|(k, _)| k.clone())
-            .collect::<Vec<_>>();
-        for raiz in raices {
-            let claves = anteriores
-                .keys()
-                .filter(|k| *k == &raiz || k.starts_with(&format!("{raiz}/")))
-                .cloned()
-                .collect::<Vec<_>>();
-            let mut retiradas = Vec::new();
-            let mut fin = ahora;
-            let mut id_raiz = None;
-            for clave in claves {
-                if let Some(mut viva) = anteriores.remove(&clave) {
-                    if clave == raiz {
-                        id_raiz = Some(viva.id);
-                    }
-                    if let Some(salida) = viva.plano.salida.clone() {
-                        for (k, hasta) in salida.hacia {
-                            if let Some(p) = propiedad(&k) {
-                                let (desde, velocidad) = viva.muestra(p, ahora);
-                                let curva = animacion::transicion(
-                                    &config(&self.sistema, salida.transicion.as_ref()),
-                                    ahora,
-                                    desde,
-                                    hasta,
-                                    Some(velocidad),
-                                );
-                                fin.0 = fin.0.max(ahora.0 + curva.fin);
-                                viva.animar(p, curva, lote);
-                            }
-                        }
-                    }
-                    retiradas.push(viva);
-                }
-            }
-            if fin > ahora {
-                self.fantasmas.extend(retiradas.into_iter().map(|viva| {
-                    let quitar = Some(viva.id) == id_raiz;
-                    Fantasma {
-                        viva,
-                        fin,
-                        quitar,
-                        recuperable: true,
-                    }
-                }));
-            } else if let Some(id) = id_raiz {
-                lote.operaciones.push(Operacion::Quitar { id });
-            }
-        }
-    }
-    pub fn avanzar(&mut self, ahora: Instante, _medidor: &dyn Medidor) -> Lote {
-        self.ultimo = ahora;
-        let mut lote = Lote::default();
-        for viva in self.vivas.values_mut() {
-            if let Some(p) = &viva.pintada {
-                lote.operaciones.push(Operacion::Pintar {
-                    id: viva.id,
-                    dibujos: p.dibujos(ahora),
-                });
-                if ahora >= p.fin() {
-                    viva.pintada = None;
-                }
-            }
-        }
-        self.fantasmas.retain(|f| {
-            if ahora >= f.fin {
-                if f.quitar {
-                    lote.operaciones.push(Operacion::Quitar { id: f.viva.id });
-                }
-                false
-            } else {
-                true
-            }
-        });
-        lote
-    }
-    pub fn proximo_fotograma(&self) -> Option<Instante> {
-        self.vivas
-            .values()
-            .filter_map(|v| {
-                v.pintada.as_ref().map(|p| {
-                    Instante(
-                        (self.ultimo.0 + 1.0 / 60.0)
-                            .min(p.fin().0)
-                            .max(self.ultimo.0),
-                    )
-                })
-            })
-            .chain(self.fantasmas.iter().map(|f| f.fin))
-            .min_by(|a, b| a.0.total_cmp(&b.0))
-    }
-    /// Devuelve error si el nuevo diseño no puede representar el último modelo; conserva la escena.
-    pub fn cambiar_receta(
-        &mut self,
-        receta: Receta,
-        ahora: Instante,
-        medidor: &dyn Medidor,
-    ) -> Result<Lote, ErrorModelo> {
-        let modelo = self.modelo.clone().unwrap_or_else(|| serde_json::json!({}));
-        let planos = maquetacion::maquetar(&receta, &self.sistema, &modelo, medidor)?;
-        self.limite_fundido(planos.len())?;
-        let lote = self.fundir(planos, ahora);
-        self.receta = receta;
-        Ok(lote)
-    }
-    pub fn cambiar_sistema(
-        &mut self,
-        sistema: Sistema,
-        ahora: Instante,
-        medidor: &dyn Medidor,
-    ) -> Result<Lote, ErrorModelo> {
-        let modelo = self.modelo.clone().unwrap_or_else(|| serde_json::json!({}));
-        let planos = maquetacion::maquetar(&self.receta, &sistema, &modelo, medidor)?;
-        self.limite_fundido(planos.len())?;
-        self.sistema = sistema;
-        Ok(self.fundir(planos, ahora))
-    }
-    fn fundir(&mut self, planos: Vec<Plano>, ahora: Instante) -> Lote {
-        // Sus padres pertenecen al árbol anterior: no pueden recuperarse en el nuevo.
-        for fantasma in &mut self.fantasmas {
-            fantasma.recuperable = false;
-        }
-        let mut lote = Lote::default();
-        let token = Value::String("$mov.cambio_sistema".into());
-        let cfg = config(&self.sistema, Some(&token));
-        let mut fin_arbol = ahora;
-        for (_, mut viva) in std::mem::take(&mut self.vivas) {
-            let raiz = viva.plano.padre.is_none();
-            if raiz {
-                let (v, d) = viva.muestra(Propiedad::Opacidad, ahora);
-                let c = animacion::transicion(&cfg, ahora, v, 0.0, Some(d));
-                let fin = Instante(ahora.0 + c.fin);
-                fin_arbol = fin;
-                viva.animar(Propiedad::Opacidad, c, &mut lote);
-                self.fantasmas.push(Fantasma {
-                    viva,
-                    fin,
-                    quitar: true,
-                    recuperable: false,
-                });
-            } else {
-                self.fantasmas.push(Fantasma {
-                    viva,
-                    fin: fin_arbol,
-                    quitar: false,
-                    recuperable: false,
-                });
-            }
-        }
-        self.aplicar(planos, ahora, &mut lote);
-        for viva in self.vivas.values_mut().filter(|v| v.plano.padre.is_none()) {
-            let hasta = viva
-                .plano
-                .valores
-                .iter()
-                .find(|(p, _)| *p == Propiedad::Opacidad)
-                .map_or(1.0, |(_, v)| *v);
-            viva.animar(
-                Propiedad::Opacidad,
-                animacion::transicion(&cfg, ahora, 0.0, hasta, None),
-                &mut lote,
-            );
-        }
-        lote
-    }
-    fn limite_fundido(&self, nuevas: usize) -> Result<(), ErrorModelo> {
-        if self.vivas.len() + self.fantasmas.len() + nuevas > 256
+    fn limite(&self, nuevas: usize) -> Result<(), ErrorModelo> {
+        let existentes =
+            self.vivas.len() + self.fantasmas.iter().map(|f| f.vivas.len()).sum::<usize>();
+        if existentes + nuevas > 256
             || u32::try_from(nuevas)
                 .ok()
                 .and_then(|n| self.siguiente.checked_add(n))
@@ -655,11 +226,560 @@ impl Escena {
             Ok(())
         }
     }
-    pub fn valor(&self, capa: CapaId, propiedad: Propiedad, ahora: Instante) -> f32 {
-        self.vivas
-            .values()
-            .chain(self.fantasmas.iter().map(|f| &f.viva))
-            .find(|v| v.id == capa)
-            .map_or(0.0, |v| v.muestra(propiedad, ahora).0)
+    fn aplicar(
+        &mut self,
+        planos: Vec<Plano>,
+        ahora: Instante,
+        lote: &mut Lote,
+    ) -> Result<(), ErrorModelo> {
+        let mut anteriores = std::mem::take(&mut self.vivas);
+        self.recuperar(&planos, &mut anteriores)?;
+        let mut deseadas = BTreeMap::<Option<CapaId>, Vec<CapaId>>::new();
+        for plano in planos {
+            let clave = plano.clave.clone();
+            let viva = if let Some(v) = anteriores.remove(&clave) {
+                Self::modificar(v, plano, ahora, lote)?
+            } else {
+                self.crear(plano, ahora, lote)?
+            };
+            deseadas.entry(viva.padre).or_default().push(viva.id);
+            self.vivas.insert(clave, viva);
+        }
+        self.retirar(anteriores.into_values().collect(), ahora, lote)?;
+        self.ordenar(&deseadas, lote);
+        Ok(())
     }
+    fn crear(
+        &mut self,
+        plano: Plano,
+        ahora: Instante,
+        lote: &mut Lote,
+    ) -> Result<Viva, ErrorModelo> {
+        let padre = match &plano.padre {
+            None => None,
+            Some(p) => Some(
+                self.vivas
+                    .get(p)
+                    .ok_or_else(|| {
+                        ErrorModelo::nueva(
+                            &plano.puntero,
+                            CausaModelo::Jerarquia,
+                            "Falta la capa padre del programa compilado.",
+                        )
+                    })?
+                    .id,
+            ),
+        };
+        let hermanas = self.ordenes.entry(padre).or_default();
+        let orden =
+            u32::try_from(hermanas.len()).map_err(|_| ErrorModelo::limite(&plano.puntero))?;
+        let id = CapaId(self.siguiente);
+        self.siguiente = self
+            .siguiente
+            .checked_add(1)
+            .ok_or_else(|| ErrorModelo::limite("/capas"))?;
+        hermanas.push(id);
+        lote.operaciones.push(Operacion::Crear { id, padre, orden });
+        lote.operaciones.push(Operacion::Colocar {
+            id,
+            rect: plano.rect,
+        });
+        if !plano.dibujos.is_empty() {
+            lote.operaciones.push(Operacion::Pintar {
+                id,
+                dibujos: plano.dibujos.to_vec(),
+            });
+        }
+        let mut viva = Viva {
+            id,
+            padre,
+            plano,
+            curvas: std::array::from_fn(|_| None),
+            pintada: None,
+        };
+        for (i, defecto) in REPOSO.iter().enumerate() {
+            if viva.plano.valores[i].partial_cmp(defecto) != Some(std::cmp::Ordering::Equal) {
+                lote.operaciones.push(Operacion::Fijar {
+                    id,
+                    propiedad: PROPIEDADES[i],
+                    valor: viva.plano.valores[i],
+                });
+            }
+        }
+        if viva.plano.visible
+            && let Some(a) = viva.plano.entrada.clone()
+        {
+            for (i, desde) in a.valores.iter().enumerate() {
+                if let Some(desde) = desde {
+                    let hasta = viva.plano.valores[i];
+                    viva.animar(i, &a.transicion, ahora, (*desde, hasta), None, lote)?;
+                }
+            }
+        }
+        if let Some(b) = viva.plano.bucle.clone() {
+            let (actual, velocidad) = viva.muestra(b.propiedad, ahora);
+            let curva = animacion::bucle_desde(&b.valores, b.duracion, ahora, actual, velocidad)
+                .map_err(|e| ErrorModelo::animacion(&viva.plano.puntero, e))?;
+            viva.curva(b.propiedad, curva, lote);
+        }
+        Ok(viva)
+    }
+    fn modificar(
+        mut viva: Viva,
+        plano: Plano,
+        ahora: Instante,
+        lote: &mut Lote,
+    ) -> Result<Viva, ErrorModelo> {
+        let movimiento = viva.plano.rect.y.partial_cmp(&plano.rect.y)
+            != Some(std::cmp::Ordering::Equal)
+            && plano.movimiento.is_some();
+        if viva.plano.rect != plano.rect {
+            lote.operaciones.push(Operacion::Colocar {
+                id: viva.id,
+                rect: plano.rect,
+            });
+        }
+        if movimiento && let Some(t) = &plano.movimiento {
+            let (actual, velocidad) = viva.muestra(2, ahora);
+            let desde = actual + viva.plano.rect.y - plano.rect.y;
+            viva.animar(
+                2,
+                t,
+                ahora,
+                (desde, plano.valores[2]),
+                Some(velocidad),
+                lote,
+            )?;
+        }
+        if viva.plano.dibujos != plano.dibujos {
+            viva.pintada = pintura::TransicionPintada::nueva(
+                &viva.plano,
+                &plano,
+                ahora,
+                viva.pintada.as_ref(),
+            )
+            .map_err(|e| ErrorModelo::animacion(&plano.puntero, e))?;
+            if viva.pintada.is_none() {
+                lote.operaciones.push(Operacion::Pintar {
+                    id: viva.id,
+                    dibujos: plano.dibujos.to_vec(),
+                });
+            }
+        }
+        Self::propiedades(&mut viva, &plano, ahora, movimiento, lote)?;
+        viva.plano = plano;
+        Ok(viva)
+    }
+    fn visibilidad(
+        viva: &mut Viva,
+        plano: &Plano,
+        ahora: Instante,
+        lote: &mut Lote,
+    ) -> Result<[bool; 5], ErrorModelo> {
+        let mut tocadas = [false; 5];
+        if viva.plano.visible == plano.visible {
+            return Ok(tocadas);
+        }
+        let entrada = plano.entrada.as_deref();
+        let salida = plano.salida.as_deref();
+        let aparicion = if plano.visible { entrada } else { salida };
+        for (i, tocada) in tocadas.iter_mut().enumerate() {
+            let por_salida = salida.is_some_and(|a| a.valores[i].is_some());
+            let por_entrada = entrada.is_some_and(|a| a.valores[i].is_some());
+            if i != 0 && !por_salida && (!plano.visible || !por_entrada) {
+                continue;
+            }
+            let config = aparicion.map_or(Transicion::PREDETERMINADA, |a| a.transicion);
+            let (actual, velocidad) = viva.muestra(i, ahora);
+            let destino = if plano.visible {
+                plano.valores[i]
+            } else {
+                salida
+                    .and_then(|a| a.valores[i])
+                    .map_or(plano.valores[i], |v| v)
+            };
+            let desde = if plano.visible && !por_salida && !viva.activa(i, ahora) {
+                entrada.and_then(|a| a.valores[i]).map_or(actual, |v| v)
+            } else {
+                actual
+            };
+            viva.animar(i, &config, ahora, (desde, destino), Some(velocidad), lote)?;
+            *tocada = true;
+        }
+        Ok(tocadas)
+    }
+    fn propiedades(
+        viva: &mut Viva,
+        plano: &Plano,
+        ahora: Instante,
+        movimiento: bool,
+        lote: &mut Lote,
+    ) -> Result<(), ErrorModelo> {
+        let tocadas = Self::visibilidad(viva, plano, ahora, lote)?;
+        for (i, tocada) in tocadas.iter().enumerate() {
+            if *tocada || (i == 2 && movimiento) {
+                continue;
+            }
+            let antes = viva.plano.bucle.as_ref().filter(|b| b.propiedad == i);
+            let despues = plano.bucle.as_ref().filter(|b| b.propiedad == i);
+            let cambio = antes != despues;
+            if viva.plano.valores[i].partial_cmp(&plano.valores[i])
+                == Some(std::cmp::Ordering::Equal)
+                && !cambio
+            {
+                continue;
+            }
+            let (actual, velocidad) = viva.muestra(i, ahora);
+            if let Some(b) = despues {
+                let curva =
+                    animacion::bucle_desde(&b.valores, b.duracion, ahora, actual, velocidad)
+                        .map_err(|e| ErrorModelo::animacion(&plano.puntero, e))?;
+                viva.curva(i, curva, lote);
+            } else if let Some(t) =
+                plano.transiciones.compuestas[i].or(if cambio || viva.activa(i, ahora) {
+                    Some(Transicion::PREDETERMINADA)
+                } else {
+                    None
+                })
+            {
+                viva.animar(
+                    i,
+                    &t,
+                    ahora,
+                    (actual, plano.valores[i]),
+                    Some(velocidad),
+                    lote,
+                )?;
+            } else {
+                viva.curvas[i] = None;
+                lote.operaciones.push(Operacion::Fijar {
+                    id: viva.id,
+                    propiedad: PROPIEDADES[i],
+                    valor: plano.valores[i],
+                });
+            }
+        }
+        Ok(())
+    }
+    fn recuperar(
+        &mut self,
+        planos: &[Plano],
+        anteriores: &mut BTreeMap<Clave, Viva>,
+    ) -> Result<(), ErrorModelo> {
+        let mut padres = anteriores.values().map(|v| v.id).collect::<BTreeSet<_>>();
+        for grupo in std::mem::take(&mut self.fantasmas) {
+            if !grupo.recuperable {
+                self.fantasmas.push(grupo);
+                continue;
+            }
+            let mut resto = Vec::new();
+            for mut viva in grupo.vivas {
+                if planos.iter().any(|p| p.clave == viva.plano.clave)
+                    && viva.padre.is_none_or(|p| padres.contains(&p))
+                {
+                    viva.plano.visible = false;
+                    for (i, c) in viva.curvas.iter().enumerate() {
+                        if let Some(c) = c {
+                            viva.plano.valores[i] = c.final_;
+                        }
+                    }
+                    padres.insert(viva.id);
+                    anteriores.insert(viva.plano.clave.clone(), viva);
+                } else {
+                    resto.push(viva);
+                }
+            }
+            for mut nuevo in agrupar(resto, grupo.fin, true)? {
+                nuevo.fin = grupo.fin;
+                self.fantasmas.push(nuevo);
+            }
+        }
+        Ok(())
+    }
+    fn retirar(
+        &mut self,
+        vivas: Vec<Viva>,
+        ahora: Instante,
+        lote: &mut Lote,
+    ) -> Result<(), ErrorModelo> {
+        for mut grupo in agrupar(vivas, ahora, true)? {
+            for viva in &mut grupo.vivas {
+                if let Some(salida) = viva.plano.salida.clone() {
+                    for (i, hasta) in salida.valores.iter().enumerate() {
+                        if let Some(hasta) = hasta {
+                            let (desde, velocidad) = viva.muestra(i, ahora);
+                            viva.animar(
+                                i,
+                                &salida.transicion,
+                                ahora,
+                                (desde, *hasta),
+                                Some(velocidad),
+                                lote,
+                            )?;
+                            if let Some(c) = &viva.curvas[i] {
+                                grupo.fin.0 = grupo.fin.0.max(ahora.0 + c.fin);
+                            }
+                        }
+                    }
+                }
+            }
+            if grupo.fin > ahora {
+                self.fantasmas.push(grupo);
+            } else {
+                self.destruir(&grupo, lote);
+            }
+        }
+        Ok(())
+    }
+    fn destruir(&mut self, grupo: &Fantasma, lote: &mut Lote) {
+        lote.operaciones.push(Operacion::Quitar { id: grupo.raiz });
+        let ids = grupo.vivas.iter().map(|v| v.id).collect::<BTreeSet<_>>();
+        self.ordenes.retain(|p, hijos| {
+            if p.is_some_and(|p| ids.contains(&p)) {
+                return false;
+            }
+            hijos.retain(|id| !ids.contains(id));
+            !hijos.is_empty()
+        });
+    }
+    fn purgar(&mut self, ahora: Instante, lote: &mut Lote) {
+        for grupo in std::mem::take(&mut self.fantasmas) {
+            if grupo.fin <= ahora {
+                self.destruir(&grupo, lote);
+            } else {
+                self.fantasmas.push(grupo);
+            }
+        }
+    }
+    fn pintar(&mut self, ahora: Instante, lote: &mut Lote) -> Result<(), ErrorModelo> {
+        for viva in self.vivas.values_mut() {
+            if let Some(p) = &viva.pintada {
+                let dibujos = p
+                    .dibujos(ahora)
+                    .map_err(|e| ErrorModelo::animacion(&viva.plano.puntero, e))?;
+                lote.operaciones.push(Operacion::Pintar {
+                    id: viva.id,
+                    dibujos,
+                });
+                if p.fin() <= ahora {
+                    viva.pintada = None;
+                }
+            }
+        }
+        Ok(())
+    }
+    pub fn avanzar(&mut self, ahora: Instante) -> Result<Lote, ErrorModelo> {
+        instante(ahora)?;
+        let mut siguiente = self.clone();
+        let mut lote = Lote::default();
+        siguiente.purgar(ahora, &mut lote);
+        siguiente.pintar(ahora, &mut lote)?;
+        siguiente.ultimo = ahora;
+        *self = siguiente;
+        Ok(lote)
+    }
+    /// El anfitrión sincroniza este trabajo con SU siguiente fotograma; no hay frecuencia fija.
+    pub fn proximo_fotograma(&self) -> Option<Instante> {
+        if self.vivas.values().any(|v| v.pintada.is_some()) {
+            Some(self.ultimo)
+        } else {
+            self.fantasmas
+                .iter()
+                .map(|f| f.fin)
+                .min_by(|a, b| a.0.total_cmp(&b.0))
+        }
+    }
+    pub fn cambiar_receta(
+        &mut self,
+        programa: Programa,
+        ahora: Instante,
+        medidor: &dyn Medidor,
+    ) -> Result<Lote, ErrorModelo> {
+        instante(ahora)?;
+        let programa = self
+            .programa
+            .con_receta(programa)
+            .map_err(|e| ErrorModelo::diseno(&e))?;
+        self.cambiar(programa, ahora, medidor)
+    }
+    pub fn cambiar_sistema(
+        &mut self,
+        sistema: Sistema,
+        ahora: Instante,
+        medidor: &dyn Medidor,
+    ) -> Result<Lote, ErrorModelo> {
+        instante(ahora)?;
+        let programa = self
+            .programa
+            .con_sistema(sistema)
+            .map_err(|e| ErrorModelo::diseno(&e))?;
+        self.cambiar(programa, ahora, medidor)
+    }
+    fn cambiar(
+        &mut self,
+        programa: Programa,
+        ahora: Instante,
+        medidor: &dyn Medidor,
+    ) -> Result<Lote, ErrorModelo> {
+        let Some(modelo) = &self.modelo else {
+            self.programa = programa;
+            self.ultimo = ahora;
+            return Ok(Lote::default());
+        };
+        let planos = maquetacion::maquetar(&programa, modelo, medidor)?;
+        let mut siguiente = self.clone();
+        let mut lote = Lote::default();
+        siguiente.purgar(ahora, &mut lote);
+        siguiente.limite(planos.len())?;
+        siguiente.programa = programa;
+        siguiente.fundir(planos, ahora, &mut lote)?;
+        siguiente.pintar(ahora, &mut lote)?;
+        siguiente.ultimo = ahora;
+        *self = siguiente;
+        Ok(lote)
+    }
+    fn fundir(
+        &mut self,
+        planos: Vec<Plano>,
+        ahora: Instante,
+        lote: &mut Lote,
+    ) -> Result<(), ErrorModelo> {
+        let mut anteriores = std::mem::take(&mut self.vivas)
+            .into_values()
+            .collect::<Vec<_>>();
+        for grupo in std::mem::take(&mut self.fantasmas) {
+            anteriores.extend(grupo.vivas);
+        }
+        for mut grupo in agrupar(anteriores, ahora, false)? {
+            let raiz = grupo.vivas.first_mut().ok_or_else(|| {
+                ErrorModelo::nueva("/raiz", CausaModelo::Jerarquia, "Grupo fantasma sin raíz.")
+            })?;
+            let (desde, velocidad) = raiz.muestra(0, ahora);
+            raiz.animar(
+                0,
+                &self.programa.datos.cambio_sistema,
+                ahora,
+                (desde, 0.0),
+                Some(velocidad),
+                lote,
+            )?;
+            grupo.fin = match &raiz.curvas[0] {
+                Some(c) => Instante(ahora.0 + c.fin),
+                None => {
+                    return Err(ErrorModelo::nueva(
+                        "/raiz",
+                        CausaModelo::Jerarquia,
+                        "Fundido sin curva de raíz.",
+                    ));
+                }
+            };
+            self.fantasmas.push(grupo);
+        }
+        self.aplicar(planos, ahora, lote)?;
+        for viva in self.vivas.values_mut().filter(|v| v.padre.is_none()) {
+            viva.animar(
+                0,
+                &self.programa.datos.cambio_sistema,
+                ahora,
+                (0.0, viva.plano.valores[0]),
+                None,
+                lote,
+            )?;
+        }
+        Ok(())
+    }
+    fn ordenar(&mut self, deseadas: &BTreeMap<Option<CapaId>, Vec<CapaId>>, lote: &mut Lote) {
+        let fantasmas = self
+            .fantasmas
+            .iter()
+            .flat_map(|f| f.vivas.iter().map(|v| v.id))
+            .collect::<BTreeSet<_>>();
+        for (padre, actuales) in &mut self.ordenes {
+            let vivas = deseadas.get(padre).map_or(&[][..], Vec::as_slice);
+            let mut iterador = vivas.iter();
+            let mut orden = Vec::new();
+            for id in actuales.iter() {
+                if fantasmas.contains(id) {
+                    orden.push(*id);
+                } else if let Some(nuevo) = iterador.next() {
+                    orden.push(*nuevo);
+                }
+            }
+            orden.extend(iterador.copied());
+            if *actuales != orden {
+                lote.operaciones.push(Operacion::Ordenar {
+                    padre: *padre,
+                    hijos: orden.clone(),
+                });
+                *actuales = orden;
+            }
+        }
+    }
+    pub fn valor(
+        &self,
+        capa: CapaId,
+        propiedad: Propiedad,
+        ahora: Instante,
+    ) -> Result<f32, ErrorModelo> {
+        instante(ahora)?;
+        let viva = self
+            .vivas
+            .values()
+            .chain(self.fantasmas.iter().flat_map(|f| f.vivas.iter()))
+            .find(|v| v.id == capa)
+            .ok_or_else(|| {
+                ErrorModelo::nueva("/capas", CausaModelo::Capa, "La capa ya no existe.")
+            })?;
+        Ok(viva.muestra(indice_propiedad(propiedad), ahora).0)
+    }
+}
+fn agrupar(
+    vivas: Vec<Viva>,
+    fin: Instante,
+    recuperable: bool,
+) -> Result<Vec<Fantasma>, ErrorModelo> {
+    let mut por_id = vivas
+        .into_iter()
+        .map(|v| (v.id, v))
+        .collect::<BTreeMap<_, _>>();
+    let raices = por_id
+        .values()
+        .filter(|v| v.padre.is_none_or(|p| !por_id.contains_key(&p)))
+        .map(|v| v.id)
+        .collect::<Vec<_>>();
+    let mut grupos = Vec::new();
+    for raiz in raices {
+        let mut pendientes = vec![raiz];
+        let mut vivas = Vec::new();
+        while let Some(id) = pendientes.pop() {
+            let viva = por_id.remove(&id).ok_or_else(|| {
+                ErrorModelo::nueva(
+                    "/capas",
+                    CausaModelo::Jerarquia,
+                    "Capa duplicada al formar un árbol.",
+                )
+            })?;
+            let hijos = por_id
+                .values()
+                .filter(|v| v.padre == Some(id))
+                .map(|v| v.id)
+                .collect::<Vec<_>>();
+            pendientes.extend(hijos.into_iter().rev());
+            vivas.push(viva);
+        }
+        grupos.push(Fantasma {
+            vivas,
+            raiz,
+            fin,
+            recuperable,
+        });
+    }
+    if !por_id.is_empty() {
+        return Err(ErrorModelo::nueva(
+            "/capas",
+            CausaModelo::Jerarquia,
+            "La jerarquía contiene un ciclo.",
+        ));
+    }
+    Ok(grupos)
 }

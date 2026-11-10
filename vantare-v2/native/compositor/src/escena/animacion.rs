@@ -1,12 +1,25 @@
 //! Curvas cúbicas en segundos, independientes del reloj y de la plataforma.
 use super::capas::{Curva, Instante, Tramo};
-use serde_json::Value;
-pub(crate) fn segundos(t: f64) -> f32 {
-    if t.is_finite() {
-        std::time::Duration::from_secs_f64(t.clamp(0.0, 1.0e9)).as_secs_f32()
-    } else {
-        0.0
+use crate::receta::Transicion;
+pub const MAX_TRAMOS: usize = 1024;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorAnimacion {
+    Entrada,
+    Precision,
+    Coeficientes,
+}
+impl std::fmt::Display for ErrorAnimacion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{self:?}: usa valores finitos, duraciones de al menos 1 ms y una curva representable en como máximo {MAX_TRAMOS} tramos"
+        )
     }
+}
+impl std::error::Error for ErrorAnimacion {}
+// Solo intervalos relativos ya comprobados: 0..10 s (muestra y bucle).
+pub(crate) fn segundos(t: f64) -> f32 {
+    std::time::Duration::from_secs_f64(t).as_secs_f32()
 }
 pub fn muestra(curva: &Curva, ahora: Instante) -> (f32, f32) {
     let mut t = (ahora.0 - curva.inicio.0).max(0.0);
@@ -36,30 +49,6 @@ fn hermite(desde: f32, h: f32, a: (f32, f32), b: (f32, f32)) -> Tramo {
         b: a.1,
         c: (3.0 * delta / h - 2.0 * a.1 - b.1) / h,
         d: (-2.0 * delta / h + a.1 + b.1) / (h * h),
-    }
-}
-fn adaptar(
-    f: &impl Fn(f32) -> (f32, f32),
-    a: f32,
-    b: f32,
-    tolerancia: f32,
-    nivel: u32,
-    salida: &mut Vec<Tramo>,
-) {
-    let tramo = hermite(a, b - a, f(a), f(b));
-    let error = [0.125, 0.25, 0.5, 0.75, 0.875]
-        .iter()
-        .map(|q| {
-            let t = (b - a) * q;
-            (tramo.a + t * (tramo.b + t * (tramo.c + t * tramo.d)) - f(a + t).0).abs()
-        })
-        .fold(0.0_f32, f32::max);
-    if error > tolerancia && nivel < 14 {
-        let m = (a + b) * 0.5;
-        adaptar(f, a, m, tolerancia, nivel + 1, salida);
-        adaptar(f, m, b, tolerancia, nivel + 1, salida);
-    } else {
-        salida.push(tramo);
     }
 }
 /// Valor y velocidad de una curva CSS resuelta por bisección de su coordenada X.
@@ -109,14 +98,6 @@ pub fn bezier(p: [f32; 4], t: f32) -> (f32, f32) {
         velocidad,
     )
 }
-fn puntos(v: &Value) -> [f32; 4] {
-    match v.as_str() {
-        Some("entrada") => [0.42, 0.0, 1.0, 1.0],
-        Some("salida") => [0.0, 0.0, 0.58, 1.0],
-        Some("entrada-salida") => [0.42, 0.0, 0.58, 1.0],
-        _ => serde_json::from_value(v.clone()).unwrap_or([0.0, 0.0, 1.0, 1.0]),
-    }
-}
 /// Muelles de masa 1, solución analítica con posición y velocidad iniciales.
 pub fn muelle(
     rigidez: f32,
@@ -158,184 +139,317 @@ pub fn muelle(
         )
     }
 }
-/// Construye una transición; `velocidad` conserva C1 al sustituir otra curva.
+
+fn ulp(v: f32) -> f32 {
+    let n = v.abs();
+    (f32::from_bits(n.to_bits().saturating_add(1)) - n).max(f32::MIN_POSITIVE)
+}
+struct Intervalo {
+    desde: f32,
+    hasta: f32,
+    tramo: Tramo,
+    error: f32,
+}
+fn intervalo(
+    f: &impl Fn(f32) -> (f32, f32),
+    desde: f32,
+    hasta: f32,
+) -> Result<Intervalo, ErrorAnimacion> {
+    let h = hasta - desde;
+    if h <= 0.0 {
+        return Err(ErrorAnimacion::Precision);
+    }
+    let tramo = hermite(desde, h, f(desde), f(hasta));
+    if [tramo.a, tramo.b, tramo.c, tramo.d]
+        .iter()
+        .any(|v| !v.is_finite())
+    {
+        return Err(ErrorAnimacion::Coeficientes);
+    }
+    let error = [0.125, 0.25, 0.5, 0.75, 0.875]
+        .iter()
+        .map(|q| {
+            let t = h * q;
+            (tramo.a + t * (tramo.b + t * (tramo.c + t * tramo.d)) - f(desde + t).0).abs()
+        })
+        .fold(0.0_f32, f32::max);
+    Ok(Intervalo {
+        desde,
+        hasta,
+        tramo,
+        error,
+    })
+}
+fn adaptar(
+    f: &impl Fn(f32) -> (f32, f32),
+    fin: f32,
+    tolerancia: f32,
+    muelle: bool,
+) -> Result<Vec<Tramo>, ErrorAnimacion> {
+    let mut intervalos = Vec::new();
+    let mut desde = 0.0;
+    while desde < fin {
+        let hasta = if muelle {
+            (desde + 0.02_f32).min(fin)
+        } else {
+            fin
+        };
+        intervalos.push(intervalo(f, desde, hasta)?);
+        desde = hasta;
+    }
+    while let Some(indice) = intervalos.iter().position(|v| v.error > tolerancia) {
+        if intervalos.len() >= MAX_TRAMOS {
+            return Err(ErrorAnimacion::Precision);
+        }
+        let anterior = &intervalos[indice];
+        let mitad = (anterior.desde + anterior.hasta) * 0.5;
+        let izq = intervalo(f, anterior.desde, mitad)?;
+        let der = intervalo(f, mitad, anterior.hasta)?;
+        intervalos.splice(indice..=indice, [izq, der]);
+    }
+    Ok(intervalos.into_iter().map(|v| v.tramo).collect())
+}
+/// Solo recibe configuración compilada y comprobada; jamás interpreta JSON.
 pub fn transicion(
-    config: &Value,
+    config: &Transicion,
     inicio: Instante,
     desde: f32,
     hasta: f32,
     velocidad: Option<f32>,
-) -> Curva {
-    if config.get("muelle").is_some() {
-        return transicion_muelle(config, inicio, desde, hasta, velocidad);
+) -> Result<Curva, ErrorAnimacion> {
+    if !inicio.0.is_finite()
+        || [desde, hasta]
+            .iter()
+            .any(|v| !v.is_finite() || v.abs() > 1_000_000.0)
+        || velocidad.is_some_and(|v| !v.is_finite() || v.abs() > 1.0e12)
+    {
+        return Err(ErrorAnimacion::Entrada);
     }
-    let dur = numero(&config["duracion"], 180.0) / 1000.0;
-    let ret = numero(&config["retardo"], 0.0) / 1000.0;
+    match *config {
+        Transicion::Muelle {
+            rigidez,
+            amortiguacion,
+        } => transicion_muelle(
+            rigidez,
+            amortiguacion,
+            inicio,
+            desde,
+            hasta,
+            velocidad.map_or(0.0, |v| v),
+        ),
+        Transicion::Bezier {
+            duracion,
+            retardo,
+            puntos,
+        } => transicion_bezier((duracion, retardo, puntos), inicio, desde, hasta, velocidad),
+    }
+}
+pub(crate) fn constante(inicio: Instante, valor: f32, fin: f64) -> Curva {
+    Curva {
+        inicio,
+        tramos: vec![Tramo {
+            desde: 0.0,
+            a: valor,
+            b: 0.0,
+            c: 0.0,
+            d: 0.0,
+        }],
+        fin,
+        final_: valor,
+        repetir: None,
+    }
+}
+fn transicion_bezier(
+    config: (f32, f32, [f32; 4]),
+    inicio: Instante,
+    desde: f32,
+    hasta: f32,
+    velocidad: Option<f32>,
+) -> Result<Curva, ErrorAnimacion> {
+    let (dur, ret, p) = config;
+    if !dur.is_finite()
+        || !ret.is_finite()
+        || dur < 0.0
+        || (dur > 0.0 && dur < 0.001)
+        || ret < 0.0
+        || dur + ret > 10.001
+        || p.iter().any(|v| !v.is_finite())
+        || ![0, 2].iter().all(|i| (0.0..=1.0).contains(&p[*i]))
+        || ![1, 3].iter().all(|i| (-10.0..=10.0).contains(&p[*i]))
+    {
+        return Err(ErrorAnimacion::Entrada);
+    }
+    let velocidad_inicial = velocidad.map_or(0.0, |v| v);
+    let suelo = ulp(desde.abs().max(hasta.abs())) * 4.0;
+    if (hasta - desde).abs() <= suelo && velocidad_inicial.abs() <= suelo {
+        return Ok(constante(inicio, hasta, f64::from(dur) + f64::from(ret)));
+    }
     if dur <= 0.0 {
-        return Curva {
+        return Ok(Curva {
             inicio,
             tramos: vec![Tramo {
                 desde: 0.0,
                 a: desde,
-                b: velocidad.unwrap_or(0.0),
+                b: velocidad_inicial,
                 c: 0.0,
                 d: 0.0,
             }],
             fin: f64::from(ret),
             final_: hasta,
             repetir: None,
-        };
+        });
     }
-    let p = puntos(&config["curva"]);
-    let inicial = desde + velocidad.unwrap_or(0.0) * ret;
-    // La corrección cúbica vale 0 y tiene derivada 0 en el destino.
+    let inicial = desde + velocidad_inicial * ret;
     let vbase = (hasta - inicial) * bezier(p, 0.0).1 / dur;
     let delta_v = velocidad.map_or(0.0, |v| v - vbase);
-    let f = |t: f32| {
+    let evaluar = |t: f32| {
         let u = (t / dur).clamp(0.0, 1.0);
-        let (y, dy) = bezier(p, u);
+        let (y, derivada) = bezier(p, u);
         (
             inicial + (hasta - inicial) * y + delta_v * t * (1.0 - u) * (1.0 - u),
-            (hasta - inicial) * dy / dur + delta_v * (1.0 - 4.0 * u + 3.0 * u * u),
+            (hasta - inicial) * derivada / dur + delta_v * (1.0 - 4.0 * u + 3.0 * u * u),
         )
     };
-    let mut tramos = Vec::new();
-    // Durante el retardo una curva interrumpida conserva su velocidad actual.
-    adaptar(
-        &f,
-        0.0,
-        dur,
-        (hasta - inicial).abs().max(0.0001) * 0.0005,
-        0,
-        &mut tramos,
-    );
-    for tramo in &mut tramos {
-        tramo.desde += f64::from(ret);
+    let tolerancia = ((hasta - inicial).abs() * 0.0005)
+        .max(suelo)
+        .max(ulp((velocidad_inicial * dur).abs()) * 4.0);
+    let mut tramos = adaptar(&evaluar, dur, tolerancia, false)?;
+    for t in &mut tramos {
+        t.desde += f64::from(ret);
     }
     if ret > 0.0 {
+        if tramos.len() >= MAX_TRAMOS {
+            return Err(ErrorAnimacion::Precision);
+        }
         tramos.insert(
             0,
             Tramo {
                 desde: 0.0,
                 a: desde,
-                b: velocidad.unwrap_or(0.0),
+                b: velocidad_inicial,
                 c: 0.0,
                 d: 0.0,
             },
         );
     }
-    Curva {
+    Ok(Curva {
         inicio,
         tramos,
-        fin: f64::from(dur + ret),
+        fin: f64::from(dur) + f64::from(ret),
         final_: hasta,
         repetir: None,
-    }
+    })
 }
 fn transicion_muelle(
-    config: &Value,
+    rigidez: f32,
+    amortiguacion: f32,
     inicio: Instante,
     desde: f32,
     hasta: f32,
-    velocidad: Option<f32>,
-) -> Curva {
-    let m = &config["muelle"];
-    let rigidez = numero(&m["rigidez"], 170.0);
-    let amortiguacion = numero(&m["amortiguacion"], 26.0);
+    velocidad: f32,
+) -> Result<Curva, ErrorAnimacion> {
+    if !rigidez.is_finite()
+        || !amortiguacion.is_finite()
+        || rigidez <= 0.0
+        || amortiguacion <= 0.0
+        || rigidez > 10000.0
+        || amortiguacion > 10000.0
+    {
+        return Err(ErrorAnimacion::Entrada);
+    }
+    let suelo = ulp(desde.abs().max(hasta.abs())) * 4.0;
+    if (hasta - desde).abs() <= suelo && velocidad.abs() <= suelo {
+        return Ok(constante(inicio, hasta, 0.0));
+    }
+    let amplitud = (hasta - desde).abs().max(velocidad.abs() / rigidez.sqrt());
+    let umbral = ((hasta - desde).abs() * 0.001).max(suelo);
     let evaluar = |t| {
-        let (posicion, velocidad_actual) = muelle(
-            rigidez,
-            amortiguacion,
-            desde - hasta,
-            velocidad.unwrap_or(0.0),
-            t,
-        );
-        (hasta + posicion, velocidad_actual)
+        let (x, v) = muelle(rigidez, amortiguacion, desde - hasta, velocidad, t);
+        (hasta + x, v)
     };
-    let umbral = (hasta - desde).abs().max(0.0001) * 0.001;
     let mut fin = 0.02_f32;
     while fin < 10.0 {
-        let (posicion, velocidad_actual) = evaluar(fin);
-        if (posicion - hasta).abs() < umbral && velocidad_actual.abs() < umbral {
+        let (x, v) = evaluar(fin);
+        if (x - hasta).abs() <= umbral && v.abs() <= umbral {
             break;
         }
         fin = (fin + 0.02).min(10.0);
     }
-    let mut tramos = Vec::new();
-    let mut desde_tramo = 0.0;
-    while desde_tramo < fin {
-        let hasta_tramo = (desde_tramo + 0.02_f32).min(fin);
-        adaptar(
-            &evaluar,
-            desde_tramo,
-            hasta_tramo,
-            umbral * 0.2,
-            0,
-            &mut tramos,
-        );
-        desde_tramo = hasta_tramo;
+    let (posicion_final, velocidad_final) = evaluar(fin);
+    if (posicion_final - hasta).abs() > umbral || velocidad_final.abs() > umbral {
+        return Err(ErrorAnimacion::Precision);
     }
-    Curva {
+    let tramos = adaptar(&evaluar, fin, (amplitud * 0.0002).max(suelo), true)?;
+    Ok(Curva {
         inicio,
         tramos,
         fin: f64::from(fin),
         final_: hasta,
         repetir: None,
+    })
+}
+pub fn bucle(valores: &[f32], duracion: f64, inicio: Instante) -> Result<Curva, ErrorAnimacion> {
+    if !inicio.0.is_finite()
+        || !duracion.is_finite()
+        || !(0.001..=10.0).contains(&duracion)
+        || !(2..=64).contains(&valores.len())
+        || valores
+            .iter()
+            .any(|v| !v.is_finite() || v.abs() > 1_000_000.0)
+    {
+        return Err(ErrorAnimacion::Entrada);
     }
-}
-pub(crate) fn numero(v: &Value, defecto: f32) -> f32 {
-    serde_json::from_value(v.clone()).unwrap_or(defecto)
-}
-pub fn bucle(valores: &[f32], duracion: f64, inicio: Instante) -> Curva {
-    let mut tramos = Vec::new();
     let cerrar = valores.first() != valores.last();
-    let pasos =
-        u16::try_from(valores.len().saturating_sub(1) + usize::from(cerrar)).unwrap_or(u16::MAX);
-    let h = segundos(duracion) / f32::from(pasos.max(1));
+    let pasos = u16::try_from(valores.len() - 1 + usize::from(cerrar))
+        .map_err(|_| ErrorAnimacion::Entrada)?;
+    let h = segundos(duracion) / f32::from(pasos);
+    let mut tramos = Vec::new();
     for (i, par) in valores.windows(2).enumerate() {
-        let t = f32::from(u16::try_from(i).unwrap_or(u16::MAX)) * h;
-        tramos.push(hermite(t, h, (par[0], 0.0), (par[1], 0.0)));
+        let i = u16::try_from(i).map_err(|_| ErrorAnimacion::Entrada)?;
+        tramos.push(hermite(f32::from(i) * h, h, (par[0], 0.0), (par[1], 0.0)));
     }
-    if cerrar && let (Some(a), Some(b)) = (valores.last(), valores.first()) {
+    if cerrar {
         tramos.push(hermite(
-            f32::from(pasos.saturating_sub(1)) * h,
+            f32::from(pasos - 1) * h,
             h,
-            (*a, 0.0),
-            (*b, 0.0),
+            (valores[valores.len() - 1], 0.0),
+            (valores[0], 0.0),
         ));
     }
-    Curva {
+    Ok(Curva {
         inicio,
         tramos,
         fin: duracion,
-        final_: valores.first().copied().unwrap_or(0.0),
+        final_: valores[0],
         repetir: Some((0.0, duracion)),
-    }
+    })
 }
-/// Introducción C1 al bucle; la repetición empieza después de alcanzar el primer valor.
 pub fn bucle_desde(
     valores: &[f32],
     duracion: f64,
     inicio: Instante,
     desde: f32,
     velocidad: f32,
-) -> Curva {
-    let primero = valores.first().copied().unwrap_or(desde);
+) -> Result<Curva, ErrorAnimacion> {
+    let ciclo = bucle(valores, duracion, inicio)?;
     let mut curva = transicion(
-        &serde_json::json!({"duracion":180,"curva":"entrada-salida"}),
+        &Transicion::Bezier {
+            duracion: 0.18,
+            retardo: 0.0,
+            puntos: [0.42, 0.0, 0.58, 1.0],
+        },
         inicio,
         desde,
-        primero,
+        valores[0],
         Some(velocidad),
-    );
+    )?;
     let intro = curva.fin;
-    let ciclo = bucle(valores, duracion, inicio);
     curva.tramos.extend(ciclo.tramos.into_iter().map(|mut t| {
         t.desde += intro;
         t
     }));
     curva.fin = intro + duracion;
-    curva.final_ = primero;
+    curva.final_ = valores[0];
     curva.repetir = Some((intro, duracion));
-    curva
+    Ok(curva)
 }

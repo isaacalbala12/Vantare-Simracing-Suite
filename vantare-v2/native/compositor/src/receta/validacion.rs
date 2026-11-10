@@ -39,7 +39,7 @@ impl std::fmt::Display for Diagnostico {
 }
 #[derive(Clone, Debug)]
 pub struct Carga {
-    pub receta: Receta,
+    pub receta: super::Programa,
     pub sistema: Sistema,
     pub contrato: Contrato,
     pub avisos: Vec<Diagnostico>,
@@ -50,7 +50,6 @@ struct Validador<'a> {
     errores: Vec<Diagnostico>,
     avisos: Vec<Diagnostico>,
     nodos: usize,
-    capas: usize,
 }
 impl Validador<'_> {
     fn error(&mut self, p: &str, causa: Causa, detalle: &str, solucion: &str) {
@@ -205,13 +204,6 @@ impl Validador<'_> {
         if let Some(s) = v.as_str() {
             self.token(s, p, Some("$color."), campos);
         } else if let Some(g) = v.get("lineal") {
-            desconocidos(
-                g,
-                &["angulo", "paradas"],
-                self.fichero,
-                &format!("{p}/lineal"),
-                &mut self.errores,
-            );
             if let Some(a) = g.get("paradas").and_then(Value::as_array) {
                 if a.len() < 2 {
                     self.error(
@@ -255,7 +247,19 @@ impl Validador<'_> {
         }
     }
     fn estilo(&mut self, e: &super::Estilo, p: &str, campos: &BTreeMap<String, Campo>) {
-        for (k, v) in e.valores() {
+        let valores = match e.valores() {
+            Ok(v) => v,
+            Err(e) => {
+                self.error(
+                    p,
+                    Causa::Tipo,
+                    &e.to_string(),
+                    "Corrige el estilo antes de compilar la receta.",
+                );
+                return;
+            }
+        };
+        for (k, v) in valores {
             let p = format!("{p}/{k}");
             match k.as_str() {
                 "fondo" | "color" => self.pintura(&v, &p, campos),
@@ -266,7 +270,6 @@ impl Validador<'_> {
                     campos,
                 ),
                 "borde" => {
-                    desconocidos(&v, &["ancho", "color"], self.fichero, &p, &mut self.errores);
                     self.medida(&v["ancho"], &format!("{p}/ancho"), campos);
                     self.pintura(&v["color"], &format!("{p}/color"), campos);
                 }
@@ -340,21 +343,8 @@ impl Validador<'_> {
             Some(v.clone())
         };
         let Some(v) = resuelto else { return };
-        desconocidos(
-            &v,
-            &["duracion", "retardo", "curva", "muelle"],
-            self.fichero,
-            p,
-            &mut self.errores,
-        );
+
         let valido = if let Some(m) = v.get("muelle") {
-            desconocidos(
-                m,
-                &["rigidez", "amortiguacion"],
-                self.fichero,
-                &format!("{p}/muelle"),
-                &mut self.errores,
-            );
             ["rigidez", "amortiguacion"]
                 .iter()
                 .all(|k| m[*k].as_f64().is_some_and(|x| x > 0.0 && x <= 10000.0))
@@ -411,7 +401,10 @@ impl Validador<'_> {
     fn aparicion(&mut self, a: &super::Aparicion, p: &str) {
         for (lado, m) in [("desde", &a.desde), ("hacia", &a.hacia)] {
             for (k, v) in m {
-                if !compuesta(k) || !v.is_finite() || (k == "opacidad" && !(0.0..=1.0).contains(v))
+                if !compuesta(k)
+                    || !v.is_finite()
+                    || v.abs() > 1_000_000.0
+                    || (k == "opacidad" && !(0.0..=1.0).contains(v))
                 {
                     self.error(
                         &format!("{p}/{lado}/{k}"),
@@ -428,18 +421,6 @@ impl Validador<'_> {
     }
     fn nodo(&mut self, n: &Nodo, p: &str, campos: &BTreeMap<String, Campo>, prof: usize) {
         self.nodos += 1;
-        if p == "/raiz" || n.capa || n.transiciones.keys().any(|k| compuesta(k)) {
-            self.capas += 1;
-        }
-        if self.capas > 256 {
-            self.error(
-                p,
-                Causa::Limite,
-                "Demasiadas capas",
-                "Reduce el diseño a 256 capas, contando la raíz y las capas de las listas.",
-            );
-            return;
-        }
         if prof > 32 || self.nodos > 512 {
             self.error(
                 p,
@@ -449,7 +430,7 @@ impl Validador<'_> {
             );
             return;
         }
-        self.forma_nodo(n, p);
+        self.validar_tipo_nodo(n, p);
         self.estilo(&n.estilo, &format!("{p}/estilo"), campos);
         if let Some(c) = &n.visible {
             self.condicion(c, &format!("{p}/visible"), campos);
@@ -508,7 +489,7 @@ impl Validador<'_> {
         }
         self.lista(n, p, campos, prof);
     }
-    fn forma_nodo(&mut self, n: &Nodo, p: &str) {
+    fn validar_tipo_nodo(&mut self, n: &Nodo, p: &str) {
         if !["caja", "texto", "lista"].contains(&n.tipo.as_str()) {
             self.error(
                 &format!("{p}/tipo"),
@@ -632,165 +613,6 @@ fn diagnostico(f: &str, p: &str, causa: Causa, d: &str, s: &str) -> Diagnostico 
         solucion: s.into(),
     }
 }
-fn desconocidos(v: &Value, permitidos: &[&str], f: &str, p: &str, e: &mut Vec<Diagnostico>) {
-    if let Some(m) = v.as_object() {
-        for k in m.keys() {
-            if !permitidos.contains(&k.as_str()) {
-                e.push(diagnostico(
-                    f,
-                    &format!("{p}/{}", k.replace('~', "~0").replace('/', "~1")),
-                    Causa::CampoDesconocido,
-                    "Campo desconocido",
-                    "Retira el campo o usa un nombre de RECETA.md.",
-                ));
-            }
-        }
-    }
-}
-fn forma_nodo(v: &Value, f: &str, p: &str, e: &mut Vec<Diagnostico>, prof: usize) {
-    if prof > 32 {
-        e.push(diagnostico(
-            f,
-            p,
-            Causa::Limite,
-            "Profundidad excesiva",
-            "Reduce el árbol a 32 niveles.",
-        ));
-        return;
-    }
-    desconocidos(
-        v,
-        &[
-            "tipo",
-            "id",
-            "estilo",
-            "estados",
-            "transiciones",
-            "capa",
-            "visible",
-            "hijos",
-            "texto",
-            "de",
-            "como",
-            "clave",
-            "plantilla",
-            "entrada",
-            "salida",
-            "movimiento",
-            "bucle",
-        ],
-        f,
-        p,
-        e,
-    );
-    if let Some(a) = v["hijos"].as_array() {
-        for (i, h) in a.iter().enumerate() {
-            forma_nodo(h, f, &format!("{p}/hijos/{i}"), e, prof + 1);
-        }
-    }
-    if let Some(t) = v.get("plantilla") {
-        forma_nodo(t, f, &format!("{p}/plantilla"), e, prof + 1);
-    }
-    if let Some(s) = v.get("estilo") {
-        forma_estilo(s, f, &format!("{p}/estilo"), e);
-    }
-    for k in ["entrada", "salida"] {
-        if let Some(a) = v.get(k) {
-            desconocidos(
-                a,
-                &["desde", "hacia", "transicion"],
-                f,
-                &format!("{p}/{k}"),
-                e,
-            );
-        }
-    }
-    if let Some(b) = v.get("bucle") {
-        desconocidos(
-            b,
-            &["propiedad", "valores", "duracion", "cuando"],
-            f,
-            &format!("{p}/bucle"),
-            e,
-        );
-    }
-    if let Some(a) = v["estados"].as_array() {
-        for (i, s) in a.iter().enumerate() {
-            let p = format!("{p}/estados/{i}");
-            desconocidos(s, &["cuando", "estilo", "bucle"], f, &p, e);
-            if let Some(b) = s.get("bucle") {
-                desconocidos(
-                    b,
-                    &["propiedad", "valores", "duracion", "cuando"],
-                    f,
-                    &format!("{p}/bucle"),
-                    e,
-                );
-            }
-            if let Some(v) = s.get("estilo") {
-                forma_estilo(v, f, &format!("{p}/estilo"), e);
-            }
-        }
-    }
-}
-fn forma_estilo(v: &Value, f: &str, p: &str, e: &mut Vec<Diagnostico>) {
-    desconocidos(
-        v,
-        &[
-            "ancho",
-            "alto",
-            "min_ancho",
-            "max_ancho",
-            "direccion",
-            "alinear",
-            "justificar",
-            "hueco",
-            "relleno",
-            "crecer",
-            "encoger",
-            "posicion",
-            "arriba",
-            "izquierda",
-            "derecha",
-            "abajo",
-            "fondo",
-            "borde",
-            "radio",
-            "sombra",
-            "opacidad",
-            "tipo",
-            "color",
-            "alinear_texto",
-            "x",
-            "y",
-            "escala",
-            "giro",
-        ],
-        f,
-        p,
-        e,
-    );
-}
-fn leer<T: serde::de::DeserializeOwned>(f: &str, s: &str) -> Result<T, Vec<Diagnostico>> {
-    if s.len() > 256 * 1024 {
-        return Err(vec![diagnostico(
-            f,
-            "",
-            Causa::Limite,
-            "Fichero mayor de 256 KiB",
-            "Divide el diseño o reduce el fichero a 256 KiB.",
-        )]);
-    }
-    serde_json::from_str(s).map_err(|e| {
-        vec![diagnostico(
-            f,
-            "",
-            Causa::Json,
-            &e.to_string(),
-            "Corrige la sintaxis y los tipos según RECETA.md.",
-        )]
-    })
-}
 /// Carga los tres documentos y acumula los diagnósticos semánticos.
 pub fn cargar(
     receta: (&str, &str),
@@ -806,16 +628,40 @@ pub fn cargar_con_fuentes(
     modelo: (&str, &str),
     fuentes: &[&str],
 ) -> Result<Carga, Vec<Diagnostico>> {
-    let (mut r, errores) = leer_receta(receta)?;
-    let s: Sistema = leer(sistema.0, sistema.1)?;
-    let c: Contrato = leer(modelo.0, modelo.1)?;
+    let r: Receta = super::lectura::documento(receta.0, receta.1)?;
+    let s: Sistema = super::lectura::documento(sistema.0, sistema.1)?;
+    let c: Contrato = super::lectura::documento(modelo.0, modelo.1)?;
+    preparar(
+        r,
+        s,
+        c,
+        fuentes,
+        &[receta.0.into(), sistema.0.into(), modelo.0.into()],
+    )
+}
+pub(crate) fn recompilar(
+    r: Receta,
+    s: Sistema,
+    c: Contrato,
+    fuentes: &[String],
+    archivos: &[String; 3],
+) -> Result<super::Programa, Vec<Diagnostico>> {
+    let fuentes = fuentes.iter().map(String::as_str).collect::<Vec<_>>();
+    preparar(r, s, c, &fuentes, archivos).map(|c| c.receta)
+}
+fn preparar(
+    r: Receta,
+    mut s: Sistema,
+    c: Contrato,
+    fuentes: &[&str],
+    archivos: &[String; 3],
+) -> Result<Carga, Vec<Diagnostico>> {
     let mut v = Validador {
-        fichero: receta.0,
+        fichero: &archivos[0],
         sistema: &s,
-        errores,
+        errores: Vec::new(),
         avisos: Vec::new(),
         nodos: 0,
-        capas: 0,
     };
     if r.receta != 1 {
         v.error(
@@ -850,7 +696,7 @@ pub fn cargar_con_fuentes(
         }
     }
     v.nodo(&r.raiz, "/raiz", &c.campos, 1);
-    v.fichero = sistema.0;
+    v.fichero = &archivos[1];
     for (i, f) in s.fuentes.iter().enumerate() {
         if !fuentes.contains(&f.as_str()) {
             v.error(
@@ -861,70 +707,31 @@ pub fn cargar_con_fuentes(
             );
         }
     }
-    let sv: Value = leer(sistema.0, sistema.1)?;
+    let sv = serde_json::to_value(&s).map_err(|e| {
+        vec![diagnostico(
+            &archivos[1],
+            "",
+            Causa::Tipo,
+            &e.to_string(),
+            "Corrige el sistema de diseño.",
+        )]
+    })?;
     validar_sistema(&s, &sv, &mut v);
-    v.fichero = modelo.0;
+    v.fichero = &archivos[2];
     validar_campos(&c.campos, "/campos", &mut v);
     if !v.errores.is_empty() {
         return Err(v.errores);
     }
     let avisos = v.avisos;
-    r.contrato_validado = Some(c.clone());
+    let fuentes = fuentes.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    s.origen = Some(archivos[1].clone());
+    let programa = super::compilar::crear(r, s.clone(), c.clone(), &fuentes, archivos.clone())?;
     Ok(Carga {
-        receta: r,
+        receta: programa,
         sistema: s,
         contrato: c,
         avisos,
     })
-}
-fn leer_receta(receta: (&str, &str)) -> Result<(Receta, Vec<Diagnostico>), Vec<Diagnostico>> {
-    let mut rv: Value = leer(receta.0, receta.1)?;
-    let mut errores = Vec::new();
-    desconocidos(
-        &rv,
-        &[
-            "receta", "tipo", "nombre", "modelo", "visible", "entrada", "salida", "raiz",
-        ],
-        receta.0,
-        "",
-        &mut errores,
-    );
-    forma_nodo(&rv["raiz"], receta.0, "/raiz", &mut errores, 1);
-    for k in ["entrada", "salida"] {
-        if let Some(a) = rv.get(k) {
-            desconocidos(
-                a,
-                &["desde", "hacia", "transicion"],
-                receta.0,
-                &format!("/{k}"),
-                &mut errores,
-            );
-        }
-    }
-    if errores.iter().any(|e| e.causa != Causa::CampoDesconocido) {
-        return Err(errores);
-    }
-    for e in &errores {
-        if let Some((padre, campo)) = e.puntero.rsplit_once('/')
-            && let Some(m) = rv.pointer_mut(padre).and_then(Value::as_object_mut)
-        {
-            m.remove(&campo.replace("~1", "/").replace("~0", "~"));
-        }
-    }
-    let r: Receta = match serde_json::from_value(rv) {
-        Ok(r) => r,
-        Err(e) => {
-            errores.push(diagnostico(
-                receta.0,
-                "",
-                Causa::Json,
-                &e.to_string(),
-                "Corrige los campos y tipos de la receta según RECETA.md.",
-            ));
-            return Err(errores);
-        }
-    };
-    Ok((r, errores))
 }
 fn validar_sistema(s: &Sistema, sv: &Value, v: &mut Validador<'_>) {
     if s.sistema != 1 {
@@ -937,49 +744,44 @@ fn validar_sistema(s: &Sistema, sv: &Value, v: &mut Validador<'_>) {
     }
     validar_tokens(sv, "", v, &mut BTreeSet::new());
     for (nombre, tipo) in &s.tipo {
-        let Some(tipo) = s.resolver(tipo) else {
-            continue;
-        };
-        let p = format!("/tipo/{nombre}");
-        validar_tipografia(&tipo, &p, v);
-        desconocidos(
-            &tipo,
-            &[
-                "familia",
-                "peso",
-                "tamano",
-                "interletra",
-                "interlinea",
-                "tabulares",
-                "mayusculas",
-            ],
-            v.fichero,
-            &p,
-            &mut v.errores,
-        );
-        if !tipo["familia"]
-            .as_str()
-            .is_some_and(|f| s.fuentes.iter().any(|x| x == f))
-        {
-            v.error(
-                &format!("{p}/familia"),
-                Causa::Fuente,
-                "Fuente no registrada",
-                "Usa una familia declarada en fuentes y suministrada por el producto.",
-            );
-        }
+        validar_tipos(tipo, &format!("/tipo/{nombre}"), v);
     }
     for (nombre, mov) in &s.mov {
         v.transicion(mov, &format!("/mov/{nombre}"));
     }
     validar_colores(&s.color, "/color", v);
-    validar_medidas(
-        &serde_json::to_value(&s.medida).unwrap_or(Value::Null),
-        "/medida",
-        v,
-    );
+    for (nombre, medida) in &s.medida {
+        validar_medidas(medida, &format!("/medida/{nombre}"), v);
+    }
     for (k, x) in &s.propios {
         validar_medidas(x, &format!("/{k}"), v);
+    }
+}
+fn validar_tipos(t: &Value, p: &str, v: &mut Validador<'_>) {
+    if let Some(m) = t.as_object()
+        && !m.contains_key("familia")
+        && m.values()
+            .all(|v| v.is_object() || v.as_str().is_some_and(|t| t.starts_with("$tipo.")))
+    {
+        for (k, hijo) in m {
+            validar_tipos(hijo, &format!("{p}/{k}"), v);
+        }
+        return;
+    }
+    let Some(tipo) = v.sistema.resolver(t) else {
+        return;
+    };
+    validar_tipografia(&tipo, p, v);
+    if !tipo["familia"]
+        .as_str()
+        .is_some_and(|f| v.sistema.fuentes.iter().any(|x| x == f))
+    {
+        v.error(
+            &format!("{p}/familia"),
+            Causa::Fuente,
+            "Fuente no registrada",
+            "Usa una familia declarada en fuentes y suministrada por el producto.",
+        );
     }
 }
 fn validar_tipografia(t: &Value, p: &str, v: &mut Validador<'_>) {
@@ -1054,11 +856,10 @@ fn validar_medidas(x: &Value, p: &str, v: &mut Validador<'_>) {
         for (k, x) in o {
             validar_medidas(x, &format!("{p}/{k}"), v);
         }
-    } else if !v
-        .sistema
-        .resolver(x)
-        .is_some_and(|x| x.as_f64().is_some_and(|x| x.is_finite() && x >= 0.0))
-    {
+    } else if !v.sistema.resolver(x).is_some_and(|x| {
+        x.as_f64()
+            .is_some_and(|x| x.is_finite() && x.abs() <= 1_000_000.0)
+    }) {
         v.error(
             p,
             Causa::Medida,
@@ -1132,7 +933,7 @@ fn ciclo_valor(
         _ => false,
     }
 }
-fn muelle_asentado(rigidez: f64, amortiguacion: f64) -> bool {
+pub(crate) fn muelle_asentado(rigidez: f64, amortiguacion: f64) -> bool {
     let alpha = amortiguacion * 0.5;
     let discriminante = rigidez - alpha * alpha;
     let (posicion, velocidad) = if discriminante > 1.0e-8 {

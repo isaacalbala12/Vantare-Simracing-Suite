@@ -75,6 +75,8 @@ const child = spawn(
     `vantare-settings-${randomBytes(16).toString("hex")}`,
     "--data-dir",
     hub,
+    "--layout",
+    join(data, "layout.json"),
   ],
   { env, windowsHide: true, stdio: ["pipe", "ignore", "pipe"] },
 );

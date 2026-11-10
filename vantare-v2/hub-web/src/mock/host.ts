@@ -2,6 +2,7 @@ import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
 import settingsScene from "../../fixtures/settings-base.json";
 import protectedScene from "../../fixtures/settings-protected.json";
+import shortcuts from "../../fixtures/shortcuts-base.json";
 import {
   type CoreStatus,
   HOST_PROTOCOL_VERSION,
@@ -19,6 +20,10 @@ export function helloForScene(name?: string): typeof hello {
 const core = coreScene as CoreStatus;
 function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
   switch (patch.field) {
+    case "performance":
+      return { ...view, track: { ...view.track, level: patch.value } };
+    case "hideOffTrack":
+      return { ...view, track: { ...view.track, hideOffTrack: patch.value } };
     case "startup":
       return { ...view, startup: { ...view.startup, enabled: patch.value } };
     case "zoom":
@@ -68,6 +73,16 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
+      case "shortcuts.get":
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: "shortcuts.get",
+            value:
+              shortcuts as import("../contract/generated/contract").ShortcutsView,
+          },
+        };
       case "core.get":
         return {
           kind: "response",
@@ -97,7 +112,12 @@ export function createMockHost(sceneName = "ajustes-base") {
       case "settings.update": {
         if (sceneName === "ajustes-error")
           return { kind: "failure", id, error: { kind: "io" } };
-        if (settings.protected)
+        if (
+          settings.protected ||
+          ((request.patch.field === "performance" ||
+            request.patch.field === "hideOffTrack") &&
+            settings.track.protected)
+        )
           return { kind: "failure", id, error: { kind: "protected" } };
         if (
           (sceneName === "ajustes-conflicto" && !conflicted) ||

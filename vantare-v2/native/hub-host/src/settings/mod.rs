@@ -1,4 +1,6 @@
 mod appearance;
+pub mod track;
+use track::{PerformanceLevel, TrackView};
 #[cfg(windows)]
 mod layout;
 pub mod model;
@@ -22,6 +24,7 @@ pub struct SettingsView {
     pub can_retry: bool,
     pub warning: bool,
     pub startup: StartupView,
+    pub track: TrackView,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +56,8 @@ pub enum SettingsPatch {
     ReducedMotion(bool),
     Zoom(u16),
     Startup(bool),
+    Performance(PerformanceLevel),
+    HideOffTrack(bool),
 }
 #[derive(Debug)]
 pub enum SaveError {
@@ -106,6 +111,10 @@ impl Settings {
             can_retry: self.store.has_pending() || layout_pending,
             warning: self.store.warning_text().is_some(),
             startup: self.startup(),
+            #[cfg(windows)]
+            track: self.layout.track(),
+            #[cfg(not(windows))]
+            track: TrackView::default(),
         }
     }
     pub fn refresh(&mut self) -> SettingsView {
@@ -146,6 +155,23 @@ impl Settings {
             if self.layout_result(change)? {
                 return Ok(self.view());
             }
+        }
+        if matches!(
+            patch,
+            SettingsPatch::Performance(_) | SettingsPatch::HideOffTrack(_)
+        ) {
+            #[cfg(windows)]
+            {
+                let change = match patch {
+                    SettingsPatch::Performance(level) => self.layout.set_level(level),
+                    SettingsPatch::HideOffTrack(enabled) => self.layout.set_hide_off_track(enabled),
+                    _ => unreachable!(),
+                };
+                self.layout_result(change)?;
+                return Ok(self.view());
+            }
+            #[cfg(not(windows))]
+            return Err(SaveError::Unsupported);
         }
         let result = self.save(patch);
         self.saved(&result)
@@ -223,7 +249,9 @@ impl Settings {
             SettingsPatch::InterfaceFont(value) => appearance.interface_font = value,
             SettingsPatch::MonoFont(value) => appearance.mono_font = value,
             SettingsPatch::ReducedMotion(value) => appearance.reduced_motion = value,
-            SettingsPatch::Startup(_) => return Err("startup uses installer".into()),
+            SettingsPatch::Startup(_)
+            | SettingsPatch::Performance(_)
+            | SettingsPatch::HideOffTrack(_) => return Err("separate document operation".into()),
         }
         if general != self.store.value.general {
             self.store.save_general(general)

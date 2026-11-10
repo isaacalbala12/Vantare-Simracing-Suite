@@ -25,5 +25,11 @@
     "supported": false,
     "enabled": false
   },
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "track": {
+    "level": "balanced",
+    "customized": false,
+    "hideOffTrack": false,
+    "protected": false
+  }
 }

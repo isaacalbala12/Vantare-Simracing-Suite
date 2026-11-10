@@ -15,7 +15,9 @@ if($LASTEXITCODE){exit $LASTEXITCODE}
 if($LASTEXITCODE){exit $LASTEXITCODE}
 if($ArtifactDirectory){
     $destination=[IO.Path]::GetFullPath($ArtifactDirectory)
-    if(-not $destination.StartsWith('D:\VantareServer\qa\',[StringComparison]::OrdinalIgnoreCase)){throw 'Artifact copy requires QA directory'}
+    $qaRoot=if($env:VANTARE_HUB_QA_ROOT){[IO.Path]::GetFullPath($env:VANTARE_HUB_QA_ROOT)}else{[IO.Path]::GetFullPath([IO.Path]::GetTempPath())}
+    $qaPrefix=$qaRoot.TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+    if(-not $destination.StartsWith($qaPrefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Artifact copy requires a child of the QA namespace'}
     [IO.Directory]::CreateDirectory($destination)|Out-Null
     Copy-Item -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'debug/vantare-hub-host.exe') -Destination (Join-Path $destination 'vantare-hub-host.exe')
 }

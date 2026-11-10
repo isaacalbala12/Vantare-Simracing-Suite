@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "playwright-core";
 import { record } from "../src/contract/validation-common.ts";
+import { checkTrackHost } from "./check-track-host.ts";
 import { until } from "./wait-for.ts";
 export async function checkSettingsHost(
   page: Page,
@@ -235,6 +236,7 @@ export async function checkSettingsHost(
       .getAttribute("aria-checked"),
     "false",
   );
+  await checkTrackHost(page, data, evidence);
   await writeFile(
     join(evidence, "settings-native.json"),
     JSON.stringify({
@@ -245,6 +247,9 @@ export async function checkSettingsHost(
       conflictProtectsClose: true,
       retryPreservesConcurrentWriter: true,
       paletteRestored: true,
+      performanceSaved: true,
+      visibilitySaved: true,
+      shortcutsRead: true,
     }),
   );
 }

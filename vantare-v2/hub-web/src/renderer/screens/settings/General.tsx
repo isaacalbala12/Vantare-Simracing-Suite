@@ -118,6 +118,20 @@ export function General() {
           {toggle("minimized", t("general.minimized"), view.general.minimized)}
         </SettingRow>
       </Card>
+      <Card title={t("track.hide")}>
+        <SettingRow label={t("track.hide")} description={t("track.hideHelp")}>
+          <Switch
+            hideLabel
+            label={t("track.hide")}
+            checked={view.track.hideOffTrack}
+            disabled={disabled || view.track.protected}
+            pending={state.pending}
+            onCheckedChange={(value) =>
+              state.update({ field: "hideOffTrack", value })
+            }
+          />
+        </SettingRow>
+      </Card>
       <Card title={t("general.notices")}>
         <SettingRow
           label={t("general.updates")}

@@ -10,7 +10,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 1,
+      "version": 2,
       "window": {
         "height": 900,
         "minimized": false,
@@ -171,6 +171,12 @@
             "enabled": false,
             "supported": false
           },
+          "track": {
+            "customized": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
           "version": "0.0.0",
           "warning": false,
           "zoom": 100
@@ -206,6 +212,12 @@
           "startup": {
             "enabled": false,
             "supported": false
+          },
+          "track": {
+            "customized": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
           },
           "version": "0.0.0",
           "warning": false,
@@ -243,6 +255,12 @@
             "enabled": false,
             "supported": false
           },
+          "track": {
+            "customized": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
           "version": "0.0.0",
           "warning": false,
           "zoom": 100
@@ -279,9 +297,37 @@
             "enabled": false,
             "supported": false
           },
+          "track": {
+            "customized": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
           "version": "0.0.0",
           "warning": false,
           "zoom": 100
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "shortcuts.get",
+        "value": {
+          "profiles": [
+            {
+              "hotkey": "Ctrl Alt F8",
+              "name": "Carrera QA",
+              "state": "registered"
+            },
+            {
+              "hotkey": "Ctrl Alt F9",
+              "name": "Streaming QA",
+              "state": "unconfirmed"
+            }
+          ],
+          "protected": false
         }
       }
     },
@@ -331,8 +377,8 @@
     },
     {
       "error": {
-        "expected": 1,
-        "found": 2,
+        "expected": 2,
+        "found": 3,
         "kind": "incompatible"
       },
       "id": 1,
@@ -386,6 +432,12 @@
             "enabled": false,
             "supported": false
           },
+          "track": {
+            "customized": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
           "version": "0.0.0",
           "warning": false,
           "zoom": 100
@@ -411,7 +463,7 @@
   "ui": [
     {
       "kind": "hello",
-      "version": 1
+      "version": 2
     },
     {
       "kind": "subscribe",
@@ -445,6 +497,13 @@
       "kind": "request",
       "request": {
         "method": "core.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "shortcuts.get"
       }
     },
     {
@@ -654,6 +713,30 @@
         "patch": {
           "field": "startup",
           "value": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "performance",
+          "value": "economy"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "hideOffTrack",
+          "value": true
         }
       }
     }

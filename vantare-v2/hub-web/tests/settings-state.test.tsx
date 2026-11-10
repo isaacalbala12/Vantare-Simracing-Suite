@@ -23,6 +23,8 @@ import { Client } from "../src/renderer/bridge/client";
 import { t } from "../src/renderer/i18n/es";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
 import { General } from "../src/renderer/screens/settings/General";
+import { Performance } from "../src/renderer/screens/settings/Performance";
+import { Shortcuts } from "../src/renderer/screens/settings/Shortcuts";
 import {
   ToastProvider,
   ToastViewport,
@@ -303,5 +305,47 @@ describe("saving keeps keyboard controls focusable", () => {
     expect(document.activeElement).not.toBe(document.body);
     expect(pending.calls()).toBe(1);
     await act(async () => pending.release());
+  });
+});
+
+describe("Rendimiento y atajos over the simulated host", () => {
+  it("saves the global level, keeps focus through pending arrows and reads it back", async () => {
+    const gate = hold("settings.update");
+    const hook = mount("ajustes-base", <Performance />);
+    await loaded(hook);
+    const radio = screen.getByRole("radio", { name: t("track.balanced") });
+    radio.focus();
+    await userEvent.setup().keyboard("{ArrowRight}{ArrowRight}");
+    expect(gate.calls()).toBe(1);
+    expect(document.activeElement).not.toBe(document.body);
+    await act(async () => gate.release());
+    await waitFor(() =>
+      expect(hook.result.current.view?.track.level).toBe("economy"),
+    );
+  });
+  it("saves hide off track independently of other preferences", async () => {
+    const hook = mount("ajustes-base", <General />);
+    await loaded(hook);
+    await userEvent
+      .setup()
+      .click(screen.getByRole("switch", { name: t("track.hide") }));
+    await waitFor(() =>
+      expect(hook.result.current.view?.track.hideOffTrack).toBe(true),
+    );
+    expect(hook.result.current.view?.general.density).toBe("balanced");
+  });
+  it("reads profile shortcuts without launching or registering them", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <Shortcuts />);
+    await loaded(hook);
+    await screen.findByText("Ctrl Alt F8");
+    expect(
+      request.mock.calls.some(([value]) => value.method === "shortcuts.get"),
+    ).toBe(true);
+    expect(
+      request.mock.calls.some(
+        ([value]) => value.method === "launcher.favorite",
+      ),
+    ).toBe(false);
   });
 });

@@ -13,6 +13,12 @@ const General = lazy(() =>
 const Appearance = lazy(() =>
   import("./Appearance").then((module) => ({ default: module.Appearance })),
 );
+const Performance = lazy(() =>
+  import("./Performance").then((module) => ({ default: module.Performance })),
+);
+const Shortcuts = lazy(() =>
+  import("./Shortcuts").then((module) => ({ default: module.Shortcuts })),
+);
 export function Settings() {
   const state = useSettings();
   const [tab, setTab] = useState("general");
@@ -102,6 +108,28 @@ export function Settings() {
                 <Suspense fallback={loading}>
                   <ContentStack>
                     <Appearance />
+                  </ContentStack>
+                </Suspense>
+              ),
+            },
+            {
+              value: "performance",
+              label: t("settings.performance"),
+              content: (
+                <Suspense fallback={loading}>
+                  <ContentStack>
+                    <Performance />
+                  </ContentStack>
+                </Suspense>
+              ),
+            },
+            {
+              value: "shortcuts",
+              label: t("settings.shortcuts"),
+              content: (
+                <Suspense fallback={loading}>
+                  <ContentStack>
+                    <Shortcuts />
                   </ContentStack>
                 </Suspense>
               ),

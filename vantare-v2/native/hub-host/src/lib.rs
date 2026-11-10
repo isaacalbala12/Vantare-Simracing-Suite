@@ -20,3 +20,5 @@ mod job;
 
 #[cfg(all(test, windows))]
 mod test_support;
+
+pub mod shortcuts;

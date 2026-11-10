@@ -309,6 +309,15 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::ShortcutsGet {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::ShortcutsGet {
+                        value: crate::shortcuts::read(&self.launcher),
+                    },
+                },
+            ),
             Request::CoreGet {} => frame::write(
                 pipe,
                 &HostToUi::Response {

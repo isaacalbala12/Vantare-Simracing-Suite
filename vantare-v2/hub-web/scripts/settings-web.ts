@@ -161,6 +161,86 @@ try {
     JSON.stringify(reports, null, 2),
   );
   assert.deepEqual(appearance.violations, [], "Appearance");
+  await page
+    .getByRole("tab", { name: "Rendimiento en pista", exact: true })
+    .click();
+  await page.getByRole("radio", { name: "Ahorro", exact: true }).click();
+  await until(
+    async () =>
+      (await page
+        .getByRole("radio", { name: "Ahorro", exact: true })
+        .getAttribute("aria-checked")) === "true",
+    5000,
+    "performance saved",
+  );
+  for (const scheme of ["light", "dark"]) {
+    if (
+      (await page.evaluate(() => document.documentElement.dataset.scheme)) !==
+      scheme
+    )
+      await page
+        .getByRole("button", {
+          name: "Cambiar tema claro u oscuro",
+          exact: true,
+        })
+        .click();
+    await until(
+      async () =>
+        (await page.evaluate(() => document.documentElement.dataset.scheme)) ===
+        scheme,
+      5000,
+      "scheme saved",
+    );
+    const report = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    reports.push({
+      screen: "performance",
+      scheme,
+      violations: report.violations,
+    });
+    assert.deepEqual(report.violations, []);
+    await page.screenshot({
+      path: resolve(evidence, `performance-${scheme}.png`),
+    });
+  }
+  await page.getByRole("tab", { name: "Atajos", exact: true }).click();
+  await page.getByText("Ctrl Alt F8", { exact: true }).waitFor();
+  for (const scheme of ["dark", "light"]) {
+    if (
+      (await page.evaluate(() => document.documentElement.dataset.scheme)) !==
+      scheme
+    )
+      await page
+        .getByRole("button", {
+          name: "Cambiar tema claro u oscuro",
+          exact: true,
+        })
+        .click();
+    await until(
+      async () =>
+        (await page.evaluate(() => document.documentElement.dataset.scheme)) ===
+        scheme,
+      5000,
+      "scheme saved",
+    );
+    const report = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    reports.push({
+      screen: "shortcuts",
+      scheme,
+      violations: report.violations,
+    });
+    assert.deepEqual(report.violations, []);
+    await page.screenshot({
+      path: resolve(evidence, `shortcuts-${scheme}.png`),
+    });
+  }
+  await writeFile(
+    resolve(evidence, "axe.json"),
+    JSON.stringify(reports, null, 2),
+  );
   await open("ajustes-conflicto");
   await minimized.click();
   const conflict = page
@@ -224,6 +304,8 @@ try {
         zoom: true,
         theme: true,
         commandWithCollapsedRail: true,
+        performance: true,
+        shortcuts: true,
         conflictRetry: true,
         discard: true,
         protected: true,

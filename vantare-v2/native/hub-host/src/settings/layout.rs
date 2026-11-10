@@ -1,5 +1,6 @@
 //! Minimal layout adapter. Only existing motion is interpreted/edited;
 //! other values retain their original JSON representation. No GPUI dependency.
+use super::track::{PerformanceLevel, TrackView};
 use serde::{
     Deserialize, Deserializer,
     de::{Error as _, MapAccess, Visitor},
@@ -11,6 +12,12 @@ use std::{
     path::{Path, PathBuf},
 };
 use vantare_ipc::files;
+#[derive(Clone, Copy)]
+enum Intent {
+    Motion(bool),
+    Level(PerformanceLevel),
+    HideOffTrack(bool),
+}
 const LIMIT: u64 = 1024 * 1024;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Change {
@@ -54,7 +61,7 @@ impl Document {
         let Some(bytes) = &observed else {
             return Ok(Self {
                 observed,
-                fields: Fields::default(),
+                fields: serde_json::from_str(r#"{"version":1,"instances":[]}"#).map_err(|_| ())?,
             });
         };
         let fields: Fields = serde_json::from_slice(bytes).map_err(|_| ())?;
@@ -78,7 +85,10 @@ impl Document {
         if version == 1 && motion.is_some() {
             return Err(());
         }
-        Ok(Self { observed, fields })
+        let document = Self { observed, fields };
+        document.performance()?;
+        document.hide()?;
+        Ok(document)
     }
     fn motion(&self) -> Option<bool> {
         self.fields
@@ -87,11 +97,82 @@ impl Document {
             .and_then(|value| serde_json::from_str(value.get()).ok())
             .flatten()
     }
-    fn save(&mut self, path: &Path, enabled: bool) -> Result<(), files::Error> {
+    fn performance(&self) -> Result<Fields, ()> {
+        let fields: Fields = self.fields.0.get("performance").map_or_else(
+            || Ok(Fields::default()),
+            |value| serde_json::from_str(value.get()).map_err(|_| ()),
+        )?;
+        if fields
+            .0
+            .keys()
+            .any(|key| !matches!(key.as_str(), "level" | "widgets"))
+        {
+            return Err(());
+        }
+        if let Some(level) = fields.0.get("level") {
+            serde_json::from_str::<PerformanceLevel>(level.get()).map_err(|_| ())?;
+        }
+        if let Some(widgets) = fields.0.get("widgets") {
+            let widgets: BTreeMap<String, u16> =
+                serde_json::from_str(widgets.get()).map_err(|_| ())?;
+            if widgets.len() > 256
+                || widgets.iter().any(|(id, hz)| {
+                    id.is_empty()
+                        || id.len() > 128
+                        || !matches!(hz, 0 | 1 | 4 | 5 | 10 | 15 | 20 | 30 | 40 | 60)
+                })
+            {
+                return Err(());
+            }
+        }
+        Ok(fields)
+    }
+    fn hide(&self) -> Result<bool, ()> {
+        self.fields
+            .0
+            .get("hideOffTrack")
+            .map_or(Ok(false), |value| {
+                serde_json::from_str(value.get()).map_err(|_| ())
+            })
+    }
+    fn track(&self) -> TrackView {
+        let performance = self.performance().expect("validated performance");
+        let level = performance
+            .0
+            .get("level")
+            .and_then(|v| serde_json::from_str(v.get()).ok())
+            .unwrap_or_default();
+        let customized = performance.0.get("widgets").is_some_and(|v| {
+            serde_json::from_str::<BTreeMap<String, u16>>(v.get()).is_ok_and(|v| !v.is_empty())
+        });
+        TrackView {
+            level,
+            customized,
+            hide_off_track: self.hide().expect("validated visibility"),
+            protected: false,
+        }
+    }
+    fn save(&mut self, path: &Path, intent: Intent) -> Result<(), files::Error> {
         let mut fields = self.fields.0.clone();
+        let (key, value) = match intent {
+            Intent::Motion(enabled) => ("reducedMotion", enabled.to_string()),
+            Intent::HideOffTrack(enabled) => ("hideOffTrack", enabled.to_string()),
+            Intent::Level(level) => {
+                let mut performance = self.performance().expect("validated performance");
+                performance.0.insert(
+                    "level".into(),
+                    RawValue::from_string(serde_json::to_string(&level).expect("level"))
+                        .expect("JSON"),
+                );
+                (
+                    "performance",
+                    serde_json::to_string(&performance.0).expect("performance"),
+                )
+            }
+        };
         fields.insert(
-            "reducedMotion".into(),
-            RawValue::from_string(enabled.to_string()).expect("boolean JSON"),
+            key.into(),
+            RawValue::from_string(value).expect("valid JSON"),
         );
         let bytes = serde_json::to_vec(&fields)
             .map_err(|error| files::Error::InvalidInput(error.to_string()))?;
@@ -112,7 +193,7 @@ impl Document {
 pub struct Layout {
     path: PathBuf,
     document: Result<Document, ()>,
-    pending: Option<bool>,
+    pending: Option<Intent>,
 }
 impl Layout {
     pub fn open(path: PathBuf) -> Self {
@@ -126,6 +207,21 @@ impl Layout {
     pub fn motion(&self) -> Option<bool> {
         self.document.as_ref().ok().and_then(Document::motion)
     }
+    pub fn track(&self) -> TrackView {
+        self.document.as_ref().map_or_else(
+            |()| TrackView {
+                protected: true,
+                ..Default::default()
+            },
+            Document::track,
+        )
+    }
+    pub fn set_level(&mut self, level: PerformanceLevel) -> Change {
+        self.save(Intent::Level(level))
+    }
+    pub fn set_hide_off_track(&mut self, enabled: bool) -> Change {
+        self.save(Intent::HideOffTrack(enabled))
+    }
     pub fn pending(&self) -> bool {
         self.pending.is_some()
     }
@@ -136,23 +232,26 @@ impl Layout {
         }
     }
     pub fn set_motion(&mut self, enabled: bool) -> Change {
+        self.save(Intent::Motion(enabled))
+    }
+    fn save(&mut self, intent: Intent) -> Change {
         let Ok(document) = &mut self.document else {
             return Change::Protected;
         };
-        if document.motion().is_none() {
+        if matches!(intent, Intent::Motion(_)) && document.motion().is_none() {
             return if self.pending.is_some() {
                 Change::Protected
             } else {
                 Change::Fallback
             };
         }
-        match document.save(&self.path, enabled) {
+        match document.save(&self.path, intent) {
             Ok(()) => {
                 self.pending = None;
                 Change::Saved
             }
             Err(error) if error.kind().is_conflict() => {
-                self.pending = Some(enabled);
+                self.pending = Some(intent);
                 self.document = Document::open(&self.path);
                 Change::Conflict
             }
@@ -161,6 +260,6 @@ impl Layout {
         }
     }
     pub fn retry(&mut self) -> Option<Change> {
-        self.pending.map(|enabled| self.set_motion(enabled))
+        self.pending.map(|intent| self.save(intent))
     }
 }

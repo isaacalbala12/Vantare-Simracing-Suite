@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { contrastRange } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { paletteNames, specimen as t } from "../i18n/es";
 import { Button, IconButton } from "../ui/Button";
@@ -125,8 +126,8 @@ export function Specimen() {
           <Slider
             label={t.contrast}
             value={value}
-            min={80}
-            max={120}
+            min={contrastRange[0]}
+            max={contrastRange[1]}
             onChange={setValue}
             onValueCommitted={setValue}
           />

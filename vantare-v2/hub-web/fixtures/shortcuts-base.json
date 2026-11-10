@@ -1,0 +1,15 @@
+{
+  "profiles": [
+    {
+      "name": "Carrera QA",
+      "hotkey": "Ctrl Alt F8",
+      "state": "registered"
+    },
+    {
+      "name": "Streaming QA",
+      "hotkey": "Ctrl Alt F9",
+      "state": "unconfirmed"
+    }
+  ],
+  "protected": false
+}

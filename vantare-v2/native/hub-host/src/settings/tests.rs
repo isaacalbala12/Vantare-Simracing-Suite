@@ -236,3 +236,59 @@ fn malformed_or_future_layouts_stay_byte_exact_after_attempted_motion_save() {
         assert_eq!(fs::read(&path).expect("protected bytes"), original);
     }
 }
+
+#[cfg(windows)]
+#[test]
+fn track_conflict_retries_only_intent_and_preserves_widget_overrides() {
+    let root = Root::new();
+    let path = root.0.join("layout.json");
+    let initial = r#"{"version":1,"instances":[],"performance":{"level":"balanced","widgets":{"delta":4}},"extensions":{"opaque":1.0000000000000000001}}"#;
+    fs::write(&path, initial).expect("fixture");
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    fs::write(&path, initial.replace("balanced", "high")).expect("winner");
+    assert!(matches!(
+        settings.update(
+            SettingsPatch::Performance(track::PerformanceLevel::Economy),
+            &revision
+        ),
+        Err(SaveError::Conflict(_))
+    ));
+    let saved = settings.retry().expect("retry");
+    assert_eq!(saved.track.level, track::PerformanceLevel::Economy);
+    assert!(saved.track.customized);
+    let raw = fs::read_to_string(&path).expect("saved");
+    assert!(raw.contains("1.0000000000000000001"));
+    let document: serde_json::Value = serde_json::from_str(&raw).expect("JSON");
+    assert_eq!(document["performance"]["widgets"]["delta"], 4);
+    settings
+        .update(SettingsPatch::HideOffTrack(true), &saved.revision)
+        .expect("hide");
+    assert!(settings.view().track.hide_off_track);
+}
+#[cfg(windows)]
+#[test]
+fn track_creates_missing_layout_but_never_rewrites_future_or_invalid_performance() {
+    let root = Root::new();
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    settings
+        .update(SettingsPatch::HideOffTrack(true), &revision)
+        .expect("create layout");
+    let path = root.0.join("layout.json");
+    for bytes in [
+        r#"{"version":99,"instances":[]}"#,
+        r#"{"version":1,"instances":[],"performance":{"level":"future"}}"#,
+        r#"{"version":1,"instances":[],"performance":{"widgets":{"delta":999}}}"#,
+    ] {
+        fs::write(&path, bytes).expect("protected fixture");
+        let mut settings = root.settings();
+        let revision = settings.view().revision;
+        assert!(settings.view().track.protected);
+        assert!(matches!(
+            settings.update(SettingsPatch::HideOffTrack(false), &revision),
+            Err(SaveError::Protected)
+        ));
+        assert_eq!(fs::read_to_string(&path).expect("unchanged"), bytes);
+    }
+}

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useRef } from "react";
+import { defaultZoom } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { es, t } from "../i18n/es";
 import { Button, IconButton } from "../ui/Button";
@@ -77,7 +78,7 @@ export function Shell() {
     const index = zoomLevels.indexOf(settings.view.zoom);
     const value =
       direction === 0
-        ? 100
+        ? defaultZoom
         : zoomLevels[
             Math.max(0, Math.min(zoomLevels.length - 1, index + direction))
           ];

@@ -1,5 +1,5 @@
 # Isolated Windows-hosted experiment. Invoke through compilar.ps1; never runs the app.
-param([Parameter(Mandatory)][ValidateSet('compile', 'restore')][string]$Mode)
+param([Parameter(Mandatory)][ValidateSet('compile', 'restore', 'sccache19')][string]$Mode)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or -not $env:VANTARE_SLOT_TARGET) {
@@ -48,6 +48,16 @@ try {
         [ordered]@{
             target_bytes=[long](Get-ChildItem (Join-Path $root 'target-shared') -Recurse -File | Measure-Object Length -Sum).Sum
         } | ConvertTo-Json | Set-Content (Join-Path $root 'target-size.json')
+    } elseif ($Mode -eq 'sccache19') {
+        & sccache --version | Set-Content (Join-Path $root 'sccache19-version.txt')
+        & sccache --zero-stats
+        if ($LASTEXITCODE) { throw 'No se pudo iniciar sccache 0.19.' }
+        foreach ($name in @('sccache19-first', 'sccache19-second')) {
+            $target = Join-Path $root $name
+            if (Test-Path -LiteralPath $target) { throw 'El experimento requiere targets vacíos.' }
+            Measure-Core $name $target $true
+            & sccache --show-stats --stats-format=json | Set-Content (Join-Path $root "$name-stats.json")
+        }
     } else {
         $target = Join-Path $root 'target-shared'
         if (-not (Test-Path -LiteralPath (Join-Path $target 'debug/vantare-core.exe'))) {

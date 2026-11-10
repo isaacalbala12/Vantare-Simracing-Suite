@@ -1,0 +1,36 @@
+{
+  "modelo": "relativo/1",
+  "campos": {
+    "en_garaje": "bool",
+    "titulo": "texto",
+    "contexto": "texto",
+    "marca": "bool",
+    "aviso_visible": "bool",
+    "aviso": { "enum": ["ninguno", "fcy", "amarilla", "boxes"] },
+    "aviso_texto": "texto",
+    "aviso_derecha": "texto",
+    "filas": {
+      "lista": {
+        "id": "texto",
+        "vacio": "bool",
+        "posicion": "texto",
+        "piloto": "texto",
+        "detalle": "texto",
+        "vueltas": "texto",
+        "vueltas_visible": "bool",
+        "gap": "texto",
+        "clase": { "enum": ["hyper", "lmp", "gt", "otra"] },
+        "lado": { "enum": ["delante", "jugador", "detras"] },
+        "jugador": "bool",
+        "cerca": "bool",
+        "boxes": "bool"
+      }
+    },
+    "pie_visible": "bool",
+    "pie": { "enum": ["ninguno", "espera", "trafico", "boxes", "sesion"] },
+    "pie_trafico": "texto",
+    "pie_salida": "texto",
+    "pie_perdida": "texto",
+    "pie_sesion": "texto"
+  }
+}

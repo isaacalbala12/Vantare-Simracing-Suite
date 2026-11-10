@@ -116,7 +116,7 @@ impl State {
     }
     fn reload(&mut self) {
         let Ok(root) = &self.root else {
-            self.protected = true;
+            self.protect();
             return;
         };
         let read = files::read_optional(&root.join(PRIVACY_FILE), 1024)
@@ -132,8 +132,14 @@ impl State {
                 self.protected = false;
                 self.cleanup_pending = value.discard_disabled(root).is_err();
             }
-            Err(_) => self.protected = true,
+            Err(_) => self.protect(),
         }
+    }
+    fn protect(&mut self) {
+        self.value = Privacy::default();
+        self.observed = None;
+        self.protected = true;
+        self.cleanup_pending = false;
     }
     pub fn view(&self) -> PrivacyView {
         PrivacyView {
@@ -247,6 +253,30 @@ mod tests {
             .expect("retry only crashes");
         assert!(!view.crashes);
         assert!(view.usage);
+    }
+    #[test]
+    fn corruption_after_an_opt_in_forgets_the_previous_yes_without_rewriting() {
+        let root = Root::new();
+        let mut state = State::at(Ok(root.path.clone()));
+        state
+            .update(PrivacyPatch::Crashes(true), &state.view().revision)
+            .expect("opt in");
+        state
+            .update(PrivacyPatch::Usage(true), &state.view().revision)
+            .expect("opt in usage");
+        let path = root.path.join(PRIVACY_FILE);
+        let corrupt = b"{invalid privacy";
+        std::fs::write(&path, corrupt).expect("external corruption");
+        let view = state.refresh();
+        assert!(view.protected);
+        assert!(!view.crashes && !view.usage && !view.crashes_decided && !view.usage_decided);
+        assert_eq!(view.revision, vantare_services::content_hash(b""));
+        assert!(state.observed.is_none());
+        assert!(matches!(
+            state.update(PrivacyPatch::Crashes(true), &view.revision),
+            Err(HostError::Protected)
+        ));
+        assert_eq!(std::fs::read(path).expect("corruption preserved"), corrupt);
     }
     #[test]
     fn adoption_does_not_resurrect_an_old_yes_after_revocation() {

@@ -112,6 +112,66 @@ impl Observed {
 mod tests {
     use super::*;
     #[test]
+    fn report_core_projection_and_keys_are_exact_even_with_every_capability_set() {
+        let core = CoreStatus {
+            photos: crate::protocol::LinkState::Connected,
+            rights: crate::protocol::LinkState::Incompatible,
+            services: crate::protocol::LinkState::Unavailable,
+            access: crate::protocol::AccessView {
+                verified: true,
+                blocked: true,
+                tester: true,
+                calendar: true,
+                engineer: true,
+                strategy: true,
+            },
+            live: true,
+        };
+        let report = Observed::default()
+            .prepare(&core, false)
+            .expect("report")
+            .report
+            .expect("prepared");
+        let value: serde_json::Value = serde_json::from_str(&report).expect("JSON");
+        fn keys(value: &serde_json::Value) -> std::collections::BTreeSet<&str> {
+            value
+                .as_object()
+                .expect("object")
+                .keys()
+                .map(String::as_str)
+                .collect()
+        }
+        assert_eq!(
+            keys(&value),
+            [
+                "schemaVersion",
+                "channel",
+                "observed",
+                "uninstrumentedSections"
+            ]
+            .into_iter()
+            .collect()
+        );
+        assert_eq!(
+            keys(&value["observed"]),
+            [
+                "version",
+                "os",
+                "arch",
+                "core",
+                "settingsProtected",
+                "events",
+                "report"
+            ]
+            .into_iter()
+            .collect()
+        );
+        assert_eq!(
+            value["observed"]["core"],
+            serde_json::to_value(core).expect("core")
+        );
+    }
+    #[test]
     fn report_has_only_observed_allow_listed_state_and_bounded_events() {
         let mut observed = Observed::default();
         for _ in 0..=EVENT_LIMIT {

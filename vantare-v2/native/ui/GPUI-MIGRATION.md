@@ -61,7 +61,9 @@ el workspace; el test de arquitectura sigue prohibiendo runtime desde UI/domain.
 | 22 widgets: privada media | 84,05 MiB | 83,58 MiB |
 | 1 widget estable: Present durante intervalo estable | 0 | 0 |
 
-Builds limpios desde carpetas vacías distintas, misma máquina y perfil. Es una
+Builds limpios desde targets vacíos distintos, misma máquina y perfil.
+No se purgaron el registro ni la caché global de sccache; limpio se refiere
+al target, no a una descarga/compilación desde caché global fría. Es una
 pasada de cada caso: no es una estimación estadística de ahorro. La migración
 elimina el git de Zed, **no reduce el número de paquetes**. Las pasadas CPU no
 demuestran una mejora; el coste del diagnóstico y la cuantización de Windows

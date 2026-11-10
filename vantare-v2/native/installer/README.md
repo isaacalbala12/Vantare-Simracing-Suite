@@ -6,8 +6,8 @@ La matriz QA ejerce esos caminos con raíces, HKCU y carpetas inyectadas.
 Los apartados de campaña de los pasos 4–5 de abajo describen su estado histórico.
 
 Dos binarios x64 independientes, `vantare-setup` y `vantare-uninstall`, publicados
-como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa el mismo commit fijado que la
-aplicación. No se añade ninguna dependencia externa al lock.
+como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa la misma versión publicada Kit/Pre del workspace (VANTA-139).
+La migración de dependencias y sus medidas están en [GPUI-MIGRATION](../ui/GPUI-MIGRATION.md).
 
 El Setup contiene el ZIP validado y Uninstall. El núcleo Rust verifica el
 paquete y ejecuta install/update/repair/uninstall en el mismo proceso, conservando

@@ -114,6 +114,11 @@ def summarize(root):
         if not selected:
             raise ValueError('missing GPU samples for '+name)
         gpu[name]=dict(mean_busiest_engine_percent=sum(number(r['busiest_engine_percent']) for r in selected)/len(selected),mean_engine_sum_percent=sum(number(r['engine_sum_percent']) for r in selected)/len(selected),peak_dedicated_mib=max(number(r['dedicated_bytes']) for r in selected)/2**20)
+    stages=phase_summary(events,start,end,frequency)
+    if any(stage['cycle_errors'] for stage in stages.values()):
+        raise ValueError('thread cycle query failed in stable phase: discard run')
+    if metadata.get('phases') and not stages:
+        raise ValueError('phases requested but no stable spans were recorded')
     result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
                 stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),
                 present_calls=len(presents),present_intervals_ms=intervals,present_interval_p99_ms=percentile(intervals,99),
@@ -121,7 +126,7 @@ def summarize(root):
                 notifications=dict(collections.Counter(e['label'] for e in stable if e['kind']=='notify')),
                 changed_widgets_per_changed_snapshot=sum(changes.values())/len(changes) if changes else None,
                 data_widget_paints_per_painted_snapshot=sum(paints.values())/len(paints) if paints else None,
-                stages=phase_summary(events,start,end,frequency),
+                stages=stages,
                 limits='Cycles are not CPU seconds. Stages overlap; never sum. API present cadence and receive-to-submit latency do not measure physical display timing. GPU engine sums may exceed 100%. Physical VRR verification remains manual.')
     (root/'summary.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(result,indent=2))

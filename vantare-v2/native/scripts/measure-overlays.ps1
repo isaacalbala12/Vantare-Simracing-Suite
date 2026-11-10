@@ -120,7 +120,10 @@ try {
     $process.PriorityClass = [Diagnostics.ProcessPriorityClass]::Normal
     $stdout = $process.StandardOutput.ReadToEndAsync()
     $stderr = $process.StandardError.ReadToEndAsync()
-    while (!$process.WaitForExit(1000)) {
+    # Let the window create its GPU context. Afterwards Get-Counter's one-second
+    # sampling interval paces the loop without an extra unsampled second.
+    $null = $process.WaitForExit(1000)
+    while (!$process.WaitForExit(0)) {
         $process.Refresh()
         if ($coreStarted -and $coreProcess.HasExited) { throw 'Core exited before the measurement ended' }
         [ulong]$cycles = 0
@@ -185,6 +188,7 @@ try {
         qpc_frequency=[Diagnostics.Stopwatch]::Frequency; maximum_total_system_load_percent=$MaxSystemLoadPercent
         presentation=@{model='DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL / DirectComposition';sync_interval=0;tearing_flag=$false;vrr_active=$null;vrr_reason='Not observable from system GPU counters; physical game-PC check required'}
         gpu_source='Windows GPU Engine / GPU Process Memory performance counters; PresentMon not installed in PATH'
+        invalid_unrelated_counter_samples=$invalidCounterRows.Count
         phases=[bool]$Phases; recording_sha256=(Get-FileHash -LiteralPath $Recording).Hash
         executable_sha256=(Get-FileHash -LiteralPath $UI).Hash
         core_sha256=$(if ($Core) { (Get-FileHash -LiteralPath $Core).Hash } else { $null })

@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "sha": "6602fb8722a24bf459ed4d31a2df67e2ebdb81cf",
+    "sha": null,
     "date": "2026-11-10T04:41:07.7440668+01:00",
     "widgets": 1,
     "phases": true,
@@ -20,7 +20,9 @@
       }
     ],
     "cpu_unit": "seconds across all process threads; 1 CPU second / wall second = one logical core",
-    "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account"
+    "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account",
+    "legacy_collection_sha": "6602fb8722a24bf459ed4d31a2df67e2ebdb81cf",
+    "compiled_sha_status": "Unknown: historical dev executables did not embed compilation provenance; excluded from baseline"
   },
   "steady_seconds": 56.5651277,
   "steady_cpu_cycles": 1648740240,

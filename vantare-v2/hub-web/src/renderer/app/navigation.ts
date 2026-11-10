@@ -8,15 +8,15 @@ const entries: readonly {
   icon: IconName;
   label: Parameters<typeof t>[0];
 }[] = [
-  { id: "home", icon: "i-inicio", label: "shell.home" },
-  { id: "launcher", icon: "i-launcher", label: "shell.launcher" },
-  { id: "studio", icon: "i-studio", label: "shell.studio" },
-  { id: "roadmap", icon: "i-roadmap", label: "shell.roadmap" },
-  { id: "testing", icon: "i-flask", label: "shell.testing" },
-  { id: "calendar", icon: "i-carreras", label: "shell.calendar" },
-  { id: "strategy", icon: "i-estrategia", label: "shell.strategy" },
-  { id: "engineer", icon: "i-ingeniero", label: "shell.engineer" },
-  { id: "settings", icon: "i-ajustes", label: "settings.title" },
+  { id: "home", icon: "v-home", label: "shell.home" },
+  { id: "launcher", icon: "v-launch", label: "shell.launcher" },
+  { id: "studio", icon: "v-studio", label: "shell.studio" },
+  { id: "roadmap", icon: "v-roadmap", label: "shell.roadmap" },
+  { id: "testing", icon: "v-testing", label: "shell.testing" },
+  { id: "calendar", icon: "v-calendar", label: "shell.calendar" },
+  { id: "strategy", icon: "v-strategy", label: "shell.strategy" },
+  { id: "engineer", icon: "v-engineer", label: "shell.engineer" },
+  { id: "settings", icon: "v-sliders", label: "settings.title" },
 ];
 export function visible(section: Section, access: AccessView) {
   if (section === "testing") return access.verified && !access.blocked;

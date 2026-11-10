@@ -14,3 +14,9 @@ for (const file of [
   "SpaceMono-OFL.txt",
 ])
   await copyFile(`../native/ui/assets/fonts/${file}`, `${output}/${file}`);
+
+for (const weight of [400, 500, 600, 650, 700, 750, 800])
+  await copyFile(
+    `../native/ui/assets/fonts/Inter-${weight}.ttf`,
+    `${output}/Inter-${weight}.ttf`,
+  );

@@ -10,6 +10,8 @@ html {
 }
 body {
   margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-kerning: normal;
 }
 .v-app-header {
   height: var(--topbar-h);
@@ -24,6 +26,7 @@ main {
 }
 h1 {
   font-family: var(--font-display);
+  font-weight: 600;
 }
 :focus-visible {
   outline: 2px solid var(--focus-ring);

@@ -120,6 +120,9 @@ Evidencia íntegra en `D:/VantareServer/evidence/isa-1996/baseline-*-*`, con el
 ejecutable conservado como `baseline-overlay-replay.exe`. Perfil **dev**;
 no son cifras de Release ni del PC de juego. Cada fila es una pasada, no una
 mediana ni un presupuesto de producto.
+Servidor: Ryzen 5 1500X (8 hilos lógicos), Radeon RX 6600 XT, driver
+32.0.21045.5002, Windows 11 build 22631, 1920 × 1080 a 59 Hz declarados por WMI.
+Estos datos se guardaron aparte en `baseline-environment.json`.
 
 | Widgets / diagnóstico | CPU estable (s / ≈58,6 s) | CPU ms / frame estable | Memoria privada media (MiB) | Frames totales |
 | --- | ---: | ---: | ---: | ---: |
@@ -170,3 +173,6 @@ La primera suite en paralelo falló en la hidratación del pipe de
 (plazo de 2 s). Pasó aislado y la suite completa pasó con un hilo de test;
 no se cambió el test, sus plazos ni la configuración del runner. Los logs
 fallidos se conservan. Comparador: 3/3 tests Python PASS. Retirada: 471 huellas PASS.
+Fmt y Clippy `-D warnings` PASS (UI/profiling, todos los targets, `paint-stats`).
+El primer Clippy señaló dos nombres de método sin backticks en documentación;
+se corrigieron y se repitió el check sin cambiar código de comportamiento.

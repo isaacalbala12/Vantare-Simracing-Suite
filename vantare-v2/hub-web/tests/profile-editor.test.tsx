@@ -91,7 +91,7 @@ describe("profile editor", () => {
     ).toBe(false);
     vi.restoreAllMocks();
   });
-  it("creates a profile using the native default and exposes advanced notes and arguments", async () => {
+  it("creates a profile using the native default and exposes advanced notes without editable arguments", async () => {
     mount();
     await screen.findByRole("heading", { name: "Creador de Contenido" });
     fireEvent.click(
@@ -102,7 +102,7 @@ describe("profile editor", () => {
     fireEvent.click(screen.getByRole("button", { name: text.mode }));
     expect(screen.getByRole("textbox", { name: text.notes })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: text.addStep }));
-    expect(screen.getByRole("textbox", { name: text.args })).toBeTruthy();
+    expect(screen.getByText(text.defaultArguments)).toBeTruthy();
     fireEvent.change(name, { target: { value: "Perfil guardado QA" } });
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("button", {
@@ -126,18 +126,18 @@ describe("profile editor", () => {
       name: "Cambio conservado",
     });
   });
-  it("rejects malformed argument JSON and Escape discards without saving", async () => {
+  it("shows argument status without an editor and Escape discards other changes", async () => {
     mount();
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Creador de Contenido" });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
-    await screen.findByRole("textbox", { name: text.name });
+    const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.click(screen.getByRole("button", { name: text.mode }));
-    fireEvent.change(screen.getAllByRole("textbox", { name: text.args })[0], {
-      target: { value: "[invalid]" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: text.save }));
-    await screen.findByText(text.invalidArgs);
+    expect(screen.getAllByText(text.defaultArguments).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByRole("textbox", { name: /Argumentos/ })).toBeNull();
+    fireEvent.change(name, { target: { value: "Cambio sin guardar" } });
     await user.keyboard("{Escape}");
     await waitFor(() =>
       expect(screen.queryByRole("textbox", { name: text.name })).toBeNull(),

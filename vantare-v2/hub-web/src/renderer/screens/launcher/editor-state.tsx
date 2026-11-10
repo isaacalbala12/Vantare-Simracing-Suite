@@ -15,7 +15,6 @@ export interface EditorSnapshot extends ProfileEditorView {
   pending: boolean;
   isNew: boolean;
   stepKeys: string[];
-  argsText: string[];
 }
 export function snapshot(
   value: ProfileEditorView,
@@ -27,9 +26,6 @@ export function snapshot(
     isNew,
     original: structuredClone(value.draft),
     stepKeys: value.draft.steps.map(() => crypto.randomUUID()),
-    argsText: value.draft.steps.map((step) =>
-      step.argsOverride === null ? "" : JSON.stringify(step.argsOverride),
-    ),
   };
 }
 const EditorContext = createContext<{

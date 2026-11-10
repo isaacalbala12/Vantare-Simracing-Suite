@@ -20,7 +20,8 @@ export const profileText = {
   addStep: "+ Añadir paso",
   stepApp: "Aplicación del paso",
   stepDelay: "Espera del paso (s)",
-  args: "Argumentos propios · JSON",
+  customArguments: "Argumentos personalizados · edición no disponible",
+  defaultArguments: "Argumentos de la aplicación",
   up: "↑ Subir",
   down: "↓ Bajar",
   remove: "Quitar",
@@ -57,8 +58,6 @@ export const profileText = {
   failed:
     "No se pudo guardar el perfil. Revisa sus datos y vuelve a intentarlo.",
   emptySteps: "Pasos: añade al menos una aplicación",
-  invalidArgs:
-    "Argumentos: usa un array JSON de strings sin NUL y dentro de los límites.",
   missing: "Pasos: selecciona una aplicación disponible",
   invalidName: "Nombre: indica entre 1 y 256 caracteres sin NUL",
   limit: "Pasos: el perfil admite como máximo 128 pasos",

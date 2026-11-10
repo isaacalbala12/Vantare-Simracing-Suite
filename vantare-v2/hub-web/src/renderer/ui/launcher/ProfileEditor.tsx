@@ -23,11 +23,9 @@ export function ProfileEditorFields({
   draft,
   apps,
   rowKeys,
-  argsText,
   pending,
   error,
   onChange,
-  onArgs,
   onMove,
   onRemove,
   onAdd,
@@ -39,11 +37,9 @@ export function ProfileEditorFields({
   draft: ProfileDraft;
   apps: LauncherApp[];
   rowKeys: string[];
-  argsText: string[];
   pending: boolean;
   error?: string;
   onChange: (patch: Partial<ProfileDraft>) => void;
-  onArgs: (index: number, text: string) => void;
   onMove: (index: number, direction: -1 | 1) => void;
   onRemove: (index: number) => void;
   onAdd: () => void;
@@ -198,11 +194,11 @@ export function ProfileEditorFields({
                 }
               />
               {draft.advanced && (
-                <Input
-                  label={text.args}
-                  value={argsText[index]}
-                  onChange={(event) => onArgs(index, event.currentTarget.value)}
-                />
+                <p className="v-muted">
+                  {step.hasCustomArguments
+                    ? text.customArguments
+                    : text.defaultArguments}
+                </p>
               )}
               <div className="v-launcher-actions">
                 <Button

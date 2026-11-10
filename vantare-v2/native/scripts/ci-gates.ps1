@@ -22,12 +22,13 @@ try {
     & (Join-Path $PSScriptRoot '../gates.ps1') -Gate archive -Packages $packages
     $revision = & git rev-parse HEAD
     if ($LASTEXITCODE) { throw 'No se pudo identificar el build archivado.' }
+    $lifecycle = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
     [ordered]@{
         revision = $revision
         workspace = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
         target = $env:VANTARE_SLOT_TARGET
         telemetry = [bool]$Telemetry
-        lifecycle = (-not $packages.Count -or 'vantare-runtime' -cin $packages)
+        lifecycle = ($lifecycle.Count -gt 0)
         packages = $packages
     } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8
 } finally { Pop-Location }

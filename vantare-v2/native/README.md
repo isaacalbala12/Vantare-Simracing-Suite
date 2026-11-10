@@ -522,16 +522,22 @@ el slot automáticamente. No se borran targets ajenos.
 
 La CI usa exclusivamente `windows-latest` y rutas bajo `RUNNER_TEMP`. Instala
 Nextest precompilado, ejecuta Clippy y construye un archivo de tests. Suite,
-telemetría y el arnés lifecycle se ejecutan en jobs paralelos sin recompilar;
+telemetría y los arneses lifecycle de Runtime/Engineer se ejecutan en jobs paralelos sin recompilar;
 distribución/instalación corre en paralelo cuando el diff lo exige y siempre
 en integración. El check obligatorio agrega todos sus resultados. El Hub web
 no dispara Rust salvo cambios en `native/` o entradas globales del build.
 
 La caché de GitHub comparte el límite de 10 GB del repo: registro/git con
-rust-cache y artefactos de compilador con sccache GHA, sin duplicar targets.
+actions/cache y artefactos de compilador con sccache GHA, sin duplicar targets.
 Las claves incluyen Cargo.lock; los PR pueden restaurar la caché de su base
 nightly. CI desactiva incremental; local lo conserva. Los archivos de tests
 son artefactos del mismo SHA, con retención de un día, no cachés de otra rama.
+
+Opcional en Mac: con LLVM en PATH, cargo-xwin 0.23.1 y el target MSVC de Rust
+1.95 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`
+comprueba bibliotecas del núcleo para Windows. Usa un target propio; bórralo al
+terminar. No ejecuta Windows ni sustituye su CI. El build nativo macOS completo
+conserva el fallo Unix registrado en #2004.
 
 Las mediciones están en
 [el expediente de #1993](../docs/analysis/1993-compilaciones.md). Release conserva

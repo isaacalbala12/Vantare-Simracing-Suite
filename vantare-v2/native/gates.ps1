@@ -118,14 +118,31 @@ try {
         if ($LASTEXITCODE) { $messages | Write-Host; throw "Gate $Gate falló (código $LASTEXITCODE)." }
         $decoded = @($messages | ForEach-Object { $_ | ConvertFrom-Json })
         $decoded | Where-Object reason -EQ 'compiler-message' | ForEach-Object { Write-Host $_.message.rendered }
-        if (-not $Packages.Count -or 'vantare-runtime' -cin $Packages) {
-            $artifacts = @($decoded |
-                Where-Object { $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable })
-            if ($artifacts.Count -ne 1) { throw 'Falta el ejecutable del arnés lifecycle.' }
-            $lifecycle = Join-Path $TargetDirectory 'debug/ci-lifecycle'
-            [IO.Directory]::CreateDirectory($lifecycle) | Out-Null
-            Copy-Item -LiteralPath $artifacts[0].executable -Destination (Join-Path $lifecycle 'lifecycle.exe') -Force
+        # Engineer and Runtime both have a target named lifecycle. Preserve both
+        # original harnesses, keyed by package rather than choosing the first name.
+        $artifacts = @($decoded | Where-Object {
+            $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable
+        })
+        $expected = @($members | Where-Object {
+            (-not $Packages.Count -or $_.name -cin $Packages) -and
+            @($_.targets | Where-Object name -CEQ 'lifecycle').Count
+        })
+        if ($artifacts.Count -ne $expected.Count) { throw 'Falta algún ejecutable lifecycle de la selección.' }
+        $lifecycle = Join-Path $TargetDirectory 'debug/ci-lifecycle'
+        [IO.Directory]::CreateDirectory($lifecycle) | Out-Null
+        $entries = @()
+        foreach ($artifact in $artifacts) {
+            $owner = @($expected | Where-Object id -CEQ $artifact.package_id)
+            if ($owner.Count -ne 1) { throw 'No se pudo identificar el paquete del arnés lifecycle.' }
+            $image = "$($owner[0].name).exe"
+            Copy-Item -LiteralPath $artifact.executable -Destination (Join-Path $lifecycle $image) -Force
+            $entries += [ordered]@{
+                package = $owner[0].name
+                directory = [IO.Path]::GetRelativePath($PSScriptRoot, (Split-Path $owner[0].manifest_path))
+                image = $image
+            }
         }
+        ConvertTo-Json -InputObject @($entries) | Set-Content (Join-Path $lifecycle 'manifest.json') -Encoding utf8
         Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination (Join-Path $TargetDirectory 'debug/duckdb.dll') -Force
         $archive = @('nextest', 'archive') + @($arguments | Select-Object -Skip 1 |
             Where-Object { $_ -notin @('--no-run', '--message-format=json') } |

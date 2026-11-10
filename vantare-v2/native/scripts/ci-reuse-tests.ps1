@@ -30,13 +30,27 @@ $env:VANTARE_NATIVE_DATA_ROOT = Join-Path $target 'qa-data'
 $env:LOCALAPPDATA = $env:VANTARE_NATIVE_DATA_ROOT
 $env:APPDATA = $env:VANTARE_NATIVE_DATA_ROOT
 [IO.Directory]::CreateDirectory($env:VANTARE_NATIVE_DATA_ROOT) | Out-Null
+$env:TMP = Join-Path $target 'tmp'
+$env:TEMP = $env:TMP
+[IO.Directory]::CreateDirectory($env:TMP) | Out-Null
 $env:PATH = "$(Join-Path $target 'debug');$env:PATH"
 Push-Location $native
 try {
     if ($Suite -eq 'lifecycle') {
-        Push-Location (Join-Path $native 'runtime')
-        try { & (Join-Path $target 'debug/ci-lifecycle/lifecycle.exe') }
-        finally { Pop-Location }
+        $lifecycle = @(Get-Content (Join-Path $target 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
+        if (-not $lifecycle.Count) { throw 'El scope exige lifecycle pero no hay arneses archivados.' }
+        foreach ($artifact in $lifecycle | Sort-Object package) {
+            $working = [IO.Path]::GetFullPath((Join-Path $native $artifact.directory))
+            if (-not $working.StartsWith($native + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
+                [IO.Path]::GetFileName($artifact.image) -cne $artifact.image) { throw 'Ruta del arnés fuera del archivo esperado.' }
+            $env:CARGO_MANIFEST_DIR = $working
+            $env:CARGO_PKG_NAME = $artifact.package
+            Push-Location $working
+            try {
+                & (Join-Path $target "debug/ci-lifecycle/$($artifact.image)")
+                if ($LASTEXITCODE) { throw "Lifecycle de $($artifact.package) falló: $LASTEXITCODE" }
+            } finally { Pop-Location }
+        }
     } else {
         $profile = if ($Suite -eq 'telemetria') { 'telemetria' } else { 'default' }
         & cargo-nextest nextest run --binaries-metadata (Join-Path $target 'nextest/binaries-metadata.json') --cargo-metadata (Join-Path $target 'nextest/cargo-metadata.json') --profile $profile

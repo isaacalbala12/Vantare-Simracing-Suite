@@ -36,13 +36,18 @@ con el servidor en reposo. Todos los tiempos siguientes son segundos.
 | Target de esta muestra núcleo + tests | 1,60 GiB | 1,36 GiB |
 | PDB de esta muestra | 147,28 MiB | 109,51 MiB |
 | Targets de workers | 7–10 GB por rama (dato inicial) | dos slots reutilizados |
+| Build limpio de los ocho default-members, sin sccache | No medido equivalente | 267,74 s |
 | Caché sccache local | 15 GiB llena en C: (dato inicial) | máximo 30 GiB en D: |
 
 *El target anterior conservaba dependencias de un intento interrumpido; esos
 207,33 s no son un build limpio comparable. El único build limpio Windows de
 núcleo comprobado en esta tanda es 129,49 s. La muestra no demuestra que el
 build incremental sea más rápido: empeoró dos segundos; sí reduce tiempo de
-compilar tests y unos 240 MiB de disco (14,7 %). No se compara un target de núcleo
+compilar tests y unos 240 MiB de disco (14,7 %). La comprobación real por crate de Runtime y sus dependientes pasa: 930 tests,
+14 exclusiones existentes, ejecución 52,99 s. La primera preparación de Services
+añadió 3 min 50 s de build de tests; se conserva el fallo previo que detectó su
+ejecutable ausente. La espera de cola se registra aparte (465 s), no como tiempo
+de recompilación. No se compara un target de núcleo
 con los 7–10 GB históricos de toda la app como si fueran el mismo trabajo.
 
 ## Mac M5: medido, no extrapolado
@@ -85,7 +90,7 @@ No se modifica lógica para ocultarlo.
 |---|---|
 | sccache 0.19 M5, incremental=0, dos targets vacíos | 18,97 → 11,18 s. Segundo target reutiliza compilador; no es un rebuild incremental. 109 aciertos acumulados, sin errores de caché. Windows conserva 0.18 y se mide aparte. |
 | Nextest 0.9.146 archive, Runtime --lib M5 | Archivo con tests ya compilados: 0,72 s; extracción y ejecución: 1,76 / 1,52 s. PASS. En una máquina sola no mejora el target caliente; sirve para separar jobs de CI. |
-| cargo-xwin 0.23.1 M5, Windows MSVC | domain/ipc/strategy --lib: PASS, 3,65 s con dependencias calientes. Runtime falla en build-support: busca WindowsSdkDir/rc.exe; un adaptador experimental llvm-rc tampoco completa el recurso. No sustituye validar/ejecutar en Windows. |
+| cargo-xwin 0.23.1 M5, Windows MSVC | domain/ipc/strategy --lib: PASS, 3,65 s con dependencias calientes. Runtime PASS con adaptador de recursos: 45,72 s incluyendo preparación. Script versionado del núcleo domain/ipc/strategy/runtime: PASS en 13,71 s con SDK descargado, target nuevo. Las rutas absolutas de llvm-rc requieren adaptación; no se modifica build-support. No sustituye ejecutar en Windows. |
 | cargo-llvm-lines 0.4.48 Runtime | 297.803 líneas IR / 6.411 instancias; mayor función 1,6 %. No aparece una función enorme que justifique reescribir código dentro de esta tarea. |
 | cargo-hakari 0.9.39, checkout desechable | Genera unión con GPUI/test-support, DuckDB bundled y serde_json/preserve_order. Reintroduciría coste y cambiaría features del núcleo. No se incorpora workspace-hack ni se toca UI. |
 | Strategy opt-level=1 | 43 tests PASS, pero ejecución 6,68 s frente a 4,14 s con opt-level=3. Se conserva 3. |
@@ -122,7 +127,9 @@ No debe presentarse el target efímero de GitHub como caché persistente del ser
 
 Los checks obligatorios conservan nombre. Clippy cubre tipos y el banco bench de
 Runtime. Build de tests archivado una vez; suite y telemetría usan el mismo archivo,
-y lifecycle ejecuta su arnés original empaquetado con overlays normal/QA. Los jobs
+y lifecycle ejecuta los dos arneses originales (Engineer y Runtime), identificados
+por paquete y empaquetados con overlays normal/QA. La primera CI detectó la
+colisión de nombres; no se elige uno ni se pierde el otro. Los jobs
 de ejecución no compilan. Distribución/matriz siguen verificando los mismos
 controles en paralelo cuando afectan al diff y siempre en integración.
 El agregador exige éxito de todos los jobs aplicables, también si se cancelan.
@@ -134,12 +141,17 @@ workspace completo. El Hub web y su workflow son independientes de native/.
 
 Nextest es binario precompilado con fallback de compilación desactivado. Acciones
 de terceros fijadas por SHA. Caché del repo: 10 GB compartidos; registro/git con
-rust-cache (Cargo.lock/toolchain), sccache con backend GHA y namespace del lock.
+actions/cache (Cargo.lock/toolchain), sccache con backend GHA y namespace del lock.
 No se guarda una segunda copia completa de targets. PR restaura caches de su base
 nightly conforme al ámbito de GitHub; el archivo de tests es artefacto del mismo
 SHA con retención de un día. Ningún secreto, ruleset ni auto-merge se modifica.
 
-**Mediciones de ejecuciones reales de PR: pendientes de validación final.**
+Primera ejecución real #2003, SHA 5d825f29f: Clippy 3 min 12 s, banco bench
+44,70 s, captura 43,66 s, overlays normal 3 min 25 s y QA 14,32 s, build tests
+6 min 40 s. Falló después al asumir un único lifecycle; se corrige para preservar
+ambos paquetes. Caché GHA fría: 0 hits / 816 misses, 57 errores de escritura.
+Esto no acredita el objetivo de 15 minutos ni un porcentaje de aciertos futuro.
+**Ejecución final y repetición con caché: pendientes de validación.**
 No usar la duración del job agregador como si fuera la duración de CI completa.
 
 ## Evidencia y fuentes

@@ -37,8 +37,23 @@ try {
         if ([Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process') -cne $previousDirectory) { throw 'El gate no restauró DUCKDB_LIB_DIR.' }
         'Defaults actuales y futuro PASS; bundled de storage desactivado.'
         [IO.Directory]::CreateDirectory((Join-Path $fixture '.config')) | Out-Null
-        Copy-Item (Join-Path $PSScriptRoot '.config/nextest.toml') (Join-Path $fixture '.config/nextest.toml')
-        & (Join-Path $fixture 'gates.ps1') -Gate archive -Packages @('future-default') -DuckDbDirectory $DuckDbDirectory
+        [IO.File]::WriteAllText((Join-Path $fixture '.config/nextest.toml'), @'
+[profile.default]
+archive.include = [{ path = "debug/duckdb.dll", relative-to = "target", on-missing = "error" }, { path = "debug/ci-lifecycle", relative-to = "target", on-missing = "error" }]
+[profile.ci]
+default-filter = 'all()'
+'@)
+        foreach ($folder in @('future', 'services')) {
+            [IO.Directory]::CreateDirectory((Join-Path $fixture "$folder/tests")) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $fixture "$folder/tests/lifecycle.rs"), '#[test] fn lifecycle_contract() { assert_eq!(2 + 2, 4); }')
+        }
+        & (Join-Path $fixture 'gates.ps1') -Gate archive -Packages @('future-default', 'vantare-services') -DuckDbDirectory $DuckDbDirectory
+        $harnesses = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
+        if ($harnesses.Count -ne 2 -or @($harnesses.image | Sort-Object -Unique).Count -ne 2) { throw 'Se perdió un lifecycle homónimo de otro paquete.' }
+        foreach ($harness in $harnesses) {
+            & (Join-Path $env:VANTARE_SLOT_TARGET "debug/ci-lifecycle/$($harness.image)")
+            if ($LASTEXITCODE) { throw 'El arnés lifecycle archivado no es ejecutable.' }
+        }
         $extract = Join-Path $fixture 'reuse'
         [IO.Directory]::CreateDirectory($extract) | Out-Null
         & cargo-nextest nextest run --archive-file (Join-Path $env:VANTARE_SLOT_TARGET 'nextest-tests.tar.zst') --extract-to $extract

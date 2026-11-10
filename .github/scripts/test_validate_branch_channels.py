@@ -74,7 +74,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         for gate in ("clippy", "captura", "archive"):
             self.assertIn(f"-Gate {gate}", gates)
         self.assertIn("telemetry = [bool]$Telemetry", gates)
-        self.assertIn("lifecycle = (-not $packages.Count", gates)
+        self.assertIn('lifecycle = ($lifecycle.Count -gt 0)', gates)
         self.assertIn("if ($env:TELEMETRIA_SCOPE -ne 'false')", workflow)
         self.assertIn(
             "telemetria: ${{ steps.native_scope.outputs.telemetria }}", workflow
@@ -108,7 +108,8 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn("if ($LASTEXITCODE) { throw 'Native blocking gates failed' }", workflow)
         self.assertIn('throw "Gate $Gate falló (código $LASTEXITCODE)."', gates)
         reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
-        self.assertIn('debug/ci-lifecycle/lifecycle.exe', reuse)
+        self.assertIn('debug/ci-lifecycle/manifest.json', reuse)
+        self.assertIn('foreach ($artifact in $lifecycle', reuse)
         self.assertIn('needs: [policy, native_build, native_tests, native_installation]', workflow)
         self.assertIn('if: always()', workflow)
         self.assertIn('native_ci_results.py', workflow)

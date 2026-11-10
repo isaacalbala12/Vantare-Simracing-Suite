@@ -62,6 +62,10 @@
   overflow: auto;
   scrollbar-width: none;
 }
+.v-roadmap-season {
+  padding: 20px;
+  gap: 16px;
+}
 .v-roadmap-list::-webkit-scrollbar {
   display: none;
 }

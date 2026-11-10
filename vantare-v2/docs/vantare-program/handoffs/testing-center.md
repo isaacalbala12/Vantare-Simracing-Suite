@@ -1380,3 +1380,18 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   cambios de #2030 para --qa-testing y testing-center-triage; lo gestiona su responsable.
 - Informes ya usa entry.tsx/SectionChrome, con Shell intacto. Su comparación registra
   el desplazamiento del raíl derecho del marco; datos y pruebas continúan en D.
+## 2026-11-10 — VANTA-138 / #1995, worker D: importación de borradores
+
+- El anfitrión importa editor-draft.json v1 y report-draft.json v1 por DraftLoad,
+  mediante DraftSave del núcleo. No escribe el almacén protegido directamente.
+- Si ya existe un borrador protegido, prevalece. Si hay dos antiguos, gana el más
+  reciente; en empate gana el editor. Los originales se archivan como .json.imported
+  solo tras confirmar el resultado del núcleo; no se pisan archivos ya existentes.
+- Los dañados, versiones futuras, textos fuera de límites y archivos que cambian
+  permanecen en su sitio. Decisión conservadora: no truncar ni corregir prosa antigua.
+- Se conserva el contrato sin CAS aprobado por el orquestador: no se promete impedir
+  escrituras de otro Hub entre DraftLoad y DraftSave. IPC y Services permanecen intactos.
+- Clippy Windows cruzado, formato y compilación de tests PASS; seis pruebas locales
+  ejecutadas en Windows PASS. Sin datos, cuentas ni informes reales. CI pendiente.
+- Los avisos viajan por Reply::Draft.message; el PR de Informes conserva ese mensaje
+  conforme al P3. #2026 ya está integrado en nightly@9916195d4 por el orquestador.

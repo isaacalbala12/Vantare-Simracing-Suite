@@ -13,6 +13,11 @@ runs:
         # Installation invokes Cargo from vantare-v2/, above rust-toolchain.toml.
         # Use the same compiler as archive/overlays, independent of runner defaults.
         "RUSTUP_TOOLCHAIN=1.95.0" >> $env:GITHUB_ENV
+    - name: Install pinned prebuilt compiler and lint components
+      shell: pwsh
+      run: |
+        rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy --no-self-update
+        if ($LASTEXITCODE) { throw 'Pinned Rust compiler/components installation failed' }
     - name: Cache Cargo registry and git sources
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
       with:

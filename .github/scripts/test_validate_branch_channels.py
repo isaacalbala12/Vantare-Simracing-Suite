@@ -103,6 +103,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('SCCACHE_GHA_VERSION=vanta137-v1', setup)
         self.assertNotIn('SCCACHE_GHA_VERSION=vanta137-$', setup)
         self.assertIn('RUSTUP_TOOLCHAIN=1.95.0', setup)
+        self.assertIn('rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy --no-self-update', setup)
         self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
         for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests'):
             self.assertIn(test, workflow)

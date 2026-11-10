@@ -26,7 +26,6 @@
   },
   "steady_seconds": 56.5763675,
   "steady_cpu_cycles": 15934467920,
-  "steady_cpu_cycles_per_frame": 13538205.539507221,
   "steady_screen_frames": 1177,
   "steady_present_calls": 1177,
   "steady_composition_layer_presents": 0,

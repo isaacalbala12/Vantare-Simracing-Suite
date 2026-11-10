@@ -26,7 +26,6 @@
   },
   "steady_seconds": 56.548849999999995,
   "steady_cpu_cycles": 1610094675,
-  "steady_cpu_cycles_per_frame": null,
   "steady_screen_frames": 0,
   "steady_present_calls": 0,
   "frame_counter": "dxgi_present",

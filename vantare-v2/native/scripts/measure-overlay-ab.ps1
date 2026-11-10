@@ -16,6 +16,11 @@ param(
 $ErrorActionPreference='Stop'
 if (Test-Path -LiteralPath $Out) { throw 'Use a fresh comparison directory' }
 if ((Get-FileHash -LiteralPath $A).Hash -eq (Get-FileHash -LiteralPath $B).Hash) { throw 'A/B requires two distinct binaries; A/A is run automatically first' }
+foreach ($binary in @($A,$B,$Core)) {
+ $build=(& $binary --measurement-info | ConvertFrom-Json)
+ if ($LASTEXITCODE -or $build.profile -ne 'release' -or $build.dirty -ne $false) { throw 'All binaries must be clean instrumented Release builds' }
+ if ($binary -ne $Core -and $RenderLoad -and 'render_load' -notin $build.measurement_capabilities) { throw 'Both UIs must support render load' }
+}
 New-Item -ItemType Directory -Path $Out | Out-Null
 $order=[Collections.Generic.List[object]]::new()
 foreach ($experiment in @('aa','ab')) {
@@ -30,6 +35,12 @@ foreach ($experiment in @('aa','ab')) {
    & python "$PSScriptRoot/summarize-overlays.py" "$Out/$directory" > "$Out/$directory/summary.stdout.json"
    if ($LASTEXITCODE) { throw "Invalid observation $directory; discard the whole round" }
   }
+ }
+ if ($experiment -eq 'aa') {
+  & python "$PSScriptRoot/aggregate-overlay-ab.py" $Out --aa-only > "$Out/aa.stdout.json"
+  if ($LASTEXITCODE) { throw 'A/A analysis failed' }
+  $noise=Get-Content -Raw -LiteralPath "$Out/aa-noise.json" | ConvertFrom-Json
+  if (!$noise.noise_gate_passed) { throw 'A/A noise exceeds the 2.5% bound: A/B was not started; preserve this campaign and stabilize conditions' }
  }
 }
 & python "$PSScriptRoot/aggregate-overlay-ab.py" $Out

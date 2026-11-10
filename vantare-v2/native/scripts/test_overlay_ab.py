@@ -58,6 +58,9 @@ class BalancedComparisonTest(unittest.TestCase):
             self.assertAlmostEqual(result['ab']['median'],0.95)
             self.assertTrue(result['noise_gate_passed'])
             self.assertFalse(result['acceptance_gates']['accepted'])
+            noise=M.aggregate(root,aa_only=True)
+            self.assertTrue(noise['noise_gate_passed'])
+            self.assertEqual(noise['ratios'],[1]*8)
             path=root/'ab-7-3'/'summary.json'
             run=json.loads(path.read_text())
             run['metadata']['collector_sha']='different'

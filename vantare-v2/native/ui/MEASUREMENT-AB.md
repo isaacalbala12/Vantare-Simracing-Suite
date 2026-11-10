@@ -20,6 +20,9 @@ potencia estadística. Si el máximo desvío logarítmico A/A supera 2,5 %, no s
 acepta una diferencia del 5 %. Hay que corregir las condiciones y repetir una
 campaña completa, publicando también la fallida; aumentar N por sí solo no
 elimina sesgo. El script admite hasta 24 rondas.
+Al terminar A/A guarda `aa-noise.json`; si el límite del 2,5 % no se cumple,
+no inicia A/B. Se conservan los resultados fallidos para investigar la causa.
+Antes de empezar comprueba ambos binarios y las capacidades de carga solicitadas.
 
 Con intervalos iguales, la razón por ronda es `sqrt(B1*B2/(A1*A2))`. El
 analizador usa los tiempos de inicio reales para interpolar log(A) hasta el

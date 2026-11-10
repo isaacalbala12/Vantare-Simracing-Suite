@@ -7,6 +7,16 @@ function Set-VantareSlotWorkspace {
     $stamp = Join-Path $Target '.vantare-workspace'
     if ((Test-Path -LiteralPath $stamp) -and
         [IO.File]::ReadAllText($stamp) -ceq $root) { return }
+    if (-not (Test-Path -LiteralPath (Join-Path $Target 'CACHEDIR.TAG'))) {
+        # The queue creates its stamps/tmp before Cargo's first invocation.
+        # Cargo refuses clean on that fresh directory; never manufacture its tag.
+        $unknown = @(Get-ChildItem -LiteralPath $Target -Force | Where-Object {
+            $_.Name -notin @('.vantare-last-build', '.vantare-workspace', 'tmp')
+        })
+        if ($unknown.Count) { throw 'Target sin CACHEDIR.TAG con contenido desconocido; no se limpia.' }
+        [IO.File]::WriteAllText($stamp, $root)
+        return
+    }
     $json = & cargo metadata --manifest-path $manifest --no-deps --locked --offline --format-version 1
     if ($LASTEXITCODE) { throw 'No se pudo identificar el workspace del slot.' }
     $metadata = $json | ConvertFrom-Json

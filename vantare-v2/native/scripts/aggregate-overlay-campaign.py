@@ -16,7 +16,7 @@ def aggregate(root):
         meta=run['metadata']
         if meta['profile']!='release' or meta['measurement_version']!=2:
             raise ValueError('Release v2 required')
-        identities.add((meta['executable_sha256'],meta['recording_sha256'],meta['profile']))
+        identities.add((meta['executable_sha256'],meta['recording_sha256'],meta.get('core_sha256'),meta['profile']))
         groups[(meta['widgets'],meta['phases'])].append(run)
     if len(identities)!=1 or len(groups)!=6 or any(len(r)<5 for r in groups.values()):
         raise ValueError('need >=5 runs per six configurations from one Release executable and recording')
@@ -24,7 +24,7 @@ def aggregate(root):
     for (widgets,phases),runs in groups.items():
         metrics={}
         paths=[(p,f) for p in ('ui','dwm') for f in ('cycles_per_second','cycles_per_received_photo','mean_private_mib')]
-        paths += [('gpu',p,f) for p in ('ui','dwm') for f in ('mean_engine_sum_percent','peak_dedicated_mib')]
+        paths += [('gpu',p,f) for p in ('ui','dwm') for f in ('mean_busiest_engine_percent','mean_engine_sum_percent','peak_dedicated_mib')]
         paths += [(f,) for f in ('present_interval_p99_ms','receive_to_paint_p99_ms','receive_to_submit_p99_ms')]
         for path in paths:
             values=[]

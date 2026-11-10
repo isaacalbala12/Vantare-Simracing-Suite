@@ -17,6 +17,8 @@ def percentile(values, p):
 
 def recording_window(events, start, end):
     photos = sorted((e for e in events if e['kind']=='received'), key=lambda e:e['clock'])
+    if not photos or photos[0]['value'] > start*1e9:
+        raise ValueError('receiver started after stable recording window')
     endpoints = [next((e['clock'] for e in photos if e['value'] >= s*1e9), None) for s in (start,end)]
     if None in endpoints or endpoints[0]>=endpoints[1]:
         raise ValueError('recording position did not cover stable window')
@@ -65,19 +67,29 @@ def summarize(root):
         raise ValueError('solo dev: not a Release v2 baseline')
     events=[]
     frequency=None
+    expected_events=None
     for line in (root/'stderr.log').read_text(encoding='utf-8-sig').splitlines():
         if line.startswith('trace frequency='):
             header=dict(v.split('=') for v in line.split()[1:])
             frequency=int(header['frequency'])
             if int(header['overflow']):
                 raise ValueError('trace overflow: discard run')
+        elif line.startswith('trace_end events='):
+            expected_events=int(line.split('=',1)[1])
         elif line.startswith('trace\t'):
             _,kind,label,clock,end,epoch,sequence,value=line.split('\t')
             events.append(dict(kind=kind,label=label,clock=int(clock),end=int(end),epoch=int(epoch),sequence=int(sequence),value=int(value)))
     if not frequency:
         raise ValueError('missing trace clock')
+    if expected_events!=len(events):
+        raise ValueError('truncated trace: discard run')
+    if frequency!=metadata.get('qpc_frequency'):
+        raise ValueError('trace and sampler clocks differ')
     start,end=recording_window(events,metadata['stable_start_seconds'],metadata['stable_end_seconds'])
     stable=[e for e in events if start<=e['clock']<=end]
+    load=[number(r['load_percent']) for r in read_csv(root/'system.csv') if start<=int(r['qpc'])<=end]
+    if not load or max(load)>metadata['maximum_total_system_load_percent']:
+        raise ValueError('missing or excessive stable system load: discard run')
     received={(e['epoch'],e['sequence']):e['clock'] for e in stable if e['kind']=='received'}
     if not received:
         raise ValueError('no received photos')
@@ -101,8 +113,9 @@ def summarize(root):
         selected=[r for r in gpu_rows if r['process']==name]
         if not selected:
             raise ValueError('missing GPU samples for '+name)
-        gpu[name]=dict(mean_engine_sum_percent=sum(number(r['engine_sum_percent']) for r in selected)/len(selected),peak_dedicated_mib=max(number(r['dedicated_bytes']) for r in selected)/2**20)
+        gpu[name]=dict(mean_busiest_engine_percent=sum(number(r['busiest_engine_percent']) for r in selected)/len(selected),mean_engine_sum_percent=sum(number(r['engine_sum_percent']) for r in selected)/len(selected),peak_dedicated_mib=max(number(r['dedicated_bytes']) for r in selected)/2**20)
     result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
+                stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),
                 present_calls=len(presents),present_intervals_ms=intervals,present_interval_p99_ms=percentile(intervals,99),
                 **latencies,**{k.replace('_ms','_p99_ms'):percentile(v,99) for k,v in latencies.items()},
                 notifications=dict(collections.Counter(e['label'] for e in stable if e['kind']=='notify')),

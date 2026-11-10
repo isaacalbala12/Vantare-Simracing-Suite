@@ -59,6 +59,8 @@ namespace Vantare {
 $rows = [Collections.Generic.List[object]]::new()
 $dwmRows = [Collections.Generic.List[object]]::new()
 $gpuRows = [Collections.Generic.List[object]]::new()
+$gpuCounterRows = [Collections.Generic.List[object]]::new()
+$invalidCounterRows = [Collections.Generic.List[object]]::new()
 $systemRows = [Collections.Generic.List[object]]::new()
 $dwm = @(Get-Process dwm -ErrorAction Stop)
 if ($dwm.Count -ne 1) { throw 'Exactly one DWM process is required for an unambiguous baseline' }
@@ -90,6 +92,7 @@ try {
     if (Get-Process cargo,rustc -ErrorAction SilentlyContinue) { throw 'An uncoordinated compiler is running: discard measurement' }
     $held = $mutex.WaitOne(0)
     if (!$held) { throw 'Visual capture/measurement already in progress' }
+    $powerPlan = (& powercfg /getactivescheme | Out-String).Trim()
     if ($Core) {
         $coreInfo = [Diagnostics.ProcessStartInfo]::new((Resolve-Path -LiteralPath $Core).Path)
         $coreInfo.UseShellExecute = $false
@@ -136,16 +139,29 @@ try {
         [ulong]$dwmCycles = 0
         if (![Vantare.MeasurementCycles]::QueryProcessCycleTime($dwm.Handle,[ref]$dwmCycles)) { throw 'Cannot query DWM cycles' }
         $dwmRows.Add([pscustomobject]@{qpc=$sampleQpc;cpu_cycles=$dwmCycles;private_bytes=$dwm.PrivateMemorySize64;working_set_bytes=$dwm.WorkingSet64})
-        $counters = Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage','\GPU Process Memory(*)\Dedicated Usage','\Processor(_Total)\% Processor Time' -ErrorAction Stop
+        # Other processes may destroy an engine between PDH's two reads. Keep
+        # their invalid samples, but require valid data for our UI, DWM and CPU.
+        $counterErrors = @()
+        $counters = Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage','\GPU Process Memory(*)\Dedicated Usage','\Processor(_Total)\% Processor Time' -ErrorAction SilentlyContinue -ErrorVariable counterErrors
         $tick = [Diagnostics.Stopwatch]::GetTimestamp()
+        if (!$counters) { throw 'GPU/system counter collection returned no data' }
+        foreach ($sample in @($counters.CounterSamples | Where-Object { $_.Status -notin @(0,1) })) {
+            $invalidCounterRows.Add([pscustomobject]@{qpc=$tick;path=$sample.Path;status=$sample.Status})
+        }
         foreach ($entry in @(@{name='ui';id=$process.Id},@{name='dwm';id=$dwm.Id})) {
             $samples = @($counters.CounterSamples | Where-Object { $_.InstanceName -match "^pid_$($entry.id)_" })
+            if (@($samples | Where-Object { $_.Status -notin @(0,1) }).Count) { throw "Invalid GPU counter for $($entry.name): discard run" }
+            foreach ($sample in $samples) {
+                $gpuCounterRows.Add([pscustomobject]@{qpc=$tick;process=$entry.name;path=$sample.Path;value=$sample.CookedValue;status=$sample.Status})
+            }
             $engines = @($samples | Where-Object Path -Like '*utilization percentage')
             $memory = @($samples | Where-Object Path -Like '*dedicated usage')
             if (!$engines.Count -or !$memory.Count) { throw "Missing GPU counters for $($entry.name)" }
-            $gpuRows.Add([pscustomobject]@{qpc=$tick;process=$entry.name;engine_sum_percent=($engines.CookedValue | Measure-Object -Sum).Sum;dedicated_bytes=($memory.CookedValue | Measure-Object -Sum).Sum})
+            $gpuRows.Add([pscustomobject]@{qpc=$tick;process=$entry.name;busiest_engine_percent=($engines.CookedValue | Measure-Object -Maximum).Maximum;engine_sum_percent=($engines.CookedValue | Measure-Object -Sum).Sum;dedicated_bytes=($memory.CookedValue | Measure-Object -Sum).Sum})
         }
-        $load = ($counters.CounterSamples | Where-Object Path -Like '*\processor(_total)\% processor time').CookedValue
+        $cpuSample = @($counters.CounterSamples | Where-Object Path -Like '*\processor(_total)\% processor time')
+        if ($cpuSample.Count -ne 1 -or $cpuSample[0].Status -notin @(0,1)) { throw 'Invalid total system CPU counter: discard run' }
+        $load = $cpuSample[0].CookedValue
         $systemRows.Add([pscustomobject]@{qpc=$tick;load_percent=$load})
         if ($watch.Elapsed.TotalSeconds -gt 5 -and $load -gt $MaxSystemLoadPercent) { throw 'High total system load: discard run' }
         if ($watch.Elapsed.TotalSeconds -gt $Seconds + 120) { throw 'Replay exceeded its duration and shutdown margin' }
@@ -163,6 +179,9 @@ try {
         recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds
         stable_start_seconds=5; stable_end_seconds=($recordingDuration - 5)
         power_plan=$powerPlan; priority='Normal'; dwm_pid=$dwm.Id; cpu_frequency_mhz=$cpuFrequency
+        dwm_priority=[string]$dwm.PriorityClass
+        received_photo_scope='Photos delivered by production Subscriber to the UI feed; coalescing before the UI is preserved'
+        memory_scope='Whole process, including the bounded in-memory measurement trace; controls use the same reserved capacity'
         qpc_frequency=[Diagnostics.Stopwatch]::Frequency; maximum_total_system_load_percent=$MaxSystemLoadPercent
         presentation=@{model='DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL / DirectComposition';sync_interval=0;tearing_flag=$false;vrr_active=$null;vrr_reason='Not observable from system GPU counters; physical game-PC check required'}
         gpu_source='Windows GPU Engine / GPU Process Memory performance counters; PresentMon not installed in PATH'
@@ -197,6 +216,8 @@ try {
         $rows | Export-Csv -NoTypeInformation "$Out/process.csv"
         $dwmRows | Export-Csv -NoTypeInformation "$Out/dwm.csv"
         $gpuRows | Export-Csv -NoTypeInformation "$Out/gpu.csv"
+        $gpuCounterRows | Export-Csv -NoTypeInformation "$Out/gpu-counters.csv"
+        $invalidCounterRows | Export-Csv -NoTypeInformation "$Out/invalid-counters.csv"
         $systemRows | Export-Csv -NoTypeInformation "$Out/system.csv"
         if ($completed) { 'complete' | Set-Content "$Out/complete.txt" }
     }

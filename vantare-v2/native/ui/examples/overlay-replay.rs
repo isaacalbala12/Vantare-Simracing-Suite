@@ -11,7 +11,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     vantare_ui::profiling::initialize_trace();
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.as_slice() == ["--measurement-info"] {
-        println!("{}", env!("VANTARE_MEASUREMENT_BUILD"));
+        let mut build: serde_json::Value =
+            serde_json::from_str(option_env!("VANTARE_MEASUREMENT_BUILD").unwrap_or("{}"))?;
+        build["trace_capacity_bytes"] = vantare_ui::profiling::trace_capacity_bytes().into();
+        println!("{build}");
         return Ok(());
     }
     if !matches!(args.len(), 2 | 3) {
@@ -96,12 +99,7 @@ fn run_pipe(pipe: &str, count: usize, seconds: u64) -> Result<(), Box<dyn std::e
     let (cancel, cancelled) = flume::bounded::<()>(1);
     let timer = std::thread::spawn(move || {
         // Fixed measurement window: recorded duration plus report/idle drain.
-        if matches!(
-            cancelled.recv_timeout(Duration::from_secs(seconds + 3)),
-            Err(flume::RecvTimeoutError::Timeout)
-        ) {
-            let _ = send.send(());
-        }
+        stop_after(Duration::from_secs(seconds + 3), &cancelled, &send);
     });
     vantare_ui::run_with_connection(
         count,
@@ -113,8 +111,17 @@ fn run_pipe(pipe: &str, count: usize, seconds: u64) -> Result<(), Box<dyn std::e
     );
     let _ = cancel.send(());
     timer.join().map_err(|_| "replay timer panicked")?;
-    vantare_ui::profiling::flush();
+    vantare_ui::profiling::flush()?;
     Ok(())
+}
+
+fn stop_after(timeout: Duration, cancelled: &flume::Receiver<()>, stop: &flume::Sender<()>) {
+    if matches!(
+        cancelled.recv_timeout(timeout),
+        Err(flume::RecvTimeoutError::Timeout)
+    ) {
+        let _ = stop.send(());
+    }
 }
 
 fn replay_offset(photo: &Snapshot, first: Duration) -> Result<Duration, String> {
@@ -128,6 +135,27 @@ fn replay_offset(photo: &Snapshot, first: Duration) -> Result<Duration, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn early_host_exit_cancels_and_joins_the_deadline_without_sending_stop() {
+        let (cancel, cancelled) = flume::bounded(1);
+        let (stop, stopped) = flume::bounded(1);
+        let timer =
+            std::thread::spawn(move || stop_after(Duration::from_secs(3600), &cancelled, &stop));
+        cancel.send(()).expect("cancel timer");
+        timer.join().expect("timer joined");
+        assert!(matches!(
+            stopped.try_recv(),
+            Err(flume::TryRecvError::Disconnected)
+        ));
+    }
+
+    #[test]
+    fn expired_deadline_requests_host_shutdown() {
+        let (_cancel, cancelled) = flume::bounded(1);
+        let (stop, stopped) = flume::bounded(1);
+        stop_after(Duration::ZERO, &cancelled, &stop);
+        assert_eq!(stopped.try_recv(), Ok(()));
+    }
     #[test]
     fn recorded_source_clock_controls_replay_even_when_received_clock_is_frozen() {
         let mut photo = Snapshot::default();

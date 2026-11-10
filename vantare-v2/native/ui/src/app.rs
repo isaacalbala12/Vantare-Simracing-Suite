@@ -378,7 +378,7 @@ impl Overlay {
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
         #[cfg(feature = "paint-stats")]
-        let _span = crate::profiling::begin(crate::profiling::Stage::Project);
+        let project_span = crate::profiling::begin(crate::profiling::Stage::Project);
         #[cfg(feature = "paint-stats")]
         crate::stats::ingest(self.kind);
         if crate::rights::denied(self.kind, cx) {
@@ -386,7 +386,7 @@ impl Overlay {
         }
         let changed = self.project_snapshot(snapshot);
         #[cfg(feature = "paint-stats")]
-        drop(_span);
+        drop(project_span);
         if changed {
             #[cfg(feature = "paint-stats")]
             {

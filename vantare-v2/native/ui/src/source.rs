@@ -116,6 +116,7 @@ fn start_feed<T: Send + 'static>(
                         demand: requested.clone(),
                     })
                 } else if let Some(photo) = incoming {
+                    #[cfg(feature = "paint-stats")]
                     crate::profiling::mark(
                         "received",
                         "ipc",

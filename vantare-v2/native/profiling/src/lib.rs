@@ -33,6 +33,10 @@ pub fn initialize_trace() {
     }
 }
 
+pub const fn trace_capacity_bytes() -> usize {
+    TRACE_LIMIT * std::mem::size_of::<Event>()
+}
+
 pub fn record(event: Event) {
     if !buffered() {
         return;
@@ -63,27 +67,31 @@ pub fn mark(kind: &'static str, label: &'static str, epoch: u64, sequence: u64, 
     }
 }
 
-pub fn flush() {
+pub fn flush() -> std::io::Result<()> {
     if let Some(trace) = TRACE.get() {
         use std::io::Write;
         let mut output = std::io::BufWriter::new(std::io::stderr().lock());
         let mut trace = trace
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _ = writeln!(
+        writeln!(
             output,
             "trace frequency={} overflow={}",
             frequency().unwrap_or(0),
             OVERFLOW.load(Relaxed)
-        );
+        )?;
+        let count = trace.len();
         for e in trace.drain(..) {
-            let _ = writeln!(
+            writeln!(
                 output,
                 "trace\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 e.kind, e.label, e.clock, e.end, e.epoch, e.sequence, e.value
-            );
+            )?;
         }
+        writeln!(output, "trace_end events={count}")?;
+        output.flush()?;
     }
+    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -176,12 +184,12 @@ pub fn begin(stage: Stage) -> Option<Span> {
 
 impl Drop for Span {
     fn drop(&mut self) {
-        let end = clock();
-        let delta = self
-            .cycles
-            .zip(cycles(false))
-            .and_then(|(a, b)| b.checked_sub(a));
         if buffered() {
+            let end = clock();
+            let delta = self
+                .cycles
+                .zip(cycles(false))
+                .and_then(|(a, b)| b.checked_sub(a));
             record(Event {
                 kind: "span",
                 label: NAMES[self.stage],

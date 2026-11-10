@@ -15,3 +15,25 @@ PresentMon no aparece en PATH. Se usan los contadores Windows GPU Engine y GPU P
 La traza se acumula en memoria acotada y se vuelca tras cerrar el host; un overflow invalida la pasada. Se reserva la cola de compilación con plazo máximo, se registra plan de energía, prioridad Normal y carga total del sistema. Una compilación ajena o carga por encima del umbral descarta la pasada.
 
 Pendiente antes de aceptar cifras: verificar la implementación, ejecutar al menos cinco pasadas alternadas de cada configuración (1/4/22 widgets, con y sin Phases), publicar mediana y rango, y completar los checks. No hay aún una línea base Release aceptada.
+
+## Repetir la campaña
+
+Desde `vantare-v2`, con el código confirmado en Git y sin overrides de perfil:
+
+```powershell
+$env:CARGO_TARGET_DIR = 'D:\VantareServer\targets\isa-1996-medicion'
+$env:CARGO_BUILD_JOBS = '2'
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core -j 2
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-ui --example overlay-replay --features paint-stats -j 2
+pwsh -NoProfile -File native/scripts/measure-overlay-campaign.ps1 -UI "$env:CARGO_TARGET_DIR/release/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/release/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/VantareServer/evidence/isa-1996/release-campaign-NEW -Runs 5
+```
+
+No envolver la campaña en `compilar.ps1`: el recolector reserva la cola por sí mismo. Conservar el mismo núcleo y su hash en todas las variantes; su CPU no se atribuye al overlay. Cada salida debe ser nueva. Un fallo interrumpe la campaña y conserva la evidencia descartada, sin convertirla en una pasada válida.
+
+Cada pasada guarda `metadata.json`, `process.csv`, `dwm.csv`, `system.csv`, `gpu.csv`, los contadores GPU por motor en `gpu-counters.csv`, muestras PDH inválidas en `invalid-counters.csv`, logs, `complete.txt` y `summary.json`. Una muestra inválida de un proceso ajeno puede aparecer si éste destruye un motor entre las lecturas PDH; no invalida los contadores propios. Un contador inválido de UI, DWM o carga total sí descarta la pasada. Una traza truncada o desbordada también se rechaza.
+
+`campaign.json` agrega las seis configuraciones por separado, con número de pasadas, mediana, mínimo y máximo. No mezcla binarios UI, núcleo o grabaciones distintos. Los intervalos y latencias individuales se conservan en cada `summary.json`.
+
+La memoria privada incluye el buffer de diagnóstico reservado, cuyo tamaño exacto aparece en `compiled_build.trace_capacity_bytes`; no equivale al consumo del producto sin instrumentación. Los controles sin Phases conservan las marcas mínimas de recepción, cambio de widget y presentación y reservan la misma capacidad, para medir el coste adicional de las fases. No sumar VRAM de UI y DWM: hay superficies compartidas.
+
+Fuentes primarias consultadas para el método: [QueryProcessCycleTime](https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-queryprocesscycletime) suma ciclos de todos los hilos, en usuario y kernel; [Microsoft DirectX: GPU en Task Manager](https://devblogs.microsoft.com/directx/gpus-in-the-task-manager/) explica motores independientes y memoria por proceso. La utilización principal de GPU usa el motor más ocupado por muestra; se conserva además la suma y cada contador bruto. La VRAM de UI y DWM se informa por separado porque las superficies compartidas pueden contabilizarse en ambos procesos.

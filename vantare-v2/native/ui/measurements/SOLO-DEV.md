@@ -46,12 +46,7 @@ conservar el mismo perfil y opciones en toda comparación.
 
 ## Qué significan los números
 
-CPU de proceso: `TotalProcessorTime`, suma de todos los hilos. Un segundo CPU
-por segundo de pared equivale a un núcleo lógico. El intervalo estable excluye
-arranque y drenaje. Los endpoints QPC se cruzan con las marcas de `Screen` para
-CPU por frame. El denominador preferido es la llamada DXGI `Present`, marcada con QPC por el
-backend; si no existe, el informe etiqueta explícitamente el contador de escenas.
-Ninguno equivale a presentaciones físicas medidas en pantalla.
+Los cálculos históricos basados en TotalProcessorTime se han retirado: eran incorrectos. Tampoco se utiliza Present como denominador principal de CPU.
 
 Las fases guardan tiempo transcurrido QPC y ciclos de CPU del hilo. No convertir
 ciclos a nanosegundos ni sumar fases anidadas:
@@ -142,18 +137,14 @@ Servidor: Ryzen 5 1500X (8 hilos lógicos), Radeon RX 6600 XT, driver
 32.0.21045.5002, Windows 11 build 22631, 1920 × 1080 a 59 Hz declarados por WMI.
 Estos datos se guardaron aparte en `baseline-environment.json`.
 
-| Widgets / diagnóstico | CPU estable (s / ≈58,6 s) | CPU ms / frame estable | Memoria privada media (MiB) | Frames totales |
-| --- | ---: | ---: | ---: | ---: |
-| 1 / activo | 0,015625 | Sin conclusión: casi quieto | 81,45 | 3 |
-| 4 / activo | 0,109375 | 0,342 | 94,30 | 330 |
-| 4 / apagado | 0,031250 | Contador apagado | 80,80 | Contador apagado |
-| 22 / activo | 0,187500 | 0,640 | 83,58 | 303 |
+| Widgets / diagnóstico (solo dev) | Memoria privada media MiB | Frames totales |
+| --- | ---: | ---: |
+| 1 / activo | 81,45 | 3 |
+| 4 / activo | 94,30 | 330 |
+| 4 / apagado | 80,80 | Contador apagado |
+| 22 / activo | 83,58 | 303 |
 
-El contador CPU de Windows avanza en pasos de **15,625 ms** en estas pasadas;
-los valores pequeños tienen mucha incertidumbre. No concluir una mejora de
-producto a partir de estos cocientes ni de una sola pasada. Conservar también
-los ciclos crudos por fase y repetir controles al comparar versiones. El
-diagnóstico cambia consumo y memoria: no compararlo con un build sin él.
+Se han retirado las columnas y explicaciones de CPU calculadas con TotalProcessorTime por ser incorrectas. Las restantes cifras son caracterización dev de una sola pasada, no una comparación de rendimiento.
 
 Con cuatro widgets: Standings 6 pintados (dos entidades), radar 330, pedales 2.
 Hubo 3.005 notificaciones por datos; GPUI las agrupó en 330 escenas/presentaciones
@@ -195,16 +186,11 @@ Fmt y Clippy `-D warnings` PASS (UI/profiling, todos los targets, `paint-stats`)
 El primer Clippy señaló dos nombres de método sin backticks en documentación;
 se corrigieron y se repitió el check sin cambiar código de comportamiento.
 
-## Precisión de CPU
+## CPU histórica retirada
 
-El tiempo CPU de proceso de Windows está cuantizado (15,625 ms aquí) y puede
-infraestimar ráfagas breves. Se recoge también `QueryProcessCycleTime` del
-proceso completo y ciclos por llamada Present en el mismo intervalo QPC.
-Ese contador permite comparar trabajo CPU entre variantes en esta máquina;
-no se convierte a milisegundos ni se equipara con tiempo GPU. Los ms/frame
-cuantizados se conservan como dato secundario, nunca como prueba de ganancia.
+Las conversiones de TotalProcessorTime no se conservan como dato secundario: no son válidas. La nueva campaña publica ciclos/s y ciclos/foto. Los cocientes por Present de abajo se conservan solo como registro dev descartado y no son comparables entre motores.
 
-## Línea base cruda corregida (10-nov-2026)
+## Campaña cruda dev descartada (10-nov-2026)
 
 Mismo servidor y perfil dev. Grabación cruda SHA-256
 `c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c`,

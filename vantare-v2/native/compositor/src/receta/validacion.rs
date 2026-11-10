@@ -2,7 +2,6 @@
 use super::{Campo, Contrato, Nodo, Receta, Sistema};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Causa {
     Json,
@@ -51,9 +50,17 @@ struct Validador<'a> {
     errores: Vec<Diagnostico>,
     avisos: Vec<Diagnostico>,
     nodos: usize,
+    capas: usize,
 }
 impl Validador<'_> {
     fn error(&mut self, p: &str, causa: Causa, detalle: &str, solucion: &str) {
+        if self
+            .errores
+            .iter()
+            .any(|e| e.puntero == p && e.causa == causa && e.fichero == self.fichero)
+        {
+            return;
+        }
         self.errores.push(Diagnostico {
             fichero: self.fichero.into(),
             puntero: p.into(),
@@ -65,7 +72,9 @@ impl Validador<'_> {
     fn condicion(&mut self, c: &str, p: &str, campos: &BTreeMap<String, Campo>) {
         let (ruta, valor) = c
             .split_once('=')
-            .map_or((c.trim_start_matches('!'), None), |(a, b)| (a, Some(b)));
+            .map_or((c.strip_prefix('!').unwrap_or(c), None), |(a, b)| {
+                (a, Some(b))
+            });
         let valido = match (campos.get(ruta), valor) {
             (Some(Campo::Simple(t)), None) => t == "bool",
             (Some(Campo::Enumerado(e)), Some(v)) => e.r#enum.iter().any(|x| x == v),
@@ -121,6 +130,15 @@ impl Validador<'_> {
                 self.enlace(s, p, campos);
                 return;
             };
+            if despues.contains('{') {
+                self.error(
+                    p,
+                    Causa::Enlace,
+                    "Token con varios enlaces",
+                    "Usa un único campo enum por token.",
+                );
+                return;
+            }
             match campos.get(ruta) {
                 Some(Campo::Enumerado(e)) => {
                     for v in &e.r#enum {
@@ -304,6 +322,12 @@ impl Validador<'_> {
                         );
                     }
                 }
+                "radio" if v.as_array().is_some_and(|a| !matches!(a.len(), 1 | 4)) => self.error(
+                    &p,
+                    Causa::Medida,
+                    "Radio con número de valores incorrecto",
+                    "Usa uno o cuatro radios; dos valores solo se admiten en relleno.",
+                ),
                 _ => self.medida(&v, &p, campos),
             }
         }
@@ -334,6 +358,10 @@ impl Validador<'_> {
             ["rigidez", "amortiguacion"]
                 .iter()
                 .all(|k| m[*k].as_f64().is_some_and(|x| x > 0.0 && x <= 10000.0))
+                && muelle_asentado(
+                    m["rigidez"].as_f64().unwrap_or(0.0),
+                    m["amortiguacion"].as_f64().unwrap_or(0.0),
+                )
         } else {
             let dur = v["duracion"].as_f64();
             let ret = v.get("retardo").and_then(Value::as_f64).unwrap_or(0.0);
@@ -400,6 +428,18 @@ impl Validador<'_> {
     }
     fn nodo(&mut self, n: &Nodo, p: &str, campos: &BTreeMap<String, Campo>, prof: usize) {
         self.nodos += 1;
+        if p == "/raiz" || n.capa || n.transiciones.keys().any(|k| compuesta(k)) {
+            self.capas += 1;
+        }
+        if self.capas > 256 {
+            self.error(
+                p,
+                Causa::Limite,
+                "Demasiadas capas",
+                "Reduce el diseño a 256 capas, contando la raíz y las capas de las listas.",
+            );
+            return;
+        }
         if prof > 32 || self.nodos > 512 {
             self.error(
                 p,
@@ -754,7 +794,16 @@ pub fn cargar(
     sistema: (&str, &str),
     modelo: (&str, &str),
 ) -> Result<Carga, Vec<Diagnostico>> {
-    let rv: Value = leer(receta.0, receta.1)?;
+    cargar_con_fuentes(receta, sistema, modelo, &["Inter"])
+}
+/// El anfitrión proporciona las familias que realmente incluye su paquete.
+pub fn cargar_con_fuentes(
+    receta: (&str, &str),
+    sistema: (&str, &str),
+    modelo: (&str, &str),
+    fuentes: &[&str],
+) -> Result<Carga, Vec<Diagnostico>> {
+    let mut rv: Value = leer(receta.0, receta.1)?;
     let mut errores = Vec::new();
     desconocidos(
         &rv,
@@ -777,10 +826,29 @@ pub fn cargar(
             );
         }
     }
-    if !errores.is_empty() {
+    if errores.iter().any(|e| e.causa != Causa::CampoDesconocido) {
         return Err(errores);
     }
-    let r: Receta = leer(receta.0, receta.1)?;
+    for e in &errores {
+        if let Some((padre, campo)) = e.puntero.rsplit_once('/') {
+            if let Some(m) = rv.pointer_mut(padre).and_then(Value::as_object_mut) {
+                m.remove(&campo.replace("~1", "/").replace("~0", "~"));
+            }
+        }
+    }
+    let mut r: Receta = match serde_json::from_value(rv) {
+        Ok(r) => r,
+        Err(e) => {
+            errores.push(diagnostico(
+                receta.0,
+                "",
+                Causa::Json,
+                &e.to_string(),
+                "Corrige los campos y tipos de la receta según RECETA.md.",
+            ));
+            return Err(errores);
+        }
+    };
     let s: Sistema = leer(sistema.0, sistema.1)?;
     let c: Contrato = leer(modelo.0, modelo.1)?;
     let mut v = Validador {
@@ -789,6 +857,7 @@ pub fn cargar(
         errores,
         avisos: Vec::new(),
         nodos: 0,
+        capas: 0,
     };
     if r.receta != 1 {
         v.error(
@@ -824,6 +893,16 @@ pub fn cargar(
     }
     v.nodo(&r.raiz, "/raiz", &c.campos, 1);
     v.fichero = sistema.0;
+    for (i, f) in s.fuentes.iter().enumerate() {
+        if !fuentes.contains(&f.as_str()) {
+            v.error(
+                &format!("/fuentes/{i}"),
+                Causa::Fuente,
+                "Fuente fuera del paquete",
+                "Usa una familia suministrada por el producto; por defecto Inter.",
+            );
+        }
+    }
     let sv: Value = leer(sistema.0, sistema.1)?;
     validar_sistema(&s, &sv, &mut v);
     v.fichero = modelo.0;
@@ -832,6 +911,7 @@ pub fn cargar(
         return Err(v.errores);
     }
     let avisos = v.avisos;
+    r.contrato_validado = Some(c.clone());
     Ok(Carga {
         receta: r,
         sistema: s,
@@ -848,12 +928,15 @@ fn validar_sistema(s: &Sistema, sv: &Value, v: &mut Validador<'_>) {
             "Usa sistema: 1.",
         );
     }
-
     validar_tokens(sv, "", v, &mut BTreeSet::new());
     for (nombre, tipo) in &s.tipo {
+        let Some(tipo) = s.resolver(tipo) else {
+            continue;
+        };
         let p = format!("/tipo/{nombre}");
+        validar_tipografia(&tipo, &p, v);
         desconocidos(
-            tipo,
+            &tipo,
             &[
                 "familia",
                 "peso",
@@ -892,7 +975,33 @@ fn validar_sistema(s: &Sistema, sv: &Value, v: &mut Validador<'_>) {
         validar_medidas(x, &format!("/{k}"), v);
     }
 }
-
+fn validar_tipografia(t: &Value, p: &str, v: &mut Validador<'_>) {
+    for k in [
+        "peso",
+        "tamano",
+        "interletra",
+        "interlinea",
+        "tabulares",
+        "mayusculas",
+    ] {
+        if let Some(x) = t.get(k) {
+            let Some(x) = v.sistema.resolver(x) else {
+                continue;
+            };
+            let valido = match k {
+                "peso" => x.as_u64().is_some_and(|n| (100..=900).contains(&n)),
+                "tabulares" | "mayusculas" => x.is_boolean(),
+                "interletra" => x.as_f64().is_some_and(f64::is_finite),
+                _ => x
+                    .as_f64()
+                    .is_some_and(|n| n > 0.0 && n <= f64::from(f32::MAX)),
+            };
+            if !valido {
+                v.error(&format!("{p}/{k}"),Causa::Tipo,"Propiedad tipográfica inválida","Usa peso entero 100..900, tamaños positivos finitos y booleanos para tabulares/mayusculas.");
+            }
+        }
+    }
+}
 fn validar_tokens(valor: &Value, p: &str, v: &mut Validador<'_>, vistos: &mut BTreeSet<String>) {
     match valor {
         Value::Object(m) => {
@@ -913,7 +1022,6 @@ fn validar_tokens(valor: &Value, p: &str, v: &mut Validador<'_>, vistos: &mut BT
         _ => {}
     }
 }
-
 fn validar_colores(colores: &BTreeMap<String, Value>, p: &str, v: &mut Validador<'_>) {
     for (k, x) in colores {
         let p = format!("{p}/{k}");
@@ -983,7 +1091,6 @@ fn validar_campos(campos: &BTreeMap<String, Campo>, p: &str, v: &mut Validador<'
         }
     }
 }
-
 fn ciclo_token(
     s: &Sistema,
     token: &str,
@@ -1019,4 +1126,35 @@ fn ciclo_valor(
         Value::Array(a) => a.iter().any(|v| ciclo_valor(s, v, activos, listos, nivel)),
         _ => false,
     }
+}
+fn muelle_asentado(rigidez: f64, amortiguacion: f64) -> bool {
+    let alpha = amortiguacion * 0.5;
+    let discriminante = rigidez - alpha * alpha;
+    let (posicion, velocidad) = if discriminante > 1.0e-8 {
+        let frecuencia = discriminante.sqrt();
+        let envolvente = (-alpha * 10.0).exp();
+        (
+            (1.0 + (alpha / frecuencia).powi(2)).sqrt() * envolvente,
+            rigidez / frecuencia * envolvente,
+        )
+    } else if discriminante < -1.0e-8 {
+        let raiz = (-discriminante).sqrt();
+        let lento = -alpha + raiz;
+        let rapido = -alpha - raiz;
+        let coef_lento = -rapido / (lento - rapido);
+        let coef_rapido = 1.0 - coef_lento;
+        (
+            coef_lento * (10.0 * lento).exp() + coef_rapido * (10.0 * rapido).exp(),
+            (coef_lento * lento * (10.0 * lento).exp()
+                + coef_rapido * rapido * (10.0 * rapido).exp())
+            .abs(),
+        )
+    } else {
+        let envolvente = (-alpha * 10.0).exp();
+        (
+            (1.0 + alpha * 10.0) * envolvente,
+            alpha * alpha * 10.0 * envolvente,
+        )
+    };
+    posicion < 0.001 && velocidad < 0.001
 }

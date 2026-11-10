@@ -2,10 +2,11 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Receta {
+    #[serde(skip)]
+    pub(crate) contrato_validado: Option<Contrato>,
     pub receta: u32,
     pub tipo: String,
     pub nombre: String,

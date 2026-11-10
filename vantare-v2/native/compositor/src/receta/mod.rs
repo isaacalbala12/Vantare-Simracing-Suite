@@ -2,4 +2,4 @@
 mod tipos;
 mod validacion;
 pub use tipos::*;
-pub use validacion::{Carga, Causa, Diagnostico, cargar};
+pub use validacion::{Carga, Causa, Diagnostico, cargar, cargar_con_fuentes};

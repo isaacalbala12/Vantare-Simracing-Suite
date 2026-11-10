@@ -1,0 +1,18 @@
+{
+  "titulo": "Hola",
+  "activo": false,
+  "visible": true,
+  "alpha": 1,
+  "filas": [
+    {
+      "id": "uno",
+      "texto": "Uno",
+      "clase": "a"
+    },
+    {
+      "id": "dos",
+      "texto": "Dos",
+      "clase": "b"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "receta": 1,
+  "tipo": "overlay",
+  "nombre": "test",
+  "modelo": "test/1",
+  "raiz": {
+    "tipo": "caja",
+    "estilo": {
+      "ancho": "$medida.w",
+      "fondo": "$color.a"
+    },
+    "hijos": [
+      {
+        "tipo": "texto",
+        "texto": "{titulo}",
+        "estilo": {
+          "tipo": "$tipo.fila",
+          "color": "$color.b"
+        }
+      }
+    ]
+  }
+}

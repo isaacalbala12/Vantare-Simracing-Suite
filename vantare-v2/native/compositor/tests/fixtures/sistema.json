@@ -1,0 +1,37 @@
+{
+  "sistema": 1,
+  "nombre": "test",
+  "fuentes": [
+    "Inter"
+  ],
+  "color": {
+    "a": "#ff0000",
+    "b": "#0000ff",
+    "clase": {
+      "a": "#ff0000",
+      "b": "#0000ff"
+    }
+  },
+  "medida": {
+    "w": 140,
+    "h": 24
+  },
+  "tipo": {
+    "fila": {
+      "familia": "Inter",
+      "peso": 500,
+      "tamano": 13,
+      "interlinea": 18
+    }
+  },
+  "mov": {
+    "suave": {
+      "duracion": 500,
+      "curva": "lineal"
+    },
+    "cambio_sistema": {
+      "duracion": 500,
+      "curva": "lineal"
+    }
+  }
+}

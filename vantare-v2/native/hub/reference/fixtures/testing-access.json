@@ -18,6 +18,7 @@
     "error": null
   },
   "Status": { "result": "Status", "account_configured": true, "message": "" },
+  "Probe": { "result": "Status", "account_configured": true, "message": "" },
   "AccountPoll": {
     "result": "Account",
     "session": "SignedIn",

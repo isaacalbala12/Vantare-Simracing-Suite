@@ -256,6 +256,14 @@ impl Hub {
                     .update(cx, |studio, cx| studio.set_access(access, cx));
                 cx.notify();
             }
+            #[cfg(feature = "parity-capture")]
+            if let Some(section) = self
+                .capture
+                .as_ref()
+                .and_then(|scene| scene.testing_bank_section(access))
+            {
+                self.section = section;
+            }
         }
     }
 

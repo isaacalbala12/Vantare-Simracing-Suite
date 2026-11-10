@@ -1354,3 +1354,16 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   pendientes: la cola Windows esperó más de 15 minutos sin RAM admisible.
   No se han generado aún las referencias válidas; no usar las capturas previas
   de Resumen que en realidad muestran Informes. Sin procesos QA propios vivos.
+
+### Banco QA: compilación cruzada y navegación inicial
+
+- El ejemplo `ui-quality` de #2030 compila cruzado a Windows en el Mac, y el test
+  de selección QA comprueba que nunca se vuelve a Testing sin derechos de tester.
+- Solo bajo `parity-capture` y la marca privada de `--qa-testing`, el banco vuelve
+  a la sección solicitada cuando llega el acceso del núcleo simulado. Se mantiene
+  el feed IPC y no se cambia la lógica de acceso ni la aplicación productiva.
+- El helper de fotos de captura usa la copia de fixtures junto al banco. La prueba
+  de runtime cruzado utiliza copias inertes de shaders bajo QA y un alias de unidad
+  temporal; no se cambia vendor, ui, IPC, Services ni el instalador.
+- Las primeras imágenes de Inicio se apartaron a evidencia propia: no son referencias.
+  La captura válida espera la reserva global de GPUI, ocupada por otro worker.

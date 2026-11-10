@@ -253,7 +253,7 @@ fn main() -> Result<(), String> {
             "copia este banco a una carpeta QA como vantare.exe (identidad IPC aislada)".into(),
         );
     }
-    let state =
+    let mut state =
         CaptureState::parse(&argument(&args, "--capture").unwrap_or_else(|| "studio-base".into()))?;
     // Testing's capture-only tab selector deliberately checks the owning PID.
     // Keep that layout inside this explicit QA bank; normal data roots are unchanged.
@@ -261,6 +261,7 @@ fn main() -> Result<(), String> {
         if !state.name.starts_with("testing-center-") {
             return Err("--qa-testing requiere una escena de Testing Center".into());
         }
+        state.parameters.insert("qa-testing".into(), "1".into());
         let data = root
             .join(format!("{}-0-{}", std::process::id(), state.name))
             .join("data");

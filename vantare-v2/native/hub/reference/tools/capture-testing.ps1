@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory)][string]$Executable,
     [Parameter(Mandatory)][string]$QaRoot,
-    [Parameter(Mandatory)][string]$EvidenceRoot
+    [Parameter(Mandatory)][string]$EvidenceRoot,
+    [ValidateSet('resumen','cuestionarios','comunidad','triage')][string[]]$Tabs=@('resumen','cuestionarios','comunidad','triage')
 )
 $ErrorActionPreference='Stop'
 function Get-CaptureReceiptHash([string]$Path){
@@ -22,7 +23,7 @@ $fixtures=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../fixtures'))
 $qa=[IO.Path]::GetFullPath($QaRoot)
 $evidence=[IO.Path]::GetFullPath($EvidenceRoot)
 foreach($theme in @('dark','light')){
-    foreach($tab in @('resumen','cuestionarios','comunidad','triage')){
+    foreach($tab in $Tabs){
         $scene="testing-center-$tab"
         $root=Join-Path $qa "$theme-$tab"
         [IO.Directory]::CreateDirectory($root)|Out-Null
@@ -39,17 +40,18 @@ foreach($theme in @('dark','light')){
         $start.WindowStyle=[Diagnostics.ProcessWindowStyle]::Hidden
         $start.RedirectStandardInput=$true
         $start.Environment['VANTARE_CAPTURE_POLICY']='ipc'
+        $start.Environment['VANTARE_NATIVE_DATA_ROOT']=$root
         foreach($argument in @('--qa-root',$root,'--capture',$scene,'--qa-testing','--qa-size','1440x900','--qa-appearance',$appearance,'--control-stdin')){[void]$start.ArgumentList.Add($argument)}
         $process=[Diagnostics.Process]::Start($start)
         try{
-            $deadline=[DateTime]::UtcNow.AddSeconds(45)
+            $deadline=[DateTime]::UtcNow.AddMinutes(15)
             # Wait for two fresh IPC policy reads and the confirmed local account,
             # rather than sleeping a fixed time and guessing that access is ready.
             do{
                 if($process.HasExited){throw "Banco QA terminado: $($process.ExitCode)"}
                 $rights=@(Get-Content -LiteralPath (Join-Path $root 'rights-requests.jsonl') -ErrorAction SilentlyContinue)
                 $requests=Get-Content -LiteralPath (Join-Path $root 'requests.jsonl') -Raw -ErrorAction SilentlyContinue
-                if($rights.Count -ge 2 -and $requests -match 'AccountPoll'){break}
+                if($rights.Count -ge 2 -and $requests -match 'AccountPoll' -and $requests -match 'LicenseStatus'){break}
                 if([DateTime]::UtcNow -ge $deadline){throw 'No llegó la política de tester o la cuenta del doble local'}
                 Start-Sleep -Milliseconds 100
             }while($true)

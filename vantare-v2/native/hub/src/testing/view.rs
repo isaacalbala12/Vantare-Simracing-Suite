@@ -69,6 +69,8 @@ impl Testing {
         #[cfg(feature = "parity-capture")]
         let report_view = if selected_capture_list(&data) {
             ReportView::List
+        } else if selected_capture_triage(&data) {
+            ReportView::Triage
         } else {
             ReportView::Compose
         };
@@ -289,9 +291,10 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
     let screen = parts.next()?;
     match screen {
         "testing-center-resumen" => Some(0),
-        "testing-center-informe" | "testing-center-detalle" | "testing-center-mis-reportes" => {
-            Some(2)
-        }
+        "testing-center-informe"
+        | "testing-center-detalle"
+        | "testing-center-mis-reportes"
+        | "testing-center-triage" => Some(2),
         "testing-center-validar" | "testing-center-cuestionarios" => Some(1),
         "testing-center-comunidad" => Some(3),
         _ => None,
@@ -749,6 +752,16 @@ impl Testing {
 }
 
 #[cfg(any(feature = "parity-capture", test))]
+fn selected_capture_triage(data_dir: &Path) -> bool {
+    selected_capture_tab(data_dir) == Some(2)
+        && data_dir
+            .parent()
+            .and_then(Path::file_name)
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with("-testing-center-triage"))
+}
+
+#[cfg(any(feature = "parity-capture", test))]
 fn selected_capture_list(data_dir: &Path) -> bool {
     selected_capture_tab(data_dir) == Some(2)
         && data_dir
@@ -763,8 +776,35 @@ mod capture_view_tests {
     use super::selected_capture_tab;
 
     #[test]
+    fn testing_bank_fixture_grants_tester_access_only_in_the_local_ipc_reply() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../reference/fixtures/testing-access.json"))
+                .unwrap();
+        let policy: vantare_ipc::control::Policy =
+            serde_json::from_value(fixture["core_policy"].clone()).unwrap();
+        assert!(policy.tester && policy.calendar && policy.state.permits_access());
+        let reply: crate::services::protocol::Reply =
+            serde_json::from_value(fixture["AccountPoll"].clone()).unwrap();
+        assert!(matches!(
+            reply,
+            crate::services::protocol::Reply::Account {
+                session: vantare_ipc::services_protocol::Session::SignedIn,
+                ..
+            }
+        ));
+    }
+
+    #[test]
     fn capture_list_isolated_from_composer_and_from_other_processes() {
         let pid = std::process::id();
+        let triage = std::env::temp_dir()
+            .join(format!("{pid}-0-testing-center-triage"))
+            .join("data");
+        assert!(super::selected_capture_triage(&triage));
+        let other_triage = std::env::temp_dir()
+            .join(format!("{}-0-testing-center-triage", pid.wrapping_add(1)))
+            .join("data");
+        assert!(!super::selected_capture_triage(&other_triage));
         let list = std::env::temp_dir()
             .join(format!("{pid}-1700000000000-testing-center-mis-reportes"))
             .join("data");

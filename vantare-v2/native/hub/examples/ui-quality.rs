@@ -255,6 +255,20 @@ fn main() -> Result<(), String> {
     }
     let state =
         CaptureState::parse(&argument(&args, "--capture").unwrap_or_else(|| "studio-base".into()))?;
+    // Testing's capture-only tab selector deliberately checks the owning PID.
+    // Keep that layout inside this explicit QA bank; normal data roots are unchanged.
+    let data_dir = if args.iter().any(|arg| arg == "--qa-testing") {
+        if !state.name.starts_with("testing-center-") {
+            return Err("--qa-testing requiere una escena de Testing Center".into());
+        }
+        let data = root
+            .join(format!("{}-0-{}", std::process::id(), state.name))
+            .join("data");
+        fs::create_dir_all(&data).map_err(|error| error.to_string())?;
+        data
+    } else {
+        root.clone()
+    };
     let size = argument(&args, "--qa-size").unwrap_or_else(|| "1920x1080".into());
     let (width, height) = size.split_once('x').ok_or("tamaño QA inválido")?;
     let size = (
@@ -290,7 +304,7 @@ fn main() -> Result<(), String> {
     let rights = std::thread::spawn(move || serve_rights(&rights_root, &rights_name, rights_stop));
     let options = Options {
         controlled: args.iter().any(|arg| arg == "--control-stdin"),
-        data_dir: root.clone(),
+        data_dir,
         scene: None,
         layout: root.join("layout.json"),
         engineer: root.join("engineer.json"),

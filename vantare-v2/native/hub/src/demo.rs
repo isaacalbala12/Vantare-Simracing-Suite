@@ -434,6 +434,7 @@ impl DemoData {
 
 const TESTING_CAPTURE_SCREENS: [&str; 3] = [
     "testing-center-resumen",
+    "testing-center-triage",
     "testing-center-cuestionarios",
     "testing-center-comunidad",
 ];
@@ -605,6 +606,7 @@ impl CaptureState {
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
             "testing-center-resumen"
+            | "testing-center-triage"
             | "testing-center-cuestionarios"
             | "testing-center-comunidad"
             | "testing-center-informe"

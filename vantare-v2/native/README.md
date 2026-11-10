@@ -1,4 +1,6 @@
-# native — aplicación Rust (ADR 0099)
+# native — núcleo y overlays Rust (ADR 0099 / 0107)
+
+ADR 0107 congela el Hub GPUI; su reemplazo web vive fuera de `native/`.
 
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. La cola asigna un target persistente en D:; ver «Workers».
@@ -475,8 +477,7 @@ los crates futuros: así no se apagan silenciosamente otros defaults. Si cambia
 el default de storage, falla y pide revisar la selección. `DUCKDB_LIB_DIR` por sí
 sola no desactiva `bundled`. Usa el target persistente que asigna `compilar.ps1`; Cargo distingue las features
 y perfiles en sus huellas de compilación.
-Restaura el entorno al terminar; ese subdirectorio también cuenta en el disco del
-worktree. Los ejecutables que usen
+Restaura el entorno al terminar; los datos QA cuentan en el target del slot. Los ejecutables que usen
 DuckDB necesitan esa DLL en `PATH` o junto al `.exe`. Para distribuir se sigue
 usando `cargo build --workspace --bins --release -j 2`. Candidate y MSIX rechazan
 un entorno con `DUCKDB_LIB_DIR` definida antes de compilar o crear artefactos;
@@ -489,17 +490,19 @@ de bibliotecas del cargador de su sistema; esta variante se verificó en Windows
 Desde `vantare-v2/`:
 
 ```powershell
-pwsh -NoProfile -File native/scripts/comprobar.ps1 hub
+pwsh -NoProfile -File native/scripts/comprobar.ps1 runtime
 # Un comando específico, siempre dentro de la cola:
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-hub -j 4
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare-core -j 4
 ```
 
 `comprobar` ejecuta Clippy (incluye tipos) y Nextest del crate y sus dependientes
 directos, excluyendo siempre `vantare-hub` y `vantare-admin`. Un cambio en el
 núcleo o en `ui` no los compila ni los prueba en local. Cargo resuelve sus
-dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR añade todos los dependientes
-transitivos; push a nightly/testers y merge_group comprueban el workspace.
+dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes transitivos y excluye Hub/Admin, salvo
+cambios explícitos en esos productos. Push a nightly/testers, promociones y
+merge_group comprueban el workspace completo.
 Cambios de configuración global o rutas nativas desconocidas fuerzan el conjunto.
+Los tests de procesos de Runtime preparan también el ejecutable Services.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
 Nextest usa `--build-jobs`; `-j` controla hilos de test.
 
@@ -507,17 +510,30 @@ La cola admite como máximo dos compilaciones. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
 ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
 evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
-reserva del ancestro. El runner propio usa `D:/VantareServer/targets/ci` y conserva el target; no ejecuta la acción
-de caché que borra incremental y crates propios. Sccache usa `D:/VantareServer/cache/sccache` (5 GB, puerto local 4227) y sigue siendo opcional;
+reserva del ancestro. Sccache local usa `D:/VantareServer/cache/sccache` (30 GB, puerto 4227) y es opcional;
 `VANTARE_SCCACHE=0` permite repetir un fallo conservando su primera evidencia.
 
 Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB. Solo
 se limpia bajo el mutex correspondiente, sin enlaces ni locks Cargo abiertos;
-menos de 15 GB libres en D: detiene la compilación. Los targets explícitos se
+menos de 15 GB libres en D: detiene la compilación local. El runner alojado
+reserva 2 GB en el volumen temporal. Los targets explícitos se
 reservan para mediciones o distribución, siempre absolutos en D:; no los limpia
 el slot automáticamente. No se borran targets ajenos.
 
-Las mediciones y el corte de crates están en
+La CI usa exclusivamente `windows-latest` y rutas bajo `RUNNER_TEMP`. Instala
+Nextest precompilado, ejecuta Clippy y construye un archivo de tests. Suite,
+telemetría y el arnés lifecycle se ejecutan en jobs paralelos sin recompilar;
+distribución/instalación corre en paralelo cuando el diff lo exige y siempre
+en integración. El check obligatorio agrega todos sus resultados. El Hub web
+no dispara Rust salvo cambios en `native/` o entradas globales del build.
+
+La caché de GitHub comparte el límite de 10 GB del repo: registro/git con
+rust-cache y artefactos de compilador con sccache GHA, sin duplicar targets.
+Las claves incluyen Cargo.lock; los PR pueden restaurar la caché de su base
+nightly. CI desactiva incremental; local lo conserva. Los archivos de tests
+son artefactos del mismo SHA, con retención de un día, no cachés de otra rama.
+
+Las mediciones están en
 [el expediente de #1993](../docs/analysis/1993-compilaciones.md). Release conserva
 sus requisitos de distribución y DuckDB bundled. Los datos QA quedan bajo el
 target de compilación; no se usan datos reales de usuarios.
@@ -528,7 +544,7 @@ Desde `native/`, con la configuración pública real cargada por el mismo loader
 del empaquetado (se valida como datos; nunca se ejecuta ni se imprimen valores):
 
 ```powershell
-.\gates.ps1 prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-clerk.env
+pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File gates.ps1 -Gate prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-public.cfg
 ```
 
 Produce los once binarios públicos en `D:/VantareServer/targets/slot-N/prueba/`, excluye admin y

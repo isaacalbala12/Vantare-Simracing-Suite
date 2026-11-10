@@ -54,6 +54,12 @@ class ClassifyPathsTest(unittest.TestCase):
         self.assertFalse(classify_paths(paths).native)
         self.assertTrue(classify_paths(paths + ['vantare-v2/native/ipc/src/lib.rs']).native)
 
+    def test_compiler_and_gate_inputs_repeat_the_corpus(self) -> None:
+        for path in ['vantare-v2/native/Cargo.toml', 'vantare-v2/native/Cargo.lock',
+                     'vantare-v2/native/.cargo/config.toml', 'vantare-v2/native/scripts/ci-gates.ps1',
+                     '.github/workflows/branch-channel-gates.yml']:
+            self.assertTrue(classify_paths([path]).telemetria, path)
+
     def test_ci_runner_hooks_never_skip_the_native_gates(self) -> None:
         scope = classify_paths(["tools/ci-runners/cleanup.py"])
         self.assertTrue(scope.native)

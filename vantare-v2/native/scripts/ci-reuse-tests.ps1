@@ -2,7 +2,7 @@
 param([Parameter(Mandatory)][ValidateSet('test', 'telemetria', 'lifecycle')][string]$Suite)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$target = (Join-Path $env:RUNNER_TEMP 'vantare-targets/ci')
+$target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets/ci'))
 $download = (Join-Path $env:RUNNER_TEMP 'vantare-test-archive')
 $native = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
 $scope = Get-Content -LiteralPath (Join-Path $download 'ci-scope.json') -Raw | ConvertFrom-Json
@@ -22,6 +22,8 @@ $extract = (Join-Path $env:RUNNER_TEMP 'vantare-test-extract')
 & cargo-nextest nextest list --archive-file (Join-Path $download 'nextest-tests.tar.zst') --extract-to $extract --list-type binaries-only --profile ci
 if ($LASTEXITCODE) { throw 'No se pudo extraer el archivo de tests.' }
 if (Test-Path -LiteralPath $target) { throw 'El job de ejecución debe empezar sin target de compilación.' }
+. (Join-Path $PSScriptRoot 'target-slot.ps1')
+if (-not (Test-VantareTargetPath $target) -or -not (Test-VantareTargetPath $extract)) { throw 'Extracción fuera de RUNNER_TEMP.' }
 [IO.Directory]::CreateDirectory((Split-Path $target)) | Out-Null
 Move-Item -LiteralPath (Join-Path $extract 'target') -Destination $target
 $env:VANTARE_NATIVE_DATA_ROOT = Join-Path $target 'qa-data'

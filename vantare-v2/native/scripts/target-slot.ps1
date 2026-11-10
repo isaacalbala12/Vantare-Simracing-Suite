@@ -53,7 +53,8 @@ function Initialize-VantareSlotTarget {
         }
     }
     $minimum = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { 2GB } else { 15GB }
-    if ((Get-PSDrive D).Free -lt $minimum) { throw "D: tiene menos de $($minimum / 1GB) GB libres." }
+    $drive = [IO.Path]::GetPathRoot($target).TrimEnd('\', '/')
+    if ((Get-PSDrive -Name $drive.TrimEnd(':')).Free -lt $minimum) { throw "$drive tiene menos de $($minimum / 1GB) GB libres." }
     [IO.File]::WriteAllText($stamp, [DateTime]::UtcNow.ToString('O'))
     Write-Host "[cola] target persistente: $target"
     return $target

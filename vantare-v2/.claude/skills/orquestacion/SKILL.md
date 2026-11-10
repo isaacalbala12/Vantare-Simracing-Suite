@@ -179,3 +179,12 @@ ni compilación en C:. Medir en serie, sin compartir el mismo target a mano.
 Los worktrees de este servidor van en `D:/VantareServer/worktrees`; comprobar la
 ruta que prepare T3 antes de editar. Si T3 usa C:, no compilar ni mover el
 checkout por cuenta propia: informar y seguir en el worktree autorizado.
+
+### CI de Rust y Hub web (#1993 / ADR 0107)
+
+GitHub usa `windows-latest`, nunca el servidor como runner público. Targets bajo
+`RUNNER_TEMP`; registro/git y sccache GHA comparten los 10 GB de caché del repo.
+Nextest se instala precompilado. Un build archivado alimenta suite, telemetría y
+lifecycle en paralelo; el check obligatorio exige todos los jobs aplicables.
+PR: diff y dependientes, sin Hub/Admin por cambios de núcleo/ui. Integración:
+workspace completo. `hub-web/` y su workflow no disparan Rust por sí solos.

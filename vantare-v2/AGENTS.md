@@ -218,8 +218,10 @@ por slot en `D:/VantareServer/targets/slot-N`, reutilizado entre ramas; nunca C:
 No pasar targets por rama salvo mediciones aisladas. Limpieza automática del
 slot inactivo: más de 20 GB o 14 días sin uso. No borrar targets ajenos.
 Usar cuatro jobs en este servidor (`CARGO_BUILD_JOBS=4`); nextest los recibe en
-`--build-jobs`. La CI de PR valida el diff y dependientes transitivos; nightly y
-merge_group validan el workspace entero, conservando telemetría y lifecycle.
+`--build-jobs`. La CI alojada en GitHub valida el diff y dependientes transitivos; nightly y
+merge_group validan el workspace entero. Usa RUNNER_TEMP, Nextest precompilado,
+sccache GHA y tests archivados para suite/telemetría/lifecycle en paralelo.
+No registrar runners propios para este repositorio público.
 Si falla sin diagnóstico del compilador, repetir con `VANTARE_SCCACHE=0` y
 conservar ambos resultados. Detalles y límites en `native/README.md`.
 

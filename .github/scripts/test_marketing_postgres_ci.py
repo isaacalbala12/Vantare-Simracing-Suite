@@ -13,7 +13,7 @@ class MarketingPostgresCI(unittest.TestCase):
         workflow = WORKFLOW.read_text()
         policy = workflow.split("  policy:", 1)[1].split("  marketing-postgres:", 1)[0]
         self.assertNotIn("run-admin-local.py", policy)
-        job = workflow.split("  marketing-postgres:", 1)[1].split("  product:", 1)[0]
+        job = workflow.split("  marketing-postgres:", 1)[1].split("  native_build:", 1)[0]
         self.assertIn("runs-on: ubuntu-latest", job)
         self.assertIn("vars.MARKETING_POSTGRES_CI == 'true'", job)
         self.assertIn("!github.event.repository.private", job)
@@ -28,7 +28,8 @@ class MarketingPostgresCI(unittest.TestCase):
         self.assertIn("retention-days: 3", job)
         self.assertIn("python -m unittest discover -s supabase/tests -p test_run_admin_local.py", workflow)
         product = workflow.split("  product:", 1)[1]
-        self.assertIn("needs: policy", product)
+        self.assertNotIn("    needs:", job)
+        self.assertIn("needs: [policy, native_build, native_tests, native_installation]", product)
         self.assertNotIn("needs: [policy, marketing-postgres]", product)
 
     def test_absent_or_inaccessible_docker_is_visible_and_supported_runner_executes(self):

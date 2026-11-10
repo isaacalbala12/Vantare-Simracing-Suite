@@ -61,6 +61,11 @@ try {
     $storage = @($members | Where-Object name -CEQ 'vantare-storage')
     if ($storage.Count -ne 1 -or @($storage[0].features.default).Count -ne 1 -or
         $storage[0].features.default[0] -cne 'bundled-duckdb') { throw 'El default de storage cambió: revisar gates.ps1 antes de desactivar bundled-duckdb.' }
+    # Runtime's process tests launch the actual Services executable, not its rlib.
+    if ($Gate -in @('test', 'telemetria', 'completa', 'archive') -and
+        'vantare-runtime' -cin $Packages -and 'vantare-services' -cnotin $Packages) {
+        $Packages += 'vantare-services'
+    }
     # /default conserva también los defaults de crates futuros, aunque estén vacíos.
     $defaultMembers = if ($Packages.Count) { @($members | Where-Object { $_.name -cin $Packages }) } else { $members }
     $defaults = @($defaultMembers | Where-Object { $_.name -cne 'vantare-storage' -and
@@ -110,9 +115,11 @@ try {
     if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
     if ($Gate -eq 'archive') {
         $messages = @(& cargo @arguments)
-        if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
+        if ($LASTEXITCODE) { $messages | Write-Host; throw "Gate $Gate falló (código $LASTEXITCODE)." }
+        $decoded = @($messages | ForEach-Object { $_ | ConvertFrom-Json })
+        $decoded | Where-Object reason -EQ 'compiler-message' | ForEach-Object { Write-Host $_.message.rendered }
         if (-not $Packages.Count -or 'vantare-runtime' -cin $Packages) {
-            $artifacts = @($messages | ForEach-Object { $_ | ConvertFrom-Json } |
+            $artifacts = @($decoded |
                 Where-Object { $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable })
             if ($artifacts.Count -ne 1) { throw 'Falta el ejecutable del arnés lifecycle.' }
             $lifecycle = Join-Path $TargetDirectory 'debug/ci-lifecycle'

@@ -24,3 +24,6 @@ mod test_support;
 pub mod shortcuts;
 
 pub mod updates;
+
+pub mod diagnostics;
+pub mod privacy;

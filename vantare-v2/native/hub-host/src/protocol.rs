@@ -7,6 +7,14 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 pub const METHODS: &[&str] = &[
+    "privacy.policy",
+    "privacy.get",
+    "privacy.update",
+    "mail.get",
+    "mail.set",
+    "diagnostics.get",
+    "diagnostics.prepare",
+    "diagnostics.copy",
     "core.get",
     "shortcuts.get",
     "updates.get",
@@ -20,7 +28,8 @@ pub const METHODS: &[&str] = &[
     "notifications.test",
 ];
 pub const TOPICS: &[&str] = &["core", "simStatus", "updates"];
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
+pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -85,6 +94,26 @@ pub enum Topic {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "privacy.policy")]
+    PrivacyPolicy {},
+    #[serde(rename = "privacy.get")]
+    PrivacyGet {},
+    #[serde(rename = "privacy.update")]
+    PrivacyUpdate {
+        patch: crate::privacy::PrivacyPatch,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "mail.get")]
+    MailGet {},
+    #[serde(rename = "mail.set")]
+    MailSet { consent: bool },
+    #[serde(rename = "diagnostics.get")]
+    DiagnosticsGet {},
+    #[serde(rename = "diagnostics.prepare")]
+    DiagnosticsPrepare {},
+    #[serde(rename = "diagnostics.copy")]
+    DiagnosticsCopy {},
     #[serde(rename = "core.get")]
     CoreGet {},
     #[serde(rename = "shortcuts.get")]
@@ -116,6 +145,26 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "privacy.policy")]
+    PrivacyPolicy { accepted: bool },
+    #[serde(rename = "privacy.get")]
+    PrivacyGet { value: crate::privacy::PrivacyView },
+    #[serde(rename = "privacy.update")]
+    PrivacyUpdate { value: crate::privacy::PrivacyView },
+    #[serde(rename = "mail.get")]
+    MailGet { value: crate::privacy::MailView },
+    #[serde(rename = "mail.set")]
+    MailSet { value: crate::privacy::MailView },
+    #[serde(rename = "diagnostics.get")]
+    DiagnosticsGet {
+        value: crate::diagnostics::DiagnosticView,
+    },
+    #[serde(rename = "diagnostics.prepare")]
+    DiagnosticsPrepare {
+        value: crate::diagnostics::DiagnosticView,
+    },
+    #[serde(rename = "diagnostics.copy")]
+    DiagnosticsCopy { text: String },
     #[serde(rename = "updates.get")]
     UpdatesGet { value: crate::updates::UpdatesView },
     #[serde(rename = "updates.restart")]
@@ -146,9 +195,17 @@ pub enum HostError {
     Busy,
     CoreUnavailable,
     Unsupported,
-    Incompatible { expected: u32, found: u32 },
+    Incompatible {
+        expected: u32,
+        found: u32,
+    },
     Denied,
-    Conflict { current: SettingsView },
+    Conflict {
+        current: SettingsView,
+    },
+    PrivacyConflict {
+        current: crate::privacy::PrivacyView,
+    },
     Protected,
     Io,
 }

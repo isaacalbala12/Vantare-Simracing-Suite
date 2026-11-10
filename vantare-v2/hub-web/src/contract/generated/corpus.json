@@ -10,7 +10,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 3,
+      "version": 4,
       "window": {
         "height": 900,
         "minimized": false,
@@ -510,6 +510,132 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "accepted": false,
+        "method": "privacy.policy"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "privacy.get",
+        "value": {
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "privacy.update",
+        "value": {
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "mail.get",
+        "value": {
+          "consent": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "mail.set",
+        "value": {
+          "consent": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.get",
+        "value": {
+          "arch": "x86_64",
+          "core": {
+            "access": {
+              "blocked": false,
+              "calendar": false,
+              "engineer": false,
+              "strategy": false,
+              "tester": false,
+              "verified": false
+            },
+            "live": false,
+            "photos": "unavailable",
+            "rights": "unavailable",
+            "services": "unavailable"
+          },
+          "events": [],
+          "os": "windows",
+          "report": null,
+          "settingsProtected": false,
+          "version": "0.0.0"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.prepare",
+        "value": {
+          "arch": "x86_64",
+          "core": {
+            "access": {
+              "blocked": false,
+              "calendar": false,
+              "engineer": false,
+              "strategy": false,
+              "tester": false,
+              "verified": false
+            },
+            "live": false,
+            "photos": "unavailable",
+            "rights": "unavailable",
+            "services": "unavailable"
+          },
+          "events": [],
+          "os": "windows",
+          "report": null,
+          "settingsProtected": false,
+          "version": "0.0.0"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.copy",
+        "text": "{\"schemaVersion\":1}"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "accepted": true,
         "method": "notifications.test"
       }
@@ -528,6 +654,22 @@
         "topic": "simStatus"
       },
       "kind": "event"
+    },
+    {
+      "error": {
+        "current": {
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        },
+        "kind": "privacyConflict"
+      },
+      "id": 1,
+      "kind": "failure"
     },
     {
       "error": {
@@ -552,8 +694,8 @@
     },
     {
       "error": {
-        "expected": 3,
-        "found": 4,
+        "expected": 4,
+        "found": 5,
         "kind": "incompatible"
       },
       "id": 1,
@@ -643,7 +785,7 @@
   "ui": [
     {
       "kind": "hello",
-      "version": 3
+      "version": 4
     },
     {
       "kind": "subscribe",
@@ -679,6 +821,80 @@
     {
       "allow": false,
       "kind": "closeAnswer"
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "privacy.policy"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "privacy.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "privacy.update",
+        "patch": {
+          "field": "crashes",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "privacy.update",
+        "patch": {
+          "field": "usage",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "mail.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": false,
+        "method": "mail.set"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.prepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.copy"
+      }
     },
     {
       "id": 1,

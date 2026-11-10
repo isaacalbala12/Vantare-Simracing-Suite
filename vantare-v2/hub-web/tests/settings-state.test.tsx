@@ -22,8 +22,10 @@ import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { Client } from "../src/renderer/bridge/client";
 import { t } from "../src/renderer/i18n/es";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
+import { Diagnostics } from "../src/renderer/screens/settings/Diagnostics";
 import { General } from "../src/renderer/screens/settings/General";
 import { Performance } from "../src/renderer/screens/settings/Performance";
+import { Privacy } from "../src/renderer/screens/settings/Privacy";
 import { Shortcuts } from "../src/renderer/screens/settings/Shortcuts";
 import { Updates } from "../src/renderer/screens/settings/Updates";
 import {
@@ -440,5 +442,121 @@ describe("Actualizaciones over the simulated host", () => {
     await waitFor(() => expect(hook.result.current.error).toBeDefined());
     expect(await hook.guard("restart")).toBe(false);
     expect(await hook.guard("live")).toBe(true);
+  });
+});
+
+describe("Privacidad and Diagnóstico over the simulated host", () => {
+  it("saves an explicit local choice without enabling the other permission", async () => {
+    const hook = mount("privacidad-mail", <Privacy />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    const crashes = await screen.findByRole("switch", {
+      name: t("privacy.crashes"),
+    });
+    await user.click(crashes);
+    await waitFor(() =>
+      expect(crashes.getAttribute("aria-checked")).toBe("true"),
+    );
+    expect(
+      screen
+        .getByRole("switch", { name: t("privacy.usage") })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+    const mail = screen.getByRole("switch", { name: t("privacy.mail") });
+    await waitFor(() => expect(mail.hasAttribute("disabled")).toBe(false));
+    await user.click(mail);
+    await waitFor(() => expect(mail.getAttribute("aria-checked")).toBe("true"));
+  });
+  it("retries only the failed privacy field after a conflict", async () => {
+    const hook = mount("privacidad-conflicto", <Privacy />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    const crashes = await screen.findByRole("switch", {
+      name: t("privacy.crashes"),
+    });
+    await user.click(crashes);
+    await screen.findByText(t("privacy.conflict"));
+    expect(
+      screen
+        .getByRole("switch", { name: t("privacy.usage") })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    await user.click(screen.getByRole("button", { name: t("settings.retry") }));
+    await waitFor(() =>
+      expect(crashes.getAttribute("aria-checked")).toBe("true"),
+    );
+    expect(
+      screen
+        .getByRole("switch", { name: t("privacy.usage") })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+  it("protects an unreadable privacy document and reports Busy without changing consent", async () => {
+    const hook = mount("privacidad-ocupada", <Privacy />);
+    await loaded(hook);
+    const crashes = await screen.findByRole("switch", {
+      name: t("privacy.crashes"),
+    });
+    await userEvent.setup().click(crashes);
+    await screen.findAllByText(t("privacy.failed"));
+    expect(crashes.getAttribute("aria-checked")).toBe("false");
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: t("settings.discard") }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: t("settings.retry") }),
+      ).toBeNull(),
+    );
+  });
+  it("does not infer email permission while services are unavailable", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <Privacy />);
+    await loaded(hook);
+    await screen.findByText(t("privacy.mailUnavailable"));
+    const control = screen.getByRole("switch", { name: t("privacy.mail") });
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.setup().click(control);
+    expect(control.getAttribute("aria-checked")).toBe("false");
+    expect(
+      request.mock.calls.filter(([value]) => value.method === "mail.set"),
+    ).toHaveLength(0);
+  });
+  it("keeps a protected privacy document read only", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("privacidad-protegida", <Privacy />);
+    await loaded(hook);
+    await screen.findByText(t("settings.protected"));
+    const control = screen.getByRole("switch", { name: t("privacy.crashes") });
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.setup().click(control);
+    expect(
+      request.mock.calls.filter(([value]) => value.method === "privacy.update"),
+    ).toHaveLength(0);
+  });
+  it("prepares an allow-listed report then requests copy", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("diagnostico-observado", <Diagnostics />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    const prepare = await screen.findByRole("button", {
+      name: t("diagnostics.prepare"),
+    });
+    expect(
+      screen
+        .getByRole("button", { name: t("diagnostics.copy") })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    await user.click(prepare);
+    await screen.findByRole("textbox", { name: t("diagnostics.preview") });
+    await user.click(
+      screen.getByRole("button", { name: t("diagnostics.copy") }),
+    );
+    await screen.findByText(t("diagnostics.copied"));
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "diagnostics.copy",
+      ),
+    ).toHaveLength(1);
   });
 });

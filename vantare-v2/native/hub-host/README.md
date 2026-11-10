@@ -150,3 +150,9 @@ layout_preexisted del onboarding. Rendimiento/ocultar esperan al documento;
 reducedMotion mantiene exclusivamente su fallback en los ajustes del Hub.
 La cadencia y la validación del adaptador se comparan con el código productivo de
 UI en un test unitario de UI, que depende del host solo en dev-dependencies.
+
+Los tests de privacidad con CAS y bloqueo real son Windows: usan las garantías
+Win32 del adaptador de ficheros y del consent lock. El corpus de privacidad y la
+validación de proyecciones se comprueban también en Vitest, sin esa restricción.
+La corrupción después de un permiso afirmativo borra la proyección anterior y
+muestra valores denegados/protegidos sin reescribir el documento dañado.

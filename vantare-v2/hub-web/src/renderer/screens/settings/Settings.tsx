@@ -22,6 +22,12 @@ const Shortcuts = lazy(() =>
 const Updates = lazy(() =>
   import("./Updates").then((module) => ({ default: module.Updates })),
 );
+const Privacy = lazy(() =>
+  import("./Privacy").then((module) => ({ default: module.Privacy })),
+);
+const Diagnostics = lazy(() =>
+  import("./Diagnostics").then((module) => ({ default: module.Diagnostics })),
+);
 export function Settings() {
   const state = useSettings();
   const [tab, setTab] = useState("general");
@@ -144,6 +150,28 @@ export function Settings() {
                 <Suspense fallback={loading}>
                   <ContentStack>
                     <Updates />
+                  </ContentStack>
+                </Suspense>
+              ),
+            },
+            {
+              value: "privacy",
+              label: t("settings.privacy"),
+              content: (
+                <Suspense fallback={loading}>
+                  <ContentStack>
+                    <Privacy />
+                  </ContentStack>
+                </Suspense>
+              ),
+            },
+            {
+              value: "diagnostics",
+              label: t("settings.diagnostics"),
+              content: (
+                <Suspense fallback={loading}>
+                  <ContentStack>
+                    <Diagnostics />
                   </ContentStack>
                 </Suspense>
               ),

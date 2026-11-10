@@ -1,3 +1,4 @@
+import { isCore as core } from "./core-validation";
 import {
   type HostToUi,
   methods,
@@ -7,36 +8,11 @@ import {
   topics,
   type UiToHost,
 } from "./generated/contract";
+import { isDiagnostic, isPrivacy, isPrivacyPatch } from "./privacy-validation";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
 import { isUpdates } from "./updates-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
 export const FRAME_LIMIT = 1024 * 1024;
-function core(value: unknown): boolean {
-  if (
-    !record(value) ||
-    !exact(value, ["photos", "rights", "services", "access", "live"]) ||
-    typeof value.live !== "boolean"
-  )
-    return false;
-  if (
-    !["photos", "rights", "services"].every((key) =>
-      oneOf(value[key], ["connected", "unavailable", "incompatible"]),
-    )
-  )
-    return false;
-  return (
-    record(value.access) &&
-    exact(value.access, [
-      "verified",
-      "blocked",
-      "tester",
-      "calendar",
-      "engineer",
-      "strategy",
-    ]) &&
-    Object.values(value.access).every((item) => typeof item === "boolean")
-  );
-}
 export function isUiMessage(value: unknown): value is UiToHost {
   if (!record(value)) return false;
   switch (value.kind) {
@@ -60,12 +36,20 @@ export function isUiMessage(value: unknown): value is UiToHost {
         integer(value.id) &&
         record(value.request) &&
         oneOf(value.request.method, methods) &&
-        (value.request.method === "settings.update"
+        (value.request.method === "privacy.update"
           ? exact(value.request, ["method", "patch", "baseRevision"]) &&
-            isSettingsPatch(value.request.patch) &&
+            isPrivacyPatch(value.request.patch) &&
             typeof value.request.baseRevision === "string" &&
             /^[0-9a-f]{64}$/.test(value.request.baseRevision)
-          : exact(value.request, ["method"]))
+          : value.request.method === "mail.set"
+            ? exact(value.request, ["method", "consent"]) &&
+              typeof value.request.consent === "boolean"
+            : value.request.method === "settings.update"
+              ? exact(value.request, ["method", "patch", "baseRevision"]) &&
+                isSettingsPatch(value.request.patch) &&
+                typeof value.request.baseRevision === "string" &&
+                /^[0-9a-f]{64}$/.test(value.request.baseRevision)
+              : exact(value.request, ["method"]))
       );
     default:
       return false;
@@ -111,6 +95,24 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
+      if (result.method === "privacy.get" || result.method === "privacy.update")
+        return exact(result, ["method", "value"]) && isPrivacy(result.value);
+      if (result.method === "mail.get" || result.method === "mail.set")
+        return (
+          exact(result, ["method", "value"]) &&
+          record(result.value) &&
+          exact(result.value, ["consent"]) &&
+          typeof result.value.consent === "boolean"
+        );
+      if (
+        result.method === "diagnostics.get" ||
+        result.method === "diagnostics.prepare"
+      )
+        return exact(result, ["method", "value"]) && isDiagnostic(result.value);
+      if (result.method === "diagnostics.copy")
+        return (
+          exact(result, ["method", "text"]) && typeof result.text === "string"
+        );
       if (result.method === "updates.get")
         return exact(result, ["method", "value"]) && isUpdates(result.value);
       if (result.method === "shortcuts.get")
@@ -131,6 +133,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
           )
         );
       if (
+        result.method === "privacy.policy" ||
         result.method === "updates.restart" ||
         result.method === "notifications.test" ||
         result.method === "launcher.favorite"
@@ -168,12 +171,14 @@ export function isHostMessage(value: unknown): value is HostToUi {
         "io",
       ])
         ? exact(error, ["kind"])
-        : error.kind === "conflict"
-          ? exact(error, ["kind", "current"]) && isSettings(error.current)
-          : error.kind === "incompatible" &&
-            exact(error, ["kind", "expected", "found"]) &&
-            integer(error.expected) &&
-            integer(error.found);
+        : error.kind === "privacyConflict"
+          ? exact(error, ["kind", "current"]) && isPrivacy(error.current)
+          : error.kind === "conflict"
+            ? exact(error, ["kind", "current"]) && isSettings(error.current)
+            : error.kind === "incompatible" &&
+              exact(error, ["kind", "expected", "found"]) &&
+              integer(error.expected) &&
+              integer(error.found);
     }
     case "event": {
       if (!exact(value, ["kind", "event"]) || !record(value.event))

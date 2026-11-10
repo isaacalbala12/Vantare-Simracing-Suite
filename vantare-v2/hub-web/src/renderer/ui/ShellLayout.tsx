@@ -43,3 +43,7 @@ export function InfoList({
     </dl>
   );
 }
+
+export function CardGrid({ children }: { children: ReactNode }) {
+  return <div className="v-card-grid">{children}</div>;
+}

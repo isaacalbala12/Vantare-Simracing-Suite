@@ -24,11 +24,10 @@
 }
 .v-upcoming-intro {
   flex: none;
-  min-height: 132px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 .v-upcoming-intro > div {
   display: flex;
@@ -42,27 +41,28 @@
   color: var(--accent-bright);
 }
 .v-upcoming-intro h1 {
-  font: 600 30px / 45px var(--font-sans);
+  font: 600 30px / 1.618 var(--font-sans);
 }
 .v-upcoming-intro p {
-  font: 400 16px / 24px var(--font-sans);
+  font: 400 16px / 1.618 var(--font-sans);
   color: var(--text-2);
 }
 .v-upcoming-pill {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   justify-content: center;
   min-height: 28px;
   padding: 0 10px;
   border: 1px solid var(--line-2);
   border-radius: 4px;
-  font: 400 12px / 18px var(--font-sans);
+  font: 500 12px / 1.618 var(--font-sans);
   width: max-content;
   box-sizing: border-box;
 }
 .v-upcoming > h2,
 .v-upcoming-features h3 {
-  font: 600 18px / 27px var(--font-sans);
+  font: 600 18px / 1.618 var(--font-sans);
 }
 .v-upcoming-features {
   display: flex;
@@ -84,7 +84,7 @@
 }
 .v-upcoming-features p,
 .v-upcoming-roadmap p {
-  font: 400 14px / 23px var(--font-sans);
+  font: 400 14px / 1.618 var(--font-sans);
   color: var(--text-2);
 }
 .v-upcoming-roadmap {
@@ -93,13 +93,13 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
 }
 .v-upcoming-roadmap > h2 {
   display: flex;
   gap: 10px;
   align-items: center;
-  font: 600 15px / 18px var(--font-display);
+  font: 600 15px / 15px var(--font-display);
   letter-spacing: 1.6px;
   text-transform: uppercase;
 }
@@ -124,7 +124,7 @@
   gap: 12px;
 }
 .v-upcoming-preview h3 {
-  font: 600 28px / 42px var(--font-sans);
+  font: 600 28px / 1.618 var(--font-sans);
 }
 .v-upcoming-roadmap > button {
   font: 500 14px / 20px var(--font-sans);

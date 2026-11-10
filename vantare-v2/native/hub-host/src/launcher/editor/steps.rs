@@ -34,6 +34,9 @@ impl StepKeys {
         self.profile.as_deref() == profile && self.revision == revision
     }
 }
+// Caller invariant: editor::save verified matches(draft.id, observed_revision)
+// before apply/preserve. This private helper only resolves that read's indices;
+// it never authenticates a renderer-provided key without the host registry.
 pub(super) fn preserve(
     profile: &Profile,
     draft: &ProfileDraft,

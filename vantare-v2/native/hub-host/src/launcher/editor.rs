@@ -41,10 +41,18 @@ choice!(ProfileRetry { Ask, Failed, All });
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfileStep {
+    #[serde(deserialize_with = "step_key")]
     pub key: Option<String>,
     pub app_id: String,
     pub delay_seconds: u32,
     pub has_custom_arguments: bool,
+}
+fn step_key<'de, D: serde::Deserializer<'de>>(input: D) -> Result<Option<String>, D::Error> {
+    let key = Option::<String>::deserialize(input)?;
+    if key.as_ref().is_some_and(|key| key.len() != 64 || !key.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))) {
+        return Err(serde::de::Error::custom("invalid step key"));
+    }
+    Ok(key)
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -252,6 +260,8 @@ pub fn save(
             current: read(path),
         });
     }
+    // Establish preserve()'s invariant before apply: this exact document revision
+    // and profile own the current read capabilities. CAS checks the bytes again.
     if keys.is_some_and(|keys| !keys.matches(value.id.as_deref(), revision)) {
         return Err(HostError::Denied);
     }

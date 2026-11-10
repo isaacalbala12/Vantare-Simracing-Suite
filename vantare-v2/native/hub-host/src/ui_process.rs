@@ -523,6 +523,8 @@ impl Session {
                 base_revision,
             } => {
                 let saved = self.save_profile_draft(draft, base_revision);
+                // Each save attempt consumes the read, including conflict/Busy.
+                self.profile_step_keys = crate::launcher::editor::StepKeys::default();
                 let message = match saved {
                     Ok(()) => HostToUi::Response {
                         id,

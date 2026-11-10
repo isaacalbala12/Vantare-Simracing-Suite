@@ -117,3 +117,7 @@ mejore CPU. DWM/GPU del servidor remoto a 59 Hz son solo contexto. Hace falta
 la prueba local de Isaac en su PC de juego, autorizada por el orquestador,
 con juego sin bordes, monitor VRR, y comparación sin overlays / visibles /
 ocultos / restaurados. No se ejecuta remotamente por esta tarea.
+
+## Procedencia de la compilación
+
+Antes de cada build instrumentado fijar `$env:VANTARE_MEASUREMENT_SOURCE_SHA = (git rev-parse HEAD).Trim()` y compilar por `compilar.ps1`. Este valor fuerza reevaluar el build script al reutilizar un target entre worktrees; el helper lo compara con Git y falla si no coincide. No reemplaza el SHA real. Tras compilar, comprobar `--measurement-info` contra el SHA esperado y el estado limpio antes de congelar el ejecutable. La caracterización detectó un binario con capacidades nuevas y metadatos acc6619b1 reutilizados: se rechazó, no es evidencia de rendimiento.

@@ -1,10 +1,32 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { createHash, randomBytes } from "node:crypto";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join, resolve, sep } from "node:path";
 import { chromium } from "playwright-core";
+import { verifyQaFuses } from "./qa-fuses.ts";
 import { requiredPath } from "./qa-paths.ts";
+
+const candidate = requiredPath("VANTARE_HUB_CANDIDATE_ROOT");
+await readFile(join(candidate, "QA-ONLY.txt"));
+const state = JSON.parse(await readFile(join(candidate, "state.json"), "utf8"));
+const generation = state.active.generation;
+assert.match(generation, /^[a-f0-9]{32}$/);
+const directory = join(candidate, "generations", generation);
+const manifestBytes = await readFile(join(directory, "manifest.json"));
+const digest = (bytes: Uint8Array) =>
+  createHash("sha256").update(bytes).digest("hex");
+assert.equal(digest(manifestBytes), state.active.manifest_sha256);
+const source = join(directory, "hub-ui");
+await verifyQaFuses(source);
+const asarSha256 = digest(await readFile(join(source, "resources/app.asar")));
+const manifest = JSON.parse(manifestBytes.toString());
+assert.equal(
+  manifest.files.find(
+    (file: { path: string }) => file.path === "hub-ui/resources/app.asar",
+  )?.sha256,
+  asarSha256,
+);
 
 const root = join(
   requiredPath("VANTARE_HUB_QA_ROOT"),
@@ -14,7 +36,7 @@ await mkdir(root, { recursive: true });
 const results = [];
 for (const mode of ["original", "header", "payload"] as const) {
   const folder = join(root, mode);
-  await cp(requiredPath("VANTARE_HUB_UI_PACKAGE"), folder, { recursive: true });
+  await cp(source, folder, { recursive: true });
   const path = join(folder, "resources/app.asar");
   const bytes = await readFile(path);
   if (mode === "header") {
@@ -93,8 +115,34 @@ for (const mode of ["original", "header", "payload"] as const) {
     results.push({ mode, passed: true, stderr });
   } finally {
     if (timer) clearTimeout(timer);
-    if (child.exitCode === null) child.kill();
+    if (child.exitCode === null) {
+      const exited = new Promise<void>((accept) =>
+        child.once("exit", () => accept()),
+      );
+      child.kill();
+      await exited;
+    }
+    assert.ok(resolve(folder).startsWith(resolve(root) + sep));
+    await rm(folder, {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+      retryDelay: 100,
+    });
   }
 }
-await writeFile(join(root, "result.json"), JSON.stringify(results, null, 2));
+await writeFile(
+  join(root, "result.json"),
+  JSON.stringify(
+    {
+      candidate,
+      generation,
+      manifestSha256: digest(manifestBytes),
+      asarSha256,
+      tests: results,
+    },
+    null,
+    2,
+  ),
+);
 console.log(join(root, "result.json"));

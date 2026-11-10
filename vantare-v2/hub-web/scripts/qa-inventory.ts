@@ -1,16 +1,38 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
+import { verifyQaFuses } from "./qa-fuses.ts";
 
 const hash = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
+export function hostVersion(binary: string): string {
+  const output = execFileSync(binary, ["--version"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  const match =
+    /^Vantare Native ((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)) \([^\r\n]+\)\r?\n?$/.exec(
+      output,
+    );
+  if (!match || match[1].split(".").some((value) => Number(value) > 65535))
+    throw new Error("Host version unavailable");
+  return match[1];
+}
 /** Existing installer schema, confined to a caller-owned QA generation. */
 export async function sealQaGeneration(
   root: string,
   generation: string,
   sourceSha: string,
+  version: string,
   buildProfile: "Debug" | "Release" = "Debug",
 ) {
+  await verifyQaFuses(join(root, "generations", generation, "hub-ui"));
+  const dirty =
+    execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
+      encoding: "utf8",
+      windowsHide: true,
+    }).trim().length > 0;
   const directory = join(root, "generations", generation);
   async function files(folder: string): Promise<string[]> {
     const result: string[] = [];
@@ -48,11 +70,11 @@ export async function sealQaGeneration(
     product: "vantare-native",
     candidate: true,
     architecture: "windows-x64",
-    version: "0.0.989",
+    version,
     channel: "nightly",
     data_schema: "opaque-v1",
     source_sha: sourceSha,
-    source_dirty: false,
+    source_dirty: dirty,
     build_profile: buildProfile,
     files: members,
   });

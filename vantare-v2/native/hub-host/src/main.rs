@@ -1,5 +1,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 fn main() -> std::process::ExitCode {
+    if vantare_ipc::product::print_version() {
+        return std::process::ExitCode::SUCCESS;
+    }
     #[cfg(windows)]
     let result = (|| {
         let executable = std::env::current_exe()?;

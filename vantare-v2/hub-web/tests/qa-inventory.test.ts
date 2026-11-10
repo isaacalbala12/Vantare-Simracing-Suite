@@ -1,8 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import { verifyQaFuses } from "../scripts/qa-fuses.ts";
 import { sealQaGeneration } from "../scripts/qa-inventory";
+
+vi.mock("../scripts/qa-fuses.ts", () => ({
+  verifyQaFuses: vi.fn().mockResolvedValue(undefined),
+}));
 
 it("binds every UI resource and executable sidecar to the QA manifest", async () => {
   const namespace = resolve("test-results/inventory");
@@ -22,7 +27,13 @@ it("binds every UI resource and executable sidecar to the QA manifest", async ()
       "bin/vantare-hub.exe",
     ])
       await writeFile(join(folder, path), path);
-    const members = await sealQaGeneration(root, generation, "0".repeat(40));
+    const members = await sealQaGeneration(
+      root,
+      generation,
+      "0".repeat(40),
+      "0.0.0",
+    );
+    expect(verifyQaFuses).toHaveBeenCalledWith(join(folder, "hub-ui"));
     expect(members.map((member) => member.path)).toEqual([
       "bin/vantare-hub.exe",
       "bin/vantare-hub.exe.sha256",

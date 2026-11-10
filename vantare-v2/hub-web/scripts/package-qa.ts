@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { cp, mkdir, stat, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import { sealQaGeneration } from "./qa-inventory.ts";
+import { createHash, randomBytes } from "node:crypto";
+import { cp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+import { hostVersion, sealQaGeneration } from "./qa-inventory.ts";
 import { requiredPath } from "./qa-paths.ts";
 
 if (process.env.VANTARE_HUB_QA_BUILD !== "1")
@@ -31,7 +31,13 @@ const source = execFileSync("git", ["rev-parse", "HEAD"], {
 const profile = process.env.VANTARE_HUB_BUILD_PROFILE;
 if (profile !== "Debug" && profile !== "Release")
   throw new Error("VANTARE_HUB_BUILD_PROFILE must match the host artifact");
-const members = await sealQaGeneration(root, generation, source, profile);
+const members = await sealQaGeneration(
+  root,
+  generation,
+  source,
+  hostVersion(join(directory, "bin/vantare-hub.exe")),
+  profile,
+);
 await writeFile(
   join(root, "QA-ONLY.txt"),
   "VANTA-138: candidato aislado. Sin instalador, registro ni distribución.\n",
@@ -41,10 +47,15 @@ execFileSync(
   ["-NoProfile", "-File", resolve("scripts/zip-qa.ps1"), "-Root", root],
   { windowsHide: true },
 );
+const zipSha256 = createHash("sha256")
+  .update(await readFile(`${root}.zip`))
+  .digest("hex");
+await writeFile(`${root}.SHA256SUMS`, `${zipSha256}  ${basename(root)}.zip\n`);
 console.log(
   JSON.stringify({
     root,
     zip: `${root}.zip`,
+    zipSha256,
     zipBytes: (await stat(`${root}.zip`)).size,
     generation,
     files: members.length,

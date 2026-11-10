@@ -20,7 +20,6 @@ pub struct Core {
     worker: Option<JoinHandle<()>>,
     last_activity: u64,
     last_photo: Option<Instant>,
-    live: bool,
 }
 impl Core {
     pub fn start(photo: &str, directory: &Path) -> io::Result<Self> {
@@ -69,7 +68,6 @@ impl Core {
             worker: Some(worker),
             last_activity: 0,
             last_photo: None,
-            live: false,
         })
     }
     pub fn status(&mut self) -> CoreStatus {
@@ -77,9 +75,6 @@ impl Core {
         if activity != self.last_activity {
             self.last_photo = Some(Instant::now());
             self.last_activity = activity;
-        }
-        if let Some(photo) = self.photos.next(Duration::ZERO) {
-            self.live = vantare_domain::is_live(&photo);
         }
         let policy = self.rights.policy();
         let access = control::wall_ms()
@@ -109,7 +104,9 @@ impl Core {
                 LinkState::Unavailable
             },
             access,
-            live: self.live,
+            // An empty signal demand only receives heartbeats. The authenticated
+            // Feed already carries the core's exact domain::is_live observation.
+            live: policy.epoch > 0 && policy.live,
         }
     }
 }

@@ -183,6 +183,14 @@ fn accept_ui(
         }
     }
 }
+fn entered_live(previous: Option<&protocol::CoreStatus>, current: &protocol::CoreStatus) -> bool {
+    previous.is_some_and(|previous| {
+        previous.rights == protocol::LinkState::Connected
+            && current.rights == protocol::LinkState::Connected
+            && !previous.live
+            && current.live
+    })
+}
 struct Session {
     core: Core,
     confirmation: Option<ready::Ready>,
@@ -217,10 +225,7 @@ impl Session {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
-        if self.last.as_ref().is_some_and(|previous| {
-            previous.photos == protocol::LinkState::Connected && !previous.live && self.current.live
-        }) && self.closing.is_none()
-        {
+        if entered_live(self.last.as_ref(), &self.current) && self.closing.is_none() {
             self.request_close(pipe, CloseReason::Live)?;
         }
         if self.last.as_ref() != Some(&self.current)
@@ -375,6 +380,22 @@ pub fn run(args: &Args) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn live_requires_a_known_non_live_observation_before_the_transition() {
+        let waiting = protocol::CoreStatus {
+            rights: protocol::LinkState::Connected,
+            ..protocol::CoreStatus::default()
+        };
+        let live = protocol::CoreStatus {
+            live: true,
+            ..waiting.clone()
+        };
+        assert!(entered_live(Some(&waiting), &live));
+        assert!(!entered_live(None, &live));
+        assert!(!entered_live(Some(&protocol::CoreStatus::default()), &live));
+        assert!(!entered_live(Some(&live), &live));
+        assert!(!entered_live(Some(&live), &waiting));
+    }
     #[test]
     fn bootstrap_token_is_exact_and_never_accepted_by_kind_only() {
         let expected = "a".repeat(64);

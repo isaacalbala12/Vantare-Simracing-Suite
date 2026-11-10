@@ -26,7 +26,9 @@ alguien cambia Rust sin regenerar TypeScript. Los dos extremos validan mensajes.
 El núcleo simulado comparte el contrato y solo se activa explícitamente.
 
 El anfitrión abre las fotos con demanda vacía, los derechos con `Feed` y los
-servicios del supervisor con `Probe`. Una desconexión retira la conexión y los
+servicios del supervisor con `Probe`. Con demanda vacía el pipe de fotos solo
+entrega latidos: Live se lee de `Policy.live` en el Feed autenticado, calculado
+por el núcleo con el predicado oficial de dominio. Una desconexión retira la conexión y los
 derechos de la vista; no concede permisos por ausencia de datos. Las operaciones
 no idempotentes no se reenvían automáticamente. `--control-stdin` conserva el
 cierre por EOF. Electron confirma el cierre cuando terminan las solicitudes

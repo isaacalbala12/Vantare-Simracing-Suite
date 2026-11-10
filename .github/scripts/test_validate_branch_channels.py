@@ -114,6 +114,11 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             self.assertRegex(block, r'timeout-minutes: [1-9][0-9]*')
         archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_tests:', 1)[0]
         self.assertIn('overwrite: true', archive)
+        self.assertIn('Restore bounded compiler target from PR or nightly', workflow)
+        self.assertIn('steps.target_budget.outputs.save ==', workflow)
+        target_restore = workflow.split('name: Restore bounded compiler target', 1)[1].split('name: Test Windows worker tooling', 1)[0]
+        self.assertNotIn('nextest-tests.tar.zst', target_restore)
+        self.assertNotIn('qa-data', target_restore)
         for line in setup.splitlines():
             if 'uses:' in line:
                 self.assertRegex(line, r'uses: [^@]+@[0-9a-f]{40}$')

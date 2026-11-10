@@ -548,7 +548,9 @@ en integración. El check obligatorio agrega todos sus resultados. El Hub web
 no dispara Rust salvo cambios en `native/` o entradas globales del build.
 
 La caché de GitHub comparte el límite de 10 GB del repo: registro/git con
-actions/cache y artefactos de compilador con sccache GHA, sin duplicar targets.
+actions/cache y artefactos de compilador con sccache GHA. El builder añade un
+target debug acotado a 2 GiB sin comprimir cuando cabe: no incluye datos QA,
+tmp ni el tar Nextest. Los targets grandes no se guardan; usan sccache.
 El registro se indexa por Cargo.lock; sccache conserva una versión fija y decide
 la reutilización por los inputs del compilador. Los PR pueden restaurar su base
 nightly. CI desactiva incremental; local lo conserva. Los archivos de tests

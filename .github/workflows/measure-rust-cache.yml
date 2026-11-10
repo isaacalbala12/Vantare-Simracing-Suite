@@ -3,6 +3,9 @@ name: VANTA-137 Windows cache measurement
 on:
   push:
     branches: [vantareapp/isa-1993-mediciones]
+    paths:
+      - .github/workflows/measure-rust-cache.yml
+      - vantare-v2/native/scripts/measure-cache-ci.ps1
 
 permissions:
   contents: read

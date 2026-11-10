@@ -267,6 +267,31 @@ No se reemplaza sccache GHA por un target del workspace completo basándose
 solo en este caso pequeño: faltan transporte real y presupuesto de los targets
 con Hub/UI/release. Evitar duplicar ambos caches bajo los 10 GB del repo.
 
+Prueba posterior real en **dos VMs windows-latest**, ejecución 42768131644,
+HEAD 5e229d064, Rust 1.95, cuatro vCPU e incremental=0:
+
+| Core Windows hosted | Segundos |
+|---|---:|
+| Target vacío, sin sccache | 118,85 |
+| Primer target con sccache GHA frío | 151,56 |
+| Segundo target con sccache GHA caliente | 88,91 |
+| Target restaurado en otra VM, Cargo sin sccache | 34,87 |
+| Descargar/restaurar ese target desde GitHub | 4 |
+| Guardarlo en GitHub | 6 |
+
+Target sin comprimir 594.888.857 bytes; caché GitHub 135.849.913 bytes. Sccache
+del segundo build: 95 hits Rust; 24 misses nuevos, sin errores de escritura.
+La caché fría de sccache añade coste de subida; no se oculta esa regresión.
+La segunda VM recompila los crates locales por timestamps del checkout,
+por lo que no se promete el 0,17 s observado en la restauración local del Mac.
+
+Se adopta un complemento acotado de target para el builder de tests: solo
+debug y marcadores Cargo, máximo 2 GiB sin comprimir. No se guardan datos QA,
+tmp ni el tar Nextest que ya es un artefacto compartido. Los targets mayores
+conservan sccache como alternativa. Clave por lock/toolchain/SHA y restauración
+por prefijo del mismo lock desde el PR/base accesible; no se deshabilita ninguna
+compilación ni test ante un acierto. El presupuesto del repo sigue siendo 10 GB.
+
 El árbol real de Core para Windows no contiene GPUI ni DuckDB. Ya limita image
 a JPEG/PNG y ureq a rustls; url/default solo añade std. Retirar esos formatos,
 TLS, IDNA o network quitaría funciones usadas, no solo tiempo de compilación.

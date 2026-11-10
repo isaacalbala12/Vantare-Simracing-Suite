@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -145,5 +146,63 @@ describe("profile editor", () => {
     expect(
       screen.getByRole("heading", { name: "Creador de Contenido" }),
     ).toBeTruthy();
+  });
+  it("requires confirmation before removing a step with private arguments", async () => {
+    mount("launcher-editor-custom");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("textbox", { name: text.name });
+    fireEvent.click(screen.getAllByRole("button", { name: text.remove })[0]);
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: text.cancel,
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByRole("textbox", { name: text.name })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
+    fireEvent.click(
+      screen.getByRole("button", { name: text.confirmArgumentLoss }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("textbox", { name: text.name })).toBeNull(),
+    );
+  });
+  it("reorders a step without discarding its custom arguments", async () => {
+    mount("launcher-editor-custom");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("textbox", { name: text.name });
+    fireEvent.click(screen.getAllByRole("button", { name: text.down })[0]);
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await waitFor(() =>
+      expect(screen.queryByRole("textbox", { name: text.name })).toBeNull(),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("textbox", { name: text.name });
+    fireEvent.click(screen.getByRole("button", { name: text.mode }));
+    expect(screen.getAllByText(text.customArguments)).toHaveLength(1);
+  });
+  it("warns before saving an app change that discards private arguments", async () => {
+    mount("launcher-editor-custom");
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("textbox", { name: text.name });
+    await user.click(
+      screen.getAllByRole("combobox", { name: text.stepApp })[0],
+    );
+    const options = await screen.findAllByRole("option");
+    await user.click(
+      options.find(
+        (option) => option.getAttribute("aria-selected") !== "true",
+      ) ?? options[0],
+    );
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
   });
 });

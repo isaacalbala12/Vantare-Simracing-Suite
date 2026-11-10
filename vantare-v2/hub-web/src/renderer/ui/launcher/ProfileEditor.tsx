@@ -1,3 +1,4 @@
+import { AlertDialog as BaseAlertDialog } from "@base-ui/react/alert-dialog";
 import type {
   LauncherApp,
   ProfileDraft,
@@ -432,5 +433,42 @@ export function ProfileEditorRailFields({
         </div>
       </section>
     </div>
+  );
+}
+
+export function ArgumentLossDialog({
+  count,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <BaseAlertDialog.Root
+      open={count > 0}
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <BaseAlertDialog.Portal>
+        <BaseAlertDialog.Backdrop className="v-backdrop" />
+        <BaseAlertDialog.Popup className="v-dialog">
+          <BaseAlertDialog.Title>
+            {text.argumentLossTitle}
+          </BaseAlertDialog.Title>
+          <BaseAlertDialog.Description>
+            {text.argumentLoss(count)}
+          </BaseAlertDialog.Description>
+          <div className="v-launcher-actions">
+            <Button onClick={onCancel}>{text.cancel}</Button>
+            <Button variant="danger" onClick={onConfirm}>
+              {text.confirmArgumentLoss}
+            </Button>
+          </div>
+        </BaseAlertDialog.Popup>
+      </BaseAlertDialog.Portal>
+    </BaseAlertDialog.Root>
   );
 }

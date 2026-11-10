@@ -22,6 +22,10 @@ export const profileText = {
   stepDelay: "Espera del paso (s)",
   customArguments: "Argumentos personalizados · edición no disponible",
   defaultArguments: "Argumentos de la aplicación",
+  argumentLossTitle: "Descartar argumentos personalizados",
+  argumentLoss: (count: number) =>
+    `Se descartarán los argumentos personalizados de ${count} pasos al guardar porque has cambiado su aplicación o los has quitado.`,
+  confirmArgumentLoss: "Guardar y descartar argumentos",
   up: "↑ Subir",
   down: "↓ Bajar",
   remove: "Quitar",

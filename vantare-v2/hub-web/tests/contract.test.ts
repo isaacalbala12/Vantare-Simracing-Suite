@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import scene from "../fixtures/ajustes-base.json";
 import status from "../fixtures/core-offline.json";
 import settings from "../fixtures/settings-base.json";
+import { pilotLimits } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
 import { isSettings } from "../src/contract/settings-validation";
 import {
@@ -214,5 +215,35 @@ describe("privacy wire boundary", () => {
         request: { method: "mail.set", consent: true, source: "arbitrary" },
       }),
     ).toBe(false);
+  });
+});
+
+describe("pilot closed boundary", () => {
+  it("rejects invalid edits, revisions and future fields", () => {
+    const fields = {
+      publicName: "QA",
+      description: "",
+      country: "ES",
+      simulators: ["LMU"],
+      favoriteCar: "",
+      favoriteTeam: "",
+      photo: null,
+    };
+    const request = (fields: unknown, baseRevision = "1") => ({
+      kind: "request",
+      id: 1,
+      request: { method: "pilot.save", fields, baseRevision },
+    });
+    expect(isUiMessage(request(fields))).toBe(true);
+    for (const revision of ["-1", "01", "1.0", "18446744073709551616", ""])
+      expect(isUiMessage(request(fields, revision))).toBe(false);
+    for (const invalid of [
+      { ...fields, country: "ZZ" },
+      { ...fields, publicName: "a".repeat(pilotLimits.name + 1) },
+      { ...fields, simulators: ["LMU", "LMU"] },
+      { ...fields, extensions: {} },
+      { ...fields, photo: "http://example.test/photo" },
+    ])
+      expect(isUiMessage(request(invalid))).toBe(false);
   });
 });

@@ -100,6 +100,42 @@ export const paletteNames = {
 } as const;
 
 export const settingsText = {
+  "settings.account": "Cuenta",
+  "settings.search": "Buscar un ajuste…",
+  "settings.clearSearch": "Borrar búsqueda de ajustes",
+  "settings.noResults": "No hay ajustes para esta búsqueda",
+  "pilot.title": "Perfil del piloto",
+  "pilot.local": "Guardado en este equipo; solo tú puedes verlo.",
+  "pilot.private": "Este nombre no cambia tu cuenta ni tus permisos.",
+  "pilot.name": "Nombre del piloto",
+  "pilot.description": "Descripción",
+  "pilot.country": "País",
+  "pilot.noCountry": "Sin país",
+  "pilot.simulators": "Simuladores",
+  "pilot.simulatorsHelp": "Separa los simuladores con comas.",
+  "pilot.car": "Coche favorito",
+  "pilot.team": "Equipo favorito",
+  "pilot.photo": "Foto del piloto",
+  "pilot.photoHelp":
+    "JPEG o PNG. Se recorta el centro de la imagen para la foto del perfil.",
+  "pilot.choosePhoto": "Elegir foto",
+  "pilot.removePhoto": "Quitar foto",
+  "pilot.photoFailed":
+    "No se pudo preparar la foto. Prueba otra imagen JPEG o PNG.",
+  "pilot.save": "Guardar perfil",
+  "pilot.discard": "Descartar cambios del perfil",
+  "pilot.reload": "Volver a cargar y descartar borrador",
+  "pilot.saved": "Perfil guardado en este equipo",
+  "pilot.unsaved":
+    "Hay cambios del perfil sin guardar. Guárdalos o descártalos en Cuenta.",
+  "pilot.failed": "No se pudo guardar o cargar el perfil",
+  "pilot.failedHelp":
+    "El borrador se conserva. Si el perfil cambió en otro proceso, vuelve a cargar antes de editarlo otra vez.",
+  "pilot.unavailable":
+    "El perfil requiere conexión con el núcleo. Puedes volver a cargar cuando esté disponible.",
+  "pilot.invalid":
+    "Revisa los datos: longitud, país, simuladores repetidos o foto no válida.",
+
   "track.waiting": "Esperando un diseño",
   "track.waitingHelp":
     "Se aplicará cuando exista un diseño. Vuelve a cargar después de que Vantare cree los overlays iniciales.",

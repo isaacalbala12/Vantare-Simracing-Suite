@@ -1,12 +1,15 @@
 import { lazy, Suspense, useState } from "react";
 import { useSettings } from "../../app/SettingsState";
-import { t } from "../../i18n/es";
+import { settingsText, t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
-import { Tabs } from "../../ui/Forms";
+import { SearchInput, Tabs } from "../../ui/Forms";
 import { PageHeader } from "../../ui/Frame";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 
+const Account = lazy(() =>
+  import("./Account").then((module) => ({ default: module.Account })),
+);
 const General = lazy(() =>
   import("./General").then((module) => ({ default: module.General })),
 );
@@ -31,13 +34,137 @@ const Diagnostics = lazy(() =>
 export function Settings() {
   const state = useSettings();
   const [tab, setTab] = useState("general");
+  const [search, setSearch] = useState("");
+
   const loading = <Skeleton label={t("settings.loading")} />;
+  const items = [
+    {
+      value: "account",
+      label: t("settings.account"),
+      content: (
+        <Suspense fallback={loading}>
+          <Account />
+        </Suspense>
+      ),
+    },
+    {
+      value: "general",
+      label: t("settings.general"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <General />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+    {
+      value: "appearance",
+      label: t("settings.appearance"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <Appearance />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+    {
+      value: "performance",
+      label: t("settings.performance"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <Performance />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+    {
+      value: "shortcuts",
+      label: t("settings.shortcuts"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <Shortcuts />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+    {
+      value: "updates",
+      label: t("settings.updates"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <Updates />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+    {
+      value: "privacy",
+      label: t("settings.privacy"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <Privacy />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+    {
+      value: "diagnostics",
+      label: t("settings.diagnostics"),
+      content: (
+        <Suspense fallback={loading}>
+          <ContentStack>
+            <Diagnostics />
+          </ContentStack>
+        </Suspense>
+      ),
+    },
+  ];
+  const prefixes: Record<string, string[]> = {
+    account: ["pilot."],
+    general: ["general.", "track.hide"],
+    appearance: ["appearance."],
+    performance: ["track."],
+    shortcuts: ["shortcuts."],
+    updates: ["updates."],
+    privacy: ["privacy."],
+    diagnostics: ["diagnostics."],
+  };
+  const normalize = (value: string) =>
+    value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("es");
+  const needle = normalize(search.trim());
+  const visible = items.filter((item) =>
+    normalize(
+      [
+        item.label,
+        ...Object.entries(settingsText)
+          .filter(([key]) =>
+            prefixes[item.value]?.some((prefix) => key.startsWith(prefix)),
+          )
+          .map(([, value]) => value),
+      ].join(" "),
+    ).includes(needle),
+  );
+  const selected = visible.some((item) => item.value === tab)
+    ? tab
+    : (visible[0]?.value ?? "");
   const failure = state.error?.detail.kind;
   return (
     <ContentStack>
       <PageHeader
         title={t("settings.title")}
         description={t(state.pending ? "settings.saving" : "shell.autoSave")}
+      />
+      <SearchInput
+        label={t("settings.search")}
+        clearLabel={t("settings.clearSearch")}
+        value={search}
+        onChange={setSearch}
       />
       {failure && (
         <Callout
@@ -93,91 +220,15 @@ export function Settings() {
             <Button onClick={state.reload}>{t("settings.reload")}</Button>
           }
         />
-      ) : (
+      ) : visible.length ? (
         <Tabs
           label={t("settings.title")}
-          value={tab}
+          value={selected}
           onChange={setTab}
-          items={[
-            {
-              value: "general",
-              label: t("settings.general"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <General />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-            {
-              value: "appearance",
-              label: t("settings.appearance"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <Appearance />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-            {
-              value: "performance",
-              label: t("settings.performance"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <Performance />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-            {
-              value: "shortcuts",
-              label: t("settings.shortcuts"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <Shortcuts />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-            {
-              value: "updates",
-              label: t("settings.updates"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <Updates />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-            {
-              value: "privacy",
-              label: t("settings.privacy"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <Privacy />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-            {
-              value: "diagnostics",
-              label: t("settings.diagnostics"),
-              content: (
-                <Suspense fallback={loading}>
-                  <ContentStack>
-                    <Diagnostics />
-                  </ContentStack>
-                </Suspense>
-              ),
-            },
-          ]}
+          items={visible}
         />
+      ) : (
+        <Callout title={t("settings.noResults")} />
       )}
     </ContentStack>
   );

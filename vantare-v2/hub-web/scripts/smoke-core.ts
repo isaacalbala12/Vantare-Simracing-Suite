@@ -7,6 +7,7 @@ import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
+import { checkPilotCore } from "./check-pilot-core.ts";
 import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
@@ -19,6 +20,7 @@ const qa = join(
 const evidence = process.env.VANTARE_HUB_EVIDENCE
   ? requiredPath("VANTARE_HUB_EVIDENCE")
   : resolve("test-results/core");
+await mkdir(evidence, { recursive: true });
 const target = requiredPath("VANTARE_HUB_CORE_BIN_DIR");
 const bins = join(qa, "bin");
 for (const name of ["native", "local", "roaming", "tmp", "bin", "native/hub"])
@@ -53,7 +55,11 @@ async function phase(value: string) {
 }
 await phase("Waiting");
 await cp(resolve("../testdata/lmu-fixture.bin"), join(qa, "replay.bin"));
-for (const binary of ["vantare.exe", "vantare-core.exe"])
+for (const binary of [
+  "vantare.exe",
+  "vantare-core.exe",
+  "vantare-services.exe",
+])
   await cp(join(target, binary), join(bins, binary));
 await cp(
   requiredPath("VANTARE_HUB_HOST_BINARY"),
@@ -176,6 +182,16 @@ try {
       event.ports[0].addEventListener(
         "message",
         ({ data }: MessageEvent<HostToUi>) => {
+          if (data?.kind === "failure") {
+            const target = window as unknown as {
+              qaFailures?: { id: number; kind: string }[];
+            };
+            target.qaFailures ??= [];
+            target.qaFailures.push({
+              id: data.id,
+              kind: data.error.kind,
+            });
+          }
           if (data?.kind === "event" && data.event.topic === "core")
             (window as unknown as { qaCore: CoreStatus }).qaCore =
               data.event.value;
@@ -203,8 +219,24 @@ try {
     },
     20000,
     "real core and supervisor admission without authority grants",
-  );
+  ).catch(async (error) => {
+    const observed = await page.evaluate(
+      () => (window as unknown as { qaCore?: CoreStatus }).qaCore,
+    );
+    await writeFile(
+      join(evidence, "core-probe-failure.json"),
+      JSON.stringify({
+        observed,
+        supervisorExit: supervisor.exitCode,
+        hostExit: host.exitCode,
+      }),
+    );
+    await page.screenshot({ path: join(evidence, "core-probe-failure.png") });
+    throw error;
+  });
   await page.screenshot({ path: join(evidence, "host-core-local.png") });
+  if (process.env.VANTARE_HUB_PILOT_TEST === "1")
+    await checkPilotCore(page, evidence);
   await phase("Live");
   await until(() => host.exitCode !== null, 10000, "host closes on Live");
   assert.equal(host.exitCode, 0);
@@ -216,6 +248,7 @@ try {
         photos: "connected",
         rights: "connected",
         services: "connected",
+        pilotSavedAndReopened: process.env.VANTARE_HUB_PILOT_TEST === "1",
         realSupervisorAdmission: true,
         realCoreAdmission: true,
         liveExit: 0,

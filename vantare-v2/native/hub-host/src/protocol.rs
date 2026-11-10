@@ -7,6 +7,8 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 pub const METHODS: &[&str] = &[
+    "pilot.load",
+    "pilot.save",
     "privacy.policy",
     "privacy.get",
     "privacy.update",
@@ -28,7 +30,7 @@ pub const METHODS: &[&str] = &[
     "notifications.test",
 ];
 pub const TOPICS: &[&str] = &["core", "simStatus", "updates"];
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,6 +96,14 @@ pub enum Topic {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "pilot.load")]
+    PilotLoad {},
+    #[serde(rename = "pilot.save")]
+    PilotSave {
+        fields: crate::pilot::PilotFields,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "privacy.policy")]
     PrivacyPolicy {},
     #[serde(rename = "privacy.get")]
@@ -145,6 +155,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "pilot.load")]
+    PilotLoad { value: crate::pilot::PilotView },
+    #[serde(rename = "pilot.save")]
+    PilotSave { value: crate::pilot::PilotView },
     #[serde(rename = "privacy.policy")]
     PrivacyPolicy { accepted: bool },
     #[serde(rename = "privacy.get")]

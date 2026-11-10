@@ -123,10 +123,24 @@ El almacén Rust conserva CAS, reintento de la intención y documentos futuros
 protegidos del Hub congelado. Descartar olvida la intención sin sobrescribir al
 otro escritor. Un fallo de guardado impide cerrar hasta reintentar o descartar.
 Si `reducedMotion` ya pertenece al layout, se usa su lector/escritor existente,
-sin añadir ese campo a un layout antiguo ni cambiar su versión. La dependencia
-temporal de `vantare-ui` está autorizada por D2 y se separa en #1999; no se
-inicializa una aplicación GPUI. «Ocultar fuera de pista» y las frecuencias entran
-en Ajustes II.
+sin añadir ese campo a un layout antiguo ni cambiar su versión. El anfitrión usa
+un adaptador mínimo sin GPUI. Si falta layout.json, Rendimiento y «Ocultar fuera
+de pista» esperan a que el núcleo cree el diseño inicial. El Hub nunca lo siembra.
+
+Ajustes incluye Cuenta, General (por defecto), Apariencia, Rendimiento en pista,
+Atajos, Actualizaciones, Privacidad y Diagnóstico. La búsqueda filtra secciones
+por sus etiquetas y textos sin distinguir acentos. Cuenta guarda explícitamente
+por PilotLoad/PilotSave con revisión, conserva el borrador entre pestañas y los
+campos futuros en Rust; el perfil sigue siendo local. La foto se recorta al centro
+y se reduce a JPEG con los límites generados desde Rust. El cierre ordinario y
+el reinicio respetan el borrador; Live descarta la intención y permite salir.
+
+Privacidad usa el motor de consentimiento, adopción y limpieza existente. Correos
+solo cambia tras ACK de servicios. Diagnóstico prepara un informe de campos
+permitidos sin credenciales, cuenta ni rutas. Las notas de Actualizaciones se
+filtran por canal; el supervisor sigue siendo dueño de aplicar y reiniciar.
+No integrar el paquete en el instalador hasta cubrir hub-ui/** por hashes en el
+manifiesto de integridad (#1995). Windows 10 requiere la prueba manual de Isaac.
 
 `bun scripts/settings-web.ts` comprueba guardado simulado, zoom, temas, paleta de
 comandos con barra recogida, conflicto/reintento, descarte, documento protegido e
@@ -162,3 +176,17 @@ según el README del crate. Los smokes no consumen ejecutables de slots liberado
 QA estable, sin copiar una generación. Se ejecuta con Node y acepta las mismas
 variables de escala y evidencia; `smoke-host.ts` sigue verificando la generación
 instalada y su señal de listo.
+
+`scripts/privacy-web.ts` y `scripts/account-web.ts` comprueban las nuevas
+secciones con Chromium y axe en claro/oscuro. Después del build QA,
+`VANTARE_HUB_PILOT_TEST=1` en `scripts/smoke-core.ts` comprueba guardado y reapertura
+del perfil con núcleo y supervisor reales de QA (build qa-e2e). Requiere
+VANTARE_HUB_CORE_BIN_DIR, VANTARE_HUB_HOST_BINARY y VANTARE_HUB_QA_ROOT; todos los
+datos viven bajo esa raíz, con backend loopback sin cuentas reales. No usar
+binarios en un slot de compilación liberado: copiar dentro de la reserva.
+
+En Windows, el contrato qa-e2e existente del núcleo admite solo la carpeta
+`D:/VantareServer/qa/licencias-e2e`. Para smoke-core, VANTARE_HUB_QA_ROOT debe ser
+su padre (`D:/VantareServer/qa`); el script crea un hijo aleatorio con su marcador.
+El fixture copia también vantare-services.exe: Probe por sí solo no arranca el
+helper ni demuestra que PilotLoad/PilotSave funcionen.

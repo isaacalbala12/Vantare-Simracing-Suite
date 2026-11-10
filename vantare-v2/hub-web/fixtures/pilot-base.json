@@ -1,0 +1,13 @@
+{
+  "fields": {
+    "publicName": "Piloto QA",
+    "description": "Perfil privado de pruebas",
+    "country": "ES",
+    "simulators": ["LMU"],
+    "favoriteCar": "",
+    "favoriteTeam": "",
+    "photo": null
+  },
+  "revision": "1",
+  "pending": false
+}

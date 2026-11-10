@@ -1,6 +1,7 @@
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
 import diagnosticFixture from "../../fixtures/diagnostics-base.json";
+import pilotFixture from "../../fixtures/pilot-base.json";
 import privacyFixture from "../../fixtures/privacy-base.json";
 import settingsScene from "../../fixtures/settings-base.json";
 import protectedScene from "../../fixtures/settings-protected.json";
@@ -49,6 +50,12 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const core = structuredClone(coreScene) as CoreStatus;
+  let pilot = structuredClone(
+    pilotFixture,
+  ) as import("../contract/generated/contract").PilotView;
+  let pilotConflicted = false;
+  if (sceneName.startsWith("cuenta-") && sceneName !== "cuenta-desconectada")
+    core.services = "connected";
   if (sceneName === "privacidad-mail") core.services = "connected";
   let privacy = structuredClone(
     privacyFixture,
@@ -127,6 +134,41 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
+      case "pilot.load":
+        if (sceneName === "cuenta-desconectada")
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(pilot) },
+        };
+      case "pilot.save":
+        if (sceneName === "cuenta-error")
+          return { kind: "failure", id, error: { kind: "io" } };
+        if (sceneName === "cuenta-ocupada")
+          return { kind: "failure", id, error: { kind: "busy" } };
+        if (sceneName === "cuenta-conflicto" && !pilotConflicted) {
+          pilotConflicted = true;
+          pilot = {
+            ...pilot,
+            revision: "2",
+            fields: { ...pilot.fields, favoriteTeam: "Cambio concurrente QA" },
+          };
+          return { kind: "failure", id, error: { kind: "denied" } };
+        }
+        if (request.baseRevision !== pilot.revision)
+          return { kind: "failure", id, error: { kind: "denied" } };
+        pilot = {
+          fields: structuredClone(request.fields),
+          revision: String(BigInt(pilot.revision) + 1n),
+          pending: false,
+        };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(pilot) },
+        };
+
       case "privacy.policy":
         return {
           kind: "response",

@@ -10,7 +10,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 4,
+      "version": 5,
       "window": {
         "height": 900,
         "minimized": false,
@@ -656,6 +656,46 @@
       "kind": "event"
     },
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "pilot.load",
+        "value": {
+          "fields": {
+            "country": null,
+            "description": "",
+            "favoriteCar": "",
+            "favoriteTeam": "",
+            "photo": null,
+            "publicName": "",
+            "simulators": []
+          },
+          "pending": false,
+          "revision": "0"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "pilot.save",
+        "value": {
+          "fields": {
+            "country": null,
+            "description": "",
+            "favoriteCar": "",
+            "favoriteTeam": "",
+            "photo": null,
+            "publicName": "",
+            "simulators": []
+          },
+          "pending": false,
+          "revision": "0"
+        }
+      }
+    },
+    {
       "error": {
         "current": {
           "cleanupPending": false,
@@ -694,8 +734,8 @@
     },
     {
       "error": {
-        "expected": 4,
-        "found": 5,
+        "expected": 5,
+        "found": 6,
         "kind": "incompatible"
       },
       "id": 1,
@@ -785,7 +825,7 @@
   "ui": [
     {
       "kind": "hello",
-      "version": 4
+      "version": 5
     },
     {
       "kind": "subscribe",
@@ -821,6 +861,30 @@
     {
       "allow": false,
       "kind": "closeAnswer"
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "pilot.load"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0",
+        "fields": {
+          "country": null,
+          "description": "",
+          "favoriteCar": "",
+          "favoriteTeam": "",
+          "photo": null,
+          "publicName": "",
+          "simulators": []
+        },
+        "method": "pilot.save"
+      }
     },
     {
       "id": 1,

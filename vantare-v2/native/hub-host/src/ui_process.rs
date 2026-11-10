@@ -249,10 +249,13 @@ fn settings_response(
     frame::write(pipe, &message)
 }
 enum RemoteKind {
+    PilotLoad,
+    PilotSave,
     MailGet,
     MailSet,
 }
 struct Session {
+    pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
     diagnostic: crate::diagnostics::Observed,
     remote: Option<(u32, RemoteKind)>,
@@ -303,7 +306,21 @@ impl Session {
                     Ok(match kind {
                         RemoteKind::MailGet => Reply::MailGet { value },
                         RemoteKind::MailSet => Reply::MailSet { value },
+                        _ => return Err(io::ErrorKind::InvalidData.into()),
                     })
+                }
+                (
+                    Some((expected, kind)),
+                    Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
+                ) if expected == id => {
+                    let value = crate::pilot::view(&state);
+                    let reply = match kind {
+                        RemoteKind::PilotLoad => Reply::PilotLoad { value },
+                        RemoteKind::PilotSave => Reply::PilotSave { value },
+                        _ => return Err(io::ErrorKind::InvalidData.into()),
+                    };
+                    self.pilot = Some(state);
+                    Ok(reply)
                 }
                 (_, Err(error)) => Err(error),
                 _ => Err(HostError::Denied),
@@ -365,6 +382,9 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::PilotLoad {} | Request::PilotSave { .. } => {
+                self.pilot_request(pipe, id, request)
+            }
             Request::PrivacyPolicy {} => self.respond(
                 pipe,
                 id,
@@ -539,6 +559,34 @@ impl Session {
             crate::diagnostics::DiagnosticSection::Privacy,
         )
     }
+    fn pilot_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        let intent = match request {
+            Request::PilotLoad {} => Ok((
+                RemoteKind::PilotLoad,
+                vantare_ipc::services_protocol::Command::PilotLoad,
+            )),
+            Request::PilotSave {
+                fields,
+                base_revision,
+            } => crate::pilot::save(self.pilot.as_ref(), fields, base_revision)
+                .map(|command| (RemoteKind::PilotSave, command)),
+            _ => Err(HostError::Denied),
+        };
+        let result = intent.and_then(|(kind, command)| {
+            self.core.request(id, command)?;
+            self.remote = Some((id, kind));
+            Ok(())
+        });
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.respond(
+                pipe,
+                id,
+                Err(error),
+                crate::diagnostics::DiagnosticSection::Services,
+            ),
+        }
+    }
     fn mail_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         use vantare_ipc::services_protocol::{Command, MailSource};
         let (kind, command) = match request {
@@ -692,6 +740,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        pilot: None,
         privacy: crate::privacy::State::open(&args.data),
         diagnostic: crate::diagnostics::Observed::default(),
         remote: None,

@@ -113,6 +113,14 @@ impl Adapter for Replay {
             self.failure = Some(message.clone());
             AdapterError::Rejected(message)
         })?;
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::mark(
+            "replay_event",
+            "lmu",
+            0,
+            0,
+            u64::try_from(event.at().as_nanos()).unwrap_or(u64::MAX),
+        );
         match event {
             ReplayEvent::Tick { .. } => return Ok(None),
             ReplayEvent::Disconnected { .. } => {

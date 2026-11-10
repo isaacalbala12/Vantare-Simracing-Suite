@@ -1,6 +1,63 @@
 //! Recurso Win32 compartido: GPUI busca el icono del ejecutable con ID 1.
 use std::{env, fs, path::PathBuf, process::Command};
 
+/// Embed compilation provenance only in explicitly instrumented packages.
+/// Product builds do not acquire a dependency on a Git checkout.
+pub fn measurement_provenance() -> Result<(), Box<dyn std::error::Error>> {
+    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest ausente")?);
+    let sha = measurement_git(&manifest, &["rev-parse", "HEAD"])?;
+    let dirty = !measurement_git(
+        &manifest,
+        &["status", "--porcelain", "--untracked-files=normal"],
+    )?
+    .is_empty();
+    // Re-evaluate provenance when native sources or dependencies change without
+    // a commit, rather than reusing the previous build script's clean marker.
+    if let Some(workspace) = manifest.parent() {
+        println!("cargo:rerun-if-changed={}", workspace.display());
+    }
+    let head = measurement_git(&manifest, &["rev-parse", "--git-path", "HEAD"])?;
+    println!("cargo:rerun-if-changed={}", manifest.join(head).display());
+    let reference = Command::new("git")
+        .args(["symbolic-ref", "-q", "HEAD"])
+        .current_dir(&manifest)
+        .output()?;
+    if reference.status.success() {
+        let reference = String::from_utf8(reference.stdout)?;
+        let path = measurement_git(&manifest, &["rev-parse", "--git-path", reference.trim()])?;
+        println!("cargo:rerun-if-changed={}", manifest.join(path).display());
+    }
+    let mut features: Vec<_> = env::vars()
+        .filter_map(|(key, _)| key.strip_prefix("CARGO_FEATURE_").map(str::to_owned))
+        .collect();
+    features.sort();
+    for (name, value) in [
+        ("SHA", sha),
+        ("DIRTY", dirty.to_string()),
+        ("PROFILE", env::var("PROFILE")?),
+        ("OPT_LEVEL", env::var("OPT_LEVEL")?),
+        ("DEBUG", env::var("DEBUG")?),
+        ("FEATURES", features.join(",")),
+    ] {
+        println!("cargo:rustc-env=VANTARE_MEASUREMENT_{name}={value}");
+    }
+    Ok(())
+}
+
+fn measurement_git(
+    directory: &std::path::Path,
+    args: &[&str],
+) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(directory)
+        .output()?;
+    if !output.status.success() {
+        return Err("cannot identify compiled measurement source".into());
+    }
+    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
+}
+
 pub fn embed() -> Result<(), Box<dyn std::error::Error>> {
     embed_for(None)
 }

@@ -2,6 +2,9 @@
 use std::{env, fmt::Write, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if env::var_os("CARGO_FEATURE_PAINT_STATS").is_some() {
+        vantare_build_support::measurement_provenance()?;
+    }
     vantare_build_support::embed()?;
     println!("cargo:rerun-if-changed=styles/standings.json");
     let json: serde_json::Value =

@@ -245,6 +245,10 @@ impl DirectXRenderer {
     #[inline]
     fn present(&mut self) -> Result<()> {
         let span = crate::profiling::begin(crate::profiling::Stage::Present);
+        crate::profiling::mark("present", "base", 0, 0, 0);
+        if span.is_some() && !crate::profiling::buffered() {
+            eprintln!("perf present clock={:?}", crate::profiling::clock());
+        }
         let result = unsafe {
             self.resources
                 .as_ref()
@@ -253,6 +257,7 @@ impl DirectXRenderer {
                 .Present(0, DXGI_PRESENT(0))
         };
         drop(span);
+        crate::profiling::mark("present_end", "base", 0, 0, 0);
         crate::profiling::report_if_due();
         result.ok().context("Presenting swap chain failed")
     }

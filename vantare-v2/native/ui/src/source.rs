@@ -116,6 +116,15 @@ fn start_feed<T: Send + 'static>(
                         demand: requested.clone(),
                     })
                 } else if let Some(photo) = incoming {
+                    #[cfg(feature = "paint-stats")]
+                    crate::profiling::mark(
+                        "received",
+                        "ipc",
+                        photo.snapshot.epoch,
+                        photo.snapshot.sequence,
+                        u64::try_from(photo.snapshot.origin.received_at.as_nanos())
+                            .unwrap_or(u64::MAX),
+                    );
                     health.received(Arc::clone(&photo.snapshot), start.elapsed());
                     Some(photo)
                 } else {

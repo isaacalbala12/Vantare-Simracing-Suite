@@ -378,16 +378,34 @@ impl Overlay {
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
         #[cfg(feature = "paint-stats")]
-        let _span = crate::profiling::begin(crate::profiling::Stage::Project);
+        let project_span = crate::profiling::begin(crate::profiling::Stage::Project);
         #[cfg(feature = "paint-stats")]
         crate::stats::ingest(self.kind);
         if crate::rights::denied(self.kind, cx) {
             return;
         }
-        if self.project_snapshot(snapshot) {
+        let changed = self.project_snapshot(snapshot);
+        #[cfg(feature = "paint-stats")]
+        drop(project_span);
+        if changed {
             #[cfg(feature = "paint-stats")]
             {
                 self.profile_photo = Some((snapshot.epoch, snapshot.sequence));
+                crate::profiling::mark(
+                    "notify",
+                    self.kind.name(),
+                    snapshot.epoch,
+                    snapshot.sequence,
+                    0,
+                );
+                if crate::profiling::enabled() && !crate::profiling::buffered() {
+                    eprintln!(
+                        "perf notify widget={} epoch={} seq={}",
+                        self.kind.name(),
+                        snapshot.epoch,
+                        snapshot.sequence
+                    );
+                }
             }
             cx.notify();
         }
@@ -544,10 +562,17 @@ impl Render for Overlay {
                     }
                 });
                 #[cfg(feature = "paint-stats")]
-                if crate::profiling::enabled()
+                if (crate::profiling::enabled() || crate::profiling::buffered())
                     && let Some((epoch, sequence)) = profile_photo
                 {
                     crate::profiling::photo("ui_paint", epoch, sequence);
+                    crate::profiling::mark("data_paint", kind.name(), epoch, sequence, 0);
+                    if !crate::profiling::buffered() {
+                        eprintln!(
+                            "perf data_paint widget={} epoch={epoch} seq={sequence}",
+                            kind.name()
+                        );
+                    }
                 }
             },
         )
@@ -619,7 +644,7 @@ impl Render for Screen {
             .iter()
             .find(|first| crate::rights::denied(first.view.read(cx).kind, cx))
             .map(|first| license_notice(first.at, crate::rights::notice(cx)));
-        div()
+        let root = div()
             .size_full()
             .children(notice)
             .children(self.widgets.iter().map(|placed| {
@@ -649,7 +674,15 @@ impl Render for Screen {
                         vantare_ipc::INCOMPATIBLE_COMPONENTS.into(),
                     ))
                 },
-            )
+            );
+        #[cfg(feature = "paint-stats")]
+        {
+            crate::profile_element::Timed(root)
+        }
+        #[cfg(not(feature = "paint-stats"))]
+        {
+            root
+        }
     }
 }
 

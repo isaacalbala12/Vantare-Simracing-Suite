@@ -6,6 +6,94 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Instant;
 
+/// Measurement-only, bounded trace. Allocate once before starting the host and
+/// write only after its event loop has stopped. Overflow invalidates a run.
+#[derive(Clone, Copy, Debug)]
+pub struct Event {
+    pub kind: &'static str,
+    pub label: &'static str,
+    pub clock: u64,
+    pub end: u64,
+    pub epoch: u64,
+    pub sequence: u64,
+    pub value: u64,
+}
+const TRACE_LIMIT: usize = 2_000_000;
+static TRACE: OnceLock<std::sync::Mutex<Vec<Event>>> = OnceLock::new();
+static OVERFLOW: AtomicU64 = AtomicU64::new(0);
+
+pub fn buffered() -> bool {
+    static BUFFERED: OnceLock<bool> = OnceLock::new();
+    *BUFFERED.get_or_init(|| std::env::var("VANTARE_MEASUREMENT_TRACE").is_ok_and(|v| v == "1"))
+}
+
+pub fn initialize_trace() {
+    if buffered() {
+        TRACE.get_or_init(|| std::sync::Mutex::new(Vec::with_capacity(TRACE_LIMIT)));
+    }
+}
+
+pub const fn trace_capacity_bytes() -> usize {
+    TRACE_LIMIT * std::mem::size_of::<Event>()
+}
+
+pub fn record(event: Event) {
+    if !buffered() {
+        return;
+    }
+    if let Some(trace) = TRACE.get() {
+        let mut trace = trace
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if trace.len() < TRACE_LIMIT {
+            trace.push(event);
+        } else {
+            OVERFLOW.fetch_add(1, Relaxed);
+        }
+    }
+}
+
+pub fn mark(kind: &'static str, label: &'static str, epoch: u64, sequence: u64, value: u64) {
+    if buffered() {
+        record(Event {
+            kind,
+            label,
+            clock: clock().unwrap_or(0),
+            end: 0,
+            epoch,
+            sequence,
+            value,
+        });
+    }
+}
+
+pub fn flush() -> std::io::Result<()> {
+    if let Some(trace) = TRACE.get() {
+        use std::io::Write;
+        let mut output = std::io::BufWriter::new(std::io::stderr().lock());
+        let mut trace = trace
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        writeln!(
+            output,
+            "trace frequency={} overflow={}",
+            frequency().unwrap_or(0),
+            OVERFLOW.load(Relaxed)
+        )?;
+        let count = trace.len();
+        for e in trace.drain(..) {
+            writeln!(
+                output,
+                "trace\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                e.kind, e.label, e.clock, e.end, e.epoch, e.sequence, e.value
+            )?;
+        }
+        writeln!(output, "trace_end events={count}")?;
+        output.flush()?;
+    }
+    Ok(())
+}
+
 #[derive(Clone, Copy)]
 pub enum Stage {
     Poll,
@@ -32,9 +120,13 @@ pub enum Stage {
     IpcWrite,
     Decode,
     Dto,
+    GpuiLayoutRequest,
+    GpuiLayoutCompute,
+    GpuiPrepaint,
+    GpuiPaint,
 }
 
-const NAMES: [&str; 24] = [
+const NAMES: [&str; 28] = [
     "poll",
     "observe",
     "publish",
@@ -59,6 +151,10 @@ const NAMES: [&str; 24] = [
     "ipc_write",
     "decode",
     "dto",
+    "gpui_layout_request",
+    "gpui_layout_compute",
+    "gpui_prepaint",
+    "gpui_paint",
 ];
 static COUNTS: [AtomicU64; NAMES.len() * 4] = [const { AtomicU64::new(0) }; NAMES.len() * 4];
 
@@ -88,6 +184,23 @@ pub fn begin(stage: Stage) -> Option<Span> {
 
 impl Drop for Span {
     fn drop(&mut self) {
+        if buffered() {
+            let end = clock();
+            let delta = self
+                .cycles
+                .zip(cycles(false))
+                .and_then(|(a, b)| b.checked_sub(a));
+            record(Event {
+                kind: "span",
+                label: NAMES[self.stage],
+                clock: self.clock.unwrap_or(0),
+                end: end.unwrap_or(0),
+                epoch: 0,
+                sequence: 0,
+                value: delta.unwrap_or(u64::MAX),
+            });
+            return;
+        }
         let offset = self.stage * 4;
         COUNTS[offset].fetch_add(1, Relaxed);
         let nanoseconds = self
@@ -118,7 +231,7 @@ impl Drop for Span {
 
 /// Una muestra por segundo; contadores acotados, sin guardar fotos ni cadenas.
 pub fn report() {
-    if !enabled() {
+    if !enabled() || buffered() {
         return;
     }
     eprintln!(
@@ -145,7 +258,7 @@ pub fn report() {
 /// con una emisión acotada por segundo.
 pub fn report_if_due() {
     static PREVIOUS: AtomicU64 = AtomicU64::new(0);
-    if !enabled() {
+    if !enabled() || buffered() {
         return;
     }
     if let Some((now, hz)) = clock().zip(frequency()) {
@@ -160,11 +273,23 @@ pub fn report_if_due() {
     }
 }
 
-pub fn photo(stage: &str, epoch: u64, sequence: u64) {
+pub fn photo(stage: &'static str, epoch: u64, sequence: u64) {
     photo_at(stage, epoch, sequence, clock());
 }
 
-pub fn photo_at(stage: &str, epoch: u64, sequence: u64, clock: Option<u64>) {
+pub fn photo_at(stage: &'static str, epoch: u64, sequence: u64, clock: Option<u64>) {
+    if buffered() {
+        record(Event {
+            kind: "photo",
+            label: stage,
+            clock: clock.unwrap_or(0),
+            end: 0,
+            epoch,
+            sequence,
+            value: 0,
+        });
+        return;
+    }
     if !enabled() {
         return;
     }
@@ -238,7 +363,7 @@ mod tests {
 
     #[test]
     fn span_records_one_completed_call_and_qpc_duration() {
-        assert_eq!(Stage::Dto as usize + 1, NAMES.len());
+        assert_eq!(Stage::GpuiPaint as usize + 1, NAMES.len());
         let offset = Stage::VmDiff as usize * 4;
         let before = COUNTS[offset].load(Relaxed);
         let wall_before = COUNTS[offset + 1].load(Relaxed);

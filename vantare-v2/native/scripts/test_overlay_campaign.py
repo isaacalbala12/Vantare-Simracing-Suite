@@ -28,7 +28,7 @@ class CampaignTest(unittest.TestCase):
                         (path/'complete.txt').write_text('complete')
                         run=dict(metadata=dict(profile='release',measurement_version=2,executable_sha256='a',recording_sha256='b',widgets=widgets,phases=phases))
                         for process in ('ui','dwm'):
-                            run[process]=dict(cycles_per_second=n+1,cycles_per_received_photo=10*(n+1),mean_private_mib=20)
+                            run[process]=dict(cycles_per_second=n+1,cycles_per_received_photo=10*(n+1),mean_private_mib=20,mean_working_set_mib=10)
                         run['gpu']={p:dict(mean_busiest_engine_percent=1,mean_engine_sum_percent=1,peak_dedicated_mib=2) for p in ('ui','dwm')}
                         for key in ('present_interval_p99_ms','receive_to_paint_p99_ms','receive_to_submit_p99_ms'):
                             run[key]=n+1

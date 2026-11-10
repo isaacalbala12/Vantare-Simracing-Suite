@@ -2,11 +2,11 @@
 
 Las campañas anteriores son **solo dev**, no una línea base. Sus conclusiones de rendimiento se han retirado de #2001 y #2009. El informe histórico se conserva en [measurements/SOLO-DEV.md](measurements/SOLO-DEV.md); no usar sus tablas para comparar motores.
 
-La nueva campaña usa el perfil `--release` de distribución, sin cambiar LTO ni codegen-units: valores Cargo por defecto (`opt-level=3`, `lto=false`, `codegen-units=16`). UI y núcleo instrumentados exponen `--measurement-info` con SHA compilado, perfil, optimización y features. El recolector rechaza dev. Se conserva el hash del binario, núcleo y grabación.
+La nueva campaña usa el perfil `--release` de distribución, sin cambiar LTO ni codegen-units: valores Cargo por defecto (`opt-level=3`, `lto=false`, `codegen-units=16`). UI y núcleo instrumentados exponen `--measurement-info` con SHA compilado, perfil, optimización y features. El recolector rechaza dev y binarios compilados con cambios locales sin commit. Se conserva el hash del binario, núcleo y grabación.
 
 CPU: QueryProcessCycleTime, ciclos por segundo estable y por foto IPC recibida. Nunca convertir ciclos a segundos de CPU ni usar TotalProcessorTime. La frecuencia nominal/actual de CPU se anota como contexto; QPC proporciona la duración estable. Se mide UI y DWM por separado.
 
-La ventana estable se alinea con `ReplayEvent.at`, posición original del suceso en la grabación, desde 5 segundos hasta duración menos 5. El núcleo registra esa posición junto a QPC sin cambiar el snapshot ni el contrato IPC. No usar `origin.received_at` para esta alineación: el piloto mostró unos tres segundos de retraso acumulado del reloj del núcleo respecto a los sucesos originales. Los contadores acumulados se interpolan a esos mismos extremos QPC. La duración solicitada debe coincidir con el manifiesto (100 ms de redondeo).
+La ventana estable se alinea con `ReplayEvent.at`, posición original del suceso en la grabación, desde 5 segundos hasta duración menos 5. El núcleo registra esa posición junto a QPC sin cambiar el snapshot ni el contrato IPC. Se resta el segundo de preludio que añade el lector UTC (`adapter/lmu/open.rs`, `Clock::at`) y se conserva el desplazamiento del primer suceso respecto a startedAtUtc; no se cuenta ese preludio como parte de la grabación. El número de sucesos debe coincidir con el manifiesto. No usar `origin.received_at` para esta alineación: el piloto mostró unos tres segundos de retraso acumulado del reloj del núcleo respecto a los sucesos originales. Los contadores acumulados se interpolan a esos mismos extremos QPC. La duración solicitada debe coincidir con el manifiesto (100 ms de redondeo).
 
 Se guardan intervalos individuales entre llamadas Present y su p99, latencia local recepción→pintado y recepción→retorno de Present. No son tiempos de visualización física. Las fases se filtran por inicio y fin dentro de la ventana estable; son anidadas y no se suman. Decode JSON se informa separado del feed IPC que incluye espera.
 
@@ -57,3 +57,7 @@ widget incluyen las animaciones. Dos Standings son dos entidades, aunque el
 contador por tipo las agregue.
 
 El workload conserva el banco original: 1 Standings; 4 widgets en secuencia Standings/Radar/Pedals/Standings; 22 repiten ese ciclo de tres tipos en una ventana. La grabación es real; esta configuración no pretende representar los 19 tipos distintos a la vez.
+
+El resumen informa memoria privada y working set por separado; ambas incluyen la instrumentación. El buffer reservado puede elevar la privada aunque sus páginas todavía no sean residentes. No se presenta ese presupuesto como consumo del producto sin diagnóstico.
+
+`native_text_layout` distingue medición disponible, fases apagadas y backend sin instrumentar. Una caché caliente puede tener cero llamadas nativas durante la ventana y llamadas durante el arranque: ese cero no significa que el texto no cueste CPU; la consulta de caché y el pintado de glifos están dentro de paint. Las fases anidadas no se suman. Los contadores de proceso se interpolan desde muestras aproximadamente cada segundo a los extremos QPC comunes; esa interpolación limita su precisión temporal.

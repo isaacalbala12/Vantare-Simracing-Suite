@@ -67,6 +67,10 @@ class StableWindowTest(unittest.TestCase):
         events = [dict(kind="replay_event", clock=100+i*110, value=i*1_000_000_000) for i in range(61)]
         self.assertEqual(M.recording_window(events, 5, 55), (650, 6150))
 
+    def test_reader_prelude_is_not_part_of_recording_position(self):
+        events = [dict(kind="replay_event", clock=100+i*100, value=(i+1)*1_000_000_000) for i in range(61)]
+        self.assertEqual(M.recording_window(events, 5, 55, 1), (600, 5600))
+
     def test_cycle_rate_does_not_use_total_processor_time(self):
         rows = [dict(qpc=100, cpu_cycles=1000, cpu_seconds="nonsense", private_bytes=2**20),
                 dict(qpc=600, cpu_cycles=31000, cpu_seconds="nonsense", private_bytes=2**20)]

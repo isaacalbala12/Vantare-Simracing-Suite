@@ -31,7 +31,7 @@ def aggregate(root):
     result={}
     for (widgets,phases),runs in groups.items():
         metrics={}
-        paths=[(p,f) for p in ('ui','dwm') for f in ('cycles_per_second','cycles_per_received_photo','mean_private_mib')]
+        paths=[(p,f) for p in ('ui','dwm') for f in ('cycles_per_second','cycles_per_received_photo','mean_private_mib','mean_working_set_mib')]
         paths += [('gpu',p,f) for p in ('ui','dwm') for f in ('mean_busiest_engine_percent','mean_engine_sum_percent','peak_dedicated_mib')]
         paths += [(f,) for f in ('present_interval_p99_ms','receive_to_paint_p99_ms','receive_to_submit_p99_ms')]
         for path in paths:

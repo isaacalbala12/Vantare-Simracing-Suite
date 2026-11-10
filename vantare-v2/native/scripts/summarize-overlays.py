@@ -15,11 +15,12 @@ def percentile(values, p):
     return sorted(values)[max(0, math.ceil(len(values)*p/100)-1)] if values else None
 
 
-def recording_window(events, start, end):
+def recording_window(events, start, end, offset_seconds=0):
     photos = sorted((e for e in events if e['kind']=='replay_event'), key=lambda e:e['clock'])
-    if not photos or photos[0]['value'] > start*1e9:
+    offset=offset_seconds*1e9
+    if not photos or photos[0]['value']-offset > start*1e9:
         raise ValueError('recording trace started after stable window')
-    endpoints = [next((e['clock'] for e in photos if e['value'] >= s*1e9), None) for s in (start,end)]
+    endpoints = [next((e['clock'] for e in photos if e['value']-offset >= s*1e9), None) for s in (start,end)]
     if None in endpoints or endpoints[0]>=endpoints[1]:
         raise ValueError('recording position did not cover stable window')
     return tuple(endpoints)
@@ -41,7 +42,9 @@ def process_summary(rows, start, end, frequency, photos):
     return dict(seconds=seconds,cpu_cycles=cycles,cycles_per_second=cycles/seconds,
                 cycles_per_received_photo=cycles/photos if photos else None,
                 mean_private_mib=sum(int(r['private_bytes']) for r in active)/len(active)/2**20,
-                peak_private_mib=max(int(r['private_bytes']) for r in active)/2**20)
+                peak_private_mib=max(int(r['private_bytes']) for r in active)/2**20,
+                mean_working_set_mib=sum(int(r['working_set_bytes']) for r in active)/len(active)/2**20 if all('working_set_bytes' in r for r in active) else None,
+                peak_working_set_mib=max(int(r['working_set_bytes']) for r in active)/2**20 if all('working_set_bytes' in r for r in active) else None)
 
 
 def phase_summary(events,start,end,frequency):
@@ -91,10 +94,17 @@ def summarize(root):
     core_frequency,core_events=read_trace(root/'core.stderr.log')
     if frequency!=metadata.get('qpc_frequency') or core_frequency!=frequency:
         raise ValueError('trace and sampler clocks differ')
-    positions=[e['value']/1e9 for e in core_events if e['kind']=='replay_event']
+    origin=metadata.get('replay_schedule_origin_seconds',0)
+    offset=origin-metadata.get('recording_first_event_seconds',0)
+    raw_positions=[e['value']/1e9 for e in core_events if e['kind']=='replay_event']
+    if not raw_positions or abs(min(raw_positions)-origin)>0.000001:
+        raise ValueError('replay scheduling origin differs from the recording reader contract')
+    if metadata.get('recording_event_count') is not None and len(raw_positions)!=metadata['recording_event_count']:
+        raise ValueError('replay event count differs from manifest: discard run')
+    positions=[position-offset for position in raw_positions]
     if not positions or max(positions)<metadata['recording_duration_seconds']-0.1:
         raise ValueError('replay did not reach the end of the recording: discard run')
-    start,end=recording_window(core_events,metadata['stable_start_seconds'],metadata['stable_end_seconds'])
+    start,end=recording_window(core_events,metadata['stable_start_seconds'],metadata['stable_end_seconds'],offset)
     received_ticks=[e['clock'] for e in events if e['kind']=='received']
     if not received_ticks or min(received_ticks)>start:
         raise ValueError('receiver started after stable recording window')
@@ -131,7 +141,15 @@ def summarize(root):
         raise ValueError('thread cycle query failed in stable phase: discard run')
     if metadata.get('phases') and not stages:
         raise ValueError('phases requested but no stable spans were recorded')
+    fast=any(feature.replace('-','_').upper()=='GPUI_FAST' for feature in metadata.get('features',[]))
+    text_supported=metadata.get('phases',False) and not fast
+    text_diagnostics=dict(status='measured' if text_supported else 'unavailable in fast backend' if fast else 'phases disabled',
+        steady_calls=stages.get('text_layout',{}).get('calls',0) if text_supported else None,
+        steady_cpu_cycles=stages.get('text_layout',{}).get('cpu_cycles',0) if text_supported else None,
+        full_run_calls=sum(e['kind']=='span' and e['label']=='text_layout' for e in events) if text_supported else None,
+        scope='Native text shaping on cache misses. Hot cache lookup and glyph painting are included in paint; zero native calls does not mean zero text painting cost.')
     result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
+                native_text_layout=text_diagnostics,
                 recording_last_position_seconds=max(positions),
                 stable_recording_position_seconds=[metadata['stable_start_seconds'],metadata['stable_end_seconds']],
                 stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),

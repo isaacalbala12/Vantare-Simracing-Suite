@@ -24,7 +24,9 @@ if ($LASTEXITCODE -or $coreBuild.profile -ne 'release' -or $coreBuild.opt_level 
 $manifestText = & python "$PSScriptRoot/recording-metadata.py" $Recording
 if ($LASTEXITCODE) { throw 'Cannot read recording manifest' }
 $recordingManifest = $manifestText | ConvertFrom-Json
+if ($recordingManifest.schema -ne 'vantare.lmu-temporal-high-rate.v1') { throw 'Baseline v2 requires the supported LMU temporal archive schema' }
 $recordingDuration = ([datetimeoffset]$recordingManifest.completedAtUtc - [datetimeoffset]$recordingManifest.startedAtUtc).TotalSeconds
+$firstEventSeconds = ([datetimeoffset]$recordingManifest.events[0].atUtc - [datetimeoffset]$recordingManifest.startedAtUtc).TotalSeconds
 if ([Math]::Abs($Seconds - $recordingDuration) -gt 0.1) { throw '-Seconds must match the recording duration (within 100 ms rounding)' }
 New-Item -ItemType Directory -Path $Out | Out-Null
 $Out = (Resolve-Path -LiteralPath $Out).Path
@@ -186,6 +188,8 @@ try {
         sha=$build.sha; profile=$build.profile; features=$build.features; compiled_build=$build; core_build=$coreBuild
         measurement_version=2; date=(Get-Date -Format o); widgets=$Widgets
         recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds
+        recording_event_count=$recordingManifest.events.Count; recording_first_event_seconds=$firstEventSeconds
+        replay_schedule_origin_seconds=1 # adapter/lmu/open.rs Clock::at: first event is scheduled at 1 s
         stable_start_seconds=5; stable_end_seconds=($recordingDuration - 5)
         power_plan=$powerPlan; priority='Normal'; dwm_pid=$dwm.Id; cpu_frequency_mhz=$cpuFrequency
         dwm_priority=[string]$dwm.PriorityClass
@@ -194,7 +198,7 @@ try {
         qpc_frequency=[Diagnostics.Stopwatch]::Frequency; maximum_total_system_load_percent=$MaxSystemLoadPercent
         presentation=@{model='DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL / DirectComposition';sync_interval=0;tearing_flag=$false;vrr_active=$null;vrr_reason='Not observable from system GPU counters; physical game-PC check required'}
         gpu_source='Windows GPU Engine / GPU Process Memory performance counters; PresentMon not installed in PATH'
-        invalid_unrelated_counter_samples=$invalidCounterRows.Count
+        retained_invalid_counter_samples=$invalidCounterRows.Count
         phases=[bool]$Phases; recording_sha256=(Get-FileHash -LiteralPath $Recording).Hash
         executable_sha256=(Get-FileHash -LiteralPath $UI).Hash
         core_sha256=$(if ($Core) { (Get-FileHash -LiteralPath $Core).Hash } else { $null })

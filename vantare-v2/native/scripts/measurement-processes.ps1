@@ -6,6 +6,7 @@ function Test-MeasurementCompilerProcess {
     if (!$CommandLine) { return $true }
     $compile = '(?i)(?:^|\s)"?(?:build|check|clippy|test|nextest|run|rustc|bench|doc|install|package)"?(?:\s|$)'
     if ($CommandLine -match $compile) { return $true }
+    if ($CommandLine -match '(?i)(?:^|\s)fmt(?:\s|$)' -and $CommandLine -match '(?:^|\s)--check(?:\s|$)') { return $false }
     # Unknown Cargo commands remain conservative; only the selector's known
     # metadata operation is allowed. No command-line arguments are logged.
     return $CommandLine -notmatch '(?i)(?:^|\s)"?metadata"?(?:\s|$)'

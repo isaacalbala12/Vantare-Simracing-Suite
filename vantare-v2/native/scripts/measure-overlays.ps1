@@ -89,7 +89,8 @@ function Assert-MeasurementQueueIdle {
             $operations = @([regex]::Matches([string]$candidate.CommandLine, '(?i)(?:^|\s)(metadata|tree|fmt|build|check|clippy|test|nextest|run|rustc|bench|doc|install|package|clean|--version|-vV)(?=\s|$)') | ForEach-Object { $_.Groups[1].Value })
             $compilers += [pscustomobject]@{pid=$candidate.ProcessId;parent_pid=$candidate.ParentProcessId;name=$candidate.Name;operations=($operations -join ',');command_line_available=[bool]$candidate.CommandLine}
         } else {
-            $readOnlyRows.Add([pscustomobject]@{qpc=[Diagnostics.Stopwatch]::GetTimestamp();pid=$candidate.ProcessId;kind='cargo metadata'})
+            $kind = if ($candidate.CommandLine -match '(?i)(?:^|\s)fmt(?:\s|$)') { 'cargo fmt --check' } else { 'cargo metadata' }
+            $readOnlyRows.Add([pscustomobject]@{qpc=[Diagnostics.Stopwatch]::GetTimestamp();pid=$candidate.ProcessId;kind=$kind})
         }
     }
     if ($compilers.Count) {

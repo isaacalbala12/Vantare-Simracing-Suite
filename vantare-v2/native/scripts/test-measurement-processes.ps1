@@ -7,6 +7,8 @@ $cases = @(
     @{name='cargo.exe';line='cargo check --package metadata';expected=$true},
     @{name='cargo.exe';line='cargo build --message-format metadata';expected=$true},
     @{name='cargo.exe';line='cargo nextest run';expected=$true},
+    @{name='cargo.exe';line='cargo fmt --manifest-path D:\repo\Cargo.toml --all -- --check';expected=$false},
+    @{name='cargo.exe';line='cargo fmt --all';expected=$true},
     @{name='cargo.exe';line='cargo tree --workspace';expected=$true},
     @{name='cargo.exe';line=$null;expected=$true},
     @{name='rustc.exe';line='rustc --crate-name library --emit=metadata,link';expected=$true},

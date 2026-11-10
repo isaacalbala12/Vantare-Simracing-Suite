@@ -10,19 +10,19 @@ struct Fijo;
 impl Medidor for Fijo {
     fn medir(&self, texto: &str, _: &Fuente) -> (f32, f32) {
         (
-            f32::from(u16::try_from(texto.chars().count()).unwrap()) * 7.0,
+            f32::from(u16::try_from(texto.chars().count()).expect("texto de prueba acotado")) * 7.0,
             18.0,
         )
     }
 }
 fn sistema() -> Value {
-    serde_json::from_str(include_str!("fixtures/sistema.json")).unwrap()
+    serde_json::from_str(include_str!("fixtures/sistema.json")).expect("fixture de prueba valido")
 }
 fn modelo() -> Value {
-    serde_json::from_str(include_str!("fixtures/modelo.json")).unwrap()
+    serde_json::from_str(include_str!("fixtures/modelo.json")).expect("fixture de prueba valido")
 }
 fn receta() -> Value {
-    serde_json::from_str(include_str!("fixtures/receta.json")).unwrap()
+    serde_json::from_str(include_str!("fixtures/receta.json")).expect("fixture de prueba valido")
 }
 fn carga(r: &Value, s: &Value) -> Result<Carga, Vec<vantare_compositor::receta::Diagnostico>> {
     cargar(
@@ -32,14 +32,14 @@ fn carga(r: &Value, s: &Value) -> Result<Carga, Vec<vantare_compositor::receta::
     )
 }
 fn escenario(r: &Value) -> Escena {
-    let c = carga(r, &sistema()).unwrap();
+    let c = carga(r, &sistema()).expect("fixture de prueba valido");
     Escena::nueva(c.receta, c.sistema)
 }
 fn datos() -> Value {
-    serde_json::from_str(include_str!("fixtures/datos.json")).unwrap()
+    serde_json::from_str(include_str!("fixtures/datos.json")).expect("fixture de prueba valido")
 }
 fn error(r: &Value, s: &Value, causa: Causa, p: &str) {
-    let e = carga(r, s).unwrap_err();
+    let e = carga(r, s).expect_err("la receta de esta prueba debe ser rechazada");
     assert!(
         e.iter().any(|e| e.causa == causa && e.puntero == p),
         "{e:?}"

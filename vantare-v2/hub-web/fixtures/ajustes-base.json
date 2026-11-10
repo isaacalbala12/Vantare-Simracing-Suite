@@ -1,0 +1,7 @@
+{
+  "kind": "hello",
+  "version": 1,
+  "demo": true,
+  "theme": { "window": "#161314", "sidebar": "#1b1718", "text1": "#faf7f7" },
+  "window": { "width": 1440, "height": 900, "minimized": false }
+}

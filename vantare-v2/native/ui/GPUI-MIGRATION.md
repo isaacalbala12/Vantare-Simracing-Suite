@@ -38,6 +38,10 @@ y fuente; no añade un renderizador. La copia antigua queda inerte e identificad
 
 ## Consumidores del workspace
 
+Tras el rebase, #1997 ya excluye el Hub de `default-members` e incluye Launcher.
+Se conserva la migración mecánica de todos los consumidores: los builds
+explícitos del Hub/admin/instalador tampoco necesitan el git de Zed ni otro core.
+
 La opción más simple es migrar mecánicamente UI, Hub congelado, administración
 e instalador a la misma dependencia de workspace y al namespace platform de
 Kit. No se cambian pantallas ni el Hub Electron. Se actualizan los nombres
@@ -46,7 +50,10 @@ default-members, gates, compilar.ps1 ni workflows. El test de grafo exige un
 único Pre publicado y ninguna dependencia git Zed en el camino normal de todo
 el workspace; el test de arquitectura sigue prohibiendo runtime desde UI/domain.
 
-## Antes → después, mismo servidor
+## Antes → después, mismo servidor (campaña sobre 62dde8da4)
+
+Estas cifras preceden a #1997 y usan el mismo perfil con símbolos limitados en
+ambas variantes. No compararlas con builds posteriores de `debug = 0`.
 
 | Medida | GPUI git anterior | Kit 0.9.1 / Pre 0.3.12 |
 | --- | ---: | ---: |
@@ -75,3 +82,34 @@ Cadencia cruda, núcleo fijo e IPC idénticos a [MEASUREMENT.md](MEASUREMENT.md)
 Con cuatro widgets se notifican 1,006 por snapshot cambiado y se pintan 1,006
 por snapshot pintado en ambas variantes. Con 22: 7,031→7,027 y 7,036→7,031;
 coalescing y animación impiden exigir recuentos absolutos idénticos entre runs.
+
+## Caracterización y capturas antes del rebase de perfil
+
+Fmt y Clippy `-D warnings` pasaron para UI, profiling, Hub, admin e instalador,
+todos sus targets, con las features de diagnóstico/captura. La suite completa
+ejecutó 1.377 casos: 1.376 PASS y un rechazo del guard QA porque TEMP apuntaba
+fuera de `D:/VantareServer/qa`. Tras preparar esa raíz, el instalador completo
+pasó **76/76**. Los otros 1.301 casos habían pasado; 11 exclusiones existentes.
+Se conservan los dos logs y un aviso LEAK del test existente de renovar el
+launcher en ejecución. No se modifican tests, guards, plazos ni exclusiones.
+El intento anterior sin `vantare-storage` se conserva; el auxiliar se construyó
+con DuckDB oficial antes de repetir. Lifecycle completo: **0 fallos**.
+
+Los tests del backend portado de cobertura grayscale y zoom por HWND pasaron.
+Cargo prueba esa dependencia junto a Hub/UI, que activan su test-support; no
+se añade el vendor a los miembros/defaults ni se altera su versión para probarlo.
+
+La captura real produjo 28 PNG. Dos lotes independientes de Pre son idénticos
+entre sí. Frente al GPUI anterior: **19/28 exactos**, con **31 píxeles distintos**
+en los otros nueve casos; máximo RGBA **[1, 1, 1, 2] / 255**, dimensiones iguales.
+El informe estricto queda FAIL y las referencias no se actualizan. Se declara
+este delta de rasterización en la migración; no se presenta como igualdad bit
+a bit. El detalle numérico y ejemplos están en `measurements/visual-kit-exact.json`.
+El paquete publicado cambia también los factores de mezcla de alfa y el orden
+de campos de sprites; se conservan esas revisiones publicadas y nuestro delta.
+Esto no demuestra por sí solo cuál de ellas origina cada diferencia mínima.
+
+Los logs íntegros quedan en `D:/VantareServer/evidence/isa-1996`; galería con
+referencia/candidato/diferencias en `visual/kit-published/report.html`. Los checks
+citados corresponden a la campaña anterior al rebase; las medidas posteriores
+se separan por SHA y perfil conforme a MEASUREMENT.md.

@@ -52,6 +52,7 @@ pub enum Error {
     Json(serde_json::Error),
     Entrada(&'static str),
     Capa(CapaId),
+    Reloj(u32),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,6 +61,7 @@ impl std::fmt::Display for Error {
             Self::Archivo(e) => write!(f, "Archivo: {e}"),
             Self::Json(e) => write!(f, "JSON: {e}"),
             Self::Entrada(e) => f.write_str(e),
+            Self::Reloj(estado) => write!(f, "Reloj del compositor: estado 0x{estado:08x}"),
             Self::Capa(id) => write!(f, "Capa inexistente: {}", id.0),
         }
     }
@@ -428,6 +430,10 @@ impl Plataforma {
                         return Err(Error::Entrada("Rectángulo de capa inválido"));
                     }
                     let c = self.capas.get_mut(id).ok_or(Error::Capa(*id))?;
+                    // El tamaño DIP exacto decide si cambia la superficie; moverla
+                    // conserva su contenido y solo actualiza el visual de posición.
+                    let cambia_tamano = c.rect.ancho.to_bits() != rect.ancho.to_bits()
+                        || c.rect.alto.to_bits() != rect.alto.to_bits();
                     c.rect = *rect;
                     c.posicion.SetOffsetX2(rect.x)?;
                     c.posicion.SetOffsetY2(rect.y)?;
@@ -457,7 +463,9 @@ impl Plataforma {
                                 | windows::Win32::UI::WindowsAndMessaging::SWP_NOZORDER,
                         )?;
                     }
-                    self.repintar(*id)?;
+                    if cambia_tamano {
+                        self.repintar(*id)?;
+                    }
                 }
                 Operacion::Pintar { id, dibujos } => {
                     self.capas
@@ -510,6 +518,12 @@ impl Plataforma {
                     } = d
                     {
                         Some(3.0 * desenfoque + desplazamiento.0.abs().max(desplazamiento.1.abs()))
+                    } else if let Dibujo::Rect {
+                        borde: Some((ancho, _)),
+                        ..
+                    } = d
+                    {
+                        Some(ancho / 2.0)
                     } else {
                         None
                     }

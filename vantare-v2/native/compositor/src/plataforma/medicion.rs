@@ -33,6 +33,8 @@ pub struct Medicion {
     ultimo: Option<i64>,
     intervalos: Vec<f64>,
     perdidos: u64,
+    reloj_estado: Option<u32>,
+    periodo_esperado_ms: Option<f64>,
 }
 #[derive(Serialize)]
 struct Informe {
@@ -40,8 +42,13 @@ struct Informe {
     fotogramas: Distribucion,
     trabajo_lote: Distribucion,
     perdidos: u64,
+    reloj_estado: Option<u32>,
+    periodo_esperado_ms: Option<f64>,
 }
 impl Medicion {
+    pub fn registrar_estado_reloj(&mut self, estado: Option<u32>) {
+        self.reloj_estado = estado;
+    }
     pub fn fotograma(&mut self, p: &Plataforma) -> Resultado<()> {
         let s = unsafe { p.dispositivo.GetFrameStatistics()? };
         if self.ultimo == Some(s.lastFrameTime) {
@@ -51,6 +58,7 @@ impl Medicion {
             let intervalo = super::tiempo_qpc(s.lastFrameTime - anterior, s.timeFrequency)?;
             let periodo = f64::from(s.currentCompositionRate.Denominator)
                 / f64::from(s.currentCompositionRate.Numerator);
+            self.periodo_esperado_ms = Some(periodo * 1000.0);
             self.intervalos.push(intervalo * 1000.0);
             if intervalo > 1.5 * periodo {
                 self.perdidos += 1;
@@ -65,6 +73,8 @@ impl Medicion {
             fotogramas: Distribucion::de(self.intervalos.clone()),
             trabajo_lote: Distribucion::de(p.trabajos_ms.clone()),
             perdidos: self.perdidos,
+            reloj_estado: self.reloj_estado,
+            periodo_esperado_ms: self.periodo_esperado_ms,
         };
         std::fs::write(ruta, serde_json::to_vec_pretty(&informe)?)?;
         Ok(())

@@ -67,7 +67,8 @@ impl Texto {
         alineacion: Alineacion,
     ) -> Resultado<IDWriteTextLayout1> {
         unsafe {
-            let familia: Vec<u16> = fuente.familia.encode_utf16().chain(Some(0)).collect();
+            let (familia, peso) = familia_estatica(fuente);
+            let familia: Vec<u16> = familia.encode_utf16().chain(Some(0)).collect();
             let mut indice = 0;
             let mut existe = windows::core::BOOL::default();
             self.fuentes.FindFamilyName(
@@ -83,7 +84,7 @@ impl Texto {
             let formato = self.factory.CreateTextFormat(
                 PCWSTR(familia.as_ptr()),
                 &self.fuentes,
-                DWRITE_FONT_WEIGHT(i32::from(fuente.peso)),
+                DWRITE_FONT_WEIGHT(i32::from(peso)),
                 DWRITE_FONT_STYLE_NORMAL,
                 DWRITE_FONT_STRETCH_NORMAL,
                 fuente.tamano,
@@ -169,5 +170,52 @@ impl Medidor for Texto {
                 (f32::NAN, f32::NAN)
             }
         }
+    }
+}
+
+// GPUI usa estas mismas familias estáticas con peso nativo Regular (400).
+// El peso visual está en el TTF, no en una negrita sintetizada por DirectWrite.
+fn familia_estatica(fuente: &Fuente) -> (String, u16) {
+    if fuente.familia == "Inter" {
+        let peso = [400_u16, 500, 600, 650, 700, 750, 800]
+            .into_iter()
+            .min_by_key(|peso| peso.abs_diff(fuente.peso))
+            .unwrap_or(400);
+        (format!("Inter W{peso}"), 400)
+    } else if fuente.familia.starts_with("Inter W") {
+        (fuente.familia.clone(), 400)
+    } else {
+        (fuente.familia.clone(), fuente.peso)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn mide_inter_del_paquete_con_cifras_tabulares_y_sin_fallback_del_sistema() -> Resultado<()> {
+        let texto = Texto::nuevo(Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../ui/assets/fonts"
+        )))?;
+        for peso in [400, 500, 650, 800, 900] {
+            let fuente = Fuente {
+                familia: "Inter".into(),
+                peso,
+                tamano: 16.0,
+                interletra: 0.0,
+                interlinea: 24.0,
+                tabulares: true,
+                mayusculas: false,
+            };
+            let (unos, alto) = texto.medir_resultado("1111", &fuente)?;
+            let (ochos, _) = texto.medir_resultado("8888", &fuente)?;
+            assert!(unos > 0.0 && alto > 0.0);
+            assert!(
+                (unos - ochos).abs() < 0.01,
+                "peso {peso}: {unos} frente a {ochos}"
+            );
+        }
+        Ok(())
     }
 }

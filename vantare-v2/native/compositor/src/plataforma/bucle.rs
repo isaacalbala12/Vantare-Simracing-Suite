@@ -70,6 +70,7 @@ pub struct Bucle {
     vigilancias: Vec<Vigilancia>,
     reloj: Option<unsafe extern "system" fn(u32, *const HANDLE, u32) -> u32>,
     biblioteca: HMODULE,
+    estado_reloj: std::cell::Cell<Option<u32>>,
 }
 impl Bucle {
     pub fn nuevo() -> Resultado<Self> {
@@ -88,8 +89,13 @@ impl Bucle {
                 vigilancias: Vec::new(),
                 reloj,
                 biblioteca,
+                estado_reloj: std::cell::Cell::new(None),
             })
         }
+    }
+    /// Estado nativo observado; None indica que se usa la alternativa DWM.
+    pub fn estado_reloj(&self) -> Option<u32> {
+        self.estado_reloj.get()
     }
     pub fn avisador(&self) -> Avisador {
         self.evento.clone()
@@ -144,7 +150,15 @@ impl Bucle {
             unsafe {
                 let resultado = MsgWaitForMultipleObjectsEx(
                     Some(&handles),
-                    if transiciones_pintadas { 0 } else { espera },
+                    if transiciones_pintadas {
+                        if self.estado_reloj.get() == Some(0xc01e_0006) {
+                            16
+                        } else {
+                            0
+                        }
+                    } else {
+                        espera
+                    },
                     QS_ALLINPUT,
                     MWMO_INPUTAVAILABLE,
                 );
@@ -177,26 +191,15 @@ impl Bucle {
                 }
                 if transiciones_pintadas {
                     if let Some(reloj) = self.reloj {
-                        // El límite permite atender también la cola Win32 (que no es HANDLE).
-                        let r = reloj(
-                            u32::try_from(handles.len())
-                                .map_err(|_| super::Error::Entrada("Demasiadas vigilancias"))?,
-                            handles.as_ptr(),
-                            16,
-                        );
-                        if r == WAIT_FAILED.0 {
-                            return Err(windows::core::Error::from_thread().into());
-                        }
-                        if r < u32::try_from(handles.len())
-                            .map_err(|_| super::Error::Entrada("Demasiadas vigilancias"))?
-                        {
-                            if r == 0 {
-                                return Ok(Suceso::ModeloNuevo);
-                            }
-                            let v = &self.vigilancias[usize::try_from(r - 1)
-                                .map_err(|_| super::Error::Entrada("Índice de vigilancia"))?];
-                            FindNextChangeNotification(v.handle)?;
-                            return Ok(Suceso::FicheroCambiado(v.ruta.clone()));
+                        // Con cero handles, el éxito del reloj es siempre cero. Los
+                        // eventos del lector/ficheros solo se consumen en MsgWait.
+                        let estado = reloj(0, std::ptr::null(), 16);
+                        self.estado_reloj.set(Some(estado));
+                        match estado {
+                            0 => {}
+                            258 => continue, // timeout: atender mensajes y volver a esperar.
+                            0xc01e_0006 => DwmFlush()?, // Pantalla ocluida: no fingir un tick nativo.
+                            otro => return Err(super::Error::Reloj(otro)),
                         }
                     } else {
                         DwmFlush()?;
@@ -212,5 +215,61 @@ impl Drop for Bucle {
         if let Err(e) = unsafe { FreeLibrary(self.biblioteca) } {
             eprintln!("Liberar dcomp.dll: {e}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    unsafe extern "system" fn fotograma(
+        _cantidad: u32,
+        _handles: *const HANDLE,
+        _plazo: u32,
+    ) -> u32 {
+        0
+    }
+    #[test]
+    fn modelo_reloj_y_vigilancia_entregan_sucesos_distintos() -> Resultado<()> {
+        let plataforma = Plataforma::nueva(
+            super::super::Modo::Monitor,
+            windows::Win32::Foundation::RECT {
+                left: 0,
+                top: 0,
+                right: 20,
+                bottom: 20,
+            },
+            Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../ui/assets/fonts")),
+        )?;
+        let mut bucle = Bucle::nuevo()?;
+        bucle.reloj = Some(fotograma);
+        bucle.avisador().avisar()?;
+        assert!(matches!(
+            bucle.esperar(&plataforma, true)?,
+            Suceso::ModeloNuevo
+        ));
+        assert!(matches!(
+            bucle.esperar(&plataforma, true)?,
+            Suceso::Fotograma(_)
+        ));
+        let carpeta = std::env::var_os("VANTARE_COMPOSITOR_TEST_TMP")
+            .map_or_else(std::env::temp_dir, PathBuf::from)
+            .join(format!("compositor-vigilancia-{}", std::process::id()));
+        std::fs::create_dir(&carpeta)?;
+        let archivo = carpeta.join("sistema.json");
+        let cambio: Resultado<Suceso> = (|| {
+            bucle.vigilar(&carpeta)?;
+            std::fs::write(&archivo, b"{}")?;
+            // Sin sleeps: espera de sincronización del kernel. El plazo solo evita
+            // colgar la suite si falla una notificación real del sistema de ficheros.
+            let limite = Instante(plataforma.ahora()?.0 + 3.0);
+            bucle.esperar_hasta(&plataforma, false, Some(limite))
+        })();
+        drop(bucle);
+        if archivo.try_exists()? {
+            std::fs::remove_file(&archivo)?;
+        }
+        std::fs::remove_dir(&carpeta)?;
+        assert!(matches!(cambio?,Suceso::FicheroCambiado(ruta) if ruta==carpeta));
+        Ok(())
     }
 }

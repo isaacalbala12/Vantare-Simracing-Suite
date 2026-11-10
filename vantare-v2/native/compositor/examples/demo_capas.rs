@@ -213,26 +213,50 @@ mod demo {
         operaciones.push(pulso(inicio));
         Lote { operaciones }
     }
+    fn interrupcion(inicio: Instante) -> Vec<Operacion> {
+        vec![
+            Operacion::Colocar {
+                id: CapaId(2),
+                rect: rect(40.0, 80.0, 400.0, 36.0),
+            },
+            Operacion::Animar {
+                id: CapaId(2),
+                propiedad: Propiedad::Y,
+                curva: Curva {
+                    inicio: Instante(inicio.0 + 1.5),
+                    // Conserva valor 22 y velocidad +44 al interrumpir; frena y vuelve.
+                    tramos: vec![Tramo {
+                        desde: 0.0,
+                        a: 22.0,
+                        b: 44.0,
+                        c: -154.0,
+                        d: 88.0,
+                    }],
+                    fin: 1.0,
+                    final_: 0.0,
+                    repetir: None,
+                },
+            },
+        ]
+    }
     fn paso(n: u8, inicio: Instante) -> Lote {
         let operaciones = match n {
-            1 => vec![animacion(
-                2,
-                Propiedad::Y,
-                Instante(inicio.0 + 1.0),
-                0.0,
-                44.0,
-                1.0,
-                44.0,
-            )],
-            2 => vec![animacion(
-                2,
-                Propiedad::Y,
-                Instante(inicio.0 + 1.5),
-                22.0,
-                -44.0,
-                0.5,
-                0.0,
-            )],
+            1 => vec![
+                Operacion::Colocar {
+                    id: CapaId(2),
+                    rect: rect(40.0, 124.0, 400.0, 36.0),
+                },
+                animacion(
+                    2,
+                    Propiedad::Y,
+                    Instante(inicio.0 + 1.0),
+                    -44.0,
+                    44.0,
+                    1.0,
+                    0.0,
+                ),
+            ],
+            2 => interrupcion(inicio),
             3 => vec![
                 animacion(
                     1,
@@ -296,6 +320,30 @@ mod demo {
         };
         Lote { operaciones }
     }
+    fn capturar_instante(
+        p: &mut Plataforma,
+        modo: Modo,
+        inicio: Instante,
+        en: f64,
+        ruta: &std::path::Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        for (n, t) in [(1, 1.0), (2, 1.5), (3, 3.0), (4, 4.0), (5, 6.0)] {
+            if en >= t {
+                p.aplicar(&paso(n, inicio))?;
+            }
+        }
+        p.capturar(
+            if modo == Modo::Monitor {
+                None
+            } else {
+                Some(CapaId(1))
+            },
+            Instante(inicio.0 + en),
+            ruta,
+        )?;
+        println!("Captura premultiplicada: {}", ruta.display());
+        Ok(())
+    }
     pub fn ejecutar() -> Result<(), Box<dyn std::error::Error>> {
         let mut modo = Modo::Monitor;
         let mut captura = None;
@@ -346,22 +394,7 @@ mod demo {
         p.aplicar(&inicial(inicio))?;
         println!("Ventanas: {}", p.ventanas().len());
         if let Some(ruta) = captura {
-            for (n, t) in [(1, 1.0), (2, 1.5), (3, 3.0), (4, 4.0), (5, 6.0)] {
-                if en >= t {
-                    p.aplicar(&paso(n, inicio))?;
-                }
-            }
-            p.capturar(
-                if modo == Modo::Monitor {
-                    None
-                } else {
-                    Some(CapaId(1))
-                },
-                Instante(inicio.0 + en),
-                &ruta,
-            )?;
-            println!("Captura premultiplicada: {}", ruta.display());
-            return Ok(());
+            return capturar_instante(&mut p, modo, inicio, en, &ruta);
         }
         let bucle = Bucle::nuevo()?;
         let mut medicion = Medicion::default();
@@ -380,6 +413,7 @@ mod demo {
             }
             let transcurrido = p.ahora()?.0 - inicio.0;
             if medir.is_some() {
+                medicion.registrar_estado_reloj(bucle.estado_reloj());
                 medicion.fotograma(&p)?;
             }
             if siguiente <= tiempos.len() && transcurrido >= tiempos[siguiente - 1].1 {

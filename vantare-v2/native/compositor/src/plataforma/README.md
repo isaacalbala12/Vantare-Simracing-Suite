@@ -33,6 +33,8 @@ Referencia: https://learn.microsoft.com/en-us/windows/win32/api/dcompanimation/n
 
 Texto: colección privada DirectWrite con TTF estáticos, ruta configurable mediante
 `VANTARE_COMPOSITOR_FUENTES` o `--fuentes`. No se instalan ni copian fuentes.
+El alias `Inter` se resuelve al peso estático más cercano (`Inter W400`…`Inter W800`),
+con peso nativo 400 para evitar negrita sintetizada, como `native/ui/src/efficiency/text.rs`.
 Se usa `CreateRenderingParams` como `gpui_windows/src/directx_renderer.rs`,
 antialiasing gris, espaciado mediante TextLayout1, `tnum`, interlínea uniforme,
 alineación y elipsis DirectWrite. La línea base se centra según la métrica natural.
@@ -56,6 +58,11 @@ simulador ni de VRR/G-Sync. El trabajo por lote se recoge solo después de
 `iniciar_medicion`. Referencia:
 https://learn.microsoft.com/en-us/windows/win32/api/dcomp/nf-dcomp-idcompositiondevice-getframestatistics
 
+`reloj_estado` registra el código nativo (0 = éxito, 0xc01e0006 = pantalla ocluida);
+`periodo_esperado_ms` conserva el periodo usado para contar intervalos perdidos.
+La ruta ocluida usa DwmFlush y una espera de mensajes de 16 ms para no girar en vacío.
+En ese estado las estadísticas no prueban la cadencia de una pantalla activa.
+
 El reloj Windows 11 se resuelve dinámicamente con GetProcAddress. Como la cola
 Win32 no es un HANDLE, durante transiciones se atienden mensajes entre esperas de
 reloj con límite de 16 ms. Windows 10 usa DwmFlush. En reposo se espera de forma
@@ -64,3 +71,8 @@ indefinida en MsgWaitForMultipleObjectsEx. No hay temporizador periódico en rep
 Features añadidas de windows 0.62.2: Win32_System_Com_StructuredStorage (WIC),
 Win32_System_Threading y Win32_Security (evento del lector), Win32_Storage_FileSystem
 (vigilancia de carpetas). No hay dependencias nuevas.
+
+La espera del reloj se hace sin pasar los eventos del modelo al API: el éxito de
+la variante sin handles es cero, no una notificación de modelo. Los mensajes, el
+modelo y los ficheros se consumen exclusivamente mediante MsgWait. Su latencia
+máxima adicional durante una transición es el límite de 16 ms del reloj.

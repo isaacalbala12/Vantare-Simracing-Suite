@@ -27,6 +27,15 @@ pub fn buffered() -> bool {
     *BUFFERED.get_or_init(|| std::env::var("VANTARE_MEASUREMENT_TRACE").is_ok_and(|v| v == "1"))
 }
 
+/// Measurement load removes the recording's invalidation cadence, while the
+/// platform still controls when a window can draw. Never enabled in product UI.
+pub fn render_load() -> bool {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| {
+        std::env::var("VANTARE_MEASUREMENT_RENDER_LOAD").is_ok_and(|value| value == "1")
+    })
+}
+
 pub fn initialize_trace() {
     if buffered() {
         TRACE.get_or_init(|| std::sync::Mutex::new(Vec::with_capacity(TRACE_LIMIT)));

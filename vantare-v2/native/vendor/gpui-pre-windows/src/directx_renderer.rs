@@ -54,6 +54,8 @@ pub(crate) struct DirectXRenderer {
     /// In that case we want to discard the first frame that we draw as we got reset in the middle of a frame
     /// meaning we lost all the allocated gpu textures and scene resources.
     skip_draws: bool,
+    #[cfg(feature = "paint-stats")]
+    gpu_measurement: Option<crate::gpu_measurement::GpuMeasurement>,
 }
 
 /// Direct3D objects
@@ -194,6 +196,8 @@ impl DirectXRenderer {
             width: 1,
             height: 1,
             skip_draws: false,
+            #[cfg(feature = "paint-stats")]
+            gpu_measurement: None,
         })
     }
 
@@ -245,6 +249,11 @@ impl DirectXRenderer {
     #[inline]
     fn present(&mut self) -> Result<()> {
         let span = crate::profiling::begin(crate::profiling::Stage::Present);
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::mark("present", "base", 0, 0, self.hwnd.0 as usize as u64);
+        if span.is_some() && !crate::profiling::buffered() {
+            eprintln!("perf present clock={:?}", crate::profiling::clock());
+        }
         let result = unsafe {
             self.resources
                 .as_ref()
@@ -253,6 +262,8 @@ impl DirectXRenderer {
                 .Present(0, DXGI_PRESENT(0))
         };
         drop(span);
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::mark("present_end", "base", 0, 0, self.hwnd.0 as usize as u64);
         crate::profiling::report_if_due();
         result.ok().context("Presenting swap chain failed")
     }
@@ -265,6 +276,10 @@ impl DirectXRenderer {
     }
 
     fn handle_device_lost_impl(&mut self, directx_devices: &DirectXDevices) -> Result<()> {
+        #[cfg(feature = "paint-stats")]
+        {
+            self.gpu_measurement = None;
+        }
         let disable_direct_composition = self.direct_composition.is_none();
 
         unsafe {
@@ -341,7 +356,33 @@ impl DirectXRenderer {
             // and so likely do not have the textures anymore that are required for drawing
             return Ok(());
         }
-        self.render(scene, background_appearance)?;
+        #[cfg(feature = "paint-stats")]
+        let query = if crate::gpu_measurement::enabled() {
+            let devices = self
+                .devices
+                .as_ref()
+                .context("GPU timing requires a device")?;
+            if self.gpu_measurement.is_none() {
+                self.gpu_measurement = Some(crate::gpu_measurement::GpuMeasurement::new(
+                    &devices.device,
+                )?);
+            }
+            self.gpu_measurement
+                .as_mut()
+                .unwrap()
+                .begin(&devices.device_context, self.hwnd.0 as usize as u64)?
+        } else {
+            None
+        };
+        let rendered = self.render(scene, background_appearance);
+        #[cfg(feature = "paint-stats")]
+        if let Some(index) = query {
+            self.gpu_measurement
+                .as_mut()
+                .unwrap()
+                .end(&self.devices.as_ref().unwrap().device_context, index);
+        }
+        rendered?;
         self.present()
     }
 

@@ -8257,6 +8257,7 @@ dependencies = [
  "flate2",
  "flume",
  "gpui-kit",
+ "gpui-pre-windows",
  "png 0.18.1",
  "raw-window-handle",
  "serde",

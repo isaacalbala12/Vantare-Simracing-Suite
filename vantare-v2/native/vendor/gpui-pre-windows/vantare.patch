@@ -1,6 +1,14 @@
 --- a/Cargo.toml
 +++ b/Cargo.toml
-@@ -225,3 +225,8 @@
+@@ -35,6 +35,7 @@
+ zed-rev = "d2a4fb6ded7c470be25d1541281da3882495b65b"
+
+ [features]
++paint-stats = []
+ default = ["gpui/default"]
+ screen-capture = [
+     "gpui/screen-capture",
+@@ -225,3 +226,8 @@
  [lints.rust.unexpected_cfgs]
  level = "allow"
  priority = 0
@@ -13,7 +21,7 @@
 +++ b/src/direct_write.rs
 @@ -175,6 +175,7 @@
      }
- 
+
      fn layout_line(&self, text: &str, font_size: Pixels, runs: &[FontRun]) -> LineLayout {
 +        let _span = crate::profiling::begin(crate::profiling::Stage::TextLayout);
          self.state
@@ -47,9 +55,9 @@
                  vec![0u8; glyph_bounds.size.width.0 as usize * glyph_bounds.size.height.0 as usize];
              unsafe {
 @@ -880,6 +881,8 @@
- 
+
          let mut bitmap_data = vec![0u8; pixel_count * 4];
- 
+
 +        // SAFETY: the live analysis writes three bytes per pixel into the sized slice;
 +        // RECT is the raster bounds returned by that same analysis.
          unsafe {
@@ -74,7 +82,7 @@
 +            bitmap_data.truncate(pixel_count);
 +            return Ok(bitmap_data);
          }
- 
+
          // The output buffer expects RGBA data, so pad the alpha channel with zeros.
 @@ -1800,7 +1817,7 @@
      use super::DirectWriteTextSystem;
@@ -84,10 +92,10 @@
 +    use gpui::{RenderGlyphParams, point, Font, FontWeight, PlatformTextSystem, TextRun, TextSystem, WindowTextSystem, px};
      use std::sync::Arc;
      use windows::Win32::Graphics::DirectWrite::{DWRITE_FONT_STRETCH_NORMAL, DWRITE_TEXT_METRICS};
- 
+
 @@ -2038,6 +2055,47 @@
      }
- 
+
      #[test]
 +    fn grayscale_rasterization_matches_clear_type_coverage() -> Result<()> {
 +        let text_system = DirectWriteTextSystem::new()?;
@@ -135,7 +143,25 @@
          let mut analyzer = ClusterAnalyzer::new(&cluster_map, 1);
 --- a/src/directx_renderer.rs
 +++ b/src/directx_renderer.rs
-@@ -217,7 +217,8 @@
+@@ -54,6 +54,8 @@
+     /// In that case we want to discard the first frame that we draw as we got reset in the middle of a frame
+     /// meaning we lost all the allocated gpu textures and scene resources.
+     skip_draws: bool,
++    #[cfg(feature = "paint-stats")]
++    gpu_measurement: Option<crate::gpu_measurement::GpuMeasurement>,
+ }
+
+ /// Direct3D objects
+@@ -194,6 +196,8 @@
+             width: 1,
+             height: 1,
+             skip_draws: false,
++            #[cfg(feature = "paint-stats")]
++            gpu_measurement: None,
+         })
+     }
+
+@@ -217,7 +221,8 @@
                  grayscale_enhanced_contrast: self.font_info.grayscale_enhanced_contrast,
                  subpixel_enhanced_contrast: self.font_info.subpixel_enhanced_contrast,
                  is_bgr: self.font_info.is_bgr as u32,
@@ -145,24 +171,77 @@
              }],
          )?;
          unsafe {
-@@ -243,6 +244,7 @@
- 
+@@ -243,6 +248,12 @@
+
      #[inline]
      fn present(&mut self) -> Result<()> {
 +        let span = crate::profiling::begin(crate::profiling::Stage::Present);
++        #[cfg(feature = "paint-stats")]
++        crate::profiling::mark("present", "base", 0, 0, self.hwnd.0 as usize as u64);
++        if span.is_some() && !crate::profiling::buffered() {
++            eprintln!("perf present clock={:?}", crate::profiling::clock());
++        }
          let result = unsafe {
              self.resources
                  .as_ref()
-@@ -250,6 +252,8 @@
+@@ -250,6 +261,10 @@
                  .swap_chain
                  .Present(0, DXGI_PRESENT(0))
          };
 +        drop(span);
++        #[cfg(feature = "paint-stats")]
++        crate::profiling::mark("present_end", "base", 0, 0, self.hwnd.0 as usize as u64);
 +        crate::profiling::report_if_due();
          result.ok().context("Presenting swap chain failed")
      }
- 
-@@ -351,6 +355,7 @@
+
+@@ -261,6 +276,10 @@
+     }
+
+     fn handle_device_lost_impl(&mut self, directx_devices: &DirectXDevices) -> Result<()> {
++        #[cfg(feature = "paint-stats")]
++        {
++            self.gpu_measurement = None;
++        }
+         let disable_direct_composition = self.direct_composition.is_none();
+
+         unsafe {
+@@ -337,7 +356,33 @@
+             // and so likely do not have the textures anymore that are required for drawing
+             return Ok(());
+         }
+-        self.render(scene, background_appearance)?;
++        #[cfg(feature = "paint-stats")]
++        let query = if crate::gpu_measurement::enabled() {
++            let devices = self
++                .devices
++                .as_ref()
++                .context("GPU timing requires a device")?;
++            if self.gpu_measurement.is_none() {
++                self.gpu_measurement = Some(crate::gpu_measurement::GpuMeasurement::new(
++                    &devices.device,
++                )?);
++            }
++            self.gpu_measurement
++                .as_mut()
++                .unwrap()
++                .begin(&devices.device_context, self.hwnd.0 as usize as u64)?
++        } else {
++            None
++        };
++        let rendered = self.render(scene, background_appearance);
++        #[cfg(feature = "paint-stats")]
++        if let Some(index) = query {
++            self.gpu_measurement
++                .as_mut()
++                .unwrap()
++                .end(&self.devices.as_ref().unwrap().device_context, index);
++        }
++        rendered?;
+         self.present()
+     }
+
+@@ -351,6 +396,7 @@
          scene: &Scene,
          background_appearance: WindowBackgroundAppearance,
      ) -> Result<()> {
@@ -170,7 +249,7 @@
          self.pre_draw(&match background_appearance {
              WindowBackgroundAppearance::Opaque => [1.0f32; 4],
              _ => [0.0f32; 4],
-@@ -1073,8 +1078,11 @@
+@@ -1073,8 +1119,11 @@
      grayscale_enhanced_contrast: f32,
      subpixel_enhanced_contrast: f32,
      is_bgr: u32,
@@ -181,7 +260,7 @@
 +}
 +
 +const _: () = assert!(std::mem::size_of::<GlobalParams>() == 48);
- 
+
  #[derive(Clone, Copy, Debug, Default)]
  #[repr(C, align(16))]
 --- a/src/events.rs
@@ -220,9 +299,9 @@
 +        }
 +    }
 +}
- 
+
  const SIZE_MOVE_LOOP_TIMER_ID: usize = 1;
- 
+
 @@ -103,6 +133,7 @@
              WM_TIMER => self.handle_timer_msg(handle, wparam),
              WM_NCCALCSIZE => self.handle_calc_client_size(handle, wparam, lparam),
@@ -232,14 +311,14 @@
              WM_NCHITTEST => self.handle_hit_test_msg(handle, lparam),
              WM_PAINT => self.handle_paint_msg(handle),
 @@ -205,7 +236,8 @@
- 
+
      fn handle_get_min_max_info_msg(&self, lparam: LPARAM) -> Option<isize> {
          let min_size = self.state.min_size?;
 -        let scale_factor = self.state.scale_factor.get();
 +        // Window constraints use monitor DPI, never the content zoom.
 +        let scale_factor = self.state.dpi_scale.get();
          let boarder_offset = &self.state.border_offset;
- 
+
          unsafe {
 @@ -257,6 +289,27 @@
          scale_factor: f32,
@@ -267,12 +346,12 @@
 +            scale_factor
 +        };
          let new_logical_size = device_size.to_pixels(scale_factor);
- 
+
          self.state.logical_size.set(new_logical_size);
 @@ -870,6 +923,35 @@
          }
      }
- 
+
 +    fn handle_zoom_msg(&self, handle: HWND, wparam: WPARAM) -> Option<isize> {
 +        if !matches!(wparam.0, 90 | 100 | 110 | 125) {
 +            return Some(0);
@@ -312,14 +391,173 @@
 +        self.state
 +            .dpi_scale
 +            .set(new_dpi / USER_DEFAULT_SCREEN_DPI as f32);
- 
+
          let is_maximized = self.state.is_maximized();
 -        let new_scale_factor = new_dpi / USER_DEFAULT_SCREEN_DPI as f32;
 +        let new_scale_factor =
 +            new_dpi / USER_DEFAULT_SCREEN_DPI as f32 * self.state.zoom_percent.get() as f32 / 100.0;
          self.state.scale_factor.set(new_scale_factor);
          self.state.border_offset.update(handle).log_err();
- 
+
+--- /dev/null
++++ b/src/gpu_measurement.rs
+@@ -0,0 +1,156 @@
++//! Asynchronous D3D11 timestamp queries. Diagnostic feature only; never flush
++//! or wait for the GPU. Eight outstanding frames bound both memory and work.
++use anyhow::{Context, Result};
++use windows::{Win32::Graphics::Direct3D11::*, core::Interface};
++
++struct Slot {
++    disjoint: ID3D11Query,
++    start: ID3D11Query,
++    end: ID3D11Query,
++    pending: Option<(u64, u64, u64, u64)>,
++}
++
++pub(crate) struct GpuMeasurement {
++    slots: Vec<Slot>,
++    sequence: u64,
++}
++
++pub(crate) fn enabled() -> bool {
++    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
++    *ENABLED.get_or_init(|| std::env::var("VANTARE_MEASUREMENT_GPU_TIMING").is_ok_and(|v| v == "1"))
++}
++
++fn query(device: &ID3D11Device, kind: D3D11_QUERY) -> Result<ID3D11Query> {
++    let mut query = None;
++    unsafe {
++        device.CreateQuery(
++            &D3D11_QUERY_DESC {
++                Query: kind,
++                MiscFlags: 0,
++            },
++            Some(&mut query),
++        )?
++    };
++    query.context("D3D11 timestamp query missing")
++}
++
++fn read<T: Default>(context: &ID3D11DeviceContext, query: &ID3D11Query) -> Result<Option<T>> {
++    let mut value = T::default();
++    // The generated Result<()> wrapper treats S_FALSE as success. Preserve it:
++    // its output buffer is undefined until S_OK, even when no error occurred.
++    let status = unsafe {
++        (context.vtable().GetData)(
++            context.as_raw(),
++            query.as_raw(),
++            std::ptr::from_mut(&mut value).cast(),
++            std::mem::size_of::<T>() as u32,
++            D3D11_ASYNC_GETDATA_DONOTFLUSH.0 as u32,
++        )
++    };
++    if status == windows::core::HRESULT(1) {
++        return Ok(None);
++    }
++    status.ok()?;
++    Ok(Some(value))
++}
++
++fn duration_ns(start: u64, end: u64, frequency: u64, disjoint: bool) -> Option<u64> {
++    if disjoint || frequency == 0 {
++        return None;
++    }
++    let ticks = end.checked_sub(start)?;
++    u64::try_from(u128::from(ticks) * 1_000_000_000 / u128::from(frequency)).ok()
++}
++
++impl GpuMeasurement {
++    pub(crate) fn new(device: &ID3D11Device) -> Result<Self> {
++        let mut slots = Vec::with_capacity(8);
++        for _ in 0..8 {
++            slots.push(Slot {
++                disjoint: query(device, D3D11_QUERY_TIMESTAMP_DISJOINT)?,
++                start: query(device, D3D11_QUERY_TIMESTAMP)?,
++                end: query(device, D3D11_QUERY_TIMESTAMP)?,
++                pending: None,
++            });
++        }
++        Ok(Self { slots, sequence: 0 })
++    }
++
++    pub(crate) fn begin(
++        &mut self,
++        context: &ID3D11DeviceContext,
++        window: u64,
++    ) -> Result<Option<usize>> {
++        for slot in &mut self.slots {
++            let Some((clock, end, hwnd, sequence)) = slot.pending else {
++                continue;
++            };
++            let Some(timing) =
++                read::<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT>(context, &slot.disjoint)?
++            else {
++                continue;
++            };
++            let Some(start) = read::<u64>(context, &slot.start)? else {
++                continue;
++            };
++            let Some(finish) = read::<u64>(context, &slot.end)? else {
++                continue;
++            };
++            let duration = duration_ns(start, finish, timing.Frequency, timing.Disjoint.as_bool());
++            crate::profiling::record(crate::profiling::Event {
++                kind: if duration.is_some() {
++                    "gpu_frame"
++                } else {
++                    "gpu_disjoint"
++                },
++                label: "d3d11_render",
++                clock,
++                end,
++                epoch: hwnd,
++                sequence,
++                value: duration.unwrap_or(0),
++            });
++            slot.pending = None;
++        }
++        let Some(index) = self.slots.iter().position(|slot| slot.pending.is_none()) else {
++            crate::profiling::mark("gpu_skipped", "query_ring_full", window, 0, 0);
++            return Ok(None);
++        };
++        self.sequence += 1;
++        let slot = &mut self.slots[index];
++        slot.pending = Some((
++            crate::profiling::clock().unwrap_or(0),
++            0,
++            window,
++            self.sequence,
++        ));
++        unsafe {
++            context.Begin(&slot.disjoint);
++            context.End(&slot.start);
++        }
++        Ok(Some(index))
++    }
++
++    pub(crate) fn end(&mut self, context: &ID3D11DeviceContext, index: usize) {
++        let slot = &mut self.slots[index];
++        unsafe {
++            context.End(&slot.end);
++            context.End(&slot.disjoint);
++        }
++        if let Some(pending) = &mut slot.pending {
++            pending.1 = crate::profiling::clock().unwrap_or(0);
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::duration_ns;
++    #[test]
++    fn timestamps_require_valid_stable_frequency() {
++        assert_eq!(duration_ns(100, 110, 1000, false), Some(10_000_000));
++        assert_eq!(duration_ns(100, 110, 1000, true), None);
++        assert_eq!(duration_ns(100, 110, 0, false), None);
++        assert_eq!(duration_ns(110, 100, 1000, false), None);
++    }
++}
 --- a/src/gpui_windows.rs
 +++ b/src/gpui_windows.rs
 @@ -1,4 +1,8 @@
@@ -328,9 +566,18 @@
 +// Diagnóstico apagado por VANTARE_PROFILE_PHASES; no dependencia hacia ui.
 +#[allow(dead_code)]
 +use vantare_profiling as profiling;
- 
+
  mod clipboard;
  mod destination_list;
+@@ -8,6 +12,8 @@
+ mod directx_atlas;
+ mod directx_devices;
+ mod directx_renderer;
++#[cfg(feature = "paint-stats")]
++mod gpu_measurement;
+ mod dispatcher;
+ mod display;
+ mod events;
 --- a/src/shaders.hlsl
 +++ b/src/shaders.hlsl
 @@ -6,7 +6,8 @@
@@ -341,7 +588,7 @@
 +    uint opaque_window;
 +    uint2 global_pad;
  };
- 
+
  cbuffer BatchParams: register(b1) {
 @@ -250,6 +251,9 @@
  float4 over(float4 below, float4 above) {
@@ -365,13 +612,13 @@
 @@ -941,6 +945,7 @@
          }
      }
- 
+
 +    alpha = saturate(alpha); // Quadrature must not exceed unit coverage.
      if (shadow.inset != 0u) {
          // The inset shadow is the complement of the (blurred) hole rect, clipped to the element.
          // `saturate(0.5 - d)` gives a 1-pixel antialiased edge: d <= -0.5 -> 1, d >= 0.5 -> 0.
 @@ -1183,7 +1188,10 @@
- 
+
  float4 monochrome_sprite_fragment(MonochromeSpriteFragmentInput input): SV_Target {
      float sample = t_sprite.Sample(s_sprite, input.tile_position).r;
 -    float alpha_corrected = apply_contrast_and_gamma_correction(sample, input.color.rgb, grayscale_enhanced_contrast, gamma_ratios);
@@ -381,7 +628,7 @@
 +    float alpha_corrected = apply_contrast_and_gamma_correction(sample, input.color.rgb, 1.5f, grayscale_gamma_ratios);
      return float4(input.color.rgb, input.color.a * alpha_corrected);
  }
- 
+
 --- a/src/window.rs
 +++ b/src/window.rs
 @@ -51,6 +51,10 @@
@@ -393,7 +640,7 @@
 +    pub dpi_scale: Cell<f32>,
 +    pub limit_zoom: Cell<bool>,
      pub restore_from_minimized: Cell<Option<Box<dyn FnMut(RequestFrameOptions)>>>,
- 
+
      pub callbacks: Callbacks,
 @@ -167,6 +171,9 @@
              appearance: Cell::new(appearance),
@@ -479,7 +726,7 @@
              retrieve_window_placement(hwnd, display, params.bounds, &this.state.border_offset)?;
          if params.show {
 @@ -656,7 +698,10 @@
- 
+
      fn resize(&mut self, size: Size<Pixels>) {
          let hwnd = self.0.hwnd;
 -        let bounds = gpui::bounds(self.bounds().origin, size).to_device_pixels(self.scale_factor());
@@ -488,5 +735,5 @@
 +        let mut bounds = self.bounds().to_device_pixels(self.scale_factor());
 +        bounds.size = size.to_device_pixels(dpi_scale);
          let rect = calculate_window_rect(bounds, &self.state.border_offset);
- 
+
          self.0

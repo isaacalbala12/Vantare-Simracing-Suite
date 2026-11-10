@@ -14,6 +14,13 @@ monocromos y capas de color: se adaptó allí la misma cobertura y su test.
 El manifest solo añade `vantare-profiling` por ruta y aísla este paquete del
 workspace principal. El código restante es el paquete publicado.
 
+La feature `paint-stats` incorpora además HWND en los presents y consultas GPU
+timestamp/disjoint asíncronas, iguales a las de la referencia de #2013. Solo se
+activan con la variable de medición correspondiente. Ocho slots, DONOTFLUSH y
+lectura explícita de S_FALSE evitan esperas y resultados sin completar. No se
+compilan en el backend de producto por defecto. El módulo nuevo y la feature
+también forman parte del patch reproducible.
+
 **Regenerar al actualizar:** descargar la versión exacta que fije Kit en una
 carpeta temporal, comprobar SHA-256 con la API de crates.io y conservar licencia,
 `Cargo.toml`, `build.rs` y `src/`. Aplicar `vantare.patch` a esa base (desde

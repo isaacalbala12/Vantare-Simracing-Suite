@@ -1,5 +1,11 @@
 # Medición VANTA-139 — método Release v2 en preparación
 
+La comparación entre motores requiere [A/A y ABBA](MEASUREMENT-AB.md) y el
+[gate físico VRR](VRR-GATE.md). Las pasadas Release de `5104c1bbf` son solo
+diagnóstico provisional. La referencia final debe construirse desde el SHA
+fusionado de #2001. La memoria de referencia es el working set; la privada
+incluye unos 137 MiB reservados para la traza.
+
 Las campañas anteriores son **solo dev**, no una línea base. Sus conclusiones de rendimiento se han retirado de #2001 y #2009. El informe histórico se conserva en [measurements/SOLO-DEV.md](measurements/SOLO-DEV.md); no usar sus tablas para comparar motores.
 
 La nueva campaña usa el perfil `--release` de distribución, sin cambiar LTO ni codegen-units: valores Cargo por defecto (`opt-level=3`, `lto=false`, `codegen-units=16`). UI y núcleo instrumentados exponen `--measurement-info` con SHA compilado, perfil, optimización y features. El recolector rechaza dev y binarios compilados con cambios locales sin commit. Se conserva el hash del binario, núcleo y grabación.

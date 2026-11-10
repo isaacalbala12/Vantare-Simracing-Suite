@@ -9,7 +9,7 @@ publish.workspace = true
 # Captura con alfa de la ventana (dos pasadas GDI) para la prueba de paridad.
 parity-capture = []
 # Imprime cada segundo cuántos fotogramas, `render` y pintados hace cada widget.
-paint-stats = []
+paint-stats = ["dep:gpui_pre_windows", "gpui_pre_windows/paint-stats"]
 
 [dependencies]
 vantare-profiling.workspace = true
@@ -26,6 +26,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [target.'cfg(windows)'.dependencies]
+gpui_pre_windows = { package = "gpui-pre-windows", version = "=0.3.12", optional = true }
 # Ya en el workspace (runtime, ipc, services): icono de bandeja de los overlays.
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 

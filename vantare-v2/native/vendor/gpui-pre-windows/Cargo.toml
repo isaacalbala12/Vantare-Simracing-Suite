@@ -35,6 +35,7 @@ zed-version = "0.1.0"
 zed-rev = "d2a4fb6ded7c470be25d1541281da3882495b65b"
 
 [features]
+paint-stats = []
 default = ["gpui/default"]
 screen-capture = [
     "gpui/screen-capture",

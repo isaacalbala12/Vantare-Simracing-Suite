@@ -637,6 +637,23 @@ impl Render for Screen {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         crate::stats::frame(window);
+        #[cfg(feature = "paint-stats")]
+        if crate::profiling::render_load() {
+            let widgets = self
+                .widgets
+                .iter()
+                .map(|placed| placed.view.clone())
+                .collect::<Vec<_>>();
+            let screen = cx.entity().downgrade();
+            window.on_next_frame(move |_, cx| {
+                crate::profiling::mark("load_notify", "all_widgets", 0, 0, widgets.len() as u64);
+                for widget in widgets {
+                    widget.update(cx, |_, cx| cx.notify());
+                }
+                let _ = screen.update(cx, |_, cx| cx.notify());
+            });
+            window.request_animation_frame();
+        }
         attach(&mut self.hwnd, window, self.origin);
         // Un único aviso discreto en la esquina del primer widget, no uno por widget.
         let notice = self

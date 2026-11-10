@@ -21,7 +21,9 @@ def aggregate(root):
             metadata={k:v for k,v in meta.items() if k not in ('widgets','phases','date')}
         if meta['profile']!='release' or meta['measurement_version']!=2:
             raise ValueError('Release v2 required')
-        identities.add((meta['executable_sha256'],meta['recording_sha256'],meta.get('core_sha256'),meta['profile']))
+        if not meta.get('collector_sha'):
+            raise ValueError('explicit collector_sha required')
+        identities.add((meta['executable_sha256'],meta['recording_sha256'],meta.get('core_sha256'),meta['profile'],meta['collector_sha']))
         groups[(meta['widgets'],meta['phases'])].append(run)
         sources.append(dict(directory=path.parent.name,summary_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                             widgets=meta['widgets'],phases=meta['phases'],ui=run['ui'],dwm=run['dwm'],gpu=run['gpu'],
@@ -34,12 +36,16 @@ def aggregate(root):
         paths=[(p,f) for p in ('ui','dwm') for f in ('cycles_per_second','cycles_per_received_photo','mean_private_mib','mean_working_set_mib')]
         paths += [('gpu',p,f) for p in ('ui','dwm') for f in ('mean_busiest_engine_percent','mean_engine_sum_percent','peak_dedicated_mib')]
         paths += [(f,) for f in ('present_interval_p99_ms','receive_to_paint_p99_ms','receive_to_submit_p99_ms')]
+        paths += [(f,) for f in ('receive_to_paint_median_ms','receive_to_submit_median_ms','presents_per_second')]
+        stages=set().union(*(run.get('stages',{}) for run in runs))
+        paths += [('stages',stage,field) for stage in sorted(stages)
+                  for field in ('calls','cpu_cycles','wall_ns','cpu_cycles_per_call','wall_ns_per_call')]
         for path in paths:
             values=[]
             for run in runs:
                 value=run
                 for key in path:
-                    value=value[key]
+                    value=value.get(key) if isinstance(value,dict) else None
                 if value is not None:
                     values.append(value)
             metrics['.'.join(path)]=dict(median=statistics.median(values),minimum=min(values),maximum=max(values)) if values else None

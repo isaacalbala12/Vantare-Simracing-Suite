@@ -26,7 +26,7 @@ class CampaignTest(unittest.TestCase):
                         path=root/f'round-{n}-w{widgets}-p{phases}'
                         path.mkdir()
                         (path/'complete.txt').write_text('complete')
-                        run=dict(metadata=dict(profile='release',measurement_version=2,executable_sha256='a',recording_sha256='b',widgets=widgets,phases=phases))
+                        run=dict(metadata=dict(profile='release',measurement_version=2,collector_sha='collector',executable_sha256='a',recording_sha256='b',widgets=widgets,phases=phases))
                         for process in ('ui','dwm'):
                             run[process]=dict(cycles_per_second=n+1,cycles_per_received_photo=10*(n+1),mean_private_mib=20,mean_working_set_mib=10)
                         run['gpu']={p:dict(mean_busiest_engine_percent=1,mean_engine_sum_percent=1,peak_dedicated_mib=2) for p in ('ui','dwm')}
@@ -37,6 +37,12 @@ class CampaignTest(unittest.TestCase):
                 result=M.aggregate(root)
             value=result['widgets=22,phases=True']['metrics']['ui.cycles_per_second']
             self.assertEqual(value,dict(median=3,minimum=1,maximum=5))
+            path=next(root.glob('round-*/summary.json'))
+            run=json.loads(path.read_text())
+            run['metadata']['collector_sha']='different'
+            path.write_text(json.dumps(run))
+            with self.assertRaisesRegex(ValueError,'one Release'):
+                M.aggregate(root)
 
 
 if __name__=='__main__':

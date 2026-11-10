@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   type HostError,
+  type LegacyMigration,
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
@@ -53,6 +54,7 @@ function useReportsState() {
     reports: [],
     questionnaires: [],
   });
+  const [legacy, setLegacy] = useState<LegacyMigration>("none");
   const [consent, setConsent] = useState(false);
   const state = useRef({ fields, saved, loaded, available });
   state.current = { fields, saved, loaded, available };
@@ -117,6 +119,7 @@ function useReportsState() {
     setSaved(JSON.stringify(reply.value.fields));
     setLoaded(true);
     setMessage(reply.value.message);
+    setLegacy(reply.value.legacy);
   }
   async function save() {
     if (
@@ -134,6 +137,7 @@ function useReportsState() {
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
     setMessage(reply.value.message);
+    setLegacy(reply.value.legacy);
     state.current.saved = JSON.stringify(fields);
     setSaved(state.current.saved);
     setPreview(undefined);
@@ -182,6 +186,8 @@ function useReportsState() {
     setReceipt(undefined);
     setConsent(false);
     setParticipation({ reports: [], questionnaires: [] });
+    setLegacy("none");
+    setMessage("");
     setError(false);
   }, [client, core.access.verified, core.access.blocked]);
   useEffect(() => () => cancellation.current.abort(), []);
@@ -230,6 +236,7 @@ function useReportsState() {
       throw new Error("unexpected report reply");
     setFields(reply.value.fields);
     setSaved(JSON.stringify(reply.value.fields));
+    setLegacy(reply.value.legacy);
     setPreview(undefined);
     setConsent(false);
   }
@@ -267,6 +274,7 @@ function useReportsState() {
   }
   return {
     access: core.access,
+    legacy,
     message,
     fields,
     edit,

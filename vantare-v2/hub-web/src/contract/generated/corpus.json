@@ -664,9 +664,9 @@
         "method": "report.send",
         "value": {
           "createdAt": "2026-11-10T12:00:00Z",
-          "draftCleared": true,
-          "id": "qa",
-          "state": "submitted"
+          "draftState": "cleared",
+          "id": "15350000-0000-0000-0000-000000000001",
+          "state": "received"
         }
       }
     },
@@ -731,6 +731,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -750,6 +751,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -824,6 +826,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -843,6 +846,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -862,6 +866,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -997,6 +1002,13 @@
     {
       "error": {
         "kind": "rejected"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "evidencePending"
       },
       "id": 1,
       "kind": "failure"

@@ -171,7 +171,13 @@ describe("Testing Center closed wire and local persistence double", () => {
       id: 42,
       result: {
         method: "draft.save",
-        value: { fields, exists: true, screenshots: [], legacy: "none", message: "" },
+        value: {
+          fields,
+          exists: true,
+          screenshots: [],
+          message: "",
+          legacy: "none",
+        },
       },
     });
     expect(isHostMessage(save)).toBe(true);
@@ -188,7 +194,7 @@ describe("Testing Center closed wire and local persistence double", () => {
       result: { value: { exists: false } },
     });
   });
-  it("accepts only the closed migration states and never a free warning", () => {
+  it("accepts only the closed migration states and never an extra migration warning", () => {
     const host = createMockHost("testing-reports");
     const saved = host(request("draft.save", { fields }));
     for (const legacy of ["none", "imported", "importedTrimmed", "preserved"]) {
@@ -197,7 +203,13 @@ describe("Testing Center closed wire and local persistence double", () => {
           ...saved,
           result: {
             method: "draft.load",
-            value: { fields, exists: true, screenshots: [], legacy },
+            value: {
+              fields,
+              exists: true,
+              screenshots: [],
+              message: "",
+              legacy,
+            },
           },
         }),
       ).toBe(true);
@@ -208,7 +220,13 @@ describe("Testing Center closed wire and local persistence double", () => {
           ...saved,
           result: {
             method: "draft.load",
-            value: { fields, exists: true, screenshots: [], legacy },
+            value: {
+              fields,
+              exists: true,
+              screenshots: [],
+              message: "",
+              legacy,
+            },
           },
         }),
       ).toBe(false);
@@ -223,7 +241,8 @@ describe("Testing Center closed wire and local persistence double", () => {
             exists: true,
             screenshots: [],
             legacy: "preserved",
-            message: "private",
+            message: "",
+            legacyMessage: "private",
           },
         },
       }),
@@ -235,6 +254,7 @@ describe("Testing Center closed wire and local persistence double", () => {
       fields: stored,
       exists: true,
       screenshots: [],
+      message: "",
       legacy: "none",
     };
     expect(

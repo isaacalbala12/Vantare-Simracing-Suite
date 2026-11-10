@@ -70,6 +70,7 @@ export function Reports() {
         )
       }
     >
+      {state.legacy !== "none" && <Callout title={text.legacy[state.legacy]} />}
       {state.message && <Callout title={state.message} />}
       {state.error && (
         <Callout

@@ -27,8 +27,8 @@ pub fn buffered() -> bool {
     *BUFFERED.get_or_init(|| std::env::var("VANTARE_MEASUREMENT_TRACE").is_ok_and(|v| v == "1"))
 }
 
-/// Measurement load removes the recording's invalidation cadence, while the
-/// platform still controls when a window can draw. Never enabled in product UI.
+/// Diagnostic load removes recording cadence and the instrumented backend's DWM
+/// wait. GPU/OS scheduling still applies. Never enabled in product UI.
 pub fn render_load() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
     *ENABLED.get_or_init(|| {

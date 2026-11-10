@@ -26,6 +26,8 @@ Antes de cualquier observación se comprueban Release limpio, SHA, `PAINT_STATS`
 
 Plan de energía registrado y comprobado sin cambios por pasada. Prioridad y afinidad son parámetros declarados (`Normal`, todos los procesadores, por defecto). Si el ruido no permite comparar, investigar frecuencia/carga, fijar afinidad o prioridad y repetir de forma limitada, conservando el suelo real. La cola está reservada durante cada medición; no se compila en paralelo con ella.
 
+Un `cargo fmt` ajeno no es una compilación: se registra y se permite, manteniendo los controles de carga. El colector exige su propio worktree limpio y el mismo HEAD al principio y al final; una mutación propia invalida la observación. Se conservan los intentos anteriores abortados por la clasificación demasiado conservadora. Si otra captura ocupa el mutex visual, se liberan las reservas de compilación antes de esperar, con el mismo plazo máximo, y se vuelven a comprobar ambos recursos.
+
 ## Reproducción y estrés
 
 Python **3.11+** y PowerShell 7. Desde `vantare-v2`, con ejecutables instrumentados congelados y una carpeta nueva:
@@ -34,7 +36,9 @@ Python **3.11+** y PowerShell 7. Desde `vantare-v2`, con ejecutables instrumenta
 pwsh -NoProfile -File native/scripts/measure-overlay-ab.ps1 -ComparisonName kit-vs-native -A <A.exe> -B <B.exe> -Core <core-fijo.exe> -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out <evidencia-nueva> -Widgets 22 -Rounds 8
 ```
 
-`-Stress` invalida todos los widgets y la pantalla en cada oportunidad de dibujo, sin esperar la siguiente foto. Es **el peor caso sin caché de entidades**, no el comportamiento normal ni una promesa de Hz ilimitados. Windows conserva su pulso de presentación. Se exige **≥30 presents/s** y notificaciones de estrés; queda informativo. `-QuietControl -Widgets 1` exige **≤0,1 presents/s** en el widget quieto. Cada control tiene su declaración y registro.
+`-Stress` invalida todos los widgets y la pantalla en cada oportunidad de dibujo, sin esperar la siguiente foto. Es **el peor caso sin caché de entidades**. Con la capacidad `render_load_uncapped`, el backend instrumentado omite `DwmFlush` y cede el turno al planificador sin temporizador: no impone la cadencia de telemetría ni la del compositor. Windows/GPU pueden limitar el resultado. El hilo de pulsos queda deliberadamente saturado y suma CPU del proceso; los spans CPU/GPU de render lo separan. Nunca se aplica al producto sin la feature y variable.
+
+Se exige **≥30 presents/s** y notificaciones de estrés; queda informativo. El piloto anterior, todavía con `DwmFlush`, produjo unos 22 presents/s y fue **rechazado**, sin bajar ese umbral. Sus 1.459 timestamps GPU válidos verifican las consultas, pero no convierten la pasada en una comparación de estrés aceptada. `-QuietControl -Widgets 1` exige **≤0,1 presents/s** en el widget quieto. Cada control tiene su declaración y registro.
 
 La aceleración de reproducción no se usa para aislar render: cambia decode/IPC y acorta la ventana. La comparación mantiene velocidad 1. p99 entre presents y latencia local de esa reproducción dependen de la entrada; no prueban velocidad del motor. La normalización por Present se publica como contexto; incluye trabajo ajeno al pintado.
 

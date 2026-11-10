@@ -19,6 +19,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/measurement-processes.ps1"
+$collectorSha=Get-MeasurementSourceRevision $PSScriptRoot
 if (Test-Path -LiteralPath $Out) { throw 'Use a new evidence directory for every run' }
 foreach ($file in @($UI,$Recording)) {
     if (!(Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing $file" }
@@ -28,6 +29,7 @@ if (!$Core) { throw 'Baseline v2 requires the raw production IPC replay' }
 $build = (& $UI --measurement-info | ConvertFrom-Json)
 if ($LASTEXITCODE -or $build.profile -ne 'release' -or $build.opt_level -ne '3' -or $build.dirty -ne $false) { throw 'A clean Release executable with embedded provenance is required' }
 if ($RenderLoad -and 'render_load' -notin $build.measurement_capabilities) { throw 'UI executable does not support render load' }
+if ($RenderLoad -and 'render_load_uncapped' -notin $build.measurement_capabilities) { throw 'Render stress requires the uncapped backend capability' }
 $gpuTiming = [bool]($Phases -and 'd3d11_timestamps' -in $build.measurement_capabilities)
 $coreBuild = (& $Core --measurement-info | ConvertFrom-Json)
 if ($LASTEXITCODE -or $coreBuild.profile -ne 'release' -or $coreBuild.opt_level -ne '3' -or $coreBuild.dirty -ne $false) { throw 'A clean Release replay core with embedded provenance is required' }
@@ -130,7 +132,7 @@ function Assert-MeasurementQueueIdle {
             $operations = @([regex]::Matches([string]$candidate.CommandLine, '(?i)(?:^|\s)(metadata|tree|fmt|build|check|clippy|test|nextest|run|rustc|bench|doc|install|package|clean|--version|-vV)(?=\s|$)') | ForEach-Object { $_.Groups[1].Value })
             $compilers += [pscustomobject]@{pid=$candidate.ProcessId;parent_pid=$candidate.ParentProcessId;name=$candidate.Name;operations=($operations -join ',');command_line_available=[bool]$candidate.CommandLine}
         } else {
-            $kind = if ($candidate.CommandLine -match '(?i)(?:^|\s)fmt(?:\s|$)') { 'cargo fmt --check' } else { 'cargo metadata' }
+            $kind = if ($candidate.CommandLine -match '(?i)(?:^|\s)fmt(?:\s|$)') { 'cargo fmt (own source guarded)' } else { 'cargo metadata' }
             $readOnlyRows.Add([pscustomobject]@{qpc=[Diagnostics.Stopwatch]::GetTimestamp();pid=$candidate.ProcessId;kind=$kind})
         }
     }
@@ -152,16 +154,29 @@ try {
     $configuredSlots = [Environment]::GetEnvironmentVariable('VANTARE_CARGO_SLOTS','Machine') ?? $env:VANTARE_CARGO_SLOTS ?? '4'
     $slots = [Math]::Max(4,[int]$configuredSlots)
     Write-Host 'Waiting for the build queue to finish before measurement'
-    for ($slot=0; $slot -lt $slots; $slot++) {
+    while (!$held) {
+     for ($slot=0; $slot -lt $slots; $slot++) {
         $buildLock = [Threading.Mutex]::new($false,"Global\VantareCargoSlot$slot")
         $remaining = [Math]::Max(0,($queueDeadline - [datetime]::UtcNow).TotalMilliseconds)
         try { if (!$buildLock.WaitOne([int]$remaining)) { $buildLock.Dispose(); throw 'Build queue timeout: measurement did not start' } }
         catch [Threading.AbandonedMutexException] { } # ownership was acquired
         $buildLocks.Add($buildLock)
+     }
+     Assert-MeasurementQueueIdle
+     try { $held = $mutex.WaitOne(0) }
+     catch [Threading.AbandonedMutexException] { $held=$true }
+     if (!$held) {
+        # A capture may own the visual mutex while compiling. Release all build
+        # reservations before waiting, then reacquire and recheck both resources.
+        foreach ($buildLock in $buildLocks) { $buildLock.ReleaseMutex(); $buildLock.Dispose() }
+        $buildLocks.Clear()
+        $remaining=[Math]::Max(0,($queueDeadline-[datetime]::UtcNow).TotalMilliseconds)
+        try { $available=$mutex.WaitOne([int]$remaining) }
+        catch [Threading.AbandonedMutexException] { $available=$true }
+        if (!$available) { throw 'Visual queue timeout: measurement did not start' }
+        $mutex.ReleaseMutex()
+     }
     }
-    Assert-MeasurementQueueIdle
-    $held = $mutex.WaitOne(0)
-    if (!$held) { throw 'Visual capture/measurement already in progress' }
     $powerPlan = (& powercfg /getactivescheme | Out-String).Trim()
     if ($ExpectedPowerPlan -and $powerPlan -ne $ExpectedPowerPlan) { throw 'Power plan changed from the predeclared campaign' }
     # The subscriber reconnects in the background. Prepare and sample the UI
@@ -296,15 +311,17 @@ try {
         if (!$coreProcess.WaitForExit(5000)) { throw 'Core did not stop on EOF' }
         if ($coreProcess.ExitCode) { throw "Core failed: $($coreProcess.ExitCode)" }
     }
+    Assert-MeasurementSourceRevision $PSScriptRoot $collectorSha
     [pscustomobject]@{
         sha=$build.sha; profile=$build.profile; features=$build.features; compiled_build=$build; core_build=$coreBuild
-        collector_sha=(& git -C $PSScriptRoot rev-parse HEAD)
-        collector_dirty=[bool](@(& git -C $PSScriptRoot status --porcelain).Count)
+        collector_sha=$collectorSha
+        collector_dirty=$false; collector_source_verified=$true
         collector_script_sha256=(Get-FileHash -LiteralPath $PSCommandPath).Hash
         process_guard_sha256=(Get-FileHash -LiteralPath "$PSScriptRoot/measurement-processes.ps1").Hash
         readonly_cargo_observations=$readOnlyRows.Count
         measurement_version=3; date=(Get-Date -Format o); widgets=$Widgets
         render_load=[bool]$RenderLoad; quiet_control=[bool]$QuietControl; sampler_mode=$SamplerMode
+        compositor_pacing=$(if ($RenderLoad) { 'diagnostic DwmFlush bypass; scheduler yield without timer; no physical display-rate guarantee' } else { 'normal backend DwmFlush pacing' })
         min_stress_presents_per_second=$MinStressPresentsPerSecond; max_quiet_presents_per_second=0.1
         startup_policy='UI window and initial samples precede replay; bounded parent WM_CLOSE of owned QA windows after recording+4s'
         initial_sample_qpc=$initialQpc

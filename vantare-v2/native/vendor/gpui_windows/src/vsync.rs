@@ -38,6 +38,13 @@ impl VSyncProvider {
     }
 
     pub(crate) fn wait_for_vsync(&self) {
+        // Worst-case diagnostic load must not inherit compositor pacing.
+        // Ownership and shutdown remain in the existing provider loop.
+        #[cfg(feature = "paint-stats")]
+        if crate::profiling::render_load() {
+            std::thread::yield_now();
+            return;
+        }
         let vsync_start = Instant::now();
         let wait_succeeded = (self.f)();
         let elapsed = vsync_start.elapsed();

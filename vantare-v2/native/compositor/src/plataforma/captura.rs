@@ -23,10 +23,31 @@ use windows::Win32::{
 };
 use windows::core::PCWSTR;
 
+struct CapturaBgra {
+    ancho: u32,
+    alto: u32,
+    stride: u32,
+    bytes: Vec<u8>,
+}
+
 impl Plataforma {
     /// PNG RGBA con valores RGB premultiplicados (convención de diff.py).
     /// `raiz=None` captura Monitor; una raíz captura `PorOverlay`, incluido su margen.
     pub fn capturar(&self, raiz: Option<CapaId>, instante: Instante, ruta: &Path) -> Resultado<()> {
+        let imagen = self.capturar_bitmap(raiz, instante)?;
+        unsafe {
+            guardar_png(
+                ruta,
+                imagen.ancho,
+                imagen.alto,
+                imagen.stride,
+                &imagen.bytes,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn capturar_bitmap(&self, raiz: Option<CapaId>, instante: Instante) -> Resultado<CapturaBgra> {
         let salida = self
             .salidas
             .get(&raiz)
@@ -72,11 +93,8 @@ impl Plataforma {
             let mut origen = D2D1_LAYER_PARAMETERS1::default().maskTransform;
             origen.M11 = 1.0;
             origen.M22 = 1.0;
-            if let Some(id) = raiz {
-                let r = self.capa(id)?.rect;
-                origen.M31 = self.margen - r.x;
-                origen.M32 = self.margen - r.y;
-            }
+            origen.M31 = salida.origen.0;
+            origen.M32 = salida.origen.1;
             let dibujo = self.dibujar_arbol(
                 &ctx,
                 None,
@@ -113,9 +131,13 @@ impl Plataforma {
             // SAFETY: Map mantiene bits válidos para pitch*alto hasta Unmap.
             let bytes = std::slice::from_raw_parts(mapa.bits, cantidad).to_vec();
             lectura.Unmap()?;
-            guardar_png(ruta, ancho_px, alto_px, mapa.pitch, &bytes)?;
+            Ok(CapturaBgra {
+                ancho: ancho_px,
+                alto: alto_px,
+                stride: mapa.pitch,
+                bytes,
+            })
         }
-        Ok(())
     }
 
     fn dibujar_arbol(
@@ -224,4 +246,316 @@ unsafe fn guardar_png(
         encoder.Commit()?;
     }
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::escena::capas::{Alineacion, Color, Dibujo, Fuente, Lote, Operacion, Pintura, Rect};
+    use crate::plataforma::{Modo, MotivoOrden};
+    use windows::core::Interface;
+    fn rect() -> Rect {
+        Rect {
+            x: 0.0,
+            y: 0.0,
+            ancho: 8.0,
+            alto: 8.0,
+        }
+    }
+    fn escenario(modo: Modo) -> Resultado<Plataforma> {
+        let mut p = Plataforma::nueva(
+            modo,
+            windows::Win32::Foundation::RECT {
+                left: 0,
+                top: 0,
+                right: 8,
+                bottom: 8,
+            },
+            Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../ui/assets/fonts")),
+        )?;
+        let mut ops = vec![
+            Operacion::Crear {
+                id: CapaId(1),
+                padre: None,
+                orden: 0,
+            },
+            Operacion::Colocar {
+                id: CapaId(1),
+                rect: rect(),
+            },
+            Operacion::Crear {
+                id: CapaId(5),
+                padre: None,
+                orden: 1,
+            },
+        ];
+        for (id, color) in [
+            (
+                2,
+                Color {
+                    r: 1.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 1.0,
+                },
+            ),
+            (
+                3,
+                Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 1.0,
+                    a: 1.0,
+                },
+            ),
+            (
+                4,
+                Color {
+                    r: 0.0,
+                    g: 1.0,
+                    b: 0.0,
+                    a: 1.0,
+                },
+            ),
+        ] {
+            ops.extend([
+                Operacion::Crear {
+                    id: CapaId(id),
+                    padre: Some(CapaId(1)),
+                    orden: id - 2,
+                },
+                Operacion::Colocar {
+                    id: CapaId(id),
+                    rect: rect(),
+                },
+                Operacion::Pintar {
+                    id: CapaId(id),
+                    dibujos: vec![Dibujo::Rect {
+                        rect: rect(),
+                        radios: [0.0; 4],
+                        relleno: Some(Pintura::Solido(color)),
+                        borde: None,
+                    }],
+                },
+            ]);
+        }
+        ops.push(Operacion::Fijar {
+            id: CapaId(4),
+            propiedad: Propiedad::Opacidad,
+            valor: 0.0,
+        });
+        p.aplicar(&Lote { operaciones: ops })?;
+        Ok(p)
+    }
+    fn pixel_central(p: &Plataforma) -> Resultado<[u8; 4]> {
+        let clave = if p.modo == Modo::Monitor {
+            None
+        } else {
+            Some(CapaId(1))
+        };
+        let salida = p
+            .salidas
+            .get(&clave)
+            .ok_or(Error::Entrada("Sin salida de prueba"))?;
+        let x = usize::try_from(super::super::entero(
+            (salida.origen.0 + 4.0) * salida.ventana.dpi / 96.0,
+        )?)
+        .map_err(|_| Error::Entrada("Pixel X"))?;
+        let y = usize::try_from(super::super::entero(
+            (salida.origen.1 + 4.0) * salida.ventana.dpi / 96.0,
+        )?)
+        .map_err(|_| Error::Entrada("Pixel Y"))?;
+        let imagen = p.capturar_bitmap(clave, p.ahora()?)?;
+        let offset = y * usize::try_from(imagen.stride)
+            .map_err(|_| Error::Entrada("Stride de prueba"))?
+            + x * 4;
+        imagen
+            .bytes
+            .get(offset..offset + 4)
+            .ok_or(Error::Entrada("Pixel fuera de captura"))?
+            .try_into()
+            .map_err(|_| Error::Entrada("Pixel BGRA incompleto"))
+    }
+    #[test]
+    fn ordenar_cambia_el_pixel_frontal_sin_repintar_y_conserva_las_fantasmas() -> Resultado<()> {
+        for modo in [Modo::Monitor, Modo::PorOverlay] {
+            let mut p = escenario(modo)?;
+            assert_eq!(pixel_central(&p)?, [255, 0, 0, 255]); // Azul en BGRA.
+            let pintados = p.repintados.get();
+            let identidades: Vec<_> = p
+                .capas
+                .iter()
+                .map(|(id, c)| (*id, c.posicion.as_raw()))
+                .collect();
+            p.aplicar(&Lote {
+                operaciones: vec![
+                    Operacion::Ordenar {
+                        padre: Some(CapaId(1)),
+                        hijos: vec![CapaId(3), CapaId(4), CapaId(2)],
+                    },
+                    Operacion::Ordenar {
+                        padre: None,
+                        hijos: vec![CapaId(5), CapaId(1)],
+                    },
+                ],
+            })?;
+            assert_eq!(pixel_central(&p)?, [0, 0, 255, 255]); // Rojo en BGRA.
+            assert_eq!(p.repintados.get(), pintados);
+            assert_eq!(
+                p.capas
+                    .iter()
+                    .map(|(id, c)| (*id, c.posicion.as_raw()))
+                    .collect::<Vec<_>>(),
+                identidades
+            );
+            assert!(matches!(
+                p.ordenar(Some(CapaId(1)), &[CapaId(2), CapaId(3)]),
+                Err(Error::OrdenInvalido {
+                    motivo: MotivoOrden::Cantidad {
+                        esperada: 3,
+                        recibida: 2
+                    },
+                    ..
+                })
+            ));
+            assert!(matches!(
+                p.ordenar(Some(CapaId(1)), &[CapaId(2), CapaId(2), CapaId(4)]),
+                Err(Error::OrdenInvalido {
+                    motivo: MotivoOrden::Duplicada(CapaId(2)),
+                    ..
+                })
+            ));
+            assert!(matches!(
+                p.ordenar(Some(CapaId(1)), &[CapaId(2), CapaId(3), CapaId(5)]),
+                Err(Error::OrdenInvalido {
+                    motivo: MotivoOrden::PadreDistinto(CapaId(5)),
+                    ..
+                })
+            ));
+            assert!(matches!(
+                p.ordenar(Some(CapaId(1)), &[CapaId(2), CapaId(3), CapaId(99)]),
+                Err(Error::Capa(CapaId(99)))
+            ));
+            assert!(matches!(
+                p.ordenar(Some(CapaId(99)), &[]),
+                Err(Error::Capa(CapaId(99)))
+            ));
+        }
+        Ok(())
+    }
+    #[test]
+    fn salida_cubre_sombra_y_extremo_interior_sin_mover_la_maquetacion() -> Resultado<()> {
+        use crate::escena::capas::{Curva, Tramo};
+        let mut p = escenario(Modo::PorOverlay)?;
+        let rect = Rect {
+            x: 300.0,
+            y: 200.0,
+            ancho: 100.0,
+            alto: 50.0,
+        };
+        let inicio = p.ahora()?;
+        p.aplicar(&Lote {
+            operaciones: vec![
+                Operacion::Colocar {
+                    id: CapaId(1),
+                    rect,
+                },
+                Operacion::Pintar {
+                    id: CapaId(1),
+                    dibujos: vec![Dibujo::Sombra {
+                        rect: Rect {
+                            x: 0.0,
+                            y: 0.0,
+                            ..rect
+                        },
+                        radios: [0.0; 4],
+                        color: Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        },
+                        desenfoque: 26.0,
+                        desplazamiento: (0.0, 10.0),
+                    }],
+                },
+                Operacion::Animar {
+                    id: CapaId(1),
+                    propiedad: Propiedad::X,
+                    curva: Curva {
+                        inicio,
+                        tramos: vec![Tramo {
+                            desde: 0.0,
+                            a: 0.0,
+                            b: 400.0,
+                            c: -400.0,
+                            d: 0.0,
+                        }],
+                        fin: 1.0,
+                        final_: 0.0,
+                        repetir: None,
+                    },
+                },
+            ],
+        })?;
+        let salida = p
+            .salidas
+            .get(&Some(CapaId(1)))
+            .ok_or(Error::Entrada("Sin salida"))?;
+        let escala = salida.ventana.dpi / 96.0;
+        let mut ventana = windows::Win32::Foundation::RECT::default();
+        unsafe {
+            windows::Win32::UI::WindowsAndMessaging::GetWindowRect(
+                salida.ventana.hwnd,
+                &raw mut ventana,
+            )?;
+        }
+        assert!(f64::from(ventana.left) <= f64::from((222.0 - 64.0) * escala));
+        assert!(f64::from(ventana.right) >= f64::from((578.0 + 64.0) * escala));
+        assert!(f64::from(ventana.top) <= f64::from((132.0 - 64.0) * escala));
+        assert!(f64::from(ventana.bottom) >= f64::from((338.0 + 64.0) * escala));
+        assert!((p.capa(CapaId(1))?.rect.x - 300.0).abs() < f32::EPSILON);
+        let imagen = p.capturar_bitmap(Some(CapaId(1)), inicio)?;
+        // Tinta de sombra a 10 DIP a la izquierda de la caja de maquetación.
+        let x = usize::try_from(super::super::entero((salida.origen.0 + 290.0) * escala)?)
+            .map_err(|_| Error::Entrada("Pixel X"))?;
+        let y = usize::try_from(super::super::entero((salida.origen.1 + 225.0) * escala)?)
+            .map_err(|_| Error::Entrada("Pixel Y"))?;
+        let stride = usize::try_from(imagen.stride).map_err(|_| Error::Entrada("Stride"))?;
+        assert!(imagen.bytes[y * stride + x * 4 + 3] > 0);
+        Ok(())
+    }
+    #[test]
+    fn pintar_con_un_peso_inexistente_devuelve_error_tipado() -> Resultado<()> {
+        let mut p = escenario(Modo::Monitor)?;
+        let resultado = p.aplicar(&Lote {
+            operaciones: vec![Operacion::Pintar {
+                id: CapaId(2),
+                dibujos: vec![Dibujo::Texto {
+                    caja: rect(),
+                    texto: "abc".into(),
+                    fuente: Fuente {
+                        familia: "Inter".into(),
+                        peso: 900,
+                        tamano: 12.0,
+                        interletra: 0.0,
+                        interlinea: 16.0,
+                        tabulares: true,
+                        mayusculas: false,
+                    },
+                    color: Color {
+                        r: 1.0,
+                        g: 1.0,
+                        b: 1.0,
+                        a: 1.0,
+                    },
+                    alineacion: Alineacion::Inicio,
+                }],
+            }],
+        });
+        assert!(matches!(
+            resultado,
+            Err(Error::FuenteNoDisponible { peso: 900, .. })
+        ));
+        Ok(())
+    }
 }

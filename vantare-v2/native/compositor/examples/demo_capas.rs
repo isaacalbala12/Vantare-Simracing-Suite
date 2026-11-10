@@ -39,6 +39,25 @@ mod demo {
             mayusculas: false,
         }
     }
+    fn fuente_display() -> Fuente {
+        Fuente {
+            familia: "Rajdhani".into(),
+            peso: 600,
+            tamano: 22.0,
+            interlinea: 28.0,
+            ..fuente()
+        }
+    }
+    fn fuente_mono() -> Fuente {
+        Fuente {
+            familia: "Space Mono".into(),
+            peso: 400,
+            tamano: 12.0,
+            interlinea: 30.0,
+            interletra: 0.5,
+            ..fuente()
+        }
+    }
     fn animacion(
         id: u32,
         p: Propiedad,
@@ -89,7 +108,7 @@ mod demo {
                     Dibujo::Texto {
                         caja: rect(12.0, 24.0, 216.0, 30.0),
                         texto: "Segunda raíz · mismo commit".into(),
-                        fuente: fuente(),
+                        fuente: fuente_mono(),
                         color: c(1.0, 1.0, 1.0, 1.0),
                         alineacion: Alineacion::Centro,
                     },
@@ -154,8 +173,8 @@ mod demo {
                         rect: rect(20.0, 20.0, 440.0, 220.0),
                         radios: [12.0; 4],
                         color: c(0.0, 0.0, 0.0, 0.7),
-                        desenfoque: 8.0,
-                        desplazamiento: (0.0, 5.0),
+                        desenfoque: 26.0,
+                        desplazamiento: (0.0, 10.0),
                     },
                     Dibujo::Rect {
                         rect: rect(20.0, 20.0, 440.0, 220.0),
@@ -177,9 +196,9 @@ mod demo {
                         borde: Some((1.0, Pintura::Solido(c(0.5, 0.5, 0.6, 0.5)))),
                     },
                     Dibujo::Texto {
-                        caja: rect(40.0, 32.0, 400.0, 28.0),
+                        caja: rect(40.0, 33.0, 400.0, 28.0),
                         texto: "VANTA · DirectComposition".into(),
-                        fuente: fuente(),
+                        fuente: fuente_display(),
                         color: c(1.0, 1.0, 1.0, 1.0),
                         alineacion: Alineacion::Inicio,
                     },
@@ -213,6 +232,12 @@ mod demo {
         operaciones.push(pulso(inicio));
         Lote { operaciones }
     }
+    fn orden(padre: Option<u32>, hijos: &[u32]) -> Operacion {
+        Operacion::Ordenar {
+            padre: padre.map(CapaId),
+            hijos: hijos.iter().copied().map(CapaId).collect(),
+        }
+    }
     fn interrupcion(inicio: Instante) -> Vec<Operacion> {
         vec![
             Operacion::Colocar {
@@ -242,6 +267,8 @@ mod demo {
     fn paso(n: u8, inicio: Instante) -> Lote {
         let operaciones = match n {
             1 => vec![
+                orden(Some(1), &[3, 4, 2]),
+                orden(None, &[10, 1]),
                 Operacion::Colocar {
                     id: CapaId(2),
                     rect: rect(40.0, 124.0, 400.0, 36.0),
@@ -258,6 +285,8 @@ mod demo {
             ],
             2 => interrupcion(inicio),
             3 => vec![
+                orden(Some(1), &[2, 3, 4]),
+                orden(None, &[1, 10]),
                 animacion(
                     1,
                     Propiedad::Opacidad,

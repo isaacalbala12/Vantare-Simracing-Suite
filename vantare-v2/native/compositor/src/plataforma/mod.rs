@@ -1,7 +1,10 @@
 //! Plataforma Windows: `DirectComposition` y Direct2D/DirectWrite sobre lotes de capas.
 mod bucle;
 mod captura;
+mod limites;
 mod medicion;
+mod ordenar;
+pub use ordenar::MotivoOrden;
 mod pintar;
 pub use bucle::{Avisador, Bucle, Suceso};
 pub use medicion::{Distribucion, Medicion};
@@ -53,6 +56,14 @@ pub enum Error {
     Entrada(&'static str),
     Capa(CapaId),
     Reloj(u32),
+    FuenteNoDisponible {
+        familia: String,
+        peso: u16,
+    },
+    OrdenInvalido {
+        padre: Option<CapaId>,
+        motivo: MotivoOrden,
+    },
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -61,6 +72,13 @@ impl std::fmt::Display for Error {
             Self::Archivo(e) => write!(f, "Archivo: {e}"),
             Self::Json(e) => write!(f, "JSON: {e}"),
             Self::Entrada(e) => f.write_str(e),
+            Self::OrdenInvalido { padre, motivo } => {
+                write!(f, "Orden z inválido para {padre:?}: {motivo:?}")
+            }
+            Self::FuenteNoDisponible { familia, peso } => write!(
+                f,
+                "No existe la fuente «{familia}» con peso {peso} en los TTF configurados"
+            ),
             Self::Reloj(estado) => write!(f, "Reloj del compositor: estado 0x{estado:08x}"),
             Self::Capa(id) => write!(f, "Capa inexistente: {}", id.0),
         }
@@ -107,6 +125,8 @@ struct Salida {
     ventana: ventana::Ventana,
     _target: IDCompositionTarget,
     raiz: IDCompositionVisual2,
+    origen: (f32, f32),
+    region: RECT,
 }
 struct Com;
 impl Drop for Com {
@@ -130,6 +150,8 @@ pub struct Plataforma {
     trabajos_ms: Vec<f64>,
     midiendo: bool,
     _hilo: std::marker::PhantomData<std::rc::Rc<()>>,
+    #[cfg(test)]
+    repintados: std::cell::Cell<usize>,
     _com: Com,
 }
 
@@ -167,6 +189,8 @@ impl Plataforma {
                 trabajos_ms: Vec::new(),
                 midiendo: false,
                 _hilo: std::marker::PhantomData,
+                #[cfg(test)]
+                repintados: std::cell::Cell::new(0),
                 _com: com,
             };
             if modo == Modo::Monitor {
@@ -197,6 +221,8 @@ impl Plataforma {
                     ventana,
                     _target: target,
                     raiz,
+                    origen: (0.0, 0.0),
+                    region,
                 },
             );
         }
@@ -244,9 +270,11 @@ impl Plataforma {
         for op in &lote.operaciones {
             self.operacion(op)?;
         }
+        let salidas = self.preparar_salidas()?;
         // El pintado puede tardar más de un fotograma. Rebasar tras prepararlo,
         // inmediatamente antes del Commit, incluidas las curvas que ya estaban vivas.
         let instante = self.proximo_fotograma()?;
+        self.ajustar_salidas(salidas)?;
         let animaciones: Vec<_> = self
             .capas
             .iter()
@@ -386,7 +414,7 @@ impl Plataforma {
             {
                 referencia = Some(self.capa(padre)?.contenido.cast()?);
             }
-            contenedor.AddVisual(&posicion, referencia.is_some(), referencia.as_ref())?;
+            contenedor.AddVisual(&posicion, true, referencia.as_ref())?;
             if padre.is_none() && self.modo == Modo::PorOverlay {
                 self.ordenar_ventana(id, orden)?;
             }
@@ -417,6 +445,7 @@ impl Plataforma {
     fn operacion(&mut self, op: &Operacion) -> Resultado<()> {
         unsafe {
             match op {
+                Operacion::Ordenar { padre, hijos } => self.ordenar(*padre, hijos)?,
                 Operacion::Crear { id, padre, orden } => self.crear(*id, *padre, *orden)?,
                 Operacion::Colocar { id, rect } => {
                     if ![rect.x, rect.y, rect.ancho, rect.alto]
@@ -441,28 +470,6 @@ impl Plataforma {
                     c.escala.SetCenterY2(rect.alto / 2.0)?;
                     c.giro.SetCenterX2(rect.ancho / 2.0)?;
                     c.giro.SetCenterY2(rect.alto / 2.0)?;
-                    if c.padre.is_none() && self.modo == Modo::PorOverlay {
-                        let salida = self
-                            .salidas
-                            .get(&Some(*id))
-                            .ok_or(Error::Entrada("Salida no creada"))?;
-                        let escala = salida.ventana.dpi / 96.0;
-                        // Margen explícito de 64 DIP; la receta no calcula ventanas.
-                        salida.raiz.SetOffsetX2((self.margen - rect.x) * escala)?;
-                        salida.raiz.SetOffsetY2((self.margen - rect.y) * escala)?;
-                        windows::Win32::UI::WindowsAndMessaging::SetWindowPos(
-                            salida.ventana.hwnd,
-                            None,
-                            self.region.left + entero(rect.x * escala)?
-                                - entero(self.margen * escala)?,
-                            self.region.top + entero(rect.y * escala)?
-                                - entero(self.margen * escala)?,
-                            entero(((rect.ancho + 2.0 * self.margen) * escala).ceil())?,
-                            entero(((rect.alto + 2.0 * self.margen) * escala).ceil())?,
-                            windows::Win32::UI::WindowsAndMessaging::SWP_NOACTIVATE
-                                | windows::Win32::UI::WindowsAndMessaging::SWP_NOZORDER,
-                        )?;
-                    }
                     if cambia_tamano {
                         self.repintar(*id)?;
                     }
@@ -507,33 +514,11 @@ impl Plataforma {
                 .ok_or(Error::Entrada("Sin salidas"))?
                 .ventana
                 .dpi;
-            let margen = c
-                .dibujos
-                .iter()
-                .filter_map(|d| {
-                    if let Dibujo::Sombra {
-                        desenfoque,
-                        desplazamiento,
-                        ..
-                    } = d
-                    {
-                        Some(3.0 * desenfoque + desplazamiento.0.abs().max(desplazamiento.1.abs()))
-                    } else if let Dibujo::Rect {
-                        borde: Some((ancho, _)),
-                        ..
-                    } = d
-                    {
-                        Some(ancho / 2.0)
-                    } else {
-                        None
-                    }
-                })
-                .fold(0.0_f32, f32::max)
-                .ceil();
+            let tinta = limites::tinta(c.rect, &c.dibujos)?;
             let superficie = self.dispositivo.CreateSurface(
-                u32::try_from(entero(((c.rect.ancho + 2.0 * margen) * dpi / 96.0).ceil())?)
+                u32::try_from(entero((tinta.ancho() * dpi / 96.0).ceil())?)
                     .map_err(|_| Error::Entrada("Ancho de superficie"))?,
-                u32::try_from(entero(((c.rect.alto + 2.0 * margen) * dpi / 96.0).ceil())?)
+                u32::try_from(entero((tinta.alto() * dpi / 96.0).ceil())?)
                     .map_err(|_| Error::Entrada("Alto de superficie"))?,
                 DXGI_FORMAT_B8G8R8A8_UNORM,
                 DXGI_ALPHA_MODE_PREMULTIPLIED,
@@ -544,11 +529,11 @@ impl Plataforma {
             let mut transform = D2D1_LAYER_PARAMETERS1::default().maskTransform;
             transform.M11 = 1.0;
             transform.M22 = 1.0;
-            transform.M31 = margen
+            transform.M31 = -tinta.izquierda
                 + f32::from(u16::try_from(offset.x).map_err(|_| Error::Entrada("Offset D2D X"))?)
                     * 96.0
                     / dpi;
-            transform.M32 = margen
+            transform.M32 = -tinta.arriba
                 + f32::from(u16::try_from(offset.y).map_err(|_| Error::Entrada("Offset D2D Y"))?)
                     * 96.0
                     / dpi;
@@ -564,9 +549,11 @@ impl Plataforma {
             escala_contenido.SetScaleX2(96.0 / dpi)?;
             escala_contenido.SetScaleY2(96.0 / dpi)?;
             c.contenido.SetTransform(&escala_contenido)?;
-            c.contenido.SetOffsetX2(-margen)?;
-            c.contenido.SetOffsetY2(-margen)?;
+            c.contenido.SetOffsetX2(tinta.izquierda)?;
+            c.contenido.SetOffsetY2(tinta.arriba)?;
             c.contenido.SetContent(&superficie)?;
+            #[cfg(test)]
+            self.repintados.set(self.repintados.get().saturating_add(1));
         }
         Ok(())
     }

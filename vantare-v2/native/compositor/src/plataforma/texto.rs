@@ -6,22 +6,45 @@ use crate::escena::{
 use std::path::Path;
 use windows::{
     Win32::Graphics::DirectWrite::{
-        DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_FEATURE, DWRITE_FONT_FEATURE_TAG_TABULAR_FIGURES,
-        DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_WEIGHT,
-        DWRITE_LINE_METRICS, DWRITE_LINE_SPACING_METHOD_UNIFORM, DWRITE_TEXT_ALIGNMENT_CENTER,
-        DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_TEXT_ALIGNMENT_TRAILING, DWRITE_TEXT_METRICS,
-        DWRITE_TEXT_RANGE, DWRITE_TRIMMING, DWRITE_TRIMMING_GRANULARITY_CHARACTER,
+        DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_FEATURE, DWRITE_FONT_FEATURE_TAG_KERNING,
+        DWRITE_FONT_FEATURE_TAG_TABULAR_FIGURES, DWRITE_FONT_SIMULATIONS_NONE,
+        DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_LINE_SPACING_METHOD_UNIFORM,
+        DWRITE_TEXT_ALIGNMENT_CENTER, DWRITE_TEXT_ALIGNMENT_LEADING,
+        DWRITE_TEXT_ALIGNMENT_TRAILING, DWRITE_TEXT_METRICS, DWRITE_TEXT_RANGE,
         DWRITE_WORD_WRAPPING_NO_WRAP, DWriteCreateFactory, IDWriteFactory3, IDWriteFactory5,
-        IDWriteFontCollection1, IDWriteRenderingParams, IDWriteTextLayout1,
+        IDWriteFontCollection1, IDWriteRenderingParams, IDWriteTextFormat, IDWriteTextLayout1,
     },
     core::{Interface, PCWSTR, w},
 };
 
-/// Colección privada: las fuentes se leen del paquete, nunca del registro global.
+/// Colección privada de todos los TTF del paquete, sin sustitución por fuentes del sistema.
 pub struct Texto {
     factory: IDWriteFactory3,
     fuentes: IDWriteFontCollection1,
     pub(super) parametros: IDWriteRenderingParams,
+}
+
+fn fuente_ausente(fuente: &Fuente) -> Error {
+    Error::FuenteNoDisponible {
+        familia: fuente.familia.clone(),
+        peso: fuente.peso,
+    }
+}
+
+// Misma referencia Inter y redondeo que efficiency/text.rs. El desplazamiento
+// Display (+1 DIP en Vantare) es estilo: el productor lo incorpora en caja.y.
+fn linea_base(fuente: &Fuente) -> (f32, f32) {
+    let ascenso = (fuente.tamano * 1984.0 / 2048.0).round();
+    let descenso = (fuente.tamano * 494.0 / 2048.0).round();
+    let altura = if fuente.interlinea > 0.0 {
+        fuente.interlinea
+    } else {
+        ascenso + descenso
+    };
+    (
+        altura,
+        ascenso + ((altura - ascenso - descenso) / 2.0).floor(),
+    )
 }
 
 impl Texto {
@@ -34,11 +57,12 @@ impl Texto {
                 let ruta = entrada?.path();
                 if ruta
                     .extension()
-                    .is_some_and(|extension| extension.eq_ignore_ascii_case("ttf"))
+                    .is_some_and(|e| e.eq_ignore_ascii_case("ttf"))
                 {
                     let ruta = ancho(ruta.as_os_str());
-                    let archivo = factory.CreateFontFileReference(PCWSTR(ruta.as_ptr()), None)?;
-                    builder.AddFontFile(&archivo)?;
+                    builder.AddFontFile(
+                        &factory.CreateFontFileReference(PCWSTR(ruta.as_ptr()), None)?,
+                    )?;
                     cantidad += 1;
                 }
             }
@@ -58,33 +82,53 @@ impl Texto {
         }
     }
 
-    pub(super) fn layout(
-        &self,
-        texto: &str,
-        fuente: &Fuente,
-        ancho_caja: f32,
-        alto: f32,
-        alineacion: Alineacion,
-    ) -> Resultado<IDWriteTextLayout1> {
+    fn formato(&self, fuente: &Fuente, alineacion: Alineacion) -> Resultado<IDWriteTextFormat> {
+        let (nombre, peso) = if fuente.familia == "Inter" {
+            (format!("Inter W{}", fuente.peso), 400)
+        } else {
+            (fuente.familia.clone(), fuente.peso)
+        };
+        let mut nombre: Vec<u16> = nombre.encode_utf16().chain(Some(0)).collect();
         unsafe {
-            let (familia, peso) = familia_estatica(fuente);
-            let familia: Vec<u16> = familia.encode_utf16().chain(Some(0)).collect();
             let mut indice = 0;
             let mut existe = windows::core::BOOL::default();
             self.fuentes.FindFamilyName(
-                PCWSTR(familia.as_ptr()),
+                PCWSTR(nombre.as_ptr()),
                 &raw mut indice,
                 &raw mut existe,
             )?;
-            if !existe.as_bool() {
-                return Err(Error::Entrada(
-                    "La familia de fuente no está en la colección del paquete",
-                ));
+            if !existe.as_bool() && fuente.familia == "Rajdhani" {
+                nombre = "Rajdhani SemiBold".encode_utf16().chain(Some(0)).collect();
+                self.fuentes.FindFamilyName(
+                    PCWSTR(nombre.as_ptr()),
+                    &raw mut indice,
+                    &raw mut existe,
+                )?;
             }
+            if !existe.as_bool() {
+                return Err(fuente_ausente(fuente));
+            }
+            let familia = self.fuentes.GetFontFamily(indice)?;
+            // Enumerar caras reales: GetFirstMatchingFont puede devolver una cara
+            // sintetizada cuyo GetWeight ya coincide con el peso inexistente.
+            let mut elegida = None;
+            for indice in 0..familia.GetFontCount() {
+                let cara = familia.GetFont(indice)?;
+                if (fuente.familia == "Inter" || cara.GetWeight().0 == i32::from(peso))
+                    && cara.GetStyle() == DWRITE_FONT_STYLE_NORMAL
+                    && cara.GetStretch() == DWRITE_FONT_STRETCH_NORMAL
+                    && cara.GetSimulations() == DWRITE_FONT_SIMULATIONS_NONE
+                {
+                    elegida = Some(cara);
+                    break;
+                }
+            }
+            let cara = elegida.ok_or_else(|| fuente_ausente(fuente))?;
+            let peso_real = cara.GetWeight();
             let formato = self.factory.CreateTextFormat(
-                PCWSTR(familia.as_ptr()),
+                PCWSTR(nombre.as_ptr()),
                 &self.fuentes,
-                DWRITE_FONT_WEIGHT(i32::from(peso)),
+                peso_real,
                 DWRITE_FONT_STYLE_NORMAL,
                 DWRITE_FONT_STRETCH_NORMAL,
                 fuente.tamano,
@@ -96,126 +140,175 @@ impl Texto {
                 Alineacion::Centro => DWRITE_TEXT_ALIGNMENT_CENTER,
                 Alineacion::Fin => DWRITE_TEXT_ALIGNMENT_TRAILING,
             })?;
-            // Centra el cuerpo natural de la fuente dentro de la interlínea, como CSS.
-            let caracteres: Vec<u16> = if fuente.mayusculas {
-                texto.to_uppercase().encode_utf16().collect()
-            } else {
-                texto.encode_utf16().collect()
-            };
+            let (altura, base) = linea_base(fuente);
+            formato.SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM, altura, base)?;
+            Ok(formato)
+        }
+    }
+
+    fn crear_layout(
+        &self,
+        contenido: &str,
+        fuente: &Fuente,
+        formato: &IDWriteTextFormat,
+        ancho: f32,
+        alto: f32,
+    ) -> Resultado<IDWriteTextLayout1> {
+        let caracteres: Vec<u16> = contenido.encode_utf16().collect();
+        unsafe {
             let layout: IDWriteTextLayout1 = self
                 .factory
-                .CreateTextLayout(&caracteres, &formato, ancho_caja, alto)?
+                .CreateTextLayout(&caracteres, formato, ancho, alto)?
                 .cast()?;
             let rango = DWRITE_TEXT_RANGE {
                 startPosition: 0,
                 length: u32::try_from(caracteres.len())
                     .map_err(|_| Error::Entrada("Texto demasiado largo"))?,
             };
-            layout.SetCharacterSpacing(
-                fuente.interletra / 2.0,
-                fuente.interletra / 2.0,
-                0.0,
-                rango,
-            )?;
-            let mut linea = [DWRITE_LINE_METRICS::default()];
-            let mut numero = 0;
-            layout.GetLineMetrics(Some(&mut linea), &raw mut numero)?;
-            let interlinea = if fuente.interlinea > 0.0 {
-                fuente.interlinea
-            } else {
-                linea[0].height
-            };
-            layout.SetLineSpacing(
-                DWRITE_LINE_SPACING_METHOD_UNIFORM,
-                interlinea,
-                linea[0].baseline + (interlinea - linea[0].height) / 2.0,
-            )?;
-            if fuente.tabulares {
-                let tipografia = self.factory.CreateTypography()?;
-                tipografia.AddFontFeature(DWRITE_FONT_FEATURE {
-                    nameTag: DWRITE_FONT_FEATURE_TAG_TABULAR_FIGURES,
-                    parameter: 1,
-                })?;
-                layout.SetTypography(&tipografia, rango)?;
-            }
-            let signo = self.factory.CreateEllipsisTrimmingSign(&formato)?;
-            layout.SetTrimming(
-                &DWRITE_TRIMMING {
-                    granularity: DWRITE_TRIMMING_GRANULARITY_CHARACTER,
-                    ..Default::default()
-                },
-                &signo,
-            )?;
+            // GPUI desplaza i*tracking y cuenta también el espacio tras el último carácter.
+            layout.SetCharacterSpacing(0.0, fuente.interletra, 0.0, rango)?;
+            let tipografia = self.factory.CreateTypography()?;
+            tipografia.AddFontFeature(DWRITE_FONT_FEATURE {
+                nameTag: DWRITE_FONT_FEATURE_TAG_KERNING,
+                parameter: 1,
+            })?;
+            tipografia.AddFontFeature(DWRITE_FONT_FEATURE {
+                nameTag: DWRITE_FONT_FEATURE_TAG_TABULAR_FIGURES,
+                parameter: u32::from(fuente.tabulares),
+            })?;
+            layout.SetTypography(&tipografia, rango)?;
             Ok(layout)
         }
     }
 
-    pub fn medir_resultado(&self, texto: &str, fuente: &Fuente) -> Resultado<(f32, f32)> {
-        let layout = self.layout(texto, fuente, 1_000_000.0, 1_000_000.0, Alineacion::Inicio)?;
-        let mut medidas = DWRITE_TEXT_METRICS::default();
-        unsafe {
-            layout.GetMetrics(&raw mut medidas)?;
+    pub(super) fn layout(
+        &self,
+        contenido: &str,
+        fuente: &Fuente,
+        ancho: f32,
+        alto: f32,
+        alineacion: Alineacion,
+    ) -> Resultado<IDWriteTextLayout1> {
+        let contenido = if fuente.mayusculas {
+            contenido.to_uppercase()
+        } else {
+            contenido.to_owned()
+        };
+        let caracteres: Vec<char> = contenido.chars().collect();
+        if caracteres.len() > 256 {
+            return Err(Error::Entrada("Texto de capa: máximo 256 caracteres"));
         }
+        let formato = self.formato(fuente, alineacion)?;
+        let layout = self.crear_layout(&contenido, fuente, &formato, ancho, alto)?;
+        if medidas(&layout)?.widthIncludingTrailingWhitespace <= ancho + 0.01 {
+            return Ok(layout);
+        }
+        // Mismo ajuste por caracteres y tolerancia que fit_measured de GPUI.
+        for cuantos in (0..caracteres.len()).rev() {
+            let candidato = caracteres[..cuantos].iter().collect::<String>() + "…";
+            let layout = self.crear_layout(&candidato, fuente, &formato, ancho, alto)?;
+            if medidas(&layout)?.widthIncludingTrailingWhitespace <= ancho + 0.01 {
+                return Ok(layout);
+            }
+        }
+        self.crear_layout("", fuente, &formato, ancho, alto)
+    }
+
+    pub fn medir_resultado(&self, contenido: &str, fuente: &Fuente) -> Resultado<(f32, f32)> {
+        let layout = self.layout(
+            contenido,
+            fuente,
+            1_000_000.0,
+            1_000_000.0,
+            Alineacion::Inicio,
+        )?;
+        let medidas = medidas(&layout)?;
         Ok((medidas.widthIncludingTrailingWhitespace, medidas.height))
     }
 }
-
+fn medidas(layout: &IDWriteTextLayout1) -> Resultado<DWRITE_TEXT_METRICS> {
+    let mut medidas = DWRITE_TEXT_METRICS::default();
+    unsafe {
+        layout.GetMetrics(&raw mut medidas)?;
+    }
+    Ok(medidas)
+}
 impl Medidor for Texto {
-    fn medir(&self, texto: &str, fuente: &Fuente) -> (f32, f32) {
-        match self.medir_resultado(texto, fuente) {
-            Ok(medidas) => medidas,
-            Err(error) => {
-                eprintln!("DirectWrite no pudo medir el texto: {error}");
-                // El contrato no admite Result: un tamaño inválido impide fingir éxito.
+    fn medir(&self, contenido: &str, fuente: &Fuente) -> (f32, f32) {
+        match self.medir_resultado(contenido, fuente) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("DirectWrite no pudo medir texto: {e}");
                 (f32::NAN, f32::NAN)
             }
         }
     }
 }
 
-// GPUI usa estas mismas familias estáticas con peso nativo Regular (400).
-// El peso visual está en el TTF, no en una negrita sintetizada por DirectWrite.
-fn familia_estatica(fuente: &Fuente) -> (String, u16) {
-    if fuente.familia == "Inter" {
-        let peso = [400_u16, 500, 600, 650, 700, 750, 800]
-            .into_iter()
-            .min_by_key(|peso| peso.abs_diff(fuente.peso))
-            .unwrap_or(400);
-        (format!("Inter W{peso}"), 400)
-    } else if fuente.familia.starts_with("Inter W") {
-        (fuente.familia.clone(), 400)
-    } else {
-        (fuente.familia.clone(), fuente.peso)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn fuente(familia: &str, peso: u16) -> Fuente {
+        Fuente {
+            familia: familia.into(),
+            peso,
+            tamano: 16.0,
+            interletra: 0.0,
+            interlinea: 24.0,
+            tabulares: true,
+            mayusculas: false,
+        }
+    }
     #[test]
-    fn mide_inter_del_paquete_con_cifras_tabulares_y_sin_fallback_del_sistema() -> Resultado<()> {
+    fn mide_las_tres_familias_del_paquete_y_rechaza_pesos_inexistentes() -> Resultado<()> {
         let texto = Texto::nuevo(Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../ui/assets/fonts"
         )))?;
-        for peso in [400, 500, 650, 800, 900] {
-            let fuente = Fuente {
-                familia: "Inter".into(),
-                peso,
-                tamano: 16.0,
-                interletra: 0.0,
-                interlinea: 24.0,
-                tabulares: true,
-                mayusculas: false,
-            };
+        for (familia, peso) in [
+            ("Inter", 400),
+            ("Inter", 500),
+            ("Inter", 650),
+            ("Inter", 800),
+            ("Rajdhani", 600),
+            ("Space Mono", 400),
+        ] {
+            let fuente = fuente(familia, peso);
+            let formato = texto.formato(&fuente, Alineacion::Inicio)?;
+            eprintln!("Fuente {familia} {peso}: peso nativo {}", unsafe {
+                formato.GetFontWeight().0
+            });
             let (unos, alto) = texto.medir_resultado("1111", &fuente)?;
             let (ochos, _) = texto.medir_resultado("8888", &fuente)?;
             assert!(unos > 0.0 && alto > 0.0);
-            assert!(
-                (unos - ochos).abs() < 0.01,
-                "peso {peso}: {unos} frente a {ochos}"
-            );
+            if familia == "Rajdhani" {
+                // El TTF incluido no tiene tnum: GPUI y DirectWrite conservan
+                // sus cifras proporcionales aunque se solicite esa característica.
+                assert!((unos - ochos).abs() > 1.0);
+            } else {
+                assert!(
+                    (unos - ochos).abs() < 0.01,
+                    "familia {familia} peso {peso}: {unos} frente a {ochos}"
+                );
+            }
         }
+        for (familia, peso) in [
+            ("Inter", 900),
+            ("Rajdhani", 400),
+            ("Space Mono", 700),
+            ("NoExiste", 400),
+        ] {
+            assert!(matches!(
+                texto.medir_resultado("texto", &fuente(familia, peso)),
+                Err(Error::FuenteNoDisponible { .. })
+            ));
+        }
+        let normal = fuente("Inter", 400);
+        let mut espaciada = normal.clone();
+        espaciada.interletra = 1.0;
+        let ancho = texto.medir_resultado("ABCD", &normal)?.0;
+        let ancho_espaciado = texto.medir_resultado("ABCD", &espaciada)?.0;
+        assert!((ancho_espaciado - ancho - 4.0).abs() < 0.01);
         Ok(())
     }
 }

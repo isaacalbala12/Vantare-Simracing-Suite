@@ -139,6 +139,46 @@ pub(super) fn programar(curva: &Curva, instante: Instante) -> super::Resultado<P
     Ok(programa)
 }
 
+/// Envolvente de toda la curva, incluidos extremos interiores de cada cúbica.
+pub(super) fn rango(curva: &Curva) -> super::Resultado<(f32, f32)> {
+    programar(curva, curva.inicio)?;
+    let mut minimo = curva.final_;
+    let mut maximo = curva.final_;
+    for (indice, tramo) in curva.tramos.iter().enumerate() {
+        let fin = curva.tramos.get(indice + 1).map_or(curva.fin, |s| s.desde);
+        let mut puntos = vec![tramo.desde, fin];
+        let lineal = tramo.b;
+        let cuadratico = 2.0 * tramo.c;
+        let cubico = 3.0 * tramo.d;
+        if cubico == 0.0 {
+            if cuadratico != 0.0 {
+                puntos.push(f64::from(-lineal / cuadratico));
+            }
+        } else {
+            let discriminante = cuadratico * cuadratico - 4.0 * cubico * lineal;
+            if discriminante >= 0.0 {
+                let raiz = discriminante.sqrt();
+                puntos.extend([
+                    f64::from((-cuadratico - raiz) / (2.0 * cubico)),
+                    f64::from((-cuadratico + raiz) / (2.0 * cubico)),
+                ]);
+            }
+        }
+        for t in puntos
+            .into_iter()
+            .filter(|t| *t >= tramo.desde && *t <= fin)
+        {
+            let valor = desplazar(tramo, t)?[0];
+            if !valor.is_finite() {
+                return Err(super::Error::Entrada("La curva excede el rango de pintura"));
+            }
+            minimo = minimo.min(valor);
+            maximo = maximo.max(valor);
+        }
+    }
+    Ok((minimo, maximo))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,5 +297,25 @@ mod tests {
         curva.repetir = None;
         curva.tramos[0].b = f32::NAN;
         assert!(programar(&curva, Instante(0.5)).is_err());
+    }
+    #[test]
+    fn envolvente_incluye_el_extremo_interior_de_un_movimiento() -> super::super::Resultado<()> {
+        let curva = Curva {
+            inicio: Instante(0.0),
+            tramos: vec![Tramo {
+                desde: 0.0,
+                a: 0.0,
+                b: 4.0,
+                c: -4.0,
+                d: 0.0,
+            }],
+            fin: 1.0,
+            final_: 0.0,
+            repetir: None,
+        };
+        let (minimo, maximo) = rango(&curva)?;
+        assert!(minimo.abs() < 0.0001);
+        assert!((maximo - 1.0).abs() < 0.0001);
+        Ok(())
     }
 }

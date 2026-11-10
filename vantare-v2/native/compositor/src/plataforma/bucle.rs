@@ -118,6 +118,34 @@ impl Bucle {
         });
         Ok(())
     }
+    fn suceso_handle(
+        &self,
+        resultado: windows::Win32::Foundation::WAIT_EVENT,
+    ) -> Resultado<Option<Suceso>> {
+        if resultado == WAIT_FAILED {
+            return Err(windows::core::Error::from_thread().into());
+        }
+        if resultado.0 == 0 {
+            return Ok(Some(Suceso::ModeloNuevo));
+        }
+        if let Some(v) = resultado
+            .0
+            .checked_sub(1)
+            .and_then(|i| usize::try_from(i).ok())
+            .and_then(|i| self.vigilancias.get(i))
+        {
+            unsafe {
+                FindNextChangeNotification(v.handle)?;
+            }
+            return Ok(Some(Suceso::FicheroCambiado(v.ruta.clone())));
+        }
+        Ok(None)
+    }
+    fn pendiente(&self, handles: &[HANDLE]) -> Resultado<Option<Suceso>> {
+        let resultado =
+            unsafe { windows::Win32::System::Threading::WaitForMultipleObjects(handles, false, 0) };
+        self.suceso_handle(resultado)
+    }
     pub fn esperar(
         &self,
         plataforma: &Plataforma,
@@ -162,23 +190,11 @@ impl Bucle {
                     QS_ALLINPUT,
                     MWMO_INPUTAVAILABLE,
                 );
-                if resultado == WAIT_FAILED {
-                    return Err(windows::core::Error::from_thread().into());
-                }
                 if resultado == WAIT_TIMEOUT && !transiciones_pintadas {
                     return Ok(Suceso::Fotograma(plataforma.ahora()?));
                 }
-                if resultado.0 == 0 {
-                    return Ok(Suceso::ModeloNuevo);
-                }
-                if let Some(v) = resultado
-                    .0
-                    .checked_sub(1)
-                    .and_then(|i| usize::try_from(i).ok())
-                    .and_then(|i| self.vigilancias.get(i))
-                {
-                    FindNextChangeNotification(v.handle)?;
-                    return Ok(Suceso::FicheroCambiado(v.ruta.clone()));
+                if let Some(suceso) = self.suceso_handle(resultado)? {
+                    return Ok(suceso);
                 }
                 let mut mensaje = MSG::default();
                 while PeekMessageW(&raw mut mensaje, None, 0, 0, PM_REMOVE).as_bool() {
@@ -188,6 +204,11 @@ impl Bucle {
                     // FALSE significa que el mensaje no generó WM_CHAR; no es un error.
                     let _traducido = TranslateMessage(&raw const mensaje);
                     DispatchMessageW(&raw const mensaje);
+                }
+                // Un despertar de mensajes puede adelantarse a un handle señalado.
+                // Priorizar los datos pendientes antes de producir un fotograma.
+                if let Some(suceso) = self.pendiente(&handles)? {
+                    return Ok(suceso);
                 }
                 if transiciones_pintadas {
                     if let Some(reloj) = self.reloj {
@@ -203,6 +224,9 @@ impl Bucle {
                         }
                     } else {
                         DwmFlush()?;
+                    }
+                    if let Some(suceso) = self.pendiente(&handles)? {
+                        return Ok(suceso);
                     }
                     return Ok(Suceso::Fotograma(plataforma.ahora()?));
                 }
@@ -243,10 +267,11 @@ mod tests {
         let mut bucle = Bucle::nuevo()?;
         bucle.reloj = Some(fotograma);
         bucle.avisador().avisar()?;
-        assert!(matches!(
-            bucle.esperar(&plataforma, true)?,
-            Suceso::ModeloNuevo
-        ));
+        let modelo = bucle.esperar(&plataforma, true)?;
+        assert!(
+            matches!(modelo, Suceso::ModeloNuevo),
+            "suceso obtenido: {modelo:?}"
+        );
         assert!(matches!(
             bucle.esperar(&plataforma, true)?,
             Suceso::Fotograma(_)

@@ -3,6 +3,21 @@
 # Target persistente en D: por slot; cuatro jobs en el servidor (#1993).
 # El mínimo y el umbral de memoria se releen de Machine en cada vuelta.
 # VANTARE_SCCACHE=0 permite repetir un fallo sin caché.
+. (Join-Path $PSScriptRoot 'target-slot.ps1')
+# Normalize Cargo's inline spelling before validating or acquiring a target.
+$normalized = @()
+foreach ($argument in $args) {
+    if ($argument -like '--target-dir=*') { $normalized += @('--target-dir', $argument.Substring(13)) }
+    else { $normalized += $argument }
+}
+$args = $normalized
+for ($index = 0; $index -lt $args.Count; $index++) {
+    if ($args[$index] -in @('--target-dir', '-TargetDirectory')) {
+        if ($index + 1 -ge $args.Count -or -not (Test-VantareTargetPath $args[$index + 1])) {
+            throw 'El target explícito debe ser absoluto y estar dentro de D:.'
+        }
+    }
+}
 function Invoke-VantareQueuedCommand {
     param([string]$CommandName, [object[]]$CommandArguments)
     $previousTarget = [Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process')
@@ -39,7 +54,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         $ancestor = $process.ParentProcessId
     }
     if ($leased) {
-        if ($env:CARGO_TARGET_DIR -notmatch '^[dD]:[\\/]') { throw 'Target anidado fuera de D:.' }
+        if (-not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) { throw 'Target anidado fuera de D:.' }
         . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
         Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
         $cmd, $rest = $args
@@ -47,7 +62,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         exit $script:commandExitCode
     }
 }
-$env:SCCACHE_DIR = 'D:\VantareServer\cache\sccache'
+$env:SCCACHE_DIR = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-cache/sccache' } else { 'D:\VantareServer\cache\sccache' }
 $env:SCCACHE_SERVER_PORT = '4227'
 $env:SCCACHE_CACHE_SIZE = '30G'
 if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
@@ -132,15 +147,16 @@ if ($espera -gt 5) {
 $code = 1
 $targetLease = $null
 $ciLease = $null
+$targetRoot = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-targets' } else { 'D:\VantareServer\targets' }
 try {
     if ($env:VANTARE_CI_TARGET -eq '1') {
-        $ciPath = 'd:\vantareserver\targets\ci'
+        $ciPath = [IO.Path]::GetFullPath((Join-Path $targetRoot 'ci')).ToLowerInvariant()
         $ciDigest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($ciPath)))
         $ciLease = [Threading.Mutex]::new($false, "Global\VantareCargoTarget-$ciDigest")
         try { $null = $ciLease.WaitOne() } catch [Threading.AbandonedMutexException] { }
     }
     . (Join-Path $PSScriptRoot 'target-slot.ps1')
-    $slotTarget = Initialize-VantareSlotTarget -Slot $slotNumbers[$held] -Ci:($env:VANTARE_CI_TARGET -eq '1')
+    $slotTarget = Initialize-VantareSlotTarget -Slot $slotNumbers[$held] -Root $targetRoot -Ci:($env:VANTARE_CI_TARGET -eq '1')
     $env:VANTARE_CARGO_QUEUE_OWNER = [string]$PID
     $env:VANTARE_SLOT_TARGET = $slotTarget
     $env:CARGO_TARGET_DIR = $slotTarget
@@ -151,11 +167,12 @@ try {
     # Explicit targets remain available for controlled measurements/distribution, on D: only.
     for ($index = 0; $index -lt $rest.Count; $index++) {
         if ($rest[$index] -in @('--target-dir', '-TargetDirectory')) {
-            if ($index + 1 -ge $rest.Count -or $rest[$index + 1] -notmatch '^[dD]:[\\/]') {
+            if ($index + 1 -ge $rest.Count -or -not (Test-VantareTargetPath $rest[$index + 1])) {
                 throw 'El target explícito debe ser absoluto y estar en D:.'
             }
             $explicitTarget = [IO.Path]::GetFullPath($rest[$index + 1]).ToLowerInvariant()
-            if ($explicitTarget -match '^d:\\vantareserver\\targets\\(slot-[01]|ci)$' -and $explicitTarget -ine $slotTarget) {
+            $reserved = @('slot-0', 'slot-1', 'ci') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $targetRoot $_)) }
+            if ($explicitTarget -iin $reserved -and $explicitTarget -ine $slotTarget) {
                 throw 'No se puede usar explícitamente el target reservado a otro slot o al runner.'
             }
             $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($explicitTarget)))

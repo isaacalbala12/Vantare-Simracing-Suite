@@ -61,7 +61,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertNotIn("github.event.pull_request.base.sha", workflow)
         self.assertIn('throw "automatic frontend scope retired', workflow)
         for line in workflow.splitlines():
-            if "uses:" in line:
+            if "uses:" in line and "uses: ./" not in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
         for required in (
             "Native format and blocking gates",
@@ -71,10 +71,10 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
         gates = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
         self.assertIn("scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1", workflow)
-        for gate in ("clippy", "captura", "lifecycle"):
+        for gate in ("clippy", "captura", "archive"):
             self.assertIn(f"-Gate {gate}", gates)
-        self.assertIn("$suite = if ($Telemetry) { 'completa' } else { 'test' }", gates)
-        self.assertIn("-Gate $suite -Packages $packages", gates)
+        self.assertIn("telemetry = [bool]$Telemetry", gates)
+        self.assertIn("lifecycle = (-not $packages.Count", gates)
         self.assertIn("if ($env:TELEMETRIA_SCOPE -ne 'false')", workflow)
         self.assertIn(
             "telemetria: ${{ steps.native_scope.outputs.telemetria }}", workflow
@@ -95,15 +95,27 @@ class ValidateBranchChannelsTest(unittest.TestCase):
 
     def test_blocking_native_gates_preserve_all_tests(self) -> None:
         workflow = (Path(__file__).resolve().parents[1] / "workflows/branch-channel-gates.yml").read_text(encoding="utf-8")
-        self.assertIn("./setup-duckdb.ps1", workflow)
+        setup = (Path(__file__).resolve().parents[1] / 'actions/native-build-setup/action.yml').read_text(encoding='utf-8')
+        self.assertIn('./setup-duckdb.ps1', setup)
+        self.assertIn('fallback: none', setup)
+        self.assertNotIn('cargo install', setup)
+        for line in setup.splitlines():
+            if 'uses:' in line:
+                self.assertRegex(line, r'uses: [^@]+@[0-9a-f]{40}$')
         native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
         gates = (native / "gates.ps1").read_text(encoding="utf-8")
         ci = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
         self.assertIn("if ($LASTEXITCODE) { throw 'Native blocking gates failed' }", workflow)
         self.assertIn('throw "Gate $Gate falló (código $LASTEXITCODE)."', gates)
-        self.assertIn("-Gate lifecycle", ci)
+        reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
+        self.assertIn('debug/ci-lifecycle/lifecycle.exe', reuse)
+        self.assertIn('needs: [policy, native_build, native_tests, native_installation]', workflow)
+        self.assertIn('if: always()', workflow)
+        self.assertIn('native_ci_results.py', workflow)
         self.assertIn("-Gate captura", ci)
-        self.assertIn("'completa'", ci)
+        self.assertIn('-Gate archive', ci)
+        self.assertIn("'telemetria'", reuse)
+        self.assertIn("'default'", reuse)
         self.assertNotIn("--exclude", ci)
         self.assertNotIn("--skip", ci)
         self.assertNotIn("--exclude", workflow)

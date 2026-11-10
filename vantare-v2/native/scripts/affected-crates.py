@@ -74,6 +74,13 @@ def select_for_crate(packages, crate):
     return sorted(selected - LEGACY)
 
 
+def select_for_ci(packages, paths, fast=False):
+    selected = select(packages, paths)
+    legacy_changed = any(path.replace('\\', '/').startswith(
+        ('vantare-v2/native/hub/', 'vantare-v2/native/admin/')) for path in paths)
+    return sorted(set(selected) - LEGACY) if fast and not legacy_changed else selected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base')
@@ -100,11 +107,7 @@ def main():
     if args.crate:
         print(','.join(select_for_crate(members, args.crate)))
     else:
-        selected = select(members, paths)
-        legacy_changed = any(path.replace('\\', '/').startswith(('vantare-v2/native/hub/', 'vantare-v2/native/admin/')) for path in paths)
-        if args.fast and not legacy_changed:
-            selected = sorted(set(selected) - LEGACY)
-        print(','.join(selected))
+        print(','.join(select_for_ci(members, paths, args.fast)))
 
 
 if __name__ == '__main__':

@@ -49,6 +49,11 @@ class ClassifyPathsTest(unittest.TestCase):
         self.assertFalse(scope.telemetria)
         self.assertEqual(scope.telemetria_paths, ())
 
+    def test_electron_hub_is_independent_until_native_changes(self) -> None:
+        paths = ['vantare-v2/hub-web/src/main/index.ts', '.github/workflows/hub-web.yml']
+        self.assertFalse(classify_paths(paths).native)
+        self.assertTrue(classify_paths(paths + ['vantare-v2/native/ipc/src/lib.rs']).native)
+
     def test_ci_runner_hooks_never_skip_the_native_gates(self) -> None:
         scope = classify_paths(["tools/ci-runners/cleanup.py"])
         self.assertTrue(scope.native)

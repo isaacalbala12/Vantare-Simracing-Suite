@@ -1,7 +1,7 @@
 # Gates con DuckDB oficial, sin desactivar defaults ajenos a storage.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba', 'distribution')][string]$Gate,
+    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'archive', 'lifecycle', 'prueba', 'distribution')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
@@ -9,7 +9,8 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if ($TargetDirectory -notmatch '^[dD]:[\\/]') { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en D:).' }
+. (Join-Path $PSScriptRoot 'scripts/target-slot.ps1')
+if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en D:).' }
 if ($Gate -eq 'distribution') {
     & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
     return
@@ -72,6 +73,7 @@ try {
         'telemetria' { @('nextest', 'run', '--workspace', '--profile', 'telemetria') }
         # Todo menos lifecycle en una sola invocación: para CI (#1654 ronda 7).
         'completa' { @('nextest', 'run', '--workspace', '--profile', 'ci') }
+        'archive' { @('test', '--workspace', '--no-run', '--message-format=json') }
         'lifecycle' { @('test', '--workspace', '--test', 'lifecycle') }
         # Banco de capturas QA del instalador (#1735): solo existe con parity-capture,
         # que ningún build por defecto ni de release activa.
@@ -84,15 +86,16 @@ try {
     }
     # Analysis launches storage as a real process. Include that package in the same
     # test build to preserve the executable prerequisite without a second feature graph.
-    if ($Gate -in @('test', 'completa') -and $Packages.Count -and
+    if ($Gate -in @('test', 'completa', 'archive') -and $Packages.Count -and
         'vantare-storage' -cnotin $Packages -and
-        ('vantare-hub' -cin $Packages -or 'vantare-hub-analysis' -cin $Packages)) {
+        ('vantare-hub' -cin $Packages)) {
         $arguments += @('-p', 'vantare-storage')
     }
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
     # `-j` son hilos de test; los jobs van en --build-jobs.
     $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '4' }
-    if ($Gate -eq 'lifecycle' -and $IsWindows) {
+    if (($Gate -eq 'lifecycle' -or ($Gate -eq 'archive' -and
+        (-not $Packages.Count -or 'vantare-runtime' -cin $Packages))) -and $IsWindows) {
         # Normal para cierre real; QA sólo para invocar los manejadores de bandeja.
         & (Join-Path $PSScriptRoot 'runtime/tests/lifecycle/build-overlays.ps1') -TargetDirectory $TargetDirectory
     }
@@ -105,8 +108,27 @@ try {
         if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
     }
     if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
-    & cargo @arguments
-    if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
+    if ($Gate -eq 'archive') {
+        $messages = @(& cargo @arguments)
+        if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
+        if (-not $Packages.Count -or 'vantare-runtime' -cin $Packages) {
+            $artifacts = @($messages | ForEach-Object { $_ | ConvertFrom-Json } |
+                Where-Object { $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable })
+            if ($artifacts.Count -ne 1) { throw 'Falta el ejecutable del arnés lifecycle.' }
+            $lifecycle = Join-Path $TargetDirectory 'debug/ci-lifecycle'
+            [IO.Directory]::CreateDirectory($lifecycle) | Out-Null
+            Copy-Item -LiteralPath $artifacts[0].executable -Destination (Join-Path $lifecycle 'lifecycle.exe') -Force
+        }
+        Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination (Join-Path $TargetDirectory 'debug/duckdb.dll') -Force
+        $archive = @('nextest', 'archive') + @($arguments | Select-Object -Skip 1 |
+            Where-Object { $_ -notin @('--no-run', '--message-format=json') } |
+            ForEach-Object { if ($_ -eq '-j') { '--build-jobs' } else { $_ } })
+        & cargo @archive --profile ci --archive-file (Join-Path $TargetDirectory 'nextest-tests.tar.zst')
+        if ($LASTEXITCODE) { throw 'No se pudo archivar el build de tests.' }
+    } else {
+        & cargo @arguments
+        if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
+    }
     if ($Gate -in @('check', 'clippy') -and (-not $Packages.Count -or 'vantare-runtime' -cin $Packages)) {
         # El banco no forma parte del build normal, pero también debe compilar.
         $bench = @($Gate, '-p', 'vantare-runtime', '--all-targets', '--features', 'bench',

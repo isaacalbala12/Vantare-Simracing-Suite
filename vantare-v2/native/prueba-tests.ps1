@@ -27,6 +27,7 @@ Copy-Item (Join-Path $native '.cargo/config.toml') (Join-Path $fixture '.cargo/c
 Copy-Item (Join-Path $native 'gates.ps1') (Join-Path $fixture 'gates.ps1')
 [IO.Directory]::CreateDirectory((Join-Path $fixture 'scripts')) | Out-Null
 Copy-Item (Join-Path $native 'scripts/slot-workspace.ps1') (Join-Path $fixture 'scripts/slot-workspace.ps1')
+Copy-Item (Join-Path $native 'scripts/target-slot.ps1') (Join-Path $fixture 'scripts/target-slot.ps1')
 Copy-Item (Join-Path $native 'packaging/build-config.ps1') (Join-Path $fixture 'packaging/build-config.ps1')
 $config = Join-Path $fixture 'public-build.cfg'
 [IO.File]::WriteAllText($config, "VANTARE_VERSION=0.0.0-prueba`nVANTARE_BUILD_CHANNEL=nightly`n")

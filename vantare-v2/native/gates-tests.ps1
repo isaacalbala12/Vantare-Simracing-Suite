@@ -20,6 +20,7 @@ Copy-Item (Join-Path $PSScriptRoot '.cargo/config.toml') (Join-Path $fixture '.c
 Copy-Item (Join-Path $PSScriptRoot 'gates.ps1') (Join-Path $fixture 'gates.ps1')
 [IO.Directory]::CreateDirectory((Join-Path $fixture 'scripts')) | Out-Null
 Copy-Item (Join-Path $PSScriptRoot 'scripts/slot-workspace.ps1') (Join-Path $fixture 'scripts/slot-workspace.ps1')
+Copy-Item (Join-Path $PSScriptRoot 'scripts/target-slot.ps1') (Join-Path $fixture 'scripts/target-slot.ps1')
 Push-Location $fixture
 try {
     & cargo generate-lockfile --offline
@@ -35,5 +36,13 @@ try {
         if ([Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process') -cne $previousTarget) { throw 'El gate no restauró CARGO_TARGET_DIR.' }
         if ([Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process') -cne $previousDirectory) { throw 'El gate no restauró DUCKDB_LIB_DIR.' }
         'Defaults actuales y futuro PASS; bundled de storage desactivado.'
+        [IO.Directory]::CreateDirectory((Join-Path $fixture '.config')) | Out-Null
+        Copy-Item (Join-Path $PSScriptRoot '.config/nextest.toml') (Join-Path $fixture '.config/nextest.toml')
+        & (Join-Path $fixture 'gates.ps1') -Gate archive -Packages @('future-default') -DuckDbDirectory $DuckDbDirectory
+        $extract = Join-Path $fixture 'reuse'
+        [IO.Directory]::CreateDirectory($extract) | Out-Null
+        & cargo-nextest nextest run --archive-file (Join-Path $env:VANTARE_SLOT_TARGET 'nextest-tests.tar.zst') --extract-to $extract
+        if ($LASTEXITCODE) { throw 'El archivo no ejecuta los tests compilados.' }
+        'Archive PASS: compilación seleccionada y ejecución desde el archivo real.'
     }
 } finally { Pop-Location }

@@ -1,0 +1,38 @@
+name: Native Windows build tools and cache
+description: Prebuilt tools, registry cache and compiler cache without duplicate targets
+runs:
+  using: composite
+  steps:
+    - name: Configure GitHub compiler cache namespace
+      shell: pwsh
+      env:
+        LOCK_HASH: ${{ hashFiles('vantare-v2/native/Cargo.lock') }}
+      run: |
+        "SCCACHE_GHA_ENABLED=true" >> $env:GITHUB_ENV
+        "SCCACHE_GHA_VERSION=vanta137-$env:LOCK_HASH" >> $env:GITHUB_ENV
+        "SCCACHE_SERVER_PORT=4227" >> $env:GITHUB_ENV
+        "RUSTC_WRAPPER=sccache" >> $env:GITHUB_ENV
+    - name: Cache Cargo registry and git sources
+      uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      with:
+        workspaces: vantare-v2/native -> ${{ runner.temp }}/vantare-targets/ci
+        shared-key: native-windows-registry-v137
+        cache-bin: 'false'
+        cache-targets: 'false'
+    - name: Install prebuilt Nextest
+      uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
+      with:
+        tool: cargo-nextest@0.9.146
+        fallback: none
+    - name: Enable sccache GitHub backend
+      uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad
+      with:
+        version: v0.18.0
+    - name: Fetch locked native dependencies
+      shell: pwsh
+      working-directory: vantare-v2/native
+      run: cargo fetch --locked
+    - name: Install verified DuckDB development library
+      shell: pwsh
+      working-directory: vantare-v2/native
+      run: ./setup-duckdb.ps1

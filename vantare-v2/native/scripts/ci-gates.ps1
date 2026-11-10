@@ -19,9 +19,15 @@ try {
     if (-not $packages.Count -or 'vantare-ui' -cin $packages -or 'vantare-installer' -cin $packages) {
         & (Join-Path $PSScriptRoot '../gates.ps1') -Gate captura
     }
-    $suite = if ($Telemetry) { 'completa' } else { 'test' }
-    & (Join-Path $PSScriptRoot '../gates.ps1') -Gate $suite -Packages $packages
-    if (-not $packages.Count -or 'vantare-runtime' -cin $packages) {
-        & (Join-Path $PSScriptRoot '../gates.ps1') -Gate lifecycle
-    }
+    & (Join-Path $PSScriptRoot '../gates.ps1') -Gate archive -Packages $packages
+    $revision = & git rev-parse HEAD
+    if ($LASTEXITCODE) { throw 'No se pudo identificar el build archivado.' }
+    [ordered]@{
+        revision = $revision
+        workspace = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
+        target = $env:VANTARE_SLOT_TARGET
+        telemetry = [bool]$Telemetry
+        lifecycle = (-not $packages.Count -or 'vantare-runtime' -cin $packages)
+        packages = $packages
+    } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8
 } finally { Pop-Location }

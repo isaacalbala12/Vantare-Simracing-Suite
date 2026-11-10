@@ -1,11 +1,21 @@
 # Called only while compilar.ps1 owns the corresponding global slot mutex.
+function Test-VantareTargetPath([string]$Path) {
+    if (-not [IO.Path]::IsPathRooted($Path)) { return $false }
+    $full = [IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+    if ($full.Length -le 3) { return $false }
+    if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted' -and $env:RUNNER_TEMP) {
+        $temporary = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+        return $full.StartsWith($temporary, [StringComparison]::OrdinalIgnoreCase)
+    }
+    return $full -match '^[dD]:[\\/]'
+}
 function Initialize-VantareSlotTarget {
     param(
         [Parameter(Mandatory)][ValidateRange(0, 1)][int]$Slot,
         [string]$Root = 'D:\VantareServer\targets',
         [switch]$Ci
     )
-    if ($Root -notmatch '^[dD]:[\\/]' -or $Root.Length -le 3) { throw 'Raíz de targets inválida.' }
+    if (-not (Test-VantareTargetPath $Root)) { throw 'Raíz de targets inválida.' }
     $root = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
     $name = if ($Ci) { "ci" } else { "slot-$Slot" }
     $target = [IO.Path]::GetFullPath((Join-Path $root $name))
@@ -39,10 +49,11 @@ function Initialize-VantareSlotTarget {
             foreach ($lock in $locks) { $lock.Dispose() }
             # Absolute path and all descendants checked above; mutex excludes other slot users.
             Get-ChildItem -LiteralPath $target -Force | Remove-Item -Recurse -Force
-            Write-Host "[cola] slot-$Slot limpiado (14 días sin uso o más de 20 GB)."
+            Write-Host "[cola] $name limpiado (14 días sin uso o límite de tamaño excedido)."
         }
     }
-    if ((Get-PSDrive D).Free -lt 15GB) { throw 'D: tiene menos de 15 GB libres.' }
+    $minimum = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { 2GB } else { 15GB }
+    if ((Get-PSDrive D).Free -lt $minimum) { throw "D: tiene menos de $($minimum / 1GB) GB libres." }
     [IO.File]::WriteAllText($stamp, [DateTime]::UtcNow.ToString('O'))
     Write-Host "[cola] target persistente: $target"
     return $target

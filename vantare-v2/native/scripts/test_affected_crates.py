@@ -56,6 +56,20 @@ class ScopeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 affected.select_for_crate(packages, legacy)
 
+    def test_ci_keeps_full_backstop_and_explicit_legacy_validation(self):
+        packages = [
+            {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{directory}/Cargo.toml',
+             'dependencies': [{'name': dep} for dep in deps]}
+            for name, directory, deps in [('vantare-ui', 'ui', []),
+                ('vantare-runtime', 'runtime', ['vantare-ui']),
+                ('vantare-hub', 'hub', ['vantare-ui']),
+                ('vantare-admin', 'admin', ['vantare-hub'])]]
+        path = ['vantare-v2/native/ui/src/lib.rs']
+        self.assertEqual(affected.select_for_ci(packages, path, True), ['vantare-runtime', 'vantare-ui'])
+        self.assertEqual(len(affected.select_for_ci(packages, path)), 4)
+        self.assertEqual(affected.select_for_ci(packages, ['vantare-v2/native/hub/src/main.rs'], True),
+                         ['vantare-admin', 'vantare-hub'])
+
     def test_documentation_outside_native_has_no_native_scope(self):
         self.assertEqual(affected.select(self.packages, ['vantare-v2/docs/guide.md']), [])
 

@@ -29,6 +29,7 @@ jobs:
       # Lo lee `product` para saltarse el trabajo pesado sin dejar de reportar
       # su check requerido. Vacío o distinto de «false» ⇒ los gates corren.
       native: ${{ steps.native_scope.outputs.native }}
+      installation: ${{ steps.installation_scope.outputs.installation }}
       # Lo lee `product` para elegir el gate de suite: `test` excluye el corpus
       # de telemetría y `completa` lo incluye. Vacío o distinto de «false» ⇒
       # corre el corpus (fail-closed).
@@ -98,6 +99,23 @@ jobs:
             echo "telemetria=$telemetria"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Classify installation coverage
+        id: installation_scope
+        shell: bash
+        env:
+          NATIVE_SCOPE: ${{ steps.native_scope.outputs.native }}
+        run: |
+          set -euo pipefail
+          decision=true
+          if [ "$NATIVE_SCOPE" = false ]; then
+            decision=false
+          elif [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$GITHUB_BASE_REF" = nightly ]; then
+            base="$(git rev-parse HEAD^1)"
+            decision="$(python vantare-v2/native/scripts/affected-crates.py --base "$base" --installation)"
+          fi
+          case "$decision" in true|false) ;; *) exit 1 ;; esac
+          echo "installation=$decision" >> "$GITHUB_OUTPUT"
+
       - name: Check branch topology
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -123,7 +141,9 @@ jobs:
         run: python .github/scripts/test_testing_center_diff_gate.py
 
       - name: Test native gate path scope
-        run: python .github/scripts/test_native_gate_scope.py
+        run: |
+          python .github/scripts/test_native_gate_scope.py
+          python .github/scripts/test_native_ci_results.py
 
       - name: Test Testing Center trusted manifest collector
         run: python .github/scripts/test_testing_center_manifest_collector.py
@@ -257,77 +277,26 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
-  product:
-    name: Validate Vantare blocking gates
+  native_build:
+    name: Build native validation archive
+    if: needs.policy.outputs.native != 'false'
     needs: policy
-    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Windows","X64","vantare-1565"]') || 'windows-latest' }}
+    runs-on: windows-latest
     env:
       VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
     defaults:
       run:
         shell: pwsh
         working-directory: ${{ env.VANTARE_DIR }}
     steps:
-      # Todos los pasos pesados se saltan cuando la PR solo toca zonas sin
-      # efecto nativo (lo decide `policy.native`). El trabajo sigue corriendo y
-      # reportando «success» porque es un check requerido de la rama: filtrar
-      # en el disparador lo dejaría en «Pending» y bloquearía la fusión.
-      - name: Wait until Windows screen is available
-        if: needs.policy.outputs.native != 'false'
-        working-directory: ${{ runner.temp }}
-        run: |
-          while (Test-Path 'C:/tmp/fase2/pantalla-ocupada') { Start-Sleep -Seconds 10 }
-
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        if: needs.policy.outputs.native != 'false'
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
-
-      # Caché de los artefactos de *dependencias* (rust-cache borra antes de
-      # guardar los crates del workspace y el fork vendorizado, y limpia el
-      # incremental). Incluye el registro y el clon git de Cargo (~1 GB, zed
-      # 388 MB): sustituye a la caché `cargo-registry` de la ronda 1. Apunta a
-      # target/gates, el --target-dir que usa gates.ps1. La clave la calcula la
-      # acción con rustc, las variables CARGO/RUST/CC y el Cargo.lock/Cargo.toml
-      # de todo el repo: no cambia por PR, y si cambia el lock restaura la
-      # entrada anterior. Un cache creado en una PR solo lo ve esa PR; los del
-      # push a nightly los comparten todas las PRs con esa base (docs de
-      # GitHub: «Restrictions for accessing a cache»). Para invalidar a mano:
-      # subir `prefix-key`. Nota: la línea de la acción no lleva comentario de
-      # versión al final porque el test del flujo de canales exige que acabe en
-      # el SHA fijado.
-      - name: Cache de artefactos de dependencias (target)
-        if: needs.policy.outputs.native != 'false' && runner.environment == 'github-hosted'
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          workspaces: |
-            vantare-v2/native -> D:/VantareServer/targets/ci
-          shared-key: native-windows-gates
-          # El binario de nextest se cachea aparte: no guardar ~/.cargo/bin dos veces.
-          cache-bin: "false"
-
-      - name: Fetch locked native dependencies
-        if: needs.policy.outputs.native != 'false'
-        working-directory: ${{ env.VANTARE_DIR }}/native
-        run: cargo fetch --locked
-
-      - name: Classify native installation surface
-        id: build_surface
-        if: needs.policy.outputs.native != 'false'
-        working-directory: ${{ env.VANTARE_DIR }}/native
-        run: |
-          $decision = 'true'
-          if ($env:GITHUB_EVENT_NAME -eq 'pull_request' -and $env:GITHUB_BASE_REF -eq 'nightly') {
-            $base = & git rev-parse 'HEAD^1'
-            if ($LASTEXITCODE) { throw 'Missing pull request diff base' }
-            $decision = & python scripts/affected-crates.py --base $base --installation
-            if ($LASTEXITCODE -or $decision -notin @('true', 'false')) { throw 'Invalid installation scope' }
-          }
-          "installation=$decision" >> $env:GITHUB_OUTPUT
-
+      - uses: ./.github/actions/native-build-setup
       - name: Classify changed automatic scope
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ github.workspace }}
@@ -372,46 +341,6 @@ jobs:
 
       # El binario solo cambia al subir la versión: se guarda en caché y se
       # evita recompilarlo (342–430 s por trabajo aquí; 174–226 s en Linux).
-      - name: Cache de cargo-nextest
-        if: needs.policy.outputs.native != 'false'
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: ~/.cargo/bin/cargo-nextest.exe
-          key: cargo-nextest-0.9.146-${{ runner.os }}-${{ runner.arch }}
-
-      - name: Install native test runner
-        if: needs.policy.outputs.native != 'false'
-        working-directory: ${{ env.VANTARE_DIR }}/native
-        run: |
-          # Prueba esta comprobación también con caché CALIENTE: un falso
-          # negativo (pasó con `--version` multilínea en Linux) no debe tumbar
-          # el trabajo; --force reinstala encima de lo que ya haya.
-          $have = ''
-          $exe = Join-Path $env:USERPROFILE '.cargo\bin\cargo-nextest.exe'
-          if (Test-Path -LiteralPath $exe) {
-            try { $have = (& $exe --version 2>$null) -join "`n" } catch { $have = '' }
-          }
-          $first = ($have -split "`n")[0].Trim()
-          "cargo-nextest encontrado: '$first'"
-          if ($first -match 'cargo-nextest 0\.9\.146') {
-            'cargo-nextest 0.9.146 ya disponible: no se instala'
-          } else {
-            pwsh -NoProfile -File scripts/compilar.ps1 cargo install cargo-nextest --locked --version 0.9.146 --force
-            if ($LASTEXITCODE) { throw 'Nextest installation failed' }
-          }
-
-      - name: Install verified DuckDB development library
-        if: needs.policy.outputs.native != 'false'
-        working-directory: ${{ env.VANTARE_DIR }}/native
-        run: ./setup-duckdb.ps1
-
-      - name: Verify build-candidate release package excludes QA feature and symbols
-        if: needs.policy.outputs.native != 'false' && steps.build_surface.outputs.installation != 'false'
-        working-directory: ${{ env.VANTARE_DIR }}
-        run: |
-          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "D:/VantareServer/targets/qa-exclusion"
-          if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
-
       - name: Native format and blocking gates
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native
@@ -441,8 +370,79 @@ jobs:
           pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry
           if ($LASTEXITCODE) { throw 'Native blocking gates failed' }
 
+      - name: Verify retained fixtures and references
+        run: python native/retirement/verify.py
+      - name: Share one compiled test archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-tests-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/vantare-targets/ci/nextest-tests.tar.zst
+            ${{ runner.temp }}/vantare-targets/ci/ci-scope.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  native_tests:
+    name: Run native ${{ matrix.suite }}
+    needs: [policy, native_build]
+    if: needs.policy.outputs.native != 'false'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [test, telemetria, lifecycle]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install prebuilt Nextest
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
+        with:
+          tool: cargo-nextest@0.9.146
+          fallback: none
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-tests-${{ github.sha }}
+          path: ${{ runner.temp }}/vantare-test-archive
+      - name: Run compiled tests without rebuilding
+        run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}'
+
+  native_installation:
+    name: Validate native distribution and installation
+    if: needs.policy.outputs.native != 'false' && needs.policy.outputs.installation != 'false'
+    needs: policy
+    runs-on: windows-latest
+    env:
+      VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/native-build-setup
+      - name: Verify build-candidate release package excludes QA feature and symbols
+        if: needs.policy.outputs.native != 'false'
+        working-directory: ${{ env.VANTARE_DIR }}
+        run: |
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
+          if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
+
       - name: Characterize Windows installation operations
-        if: needs.policy.outputs.native != 'false' && steps.build_surface.outputs.installation != 'false'
+        if: needs.policy.outputs.native != 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           CARGO_BUILD_JOBS: '4'
@@ -462,6 +462,18 @@ jobs:
             ${{ runner.temp }}/installation-matrix/results.json
           if-no-files-found: ignore
 
-      - name: Verify retained fixtures and references
-        if: needs.policy.outputs.native != 'false'
-        run: python native/retirement/verify.py
+
+  product:
+    name: Validate Vantare blocking gates
+    needs: [policy, native_build, native_tests, native_installation]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Require every applicable native gate
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: python .github/scripts/native_ci_results.py

@@ -365,6 +365,7 @@ fn restart_peer(pipe: &mut Pipe, mode: &str) {
 fn restart_session(root: &Path, photo: &str) -> Session {
     Session {
         launcher_reader: crate::launcher::Reader::new(root.join("launcher.json")),
+        reserved_profile: None,
         pilot: None,
         privacy: crate::privacy::State::isolated(root),
         diagnostic: crate::diagnostics::Observed::default(),
@@ -461,4 +462,21 @@ fn restart_rejects_live_existing_close_and_missing_ready() {
     ] {
         restart_case((live, closing, ready), true);
     }
+}
+
+#[test]
+fn profile_save_is_busy_without_writing_while_discovery_is_not_collected() {
+    let root = crate::test_support::Root::new();
+    let mut session = restart_session(&root.path, "");
+    let view = session.launcher_reader.view();
+    assert!(view.scanning);
+    assert!(session.launcher_reader.discovered(&view.revision).is_none());
+    let before = std::fs::read(&session.launcher).unwrap();
+    let draft =
+        crate::launcher::editor::draft(&vantare_launcher::Document::fresh_install().profiles[0]);
+    assert_eq!(
+        session.save_profile_draft(&draft, &view.revision),
+        Err(HostError::Busy)
+    );
+    assert_eq!(std::fs::read(&session.launcher).unwrap(), before);
 }

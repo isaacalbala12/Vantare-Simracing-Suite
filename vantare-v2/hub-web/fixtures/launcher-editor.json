@@ -1,0 +1,23 @@
+{
+  "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+  "draft": {
+    "id": null,
+    "name": "Nuevo perfil",
+    "favorite": false,
+    "description": "",
+    "notes": "",
+    "advanced": false,
+    "hotkey": "",
+    "startup": false,
+    "steps": [],
+    "policy": {
+      "alreadyRunning": "ask",
+      "failure": "ask",
+      "cancel": "ask",
+      "exit": "ask",
+      "retry": "ask",
+      "retries": 0,
+      "firstStepDelay": 0
+    }
+  }
+}

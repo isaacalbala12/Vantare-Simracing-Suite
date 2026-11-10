@@ -256,6 +256,7 @@ enum RemoteKind {
 }
 
 struct Session {
+    reserved_profile: Option<String>,
     launcher_reader: crate::launcher::Reader,
     pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
@@ -469,6 +470,94 @@ impl Session {
             Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
         }
     }
+    fn save_profile_draft(
+        &mut self,
+        draft: &crate::launcher::editor::ProfileDraft,
+        base_revision: &str,
+    ) -> Result<(), HostError> {
+        let found = self
+            .launcher_reader
+            .discovered(base_revision)
+            .ok_or(HostError::Busy)?;
+        crate::launcher::editor::save(
+            &self.launcher,
+            draft,
+            base_revision,
+            found,
+            self.reserved_profile.as_deref(),
+        )
+    }
+    fn profile_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        match request {
+            Request::LauncherProfileGet { id: profile_id } => {
+                let message =
+                    match crate::launcher::editor::get(&self.launcher, profile_id.as_deref()) {
+                        Ok(value) => {
+                            if profile_id.is_none() {
+                                self.reserved_profile.clone_from(&value.draft.id);
+                            }
+                            HostToUi::Response {
+                                id,
+                                result: Reply::LauncherProfileGet { value },
+                            }
+                        }
+                        Err(error) => HostToUi::Failure { id, error },
+                    };
+                frame::write(pipe, &message)
+            }
+            Request::LauncherProfileSave {
+                draft,
+                base_revision,
+            } => {
+                let saved = self.save_profile_draft(draft, base_revision);
+                let message = match saved {
+                    Ok(()) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherProfileSave {
+                            value: self.launcher_reader.view(),
+                        },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
+        }
+    }
+    fn launcher_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        match request {
+            Request::LauncherLaunch {
+                profile,
+                base_revision,
+            } => {
+                let message = match crate::launcher::launch(
+                    &self.launcher,
+                    &self.current,
+                    profile,
+                    base_revision,
+                ) {
+                    Ok(accepted) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherLaunch { accepted },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
+        }
+    }
+    fn launcher_snapshot(&mut self, pipe: &mut Pipe, id: u32) -> io::Result<()> {
+        frame::write(
+            pipe,
+            &HostToUi::Response {
+                id,
+                result: Reply::LauncherGet {
+                    value: self.launcher_reader.view(),
+                },
+            },
+        )
+    }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
             Request::TestingAnswer { .. }
@@ -539,9 +628,11 @@ impl Session {
                     },
                 },
             ),
-            Request::LauncherGet {} | Request::LauncherLaunch { .. } => {
-                self.launcher_request(pipe, id, request)
+            Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
+                self.profile_request(pipe, id, request)
             }
+            Request::LauncherGet {} => self.launcher_snapshot(pipe, id),
+            Request::LauncherLaunch { .. } => self.launcher_request(pipe, id, request),
             Request::LauncherFavorite {} => {
                 let message = match crate::favorite::launch(&self.launcher, &self.current) {
                     Ok(accepted) => HostToUi::Response {
@@ -565,38 +656,6 @@ impl Session {
                     error: HostError::Unsupported,
                 },
             ),
-        }
-    }
-    fn launcher_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        match request {
-            Request::LauncherGet {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::LauncherGet {
-                        value: self.launcher_reader.view(),
-                    },
-                },
-            ),
-            Request::LauncherLaunch {
-                profile,
-                base_revision,
-            } => {
-                let message = match crate::launcher::launch(
-                    &self.launcher,
-                    &self.current,
-                    profile,
-                    base_revision,
-                ) {
-                    Ok(accepted) => HostToUi::Response {
-                        id,
-                        result: Reply::LauncherLaunch { accepted },
-                    },
-                    Err(error) => HostToUi::Failure { id, error },
-                };
-                frame::write(pipe, &message)
-            }
-            _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
     fn settings_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
@@ -927,6 +986,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        reserved_profile: None,
         pilot: None,
         privacy: crate::privacy::State::open(&args.data),
         diagnostic: crate::diagnostics::Observed::default(),

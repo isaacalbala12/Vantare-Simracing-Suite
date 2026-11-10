@@ -2,6 +2,7 @@ import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
 import diagnosticFixture from "../../fixtures/diagnostics-base.json";
 import launcherFixture from "../../fixtures/launcher-base.json";
+import editorFixture from "../../fixtures/launcher-editor.json";
 import pilotFixture from "../../fixtures/pilot-base.json";
 import privacyFixture from "../../fixtures/privacy-base.json";
 import publication from "../../fixtures/roadmap-publication.json";
@@ -10,6 +11,7 @@ import protectedScene from "../../fixtures/settings-protected.json";
 import shortcuts from "../../fixtures/shortcuts-base.json";
 import updatesBase from "../../fixtures/updates-base.json";
 import updatesReady from "../../fixtures/updates-ready.json";
+import type { ProfileDraft } from "../contract/generated/contract";
 import {
   type CoreStatus,
   HOST_PROTOCOL_VERSION,
@@ -69,7 +71,11 @@ export function createMockHost(sceneName = "ajustes-base") {
   const launcher = structuredClone(
     launcherFixture,
   ) as import("../contract/generated/contract").LauncherView;
-  if (sceneName === "launcher-ready") {
+  if (
+    sceneName === "launcher-ready" ||
+    sceneName === "launcher-editor-ready" ||
+    sceneName === "launcher-conflicto"
+  ) {
     launcher.apps.forEach((app) => {
       app.available = true;
     });
@@ -86,6 +92,25 @@ export function createMockHost(sceneName = "ajustes-base") {
     launcher.resident = false;
   }
 
+  const drafts = new Map<string, ProfileDraft>(
+    launcher.profiles.map((profile) => [
+      profile.id,
+      {
+        ...structuredClone(editorFixture.draft),
+        id: profile.id,
+        name: profile.name,
+        description: profile.description,
+        favorite: profile.favorite,
+        steps: profile.apps.map((appId, index) => ({
+          appId,
+          delaySeconds: index ? 2 : 0,
+          hasCustomArguments: false,
+        })),
+      } as ProfileDraft,
+    ]),
+  );
+  let profileSerial = 0;
+  let reservedProfile: string | undefined;
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../contract/generated/contract").PilotView;
@@ -311,6 +336,95 @@ export function createMockHost(sceneName = "ajustes-base") {
                     },
             },
           },
+        };
+      }
+      case "launcher.profile.get": {
+        const draft =
+          request.id === null
+            ? (structuredClone(editorFixture.draft) as ProfileDraft)
+            : drafts.get(request.id);
+        if (!draft) return { kind: "failure", id, error: { kind: "denied" } };
+        if (request.id === null) {
+          draft.id = `profile-qa-${++profileSerial}`;
+          reservedProfile = draft.id;
+        }
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            value: {
+              revision: launcher.revision,
+              draft: structuredClone(draft),
+            },
+          },
+        };
+      }
+      case "launcher.profile.save": {
+        if (
+          sceneName === "launcher-conflicto" &&
+          launcher.revision === "0".repeat(64)
+        )
+          launcher.revision = "1".repeat(64);
+        if (request.baseRevision !== launcher.revision)
+          return {
+            kind: "failure",
+            id,
+            error: {
+              kind: "launcherConflict",
+              current: structuredClone(launcher),
+            },
+          };
+        if (
+          request.draft.steps.length === 0 ||
+          request.draft.steps.some(
+            (step) =>
+              !launcher.apps.some(
+                (app) => app.id === step.appId && app.available,
+              ),
+          )
+        )
+          return { kind: "failure", id, error: { kind: "denied" } };
+        if (request.draft.id === null)
+          return { kind: "failure", id, error: { kind: "denied" } };
+        const profileId = request.draft.id;
+        if (
+          request.draft.id !== null &&
+          !drafts.has(profileId) &&
+          reservedProfile !== profileId
+        )
+          return { kind: "failure", id, error: { kind: "denied" } };
+        drafts.set(profileId, {
+          ...structuredClone(request.draft),
+          id: profileId,
+        });
+        const entry = {
+          id: profileId,
+          name: request.draft.name,
+          description: request.draft.description,
+          favorite: request.draft.favorite,
+          apps: request.draft.steps.map((step) => step.appId),
+          launchable: true,
+          options: {
+            alreadyRunning: request.draft.policy.alreadyRunning,
+            firstStepDelay: request.draft.policy.firstStepDelay,
+            retries: request.draft.policy.retries,
+            failure: request.draft.policy.failure,
+            startup: request.draft.startup,
+          },
+        };
+        const existing = launcher.profiles.findIndex(
+          (profile) => profile.id === profileId,
+        );
+        if (existing < 0) launcher.profiles.push(entry);
+        else launcher.profiles[existing] = entry;
+        launcher.revision = (BigInt(`0x${launcher.revision}`) + 1n)
+          .toString(16)
+          .padStart(64, "0");
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(launcher) },
         };
       }
       case "launcher.get":

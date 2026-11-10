@@ -1,0 +1,111 @@
+import { describe, expect, it } from "vitest";
+import fixture from "../fixtures/launcher-editor.json";
+import { isHostMessage, isUiMessage } from "../src/contract/validation";
+import { createMockHost } from "../src/mock/host";
+
+describe("profile wire", () => {
+  it("uses the strict Rust draft and rejects executable fields and invalid policies", () => {
+    expect(
+      isHostMessage({
+        kind: "response",
+        id: 1,
+        result: { method: "launcher.profile.get", value: fixture },
+      }),
+    ).toBe(true);
+    const request = {
+      method: "launcher.profile.save",
+      draft: fixture.draft,
+      baseRevision: fixture.revision,
+    };
+    const wire = (request: unknown) => ({ kind: "request", id: 1, request });
+    expect(isUiMessage(wire(request))).toBe(true);
+    expect(
+      isUiMessage(wire({ ...request, executable: "D:/QA/not-accepted.exe" })),
+    ).toBe(false);
+    expect(
+      isUiMessage(
+        wire({
+          ...request,
+          draft: {
+            ...fixture.draft,
+            policy: { ...fixture.draft.policy, alreadyRunning: "shell" },
+          },
+        }),
+      ),
+    ).toBe(false);
+  });
+  it("reserves a new ID in the host so a retry cannot create a second profile", () => {
+    const host = createMockHost("launcher-editor-ready");
+    const opened = host({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.profile.get", id: null },
+    });
+    if (
+      opened?.kind !== "response" ||
+      opened.result.method !== "launcher.profile.get"
+    )
+      throw new Error("editor reply");
+    const draft = {
+      ...opened.result.value.draft,
+      steps: [{ appId: "lmu", delaySeconds: 0, hasCustomArguments: false }],
+    };
+    const saved = host({
+      kind: "request",
+      id: 2,
+      request: {
+        method: "launcher.profile.save",
+        draft,
+        baseRevision: opened.result.value.revision,
+      },
+    });
+    if (
+      saved?.kind !== "response" ||
+      saved.result.method !== "launcher.profile.save"
+    )
+      throw new Error("save reply");
+    const retried = host({
+      kind: "request",
+      id: 3,
+      request: {
+        method: "launcher.profile.save",
+        draft,
+        baseRevision: saved.result.value.revision,
+      },
+    });
+    if (
+      retried?.kind !== "response" ||
+      retried.result.method !== "launcher.profile.save"
+    )
+      throw new Error("retry reply");
+    expect(
+      retried.result.value.profiles.filter(
+        (profile) => profile.id === draft.id,
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+it("rejects renderer arguments on profile steps", () => {
+  const draft = structuredClone(fixture.draft);
+  const wire = {
+    kind: "request",
+    id: 1,
+    request: {
+      method: "launcher.profile.save",
+      baseRevision: fixture.revision,
+      draft: {
+        ...draft,
+        steps: [
+          {
+            appId: "lmu",
+            delaySeconds: 0,
+            hasCustomArguments: false,
+            argsOverride: ["--renderer-cmd-prefix=untrusted"],
+          },
+        ],
+      },
+    },
+  };
+  expect(isUiMessage(wire)).toBe(false);
+});

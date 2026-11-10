@@ -1595,3 +1595,37 @@ invertidas y :/ en el JSON. Comprobaciones P2 en curso; sin merge propio.
 - Entrega de lista/lanzamiento consolidada en un bloque propio para resolver el rebase sin reaplicar conflictos históricos. Bindings y corpus regenerados desde Rust, sin edición manual; versión del protocolo de nightly conservada.
 - Exportación correcta; gate Rust y suite web en curso. Evidencia native-notifications-rebase.log y *-notifications-rebase.log en la carpeta propia de #2029. #2038 y #2044 se reapilan después, conservando el P0 corregido y el P2 de identidad de pasos pendiente de implementar.
 - Sin merge, promoción ni release propios.
+### Worker C · Contrato del editor de Launcher
+
+Draft #2038 https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2038,
+depende de #2029; rama vantareapp/isa-1995-c-editor. Código 6e2ac0e4534f584cc6015fcb5d8f58df0b8a9064.
+Borradores tipados por ID, revisión CAS y reserva nativa de ID nuevo para que un
+reintento no duplique el perfil. Store.from_observed conserva los bytes observados;
+Document.save_profile valida aplicaciones, pasos, argumentos y atajos. Conserva
+estadísticas, procedencia y perfiles ajenos. Constantes/bindings/corpus desde Rust.
+Formato, Clippy, build QA y 75 tests del anfitrión pasan (helper de subproceso
+omitido como test autónomo). En Mac pasan 35 tests Launcher. Typecheck, Biome y
+lint de diseño pasan; 2 tests nuevos de contrato pasan. Suite completa local:
+201 tests correctos y fallo al arrancar un worker de settings-state por memoria;
+CI pendiente. Evidencia D:/VantareServer/evidence/hub-web/isa-1995-c-editor.
+La interfaz continúa en isa-1995-c-editor-ui. Sus tests han detectado y corregido
+un borrador obsoleto al guardar inmediatamente tras editar: estado React compartido
+por el formulario y el portal del rail; sus 3 tests de edición/CAS/descarte pasan.
+No se integra ningún PR ni se mueve VANTA-138 de En curso.
+
+### C · #2038 reapilado tras el rebase de #2029
+
+- Base local de la pila: #2029 `58f511369`, sobre nightly `330681fd9`.
+- Incorporado Testing/informes sin perder las escrituras CAS de perfiles.
+- Restaurada la salida del exportador Rust ejecutado en `native-rebase.log`; el segundo pase de regeneración/check está esperando la cola, para verificarla de nuevo tras el ajuste de helpers. No se editó lo generado a mano.
+- Comprobaciones web y Rust en curso. Evidencia propia `D:/VantareServer/evidence/hub-web/isa-1995-c-editor/*-rebase*.log`.
+
+### C · Review de seguridad de #2038: argumentos fuera del renderer
+
+- P0 corregido: ProfileStep solo expone appId, delaySeconds y hasCustomArguments. No acepta ni devuelve argsOverride ni su contenido; bindings y corpus regenerados desde Rust.
+- Al guardar, el anfitrión conserva los argumentos anteriores únicamente por posición y appId del mismo perfil. Un paso nuevo o de otra app lleva None; el indicador enviado por la interfaz no controla los argumentos.
+- Regresiones: payload con argsOverride rechazado, argumentos anteriores conservados, cambio de app/paso nuevo sin argumentos, documento de unos 5 MiB de argumentos proyectado sin ellos y metadatos que desbordan el marco -> Protected sin escribir.
+- P2 favorito: GPUI editor.rs:954 cambia solo draft.profile.favorite; editor.rs:885 llama save_profile. launcher/src/triggers.rs:68–99 solo excluye otros startup, no favoritos. Se mantienen varios favoritos, con test de esa paridad y startup exclusivo; ningún texto propio dice único.
+- P3: tests de límites frente al crate, texto vacío/NUL, apps repetidas en básico, documentos ausentes/dañados/futuros sin escrituras y save Busy durante detección no recogida.
+- TypeScript, Biome y 145 tests de contrato/corpus correctos. Gate Rust en curso: native-review-args.log. Diferencia conocida con GPUI editor.rs:431: aquí los argumentos solo se indicarán como personalizados, sin editor; su edición queda pendiente de decisión de Isaac fuera del renderer.
+- Borrar perfil y favorito desde la lista irán en un PR pequeño separado de acciones de perfil, posterior a #2044; todavía no está abierto. #2029 permanece local rebasado sobre Roadmap, SIN push, esperando #2035 y el turno del orquestador.

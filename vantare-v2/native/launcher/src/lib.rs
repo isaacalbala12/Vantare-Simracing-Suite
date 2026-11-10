@@ -452,6 +452,27 @@ pub struct Store {
 }
 
 impl Store {
+    /// Build a CAS snapshot from strictly validated bytes already observed by a
+    /// caller. Unlike load, this never seeds, quarantines or repairs a document.
+    pub fn from_observed(path: PathBuf, bytes: Vec<u8>) -> Result<Self, files::Error> {
+        if path.is_absolute() && !is_local_path(&path) {
+            return Err(files::Error::InvalidInput(
+                "Launcher requiere un archivo de disco local".into(),
+            ));
+        }
+        if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > files::MAX_DOCUMENT {
+            return Err(files::Error::InvalidInput(
+                "Launcher demasiado grande".into(),
+            ));
+        }
+        let document = Document::from_bytes(&bytes)?;
+        Ok(Self {
+            warning: None,
+            document,
+            path,
+            saved: Some(bytes),
+        })
+    }
     /// Documento de demostración en memoria, sin leer ni escribir archivos.
     pub fn in_memory(path: PathBuf, document: Document) -> Result<Self, String> {
         document.validate()?;

@@ -1380,3 +1380,17 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   cambios de #2030 para --qa-testing y testing-center-triage; lo gestiona su responsable.
 - Informes ya usa entry.tsx/SectionChrome, con Shell intacto. Su comparación registra
   el desplazamiento del raíl derecho del marco; datos y pruebas continúan en D.
+
+
+### VANTA-138 · escena QA del diagnóstico local (worker D)
+
+- Extiende #2030 con `testing-center-diagnostico`, seleccionada solo desde la
+  ruta QA ligada al PID y con parity-capture. Abre las herramientas locales
+  vacías; no prepara ni exporta archivos automáticamente.
+- El comportamiento productivo sigue con local_open=false. Sin cambios de
+  derechos, dependencias, ui ni servicios; el script mantiene sus cuatro
+  capturas predeterminadas y permite pedir diagnostico explícitamente.
+- Formato y sintaxis PowerShell comprobados. No se recompila GPUI: Isaac pide
+  usar el banco fijo. Responsable del banco: incorporar esta escena junto con
+  #2030 y pasar --qa-testing con sus replies locales de tester; después guardar
+  dark/light/testing-center-diagnostico.png como referencia común.

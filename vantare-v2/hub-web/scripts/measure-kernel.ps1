@@ -2,12 +2,16 @@
 param([Parameter(Mandatory)][string]$Config)
 $ErrorActionPreference='Stop'
 $leases=@()
+$mutexes=@()
 try {
+    $configuration=Get-Content -Raw -LiteralPath $Config | ConvertFrom-Json
     foreach($slot in 0..1){
-        $mutex=[Threading.Mutex]::new($false,"Global\VantareCargoSlot$slot")
-        if(-not $mutex.WaitOne(0)){$mutex.Dispose();throw 'Compilation queue is busy; measurement refused'}
-        $leases+=,$mutex
+        $mutexes+=,[Threading.Mutex]::new($false,"Global\VantareCargoSlot$slot")
     }
+    @{phase='queue';waitMilliseconds=$configuration.waitMilliseconds} | ConvertTo-Json -Compress | Write-Output
+    if(-not [Threading.WaitHandle]::WaitAll([Threading.WaitHandle[]]$mutexes,[int]$configuration.waitMilliseconds)){throw 'Compilation queue stayed busy; measurement refused'}
+    $leases=$mutexes
+    if(Get-Process cargo,rustc -ErrorAction SilentlyContinue){throw 'Compiler process remains active despite slot reservation'}
     Add-Type -AssemblyName UIAutomationClient
     Add-Type -TypeDefinition @'
 using System;
@@ -78,7 +82,6 @@ public static class HubMeasure {
 }
 '@
     [HubMeasure]::Dpi()
-    $configuration=Get-Content -Raw -LiteralPath $Config | ConvertFrom-Json
     for($iteration=0;$iteration -lt $configuration.runs;$iteration++){
       $ordered=@($configuration.apps)
       if($iteration%2){[array]::Reverse($ordered)}
@@ -144,4 +147,4 @@ public static class HubMeasure {
         }
       }
     }
-} finally {foreach($mutex in $leases){$mutex.ReleaseMutex();$mutex.Dispose()}}
+} finally {foreach($mutex in $leases){$mutex.ReleaseMutex()};foreach($mutex in $mutexes){$mutex.Dispose()}}

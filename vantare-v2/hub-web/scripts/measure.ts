@@ -86,6 +86,7 @@ async function main() {
   };
   const configuration = {
     runs,
+    waitMilliseconds: 15 * 60 * 1000,
     apps: [
       {
         name: "electron",
@@ -123,6 +124,7 @@ async function main() {
     "pwsh",
     [
       "-NoProfile",
+      "-MTA",
       "-File",
       resolve("scripts/measure-kernel.ps1"),
       "-Config",
@@ -143,7 +145,10 @@ async function main() {
     driver.once("error", reject);
   });
   const samples: Record<string, unknown>[] = [];
-  const deadline = setTimeout(() => driver.kill(), runs * 4 * 45000 + 60000);
+  const deadline = setTimeout(
+    () => driver.kill(),
+    configuration.waitMilliseconds + runs * 4 * 45000 + 60000,
+  );
   let browser: Browser | undefined;
   try {
     for await (const line of createInterface({ input: driver.stdout })) {

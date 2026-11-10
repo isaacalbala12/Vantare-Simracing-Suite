@@ -192,6 +192,7 @@ export function Reports() {
             </TestingNotes>
             <ActionGroup>
               <Button
+                variant="primary"
                 disabled={
                   blocked || !state.consent || !state.loaded || state.dirty
                 }
@@ -275,6 +276,7 @@ export function Reports() {
                 onCheckedChange={state.setConsent}
               />
               <Button
+                variant="primary"
                 disabled={blocked || !state.consent || state.dirty}
                 onClick={() => run(state.send)}
               >

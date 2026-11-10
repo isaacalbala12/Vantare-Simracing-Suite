@@ -17,6 +17,7 @@ import {
   reportModules,
   type TestingView,
 } from "../../../contract/generated/contract";
+import { isReportFields } from "../../../contract/testing-validation";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { testingText as text } from "./es";
@@ -82,6 +83,13 @@ function useReportsState() {
         } catch (error) {
           if (epoch === generation.current) {
             setError(true);
+            if (
+              request.method.startsWith("report.") ||
+              request.method.startsWith("draft.")
+            ) {
+              setPreview(undefined);
+              setConsent(false);
+            }
             setFailure(
               error instanceof HostFailure ? error.detail.kind : "rejected",
             );
@@ -117,6 +125,11 @@ function useReportsState() {
     )
       return;
     const fields = structuredClone(state.current.fields);
+    if (!isReportFields(fields)) {
+      setError(true);
+      setFailure("rejected");
+      throw new HostFailure({ kind: "rejected" });
+    }
     const reply = await request({ method: "draft.save", fields });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");

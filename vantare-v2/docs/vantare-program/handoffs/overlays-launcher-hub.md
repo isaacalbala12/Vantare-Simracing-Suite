@@ -1629,3 +1629,12 @@ No se integra ningún PR ni se mueve VANTA-138 de En curso.
 - P3: tests de límites frente al crate, texto vacío/NUL, apps repetidas en básico, documentos ausentes/dañados/futuros sin escrituras y save Busy durante detección no recogida.
 - TypeScript, Biome y 145 tests de contrato/corpus correctos. Gate Rust en curso: native-review-args.log. Diferencia conocida con GPUI editor.rs:431: aquí los argumentos solo se indicarán como personalizados, sin editor; su edición queda pendiente de decisión de Isaac fuera del renderer.
 - Borrar perfil y favorito desde la lista irán en un PR pequeño separado de acciones de perfil, posterior a #2044; todavía no está abierto. #2029 permanece local rebasado sobre Roadmap, SIN push, esperando #2035 y el turno del orquestador.
+
+### C · Segunda review: identidad de pasos y rebase tras #2035
+
+- #2038 reapilado sobre #2029 d645472a6, base nightly 9d624c41f. Se conserva el P0: ningún argumento cruza el renderer.
+- P2: cada lectura emite claves aleatorias opacas, guardadas solo en la sesión del anfitrión junto a perfil, revisión e índice original. Los argumentos siguen esa identidad al reordenar, incluso con apps repetidas. Un paso sin clave o con app distinta lleva None; claves falsas, repetidas o de otra lectura/revisión se rechazan sin escribir. No se cambia launcher.json.
+- Tests de intercambio de dos pasos de la misma app, inserción delante, cambio de app, clave inventada/repetida y otra lectura/revisión. P0 y respuesta protegida se mantienen. Gate local: formato/Clippy, 101 tests correctos y build QA; TypeScript y 149 tests de contrato/corpus correctos. Evidencia native-step-keys.log, tests-step-keys.log.
+- #2044 añadirá confirmación antes de guardar si un cambio de app o eliminación descarta argumentos, y recargará claves conservando el borrador al reintentar un conflicto.
+- P3 registrados en #2028 (issuecomment-6779586820): indicador de entrada ignorado y sin acción de quitar; solo se informa del primer paso no lanzable; residual de perfiles de apps registradas con startup. Busy por revisión antigua ya corregido y probado: conflicto antes de exigir discovery, sin siembra desde save.
+- Sin merge, promoción, release ni cambios en IPC/residente propios.

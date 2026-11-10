@@ -11,8 +11,8 @@ import {
 import { isLauncher, isLauncherLaunch } from "./launcher-validation";
 import { isPilot, isPilotFields, isPilotRevision } from "./pilot-validation";
 import { isDiagnostic, isPrivacy, isPrivacyPatch } from "./privacy-validation";
-import { isRoadmap } from "./roadmap-validation";
 import { isProfileEditor, isProfileRequest } from "./profile-validation";
+import { isRoadmap } from "./roadmap-validation";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
 import {
   isReportDraft,

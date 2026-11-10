@@ -3,7 +3,7 @@ use super::{Discovery, Document, HostError, Path, files, open, read};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
-use vantare_launcher::{Profile, Step, Store, policy};
+use vantare_launcher::{Profile, Store, policy};
 pub const NAME_MAX: usize = 256;
 pub const DESCRIPTION_MAX: usize = 8192;
 pub const NOTES_MAX: usize = 32768;
@@ -41,6 +41,7 @@ choice!(ProfileRetry { Ask, Failed, All });
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfileStep {
+    pub key: Option<String>,
     pub app_id: String,
     pub delay_seconds: u32,
     pub has_custom_arguments: bool,
@@ -108,6 +109,7 @@ pub fn draft(profile: &Profile) -> ProfileDraft {
             .steps
             .iter()
             .map(|step| ProfileStep {
+                key: None,
                 app_id: step.app_id.clone(),
                 delay_seconds: step.delay_seconds,
                 has_custom_arguments: step.args_override.is_some(),
@@ -166,6 +168,9 @@ pub fn get(path: &Path, id: Option<&str>) -> Result<ProfileEditorView, HostError
         revision: vantare_services::content_hash(&bytes),
         draft,
     };
+    checked(view)
+}
+fn checked(view: ProfileEditorView) -> Result<ProfileEditorView, HostError> {
     let response = crate::protocol::HostToUi::Response {
         id: u32::MAX,
         result: crate::protocol::Reply::LauncherProfileGet {
@@ -180,6 +185,7 @@ fn apply(
     value: &ProfileDraft,
     found: &Discovery,
     reserved_new: Option<&str>,
+    keys: Option<&StepKeys>,
 ) -> Result<(), HostError> {
     if value.name.len() > NAME_MAX
         || value.description.len() > DESCRIPTION_MAX
@@ -203,20 +209,7 @@ fn apply(
     profile.advanced = value.advanced;
     profile.hotkey.clone_from(&value.hotkey);
     profile.launch_on_windows_startup = value.startup;
-    profile.steps = value
-        .steps
-        .iter()
-        .enumerate()
-        .map(|(index, step)| Step {
-            app_id: step.app_id.clone(),
-            delay_seconds: step.delay_seconds,
-            args_override: profile
-                .steps
-                .get(index)
-                .filter(|previous| previous.app_id == step.app_id)
-                .and_then(|previous| previous.args_override.clone()),
-        })
-        .collect();
+    profile.steps = steps::preserve(&profile, value, keys)?;
     profile.set_policy(policy::Policy {
         already_running: match value.policy.already_running {
             ProfileRunning::Ask => policy::Running::Ask,
@@ -251,6 +244,7 @@ pub fn save(
     revision: &str,
     found: &Discovery,
     reserved_new: Option<&str>,
+    keys: Option<&StepKeys>,
 ) -> Result<(), HostError> {
     let (bytes, _) = open(path)?.ok_or(HostError::Protected)?;
     if vantare_services::content_hash(&bytes) != revision {
@@ -258,9 +252,12 @@ pub fn save(
             current: read(path),
         });
     }
+    if keys.is_some_and(|keys| !keys.matches(value.id.as_deref(), revision)) {
+        return Err(HostError::Denied);
+    }
     let mut store = Store::from_observed(path.into(), bytes).map_err(|_| HostError::Protected)?;
     let mut document = store.document.clone();
-    apply(&mut document, value, found, reserved_new)?;
+    apply(&mut document, value, found, reserved_new, keys)?;
     store.replace(document).map_err(|error| {
         if error.kind().is_conflict() {
             HostError::LauncherConflict {
@@ -315,7 +312,12 @@ mod tests {
         let mut document = Document::fresh_install();
         document.profiles[0].steps[0].args_override =
             Some(vec!["--existing-private-argument".into()]);
-        let mut value = draft(&document.profiles[0]);
+        let mut view = ProfileEditorView {
+            revision: "0".repeat(64),
+            draft: draft(&document.profiles[0]),
+        };
+        let keys = StepKeys::issue(&mut view).unwrap();
+        let mut value = view.draft;
         assert!(value.steps[0].has_custom_arguments);
         let json = serde_json::to_string(&value).unwrap();
         assert!(!json.contains("argsOverride") && !json.contains("existing-private-argument"));
@@ -324,7 +326,7 @@ mod tests {
         assert!(serde_json::from_value::<ProfileStep>(forged).is_err());
         let found = available(&document);
         value.steps[0].has_custom_arguments = false;
-        apply(&mut document, &value, &found, None).unwrap();
+        apply(&mut document, &value, &found, None, Some(&keys)).unwrap();
         assert_eq!(
             document.profiles[0].steps[0].args_override,
             Some(vec!["--existing-private-argument".into()])
@@ -332,11 +334,12 @@ mod tests {
         value.advanced = true;
         value.steps[0].app_id = "obs".into();
         value.steps.push(ProfileStep {
+            key: None,
             app_id: "lmu".into(),
             delay_seconds: 0,
             has_custom_arguments: true,
         });
-        apply(&mut document, &value, &found, None).unwrap();
+        apply(&mut document, &value, &found, None, Some(&keys)).unwrap();
         assert!(document.profiles[0].steps[0].args_override.is_none());
         assert!(
             document.profiles[0]
@@ -348,6 +351,103 @@ mod tests {
         );
     }
     #[test]
+    fn opaque_keys_keep_duplicate_app_steps_distinct_when_swapped_or_preceded_by_a_new_step() {
+        let mut original = Document::fresh_install();
+        let mut first = original.profiles[0].steps[0].clone();
+        first.args_override = Some(vec!["private-first".into()]);
+        let mut second = first.clone();
+        second.args_override = Some(vec!["private-second".into()]);
+        original.profiles[0].advanced = true;
+        original.profiles[0].steps = vec![first, second];
+        let found = available(&original);
+        let mut view = ProfileEditorView {
+            revision: "0".repeat(64),
+            draft: draft(&original.profiles[0]),
+        };
+        let keys = StepKeys::issue(&mut view).unwrap();
+        let mut swapped = view.draft.clone();
+        swapped.steps.swap(0, 1);
+        let mut copy = original.clone();
+        apply(&mut copy, &swapped, &found, None, Some(&keys)).unwrap();
+        assert_eq!(
+            copy.profiles[0].steps[0].args_override,
+            Some(vec!["private-second".into()])
+        );
+        assert_eq!(
+            copy.profiles[0].steps[1].args_override,
+            Some(vec!["private-first".into()])
+        );
+        let mut inserted = view.draft.clone();
+        inserted.steps.insert(
+            0,
+            ProfileStep {
+                key: None,
+                app_id: "lmu".into(),
+                delay_seconds: 0,
+                has_custom_arguments: false,
+            },
+        );
+        let mut copy = original.clone();
+        apply(&mut copy, &inserted, &found, None, Some(&keys)).unwrap();
+        assert!(copy.profiles[0].steps[0].args_override.is_none());
+        assert_eq!(
+            copy.profiles[0].steps[1].args_override,
+            original.profiles[0].steps[0].args_override
+        );
+        assert_eq!(
+            copy.profiles[0].steps[2].args_override,
+            original.profiles[0].steps[1].args_override
+        );
+        let mut changed = view.draft;
+        changed.steps[0].app_id = "obs".into();
+        let mut copy = original.clone();
+        apply(&mut copy, &changed, &found, None, Some(&keys)).unwrap();
+        assert!(copy.profiles[0].steps[0].args_override.is_none());
+        assert_eq!(
+            copy.profiles[0].steps[1].args_override,
+            original.profiles[0].steps[1].args_override
+        );
+    }
+    #[test]
+    fn invented_repeated_and_other_read_keys_are_rejected_without_changes() {
+        let original = Document::fresh_install();
+        let found = available(&original);
+        let mut view = ProfileEditorView {
+            revision: "0".repeat(64),
+            draft: draft(&original.profiles[0]),
+        };
+        let keys = StepKeys::issue(&mut view).unwrap();
+        let mut forged = view.draft.clone();
+        forged.steps[0].key = Some("f".repeat(64));
+        let mut copy = original.clone();
+        assert_eq!(
+            apply(&mut copy, &forged, &found, None, Some(&keys)),
+            Err(HostError::Denied)
+        );
+        assert_eq!(
+            serde_json::to_vec(&copy).unwrap(),
+            serde_json::to_vec(&original).unwrap()
+        );
+        let mut repeated = view.draft.clone();
+        repeated.steps[1].key.clone_from(&view.draft.steps[0].key);
+        assert_eq!(
+            apply(&mut copy, &repeated, &found, None, Some(&keys)),
+            Err(HostError::Denied)
+        );
+        let old = view.draft.clone();
+        view.revision = "1".repeat(64);
+        let other = StepKeys::issue(&mut view).unwrap();
+        assert!(!other.matches(view.draft.id.as_deref(), &"0".repeat(64)));
+        assert_eq!(
+            apply(&mut copy, &old, &found, None, Some(&other)),
+            Err(HostError::Denied)
+        );
+        assert_eq!(
+            serde_json::to_vec(&copy).unwrap(),
+            serde_json::to_vec(&original).unwrap()
+        );
+    }
+    #[test]
     fn favorites_remain_multiple_but_startup_is_exclusive() {
         let mut document = Document::fresh_install();
         document.profiles[1].favorite = true;
@@ -356,7 +456,7 @@ mod tests {
         let mut value = draft(&document.profiles[0]);
         value.favorite = true;
         value.startup = true;
-        apply(&mut document, &value, &found, None).unwrap();
+        apply(&mut document, &value, &found, None, None).unwrap();
         assert!(document.profiles.iter().all(|profile| profile.favorite));
         assert!(document.profiles[0].launch_on_windows_startup);
         assert!(!document.profiles[1].launch_on_windows_startup);
@@ -380,7 +480,7 @@ mod tests {
                 }
             }
             assert_eq!(
-                apply(&mut copy, &value, &found, None),
+                apply(&mut copy, &value, &found, None, None),
                 Err(HostError::Denied)
             );
             assert_eq!(serde_json::to_vec(&copy).unwrap(), initial);
@@ -423,13 +523,61 @@ mod tests {
     }
     #[cfg(windows)]
     #[test]
+    fn keys_from_another_revision_or_replaced_read_cannot_save_and_never_write() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let mut document = Document::fresh_install();
+        std::fs::write(&path, serde_json::to_vec(&document).unwrap()).unwrap();
+        let found = available(&document);
+        let mut keys = StepKeys::default();
+        let old = keys.open(&path, Some("creator")).unwrap();
+        document.profiles[1].name = "Cambio ajeno".into();
+        let changed = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, &changed).unwrap();
+        let revision = vantare_services::content_hash(&changed);
+        assert_eq!(
+            save(&path, &old.draft, &revision, &found, None, Some(&keys)),
+            Err(HostError::Denied)
+        );
+        let fresh = keys.open(&path, Some("creator")).unwrap();
+        assert_eq!(
+            save(
+                &path,
+                &old.draft,
+                &fresh.revision,
+                &found,
+                None,
+                Some(&keys)
+            ),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), changed);
+        save(
+            &path,
+            &fresh.draft,
+            &fresh.revision,
+            &found,
+            None,
+            Some(&keys),
+        )
+        .unwrap();
+    }
+    #[cfg(windows)]
+    #[test]
     fn editor_get_and_save_protect_missing_malformed_and_future_documents_without_writes() {
         let root = crate::test_support::Root::new();
         let path = root.path.join("launcher.json");
         let value = draft(&Document::fresh_install().profiles[0]);
         assert_eq!(get(&path, Some("creator")), Err(HostError::Protected));
         assert_eq!(
-            save(&path, &value, &"0".repeat(64), &Discovery::default(), None),
+            save(
+                &path,
+                &value,
+                &"0".repeat(64),
+                &Discovery::default(),
+                None,
+                None
+            ),
             Err(HostError::Protected)
         );
         assert!(!path.exists());
@@ -437,7 +585,14 @@ mod tests {
             std::fs::write(&path, bytes).unwrap();
             assert_eq!(get(&path, Some("creator")), Err(HostError::Protected));
             assert_eq!(
-                save(&path, &value, &"0".repeat(64), &Discovery::default(), None),
+                save(
+                    &path,
+                    &value,
+                    &"0".repeat(64),
+                    &Discovery::default(),
+                    None,
+                    None
+                ),
                 Err(HostError::Protected)
             );
             assert_eq!(std::fs::read(&path).unwrap(), bytes);
@@ -492,6 +647,7 @@ mod tests {
             &value,
             &available(&Document::fresh_install()),
             None,
+            None,
         )
         .unwrap();
         assert_eq!(document.profiles[0].launch_count, 9);
@@ -507,32 +663,32 @@ mod tests {
         let found = available(&document);
         let mut value = draft(&document.profiles[0]);
         value.policy.first_step_delay = u32::MAX;
-        apply(&mut document, &value, &found, None).unwrap();
+        apply(&mut document, &value, &found, None, None).unwrap();
         assert_eq!(
             document.profiles[0].effective_policy().first_step_delay,
             u32::MAX
         );
         value.steps[0].app_id = "untrusted".into();
         assert_eq!(
-            apply(&mut document, &value, &found, None),
+            apply(&mut document, &value, &found, None, None),
             Err(HostError::Denied)
         );
         value = draft(&document.profiles[0]);
         value.steps = vec![value.steps[0].clone(); STEPS_MAX + 1];
         assert_eq!(
-            apply(&mut document, &value, &found, None),
+            apply(&mut document, &value, &found, None, None),
             Err(HostError::Denied)
         );
         value = draft(&document.profiles[0]);
         document.profiles[1].hotkey = "ctrl+shift+1".into();
         value.hotkey = "ctrl+shift+1".into();
         assert_eq!(
-            apply(&mut document, &value, &found, None),
+            apply(&mut document, &value, &found, None, None),
             Err(HostError::Denied)
         );
         value.hotkey = "ctrl+c".into();
         assert_eq!(
-            apply(&mut document, &value, &found, None),
+            apply(&mut document, &value, &found, None, None),
             Err(HostError::Denied)
         );
     }
@@ -544,14 +700,28 @@ mod tests {
         value.id = Some("profile-reserved".into());
         value.name = "Mi perfil".into();
         assert_eq!(
-            apply(&mut document, &value, &found, None),
+            apply(&mut document, &value, &found, None, None),
             Err(HostError::Denied)
         );
         let count = document.profiles.len();
-        apply(&mut document, &value, &found, Some("profile-reserved")).unwrap();
+        apply(
+            &mut document,
+            &value,
+            &found,
+            Some("profile-reserved"),
+            None,
+        )
+        .unwrap();
         assert_eq!(document.profiles.len(), count + 1);
         value.name = "Reintento explícito".into();
-        apply(&mut document, &value, &found, Some("profile-reserved")).unwrap();
+        apply(
+            &mut document,
+            &value,
+            &found,
+            Some("profile-reserved"),
+            None,
+        )
+        .unwrap();
         assert_eq!(document.profiles.len(), count + 1);
         assert_eq!(document.profiles.last().unwrap().name, value.name);
     }
@@ -571,14 +741,17 @@ mod tests {
         let changed = serde_json::to_vec_pretty(&concurrent).unwrap();
         std::fs::write(&path, &changed).unwrap();
         assert!(matches!(
-            save(&path, &edit.draft, &edit.revision, &found, None),
+            save(&path, &edit.draft, &edit.revision, &found, None, None),
             Err(HostError::LauncherConflict { .. })
         ));
         assert_eq!(std::fs::read(&path).unwrap(), changed);
         let revision = vantare_services::content_hash(&changed);
-        save(&path, &edit.draft, &revision, &found, None).unwrap();
+        save(&path, &edit.draft, &revision, &found, None, None).unwrap();
         let saved = Document::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(saved.profiles[0].name, "Cambio propio");
         assert_eq!(saved.profiles[1].name, "Cambio ajeno");
     }
 }
+
+mod steps;
+pub use steps::StepKeys;

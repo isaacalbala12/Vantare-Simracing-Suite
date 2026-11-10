@@ -48,7 +48,9 @@ describe("profile wire", () => {
       throw new Error("editor reply");
     const draft = {
       ...opened.result.value.draft,
-      steps: [{ appId: "lmu", delaySeconds: 0, hasCustomArguments: false }],
+      steps: [
+        { key: null, appId: "lmu", delaySeconds: 0, hasCustomArguments: false },
+      ],
     };
     const saved = host({
       kind: "request",
@@ -98,6 +100,7 @@ it("rejects renderer arguments on profile steps", () => {
         ...draft,
         steps: [
           {
+            key: null,
             appId: "lmu",
             delaySeconds: 0,
             hasCustomArguments: false,

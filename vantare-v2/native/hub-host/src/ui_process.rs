@@ -257,6 +257,7 @@ enum RemoteKind {
 
 struct Session {
     reserved_profile: Option<String>,
+    profile_step_keys: crate::launcher::editor::StepKeys,
     launcher_reader: crate::launcher::Reader,
     pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
@@ -475,6 +476,15 @@ impl Session {
         draft: &crate::launcher::editor::ProfileDraft,
         base_revision: &str,
     ) -> Result<(), HostError> {
+        let current = crate::launcher::read(&self.launcher);
+        if !current.exists || current.protected {
+            return Err(HostError::Protected);
+        }
+        if current.revision != base_revision {
+            return Err(HostError::LauncherConflict {
+                current: self.launcher_reader.view(),
+            });
+        }
         let found = self
             .launcher_reader
             .discovered(base_revision)
@@ -485,24 +495,27 @@ impl Session {
             base_revision,
             found,
             self.reserved_profile.as_deref(),
+            Some(&self.profile_step_keys),
         )
     }
     fn profile_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
             Request::LauncherProfileGet { id: profile_id } => {
-                let message =
-                    match crate::launcher::editor::get(&self.launcher, profile_id.as_deref()) {
-                        Ok(value) => {
-                            if profile_id.is_none() {
-                                self.reserved_profile.clone_from(&value.draft.id);
-                            }
-                            HostToUi::Response {
-                                id,
-                                result: Reply::LauncherProfileGet { value },
-                            }
+                let message = match self
+                    .profile_step_keys
+                    .open(&self.launcher, profile_id.as_deref())
+                {
+                    Ok(value) => {
+                        if profile_id.is_none() {
+                            self.reserved_profile.clone_from(&value.draft.id);
                         }
-                        Err(error) => HostToUi::Failure { id, error },
-                    };
+                        HostToUi::Response {
+                            id,
+                            result: Reply::LauncherProfileGet { value },
+                        }
+                    }
+                    Err(error) => HostToUi::Failure { id, error },
+                };
                 frame::write(pipe, &message)
             }
             Request::LauncherProfileSave {
@@ -987,6 +1000,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
         reserved_profile: None,
+        profile_step_keys: crate::launcher::editor::StepKeys::default(),
         pilot: None,
         privacy: crate::privacy::State::open(&args.data),
         diagnostic: crate::diagnostics::Observed::default(),

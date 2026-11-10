@@ -74,6 +74,7 @@ export function createMockHost(sceneName = "ajustes-base") {
   if (
     sceneName === "launcher-ready" ||
     sceneName === "launcher-editor-ready" ||
+    sceneName === "launcher-editor-custom" ||
     sceneName === "launcher-conflicto"
   ) {
     launcher.apps.forEach((app) => {
@@ -102,14 +103,21 @@ export function createMockHost(sceneName = "ajustes-base") {
         description: profile.description,
         favorite: profile.favorite,
         steps: profile.apps.map((appId, index) => ({
+          key: null,
           appId,
           delaySeconds: index ? 2 : 0,
-          hasCustomArguments: false,
+          hasCustomArguments:
+            sceneName === "launcher-editor-custom" && index === 0,
         })),
       } as ProfileDraft,
     ]),
   );
   let profileSerial = 0;
+  let keySerial = 0;
+  const stepKeys = new Map<
+    string,
+    { profile: string; revision: string; appId: string; customized: boolean }
+  >();
   let reservedProfile: string | undefined;
   let pilot = structuredClone(
     pilotFixture,
@@ -342,11 +350,21 @@ export function createMockHost(sceneName = "ajustes-base") {
         const draft =
           request.id === null
             ? (structuredClone(editorFixture.draft) as ProfileDraft)
-            : drafts.get(request.id);
+            : structuredClone(drafts.get(request.id));
         if (!draft) return { kind: "failure", id, error: { kind: "denied" } };
         if (request.id === null) {
           draft.id = `profile-qa-${++profileSerial}`;
           reservedProfile = draft.id;
+        }
+        stepKeys.clear();
+        for (const step of draft.steps) {
+          step.key = (++keySerial).toString(16).padStart(64, "0");
+          stepKeys.set(step.key, {
+            profile: draft.id ?? "",
+            revision: launcher.revision,
+            appId: step.appId,
+            customized: step.hasCustomArguments,
+          });
         }
         return {
           kind: "response",
@@ -394,8 +412,24 @@ export function createMockHost(sceneName = "ajustes-base") {
           reservedProfile !== profileId
         )
           return { kind: "failure", id, error: { kind: "denied" } };
+        const seen = new Set<string>();
+        const saved = structuredClone(request.draft);
+        for (const step of saved.steps) {
+          const source = step.key === null ? undefined : stepKeys.get(step.key);
+          if (
+            step.key !== null &&
+            (!source ||
+              source.revision !== request.baseRevision ||
+              source.profile !== profileId ||
+              seen.has(step.key))
+          )
+            return { kind: "failure", id, error: { kind: "denied" } };
+          if (step.key !== null) seen.add(step.key);
+          step.hasCustomArguments =
+            source?.appId === step.appId && source.customized;
+        }
         drafts.set(profileId, {
-          ...structuredClone(request.draft),
+          ...saved,
           id: profileId,
         });
         const entry = {

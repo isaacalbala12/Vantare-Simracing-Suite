@@ -45,7 +45,11 @@ export function isProfileDraft(value: unknown): boolean {
   for (const step of value.steps) {
     if (
       !record(step) ||
-      !exact(step, ["appId", "delaySeconds", "hasCustomArguments"]) ||
+      !exact(step, ["key", "appId", "delaySeconds", "hasCustomArguments"]) ||
+      !(
+        step.key === null ||
+        (typeof step.key === "string" && /^[0-9a-f]{64}$/.test(step.key))
+      ) ||
       !text(step.appId, launcherLimits.id) ||
       !step.appId ||
       !integer(step.delaySeconds) ||

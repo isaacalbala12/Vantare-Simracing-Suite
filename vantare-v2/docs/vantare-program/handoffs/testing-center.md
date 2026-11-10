@@ -1318,3 +1318,23 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   La suite Rust completa y la CI quedan pendientes. No cambia ninguna pantalla todavía.
 - Siguiente: Informes; después, capturas QA válidas de las pestañas para testers.
   Sin servicios reales, merge, release ni promoción.
+
+### Revisión P2 de #2026
+
+- Se exigen UUID minúsculos para participación, 64 hex minúsculos para previewId
+  y los identificadores de capturas existentes, y updatedAt ASCII de 1–128 bytes.
+  Rust exporta los límites y la forma UUID; TypeScript usa esos mismos datos.
+- El anfitrión exige tester para refresh/answer/credit/noticeRead y no tester
+  para contribute; borradores e informes siguen disponibles para verificados
+  no bloqueados. El SQL actual ya filtra los cuestionarios por canal/rol; crédito
+  y avisos comprueban cuenta propietaria, sin imponer tester de forma general.
+- Los fallos de transporte se conservan como coreUnavailable, incompatibilidad
+  como incompatible y errores de protocolo/respuestas inesperadas como rejected.
+  Reply::Error no permite recuperar códigos: se devuelve rejected sin texto libre.
+  El GPUI actual muestra el mensaje del núcleo; la pantalla nueva debe conservar
+  su contexto y usar textos seguros hasta resolver la mejora #2032, enlazada a #1995.
+- Decisión explícita: no modificar IPC ni Services. HTTP 429 y el resto de errores
+  semánticos perdidos por el núcleo no pueden distinguirse con el contrato actual.
+- Verificación P2: Clippy Windows cruzado y formato PASS; 8 tests Rust ejecutados
+  en Windows PASS; typecheck PASS, contrato 134/134 y suite web completa 247/247.
+  CI del nuevo SHA pendiente; los P3 se atienden en el PR de Informes.

@@ -15,8 +15,11 @@ import {
   isReportDraft,
   isReportFields,
   isReportPreview,
+  isReportPreviewId,
   isReportReceipt,
+  isReportUpdatedAt,
   isTesting,
+  isTestingId,
 } from "./testing-validation";
 import { isUpdates } from "./updates-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
@@ -46,26 +49,26 @@ export function isUiMessage(value: unknown): value is UiToHost {
         oneOf(value.request.method, methods) &&
         (value.request.method === "testing.answer"
           ? exact(value.request, ["method", "id", "score"]) &&
-            typeof value.request.id === "string" &&
+            isTestingId(value.request.id) &&
             integer(value.request.score) &&
             value.request.score >= 1 &&
             value.request.score <= 5
           : value.request.method === "testing.contribute" ||
               value.request.method === "testing.credit"
             ? exact(value.request, ["method", "id", "consent"]) &&
-              typeof value.request.id === "string" &&
+              isTestingId(value.request.id) &&
               typeof value.request.consent === "boolean"
             : value.request.method === "testing.noticeRead"
               ? exact(value.request, ["method", "id", "updatedAt"]) &&
-                typeof value.request.id === "string" &&
-                typeof value.request.updatedAt === "string"
+                isTestingId(value.request.id) &&
+                isReportUpdatedAt(value.request.updatedAt)
               : value.request.method === "report.send"
                 ? exact(value.request, ["method", "previewId", "consent"]) &&
-                  typeof value.request.previewId === "string" &&
+                  isReportPreviewId(value.request.previewId) &&
                   typeof value.request.consent === "boolean"
                 : value.request.method === "report.removeScreenshot"
                   ? exact(value.request, ["method", "id", "fields"]) &&
-                    typeof value.request.id === "string" &&
+                    isReportPreviewId(value.request.id) &&
                     isReportFields(value.request.fields)
                   : value.request.method === "report.capture" ||
                       value.request.method === "draft.save"
@@ -249,6 +252,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
         return false;
       const error = value.error;
       return oneOf(error.kind, [
+        "rejected",
         "busy",
         "coreUnavailable",
         "unsupported",

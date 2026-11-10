@@ -7,6 +7,25 @@ use vantare_ipc::services_protocol::{self as core, report_document, testing_docu
 
 pub use report_document::{FIELD_LIMITS, MODULES, SCREENSHOTS_AVAILABLE};
 pub const AUTOSAVE_MS: u32 = 2_000;
+pub const UUID_LENGTH: usize = 36;
+pub const UUID_GROUPS: [usize; 5] = [8, 4, 4, 4, 12];
+pub const PREVIEW_ID_LENGTH: usize = 64;
+pub const UPDATED_AT_MAX_BYTES: usize = 128;
+pub fn testing_id(value: &str) -> bool {
+    value.len() == UUID_LENGTH && vantare_services::license::uuid(value)
+}
+pub fn preview_id(value: &str) -> bool {
+    value.len() == PREVIEW_ID_LENGTH
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+pub fn updated_at(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= UPDATED_AT_MAX_BYTES
+        && value.is_ascii()
+        && !value.bytes().any(|b| b.is_ascii_control())
+}
 
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -139,8 +158,11 @@ pub fn allowed(access: &AccessView) -> bool {
     access.verified && !access.blocked
 }
 pub fn draft_save(access: &AccessView, fields: &ReportFields) -> Result<core::Command, HostError> {
-    if !allowed(access) || !fields.valid() {
+    if !allowed(access) {
         return Err(HostError::Denied);
+    }
+    if !fields.valid() {
+        return Err(HostError::Rejected);
     }
     // Existing Services contract has no expected revision. VANTA-138 explicitly
     // preserves that guarantee provisionally; this is not cross-process CAS.
@@ -186,14 +208,14 @@ pub struct ReportPreviewView {
 }
 pub fn preview(value: &report_document::Preview) -> Result<ReportPreviewView, HostError> {
     let payload: serde_json::Value =
-        serde_json::from_str(&value.payload).map_err(|_| HostError::Denied)?;
+        serde_json::from_str(&value.payload).map_err(|_| HostError::Rejected)?;
     let report = payload.get("reporte").unwrap_or(&payload);
     let text = |name: &str| {
         report
             .get(name)
             .and_then(serde_json::Value::as_str)
             .map(str::to_owned)
-            .ok_or(HostError::Denied)
+            .ok_or(HostError::Rejected)
     };
     let fields = ReportFields {
         action_text: text("p_action_text")?,
@@ -203,7 +225,7 @@ pub fn preview(value: &report_document::Preview) -> Result<ReportPreviewView, Ho
         module: text("p_module")?,
     };
     if !fields.valid() {
-        return Err(HostError::Denied);
+        return Err(HostError::Rejected);
     }
     Ok(ReportPreviewView {
         id: value.id.clone(),
@@ -259,9 +281,21 @@ pub fn intent(
     if !allowed(access) {
         return Err(HostError::Denied);
     }
+    let tester_only = matches!(
+        request,
+        Request::TestingRefresh {}
+            | Request::TestingAnswer { .. }
+            | Request::TestingCredit { .. }
+            | Request::TestingNoticeRead { .. }
+    );
+    if (tester_only && !access.tester)
+        || (matches!(request, Request::TestingContribute { .. }) && access.tester)
+    {
+        return Err(HostError::Denied);
+    }
     let intent = match request {
         Request::TestingRefresh {} => (Operation::Refresh, Command::TestingRefresh),
-        Request::TestingAnswer { id, score } if (1..=5).contains(score) => (
+        Request::TestingAnswer { id, score } if testing_id(id) && (1..=5).contains(score) => (
             Operation::Answer,
             Command::TestingAnswer {
                 id: id.clone(),
@@ -269,7 +303,7 @@ pub fn intent(
                 note: String::new(),
             },
         ),
-        Request::TestingContribute { id, consent: true } => (
+        Request::TestingContribute { id, consent: true } if testing_id(id) => (
             Operation::Contribute,
             Command::TestingContribute {
                 id: id.clone(),
@@ -278,18 +312,18 @@ pub fn intent(
                 consent: true,
             },
         ),
-        Request::TestingCredit { id, consent } => (
+        Request::TestingCredit { id, consent } if testing_id(id) => (
             Operation::Credit,
             Command::TestingCredit {
                 id: id.clone(),
                 consent: *consent,
             },
         ),
-        Request::TestingNoticeRead { id, updated_at } => (
+        Request::TestingNoticeRead { id, updated_at: at } if testing_id(id) && updated_at(at) => (
             Operation::NoticeRead,
             Command::TestingNoticeRead {
                 id: id.clone(),
-                updated_at: updated_at.clone(),
+                updated_at: at.clone(),
             },
         ),
         Request::DraftLoad {} => (Operation::Load, Command::DraftLoad),
@@ -301,7 +335,7 @@ pub fn intent(
                 fields: fields.core(),
             },
         ),
-        Request::ReportRemoveScreenshot { id, fields } if fields.valid() => (
+        Request::ReportRemoveScreenshot { id, fields } if preview_id(id) && fields.valid() => (
             Operation::RemoveScreenshot,
             Command::ReportRemoveScreenshot {
                 id: id.clone(),
@@ -313,13 +347,13 @@ pub fn intent(
         Request::ReportSend {
             preview_id,
             consent: true,
-        } => (
+        } if self::preview_id(preview_id) => (
             Operation::Send,
             Command::ReportSend {
                 preview_id: preview_id.clone(),
             },
         ),
-        _ => return Err(HostError::Denied),
+        _ => return Err(HostError::Rejected),
     };
     Ok(intent)
 }
@@ -337,7 +371,7 @@ pub fn complete(
                 Operation::Contribute => Ok(Reply::TestingContribute { value }),
                 Operation::Credit => Ok(Reply::TestingCredit { value }),
                 Operation::NoticeRead => Ok(Reply::TestingNoticeRead { value }),
-                _ => Err(HostError::Denied),
+                _ => Err(HostError::Rejected),
             }
         }
         core::Reply::Draft { draft: saved, .. } => {
@@ -348,7 +382,7 @@ pub fn complete(
                 Operation::Discard => Ok(Reply::DraftDiscard { value }),
                 Operation::Capture => Ok(Reply::ReportCapture { value }),
                 Operation::RemoveScreenshot => Ok(Reply::ReportRemoveScreenshot { value }),
-                _ => Err(HostError::Denied),
+                _ => Err(HostError::Rejected),
             }
         }
         core::Reply::ReportPreview { preview: value } => {
@@ -356,7 +390,7 @@ pub fn complete(
             match operation {
                 Operation::Prepare => Ok(Reply::ReportPrepare { value }),
                 Operation::RetryPrepare => Ok(Reply::ReportRetryPrepare { value }),
-                _ => Err(HostError::Denied),
+                _ => Err(HostError::Rejected),
             }
         }
         core::Reply::ReportReceipt {
@@ -365,13 +399,186 @@ pub fn complete(
         } if matches!(operation, Operation::Send) => Ok(Reply::ReportSend {
             value: receipt(&value, draft_state),
         }),
-        _ => Err(HostError::Denied),
+        _ => Err(HostError::Rejected),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    const ID: &str = "15350000-0000-0000-0000-000000000001";
+    fn access(tester: bool) -> AccessView {
+        AccessView {
+            verified: true,
+            tester,
+            ..Default::default()
+        }
+    }
+    #[test]
+    fn oversized_and_malformed_identifiers_are_rejected_before_services() {
+        use crate::protocol::Request;
+        for id in [
+            String::new(),
+            "a".repeat(core::MAX_FRAME),
+            "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA".to_owned(),
+            "../report".into(),
+        ] {
+            for request in [
+                Request::TestingAnswer {
+                    id: id.clone(),
+                    score: 3,
+                },
+                Request::TestingCredit {
+                    id: id.clone(),
+                    consent: true,
+                },
+                Request::TestingNoticeRead {
+                    id,
+                    updated_at: "2026-11-10T12:00:00Z".into(),
+                },
+            ] {
+                assert!(matches!(
+                    intent(&request, &access(true)),
+                    Err(HostError::Rejected)
+                ));
+            }
+        }
+        for value in [
+            "a".repeat(PREVIEW_ID_LENGTH - 1),
+            "A".repeat(PREVIEW_ID_LENGTH),
+            "g".repeat(PREVIEW_ID_LENGTH),
+            "a".repeat(core::MAX_FRAME),
+        ] {
+            assert!(matches!(
+                intent(
+                    &Request::ReportSend {
+                        preview_id: value,
+                        consent: true
+                    },
+                    &access(false)
+                ),
+                Err(HostError::Rejected)
+            ));
+        }
+        for at in [
+            String::new(),
+            "x".repeat(UPDATED_AT_MAX_BYTES + 1),
+            "2026-11-10\n".into(),
+            "ñ".into(),
+        ] {
+            assert!(matches!(
+                intent(
+                    &Request::TestingNoticeRead {
+                        id: ID.into(),
+                        updated_at: at
+                    },
+                    &access(true)
+                ),
+                Err(HostError::Rejected)
+            ));
+        }
+        assert!(preview_id(&"a".repeat(PREVIEW_ID_LENGTH)));
+        assert!(testing_id(ID));
+        assert!(updated_at("2026-11-10T12:00:00Z"));
+    }
+    #[test]
+    fn fresh_core_role_is_required_for_each_participation_operation() {
+        use crate::protocol::Request;
+        for request in [
+            Request::TestingRefresh {},
+            Request::TestingAnswer {
+                id: ID.into(),
+                score: 3,
+            },
+            Request::TestingCredit {
+                id: ID.into(),
+                consent: true,
+            },
+            Request::TestingNoticeRead {
+                id: ID.into(),
+                updated_at: "2026-11-10T12:00:00Z".into(),
+            },
+        ] {
+            assert!(matches!(
+                intent(&request, &access(false)),
+                Err(HostError::Denied)
+            ));
+            let (_, command) = intent(&request, &access(true)).expect("tester");
+            let mut frame = Vec::new();
+            core::write(&mut frame, &command).expect("bounded service command");
+            assert!(frame.len() <= core::MAX_FRAME);
+        }
+        let contribute = Request::TestingContribute {
+            id: ID.into(),
+            consent: true,
+        };
+        assert!(intent(&contribute, &access(false)).is_ok());
+        assert!(matches!(
+            intent(&contribute, &access(true)),
+            Err(HostError::Denied)
+        ));
+        for tester in [false, true] {
+            for request in [
+                Request::DraftLoad {},
+                Request::DraftDiscard {},
+                Request::ReportPrepare {},
+                Request::ReportRetryPrepare {},
+                Request::ReportSend {
+                    preview_id: "a".repeat(PREVIEW_ID_LENGTH),
+                    consent: true,
+                },
+            ] {
+                assert!(intent(&request, &access(tester)).is_ok());
+                assert!(matches!(
+                    intent(
+                        &request,
+                        &AccessView {
+                            blocked: true,
+                            ..access(tester)
+                        }
+                    ),
+                    Err(HostError::Denied)
+                ));
+                assert!(matches!(
+                    intent(&request, &AccessView::default()),
+                    Err(HostError::Denied)
+                ));
+            }
+        }
+    }
+    #[test]
+    fn untyped_service_errors_and_unexpected_families_are_rejected_without_text() {
+        for error in [
+            vantare_services::Error::EvidencePending,
+            vantare_services::Error::Canceled,
+            vantare_services::Error::RateLimited,
+            vantare_services::Error::Conflict,
+            vantare_services::Error::Offline,
+        ] {
+            assert_eq!(
+                complete(
+                    Operation::Send,
+                    core::Reply::Error {
+                        message: error.to_string()
+                    }
+                ),
+                Err(HostError::Rejected)
+            );
+        }
+        assert_eq!(
+            complete(
+                Operation::Load,
+                core::Reply::Error {
+                    message: "private arbitrary text".into()
+                }
+            ),
+            Err(HostError::Rejected)
+        );
+        assert_eq!(
+            complete(Operation::Load, core::Reply::Closed),
+            Err(HostError::Rejected)
+        );
+    }
     #[test]
     fn draft_boundary_rejects_denied_access_unknown_modules_and_utf8_overflow() {
         let access = AccessView {

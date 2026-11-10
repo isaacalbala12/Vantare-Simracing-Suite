@@ -306,6 +306,7 @@ pub enum Reply {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
+    Rejected,
     Busy,
     CoreUnavailable,
     Unsupported,

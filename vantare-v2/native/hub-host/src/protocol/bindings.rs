@@ -100,6 +100,7 @@ fn append_constants(text: &mut String) {
             text.push_str(" as const;\n");
         };
     }
+    append_testing_id_constants(text);
     constants!("reportFieldLimits", crate::testing::FIELD_LIMITS);
     constants!("reportModules", crate::testing::MODULES);
     constants!("reportAutosaveMs", crate::testing::AUTOSAVE_MS);
@@ -178,6 +179,20 @@ fn append_constants(text: &mut String) {
         .collect();
     constants!("settingsFields", fields);
     text.push_str("export const methodsCoverContract: Exclude<Request['method'], typeof methods[number]> extends never ? true : never = true;\nexport const fieldsCoverContract: Exclude<SettingsPatch['field'], typeof settingsFields[number]> extends never ? true : never = true;\n");
+}
+fn append_testing_id_constants(text: &mut String) {
+    for (name, value) in [
+        (
+            "testingIdLimits",
+            serde_json::json!({"uuid":crate::testing::UUID_LENGTH,"previewId":crate::testing::PREVIEW_ID_LENGTH,"updatedAt":crate::testing::UPDATED_AT_MAX_BYTES}),
+        ),
+        (
+            "testingUuidGroups",
+            serde_json::json!(crate::testing::UUID_GROUPS),
+        ),
+    ] {
+        writeln!(text, "export const {name} = {value} as const;").expect("String write");
+    }
 }
 pub(crate) fn settings_sample() -> SettingsView {
     SettingsView {
@@ -337,6 +352,7 @@ fn failure_samples(settings: SettingsView, privacy: PrivacyView) -> Vec<HostToUi
             current: privacy.clone(),
         },
         HostError::PrivacyCleanup { current: privacy },
+        HostError::Rejected,
         HostError::Busy,
         HostError::CoreUnavailable,
         HostError::Unsupported,
@@ -552,19 +568,19 @@ fn testing_request_samples() -> Vec<Request> {
             },
         },
         Request::TestingNoticeRead {
-            id: "qa".into(),
+            id: "15350000-0000-0000-0000-000000000001".into(),
             updated_at: "2026-11-10T12:00:00Z".into(),
         },
         Request::TestingCredit {
-            id: "qa".into(),
+            id: "15350000-0000-0000-0000-000000000001".into(),
             consent: true,
         },
         Request::TestingContribute {
-            id: "qa".into(),
+            id: "15350000-0000-0000-0000-000000000001".into(),
             consent: true,
         },
         Request::TestingAnswer {
-            id: "qa".into(),
+            id: "15350000-0000-0000-0000-000000000001".into(),
             score: 3,
         },
         Request::TestingRefresh {},

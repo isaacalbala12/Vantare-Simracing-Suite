@@ -1,5 +1,42 @@
-import { reportFieldLimits, reportModules } from "./generated/contract";
+import {
+  reportFieldLimits,
+  reportModules,
+  testingIdLimits,
+  testingUuidGroups,
+} from "./generated/contract";
 import { exact, integer, record } from "./validation-common";
+
+export function isTestingId(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length !== testingIdLimits.uuid ||
+    !/^[0-9a-f-]+$/.test(value)
+  )
+    return false;
+  const groups = value.split("-");
+  return (
+    groups.length === testingUuidGroups.length &&
+    groups.every((group, index) => group.length === testingUuidGroups[index])
+  );
+}
+export function isReportPreviewId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length === testingIdLimits.previewId &&
+    /^[0-9a-f]+$/.test(value)
+  );
+}
+export function isReportUpdatedAt(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= testingIdLimits.updatedAt &&
+    Array.from(value).every((char) => {
+      const code = char.codePointAt(0) ?? 0;
+      return code >= 32 && code < 127;
+    })
+  );
+}
 
 export function isReportFields(value: unknown): boolean {
   if (

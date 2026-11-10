@@ -937,6 +937,13 @@
     },
     {
       "error": {
+        "kind": "rejected"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
         "kind": "busy"
       },
       "id": 1,
@@ -1310,7 +1317,7 @@
       "id": 1,
       "kind": "request",
       "request": {
-        "id": "qa",
+        "id": "15350000-0000-0000-0000-000000000001",
         "method": "testing.noticeRead",
         "updatedAt": "2026-11-10T12:00:00Z"
       }
@@ -1320,7 +1327,7 @@
       "kind": "request",
       "request": {
         "consent": true,
-        "id": "qa",
+        "id": "15350000-0000-0000-0000-000000000001",
         "method": "testing.credit"
       }
     },
@@ -1329,7 +1336,7 @@
       "kind": "request",
       "request": {
         "consent": true,
-        "id": "qa",
+        "id": "15350000-0000-0000-0000-000000000001",
         "method": "testing.contribute"
       }
     },
@@ -1337,7 +1344,7 @@
       "id": 1,
       "kind": "request",
       "request": {
-        "id": "qa",
+        "id": "15350000-0000-0000-0000-000000000001",
         "method": "testing.answer",
         "score": 3
       }

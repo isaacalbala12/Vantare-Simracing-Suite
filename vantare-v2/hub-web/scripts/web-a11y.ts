@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { chromium, expect } from "@playwright/test";
+import { chromium, type Locator } from "playwright-core";
+import { until } from "./wait-for";
+
+async function focused(locator: Locator) {
+  await until(
+    () => locator.evaluate((node) => document.activeElement === node),
+    5000,
+    "keyboard focus",
+  );
+}
+
 import { preview } from "vite";
 import tokens from "../design/tokens.json";
 
@@ -61,7 +71,13 @@ try {
   await dialog.getByRole("combobox", { name: "Esquema del diálogo" }).click();
   const light = page.getByRole("option", { name: "Claro", exact: true });
   await light.click(); // Playwright checks that the option receives the pointer above the modal.
-  await expect(dialog.getByRole("combobox")).toContainText("Claro");
+  await until(
+    async () =>
+      (await dialog.getByRole("combobox").textContent())?.includes("Claro") ??
+      false,
+    5000,
+    "confirmed content",
+  );
   await page.screenshot({ path: resolve(evidence, "dialog-select.png") });
   await page.keyboard.press("Escape");
   const slider = page.getByRole("slider", { name: "Contraste" });
@@ -81,44 +97,53 @@ try {
   await region.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
-  await expect(region.getByText("qa-999.json", { exact: true })).toBeVisible();
+  await region
+    .getByText("qa-999.json", { exact: true })
+    .waitFor({ state: "visible" });
   assert.ok((await region.locator("tbody tr").count()) < 100);
   await page.getByRole("button", { name: "Acciones", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
-  await expect(
-    page.getByRole("menuitem", { name: "Guardar cambios" }),
-  ).toBeFocused();
+  await focused(page.getByRole("menuitem", { name: "Guardar cambios" }));
   await page.keyboard.press("Home");
-  await expect(
-    page.getByRole("menuitem", { name: "Guardar cambios" }),
-  ).toBeFocused();
+  await focused(page.getByRole("menuitem", { name: "Guardar cambios" }));
   await page.keyboard.press("End");
   const disabledItem = page.getByRole("menuitem", {
     name: "Eliminar",
     exact: true,
   });
-  await expect(disabledItem).toBeFocused();
-  await expect(disabledItem).toHaveAttribute("aria-disabled", "true");
+  await focused(disabledItem);
+  assert.equal(await disabledItem.getAttribute("aria-disabled"), "true");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("menu")).toBeVisible();
+  await page.getByRole("menu").waitFor({ state: "visible" });
   await page.keyboard.press("Home");
-  await expect(
-    page.getByRole("menuitem", { name: "Guardar cambios" }),
-  ).toBeFocused();
+  await focused(page.getByRole("menuitem", { name: "Guardar cambios" }));
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  await until(
+    async () => (await page.getByRole("menu").count()) === 0,
+    5000,
+    "element removed",
+  );
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Buscar comandos" }).click();
   await page.getByRole("combobox", { name: "Comandos" }).fill("Ajustes");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await until(
+    async () => (await page.getByRole("dialog").count()) === 0,
+    5000,
+    "element removed",
+  );
   await page.getByRole("button", { name: "Mostrar aviso" }).click();
   const toast = page.locator(".v-toast");
-  await expect(toast).toContainText("No se pudo guardar");
+  await until(
+    async () =>
+      (await toast.textContent())?.includes("No se pudo guardar") ?? false,
+    5000,
+    "confirmed content",
+  );
   await page.keyboard.press("F6");
   await toast.getByRole("button", { name: "Cerrar" }).click();
-  await expect(toast).toHaveCount(0);
+  await until(async () => (await toast.count()) === 0, 5000, "element removed");
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({

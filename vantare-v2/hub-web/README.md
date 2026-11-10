@@ -1,7 +1,8 @@
-# Hub Electron — paso 1
+# Hub Electron — ADR 0107
 
-VANTA-138, issue #1995, ADR 0107. Esqueleto aislado del núcleo real.
-Solo está disponible `Hello` del anfitrión simulado; Ajustes aún no guarda datos.
+VANTA-138, issue #1995. Interfaz Electron aislada y anfitrión Rust conectado
+a los canales existentes. También funciona con el anfitrión simulado.
+Ajustes todavía no guarda datos en este paso.
 
 Bun 1.4.4, versiones exactas en package.json y bun.lock. En este servidor:
 
@@ -19,7 +20,8 @@ bun run package
 ```
 
 `release/package/vantare-hub-ui-win32-x64/vantare-hub-ui.exe` es una carpeta
-QA, sin instalador, firma, despliegue ni integración con el supervisor.
+sin instalador, firma ni despliegue. El puente y la preparación del anfitrión
+están documentados en `native/hub-host/README.md`.
 Los fuses se aplican a esa copia, nunca al Electron compartido en node_modules.
 
 `bun run dev:web` permite trabajar sin Rust; `bun run dev` abre Electron.
@@ -80,3 +82,30 @@ Para mantener también la caché de transformación de Bun en D:, fijar
 BUN_RUNTIME_TRANSPILER_CACHE_PATH=D:/VantareServer/cache/bun-transpiler.
 
 La ruta `?escena=specimen` es una escena de QA incluida en el paquete para revisar controles, paletas y accesibilidad con datos simulados.
+
+## Paquete final y paquete de pruebas
+
+El paquete final de `release/package` rechaza `--remote-debugging-port` y
+`--remote-debugging-pipe`. La variable de ejecución no lo habilita: la excepción
+se fija al compilar una copia de QA separada, conservando todos los fuses cerrados.
+Los smokes usan `playwright-core` 1.65.0 sin runner ni descarga de navegadores.
+
+Después de construir y empaquetar el paquete final con los comandos anteriores:
+
+```powershell
+$env:VANTARE_HUB_QA_BUILD='1'
+bun run build
+bun run package
+Remove-Item Env:VANTARE_HUB_QA_BUILD
+bun run smoke
+```
+
+La copia de QA usa `out-qa` y `release/package-qa`; no sustituye al paquete final.
+El smoke comprueba que el final rechaza CDP, dos recargas, aislamiento, bloqueo
+de `window.open` y `location.href` hacia un servidor loopback, y tamaño ajustado
+al área de trabajo. `VANTARE_HUB_SCALE=1.5` verifica la ventana al 150 %.
+El staging de cada variante se limpia antes de copiar, dentro de `release`.
+
+En el smoke del anfitrión, `VANTARE_HUB_QA_CRASH=1` provoca una caída deliberada
+del renderer y comprueba la salida de error del anfitrión. Sin esa variable,
+comprueba cierre por EOF con salida 0. El paquete de QA nunca se distribuye.

@@ -1,0 +1,14 @@
+{
+  "photos": "unavailable",
+  "rights": "unavailable",
+  "services": "unavailable",
+  "access": {
+    "verified": false,
+    "blocked": false,
+    "tester": false,
+    "calendar": false,
+    "engineer": false,
+    "strategy": false
+  },
+  "live": false
+}

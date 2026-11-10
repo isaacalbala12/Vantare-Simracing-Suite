@@ -29,7 +29,7 @@ jobs:
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run test
-      - run: bun x playwright install --with-deps chromium
+      - run: bun x playwright-core install --with-deps chromium
       - run: bun run build
       - run: bun scripts/web-a11y.ts
   windows-smoke:
@@ -49,4 +49,10 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run package
+      - run: bun run build
+        env:
+          VANTARE_HUB_QA_BUILD: '1'
+      - run: bun run package
+        env:
+          VANTARE_HUB_QA_BUILD: '1'
       - run: bun run smoke

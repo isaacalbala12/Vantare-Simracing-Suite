@@ -20,6 +20,7 @@ import type { SettingsView } from "../contract/generated/contract";
 import {
   HOST_PROTOCOL_VERSION,
   privacyPolicyUrl,
+  reportExportName,
 } from "../contract/generated/contract";
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
@@ -27,6 +28,7 @@ import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
+import { reportExportSession } from "./report-export";
 import {
   assetPath,
   CSP,
@@ -216,8 +218,14 @@ async function start() {
     const { port1, port2 } = new MessageChannelMain();
     let portAlive = true;
     const copies = new Set<number>();
+    const reportExport = reportExportSession(async () => {
+      if (!window || window.isDestroyed()) return undefined;
+      const result = await dialog.showSaveDialog(window, { defaultPath: reportExportName, filters: [{ name: "JSON", extensions: ["json"] }] });
+      return result.canceled ? undefined : result.filePath;
+    });
     const unsubscribe = host.listen((message) => {
       if (pickExecutable.receive(message)) return;
+      reportExport.observe(message);
       if (
         message.kind === "response" &&
         message.result.method === "diagnostics.copy" &&
@@ -257,6 +265,7 @@ async function start() {
       pickExecutable.cancel();
       port1.close();
       copies.clear();
+      reportExport.close();
     }
     disconnect = dispose;
     port1.once("close", dispose);
@@ -280,6 +289,14 @@ async function start() {
           (message) => port1.postMessage(message),
           () => portAlive,
         );
+        return;
+      }
+      if (data.kind === "request" && data.request.method === "report.localPrepare") reportExport.expect(data.id);
+      if (data.kind === "request" && data.request.method === "report.localExport") {
+        void reportExport.export().then(outcome => {
+          if (!portAlive) return;
+          port1.postMessage("error" in outcome ? { kind: "failure", id: data.id, error: outcome.error } : { kind: "response", id: data.id, result: { method: "report.localExport", status: outcome.status } });
+        });
         return;
       }
       if (data.kind === "request" && data.request.method === "privacy.policy") {

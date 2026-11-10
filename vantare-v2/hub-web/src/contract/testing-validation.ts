@@ -1,5 +1,6 @@
 import {
   reportFieldLimits,
+  reportLegacyStates,
   reportModules,
   testingIdLimits,
   testingUuidGroups,
@@ -38,7 +39,7 @@ export function isReportUpdatedAt(value: unknown): value is string {
   );
 }
 
-export function isReportFields(value: unknown): boolean {
+function validFields(value: unknown, stored: boolean): boolean {
   if (
     !record(value) ||
     !exact(value, [
@@ -61,26 +62,29 @@ export function isReportFields(value: unknown): boolean {
       (text, index) =>
         typeof text === "string" &&
         new TextEncoder().encode(text).length <= reportFieldLimits[index] &&
-        Array.from(text).every((char) => {
-          const code = char.codePointAt(0) ?? 0;
-          return (
-            code === 9 ||
-            code === 10 ||
-            (code >= 32 && (code < 127 || code > 159))
-          );
-        }),
+        !text.includes("\0") &&
+        (stored ||
+          Array.from(text).every((char) => {
+            const code = char.codePointAt(0) ?? 0;
+            return (
+              code === 9 ||
+              code === 10 ||
+              (code >= 32 && (code < 127 || code > 159))
+            );
+          })),
     )
   );
+}
+export function isReportFields(value: unknown): boolean {
+  return validFields(value, false);
 }
 export function isReportDraft(value: unknown): boolean {
   return (
     record(value) &&
     exact(value, ["fields", "exists", "screenshots", "legacy"]) &&
-    ["none", "imported", "importedTrimmed", "preserved"].includes(
-      value.legacy as string,
-    ) &&
+    reportLegacyStates.some((state) => state === value.legacy) &&
     typeof value.exists === "boolean" &&
-    isReportFields(value.fields) &&
+    validFields(value.fields, true) &&
     isScreenshots(value.screenshots)
   );
 }

@@ -1,3 +1,5 @@
+import updatesBase from "../../fixtures/updates-base.json";
+import updatesReady from "../../fixtures/updates-ready.json";
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
 import settingsScene from "../../fixtures/settings-base.json";
@@ -72,6 +74,7 @@ export function createMockHost(sceneName = "ajustes-base") {
       return value.version === HOST_PROTOCOL_VERSION
         ? helloForScene(sceneName)
         : null;
+    if(value.kind==="subscribe" && value.topic==="updates") return {kind:"event",event:{topic:"updates",value:(sceneName==="actualizacion-lista"?updatesReady:updatesBase) as import("../contract/generated/contract").UpdatesView}};
     if (value.kind === "subscribe")
       return value.topic === "core"
         ? { kind: "event", event: { topic: "core", value: core } }
@@ -79,6 +82,8 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
+      case "updates.get": return {kind:"response",id,result:{method:"updates.get",value:(sceneName==="actualizacion-lista"?updatesReady:updatesBase) as import("../contract/generated/contract").UpdatesView}};
+      case "updates.restart": return {kind:"response",id,result:{method:"updates.restart",accepted:sceneName==="actualizacion-lista"}};
       case "shortcuts.get":
         if (sceneName === "atajos-error")
           return { kind: "failure", id, error: { kind: "io" } };

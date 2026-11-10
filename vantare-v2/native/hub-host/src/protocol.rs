@@ -9,6 +9,8 @@ pub mod bindings;
 pub const METHODS: &[&str] = &[
     "core.get",
     "shortcuts.get",
+    "updates.get",
+    "updates.restart",
     "window.close",
     "settings.get",
     "settings.update",
@@ -17,8 +19,8 @@ pub const METHODS: &[&str] = &[
     "launcher.favorite",
     "notifications.test",
 ];
-pub const TOPICS: &[&str] = &["core", "simStatus"];
-pub const VERSION: u32 = 2;
+pub const TOPICS: &[&str] = &["core", "simStatus", "updates"];
+pub const VERSION: u32 = 3;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -74,6 +76,7 @@ pub struct CoreStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Topic {
+    Updates,
     Core,
     SimStatus,
 }
@@ -85,6 +88,10 @@ pub enum Request {
     CoreGet {},
     #[serde(rename = "shortcuts.get")]
     ShortcutsGet {},
+    #[serde(rename="updates.get")]
+    UpdatesGet {},
+    #[serde(rename="updates.restart")]
+    UpdatesRestart {},
     #[serde(rename = "window.close")]
     WindowClose {},
     #[serde(rename = "settings.get")]
@@ -108,6 +115,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename="updates.get")]
+    UpdatesGet { value: crate::updates::UpdatesView },
+    #[serde(rename="updates.restart")]
+    UpdatesRestart { accepted: bool },
     #[serde(rename = "core.get")]
     Core { value: CoreStatus },
     #[serde(rename = "shortcuts.get")]
@@ -144,6 +155,7 @@ pub enum HostError {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CloseReason {
+    Restart,
     Window,
     Live,
     ControlEof,
@@ -152,6 +164,7 @@ pub enum CloseReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
+    Updates { value: crate::updates::UpdatesView },
     Core { value: CoreStatus },
     SimStatus { live: bool },
 }

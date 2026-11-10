@@ -245,6 +245,10 @@ fn settings_response(
     frame::write(pipe, &message)
 }
 struct Session {
+    updates: Option<crate::updates::Reader>,
+    updates_subscribed: bool,
+    last_updates: Option<Instant>,
+    exit_code: u8,
     launcher: PathBuf,
     core: Core,
     settings: Settings,
@@ -280,6 +284,11 @@ impl Session {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
+        if self.updates_subscribed && self.last_updates.is_none_or(|last| last.elapsed()>=Duration::from_secs(2)) {
+            self.last_updates=Some(Instant::now());
+            let value=self.updates.get_or_insert_with(crate::updates::Reader::current).view();
+            frame::write(pipe,&HostToUi::Event {event:Event::Updates {value}})?;
+        }
         if entered_live(self.last.as_ref(), &self.current) && self.closing.is_none() {
             self.request_close(pipe, CloseReason::Live)?;
         }
@@ -310,6 +319,13 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::UpdatesGet {} => frame::write(pipe,&HostToUi::Response { id,result:Reply::UpdatesGet { value:self.updates.get_or_insert_with(crate::updates::Reader::current).view() } }),
+            Request::UpdatesRestart {} => {
+                let accepted=self.closing.is_none() && !self.current.live && crate::updates::Reader::can_restart();
+                frame::write(pipe,&HostToUi::Response { id,result:Reply::UpdatesRestart { accepted } })?;
+                if accepted {self.request_close(pipe,CloseReason::Restart)?;} Ok(())
+            }
+
             Request::ShortcutsGet {} => frame::write(
                 pipe,
                 &HostToUi::Response {
@@ -404,6 +420,8 @@ impl Session {
                 }
             }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
+            UiToHost::Subscribe { topic:Topic::Updates } => { self.updates_subscribed=true;self.last_updates=None; }
+            UiToHost::Unsubscribe { topic:Topic::Updates } => self.updates_subscribed=false,
             UiToHost::Subscribe { topic: Topic::Core } => {
                 self.subscribed = true;
                 self.send_core(pipe)?;
@@ -425,7 +443,10 @@ impl Session {
             UiToHost::Unsubscribe {
                 topic: Topic::SimStatus,
             } => self.sim_subscribed = false,
-            UiToHost::CloseAnswer { allow: true } if self.closing.is_some() => return Ok(false),
+            UiToHost::CloseAnswer { allow: true } if self.closing.is_some() => {
+                self.exit_code=if self.closing.is_some_and(|(reason,_)|reason==CloseReason::Restart){10}else{0};
+                return Ok(false);
+            }
             UiToHost::CloseAnswer { allow: false }
                 if self
                     .closing
@@ -438,7 +459,7 @@ impl Session {
         Ok(true)
     }
 }
-pub fn run(args: &Args) -> io::Result<()> {
+pub fn run(args: &Args) -> io::Result<u8> {
     let executable = std::env::current_exe()?;
     if !executable.file_name().is_some_and(|name| {
         name.to_string_lossy()
@@ -470,7 +491,7 @@ pub fn run(args: &Args) -> io::Result<()> {
         crate::control_stdin::closed,
     )?
     else {
-        return Ok(());
+        return Ok(0);
     };
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "before-core-start")?;
@@ -481,6 +502,10 @@ pub fn run(args: &Args) -> io::Result<()> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        updates: None,
+        updates_subscribed:false,
+        last_updates:None,
+        exit_code: 0,
         launcher: args.launcher.clone(),
         core,
         settings,
@@ -508,7 +533,7 @@ pub fn run(args: &Args) -> io::Result<()> {
     if child.0.try_wait()?.is_some_and(|status| !status.success()) {
         return Err(io::ErrorKind::BrokenPipe.into());
     }
-    Ok(())
+    Ok(session.exit_code)
 }
 #[cfg(test)]
 mod tests {

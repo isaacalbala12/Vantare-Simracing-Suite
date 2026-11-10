@@ -111,7 +111,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (!client) return;
     client.setCloseGuard(async (reason) => {
       await inFlight.current;
-      if (reason !== "window") {
+      if (reason !== "window" && reason !== "restart") {
         failed.current = undefined;
         setError(undefined);
         return true;

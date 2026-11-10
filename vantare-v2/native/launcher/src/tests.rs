@@ -1176,6 +1176,9 @@ fn stop_policy_does_not_execute_later_steps_and_vanished_executable_is_reported(
     let events = collect(&chain);
     assert!(!events.iter().any(|event| event.step == Some(1)));
     assert!(!events.last().expect("fin").success);
+    // El evento terminal llega antes de que el worker cierre su lease del documento.
+    drop(chain);
+    assert!(!tree.0.join("launcher.chain-lock").exists());
     let found = Discovery::scan(&document.apps, Sources::default());
     fs::remove_file(
         document

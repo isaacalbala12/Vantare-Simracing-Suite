@@ -31,10 +31,10 @@ class ScopeTests(unittest.TestCase):
 
     def test_storage_process_changes_include_analysis_consumers(self):
         packages = self.packages + [
-            {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{name}/Cargo.toml',
+            {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{directory}/Cargo.toml',
              'dependencies': []}
-            for name in ['vantare-storage', 'vantare-hub']]
-        self.assertEqual(affected.select(packages, ['vantare-v2/native/vantare-storage/src/main.rs']),
+            for name, directory in [('vantare-storage', 'storage'), ('vantare-hub', 'hub')]]
+        self.assertEqual(affected.select(packages, ['vantare-v2/native/storage/src/main.rs']),
                          ['vantare-hub', 'vantare-storage'])
 
     def test_leaf_views_do_not_rebuild_distribution_but_global_and_root_changes_do(self):
@@ -61,7 +61,7 @@ class ScopeTests(unittest.TestCase):
             {'name': name, 'manifest_path': f'D:/repo/native/{name}/Cargo.toml',
              'dependencies': [{'name': dep} for dep in deps]}
             for name, deps in [('vantare-ui', []), ('vantare-hub', ['vantare-ui']),
-                               ('vantare-admin', ['vantare-ui']), ('vantare-runtime', ['vantare-ui'])]]
+                               ('vantare-admin', ['vantare-ui']), ('vantare-runtime', [])]]
         self.assertEqual(affected.select_for_crate(packages, 'vantare-ui'),
                          ['vantare-runtime', 'vantare-ui'])
         for legacy in ['vantare-hub', 'vantare-admin']:

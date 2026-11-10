@@ -477,13 +477,14 @@ impl Session {
             Request::PilotLoad {} | Request::PilotSave { .. } => {
                 self.pilot_request(pipe, id, request)
             }
-            Request::PrivacyPolicy {} => self.respond(
+            Request::PrivacyPolicy {} | Request::ReportLocalExport {} => self.respond(
                 pipe,
                 id,
                 Err(HostError::Unsupported),
                 crate::diagnostics::DiagnosticSection::Privacy,
             ),
-            Request::PrivacyGet {}
+            Request::ReportLocalPrepare { .. }
+            | Request::PrivacyGet {}
             | Request::PrivacyUpdate { .. }
             | Request::DiagnosticsGet {}
             | Request::DiagnosticsPrepare {}
@@ -630,6 +631,18 @@ impl Session {
     fn local_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         let protected = self.settings.view().protected;
         let result = match request {
+            Request::ReportLocalPrepare { fields } => {
+                if !crate::testing::allowed(&self.current.access) {
+                    Err(HostError::Denied)
+                } else {
+                    crate::report_local::prepare(
+                        fields,
+                        self.diagnostic.view(&self.current, protected),
+                        crate::report_local::collect_binaries(),
+                    )
+                    .map(|value| Reply::ReportLocalPrepare { value })
+                }
+            }
             Request::PrivacyGet {} => Ok(Reply::PrivacyGet {
                 value: self.privacy.refresh(),
             }),

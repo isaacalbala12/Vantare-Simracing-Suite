@@ -34,3 +34,5 @@ pub mod pilot;
 
 pub mod roadmap;
 pub mod testing;
+
+pub mod report_local;

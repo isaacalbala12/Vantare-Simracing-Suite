@@ -661,6 +661,34 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "report.localPrepare",
+        "value": {
+          "binaries": [],
+          "core": "unavailable",
+          "report": "{\n  \"schemaVersion\": 1,\n  \"module\": \"hub\",\n  \"privateFieldsPresent\": [\n    false,\n    false,\n    false,\n    false\n  ],\n  \"privateText\": \"omitted_for_privacy\",\n  \"diagnostic\": {\n    \"schemaVersion\": 1,\n    \"channel\": \"development\",\n    \"observed\": {\n      \"version\": \"0.0.0\",\n      \"os\": \"windows\",\n      \"arch\": \"x86_64\",\n      \"core\": {\n        \"photos\": \"unavailable\",\n        \"rights\": \"unavailable\",\n        \"services\": \"unavailable\",\n        \"access\": {\n          \"verified\": false,\n          \"blocked\": false,\n          \"tester\": false,\n          \"calendar\": false,\n          \"engineer\": false,\n          \"strategy\": false\n        },\n        \"live\": false\n      },\n      \"settingsProtected\": false,\n      \"events\": [],\n      \"report\": null\n    },\n    \"binaries\": [],\n    \"uninstrumentedSections\": [\n      \"studio\",\n      \"analysis\"\n    ]\n  }\n}"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.localExport",
+        "status": "saved"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.localExport",
+        "status": "cancelled"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "report.send",
         "value": {
           "createdAt": "2026-11-10T12:00:00Z",
@@ -1236,6 +1264,27 @@
       "request": {
         "consent": false,
         "method": "mail.set"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "method": "report.localPrepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "report.localExport"
       }
     },
     {

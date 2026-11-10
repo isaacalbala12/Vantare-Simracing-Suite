@@ -4,6 +4,7 @@ import {
   methods,
   palettes,
   registrationStates,
+  reportExportStatuses,
   schemes,
   topics,
   type UiToHost,
@@ -11,6 +12,7 @@ import {
 import { isPilot, isPilotFields, isPilotRevision } from "./pilot-validation";
 import { isDiagnostic, isPrivacy, isPrivacyPatch } from "./privacy-validation";
 import { isRoadmap } from "./roadmap-validation";
+import { isLocalReport } from "./report-local-validation";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
 import {
   isReportDraft,
@@ -71,7 +73,8 @@ export function isUiMessage(value: unknown): value is UiToHost {
                   ? exact(value.request, ["method", "id", "fields"]) &&
                     isReportPreviewId(value.request.id) &&
                     isReportFields(value.request.fields)
-                  : value.request.method === "report.capture" ||
+                  : value.request.method === "report.localPrepare" ||
+                      value.request.method === "report.capture" ||
                       value.request.method === "draft.save"
                     ? exact(value.request, ["method", "fields"]) &&
                       isReportFields(value.request.fields)
@@ -183,6 +186,15 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return (
           exact(result, ["method", "value"]) && isReportPreview(result.value)
+        );
+      if (result.method === "report.localPrepare")
+        return (
+          exact(result, ["method", "value"]) && isLocalReport(result.value)
+        );
+      if (result.method === "report.localExport")
+        return (
+          exact(result, ["method", "status"]) &&
+          reportExportStatuses.some((status) => status === result.status)
         );
       if (result.method === "report.send")
         return (

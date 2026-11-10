@@ -11,6 +11,8 @@ pub const METHODS: &[&str] = &[
     "testing.contribute",
     "testing.credit",
     "testing.noticeRead",
+    "report.localPrepare",
+    "report.localExport",
     "report.capture",
     "report.removeScreenshot",
     "report.prepare",
@@ -123,6 +125,12 @@ pub enum Request {
         #[serde(rename = "updatedAt")]
         updated_at: String,
     },
+    #[serde(rename = "report.localPrepare")]
+    ReportLocalPrepare {
+        fields: crate::testing::ReportFields,
+    },
+    #[serde(rename = "report.localExport")]
+    ReportLocalExport {},
     #[serde(rename = "report.capture")]
     ReportCapture {
         fields: crate::testing::ReportFields,
@@ -225,6 +233,14 @@ pub enum Reply {
     TestingCredit { value: crate::testing::TestingView },
     #[serde(rename = "testing.noticeRead")]
     TestingNoticeRead { value: crate::testing::TestingView },
+    #[serde(rename = "report.localPrepare")]
+    ReportLocalPrepare {
+        value: crate::report_local::LocalReportView,
+    },
+    #[serde(rename = "report.localExport")]
+    ReportLocalExport {
+        status: crate::report_local::ExportStatus,
+    },
     #[serde(rename = "report.capture")]
     ReportCapture {
         value: crate::testing::ReportDraftView,

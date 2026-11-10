@@ -43,6 +43,8 @@ pub const METHODS: &[&str] = &[
     "settings.discard",
     "launcher.favorite",
     "launcher.get",
+    "launcher.profile.get",
+    "launcher.profile.save",
     "launcher.launch",
     "notifications.test",
 ];
@@ -161,6 +163,14 @@ pub enum Request {
     RoadmapCached {},
     #[serde(rename = "roadmap.refresh")]
     RoadmapRefresh {},
+    #[serde(rename = "launcher.profile.get")]
+    LauncherProfileGet { id: Option<String> },
+    #[serde(rename = "launcher.profile.save")]
+    LauncherProfileSave {
+        draft: crate::launcher::editor::ProfileDraft,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "launcher.get")]
     LauncherGet {},
     #[serde(rename = "launcher.launch")]
@@ -276,6 +286,14 @@ pub enum Reply {
     RoadmapCached { value: crate::roadmap::RoadmapView },
     #[serde(rename = "roadmap.refresh")]
     RoadmapRefresh { value: crate::roadmap::RoadmapView },
+    #[serde(rename = "launcher.profile.get")]
+    LauncherProfileGet {
+        value: crate::launcher::editor::ProfileEditorView,
+    },
+    #[serde(rename = "launcher.profile.save")]
+    LauncherProfileSave {
+        value: crate::launcher::LauncherView,
+    },
     #[serde(rename = "launcher.get")]
     LauncherGet {
         value: crate::launcher::LauncherView,

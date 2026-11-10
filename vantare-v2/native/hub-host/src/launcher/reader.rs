@@ -115,6 +115,10 @@ impl Reader {
             self.scan.is_some(),
         )
     }
+    pub fn discovered(&self, revision: &str) -> Option<&Discovery> {
+        (self.scan.is_none() && self.scanned_revision.as_deref() == Some(revision))
+            .then_some(&self.found)
+    }
     pub fn changed(&mut self, subscribed: bool, now: Instant) -> Option<LauncherView> {
         if !subscribed {
             self.last_check = None;

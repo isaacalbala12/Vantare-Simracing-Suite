@@ -5,6 +5,10 @@ use super::{
     Topic, UiToHost, VERSION, WindowBoot, hello,
 };
 use crate::diagnostics::{DiagnosticCode, DiagnosticEntry, DiagnosticSection, DiagnosticView};
+use crate::launcher::editor::{
+    ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
+    ProfileRunning, ProfileStep,
+};
 use crate::launcher::{LauncherApp, LauncherOptions, LauncherProfile, LauncherView};
 use crate::pilot::{PilotFields, PilotView};
 use crate::privacy::{MailView, PrivacyPatch, PrivacyView};
@@ -37,6 +41,14 @@ pub fn typescript() -> String {
         crate::roadmap::RoadmapItem,
         crate::roadmap::RoadmapPublication,
         crate::roadmap::RoadmapView,
+        ProfileRunning,
+        ProfileFailure,
+        ProfileClose,
+        ProfileRetry,
+        ProfileStep,
+        ProfilePolicy,
+        ProfileDraft,
+        ProfileEditorView,
         LauncherApp,
         LauncherOptions,
         LauncherProfile,
@@ -134,6 +146,39 @@ fn append_launcher_constants(text: &mut String) {
     text.push_str("export const launcherLimits = ");
     text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
     text.push_str(" as const;\n");
+    append_profile_constants(text);
+}
+fn append_profile_constants(text: &mut String) {
+    let values = [
+        (
+            "profileRunning",
+            serde_json::to_value(ProfileRunning::ALL).expect("enum"),
+        ),
+        (
+            "profileFailures",
+            serde_json::to_value(ProfileFailure::ALL).expect("enum"),
+        ),
+        (
+            "profileCloses",
+            serde_json::to_value(ProfileClose::ALL).expect("enum"),
+        ),
+        (
+            "profileRetries",
+            serde_json::to_value(ProfileRetry::ALL).expect("enum"),
+        ),
+        (
+            "profileLimits",
+            serde_json::json!({"name":crate::launcher::editor::NAME_MAX,"description":crate::launcher::editor::DESCRIPTION_MAX,"notes":crate::launcher::editor::NOTES_MAX,"hotkey":crate::launcher::editor::HOTKEY_MAX,"steps":crate::launcher::editor::STEPS_MAX,"retries":crate::launcher::editor::RETRIES_MAX,"delay":crate::launcher::editor::DELAY_MAX}),
+        ),
+    ];
+    for (name, value) in values {
+        writeln!(
+            text,
+            "export const {name} = {} as const;",
+            serde_json::to_string(&canonical(value)).expect("constants JSON")
+        )
+        .expect("String write");
+    }
 }
 fn append_constants(text: &mut String) {
     for (name, values) in [("methods", METHODS), ("topics", TOPICS)] {
@@ -353,6 +398,15 @@ pub fn corpus() -> serde_json::Value {
             .expect("launcher fixture"),
         },
         Reply::LauncherLaunch { accepted: true },
+        Reply::LauncherProfileGet {
+            value: ProfileEditorView {
+                revision: "0".repeat(64),
+                draft: crate::launcher::editor::new_draft(),
+            },
+        },
+        Reply::LauncherProfileSave {
+            value: crate::launcher::LauncherView::default(),
+        },
     ] {
         host.push(HostToUi::Response { id: 1, result });
     }
@@ -545,6 +599,16 @@ fn ui_samples() -> Vec<UiToHost> {
         Request::SettingsDiscard {},
         Request::LauncherFavorite {},
         Request::LauncherGet {},
+        Request::LauncherProfileGet { id: None },
+        Request::LauncherProfileGet {
+            id: Some("creator".into()),
+        },
+        Request::LauncherProfileSave {
+            draft: crate::launcher::editor::draft(
+                &vantare_launcher::Document::fresh_install().profiles[0],
+            ),
+            base_revision: "0".repeat(64),
+        },
         Request::LauncherLaunch {
             profile: "creator".into(),
             base_revision: "0".repeat(64),

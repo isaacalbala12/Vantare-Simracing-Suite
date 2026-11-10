@@ -1590,3 +1590,22 @@ fn cancellation_before_first_step_preserves_the_import_review_message() {
 }
 #[path = "concurrency_tests.rs"]
 mod concurrency_tests;
+
+#[test]
+fn observed_store_constructor_does_not_seed_or_quarantine_and_keeps_original_cas() {
+    let bytes = serde_json::to_vec(&Document::fresh_install()).expect("fixture");
+    let store = Store::from_observed(
+        std::path::PathBuf::from("inert-not-opened-launcher.json"),
+        bytes,
+    )
+    .expect("validated bytes");
+    assert_eq!(store.document.profiles.len(), 2);
+    assert!(store.warning.is_none());
+    assert!(
+        Store::from_observed(
+            std::path::PathBuf::from("inert-not-opened-launcher.json"),
+            br#"{"version":999}"#.to_vec()
+        )
+        .is_err()
+    );
+}

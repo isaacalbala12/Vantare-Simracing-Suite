@@ -448,3 +448,5 @@ mod windows_tests {
 
 mod reader;
 pub use reader::Reader;
+
+pub mod editor;

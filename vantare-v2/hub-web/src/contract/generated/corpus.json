@@ -752,6 +752,53 @@
       }
     },
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.profile.get",
+        "value": {
+          "draft": {
+            "advanced": false,
+            "description": "",
+            "favorite": false,
+            "hotkey": "",
+            "id": null,
+            "name": "Nuevo perfil",
+            "notes": "",
+            "policy": {
+              "alreadyRunning": "ask",
+              "cancel": "ask",
+              "exit": "ask",
+              "failure": "ask",
+              "firstStepDelay": 0,
+              "retries": 0,
+              "retry": "ask"
+            },
+            "startup": false,
+            "steps": []
+          },
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.profile.save",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      }
+    },
+    {
       "event": {
         "topic": "launcher",
         "value": {
@@ -1469,6 +1516,69 @@
       "kind": "request",
       "request": {
         "method": "launcher.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": null,
+        "method": "launcher.profile.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "creator",
+        "method": "launcher.profile.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "draft": {
+          "advanced": false,
+          "description": "",
+          "favorite": false,
+          "hotkey": "",
+          "id": "creator",
+          "name": "Creator",
+          "notes": "",
+          "policy": {
+            "alreadyRunning": "ask",
+            "cancel": "ask",
+            "exit": "ask",
+            "failure": "ask",
+            "firstStepDelay": 0,
+            "retries": 0,
+            "retry": "ask"
+          },
+          "startup": false,
+          "steps": [
+            {
+              "appId": "lmu",
+              "delaySeconds": 0,
+              "hasCustomArguments": false,
+              "key": null
+            },
+            {
+              "appId": "obs",
+              "delaySeconds": 2,
+              "hasCustomArguments": false,
+              "key": null
+            },
+            {
+              "appId": "spotify",
+              "delaySeconds": 2,
+              "hasCustomArguments": false,
+              "key": null
+            }
+          ]
+        },
+        "method": "launcher.profile.save"
       }
     },
     {

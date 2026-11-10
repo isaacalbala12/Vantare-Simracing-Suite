@@ -55,10 +55,7 @@ fn authenticated(value: &Authentication, expected: &str) -> bool {
 }
 fn ui_target(executable: &Path) -> io::Result<(PathBuf, Vec<PathBuf>)> {
     if let Some(generation) = ready::generation(executable) {
-        return Ok((
-            std::fs::canonicalize(generation.join("hub-ui/vantare-hub-ui.exe"))?,
-            Vec::new(),
-        ));
+        return Ok((crate::integrity::ui(&generation)?, Vec::new()));
     }
     #[cfg(any(debug_assertions, feature = "qa-e2e"))]
     {
@@ -789,6 +786,14 @@ pub fn run(args: &Args) -> io::Result<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn installed_ui_target_rejects_a_tampered_ui_before_it_can_be_spawned() {
+        let (_owned, generation) = crate::integrity::tests::fixture();
+        let executable = generation.join("bin/vantare-hub.exe");
+        assert!(ui_target(&executable).is_ok());
+        std::fs::write(generation.join("hub-ui/resources/app.asar"), b"modified").expect("tamper");
+        assert!(ui_target(&executable).is_err());
+    }
     #[test]
     fn live_requires_a_known_non_live_observation_before_the_transition() {
         let waiting = protocol::CoreStatus {

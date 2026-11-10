@@ -148,6 +148,8 @@ export function createTestingMock(scene: string, core: CoreStatus) {
       case "report.send":
         if (!request.consent || !preview || preview.id !== request.previewId)
           return { kind: "failure", id, error: { kind: "rejected" } };
+        if (scene === "testing-send-error")
+          return { kind: "failure", id, error: { kind: "rejected" } };
         draft = empty();
         preview = undefined;
         return {

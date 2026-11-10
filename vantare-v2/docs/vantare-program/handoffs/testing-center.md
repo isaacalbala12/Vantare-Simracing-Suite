@@ -1338,3 +1338,45 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
 - Verificación P2: Clippy Windows cruzado y formato PASS; 8 tests Rust ejecutados
   en Windows PASS; typecheck PASS, contrato 134/134 y suite web completa 247/247.
   CI del nuevo SHA pendiente; los P3 se atienden en el PR de Informes.
+
+## 2026-11-10 — VANTA-138 / #1995, worker D: banco de capturas QA
+
+- Base `nightly@b1590f925`, rama `vantareapp/isa-1995-d-capturas`.
+- Excepción autorizada por el orquestador: `ui-quality --qa-testing` da a la raíz
+  de datos QA el nombre con PID que espera el selector de pestañas. La política
+  de tester llega por los pipes locales ya existentes, mediante fixture explícito.
+- Escena nueva `testing-center-triage`, solo en el camino de captura. Sin cambiar
+  la lógica de acceso productiva, UI, dependencias ni instalador.
+- Script `native/hub/reference/tools/capture-testing.ps1`: Resumen, Cuestionarios,
+  Comunidad y Triage en ambos temas, 1440×900, DPI 96, glassOpacity 80. Produce
+  recibos de hashes y conserva las otras entradas del manifiesto común.
+- Parser PowerShell y diff PASS; Rust formateado. Compilación y tests focales
+  pendientes: la cola Windows esperó más de 15 minutos sin RAM admisible.
+  No se han generado aún las referencias válidas; no usar las capturas previas
+  de Resumen que en realidad muestran Informes. Sin procesos QA propios vivos.
+
+### Banco QA: compilación cruzada y navegación inicial
+
+- El ejemplo `ui-quality` de #2030 compila cruzado a Windows en el Mac, y el test
+  de selección QA comprueba que nunca se vuelve a Testing sin derechos de tester.
+- Solo bajo `parity-capture` y la marca privada de `--qa-testing`, el banco vuelve
+  a la sección solicitada cuando llega el acceso del núcleo simulado. Se mantiene
+  el feed IPC y no se cambia la lógica de acceso ni la aplicación productiva.
+- El helper de fotos de captura usa la copia de fixtures junto al banco. La prueba
+  de runtime cruzado utiliza copias inertes de shaders bajo QA y un alias de unidad
+  temporal; no se cambia vendor, ui, IPC, Services ni el instalador.
+- Las primeras imágenes de Inicio se apartaron a evidencia propia: no son referencias.
+  La captura válida espera la reserva global de GPUI, ocupada por otro worker.
+
+### Estado tras integrar #2026 y #2037
+
+- #2026 quedó verde en ec27cb839 y el orquestador lo fusionó en nightly@9916195d4.
+  Los tres P2 están resueltos; el límite semántico de IPC/Services sigue en #2032.
+- #2030 se rebasa sobre nightly tras #2037. Cuatro tests QA ejecutados en Windows
+  PASS. Resumen oscuro válido y recibo verificado en referencia-gpui/dark.
+- Para las siguientes capturas se usa el banco fijo de hub-web/docs/gpui-capture-bank.md;
+  D no vuelve a compilar GPUI ni modifica su ejecutable o plantilla compartidos.
+  El banco actual declara source_commit 3304ea358 y aún necesita incorporar los
+  cambios de #2030 para --qa-testing y testing-center-triage; lo gestiona su responsable.
+- Informes ya usa entry.tsx/SectionChrome, con Shell intacto. Su comparación registra
+  el desplazamiento del raíl derecho del marco; datos y pruebas continúan en D.

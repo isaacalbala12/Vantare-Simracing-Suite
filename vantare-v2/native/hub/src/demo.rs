@@ -432,8 +432,9 @@ impl DemoData {
     }
 }
 
-const TESTING_CAPTURE_SCREENS: [&str; 3] = [
+const TESTING_CAPTURE_SCREENS: [&str; 4] = [
     "testing-center-resumen",
+    "testing-center-triage",
     "testing-center-cuestionarios",
     "testing-center-comunidad",
 ];
@@ -508,6 +509,22 @@ fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
 }
 
 impl CaptureState {
+    /// Only the explicit local bank retries its requested section after core access arrives.
+    #[cfg(any(test, feature = "parity-capture"))]
+    pub fn testing_bank_section(
+        &self,
+        access: crate::shell::navigation::Access,
+    ) -> Option<Section> {
+        (self.section == Section::Testing
+            && self
+                .parameters
+                .get("qa-testing")
+                .is_some_and(|value| value == "1")
+            && access.verified
+            && !access.blocked
+            && access.tester)
+            .then_some(Section::Testing)
+    }
     /// Acceso del usuario de la escena aprobada, independiente de licencias reales.
     #[cfg(any(test, feature = "parity-capture"))]
     pub fn locked_sections(&self) -> &'static [Section] {
@@ -605,6 +622,7 @@ impl CaptureState {
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
             "testing-center-resumen"
+            | "testing-center-triage"
             | "testing-center-cuestionarios"
             | "testing-center-comunidad"
             | "testing-center-informe"
@@ -681,6 +699,36 @@ impl CaptureState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn testing_bank_never_selects_a_section_without_core_tester_access() {
+        use crate::shell::navigation::Access;
+        let mut scene = CaptureState::parse("testing-center-resumen").unwrap();
+        let access = Access {
+            verified: true,
+            tester: true,
+            ..Default::default()
+        };
+        assert_eq!(scene.testing_bank_section(access), None);
+        scene.parameters.insert("qa-testing".into(), "1".into());
+        assert_eq!(scene.testing_bank_section(access), Some(Section::Testing));
+        for denied in [
+            Access {
+                verified: false,
+                ..access
+            },
+            Access {
+                tester: false,
+                ..access
+            },
+            Access {
+                blocked: true,
+                ..access
+            },
+        ] {
+            assert_eq!(scene.testing_bank_section(denied), None);
+        }
+    }
 
     #[test]
     fn retired_launcher_history_has_no_capture_target_but_profiles_and_apps_remain() {

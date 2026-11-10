@@ -1,0 +1,36 @@
+{
+  "fresh_policy": true,
+  "core_policy": {
+    "version": 7,
+    "epoch": 1,
+    "revision": 1,
+    "checked_at_ms": 0,
+    "state": { "kind": "active" },
+    "signed_until_ms": null,
+    "grace_until_ms": null,
+    "catalog": "pro",
+    "engineer": false,
+    "strategy": false,
+    "analysis": false,
+    "calendar": true,
+    "tester": true,
+    "live": false,
+    "error": null
+  },
+  "Status": { "result": "Status", "account_configured": true, "message": "" },
+  "Probe": { "result": "Status", "account_configured": true, "message": "" },
+  "AccountPoll": {
+    "result": "Account",
+    "session": "SignedIn",
+    "copy_link": false,
+    "signed_in": true,
+    "profile": null,
+    "expires_at": null,
+    "pending": false,
+    "message": "",
+    "error": null
+  },
+  "TestingRefresh": { "result": "Testing", "data": { "questionnaires": [], "contributions": [] } },
+  "CalendarRefresh": { "result": "Calendar", "schedule": null, "fallback": null },
+  "MailConsentGet": { "result": "MailConsent", "consent": false, "locale": null, "revision": 0 }
+}

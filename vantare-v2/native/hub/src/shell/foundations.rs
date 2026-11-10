@@ -21,11 +21,10 @@ pub(super) struct Previews {
 }
 /// Fixtures existentes, separadas de la ruta IPC del producto.
 pub(super) fn capture_photos() -> Result<[Snapshot; 5], String> {
+    let root = crate::scene::fixtures_root().ok_or("faltan los fixtures del banco QA")?;
     let load = |name: &str| {
-        crate::scene::Scene::open(
-            std::path::Path::new(crate::scene::FIXTURES).join(format!("{name}.snapshot.json")),
-        )
-        .map(|scene| scene.snapshot().clone())
+        crate::scene::Scene::open(root.join(format!("{name}.snapshot.json")))
+            .map(|scene| scene.snapshot().clone())
     };
     let standings = load("standings")?;
     Ok([

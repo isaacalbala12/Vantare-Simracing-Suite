@@ -355,41 +355,16 @@ impl Session {
                 }
             }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
-            UiToHost::Subscribe {
-                topic: Topic::Updates,
-            } => {
-                self.subscriptions.insert(Topic::Updates);
-                self.last_updates = None;
+            UiToHost::Subscribe { topic } => {
+                self.subscriptions.insert(*topic);
+                let (_, handler) = SCREEN_SUBSCRIPTIONS
+                    .iter()
+                    .find(|(accept, _)| accept(*topic))
+                    .ok_or(io::ErrorKind::InvalidInput)?;
+                handler(self, pipe, *topic)?;
             }
-            UiToHost::Unsubscribe {
-                topic: Topic::Updates,
-            } => {
-                self.subscriptions.remove(&Topic::Updates);
-            }
-            UiToHost::Subscribe { topic: Topic::Core } => {
-                self.subscriptions.insert(Topic::Core);
-                self.send_core(pipe)?;
-            }
-            UiToHost::Subscribe {
-                topic: Topic::SimStatus,
-            } => {
-                self.subscriptions.insert(Topic::SimStatus);
-                frame::write(
-                    pipe,
-                    &HostToUi::Event {
-                        event: Event::SimStatus {
-                            live: self.current.live,
-                        },
-                    },
-                )?;
-            }
-            UiToHost::Unsubscribe { topic: Topic::Core } => {
-                self.subscriptions.remove(&Topic::Core);
-            }
-            UiToHost::Unsubscribe {
-                topic: Topic::SimStatus,
-            } => {
-                self.subscriptions.remove(&Topic::SimStatus);
+            UiToHost::Unsubscribe { topic } => {
+                self.subscriptions.remove(topic);
             }
             UiToHost::CloseAnswer { allow: true } if self.closing.is_some() => {
                 self.exit_code = if self

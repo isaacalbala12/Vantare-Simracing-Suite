@@ -1,4 +1,4 @@
-use super::*;
+use super::{HostError, Pipe, RemoteKind, Reply, Request, Session, io};
 impl Session {
     fn privacy_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
@@ -82,34 +82,24 @@ pub(super) fn dispatch(
     session.privacy_dispatch(pipe, id, request)
 }
 pub(super) fn complete(
-    session: &mut Session,
+    _session: &mut Session,
     remote: Option<(u32, RemoteKind)>,
     id: u32,
     result: Result<vantare_ipc::services_protocol::Reply, HostError>,
 ) -> Result<Reply, HostError> {
-    session.privacy_complete(remote, id, result)
-}
-impl Session {
-    fn privacy_complete(
-        &mut self,
-        remote: Option<(u32, RemoteKind)>,
-        id: u32,
-        result: Result<vantare_ipc::services_protocol::Reply, HostError>,
-    ) -> Result<Reply, HostError> {
-        match (remote, result) {
-            (
-                Some((expected, kind)),
-                Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
-            ) if expected == id => {
-                let value = crate::privacy::MailView { consent };
-                match kind {
-                    RemoteKind::MailGet => Ok(Reply::MailGet { value }),
-                    RemoteKind::MailSet => Ok(Reply::MailSet { value }),
-                    _ => Err(HostError::Denied),
-                }
+    match (remote, result) {
+        (
+            Some((expected, kind)),
+            Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
+        ) if expected == id => {
+            let value = crate::privacy::MailView { consent };
+            match kind {
+                RemoteKind::MailGet => Ok(Reply::MailGet { value }),
+                RemoteKind::MailSet => Ok(Reply::MailSet { value }),
+                _ => Err(HostError::Denied),
             }
-            (_, Err(error)) => Err(error),
-            _ => Err(HostError::Denied),
         }
+        (_, Err(error)) => Err(error),
+        _ => Err(HostError::Denied),
     }
 }

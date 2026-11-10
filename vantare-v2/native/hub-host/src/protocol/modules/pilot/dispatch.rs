@@ -1,4 +1,4 @@
-use super::*;
+use super::{HostError, Pipe, RemoteKind, Reply, Request, Session, io};
 impl Session {
     fn pilot_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {

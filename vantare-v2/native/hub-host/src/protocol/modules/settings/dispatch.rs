@@ -1,4 +1,4 @@
-use super::*;
+use super::{HostToUi, Pipe, Reply, Request, Session, frame, io, settings_response};
 impl Session {
     fn settings_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {

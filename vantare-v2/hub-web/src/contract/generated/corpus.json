@@ -1,100 +1,201 @@
 {
   "host": [
     {
-      "demo": false,
-      "kind": "hello",
-      "theme": {
-        "palette": "vantare",
-        "scheme": "dark",
-        "sidebar": "#1b1718",
-        "text1": "#faf7f7",
-        "window": "#161314"
-      },
-      "version": 6,
-      "window": {
-        "height": 900,
-        "minimized": false,
-        "width": 1440,
-        "zoom": 100
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.get",
+        "value": {
+          "arch": "x86_64",
+          "core": {
+            "access": {
+              "blocked": false,
+              "calendar": false,
+              "engineer": false,
+              "strategy": false,
+              "tester": false,
+              "verified": false
+            },
+            "live": false,
+            "photos": "unavailable",
+            "rights": "unavailable",
+            "services": "unavailable"
+          },
+          "events": [],
+          "os": "windows",
+          "report": null,
+          "settingsProtected": false,
+          "version": "0.0.0"
+        }
       }
     },
     {
       "id": 1,
       "kind": "response",
       "result": {
-        "method": "core.get",
+        "method": "diagnostics.prepare",
         "value": {
-          "access": {
-            "blocked": false,
-            "calendar": false,
-            "engineer": false,
-            "strategy": false,
-            "tester": false,
-            "verified": false
+          "arch": "x86_64",
+          "core": {
+            "access": {
+              "blocked": false,
+              "calendar": false,
+              "engineer": false,
+              "strategy": false,
+              "tester": false,
+              "verified": false
+            },
+            "live": false,
+            "photos": "unavailable",
+            "rights": "unavailable",
+            "services": "unavailable"
           },
-          "live": false,
-          "photos": "connected",
-          "rights": "connected",
-          "services": "connected"
+          "events": [],
+          "os": "windows",
+          "report": null,
+          "settingsProtected": false,
+          "version": "0.0.0"
         }
       }
     },
     {
-      "event": {
-        "topic": "updates",
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.copy",
+        "text": "{\"schemaVersion\":1}"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.get",
         "value": {
-          "beta": {
-            "message": "Versión preparada QA",
-            "notes": "Mejoras de la interfaz QA",
-            "rejectedVersion": null,
-            "schema": 1,
-            "state": "ready",
-            "version": "0.0.989"
-          },
-          "channel": "testers",
-          "installation": "installed",
-          "news": [
+          "apps": [
             {
-              "channel": "testers",
-              "kind": "Mejora",
-              "schemaVersion": 1,
-              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
-              "tag": "v0.1.0.7-testers.2",
-              "title": "Más datos de carrera"
+              "available": false,
+              "id": "lmu",
+              "name": "Le Mans Ultimate"
             },
             {
-              "channel": "testers",
-              "kind": "Nuevo",
-              "schemaVersion": 1,
-              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
-              "tag": "v0.1.0.7-testers.1",
-              "title": "Primeras pruebas para testers"
+              "available": false,
+              "id": "obs",
+              "name": "OBS Studio"
+            },
+            {
+              "available": false,
+              "id": "crewchief",
+              "name": "CrewChief"
+            },
+            {
+              "available": false,
+              "id": "discord",
+              "name": "Discord"
+            },
+            {
+              "available": false,
+              "id": "spotify",
+              "name": "Spotify"
+            },
+            {
+              "available": false,
+              "id": "motec",
+              "name": "MoTeC"
+            },
+            {
+              "available": false,
+              "id": "simhub",
+              "name": "SimHub"
             }
           ],
-          "previous": false,
-          "registrationWarning": "Registro de Windows pendiente de reparación QA",
-          "restartAvailable": true,
-          "version": "0.0.988"
+          "exists": true,
+          "profiles": [
+            {
+              "apps": [
+                "lmu",
+                "obs",
+                "spotify"
+              ],
+              "description": "Simulador, captura y música en tres pasos. Reintenta el paso fallido y deja el resto abierto al salir.",
+              "favorite": true,
+              "id": "creator",
+              "launchable": false,
+              "name": "Creador de Contenido",
+              "options": {
+                "alreadyRunning": "reuse",
+                "failure": "continue",
+                "firstStepDelay": 0,
+                "retries": 2,
+                "startup": false
+              }
+            },
+            {
+              "apps": [
+                "lmu",
+                "crewchief",
+                "spotify",
+                "motec"
+              ],
+              "description": "",
+              "favorite": false,
+              "id": "pro",
+              "launchable": false,
+              "name": "Pro",
+              "options": {
+                "alreadyRunning": "reuse",
+                "failure": "continue",
+                "firstStepDelay": 0,
+                "retries": 2,
+                "startup": false
+              }
+            }
+          ],
+          "protected": false,
+          "resident": true,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "running": false,
+          "scanning": false
         }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": true,
+        "method": "launcher.launch"
+      }
+    },
+    {
+      "error": {
+        "current": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        },
+        "kind": "launcherConflict"
       },
-      "kind": "event"
+      "id": 1,
+      "kind": "failure"
     },
     {
       "event": {
-        "topic": "core",
+        "topic": "launcher",
         "value": {
-          "access": {
-            "blocked": false,
-            "calendar": false,
-            "engineer": false,
-            "strategy": false,
-            "tester": false,
-            "verified": false
-          },
-          "live": false,
-          "photos": "connected",
-          "rights": "connected",
-          "services": "connected"
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
         }
       },
       "kind": "event"
@@ -103,163 +204,207 @@
       "id": 1,
       "kind": "response",
       "result": {
-        "method": "core.get",
-        "value": {
-          "access": {
-            "blocked": false,
-            "calendar": false,
-            "engineer": false,
-            "strategy": false,
-            "tester": false,
-            "verified": false
-          },
-          "live": false,
-          "photos": "incompatible",
-          "rights": "incompatible",
-          "services": "incompatible"
-        }
+        "accepted": false,
+        "method": "launcher.favorite"
       }
-    },
-    {
-      "event": {
-        "topic": "updates",
-        "value": {
-          "beta": {
-            "message": "Versión preparada QA",
-            "notes": "Mejoras de la interfaz QA",
-            "rejectedVersion": null,
-            "schema": 1,
-            "state": "ready",
-            "version": "0.0.989"
-          },
-          "channel": "testers",
-          "installation": "installed",
-          "news": [
-            {
-              "channel": "testers",
-              "kind": "Mejora",
-              "schemaVersion": 1,
-              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
-              "tag": "v0.1.0.7-testers.2",
-              "title": "Más datos de carrera"
-            },
-            {
-              "channel": "testers",
-              "kind": "Nuevo",
-              "schemaVersion": 1,
-              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
-              "tag": "v0.1.0.7-testers.1",
-              "title": "Primeras pruebas para testers"
-            }
-          ],
-          "previous": false,
-          "registrationWarning": "Registro de Windows pendiente de reparación QA",
-          "restartAvailable": true,
-          "version": "0.0.988"
-        }
-      },
-      "kind": "event"
-    },
-    {
-      "event": {
-        "topic": "core",
-        "value": {
-          "access": {
-            "blocked": false,
-            "calendar": false,
-            "engineer": false,
-            "strategy": false,
-            "tester": false,
-            "verified": false
-          },
-          "live": false,
-          "photos": "incompatible",
-          "rights": "incompatible",
-          "services": "incompatible"
-        }
-      },
-      "kind": "event"
     },
     {
       "id": 1,
       "kind": "response",
       "result": {
-        "method": "core.get",
+        "accepted": true,
+        "method": "notifications.test"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "pilot.load",
         "value": {
-          "access": {
-            "blocked": false,
-            "calendar": false,
-            "engineer": false,
-            "strategy": false,
-            "tester": false,
-            "verified": false
+          "fields": {
+            "country": null,
+            "description": "",
+            "favoriteCar": "",
+            "favoriteTeam": "",
+            "photo": null,
+            "publicName": "",
+            "simulators": []
           },
-          "live": false,
-          "photos": "unavailable",
-          "rights": "unavailable",
-          "services": "unavailable"
+          "pending": false,
+          "revision": "0"
         }
       }
     },
     {
-      "event": {
-        "topic": "updates",
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "pilot.save",
         "value": {
-          "beta": {
-            "message": "Versión preparada QA",
-            "notes": "Mejoras de la interfaz QA",
-            "rejectedVersion": null,
-            "schema": 1,
-            "state": "ready",
-            "version": "0.0.989"
+          "fields": {
+            "country": null,
+            "description": "",
+            "favoriteCar": "",
+            "favoriteTeam": "",
+            "photo": null,
+            "publicName": "",
+            "simulators": []
           },
-          "channel": "testers",
-          "installation": "installed",
-          "news": [
-            {
-              "channel": "testers",
-              "kind": "Mejora",
-              "schemaVersion": 1,
-              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
-              "tag": "v0.1.0.7-testers.2",
-              "title": "Más datos de carrera"
-            },
-            {
-              "channel": "testers",
-              "kind": "Nuevo",
-              "schemaVersion": 1,
-              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
-              "tag": "v0.1.0.7-testers.1",
-              "title": "Primeras pruebas para testers"
-            }
-          ],
-          "previous": false,
-          "registrationWarning": "Registro de Windows pendiente de reparación QA",
-          "restartAvailable": true,
-          "version": "0.0.988"
+          "pending": false,
+          "revision": "0"
         }
-      },
-      "kind": "event"
+      }
     },
     {
-      "event": {
-        "topic": "core",
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "privacy.policy"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "privacy.get",
         "value": {
-          "access": {
-            "blocked": false,
-            "calendar": false,
-            "engineer": false,
-            "strategy": false,
-            "tester": false,
-            "verified": false
-          },
-          "live": false,
-          "photos": "unavailable",
-          "rights": "unavailable",
-          "services": "unavailable"
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
         }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "privacy.update",
+        "value": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "mail.get",
+        "value": {
+          "consent": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "mail.set",
+        "value": {
+          "consent": true
+        }
+      }
+    },
+    {
+      "error": {
+        "current": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        },
+        "kind": "privacyConflict"
       },
-      "kind": "event"
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "current": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        },
+        "kind": "privacyCleanup"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "roadmap.cached",
+        "value": {
+          "publication": null,
+          "stale": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "roadmap.refresh",
+        "value": {
+          "publication": {
+            "id": "00000000-0000-0000-0000-000000000384",
+            "items": [
+              {
+                "area": "Hub",
+                "body": "Estado: Por hacer",
+                "dueDate": null,
+                "id": "02b30dd5-a88f-51a7-88aa-d6fdda74803a",
+                "section": "next",
+                "title": "Rework - Roadmap",
+                "version": null
+              },
+              {
+                "area": "Hub",
+                "body": "Estado: En curso",
+                "dueDate": null,
+                "id": "e7c5af3e-4427-5c48-b44f-e99a1f3af5ac",
+                "section": "now",
+                "title": "Feature - Pedals",
+                "version": null
+              },
+              {
+                "area": "Hub",
+                "body": "Estado: Entregado",
+                "dueDate": null,
+                "id": "4a7622cc-9580-5f7a-8b4b-c98958c4d4f5",
+                "section": "done",
+                "title": "Bugfix - Texto literal",
+                "version": null
+              }
+            ],
+            "publishedAt": "2026-10-13T00:00:00Z"
+          },
+          "stale": false
+        }
+      }
     },
     {
       "id": 1,
@@ -434,6 +579,49 @@
       }
     },
     {
+      "error": {
+        "current": {
+          "appearance": {
+            "contrast": 100,
+            "glassOpacity": 80,
+            "interfaceFont": "inter",
+            "monoFont": "cascadia",
+            "palette": "vantare",
+            "reducedMotion": false,
+            "scheme": "dark"
+          },
+          "canRetry": true,
+          "general": {
+            "density": "balanced",
+            "launcher": true,
+            "minimized": false,
+            "onboarding_completed": true,
+            "toasts": false,
+            "updates": true
+          },
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "startup": {
+            "enabled": false,
+            "supported": false
+          },
+          "track": {
+            "customized": false,
+            "exists": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
+          "version": "0.0.0",
+          "warning": false,
+          "zoom": 100
+        },
+        "kind": "conflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {
@@ -456,206 +644,6 @@
           "protected": false
         }
       }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "updates.get",
-        "value": {
-          "beta": {
-            "message": "Versión preparada QA",
-            "notes": "Mejoras de la interfaz QA",
-            "rejectedVersion": null,
-            "schema": 1,
-            "state": "ready",
-            "version": "0.0.989"
-          },
-          "channel": "testers",
-          "installation": "installed",
-          "news": [
-            {
-              "channel": "testers",
-              "kind": "Mejora",
-              "schemaVersion": 1,
-              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
-              "tag": "v0.1.0.7-testers.2",
-              "title": "Más datos de carrera"
-            },
-            {
-              "channel": "testers",
-              "kind": "Nuevo",
-              "schemaVersion": 1,
-              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
-              "tag": "v0.1.0.7-testers.1",
-              "title": "Primeras pruebas para testers"
-            }
-          ],
-          "previous": false,
-          "registrationWarning": "Registro de Windows pendiente de reparación QA",
-          "restartAvailable": true,
-          "version": "0.0.988"
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "accepted": false,
-        "method": "updates.restart"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "accepted": false,
-        "method": "privacy.policy"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "privacy.get",
-        "value": {
-          "cleanupBusy": false,
-          "cleanupPending": false,
-          "crashes": false,
-          "crashesDecided": false,
-          "protected": false,
-          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
-          "usage": false,
-          "usageDecided": false
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "privacy.update",
-        "value": {
-          "cleanupBusy": false,
-          "cleanupPending": false,
-          "crashes": false,
-          "crashesDecided": false,
-          "protected": false,
-          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
-          "usage": false,
-          "usageDecided": false
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "mail.get",
-        "value": {
-          "consent": false
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "mail.set",
-        "value": {
-          "consent": true
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "diagnostics.get",
-        "value": {
-          "arch": "x86_64",
-          "core": {
-            "access": {
-              "blocked": false,
-              "calendar": false,
-              "engineer": false,
-              "strategy": false,
-              "tester": false,
-              "verified": false
-            },
-            "live": false,
-            "photos": "unavailable",
-            "rights": "unavailable",
-            "services": "unavailable"
-          },
-          "events": [],
-          "os": "windows",
-          "report": null,
-          "settingsProtected": false,
-          "version": "0.0.0"
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "diagnostics.prepare",
-        "value": {
-          "arch": "x86_64",
-          "core": {
-            "access": {
-              "blocked": false,
-              "calendar": false,
-              "engineer": false,
-              "strategy": false,
-              "tester": false,
-              "verified": false
-            },
-            "live": false,
-            "photos": "unavailable",
-            "rights": "unavailable",
-            "services": "unavailable"
-          },
-          "events": [],
-          "os": "windows",
-          "report": null,
-          "settingsProtected": false,
-          "version": "0.0.0"
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "diagnostics.copy",
-        "text": "{\"schemaVersion\":1}"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "accepted": true,
-        "method": "notifications.test"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "accepted": false,
-        "method": "launcher.favorite"
-      }
-    },
-    {
-      "event": {
-        "live": true,
-        "topic": "simStatus"
-      },
-      "kind": "event"
     },
     {
       "id": 1,
@@ -862,134 +850,6 @@
       }
     },
     {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "pilot.load",
-        "value": {
-          "fields": {
-            "country": null,
-            "description": "",
-            "favoriteCar": "",
-            "favoriteTeam": "",
-            "photo": null,
-            "publicName": "",
-            "simulators": []
-          },
-          "pending": false,
-          "revision": "0"
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "pilot.save",
-        "value": {
-          "fields": {
-            "country": null,
-            "description": "",
-            "favoriteCar": "",
-            "favoriteTeam": "",
-            "photo": null,
-            "publicName": "",
-            "simulators": []
-          },
-          "pending": false,
-          "revision": "0"
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "roadmap.cached",
-        "value": {
-          "publication": null,
-          "stale": true
-        }
-      }
-    },
-    {
-      "id": 1,
-      "kind": "response",
-      "result": {
-        "method": "roadmap.refresh",
-        "value": {
-          "publication": {
-            "id": "00000000-0000-0000-0000-000000000384",
-            "items": [
-              {
-                "area": "Hub",
-                "body": "Estado: Por hacer",
-                "dueDate": null,
-                "id": "02b30dd5-a88f-51a7-88aa-d6fdda74803a",
-                "section": "next",
-                "title": "Rework - Roadmap",
-                "version": null
-              },
-              {
-                "area": "Hub",
-                "body": "Estado: En curso",
-                "dueDate": null,
-                "id": "e7c5af3e-4427-5c48-b44f-e99a1f3af5ac",
-                "section": "now",
-                "title": "Feature - Pedals",
-                "version": null
-              },
-              {
-                "area": "Hub",
-                "body": "Estado: Entregado",
-                "dueDate": null,
-                "id": "4a7622cc-9580-5f7a-8b4b-c98958c4d4f5",
-                "section": "done",
-                "title": "Bugfix - Texto literal",
-                "version": null
-              }
-            ],
-            "publishedAt": "2026-10-13T00:00:00Z"
-          },
-          "stale": false
-        }
-      }
-    },
-    {
-      "error": {
-        "current": {
-          "cleanupBusy": false,
-          "cleanupPending": false,
-          "crashes": false,
-          "crashesDecided": false,
-          "protected": false,
-          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
-          "usage": false,
-          "usageDecided": false
-        },
-        "kind": "privacyConflict"
-      },
-      "id": 1,
-      "kind": "failure"
-    },
-    {
-      "error": {
-        "current": {
-          "cleanupBusy": false,
-          "cleanupPending": false,
-          "crashes": false,
-          "crashesDecided": false,
-          "protected": false,
-          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
-          "usage": false,
-          "usageDecided": false
-        },
-        "kind": "privacyCleanup"
-      },
-      "id": 1,
-      "kind": "failure"
-    },
-    {
       "error": {
         "kind": "rejected"
       },
@@ -1048,47 +908,152 @@
       "kind": "failure"
     },
     {
-      "error": {
-        "current": {
-          "appearance": {
-            "contrast": 100,
-            "glassOpacity": 80,
-            "interfaceFont": "inter",
-            "monoFont": "cascadia",
-            "palette": "vantare",
-            "reducedMotion": false,
-            "scheme": "dark"
-          },
-          "canRetry": true,
-          "general": {
-            "density": "balanced",
-            "launcher": true,
-            "minimized": false,
-            "onboarding_completed": true,
-            "toasts": false,
-            "updates": true
-          },
-          "protected": false,
-          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
-          "startup": {
-            "enabled": false,
-            "supported": false
-          },
-          "track": {
-            "customized": false,
-            "exists": false,
-            "hideOffTrack": false,
-            "level": "balanced",
-            "protected": false
-          },
-          "version": "0.0.0",
-          "warning": false,
-          "zoom": 100
-        },
-        "kind": "conflict"
+      "demo": false,
+      "kind": "hello",
+      "theme": {
+        "palette": "vantare",
+        "scheme": "dark",
+        "sidebar": "#1b1718",
+        "text1": "#faf7f7",
+        "window": "#161314"
       },
+      "version": 6,
+      "window": {
+        "height": 900,
+        "minimized": false,
+        "width": 1440,
+        "zoom": 100
+      }
+    },
+    {
+      "event": {
+        "live": true,
+        "topic": "simStatus"
+      },
+      "kind": "event"
+    },
+    {
       "id": 1,
-      "kind": "failure"
+      "kind": "response",
+      "result": {
+        "method": "core.get",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "connected",
+          "rights": "connected",
+          "services": "connected"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "core",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "connected",
+          "rights": "connected",
+          "services": "connected"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "core.get",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "incompatible",
+          "rights": "incompatible",
+          "services": "incompatible"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "core",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "incompatible",
+          "rights": "incompatible",
+          "services": "incompatible"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "core.get",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "unavailable",
+          "rights": "unavailable",
+          "services": "unavailable"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "core",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "unavailable",
+          "rights": "unavailable",
+          "services": "unavailable"
+        }
+      },
+      "kind": "event"
     },
     {
       "kind": "closeRequested",
@@ -1105,60 +1070,155 @@
     {
       "kind": "closeRequested",
       "reason": "controlEof"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "updates.get",
+        "value": {
+          "beta": {
+            "message": "Versión preparada QA",
+            "notes": "Mejoras de la interfaz QA",
+            "rejectedVersion": null,
+            "schema": 1,
+            "state": "ready",
+            "version": "0.0.989"
+          },
+          "channel": "testers",
+          "installation": "installed",
+          "news": [
+            {
+              "channel": "testers",
+              "kind": "Mejora",
+              "schemaVersion": 1,
+              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+              "tag": "v0.1.0.7-testers.2",
+              "title": "Más datos de carrera"
+            },
+            {
+              "channel": "testers",
+              "kind": "Nuevo",
+              "schemaVersion": 1,
+              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+              "tag": "v0.1.0.7-testers.1",
+              "title": "Primeras pruebas para testers"
+            }
+          ],
+          "previous": false,
+          "registrationWarning": "Registro de Windows pendiente de reparación QA",
+          "restartAvailable": true,
+          "version": "0.0.988"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "updates.restart"
+      }
+    },
+    {
+      "event": {
+        "topic": "updates",
+        "value": {
+          "beta": {
+            "message": "Versión preparada QA",
+            "notes": "Mejoras de la interfaz QA",
+            "rejectedVersion": null,
+            "schema": 1,
+            "state": "ready",
+            "version": "0.0.989"
+          },
+          "channel": "testers",
+          "installation": "installed",
+          "news": [
+            {
+              "channel": "testers",
+              "kind": "Mejora",
+              "schemaVersion": 1,
+              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+              "tag": "v0.1.0.7-testers.2",
+              "title": "Más datos de carrera"
+            },
+            {
+              "channel": "testers",
+              "kind": "Nuevo",
+              "schemaVersion": 1,
+              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+              "tag": "v0.1.0.7-testers.1",
+              "title": "Primeras pruebas para testers"
+            }
+          ],
+          "previous": false,
+          "registrationWarning": "Registro de Windows pendiente de reparación QA",
+          "restartAvailable": true,
+          "version": "0.0.988"
+        }
+      },
+      "kind": "event"
     }
   ],
   "ui": [
     {
-      "kind": "hello",
-      "version": 6
-    },
-    {
-      "kind": "subscribe",
-      "topic": "core"
-    },
-    {
-      "kind": "subscribe",
-      "topic": "simStatus"
-    },
-    {
-      "kind": "unsubscribe",
-      "topic": "core"
-    },
-    {
-      "kind": "unsubscribe",
-      "topic": "simStatus"
-    },
-    {
-      "kind": "subscribe",
-      "topic": "updates"
-    },
-    {
-      "kind": "unsubscribe",
-      "topic": "updates"
-    },
-    {
-      "kind": "ready"
-    },
-    {
-      "allow": true,
-      "kind": "closeAnswer"
-    },
-    {
-      "allow": false,
-      "kind": "closeAnswer"
-    },
-    {
       "id": 1,
       "kind": "request",
       "request": {
-        "method": "roadmap.cached"
+        "method": "diagnostics.get"
       }
     },
     {
       "id": 1,
       "kind": "request",
       "request": {
-        "method": "roadmap.refresh"
+        "method": "diagnostics.prepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.copy"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "launcher.launch",
+        "profile": "creator"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "launcher"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "launcher"
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.favorite"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "notifications.test"
       }
     },
     {
@@ -1242,56 +1302,14 @@
       "id": 1,
       "kind": "request",
       "request": {
-        "method": "diagnostics.get"
+        "method": "roadmap.cached"
       }
     },
     {
       "id": 1,
       "kind": "request",
       "request": {
-        "method": "diagnostics.prepare"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "diagnostics.copy"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "core.get"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "shortcuts.get"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "updates.get"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "updates.restart"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "window.close"
+        "method": "roadmap.refresh"
       }
     },
     {
@@ -1313,143 +1331,6 @@
       "kind": "request",
       "request": {
         "method": "settings.discard"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "launcher.favorite"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "notifications.test"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "consent": true,
-        "method": "report.send",
-        "previewId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "report.retryPrepare"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "report.prepare"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "fields": {
-          "actionText": "",
-          "contextText": "",
-          "expectedText": "",
-          "module": "hub",
-          "observedText": ""
-        },
-        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "method": "report.removeScreenshot"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "fields": {
-          "actionText": "",
-          "contextText": "",
-          "expectedText": "",
-          "module": "hub",
-          "observedText": ""
-        },
-        "method": "report.capture"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "id": "15350000-0000-0000-0000-000000000001",
-        "method": "testing.noticeRead",
-        "updatedAt": "2026-11-10T12:00:00Z"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "consent": true,
-        "id": "15350000-0000-0000-0000-000000000001",
-        "method": "testing.credit"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "consent": true,
-        "id": "15350000-0000-0000-0000-000000000001",
-        "method": "testing.contribute"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "id": "15350000-0000-0000-0000-000000000001",
-        "method": "testing.answer",
-        "score": 3
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "testing.refresh"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "draft.load"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "method": "draft.discard"
-      }
-    },
-    {
-      "id": 1,
-      "kind": "request",
-      "request": {
-        "fields": {
-          "actionText": "",
-          "contextText": "",
-          "expectedText": "",
-          "module": "hub",
-          "observedText": ""
-        },
-        "method": "draft.save"
       }
     },
     {
@@ -1643,6 +1524,203 @@
           "value": true
         }
       }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "shortcuts.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "method": "report.send",
+        "previewId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "report.retryPrepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "report.prepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method": "report.removeScreenshot"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "method": "report.capture"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "15350000-0000-0000-0000-000000000001",
+        "method": "testing.noticeRead",
+        "updatedAt": "2026-11-10T12:00:00Z"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "id": "15350000-0000-0000-0000-000000000001",
+        "method": "testing.credit"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "id": "15350000-0000-0000-0000-000000000001",
+        "method": "testing.contribute"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "15350000-0000-0000-0000-000000000001",
+        "method": "testing.answer",
+        "score": 3
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "testing.refresh"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "draft.load"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "draft.discard"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "method": "draft.save"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "core.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "window.close"
+      }
+    },
+    {
+      "kind": "hello",
+      "version": 6
+    },
+    {
+      "kind": "ready"
+    },
+    {
+      "allow": true,
+      "kind": "closeAnswer"
+    },
+    {
+      "allow": false,
+      "kind": "closeAnswer"
+    },
+    {
+      "kind": "subscribe",
+      "topic": "core"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "core"
+    },
+    {
+      "kind": "subscribe",
+      "topic": "simStatus"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "simStatus"
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "updates.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "updates.restart"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "updates"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "updates"
     }
   ]
 }

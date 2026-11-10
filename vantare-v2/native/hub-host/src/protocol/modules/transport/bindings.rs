@@ -1,7 +1,11 @@
+use crate::protocol::bindings::{constants, declare, sample_response, settings_sample};
+use crate::protocol::{
+    CloseReason, CoreStatus, Event, HostError, HostToUi, LinkState, REQUEST_TIMEOUT_MS, Reply,
+    Request, Topic, UiToHost, VERSION, hello,
+};
 use std::fmt::Write as _;
 // Bindings and Rust-serialized examples owned by this screen.
-use crate::protocol::bindings::*;
-use crate::protocol::*;
+
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<crate::protocol::ThemeBoot>(&mut text);
@@ -12,11 +16,6 @@ pub(crate) fn typescript() -> String {
     declare::<crate::protocol::CloseReason>(&mut text);
     declare::<crate::protocol::HostToUi>(&mut text);
     declare::<crate::protocol::UiToHost>(&mut text);
-    declare_named::<super::Topic>(&mut text, "TransportTopic");
-    declare_named::<super::Request>(&mut text, "TransportRequest");
-    declare_named::<super::Reply>(&mut text, "TransportReply");
-    declare_named::<super::HostError>(&mut text, "TransportHostError");
-    declare_named::<super::Event>(&mut text, "TransportEvent");
     writeln!(
         text,
         "export const HOST_PROTOCOL_VERSION = {VERSION} as const;"
@@ -26,53 +25,59 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    let mut host = Vec::<HostToUi>::new();
-    let mut ui = Vec::<UiToHost>::new();
     let settings = settings_sample();
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::CoreGet {},
-    });
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::WindowClose {},
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Rejected,
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Busy,
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::CoreUnavailable,
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Unsupported,
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Incompatible {
-            expected: VERSION,
-            found: VERSION + 1,
+    let mut host: Vec<HostToUi> = vec![
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Rejected,
         },
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Denied,
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Protected,
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Io,
-    });
-    host.push(hello(&settings).expect("boot view"));
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Busy,
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::CoreUnavailable,
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Unsupported,
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Incompatible {
+                expected: VERSION,
+                found: VERSION + 1,
+            },
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Denied,
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Protected,
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Io,
+        },
+        hello(&settings).expect("boot view"),
+        HostToUi::Event {
+            event: Event::SimStatus { live: true },
+        },
+    ];
+    let mut ui: Vec<UiToHost> = vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::CoreGet {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::WindowClose {},
+        },
+    ];
+
     for state in [
         LinkState::Connected,
         LinkState::Incompatible,
@@ -91,9 +96,7 @@ pub(crate) fn corpus() -> serde_json::Value {
             event: Event::Core { value },
         });
     }
-    host.push(HostToUi::Event {
-        event: Event::SimStatus { live: true },
-    });
+
     for reason in [
         CloseReason::Restart,
         CloseReason::Window,
@@ -120,53 +123,6 @@ pub(crate) fn corpus() -> serde_json::Value {
             topic: Topic::SimStatus,
         },
     ]);
-    ui.extend([
-        UiToHost::Subscribe {
-            topic: Topic::Rejected,
-        },
-        UiToHost::Unsubscribe {
-            topic: Topic::Rejected,
-        },
-    ]);
-    ui.extend([
-        UiToHost::Subscribe { topic: Topic::Busy },
-        UiToHost::Unsubscribe { topic: Topic::Busy },
-    ]);
-    ui.extend([
-        UiToHost::Subscribe {
-            topic: Topic::CoreUnavailable,
-        },
-        UiToHost::Unsubscribe {
-            topic: Topic::CoreUnavailable,
-        },
-    ]);
-    ui.extend([
-        UiToHost::Subscribe {
-            topic: Topic::Unsupported,
-        },
-        UiToHost::Unsubscribe {
-            topic: Topic::Unsupported,
-        },
-    ]);
-    ui.extend([
-        UiToHost::Subscribe {
-            topic: Topic::Denied,
-        },
-        UiToHost::Unsubscribe {
-            topic: Topic::Denied,
-        },
-    ]);
-    ui.extend([
-        UiToHost::Subscribe {
-            topic: Topic::Protected,
-        },
-        UiToHost::Unsubscribe {
-            topic: Topic::Protected,
-        },
-    ]);
-    ui.extend([
-        UiToHost::Subscribe { topic: Topic::Io },
-        UiToHost::Unsubscribe { topic: Topic::Io },
-    ]);
+
     serde_json::json!({"host":host,"ui":ui})
 }

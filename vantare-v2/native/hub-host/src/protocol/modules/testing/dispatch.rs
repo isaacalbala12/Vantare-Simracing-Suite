@@ -1,4 +1,4 @@
-use super::*;
+use super::{HostError, Pipe, RemoteKind, Reply, Request, Session, io};
 impl Session {
     fn testing_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
@@ -51,26 +51,16 @@ pub(super) fn dispatch(
     session.testing_dispatch(pipe, id, request)
 }
 pub(super) fn complete(
-    session: &mut Session,
+    _session: &mut Session,
     remote: Option<(u32, RemoteKind)>,
     id: u32,
     result: Result<vantare_ipc::services_protocol::Reply, HostError>,
 ) -> Result<Reply, HostError> {
-    session.testing_complete(remote, id, result)
-}
-impl Session {
-    fn testing_complete(
-        &mut self,
-        remote: Option<(u32, RemoteKind)>,
-        id: u32,
-        result: Result<vantare_ipc::services_protocol::Reply, HostError>,
-    ) -> Result<Reply, HostError> {
-        match (remote, result) {
-            (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
-                crate::testing::complete(operation, reply)
-            }
-            (_, Err(error)) => Err(error),
-            _ => Err(HostError::Denied),
+    match (remote, result) {
+        (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
+            crate::testing::complete(operation, reply)
         }
+        (_, Err(error)) => Err(error),
+        _ => Err(HostError::Denied),
     }
 }

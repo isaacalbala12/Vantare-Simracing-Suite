@@ -1,21 +1,16 @@
-//! Discover screen-owned sources; generated aggregation lives only in OUT_DIR.
+//! Discover screen-owned sources; generated aggregation lives only in `OUT_DIR`.
+use std::fmt::Write as _;
 use std::{env, fs, path::PathBuf};
 
 fn enum_body<'a>(source: &'a str, name: &str) -> Option<&'a str> {
     let marker = format!("pub enum {name} {{");
     let begin = source.find(&marker)? + marker.len();
-    let mut depth = 1;
-    for (offset, byte) in source.as_bytes()[begin..].iter().enumerate() {
-        match byte {
-            b'{' => depth += 1,
-            b'}' => depth -= 1,
-            _ => {}
-        }
-        if depth == 0 {
-            return Some(&source[begin..begin + offset]);
-        }
-    }
-    panic!("unclosed {name}")
+    // wire.rs uses rustfmt's top-level enum layout. Nested fields and strings
+    // cannot end a declaration at column zero; the Rust compiler checks syntax.
+    let end = source[begin..]
+        .find("\n}")
+        .expect("top-level enum closing brace");
+    Some(&source[begin..begin + end])
 }
 
 fn main() {
@@ -37,11 +32,16 @@ fn main() {
             .expect("module id")
             .to_str()
             .expect("UTF-8");
-        assert!(id.bytes().all(|c| c.is_ascii_lowercase() || c == b'_'));
-        registry.push_str(&format!(
-            "#[path = {:?}] pub mod {id};\n",
-            path.join("wire.rs")
-        ));
+        assert!(
+            id.split('_')
+                .all(|part| !part.is_empty() && part.bytes().all(|c| c.is_ascii_lowercase()))
+        );
+        writeln!(
+            registry,
+            "#[path = {:?}] pub mod {id};",
+            path.join("wire.rs").to_str().expect("UTF-8")
+        )
+        .expect("String write");
         sources.push(fs::read_to_string(path.join("wire.rs")).expect("wire source"));
     }
     registry.push_str("}\n");
@@ -65,7 +65,7 @@ fn main() {
         } else {
             ""
         };
-        wire.push_str(&format!("#[derive(Clone, {extra} Debug, PartialEq, Eq, Serialize, Deserialize)]\n{attributes}\npub enum {name} {{\n"));
+        writeln!(wire,"#[derive(Clone, {extra} Debug, PartialEq, Eq, Serialize, Deserialize)]\n{attributes}\npub enum {name} {{").expect("String write");
         for source in &sources {
             if let Some(body) = enum_body(source, name) {
                 wire.push_str(body);
@@ -78,21 +78,22 @@ fn main() {
         let mut names = std::collections::BTreeSet::new();
         for source in &sources {
             if let Some(body) = enum_body(source, kind) {
+                if kind == "Topic" {
+                    for name in variant_names(body) {
+                        let mut name = name.to_owned();
+                        name[..1].make_ascii_lowercase();
+                        assert!(names.insert(name), "duplicate topic");
+                    }
+                }
                 for line in body.lines() {
-                    if kind == "Request" {
-                        if let Some(value) = line.trim().strip_prefix("#[serde(rename = \"") {
-                            assert!(
-                                names.insert(value.split('"').next().expect("method").to_owned()),
-                                "duplicate method"
-                            );
-                        }
-                    } else if line.starts_with("    ") && !line.starts_with("        ") {
-                        let value = line.trim().trim_end_matches(',');
-                        if !value.is_empty() {
-                            let mut value = value.to_owned();
-                            value[..1].make_ascii_lowercase();
-                            assert!(names.insert(value), "duplicate topic");
-                        }
+                    if kind == "Request"
+                        && line.starts_with("    #[")
+                        && let Some(value) = line.trim().strip_prefix("#[serde(rename = \"")
+                    {
+                        assert!(
+                            names.insert(value.split('"').next().expect("method").to_owned()),
+                            "duplicate method"
+                        );
                     }
                 }
             }
@@ -105,14 +106,31 @@ fn main() {
     }
     let output = PathBuf::from(env::var_os("OUT_DIR").expect("output"));
     fs::write(output.join("wire.rs"), wire).expect("write wire aggregation");
+    write_bindings(&output, &modules, &sources);
+    write_session(&root, &output, &modules, &sources);
+}
+
+fn write_bindings(output: &std::path::Path, modules: &[PathBuf], sources: &[String]) {
     let mut bindings = String::from(
         "pub fn module_outputs()->Vec<(&'static str,String,serde_json::Value)>{let mut modules=vec![\n",
     );
-    for (path, source) in modules.iter().zip(&sources) {
+    for (path, source) in modules.iter().zip(sources) {
         let id = path.file_name().expect("id").to_str().expect("UTF-8");
-        bindings.push_str(&format!(
-            "({id:?}, {{let mut text=super::modules::{id}::bindings::typescript();\n"
-        ));
+        writeln!(
+            bindings,
+            "({id:?}, {{let mut text=super::modules::{id}::bindings::typescript();"
+        )
+        .expect("String write");
+        for kind in ["Request", "Reply", "HostError", "Topic", "Event"] {
+            if enum_body(source, kind).is_some() {
+                let prefix = module_prefix(id);
+                writeln!(
+                    bindings,
+                    "declare_named::<super::modules::{id}::{kind}>(&mut text,\"{prefix}{kind}\");"
+                )
+                .expect("String write");
+            }
+        }
         for kind in ["Request", "Topic"] {
             if enum_body(source, kind).is_some() {
                 let tag = if kind == "Request" { "method" } else { "" };
@@ -121,20 +139,25 @@ fn main() {
                 } else {
                     "Topics"
                 };
-                bindings.push_str(&format!("append_names::<super::modules::{id}::{kind}>(&mut text,{id:?},{suffix:?},{tag:?});\n"));
+                writeln!(bindings,"append_names::<super::modules::{id}::{kind}>(&mut text,{id:?},{suffix:?},{tag:?});").expect("String write");
             }
         }
-        bindings.push_str(&format!(
-            "text}},super::modules::{id}::bindings::corpus()),\n"
-        ));
+        writeln!(
+            bindings,
+            "text}},canonical(super::modules::{id}::bindings::corpus())),"
+        )
+        .expect("String write");
     }
     bindings.push_str("] ; add_type_imports(&mut modules); modules}\n");
     fs::write(output.join("binding_registry.rs"), bindings).expect("write bindings registry");
-    write_session(&root, &output, &modules, &sources);
 }
 
-fn optional(path: PathBuf) -> String {
-    fs::read_to_string(path).unwrap_or_default()
+fn optional(path: &std::path::Path) -> String {
+    match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => panic!("{}: {error}", path.display()),
+    }
 }
 fn variant_names(body: &str) -> Vec<&str> {
     body.lines()
@@ -165,64 +188,113 @@ fn write_session(
     let mut handlers = String::new();
     let mut completes = String::new();
     let mut ticks = String::new();
+    let mut subscriptions = String::new();
     let mut models = String::new();
     for (path, source) in modules.iter().zip(sources) {
         let id = path.file_name().expect("id").to_str().expect("UTF-8");
-        fields.push_str(&optional(path.join("state.inc")));
-        init.push_str(&optional(path.join("init.inc")));
-        let operations = optional(path.join("remote.inc"));
+        fields.push_str(&optional(&path.join("state.inc")));
+        init.push_str(&optional(&path.join("init.inc")));
+        let operations = optional(&path.join("remote.inc"));
         remote.push_str(&operations);
-        registry.push_str(&format!(
-            "#[path={:?}] mod {id};\n",
-            path.join("dispatch.rs")
-        ));
+        writeln!(
+            registry,
+            "#[path={:?}] mod {id};",
+            path.join("dispatch.rs").to_str().expect("UTF-8")
+        )
+        .expect("String write");
         if let Some(body) = enum_body(source, "Request") {
             let pattern = variant_names(body)
                 .iter()
                 .map(|name| format!("Request::{name}{{..}}"))
                 .collect::<Vec<_>>()
                 .join(" | ");
-            handlers.push_str(&format!(
-                "(|request|matches!(request,{pattern}),{id}::dispatch),\n"
-            ));
+            writeln!(
+                handlers,
+                "(|request|matches!(request,{pattern}),{id}::dispatch),"
+            )
+            .expect("String write");
         }
-        for variant in variant_names(&operations) {
-            completes.push_str(&format!("RemoteKind::{variant}{{..}} => {id}::complete(self,Some((expected,kind)),id,result),\n"));
+        if let Some(body) = enum_body(source, "Topic") {
+            let pattern = variant_names(body)
+                .iter()
+                .map(|name| format!("Topic::{name}"))
+                .collect::<Vec<_>>()
+                .join(" | ");
+            writeln!(
+                subscriptions,
+                "(|topic|matches!(topic,{pattern}),{id}::subscribe),"
+            )
+            .expect("String write");
+        }
+        let patterns: Vec<_> = variant_names(&operations)
+            .into_iter()
+            .map(|variant| {
+                let suffix = if operations.contains(&format!("{variant}(")) {
+                    "(..)"
+                } else if operations.contains(&format!("{variant} {{")) {
+                    "{..}"
+                } else {
+                    ""
+                };
+                format!("RemoteKind::{variant}{suffix}")
+            })
+            .collect();
+        if !patterns.is_empty() {
+            writeln!(
+                completes,
+                "{} => {id}::complete(self,Some((expected,kind)),id,result),",
+                patterns.join(" | ")
+            )
+            .expect("String write");
         }
         if path.join("tick.rs").exists() {
-            registry.push_str(&format!(
-                "#[path={:?}] mod {id}_tick;\n",
-                path.join("tick.rs")
-            ));
-            ticks.push_str(&format!("{id}_tick::tick,\n"));
+            writeln!(
+                registry,
+                "#[path={:?}] mod {id}_tick;",
+                path.join("tick.rs").to_str().expect("UTF-8")
+            )
+            .expect("String write");
+            writeln!(ticks, "{id}_tick::tick,").expect("String write");
         }
         let model = path.join("model.rs");
-        let registered = optional(path.join("model.path"));
+        let registered = optional(&path.join("model.path"));
         if model.exists() || !registered.trim().is_empty() {
             let model = if model.exists() {
                 model
             } else {
                 root.join(registered.trim())
             };
-            models.push_str(&format!("#[path={model:?}] pub mod {id};\n"));
+            writeln!(
+                models,
+                "#[path={:?}] pub mod {id};",
+                model.to_str().expect("UTF-8")
+            )
+            .expect("String write");
         }
     }
     let template =
         fs::read_to_string(root.join("src/ui_process/session.inc")).expect("session template");
-    let base = fs::read_to_string(root.join("src/ui_process/init.inc"))
-        .expect("session initialization")
-        .replace(
-            "confirmation: ready::Ready::from_executable(&executable)?,",
-            "confirmation,",
-        );
+    let base =
+        fs::read_to_string(root.join("src/ui_process/init.inc")).expect("session initialization");
     registry.push_str(&template.replace("@FIELDS@", &fields));
-    registry.push_str(&format!("enum RemoteKind{{{remote}}}\n"));
-    registry.push_str(&format!("type ScreenHandler=(fn(&Request)->bool,fn(&mut Session,&mut Pipe,u32,&Request)->io::Result<()>);\nconst SCREEN_HANDLERS:&[ScreenHandler]=&[{handlers}];\n"));
-    registry.push_str(&format!("type ScreenTick=fn(&mut Session,&mut Pipe)->io::Result<()>;\nconst SCREEN_TICKS:&[ScreenTick]=&[{ticks}];\n"));
-    registry.push_str(&format!("impl Session{{fn new(args:&Args,core:Core,settings:Settings,confirmation:Option<ready::Ready>)->Self{{Self{{{base}\n{init}}}}}\n"));
+    writeln!(registry, "enum RemoteKind{{{remote}}}").expect("String write");
+    writeln!(registry,"type ScreenHandler=(fn(&Request)->bool,fn(&mut Session,&mut Pipe,u32,&Request)->io::Result<()>);\nconst SCREEN_HANDLERS:&[ScreenHandler]=&[{handlers}];").expect("String write");
+    writeln!(registry,"type ScreenTick=fn(&mut Session,&mut Pipe)->io::Result<()>;\nconst SCREEN_TICKS:&[ScreenTick]=&[{ticks}];").expect("String write");
+    writeln!(registry,"type TopicHandler=(fn(Topic)->bool,fn(&mut Session,&mut Pipe,Topic)->io::Result<()>);\nconst SCREEN_SUBSCRIPTIONS:&[TopicHandler]=&[{subscriptions}];").expect("String write");
+    writeln!(registry,"impl Session{{fn new(args:&Args,core:Core,settings:Settings,confirmation:Option<ready::Ready>)->Self{{Self{{{base}\n{init}}}}}").expect("String write");
     registry.push_str("fn request(&mut self,pipe:&mut Pipe,id:u32,request:&Request)->io::Result<()>{let (_,handler)=SCREEN_HANDLERS.iter().find(|(accept,_)|accept(request)).ok_or(io::ErrorKind::InvalidInput)?;handler(self,pipe,id,request)}\n");
-    registry.push_str(&format!("fn service_reply(&mut self,id:u32,result:Result<vantare_ipc::services_protocol::Reply,HostError>)->Result<Reply,HostError>{{match self.remote.take(){{Some((expected,kind))=>match kind{{{completes}}},None=>Err(HostError::Denied)}}}}}}\n"));
+    writeln!(registry,"fn service_reply(&mut self,id:u32,result:Result<vantare_ipc::services_protocol::Reply,HostError>)->Result<Reply,HostError>{{match self.remote.take(){{Some((expected,kind))=>match kind{{{completes}}},None=>result.and(Err(HostError::Denied))}}}}}}").expect("String write");
     fs::write(output.join("session.rs"), registry).expect("write session aggregation");
     fs::write(output.join("models.rs"), models).expect("write model aggregation");
     println!("cargo:rerun-if-changed=src/ui_process");
+}
+
+fn module_prefix(id: &str) -> String {
+    id.split('_')
+        .map(|part| {
+            let mut part = part.to_owned();
+            part[..1].make_ascii_uppercase();
+            part
+        })
+        .collect()
 }

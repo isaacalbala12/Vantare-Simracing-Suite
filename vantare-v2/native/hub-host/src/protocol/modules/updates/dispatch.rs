@@ -1,4 +1,4 @@
-use super::*;
+use super::{CloseReason, HostError, HostToUi, Pipe, Reply, Request, Session, frame, io};
 impl Session {
     fn updates_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
@@ -52,4 +52,23 @@ pub(super) fn dispatch(
     request: &Request,
 ) -> io::Result<()> {
     session.updates_dispatch(pipe, id, request)
+}
+
+pub(super) fn subscribe(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    _topic: crate::protocol::Topic,
+) -> io::Result<()> {
+    let value = session
+        .updates
+        .get_or_insert_with(crate::updates::Reader::current)
+        .view();
+    frame::write(
+        pipe,
+        &HostToUi::Event {
+            event: Event::Updates {
+                value: Box::new(value),
+            },
+        },
+    )
 }

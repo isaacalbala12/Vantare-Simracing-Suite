@@ -1,6 +1,7 @@
+use crate::protocol::bindings::{constants, declare};
+use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 // Bindings and Rust-serialized examples owned by this screen.
-use crate::protocol::bindings::*;
-use crate::protocol::*;
+
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<crate::settings::track::PerformanceLevel>(&mut text);
@@ -15,9 +16,6 @@ pub(crate) fn typescript() -> String {
     declare::<crate::settings::StartupView>(&mut text);
     declare::<crate::settings::SettingsView>(&mut text);
     declare::<crate::settings::SettingsPatch>(&mut text);
-    declare_named::<super::Request>(&mut text, "SettingsRequest");
-    declare_named::<super::Reply>(&mut text, "SettingsReply");
-    declare_named::<super::HostError>(&mut text, "SettingsHostError");
     constants!(
         &mut text,
         "performanceLevels",
@@ -98,51 +96,54 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    let mut host = Vec::<HostToUi>::new();
-    let mut ui = Vec::<UiToHost>::new();
     let settings = settings_sample();
     let mut current = settings.clone();
     current.can_retry = true;
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::SettingsGet {},
-    });
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::SettingsRetry {},
-    });
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::SettingsDiscard {},
-    });
-    host.push(HostToUi::Response {
-        id: 1,
-        result: Reply::SettingsGet {
-            value: settings.clone(),
+    let host: Vec<HostToUi> = vec![
+        HostToUi::Response {
+            id: 1,
+            result: Reply::SettingsGet {
+                value: settings.clone(),
+            },
         },
-    });
-    host.push(HostToUi::Response {
-        id: 1,
-        result: Reply::SettingsUpdate {
-            value: settings.clone(),
+        HostToUi::Response {
+            id: 1,
+            result: Reply::SettingsUpdate {
+                value: settings.clone(),
+            },
         },
-    });
-    host.push(HostToUi::Response {
-        id: 1,
-        result: Reply::SettingsRetry {
-            value: settings.clone(),
+        HostToUi::Response {
+            id: 1,
+            result: Reply::SettingsRetry {
+                value: settings.clone(),
+            },
         },
-    });
-    host.push(HostToUi::Response {
-        id: 1,
-        result: Reply::SettingsDiscard {
-            value: settings.clone(),
+        HostToUi::Response {
+            id: 1,
+            result: Reply::SettingsDiscard {
+                value: settings.clone(),
+            },
         },
-    });
-    host.push(HostToUi::Failure {
-        id: 1,
-        error: HostError::Conflict { current },
-    });
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::Conflict { current },
+        },
+    ];
+    let mut ui: Vec<UiToHost> = vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::SettingsGet {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::SettingsRetry {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::SettingsDiscard {},
+        },
+    ];
+
     for patch in patch_samples() {
         ui.push(UiToHost::Request {
             id: 1,

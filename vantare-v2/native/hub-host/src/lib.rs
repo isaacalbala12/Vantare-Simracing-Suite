@@ -22,9 +22,3 @@ mod job;
 mod test_support;
 
 include!(concat!(env!("OUT_DIR"), "/models.rs"));
-
-include!(concat!(env!("OUT_DIR"), "/models.rs"));
-
-include!(concat!(env!("OUT_DIR"), "/models.rs"));
-
-include!(concat!(env!("OUT_DIR"), "/models.rs"));

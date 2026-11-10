@@ -1,5 +1,4 @@
 struct Session {
-
     remote: Option<(u32, RemoteKind)>,
     subscriptions: std::collections::BTreeSet<Topic>,
     exit_code: u8,
@@ -12,6 +11,5 @@ struct Session {
     last_event: Option<Instant>,
     closing: Option<(CloseReason, Instant)>,
     handshaken: bool,
-
 @FIELDS@
 }

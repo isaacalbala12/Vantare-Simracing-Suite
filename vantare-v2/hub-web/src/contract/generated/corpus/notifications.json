@@ -1,0 +1,21 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": true,
+        "method": "notifications.test"
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "notifications.test"
+      }
+    }
+  ]
+}

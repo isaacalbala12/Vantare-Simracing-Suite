@@ -1,16 +1,13 @@
+use crate::protocol::bindings::{constants, declare};
+use crate::protocol::{Event, HostToUi, Reply, Request, Topic, UiToHost};
 // Bindings and Rust-serialized examples owned by this screen.
-use crate::protocol::bindings::*;
-use crate::protocol::*;
+
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<crate::updates::InstallationState>(&mut text);
     declare::<crate::updates::BetaStatus>(&mut text);
     declare::<crate::updates::ReleaseNote>(&mut text);
     declare::<crate::updates::UpdatesView>(&mut text);
-    declare_named::<super::Topic>(&mut text, "UpdatesTopic");
-    declare_named::<super::Request>(&mut text, "UpdatesRequest");
-    declare_named::<super::Reply>(&mut text, "UpdatesReply");
-    declare_named::<super::Event>(&mut text, "UpdatesEvent");
     constants!(
         &mut text,
         "releaseChannels",
@@ -34,29 +31,42 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    let mut host = Vec::<HostToUi>::new();
-    let mut ui = Vec::<UiToHost>::new();
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::UpdatesGet {},
-    });
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::UpdatesRestart {},
-    });
-    host.push(HostToUi::Response {
-        id: 1,
-        result: Reply::UpdatesGet {
-            value: serde_json::from_str(include_str!(
-                "../../../../hub-web/fixtures/updates-ready.json"
-            ))
-            .expect("updates"),
+    let host: Vec<HostToUi> = vec![
+        HostToUi::Response {
+            id: 1,
+            result: Reply::UpdatesGet {
+                value: serde_json::from_str(include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../hub-web/fixtures/updates-ready.json"
+                )))
+                .expect("updates"),
+            },
         },
-    });
-    host.push(HostToUi::Response {
-        id: 1,
-        result: Reply::UpdatesRestart { accepted: false },
-    });
+        HostToUi::Response {
+            id: 1,
+            result: Reply::UpdatesRestart { accepted: false },
+        },
+        HostToUi::Event {
+            event: Event::Updates {
+                value: serde_json::from_str(include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../hub-web/fixtures/updates-ready.json"
+                )))
+                .expect("updates"),
+            },
+        },
+    ];
+    let mut ui: Vec<UiToHost> = vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::UpdatesGet {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::UpdatesRestart {},
+        },
+    ];
+
     ui.extend([
         UiToHost::Subscribe {
             topic: Topic::Updates,
@@ -65,14 +75,6 @@ pub(crate) fn corpus() -> serde_json::Value {
             topic: Topic::Updates,
         },
     ]);
-    host.push(HostToUi::Event {
-        event: Event::Updates {
-            value: serde_json::from_str(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/../../hub-web/fixtures/updates-ready.json"
-            )))
-            .expect("updates"),
-        },
-    });
+
     serde_json::json!({"host":host,"ui":ui})
 }

@@ -1,7 +1,8 @@
+use crate::protocol::bindings::{canonical, constants, declare, sample_response};
+use crate::protocol::{HostToUi, Reply, Request, UiToHost};
 use std::fmt::Write as _;
 // Bindings and Rust-serialized examples owned by this screen.
-use crate::protocol::bindings::*;
-use crate::protocol::*;
+
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<crate::testing::ReportScreenshot>(&mut text);
@@ -12,8 +13,6 @@ pub(crate) fn typescript() -> String {
     declare::<crate::testing::TestingReport>(&mut text);
     declare::<crate::testing::TestingView>(&mut text);
     declare::<crate::testing::ReportDraftView>(&mut text);
-    declare_named::<super::Request>(&mut text, "TestingRequest");
-    declare_named::<super::Reply>(&mut text, "TestingReply");
     constants!(&mut text, "reportFieldLimits", crate::testing::FIELD_LIMITS);
     constants!(&mut text, "reportModules", crate::testing::MODULES);
     constants!(&mut text, "reportAutosaveMs", crate::testing::AUTOSAVE_MS);

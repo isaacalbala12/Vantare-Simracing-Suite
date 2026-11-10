@@ -1,5 +1,9 @@
 //! Owned wire variants. The build assembles the closed transport enums.
-use super::super::*;
+use crate::protocol::CoreStatus;
+use serde::{Deserialize, Serialize};
+#[cfg(any(test, feature = "bindings"))]
+use ts_rs::TS;
+
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, PartialOrd, Ord, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

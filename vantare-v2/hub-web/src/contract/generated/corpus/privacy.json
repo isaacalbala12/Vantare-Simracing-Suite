@@ -1,0 +1,155 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "privacy.policy"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "privacy.get",
+        "value": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "privacy.update",
+        "value": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "mail.get",
+        "value": {
+          "consent": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "mail.set",
+        "value": {
+          "consent": true
+        }
+      }
+    },
+    {
+      "error": {
+        "current": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        },
+        "kind": "privacyConflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "current": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        },
+        "kind": "privacyCleanup"
+      },
+      "id": 1,
+      "kind": "failure"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "privacy.policy"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "privacy.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "privacy.update",
+        "patch": {
+          "field": "crashes",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "privacy.update",
+        "patch": {
+          "field": "usage",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "mail.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": false,
+        "method": "mail.set"
+      }
+    }
+  ]
+}

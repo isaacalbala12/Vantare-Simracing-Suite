@@ -286,6 +286,7 @@ impl Expansion<'_> {
             == Some(false)
         {
             estilos.insert("opacidad".into(), Value::from(0));
+            bucle = None;
         }
         let estilos = estilos
             .iter()
@@ -408,33 +409,36 @@ impl Expansion<'_> {
     }
 }
 pub(crate) fn maquetar(
-    r: &Receta,
-    s: &Sistema,
-    m: &Value,
+    receta: &Receta,
+    sistema: &Sistema,
+    modelo: &Value,
     medidor: &dyn Medidor,
 ) -> Result<Vec<Plano>, ErrorModelo> {
-    acotar_modelo(m, 0, &mut 0, &mut 0)?;
-    if let Some(c) = &r.contrato_validado {
-        validar_modelo(m, &c.campos, "", 0)?;
+    acotar_modelo(modelo, 0, &mut 0, &mut 0)?;
+    if let Some(c) = &receta.contrato_validado {
+        validar_modelo(modelo, &c.campos, "", 0)?;
     }
-    let mut x = Expansion {
-        sistema: s,
+    let mut expansion = Expansion {
+        sistema: sistema,
         medidor,
         tree: TaffyTree::new(),
         cantidad: 0,
     };
-    let mut raiz = x.nodo(&r.raiz, m, "/raiz".into(), true, 1)?;
-    raiz.entrada.clone_from(&r.entrada);
-    raiz.salida.clone_from(&r.salida);
-    if r.visible
+    let mut raiz = expansion.nodo(&receta.raiz, modelo, "/raiz".into(), true, 1)?;
+    raiz.entrada.clone_from(&receta.entrada);
+    raiz.salida.clone_from(&receta.salida);
+    if receta
+        .visible
         .as_ref()
-        .map(|c| comprobar_condicion(c, m, "/visible"))
+        .map(|c| comprobar_condicion(c, modelo, "/visible"))
         .transpose()?
         == Some(false)
     {
         raiz.estilo.insert("opacidad".into(), Value::from(0));
+        raiz.bucle = None;
     }
-    x.tree
+    expansion
+        .tree
         .compute_layout_with_measure(
             raiz.layout,
             Size {
@@ -452,7 +456,9 @@ pub(crate) fn maquetar(
                             height: 0.0,
                         });
                         let ancho = match disponible.width {
-                            AvailableSpace::Definite(w) => medido.width.min(w),
+                            AvailableSpace::Definite(ancho_disponible) => {
+                                medido.width.min(ancho_disponible)
+                            }
                             AvailableSpace::MinContent => 0.0,
                             AvailableSpace::MaxContent => medido.width,
                         };
@@ -466,7 +472,7 @@ pub(crate) fn maquetar(
         )
         .map_err(|_| ErrorModelo::layout("/raiz"))?;
     let mut planos = Vec::new();
-    x.planos(&raiz, None, (0.0, 0.0), &mut planos, 0)?;
+    expansion.planos(&raiz, None, (0.0, 0.0), &mut planos, 0)?;
     Ok(planos)
 }
 fn validar_modelo(

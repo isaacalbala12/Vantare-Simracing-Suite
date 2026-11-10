@@ -166,84 +166,49 @@ pub fn transicion(
     hasta: f32,
     velocidad: Option<f32>,
 ) -> Curva {
-    if let Some(m) = config.get("muelle") {
-        let rigidez = numero(&m["rigidez"], 170.0);
-        let amortiguacion = numero(&m["amortiguacion"], 26.0);
-        let evaluar = |t| {
-            let (posicion, velocidad_actual) = muelle(
-                rigidez,
-                amortiguacion,
-                desde - hasta,
-                velocidad.unwrap_or(0.0),
-                t,
-            );
-            (hasta + posicion, velocidad_actual)
-        };
-        let umbral = (hasta - desde).abs().max(1.0) * 0.001;
-        let mut fin = 0.02_f32;
-        while fin < 10.0 {
-            let (posicion, velocidad_actual) = evaluar(fin);
-            if (posicion - hasta).abs() < umbral && velocidad_actual.abs() < umbral {
-                break;
-            }
-            fin += 0.02;
-        }
-        let mut tramos = Vec::new();
-        let mut desde_tramo = 0.0;
-        while desde_tramo < fin {
-            let hasta_tramo = (desde_tramo + 0.02_f32).min(fin);
-            adaptar(
-                &evaluar,
-                desde_tramo,
-                hasta_tramo,
-                umbral * 0.2,
-                0,
-                &mut tramos,
-            );
-            desde_tramo = hasta_tramo;
-        }
-        return Curva {
-            inicio,
-            tramos,
-            fin: f64::from(fin),
-            final_: hasta,
-            repetir: None,
-        };
+    if config.get("muelle").is_some() {
+        return transicion_muelle(config, inicio, desde, hasta, velocidad);
     }
     let dur = numero(&config["duracion"], 180.0) / 1000.0;
     let ret = numero(&config["retardo"], 0.0) / 1000.0;
     if dur <= 0.0 {
         return Curva {
             inicio,
-            tramos: Vec::new(),
-            fin: 0.0,
+            tramos: vec![Tramo {
+                desde: 0.0,
+                a: desde,
+                b: velocidad.unwrap_or(0.0),
+                c: 0.0,
+                d: 0.0,
+            }],
+            fin: f64::from(ret),
             final_: hasta,
             repetir: None,
         };
     }
     let p = puntos(&config["curva"]);
+    let inicial = desde + velocidad.unwrap_or(0.0) * ret;
     // La corrección cúbica vale 0 y tiene derivada 0 en el destino.
-    let vbase = (hasta - desde) * bezier(p, 0.0).1 / dur;
+    let vbase = (hasta - inicial) * bezier(p, 0.0).1 / dur;
     let delta_v = velocidad.map_or(0.0, |v| v - vbase);
     let f = |t: f32| {
         let u = (t / dur).clamp(0.0, 1.0);
         let (y, dy) = bezier(p, u);
         (
-            desde + (hasta - desde) * y + delta_v * t * (1.0 - u) * (1.0 - u),
-            (hasta - desde) * dy / dur + delta_v * (1.0 - 4.0 * u + 3.0 * u * u),
+            inicial + (hasta - inicial) * y + delta_v * t * (1.0 - u) * (1.0 - u),
+            (hasta - inicial) * dy / dur + delta_v * (1.0 - 4.0 * u + 3.0 * u * u),
         )
     };
     let mut tramos = Vec::new();
-    // En una interrupción el retardo no puede congelar la velocidad: se integra en la duración.
+    // Durante el retardo una curva interrumpida conserva su velocidad actual.
     adaptar(
         &f,
         0.0,
         dur,
-        (hasta - desde).abs().max(1.0) * 0.0005,
+        (hasta - inicial).abs().max(0.0001) * 0.0005,
         0,
         &mut tramos,
     );
-    let ret = if velocidad.is_none() { ret } else { 0.0 };
     for tramo in &mut tramos {
         tramo.desde += f64::from(ret);
     }
@@ -253,7 +218,7 @@ pub fn transicion(
             Tramo {
                 desde: 0.0,
                 a: desde,
-                b: 0.0,
+                b: velocidad.unwrap_or(0.0),
                 c: 0.0,
                 d: 0.0,
             },
@@ -263,6 +228,57 @@ pub fn transicion(
         inicio,
         tramos,
         fin: f64::from(dur + ret),
+        final_: hasta,
+        repetir: None,
+    }
+}
+fn transicion_muelle(
+    config: &Value,
+    inicio: Instante,
+    desde: f32,
+    hasta: f32,
+    velocidad: Option<f32>,
+) -> Curva {
+    let m = &config["muelle"];
+    let rigidez = numero(&m["rigidez"], 170.0);
+    let amortiguacion = numero(&m["amortiguacion"], 26.0);
+    let evaluar = |t| {
+        let (posicion, velocidad_actual) = muelle(
+            rigidez,
+            amortiguacion,
+            desde - hasta,
+            velocidad.unwrap_or(0.0),
+            t,
+        );
+        (hasta + posicion, velocidad_actual)
+    };
+    let umbral = (hasta - desde).abs().max(0.0001) * 0.001;
+    let mut fin = 0.02_f32;
+    while fin < 10.0 {
+        let (posicion, velocidad_actual) = evaluar(fin);
+        if (posicion - hasta).abs() < umbral && velocidad_actual.abs() < umbral {
+            break;
+        }
+        fin = (fin + 0.02).min(10.0);
+    }
+    let mut tramos = Vec::new();
+    let mut desde_tramo = 0.0;
+    while desde_tramo < fin {
+        let hasta_tramo = (desde_tramo + 0.02_f32).min(fin);
+        adaptar(
+            &evaluar,
+            desde_tramo,
+            hasta_tramo,
+            umbral * 0.2,
+            0,
+            &mut tramos,
+        );
+        desde_tramo = hasta_tramo;
+    }
+    Curva {
+        inicio,
+        tramos,
+        fin: f64::from(fin),
         final_: hasta,
         repetir: None,
     }

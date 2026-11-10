@@ -445,6 +445,41 @@ fn texto_recibe_la_caja_disponible_para_el_recorte() {
         .unwrap();
     assert!(caja.ancho <= 140.0 && caja.ancho > 0.0);
 }
+
+#[test]
+fn retardo_conserva_c1_y_el_plazo() {
+    let cfg = json!({"duracion":500,"retardo":200,"curva":"lineal"});
+    let c = animacion::transicion(&cfg, Instante(1.0), 0.5, 1.0, Some(0.4));
+    let inicial = animacion::muestra(&c, Instante(1.0));
+    assert!((inicial.0 - 0.5).abs() < 1.0e-6 && (inicial.1 - 0.4).abs() < 1.0e-6);
+    let antes = animacion::muestra(&c, Instante(1.2 - 1.0e-6));
+    let despues = animacion::muestra(&c, Instante(1.2 + 1.0e-6));
+    assert!((antes.0 - despues.0).abs() < 1.0e-5 && (antes.1 - despues.1).abs() < 1.0e-4);
+    assert!((c.fin - 0.7).abs() < 1.0e-6);
+}
+#[test]
+fn bezier_error_relativo_en_recorridos_pequenos() {
+    let puntos = [0.42, 0.0, 1.0, 1.0];
+    let cfg = json!({"duracion":1000,"curva":puntos});
+    let c = animacion::transicion(&cfg, Instante(0.0), 0.99, 1.0, None);
+    for i in 0..=2000 {
+        let t = f64::from(i) / 2000.0;
+        let exacto = 0.99 + 0.01 * bezier_exacta(puntos, t);
+        let real = f64::from(animacion::muestra(&c, Instante(t)).0);
+        assert!((exacto - real).abs() <= 0.00005);
+    }
+}
+#[test]
+fn un_bucle_no_muestra_una_raiz_oculta() {
+    let mut r = receta();
+    r["visible"] = json!("visible");
+    r["raiz"]["bucle"] = json!({"propiedad":"opacidad","valores":[0.35,1,0.35],"duracion":1000});
+    let mut e = escenario(&r);
+    let mut m = datos();
+    m["visible"] = json!(false);
+    e.actualizar(&m, Instante(0.0), &Fijo).unwrap();
+    assert!(e.valor(CapaId(1), Propiedad::Opacidad, Instante(2.0)).abs() < 1.0e-6);
+}
 fn bezier_exacta(puntos: [f32; 4], tiempo: f64) -> f64 {
     let [x1, y1, x2, y2] = puntos.map(f64::from);
     let evaluar =

@@ -106,6 +106,13 @@ def select_for_ci(packages, paths, fast=False):
     return sorted(set(selected) - LEGACY) if fast and not legacy_changed else selected
 
 
+def select_legacy_checks(packages, paths):
+    """Typecheck legacy consumers omitted from fast tests, including bridges."""
+    full = set(select(packages, paths))
+    fast = set(select_for_ci(packages, paths, fast=True))
+    return sorted((full - fast) & LEGACY)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base')
@@ -113,6 +120,7 @@ def main():
     parser.add_argument('--installation', action='store_true')
     parser.add_argument('--overlays', action='store_true')
     parser.add_argument('--fast', action='store_true', help='Exclude frozen Hub/Admin for non-legacy PRs')
+    parser.add_argument('--legacy-check', action='store_true', help='Legacy consumers requiring check, without tests')
     args = parser.parse_args()
     native = Path(__file__).resolve().parents[1]
     paths = []
@@ -131,7 +139,11 @@ def main():
         ['cargo', 'metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'],
         cwd=native))
     members = [p for p in metadata['packages'] if p['id'] in metadata['workspace_members']]
-    if args.crate:
+    if args.legacy_check:
+        if not args.base:
+            parser.error('--legacy-check exige --base')
+        print(','.join(select_legacy_checks(members, paths)))
+    elif args.crate:
         print(','.join(select_for_crate(members, args.crate)))
     else:
         print(','.join(select_for_ci(members, paths, args.fast)))

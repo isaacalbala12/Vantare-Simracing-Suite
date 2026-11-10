@@ -5,10 +5,12 @@ param(
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
-    [string[]]$Packages = @()
+    [string[]]$Packages = @(),
+    [switch]$PublicTargetsOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ($PublicTargetsOnly -and $Gate -ne 'check') { throw 'PublicTargetsOnly solo se aplica a check.' }
 . (Join-Path $PSScriptRoot 'scripts/target-slot.ps1')
 if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en el volumen configurado).' }
 if ($Gate -eq 'distribution') {
@@ -85,6 +87,7 @@ try {
         'captura' { @('clippy', '-p', 'vantare-installer', '--all-targets', '--features', 'parity-capture') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
+    if ($PublicTargetsOnly) { $arguments = @($arguments | Where-Object { $_ -ne '--all-targets' }) }
     if ($Packages.Count) {
         $arguments = @($arguments | Where-Object { $_ -ne '--workspace' })
         foreach ($package in $Packages) { $arguments += @('-p', $package) }

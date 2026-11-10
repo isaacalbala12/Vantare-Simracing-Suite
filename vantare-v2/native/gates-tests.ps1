@@ -36,6 +36,23 @@ try {
         if ([Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process') -cne $previousTarget) { throw 'El gate no restauró CARGO_TARGET_DIR.' }
         if ([Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process') -cne $previousDirectory) { throw 'El gate no restauró DUCKDB_LIB_DIR.' }
         'Defaults actuales y futuro PASS; bundled de storage desactivado.'
+        $legacyTest = Join-Path $fixture 'future/tests/not-public.rs'
+        [IO.Directory]::CreateDirectory((Split-Path $legacyTest)) | Out-Null
+        [IO.File]::WriteAllText($legacyTest, 'compile_error!("Compatibility check must not compile legacy tests");')
+        & (Join-Path $fixture 'gates.ps1') -Gate check -Packages @('future-default') -PublicTargetsOnly -DuckDbDirectory $DuckDbDirectory
+        $legacySource = Join-Path $fixture 'future/src/lib.rs'
+        $beforeSource = [IO.File]::ReadAllBytes($legacySource)
+        try {
+            [IO.File]::WriteAllText($legacySource, 'pub fn consumer() { removed_api(); }')
+            $rejected = $false
+            try { & (Join-Path $fixture 'gates.ps1') -Gate check -Packages @('future-default') -PublicTargetsOnly -DuckDbDirectory $DuckDbDirectory }
+            catch { $rejected = $_.Exception.Message -like 'Gate check falló*' }
+            if (-not $rejected) { throw 'El check legacy no detectó una API pública incompatible.' }
+        } finally {
+            [IO.File]::WriteAllBytes($legacySource, $beforeSource)
+            Remove-Item -LiteralPath $legacyTest
+        }
+        'Legacy check PASS: detecta API rota sin compilar tests legacy.'
         [IO.Directory]::CreateDirectory((Join-Path $fixture '.config')) | Out-Null
         [IO.File]::WriteAllText((Join-Path $fixture '.config/nextest.toml'), @'
 [profile.default]

@@ -159,6 +159,11 @@ cuando las rutas corresponden a crates conocidos (salvo cambios explícitos en
 esos productos). Configuración global y rutas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin. Runtime, services, domain, ipc y ui también
 exigen instalación; solo strategy, engineer y storage son hojas para ese gate.
+Los consumidores legacy que el filtro rápido retira de los tests se comprueban
+con cargo check de biblioteca/binarios. Strategy/storage y los cambios en
+domain/ipc/services/ui comprueban así Hub/Admin; los puentes del selector
+también se aplican. No se ejecutan sus tests salvo alcance global o cambios
+legacy explícitos. El flujo local conserva la exclusión de Hub/Admin.
 Integración/promociones:
 workspace completo. El Hub web y su workflow son independientes de native/.
 

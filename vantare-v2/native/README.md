@@ -506,6 +506,10 @@ merge_group comprueban el workspace completo.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.
+En CI, los consumidores legacy omitidos por el filtro rápido reciben `cargo
+check` de biblioteca/binarios, sin sus tests: por ejemplo strategy y storage
+comprueban Hub/Admin. También se comprueban ante cambios de domain/ipc/services/ui.
+Esto conserva compatibilidad sin añadir Hub/Admin al flujo local de workers.
 Los tests de procesos de Runtime preparan también el ejecutable Services.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
 Nextest usa `--build-jobs`; `-j` controla hilos de test.
@@ -516,11 +520,14 @@ Se respeta SCCACHE_DIR ya definido; sin él se consulta Machine y después
 LocalApplicationData/Vantare/sccache. Este servidor tiene VANTARE_TARGET_ROOT=
 `D:/VantareServer/targets` y SCCACHE_DIR=`D:/VantareServer/cache/sccache` en Machine.
 
-La cola admite como máximo dos compilaciones. Usar `CARGO_BUILD_JOBS=4` en este
+La cola admite como máximo dos compilaciones. CARGO_BUILD_JOBS de Machine tiene
+prioridad sobre el del proceso; en este servidor Machine fija 4. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
 ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
 evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
 reserva del ancestro. Sccache local usa `D:/VantareServer/cache/sccache` (30 GB, puerto 4227) y es opcional;
+Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
+se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
 `VANTARE_SCCACHE=0` permite repetir un fallo conservando su primera evidencia.
 
 Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB.
@@ -548,22 +555,24 @@ nightly. CI desactiva incremental; local lo conserva. Los archivos de tests
 son artefactos del mismo SHA, con retención de un día, no cachés de otra rama.
 
 La cola PowerShell usa Win32 y no se ejecuta en macOS. Alternativa desde
-`native/`, con target propio y cuatro jobs (ejemplo Runtime y su dependiente
-directo Engineer; `python3 scripts/affected-crates.py --crate vantare-runtime`
+`native/`, con target propio y cuatro jobs (Runtime y dependientes directos
+Engineer/Storage; `python3 scripts/affected-crates.py --crate vantare-runtime`
 calcula la selección, incluidos los puentes entre procesos):
 
 ```bash
 export CARGO_TARGET_DIR="$HOME/target-<worker>" CARGO_BUILD_JOBS=4
 export VANTARE_NATIVE_DATA_ROOT="$CARGO_TARGET_DIR/qa-data"
 mkdir -p "$VANTARE_NATIVE_DATA_ROOT"
-cargo clippy -p vantare-runtime -p vantare-engineer --lib --locked --offline -j 4 -- -D warnings
-cargo test -p vantare-runtime -p vantare-engineer --lib --locked --offline -j 4
+cargo clippy -p vantare-runtime -p vantare-engineer -p vantare-storage --lib --locked --offline -j 4 -- -D warnings
+cargo test -p vantare-runtime -p vantare-engineer -p vantare-storage --lib --locked --offline -j 4
 ```
 
 Esto comprueba bibliotecas, no sustituye los procesos y gates de Windows.
 La integración Unix completa está bloqueada por #2004. Para eliminar targets
 antiguos de Windows, `scripts/limpiar-targets.ps1 -Raiz <raíces> -Dias 7` simula
-la limpieza; `-Aplicar` la ejecuta. No usarlo sobre targets ajenos. La tarea
+la limpieza; `-Aplicar` la ejecuta. Solo detecta targets con CACHEDIR.TAG:
+`isa-1993-baseline`, que no tiene ese fichero, queda fuera. No usarlo sobre
+targets ajenos. La tarea
 del servidor `\Vantare\LimpiarTargets` conserva esa limpieza periódica;
 la limpieza por slot es independiente. Los targets de medición de VANTA-137
 se dejan para Isaac, conforme a su instrucción.

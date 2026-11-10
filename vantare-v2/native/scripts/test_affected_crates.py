@@ -101,6 +101,11 @@ class ScopeTests(unittest.TestCase):
         self.assertNotIn('vantare-admin', direct)
         for legacy in ['vantare-hub', 'vantare-admin']:
             self.assertIn(legacy, affected.select_for_ci(packages, ['vantare-v2/native/Cargo.lock'], True))
+        for crate in ['strategy', 'storage', 'domain', 'ipc', 'services', 'ui']:
+            path = [f'vantare-v2/native/{crate}/src/lib.rs']
+            self.assertEqual(affected.select_legacy_checks(packages, path), ['vantare-admin', 'vantare-hub'], crate)
+        for path in ['vantare-v2/native/Cargo.lock', 'vantare-v2/native/hub/src/lib.rs']:
+            self.assertEqual(affected.select_legacy_checks(packages, [path]), [])  # Already included in full validation.
 
     def test_documentation_outside_native_has_no_native_scope(self):
         self.assertEqual(affected.select(self.packages, ['vantare-v2/docs/guide.md']), [])

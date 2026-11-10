@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "sha": "626610aee00b84f190fec0f5df653a5f2b99db1d",
+    "date": "2026-11-10T04:43:29.9400286+01:00",
+    "widgets": 4,
+    "phases": true,
+    "recording_sha256": "C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C",
+    "executable_sha256": "5A6958052224C0502C17FC6C00EB4E5B7A6AFAF0264E3BE8108FA756B3165D10",
+    "core_sha256": "A77B1E288F9BF4992F53F7DF43B9A94695B27D22EE293C3675162E31077BEAF7",
+    "logical_processors": 8,
+    "os": "Microsoft Windows NT 10.0.22631.0",
+    "reserved_build_slots": 4,
+    "video": [
+      {
+        "Name": "AMD Radeon RX 6600 XT",
+        "DriverVersion": "32.0.21045.5002",
+        "CurrentHorizontalResolution": 1920,
+        "CurrentVerticalResolution": 1080,
+        "CurrentRefreshRate": 59
+      }
+    ],
+    "cpu_unit": "seconds across all process threads; 1 CPU second / wall second = one logical core",
+    "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account"
+  },
+  "steady_seconds": 56.5917676,
+  "steady_cpu_seconds": 0.046875,
+  "steady_logical_cores": 0.0008283006873247055,
+  "steady_cpu_cycles": 16628736040,
+  "steady_cpu_cycles_per_frame": 14032688.641350212,
+  "steady_screen_frames": 1185,
+  "steady_present_calls": 1185,
+  "frame_counter": "dxgi_present",
+  "steady_cpu_ms_per_frame": 0.03955696202531646,
+  "steady_cpu_ms_per_screen_frame": 0.03955696202531646,
+  "mean_private_mib": 88.64316063596492,
+  "peak_private_mib": 111.94921875,
+  "reported_frames_full_run": 1279,
+  "cpu_ms_per_frame_full_run": 0.04886630179827991,
+  "notifications_full_run": {
+    "radar": 1475,
+    "pedals": 2,
+    "standings": 8
+  },
+  "widget_paints_full_run": {
+    "standings": 46,
+    "radar": 1260,
+    "pedals": 3,
+    "delta": 0,
+    "car-damage-visual": 0,
+    "input-telemetry": 0,
+    "multiclass-relative": 0,
+    "broadcast-tower": 0,
+    "delta-trace": 0,
+    "track-map": 0,
+    "track-weather": 0,
+    "car-damage-numbers": 0,
+    "head-to-head": 0,
+    "fuel-strategy": 0,
+    "pedals-telemetry": 0,
+    "relative": 0,
+    "racing-flags": 0,
+    "fastest-lap": 0,
+    "session-alerts": 0
+  },
+  "changed_widgets_per_changed_snapshot": 1.005416384563304,
+  "data_widget_paints_per_painted_snapshot": 1.0055555555555555,
+  "stages_full_run": {
+    "serialize": {
+      "calls": 1,
+      "wall_ns": 37400,
+      "cpu_cycles": 135870,
+      "cycle_errors": 0
+    },
+    "ipc_write": {
+      "calls": 1,
+      "wall_ns": 11900,
+      "cpu_cycles": 42630,
+      "cycle_errors": 0
+    },
+    "feed": {
+      "calls": 3017,
+      "wall_ns": 62392019100,
+      "cpu_cycles": 149363935,
+      "cycle_errors": 0
+    },
+    "project": {
+      "calls": 11904,
+      "wall_ns": 270126300,
+      "cpu_cycles": 969896305,
+      "cycle_errors": 0
+    },
+    "render": {
+      "calls": 1325,
+      "wall_ns": 22123100,
+      "cpu_cycles": 81541915,
+      "cycle_errors": 0
+    },
+    "paint": {
+      "calls": 1325,
+      "wall_ns": 761561100,
+      "cpu_cycles": 2646707455,
+      "cycle_errors": 0
+    },
+    "text_layout": {
+      "calls": 29,
+      "wall_ns": 3072900,
+      "cpu_cycles": 10627330,
+      "cycle_errors": 0
+    },
+    "gpu_submit": {
+      "calls": 1287,
+      "wall_ns": 134427800,
+      "cpu_cycles": 475195980,
+      "cycle_errors": 0
+    },
+    "present": {
+      "calls": 1287,
+      "wall_ns": 494535200,
+      "cpu_cycles": 1072874565,
+      "cycle_errors": 0
+    },
+    "decode": {
+      "calls": 2978,
+      "wall_ns": 460863900,
+      "cpu_cycles": 1622322625,
+      "cycle_errors": 0
+    },
+    "gpui_layout_request": {
+      "calls": 1287,
+      "wall_ns": 114247100,
+      "cpu_cycles": 406062825,
+      "cycle_errors": 0
+    },
+    "gpui_layout_compute": {
+      "calls": 1287,
+      "wall_ns": 149205400,
+      "cpu_cycles": 526474655,
+      "cycle_errors": 0
+    },
+    "gpui_prepaint": {
+      "calls": 1287,
+      "wall_ns": 253759300,
+      "cpu_cycles": 892361785,
+      "cycle_errors": 0
+    },
+    "gpui_paint": {
+      "calls": 1287,
+      "wall_ns": 1657109700,
+      "cpu_cycles": 5778223675,
+      "cycle_errors": 0
+    }
+  },
+  "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI."
+}

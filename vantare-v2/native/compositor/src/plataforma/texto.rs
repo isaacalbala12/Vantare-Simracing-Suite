@@ -5,7 +5,15 @@ use crate::escena::{
 };
 use std::path::Path;
 use windows::{
-    Win32::Graphics::DirectWrite::*,
+    Win32::Graphics::DirectWrite::{
+        DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_FEATURE, DWRITE_FONT_FEATURE_TAG_TABULAR_FIGURES,
+        DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_WEIGHT,
+        DWRITE_LINE_METRICS, DWRITE_LINE_SPACING_METHOD_UNIFORM, DWRITE_TEXT_ALIGNMENT_CENTER,
+        DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_TEXT_ALIGNMENT_TRAILING, DWRITE_TEXT_METRICS,
+        DWRITE_TEXT_RANGE, DWRITE_TRIMMING, DWRITE_TRIMMING_GRANULARITY_CHARACTER,
+        DWRITE_WORD_WRAPPING_NO_WRAP, DWriteCreateFactory, IDWriteFactory3, IDWriteFactory5,
+        IDWriteFontCollection1, IDWriteRenderingParams, IDWriteTextLayout1,
+    },
     core::{Interface, PCWSTR, w},
 };
 
@@ -99,7 +107,11 @@ impl Texto {
             let mut linea = [DWRITE_LINE_METRICS::default()];
             let mut numero = 0;
             layout.GetLineMetrics(Some(&mut linea), &raw mut numero)?;
-            let interlinea = fuente.interlinea.max(linea[0].height);
+            let interlinea = if fuente.interlinea > 0.0 {
+                fuente.interlinea
+            } else {
+                linea[0].height
+            };
             layout.SetLineSpacing(
                 DWRITE_LINE_SPACING_METHOD_UNIFORM,
                 interlinea,

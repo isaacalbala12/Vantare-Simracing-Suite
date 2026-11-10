@@ -57,6 +57,66 @@ mod demo {
             },
         }
     }
+    fn segunda_raiz(inicio: Instante) -> [Operacion; 4] {
+        [
+            Operacion::Crear {
+                id: CapaId(10),
+                padre: None,
+                orden: 1,
+            },
+            Operacion::Colocar {
+                id: CapaId(10),
+                rect: rect(680.0, 140.0, 240.0, 80.0),
+            },
+            Operacion::Pintar {
+                id: CapaId(10),
+                dibujos: vec![
+                    Dibujo::Rect {
+                        rect: rect(0.0, 0.0, 240.0, 80.0),
+                        radios: [20.0, 4.0, 20.0, 4.0],
+                        relleno: Some(Pintura::Solido(c(0.16, 0.08, 0.24, 0.92))),
+                        borde: Some((1.0, Pintura::Solido(c(0.6, 0.4, 0.9, 1.0)))),
+                    },
+                    Dibujo::Texto {
+                        caja: rect(12.0, 24.0, 216.0, 30.0),
+                        texto: "Segunda raíz · mismo commit".into(),
+                        fuente: fuente(),
+                        color: c(1.0, 1.0, 1.0, 1.0),
+                        alineacion: Alineacion::Centro,
+                    },
+                ],
+            },
+            animacion(10, Propiedad::Opacidad, inicio, 0.0, 1.0, 1.0, 1.0),
+        ]
+    }
+    fn pulso(inicio: Instante) -> Operacion {
+        Operacion::Animar {
+            id: CapaId(3),
+            propiedad: Propiedad::Opacidad,
+            curva: Curva {
+                inicio,
+                tramos: vec![
+                    Tramo {
+                        desde: 0.0,
+                        a: 0.4,
+                        b: 0.6,
+                        c: 0.0,
+                        d: 0.0,
+                    },
+                    Tramo {
+                        desde: 1.0,
+                        a: 1.6,
+                        b: -0.6,
+                        c: 0.0,
+                        d: 0.0,
+                    },
+                ],
+                fin: 20.0,
+                final_: 1.0,
+                repetir: Some((2.0, 2.0)),
+            },
+        }
+    }
     fn inicial(inicio: Instante) -> Lote {
         let mut operaciones = vec![
             Operacion::Crear {
@@ -107,6 +167,7 @@ mod demo {
                 ],
             },
         ];
+        operaciones.extend(segunda_raiz(inicio));
         for i in 0_u16..3 {
             let id = u32::from(i) + 2;
             operaciones.extend([
@@ -130,32 +191,7 @@ mod demo {
             1.0,
         ));
         operaciones.push(animacion(1, Propiedad::Y, inicio, -20.0, 20.0, 1.0, 0.0));
-        operaciones.push(Operacion::Animar {
-            id: CapaId(3),
-            propiedad: Propiedad::Opacidad,
-            curva: Curva {
-                inicio,
-                tramos: vec![
-                    Tramo {
-                        desde: 0.0,
-                        a: 0.4,
-                        b: 0.6,
-                        c: 0.0,
-                        d: 0.0,
-                    },
-                    Tramo {
-                        desde: 1.0,
-                        a: 1.6,
-                        b: -0.6,
-                        c: 0.0,
-                        d: 0.0,
-                    },
-                ],
-                fin: 20.0,
-                final_: 1.0,
-                repetir: Some((2.0, 2.0)),
-            },
-        });
+        operaciones.push(pulso(inicio));
         Lote { operaciones }
     }
     fn paso(n: u8, inicio: Instante) -> Lote {
@@ -270,6 +306,7 @@ mod demo {
         }
         let inicio = p.ahora()?;
         p.aplicar(&inicial(inicio))?;
+        println!("Ventanas: {}", p.ventanas().len());
         if let Some(ruta) = captura {
             for (n, t) in [(1, 1.0), (2, 1.5), (3, 3.0), (4, 4.0)] {
                 if en >= t {

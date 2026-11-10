@@ -18,7 +18,10 @@ pub(super) fn desplazar(tramo: &Tramo, delta: f64) -> super::Resultado<[f32; 4]>
 
 pub(super) fn relativo(curva: &Curva, instante: Instante) -> f64 {
     let t = (instante.0 - curva.inicio.0).max(0.0);
-    if let Some((desde, duracion)) = curva.repetir && duracion > 0.0 && t >= desde {
+    if let Some((desde, duracion)) = curva.repetir
+        && duracion > 0.0
+        && t >= desde
+    {
         return desde - duracion + (t - desde).rem_euclid(duracion);
     }
     t
@@ -178,25 +181,25 @@ mod tests {
         assert!((evaluar(&curva, Instante(105.5)).unwrap() - 9.0).abs() < f32::EPSILON);
     }
 
-    fn evaluar_programa(p: &Programa, curva: &Curva, t: f64) -> f32 {
-        if t >= p.fin {
+    fn evaluar_programa(programa: &Programa, curva: &Curva, instante: f64) -> f32 {
+        if instante >= programa.fin {
             return curva.final_;
         }
-        let t = p.repetir.map_or(t, |(desde, duracion)| {
-            if t >= desde {
-                desde - duracion + (t - desde).rem_euclid(duracion)
+        let instante = programa.repetir.map_or(instante, |(desde, duracion)| {
+            if instante >= desde {
+                desde - duracion + (instante - desde).rem_euclid(duracion)
             } else {
-                t
+                instante
             }
         });
-        let (desde, [a, b, c, d]) = p
+        let (desde, [constante, lineal, cuadratico, cubico]) = programa
             .cubicos
             .iter()
             .rev()
-            .find(|(desde, _)| *desde <= t)
+            .find(|(desde, _)| *desde <= instante)
             .unwrap();
-        let local = std::time::Duration::from_secs_f64(t - desde).as_secs_f32();
-        a + local * (b + local * (c + local * d))
+        let local = std::time::Duration::from_secs_f64(instante - desde).as_secs_f32();
+        constante + local * (lineal + local * (cuadratico + local * cubico))
     }
     #[test]
     fn el_programa_nativo_conserva_fase_y_tramos_de_una_curva_interrumpida() {

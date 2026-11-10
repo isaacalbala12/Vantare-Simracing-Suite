@@ -5,11 +5,20 @@ use std::{
 };
 use windows::{
     Win32::{
-        Foundation::*,
+        Foundation::{CloseHandle, FreeLibrary, HANDLE, HMODULE, WAIT_FAILED, WAIT_TIMEOUT},
         Graphics::Dwm::DwmFlush,
-        Storage::FileSystem::*,
-        System::{LibraryLoader::*, Threading::*},
-        UI::WindowsAndMessaging::*,
+        Storage::FileSystem::{
+            FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_CHANGE_LAST_WRITE,
+            FindCloseChangeNotification, FindFirstChangeNotificationW, FindNextChangeNotification,
+        },
+        System::{
+            LibraryLoader::{GetProcAddress, LoadLibraryW},
+            Threading::{CreateEventW, INFINITE, SetEvent},
+        },
+        UI::WindowsAndMessaging::{
+            DispatchMessageW, MSG, MWMO_INPUTAVAILABLE, MsgWaitForMultipleObjectsEx, PM_REMOVE,
+            PeekMessageW, QS_ALLINPUT, TranslateMessage, WM_QUIT,
+        },
     },
     core::{PCWSTR, s},
 };
@@ -163,7 +172,7 @@ impl Bucle {
                         return Ok(Suceso::Cerrar);
                     }
                     // FALSE significa que el mensaje no generó WM_CHAR; no es un error.
-                    let _traducido=TranslateMessage(&raw const mensaje);
+                    let _traducido = TranslateMessage(&raw const mensaje);
                     DispatchMessageW(&raw const mensaje);
                 }
                 if transiciones_pintadas {

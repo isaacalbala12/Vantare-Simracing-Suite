@@ -9,7 +9,7 @@ mod texto;
 mod tiempo;
 mod ventana;
 
-use crate::escena::capas::*;
+use crate::escena::capas::{CapaId, Curva, Dibujo, Instante, Lote, Operacion, Propiedad, Rect};
 use std::{
     collections::{BTreeMap, HashMap},
     path::Path,
@@ -18,15 +18,29 @@ use std::{
 pub use texto::Texto;
 use windows::{
     Win32::{
-        Foundation::*,
+        Foundation::{HMODULE, HWND, POINT, RECT},
         Graphics::{
-            Direct2D::{Common::*, *},
+            Direct2D::{
+                Common::D2D1_COLOR_F, D2D1_LAYER_PARAMETERS1, D2D1CreateDevice, ID2D1Device,
+                ID2D1DeviceContext,
+            },
             Direct3D::D3D_DRIVER_TYPE_HARDWARE,
-            Direct3D11::*,
-            DirectComposition::*,
-            Dxgi::{Common::*, IDXGIDevice},
+            Direct3D11::{D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION, D3D11CreateDevice},
+            DirectComposition::{
+                DCOMPOSITION_OPACITY_MODE_LAYER, DCompositionCreateDevice3,
+                IDCompositionDesktopDevice, IDCompositionRotateTransform,
+                IDCompositionScaleTransform, IDCompositionTarget, IDCompositionVisual,
+                IDCompositionVisual2, IDCompositionVisual3,
+            },
+            Dxgi::{
+                Common::{DXGI_ALPHA_MODE_PREMULTIPLIED, DXGI_FORMAT_B8G8R8A8_UNORM},
+                IDXGIDevice,
+            },
         },
-        System::{Com::*, Performance::QueryPerformanceCounter},
+        System::{
+            Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize},
+            Performance::QueryPerformanceCounter,
+        },
     },
     core::Interface,
 };
@@ -225,9 +239,23 @@ impl Plataforma {
     /// el llamador debe reconstruirla, sin presentar una escena parcialmente aplicada.
     pub fn aplicar(&mut self, lote: &Lote) -> Resultado<()> {
         let comienzo = Instant::now();
-        let instante = self.proximo_fotograma()?;
         for op in &lote.operaciones {
-            self.operacion(op, instante)?;
+            self.operacion(op)?;
+        }
+        // El pintado puede tardar más de un fotograma. Rebasar tras prepararlo,
+        // inmediatamente antes del Commit, incluidas las curvas que ya estaban vivas.
+        let instante = self.proximo_fotograma()?;
+        let animaciones: Vec<_> = self
+            .capas
+            .iter()
+            .flat_map(|(id, capa)| {
+                capa.curvas
+                    .iter()
+                    .map(move |(p, curva)| (*id, *p, curva.clone()))
+            })
+            .collect();
+        for (id, p, curva) in animaciones {
+            self.animar(id, p, &curva, instante)?;
         }
         unsafe {
             self.dispositivo.Commit()?;
@@ -243,90 +271,94 @@ impl Plataforma {
         self.capas.get(&id).ok_or(Error::Capa(id))
     }
 
-    fn operacion(&mut self, op: &Operacion, instante: Instante) -> Resultado<()> {
+    fn crear(&mut self, id: CapaId, padre: Option<CapaId>, orden: u32) -> Resultado<()> {
+        unsafe {
+            if self.capas.contains_key(&id) {
+                return Err(Error::Entrada("Capa duplicada"));
+            }
+            if let Some(padre) = padre {
+                self.capa(padre)?;
+            }
+            let posicion = self.dispositivo.CreateVisual()?;
+            let visual: IDCompositionVisual3 = self.dispositivo.CreateVisual()?.cast()?;
+            let contenido = self.dispositivo.CreateVisual()?;
+            visual.AddVisual(&contenido, false, None)?;
+            let escala = self.dispositivo.CreateScaleTransform()?;
+            escala.SetScaleX2(1.0)?;
+            escala.SetScaleY2(1.0)?;
+            let giro = self.dispositivo.CreateRotateTransform()?;
+            visual.SetOpacityMode(DCOMPOSITION_OPACITY_MODE_LAYER)?;
+            visual.cast::<IDCompositionVisual>()?.SetTransform(
+                &self
+                    .dispositivo
+                    .CreateTransformGroup(&[Some(escala.cast()?), Some(giro.cast()?)])?,
+            )?;
+            posicion.AddVisual(&visual, false, None)?;
+            if padre.is_none() && self.modo == Modo::PorOverlay {
+                self.salida(
+                    Some(id),
+                    RECT {
+                        left: self.region.left,
+                        top: self.region.top,
+                        right: self.region.left + 1,
+                        bottom: self.region.top + 1,
+                    },
+                )?;
+            }
+            let contenedor: IDCompositionVisual = if let Some(padre) = padre {
+                self.capa(padre)?.visual.cast()?
+            } else {
+                self.salidas
+                    .get(&if self.modo == Modo::Monitor {
+                        None
+                    } else {
+                        Some(id)
+                    })
+                    .ok_or(Error::Entrada("Salida no creada"))?
+                    .raiz
+                    .cast()?
+            };
+            let anterior = self
+                .capas
+                .values()
+                .filter(|c| {
+                    c.padre == padre
+                        && c.orden <= orden
+                        && (padre.is_some() || self.modo == Modo::Monitor)
+                })
+                .max_by_key(|c| c.orden);
+            let referencia = anterior
+                .map(|c| c.posicion.cast::<IDCompositionVisual>())
+                .transpose()?;
+            contenedor.AddVisual(&posicion, true, referencia.as_ref())?;
+            self.capas.insert(
+                id,
+                Capa {
+                    padre,
+                    orden,
+                    rect: Rect {
+                        x: 0.0,
+                        y: 0.0,
+                        ancho: 1.0,
+                        alto: 1.0,
+                    },
+                    dibujos: Vec::new(),
+                    posicion,
+                    visual,
+                    contenido,
+                    escala,
+                    giro,
+                    valores: HashMap::new(),
+                    curvas: HashMap::new(),
+                },
+            );
+        }
+        Ok(())
+    }
+    fn operacion(&mut self, op: &Operacion) -> Resultado<()> {
         unsafe {
             match op {
-                Operacion::Crear { id, padre, orden } => {
-                    if self.capas.contains_key(id) {
-                        return Err(Error::Entrada("Capa duplicada"));
-                    }
-                    if let Some(padre) = padre {
-                        self.capa(*padre)?;
-                    }
-                    let posicion = self.dispositivo.CreateVisual()?;
-                    let visual: IDCompositionVisual3 = self.dispositivo.CreateVisual()?.cast()?;
-                    let contenido = self.dispositivo.CreateVisual()?;
-                    visual.AddVisual(&contenido, false, None)?;
-                    let escala = self.dispositivo.CreateScaleTransform()?;
-                    escala.SetScaleX2(1.0)?;
-                    escala.SetScaleY2(1.0)?;
-                    let giro = self.dispositivo.CreateRotateTransform()?;
-                    visual.SetOpacityMode(DCOMPOSITION_OPACITY_MODE_LAYER)?;
-                    visual.cast::<IDCompositionVisual>()?.SetTransform(
-                        &self
-                            .dispositivo
-                            .CreateTransformGroup(&[Some(escala.cast()?), Some(giro.cast()?)])?,
-                    )?;
-                    posicion.AddVisual(&visual, false, None)?;
-                    if padre.is_none() && self.modo == Modo::PorOverlay {
-                        self.salida(
-                            Some(*id),
-                            RECT {
-                                left: self.region.left,
-                                top: self.region.top,
-                                right: self.region.left + 1,
-                                bottom: self.region.top + 1,
-                            },
-                        )?;
-                    }
-                    let contenedor: IDCompositionVisual = if let Some(padre) = padre {
-                        self.capa(*padre)?.visual.cast()?
-                    } else {
-                        self.salidas
-                            .get(&if self.modo == Modo::Monitor {
-                                None
-                            } else {
-                                Some(*id)
-                            })
-                            .ok_or(Error::Entrada("Salida no creada"))?
-                            .raiz
-                            .cast()?
-                    };
-                    let anterior = self
-                        .capas
-                        .values()
-                        .filter(|c| {
-                            c.padre == *padre
-                                && c.orden <= *orden
-                                && (padre.is_some() || self.modo == Modo::Monitor)
-                        })
-                        .max_by_key(|c| c.orden);
-                    let referencia = anterior
-                        .map(|c| c.posicion.cast::<IDCompositionVisual>())
-                        .transpose()?;
-                    contenedor.AddVisual(&posicion, true, referencia.as_ref())?;
-                    self.capas.insert(
-                        *id,
-                        Capa {
-                            padre: *padre,
-                            orden: *orden,
-                            rect: Rect {
-                                x: 0.0,
-                                y: 0.0,
-                                ancho: 1.0,
-                                alto: 1.0,
-                            },
-                            dibujos: Vec::new(),
-                            posicion,
-                            visual,
-                            contenido,
-                            escala,
-                            giro,
-                            valores: HashMap::new(),
-                            curvas: HashMap::new(),
-                        },
-                    );
-                }
+                Operacion::Crear { id, padre, orden } => self.crear(*id, *padre, *orden)?,
                 Operacion::Colocar { id, rect } => {
                     if ![rect.x, rect.y, rect.ancho, rect.alto]
                         .iter()
@@ -387,7 +419,13 @@ impl Plataforma {
                     id,
                     propiedad,
                     curva,
-                } => self.animar(*id, *propiedad, curva, instante)?,
+                } => {
+                    self.capas
+                        .get_mut(id)
+                        .ok_or(Error::Capa(*id))?
+                        .curvas
+                        .insert(*propiedad, curva.clone());
+                }
                 Operacion::Quitar { id } => self.quitar(*id)?,
             }
         }
@@ -449,6 +487,12 @@ impl Plataforma {
             let fin = superficie.EndDraw();
             dibujo?;
             fin?;
+            // DComp interpreta la superficie en píxeles. La raíz ya convierte DIP
+            // a píxeles: compensar aquí evita escalar dos veces el contenido D2D.
+            let escala_contenido = self.dispositivo.CreateScaleTransform()?;
+            escala_contenido.SetScaleX2(96.0 / dpi)?;
+            escala_contenido.SetScaleY2(96.0 / dpi)?;
+            c.contenido.SetTransform(&escala_contenido)?;
             c.contenido.SetOffsetX2(-margen)?;
             c.contenido.SetOffsetY2(-margen)?;
             c.contenido.SetContent(&superficie)?;

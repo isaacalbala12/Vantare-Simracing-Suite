@@ -2,7 +2,21 @@ use super::{Error, Resultado, texto::Texto};
 use crate::escena::capas::{Color, Dibujo, Pintura, Rect};
 use windows::{
     Win32::Graphics::{
-        Direct2D::{Common::*, *},
+        Direct2D::{
+            CLSID_D2D1GaussianBlur,
+            Common::{
+                D2D_RECT_F, D2D_SIZE_F, D2D1_COLOR_F, D2D1_COMPOSITE_MODE_SOURCE_OVER,
+                D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_GRADIENT_STOP,
+            },
+            D2D1_ANTIALIAS_MODE_PER_PRIMITIVE, D2D1_ARC_SEGMENT, D2D1_ARC_SIZE_SMALL,
+            D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_DRAW_TEXT_OPTIONS_CLIP, D2D1_EXTEND_MODE_CLAMP,
+            D2D1_GAMMA_2_2, D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION,
+            D2D1_INTERPOLATION_MODE_LINEAR, D2D1_LAYER_PARAMETERS1,
+            D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES, D2D1_PROPERTY_TYPE_FLOAT,
+            D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES, D2D1_SWEEP_DIRECTION_CLOCKWISE,
+            D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE, ID2D1Brush, ID2D1DeviceContext, ID2D1PathGeometry,
+            ID2D1RenderTarget,
+        },
         DirectWrite::IDWriteTextLayout,
     },
     core::Interface,
@@ -35,14 +49,45 @@ fn geometria(ctx: &ID2D1DeviceContext, r: Rect, radios: [f32; 4]) -> Resultado<I
             p.Y = y;
             p
         };
-        let [superior_izquierda, superior_derecha, inferior_derecha, inferior_izquierda] = radios.map(|radio| radio.max(0.0).min(r.ancho / 2.0).min(r.alto / 2.0));
+        let radios = radios.map(|radio| radio.max(0.0));
+        let factor = [
+            (r.ancho, radios[0] + radios[1]),
+            (r.ancho, radios[3] + radios[2]),
+            (r.alto, radios[0] + radios[3]),
+            (r.alto, radios[1] + radios[2]),
+        ]
+        .into_iter()
+        .filter_map(|(lado, suma)| (suma > 0.0).then_some(lado / suma))
+        .fold(1.0_f32, f32::min);
+        let [
+            superior_izquierda,
+            superior_derecha,
+            inferior_derecha,
+            inferior_izquierda,
+        ] = radios.map(|radio| radio * factor);
         let (x, y, ancho, alto) = (r.x, r.y, r.ancho, r.alto);
         sink.BeginFigure(punto(x + superior_izquierda, y), D2D1_FIGURE_BEGIN_FILLED);
         for (linea, esquina, radio) in [
-            ((x + ancho - superior_derecha, y), (x + ancho, y + superior_derecha), superior_derecha),
-            ((x + ancho, y + alto - inferior_derecha), (x + ancho - inferior_derecha, y + alto), inferior_derecha),
-            ((x + inferior_izquierda, y + alto), (x, y + alto - inferior_izquierda), inferior_izquierda),
-            ((x, y + superior_izquierda), (x + superior_izquierda, y), superior_izquierda),
+            (
+                (x + ancho - superior_derecha, y),
+                (x + ancho, y + superior_derecha),
+                superior_derecha,
+            ),
+            (
+                (x + ancho, y + alto - inferior_derecha),
+                (x + ancho - inferior_derecha, y + alto),
+                inferior_derecha,
+            ),
+            (
+                (x + inferior_izquierda, y + alto),
+                (x, y + alto - inferior_izquierda),
+                inferior_izquierda,
+            ),
+            (
+                (x, y + superior_izquierda),
+                (x + superior_izquierda, y),
+                superior_izquierda,
+            ),
         ] {
             sink.AddLine(punto(linea.0, linea.1));
             if radio > 0.0 {
@@ -106,7 +151,8 @@ fn pincel(ctx: &ID2D1DeviceContext, pintura: &Pintura, r: Rect) -> Resultado<ID2
                 .CreateRadialGradientBrush(
                     &D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES {
                         center: punto(centro.0, centro.1),
-                        gradientOriginOffset: D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES::default().startPoint,
+                        gradientOriginOffset: D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES::default()
+                            .startPoint,
                         radiusX: radio.0 * r.ancho,
                         radiusY: radio.1 * r.alto,
                     },
@@ -197,42 +243,7 @@ pub(super) fn dibujar(
                         desenfoque,
                         desplazamiento,
                     } => {
-                        let grabador = ctx
-                            .GetDevice()?
-                            .CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)?;
-                        let comando = grabador.CreateCommandList()?;
-                        grabador.SetTarget(&comando);
-                        grabador.BeginDraw();
-                        let g = geometria(&grabador, *r, *radios)?;
-                        grabador.FillGeometry(
-                            &g,
-                            &grabador.CreateSolidColorBrush(&color(*c), None)?,
-                            None,
-                        );
-                        grabador.EndDraw(None, None)?;
-                        grabador.SetTarget(None);
-                        comando.Close()?;
-                        let sombra = ctx.CreateEffect(&CLSID_D2D1GaussianBlur)?;
-                        sombra.SetInput(0, &comando, true);
-                        sombra.SetValue(
-                            D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION
-                                .0
-                                .try_into()
-                                .map_err(|_| Error::Entrada("Índice del efecto"))?,
-                            D2D1_PROPERTY_TYPE_FLOAT,
-                            &desenfoque.to_ne_bytes(),
-                        )?;
-                        let mut origen =
-                            D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES::default().startPoint;
-                        origen.X = desplazamiento.0;
-                        origen.Y = desplazamiento.1;
-                        ctx.DrawImage(
-                            &sombra.GetOutput()?,
-                            Some(&raw const origen),
-                            None,
-                            D2D1_INTERPOLATION_MODE_LINEAR,
-                            D2D1_COMPOSITE_MODE_SOURCE_OVER,
-                        );
+                        dibujar_sombra(ctx, *r, *radios, *c, *desenfoque, *desplazamiento)?;
                     }
                 }
             }
@@ -248,4 +259,52 @@ pub(super) fn dibujar(
         }
     }
     resultado
+}
+
+fn dibujar_sombra(
+    ctx: &ID2D1DeviceContext,
+    r: Rect,
+    radios: [f32; 4],
+    sombra_color: Color,
+    desenfoque: f32,
+    desplazamiento: (f32, f32),
+) -> Resultado<()> {
+    unsafe {
+        let grabador = ctx
+            .GetDevice()?
+            .CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)?;
+        let comando = grabador.CreateCommandList()?;
+        grabador.SetTarget(&comando);
+        grabador.BeginDraw();
+        let g = geometria(&grabador, r, radios)?;
+        grabador.FillGeometry(
+            &g,
+            &grabador.CreateSolidColorBrush(&color(sombra_color), None)?,
+            None,
+        );
+        grabador.EndDraw(None, None)?;
+        grabador.SetTarget(None);
+        comando.Close()?;
+        let sombra = ctx.CreateEffect(&CLSID_D2D1GaussianBlur)?;
+        sombra.SetInput(0, &comando, true);
+        sombra.SetValue(
+            D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION
+                .0
+                .try_into()
+                .map_err(|_| Error::Entrada("Índice del efecto"))?,
+            D2D1_PROPERTY_TYPE_FLOAT,
+            &desenfoque.to_ne_bytes(),
+        )?;
+        let mut origen = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES::default().startPoint;
+        origen.X = desplazamiento.0;
+        origen.Y = desplazamiento.1;
+        ctx.DrawImage(
+            &sombra.GetOutput()?,
+            Some(&raw const origen),
+            None,
+            D2D1_INTERPOLATION_MODE_LINEAR,
+            D2D1_COMPOSITE_MODE_SOURCE_OVER,
+        );
+    }
+    Ok(())
 }

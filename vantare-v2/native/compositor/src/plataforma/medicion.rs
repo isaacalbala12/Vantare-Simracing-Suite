@@ -19,7 +19,7 @@ impl Distribucion {
         Self {
             muestras: n,
             mediana_ms: if n.is_multiple_of(2) {
-                f64::midpoint(valores[n / 2 - 1],valores[n / 2])
+                f64::midpoint(valores[n / 2 - 1], valores[n / 2])
             } else {
                 valores[n / 2]
             },

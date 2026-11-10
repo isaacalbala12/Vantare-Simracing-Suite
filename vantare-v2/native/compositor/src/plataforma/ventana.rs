@@ -4,7 +4,19 @@ use windows::{
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
         System::LibraryLoader::GetModuleHandleW,
-        UI::{HiDpi::*, WindowsAndMessaging::*},
+        UI::{
+            HiDpi::{
+                DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForWindow,
+                SetThreadDpiAwarenessContext,
+            },
+            WindowsAndMessaging::{
+                CreateWindowExW, DefWindowProcW, DestroyWindow, HWND_TOPMOST, LWA_ALPHA,
+                PostQuitMessage, RegisterClassW, SWP_NOACTIVATE, SWP_SHOWWINDOW,
+                SetLayeredWindowAttributes, SetWindowPos, WM_CLOSE, WM_MOUSEACTIVATE, WM_NCHITTEST,
+                WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP,
+                WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
+            },
+        },
     },
     core::w,
 };

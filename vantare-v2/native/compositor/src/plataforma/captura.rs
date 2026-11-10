@@ -1,14 +1,25 @@
 use super::{Error, Plataforma, Resultado, pintar, tiempo, ventana::ancho};
-use crate::escena::capas::*;
+use crate::escena::capas::{CapaId, Instante, Propiedad};
 use std::path::Path;
 use windows::Win32::{
     Foundation::GENERIC_WRITE,
     Graphics::{
-        Direct2D::{Common::*, *},
-        Dxgi::Common::*,
-        Imaging::*,
+        Direct2D::{
+            Common::{
+                D2D_RECT_F, D2D_SIZE_U, D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F,
+                D2D1_PIXEL_FORMAT,
+            },
+            D2D1_BITMAP_OPTIONS_CANNOT_DRAW, D2D1_BITMAP_OPTIONS_CPU_READ,
+            D2D1_BITMAP_OPTIONS_TARGET, D2D1_BITMAP_PROPERTIES1, D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+            D2D1_LAYER_PARAMETERS1, D2D1_MAP_OPTIONS_READ, ID2D1DeviceContext,
+        },
+        Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM,
+        Imaging::{
+            CLSID_WICImagingFactory, GUID_ContainerFormatPng, GUID_WICPixelFormat32bppRGBA,
+            IWICImagingFactory, WICBitmapEncoderNoCache,
+        },
     },
-    System::Com::*,
+    System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance},
 };
 use windows::core::PCWSTR;
 
@@ -139,8 +150,12 @@ impl Plataforma {
             let coseno_escalado = escala * coseno;
             let seno_escalado = escala * seno;
             let centro = (c.rect.ancho / 2.0, c.rect.alto / 2.0);
-            let traslacion_x = c.rect.x + valor(Propiedad::X, 0.0)? + centro.0 - coseno_escalado * centro.0 + seno_escalado * centro.1;
-            let traslacion_y = c.rect.y + valor(Propiedad::Y, 0.0)? + centro.1 - seno_escalado * centro.0 - coseno_escalado * centro.1;
+            let traslacion_x = c.rect.x + valor(Propiedad::X, 0.0)? + centro.0
+                - coseno_escalado * centro.0
+                + seno_escalado * centro.1;
+            let traslacion_y = c.rect.y + valor(Propiedad::Y, 0.0)? + centro.1
+                - seno_escalado * centro.0
+                - coseno_escalado * centro.1;
             let local = [
                 coseno_escalado * matriz[0] + seno_escalado * matriz[2],
                 coseno_escalado * matriz[1] + seno_escalado * matriz[3],

@@ -191,7 +191,8 @@ fn append_testing_id_constants(text: &mut String) {
             serde_json::json!(crate::testing::UUID_GROUPS),
         ),
     ] {
-        writeln!(text, "export const {name} = {value} as const;").expect("String write");
+        writeln!(text, "export const {name} = {} as const;", canonical(value))
+            .expect("String write");
     }
 }
 pub(crate) fn settings_sample() -> SettingsView {

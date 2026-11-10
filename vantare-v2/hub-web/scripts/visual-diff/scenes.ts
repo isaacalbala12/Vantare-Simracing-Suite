@@ -1,6 +1,7 @@
 import type { Page } from "playwright-core";
 import { roadmapScenes } from "./roadmap.ts";
 import { upcomingScenes } from "./upcoming.ts";
+import { testingScenes } from "./testing-scenes.ts";
 
 export interface VisualScene {
   mock: string;
@@ -19,6 +20,7 @@ const settingsTabs: Record<string, string> = {
 export const visualScenes: Record<string, VisualScene> = {
   ...upcomingScenes,
   ...roadmapScenes,
+  ...testingScenes,
   ...Object.fromEntries(
     Object.entries(settingsTabs).map(([scene, tab]) => [
       scene,

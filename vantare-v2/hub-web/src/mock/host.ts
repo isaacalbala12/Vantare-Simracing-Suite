@@ -17,6 +17,7 @@ import {
   type SettingsView,
 } from "../contract/generated/contract";
 import { isUiMessage } from "../contract/validation";
+import { createTestingMock } from "./testing";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   return name === "componentes-incompatibles"
@@ -51,7 +52,7 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|testing-reference)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;
@@ -60,22 +61,6 @@ export function createMockHost(sceneName = "ajustes-base") {
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../contract/generated/contract").PilotView;
-  let draft: import("../contract/generated/contract").ReportDraftView = {
-    fields: {
-      module: "unknown",
-      actionText: "",
-      expectedText: "",
-      observedText: "",
-      contextText: "",
-    },
-    exists: false,
-    legacy: "none",
-    screenshots: [],
-  };
-  const testing: import("../contract/generated/contract").TestingView = {
-    reports: [],
-    questionnaires: [],
-  };
   if (sceneName.startsWith("testing-")) {
     core.access = {
       ...core.access,
@@ -83,8 +68,10 @@ export function createMockHost(sceneName = "ajustes-base") {
       blocked: false,
       tester: sceneName.startsWith("testing-tester"),
     };
-    core.services = "connected";
+    core.services =
+      sceneName === "testing-reference" ? "unavailable" : "connected";
   }
+  const testingHost = createTestingMock(sceneName, core);
   let pilotConflicted = false;
   if (sceneName.startsWith("cuenta-") && sceneName !== "cuenta-desconectada")
     core.services = "connected";
@@ -182,71 +169,16 @@ export function createMockHost(sceneName = "ajustes-base") {
       case "testing.contribute":
       case "testing.credit":
       case "testing.noticeRead":
-        return { kind: "failure", id, error: { kind: "unsupported" } };
-      case "report.capture":
-      case "report.removeScreenshot":
-        return { kind: "failure", id, error: { kind: "unsupported" } };
-      case "report.prepare":
-      case "report.retryPrepare":
-        return {
-          kind: "response",
-          id,
-          result: {
-            method: request.method,
-            value: {
-              id: "a".repeat(64),
-              digest: "b".repeat(64),
-              fields: structuredClone(draft.fields),
-              appVersion: "QA",
-              osVersion: "Windows",
-              channel: "nightly",
-              retry: request.method === "report.retryPrepare",
-              screenshots: [],
-            },
-          },
-        };
-      case "report.send":
-        return { kind: "failure", id, error: { kind: "unsupported" } };
       case "testing.refresh":
       case "draft.load":
       case "draft.save":
-      case "draft.discard": {
-        if (!core.access.verified || core.access.blocked)
-          return { kind: "failure", id, error: { kind: "denied" } };
-        if (core.services !== "connected" || sceneName === "testing-offline")
-          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
-        if (request.method === "testing.refresh")
-          return {
-            kind: "response",
-            id,
-            result: { method: request.method, value: structuredClone(testing) },
-          };
-        if (request.method === "draft.save")
-          draft = {
-            fields: structuredClone(request.fields),
-            exists: true,
-            legacy: "none",
-            screenshots: [],
-          };
-        if (request.method === "draft.discard")
-          draft = {
-            fields: {
-              module: "unknown",
-              actionText: "",
-              expectedText: "",
-              observedText: "",
-              contextText: "",
-            },
-            exists: false,
-            legacy: "none",
-            screenshots: [],
-          };
-        return {
-          kind: "response",
-          id,
-          result: { method: request.method, value: structuredClone(draft) },
-        };
-      }
+      case "draft.discard":
+      case "report.capture":
+      case "report.removeScreenshot":
+      case "report.prepare":
+      case "report.retryPrepare":
+      case "report.send":
+        return testingHost(id, request);
       case "roadmap.cached":
       case "roadmap.refresh": {
         if (sceneName === "roadmap-base") return null;

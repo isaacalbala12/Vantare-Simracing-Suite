@@ -1,0 +1,27 @@
+import { testingText as text } from "../../i18n/es";
+import { TestingRailSection } from "../../ui/TestingLayout";
+import { useReports } from "./ReportsState";
+
+export function TestingRail() {
+  const { participation } = useReports();
+  const count = participation.reports.length;
+  const accepted = participation.reports.filter(
+    (report) => report.state === "accepted",
+  ).length;
+  const fixed = participation.reports.filter(
+    (report) => report.state === "fixed",
+  ).length;
+  return (
+    <>
+      <TestingRailSection title={text.yourReports}>
+        <p>{`${count} ${text.loadedReports} · ${accepted} ${text.acceptedReports} · ${fixed} ${text.fixedReports} · ${text.channelUnavailable}`}</p>
+      </TestingRailSection>
+      <TestingRailSection title={text.conversation}>
+        <p>{text.conversationHelp}</p>
+      </TestingRailSection>
+      <TestingRailSection title={text.goodReport}>
+        <p>{text.goodReportHelp}</p>
+      </TestingRailSection>
+    </>
+  );
+}

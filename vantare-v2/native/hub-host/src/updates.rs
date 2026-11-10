@@ -4,12 +4,12 @@ use std::{
     io::Read as _,
     path::{Path, PathBuf},
 };
-#[cfg(any(test, feature="bindings"))]
+#[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_installer::engine::{Installation, Manifest};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature="bindings"), derive(TS))]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]
 pub enum InstallationState {
     Development,
@@ -18,7 +18,7 @@ pub enum InstallationState {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature="bindings"), derive(TS))]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(deny_unknown_fields)]
 pub struct BetaStatus {
     pub schema: u32,
@@ -40,7 +40,7 @@ impl BetaStatus {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature="bindings"), derive(TS))]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseNote {
     pub schema_version: u32,
@@ -52,7 +52,7 @@ pub struct ReleaseNote {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature="bindings"), derive(TS))]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct UpdatesView {
     pub installation: InstallationState,
@@ -281,7 +281,10 @@ mod tests {
     }
     #[test]
     fn restart_requires_the_active_generation_and_matching_installer_root() {
-        let base = std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(|| std::env::temp_dir().join("vantare-updates"),PathBuf::from);
+        let base = std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(
+            || std::env::temp_dir().join("vantare-updates"),
+            PathBuf::from,
+        );
         let unique = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")

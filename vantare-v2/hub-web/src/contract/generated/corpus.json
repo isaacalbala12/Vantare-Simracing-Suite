@@ -10,7 +10,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 2,
+      "version": 3,
       "window": {
         "height": 900,
         "minimized": false,
@@ -38,6 +38,46 @@
           "services": "connected"
         }
       }
+    },
+    {
+      "event": {
+        "topic": "updates",
+        "value": {
+          "beta": {
+            "message": "Versión preparada QA",
+            "notes": "Mejoras de la interfaz QA",
+            "rejectedVersion": null,
+            "schema": 1,
+            "state": "ready",
+            "version": "0.0.989"
+          },
+          "channel": "testers",
+          "installation": "installed",
+          "news": [
+            {
+              "channel": "testers",
+              "kind": "Mejora",
+              "schemaVersion": 1,
+              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+              "tag": "v0.1.0.7-testers.2",
+              "title": "Más datos de carrera"
+            },
+            {
+              "channel": "testers",
+              "kind": "Nuevo",
+              "schemaVersion": 1,
+              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+              "tag": "v0.1.0.7-testers.1",
+              "title": "Primeras pruebas para testers"
+            }
+          ],
+          "previous": false,
+          "registrationWarning": "Registro de Windows pendiente de reparación QA",
+          "restartAvailable": true,
+          "version": "0.0.988"
+        }
+      },
+      "kind": "event"
     },
     {
       "event": {
@@ -79,6 +119,46 @@
           "services": "incompatible"
         }
       }
+    },
+    {
+      "event": {
+        "topic": "updates",
+        "value": {
+          "beta": {
+            "message": "Versión preparada QA",
+            "notes": "Mejoras de la interfaz QA",
+            "rejectedVersion": null,
+            "schema": 1,
+            "state": "ready",
+            "version": "0.0.989"
+          },
+          "channel": "testers",
+          "installation": "installed",
+          "news": [
+            {
+              "channel": "testers",
+              "kind": "Mejora",
+              "schemaVersion": 1,
+              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+              "tag": "v0.1.0.7-testers.2",
+              "title": "Más datos de carrera"
+            },
+            {
+              "channel": "testers",
+              "kind": "Nuevo",
+              "schemaVersion": 1,
+              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+              "tag": "v0.1.0.7-testers.1",
+              "title": "Primeras pruebas para testers"
+            }
+          ],
+          "previous": false,
+          "registrationWarning": "Registro de Windows pendiente de reparación QA",
+          "restartAvailable": true,
+          "version": "0.0.988"
+        }
+      },
+      "kind": "event"
     },
     {
       "event": {
@@ -120,6 +200,46 @@
           "services": "unavailable"
         }
       }
+    },
+    {
+      "event": {
+        "topic": "updates",
+        "value": {
+          "beta": {
+            "message": "Versión preparada QA",
+            "notes": "Mejoras de la interfaz QA",
+            "rejectedVersion": null,
+            "schema": 1,
+            "state": "ready",
+            "version": "0.0.989"
+          },
+          "channel": "testers",
+          "installation": "installed",
+          "news": [
+            {
+              "channel": "testers",
+              "kind": "Mejora",
+              "schemaVersion": 1,
+              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+              "tag": "v0.1.0.7-testers.2",
+              "title": "Más datos de carrera"
+            },
+            {
+              "channel": "testers",
+              "kind": "Nuevo",
+              "schemaVersion": 1,
+              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+              "tag": "v0.1.0.7-testers.1",
+              "title": "Primeras pruebas para testers"
+            }
+          ],
+          "previous": false,
+          "registrationWarning": "Registro de Windows pendiente de reparación QA",
+          "restartAvailable": true,
+          "version": "0.0.988"
+        }
+      },
+      "kind": "event"
     },
     {
       "event": {
@@ -341,6 +461,55 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "updates.get",
+        "value": {
+          "beta": {
+            "message": "Versión preparada QA",
+            "notes": "Mejoras de la interfaz QA",
+            "rejectedVersion": null,
+            "schema": 1,
+            "state": "ready",
+            "version": "0.0.989"
+          },
+          "channel": "testers",
+          "installation": "installed",
+          "news": [
+            {
+              "channel": "testers",
+              "kind": "Mejora",
+              "schemaVersion": 1,
+              "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+              "tag": "v0.1.0.7-testers.2",
+              "title": "Más datos de carrera"
+            },
+            {
+              "channel": "testers",
+              "kind": "Nuevo",
+              "schemaVersion": 1,
+              "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+              "tag": "v0.1.0.7-testers.1",
+              "title": "Primeras pruebas para testers"
+            }
+          ],
+          "previous": false,
+          "registrationWarning": "Registro de Windows pendiente de reparación QA",
+          "restartAvailable": true,
+          "version": "0.0.988"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "updates.restart"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "accepted": true,
         "method": "notifications.test"
       }
@@ -383,8 +552,8 @@
     },
     {
       "error": {
-        "expected": 2,
-        "found": 3,
+        "expected": 3,
+        "found": 4,
         "kind": "incompatible"
       },
       "id": 1,
@@ -456,6 +625,10 @@
     },
     {
       "kind": "closeRequested",
+      "reason": "restart"
+    },
+    {
+      "kind": "closeRequested",
       "reason": "window"
     },
     {
@@ -470,7 +643,7 @@
   "ui": [
     {
       "kind": "hello",
-      "version": 2
+      "version": 3
     },
     {
       "kind": "subscribe",
@@ -487,6 +660,14 @@
     {
       "kind": "unsubscribe",
       "topic": "simStatus"
+    },
+    {
+      "kind": "subscribe",
+      "topic": "updates"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "updates"
     },
     {
       "kind": "ready"
@@ -511,6 +692,20 @@
       "kind": "request",
       "request": {
         "method": "shortcuts.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "updates.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "updates.restart"
       }
     },
     {

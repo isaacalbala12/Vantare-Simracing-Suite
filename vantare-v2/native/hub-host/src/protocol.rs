@@ -75,6 +75,7 @@ pub struct CoreStatus {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(PartialOrd, Ord)]
 pub enum Topic {
     Updates,
     Core,
@@ -88,9 +89,9 @@ pub enum Request {
     CoreGet {},
     #[serde(rename = "shortcuts.get")]
     ShortcutsGet {},
-    #[serde(rename="updates.get")]
+    #[serde(rename = "updates.get")]
     UpdatesGet {},
-    #[serde(rename="updates.restart")]
+    #[serde(rename = "updates.restart")]
     UpdatesRestart {},
     #[serde(rename = "window.close")]
     WindowClose {},
@@ -115,9 +116,9 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
-    #[serde(rename="updates.get")]
+    #[serde(rename = "updates.get")]
     UpdatesGet { value: crate::updates::UpdatesView },
-    #[serde(rename="updates.restart")]
+    #[serde(rename = "updates.restart")]
     UpdatesRestart { accepted: bool },
     #[serde(rename = "core.get")]
     Core { value: CoreStatus },
@@ -164,9 +165,15 @@ pub enum CloseReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
-    Updates { value: crate::updates::UpdatesView },
-    Core { value: CoreStatus },
-    SimStatus { live: bool },
+    Updates {
+        value: Box<crate::updates::UpdatesView>,
+    },
+    Core {
+        value: CoreStatus,
+    },
+    SimStatus {
+        live: bool,
+    },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

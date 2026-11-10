@@ -1,3 +1,4 @@
+import { installationStates } from "./generated/contract";
 import { exact, oneOf, record } from "./validation-common";
 
 function text(value: unknown, limit: number): value is string {
@@ -20,7 +21,7 @@ export function isUpdates(value: unknown): boolean {
     return false;
   const beta = value.beta;
   return (
-    oneOf(value.installation, ["development", "installed", "invalid"]) &&
+    oneOf(value.installation, installationStates) &&
     text(value.version, 128) &&
     text(value.channel, 32) &&
     typeof value.previous === "boolean" &&

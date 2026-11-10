@@ -13,6 +13,8 @@ No usar sus cocientes de CPU como lÃ­nea base de rendimiento.
 
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:/VantareServer/targets/isa-1996-medicion'
+# Construir el núcleo una vez y conservar ese mismo exe/hash para las variantes UI.
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked -p vantare-runtime --bin vantare-core -j 2
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked -p vantare-ui --example overlay-replay --features paint-stats -j 2
 pwsh -NoProfile -File native/scripts/measure-overlays.ps1 -UI "$env:CARGO_TARGET_DIR/debug/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/debug/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Widgets 4 -Phases -Out D:/VantareServer/evidence/isa-1996/mi-pasada
 python native/scripts/summarize-overlays.py D:/VantareServer/evidence/isa-1996/mi-pasada

@@ -9,6 +9,7 @@ public static class VisualWindow {
  public delegate bool Callback(IntPtr h,IntPtr p);
  [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback,IntPtr p);
  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,out uint pid);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetWindowTextW(IntPtr h,System.Text.StringBuilder text,int max);
  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
  [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h,out Rect rect);
  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h,out Rect rect);
@@ -17,7 +18,7 @@ public static class VisualWindow {
  public static IntPtr Find(int process,bool requireVisible) {
   SetThreadDpiAwarenessContext(new IntPtr(-4));
   IntPtr found=IntPtr.Zero;string details="";
-  EnumWindows((h,p)=>{uint pid;GetWindowThreadProcessId(h,out pid);Rect r;if(pid==process&&GetClientRect(h,out r)){details+=" "+h+":"+IsWindowVisible(h)+":"+r.r+"x"+r.b;if((!requireVisible||IsWindowVisible(h))&&r.r>200&&r.b>100){found=h;return false;}}return true;},IntPtr.Zero);
+  EnumWindows((h,p)=>{uint pid;GetWindowThreadProcessId(h,out pid);Rect r;if(pid==process&&GetClientRect(h,out r)){var text=new System.Text.StringBuilder(256);GetWindowTextW(h,text,text.Capacity);details+=" "+h+":"+IsWindowVisible(h)+":"+r.r+"x"+r.b+":"+text;if(text.ToString()=="Vantare · Hub"&&(!requireVisible||IsWindowVisible(h))&&r.r>200&&r.b>100){found=h;return false;}}return true;},IntPtr.Zero);
   if(found==IntPtr.Zero)throw new InvalidOperationException("QA window unavailable for "+process+details);
   return found;
  }

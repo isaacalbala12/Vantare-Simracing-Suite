@@ -7,6 +7,9 @@ import math
 import pathlib
 import sys
 
+if sys.version_info < (3,11):
+    raise SystemExit('Python 3.11 or newer is required')
+
 
 def number(v):
     return float(str(v).replace(',', '.'))
@@ -35,6 +38,30 @@ def gpu_frames(events):
                 median_ms=percentile(values,50),p99_ms=percentile(values,99),
                 frame_times_ms=values,
                 scope='D3D11 timestamp difference around render commands; excludes Present, DWM composition and physical display latency')
+
+
+def validate_cadence(metadata, notifications, presents, seconds):
+    rate=presents/seconds
+    if metadata.get('render_load') and (not notifications or rate<metadata.get('min_stress_presents_per_second',30)):
+        raise ValueError('render_load requested but continuous stress invalidation/presents threshold missing')
+    if metadata.get('quiet_control') and rate>metadata.get('max_quiet_presents_per_second',0.1):
+        raise ValueError('quiet widget exceeded its presents/s limit')
+    return rate
+
+
+def frequency_summary(rows):
+    counters=collections.defaultdict(list)
+    invalid=collections.Counter()
+    for row in rows:
+        name=row['path'].split('\\')[-1]
+        value=number(row['value'])
+        if int(row['status']) not in (0,1) or not math.isfinite(value):
+            invalid[name]+=1
+        else:
+            counters[name].append(value)
+    return {name:dict(samples=len(values),invalid=invalid[name],median=percentile(values,50),
+                     minimum=min(values) if values else None,maximum=max(values) if values else None)
+            for name in counters.keys()|invalid.keys() for values in [counters[name]]}
 
 
 def recording_window(events, start, end, offset_seconds=0):
@@ -112,7 +139,7 @@ def summarize(root):
     if not (root/'complete.txt').exists():
         raise ValueError('incomplete run')
     metadata=json.loads((root/'metadata.json').read_text(encoding='utf-8-sig'))
-    if metadata.get('measurement_version')!=2 or metadata.get('profile')!='release':
+    if metadata.get('measurement_version') not in (2,3) or metadata.get('profile')!='release':
         raise ValueError('solo dev: not a Release v2 baseline')
     frequency,events=read_trace(root/'stderr.log')
     core_frequency,core_events=read_trace(root/'core.stderr.log')
@@ -134,7 +161,7 @@ def summarize(root):
         raise ValueError('receiver started after stable recording window')
     stable=[e for e in events if start<=e['clock']<=end]
     load=[number(r['load_percent']) for r in read_csv(root/'system.csv') if start<=int(r['qpc'])<=end]
-    if not load or max(load)>metadata['maximum_total_system_load_percent']:
+    if not load or not all(map(math.isfinite,load)) or max(load)>metadata['maximum_total_system_load_percent']:
         raise ValueError('missing or excessive stable system load: discard run')
     received={(e['epoch'],e['sequence']):e['clock'] for e in stable if e['kind']=='received'}
     if not received:
@@ -157,6 +184,10 @@ def summarize(root):
     gpu={}
     for name in ('ui','dwm'):
         selected=[r for r in gpu_rows if r['process']==name]
+        if metadata.get('sampler_mode')=='light':
+            gpu[name]=dict(status='not collected in paired lightweight control',mean_busiest_engine_percent=None,
+                           mean_engine_sum_percent=None,peak_dedicated_mib=None)
+            continue
         if not selected:
             raise ValueError('missing GPU samples for '+name)
         gpu[name]=dict(mean_busiest_engine_percent=sum(number(r['busiest_engine_percent']) for r in selected)/len(selected),mean_engine_sum_percent=sum(number(r['engine_sum_percent']) for r in selected)/len(selected),peak_dedicated_mib=max(number(r['dedicated_bytes']) for r in selected)/2**20)
@@ -164,10 +195,8 @@ def summarize(root):
     frame_gpu=gpu_frames([e for e in stable if e['end']<=end])
     frame_gpu['coverage']=frame_gpu['samples']/len(presents) if presents else None
     load_notifications=sum(e['kind']=='load_notify' for e in stable)
-    if metadata.get('render_load') and (not load_notifications or not presents):
-        raise ValueError('render load requested but continuous invalidation/presentation missing')
-    if metadata.get('gpu_frame_timing') and (frame_gpu['disjoint'] or (presents and not frame_gpu['samples'])):
-        raise ValueError('invalid or missing GPU frame timestamps: discard run')
+    presents_per_second=validate_cadence(metadata,load_notifications,len(presents),(end-start)/frequency)
+    frame_gpu['status']='not_enabled' if not metadata.get('gpu_frame_timing') else 'measured' if frame_gpu['samples'] else 'no_valid_samples_cpu_retained'
     if any(stage['cycle_errors'] for stage in stages.values()):
         raise ValueError('thread cycle query failed in stable phase: discard run')
     if metadata.get('phases') and not stages:
@@ -183,16 +212,22 @@ def summarize(root):
     sampler_rows=[r for r in read_csv(sampler_path) if start<=int(r['qpc'])<=end] if sampler_path.exists() else []
     sampler=dict(status='measured direct collector process only' if sampler_rows else 'not recorded',
                  cpu_cycles=sum(int(r['cpu_cycles']) for r in sampler_rows) if sampler_rows else None,
+                 cycles_per_second=sum(int(r['cpu_cycles']) for r in sampler_rows)/((end-start)/frequency) if sampler_rows else None,
+                 iteration_median_ms=percentile([int(r['elapsed_qpc'])*1000/frequency for r in sampler_rows],50),
                  iterations=len(sampler_rows),
                  scope='Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded')
+    frequency_path=root/'frequency.csv'
+    frequency_rows=[r for r in read_csv(frequency_path) if start<=int(r['qpc'])<=end] if frequency_path.exists() else []
     result=dict(metadata=metadata,analyzer_sha256=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
                 stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
                 native_text_layout=text_diagnostics,sampler=sampler,gpu_render=frame_gpu,
+                frequency_context=frequency_summary(frequency_rows),
                 render_load_notifications=load_notifications,
                 recording_last_position_seconds=max(positions),
                 stable_recording_position_seconds=[metadata['stable_start_seconds'],metadata['stable_end_seconds']],
                 stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),
-                present_calls=len(presents),presents_per_second=len(presents)/((end-start)/frequency),
+                present_calls=len(presents),presents_per_second=presents_per_second,
+                process_cycles_per_present_informative=processes['ui']['cpu_cycles']/len(presents) if presents else None,
                 present_window_ids=sorted(windows),present_intervals_ms=intervals,present_interval_p99_ms=percentile(intervals,99),
                 **{k.replace('_ms','_median_ms'):percentile(v,50) for k,v in latencies.items()},
                 **latencies,**{k.replace('_ms','_p99_ms'):percentile(v,99) for k,v in latencies.items()},

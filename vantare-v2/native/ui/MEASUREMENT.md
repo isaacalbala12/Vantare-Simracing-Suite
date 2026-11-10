@@ -1,4 +1,11 @@
-# Medición VANTA-139 — método Release v2 en preparación
+# Medición VANTA-139 — método Release v3 en preparación
+
+La definición vigente es [MEASUREMENT-AB.md](MEASUREMENT-AB.md): CPU principal
+a cadencia normal, A/A intercalado, ABBA/BAAB, intervalo t y registro limitado
+de intentos. Las siete pasadas parciales v2 no se mezclan con la referencia v3.
+La referencia final usa los ejecutables congelados de acc6619b1 y un colector
+uniforme; todavía está pendiente publicarla. Los detalles v2 siguientes
+describen la caracterización previa y se conservan para interpretar sus datos.
 
 La comparación entre motores requiere [A/A y ABBA](MEASUREMENT-AB.md) y el
 [gate físico VRR](VRR-GATE.md). Las pasadas Release de `5104c1bbf` son solo

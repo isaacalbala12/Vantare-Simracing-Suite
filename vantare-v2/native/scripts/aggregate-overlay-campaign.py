@@ -19,11 +19,11 @@ def aggregate(root):
         meta=run['metadata']
         if metadata is None:
             metadata={k:v for k,v in meta.items() if k not in ('widgets','phases','date')}
-        if meta['profile']!='release' or meta['measurement_version']!=2:
+        if meta['profile']!='release' or meta['measurement_version'] not in (2,3):
             raise ValueError('Release v2 required')
         if not meta.get('collector_sha'):
             raise ValueError('explicit collector_sha required')
-        identities.add((meta['executable_sha256'],meta['recording_sha256'],meta.get('core_sha256'),meta['profile'],meta['collector_sha']))
+        identities.add((meta['executable_sha256'],meta['recording_sha256'],meta.get('core_sha256'),meta['profile'],meta['collector_sha'],meta['measurement_version']))
         groups[(meta['widgets'],meta['phases'])].append(run)
         sources.append(dict(directory=path.parent.name,summary_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                             widgets=meta['widgets'],phases=meta['phases'],ui=run['ui'],dwm=run['dwm'],gpu=run['gpu'],

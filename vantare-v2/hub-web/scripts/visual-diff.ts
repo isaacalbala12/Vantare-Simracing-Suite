@@ -184,6 +184,19 @@ async function capture(
   });
   let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
   try {
+    await writeFile(
+      join(destination, "instance.json"),
+      JSON.stringify(
+        {
+          pid: child.pid,
+          dataDirectory: data,
+          userDataDirectory: join(data, "hub-ui"),
+          executable,
+        },
+        null,
+        2,
+      ),
+    );
     let endpoint = "";
     await until(
       () => {
@@ -202,7 +215,7 @@ async function capture(
     const page = context.pages()[0] ?? (await context.waitForEvent("page"));
     await page.getByRole("tab", { name: "General", exact: true }).waitFor();
     const session = await context.newCDPSession(page);
-    execFileSync(
+    const preparedWindow = execFileSync(
       "pwsh",
       [
         "-NoProfile",
@@ -216,6 +229,7 @@ async function capture(
       ],
       { windowsHide: true },
     );
+    await writeFile(join(destination, "window.json"), preparedWindow);
     await until(
       async () =>
         page.evaluate(() => innerWidth === 1440 && innerHeight === 900),

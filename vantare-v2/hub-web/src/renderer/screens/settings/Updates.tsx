@@ -5,6 +5,19 @@ import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Pill, SettingRow, Skeleton } from "../../ui/Data";
+
+function channelLabel(raw: string) {
+  const channel = releaseChannels.find(
+    (value) => value === (raw === "beta" ? "testers" : raw),
+  );
+  return channel
+    ? t(`updates.channel.${channel}`)
+    : t(
+        raw === "development"
+          ? "updates.channel.development"
+          : "updates.channel.unknown",
+      );
+}
 export function Updates() {
   const { client } = useHost();
   const cache = useQueryClient();
@@ -53,6 +66,10 @@ export function Updates() {
       </Callout>
     );
   const view = query.data;
+  // The embedded feed may repeat a note; full content identifies a visible entry.
+  const notes = [
+    ...new Map(view.news.map((note) => [JSON.stringify(note), note] as const)),
+  ];
   return (
     <>
       {view.installation === "invalid" && (
@@ -86,7 +103,7 @@ export function Updates() {
           <Pill>{view.version}</Pill>
         </SettingRow>
         <SettingRow label={t("updates.channel")}>
-          <Pill>{view.channel}</Pill>
+          <Pill>{channelLabel(view.channel)}</Pill>
         </SettingRow>
         {view.previous && <Callout title={t("updates.previous")} />}
       </Card>
@@ -141,13 +158,9 @@ export function Updates() {
         />
       </Card>
       <Card title={t("updates.notes")}>
-        {view.news.length ? (
-          view.news.map((note) => (
-            <SettingRow
-              key={note.tag + note.title}
-              label={note.title}
-              description={note.summary}
-            >
+        {notes.length ? (
+          notes.map(([key, note]) => (
+            <SettingRow key={key} label={note.title} description={note.summary}>
               <Pill>{note.kind}</Pill>
               <Pill>{note.tag}</Pill>
             </SettingRow>

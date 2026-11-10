@@ -256,6 +256,9 @@ fn peer_process() {
     } else {
         frame::write(&mut pipe,&serde_json::json!({"kind":"authenticate","token":if mode=="token"{"b".repeat(64)}else{token}})).expect("authenticate frame");
     }
+    if mode.starts_with("restart-") {
+        restart_peer(&mut pipe, &mode);
+    }
     if mode == "valid" {
         let mut reader = frame::Reader::default();
         let hello = loop {
@@ -327,5 +330,116 @@ fn owner_already_in_a_job_can_spawn_a_nested_ui_job() {
     owner.0.wait().expect("owner exit");
     for process in &processes {
         test_support::terminated(process);
+    }
+}
+
+fn restart_peer(pipe: &mut Pipe, mode: &str) {
+    let mut reader = frame::Reader::default();
+    let mut next = || loop {
+        if let Some(value) = reader.next::<HostToUi>(pipe).expect("restart frame") {
+            break value;
+        }
+    };
+    let accepted = mode != "restart-reject";
+    assert!(
+        matches!(next(), HostToUi::Response { id:7, result:Reply::UpdatesRestart { accepted: actual } } if actual==accepted)
+    );
+    if accepted {
+        assert!(matches!(
+            next(),
+            HostToUi::CloseRequested {
+                reason: CloseReason::Restart
+            }
+        ));
+        frame::write(
+            pipe,
+            &UiToHost::CloseAnswer {
+                allow: mode == "restart-allow",
+            },
+        )
+        .expect("close answer");
+    } else {
+        frame::write(pipe, &UiToHost::Ready {}).expect("response observed");
+    }
+}
+fn restart_session(root: &Path, photo: &str) -> Session {
+    Session {
+        updates: None,
+        subscriptions: std::collections::BTreeSet::new(),
+        last_updates: None,
+        exit_code: 0,
+        launcher: root.join("launcher.json"),
+        core: Core::start(photo, root).expect("unconnected core; cancelled by Drop"),
+        settings: Settings::load(&args(root)),
+        confirmation: None,
+        current: protocol::CoreStatus::default(),
+        last: None,
+        last_event: None,
+        closing: None,
+        handshaken: true,
+    }
+}
+fn restart_case((live, closing, ready): (bool, bool, bool), allow: bool) {
+    let root = Root::new();
+    let done = Signal::new().expect("peer stop");
+    let (name, stop, _listener, pipe) = endpoint();
+    let accepted = !live && !closing && ready;
+    let mode = if !accepted {
+        "restart-reject"
+    } else if allow {
+        "restart-allow"
+    } else {
+        "restart-deny"
+    };
+    let mut child = spawn_peer(mode, &name, &"a".repeat(64), &done);
+    let (mut pipe, mut reader) = accept_ui(
+        &args(&root.path),
+        &mut child,
+        &std::env::current_exe().expect("image"),
+        pipe,
+        &stop,
+        &"a".repeat(64),
+        || false,
+    )
+    .expect("admission")
+    .expect("connected");
+    let mut session = restart_session(&root.path, &name);
+    session.current.live = live;
+    if closing {
+        session.closing = Some((CloseReason::Window, Instant::now()));
+    }
+    session
+        .restart_update_when(&mut pipe, 7, || ready)
+        .expect("restart request");
+    let answer = loop {
+        if let Some(value) = reader.next::<UiToHost>(&mut pipe).expect("UI ACK") {
+            break value;
+        }
+    };
+    let running = session.receive(&mut pipe, &answer).expect("close protocol");
+    assert_eq!(running, !(accepted && allow));
+    assert_eq!(session.exit_code, if accepted && allow { 10 } else { 0 });
+    if accepted && !allow {
+        assert!(session.closing.is_none());
+    }
+    if !accepted {
+        assert_eq!(session.closing.is_some(), closing);
+    }
+    done.set();
+    assert!(child.0.wait().expect("peer exit").success());
+}
+#[test]
+fn restart_ack_exits_ten_and_veto_cancels_the_session_close() {
+    restart_case((false, false, true), true);
+    restart_case((false, false, true), false);
+}
+#[test]
+fn restart_rejects_live_existing_close_and_missing_ready() {
+    for (live, closing, ready) in [
+        (true, false, true),
+        (false, true, true),
+        (false, false, false),
+    ] {
+        restart_case((live, closing, ready), true);
     }
 }

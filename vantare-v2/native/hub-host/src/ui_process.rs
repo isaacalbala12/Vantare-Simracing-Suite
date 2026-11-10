@@ -344,20 +344,7 @@ impl Session {
                 },
             ),
             Request::UpdatesRestart {} => {
-                let accepted = self.closing.is_none()
-                    && !self.current.live
-                    && crate::updates::Reader::can_restart();
-                frame::write(
-                    pipe,
-                    &HostToUi::Response {
-                        id,
-                        result: Reply::UpdatesRestart { accepted },
-                    },
-                )?;
-                if accepted {
-                    self.request_close(pipe, CloseReason::Restart)?;
-                }
-                Ok(())
+                self.restart_update_when(pipe, id, crate::updates::Reader::can_restart)
             }
 
             Request::ShortcutsGet {} => frame::write(
@@ -428,6 +415,25 @@ impl Session {
                 settings_response(pipe, id, result, |value| Reply::SettingsRetry { value })
             }
         }
+    }
+    fn restart_update_when(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        ready: impl FnOnce() -> bool,
+    ) -> io::Result<()> {
+        let accepted = self.closing.is_none() && !self.current.live && ready();
+        frame::write(
+            pipe,
+            &HostToUi::Response {
+                id,
+                result: Reply::UpdatesRestart { accepted },
+            },
+        )?;
+        if accepted {
+            self.request_close(pipe, CloseReason::Restart)?;
+        }
+        Ok(())
     }
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
         match message {

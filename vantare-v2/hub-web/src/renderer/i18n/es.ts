@@ -105,6 +105,8 @@ export const settingsText = {
     "Se aplicará cuando exista un diseño. Vuelve a cargar después de que Vantare cree los overlays iniciales.",
   "track.tableHelp":
     "Estas frecuencias globales no se aplican a widgets personalizados. Las banderas se actualizan siempre al instante.",
+  "updates.channel.development": "Desarrollo",
+  "updates.channel.unknown": "Canal desconocido",
   "updates.channel.master": "Estable",
   "updates.channel.testers": "Testers",
   "updates.channel.nightly": "Nightly",

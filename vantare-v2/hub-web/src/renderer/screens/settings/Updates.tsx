@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { releaseChannels } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
+import { useToastManager } from "../../ui/Layers";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Pill, SettingRow, Skeleton } from "../../ui/Data";
 
@@ -21,6 +22,19 @@ function channelLabel(raw: string) {
 export function Updates() {
   const { client } = useHost();
   const cache = useQueryClient();
+  const toast = useToastManager();
+  const [restarting, setRestarting] = useState(false);
+  const vetoed = useRef(false);
+  useEffect(
+    () =>
+      client?.onCloseVeto((reason) => {
+        if (reason !== "restart") return;
+        vetoed.current = true;
+        setRestarting(false);
+        toast.add({ title: t("updates.restartVeto"), type: "warn" });
+      }),
+    [client, toast],
+  );
   useEffect(() => {
     if (!client) return;
     const unlisten = client.listen((message) => {
@@ -44,6 +58,12 @@ export function Updates() {
     },
   });
   const restart = useMutation({
+    onMutate: () => {
+      vetoed.current = false;
+    },
+    onSuccess: () => {
+      if (!vetoed.current) setRestarting(true);
+    },
     mutationFn: async () => {
       const reply = await client?.request({ method: "updates.restart" });
       if (reply?.method !== "updates.restart" || !reply.accepted)
@@ -117,10 +137,10 @@ export function Updates() {
               view.restartAvailable ? (
                 <Button
                   variant="primary"
-                  busy={restart.isPending}
+                  busy={restart.isPending || restarting}
                   onClick={() => restart.mutate()}
                 >
-                  {t("updates.restart")}
+                  {t(restarting ? "updates.restarting" : "updates.restart")}
                 </Button>
               ) : undefined
             }

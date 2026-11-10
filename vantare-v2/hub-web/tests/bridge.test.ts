@@ -73,6 +73,9 @@ describe("typed client with an isolated simulated host", () => {
         decide = resolve;
         fail = reject;
       });
+      const vetoed = new Promise<string>((resolve) =>
+        client.onCloseVeto(resolve),
+      );
       client.setCloseGuard(() => {
         enter();
         return decision;
@@ -86,6 +89,7 @@ describe("typed client with an isolated simulated host", () => {
         );
         if (outcome === "decline") decide(false);
         else fail(new Error("Save failed"));
+        expect(await vetoed).toBe("window");
         await expect
           .poll(() =>
             client.request({ method: "core.get" }).then(

@@ -190,3 +190,8 @@ En Windows, el contrato qa-e2e existente del núcleo admite solo la carpeta
 su padre (`D:/VantareServer/qa`); el script crea un hijo aleatorio con su marcador.
 El fixture copia también vantare-services.exe: Probe por sí solo no arranca el
 helper ni demuestra que PilotLoad/PilotSave funcionen.
+
+Para el editor local, compilar los tres ejecutables QA con la raíz pública
+RFC8032 del tooling existente (`tools/qa/build-license-e2e.py`), sin credenciales.
+Se espera NoCredential y ningún derecho concedido. Un núcleo sin raíz pública
+queda Unconfigured: Probe conecta, pero no admite consultas ordinarias de perfil.

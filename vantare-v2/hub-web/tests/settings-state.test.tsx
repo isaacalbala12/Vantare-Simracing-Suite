@@ -10,9 +10,9 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HostProvider } from "../src/renderer/app/Host";
+import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import {
   SettingsProvider,
@@ -685,5 +685,41 @@ describe("pilot editor over the simulated host", () => {
       allowed = await guards[0]("live");
     });
     expect(allowed).toBe(true);
+  });
+});
+
+function RestartVeto() {
+  const { client } = useHost();
+  useEffect(() => client?.addCloseGuard(() => false), [client]);
+  return null;
+}
+describe("restart feedback", () => {
+  it("announces a veto and makes restart available again without a timer", async () => {
+    mount(
+      "actualizacion-lista",
+      <>
+        <RestartVeto />
+        <Updates />
+      </>,
+    );
+    const restart = await screen.findByRole("button", {
+      name: t("updates.restart"),
+    });
+    await userEvent.setup().click(restart);
+    await screen.findByText(t("updates.restartVeto"));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t("updates.restart") })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
+  });
+  it("shows closing after accepted restart until the real window closes", async () => {
+    mount("actualizacion-lista", <Updates />);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: t("updates.restart") }));
+    await screen.findByRole("button", { name: t("updates.restarting") });
   });
 });

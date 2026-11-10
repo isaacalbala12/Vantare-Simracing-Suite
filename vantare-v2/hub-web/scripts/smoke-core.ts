@@ -11,7 +11,8 @@ import { checkPilotCore } from "./check-pilot-core.ts";
 import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
-// Existing qa-e2e runtime: loopback endpoints, no account or credentials.
+// Existing qa-e2e runtime built with the public RFC8032 test root.
+// NoCredential: authenticated services, no access grants, no account or credential.
 const qa = join(
   requiredPath("VANTARE_HUB_QA_ROOT"),
   "licencias-e2e",
@@ -210,7 +211,7 @@ try {
         view.rights === "connected" &&
         view.services === "connected" &&
         !view.access.verified &&
-        view.access.blocked &&
+        !view.access.blocked &&
         !view.access.tester &&
         !view.access.calendar &&
         !view.access.engineer &&

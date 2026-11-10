@@ -38,13 +38,11 @@ export async function checkPilotCore(page: Page, evidence: string) {
     ctx.fillRect(0, 0, 600, 300);
     return canvas.toDataURL("image/png").split(",")[1];
   });
-  await page
-    .getByLabel(t("pilot.choosePhoto"), { exact: true })
-    .setInputFiles({
-      name: "qa.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(png, "base64"),
-    });
+  await page.getByLabel(t("pilot.choosePhoto"), { exact: true }).setInputFiles({
+    name: "qa.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(png, "base64"),
+  });
   await page
     .getByRole("img", { name: "Piloto local QA", exact: true })
     .waitFor();

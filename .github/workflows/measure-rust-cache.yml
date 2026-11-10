@@ -1,0 +1,104 @@
+name: VANTA-137 Windows cache measurement
+
+on:
+  push:
+    branches: [vantareapp/isa-1993-mediciones]
+    paths:
+      - .github/workflows/measure-rust-cache.yml
+      - vantare-v2/native/scripts/measure-cache-ci.ps1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vanta137-measure-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VANTARE_CI_TARGET: '1'
+  CARGO_INCREMENTAL: '0'
+  CARGO_BUILD_JOBS: '4'
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: vantare-v2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-build-setup
+      - name: Measure empty targets with and without compiler cache
+        run: |
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/measure-cache-ci.ps1 -Mode compile
+          if ($LASTEXITCODE) { throw 'Core cache measurement failed' }
+      - name: Stop only this job's sccache before comparing versions
+        run: sccache --stop-server
+      - name: Install prebuilt sccache comparison version
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
+        with:
+          tool: sccache@0.19.0
+          fallback: none
+      - name: Compare sccache 0.19 on two empty targets
+        run: |
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/measure-cache-ci.ps1 -Mode sccache19
+          if ($LASTEXITCODE) { throw 'Sccache version comparison failed' }
+      - name: Save measured Core target
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/vantare-cache-measure/target-shared
+          key: core-measure-1.95-${{ hashFiles('vantare-v2/native/Cargo.lock') }}-${{ github.sha }}
+      - name: Preserve metrics and timing reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: core-cache-compile-${{ github.sha }}
+          retention-days: 1
+          overwrite: true
+          path: |
+            ${{ runner.temp }}/vantare-cache-measure/compile-metrics.json
+            ${{ runner.temp }}/vantare-cache-measure/sccache-first-stats.json
+            ${{ runner.temp }}/vantare-cache-measure/sccache-second-stats.json
+            ${{ runner.temp }}/vantare-cache-measure/target-size.json
+            ${{ runner.temp }}/vantare-cache-measure/sccache19-metrics.json
+            ${{ runner.temp }}/vantare-cache-measure/sccache19-version.txt
+            ${{ runner.temp }}/vantare-cache-measure/sccache19-first-stats.json
+            ${{ runner.temp }}/vantare-cache-measure/sccache19-second-stats.json
+            ${{ runner.temp }}/vantare-cache-measure/target-shared/cargo-timings/*.html
+            ${{ runner.temp }}/vantare-cache-measure/sccache-first/cargo-timings/*.html
+            ${{ runner.temp }}/vantare-cache-measure/sccache-second/cargo-timings/*.html
+
+  restore:
+    needs: compile
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: vantare-v2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-build-setup
+      - name: Restore Core target in a fresh Windows VM
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/vantare-cache-measure/target-shared
+          key: core-measure-1.95-${{ hashFiles('vantare-v2/native/Cargo.lock') }}-${{ github.sha }}
+          fail-on-cache-miss: true
+      - name: Measure Cargo after target restore
+        run: |
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/measure-cache-ci.ps1 -Mode restore
+          if ($LASTEXITCODE) { throw 'Core target restore measurement failed' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: core-cache-restore-${{ github.sha }}
+          retention-days: 1
+          overwrite: true
+          path: ${{ runner.temp }}/vantare-cache-measure/restore-metrics.json

@@ -611,3 +611,12 @@ caliente para pruebas de producto. No distribuyas este perfil ni lo uses para
 comparar CPU, memoria o fluidez: para ello sigue usando Release con DuckDB bundled.
 Las reglas de herencia y overrides son las estándar de
 [Cargo](https://doc.rust-lang.org/cargo/reference/profiles.html).
+
+El job de distribución Release prepara MSVC x64 con el Developer PowerShell instalado y configura
+`CC`/`CXX` con sccache, respetando valores previos. `RUSTC_WRAPPER` solo no
+cubre el MSVC autodetectado por cc 1.5.1. El job usa sccache 0.19
+precompilado y namespace propio por su soporte de `-Tp`; los demás conservan
+0.18. El gate comprueba en disco privado un acierto C++ real y que el objeto
+restaurado conserve su SHA-256, sin depender de la cuota o disponibilidad GHA; la distribución
+Release conserva CRT estático y DuckDB bundled. No se habilita esta configuración
+en el Mac ni se cambia el compilador de C++ del producto.

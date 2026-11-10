@@ -244,3 +244,171 @@ entre jobs simulados sin disponer del target original, reserva anidada, limpieza
 por edad con rechazo de locks/enlaces, rutas RUNNER_TEMP y A → B → A. Retirada:
 471 huellas intactas. OpenCode 2.2.6 comprobado; no se lanzan nuevos delegates
 porque T3 preparaba su worktree en C:. Se completa el trabajo directamente.
+
+## Segunda tanda: enlazado, genéricos y caché de target
+
+Rama de mediciones sobre #2003, sin modificar código Rust ni UI. Windows:
+Core preparado sin sccache, tres relinks alternando el enlazador mediante
+`cargo rustc`; se mide la invocación completa, no exclusivamente el linker.
+M5: cuatro jobs, incremental=0, targets vacíos e independientes.
+
+| Prueba | Antes | Después | Decisión |
+|---|---:|---:|---|
+| Windows Core, mediana de tres relinks | link.exe 2,40 s | rust-lld 1,98 s | Conservar rust-lld, que ya era el default. |
+| M5 nightly, Core limpio | genéricos automático 18,71 s | share-generics=yes 15,16 s | Experimento; 1.95 rechaza -Z. Con no: 18,26 s. |
+| M5, dos targets con CARGO_TARGET_DIR distinto | sccache frío 16,56 s | segundo 16,14 s | Cero hits Rust: esa variable separa sus claves. |
+| M5, dos targets pasando --target-dir | sccache frío 16,08 s | segundo 10,80 s | Conservar la forma CLI ya adoptada; 85 hits Rust. |
+| M5 Core, target propio sin sccache | limpio 19,65 s | caliente 0,31 s | Mantener target persistente local. |
+| Mismo target restaurado desde zstd local | sin target 19,65 s | Cargo 0,17 s | Más 0,51 s empaquetar y 0,48 s extraer, sin red. |
+
+El target de Core de esta prueba ocupa 264,34 MiB; su archivo zstd, 78,28 MiB.
+La restauración prueba el mismo checkout y rutas, no una VM nueva de GitHub.
+No se reemplaza sccache GHA por un target del workspace completo basándose
+solo en este caso pequeño: faltan transporte real y presupuesto de los targets
+con Hub/UI/release. Evitar duplicar ambos caches bajo los 10 GB del repo.
+
+Prueba posterior real en **dos VMs windows-latest**, ejecución 42768131644,
+HEAD 5e229d064, Rust 1.95, cuatro vCPU e incremental=0:
+
+| Core Windows hosted | Segundos |
+|---|---:|
+| Target vacío, sin sccache | 118,85 |
+| Primer target con sccache GHA frío | 151,56 |
+| Segundo target con sccache GHA caliente | 88,91 |
+| Target restaurado en otra VM, Cargo sin sccache | 34,87 |
+| Descargar/restaurar ese target desde GitHub | 4 |
+| Guardarlo en GitHub | 6 |
+
+Target sin comprimir 594.888.857 bytes; caché GitHub 135.849.913 bytes. Sccache
+del segundo build: 95 hits Rust; 24 misses nuevos, sin errores de escritura.
+La caché fría de sccache añade coste de subida; no se oculta esa regresión.
+La segunda VM recompila los crates locales por timestamps del checkout,
+por lo que no se promete el 0,17 s observado en la restauración local del Mac.
+
+La repetición 42775335100, HEAD 533be7369, confirma cuatro jobs efectivos,
+pero cambia el resultado con sccache previamente caliente: sin caché 88,18 s;
+primer target con sccache 27,21 s; segundo 23,38 s; target restaurado en otra
+VM 49,31 s, antes de sumar descarga. Sccache acumula 208 hits Rust/30 misses,
+aunque registra seis errores de escritura en la segunda pasada (ambos builds
+PASS). No se trata esta repetición como caché fría ni se ocultan sus errores.
+
+Por ello se retira la caché adicional de target del camino normal: su ventaja
+no se sostiene frente a sccache caliente y duplica almacenamiento bajo el límite
+de 10 GB. Se conserva el experimento aislado, con targets pequeños de Core,
+para repetirlo si cambia la carga. El flujo normal conserva sccache GHA y la
+caché de registro/git; localmente sí se reutiliza siempre el target del slot.
+
+El árbol real de Core para Windows no contiene GPUI ni DuckDB. Ya limita image
+a JPEG/PNG y ureq a rustls; url/default solo añade std. Retirar esos formatos,
+TLS, IDNA o network quitaría funciones usadas, no solo tiempo de compilación.
+No se recortan features sin una alternativa equivalente demostrada. El spike
+de Hakari descrito arriba tampoco respeta esa equivalencia.
+
+[Wild](https://github.com/wild-linker/wild#feature-support) todavía enumera
+Windows como trabajo futuro y [mold](https://github.com/rui314/mold) es un
+linker Unix; no sustituyen al linker MSVC de este producto. El flag
+[share-generics de Rust 1.95](https://github.com/rust-lang/rust/blob/1.95.0/compiler/rustc_session/src/options.rs)
+es inestable. No se usa RUSTC_BOOTSTRAP ni se cambia el toolchain fijado.
+
+### Ejecución real adicional de CI: 42760109740
+
+HEAD bbfff6c30, anterior a los reparos de Sonnet. Builder 9 min 33 s,
+overlays paralelos 3 min 02 s; suite 1827 PASS/22 exclusiones, telemetría
+34 PASS/1 exclusión y ambos lifecycle PASS. Desde inicio del builder de
+overlays (05:08:22 UTC) hasta fin de telemetría (05:22:36): **14 min 14 s**.
+Sccache del builder: 698 hits/86 misses, 89,03 %, sin errores de escritura.
+
+Esto no es una CI completa verde ni un antes/después de idéntica cobertura:
+el reparo P1 exige que los cambios globales también validen Hub/Admin.
+Instalación seguía compilando Hub en release al cancelarse a los 20 min 30 s
+por el push del arreglo. Su coste no desaparece por medir solo el tramo Rust.
+El HEAD corregido requiere otra ejecución completa, que vigila el orquestador.
+
+Los targets de la segunda tanda del Mac se eliminaron y quedaron 28 GiB
+libres. Las carpetas de medición Windows se conservan por instrucción de Isaac.
+Logs, scripts y JSON: evidence/isa-1993, incluidos linker-comparison.json,
+mac/followup y ci-bbfff-times.json. No se copian caches de compilación a evidencia.
+
+### Overlays macOS nativos
+
+La primera prueba no compiló: faltaba Metal Toolchain. Se instaló el componente
+de Xcode 27B47 (descarga 838,9 MB), sin modificar GPUI ni native/ui, y se repitió
+con un target vacío. Rust 1.95, cuatro jobs, sin sccache: `vantare-overlays`
+limpio **42,44 s**. Tras `cargo clean -p vantare-ui`, mismo binario y
+dependencias calientes: **3,99 s**. Ambos builds PASS; no se abre la aplicación
+ni se afirma paridad funcional con Windows. La prueba Windows de 241,22 s
+construía todos los binarios por defecto; no es un antes/después equivalente
+al único binario macOS. El target propio se eliminó y el checkout quedó limpio.
+
+### Cierre real de #2003 y siguiente prueba de C++
+
+#2003 a2ea8cab3, ejecución 42773878313: todos los jobs y agregado PASS.
+Inicio de policy 07:14:19 UTC → cierre agregado 07:58:20: **44 min 01 s**;
+baseline #1997: **57 min 59 s** desde primer job hasta cierre, de los cuales
+57 min 24 s eran su job bloqueante. Desde run_started_at hasta updated_at de
+GitHub, incluyendo arranque/cierre: **58 min 10 s → 44 min 04 s**. No se
+alcanza todavía <15 min.
+Instalación 18 min 50 s, builder archivado 12 min 03 s, suite 7 min 42 s;
+distribución QA determina el final con 43 min 08 s. El orquestador fusionó
+#2003 como 479cca4bf; este worker no hace merge.
+
+Timings vivos Release con cuatro jobs y sccache: control QA 229,38 s;
+candidato limpio 2005,79 s; candidato con registro TEST rechazado 239,43 s.
+El mayor nodo del limpio es **libduckdb-sys, build-script C++: 1186,67 s**;
+Hub 209,42 s, UI 135,98 s, GPUI 91,75 s. Son nodos que pueden solaparse:
+no se suman sus duraciones como tiempo de reloj. El timeout de 90 min tiene
+ahora una ejecución completa de 43 min 08 s como referencia y margen para
+caché fría. El timeout anterior era un deadlock; no se confunden ambas causas.
+
+La estadística de distribución solo tenía peticiones Rust. cc 1.5.1 no aplica
+su fallback RUSTC_WRAPPER cuando ya ha detectado MSVC automáticamente. Se
+prepara el entorno oficial de Visual Studio y CC/CXX explícitos con sccache,
+sin cambiar compilador, flags ni CRT. Prueba C++ real en este servidor,
+por compilar.ps1: primer objeto 2,28 s → segundo servido de caché 0,14 s,
+SHA-256 idéntico; un daemon y puerto propios, sin parar el de otros workers.
+Esta fixture no equivale todavía a medir DuckDB: se exige CI Release real
+antes de atribuirle ahorro al candidato completo. Las mediciones Windows
+se conservan para Isaac.
+
+Sccache 0.19 real en Windows, ejecución 42778628365, versión comprobada:
+Core sin caché 119,48 s; 0.18 primer/segundo target 30,41/28,47 s;
+0.19 primer/segundo 140,84/70,33 s. Builds PASS, pero no gana en esta prueba:
+se conserva 0.18 en el flujo normal. La primera tentativa 42777765416 estaba
+sombreada por PATH y seguía ejecutando 0.18; queda excluida de la comparación.
+El script corregido usa la ruta exacta y rechaza una versión equivocada.
+[0.19](https://github.com/mozilla/sccache/releases/tag/v0.19.0) no incluye
+el arreglo de reintentos GHA, integrado después en
+[#2911](https://github.com/mozilla/sccache/pull/2911); no se atribuyen a 0.19
+mejoras de red no probadas aquí.
+
+La repetición de 42778628365 (attempt 2), ya con ambos backends calientes,
+da Core 0.18 35,95/31,32 s y 0.19 25,75/25,14 s; hits Rust acumulados
+206/207, misses 32/31. 0.19 gana esta muestra, pero tiene 31 errores de
+escritura frente a cero en 0.18. La primera comparación no tenía el mismo
+calentamiento: 0.19 partía de 119 misses y 0.18 de 104 hits/15 misses.
+No se atribuye una regresión intrínseca a 0.19 ni se cambia la versión normal
+con esa incertidumbre de almacenamiento. Los datos de ambas pasadas se conservan.
+
+M5 adicional, mismo checkout 1828a61dc y cuatro jobs: Storage --lib Release
+nativo limpio, DuckDB bundled, **186,94 s**; preparar tests 1,54 s y ejecutar
+15/15 PASS en 2,78 s. Total de bibliotecas probado en el Mac: 649 PASS y
+cuatro ignorados existentes. Limpiando solo libduckdb-sys, con las demás
+dependencias calientes y sccache 0.19 local: **129,69 s → 22,83 s**;
+277 hits C++ de 280 peticiones nuevas y tres hits Rust en la segunda pasada,
+sin errores de escritura. Los 15 tests vuelven a pasar tras restaurar objetos.
+Es compilación macOS/Apple Clang; no es un ratio equivalente al MSVC de Windows.
+Los dos targets privados nuevos se eliminaron y el checkout quedó limpio.
+
+La fixture C++ de CI usa un daemon y caché de disco privados. Una caída o
+limitación de GHA no debe volver inestable este test de soporte del compilador.
+Los contadores GHA del candidato Release completo se conservan por separado.
+
+La primera CI de C++ (42781142655, da5a0db0f) falla: sccache 0.18 interpreta
+mal el modo MSVC `-Tp` separado que cc-rs usa para fuentes .cc; cl intenta
+abrir `/WX-` como fichero. No se presenta su duración parcial como CI verde.
+La regresión local ahora usa .cc y exactamente `-Tp <fuente>`: 0.18 falla
+con el mismo C1083; 0.19 pasa, restaura el mismo objeto y baja de 2,63 s a
+0,15 s en esa fixture. Release necesita por ello el binario precompilado 0.19,
+con daemon y namespace GHA propios `vanta137-release019-v1`. El resto de jobs
+conserva 0.18; no se mezclan sus entradas. El namespace sigue siendo fijo,
+independiente del Cargo.lock. El toolchain Rust permanece en 1.95.

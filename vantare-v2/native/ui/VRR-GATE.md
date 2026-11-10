@@ -1,7 +1,7 @@
 # Gate físico VRR antes de aceptar un motor
 
 Estado: PENDIENTE. Solo Isaac o el orquestador autoriza ejecutar esto en el PC de juego.
-El servidor remoto a 59 Hz no puede aprobarlo. Duración: 12 capturas de 70 s
+El servidor remoto a 59 Hz no puede aprobarlo. Duración por motor: 12 capturas de 70 s
 (14 minutos) más unos 10 minutos de preparación y revisión.
 
 ## Procedimiento
@@ -49,3 +49,8 @@ procedimiento para ambos motores. La aceptación exige VRR físico conservado
 al mostrar overlays y ausencia de regresión de presentación frente a A. Si
 solo ocultar recupera VRR, documentar la mitigación: no marcar el gate como
 aprobado con overlays visibles. Un valor desconocido nunca cuenta como aprobado.
+
+Para A y B son 24 capturas: 28 minutos de captura más preparación y revisión
+(aproximadamente 40–50 minutos en total). Mantener el indicador del driver
+en el mismo estado durante todas las pasadas; preferir el OSD del monitor
+para observar sus Hz sin añadir otra ventana de overlay.

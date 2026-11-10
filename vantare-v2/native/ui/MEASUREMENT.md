@@ -29,6 +29,7 @@ Desde `vantare-v2`, con el código confirmado en Git y sin overrides de perfil:
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:\VantareServer\targets\isa-1996-medicion'
 $env:CARGO_BUILD_JOBS = '4'
+$env:VANTARE_MEASUREMENT_SOURCE_SHA = (git rev-parse HEAD).Trim()
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core --features paint-stats -j 4
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-ui --example overlay-replay --features paint-stats -j 4
 pwsh -NoProfile -File native/scripts/measure-overlay-campaign.ps1 -UI "$env:CARGO_TARGET_DIR/release/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/release/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/VantareServer/evidence/isa-1996/release-campaign-NEW -Runs 5

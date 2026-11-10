@@ -4,8 +4,15 @@ use std::{env, fs, path::PathBuf, process::Command};
 /// Embed compilation provenance only in explicitly instrumented packages.
 /// Product builds do not acquire a dependency on a Git checkout.
 pub fn measurement_provenance() -> Result<(), Box<dyn std::error::Error>> {
+    // A shared target can retain a build script's output from another worktree.
+    // The caller's expected SHA is an explicit Cargo fingerprint input, never
+    // a replacement for the SHA independently read from the current checkout.
+    println!("cargo:rerun-if-env-changed=VANTARE_MEASUREMENT_SOURCE_SHA");
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest ausente")?);
     let sha = measurement_git(&manifest, &["rev-parse", "HEAD"])?;
+    if env::var("VANTARE_MEASUREMENT_SOURCE_SHA").is_ok_and(|expected| expected != sha) {
+        return Err("measurement source SHA does not match the requested checkout".into());
+    }
     let dirty = !measurement_git(
         &manifest,
         &["status", "--porcelain", "--untracked-files=normal"],

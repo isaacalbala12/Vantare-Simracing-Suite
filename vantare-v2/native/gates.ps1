@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba', 'distribution')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
-    [string]$TargetDirectory = 'target/gates'
+    [string]$TargetDirectory = 'D:/VantareServer/targets/ci'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

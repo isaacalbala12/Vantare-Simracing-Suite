@@ -10,6 +10,7 @@ import {
 } from "./generated/contract";
 import { isPilot, isPilotFields, isPilotRevision } from "./pilot-validation";
 import { isDiagnostic, isPrivacy, isPrivacyPatch } from "./privacy-validation";
+import { isRoadmap } from "./roadmap-validation";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
 import {
   isReportDraft,
@@ -149,6 +150,11 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
+      if (
+        result.method === "roadmap.cached" ||
+        result.method === "roadmap.refresh"
+      )
+        return exact(result, ["method", "value"]) && isRoadmap(result.value);
       if (
         [
           "testing.refresh",

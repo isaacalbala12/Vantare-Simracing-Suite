@@ -371,6 +371,11 @@ fn restart_session(root: &Path, photo: &str) -> Session {
         updates: None,
         subscriptions: std::collections::BTreeSet::new(),
         last_updates: None,
+        last_roadmap_refresh: None,
+        roadmap: crate::roadmap::RoadmapView {
+            publication: None,
+            stale: true,
+        },
         exit_code: 0,
         launcher: root.join("launcher.json"),
         core: Core::start(photo, root).expect("unconnected core; cancelled by Drop"),

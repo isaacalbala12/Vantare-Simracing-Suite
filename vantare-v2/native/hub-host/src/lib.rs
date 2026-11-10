@@ -32,4 +32,5 @@ pub mod privacy;
 
 pub mod pilot;
 
+pub mod roadmap;
 pub mod testing;

@@ -247,6 +247,8 @@ fn settings_response(
 }
 enum RemoteKind {
     Testing(crate::testing::Operation),
+    RoadmapCached,
+    RoadmapRefresh,
     PilotLoad,
     PilotSave,
     MailGet,
@@ -261,6 +263,8 @@ struct Session {
     updates: Option<crate::updates::Reader>,
     subscriptions: std::collections::BTreeSet<Topic>,
     last_updates: Option<Instant>,
+    last_roadmap_refresh: Option<Instant>,
+    roadmap: crate::roadmap::RoadmapView,
     exit_code: u8,
     launcher: PathBuf,
     core: Core,
@@ -287,6 +291,62 @@ impl Session {
             },
         )
     }
+    fn service_reply(
+        &mut self,
+        id: u32,
+        result: Result<vantare_ipc::services_protocol::Reply, HostError>,
+    ) -> Result<Reply, HostError> {
+        match (self.remote.take(), result) {
+            (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
+                crate::testing::complete(operation, reply)
+            }
+            (
+                Some((expected, kind)),
+                Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
+            ) if expected == id => {
+                let value = crate::privacy::MailView { consent };
+                match kind {
+                    RemoteKind::MailGet => Ok(Reply::MailGet { value }),
+                    RemoteKind::MailSet => Ok(Reply::MailSet { value }),
+                    _ => Err(HostError::Denied),
+                }
+            }
+            (
+                Some((expected, kind)),
+                Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
+            ) if expected == id => {
+                let value = crate::pilot::view(&state);
+                let reply = match kind {
+                    RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
+                    RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
+                    _ => Err(HostError::Denied),
+                };
+                if reply.is_ok() {
+                    self.pilot = Some(state);
+                }
+                reply
+            }
+            (
+                Some((expected, kind @ (RemoteKind::RoadmapCached | RemoteKind::RoadmapRefresh))),
+                Ok(vantare_ipc::services_protocol::Reply::Roadmap {
+                    publication, stale, ..
+                }),
+            ) if expected == id => crate::roadmap::project(publication, stale).and_then(|value| {
+                self.roadmap = value.clone();
+                match kind {
+                    RemoteKind::RoadmapCached => Ok(Reply::RoadmapCached { value }),
+                    RemoteKind::RoadmapRefresh => Ok(Reply::RoadmapRefresh { value }),
+                    _ => Err(HostError::Denied),
+                }
+            }),
+            (Some((expected, RemoteKind::RoadmapRefresh)), Err(error)) if expected == id => {
+                self.roadmap.stale = true;
+                Err(error)
+            }
+            (_, Err(error)) => Err(error),
+            _ => Err(HostError::Denied),
+        }
+    }
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
             confirmation.check_confirmation()?;
@@ -296,39 +356,7 @@ impl Session {
         }
         self.current = self.core.status();
         if let Some((id, result)) = self.core.reply() {
-            let result = match (self.remote.take(), result) {
-                (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
-                    crate::testing::complete(operation, reply)
-                }
-                (
-                    Some((expected, kind)),
-                    Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
-                ) if expected == id => {
-                    let value = crate::privacy::MailView { consent };
-                    match kind {
-                        RemoteKind::MailGet => Ok(Reply::MailGet { value }),
-                        RemoteKind::MailSet => Ok(Reply::MailSet { value }),
-                        _ => Err(HostError::Denied),
-                    }
-                }
-                (
-                    Some((expected, kind)),
-                    Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
-                ) if expected == id => {
-                    let value = crate::pilot::view(&state);
-                    let reply = match kind {
-                        RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
-                        RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
-                        _ => Err(HostError::Denied),
-                    };
-                    if reply.is_ok() {
-                        self.pilot = Some(state);
-                    }
-                    reply
-                }
-                (_, Err(error)) => Err(error),
-                _ => Err(HostError::Denied),
-            };
+            let result = self.service_reply(id, result);
             self.respond(
                 pipe,
                 id,
@@ -384,6 +412,47 @@ impl Session {
                 || time.elapsed() <= Duration::from_secs(2)
         }))
     }
+    fn roadmap_request(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        refresh: bool,
+        now: Instant,
+    ) -> io::Result<()> {
+        if refresh
+            && let Some(value) = crate::roadmap::cached_if_throttled(
+                &mut self.last_roadmap_refresh,
+                now,
+                &self.roadmap,
+            )
+        {
+            return frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::RoadmapRefresh { value },
+                },
+            );
+        }
+        let (kind, command) = if refresh {
+            (
+                RemoteKind::RoadmapRefresh,
+                vantare_ipc::services_protocol::Command::RoadmapRefresh,
+            )
+        } else {
+            (
+                RemoteKind::RoadmapCached,
+                vantare_ipc::services_protocol::Command::RoadmapCached,
+            )
+        };
+        match self.core.request(id, command) {
+            Ok(()) => {
+                self.remote = Some((id, kind));
+                Ok(())
+            }
+            Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
+        }
+    }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
             Request::TestingAnswer { .. }
@@ -399,6 +468,12 @@ impl Session {
             | Request::DraftLoad {}
             | Request::DraftSave { .. }
             | Request::DraftDiscard {} => self.testing_request(pipe, id, request),
+            Request::RoadmapCached {} | Request::RoadmapRefresh {} => self.roadmap_request(
+                pipe,
+                id,
+                matches!(request, Request::RoadmapRefresh {}),
+                Instant::now(),
+            ),
             Request::PilotLoad {} | Request::PilotSave { .. } => {
                 self.pilot_request(pipe, id, request)
             }
@@ -791,6 +866,11 @@ pub fn run(args: &Args) -> io::Result<u8> {
         updates: None,
         subscriptions: std::collections::BTreeSet::new(),
         last_updates: None,
+        last_roadmap_refresh: None,
+        roadmap: crate::roadmap::RoadmapView {
+            publication: None,
+            stale: true,
+        },
         exit_code: 0,
         launcher: args.launcher.clone(),
         core,

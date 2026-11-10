@@ -20,6 +20,8 @@ pub const METHODS: &[&str] = &[
     "draft.load",
     "draft.save",
     "draft.discard",
+    "roadmap.cached",
+    "roadmap.refresh",
     "pilot.load",
     "pilot.save",
     "privacy.policy",
@@ -152,6 +154,10 @@ pub enum Request {
     #[serde(rename = "draft.discard")]
     DraftDiscard {},
 
+    #[serde(rename = "roadmap.cached")]
+    RoadmapCached {},
+    #[serde(rename = "roadmap.refresh")]
+    RoadmapRefresh {},
     #[serde(rename = "pilot.load")]
     PilotLoad {},
     #[serde(rename = "pilot.save")]
@@ -255,6 +261,10 @@ pub enum Reply {
         value: crate::testing::ReportDraftView,
     },
 
+    #[serde(rename = "roadmap.cached")]
+    RoadmapCached { value: crate::roadmap::RoadmapView },
+    #[serde(rename = "roadmap.refresh")]
+    RoadmapRefresh { value: crate::roadmap::RoadmapView },
     #[serde(rename = "pilot.load")]
     PilotLoad { value: crate::pilot::PilotView },
     #[serde(rename = "pilot.save")]

@@ -1424,3 +1424,61 @@ No existe captura Strategy en la referencia: se usa la misma composición del
 código GPUI y Engineer, sin inventar referencia ni porcentaje de Strategy.
 Marco, fuentes y relleno general pendientes de A. Sin Rust, merge ni promoción.
 Evidencia: `D:/VantareServer/evidence/hub-web/isa-1995-b-proximamente`.
+
+## VANTA-138 / #1995 · worker B · 10-nov-2026 · avance parcial bloqueado
+
+Roadmap en `vantareapp/isa-1995-b-roadmap`, base nightly `de286e930`:
+contrato de lectura cerrado, tres vistas y pruebas escritas. No es entrega.
+No bindings regenerados, gates completos ni capturas nuevas. Mac falla por
+`updates.rs` / `vantare_installer` existente; Bun/Biome Windows sin terminar ni
+diagnóstico. Reintento Rust sin sccache cancelado mientras esperaba la cola.
+Evidencia: `D:/VantareServer/evidence/hub-web/isa-1995-b-roadmap/BLOQUEO.md`.
+Siguiente: resolver entorno, regenerar, ejecutar gates y comprobar paridad con
+el marco del worker A. Workshop requiere decidir cómo conservar su renderer
+GPUI; Notificaciones y Próximamente pendientes. Sin push/PR/merge/release.
+
+
+## VANTA-138 / #1995 · worker B · continuación 10-nov-2026
+
+El orquestador resolvió el primer bloqueo de herramientas: unión a node_modules
+completo y espera del generador por la cola Windows. Workshop queda excluido del
+Hub web por decisión expresa: sigue en el Hub GPUI hasta decidir los overlays.
+Roadmap rebasado sobre nightly `b1590f925`; bindings/corpus regenerados, TypeScript,
+lint, 216 tests web y build pasan. Clippy inicial detectó tamaño de funciones;
+separadas las proyecciones y fixtures sin cambiar sus datos. Repetición nativa
+pendiente en la cola, sin cancelarla. Comparador oficial registrado para Roadmap:
+el HWND no es visible en este entorno; se conserva el fallo y se prepara la
+comparación de capturas web aportadas, claramente identificadas. Pestañas superiores,
+marco, fuentes y raíl dependen del worker A; no se declara paridad ni integración.
+Notificaciones y Próximamente se preparan en sus ramas independientes desde nightly.
+
+
+### Worker B · Roadmap #2031 · validación local final, 10-nov-2026
+
+Corregido el orden del corpus regenerándolo después de separar sus muestras.
+Fmt/Clippy/Nextest/build del anfitrión pasan por la cola Windows: 65 tests PASS,
+un auxiliar omitido de forma prevista; arquitectura sin GPUI PASS. Web: 216 tests,
+tipos, lint y build PASS; navegador dark/light y preservación offline PASS.
+El comparador HWND vuelve a fallar por ventana oculta; se conservan ambos fallos.
+Comparación de capturas Chrome aportadas en `visual-supplied-{dark,light}`; marco,
+pestañas superiores y fuentes siguen pendientes de A. Sin merge ni promoción.
+
+
+### Worker B · preparación del registro de pantallas, 10-nov-2026
+
+Tipos, lint y 230 pruebas web PASS en la integración local del marco. Se retira el registro manual de Shell; Circuito/Tablero/Temporada y el raíl se publican por SectionChrome. Comparación preliminar Electron: diferencia exacta dark 57,1863 %, light 59,6943 %; perceptual 2,2779 % / 1,6006 %. Referencia/captura/diff en `visual-frame-final/{dark,light}/roadmap-base`; ejecución Electron/PrintWindow real, sin captura suministrada. Restan el toggle y la separación del raíl propios del marco.
+Integración local sobre el marco de #2034 (`db82bbfd2`), todavía sin fusionar en nightly. No se publica esa dependencia dentro del PR de pantalla: falta su merge para rebasar y empujar la entrega final. Próximamente ya fue integrado por el orquestador en nightly `97cfe1956`; Workshop queda excluido. Sin merge ni promoción propios.
+
+
+### Worker B · marco integrado, 10-nov-2026
+
+Resuelta la dependencia #2034: rama rebasada sobre nightly `d74c07710`, con registro automático `entry.tsx`, SectionChrome y SectionPanel. 230 tests web, tipos y lint PASS. Rust conserva los fuentes ya verificados; se delega al CI del nuevo HEAD la validación de integración. Evidencia final de Electron/PrintWindow en `D:/VantareServer/evidence/hub-web/isa-1995-b-roadmap/visual-nightly`; referencia/captura/diff e informes se adjuntan en el PR #2031. CI de la rama se verificará tras el push; el PR y #1995 mantienen SHA y resultado final. No se declara paridad aceptada: la revisión visual corresponde al orquestador. Sin merge ni promoción propios.
+
+
+### Worker B · revisión de Roadmap (#2031), base nightly 9916195d4
+
+El anfitrión conserva el instante del último intento de refresco y la publicación: durante cinco minutos devuelve su caché sin pedir otro refresco al servicio, aunque se cambie de sección. El reloj se pasa como dato y el test Rust cubre el límite, la repetición y la publicación conservada tras un fallo. El renderer comparte también su presupuesto entre montajes.
+Se aceptan publicaciones vacías; sin publicación no se anuncia una copia guardada. La pantalla ya no lee escenas de captura: Circuito se selecciona en el adaptador de QA. Rebase conserva los métodos y los datos de informes/borradores de #2026; contrato y corpus regenerados desde Rust.
+Validación local: tipos, Biome y lint de diseño PASS; 265 tests web PASS; fmt, Clippy -D warnings, 74 tests nativos PASS (1 helper omitido), arquitectura sin GPUI y build QA PASS. Registro nativo: review-native-final.log. Comparación oficial actualizada en review-visual; PR e issue mantienen SHA/CI finales. Sin merge ni promoción propios.
+
+Rebase final de #2031 sobre nightly 330681fd9 (#2039). Rust del anfitrión no cambia frente a la revisión ya validada (74 tests); tipos, Biome y 267 tests web pasan con el marco nuevo. Las capturas finales usan review-visual-latest.

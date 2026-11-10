@@ -88,6 +88,13 @@ class StableWindowTest(unittest.TestCase):
     def test_p99_keeps_intervals_and_does_not_average_rates(self):
         self.assertEqual(M.percentile([1]*98+[20,100], 99), 20)
 
+    def test_present_intervals_do_not_mix_windows(self):
+        events=[dict(kind='present',value=window,clock=tick)
+                for window,tick in ((11,100),(22,105),(11,120),(22,155))]
+        windows,intervals=M.present_windows(events,1000)
+        self.assertEqual(windows,[11,22])
+        self.assertEqual(intervals,[20,50])
+
     def test_phase_crossing_boundary_is_excluded_and_nested_not_summed(self):
         events = [dict(kind="span",label="paint",clock=90,end=120,value=999),
                   dict(kind="span",label="paint",clock=110,end=150,value=40),

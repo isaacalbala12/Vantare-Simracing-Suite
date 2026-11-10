@@ -7,6 +7,7 @@ param(
     [ValidateRange(10,3600)][int]$Seconds = 60,
     [ValidateSet(1,4,22)][int]$Widgets = 4,
     [switch]$Phases,
+    [ValidateRange(1,10)][double]$ReplaySpeed = 1,
     [ValidateRange(1,7200)][int]$QueueTimeoutSeconds = 1800,
     [ValidateRange(1,100)][double]$MaxSystemLoadPercent = 35
 )
@@ -38,7 +39,7 @@ $pipeName = "Vantare1996.$PID.$([guid]::NewGuid().ToString('N'))"
 $inputArgument = if ($Core) { "pipe:$pipeName" } else { (Resolve-Path -LiteralPath $Recording).Path }
 $info.ArgumentList.Add($inputArgument)
 $info.ArgumentList.Add([string]$Widgets)
-if ($Core) { $info.ArgumentList.Add([string]$Seconds) }
+if ($Core) { $info.ArgumentList.Add([string][Math]::Max(10,[Math]::Ceiling($Seconds/$ReplaySpeed))) }
 $info.Environment['VANTARE_PROFILE_PHASES'] = $(if ($Phases) { '1' } else { '0' })
 $info.Environment['VANTARE_MEASUREMENT_TRACE'] = '1'
 # All diagnostics and persisted presentation data stay in this run's QA root.
@@ -67,6 +68,9 @@ $gpuRows = [Collections.Generic.List[object]]::new()
 $gpuCounterRows = [Collections.Generic.List[object]]::new()
 $invalidCounterRows = [Collections.Generic.List[object]]::new()
 $systemRows = [Collections.Generic.List[object]]::new()
+$samplerRows = [Collections.Generic.List[object]]::new()
+$frequencyRows = [Collections.Generic.List[object]]::new()
+$samplerProcess = [Diagnostics.Process]::GetCurrentProcess()
 $readOnlyRows = [Collections.Generic.List[object]]::new()
 $dwm = @(Get-Process dwm -ErrorAction Stop)
 if ($dwm.Count -ne 1) { throw 'Exactly one DWM process is required for an unambiguous baseline' }
@@ -123,7 +127,7 @@ try {
         $coreInfo.RedirectStandardInput = $true
         $coreInfo.RedirectStandardOutput = $true
         $coreInfo.RedirectStandardError = $true
-        foreach ($argument in @('--replay',(Resolve-Path -LiteralPath $Recording).Path,'--pipe',$pipeName)) {
+        foreach ($argument in @('--replay',(Resolve-Path -LiteralPath $Recording).Path,'--pipe',$pipeName,'--velocidad',$ReplaySpeed.ToString('R',[Globalization.CultureInfo]::InvariantCulture))) {
             $coreInfo.ArgumentList.Add($argument)
         }
         foreach ($name in @('LOCALAPPDATA','APPDATA','VANTARE_NATIVE_DATA_ROOT')) {
@@ -148,6 +152,9 @@ try {
     # sampling interval paces the loop without an extra unsampled second.
     $null = $process.WaitForExit(1000)
     while (!$process.WaitForExit(0)) {
+        $samplerStart = [Diagnostics.Stopwatch]::GetTimestamp()
+        [ulong]$samplerCyclesBefore = 0
+        if (![Vantare.MeasurementCycles]::QueryProcessCycleTime($samplerProcess.Handle,[ref]$samplerCyclesBefore)) { throw 'Cannot query sampler cycles' }
         $process.Refresh()
         if ($coreStarted -and $coreProcess.HasExited) { throw 'Core exited before the measurement ended' }
         [ulong]$cycles = 0
@@ -169,9 +176,12 @@ try {
         # Other processes may destroy an engine between PDH's two reads. Keep
         # their invalid samples, but require valid data for our UI, DWM and CPU.
         $counterErrors = @()
-        $counters = Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage','\GPU Process Memory(*)\Dedicated Usage','\Processor(_Total)\% Processor Time' -ErrorAction SilentlyContinue -ErrorVariable counterErrors
+        $counters = Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage','\GPU Process Memory(*)\Dedicated Usage','\Processor(_Total)\% Processor Time','\Processor Information(_Total)\% Processor Performance','\Processor Information(_Total)\% Performance Limit','\Processor Information(_Total)\Processor Frequency' -ErrorAction SilentlyContinue -ErrorVariable counterErrors
         $tick = [Diagnostics.Stopwatch]::GetTimestamp()
         if (!$counters) { throw 'GPU/system counter collection returned no data' }
+        foreach ($sample in @($counters.CounterSamples | Where-Object Path -Like '*\processor information(*)\*')) {
+            $frequencyRows.Add([pscustomobject]@{qpc=$tick;path=$sample.Path;value=$sample.CookedValue;status=$sample.Status})
+        }
         foreach ($sample in @($counters.CounterSamples | Where-Object { $_.Status -notin @(0,1) })) {
             $invalidCounterRows.Add([pscustomobject]@{qpc=$tick;path=$sample.Path;status=$sample.Status})
         }
@@ -193,6 +203,9 @@ try {
         if ($cpuSample.Count -ne 1 -or $cpuSample[0].Status -notin @(0,1)) { throw 'Invalid total system CPU counter: discard run' }
         $load = $cpuSample[0].CookedValue
         $systemRows.Add([pscustomobject]@{qpc=$tick;load_percent=$load})
+        [ulong]$samplerCyclesAfter = 0
+        if (![Vantare.MeasurementCycles]::QueryProcessCycleTime($samplerProcess.Handle,[ref]$samplerCyclesAfter)) { throw 'Cannot query sampler cycles' }
+        $samplerRows.Add([pscustomobject]@{qpc=$tick;cpu_cycles=($samplerCyclesAfter-$samplerCyclesBefore);elapsed_qpc=([Diagnostics.Stopwatch]::GetTimestamp()-$samplerStart)})
         if ($watch.Elapsed.TotalSeconds -gt 5 -and $load -gt $MaxSystemLoadPercent) { throw 'High total system load: discard run' }
         if ($watch.Elapsed.TotalSeconds -gt $Seconds + 120) { throw 'Replay exceeded its duration and shutdown margin' }
         Assert-MeasurementQueueIdle
@@ -210,14 +223,14 @@ try {
         process_guard_sha256=(Get-FileHash -LiteralPath "$PSScriptRoot/measurement-processes.ps1").Hash
         readonly_cargo_observations=$readOnlyRows.Count
         measurement_version=2; date=(Get-Date -Format o); widgets=$Widgets
-        recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds
+        recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds; replay_speed=$ReplaySpeed
         recording_event_count=$recordingManifest.events.Count; recording_first_event_seconds=$firstEventSeconds
         replay_schedule_origin_seconds=1 # adapter/lmu/open.rs Clock::at: first event is scheduled at 1 s
         stable_start_seconds=5; stable_end_seconds=($recordingDuration - 5)
         power_plan=$powerPlan; priority='Normal'; dwm_pid=$dwm.Id; cpu_frequency_mhz=$cpuFrequency
         dwm_priority=[string]$dwm.PriorityClass
         received_photo_scope='Photos delivered by production Subscriber to the UI feed; coalescing before the UI is preserved'
-        memory_scope='Whole process, including the bounded in-memory measurement trace; controls use the same reserved capacity'
+        memory_scope='Reference is working set. Private bytes include about 137 MiB reserved for the bounded measurement trace; controls reserve equal capacity'
         qpc_frequency=[Diagnostics.Stopwatch]::Frequency; maximum_total_system_load_percent=$MaxSystemLoadPercent
         presentation=@{model='DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL / DirectComposition';sync_interval=0;tearing_flag=$false;vrr_active=$null;vrr_reason='Not observable from system GPU counters; physical game-PC check required'}
         gpu_source='Windows GPU Engine / GPU Process Memory performance counters; PresentMon not installed in PATH'
@@ -256,6 +269,8 @@ try {
         $gpuCounterRows | Export-Csv -NoTypeInformation "$Out/gpu-counters.csv"
         $invalidCounterRows | Export-Csv -NoTypeInformation "$Out/invalid-counters.csv"
         $systemRows | Export-Csv -NoTypeInformation "$Out/system.csv"
+        $samplerRows | Export-Csv -NoTypeInformation "$Out/sampler.csv"
+        $frequencyRows | Export-Csv -NoTypeInformation "$Out/frequency.csv"
         $readOnlyRows | Export-Csv -NoTypeInformation "$Out/readonly-cargo.csv"
         if ($completed) { 'complete' | Set-Content "$Out/complete.txt" }
     }

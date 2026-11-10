@@ -15,6 +15,16 @@ def percentile(values, p):
     return sorted(values)[max(0, math.ceil(len(values)*p/100)-1)] if values else None
 
 
+def present_windows(events, frequency):
+    windows=collections.defaultdict(list)
+    for event in events:
+        if event['kind']=='present':
+            windows[event['value']].append(event['clock'])
+    intervals=[(b-a)*1000/frequency for ticks in windows.values()
+               for a,b in zip(sorted(ticks),sorted(ticks)[1:])]
+    return sorted(windows),intervals
+
+
 def recording_window(events, start, end, offset_seconds=0):
     photos = sorted((e for e in events if e['kind']=='replay_event'), key=lambda e:e['clock'])
     offset=offset_seconds*1e9
@@ -54,7 +64,9 @@ def phase_summary(events,start,end,frequency):
             failed=e['value']==2**64-1
             stages[e['label']].update(calls=1,wall_ns=(e['end']-e['clock'])*1e9/frequency,
                                        cpu_cycles=0 if failed else e['value'],cycle_errors=int(failed))
-    return dict(stages)
+    return {name:dict(values, cpu_cycles_per_call=values['cpu_cycles']/values['calls'],
+                      wall_ns_per_call=values['wall_ns']/values['calls'])
+            for name,values in stages.items()}
 
 
 def read_csv(path):
@@ -117,7 +129,7 @@ def summarize(root):
         raise ValueError('no received photos')
     processes={name:process_summary(read_csv(root/filename),start,end,frequency,len(received)) for name,filename in [('ui','process.csv'),('dwm','dwm.csv')]}
     presents=sorted(e['clock'] for e in stable if e['kind']=='present')
-    intervals=[(b-a)*1000/frequency for a,b in zip(presents,presents[1:])]
+    windows,intervals=present_windows(stable,frequency)
     submitted=sorted(e['clock'] for e in events if e['kind']=='present_end')
     latencies={'receive_to_paint_ms':[],'receive_to_submit_ms':[]}
     for e in stable:
@@ -148,12 +160,20 @@ def summarize(root):
         steady_cpu_cycles=stages.get('text_layout',{}).get('cpu_cycles',0) if text_supported else None,
         full_run_calls=sum(e['kind']=='span' and e['label']=='text_layout' for e in events) if text_supported else None,
         scope='Native text shaping on cache misses. Hot cache lookup and glyph painting are included in paint; zero native calls does not mean zero text painting cost.')
+    sampler_path=root/'sampler.csv'
+    sampler_rows=[r for r in read_csv(sampler_path) if start<=int(r['qpc'])<=end] if sampler_path.exists() else []
+    sampler=dict(status='measured direct collector process only' if sampler_rows else 'not recorded',
+                 cpu_cycles=sum(int(r['cpu_cycles']) for r in sampler_rows) if sampler_rows else None,
+                 iterations=len(sampler_rows),
+                 scope='Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded')
     result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
-                native_text_layout=text_diagnostics,
+                native_text_layout=text_diagnostics,sampler=sampler,
                 recording_last_position_seconds=max(positions),
                 stable_recording_position_seconds=[metadata['stable_start_seconds'],metadata['stable_end_seconds']],
                 stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),
-                present_calls=len(presents),present_intervals_ms=intervals,present_interval_p99_ms=percentile(intervals,99),
+                present_calls=len(presents),presents_per_second=len(presents)/((end-start)/frequency),
+                present_window_ids=sorted(windows),present_intervals_ms=intervals,present_interval_p99_ms=percentile(intervals,99),
+                **{k.replace('_ms','_median_ms'):percentile(v,50) for k,v in latencies.items()},
                 **latencies,**{k.replace('_ms','_p99_ms'):percentile(v,99) for k,v in latencies.items()},
                 notifications=dict(collections.Counter(e['label'] for e in stable if e['kind']=='notify')),
                 changed_widgets_per_changed_snapshot=sum(changes.values())/len(changes) if changes else None,

@@ -21,6 +21,17 @@ foreach ($case in $cases) {
 }
 Write-Host "PASS: $($cases.Count) compiler/read-only metadata classifications"
 
+$own=Get-CimInstance Win32_Process -Filter "ProcessId = $PID"
+$missing=[pscustomobject]@{Name=$own.Name;ProcessId=$PID;CreationDate=$own.CreationDate;CommandLine=$null}
+$resolved=Resolve-MeasurementProcessSnapshot $missing
+if (!$resolved -or !$resolved.CommandLine) { throw 'A live readable command line was not refreshed' }
+$ended=[pscustomobject]@{Name='cargo.exe';ProcessId=[uint32]::MaxValue;CreationDate=$null;CommandLine=$null}
+if ($null -ne (Resolve-MeasurementProcessSnapshot $ended)) { throw 'An ended snapshot was treated as live' }
+$reused=[pscustomobject]@{Name=$own.Name;ProcessId=$PID;CreationDate=$own.CreationDate.AddYears(-1);CommandLine=$null}
+if ($null -ne (Resolve-MeasurementProcessSnapshot $reused)) { throw 'A reused process identity was treated as the old command' }
+if (!(Test-MeasurementCompilerProcess 'cargo.exe' $null)) { throw 'An active unidentified Cargo command must remain rejected' }
+Write-Host 'PASS: live command refresh, ended snapshot, reused identity and unknown-live rejection'
+
 # A formatter outside the queue is allowed only while our collector stays clean.
 $fixture=Join-Path ([IO.Path]::GetTempPath()) ('measurement-source-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $fixture | Out-Null

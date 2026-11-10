@@ -1,4 +1,9 @@
-import { installationStates } from "./generated/contract";
+import {
+  installationStates,
+  releaseChannels,
+  releaseKinds,
+  updatesLimits,
+} from "./generated/contract";
 import { exact, oneOf, record } from "./validation-common";
 
 function text(value: unknown, limit: number): value is string {
@@ -22,12 +27,12 @@ export function isUpdates(value: unknown): boolean {
   const beta = value.beta;
   return (
     oneOf(value.installation, installationStates) &&
-    text(value.version, 128) &&
-    text(value.channel, 32) &&
+    text(value.version, updatesLimits.tag) &&
+    text(value.channel, updatesLimits.shortVersion) &&
     typeof value.previous === "boolean" &&
     typeof value.restartAvailable === "boolean" &&
     (value.registrationWarning === null ||
-      text(value.registrationWarning, 8192)) &&
+      text(value.registrationWarning, updatesLimits.text)) &&
     (beta === null ||
       (record(beta) &&
         exact(beta, [
@@ -39,13 +44,14 @@ export function isUpdates(value: unknown): boolean {
           "rejectedVersion",
         ]) &&
         beta.schema === 1 &&
-        text(beta.state, 64) &&
-        text(beta.message, 8192) &&
-        text(beta.version, 32) &&
-        text(beta.notes, 8192) &&
-        (beta.rejectedVersion === null || text(beta.rejectedVersion, 32)))) &&
+        text(beta.state, updatesLimits.state) &&
+        text(beta.message, updatesLimits.text) &&
+        text(beta.version, updatesLimits.shortVersion) &&
+        text(beta.notes, updatesLimits.text) &&
+        (beta.rejectedVersion === null ||
+          text(beta.rejectedVersion, updatesLimits.shortVersion)))) &&
     Array.isArray(value.news) &&
-    value.news.length <= 256 &&
+    value.news.length <= updatesLimits.news &&
     value.news.every(
       (note: unknown) =>
         record(note) &&
@@ -58,11 +64,11 @@ export function isUpdates(value: unknown): boolean {
           "kind",
         ]) &&
         note.schemaVersion === 1 &&
-        text(note.tag, 128) &&
-        oneOf(note.channel, ["master", "testers", "nightly"]) &&
-        text(note.title, 512) &&
-        text(note.summary, 8192) &&
-        oneOf(note.kind, ["Nuevo", "Mejora", "Arreglo"]),
+        text(note.tag, updatesLimits.tag) &&
+        oneOf(note.channel, releaseChannels) &&
+        text(note.title, updatesLimits.title) &&
+        text(note.summary, updatesLimits.text) &&
+        oneOf(note.kind, releaseKinds),
     )
   );
 }

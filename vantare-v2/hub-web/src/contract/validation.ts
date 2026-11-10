@@ -1,4 +1,3 @@
-import { isUpdates } from "./updates-validation";
 import {
   type HostToUi,
   methods,
@@ -9,6 +8,7 @@ import {
   type UiToHost,
 } from "./generated/contract";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
+import { isUpdates } from "./updates-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
 export const FRAME_LIMIT = 1024 * 1024;
 function core(value: unknown): boolean {
@@ -111,7 +111,8 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
-      if(result.method==="updates.get") return exact(result,["method","value"]) && isUpdates(result.value);
+      if (result.method === "updates.get")
+        return exact(result, ["method", "value"]) && isUpdates(result.value);
       if (result.method === "shortcuts.get")
         return (
           exact(result, ["method", "value"]) &&
@@ -130,7 +131,8 @@ export function isHostMessage(value: unknown): value is HostToUi {
           )
         );
       if (
-        result.method === "updates.restart" || result.method === "notifications.test" ||
+        result.method === "updates.restart" ||
+        result.method === "notifications.test" ||
         result.method === "launcher.favorite"
       )
         return (
@@ -176,7 +178,10 @@ export function isHostMessage(value: unknown): value is HostToUi {
     case "event": {
       if (!exact(value, ["kind", "event"]) || !record(value.event))
         return false;
-      if (value.event.topic === "updates") return exact(value.event,["topic","value"]) && isUpdates(value.event.value);
+      if (value.event.topic === "updates")
+        return (
+          exact(value.event, ["topic", "value"]) && isUpdates(value.event.value)
+        );
       return value.event.topic === "core"
         ? exact(value.event, ["topic", "value"]) && core(value.event.value)
         : value.event.topic === "simStatus" &&

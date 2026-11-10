@@ -7,6 +7,14 @@ use std::{
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_installer::engine::{Installation, Manifest};
+pub const RELEASE_CHANNELS: [&str; 3] = ["master", "testers", "nightly"];
+pub const RELEASE_KINDS: [&str; 3] = ["Nuevo", "Mejora", "Arreglo"];
+pub const MAX_STATUS_TEXT: usize = 8192;
+pub const MAX_SHORT_VERSION: usize = 32;
+pub const MAX_STATUS_STATE: usize = 64;
+pub const MAX_NEWS: usize = 256;
+pub const MAX_TAG: usize = 128;
+pub const MAX_TITLE: usize = 512;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -100,14 +108,14 @@ fn read<T: serde::de::DeserializeOwned>(path: &Path, limit: u64) -> Option<T> {
 fn beta(root: &Path) -> Option<BetaStatus> {
     let status: BetaStatus = read(&root.join("update-status.json"), 64 * 1024)?;
     (status.schema == 1
-        && status.message.len() <= 8192
-        && status.notes.len() <= 8192
-        && status.state.len() <= 64
-        && status.version.len() <= 32
+        && status.message.len() <= MAX_STATUS_TEXT
+        && status.notes.len() <= MAX_STATUS_TEXT
+        && status.state.len() <= MAX_STATUS_STATE
+        && status.version.len() <= MAX_SHORT_VERSION
         && status
             .rejected_version
             .as_ref()
-            .is_none_or(|value| value.len() <= 32))
+            .is_none_or(|value| value.len() <= MAX_SHORT_VERSION))
     .then_some(status)
 }
 fn registration(root: &Path) -> Option<String> {
@@ -115,7 +123,7 @@ fn registration(root: &Path) -> Option<String> {
     (status.schema == 1
         && status.state == "warning"
         && !status.message.is_empty()
-        && status.message.len() <= 8192)
+        && status.message.len() <= MAX_STATUS_TEXT)
         .then_some(status.message)
 }
 fn news(channel: &str) -> Vec<ReleaseNote> {
@@ -127,13 +135,17 @@ fn news(channel: &str) -> Vec<ReleaseNote> {
         .into_iter()
         .filter(|note| {
             note.schema_version == 1
-                && matches!(note.kind.as_str(), "Nuevo" | "Mejora" | "Arreglo")
+                && RELEASE_KINDS.contains(&note.kind.as_str())
+                && note.tag.len() <= MAX_TAG
+                && note.title.len() <= MAX_TITLE
+                && note.summary.len() <= MAX_STATUS_TEXT
                 && match channel {
                     "nightly" => matches!(note.channel.as_str(), "master" | "testers" | "nightly"),
                     "testers" | "beta" => matches!(note.channel.as_str(), "master" | "testers"),
                     _ => note.channel == "master",
                 }
         })
+        .take(MAX_NEWS)
         .collect()
 }
 

@@ -25,6 +25,7 @@ import { Appearance } from "../src/renderer/screens/settings/Appearance";
 import { General } from "../src/renderer/screens/settings/General";
 import { Performance } from "../src/renderer/screens/settings/Performance";
 import { Shortcuts } from "../src/renderer/screens/settings/Shortcuts";
+import { Updates } from "../src/renderer/screens/settings/Updates";
 import {
   ToastProvider,
   ToastViewport,
@@ -393,5 +394,51 @@ describe("layout availability and shortcut read failures", () => {
     await waitFor(() =>
       expect(hook.result.current.view?.track.level).toBe("economy"),
     );
+  });
+});
+
+describe("Actualizaciones over the simulated host", () => {
+  it("reads staged information and sends one restart request", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("actualizacion-lista", <Updates />);
+    await loaded(hook);
+    const button = await screen.findByRole("button", {
+      name: t("updates.restart"),
+    });
+    await userEvent.setup().click(button);
+    await waitFor(() =>
+      expect(
+        request.mock.calls.filter(
+          ([value]) => value.method === "updates.restart",
+        ),
+      ).toHaveLength(1),
+    );
+  });
+  it("shows a read error and keeps reload available", async () => {
+    const hook = mount("actualizacion-error", <Updates />);
+    await loaded(hook);
+    await screen.findByText(t("updates.invalid"));
+    expect(
+      screen.getByRole("button", { name: t("settings.reload") }),
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("button", { name: t("updates.restart") }),
+    ).toBeNull();
+  });
+  it("does not offer installation in a development checkout", async () => {
+    const hook = mount("ajustes-base", <Updates />);
+    await loaded(hook);
+    await screen.findByText(t("updates.development"));
+    expect(
+      screen.queryByRole("button", { name: t("updates.restart") }),
+    ).toBeNull();
+  });
+  it("vetoes restart if a settings save failed but permits Live", async () => {
+    const hook = mount("ajustes-error");
+    await loaded(hook);
+    act(() => hook.result.current.update({ field: "minimized", value: true }));
+    await waitFor(() => expect(hook.result.current.error).toBeDefined());
+    expect(await hook.guard("restart")).toBe(false);
+    expect(await hook.guard("live")).toBe(true);
   });
 });

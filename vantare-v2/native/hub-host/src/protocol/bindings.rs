@@ -67,10 +67,21 @@ fn append_constants(text: &mut String) {
     macro_rules! constants {
         ($name:literal, $values:expr) => {
             text.push_str(concat!("export const ", $name, " = "));
-            text.push_str(&serde_json::to_string(&$values).expect("serializable constants"));
+            text.push_str(
+                &serde_json::to_string(&canonical(
+                    serde_json::to_value(&$values).expect("serializable constants"),
+                ))
+                .expect("constants JSON"),
+            );
             text.push_str(" as const;\n");
         };
     }
+    constants!("releaseChannels", crate::updates::RELEASE_CHANNELS);
+    constants!("releaseKinds", crate::updates::RELEASE_KINDS);
+    constants!(
+        "updatesLimits",
+        serde_json::json!({"text":crate::updates::MAX_STATUS_TEXT,"shortVersion":crate::updates::MAX_SHORT_VERSION,"state":crate::updates::MAX_STATUS_STATE,"news":crate::updates::MAX_NEWS,"tag":crate::updates::MAX_TAG,"title":crate::updates::MAX_TITLE})
+    );
     constants!(
         "installationStates",
         [

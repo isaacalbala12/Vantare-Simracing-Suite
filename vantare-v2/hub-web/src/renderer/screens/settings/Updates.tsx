@@ -1,17 +1,24 @@
-import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Pill, SettingRow, Skeleton } from "../../ui/Data";
 export function Updates() {
   const { client } = useHost();
-  const cache=useQueryClient();
-  useEffect(()=>{
-    if(!client)return;
-    const unlisten=client.listen(message=>{if(message.kind==="event" && message.event.topic==="updates")cache.setQueryData(["updates"],message.event.value);});
-    const unsubscribe=client.subscribe("updates");return ()=>{unsubscribe();unlisten();};
-  },[client,cache]);
+  const cache = useQueryClient();
+  useEffect(() => {
+    if (!client) return;
+    const unlisten = client.listen((message) => {
+      if (message.kind === "event" && message.event.topic === "updates")
+        cache.setQueryData(["updates"], message.event.value);
+    });
+    const unsubscribe = client.subscribe("updates");
+    return () => {
+      unsubscribe();
+      unlisten();
+    };
+  }, [client, cache]);
   const query = useQuery({
     queryKey: ["updates"],
     enabled: !!client,
@@ -62,7 +69,14 @@ export function Updates() {
           {view.registrationWarning}
         </Callout>
       )}
-      <Card title={t("updates.installed")} actions={<Button onClick={()=>void query.refetch()}>{t("settings.reload")}</Button>}>
+      <Card
+        title={t("updates.installed")}
+        actions={
+          <Button onClick={() => void query.refetch()}>
+            {t("settings.reload")}
+          </Button>
+        }
+      >
         {view.installation === "development" && (
           <Pill>{t("updates.development")}</Pill>
         )}

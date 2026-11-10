@@ -2,6 +2,7 @@ import importlib.util
 import pathlib
 import json
 import tempfile
+import datetime
 import unittest
 
 SPEC = importlib.util.spec_from_file_location('ab', pathlib.Path(__file__).with_name('aggregate-overlay-ab.py'))
@@ -17,6 +18,11 @@ class BalancedComparisonTest(unittest.TestCase):
     def test_engine_effect_survives_drift(self):
         values = [100 * 1.03 ** i * (0.95 if i in (1, 2) else 1) for i in range(4)]
         self.assertAlmostEqual(M.round_ratio(values), 0.95)
+
+    def test_unequal_run_spacing_compensates_log_drift(self):
+        times=[0,1,4,8]
+        values=[100*1.03**time for time in times]
+        self.assertAlmostEqual(M.round_ratio(values,times),1)
 
     def test_incomplete_or_nonpositive_round_rejected(self):
         for values in ([1, 2, 3], [1, 0, 2, 3]):
@@ -44,7 +50,9 @@ class BalancedComparisonTest(unittest.TestCase):
                             recording_sha256='recording',profile='release',widgets=4,phases=False,
                             executable_sha256=digest),ui=dict(cycles_per_second=100 if digest=='A' else 95))
                         (folder/'summary.json').write_text(json.dumps(run))
-                        order.append(dict(experiment=experiment,round=number,slot=slot,label=label,directory=name))
+                        started=(datetime.datetime(2026,1,1,tzinfo=datetime.timezone.utc)
+                                 +datetime.timedelta(seconds=number*4+slot)).isoformat()
+                        order.append(dict(experiment=experiment,round=number,slot=slot,label=label,directory=name,started=started))
             (root/'ab-order.json').write_text(json.dumps(order))
             result=M.aggregate(root)
             self.assertAlmostEqual(result['ab']['median'],0.95)

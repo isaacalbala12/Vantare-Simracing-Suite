@@ -21,10 +21,11 @@ acepta una diferencia del 5 %. Hay que corregir las condiciones y repetir una
 campaña completa, publicando también la fallida; aumentar N por sí solo no
 elimina sesgo. El script admite hasta 24 rondas.
 
-La razón por ronda es `sqrt(B1*B2/(A1*A2))`. Cancela una deriva multiplicativa
-lineal en el tiempo cuando las cuatro observaciones están espaciadas igual.
-Las duraciones y pausas reales quedan en el manifiesto: interrupciones o deriva
-no lineal siguen siendo limitaciones. Se publican las razones individuales,
+Con intervalos iguales, la razón por ronda es `sqrt(B1*B2/(A1*A2))`. El
+analizador usa los tiempos de inicio reales para interpolar log(A) hasta el
+punto medio de B1/B2; así compensa una deriva multiplicativa lineal incluso
+con pausas desiguales. Interrupciones o deriva no lineal siguen siendo
+limitaciones. Se publican las razones individuales,
 mediana, rango, CV entre razones y CV de las cuatro observaciones de cada ronda.
 La separación del ruido A/A es necesaria; no sustituye los gates visual y VRR.
 

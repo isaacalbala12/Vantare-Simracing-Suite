@@ -5,13 +5,19 @@ import json
 import math
 import pathlib
 import statistics
+import datetime
 
 
-def round_ratio(values):
+def round_ratio(values, times=None):
     if len(values) != 4 or any(not math.isfinite(v) or v <= 0 for v in values):
         raise ValueError('four positive finite ABBA observations required')
-    return math.exp((math.log(values[1]) + math.log(values[2])
-                     - math.log(values[0]) - math.log(values[3])) / 2)
+    times=list(range(4)) if times is None else times
+    if len(times)!=4 or any(b<=a for a,b in zip(times,times[1:])):
+        raise ValueError('four increasing observation times required')
+    midpoint=(times[1]+times[2])/2
+    weight=(midpoint-times[0])/(times[3]-times[0])
+    reference=(1-weight)*math.log(values[0])+weight*math.log(values[3])
+    return math.exp((math.log(values[1])+math.log(values[2]))/2-reference)
 
 
 def describe(values):
@@ -63,6 +69,7 @@ def aggregate(root):
         if entry['slot'] in slots:
             raise ValueError('duplicate ABBA slot')
         slots[entry['slot']] = dict(value=run['ui']['cycles_per_second'],
+                                   started=datetime.datetime.fromisoformat(entry['started']).timestamp(),
                                    summary_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
     if len(identities) != 1 or len(binaries['aa']) != 1 or len(binaries['ab']) != 2:
         raise ValueError('mixed collector/core/recording/configuration or invalid A/A–A/B binaries')
@@ -74,7 +81,8 @@ def aggregate(root):
         for _, slots in sorted(groups.items()):
             if set(slots) != {0, 1, 2, 3}:
                 raise ValueError('incomplete ABBA round')
-            ratios[experiment].append(round_ratio([slots[i]['value'] for i in range(4)]))
+            ratios[experiment].append(round_ratio([slots[i]['value'] for i in range(4)],
+                                                  [slots[i]['started'] for i in range(4)]))
     result = compare(ratios['aa'], ratios['ab'])
     result['rounds'] = rounds
     result['within_round_cv'] = {

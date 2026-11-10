@@ -154,14 +154,17 @@ una ruta absoluta de Cargo; no se cambia ni se omite esa prueba. Distribución/m
 controles en paralelo cuando afectan al diff y siempre en integración.
 El agregador exige éxito de todos los jobs aplicables, también si se cancelan.
 
-PR a nightly: crates afectados y dependientes transitivos, sin Hub/Admin excepto
-cambios explícitos en sus carpetas. Configuración global y rutas desconocidas
-amplían el conjunto; no se saltan silenciosamente tests. Integración/promociones:
+PR a nightly: crates afectados y dependientes transitivos, sin Hub/Admin solo
+cuando las rutas corresponden a crates conocidos (salvo cambios explícitos en
+esos productos). Configuración global y rutas desconocidas fuerzan todo el
+workspace, incluidos Hub/Admin. Runtime, services, domain, ipc y ui también
+exigen instalación; solo strategy, engineer y storage son hojas para ese gate.
+Integración/promociones:
 workspace completo. El Hub web y su workflow son independientes de native/.
 
 Nextest es binario precompilado con fallback de compilación desactivado. Acciones
 de terceros fijadas por SHA. Caché del repo: 10 GB compartidos; registro/git con
-actions/cache (Cargo.lock/toolchain), sccache con backend GHA y namespace del lock.
+actions/cache (Cargo.lock/toolchain), sccache con backend GHA y versión fija.
 No se guarda una segunda copia completa de targets. PR restaura caches de su base
 nightly conforme al ámbito de GitHub; el archivo de tests es artefacto del mismo
 SHA con retención de un día. Ningún secreto, ruleset ni auto-merge se modifica.

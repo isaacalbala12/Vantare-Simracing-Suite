@@ -43,6 +43,11 @@ def event(**overrides):
 
 
 class NightlyCloseoutTest(unittest.TestCase):
+    def test_smoke_gates_use_the_native_build_queue(self):
+        workflow = (Path(__file__).resolve().parents[1] / 'workflows/testing-center-nightly-closeout.yml').read_text(encoding='utf-8')
+        self.assertIn('pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File gates.ps1 -Gate $gate', workflow)
+        self.assertNotIn('            ./gates.ps1 -Gate $gate', workflow)
+
     def test_starts_smoke_only_for_exact_nightly_merge_and_reservation(self):
         result = decide_closeout(event())
         self.assertEqual(result.state, "smoke_running")

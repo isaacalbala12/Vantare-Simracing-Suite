@@ -171,7 +171,9 @@ Todo encargo incluye:
 
 ## Compilaciones de workers (#1993)
 
-Encargar `native/scripts/comprobar.ps1 <crate>` (crate y dependientes directos, sin Hub ni Admin).
+En Windows, encargar `native/scripts/comprobar.ps1 <crate>` (crate y dependientes directos, sin Hub ni Admin).
+En Mac, usar la alternativa de bibliotecas de `native/README.md`, con target
+propio y cuatro jobs; la cola usa Win32. CI conserva los procesos Windows.
 La CI valida dependientes transitivos y el workspace completo en nightly.
 Siempre por `compilar.ps1`: dos slots como máximo, cuatro jobs en el servidor,
 target persistente del slot en D:, reutilizado entre ramas. No targets por rama

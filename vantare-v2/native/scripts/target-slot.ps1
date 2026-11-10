@@ -52,12 +52,26 @@ function Initialize-VantareSlotTarget {
         (Get-Item -LiteralPath $stamp).LastWriteTimeUtc -lt [DateTime]::UtcNow.AddDays(-14)
     $bytes = 0L
     if (Test-VantareCargoCache $target) {
-        $items = @(Get-ChildItem -LiteralPath $target -Recurse -Force -ErrorAction Stop)
-        if ($items | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
-            throw 'Hay enlaces dentro del target; revisar antes de limpiar.'
+        $sizeStamp = Join-Path $target '.vantare-target-size.json'
+        $cachedSize = $null
+        if ((Test-Path -LiteralPath $sizeStamp) -and
+            (Get-Item -LiteralPath $sizeStamp).LastWriteTimeUtc -gt [DateTime]::UtcNow.AddHours(-1)) {
+            try { $cachedSize = Get-Content -LiteralPath $sizeStamp -Raw | ConvertFrom-Json } catch { }
         }
-        foreach ($file in $items | Where-Object { -not $_.PSIsContainer }) { $bytes += $file.Length }
+        $cachedBytes = 0L
+        if ($null -ne $cachedSize -and $cachedSize.PSObject.Properties['bytes'] -and
+            [long]::TryParse([string]$cachedSize.bytes, [ref]$cachedBytes) -and $cachedBytes -ge 0) {
+            $bytes = $cachedBytes
+        } else {
+            $bytes = [long](Get-ChildItem -LiteralPath $target -Recurse -File -Force -ErrorAction Stop |
+                Measure-Object Length -Sum).Sum
+            @{bytes=$bytes} | ConvertTo-Json | Set-Content -LiteralPath $sizeStamp
+        }
         if ($expired -or $bytes -gt $(if ($Ci) { 35GB } else { 20GB })) {
+            $items = @(Get-ChildItem -LiteralPath $target -Recurse -Force -ErrorAction Stop)
+            if ($items | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
+                throw 'Hay enlaces dentro del target; revisar antes de limpiar.'
+            }
             $locks = @()
             try {
                 foreach ($file in $items | Where-Object Name -EQ '.cargo-lock') {

@@ -11,6 +11,16 @@ foreach ($argument in $args) {
     else { $normalized += $argument }
 }
 $args = $normalized
+# Packaging supplies its own output target through the environment. Treat it
+# exactly like an explicit CLI target, including validation and the target lease.
+if ($env:CARGO_TARGET_DIR -and $args.Count -gt 1 -and
+    [IO.Path]::GetFileNameWithoutExtension($args[0]) -ieq 'cargo' -and
+    $args[1] -in @('build', 'check', 'clippy', 'test', 'nextest', 'run', 'rustc', 'bench', 'doc', 'install') -and
+    '--target-dir' -notin $args) {
+    $separator = [array]::IndexOf($args, '--')
+    if ($separator -lt 0) { $args += @('--target-dir', $env:CARGO_TARGET_DIR) }
+    else { $args = @($args[0..($separator - 1)]) + @('--target-dir', $env:CARGO_TARGET_DIR) + @($args[$separator..($args.Count - 1)]) }
+}
 for ($index = 0; $index -lt $args.Count; $index++) {
     if ($args[$index] -in @('--target-dir', '-TargetDirectory')) {
         if ($index + 1 -ge $args.Count -or -not (Test-VantareTargetPath $args[$index + 1])) {

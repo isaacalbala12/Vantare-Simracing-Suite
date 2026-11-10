@@ -5,8 +5,8 @@ from pathlib import Path
 import subprocess
 
 
-def select(packages, paths):
-    names = {package['name'] for package in packages}
+def changed_crates(packages, paths):
+    """None means global/unknown inputs; a set means known crate paths only."""
     roots = {
         Path(package['manifest_path']).parent.name: package['name']
         for package in packages
@@ -18,16 +18,25 @@ def select(packages, paths):
             # Workflow and build tooling outside native may change any gate.
             if path.startswith('vantare-v2/docs/') or path.endswith('.md'):
                 continue
-            return sorted(names)
+            return None
         if path.endswith(('Cargo.toml', 'Cargo.lock')) or parts[2:4] in [['hub', 'assets'], ['hub', 'reference']]:
-            return sorted(names)
+            return None
         if len(parts) < 4 or parts[2] not in roots:
-            return sorted(names)
+            return None
         changed.add(roots[parts[2]])
+    return changed
+
+
+def select(packages, paths, transitive=True, include_optional=True):
+    names = {package['name'] for package in packages}
+    changed = changed_crates(packages, paths)
+    if changed is None:
+        return sorted(names)
     while True:
         reverse = {
             package['name'] for package in packages
-            if any(dep['name'] in changed for dep in package['dependencies'])
+            if any(dep['name'] in changed and (include_optional or not dep.get('optional', False))
+                   for dep in package['dependencies'])
         }
         # This test contract crosses a process boundary, so Cargo has no edge for it.
         if 'vantare-ui' in changed:
@@ -35,8 +44,8 @@ def select(packages, paths):
         if 'vantare-storage' in changed:
             reverse |= names & {'vantare-hub'}
         expanded = changed | reverse
-        if expanded == changed:
-            return sorted(changed)
+        if expanded == changed or not transitive:
+            return sorted(expanded)
         changed = expanded
 
 
@@ -45,7 +54,7 @@ def installation_affected(paths):
     # only leaf view code cannot change packaging, trust, installer or root launch.
     # Leaf Rust source changes use selected gates; full packaging remains on
     # every integration push and whenever installer/launch/build inputs change.
-    leaves = {'domain', 'ipc', 'strategy', 'runtime', 'engineer', 'services', 'ui', 'storage'}
+    leaves = {'strategy', 'engineer', 'storage'}
     for path in paths:
         if path.endswith('.md'):
             continue
@@ -81,16 +90,17 @@ def select_for_crate(packages, crate):
         raise ValueError(f'Crate desconocido: {crate}')
     if crate in LEGACY:
         raise ValueError('Hub y Admin están fuera del camino rápido; usar su validación explícita.')
-    selected = {crate} | {
-        package['name'] for package in packages
-        if any(dep['name'] == crate and not dep.get('optional', False)
-               for dep in package['dependencies'])
-    }
-    return sorted(selected - LEGACY)
+    package = next(p for p in packages if p['name'] == crate)
+    directory = Path(package['manifest_path']).parent.name
+    selected = select(packages, [f'vantare-v2/native/{directory}/src/lib.rs'],
+                      transitive=False, include_optional=False)
+    return sorted(set(selected) - LEGACY)
 
 
 def select_for_ci(packages, paths, fast=False):
     selected = select(packages, paths)
+    if changed_crates(packages, paths) is None:
+        return selected
     legacy_changed = any(path.replace('\\', '/').startswith(
         ('vantare-v2/native/hub/', 'vantare-v2/native/admin/')) for path in paths)
     return sorted(set(selected) - LEGACY) if fast and not legacy_changed else selected

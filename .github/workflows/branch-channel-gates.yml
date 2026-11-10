@@ -150,6 +150,7 @@ jobs:
         run: |
           python .github/scripts/test_native_gate_scope.py
           python .github/scripts/test_native_ci_results.py
+          python -m unittest vantare-v2/native/scripts/test_affected_crates.py
 
       - name: Test Testing Center trusted manifest collector
         run: python .github/scripts/test_testing_center_manifest_collector.py
@@ -285,6 +286,7 @@ jobs:
 
   native_build:
     name: Build native validation archive
+    timeout-minutes: 45
     if: needs.policy.outputs.native != 'false'
     needs: policy
     runs-on: windows-latest
@@ -303,6 +305,14 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
       - uses: ./.github/actions/native-build-setup
+      - name: Test Windows worker tooling
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'native-tooling'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests')) {
+            pwsh -NoProfile -File "native/scripts/$test.ps1" -EvidenceDirectory $evidence
+            if ($LASTEXITCODE) { throw "Worker tooling: $test failed" }
+          }
       - name: Classify changed automatic scope
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ github.workspace }}
@@ -382,6 +392,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: native-tests-${{ github.sha }}
+          overwrite: true
           path: |
             ${{ runner.temp }}/vantare-targets/ci/nextest-tests.tar.zst
             ${{ runner.temp }}/vantare-targets/ci/ci-scope.json
@@ -391,6 +402,7 @@ jobs:
 
   native_tests:
     name: Run native ${{ matrix.suite }}
+    timeout-minutes: 20
     needs: [policy, native_build]
     if: needs.policy.outputs.native != 'false'
     runs-on: windows-latest
@@ -430,6 +442,7 @@ jobs:
 
   native_lifecycle_build:
     name: Build lifecycle overlays in parallel
+    timeout-minutes: 30
     needs: policy
     if: needs.policy.outputs.native != 'false' && needs.policy.outputs.overlays != 'false'
     runs-on: windows-latest
@@ -462,6 +475,7 @@ jobs:
 
   native_lifecycle:
     name: Run native lifecycle
+    timeout-minutes: 15
     needs: [policy, native_build, native_lifecycle_build]
     if: >-
       always() && needs.policy.outputs.native != 'false' &&
@@ -502,6 +516,7 @@ jobs:
 
   native_installation:
     name: Validate native distribution and installation
+    timeout-minutes: 60
     if: needs.policy.outputs.native != 'false' && needs.policy.outputs.installation != 'false'
     needs: policy
     runs-on: windows-latest

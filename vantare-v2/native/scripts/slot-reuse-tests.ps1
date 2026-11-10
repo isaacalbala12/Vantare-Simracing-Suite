@@ -1,7 +1,8 @@
 param([Parameter(Mandatory)][string]$EvidenceDirectory)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-if ($EvidenceDirectory -notmatch '^[dD]:[\\/]') { throw 'Evidencia en D: requerida.' }
+. (Join-Path $PSScriptRoot 'target-slot.ps1')
+if (-not (Test-VantareTargetPath $EvidenceDirectory)) { throw 'Evidencia fuera del volumen configurado o RUNNER_TEMP.' }
 if ($env:VANTARE_CARGO_QUEUE_OWNER) { throw 'Ejecutar este orquestador de pruebas sin una reserva exterior.' }
 $env:VANTARE_SCCACHE = '0'
 Remove-Item Env:RUSTC_WRAPPER -ErrorAction SilentlyContinue

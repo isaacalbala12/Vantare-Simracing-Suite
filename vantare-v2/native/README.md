@@ -503,7 +503,9 @@ núcleo o en `ui` no los compila ni los prueba en local. Cargo resuelve sus
 dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes transitivos y excluye Hub/Admin, salvo
 cambios explícitos en esos productos. Push a nightly/testers, promociones y
 merge_group comprueban el workspace completo.
-Cambios de configuración global o rutas nativas desconocidas fuerzan el conjunto.
+Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
+workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
+cuando el diff pertenece a crates conocidos.
 Los tests de procesos de Runtime preparan también el ejecutable Services.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
 Nextest usa `--build-jobs`; `-j` controla hilos de test.
@@ -521,11 +523,13 @@ evitar ejecutables obsoletos; las dependencias se conservan. No crear targets po
 reserva del ancestro. Sccache local usa `D:/VantareServer/cache/sccache` (30 GB, puerto 4227) y es opcional;
 `VANTARE_SCCACHE=0` permite repetir un fallo conservando su primera evidencia.
 
-Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB. Solo
+Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB.
+El tamaño se mide como máximo una vez por hora; entre medidas se usa su sello.
+Los enlaces se comprueban antes de borrar. Solo
 se limpia bajo el mutex correspondiente, sin enlaces ni locks Cargo abiertos;
 menos de 15 GB libres en D: detiene la compilación local. El runner alojado
 reserva 2 GB en el volumen temporal. Los targets explícitos se
-reservan para mediciones o distribución, siempre absolutos en D:; no los limpia
+reservan para mediciones o distribución, absolutos en el volumen configurado; no los limpia
 el slot automáticamente. No se borran targets ajenos.
 
 La CI usa exclusivamente `windows-latest` y rutas bajo `RUNNER_TEMP`. Instala
@@ -538,9 +542,31 @@ no dispara Rust salvo cambios en `native/` o entradas globales del build.
 
 La caché de GitHub comparte el límite de 10 GB del repo: registro/git con
 actions/cache y artefactos de compilador con sccache GHA, sin duplicar targets.
-Las claves incluyen Cargo.lock; los PR pueden restaurar la caché de su base
+El registro se indexa por Cargo.lock; sccache conserva una versión fija y decide
+la reutilización por los inputs del compilador. Los PR pueden restaurar su base
 nightly. CI desactiva incremental; local lo conserva. Los archivos de tests
 son artefactos del mismo SHA, con retención de un día, no cachés de otra rama.
+
+La cola PowerShell usa Win32 y no se ejecuta en macOS. Alternativa desde
+`native/`, con target propio y cuatro jobs (ejemplo Runtime y su dependiente
+directo Engineer; `python3 scripts/affected-crates.py --crate vantare-runtime`
+calcula la selección, incluidos los puentes entre procesos):
+
+```bash
+export CARGO_TARGET_DIR="$HOME/target-<worker>" CARGO_BUILD_JOBS=4
+export VANTARE_NATIVE_DATA_ROOT="$CARGO_TARGET_DIR/qa-data"
+mkdir -p "$VANTARE_NATIVE_DATA_ROOT"
+cargo clippy -p vantare-runtime -p vantare-engineer --lib --locked --offline -j 4 -- -D warnings
+cargo test -p vantare-runtime -p vantare-engineer --lib --locked --offline -j 4
+```
+
+Esto comprueba bibliotecas, no sustituye los procesos y gates de Windows.
+La integración Unix completa está bloqueada por #2004. Para eliminar targets
+antiguos de Windows, `scripts/limpiar-targets.ps1 -Raiz <raíces> -Dias 7` simula
+la limpieza; `-Aplicar` la ejecuta. No usarlo sobre targets ajenos. La tarea
+del servidor `\Vantare\LimpiarTargets` conserva esa limpieza periódica;
+la limpieza por slot es independiente. Los targets de medición de VANTA-137
+se dejan para Isaac, conforme a su instrucción.
 
 Opcional en Mac: con LLVM en PATH, cargo-xwin 0.23.1 y el target MSVC de Rust
 1.95 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`

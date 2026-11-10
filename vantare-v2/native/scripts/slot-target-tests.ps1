@@ -1,8 +1,8 @@
 param([Parameter(Mandatory)][string]$EvidenceDirectory)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-if ($EvidenceDirectory -notmatch '^[dD]:[\\/]') { throw 'Evidencia en D: requerida.' }
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
+if (-not (Test-VantareTargetPath $EvidenceDirectory)) { throw 'Evidencia fuera del volumen configurado o RUNNER_TEMP.' }
 $root = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('slot-clean-' + [guid]::NewGuid().ToString('N'))
 $target = Initialize-VantareSlotTarget -Slot 0 -Root $root
 $tag = Join-Path $target 'CACHEDIR.TAG'
@@ -35,8 +35,15 @@ $outside = Join-Path $root 'outside'
 $sentinel = Join-Path $outside 'keep.txt'
 [IO.File]::WriteAllText($sentinel, 'conservar')
 [IO.File]::WriteAllText($tag, 'Signature: 8a477f597d28d172789f06886806bc55')
+$sizeStamp = Join-Path $target '.vantare-target-size.json'
+[IO.File]::WriteAllText($sizeStamp, '{"bytes":0}')
+function Get-ChildItem { throw 'No debe recorrerse un target con sello de tamaño reciente.' }
+try { $null = Initialize-VantareSlotTarget -Slot 0 -Root $root }
+finally { Remove-Item Function:Get-ChildItem }
+'PASS: una llamada con sello reciente no recorre el target.'
 $junction = Join-Path $target 'junction'
 New-Item -ItemType Junction -Path $junction -Target $outside | Out-Null
+[IO.File]::SetLastWriteTimeUtc($stamp, [DateTime]::UtcNow.AddDays(-15))
 try {
     $rejected = $false
     try { $null = Initialize-VantareSlotTarget -Slot 0 -Root $root } catch { $rejected = $true }

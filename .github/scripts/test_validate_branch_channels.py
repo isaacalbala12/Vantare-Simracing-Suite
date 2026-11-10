@@ -1,6 +1,7 @@
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
+import re
 import unittest
 
 import validate_branch_channels as vbc
@@ -99,6 +100,17 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('./setup-duckdb.ps1', setup)
         self.assertIn('fallback: none', setup)
         self.assertNotIn('cargo install', setup)
+        self.assertIn('SCCACHE_GHA_VERSION=vanta137-v1', setup)
+        self.assertNotIn('SCCACHE_GHA_VERSION=vanta137-$', setup)
+        self.assertIn('RUSTUP_TOOLCHAIN=1.95.0', setup)
+        self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
+        for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests'):
+            self.assertIn(test, workflow)
+        for job in ('native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_installation'):
+            block = re.split(r'\n  \S', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
+            self.assertRegex(block, r'timeout-minutes: [1-9][0-9]*')
+        archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_tests:', 1)[0]
+        self.assertIn('overwrite: true', archive)
         for line in setup.splitlines():
             if 'uses:' in line:
                 self.assertRegex(line, r'uses: [^@]+@[0-9a-f]{40}$')

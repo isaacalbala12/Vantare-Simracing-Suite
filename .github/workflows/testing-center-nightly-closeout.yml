@@ -251,7 +251,7 @@ jobs:
           cargo fmt --all -- --check
           if ($LASTEXITCODE) { throw "native format failed" }
           foreach ($gate in @('check', 'clippy', 'test', 'lifecycle', 'telemetria')) {
-            ./gates.ps1 -Gate $gate
+            pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File gates.ps1 -Gate $gate
             if ($LASTEXITCODE) { throw "native $gate failed" }
           }
 

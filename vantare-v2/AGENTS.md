@@ -209,7 +209,7 @@ conservan sus instrucciones propias.
 
 ## Compilación Rust (`native/`)
 
-Desde `vantare-v2/`, el worker usa
+En Windows, desde `vantare-v2/`, el worker usa
 `pwsh -NoProfile -File native/scripts/comprobar.ps1 <crate>`: Clippy y tests del
 crate y sus dependientes directos, excluyendo siempre Hub y Admin. Clippy incluye la comprobación de tipos.
 Para comandos específicos, usar `native/scripts/compilar.ps1 <comando> [args...]`.
@@ -226,6 +226,9 @@ sccache GHA y tests archivados para suite/telemetría/lifecycle en paralelo.
 No registrar runners propios para este repositorio público.
 Si falla sin diagnóstico del compilador, repetir con `VANTARE_SCCACHE=0` y
 conservar ambos resultados. Detalles y límites en `native/README.md`.
+La cola PowerShell es solo Windows. En macOS se usa el flujo de bibliotecas
+con target propio y cuatro jobs descrito en `native/README.md`, sección Workers;
+la integración Windows sigue siendo obligatoria en CI.
 
 ## Testing
 

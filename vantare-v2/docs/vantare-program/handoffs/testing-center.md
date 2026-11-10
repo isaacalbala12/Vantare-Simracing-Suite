@@ -1453,3 +1453,18 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   tipos/lint de diseño PASS; 10 Rust de contrato y 2 del puente Windows PASS,
   Clippy cruzado -D warnings PASS. Un arranque de worker Vitest falló con
   Electron abierto y pasó al cerrar el candidato propio. Sin servicios reales.
+
+
+### VANTA-138 / #2041 · rebase local y nueva comparación
+
+- Preparado sobre 28a8c0657, sin push por la cola #2029, #2035, #2040, #2041.
+  Conserva el dispatcher y las escenas de Roadmap. Shell no cambia.
+- 280 pruebas web, 12 Testing/puente y 3 Roadmap Windows PASS; Clippy cruzado
+  forzando recompilación, tipos, candidato QA y paquete PASS.
+- Evidencia: D:/VantareServer/evidence/hub-web/isa-1995-d-informes/visual-roadmap-rebase/.
+  RGBA dark 32.7391 %, light 39.5905 %; perceptual 4.0292/3.7559 %, sin máscaras.
+  Ya no aparece el botón duplicado. Queda el padding compartido del rail (16 px
+  frente al arranque GPUI de 6 px) y la cabecera de referencia con otros derechos.
+- Banco fijo 3304ea358 probado sin recompilar: Resumen claro muestra Informes.
+  Con replies locales de tester en una copia QA aislada termina en Inicio.
+  Ninguna se ha promovido a referencia; falta actualizar el banco con #2030.

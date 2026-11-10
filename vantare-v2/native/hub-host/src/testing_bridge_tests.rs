@@ -88,7 +88,7 @@ fn session_testing_roundtrips_remove_prepare_and_send_and_ignores_late_ids() {
             services::Reply::ReportReceipt {
                 receipt: report_document::Receipt {
                     report_id: "15350000-0000-0000-0000-000000000001".into(),
-                    report_state: "submitted".into(),
+                    report_state: "received".into(),
                     created_at: "2026-11-10T12:00:00Z".into(),
                     idempotent: false,
                 },

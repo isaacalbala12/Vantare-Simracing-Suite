@@ -7,6 +7,20 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+it("stops retrying a busy host after the shared limit", async () => {
+  vi.useFakeTimers();
+  const request = vi.fn().mockRejectedValue(new HostFailure({ kind: "busy" }));
+  const result = testingRequest(
+    { request } as unknown as Client,
+    { method: "draft.load" },
+    new AbortController().signal,
+  ).catch((error) => error);
+  await vi.advanceTimersByTimeAsync(
+    testingBusyRetry.delayMs * (testingBusyRetry.attempts + 1),
+  );
+  expect(await result).toMatchObject({ detail: { kind: "busy" } });
+  expect(request).toHaveBeenCalledTimes(testingBusyRetry.attempts + 1);
+});
 it("retries only Busy before dispatch, with a bounded cancellable backoff", async () => {
   vi.useFakeTimers();
   const reply = {

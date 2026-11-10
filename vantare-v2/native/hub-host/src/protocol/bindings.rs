@@ -201,6 +201,14 @@ fn append_constants(text: &mut String) {
 fn append_testing_id_constants(text: &mut String) {
     for (name, value) in [
         (
+            "reportReceiptStates",
+            serde_json::json!(crate::testing::RECEIPT_STATES),
+        ),
+        (
+            "reportReceiptLegacyPrefix",
+            serde_json::json!(crate::testing::RECEIPT_LEGACY_PREFIX),
+        ),
+        (
             "testingBusyRetry",
             serde_json::json!({"delayMs":crate::testing::BUSY_RETRY_MS,"attempts":crate::testing::BUSY_RETRY_ATTEMPTS}),
         ),
@@ -556,8 +564,8 @@ fn testing_reply_samples() -> Vec<Reply> {
     vec![
         Reply::ReportSend {
             value: crate::testing::ReportReceiptView {
-                id: "qa".into(),
-                state: "submitted".into(),
+                id: "15350000-0000-0000-0000-000000000001".into(),
+                state: "received".into(),
                 created_at: "2026-11-10T12:00:00Z".into(),
                 draft_state: crate::testing::ReportDraftState::Cleared,
             },

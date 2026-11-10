@@ -6,7 +6,10 @@ import type {
   Request,
   TestingView,
 } from "../contract/generated/contract";
-import { reportScreenshotsAvailable } from "../contract/generated/contract";
+import {
+  reportScreenshotsAvailable,
+  testingIdLimits,
+} from "../contract/generated/contract";
 
 export function createTestingMock(scene: string, core: CoreStatus) {
   const empty = (): ReportDraftView => ({
@@ -23,6 +26,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
   });
   let draft = empty();
   let preview: ReportPreviewView | undefined;
+  let previewSequence = 0;
   const participation: TestingView = { reports: [], questionnaires: [] };
   let busy = scene === "testing-busy";
   if (core.access.tester)
@@ -123,9 +127,11 @@ export function createTestingMock(scene: string, core: CoreStatus) {
       case "report.prepare":
       case "report.retryPrepare":
         if (!draft.exists)
-          return { kind: "failure", id, error: { kind: "denied" } };
+          return { kind: "failure", id, error: { kind: "rejected" } };
         preview = {
-          id: "a".repeat(64),
+          id: (++previewSequence)
+            .toString(16)
+            .padStart(testingIdLimits.previewId, "0"),
           digest: "b".repeat(64),
           fields: structuredClone(draft.fields),
           appVersion: "0.0.0",
@@ -141,7 +147,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
         };
       case "report.send":
         if (!request.consent || !preview || preview.id !== request.previewId)
-          return { kind: "failure", id, error: { kind: "denied" } };
+          return { kind: "failure", id, error: { kind: "rejected" } };
         draft = empty();
         preview = undefined;
         return {
@@ -151,7 +157,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
             method: request.method,
             value: {
               id: "15350000-0000-0000-0000-000000000002",
-              state: "submitted",
+              state: "received",
               createdAt: "2026-11-10T12:00:00Z",
               draftState: "cleared",
             },
@@ -159,7 +165,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
         };
       case "testing.contribute":
         if (!request.consent)
-          return { kind: "failure", id, error: { kind: "denied" } };
+          return { kind: "failure", id, error: { kind: "rejected" } };
         if (!participation.reports.some((report) => report.id === request.id))
           participation.reports.push({
             id: request.id,
@@ -182,7 +188,8 @@ export function createTestingMock(scene: string, core: CoreStatus) {
         const report = participation.reports.find(
           (report) => report.id === request.id,
         );
-        if (!report) return { kind: "failure", id, error: { kind: "denied" } };
+        if (!report)
+          return { kind: "failure", id, error: { kind: "rejected" } };
         report.credit = request.consent;
         return {
           kind: "response",
@@ -198,7 +205,8 @@ export function createTestingMock(scene: string, core: CoreStatus) {
           (report) =>
             report.id === request.id && report.updatedAt === request.updatedAt,
         );
-        if (!report) return { kind: "failure", id, error: { kind: "denied" } };
+        if (!report)
+          return { kind: "failure", id, error: { kind: "rejected" } };
         report.notice = false;
         return {
           kind: "response",

@@ -25,6 +25,16 @@ pub const REPORT_STATES: [&str; 6] = [
     "spam",
     "fixed",
 ];
+pub const RECEIPT_STATES: [&str; 2] = ["received", "submitted"];
+pub const RECEIPT_LEGACY_PREFIX: &str = "report_";
+fn valid_receipt(value: &report_document::Receipt) -> bool {
+    (testing_id(&value.report_id) && value.report_state == RECEIPT_STATES[0])
+        || (value
+            .report_id
+            .strip_prefix(RECEIPT_LEGACY_PREFIX)
+            .is_some_and(preview_id)
+            && value.report_state == RECEIPT_STATES[1])
+}
 pub fn testing_id(value: &str) -> bool {
     value.len() == UUID_LENGTH && vantare_services::license::uuid(value)
 }
@@ -475,9 +485,11 @@ pub fn complete(
         core::Reply::ReportReceipt {
             receipt: value,
             draft_state,
-        } if matches!(operation, Operation::Send) => Ok(Reply::ReportSend {
-            value: receipt(&value, draft_state),
-        }),
+        } if matches!(operation, Operation::Send) && valid_receipt(&value) => {
+            Ok(Reply::ReportSend {
+                value: receipt(&value, draft_state),
+            })
+        }
         _ => Err(HostError::Rejected),
     }
 }
@@ -789,6 +801,9 @@ mod tests {
         assert!(
             matches!(reply,crate::protocol::Reply::DraftLoad{value} if value.message == "El borrador se conserva")
         );
+        assert!(
+            matches!(complete(Operation::Capture,core::Reply::Draft {draft:None,message:String::new()}).expect("typed capture reply"),crate::protocol::Reply::ReportCapture {value} if !value.exists)
+        );
     }
     #[test]
     fn screenshot_metadata_and_encoded_preview_are_bounded() {
@@ -830,7 +845,7 @@ mod tests {
     fn receipt_preserves_all_three_cleanup_states() {
         let value = report_document::Receipt {
             report_id: ID.into(),
-            report_state: "submitted".into(),
+            report_state: "received".into(),
             created_at: "2026-11-10T12:00:00Z".into(),
             idempotent: false,
         };
@@ -844,5 +859,15 @@ mod tests {
         ] {
             assert_eq!(receipt(&value, state).draft_state, expected);
         }
+        assert!(valid_receipt(&value));
+        assert!(!valid_receipt(&report_document::Receipt {
+            report_state: "submitted".into(),
+            ..value.clone()
+        }));
+        assert!(valid_receipt(&report_document::Receipt {
+            report_id: format!("{RECEIPT_LEGACY_PREFIX}{}", "a".repeat(64)),
+            report_state: "submitted".into(),
+            ..value
+        }));
     }
 }

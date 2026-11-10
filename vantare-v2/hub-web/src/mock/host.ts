@@ -69,7 +69,9 @@ export function createMockHost(sceneName = "ajustes-base") {
       tester: sceneName.startsWith("testing-tester"),
     };
     core.services =
-      sceneName === "testing-reference" ? "unavailable" : "connected";
+      sceneName === "testing-reference" || sceneName === "testing-offline"
+        ? "unavailable"
+        : "connected";
   }
   const testingHost = createTestingMock(sceneName, core);
   let pilotConflicted = false;

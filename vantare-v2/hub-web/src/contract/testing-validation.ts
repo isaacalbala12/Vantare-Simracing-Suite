@@ -3,6 +3,8 @@ import {
   reportFieldLimits,
   reportLegacyStates,
   reportModules,
+  reportReceiptLegacyPrefix,
+  reportReceiptStates,
   reportScreenshotLimits,
   reportStates,
   testingIdLimits,
@@ -191,6 +193,11 @@ export function isReportReceipt(value: unknown): boolean {
     [value.id, value.state, value.createdAt].every(
       (text) => typeof text === "string",
     ) &&
+    ((value.state === reportReceiptStates[0] && isTestingId(value.id)) ||
+      (value.state === reportReceiptStates[1] &&
+        typeof value.id === "string" &&
+        value.id.startsWith(reportReceiptLegacyPrefix) &&
+        isReportPreviewId(value.id.slice(reportReceiptLegacyPrefix.length)))) &&
     reportDraftStates.some((state) => state === value.draftState)
   );
 }

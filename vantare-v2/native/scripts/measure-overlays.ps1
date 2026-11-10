@@ -127,6 +127,14 @@ $buildLocks = [Collections.Generic.List[Threading.Mutex]]::new()
 function Assert-MeasurementQueueIdle {
     $compilers = @()
     foreach ($candidate in @(Get-MeasurementProcesses)) {
+        if ($candidate.Name -ieq 'cargo.exe' -and !$candidate.CommandLine) {
+            $snapshot=$candidate
+            $candidate=Resolve-MeasurementProcessSnapshot $snapshot
+            if (!$candidate) {
+                $readOnlyRows.Add([pscustomobject]@{qpc=[Diagnostics.Stopwatch]::GetTimestamp();pid=$snapshot.ProcessId;kind='Cargo snapshot ended or PID reused before classification; operation unknown'})
+                continue
+            }
+        }
         if (Test-MeasurementCompilerProcess -Name $candidate.Name -CommandLine $candidate.CommandLine) {
             # Record only recognized operation names, never arbitrary arguments.
             $operations = @([regex]::Matches([string]$candidate.CommandLine, '(?i)(?:^|\s)(metadata|tree|fmt|build|check|clippy|test|nextest|run|rustc|bench|doc|install|package|clean|--version|-vV)(?=\s|$)') | ForEach-Object { $_.Groups[1].Value })

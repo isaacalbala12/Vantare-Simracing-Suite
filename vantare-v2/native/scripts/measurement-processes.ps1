@@ -29,3 +29,13 @@ function Assert-MeasurementSourceRevision([string]$Root,[string]$Expected) {
 function Get-MeasurementProcesses {
     Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe' OR Name = 'rustc.exe' OR Name = 'clippy-driver.exe' OR Name = 'cargo-clippy.exe' OR Name = 'cargo-nextest.exe'"
 }
+
+# A short Cargo command can exit between CIM enumeration and command-line read.
+# Requery only missing command lines; an active unidentified process stays unsafe.
+function Resolve-MeasurementProcessSnapshot($Snapshot) {
+    if ($Snapshot.CommandLine) { return $Snapshot }
+    $live=Get-CimInstance Win32_Process -Filter "ProcessId = $([uint32]$Snapshot.ProcessId)" -ErrorAction Stop
+    if (!$live -or $live.Name -ine $Snapshot.Name) { return $null }
+    if ($Snapshot.CreationDate -and $live.CreationDate -and $Snapshot.CreationDate -ne $live.CreationDate) { return $null }
+    return $live
+}

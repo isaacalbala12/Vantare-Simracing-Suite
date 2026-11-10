@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { reportModules } from "../../../contract/generated/contract";
-import { testingText as text } from "./es";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
 import { Checkbox, Input, Select, Tabs, Textarea } from "../../ui/Forms";
@@ -13,6 +12,7 @@ import {
   TestingToolbar,
 } from "../../ui/TestingLayout";
 import { Diagnostics } from "../settings/Diagnostics";
+import { testingText as text } from "./es";
 import { useReports } from "./ReportsState";
 import { useTestingTabs } from "./TestingTabs";
 

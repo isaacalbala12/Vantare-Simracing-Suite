@@ -164,7 +164,7 @@ fn fuente(e: &BTreeMap<String, Value>) -> Result<Fuente, ErrorModelo> {
 struct Expansion<'a> {
     sistema: &'a Sistema,
     medidor: &'a dyn Medidor,
-    tree: TaffyTree<()>,
+    tree: TaffyTree<Size<f32>>,
     cantidad: usize,
 }
 impl Expansion<'_> {
@@ -180,30 +180,7 @@ impl Expansion<'_> {
         if self.cantidad > 4096 || prof > 32 {
             return Err(ErrorModelo::limite(&clave));
         }
-        let mut estilos = n.estilo.valores();
-        let mut bucle = n.bucle.clone();
-        for estado in &n.estados {
-            if comprobar_condicion(&estado.cuando, m, &format!("{clave}/estados/cuando"))? {
-                estilos.extend(estado.estilo.valores());
-                if estado.bucle.is_some() {
-                    bucle = estado.bucle.clone();
-                }
-            }
-        }
-        if n.visible
-            .as_ref()
-            .map(|c| comprobar_condicion(c, m, &format!("{clave}/visible")))
-            .transpose()?
-            == Some(false)
-        {
-            estilos.insert("opacidad".into(), Value::from(0));
-        }
-        let estilos = estilos
-            .iter()
-            .map(|(k, v)| {
-                resolver(v, m, self.sistema, &format!("{clave}/estilo/{k}")).map(|v| (k.clone(), v))
-            })
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
+        let (estilos, mut bucle) = self.estados(n, m, &clave)?;
         let fuente = fuente(&estilos)?;
         for (k, v) in &estilos {
             if propiedad(k).is_some()
@@ -244,31 +221,24 @@ impl Expansion<'_> {
         {
             bucle = None;
         }
-        let mut estilo = estilo(&estilos);
-        if let Some(t) = &texto {
-            let (ancho_texto, alto_texto) = self.medidor.medir(t, &fuente);
-            if !ancho_texto.is_finite()
-                || !alto_texto.is_finite()
-                || ancho_texto < 0.0
-                || alto_texto < 0.0
-            {
+        let estilo = estilo(&estilos);
+        let layout = if let Some(t) = &texto {
+            let (ancho, alto) = self.medidor.medir(t, &fuente);
+            if !ancho.is_finite() || !alto.is_finite() || ancho < 0.0 || alto < 0.0 {
                 return Err(ErrorModelo::layout(&format!("{clave}/texto")));
             }
-            if !estilos.contains_key("ancho") {
-                estilo.size.width = Dimension::length(ancho_texto);
-            }
-            if !estilos.contains_key("alto") {
-                estilo.size.height = Dimension::length(alto_texto);
-            }
+            self.tree.new_leaf_with_context(
+                estilo,
+                Size {
+                    width: ancho,
+                    height: alto,
+                },
+            )
+        } else {
+            let ids = hijos.iter().map(|h| h.layout).collect::<Vec<_>>();
+            self.tree.new_with_children(estilo, &ids)
         }
-        let ids = hijos
-            .iter()
-            .map(|alto_texto| alto_texto.layout)
-            .collect::<Vec<_>>();
-        let layout = self
-            .tree
-            .new_with_children(estilo, &ids)
-            .map_err(|_| ErrorModelo::layout(&clave))?;
+        .map_err(|_| ErrorModelo::layout(&clave))?;
         Ok(Expandido {
             clave,
             estilo: estilos,
@@ -292,6 +262,38 @@ impl Expansion<'_> {
             bucle,
             layout,
         })
+    }
+    fn estados(
+        &self,
+        n: &Nodo,
+        m: &Value,
+        clave: &str,
+    ) -> Result<(BTreeMap<String, Value>, Option<Bucle>), ErrorModelo> {
+        let mut estilos = n.estilo.valores();
+        let mut bucle = n.bucle.clone();
+        for estado in &n.estados {
+            if comprobar_condicion(&estado.cuando, m, &format!("{clave}/estados/cuando"))? {
+                estilos.extend(estado.estilo.valores());
+                if estado.bucle.is_some() {
+                    bucle.clone_from(&estado.bucle);
+                }
+            }
+        }
+        if n.visible
+            .as_ref()
+            .map(|c| comprobar_condicion(c, m, &format!("{clave}/visible")))
+            .transpose()?
+            == Some(false)
+        {
+            estilos.insert("opacidad".into(), Value::from(0));
+        }
+        let estilos = estilos
+            .iter()
+            .map(|(k, v)| {
+                resolver(v, m, self.sistema, &format!("{clave}/estilo/{k}")).map(|v| (k.clone(), v))
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
+        Ok((estilos, bucle))
     }
     fn lista(
         &mut self,
@@ -339,9 +341,9 @@ impl Expansion<'_> {
                     true,
                     prof + 1,
                 )?;
-                h.entrada = n.entrada.clone();
-                h.salida = n.salida.clone();
-                h.movimiento = n.movimiento.clone();
+                h.entrada.clone_from(&n.entrada);
+                h.salida.clone_from(&n.salida);
+                h.movimiento.clone_from(&n.movimiento);
                 hijos.push(h);
             }
         }
@@ -422,8 +424,8 @@ pub(crate) fn maquetar(
         cantidad: 0,
     };
     let mut raiz = x.nodo(&r.raiz, m, "/raiz".into(), true, 1)?;
-    raiz.entrada = r.entrada.clone();
-    raiz.salida = r.salida.clone();
+    raiz.entrada.clone_from(&r.entrada);
+    raiz.salida.clone_from(&r.salida);
     if r.visible
         .as_ref()
         .map(|c| comprobar_condicion(c, m, "/visible"))
@@ -433,11 +435,33 @@ pub(crate) fn maquetar(
         raiz.estilo.insert("opacidad".into(), Value::from(0));
     }
     x.tree
-        .compute_layout(
+        .compute_layout_with_measure(
             raiz.layout,
             Size {
                 width: AvailableSpace::MaxContent,
                 height: AvailableSpace::MaxContent,
+            },
+            |entrada, _, contexto, estilo| {
+                taffy::compute_leaf_layout(
+                    entrada,
+                    estilo,
+                    |_, _| 0.0,
+                    |conocido, disponible| {
+                        let medido = contexto.copied().unwrap_or(Size {
+                            width: 0.0,
+                            height: 0.0,
+                        });
+                        let ancho = match disponible.width {
+                            AvailableSpace::Definite(w) => medido.width.min(w),
+                            AvailableSpace::MinContent => 0.0,
+                            AvailableSpace::MaxContent => medido.width,
+                        };
+                        Size {
+                            width: conocido.width.unwrap_or(ancho),
+                            height: conocido.height.unwrap_or(medido.height),
+                        }
+                    },
+                )
             },
         )
         .map_err(|_| ErrorModelo::layout("/raiz"))?;

@@ -423,6 +423,28 @@ fn cambio_invalido_conserva_escena() {
             .is_empty()
     );
 }
+
+#[test]
+fn texto_recibe_la_caja_disponible_para_el_recorte() {
+    let mut escena = escenario(&receta());
+    let mut m = datos();
+    m["titulo"] = json!("un texto que no cabe en los 140 puntos del panel");
+    let lote = escena.actualizar(&m, Instante(0.0), &Fijo).unwrap();
+    let caja = lote
+        .operaciones
+        .iter()
+        .filter_map(|o| match o {
+            Operacion::Pintar { dibujos, .. } => Some(dibujos),
+            _ => None,
+        })
+        .flatten()
+        .find_map(|d| match d {
+            vantare_compositor::escena::capas::Dibujo::Texto { caja, .. } => Some(caja),
+            _ => None,
+        })
+        .unwrap();
+    assert!(caja.ancho <= 140.0 && caja.ancho > 0.0);
+}
 fn bezier_exacta(puntos: [f32; 4], tiempo: f64) -> f64 {
     let [x1, y1, x2, y2] = puntos.map(f64::from);
     let evaluar =

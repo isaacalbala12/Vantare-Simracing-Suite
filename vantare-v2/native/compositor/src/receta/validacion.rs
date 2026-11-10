@@ -449,45 +449,7 @@ impl Validador<'_> {
             );
             return;
         }
-        if !["caja", "texto", "lista"].contains(&n.tipo.as_str()) {
-            self.error(
-                &format!("{p}/tipo"),
-                Causa::Tipo,
-                "Tipo de nodo desconocido",
-                "Usa caja, texto o lista.",
-            );
-        }
-        for (k, invalido) in [
-            ("texto", n.tipo != "texto" && n.texto.is_some()),
-            ("hijos", n.tipo != "caja" && !n.hijos.is_empty()),
-            (
-                "de",
-                n.tipo != "lista"
-                    && (n.de.is_some()
-                        || n.como.is_some()
-                        || n.clave.is_some()
-                        || n.plantilla.is_some()),
-            ),
-        ] {
-            if invalido {
-                self.error(
-                    &format!("{p}/{k}"),
-                    Causa::Tipo,
-                    "Campo incompatible con el tipo de nodo",
-                    "Conserva solo los campos propios de caja, texto o lista según RECETA.md.",
-                );
-            }
-        }
-        if let Some(id) = &n.id {
-            if !identificador(id) {
-                self.error(
-                    &format!("{p}/id"),
-                    Causa::Identidad,
-                    "Identificador inválido",
-                    "Usa [a-z][a-z0-9_]*.",
-                );
-            }
-        }
+        self.forma_nodo(n, p);
         self.estilo(&n.estilo, &format!("{p}/estilo"), campos);
         if let Some(c) = &n.visible {
             self.condicion(c, &format!("{p}/visible"), campos);
@@ -545,6 +507,47 @@ impl Validador<'_> {
             self.nodo(h, &p, campos, prof + 1);
         }
         self.lista(n, p, campos, prof);
+    }
+    fn forma_nodo(&mut self, n: &Nodo, p: &str) {
+        if !["caja", "texto", "lista"].contains(&n.tipo.as_str()) {
+            self.error(
+                &format!("{p}/tipo"),
+                Causa::Tipo,
+                "Tipo de nodo desconocido",
+                "Usa caja, texto o lista.",
+            );
+        }
+        for (k, invalido) in [
+            ("texto", n.tipo != "texto" && n.texto.is_some()),
+            ("hijos", n.tipo != "caja" && !n.hijos.is_empty()),
+            (
+                "de",
+                n.tipo != "lista"
+                    && (n.de.is_some()
+                        || n.como.is_some()
+                        || n.clave.is_some()
+                        || n.plantilla.is_some()),
+            ),
+        ] {
+            if invalido {
+                self.error(
+                    &format!("{p}/{k}"),
+                    Causa::Tipo,
+                    "Campo incompatible con el tipo de nodo",
+                    "Conserva solo los campos propios de caja, texto o lista según RECETA.md.",
+                );
+            }
+        }
+        if let Some(id) = &n.id
+            && !identificador(id)
+        {
+            self.error(
+                &format!("{p}/id"),
+                Causa::Identidad,
+                "Identificador inválido",
+                "Usa [a-z][a-z0-9_]*.",
+            );
+        }
     }
     fn transiciones_nodo(&mut self, n: &Nodo, p: &str) {
         for (k, v) in &n.transiciones {
@@ -803,52 +806,7 @@ pub fn cargar_con_fuentes(
     modelo: (&str, &str),
     fuentes: &[&str],
 ) -> Result<Carga, Vec<Diagnostico>> {
-    let mut rv: Value = leer(receta.0, receta.1)?;
-    let mut errores = Vec::new();
-    desconocidos(
-        &rv,
-        &[
-            "receta", "tipo", "nombre", "modelo", "visible", "entrada", "salida", "raiz",
-        ],
-        receta.0,
-        "",
-        &mut errores,
-    );
-    forma_nodo(&rv["raiz"], receta.0, "/raiz", &mut errores, 1);
-    for k in ["entrada", "salida"] {
-        if let Some(a) = rv.get(k) {
-            desconocidos(
-                a,
-                &["desde", "hacia", "transicion"],
-                receta.0,
-                &format!("/{k}"),
-                &mut errores,
-            );
-        }
-    }
-    if errores.iter().any(|e| e.causa != Causa::CampoDesconocido) {
-        return Err(errores);
-    }
-    for e in &errores {
-        if let Some((padre, campo)) = e.puntero.rsplit_once('/') {
-            if let Some(m) = rv.pointer_mut(padre).and_then(Value::as_object_mut) {
-                m.remove(&campo.replace("~1", "/").replace("~0", "~"));
-            }
-        }
-    }
-    let mut r: Receta = match serde_json::from_value(rv) {
-        Ok(r) => r,
-        Err(e) => {
-            errores.push(diagnostico(
-                receta.0,
-                "",
-                Causa::Json,
-                &e.to_string(),
-                "Corrige los campos y tipos de la receta según RECETA.md.",
-            ));
-            return Err(errores);
-        }
-    };
+    let (mut r, errores) = leer_receta(receta)?;
     let s: Sistema = leer(sistema.0, sistema.1)?;
     let c: Contrato = leer(modelo.0, modelo.1)?;
     let mut v = Validador {
@@ -918,6 +876,55 @@ pub fn cargar_con_fuentes(
         contrato: c,
         avisos,
     })
+}
+fn leer_receta(receta: (&str, &str)) -> Result<(Receta, Vec<Diagnostico>), Vec<Diagnostico>> {
+    let mut rv: Value = leer(receta.0, receta.1)?;
+    let mut errores = Vec::new();
+    desconocidos(
+        &rv,
+        &[
+            "receta", "tipo", "nombre", "modelo", "visible", "entrada", "salida", "raiz",
+        ],
+        receta.0,
+        "",
+        &mut errores,
+    );
+    forma_nodo(&rv["raiz"], receta.0, "/raiz", &mut errores, 1);
+    for k in ["entrada", "salida"] {
+        if let Some(a) = rv.get(k) {
+            desconocidos(
+                a,
+                &["desde", "hacia", "transicion"],
+                receta.0,
+                &format!("/{k}"),
+                &mut errores,
+            );
+        }
+    }
+    if errores.iter().any(|e| e.causa != Causa::CampoDesconocido) {
+        return Err(errores);
+    }
+    for e in &errores {
+        if let Some((padre, campo)) = e.puntero.rsplit_once('/')
+            && let Some(m) = rv.pointer_mut(padre).and_then(Value::as_object_mut)
+        {
+            m.remove(&campo.replace("~1", "/").replace("~0", "~"));
+        }
+    }
+    let r: Receta = match serde_json::from_value(rv) {
+        Ok(r) => r,
+        Err(e) => {
+            errores.push(diagnostico(
+                receta.0,
+                "",
+                Causa::Json,
+                &e.to_string(),
+                "Corrige los campos y tipos de la receta según RECETA.md.",
+            ));
+            return Err(errores);
+        }
+    };
+    Ok((r, errores))
 }
 fn validar_sistema(s: &Sistema, sv: &Value, v: &mut Validador<'_>) {
     if s.sistema != 1 {
@@ -1014,10 +1021,8 @@ fn validar_tokens(valor: &Value, p: &str, v: &mut Validador<'_>, vistos: &mut BT
                 validar_tokens(x, &format!("{p}/{i}"), v, vistos);
             }
         }
-        Value::String(s) if s.starts_with('$') => {
-            if vistos.insert(s.clone()) {
-                v.token(s, p, None, &BTreeMap::new());
-            }
+        Value::String(s) if s.starts_with('$') && vistos.insert(s.clone()) => {
+            v.token(s, p, None, &BTreeMap::new());
         }
         _ => {}
     }

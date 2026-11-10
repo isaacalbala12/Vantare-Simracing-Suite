@@ -136,7 +136,7 @@ fn roles(dibujos: &[Dibujo]) -> Vec<&'static str> {
 fn canales(dibujos: &[Dibujo]) -> Vec<f32> {
     let mut salida = Vec::new();
     recorrer(&mut dibujos.to_vec(), &mut |c| {
-        salida.extend(premultiplicar(*c))
+        salida.extend(premultiplicar(*c));
     });
     salida
 }

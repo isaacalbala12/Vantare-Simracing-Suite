@@ -10,10 +10,11 @@ pub(crate) fn segundos(t: f64) -> f32 {
 }
 pub fn muestra(curva: &Curva, ahora: Instante) -> (f32, f32) {
     let mut t = (ahora.0 - curva.inicio.0).max(0.0);
-    if let Some((desde, duracion)) = curva.repetir {
-        if duracion > 0.0 && t >= desde {
-            t = desde + (t - desde) % duracion;
-        }
+    if let Some((desde, duracion)) = curva.repetir
+        && duracion > 0.0
+        && t >= desde
+    {
+        t = desde + (t - desde) % duracion;
     }
     if t >= curva.fin {
         return (curva.final_, 0.0);
@@ -279,15 +280,13 @@ pub fn bucle(valores: &[f32], duracion: f64, inicio: Instante) -> Curva {
         let t = f32::from(u16::try_from(i).unwrap_or(u16::MAX)) * h;
         tramos.push(hermite(t, h, (par[0], 0.0), (par[1], 0.0)));
     }
-    if cerrar {
-        if let (Some(a), Some(b)) = (valores.last(), valores.first()) {
-            tramos.push(hermite(
-                f32::from(pasos.saturating_sub(1)) * h,
-                h,
-                (*a, 0.0),
-                (*b, 0.0),
-            ));
-        }
+    if cerrar && let (Some(a), Some(b)) = (valores.last(), valores.first()) {
+        tramos.push(hermite(
+            f32::from(pasos.saturating_sub(1)) * h,
+            h,
+            (*a, 0.0),
+            (*b, 0.0),
+        ));
     }
     Curva {
         inicio,

@@ -343,7 +343,7 @@ impl Escena {
                         animacion::bucle_desde(&b.valores, b.duracion / 1000.0, ahora, actual, v),
                         lote,
                     );
-                } else if let Some(t) = plano.transiciones.get(nombre(*p)).or_else(|| {
+                } else if let Some(t) = plano.transiciones.get(nombre(*p)).or({
                     if cambio_bucle {
                         Some(&Value::Null)
                     } else {
@@ -420,15 +420,15 @@ impl Escena {
                 }
             }
         }
-        if let Some(b) = viva.plano.bucle.clone() {
-            if let Some(p) = propiedad(&b.propiedad) {
-                let (actual, v) = viva.muestra(p, ahora);
-                viva.animar(
-                    p,
-                    animacion::bucle_desde(&b.valores, b.duracion / 1000.0, ahora, actual, v),
-                    lote,
-                );
-            }
+        if let Some(b) = viva.plano.bucle.clone()
+            && let Some(p) = propiedad(&b.propiedad)
+        {
+            let (actual, v) = viva.muestra(p, ahora);
+            viva.animar(
+                p,
+                animacion::bucle_desde(&b.valores, b.duracion / 1000.0, ahora, actual, v),
+                lote,
+            );
         }
         viva
     }

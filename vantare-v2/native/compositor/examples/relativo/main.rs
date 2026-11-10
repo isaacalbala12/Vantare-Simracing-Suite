@@ -58,6 +58,7 @@ mod ventana {
         escena: Option<PathBuf>,
         foto: usize,
         captura: Option<PathBuf>,
+        guion_capturas: Option<PathBuf>,
         en: f64,
         imprimir: bool,
         pipe: bool,
@@ -75,6 +76,7 @@ mod ventana {
             escena: None,
             foto: 0,
             captura: None,
+            guion_capturas: None,
             en: 1.0,
             imprimir: false,
             pipe: false,
@@ -92,6 +94,7 @@ mod ventana {
                 "--escena" => o.escena = Some(valor()?.into()),
                 "--foto" => o.foto = valor()?.parse().map_err(|e| format!("--foto: {e}"))?,
                 "--captura" => o.captura = Some(valor()?.into()),
+                "--guion-capturas" => o.guion_capturas = Some(valor()?.into()),
                 "--en" => o.en = valor()?.parse().map_err(|e| format!("--en: {e}"))?,
                 "--cada-ms" => {
                     o.cada = Duration::from_millis(
@@ -184,6 +187,9 @@ mod ventana {
         if let Some(png) = &o.captura {
             return capturar(&o, &fotos, &mut p, &mut escena, png);
         }
+        if let Some(carpeta) = &o.guion_capturas {
+            return guion_capturas(&fotos, &mut p, &mut escena, carpeta);
+        }
         bucle(&o, &fotos, &mut p, &mut escena)
     }
 
@@ -208,6 +214,66 @@ mod ventana {
         p.capturar(None, Instante(t0.0 + o.en), png)
             .map_err(|e| e.to_string())?;
         println!("captura {}", png.display());
+        Ok(())
+    }
+
+    /// Fotogramas a 60 Hz de las dos transiciones pedidas, evaluando las mismas
+    /// curvas que recibe DirectComposition: sale del garaje, entra en él y vuelve,
+    /// y luego un rival a menos de 1 s (resalte pulsante). Escena `-carrera`.
+    fn guion_capturas(
+        fotos: &[Snapshot],
+        p: &mut Plataforma,
+        escena: &mut Escena,
+        carpeta: &Path,
+    ) -> Result<(), String> {
+        let lejos = fotos.first().ok_or("la escena no tiene fotos")?;
+        let cerca = fotos
+            .get(1)
+            .ok_or("la escena necesita una foto con un rival cerca")?;
+        std::fs::create_dir_all(carpeta).map_err(|e| e.to_string())?;
+        let t0 = p.ahora().map_err(|e| e.to_string())?;
+        // (segundo, modelo): pasos del «núcleo» simulado.
+        let pasos = [
+            (0.0, modelo_de(lejos, Some(true))),
+            (0.3, modelo_de(lejos, Some(false))),
+            (1.3, modelo_de(lejos, Some(true))),
+            (1.9, modelo_de(lejos, Some(false))),
+            (2.9, modelo_de(cerca, Some(false))),
+        ];
+        let fin = 5.5;
+        let mut siguiente = 0;
+        let mut cuadro = 0_u32;
+        loop {
+            let t = f64::from(cuadro) / 60.0;
+            if t > fin {
+                break;
+            }
+            while let Some((cuando, modelo)) = pasos.get(siguiente).filter(|(c, _)| *c <= t) {
+                let instante = Instante(t0.0 + cuando);
+                let lote = escena
+                    .actualizar(modelo, instante, &p.texto)
+                    .map_err(|e| e.to_string())?;
+                if let Err(e) = p.aplicar(&lote) {
+                    let volcado = carpeta.join("rechazado.lote.json");
+                    let texto = serde_json::to_string_pretty(&lote).map_err(|e| e.to_string())?;
+                    std::fs::write(&volcado, texto).map_err(|e| e.to_string())?;
+                    return Err(format!(
+                        "paso {siguiente}: {e} (lote en {})",
+                        volcado.display()
+                    ));
+                }
+                siguiente += 1;
+            }
+            let instante = Instante(t0.0 + t);
+            let lote = escena.avanzar(instante).map_err(|e| e.to_string())?;
+            if !lote.operaciones.is_empty() {
+                p.aplicar(&lote).map_err(|e| e.to_string())?;
+            }
+            p.capturar(None, instante, &carpeta.join(format!("{cuadro:04}.png")))
+                .map_err(|e| e.to_string())?;
+            cuadro += 1;
+        }
+        println!("{cuadro} fotogramas en {}", carpeta.display());
         Ok(())
     }
 

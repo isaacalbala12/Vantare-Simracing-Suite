@@ -398,21 +398,32 @@ impl Escena {
                     .and_then(|a| a.valores[i])
                     .map_or(plano.valores[i], |v| v)
             };
-            let desde = if plano.visible && !por_salida && !viva.activa(i, ahora) {
+            // En reposo (salida terminada o capa creada oculta) la entrada parte de
+            // `entrada.desde`; si una salida sigue en marcha, del valor real.
+            let en_reposo = !viva.activa(i, ahora);
+            let desde = if plano.visible && en_reposo {
                 entrada.and_then(|a| a.valores[i]).map_or(actual, |v| v)
             } else {
                 actual
             };
+            // Solo se empalma la velocidad de una animación en marcha: desde el reposo,
+            // forzar velocidad 0 deforma la curva (la opacidad bajaba de 0).
+            let velocidad = (!en_reposo).then_some(velocidad);
             if plano.visible
                 && let Some(b) = plano.bucle.as_ref().filter(|b| b.propiedad == i)
             {
                 let curva = animacion::bucle_con_entrada(
-                    &config, &b.valores, b.duracion, ahora, desde, velocidad,
+                    &config,
+                    &b.valores,
+                    b.duracion,
+                    ahora,
+                    desde,
+                    velocidad.unwrap_or(0.0),
                 )
                 .map_err(|e| ErrorModelo::animacion(&plano.puntero, e))?;
                 viva.curva(i, curva, lote);
             } else {
-                viva.animar(i, &config, ahora, (desde, destino), Some(velocidad), lote)?;
+                viva.animar(i, &config, ahora, (desde, destino), velocidad, lote)?;
             }
             *tocada = true;
         }
@@ -452,14 +463,8 @@ impl Escena {
                     None
                 })
             {
-                viva.animar(
-                    i,
-                    &t,
-                    ahora,
-                    (actual, plano.valores[i]),
-                    Some(velocidad),
-                    lote,
-                )?;
+                let velocidad = viva.activa(i, ahora).then_some(velocidad);
+                viva.animar(i, &t, ahora, (actual, plano.valores[i]), velocidad, lote)?;
             } else {
                 viva.curvas[i] = None;
                 lote.operaciones.push(Operacion::Fijar {

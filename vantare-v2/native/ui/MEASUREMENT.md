@@ -3,17 +3,18 @@
 ## Repetir el banco
 
 Desde `vantare-v2/`, Windows con escritorio activo, sin juego ni compiladores.
-La grabación es `native/runtime/tests/golden/lmu47.jsonl.gz`: 3.839 fotos reales
-guardadas por el replay de LMU, 47 coches, 60 segundos de reloj de origen. Su
-`received_at` está congelado por el generador del golden: **no sirve de reloj**.
-El ejemplo usa `origin.source_time`, conserva fotos repetidas y rechaza un reloj
-ausente o anterior al inicio. Lee gzip de forma incremental: no mantiene el
-corpus completo en la memoria del overlay. No modifica la grabación.
+La medición principal usa `testdata/rust-port/lmu47-high-rate-60s.tar.gz`,
+reproducida por `vantare-core --replay` y recibida por el IPC productivo.
+El núcleo conserva la cadencia de entrada cruda. Se mide solo el proceso UI;
+el núcleo usa el mismo ejecutable en las comparaciones y su CPU queda fuera.
+Los goldens `jsonl.gz` siguen disponibles para caracterización: sus marcas
+`source_time` agrupan fotos y no reproducen fielmente la cadencia original.
+No usar sus cocientes de CPU como línea base de rendimiento.
 
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:/VantareServer/targets/isa-1996-medicion'
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked -p vantare-ui --example overlay-replay --features paint-stats -j 2
-pwsh -NoProfile -File native/scripts/measure-overlays.ps1 -UI "$env:CARGO_TARGET_DIR/debug/examples/overlay-replay.exe" -Recording native/runtime/tests/golden/lmu47.jsonl.gz -Widgets 4 -Phases -Out D:/VantareServer/evidence/isa-1996/mi-pasada
+pwsh -NoProfile -File native/scripts/measure-overlays.ps1 -UI "$env:CARGO_TARGET_DIR/debug/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/debug/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Widgets 4 -Phases -Out D:/VantareServer/evidence/isa-1996/mi-pasada
 python native/scripts/summarize-overlays.py D:/VantareServer/evidence/isa-1996/mi-pasada
 ```
 
@@ -24,9 +25,9 @@ SHA, CSV de CPU/memoria, logs íntegros y marca de terminación. Un proceso que
 falla o un intento interrumpido no produce una medición válida.
 
 El ejemplo es una previsualización de desarrollo: usa el host, entidades,
-cadencias, ventanas por monitor y pintores productivos. No instala derechos ni
-conecta al núcleo, como Workshop. No mide adquisición, IPC, servicios, licencia,
-juego, GPU física, DWM ni OBS. Incluye descompresión y lectura del DTO guardado.
+cadencias, ventanas por monitor y pintores productivos. No instala derechos globales, como Workshop. En modo `-Core` incluye recepción IPC
+y proyección en UI; no mide CPU del núcleo, licencia, juego, GPU física, DWM ni OBS.
+El modo golden incluye lectura/descompresión del DTO y solo sirve para caracterización.
 No es un bypass en el ejecutable distribuido. Dev y Release no son comparables:
 conservar el mismo perfil y opciones en toda comparación.
 
@@ -35,8 +36,9 @@ conservar el mismo perfil y opciones en toda comparación.
 CPU de proceso: `TotalProcessorTime`, suma de todos los hilos. Un segundo CPU
 por segundo de pared equivale a un núcleo lógico. El intervalo estable excluye
 arranque y drenaje. Los endpoints QPC se cruzan con las marcas de `Screen` para
-CPU por frame. Son frames de construcción de escena, no presentaciones físicas.
-El contador de la fase `present` cuenta llamadas DXGI por separado.
+CPU por frame. El denominador preferido es la llamada DXGI `Present`, marcada con QPC por el
+backend; si no existe, el informe etiqueta explícitamente el contador de escenas.
+Ninguno equivale a presentaciones físicas medidas en pantalla.
 
 Las fases guardan tiempo transcurrido QPC y ciclos de CPU del hilo. No convertir
 ciclos a nanosegundos ni sumar fases anidadas:
@@ -112,7 +114,10 @@ Fuentes primarias: [Kit](https://crates.io/crates/gpui-kit/0.9.1),
 y API `/api/v1/crates/<nombre>/owners`. Los informes de investigadores no se
 usan como prueba de compatibilidad ni rendimiento.
 
-## Primera campaña (10-nov-2026, GPUI actual)
+## Caracterización preliminar con golden (10-nov-2026, GPUI actual)
+
+**No es la línea base de rendimiento:** se detectó después que el reloj de origen
+agrupa entregas. Se conserva la campaña y sus límites para poder auditar la corrección.
 
 Ejecutable `8AD9F6D2C5B0490B6486E479144AB9A99D76071B357875B98B610EBB13DE6345`,
 grabación `72A9B69BA34B84FF810452EEC524D8C32380E5C6F24F9BD2A5C7EB5AD7014007`.

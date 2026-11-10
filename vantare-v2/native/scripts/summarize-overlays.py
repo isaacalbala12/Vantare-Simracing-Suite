@@ -27,6 +27,10 @@ def summarize(root):
     frames = sum(map(int, re.findall(r"^frames/s=(\d+)", out, re.M)))
     steady_frames = sum(int(active[0]["qpc"]) <= int(tick) <= int(active[-1]["qpc"])
                         for tick in re.findall(r"perf frame .*?clock=Some\((\d+)\)", err))
+    presents = re.findall(r"perf present clock=Some\((\d+)\)", err)
+    steady_presents = sum(int(active[0]["qpc"]) <= int(tick) <= int(active[-1]["qpc"])
+                          for tick in presents)
+    frame_count = steady_presents if presents else steady_frames
     stages = collections.defaultdict(lambda: collections.Counter())
     for name, calls, wall, cycles, errors in re.findall(
         r"perf stage=(\w+) calls=(\d+) wall_ns=(\d+) cpu_cycles=(\d+) cycle_errors=(\d+)", err
@@ -43,6 +47,9 @@ def summarize(root):
         "steady_seconds": duration, "steady_cpu_seconds": cpu,
         "steady_logical_cores": cpu / duration,
         "steady_screen_frames": steady_frames,
+        "steady_present_calls": steady_presents if presents else None,
+        "frame_counter": "dxgi_present" if presents else "screen_render_proxy" if frames else "disabled",
+        "steady_cpu_ms_per_frame": cpu * 1000 / frame_count if frame_count else None,
         "steady_cpu_ms_per_screen_frame": cpu * 1000 / steady_frames if steady_frames else None,
         "mean_private_mib": sum(int(r["private_bytes"]) for r in active) / len(active) / 2**20,
         "peak_private_mib": max(int(r["private_bytes"]) for r in rows) / 2**20,
@@ -52,7 +59,7 @@ def summarize(root):
         "changed_widgets_per_changed_snapshot": sum(changed.values()) / len(changed) if changed else None,
         "data_widget_paints_per_painted_snapshot": sum(data_paints.values()) / len(data_paints) if data_paints else None,
         "stages_full_run": dict(stages),
-        "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. Frames are Screen renders, not physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI.",
+        "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI.",
     }
     (root / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))

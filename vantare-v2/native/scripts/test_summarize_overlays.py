@@ -33,6 +33,9 @@ class MeasurementTest(unittest.TestCase):
                 "perf frame window=1 clock=Some(400)\n"
                 "perf frame window=1 clock=Some(600)\n"
                 "perf frame window=1 clock=Some(800)\n"
+                "perf present clock=Some(350)\n"
+                "perf present clock=Some(450)\n"
+                "perf present clock=Some(650)\n"
                 "perf stage=paint calls=8 wall_ns=800 cpu_cycles=80 cycle_errors=0\n"
                 "perf stage=text_layout calls=4 wall_ns=200 cpu_cycles=20 cycle_errors=0\n"
                 "perf notify widget=pedals epoch=1 seq=2\n"
@@ -42,6 +45,9 @@ class MeasurementTest(unittest.TestCase):
                 SUMMARY.summarize(root)
             result = json.loads((root / "summary.json").read_text())
             self.assertEqual(result["steady_screen_frames"], 2)
+            self.assertEqual(result["steady_present_calls"], 3)
+            self.assertEqual(result["frame_counter"], "dxgi_present")
+            self.assertAlmostEqual(result["steady_cpu_ms_per_frame"], 400 / 3)
             self.assertAlmostEqual(result["steady_cpu_ms_per_screen_frame"], 200)
             self.assertAlmostEqual(result["steady_logical_cores"], 0.1)
             self.assertEqual(result["mean_private_mib"], 1)

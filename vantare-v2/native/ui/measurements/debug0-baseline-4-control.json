@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "sha": "f69e2acc8d189c8025a896a93ba0c48c7913e169",
+    "date": "2026-11-10T06:34:36.9686243+01:00",
+    "widgets": 4,
+    "phases": false,
+    "recording_sha256": "C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C",
+    "executable_sha256": "952BF8F021FCD27B4F89402E5E163C04FCCD11BCB3710CCE97A522B95D31907A",
+    "core_sha256": "A77B1E288F9BF4992F53F7DF43B9A94695B27D22EE293C3675162E31077BEAF7",
+    "logical_processors": 8,
+    "os": "Microsoft Windows NT 10.0.22631.0",
+    "reserved_build_slots": 4,
+    "video": [
+      {
+        "Name": "AMD Radeon RX 6600 XT",
+        "DriverVersion": "32.0.21045.5002",
+        "CurrentHorizontalResolution": 1920,
+        "CurrentVerticalResolution": 1080,
+        "CurrentRefreshRate": 59
+      }
+    ],
+    "cpu_unit": "seconds across all process threads; 1 CPU second / wall second = one logical core",
+    "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account"
+  },
+  "steady_seconds": 56.6225921,
+  "steady_cpu_seconds": 0.015625,
+  "steady_logical_cores": 0.0002759499242352771,
+  "steady_cpu_cycles": 14559233325,
+  "steady_cpu_cycles_per_frame": null,
+  "steady_screen_frames": 0,
+  "steady_present_calls": null,
+  "steady_composition_layer_presents": 0,
+  "composition_layer_presents_full_run": 0,
+  "frame_scope": "window base swapchain; composition layer presents counted separately, excluded from denominator",
+  "frame_counter": "disabled",
+  "steady_cpu_ms_per_frame": null,
+  "steady_cpu_ms_per_screen_frame": null,
+  "mean_private_mib": 81.0671600877193,
+  "peak_private_mib": 104.171875,
+  "reported_frames_full_run": 0,
+  "base_present_calls_full_run": null,
+  "cpu_ms_per_frame_full_run": null,
+  "cpu_ms_per_screen_frame_full_run": null,
+  "notifications_full_run": {},
+  "widget_paints_full_run": {},
+  "changed_widgets_per_changed_snapshot": null,
+  "data_widget_paints_per_painted_snapshot": null,
+  "stages_full_run": {},
+  "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI."
+}

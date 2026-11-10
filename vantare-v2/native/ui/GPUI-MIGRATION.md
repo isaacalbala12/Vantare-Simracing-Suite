@@ -113,3 +113,32 @@ Los logs íntegros quedan en `D:/VantareServer/evidence/isa-1996`; galería con
 referencia/candidato/diferencias en `visual/kit-published/report.html`. Los checks
 citados corresponden a la campaña anterior al rebase; las medidas posteriores
 se separan por SHA y perfil conforme a MEASUREMENT.md.
+
+## Repetición sobre db1aa706d con debug = 0
+
+Se reconstruyeron ambos ejecutables y se repitieron cuatro pasadas por variante,
+con el mismo núcleo `A77B1E…`, archivo `C5B827…`, monitor y reserva exclusiva de
+la cola. Resúmenes en `measurements/debug0-{baseline,kit}-*.json`. Los controles
+apagan diagnóstico en el mismo ejecutable. Una pasada por caso, sin mediana.
+
+| Medida estable | GPUI git | Kit / Pre |
+| --- | ---: | ---: |
+| 4 widgets: ciclos CPU / Present base | 13.538.206 | 13.871.624 |
+| 4 widgets: privada media con diagnóstico | 81,72 MiB | 81,01 MiB |
+| 4 widgets: privada media sin diagnóstico | 81,07 MiB | 80,91 MiB |
+| 22 widgets: ciclos CPU / Present base | 51.365.716 | 50.299.494 |
+| 22 widgets: privada media | 83,43 MiB | 83,46 MiB |
+| 1 widget quieto: Present estables | 0 | 0 |
+| 4 widgets: notificados / snapshot cambiado | 1,004 | 1,006 |
+| 4 widgets: pintados / snapshot pintado | 1,004 | 1,005 |
+
+No hay una ganancia CPU clara y consistente: cuatro widgets suben y 22 bajan
+ligeramente. La memoria queda alrededor de 81/83 MiB. La migración se justifica
+por usar una dependencia publicada con el delta de Vantare conservado, sin
+atribuirle un ahorro no demostrado. Los tiempos de build limpio/incremental
+anteriores siguen siendo exclusivamente de la campaña con el perfil anterior;
+el tiempo de estos rebuilds de cambio de perfil no los sustituye.
+
+`QueryProcessCycleTime` incluye los ciclos de todos los hilos, en usuario y
+kernel ([Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-queryprocesscycletime)).
+Se mantienen separados del tiempo CPU cuantizado de Windows y del tiempo GPU.

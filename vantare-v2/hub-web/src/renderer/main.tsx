@@ -1,8 +1,17 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import hello from "../../fixtures/ajustes-base.json";
 import { es } from "./i18n/es";
 import "./design/base.css";
+import "./ui/ui.css";
+import { CSPProvider } from "@base-ui/react/csp-provider";
+
+const Specimen = lazy(() =>
+  import("./app/Specimen").then((module) => ({ default: module.Specimen })),
+);
+
+import { specimen } from "./i18n/es";
+import { ToastProvider, ToastViewport, TooltipProvider } from "./ui/Layers";
 
 declare global {
   interface Window {
@@ -43,7 +52,13 @@ function App() {
     <>
       <header>{es.title}</header>
       <main>
-        <h1>{es.settings}</h1>
+        {new URLSearchParams(location.search).get("escena") === "specimen" ? (
+          <Suspense fallback={<p role="status">{es.loading}</p>}>
+            <Specimen />
+          </Suspense>
+        ) : (
+          <h1>{es.settings}</h1>
+        )}
         <p role="status">{status}</p>
       </main>
     </>
@@ -51,4 +66,13 @@ function App() {
 }
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing root");
-createRoot(root).render(<App />);
+createRoot(root).render(
+  <CSPProvider disableStyleElements>
+    <TooltipProvider delay={400}>
+      <ToastProvider>
+        <App />
+        <ToastViewport closeLabel={specimen.close} />
+      </ToastProvider>
+    </TooltipProvider>
+  </CSPProvider>,
+);

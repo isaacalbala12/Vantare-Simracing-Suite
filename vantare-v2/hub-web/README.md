@@ -57,3 +57,24 @@ su comprobación byte a byte.
 Ajuste web de accesibilidad: `focus-ring` usa `accent-bright` opaco. La selección
 traslúcida heredada no llegaba a 3:1 en 15 temas. El token `selection` conserva
 el valor exportado y los colores del Hub congelado no cambian.
+
+Paso 2b: `?escena=specimen` reúne los controles Base UI con aspecto Vantare.
+`VANTARE_HUB_TEST_SCENE=specimen bun run smoke` verifica diálogos, foco, slider,
+tabla virtual (1000 filas), aislamiento y axe sobre el paquete.
+`VANTARE_HUB_THEME_SHEET=1` añade los 18 temas; `VANTARE_HUB_SCALE` permite
+1, 1.25 o 1.5 mediante el escalado de Electron y registra devicePixelRatio.
+
+Axe usa setLegacyMode porque Electron CDP no permite crear la pestaña auxiliar
+del modo habitual. No se excluyen reglas ni se permiten fallos serious/critical.
+La región desplazable de la tabla tiene foco de teclado; una excepción local
+a noNoninteractiveTabindex documenta esta necesidad verificada por axe.
+Los espacios de virtualización son pseudoelementos y no añaden filas ARIA.
+
+El lint JSX usa @babel/parser (solo desarrollo): TypeScript 7 no ofrece la
+antigua API del compilador y una expresión regular confundía tipos TS y JSX.
+Base UI publica directivas use client: Rolldown advierte de que se descartan;
+todo este renderer es cliente y no hay React Server Components. El log completo
+del build se conserva en la evidencia. Specimen se carga con React.lazy.
+
+Para mantener también la caché de transformación de Bun en D:, fijar
+BUN_RUNTIME_TRANSPILER_CACHE_PATH=D:/VantareServer/cache/bun-transpiler.

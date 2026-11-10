@@ -37,7 +37,9 @@ for (const [name, svg] of [...sources].sort()) {
   for (const [from, to] of Object.entries(properties))
     body = body.replaceAll(`${from}=`, `${to}=`);
   body = body
-    .replace(/\s(?:width|height)="[^"]*"/g, "")
+    .replace(/<svg[^>]*>/, (tag) =>
+      tag.replace(/\s(?:width|height)="[^"]*"/g, ""),
+    )
     .replace(
       "<svg ",
       '<svg width="20" height="20" aria-hidden="true" focusable="false" ',

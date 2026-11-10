@@ -2,8 +2,11 @@
 
 Guia obligatoria para agentes que trabajen en este repo.
 
-La aplicación es **Rust + GPUI** en `native/`, conforme a
-[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). #1533 retira el código de
+El núcleo y los overlays son **Rust** en `native/`, conforme a
+[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). El Hub se rehace en
+**Electron + React + TypeScript** conforme a
+[ADR 0107](docs/adr/0107-hub-electron-nucleo-y-overlays-rust.md): el Hub GPUI
+actual (`native/hub`) está congelado y no recibe trabajo nuevo. #1533 retira el código de
 la app Wails/React de este checkout; esto no publica un corte ni una release.
 Lee `native/README.md`, los README de los crates afectados y sus gates.
 Los corpus y referencias se conservan en `native/retirement`; los oráculos
@@ -199,7 +202,8 @@ registra los checks omitidos y el motivo.
 ## Código retirado
 
 No hay gates Go ni pnpm de la app nativa. Los oráculos son referencia histórica
-inerte: no reintroducir Wails/React. Validar sus huellas con
+inerte: no reintroducir Wails ni el frontend React antiguo (el Hub nuevo de
+ADR 0107 es código nuevo, no una recuperación de aquel). Validar sus huellas con
 `python native/retirement/verify.py`. Los otros proyectos del monorepo
 conservan sus instrucciones propias.
 

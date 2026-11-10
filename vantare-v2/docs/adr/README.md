@@ -24,9 +24,10 @@ Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto n
 
 - [ADR 0100: Identidad Clerk + Polar + Supabase](0100-identidad-clerk-polar-supabase.md) — vigente; su aceptación no certifica configuración comercial remota.
 
-- [ADR 0099: Arquitectura Rust nativa](0099-arquitectura-rust-nativa.md) — vigente.
+- [ADR 0099: Arquitectura Rust nativa](0099-arquitectura-rust-nativa.md) — vigente para núcleo, flujos y overlays; la interfaz del Hub la sustituye ADR 0107.
 - [ADR 0101: Widgets, una proyección y varios Looks](0101-widgets-looks-common-state.md) — vigente (#1531 integrado).
 - [ADR 0102: Modelo de acceso nativo](0102-modelo-acceso-nativo.md) — aceptado por el orquestador; implementación por pasos en #1827.
 - [ADR 0104: Identidad de Gestión y sesión en memoria](0104-identidad-admin-y-sesion-en-memoria.md) — aceptado en #1910; activación del cliente reservada a Isaac.
 - [ADR 0105: informe v2 del Testing Center](0105-testing-center-report-v2.md) — aceptado para 7a de #1896; retirada de tablas y RPC antiguos pendiente de 7b.
 - [ADR 0106: una cadena de migraciones Supabase y un esquema derivado](0106-migraciones-supabase-historia-unica.md) — Fase A de #1896, compartida con R3; sin compactación ni despliegue.
+- [ADR 0107: Hub en Electron; núcleo y overlays en Rust](0107-hub-electron-nucleo-y-overlays-rust.md) — aceptada por Isaac el 2026-11-10; Hub GPUI congelado.

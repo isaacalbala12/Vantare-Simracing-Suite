@@ -107,7 +107,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('RUSTUP_TOOLCHAIN=1.95.0', setup)
         self.assertIn('rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy --no-self-update', setup)
         self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
-        for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests'):
+        for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests'):
             self.assertIn(test, workflow)
         for job in ('policy', 'product', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
             block = re.split(r'\n  \S', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]

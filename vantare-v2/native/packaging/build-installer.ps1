@@ -55,7 +55,7 @@ try {
     if($TestInstaller){$env:VANTARE_INSTALLER_QA_OWNER_SID=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value}
     else{Remove-Item Env:VANTARE_INSTALLER_QA_OWNER_SID -ErrorAction SilentlyContinue}
     $features=if($TestInstaller){'test-installer'}else{''}
-    $base=@('build','-p','vantare-installer','--target','x86_64-pc-windows-msvc','--locked','--offline','-j','2')
+    $base=@('build','-p','vantare-installer','--target','x86_64-pc-windows-msvc','--locked','--offline')
     if($BuildProfile -ceq 'Release'){$base+='--release'}
     $uninstallArgs=$base+@('--bin','vantare-uninstall')
     if($features){$uninstallArgs+=@('--features',$features)}

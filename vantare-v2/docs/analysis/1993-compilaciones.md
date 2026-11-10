@@ -215,6 +215,30 @@ Los consumidores actuales esperan finished/shutdown; no se encontró una P1.
 No se cambia producción, no se añaden retries, sleeps ni ignores. Evidencia
 con ambos binarios y SHA-256: `D:/VantareServer/evidence/isa-2006`.
 
+## Timeout de distribución de f4870d47f: bloqueo, no 60 minutos de Rust
+
+La ejecución 42763471643 agotó 60 minutos, pero el primer control Release de
+Core/Services había terminado en **46,40 s** (05:42:27 UTC). Después no hubo
+otra compilación: el nuevo lease de target chocaba con el saneado del entorno.
+Import-NativeBuildConfig eliminaba VANTARE_CARGO_QUEUE_OWNER/SLOT_TARGET y el
+empaquetador anidado intentaba adquirir el target que retenía su padre.
+
+Reproducción con proceso real y crate mínimo: bloqueado hasta el límite de
+15 s con el import anterior; **2,34 s** y salida correcta conservando el
+contexto de la cola. Las variables de cola siguen prohibidas en ConfigFile:
+solo se preservan del proceso invocador. La regresión corre antes del gate.
+Se separan distribución e instalación, se eliminan los -j 2 de empaquetado
+para respetar Machine/proceso y se recogen tiempos/stats por cada fase.
+El timeout de distribución es provisionalmente 90 min, con margen respecto
+al baseline serial real de 57 min 24 s; no es un tiempo de build medido.
+
+Los tres builds del gate son controles distintos: QA Release, candidato
+limpio con CRT estático/DuckDB bundled y candidato con registro TEST que debe
+rechazarse. El archivo Nextest contiene tests dev y fixtures; no sustituye
+a los ejecutables Release cuya distribución se está verificando. No se
+elimina ningún control para acortar el tiempo. Falta medir la ejecución sin
+el bloqueo antes de atribuir un límite al hardware.
+
 Pruebas de tooling: dos lifecycle homónimos archivados y ejecutados, transporte
 entre jobs simulados sin disponer del target original, reserva anidada, limpieza
 por edad con rechazo de locks/enlaces, rutas RUNNER_TEMP y A → B → A. Retirada:

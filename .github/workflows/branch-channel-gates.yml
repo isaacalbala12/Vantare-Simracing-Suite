@@ -310,7 +310,7 @@ jobs:
         run: |
           $evidence = Join-Path $env:RUNNER_TEMP 'native-tooling'
           New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests')) {
+          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests')) {
             pwsh -NoProfile -File "native/scripts/$test.ps1" -EvidenceDirectory $evidence
             if ($LASTEXITCODE) { throw "Worker tooling: $test failed" }
           }
@@ -518,7 +518,8 @@ jobs:
 
   native_distribution:
     name: Validate native QA distribution
-    timeout-minutes: 60
+    # Previous serial gate passed in 57m24s; allow cold build margin while phase timings settle.
+    timeout-minutes: 90
     if: needs.policy.outputs.native != 'false' && needs.policy.outputs.installation != 'false'
     needs: policy
     runs-on: windows-latest
@@ -537,12 +538,29 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
       - uses: ./.github/actions/native-build-setup
+      - name: Regress configuration import inside the build queue
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'distribution-tooling'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          pwsh -NoProfile -File native/scripts/config-queue-tests.ps1 -EvidenceDirectory $evidence
+          if ($LASTEXITCODE) { throw 'Configuration import lost its parent build lease' }
       - name: Verify build-candidate release package excludes QA feature and symbols
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
           pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
           if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
+      - name: Preserve distribution timings and live compiler cache statistics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: distribution-timings-${{ github.sha }}
+          retention-days: 1
+          overwrite: true
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/vantare-targets/qa-exclusion/distribution-*.json
+            ${{ runner.temp }}/vantare-targets/qa-exclusion/cargo-timings/*.html
 
   native_installation:
     # Retain the existing check name; product also requires native_distribution.

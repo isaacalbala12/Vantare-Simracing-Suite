@@ -111,6 +111,14 @@ impl Observed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn keys(value: &serde_json::Value) -> std::collections::BTreeSet<&str> {
+        value
+            .as_object()
+            .expect("object")
+            .keys()
+            .map(String::as_str)
+            .collect()
+    }
     #[test]
     fn report_core_projection_and_keys_are_exact_even_with_every_capability_set() {
         let core = CoreStatus {
@@ -133,14 +141,6 @@ mod tests {
             .report
             .expect("prepared");
         let value: serde_json::Value = serde_json::from_str(&report).expect("JSON");
-        fn keys(value: &serde_json::Value) -> std::collections::BTreeSet<&str> {
-            value
-                .as_object()
-                .expect("object")
-                .keys()
-                .map(String::as_str)
-                .collect()
-        }
         assert_eq!(
             keys(&value),
             [

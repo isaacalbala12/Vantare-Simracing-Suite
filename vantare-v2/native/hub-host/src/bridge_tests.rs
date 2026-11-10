@@ -364,6 +364,9 @@ fn restart_peer(pipe: &mut Pipe, mode: &str) {
 }
 fn restart_session(root: &Path, photo: &str) -> Session {
     Session {
+        privacy: crate::privacy::State::isolated(root),
+        diagnostic: crate::diagnostics::Observed::default(),
+        remote: None,
         updates: None,
         subscriptions: std::collections::BTreeSet::new(),
         last_updates: None,
@@ -424,6 +427,15 @@ fn restart_case((live, closing, ready): (bool, bool, bool), allow: bool) {
     }
     if !accepted {
         assert_eq!(session.closing.is_some(), closing);
+        assert_eq!(
+            session
+                .diagnostic
+                .view(&session.current, false)
+                .events
+                .last()
+                .map(|event| event.section),
+            Some(crate::diagnostics::DiagnosticSection::Updates)
+        );
     }
     done.set();
     assert!(child.0.wait().expect("peer exit").success());

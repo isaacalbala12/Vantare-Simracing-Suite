@@ -55,14 +55,15 @@ fn adopt(data: &Path, shared: &Path) -> Result<(), HostError> {
     if marker.try_exists().map_err(|_| HostError::Io)? {
         return Ok(());
     }
-    let Some(bytes) = files::read_optional(&source, 1024).map_err(|_| HostError::Io)? else {
-        return Ok(());
+    let legacy = match files::read_optional(&source, 1024) {
+        Ok(None) => return Ok(()),
+        Ok(Some(bytes)) => Some(bytes),
+        Err(_) => None,
     };
     let candidate = if destination.try_exists().map_err(|_| HostError::Io)? {
         None
     } else {
-        serde_json::from_slice::<Privacy>(&bytes).map_err(|_| HostError::Protected)?;
-        Some(bytes)
+        legacy.filter(|bytes| serde_json::from_slice::<Privacy>(bytes).is_ok())
     };
     // Mark before publishing: revocation must never resurrect a legacy yes.
     if files::save(
@@ -102,6 +103,10 @@ impl State {
                 Ok(shared)
             });
         Self::at(root)
+    }
+    #[cfg(test)]
+    pub(crate) fn isolated(root: &Path) -> Self {
+        Self::at(Ok(root.to_path_buf()))
     }
     fn at(root: Result<PathBuf, HostError>) -> Self {
         let mut state = Self {
@@ -277,6 +282,24 @@ mod tests {
             Err(HostError::Protected)
         ));
         assert_eq!(std::fs::read(path).expect("corruption preserved"), corrupt);
+    }
+    #[test]
+    fn malformed_legacy_is_marked_without_importing_a_permission_or_rewriting_it() {
+        let root = Root::new();
+        let data = root.path.join("hub");
+        let shared = root.path.join("native");
+        std::fs::create_dir_all(&data).expect("source");
+        std::fs::create_dir_all(&shared).expect("destination");
+        let source = data.join(PRIVACY_FILE);
+        std::fs::write(&source, b"{bad legacy").expect("malformed");
+        adopt(&data, &shared).expect("skip legacy with protective marker");
+        assert!(data.join("privacy.json.adopted").exists());
+        assert!(!shared.join(PRIVACY_FILE).exists());
+        assert_eq!(
+            std::fs::read(source).expect("legacy unchanged"),
+            b"{bad legacy"
+        );
+        assert!(!State::isolated(&shared).view().crashes);
     }
     #[test]
     fn adoption_does_not_resurrect_an_old_yes_after_revocation() {

@@ -482,6 +482,11 @@ impl Session {
         )?;
         if accepted {
             self.request_close(pipe, CloseReason::Restart)?;
+        } else {
+            self.diagnostic.note(
+                crate::diagnostics::DiagnosticSection::Updates,
+                &HostError::Denied,
+            );
         }
         Ok(())
     }

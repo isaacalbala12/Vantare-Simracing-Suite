@@ -538,9 +538,23 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
       - uses: ./.github/actions/native-build-setup
+      - name: Install prebuilt cache supporting cc-rs MSVC language arguments
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
+        with:
+          tool: sccache@0.19.0
+          fallback: none
+      - name: Isolate Release cache version and daemon
+        run: |
+          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+          $bin = Join-Path $cargoHome 'bin'
+          $version = & (Join-Path $bin 'sccache.exe') --version
+          if ($LASTEXITCODE -or $version -notmatch '^sccache 0\.19\.0$') { throw 'Release requires actual sccache 0.19.0' }
+          $bin >> $env:GITHUB_PATH
+          'SCCACHE_SERVER_PORT=4237' >> $env:GITHUB_ENV
+          'SCCACHE_GHA_VERSION=vanta137-release019-v1' >> $env:GITHUB_ENV
       - name: Enable compiler cache for bundled Release C and C++
         run: . ./native/scripts/setup-msvc-cache.ps1
-      - name: Verify actual MSVC compiler cache reuse
+      - name: Verify local MSVC compiler cache support
         run: |
           pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/msvc-cache-tests.ps1 -EvidenceDirectory (Join-Path $env:RUNNER_TEMP 'msvc-cache-probe')
           if ($LASTEXITCODE) { throw 'MSVC cache regression failed' }

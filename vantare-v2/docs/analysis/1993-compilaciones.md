@@ -344,7 +344,10 @@ al único binario macOS. El target propio se eliminó y el checkout quedó limpi
 
 #2003 a2ea8cab3, ejecución 42773878313: todos los jobs y agregado PASS.
 Inicio de policy 07:14:19 UTC → cierre agregado 07:58:20: **44 min 01 s**;
-baseline completo #1997 **57 min 24 s**. No se alcanza todavía <15 min.
+baseline #1997: **57 min 59 s** desde primer job hasta cierre, de los cuales
+57 min 24 s eran su job bloqueante. Desde run_started_at hasta updated_at de
+GitHub, incluyendo arranque/cierre: **58 min 10 s → 44 min 04 s**. No se
+alcanza todavía <15 min.
 Instalación 18 min 50 s, builder archivado 12 min 03 s, suite 7 min 42 s;
 distribución QA determina el final con 43 min 08 s. El orquestador fusionó
 #2003 como 479cca4bf; este worker no hace merge.
@@ -377,3 +380,35 @@ El script corregido usa la ruta exacta y rechaza una versión equivocada.
 el arreglo de reintentos GHA, integrado después en
 [#2911](https://github.com/mozilla/sccache/pull/2911); no se atribuyen a 0.19
 mejoras de red no probadas aquí.
+
+La repetición de 42778628365 (attempt 2), ya con ambos backends calientes,
+da Core 0.18 35,95/31,32 s y 0.19 25,75/25,14 s; hits Rust acumulados
+206/207, misses 32/31. 0.19 gana esta muestra, pero tiene 31 errores de
+escritura frente a cero en 0.18. La primera comparación no tenía el mismo
+calentamiento: 0.19 partía de 119 misses y 0.18 de 104 hits/15 misses.
+No se atribuye una regresión intrínseca a 0.19 ni se cambia la versión normal
+con esa incertidumbre de almacenamiento. Los datos de ambas pasadas se conservan.
+
+M5 adicional, mismo checkout 1828a61dc y cuatro jobs: Storage --lib Release
+nativo limpio, DuckDB bundled, **186,94 s**; preparar tests 1,54 s y ejecutar
+15/15 PASS en 2,78 s. Total de bibliotecas probado en el Mac: 649 PASS y
+cuatro ignorados existentes. Limpiando solo libduckdb-sys, con las demás
+dependencias calientes y sccache 0.19 local: **129,69 s → 22,83 s**;
+277 hits C++ de 280 peticiones nuevas y tres hits Rust en la segunda pasada,
+sin errores de escritura. Los 15 tests vuelven a pasar tras restaurar objetos.
+Es compilación macOS/Apple Clang; no es un ratio equivalente al MSVC de Windows.
+Los dos targets privados nuevos se eliminaron y el checkout quedó limpio.
+
+La fixture C++ de CI usa un daemon y caché de disco privados. Una caída o
+limitación de GHA no debe volver inestable este test de soporte del compilador.
+Los contadores GHA del candidato Release completo se conservan por separado.
+
+La primera CI de C++ (42781142655, da5a0db0f) falla: sccache 0.18 interpreta
+mal el modo MSVC `-Tp` separado que cc-rs usa para fuentes .cc; cl intenta
+abrir `/WX-` como fichero. No se presenta su duración parcial como CI verde.
+La regresión local ahora usa .cc y exactamente `-Tp <fuente>`: 0.18 falla
+con el mismo C1083; 0.19 pasa, restaura el mismo objeto y baja de 2,63 s a
+0,15 s en esa fixture. Release necesita por ello el binario precompilado 0.19,
+con daemon y namespace GHA propios `vanta137-release019-v1`. El resto de jobs
+conserva 0.18; no se mezclan sus entradas. El namespace sigue siendo fijo,
+independiente del Cargo.lock. El toolchain Rust permanece en 1.95.

@@ -8,26 +8,44 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 $root=Join-Path $env:VANTARE_SLOT_TARGET ('msvc-probe-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
 [IO.Directory]::CreateDirectory($EvidenceDirectory)|Out-Null
-$source=Join-Path $root 'probe.cpp'
+$source=Join-Path $root 'probe.cc'
 [IO.File]::WriteAllText($source, "#include <vector>`nextern `"C`" int probe() { std::vector<int> x(4096, 42); int n=0; for(int v:x) n+=v; return n; }")
-$before=& sccache --show-stats --stats-format=json | ConvertFrom-Json
-$records=@()
-foreach($name in @('first','second')) {
-    $output=Join-Path $root "$name.obj"
-    $clock=[Diagnostics.Stopwatch]::StartNew()
-    & sccache cl.exe /nologo /c /O2 /MT /EHsc $source "/Fo$output"
-    $result=$LASTEXITCODE
-    $clock.Stop()
-    if($result -or -not(Test-Path -LiteralPath $output)){throw "Falló C++ MSVC: $name"}
-    $records+=@{name=$name;seconds=$clock.Elapsed.TotalSeconds;sha256=(Get-FileHash -LiteralPath $output).Hash}
+# A correctness gate must not depend on GitHub cache availability or quota.
+# Use a private disk backend/daemon; real GHA counters remain in Release timings.
+$cacheVariables=@('SCCACHE_SERVER_PORT','SCCACHE_GHA_ENABLED','SCCACHE_DIR','SCCACHE_CACHE_SIZE')
+$previous=@{}
+foreach($name in $cacheVariables){$previous[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
+$listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
+$listener.Start()
+$port=$listener.LocalEndpoint.Port
+$listener.Stop()
+$env:SCCACHE_SERVER_PORT=[string]$port
+$env:SCCACHE_GHA_ENABLED='false'
+$env:SCCACHE_DIR=Join-Path $root 'compiler-cache'
+$env:SCCACHE_CACHE_SIZE='10M'
+try {
+    $before=& sccache --show-stats --stats-format=json | ConvertFrom-Json
+    $records=@()
+    foreach($name in @('first','second')) {
+        $output=Join-Path $root "$name.obj"
+        $clock=[Diagnostics.Stopwatch]::StartNew()
+        & sccache cl.exe /nologo /c /O2 /MT /EHsc -Tp $source "/Fo$output"
+        $result=$LASTEXITCODE
+        $clock.Stop()
+        if($result -or -not(Test-Path -LiteralPath $output)){throw "Falló C++ MSVC: $name"}
+        $records+=@{name=$name;seconds=$clock.Elapsed.TotalSeconds;sha256=(Get-FileHash -LiteralPath $output).Hash}
+    }
+    $after=& sccache --show-stats --stats-format=json | ConvertFrom-Json
+    $after | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $EvidenceDirectory 'msvc-cache-stats.json')
+    $records | ConvertTo-Json | Set-Content (Join-Path $EvidenceDirectory 'msvc-cache-times.json')
+    $hitsBefore=0L
+    foreach($property in $before.stats.cache_hits.counts.PSObject.Properties){$hitsBefore += [long]$property.Value}
+    $hitsAfter=0L
+    foreach($property in $after.stats.cache_hits.counts.PSObject.Properties){$hitsAfter += [long]$property.Value}
+    if($hitsAfter -le $hitsBefore){throw 'El segundo objeto C++ no reutilizó sccache.'}
+    if($records[0].sha256 -cne $records[1].sha256){throw 'El objeto restaurado difiere del original.'}
+    Write-Host 'PASS: MSVC x64, CRT estático, segundo objeto servido de caché e idéntico.'
+} finally {
+    & sccache --stop-server | Out-Null # Only the private daemon created above.
+    foreach($name in $cacheVariables){[Environment]::SetEnvironmentVariable($name,$previous[$name],'Process')}
 }
-$after=& sccache --show-stats --stats-format=json | ConvertFrom-Json
-$after | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $EvidenceDirectory 'msvc-cache-stats.json')
-$records | ConvertTo-Json | Set-Content (Join-Path $EvidenceDirectory 'msvc-cache-times.json')
-$hitsBefore=0L
-foreach($property in $before.stats.cache_hits.counts.PSObject.Properties){$hitsBefore += [long]$property.Value}
-$hitsAfter=0L
-foreach($property in $after.stats.cache_hits.counts.PSObject.Properties){$hitsAfter += [long]$property.Value}
-if($hitsAfter -le $hitsBefore){throw 'El segundo objeto C++ no reutilizó sccache.'}
-if($records[0].sha256 -cne $records[1].sha256){throw 'El objeto restaurado difiere del original.'}
-Write-Host 'PASS: MSVC x64, CRT estático, segundo objeto servido de caché e idéntico.'

@@ -29,7 +29,7 @@ export function General() {
   });
   if (!state.view) return null;
   const view = state.view;
-  const disabled = state.pending || view.protected || Boolean(state.error);
+  const disabled = view.protected || Boolean(state.error);
   const options = densities.map((value) => ({
     value,
     label: t(`general.${value}`),
@@ -64,6 +64,7 @@ export function General() {
           description={t("general.zoomHelp")}
         >
           <ZoomControl
+            pending={state.pending}
             value={view.zoom}
             disabled={disabled}
             onChange={(value) => state.update({ field: "zoom", value })}
@@ -78,6 +79,7 @@ export function General() {
           description={t("general.densityHelp")}
         >
           <Segmented
+            pending={state.pending}
             label={t("general.density")}
             options={options}
             value={view.general.density}

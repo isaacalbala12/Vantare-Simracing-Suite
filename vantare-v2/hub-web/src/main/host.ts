@@ -1,4 +1,5 @@
 import { connect } from "node:net";
+import { app } from "electron";
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import {
   bounded,
@@ -7,6 +8,7 @@ import {
   isUiMessage,
 } from "../contract/validation";
 import { createMockHost, helloForScene } from "./mock-host";
+import { mockAllowed } from "./security";
 export type Hello = Extract<HostToUi, { kind: "hello" }>;
 export interface HostLink {
   hello: Promise<Hello>;
@@ -19,7 +21,7 @@ export function createHost(): HostLink {
   const emit = (value: HostToUi) => {
     for (const receive of listeners) receive(value);
   };
-  if (process.env.VANTARE_HUB_HOST === "mock") {
+  if (process.env.VANTARE_HUB_HOST === "mock" && mockAllowed(app.isPackaged)) {
     const mockReply = createMockHost(process.env.VANTARE_HUB_SCENE);
     return {
       hello: Promise.resolve(helloForScene(process.env.VANTARE_HUB_SCENE)),

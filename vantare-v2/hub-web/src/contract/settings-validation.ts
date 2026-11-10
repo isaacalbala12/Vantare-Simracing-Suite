@@ -1,5 +1,7 @@
 import {
+  contrastRange,
   densities,
+  glassOpacityRange,
   interfaceFonts,
   monoFonts,
   palettes,
@@ -7,9 +9,14 @@ import {
   type SettingsView,
   schemes,
   settingsFields,
+  zoomLevels,
 } from "./generated/contract";
 import { exact, integer, oneOf, record } from "./validation-common";
 
+const zoomValues: readonly number[] = zoomLevels;
+export function isZoom(value: unknown): value is number {
+  return integer(value) && zoomValues.includes(value);
+}
 function range(value: unknown, min: number, max: number) {
   return integer(value) && value >= min && value <= max;
 }
@@ -62,15 +69,15 @@ export function isSettings(value: unknown): value is SettingsView {
     ]) &&
     oneOf(appearance.palette, palettes) &&
     oneOf(appearance.scheme, schemes) &&
-    range(appearance.contrast, 80, 120) &&
-    range(appearance.glassOpacity, 50, 100) &&
+    range(appearance.contrast, ...contrastRange) &&
+    range(appearance.glassOpacity, ...glassOpacityRange) &&
     oneOf(appearance.interfaceFont, interfaceFonts) &&
     oneOf(appearance.monoFont, monoFonts) &&
     typeof appearance.reducedMotion === "boolean" &&
     typeof value.revision === "string" &&
     /^[0-9a-f]{64}$/.test(value.revision) &&
     integer(value.zoom) &&
-    [90, 100, 110, 125].includes(value.zoom) &&
+    isZoom(value.zoom) &&
     [value.protected, value.canRetry, value.warning].every(
       (item) => typeof item === "boolean",
     ) &&
@@ -99,11 +106,11 @@ export function isSettingsPatch(value: unknown): value is SettingsPatch {
     case "monoFont":
       return oneOf(value.value, monoFonts);
     case "contrast":
-      return range(value.value, 80, 120);
+      return range(value.value, ...contrastRange);
     case "glassOpacity":
-      return range(value.value, 50, 100);
+      return range(value.value, ...glassOpacityRange);
     case "zoom":
-      return integer(value.value) && [90, 100, 110, 125].includes(value.value);
+      return integer(value.value) && isZoom(value.value);
     case "minimized":
     case "updates":
     case "launcher":

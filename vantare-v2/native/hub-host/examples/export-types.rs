@@ -5,5 +5,9 @@ fn main() -> std::io::Result<()> {
     std::fs::write(
         path.join("contract.ts"),
         vantare_hub_host::protocol::typescript(),
+    )?;
+    std::fs::write(
+        path.join("corpus.json"),
+        vantare_hub_host::protocol::bindings::corpus_json(),
     )
 }

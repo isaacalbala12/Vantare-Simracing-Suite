@@ -1,12 +1,25 @@
 //! UI views only: no service credentials, raw Policy or telemetry DTO on this wire.
-use crate::settings::model::{
-    AppearanceSettings, Density, InterfaceFont, MonoFont, Palette, Preferences, Scheme,
-};
-use crate::settings::{SettingsPatch, SettingsView, StartupView};
+use crate::settings::model::{Palette, Scheme};
+use crate::settings::{SettingsPatch, SettingsView};
 use serde::{Deserialize, Serialize};
+#[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
+#[cfg(any(test, feature = "bindings"))]
+pub mod bindings;
+pub const METHODS: &[&str] = &[
+    "core.get",
+    "window.close",
+    "settings.get",
+    "settings.update",
+    "settings.retry",
+    "settings.discard",
+    "launcher.favorite",
+    "notifications.test",
+];
+pub const TOPICS: &[&str] = &["core", "simStatus"];
 pub const VERSION: u32 = 1;
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ThemeBoot {
     pub palette: Palette,
@@ -15,7 +28,8 @@ pub struct ThemeBoot {
     pub sidebar: String,
     pub text1: String,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WindowBoot {
     pub zoom: u16,
@@ -23,7 +37,8 @@ pub struct WindowBoot {
     pub height: u16,
     pub minimized: bool,
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LinkState {
     Connected,
@@ -31,7 +46,8 @@ pub enum LinkState {
     #[default]
     Unavailable,
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 // Independent capabilities copied only from a fresh core Policy.
 #[allow(clippy::struct_excessive_bools)]
@@ -43,7 +59,8 @@ pub struct AccessView {
     pub engineer: bool,
     pub strategy: bool,
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CoreStatus {
     pub photos: LinkState,
@@ -52,13 +69,15 @@ pub struct CoreStatus {
     pub access: AccessView,
     pub live: bool,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Topic {
     Core,
     SimStatus,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
     #[serde(rename = "core.get")]
@@ -82,7 +101,8 @@ pub enum Request {
     #[serde(rename = "notifications.test")]
     NotificationTest {},
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
     #[serde(rename = "core.get")]
@@ -100,7 +120,8 @@ pub enum Reply {
     #[serde(rename = "notifications.test")]
     NotificationTest { accepted: bool },
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
     Busy,
@@ -112,20 +133,23 @@ pub enum HostError {
     Protected,
     Io,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CloseReason {
     Window,
     Live,
     ControlEof,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
     Core { value: CoreStatus },
     SimStatus { live: bool },
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostToUi {
     Hello {
@@ -149,7 +173,8 @@ pub enum HostToUi {
         reason: CloseReason,
     },
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum UiToHost {
     Hello { version: u32 },
@@ -198,81 +223,9 @@ pub fn hello(settings: &SettingsView) -> std::io::Result<HostToUi> {
         demo: false,
     })
 }
+#[cfg(any(test, feature = "bindings"))]
 pub fn typescript() -> String {
-    let mut text = String::from("// Generated by native/hub-host with ts-rs. Do not edit.\n");
-    macro_rules! declaration {($($kind:ty),+)=>{$(text.push_str("export ");text.push_str(&<$kind>::decl(&ts_rs::Config::default()));text.push('\n');)+};}
-    declaration!(
-        Palette,
-        Scheme,
-        InterfaceFont,
-        MonoFont,
-        AppearanceSettings,
-        Density,
-        Preferences,
-        StartupView,
-        SettingsView,
-        SettingsPatch,
-        ThemeBoot,
-        WindowBoot,
-        LinkState,
-        AccessView,
-        CoreStatus,
-        Topic,
-        Request,
-        Reply,
-        HostError,
-        CloseReason,
-        Event,
-        HostToUi,
-        UiToHost
-    );
-    text.push_str("export const HOST_PROTOCOL_VERSION = 1 as const;\nexport const methods = ['core.get', 'window.close', 'settings.get', 'settings.update', 'settings.retry', 'settings.discard', 'launcher.favorite', 'notifications.test'] as const;\nexport const topics = ['core', 'simStatus'] as const;\n");
-    macro_rules! constants {
-        ($name:literal, $values:expr) => {
-            text.push_str(concat!("export const ", $name, " = "));
-            text.push_str(&serde_json::to_string(&$values).expect("serializable constants"));
-            text.push_str(" as const;\n");
-        };
-    }
-    constants!("palettes", Palette::ALL);
-    constants!("schemes", [Scheme::System, Scheme::Light, Scheme::Dark]);
-    constants!(
-        "interfaceFonts",
-        [
-            InterfaceFont::Inter,
-            InterfaceFont::Segoe,
-            InterfaceFont::Arial
-        ]
-    );
-    constants!(
-        "monoFonts",
-        [MonoFont::Cascadia, MonoFont::Consolas, MonoFont::Courier]
-    );
-    constants!(
-        "densities",
-        [Density::Compact, Density::Balanced, Density::Comfortable]
-    );
-    constants!(
-        "settingsFields",
-        [
-            "density",
-            "minimized",
-            "updates",
-            "launcher",
-            "toasts",
-            "palette",
-            "scheme",
-            "contrast",
-            "glassOpacity",
-            "interfaceFont",
-            "monoFont",
-            "reducedMotion",
-            "zoom",
-            "startup"
-        ]
-    );
-    text.push_str("export const methodsCoverContract: Exclude<Request['method'], typeof methods[number]> extends never ? true : never = true;\nexport const fieldsCoverContract: Exclude<SettingsPatch['field'], typeof settingsFields[number]> extends never ? true : never = true;\n");
-    text
+    bindings::typescript()
 }
 #[cfg(test)]
 mod tests {

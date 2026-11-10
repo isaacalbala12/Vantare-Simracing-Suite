@@ -16,14 +16,9 @@ import {
 } from "electron";
 import type { SettingsView } from "../contract/generated/contract";
 import { HOST_PROTOCOL_VERSION } from "../contract/generated/contract";
-import { bounded, isUiMessage } from "../contract/validation";
+import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
-import {
-  paintWindow,
-  resolveTheme,
-  settingsTheme,
-  testNotification,
-} from "./appearance";
+import { paintWindow, resolveTheme, testNotification } from "./appearance";
 import { createHost } from "./host";
 import {
   assetPath,
@@ -31,6 +26,7 @@ import {
   developmentUrl,
   fitWindow,
   hasDebuggerArguments,
+  isRendererMessage,
   navigationAllowed,
   QA_DRIVER,
   requireDataDirectory,
@@ -120,7 +116,7 @@ async function start() {
     if (window)
       paintWindow(
         window,
-        settings ? settingsTheme(settings) : hello.theme,
+        settings ? settings.appearance : hello.theme,
         settings?.zoom ?? hello.window.zoom,
       );
   };
@@ -207,7 +203,7 @@ async function start() {
       port1.close();
     };
     port1.on("message", ({ data }: { data: unknown }) => {
-      if (!compatible || !isUiMessage(data) || !bounded(data)) return;
+      if (!compatible || !isRendererMessage(data) || !bounded(data)) return;
       if (
         data.kind === "request" &&
         data.request.method === "notifications.test"

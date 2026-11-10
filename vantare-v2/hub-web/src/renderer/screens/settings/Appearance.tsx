@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  contrastRange,
+  glassOpacityRange,
   interfaceFonts,
   monoFonts,
   palettes,
@@ -30,9 +32,10 @@ function AppearanceSlider({
       label={label}
       hideLabel
       value={preview}
-      min={field === "contrast" ? 80 : 50}
-      max={field === "contrast" ? 120 : 100}
-      disabled={state.pending || state.view?.protected || Boolean(state.error)}
+      min={field === "contrast" ? contrastRange[0] : glassOpacityRange[0]}
+      max={field === "contrast" ? contrastRange[1] : glassOpacityRange[1]}
+      disabled={state.view?.protected || Boolean(state.error)}
+      pending={state.pending}
       onChange={(value) => {
         setPreview(value);
         if (state.view)
@@ -60,12 +63,13 @@ export function Appearance() {
   if (!state.view) return null;
   const view = state.view;
   const appearance = view.appearance;
-  const disabled = state.pending || view.protected || Boolean(state.error);
+  const disabled = view.protected || Boolean(state.error);
   const scheme = appearance.scheme === "system" ? system : appearance.scheme;
   return (
     <>
       <Card title={t("appearance.scheme")}>
         <RadioGroup
+          pending={state.pending}
           label={t("appearance.scheme")}
           value={appearance.scheme}
           options={schemes.map((value) => ({
@@ -89,6 +93,7 @@ export function Appearance() {
             label: t(`appearance.${value}`),
           }))}
           disabled={disabled}
+          pending={state.pending}
           onChange={(value) => state.update({ field: "palette", value })}
         />
       </Card>
@@ -121,6 +126,7 @@ export function Appearance() {
             }))}
             value={appearance.interfaceFont}
             disabled={disabled}
+            pending={state.pending}
             onChange={(next) => {
               const value = interfaceFonts.find((value) => value === next);
               if (value) state.update({ field: "interfaceFont", value });
@@ -140,6 +146,7 @@ export function Appearance() {
             }))}
             value={appearance.monoFont}
             disabled={disabled}
+            pending={state.pending}
             onChange={(next) => {
               const value = monoFonts.find((value) => value === next);
               if (value) state.update({ field: "monoFont", value });

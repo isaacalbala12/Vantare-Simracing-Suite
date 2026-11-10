@@ -7,12 +7,19 @@ import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
+import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
 // Existing qa-e2e runtime: loopback endpoints, no account or credentials.
-const qa = `D:/VantareServer/qa/licencias-e2e/isa-1995-${randomBytes(8).toString("hex")}`;
-const evidence = "D:/VantareServer/evidence/hub-web/puente";
-const target = "D:/VantareServer/targets/isa-1995-puente/debug";
+const qa = join(
+  requiredPath("VANTARE_HUB_QA_ROOT"),
+  "licencias-e2e",
+  `isa-1995-${randomBytes(8).toString("hex")}`,
+);
+const evidence = process.env.VANTARE_HUB_EVIDENCE
+  ? requiredPath("VANTARE_HUB_EVIDENCE")
+  : resolve("test-results/core");
+const target = requiredPath("VANTARE_HUB_CORE_BIN_DIR");
 const bins = join(qa, "bin");
 for (const name of ["native", "local", "roaming", "tmp", "bin", "native/hub"])
   await mkdir(join(qa, name), { recursive: true });
@@ -48,7 +55,10 @@ await phase("Waiting");
 await cp(resolve("../testdata/lmu-fixture.bin"), join(qa, "replay.bin"));
 for (const binary of ["vantare.exe", "vantare-core.exe"])
   await cp(join(target, binary), join(bins, binary));
-await cp(join(target, "vantare-hub-host.exe"), join(bins, "vantare-hub.exe"));
+await cp(
+  requiredPath("VANTARE_HUB_HOST_BINARY"),
+  join(bins, "vantare-hub.exe"),
+);
 await cp(
   resolve("release/package-qa/vantare-hub-ui-win32-x64"),
   join(qa, "hub-ui"),

@@ -1,8 +1,10 @@
 //! Persisted shapes copied from frozen Hub general.rs and orbit/theme.rs.
 use serde::{Deserialize, Serialize};
+#[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Palette {
     /// Grafito con rojo oficial; tema predeterminado desde el feedback 7.
@@ -48,7 +50,8 @@ impl Palette {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Scheme {
     System,
@@ -57,7 +60,8 @@ pub enum Scheme {
     Dark,
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InterfaceFont {
     #[default]
@@ -66,7 +70,8 @@ pub enum InterfaceFont {
     Arial,
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MonoFont {
     #[default]
@@ -76,7 +81,8 @@ pub enum MonoFont {
 }
 
 /// Preferencias persistibles. Oscuro mantiene el aspecto inicial del Hub nativo.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppearanceSettings {
     pub palette: Palette,
@@ -102,7 +108,8 @@ impl Default for AppearanceSettings {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Density {
     Compact,
@@ -111,7 +118,8 @@ pub enum Density {
     Comfortable,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Preferences {
@@ -138,3 +146,10 @@ impl Default for Preferences {
         }
     }
 }
+
+pub const ZOOM_LEVELS: [u16; 4] = [90, 100, 110, 125];
+pub const DEFAULT_ZOOM: u16 = 100;
+pub const CONTRAST_MIN: u8 = 80;
+pub const CONTRAST_MAX: u8 = 120;
+pub const GLASS_OPACITY_MIN: u8 = 50;
+pub const GLASS_OPACITY_MAX: u8 = 100;

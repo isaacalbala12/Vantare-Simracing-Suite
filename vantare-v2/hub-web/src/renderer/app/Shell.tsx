@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Icon } from "../assets/icons/Icon";
 import { es, t } from "../i18n/es";
 import { Button, IconButton } from "../ui/Button";
@@ -33,6 +33,7 @@ export function Shell() {
   const host = useHost();
   const toast = useToastManager();
   const settings = useSettings();
+  const favoritePending = useRef(false);
   const editBlocked =
     !settings.view ||
     settings.pending ||
@@ -50,7 +51,8 @@ export function Shell() {
       ui.navigate(section);
   }
   async function launchFavorite() {
-    if (!host.client) return;
+    if (!host.client || favoritePending.current) return;
+    favoritePending.current = true;
     try {
       const reply = await host.client.request({ method: "launcher.favorite" });
       if (reply.method !== "launcher.favorite") return;
@@ -60,6 +62,8 @@ export function Shell() {
       } else toast.add({ title: t("shell.favoriteSent") });
     } catch {
       toast.add({ title: t("shell.favoriteFailed"), type: "err" });
+    } finally {
+      favoritePending.current = false;
     }
   }
   function zoom(direction: -1 | 0 | 1) {
@@ -129,7 +133,7 @@ export function Shell() {
       }
       if (key === "l") {
         event.preventDefault();
-        void launchFavorite();
+        if (!event.repeat) void launchFavorite();
       }
       if (
         ["+", "=", "-", "0"].includes(key) &&
@@ -179,7 +183,13 @@ export function Shell() {
       header={
         <TitleBar
           title={title}
-          status={status}
+          status={
+            settings.error
+              ? t("settings.failed")
+              : settings.pending
+                ? t("settings.saving")
+                : status
+          }
           actions={
             <ActionGroup>
               <IconButton
@@ -349,6 +359,28 @@ export function Shell() {
         </Suspense>
       ) : (
         <ContentStack>
+          {settings.error && (
+            <Callout
+              tone="err"
+              title={t("settings.failed")}
+              actions={
+                <ActionGroup>
+                  <Button busy={settings.pending} onClick={settings.retry}>
+                    {t("settings.retry")}
+                  </Button>
+                  <Button
+                    disabled={settings.pending}
+                    variant="ghost"
+                    onClick={settings.discard}
+                  >
+                    {t("settings.discard")}
+                  </Button>
+                </ActionGroup>
+              }
+            >
+              {t("settings.failedHelp")}
+            </Callout>
+          )}
           <PageHeader title={title} />
           <Callout title={t("shell.soon")} />
         </ContentStack>

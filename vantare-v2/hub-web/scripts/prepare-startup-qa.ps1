@@ -2,7 +2,9 @@
 param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$Generation)
 $ErrorActionPreference='Stop'
 $rootPath=[IO.Path]::GetFullPath($Root)
-if(-not $rootPath.StartsWith('D:\VantareServer\qa\',[StringComparison]::OrdinalIgnoreCase)){throw 'QA root required'}
+$qaNamespace=if($env:VANTARE_HUB_QA_ROOT){[IO.Path]::GetFullPath($env:VANTARE_HUB_QA_ROOT)}else{[IO.Path]::GetFullPath([IO.Path]::GetTempPath())}
+$qaPrefix=$qaNamespace.TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+if(-not $rootPath.StartsWith($qaPrefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Root must be a child of the QA namespace'}
 if($Generation -cnotmatch '^[a-f0-9]{32}$'){throw 'Invalid generation'}
 $matrix=Join-Path $PSScriptRoot '../../native/packaging/matrix'
 . (Join-Path $matrix 'support.ps1')

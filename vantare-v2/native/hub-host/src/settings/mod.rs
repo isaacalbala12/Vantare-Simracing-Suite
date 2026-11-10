@@ -6,9 +6,11 @@ mod store;
 use crate::args::Args;
 use model::{AppearanceSettings, Density, InterfaceFont, MonoFont, Palette, Preferences, Scheme};
 use serde::{Deserialize, Serialize};
+#[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SettingsView {
     pub version: String,
@@ -21,13 +23,15 @@ pub struct SettingsView {
     pub warning: bool,
     pub startup: StartupView,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StartupView {
     pub supported: bool,
     pub enabled: bool,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
     tag = "field",
     content = "value",

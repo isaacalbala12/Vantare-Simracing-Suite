@@ -7,9 +7,8 @@ import type {
   Topic,
   UiToHost,
 } from "../../contract/generated/contract";
-import { HOST_PROTOCOL_VERSION } from "../../contract/generated/contract";
 import { bounded, isHostMessage } from "../../contract/validation";
-import { createMockHost } from "../../mock/host";
+import { createMockHost, helloForScene } from "../../mock/host";
 export class HostFailure extends Error {
   constructor(readonly detail: HostError) {
     super(detail.kind);
@@ -34,6 +33,7 @@ export class Client {
   private constructor(
     private port: MessagePort,
     private cleanup: () => void = () => {},
+    private bootstrap?: () => void,
   ) {
     port.onmessage = ({ data }: MessageEvent<unknown>) => {
       if (!isHostMessage(data) || !bounded(data)) return;
@@ -69,7 +69,17 @@ export class Client {
         if (response) port2.postMessage(response);
       };
       port2.start();
-      return new Client(port1, () => port2.close());
+      return new Client(
+        port1,
+        () => port2.close(),
+        () =>
+          port2.postMessage(
+            helloForScene(
+              new URLSearchParams(window.location.search).get("escena") ??
+                undefined,
+            ),
+          ),
+      );
     }
     const port = await new Promise<MessagePort>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -148,7 +158,8 @@ export class Client {
     return () => this.send({ kind: "unsubscribe", topic });
   }
   start() {
-    this.send({ kind: "hello", version: HOST_PROTOCOL_VERSION });
+    this.bootstrap?.();
+    this.bootstrap = undefined;
   }
   close() {
     this.closeSequence++;

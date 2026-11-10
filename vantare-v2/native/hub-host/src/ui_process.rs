@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::{
     io,
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::Command,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -24,7 +24,7 @@ fn qa_phase(args: &Args, phase: &str) -> io::Result<()> {
         .open(args.data.join("hub-host-qa.log"))?;
     writeln!(file, "{phase}")
 }
-struct UiChild(Child);
+struct UiChild(crate::job::Child);
 impl Drop for UiChild {
     fn drop(&mut self) {
         // Let Electron finish its close ACK and normal cache cleanup; then reap even a stuck child.
@@ -32,8 +32,9 @@ impl Drop for UiChild {
         while matches!(self.0.try_wait(), Ok(None)) && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(10));
         }
-        let _killed = self.0.kill();
-        let _waited = self.0.wait();
+        if self.0.kill().is_ok() {
+            let _waited = self.0.wait();
+        }
     }
 }
 #[derive(Deserialize)]
@@ -52,23 +53,35 @@ fn authenticated(value: &Authentication, expected: &str) -> bool {
             .fold(0_u8, |difference, (a, b)| difference | (a ^ b))
             == 0
 }
+fn ui_target(executable: &Path) -> io::Result<(PathBuf, Vec<PathBuf>)> {
+    if let Some(generation) = ready::generation(executable) {
+        return Ok((
+            std::fs::canonicalize(generation.join("hub-ui/vantare-hub-ui.exe"))?,
+            Vec::new(),
+        ));
+    }
+    #[cfg(any(debug_assertions, feature = "qa-e2e"))]
+    {
+        let value = std::env::var_os("VANTARE_HUB_UI").ok_or(io::ErrorKind::NotFound)?;
+        if value == "dev" {
+            let web = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub-web");
+            return Ok((
+                std::fs::canonicalize(web.join("node_modules/electron/dist/electron.exe"))?,
+                vec![web],
+            ));
+        }
+        Ok((std::fs::canonicalize(value)?, Vec::new()))
+    }
+    #[cfg(not(any(debug_assertions, feature = "qa-e2e")))]
+    Err(io::ErrorKind::PermissionDenied.into())
+}
 fn spawn_ui(
     args: &Args,
     executable: &Path,
     name: &str,
     token: &str,
 ) -> io::Result<(UiChild, PathBuf)> {
-    let development = ready::generation(executable).is_none()
-        && std::env::var("VANTARE_HUB_UI").as_deref() == Ok("dev");
-    let web = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../hub-web");
-    let ui = if let Some(generation) = ready::generation(executable) {
-        generation.join("hub-ui/vantare-hub-ui.exe")
-    } else if development {
-        web.join("node_modules/electron/dist/electron.exe")
-    } else {
-        PathBuf::from(std::env::var_os("VANTARE_HUB_UI").ok_or(io::ErrorKind::NotFound)?)
-    };
-    let ui = std::fs::canonicalize(ui)?;
+    let (ui, arguments) = ui_target(executable)?;
     let mut command = Command::new(&ui);
     command.env_clear();
     for name in [
@@ -92,15 +105,11 @@ fn spawn_ui(
     let temporary = args.data.join("hub-ui/tmp");
     std::fs::create_dir_all(&temporary)?;
     command.env("TEMP", &temporary).env("TMP", &temporary);
-    if development {
-        command.arg(web);
-    }
+    command.args(arguments);
     command
         .env("VANTARE_HUB_PIPE", name)
         .env("VANTARE_HUB_TOKEN", token)
-        .env("VANTARE_HUB_DATA_DIR", &args.data)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null());
+        .env("VANTARE_HUB_DATA_DIR", &args.data);
     #[cfg(feature = "qa-e2e")]
     {
         if let Ok(scale) = std::env::var("VANTARE_HUB_QA_SCALE") {
@@ -109,18 +118,18 @@ fn spawn_ui(
             }
             command.arg(format!("--force-device-scale-factor={scale}"));
         }
-        command
-            .args([
-                "--remote-debugging-port=0",
-                "--remote-debugging-address=127.0.0.1",
-            ])
-            .stderr(std::fs::File::create(args.data.join("hub-ui-qa.log"))?);
+        command.args([
+            "--remote-debugging-port=0",
+            "--remote-debugging-address=127.0.0.1",
+        ]);
     }
+    #[cfg(feature = "qa-e2e")]
+    let stderr = std::fs::File::create(args.data.join("hub-ui-qa.log"))?;
     #[cfg(not(feature = "qa-e2e"))]
-    command.stderr(Stdio::null());
+    let stderr = std::fs::OpenOptions::new().write(true).open("NUL")?;
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "before-ui-spawn")?;
-    let child = command.spawn()?;
+    let child = crate::job::spawn(&command, &stderr)?;
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "ui-spawned")?;
     Ok((UiChild(child), ui))
@@ -132,6 +141,7 @@ fn accept_ui(
     mut pipe: Pipe,
     stop: &Arc<Stop>,
     token: &str,
+    control_closed: impl Fn() -> bool,
 ) -> io::Result<Option<(Pipe, frame::Reader)>> {
     let deadline = Instant::now() + Duration::from_secs(15);
     let accepting = std::thread::Builder::new()
@@ -142,18 +152,14 @@ fn accept_ui(
         })?;
     let mut cancelled = None;
     while !accepting.is_finished() {
-        if args.controlled && crate::control_stdin::closed() {
+        if args.controlled && control_closed() {
             cancelled = Some(io::ErrorKind::ConnectionAborted);
             break;
         }
         match child.0.try_wait() {
             Ok(None) => {}
-            Ok(Some(status)) => {
-                cancelled = Some(if status.success() {
-                    io::ErrorKind::ConnectionAborted
-                } else {
-                    io::ErrorKind::BrokenPipe
-                });
+            Ok(Some(_)) => {
+                cancelled = Some(io::ErrorKind::BrokenPipe);
                 break;
             }
             Err(error) => {
@@ -187,7 +193,7 @@ fn accept_ui(
     }
     let mut reader = frame::Reader::default();
     loop {
-        if args.controlled && crate::control_stdin::closed() {
+        if args.controlled && control_closed() {
             return Ok(None);
         }
         if child.0.try_wait()?.is_some() {
@@ -424,9 +430,6 @@ impl Session {
 }
 pub fn run(args: &Args) -> io::Result<()> {
     let executable = std::env::current_exe()?;
-    if ready::redirect_if_needed(&executable)? {
-        return Ok(());
-    }
     if !executable.file_name().is_some_and(|name| {
         name.to_string_lossy()
             .eq_ignore_ascii_case("vantare-hub.exe")
@@ -447,7 +450,15 @@ pub fn run(args: &Args) -> io::Result<()> {
     let mut listener = Listener::new(&name, Arc::clone(&stop), Duration::from_millis(100))?;
     let pipe = listener.instance()?;
     let (mut child, ui) = spawn_ui(args, &executable, &name, &token)?;
-    let Some((mut pipe, mut reader)) = accept_ui(args, &mut child, &ui, pipe, &stop, &token)?
+    let Some((mut pipe, mut reader)) = accept_ui(
+        args,
+        &mut child,
+        &ui,
+        pipe,
+        &stop,
+        &token,
+        crate::control_stdin::closed,
+    )?
     else {
         return Ok(());
     };
@@ -535,4 +546,15 @@ mod tests {
             &expected
         ));
     }
+}
+
+#[cfg(test)]
+#[path = "bridge_tests.rs"]
+mod bridge_tests;
+
+#[cfg(all(test, not(debug_assertions), not(feature = "qa-e2e")))]
+#[test]
+fn release_rejects_an_uninstalled_ui_target() {
+    let result = ui_target(&std::env::current_exe().expect("image"));
+    assert!(matches!(result,Err(error) if error.kind()==io::ErrorKind::PermissionDenied));
 }

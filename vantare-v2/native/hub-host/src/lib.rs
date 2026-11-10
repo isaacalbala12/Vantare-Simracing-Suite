@@ -14,3 +14,9 @@ pub mod ui_process;
 pub mod settings;
 
 pub mod favorite;
+
+#[cfg(windows)]
+mod job;
+
+#[cfg(all(test, windows))]
+mod test_support;

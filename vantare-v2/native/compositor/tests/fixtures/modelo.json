@@ -1,0 +1,21 @@
+{
+  "modelo": "test/1",
+  "campos": {
+    "activo": "bool",
+    "visible": "bool",
+    "titulo": "texto",
+    "alpha": "numero",
+    "filas": {
+      "lista": {
+        "id": "texto",
+        "texto": "texto",
+        "clase": {
+          "enum": [
+            "a",
+            "b"
+          ]
+        }
+      }
+    }
+  }
+}

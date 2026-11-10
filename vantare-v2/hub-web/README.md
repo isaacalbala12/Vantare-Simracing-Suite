@@ -41,4 +41,19 @@ La ejecución en Windows Server no acredita Windows 10.
 
 Referencia GPUI: el binario existente en targets/isa-1993-baseline/debug no
 incluye parity-capture; capture-native.ps1 sale con código 2 y pide recompilar.
-No se modificó el Hub congelado ni se reutilizó su target para construir.
+Después se compiló parity-capture con target propio en D:. La referencia actual
+se genera desde D:/VantareServer/qa/isa-1995-reference/capture-bin, en claro y
+oscuro, excluyendo once escenas Strategy que el propio binario declara retiradas.
+La única adición al Hub congelado es el exportador autorizado.
+
+Paso 2a: `bun run tokens` genera CSS y el tema de Tailwind desde design/tokens.json.
+El ejemplo native/hub/examples/export-tokens.rs se usó una sola vez; desde ahora
+manda el JSON. `bun run fonts` y `bun run icons` copian recursos propios locales.
+Nueve paletas × claro/oscuro; los tests verifican semánticos completos y AA
+en textos sobre las dos superficies. `bun run lint:design` comprueba el diseño
+y los textos JSX; las salidas generadas se excluyen de formato para conservar
+su comprobación byte a byte.
+
+Ajuste web de accesibilidad: `focus-ring` usa `accent-bright` opaco. La selección
+traslúcida heredada no llegaba a 3:1 en 15 temas. El token `selection` conserva
+el valor exportado y los colores del Hub congelado no cambian.

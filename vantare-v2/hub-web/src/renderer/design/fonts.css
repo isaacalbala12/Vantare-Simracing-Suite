@@ -1,0 +1,16 @@
+@font-face {
+  font-family: Inter;
+  src: url("../assets/fonts/Inter-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: block;
+}
+@font-face {
+  font-family: Rajdhani;
+  src: url("../assets/fonts/Rajdhani.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Mono";
+  src: url("../assets/fonts/SpaceMono.ttf") format("truetype");
+  font-display: swap;
+}

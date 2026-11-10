@@ -61,6 +61,32 @@ try {
   )
     throw new Error("Renderer isolation failed");
   await window.screenshot({ path: resolve(evidence, "esqueleto.png") });
+  if (process.env.VANTARE_HUB_THEME_SHEET === "1") {
+    for (const palette of [
+      "vantare",
+      "classic",
+      "deepseek",
+      "rose",
+      "grove",
+      "ocean",
+      "ember",
+      "iris",
+      "mono",
+    ])
+      for (const scheme of ["dark", "light"]) {
+        await window.evaluate(
+          ({ palette, scheme }) => {
+            document.documentElement.dataset.palette = palette;
+            document.documentElement.dataset.scheme = scheme;
+          },
+          { palette, scheme },
+        );
+        await window.screenshot({
+          path: resolve(evidence, `${palette}-${scheme}.png`),
+        });
+      }
+  }
+
   if (errors.length) throw new Error(errors.join("\n"));
   await writeFile(
     resolve(evidence, "smoke.json"),

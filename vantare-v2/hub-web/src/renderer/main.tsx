@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import hello from "../../fixtures/ajustes-base.json";
 import { es } from "./i18n/es";
-import "./base.css";
+import "./design/base.css";
 
 declare global {
   interface Window {

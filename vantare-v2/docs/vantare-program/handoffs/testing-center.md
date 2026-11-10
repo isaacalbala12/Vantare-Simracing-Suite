@@ -1408,3 +1408,12 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   visual después de la referencia testing-center-diagnostico (#2042).
 - 266 pruebas web completas y seis de exportación PASS, tipos/lint PASS; dos
   pruebas Rust Windows y Clippy cruzado -D warnings PASS. Sin nuevas dependencias.
+
+
+### VANTA-138 / #2043 · exportación preparada sin push
+
+- Rebase local sobre 9d624c41f, conservando Roadmap, Notificaciones y QA.
+  Bindings/corpus regenerados. Tipos y 144 pruebas web de contrato/exportación
+  PASS; 2 exportación + 3 Roadmap Windows PASS; Clippy forzado y compilación PASS.
+- Sin push mientras la cola de fusión del orquestador retiene los contratos.
+  Próximo paso: rebase sobre el nightly del turno y publicar el SHA nuevo.

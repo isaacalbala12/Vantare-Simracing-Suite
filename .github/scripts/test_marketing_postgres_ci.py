@@ -29,7 +29,7 @@ class MarketingPostgresCI(unittest.TestCase):
         self.assertIn("python -m unittest discover -s supabase/tests -p test_run_admin_local.py", workflow)
         product = workflow.split("  product:", 1)[1]
         self.assertNotIn("    needs:", job)
-        self.assertIn("needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_installation]", product)
+        self.assertIn("needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]", product)
         self.assertNotIn("needs: [policy, marketing-postgres]", product)
 
     def test_absent_or_inaccessible_docker_is_visible_and_supported_runner_executes(self):

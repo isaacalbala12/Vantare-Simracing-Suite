@@ -48,6 +48,7 @@
   --density: 1;
   --rail-w: clamp(320px, 22vw, 400px);
   --ease-standard: cubic-bezier(.2,0,0,1);
+  --brand-mark: #d80000;
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 260ms;

@@ -33,6 +33,7 @@ function Content() {
           <Specimen />
         </Suspense>
         <Callout title={host.hello.demo ? es.mock : es.coreUnavailable} />
+        <ToastViewport closeLabel={specimen.close} />
       </ContentStack>
     );
   return (
@@ -65,7 +66,6 @@ function App() {
             <TooltipProvider delay={400}>
               <ToastProvider>
                 <Content />
-                <ToastViewport closeLabel={specimen.close} />
               </ToastProvider>
             </TooltipProvider>
           </CSPProvider>

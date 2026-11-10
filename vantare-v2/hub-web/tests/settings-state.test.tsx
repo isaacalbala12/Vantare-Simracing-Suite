@@ -15,6 +15,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import {
+  SectionRailSlot,
+  SectionTabsSlot,
+} from "../src/renderer/app/SectionChrome";
+import {
   SettingsProvider,
   useSettings,
 } from "../src/renderer/app/SettingsState";
@@ -36,6 +40,7 @@ import {
   ToastViewport,
   TooltipProvider,
 } from "../src/renderer/ui/Layers";
+import { ShellLayout } from "../src/renderer/ui/ShellLayout";
 
 type Guard = Parameters<Client["setCloseGuard"]>[0];
 const caches: QueryClient[] = [];
@@ -670,7 +675,16 @@ describe("pilot editor over the simulated host", () => {
     ).toBe("Cambio concurrente QA");
   });
   it("retains draft when changing tabs and searches without accents", async () => {
-    mount("cuenta-base", <Settings />);
+    mount(
+      "cuenta-base",
+      <ShellLayout
+        header={<SectionTabsSlot />}
+        sidebar={null}
+        rail={<SectionRailSlot fallback={null} />}
+      >
+        <Settings />
+      </ShellLayout>,
+    );
     await screen.findByRole("tab", {
       name: t("settings.account"),
     });

@@ -44,7 +44,7 @@ try {
     5000,
     "confirmed minimized setting",
   );
-  await page.getByRole("heading", { name: "Ajustes", exact: true }).focus();
+  await page.getByRole("heading", { name: "General", exact: true }).focus();
   await page.keyboard.press("Control+=");
   await until(
     async () =>

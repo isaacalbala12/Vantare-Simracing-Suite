@@ -1,24 +1,35 @@
 import type { ReactNode } from "react";
+import { SectionChromeProvider } from "../app/SectionChrome";
 export function ShellLayout({
   header,
   sidebar,
   rail,
+  toasts,
   children,
 }: {
   header: ReactNode;
   sidebar: ReactNode;
   rail: ReactNode;
+  toasts?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="v-shell">
-      {header}
-      <div className="v-shell-body">
+    <SectionChromeProvider>
+      <div className="v-shell">
         {sidebar}
-        <main className="v-shell-main">{children}</main>
-        {rail}
+        <div className="v-shell-column">
+          <div className="v-shell-wash" aria-hidden="true" />
+          {header}
+          <div className="v-shell-body">
+            <div className="v-content-column">
+              <main className="v-shell-main">{children}</main>
+              <div className="v-shell-toast-anchor">{toasts}</div>
+            </div>
+            {rail}
+          </div>
+        </div>
       </div>
-    </div>
+    </SectionChromeProvider>
   );
 }
 export function ContentStack({ children }: { children: ReactNode }) {

@@ -1,11 +1,13 @@
 import { lazy, Suspense, useState } from "react";
 import { usePilot } from "../../app/PilotState";
+import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useSettings } from "../../app/SettingsState";
 import { settingsText, t } from "../../i18n/es";
+import { settingsDescriptions } from "../../i18n/settings-frame.es";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
-import { SearchInput, Tabs } from "../../ui/Forms";
-import { PageHeader } from "../../ui/Frame";
+import { SearchInput } from "../../ui/Forms";
+import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 
 const Account = lazy(() =>
@@ -158,26 +160,35 @@ export function Settings() {
   const failure = state.error?.detail.kind;
   return (
     <ContentStack>
-      <PageHeader
+      <SectionChrome
         title={t("settings.title")}
-        description={t(
-          selected === "account"
-            ? "pilot.manualSave"
-            : state.pending
-              ? "settings.saving"
-              : "shell.autoSave",
-        )}
+        tabs={items.map((item) => ({
+          id: item.value,
+          etiqueta: item.label,
+          visible: visible.includes(item),
+        }))}
+        activeTab={selected}
+        onTabChange={setTab}
       />
-      <SearchInput
-        label={t("settings.search")}
-        clearLabel={t("settings.clearSearch")}
-        value={search}
-        onChange={setSearch}
+      <SectionPageHeader
+        title={
+          (
+            items.find((item) => item.value === selected) ??
+            items.find((item) => item.value === tab) ??
+            items[1]
+          ).label
+        }
+        description={settingsDescriptions[selected || tab]}
+        search={
+          <SearchInput
+            label={t("settings.search")}
+            clearLabel={t("settings.clearSearch")}
+            value={search}
+            onChange={setSearch}
+          />
+        }
       />
-      <p
-        role="status"
-        aria-live="polite"
-      >{`${t("settings.results")}: ${visible.length}`}</p>
+      <StatusAnnouncement>{`${t("settings.results")}: ${visible.length}`}</StatusAnnouncement>
       {pilot.dirty && selected !== "account" && (
         <Callout
           title={t("pilot.unsaved")}
@@ -248,12 +259,9 @@ export function Settings() {
           }
         />
       ) : visible.length ? (
-        <Tabs
-          label={t("settings.title")}
-          value={selected}
-          onChange={setTab}
-          items={visible}
-        />
+        <SectionPanel activeTab={selected}>
+          {visible.find((item) => item.value === selected)?.content}
+        </SectionPanel>
       ) : (
         <Callout title={t("settings.noResults")} />
       )}

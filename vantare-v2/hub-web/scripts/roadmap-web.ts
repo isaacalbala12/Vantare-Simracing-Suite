@@ -32,7 +32,7 @@ try {
   for (const scheme of ["dark", "light"]) {
     await page.goto(`${origin}?escena=roadmap-base`);
     await page.getByRole("button", { name: "Roadmap", exact: true }).click();
-    await page.getByRole("tab", { name: "Circuito", exact: true }).waitFor();
+    await page.getByRole("tab", { name: "Circuito", exact: true }).click();
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
@@ -47,7 +47,6 @@ try {
         () => document.documentElement.dataset.scheme === "light",
       );
     }
-    await page.keyboard.press("Control+b");
     await page.screenshot({
       path: resolve(evidence, `roadmap-base-${scheme}.png`),
     });

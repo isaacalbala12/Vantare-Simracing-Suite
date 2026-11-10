@@ -9,16 +9,19 @@ import {
 } from "../src/contract/generated/contract";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
+import * as host from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
+import type { Client } from "../src/renderer/bridge/client";
 import { pollRoadmap } from "../src/renderer/screens/roadmap/poll";
 import { Roadmap } from "../src/renderer/screens/roadmap/Roadmap";
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 function publication() {
   const response = createMockHost("roadmap-published")({
@@ -80,7 +83,11 @@ it("rejects open parameters and malformed public views", () => {
       result: {
         method: "roadmap.cached",
         value: {
-          publication: { id: "x", publishedAt: "x", items: [] },
+          publication: {
+            id: "x",
+            publishedAt: "x",
+            items: [{ section: "unknown" }],
+          },
           stale: false,
         },
       },
@@ -116,6 +123,7 @@ it("loads cache then refreshes, preserves publication on failure, throttles retr
       failed = error;
     },
     () => true,
+    { lastRefresh: -Infinity },
   );
   await vi.advanceTimersByTimeAsync(0);
   expect(request).toHaveBeenCalledTimes(2);
@@ -140,7 +148,9 @@ it("does not overlap requests or dispatch while hidden and ignores a late reply"
       }),
   );
   const publish = vi.fn();
-  const stop = pollRoadmap({ request }, publish, () => visible);
+  const stop = pollRoadmap({ request }, publish, () => visible, {
+    lastRefresh: -Infinity,
+  });
   await vi.advanceTimersByTimeAsync(roadmapRefreshMs * 2);
   expect(request).toHaveBeenCalledTimes(1);
   stop();
@@ -151,8 +161,91 @@ it("does not overlap requests or dispatch while hidden and ignores a late reply"
   await vi.advanceTimersByTimeAsync(0);
   expect(publish).toHaveBeenCalledTimes(1);
   visible = false;
-  const stopHidden = pollRoadmap({ request }, publish, () => visible);
+  const stopHidden = pollRoadmap({ request }, publish, () => visible, {
+    lastRefresh: -Infinity,
+  });
   await vi.advanceTimersByTimeAsync(roadmapRefreshMs);
   expect(request).toHaveBeenCalledTimes(1);
   stopHidden();
+});
+
+it("shares the refresh budget across leaving and re-entering the section", async () => {
+  vi.useFakeTimers();
+  const budget = { lastRefresh: -Infinity };
+  const request = vi.fn().mockImplementation(async ({ method }) => ({
+    method,
+    value: { publication: publication(), stale: false },
+  }));
+  for (let entry = 0; entry < 5; entry++) {
+    const stop = pollRoadmap(
+      { request },
+      () => {},
+      () => true,
+      budget,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    stop();
+  }
+  expect(
+    request.mock.calls.filter(([r]) => r.method === "roadmap.cached"),
+  ).toHaveLength(5);
+  expect(
+    request.mock.calls.filter(([r]) => r.method === "roadmap.refresh"),
+  ).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(roadmapRefreshMs);
+  const stop = pollRoadmap(
+    { request },
+    () => {},
+    () => true,
+    budget,
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  expect(
+    request.mock.calls.filter(([r]) => r.method === "roadmap.refresh"),
+  ).toHaveLength(2);
+  stop();
+});
+it("accepts an empty publication and displays its empty lanes", async () => {
+  const empty = { id: "empty", publishedAt: "2026-11-10T00:00:00Z", items: [] };
+  expect(
+    isHostMessage({
+      kind: "response",
+      id: 1,
+      result: {
+        method: "roadmap.cached",
+        value: { publication: empty, stale: false },
+      },
+    }),
+  ).toBe(true);
+  const cache = new QueryClient();
+  cache.setQueryData(["roadmap"], empty);
+  render(
+    <QueryClientProvider client={cache}>
+      <SectionChromeProvider>
+        <SectionTabsSlot />
+        <Roadmap />
+      </SectionChromeProvider>
+    </QueryClientProvider>,
+  );
+  expect(screen.getAllByText("Sin hitos publicados")).toHaveLength(3);
+});
+it("does not claim to have a saved publication when the cache is absent", async () => {
+  vi.spyOn(host, "useHost").mockReturnValue({
+    client: {
+      request: vi.fn().mockResolvedValue({
+        method: "roadmap.cached",
+        value: { publication: null, stale: true },
+      }),
+    } as unknown as Client,
+  });
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <SectionChromeProvider>
+        <SectionTabsSlot />
+        <Roadmap />
+      </SectionChromeProvider>
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText("Sin publicación disponible")).toBeTruthy();
+  expect(screen.queryByText("Última publicación guardada")).toBeNull();
 });

@@ -2,6 +2,8 @@ export const roadmap = {
   title: "Roadmap",
   subtitle: "Qué hay, qué viene y en qué estamos",
   loading: "Cargando roadmap…",
+  noPublication: "Sin publicación disponible",
+  failedEmpty: "No se pudo cargar el roadmap. Se reintentará.",
   updated: "Publicación actualizada",
   failed: "No se pudo actualizar. Se conserva la última publicación.",
   cached: "Última publicación guardada",

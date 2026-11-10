@@ -80,7 +80,20 @@ pub fn typescript() -> String {
     )
     .expect("String write");
     append_constants(&mut text);
+    append_roadmap_constants(&mut text);
     text
+}
+fn append_roadmap_constants(text: &mut String) {
+    for (name, value) in [
+        ("roadmapRefreshMs", crate::roadmap::REFRESH_MS.to_string()),
+        ("roadmapMaxItems", crate::roadmap::MAX_ITEMS.to_string()),
+        (
+            "roadmapMaxDocumentBytes",
+            crate::roadmap::MAX_DOCUMENT_BYTES.to_string(),
+        ),
+    ] {
+        writeln!(text, "export const {name} = {value} as const;").expect("String write");
+    }
 }
 fn append_constants(text: &mut String) {
     for (name, values) in [("methods", METHODS), ("topics", TOPICS)] {
@@ -110,12 +123,6 @@ fn append_constants(text: &mut String) {
     constants!(
         "reportScreenshotsAvailable",
         crate::testing::SCREENSHOTS_AVAILABLE
-    );
-    constants!("roadmapRefreshMs", crate::roadmap::REFRESH_MS);
-    constants!("roadmapMaxItems", crate::roadmap::MAX_ITEMS);
-    constants!(
-        "roadmapMaxDocumentBytes",
-        crate::roadmap::MAX_DOCUMENT_BYTES
     );
     constants!("pilotRevisionMax", u64::MAX.to_string());
     constants!("pilotCountries", crate::pilot::countries());

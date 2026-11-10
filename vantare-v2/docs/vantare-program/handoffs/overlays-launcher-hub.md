@@ -1473,3 +1473,10 @@ Integración local sobre el marco de #2034 (`db82bbfd2`), todavía sin fusionar 
 ### Worker B · marco integrado, 10-nov-2026
 
 Resuelta la dependencia #2034: rama rebasada sobre nightly `d74c07710`, con registro automático `entry.tsx`, SectionChrome y SectionPanel. 230 tests web, tipos y lint PASS. Rust conserva los fuentes ya verificados; se delega al CI del nuevo HEAD la validación de integración. Evidencia final de Electron/PrintWindow en `D:/VantareServer/evidence/hub-web/isa-1995-b-roadmap/visual-nightly`; referencia/captura/diff e informes se adjuntan en el PR #2031. CI de la rama se verificará tras el push; el PR y #1995 mantienen SHA y resultado final. No se declara paridad aceptada: la revisión visual corresponde al orquestador. Sin merge ni promoción propios.
+
+
+### Worker B · revisión de Roadmap (#2031), base nightly 9916195d4
+
+El anfitrión conserva el instante del último intento de refresco y la publicación: durante cinco minutos devuelve su caché sin pedir otro refresco al servicio, aunque se cambie de sección. El reloj se pasa como dato y el test Rust cubre el límite, la repetición y la publicación conservada tras un fallo. El renderer comparte también su presupuesto entre montajes.
+Se aceptan publicaciones vacías; sin publicación no se anuncia una copia guardada. La pantalla ya no lee escenas de captura: Circuito se selecciona en el adaptador de QA. Rebase conserva los métodos y los datos de informes/borradores de #2026; contrato y corpus regenerados desde Rust.
+Validación local: tipos, Biome y lint de diseño PASS; 265 tests web PASS; fmt, Clippy -D warnings, 74 tests nativos PASS (1 helper omitido), arquitectura sin GPUI y build QA PASS. Registro nativo: review-native-final.log. Comparación oficial actualizada en review-visual; PR e issue mantienen SHA/CI finales. Sin merge ni promoción propios.

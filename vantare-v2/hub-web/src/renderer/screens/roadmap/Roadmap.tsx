@@ -7,7 +7,7 @@ import { roadmap as text } from "../../i18n/roadmap";
 import { RoadmapLayout, RoadmapRail } from "../../ui/RoadmapLayout";
 import { pollRoadmap } from "./poll";
 export function Roadmap() {
-  const { client, hello } = useHost();
+  const { client } = useHost();
   const cache = useQueryClient();
   const [publication, setPublication] = useState<RoadmapPublication | null>(
     () => cache.getQueryData<RoadmapPublication>(["roadmap"]) ?? null,
@@ -20,21 +20,25 @@ export function Roadmap() {
         setPublication(value.publication);
         cache.setQueryData(["roadmap"], value.publication);
       }
+      const available =
+        value?.publication ??
+        cache.getQueryData<RoadmapPublication>(["roadmap"]);
       setStatus(
         loading
           ? text.loading
           : failed
-            ? text.failed
-            : value?.stale
-              ? text.cached
-              : text.updated,
+            ? available
+              ? text.failed
+              : text.failedEmpty
+            : !available
+              ? text.noPublication
+              : value?.stale
+                ? text.cached
+                : text.updated,
       );
     });
   }, [client, cache]);
-  const capture =
-    hello?.demo &&
-    new URLSearchParams(location.search).get("escena") === "roadmap-base";
-  const [view, setView] = useState(capture ? "circuit" : "board");
+  const [view, setView] = useState("board");
   return (
     <>
       <SectionChrome

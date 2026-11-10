@@ -15,7 +15,6 @@ export function isRoadmap(value: unknown): boolean {
     typeof p.id === "string" &&
     typeof p.publishedAt === "string" &&
     Array.isArray(p.items) &&
-    p.items.length > 0 &&
     p.items.length <= roadmapMaxItems &&
     new TextEncoder().encode(JSON.stringify(p)).length <=
       roadmapMaxDocumentBytes &&

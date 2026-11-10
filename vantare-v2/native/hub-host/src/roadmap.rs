@@ -41,7 +41,6 @@ pub fn project(
         .map(|publication| {
             let document = &publication.document;
             if ![1, 2].contains(&document.schema_version)
-                || document.items.is_empty()
                 || document.items.len() > MAX_ITEMS
                 || serde_json::to_vec(document)
                     .map_err(|_| crate::protocol::HostError::Denied)?
@@ -98,10 +97,17 @@ mod tests {
         assert_eq!(value.items[0].section, "later");
     }
     #[test]
-    fn rejects_empty_unknown_and_oversize_without_fabricating_a_publication() {
+    fn accepts_empty_publications_and_rejects_unknown_and_oversize() {
         let mut value = sample();
         value.document.items.clear();
-        assert!(project(Some(value), false).is_err());
+        assert!(
+            project(Some(value), false)
+                .expect("empty publication")
+                .publication
+                .expect("published")
+                .items
+                .is_empty()
+        );
         let mut value = sample();
         value.document.items[0].section = "private".into();
         assert!(project(Some(value), false).is_err());
@@ -109,5 +115,55 @@ mod tests {
         value.document.items[0].body.es = "x".repeat(MAX_DOCUMENT_BYTES);
         assert!(project(Some(value), false).is_err());
         assert_eq!(project(None, true).expect("absent").publication, None);
+    }
+}
+
+/// The host owns the budget; renderer mounts cannot reset it. The caller supplies the clock.
+fn reserve_refresh(last: &mut Option<std::time::Instant>, now: std::time::Instant) -> bool {
+    if last.is_some_and(|last| {
+        now.saturating_duration_since(last)
+            < std::time::Duration::from_millis(u64::from(REFRESH_MS))
+    }) {
+        return false;
+    }
+    *last = Some(now);
+    true
+}
+pub fn cached_if_throttled(
+    last: &mut Option<std::time::Instant>,
+    now: std::time::Instant,
+    cached: &RoadmapView,
+) -> Option<RoadmapView> {
+    (!reserve_refresh(last, now)).then(|| cached.clone())
+}
+#[cfg(test)]
+mod refresh_tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+    #[test]
+    fn repeated_entries_and_failed_attempts_return_cache_without_another_service_attempt() {
+        let now = Instant::now();
+        let mut last = None;
+        let publication = serde_json::from_str(include_str!(
+            "../../../hub-web/fixtures/roadmap-publication.json"
+        ))
+        .expect("fixture");
+        let mut cached = project(Some(publication), false).expect("published");
+        assert!(cached_if_throttled(&mut last, now, &cached).is_none());
+        // After a failed attempt the published value remains available and becomes stale.
+        cached.stale = true;
+        for elapsed in [0, 1, REFRESH_MS - 1] {
+            assert_eq!(
+                cached_if_throttled(
+                    &mut last,
+                    now + Duration::from_millis(u64::from(elapsed)),
+                    &cached
+                ),
+                Some(cached.clone())
+            );
+        }
+        let next = now + Duration::from_millis(u64::from(REFRESH_MS));
+        assert!(cached_if_throttled(&mut last, next, &cached).is_none());
+        assert_eq!(cached_if_throttled(&mut last, next, &cached), Some(cached));
     }
 }

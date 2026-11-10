@@ -1,0 +1,66 @@
+{
+  "id": "00000000-0000-0000-0000-000000000384",
+  "published_at": "2026-10-13T00:00:00Z",
+  "document": {
+    "schemaVersion": 2,
+    "items": [
+      {
+        "id": "02b30dd5-a88f-51a7-88aa-d6fdda74803a",
+        "section": "next",
+        "title": {
+          "es": "Rework - Roadmap",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: Por hacer",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Hub",
+        "version": null,
+        "dueDate": null
+      },
+      {
+        "id": "e7c5af3e-4427-5c48-b44f-e99a1f3af5ac",
+        "section": "now",
+        "title": {
+          "es": "Feature - Pedals",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: En curso",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Hub",
+        "version": null,
+        "dueDate": null
+      },
+      {
+        "id": "4a7622cc-9580-5f7a-8b4b-c98958c4d4f5",
+        "section": "done",
+        "title": {
+          "es": "Bugfix - Texto literal",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: Entregado",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Hub",
+        "version": null,
+        "dueDate": null
+      }
+    ]
+  }
+}

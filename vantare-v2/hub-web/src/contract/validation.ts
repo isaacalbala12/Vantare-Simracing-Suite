@@ -1,3 +1,4 @@
+import { isRoadmap } from "./roadmap-validation";
 import { isCore as core } from "./core-validation";
 import {
   type HostToUi,
@@ -149,6 +150,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
+      if (result.method === "roadmap.cached" || result.method === "roadmap.refresh") return exact(result, ["method", "value"]) && isRoadmap(result.value);
       if (
         [
           "testing.refresh",

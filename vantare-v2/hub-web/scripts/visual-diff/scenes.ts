@@ -1,4 +1,5 @@
 import type { Page } from "playwright-core";
+import { roadmapScenes } from "./roadmap.ts";
 import { upcomingScenes } from "./upcoming.ts";
 
 export interface VisualScene {
@@ -17,6 +18,7 @@ const settingsTabs: Record<string, string> = {
 // Each screen worker adds its own module, imported here. No fallback to another scene.
 export const visualScenes: Record<string, VisualScene> = {
   ...upcomingScenes,
+  ...roadmapScenes,
   ...Object.fromEntries(
     Object.entries(settingsTabs).map(([scene, tab]) => [
       scene,

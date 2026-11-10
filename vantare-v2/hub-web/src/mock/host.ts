@@ -1,3 +1,4 @@
+import roadmapFixture from "../../fixtures/roadmap-publication.json";
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
 import diagnosticFixture from "../../fixtures/diagnostics-base.json";
@@ -50,11 +51,12 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;
   const core = structuredClone(coreScene) as CoreStatus;
+  if (sceneName.startsWith("roadmap-")) core.access.verified = true;
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../contract/generated/contract").PilotView;
@@ -240,6 +242,41 @@ export function createMockHost(sceneName = "ajustes-base") {
           kind: "response",
           id,
           result: { method: request.method, value: structuredClone(draft) },
+        };
+      }
+      case "roadmap.cached":
+      case "roadmap.refresh": {
+        if (sceneName === "roadmap-base") return null;
+        if (
+          sceneName === "roadmap-error" &&
+          request.method === "roadmap.refresh"
+        )
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            value: {
+              stale: sceneName === "roadmap-error",
+              publication:
+                sceneName === "roadmap-base"
+                  ? null
+                  : {
+                      id: publication.id,
+                      publishedAt: publication.published_at,
+                      items: publication.document.items.map((item) => ({
+                        id: item.id,
+                        section: item.section,
+                        title: item.title.es,
+                        body: item.body.es,
+                        area: item.area ?? null,
+                        version: item.version ?? null,
+                        dueDate: item.dueDate ?? null,
+                      })),
+                    },
+            },
+          },
         };
       }
       case "pilot.load":

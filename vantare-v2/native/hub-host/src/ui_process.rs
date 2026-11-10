@@ -247,6 +247,8 @@ fn settings_response(
 }
 enum RemoteKind {
     Testing(crate::testing::Operation),
+    RoadmapCached,
+    RoadmapRefresh,
     PilotLoad,
     PilotSave,
     MailGet,
@@ -287,6 +289,55 @@ impl Session {
             },
         )
     }
+    fn service_reply(
+        &mut self,
+        id: u32,
+        result: Result<vantare_ipc::services_protocol::Reply, HostError>,
+    ) -> Result<Reply, HostError> {
+        match (self.remote.take(), result) {
+            (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => crate::testing::complete(operation, reply),
+            (
+                Some((expected, kind)),
+                Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
+            ) if expected == id => {
+                let value = crate::privacy::MailView { consent };
+                match kind {
+                    RemoteKind::MailGet => Ok(Reply::MailGet { value }),
+                    RemoteKind::MailSet => Ok(Reply::MailSet { value }),
+                    _ => Err(HostError::Denied),
+                }
+            }
+            (
+                Some((expected, kind)),
+                Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
+            ) if expected == id => {
+                let value = crate::pilot::view(&state);
+                let reply = match kind {
+                    RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
+                    RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
+                    _ => Err(HostError::Denied),
+                };
+                if reply.is_ok() {
+                    self.pilot = Some(state);
+                }
+                reply
+            }
+            (
+                Some((expected, kind)),
+                Ok(vantare_ipc::services_protocol::Reply::Roadmap {
+                    publication, stale, ..
+                }),
+            ) if expected == id => {
+                crate::roadmap::project(publication, stale).and_then(|value| match kind {
+                    RemoteKind::RoadmapCached => Ok(Reply::RoadmapCached { value }),
+                    RemoteKind::RoadmapRefresh => Ok(Reply::RoadmapRefresh { value }),
+                    _ => Err(HostError::Denied),
+                })
+            }
+            (_, Err(error)) => Err(error),
+            _ => Err(HostError::Denied),
+        }
+    }
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
             confirmation.check_confirmation()?;
@@ -296,39 +347,7 @@ impl Session {
         }
         self.current = self.core.status();
         if let Some((id, result)) = self.core.reply() {
-            let result = match (self.remote.take(), result) {
-                (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
-                    crate::testing::complete(operation, reply)
-                }
-                (
-                    Some((expected, kind)),
-                    Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
-                ) if expected == id => {
-                    let value = crate::privacy::MailView { consent };
-                    match kind {
-                        RemoteKind::MailGet => Ok(Reply::MailGet { value }),
-                        RemoteKind::MailSet => Ok(Reply::MailSet { value }),
-                        _ => Err(HostError::Denied),
-                    }
-                }
-                (
-                    Some((expected, kind)),
-                    Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
-                ) if expected == id => {
-                    let value = crate::pilot::view(&state);
-                    let reply = match kind {
-                        RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
-                        RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
-                        _ => Err(HostError::Denied),
-                    };
-                    if reply.is_ok() {
-                        self.pilot = Some(state);
-                    }
-                    reply
-                }
-                (_, Err(error)) => Err(error),
-                _ => Err(HostError::Denied),
-            };
+            let result = self.service_reply(id, result);
             self.respond(
                 pipe,
                 id,
@@ -399,6 +418,27 @@ impl Session {
             | Request::DraftLoad {}
             | Request::DraftSave { .. }
             | Request::DraftDiscard {} => self.testing_request(pipe, id, request),
+            Request::RoadmapCached {} | Request::RoadmapRefresh {} => {
+                let (kind, command) = if matches!(request, Request::RoadmapCached {}) {
+                    (
+                        RemoteKind::RoadmapCached,
+                        vantare_ipc::services_protocol::Command::RoadmapCached,
+                    )
+                } else {
+                    (
+                        RemoteKind::RoadmapRefresh,
+                        vantare_ipc::services_protocol::Command::RoadmapRefresh,
+                    )
+                };
+                let result = self.core.request(id, command);
+                if result.is_ok() {
+                    self.remote = Some((id, kind));
+                }
+                match result {
+                    Ok(()) => Ok(()),
+                    Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
+                }
+            }
             Request::PilotLoad {} | Request::PilotSave { .. } => {
                 self.pilot_request(pipe, id, request)
             }

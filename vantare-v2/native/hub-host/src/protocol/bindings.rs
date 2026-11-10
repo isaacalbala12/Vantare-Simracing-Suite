@@ -29,6 +29,9 @@ pub fn typescript() -> String {
         crate::testing::TestingReport,
         crate::testing::TestingView,
         crate::testing::ReportDraftView,
+        crate::roadmap::RoadmapItem,
+        crate::roadmap::RoadmapPublication,
+        crate::roadmap::RoadmapView,
         PilotFields,
         PilotView,
         PrivacyView,
@@ -107,6 +110,12 @@ fn append_constants(text: &mut String) {
     constants!(
         "reportScreenshotsAvailable",
         crate::testing::SCREENSHOTS_AVAILABLE
+    );
+    constants!("roadmapRefreshMs", crate::roadmap::REFRESH_MS);
+    constants!("roadmapMaxItems", crate::roadmap::MAX_ITEMS);
+    constants!(
+        "roadmapMaxDocumentBytes",
+        crate::roadmap::MAX_DOCUMENT_BYTES
     );
     constants!("pilotRevisionMax", u64::MAX.to_string());
     constants!("pilotCountries", crate::pilot::countries());
@@ -233,10 +242,7 @@ fn patch_samples() -> Vec<SettingsPatch> {
     ]
 }
 pub fn corpus() -> serde_json::Value {
-    let privacy: PrivacyView = serde_json::from_str(include_str!(
-        "../../../../hub-web/fixtures/privacy-base.json"
-    ))
-    .expect("privacy fixture");
+    let privacy = privacy_sample();
     let diagnostic: DiagnosticView = serde_json::from_str(include_str!(
         "../../../../hub-web/fixtures/diagnostics-base.json"
     ))
@@ -330,10 +336,41 @@ pub fn corpus() -> serde_json::Value {
     for result in pilot_reply_samples() {
         host.push(HostToUi::Response { id: 1, result });
     }
+    for result in roadmap_reply_samples() {
+        host.push(HostToUi::Response { id: 1, result });
+    }
     host.extend(failure_samples(settings, privacy));
     serde_json::json!({"host":host,"ui":ui_samples()})
 }
 
+fn privacy_sample() -> PrivacyView {
+    serde_json::from_str(include_str!(
+        "../../../../hub-web/fixtures/privacy-base.json"
+    ))
+    .expect("privacy fixture")
+}
+fn roadmap_reply_samples() -> [Reply; 2] {
+    [
+        Reply::RoadmapCached {
+            value: crate::roadmap::RoadmapView {
+                publication: None,
+                stale: true,
+            },
+        },
+        Reply::RoadmapRefresh {
+            value: crate::roadmap::project(
+                Some(
+                    serde_json::from_str(include_str!(
+                        "../../../../hub-web/fixtures/roadmap-publication.json"
+                    ))
+                    .expect("fixture"),
+                ),
+                false,
+            )
+            .expect("publication"),
+        },
+    ]
+}
 fn pilot_reply_samples() -> [Reply; 2] {
     let value =
         crate::pilot::view(&vantare_ipc::services_protocol::pilot_document::PilotState::default());
@@ -401,6 +438,8 @@ fn ui_samples() -> Vec<UiToHost> {
         UiToHost::CloseAnswer { allow: false },
     ];
     for request in [
+        Request::RoadmapCached {},
+        Request::RoadmapRefresh {},
         Request::PilotLoad {},
         Request::PilotSave {
             fields: PilotFields::default(),

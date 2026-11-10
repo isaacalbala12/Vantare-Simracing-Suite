@@ -20,6 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "opt_level":option_env!("VANTARE_MEASUREMENT_OPT_LEVEL"), "debug":option_env!("VANTARE_MEASUREMENT_DEBUG"), "features":features,
             "release_options":"Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override"});
         build["trace_capacity_bytes"] = vantare_profiling::trace_capacity_bytes().into();
+        build["measurement_capabilities"] = serde_json::json!(["render_load", "d3d11_timestamps"]);
         println!("{build}");
         return Ok(());
     }

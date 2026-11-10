@@ -9,6 +9,7 @@ param(
  [ValidateSet(1,4,22)][int]$Widgets=4,
  [int]$Seconds=60,
  [switch]$Phases,
+ [switch]$RenderLoad,
  [ValidateRange(1,10)][double]$ReplaySpeed=1,
  [double]$MaxSystemLoadPercent=35
 )
@@ -25,7 +26,7 @@ foreach ($experiment in @('aa','ab')) {
    $directory="$experiment-round-$round-slot-$slot-$label"
    $order.Add([pscustomobject]@{experiment=$experiment;round=$round;slot=$slot;label=$label;directory=$directory;started=(Get-Date -Format o)})
    $order | ConvertTo-Json | Set-Content -LiteralPath "$Out/ab-order.json"
-   & "$PSScriptRoot/measure-overlays.ps1" -UI $binary -Core $Core -Recording $Recording -Out "$Out/$directory" -Widgets $Widgets -Seconds $Seconds -Phases:$Phases -ReplaySpeed $ReplaySpeed -MaxSystemLoadPercent $MaxSystemLoadPercent
+   & "$PSScriptRoot/measure-overlays.ps1" -UI $binary -Core $Core -Recording $Recording -Out "$Out/$directory" -Widgets $Widgets -Seconds $Seconds -Phases:$Phases -RenderLoad:$RenderLoad -ReplaySpeed $ReplaySpeed -MaxSystemLoadPercent $MaxSystemLoadPercent
    & python "$PSScriptRoot/summarize-overlays.py" "$Out/$directory" > "$Out/$directory/summary.stdout.json"
    if ($LASTEXITCODE) { throw "Invalid observation $directory; discard the whole round" }
   }

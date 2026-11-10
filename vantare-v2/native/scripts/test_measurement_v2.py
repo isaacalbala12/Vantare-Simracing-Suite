@@ -14,6 +14,14 @@ SPEC.loader.exec_module(M)
 
 
 class StableWindowTest(unittest.TestCase):
+    def test_gpu_render_uses_query_duration_not_present_spacing(self):
+        events=[dict(kind='gpu_frame',value=1_000_000),dict(kind='gpu_frame',value=3_000_000),
+                dict(kind='gpu_disjoint',value=0),dict(kind='gpu_skipped',value=0)]
+        result=M.gpu_frames(events)
+        self.assertEqual(result['mean_ms'],2)
+        self.assertEqual(result['p99_ms'],3)
+        self.assertEqual(result['disjoint'],1)
+        self.assertEqual(result['skipped'],1)
     def test_raw_evidence_correlates_cycles_gpu_and_local_latency(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)

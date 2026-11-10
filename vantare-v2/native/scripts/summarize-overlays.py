@@ -25,6 +25,17 @@ def present_windows(events, frequency):
     return sorted(windows),intervals
 
 
+def gpu_frames(events):
+    values=[event['value']/1e6 for event in events if event['kind']=='gpu_frame']
+    invalid=sum(event['kind']=='gpu_disjoint' for event in events)
+    skipped=sum(event['kind']=='gpu_skipped' for event in events)
+    return dict(samples=len(values),disjoint=invalid,skipped=skipped,
+                mean_ms=sum(values)/len(values) if values else None,
+                median_ms=percentile(values,50),p99_ms=percentile(values,99),
+                frame_times_ms=values,
+                scope='D3D11 timestamp difference around render commands; excludes Present, DWM composition and physical display latency')
+
+
 def recording_window(events, start, end, offset_seconds=0):
     photos = sorted((e for e in events if e['kind']=='replay_event'), key=lambda e:e['clock'])
     offset=offset_seconds*1e9
@@ -149,6 +160,13 @@ def summarize(root):
             raise ValueError('missing GPU samples for '+name)
         gpu[name]=dict(mean_busiest_engine_percent=sum(number(r['busiest_engine_percent']) for r in selected)/len(selected),mean_engine_sum_percent=sum(number(r['engine_sum_percent']) for r in selected)/len(selected),peak_dedicated_mib=max(number(r['dedicated_bytes']) for r in selected)/2**20)
     stages=phase_summary(events,start,end,frequency)
+    frame_gpu=gpu_frames([e for e in stable if e['end']<=end])
+    frame_gpu['coverage']=frame_gpu['samples']/len(presents) if presents else None
+    load_notifications=sum(e['kind']=='load_notify' for e in stable)
+    if metadata.get('render_load') and (not load_notifications or not presents):
+        raise ValueError('render load requested but continuous invalidation/presentation missing')
+    if metadata.get('gpu_frame_timing') and (frame_gpu['disjoint'] or (presents and not frame_gpu['samples'])):
+        raise ValueError('invalid or missing GPU frame timestamps: discard run')
     if any(stage['cycle_errors'] for stage in stages.values()):
         raise ValueError('thread cycle query failed in stable phase: discard run')
     if metadata.get('phases') and not stages:
@@ -167,7 +185,8 @@ def summarize(root):
                  iterations=len(sampler_rows),
                  scope='Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded')
     result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
-                native_text_layout=text_diagnostics,sampler=sampler,
+                native_text_layout=text_diagnostics,sampler=sampler,gpu_render=frame_gpu,
+                render_load_notifications=load_notifications,
                 recording_last_position_seconds=max(positions),
                 stable_recording_position_seconds=[metadata['stable_start_seconds'],metadata['stable_end_seconds']],
                 stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),

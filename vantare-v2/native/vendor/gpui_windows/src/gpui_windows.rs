@@ -12,6 +12,8 @@ mod direct_write;
 mod directx_atlas;
 mod directx_devices;
 mod directx_renderer;
+#[cfg(feature = "paint-stats")]
+mod gpu_measurement;
 mod dispatcher;
 mod display;
 mod events;

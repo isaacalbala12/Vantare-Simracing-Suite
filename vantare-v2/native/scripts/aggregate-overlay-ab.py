@@ -66,7 +66,7 @@ def aggregate(root):
         if not collector or meta['profile'] != 'release':
             raise ValueError('Release and explicit collector_sha required')
         identities.add((collector, meta['core_sha256'], meta['recording_sha256'],
-                        meta['widgets'], meta['phases'], meta.get('replay_speed',1)))
+                        meta['widgets'], meta['phases'], meta.get('replay_speed',1),meta.get('render_load',False)))
         expected_label = 'A' if entry['slot'] in (0,3) else 'B'
         if entry['label'] != expected_label:
             raise ValueError('ABBA label does not match slot')
@@ -83,6 +83,8 @@ def aggregate(root):
                                    started=datetime.datetime.fromisoformat(entry['started']).timestamp(),
                                    metrics=dict(cycles_per_received_photo=run['ui'].get('cycles_per_received_photo'),
                                                 working_set_mib=run['ui'].get('mean_working_set_mib'),
+                                                gpu_render_mean_ms=run.get('gpu_render',{}).get('mean_ms'),
+                                                gpu_render_p99_ms=run.get('gpu_render',{}).get('p99_ms'),
                                                 presents_per_second=run.get('presents_per_second'),
                                                 receive_to_paint_median_ms=run.get('receive_to_paint_median_ms'),
                                                 receive_to_submit_median_ms=run.get('receive_to_submit_median_ms'),
@@ -123,7 +125,7 @@ def aggregate(root):
         for experiment, groups in rounds.items()}
     result['acceptance_gates'] = dict(
         aa_noise=result['noise_gate_passed'],
-        gpu_frame_time='pending: second-resolution GPU occupancy is insufficient',
+        gpu_frame_time='D3D11 queries reported where enabled; inspect coverage, disjoint and skipped samples',
         physical_vrr='pending: Isaac game-PC procedure in VRR-GATE.md',
         matched_release_visuals='pending',
         accepted=False)

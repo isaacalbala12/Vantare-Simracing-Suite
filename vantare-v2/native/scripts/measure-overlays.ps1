@@ -7,6 +7,7 @@ param(
     [ValidateRange(10,3600)][int]$Seconds = 60,
     [ValidateSet(1,4,22)][int]$Widgets = 4,
     [switch]$Phases,
+    [switch]$RenderLoad,
     [ValidateRange(1,10)][double]$ReplaySpeed = 1,
     [ValidateRange(1,7200)][int]$QueueTimeoutSeconds = 1800,
     [ValidateRange(1,100)][double]$MaxSystemLoadPercent = 35
@@ -21,6 +22,8 @@ if ($Core -and !(Test-Path -LiteralPath $Core -PathType Leaf)) { throw "Missing 
 if (!$Core) { throw 'Baseline v2 requires the raw production IPC replay' }
 $build = (& $UI --measurement-info | ConvertFrom-Json)
 if ($LASTEXITCODE -or $build.profile -ne 'release' -or $build.opt_level -ne '3' -or $build.dirty -ne $false) { throw 'A clean Release executable with embedded provenance is required' }
+if ($RenderLoad -and 'render_load' -notin $build.measurement_capabilities) { throw 'UI executable does not support render load' }
+$gpuTiming = [bool]($Phases -and 'd3d11_timestamps' -in $build.measurement_capabilities)
 $coreBuild = (& $Core --measurement-info | ConvertFrom-Json)
 if ($LASTEXITCODE -or $coreBuild.profile -ne 'release' -or $coreBuild.opt_level -ne '3' -or $coreBuild.dirty -ne $false) { throw 'A clean Release replay core with embedded provenance is required' }
 $manifestText = & python "$PSScriptRoot/recording-metadata.py" $Recording
@@ -42,6 +45,8 @@ $info.ArgumentList.Add([string]$Widgets)
 if ($Core) { $info.ArgumentList.Add([string][Math]::Max(10,[Math]::Ceiling($Seconds/$ReplaySpeed))) }
 $info.Environment['VANTARE_PROFILE_PHASES'] = $(if ($Phases) { '1' } else { '0' })
 $info.Environment['VANTARE_MEASUREMENT_TRACE'] = '1'
+$info.Environment['VANTARE_MEASUREMENT_RENDER_LOAD'] = $(if ($RenderLoad) { '1' } else { '0' })
+$info.Environment['VANTARE_MEASUREMENT_GPU_TIMING'] = $(if ($gpuTiming) { '1' } else { '0' })
 # All diagnostics and persisted presentation data stay in this run's QA root.
 foreach ($name in @('LOCALAPPDATA','APPDATA','VANTARE_NATIVE_DATA_ROOT')) {
     $info.Environment[$name] = "$Out/qa"
@@ -223,6 +228,8 @@ try {
         process_guard_sha256=(Get-FileHash -LiteralPath "$PSScriptRoot/measurement-processes.ps1").Hash
         readonly_cargo_observations=$readOnlyRows.Count
         measurement_version=2; date=(Get-Date -Format o); widgets=$Widgets
+        render_load=[bool]$RenderLoad
+        gpu_frame_timing=$gpuTiming
         recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds; replay_speed=$ReplaySpeed
         recording_event_count=$recordingManifest.events.Count; recording_first_event_seconds=$firstEventSeconds
         replay_schedule_origin_seconds=1 # adapter/lmu/open.rs Clock::at: first event is scheduled at 1 s

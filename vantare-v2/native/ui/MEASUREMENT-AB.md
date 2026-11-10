@@ -8,7 +8,7 @@ de ejecutable. El recolector tiene su propio `collector_sha`; no se mezclan.
 ## Diseño
 
 `measure-overlay-ab.ps1` recibe `-A`, `-B`, `-Core`, `-Recording`, `-Out`,
-`-Widgets`, `-Phases` y `-ReplaySpeed`. Primero ejecuta A/A: ambas etiquetas
+`-Widgets`, `-Phases`, `-RenderLoad` y `-ReplaySpeed`. Primero ejecuta A/A: ambas etiquetas
 usan exactamente A. Después ejecuta A/B. Cada ronda contiene A, B, B, A en
 procesos nuevos, con el mismo núcleo y corpus. Una observación inválida detiene
 la campaña; no se sustituye silenciosamente por otra favorable.
@@ -86,11 +86,28 @@ Los presents incluyen HWND para calcular intervalos dentro de cada ventana.
 
 ## GPU y puerta de aceptación
 
-En PATH está WPR del sistema; no están PresentMon, WPA ni xperf. Los contadores
-de GPU actuales miden ocupación por segundo, **no tiempo GPU de cada frame**.
-No se inventa esa métrica. Para obtenerla con ETW hace falta un PresentMon
-compatible que exponga GPUTime y correlación de frames, o herramientas de
-análisis ETW del Windows Performance Toolkit. No se ha instalado nada.
+`-RenderLoad` invalida todos los widgets en cada oportunidad de dibujo. La
+cadencia ya no la fija la llegada de telemetría; Windows conserva su pulso de
+presentación. No se promete render sin límite de Hz físicos. Las notificaciones
+de carga se registran aparte de las provocadas por fotos. La condición de
+caracterización es que un widget quieto, que no presenta en la ventana estable
+normal, sí repinte continuamente al activar la carga.
+
+Con fases, los binarios nuevos usan consultas D3D11 de timestamp/disjoint alrededor
+de los comandos de render, antes de Present. Ocho juegos de consultas limitan
+memoria y trabajo pendiente. Se lee S_OK explícitamente, se respeta S_FALSE,
+se usa DONOTFLUSH, y nunca se espera a la GPU. Los resultados tardíos conservan
+el QPC del frame original. Un intervalo disjoint invalida la pasada; una cola
+llena registra muestras omitidas. Las últimas consultas sin resolver al salir
+no se inventan. Se publican cantidad, cobertura y tiempos individuales.
+
+Este tiempo GPU excluye Present, DWM y pantalla física. Los contadores de GPU
+por segundo se conservan como contexto. PresentMon, WPA y xperf no están en
+PATH ni en la carpeta habitual del Windows Performance Toolkit. Para correlación
+ETW con frames físicos haría falta PresentMon o ese toolkit; no se instala nada.
+La línea base exacta acc6619b1 carece de estas consultas. Su binario se mide
+sin ellas y se publica como tal; A/B usa el mismo añadido diagnóstico en ambos
+motores, con el SHA real de cada build y acc6619b1 como ancestro de producto.
 
 VRR sigue sin comprobar. El estado `null` bloquea aceptar un motor, aunque
 mejore CPU. DWM/GPU del servidor remoto a 59 Hz son solo contexto. Hace falta

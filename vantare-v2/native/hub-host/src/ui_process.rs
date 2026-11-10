@@ -256,6 +256,7 @@ enum RemoteKind {
 }
 
 struct Session {
+    legacy_draft: crate::testing_legacy::State,
     pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
     diagnostic: crate::diagnostics::Observed,
@@ -295,10 +296,10 @@ impl Session {
         &mut self,
         id: u32,
         result: Result<vantare_ipc::services_protocol::Reply, HostError>,
-    ) -> Result<Reply, HostError> {
+    ) -> Result<Option<Reply>, HostError> {
         match (self.remote.take(), result) {
             (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
-                crate::testing::complete(operation, reply)
+                return self.complete_testing(id, operation, reply);
             }
             (
                 Some((expected, kind)),
@@ -345,7 +346,7 @@ impl Session {
             }
             (_, Err(error)) => Err(error),
             _ => Err(HostError::Denied),
-        }
+        }.map(Some)
     }
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
@@ -356,7 +357,11 @@ impl Session {
         }
         self.current = self.core.status();
         if let Some((id, result)) = self.core.reply() {
-            let result = self.service_reply(id, result);
+            let result = match self.service_reply(id, result) {
+                Ok(Some(reply)) => Ok(reply),
+                Ok(None) => return Ok(true),
+                Err(error) => Err(error),
+            };
             self.respond(
                 pipe,
                 id,
@@ -688,10 +693,28 @@ impl Session {
             ),
         }
     }
+    fn complete_testing(
+        &mut self,
+        id: u32,
+        operation: crate::testing::Operation,
+        reply: vantare_ipc::services_protocol::Reply,
+    ) -> Result<Option<Reply>, HostError> {
+        match self.legacy_draft.complete(operation, reply)? {
+            crate::testing_legacy::Next::Complete(reply) => {
+                crate::testing::complete(operation, reply).map(Some)
+            }
+            crate::testing_legacy::Next::Import(command) => {
+                self.core.request(id, command)?;
+                self.remote = Some((id, RemoteKind::Testing(operation)));
+                Ok(None)
+            }
+        }
+    }
     fn testing_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         let result = crate::testing::intent(request, &self.current.access).and_then(
             |(operation, command)| {
                 self.core.request(id, command)?;
+                self.legacy_draft.begin(operation);
                 self.remote = Some((id, RemoteKind::Testing(operation)));
                 Ok(())
             },
@@ -859,6 +882,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        legacy_draft: crate::testing_legacy::State::new(&args.data),
         pilot: None,
         privacy: crate::privacy::State::open(&args.data),
         diagnostic: crate::diagnostics::Observed::default(),

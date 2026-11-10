@@ -43,6 +43,13 @@ pub const METHODS: &[&str] = &[
     "settings.discard",
     "launcher.favorite",
     "launcher.get",
+    "launcher.catalog",
+    "launcher.scan",
+    "launcher.app.get",
+    "launcher.app.pick",
+    "launcher.app.save",
+    "launcher.app.remove",
+    "launcher.app.favorite",
     "launcher.profile.get",
     "launcher.profile.save",
     "launcher.launch",
@@ -163,6 +170,35 @@ pub enum Request {
     RoadmapCached {},
     #[serde(rename = "roadmap.refresh")]
     RoadmapRefresh {},
+    #[serde(rename = "launcher.catalog")]
+    LauncherCatalog {},
+    #[serde(rename = "launcher.scan")]
+    LauncherScan {},
+    #[serde(rename = "launcher.app.get")]
+    LauncherAppGet { id: Option<String> },
+    #[serde(rename = "launcher.app.pick")]
+    LauncherAppPick {},
+    #[serde(rename = "launcher.app.save")]
+    LauncherAppSave {
+        draft: crate::launcher::apps::AppDraft,
+        #[serde(rename = "pickToken")]
+        pick_token: Option<String>,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.app.remove")]
+    LauncherAppRemove {
+        id: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.app.favorite")]
+    LauncherAppFavorite {
+        id: String,
+        favorite: bool,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet { id: Option<String> },
     #[serde(rename = "launcher.profile.save")]
@@ -286,6 +322,34 @@ pub enum Reply {
     RoadmapCached { value: crate::roadmap::RoadmapView },
     #[serde(rename = "roadmap.refresh")]
     RoadmapRefresh { value: crate::roadmap::RoadmapView },
+    #[serde(rename = "launcher.catalog")]
+    LauncherCatalog {
+        value: crate::launcher::apps::CatalogView,
+    },
+    #[serde(rename = "launcher.scan")]
+    LauncherScan {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.app.get")]
+    LauncherAppGet {
+        value: crate::launcher::apps::AppEditor,
+    },
+    #[serde(rename = "launcher.app.pick")]
+    LauncherAppPick {
+        value: Option<crate::launcher::apps::PickedApp>,
+    },
+    #[serde(rename = "launcher.app.save")]
+    LauncherAppSave {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.app.remove")]
+    LauncherAppRemove {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.app.favorite")]
+    LauncherAppFavorite {
+        value: crate::launcher::LauncherView,
+    },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet {
         value: crate::launcher::editor::ProfileEditorView,
@@ -430,6 +494,7 @@ pub enum HostToUi {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum UiToHost {
+    PickedExecutable { id: u32, path: Option<String> },
     Hello { version: u32 },
     Request { id: u32, request: Request },
     Subscribe { topic: Topic },

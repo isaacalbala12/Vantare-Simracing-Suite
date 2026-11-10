@@ -365,6 +365,7 @@ fn restart_peer(pipe: &mut Pipe, mode: &str) {
 fn restart_session(root: &Path, photo: &str) -> Session {
     Session {
         launcher_reader: crate::launcher::Reader::new(root.join("launcher.json")),
+        app_picker: crate::launcher::apps::Picker::default(),
         reserved_profile: None,
         profile_step_keys: crate::launcher::editor::StepKeys::default(),
         pilot: None,

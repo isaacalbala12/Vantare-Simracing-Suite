@@ -244,6 +244,14 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
+      case "launcher.catalog":
+      case "launcher.scan":
+      case "launcher.app.get":
+      case "launcher.app.pick":
+      case "launcher.app.save":
+      case "launcher.app.remove":
+      case "launcher.app.favorite":
+        return { kind: "failure", id, error: { kind: "unsupported" } };
       case "testing.answer":
       case "testing.contribute":
       case "testing.credit":

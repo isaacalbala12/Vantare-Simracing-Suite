@@ -1,0 +1,471 @@
+//! Application paths enter only from the main-process picker, never a renderer draft.
+use super::{APP_LIMIT, Discovery, Document, HostError, Path, editor, files, open, read};
+use serde::{Deserialize, Serialize};
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
+#[cfg(any(test, feature = "bindings"))]
+use ts_rs::TS;
+use vantare_launcher::{CATALOG, Store};
+
+pub const PICK_LIFETIME_SECONDS: u64 = 600;
+pub const PICK_PATH_MAX: usize = 32768;
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PickedApp {
+    pub token: String,
+    pub name: String,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AppDraft {
+    pub use_discovery: bool,
+    pub id: Option<String>,
+    pub name: String,
+    pub args: Vec<String>,
+    pub favorite: bool,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AppEditor {
+    pub revision: String,
+    pub draft: AppDraft,
+    pub has_executable: bool,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[allow(clippy::struct_excessive_bools)] // Independent app provenance and discovery observations.
+pub struct CatalogApp {
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub steam: bool,
+    pub favorite: bool,
+    pub removable: bool,
+    pub found: bool,
+    pub installed: bool,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CatalogView {
+    pub revision: String,
+    pub scanning: bool,
+    pub apps: Vec<CatalogApp>,
+}
+struct Pick {
+    token: String,
+    path: PathBuf,
+    expires: Instant,
+}
+#[derive(Default)]
+pub struct Picker {
+    pending: Option<Pick>,
+}
+fn executable(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
+        && vantare_launcher::is_executable(path)
+        && std::fs::canonicalize(path)
+            .is_ok_and(|resolved| vantare_launcher::is_local_path(&resolved))
+}
+impl Picker {
+    pub fn selected(
+        &mut self,
+        path: Option<&str>,
+        now: Instant,
+    ) -> Result<Option<PickedApp>, HostError> {
+        let Some(path) = path else {
+            return Ok(None);
+        };
+        if path.len() > PICK_PATH_MAX || path.contains('\0') {
+            return Err(HostError::Denied);
+        }
+        let path = PathBuf::from(path);
+        if !executable(&path) {
+            return Err(HostError::Denied);
+        }
+        let name = path
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty() && name.len() <= editor::NAME_MAX)
+            .ok_or(HostError::Denied)?
+            .to_owned();
+        let token = vantare_services::random_id().map_err(|_| HostError::Io)?;
+        self.pending = Some(Pick {
+            token: token.clone(),
+            path,
+            expires: now + Duration::from_secs(PICK_LIFETIME_SECONDS),
+        });
+        Ok(Some(PickedApp { token, name }))
+    }
+    fn path(&self, token: &str, now: Instant) -> Result<&Path, HostError> {
+        let pick = self
+            .pending
+            .as_ref()
+            .filter(|pick| pick.token == token && now < pick.expires)
+            .ok_or(HostError::Denied)?;
+        if !executable(&pick.path) {
+            return Err(HostError::Denied);
+        }
+        Ok(&pick.path)
+    }
+    pub fn save(
+        &mut self,
+        path: &Path,
+        draft: &AppDraft,
+        token: Option<&str>,
+        revision: &str,
+        now: Instant,
+    ) -> Result<(), HostError> {
+        if draft.name.trim().is_empty()
+            || draft.name.len() > editor::NAME_MAX
+            || draft.name.contains('\0')
+            || vantare_launcher::validate_args(&draft.args).is_err()
+        {
+            return Err(HostError::Denied);
+        }
+        if draft.use_discovery
+            && (token.is_some()
+                || !draft
+                    .id
+                    .as_ref()
+                    .is_some_and(|id| CATALOG.iter().any(|entry| entry.id == id)))
+        {
+            return Err(HostError::Denied);
+        }
+        let selected = token
+            .map(|token| self.path(token, now))
+            .transpose()?
+            .map(Path::to_path_buf);
+        edit(path, revision, |document| {
+            let id = if let Some(id) = &draft.id {
+                id.clone()
+            } else {
+                if document.apps.len() >= APP_LIMIT {
+                    return Err(HostError::Denied);
+                }
+                document
+                    .add_app(
+                        draft.name.clone(),
+                        selected.clone().ok_or(HostError::Denied)?,
+                    )
+                    .map_err(|_| HostError::Denied)?
+            };
+            let app = document
+                .apps
+                .iter_mut()
+                .find(|app| app.id == id)
+                .ok_or(HostError::Denied)?;
+            app.name.clone_from(&draft.name);
+            app.args.clone_from(&draft.args);
+            app.favorite = draft.favorite;
+            if draft.use_discovery {
+                app.executable = None;
+            }
+            if let Some(selected) = &selected {
+                app.executable = Some(selected.clone());
+            }
+            Ok(())
+        })?;
+        if token.is_some() {
+            self.pending = None;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    #[test]
+    fn oversized_app_arguments_are_protected_without_truncating_or_changing_the_document() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let mut document = Document::fresh_install();
+        document.apps[0].args = vec!["x".repeat(editor::ARG_MAX); editor::ARGS_MAX];
+        let bytes = serde_json::to_vec(&document).unwrap();
+        assert!(Document::from_bytes(&bytes).is_ok());
+        std::fs::write(&path, &bytes).unwrap();
+        assert_eq!(
+            get(&path, Some(&document.apps[0].id)),
+            Err(HostError::Protected)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+    #[test]
+    fn picker_rejects_scripts_network_paths_and_forged_or_expired_tokens() {
+        let root = crate::test_support::Root::new();
+        let exe = root.path.join("picked.exe");
+        std::fs::write(&exe, b"inert QA fixture").unwrap();
+        let script = root.path.join("picked.bat");
+        std::fs::write(&script, b"inert QA fixture").unwrap();
+        let now = Instant::now();
+        let mut picker = Picker::default();
+        assert_eq!(
+            picker.selected(script.to_str(), now),
+            Err(HostError::Denied)
+        );
+        assert_eq!(
+            picker.selected(Some(r"\\server\share\app.exe"), now),
+            Err(HostError::Denied)
+        );
+        let selected = picker.selected(exe.to_str(), now).unwrap().unwrap();
+        assert_eq!(picker.path("forged", now), Err(HostError::Denied));
+        assert_eq!(
+            picker.path(
+                &selected.token,
+                now + Duration::from_secs(PICK_LIFETIME_SECONDS)
+            ),
+            Err(HostError::Denied)
+        );
+        assert!(picker.path(&selected.token, now).is_ok());
+        assert_eq!(picker.selected(None, now).unwrap(), None);
+        assert!(picker.path(&selected.token, now).is_ok());
+        let replacement = picker.selected(exe.to_str(), now).unwrap().unwrap();
+        assert_eq!(picker.path(&selected.token, now), Err(HostError::Denied));
+        assert!(picker.path(&replacement.token, now).is_ok());
+    }
+    #[test]
+    fn conflict_preserves_the_selection_for_explicit_retry_and_success_consumes_it() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let exe = root.path.join("qa.exe");
+        std::fs::write(&exe, b"inert QA fixture").unwrap();
+        let bytes = serde_json::to_vec(&Document::fresh_install()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let now = Instant::now();
+        let mut picker = Picker::default();
+        let selected = picker.selected(exe.to_str(), now).unwrap().unwrap();
+        let draft = AppDraft {
+            use_discovery: false,
+            id: None,
+            name: "QA".into(),
+            args: vec![],
+            favorite: true,
+        };
+        assert!(matches!(
+            picker.save(&path, &draft, Some(&selected.token), &"0".repeat(64), now),
+            Err(HostError::LauncherConflict { .. })
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        picker
+            .save(
+                &path,
+                &draft,
+                Some(&selected.token),
+                &vantare_services::content_hash(&bytes),
+                now,
+            )
+            .unwrap();
+        let saved = std::fs::read(&path).unwrap();
+        assert_eq!(
+            Document::from_bytes(&saved).unwrap().apps.len(),
+            Document::fresh_install().apps.len() + 1
+        );
+        assert_eq!(
+            picker.save(
+                &path,
+                &draft,
+                Some(&selected.token),
+                &vantare_services::content_hash(&saved),
+                now
+            ),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), saved);
+        let projected = serde_json::to_value(catalog(&path, Some(&Discovery::default())).unwrap())
+            .unwrap()
+            .to_string();
+        assert!(!projected.contains("executable"));
+        assert!(!projected.contains(&exe.to_string_lossy().to_string()));
+    }
+    #[test]
+    fn qa_catalog_matches_the_shared_native_catalog_without_paths() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let mut document = Document::fresh_install();
+        document.apps.push(vantare_launcher::App {
+            id: "custom:vantare".into(),
+            name: "Vantare Overlay".into(),
+            executable: Some(r"C:\QAantare.exe".into()),
+            args: vec![],
+            favorite: false,
+        });
+        let bytes = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, bytes).unwrap();
+        let found = Discovery {
+            apps: document
+                .apps
+                .iter()
+                .map(|app| vantare_launcher::discovery::Detected {
+                    id: app.id.clone(),
+                    executable: None,
+                    availability: vantare_launcher::discovery::Availability {
+                        found: true,
+                        installed: true,
+                        launchable: true,
+                    },
+                })
+                .collect(),
+            ..Default::default()
+        };
+        let observed = catalog(&path, Some(&found)).unwrap();
+        let fixture: CatalogView = serde_json::from_str(include_str!(
+            "../../../../hub-web/fixtures/launcher-apps.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            observed.apps.iter().map(|app| &app.id).collect::<Vec<_>>(),
+            document.apps.iter().map(|app| &app.id).collect::<Vec<_>>()
+        );
+        let mut projected = observed.apps;
+        let mut expected = fixture.apps;
+        projected.sort_by(|a, b| a.id.cmp(&b.id));
+        expected.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(projected, expected);
+        assert!(!observed.scanning);
+    }
+    #[test]
+    fn official_and_referenced_applications_cannot_be_removed() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let bytes = serde_json::to_vec(&Document::fresh_install()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        assert_eq!(
+            remove(&path, "lmu", &vantare_services::content_hash(&bytes)),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        let exe = root.path.join("referenced.exe");
+        std::fs::write(&exe, b"inert QA fixture").unwrap();
+        let mut document = Document::fresh_install();
+        let id = document.add_app("QA".into(), exe).unwrap();
+        document.profiles[0].steps[0].app_id = id.clone();
+        let bytes = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        assert_eq!(
+            remove(&path, &id, &vantare_services::content_hash(&bytes)),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+}
+pub fn get(path: &Path, id: Option<&str>) -> Result<AppEditor, HostError> {
+    let (bytes, document) = open(path)?.ok_or(HostError::Protected)?;
+    let (draft, has_executable) = match id {
+        None => (
+            AppDraft {
+                use_discovery: false,
+                id: None,
+                name: String::new(),
+                args: vec![],
+                favorite: false,
+            },
+            false,
+        ),
+        Some(id) => {
+            let app = document
+                .apps
+                .iter()
+                .find(|app| app.id == id)
+                .ok_or(HostError::Denied)?;
+            (
+                AppDraft {
+                    use_discovery: false,
+                    id: Some(app.id.clone()),
+                    name: app.name.clone(),
+                    args: app.args.clone(),
+                    favorite: app.favorite,
+                },
+                app.executable.is_some(),
+            )
+        }
+    };
+    let value = AppEditor {
+        revision: vantare_services::content_hash(&bytes),
+        draft,
+        has_executable,
+    };
+    let response = crate::protocol::HostToUi::Response {
+        id: u32::MAX,
+        result: crate::protocol::Reply::LauncherAppGet {
+            value: value.clone(),
+        },
+    };
+    crate::frame::write(&mut std::io::sink(), &response).map_err(|_| HostError::Protected)?;
+    Ok(value)
+}
+pub fn catalog(path: &Path, discovery: Option<&Discovery>) -> Result<CatalogView, HostError> {
+    let (bytes, document) = open(path)?.ok_or(HostError::Protected)?;
+    Ok(CatalogView {
+        revision: vantare_services::content_hash(&bytes),
+        scanning: discovery.is_none(),
+        apps: document
+            .apps
+            .iter()
+            .map(|app| {
+                let entry = CATALOG.iter().find(|entry| entry.id == app.id);
+                let detected = discovery.and_then(|found| found.app(&app.id));
+                CatalogApp {
+                    id: app.id.clone(),
+                    name: app.name.clone(),
+                    category: entry.map_or("Manual", |entry| entry.category).into(),
+                    steam: entry.is_some_and(|entry| entry.steam_id.is_some()),
+                    favorite: app.favorite,
+                    removable: entry.is_none(),
+                    found: detected.is_some_and(|detected| detected.availability.found),
+                    installed: detected.is_some_and(|detected| detected.availability.installed),
+                }
+            })
+            .collect(),
+    })
+}
+pub fn favorite(path: &Path, id: &str, value: bool, revision: &str) -> Result<(), HostError> {
+    edit(path, revision, |document| {
+        document
+            .apps
+            .iter_mut()
+            .find(|app| app.id == id)
+            .ok_or(HostError::Denied)?
+            .favorite = value;
+        Ok(())
+    })
+}
+pub fn remove(path: &Path, id: &str, revision: &str) -> Result<(), HostError> {
+    edit(path, revision, |document| {
+        document.remove_app(id).map_err(|_| HostError::Denied)
+    })
+}
+fn edit(
+    path: &Path,
+    revision: &str,
+    change: impl FnOnce(&mut Document) -> Result<(), HostError>,
+) -> Result<(), HostError> {
+    let (bytes, _) = open(path)?.ok_or(HostError::Protected)?;
+    if vantare_services::content_hash(&bytes) != revision {
+        return Err(HostError::LauncherConflict {
+            current: read(path),
+        });
+    }
+    let mut store = Store::from_observed(path.into(), bytes).map_err(|_| HostError::Protected)?;
+    let mut document = store.document.clone();
+    change(&mut document)?;
+    store.replace(document).map_err(|error| {
+        if error.kind().is_conflict() {
+            HostError::LauncherConflict {
+                current: read(path),
+            }
+        } else if error.kind() == files::Kind::Busy {
+            HostError::Busy
+        } else {
+            HostError::Io
+        }
+    })
+}

@@ -256,6 +256,7 @@ enum RemoteKind {
 }
 
 struct Session {
+    app_picker: crate::launcher::apps::Picker,
     reserved_profile: Option<String>,
     profile_step_keys: crate::launcher::editor::StepKeys,
     launcher_reader: crate::launcher::Reader,
@@ -584,6 +585,142 @@ impl Session {
             },
         )
     }
+    fn application_request(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        request: &Request,
+    ) -> io::Result<()> {
+        match request {
+            Request::LauncherCatalog {} => {
+                let view = self.launcher_reader.view();
+                let result = crate::launcher::apps::catalog(
+                    &self.launcher,
+                    self.launcher_reader.discovered(&view.revision),
+                );
+                frame::write(
+                    pipe,
+                    &match result {
+                        Ok(value) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherCatalog { value },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            Request::LauncherScan {} => frame::write(
+                pipe,
+                &match self.launcher_reader.scan() {
+                    Ok(value) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherScan { value },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                },
+            ),
+            Request::LauncherAppGet { id: app_id } => frame::write(
+                pipe,
+                &match crate::launcher::apps::get(&self.launcher, app_id.as_deref()) {
+                    Ok(value) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherAppGet { value },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                },
+            ),
+            Request::LauncherAppPick {} => frame::write(
+                pipe,
+                &HostToUi::Failure {
+                    id,
+                    error: HostError::Denied,
+                },
+            ), // Main must replace this with its dialog result.
+            Request::LauncherAppSave { .. }
+            | Request::LauncherAppRemove { .. }
+            | Request::LauncherAppFavorite { .. } => {
+                self.application_write_request(pipe, id, request)
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
+        }
+    }
+    fn application_write_request(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        request: &Request,
+    ) -> io::Result<()> {
+        match request {
+            Request::LauncherAppSave {
+                draft,
+                pick_token,
+                base_revision,
+            } => {
+                let saved = self.app_picker.save(
+                    &self.launcher,
+                    draft,
+                    pick_token.as_deref(),
+                    base_revision,
+                    std::time::Instant::now(),
+                );
+                frame::write(
+                    pipe,
+                    &match saved {
+                        Ok(()) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherAppSave {
+                                value: self.launcher_reader.view(),
+                            },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            Request::LauncherAppRemove {
+                id: app_id,
+                base_revision,
+            } => {
+                let saved = crate::launcher::apps::remove(&self.launcher, app_id, base_revision);
+                frame::write(
+                    pipe,
+                    &match saved {
+                        Ok(()) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherAppRemove {
+                                value: self.launcher_reader.view(),
+                            },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            Request::LauncherAppFavorite {
+                id: app_id,
+                favorite,
+                base_revision,
+            } => {
+                let saved = crate::launcher::apps::favorite(
+                    &self.launcher,
+                    app_id,
+                    *favorite,
+                    base_revision,
+                );
+                frame::write(
+                    pipe,
+                    &match saved {
+                        Ok(()) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherAppFavorite {
+                                value: self.launcher_reader.view(),
+                            },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
+        }
+    }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
             Request::TestingAnswer { .. }
@@ -654,6 +791,13 @@ impl Session {
                     },
                 },
             ),
+            Request::LauncherCatalog {}
+            | Request::LauncherScan {}
+            | Request::LauncherAppGet { .. }
+            | Request::LauncherAppPick {}
+            | Request::LauncherAppSave { .. }
+            | Request::LauncherAppRemove { .. }
+            | Request::LauncherAppFavorite { .. } => self.application_request(pipe, id, request),
             Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
                 self.profile_request(pipe, id, request)
             }
@@ -868,6 +1012,34 @@ impl Session {
             ),
         }
     }
+    fn picked_executable(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        path: Option<&str>,
+    ) -> io::Result<()> {
+        let picked = self.app_picker.selected(path, std::time::Instant::now());
+        frame::write(
+            pipe,
+            &match picked {
+                Ok(value) => HostToUi::Response {
+                    id,
+                    result: Reply::LauncherAppPick { value },
+                },
+                Err(error) => HostToUi::Failure { id, error },
+            },
+        )
+    }
+    fn subscribe_launcher(&mut self, pipe: &mut Pipe) -> io::Result<()> {
+        self.subscriptions.insert(Topic::Launcher);
+        let value = self.launcher_reader.view();
+        frame::write(
+            pipe,
+            &HostToUi::Event {
+                event: Event::Launcher { value },
+            },
+        )
+    }
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
         match message {
             UiToHost::Hello { version } => {
@@ -892,19 +1064,13 @@ impl Session {
                     confirmation.publish()?;
                 }
             }
+            UiToHost::PickedExecutable { id, path } => {
+                self.picked_executable(pipe, *id, path.as_deref())?;
+            }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe {
                 topic: Topic::Launcher,
-            } => {
-                self.subscriptions.insert(Topic::Launcher);
-                let value = self.launcher_reader.view();
-                frame::write(
-                    pipe,
-                    &HostToUi::Event {
-                        event: Event::Launcher { value },
-                    },
-                )?;
-            }
+            } => self.subscribe_launcher(pipe)?,
             UiToHost::Unsubscribe {
                 topic: Topic::Launcher,
             } => {
@@ -1012,6 +1178,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        app_picker: crate::launcher::apps::Picker::default(),
         reserved_profile: None,
         profile_step_keys: crate::launcher::editor::StepKeys::default(),
         pilot: None,

@@ -480,3 +480,5 @@ mod reader;
 pub use reader::Reader;
 
 pub mod editor;
+
+pub mod apps;

@@ -5,6 +5,7 @@ use super::{
     Topic, UiToHost, VERSION, WindowBoot, hello,
 };
 use crate::diagnostics::{DiagnosticCode, DiagnosticEntry, DiagnosticSection, DiagnosticView};
+use crate::launcher::apps::{AppDraft, AppEditor, CatalogApp, CatalogView, PickedApp};
 use crate::launcher::editor::{
     ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
     ProfileRunning, ProfileStep,
@@ -41,6 +42,11 @@ pub fn typescript() -> String {
         crate::roadmap::RoadmapItem,
         crate::roadmap::RoadmapPublication,
         crate::roadmap::RoadmapView,
+        PickedApp,
+        AppDraft,
+        AppEditor,
+        CatalogApp,
+        CatalogView,
         ProfileRunning,
         ProfileFailure,
         ProfileClose,
@@ -147,6 +153,10 @@ fn append_launcher_constants(text: &mut String) {
     text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
     text.push_str(" as const;\n");
     append_profile_constants(text);
+    append_apps_constants(text);
+}
+fn append_apps_constants(text: &mut String) {
+    writeln!(text, "export const launcherPickPathMax = {} as const;\nexport const launcherPickLifetimeSeconds = {} as const;", crate::launcher::apps::PICK_PATH_MAX, crate::launcher::apps::PICK_LIFETIME_SECONDS).expect("String write");
 }
 fn append_profile_constants(text: &mut String) {
     let values = [
@@ -343,6 +353,9 @@ pub fn corpus() -> serde_json::Value {
     let settings = settings_sample();
     let mut host = vec![hello(&settings).expect("boot view")];
     host.extend(core_samples());
+    for result in application_reply_samples() {
+        host.push(HostToUi::Response { id: 1, result });
+    }
     for result in [
         Reply::SettingsGet {
             value: settings.clone(),
@@ -457,6 +470,48 @@ fn roadmap_reply_samples() -> [Reply; 2] {
         },
     ]
 }
+fn application_reply_samples() -> [Reply; 7] {
+    [
+        Reply::LauncherCatalog {
+            value: CatalogView {
+                revision: "0".repeat(64),
+                scanning: false,
+                apps: vec![],
+            },
+        },
+        Reply::LauncherScan {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppGet {
+            value: AppEditor {
+                revision: "0".repeat(64),
+                draft: AppDraft {
+                    id: None,
+                    name: String::new(),
+                    args: vec![],
+                    favorite: false,
+                    use_discovery: false,
+                },
+                has_executable: false,
+            },
+        },
+        Reply::LauncherAppPick {
+            value: Some(PickedApp {
+                token: "0".repeat(64),
+                name: "QA".into(),
+            }),
+        },
+        Reply::LauncherAppSave {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppRemove {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppFavorite {
+            value: LauncherView::default(),
+        },
+    ]
+}
 fn core_samples() -> Vec<HostToUi> {
     let mut host = Vec::new();
     for state in [
@@ -539,6 +594,34 @@ fn failure_samples(settings: SettingsView, privacy: PrivacyView) -> Vec<HostToUi
     host
 }
 
+fn application_request_samples() -> [Request; 7] {
+    [
+        Request::LauncherCatalog {},
+        Request::LauncherScan {},
+        Request::LauncherAppGet { id: None },
+        Request::LauncherAppPick {},
+        Request::LauncherAppSave {
+            draft: AppDraft {
+                id: None,
+                name: "QA".into(),
+                args: vec![],
+                favorite: false,
+                use_discovery: false,
+            },
+            pick_token: Some("0".repeat(64)),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherAppRemove {
+            id: "custom:qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherAppFavorite {
+            id: "lmu".into(),
+            favorite: true,
+            base_revision: "0".repeat(64),
+        },
+    ]
+}
 fn ui_samples() -> Vec<UiToHost> {
     let mut ui = vec![
         UiToHost::Hello { version: VERSION },
@@ -563,10 +646,11 @@ fn ui_samples() -> Vec<UiToHost> {
             topic: Topic::Launcher,
         },
         UiToHost::Ready {},
+        UiToHost::PickedExecutable { id: 1, path: None },
         UiToHost::CloseAnswer { allow: true },
         UiToHost::CloseAnswer { allow: false },
     ];
-    for request in [
+    for request in application_request_samples().into_iter().chain([
         Request::RoadmapCached {},
         Request::RoadmapRefresh {},
         Request::PilotLoad {},
@@ -614,7 +698,7 @@ fn ui_samples() -> Vec<UiToHost> {
             base_revision: "0".repeat(64),
         },
         Request::NotificationTest {},
-    ] {
+    ]) {
         ui.push(UiToHost::Request { id: 1, request });
     }
     for request in testing_request_samples() {

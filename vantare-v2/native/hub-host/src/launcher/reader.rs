@@ -119,6 +119,13 @@ impl Reader {
         // An explicit reload refreshes availability without launching a second worker.
         self.scanned_revision = None;
     }
+    pub fn scan(&mut self) -> Result<LauncherView, HostError> {
+        if self.scan.is_some() {
+            return Err(HostError::Busy);
+        }
+        self.scanned_revision = None;
+        Ok(self.view())
+    }
     pub fn discovered(&self, revision: &str) -> Option<&Discovery> {
         (self.scan.is_none() && self.scanned_revision.as_deref() == Some(revision))
             .then_some(&self.found)

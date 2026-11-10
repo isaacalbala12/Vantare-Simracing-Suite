@@ -1,5 +1,22 @@
 use super::*;
-use crate::test_support::Root;
+struct Root {
+    path: PathBuf,
+}
+impl Root {
+    fn new() -> Self {
+        let base = std::env::var_os("VANTARE_HUB_QA_ROOT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir().join("vantare-hub-qa"));
+        let path = base.join(vantare_services::random_id().expect("fixture id"));
+        fs::create_dir_all(&path).expect("fixture root");
+        Self { path }
+    }
+}
+impl Drop for Root {
+    fn drop(&mut self) {
+        fs::remove_dir_all(&self.path).expect("owned fixture cleanup");
+    }
+}
 use vantare_ipc::services_protocol::report_document::Draft;
 
 fn fields(title: &str) -> ReportFields {
@@ -92,6 +109,7 @@ fn import_waits_for_core_confirmation_and_preserves_both_original_byte_streams()
             .expect("local draft fixture"),
         Next::Complete(Reply::Draft { draft: Some(_), .. })
     ));
+    assert_eq!(state.legacy, LegacyMigration::Imported);
     for (path, bytes) in [(&first, &original[0]), (&second, &original[1])] {
         assert!(!path.exists());
         assert_eq!(
@@ -205,6 +223,7 @@ fn changed_sources_and_conflicting_archives_remain_recoverable() {
     );
     assert!(!path.with_extension("json.imported").exists());
     editor(&root.path, "second", 101);
+    let mut state = State::new(&root.path);
     fs::write(path.with_extension("json.imported"), b"older archive").expect("local draft fixture");
     state.begin(Operation::Load);
     let selected = import(&mut state);
@@ -218,7 +237,7 @@ fn changed_sources_and_conflicting_archives_remain_recoverable() {
     );
 }
 #[test]
-fn equal_mtime_prefers_editor_and_discard_archives_only_after_core_reply() {
+fn equal_mtime_prefers_editor_and_discard_without_import_confirmation_preserves_sources() {
     let root = Root::new();
     let first = editor(&root.path, "editor wins", 100);
     let second = local(&root.path, "local", 100);
@@ -230,9 +249,158 @@ fn equal_mtime_prefers_editor_and_discard_archives_only_after_core_reply() {
     state
         .complete(Operation::Discard, reply(None))
         .expect("local draft fixture");
-    assert!(!first.exists() && !second.exists());
+    assert!(first.exists() && second.exists());
     assert!(
-        first.with_extension("json.imported").exists()
-            && second.with_extension("json.imported").exists()
+        !first.with_extension("json.imported").exists()
+            && !second.with_extension("json.imported").exists()
     );
+}
+
+#[test]
+fn save_and_discard_without_successful_load_never_retire_unseen_sources() {
+    for failed_load in [false, true] {
+        for operation in [Operation::Save, Operation::Discard] {
+            let root = Root::new();
+            let path = editor(&root.path, "unseen", 100);
+            let mut state = State::new(&root.path);
+            if failed_load {
+                state.begin(Operation::Load);
+                import(&mut state);
+                state
+                    .complete(
+                        Operation::Load,
+                        Reply::Error {
+                            message: "rejected".into(),
+                        },
+                    )
+                    .unwrap();
+            }
+            state.begin(operation);
+            state
+                .complete(
+                    operation,
+                    reply(if matches!(operation, Operation::Save) {
+                        Some(fields("new editor"))
+                    } else {
+                        None
+                    }),
+                )
+                .unwrap();
+            assert!(path.exists());
+            assert!(!path.with_extension("json.imported").exists());
+        }
+    }
+}
+#[test]
+fn cleaning_matches_gpui_and_archive_keeps_original_bytes() {
+    let root = Root::new();
+    let path = editor(
+        &root.path,
+        &("a\r\u{202e}b\n\t".to_owned() + &"\u{e9}".repeat(3000)),
+        100,
+    );
+    let bytes = fs::read(&path).unwrap();
+    let mut state = State::new(&root.path);
+    state.begin(Operation::Load);
+    let selected = import(&mut state);
+    assert!(selected.action_text.starts_with("a b\n\t"));
+    assert!(selected.action_text.len() <= FIELD_LIMITS[0]);
+    assert!(selected.valid());
+    state
+        .complete(Operation::Load, reply(Some(selected)))
+        .unwrap();
+    assert_eq!(state.legacy, LegacyMigration::ImportedTrimmed);
+    assert_eq!(
+        fs::read(path.with_extension("json.imported")).unwrap(),
+        bytes
+    );
+}
+#[test]
+fn protected_fields_are_not_revalidated_as_editor_input() {
+    let root = Root::new();
+    let mut state = State::new(&root.path);
+    state.begin(Operation::Load);
+    assert!(
+        state
+            .complete(Operation::Load, reply(Some(fields("already saved\r"))))
+            .is_ok()
+    );
+}
+#[test]
+fn local_corrupt_and_oversize_sources_are_preserved_and_scan_is_cached() {
+    for bytes in [b"broken".to_vec(), vec![b'x'; LOCAL_LIMIT as usize + 1]] {
+        let root = Root::new();
+        let path = local(&root.path, "local", 100);
+        fs::write(&path, &bytes).unwrap();
+        let mut state = State::new(&root.path);
+        state.begin(Operation::Load);
+        state.complete(Operation::Load, reply(None)).unwrap();
+        assert_eq!(state.legacy, LegacyMigration::Preserved);
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        local(&root.path, "now valid but not reread", 101);
+        state.begin(Operation::Load);
+        assert!(matches!(
+            state.complete(Operation::Load, reply(None)).unwrap(),
+            Next::Complete(_)
+        ));
+    }
+}
+#[test]
+fn identical_archive_retries_and_partial_retirement_preserve_remaining_source() {
+    let root = Root::new();
+    let first = editor(&root.path, "selected", 101);
+    let second = local(&root.path, "other", 100);
+    let mut state = State::new(&root.path);
+    state.begin(Operation::Load);
+    let selected = import(&mut state);
+    fs::hard_link(&first, first.with_extension("json.imported")).unwrap();
+    // Deterministic Windows remove failure after hard_link, without timers.
+    use std::os::windows::fs::OpenOptionsExt;
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1 | 2)
+        .open(&first)
+        .unwrap();
+    state
+        .complete(Operation::Load, reply(Some(selected)))
+        .unwrap();
+    assert!(first.exists());
+    assert!(!second.exists());
+    assert!(second.with_extension("json.imported").exists());
+    drop(held);
+    // Next session recovers the selected source and accepts its identical archive.
+    let mut retry = State::new(&root.path);
+    retry.begin(Operation::Load);
+    let selected = import(&mut retry);
+    retry
+        .complete(Operation::Load, reply(Some(selected)))
+        .unwrap();
+    assert!(!first.exists());
+    assert!(first.with_extension("json.imported").exists());
+}
+#[test]
+fn symbolic_source_is_never_followed() {
+    let root = Root::new();
+    let target = root.path.join("private.json");
+    fs::write(&target, b"private untouched").unwrap();
+    let path = root.path.join("testing-center/editor-draft.json");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::os::windows::fs::symlink_file(&target, &path).expect("QA symlink privilege");
+    let mut state = State::new(&root.path);
+    state.begin(Operation::Load);
+    state.complete(Operation::Load, reply(None)).unwrap();
+    assert_eq!(state.legacy, LegacyMigration::Preserved);
+    assert_eq!(fs::read(&target).unwrap(), b"private untouched");
+    assert!(fs::symlink_metadata(path).unwrap().file_type().is_symlink());
+}
+
+#[test]
+fn every_field_uses_its_gpui_byte_limit_without_splitting_utf8() {
+    for limit in FIELD_LIMITS {
+        let cleaned = clean_field(&"\u{e9}".repeat(limit), limit);
+        assert!(cleaned.len() <= limit);
+        assert!(cleaned.len() + 2 > limit);
+        assert_eq!(clean_field(&cleaned, limit), cleaned);
+    }
+    assert_eq!(clean_field("a\0b\r\nc\td\u{200b}e", 4096), "a b \nc\tde");
 }

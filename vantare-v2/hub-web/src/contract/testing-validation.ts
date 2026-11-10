@@ -75,7 +75,10 @@ export function isReportFields(value: unknown): boolean {
 export function isReportDraft(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["fields", "exists", "screenshots"]) &&
+    exact(value, ["fields", "exists", "screenshots", "legacy"]) &&
+    ["none", "imported", "importedTrimmed", "preserved"].includes(
+      value.legacy as string,
+    ) &&
     typeof value.exists === "boolean" &&
     isReportFields(value.fields) &&
     isScreenshots(value.screenshots)

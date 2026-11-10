@@ -5,6 +5,8 @@ import { Icon } from "../assets/icons/Icon";
 import { t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
+import { NotificationsPopover } from "../screens/notifications/NotificationsPopover";
+import { NotificationsProvider } from "../screens/notifications/NotificationsState";
 import { Button, IconButton } from "../ui/Button";
 import { Avatar, Badge, Callout } from "../ui/Data";
 import {
@@ -14,7 +16,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
-import { Popover, ToastViewport, useToastManager } from "../ui/Layers";
+import { ToastViewport, useToastManager } from "../ui/Layers";
 import {
   ActionGroup,
   ContentStack,
@@ -29,6 +31,13 @@ import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
 
 export function Shell() {
+  return (
+    <NotificationsProvider>
+      <ShellContent />
+    </NotificationsProvider>
+  );
+}
+function ShellContent() {
   const host = useHost();
   const toast = useToastManager();
   const settings = useSettings();
@@ -268,17 +277,7 @@ export function Shell() {
                 open={ui.commandsOpen}
                 onOpenChange={ui.commands}
               />
-              <Popover
-                label={t("shell.notices")}
-                trigger={<Icon name="i-campana" />}
-                open={ui.noticesOpen}
-                onOpenChange={ui.notices}
-              >
-                <ContentStack>
-                  <strong>{t("shell.notices")}</strong>
-                  <p>{t("shell.noNotices")}</p>
-                </ContentStack>
-              </Popover>
+              <NotificationsPopover />
             </ActionGroup>
           }
         />

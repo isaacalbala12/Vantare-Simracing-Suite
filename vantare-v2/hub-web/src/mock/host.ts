@@ -51,12 +51,16 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;
   const core = structuredClone(coreScene) as CoreStatus;
   if (sceneName.startsWith("roadmap-")) core.access.verified = true;
+  if (sceneName === "notificaciones-base") {
+    core.access.verified = true;
+    core.access.tester = true;
+  }
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../contract/generated/contract").PilotView;

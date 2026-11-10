@@ -190,3 +190,37 @@ proceso completo y ciclos por llamada Present en el mismo intervalo QPC.
 Ese contador permite comparar trabajo CPU entre variantes en esta máquina;
 no se convierte a milisegundos ni se equipara con tiempo GPU. Los ms/frame
 cuantizados se conservan como dato secundario, nunca como prueba de ganancia.
+
+## Línea base cruda corregida (10-nov-2026)
+
+Mismo servidor y perfil dev. Grabación cruda SHA-256
+`c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c`,
+núcleo fijo `a77b1e288f9bf4992f53f7df43b9a94695b27d22ee293c3675162e31077beaf7`.
+Resúmenes completos versionados en `measurements/raw-cycles-baseline-*.json`;
+CSV y logs íntegros en `D:/VantareServer/evidence/isa-1996/raw-cycles-baseline-*`.
+
+| Widgets / fases | Ciclos CPU / DXGI Present estable | Privada media MiB | Present estables | Widgets notificados / snapshot cambiado | Widgets pintados / snapshot pintado |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 / sí | Sin cociente: reposo | 81,06 | 0 | 1,000 | 1,000 |
+| 4 / sí | 13.627.950 | 80,87 | 1.186 | 1,006 | 1,006 |
+| 4 / no | Contador Present apagado | 81,10 | — | — | — |
+| 22 / sí | 49.652.692 | 84,05 | 1.187 | 7,031 | 7,036 |
+
+El caso de un widget deja de presentar una vez asentado. El radar cambia con
+la posición espacial; las posiciones de tabla y el acelerador de este corpus
+son casi constantes. Los 22 widgets repiten los tres tipos para medir fan-out,
+no representan 22 diseños distintos. La diferencia con el golden confirma que
+la cadencia debe venir del núcleo/replay crudo. No comparar aquellas cifras
+preliminares con las nuevas como una mejora de código.
+
+Los ciclos de las fases completas de cuatro widgets permiten localizar coste:
+layout request 375 M, compute 454 M, prepaint 841 M, paint del árbol 5.572 M,
+DirectWrite 11,85 M, envío al driver 455 M y Present 1.034 M en la primera
+pasada cruda. Son fases anidadas y campañas ligeramente distintas: no sumarlas
+ni dividir esa primera suma por el número de frames de otra pasada.
+
+Caracterización adicional: lifecycle completo pasó con 0 fallos. El ejemplo
+raw se compiló con el wrapper autorizado y su integración terminó UI/núcleo
+con exit 0 por EOF, sin juego, cuenta ni lectura de secretos. El resumen tiene
+3 tests Python de intervalos QPC, Present frente a render, y rechazo de campañas
+incompletas. El script reserva la cola durante cada medición.

@@ -153,7 +153,7 @@ pub struct Curva {
     /// tramo de tiempo `[desde, desde + duracion)` se repite para siempre:
     /// `t' = desde + (t - desde) mod duracion` para todo `t >= desde`.
     /// Lo anterior a `desde` (p. ej. una entrada suave al bucle) se recorre una vez.
-    /// En DirectComposition equivale a `AddRepeat(desde + duracion, duracion)`
+    /// En `DirectComposition` equivale a `AddRepeat(desde + duracion, duracion)`
     /// (repite el intervalo que precede a `beginOffset`).
     pub repetir: Option<(f64, f64)>,
 }

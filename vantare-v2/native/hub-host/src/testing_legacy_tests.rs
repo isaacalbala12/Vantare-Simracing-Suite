@@ -1,4 +1,5 @@
 use super::*;
+use std::os::windows::fs::OpenOptionsExt;
 struct Root {
     path: PathBuf,
 }
@@ -329,7 +330,10 @@ fn protected_fields_are_not_revalidated_as_editor_input() {
 }
 #[test]
 fn local_corrupt_and_oversize_sources_are_preserved_and_scan_is_cached() {
-    for bytes in [b"broken".to_vec(), vec![b'x'; LOCAL_LIMIT as usize + 1]] {
+    for bytes in [
+        b"broken".to_vec(),
+        vec![b'x'; usize::try_from(LOCAL_LIMIT).expect("fixture limit fits") + 1],
+    ] {
         let root = Root::new();
         let path = local(&root.path, "local", 100);
         fs::write(&path, &bytes).unwrap();
@@ -356,7 +360,6 @@ fn identical_archive_retries_and_partial_retirement_preserve_remaining_source() 
     let selected = import(&mut state);
     fs::hard_link(&first, first.with_extension("json.imported")).unwrap();
     // Deterministic Windows remove failure after hard_link, without timers.
-    use std::os::windows::fs::OpenOptionsExt;
     let held = fs::OpenOptions::new()
         .read(true)
         .share_mode(1 | 2)

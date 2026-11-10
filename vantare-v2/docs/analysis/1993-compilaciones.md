@@ -1,64 +1,67 @@
-# VANTA-137 / #1993 — compilación y corte del Hub
+# VANTA-137 / #1993 — compilación Rust
 
-Base de trabajo: nightly `d84ca4aa91397e60031eee58d08235b4c329a6af`.
-Sin cambios de producto, dependencias externas nuevas, merge ni publicación.
+Base: nightly `d84ca4aa91397e60031eee58d08235b4c329a6af`.
+Sin cambios de producto, dependencias nuevas, merge ni publicación.
 
-## Grafo previsto antes de mover código
+## Alcance vigente
 
-Las flechas indican dependencias, nunca propiedad de la aplicación:
+Isaac canceló la partición del Hub durante la ejecución: se rehace en web.
+La extracción inicial de Orbit queda congelada, sin PR ni compilación validada,
+en `D:/VantareServer/worktrees/isa-1993-orbit`, rama
+`vantareapp/isa-1993-orbit`. No forma parte de esta entrega.
 
-```text
-hub-orbit → ui (pintores y tokens existentes)
-hub-common → hub-orbit (Section, fixtures demo, escenas, contexto de captura)
-hub-launcher → hub-common, hub-orbit
-hub-navigation → hub-launcher, hub-common (política de navegación y noticias)
-hub-services → hub-navigation, hub-common, hub-orbit
-hub-strategy / hub-analysis / hub-engineer → hub-common, hub-orbit
-hub-studio → hub-services, hub-navigation, hub-common, hub-orbit
-hub-pilot → hub-common, hub-orbit
-hub-shell → módulos anteriores (composición, Ajustes y captura de ventana)
-hub → hub-shell (entrada del proceso y fachada compatible)
-```
+El camino rápido cubre los crates Rust del núcleo y overlays. `comprobar.ps1`
+selecciona el crate y sus dependientes directos, excluyendo siempre Hub y Admin.
+Las dependencias opcionales inactivas no incorporan productos al camino rápido.
+Los defaults se conservan solo para los paquetes seleccionados: comprobar
+Runtime no activa por accidente la interfaz GPUI del instalador.
 
-Cuenta, Calendario y Testing comparten entidades GPUI concretas: Remote contiene
-editores de Testing y una WeakEntity de Calendar; sus vistas consumen Remote.
-Se mantienen juntos inicialmente en hub-services. Separarlos artificialmente
-crearía ciclos o exigiría reescribir sus comunicaciones. Ajustes implementa
-métodos de Hub y queda junto a la shell. Son agrupaciones explícitas, no APIs
-genéricas nuevas. El contexto CurrentScene se separa del capturador de ventana
-para que los módulos no dependan de la shell ni del proceso Hub.
+## Targets y cola
 
-Los módulos extraídos no podrán depender de hub ni hub-shell. Esto permite
-que otro host componga esas vistas después. No se añade ahora control desde
-overlays. Los modelos de producto siguen en sus crates actuales; la dependencia
-existente de los pintores de ui se conserva, sin duplicar renderizadores.
+Como máximo dos compilaciones, recortadas además por memoria disponible.
+Cuatro jobs por compilación en este servidor. Targets reutilizados entre ramas:
+`D:/VantareServer/targets/slot-0`, `slot-1`; runner: `D:/VantareServer/targets/ci`.
+Los slots se limpian al superar 20 GB o tras 14 días sin uso; CI tiene un límite
+separado de 35 GB. Limpieza bajo mutex, sin enlaces ni locks Cargo abiertos.
+Menos de 15 GB libres en D: detiene el build. Las reservas anidadas síncronas
+reutilizan el slot del ancestro.
 
-## Orden y verificación
+La prueba A → B → A detectó que Cargo 1.95 reutilizaba el ejecutable de A al
+compilar otro checkout del mismo paquete. Al cambiar de checkout se invalidan
+los paquetes locales mediante `cargo clean -p`, conservando dependencias de
+registro/git. Repetir en el mismo checkout conserva incremental. La prueba
+corregida comprueba los tres ejecutables reales, sin sccache.
 
-1. Tooling y CI; mantener los nombres de los checks obligatorios.
-2. Orbit y activos compartidos.
-3. Contratos comunes, Launcher y navegación.
-4. Servicios y módulos de producto en cortes pequeños.
-5. Shell; verificar fachada, parity-capture, presupuestos y arquitectura.
+Sccache se traslada a `D:/VantareServer/cache/sccache`, limitado a 5 GB; el
+wrapper usa el puerto local 4227. Los comandos Cargo directos y gates pasan el
+target por CLI para no separar la caché por `CARGO_TARGET_DIR`.
 
-Cada corte necesita fmt, Clippy y tests de los crates afectados. El conjunto
-final requiere suite completa, telemetría y lifecycle. Las mediciones se hacen
-en serie, con el mismo target, jobs y perfil indicados en la evidencia.
-No se estima rendimiento de un Mac sin medirlo y no se accede por SSH.
+## CI y cobertura
 
-## Flujo de compilación
+Los nombres obligatorios permanecen: `Validate promotion path` y
+`Validate Vantare blocking gates`. Clippy sustituye el check duplicado e incluye
+el banco bench de Runtime. Nextest conserva los perfiles default/ci y el corpus;
+lifecycle conserva su arnés y los dos ejecutables de overlays normal/QA.
+Las PR seleccionan los crates cambiados y todos los dependientes transitivos.
+Configuración global, manifiestos, assets compartidos y rutas desconocidas
+fuerzan workspace. Los contratos entre procesos añaden UI → Runtime y
+Storage → Hub/Analysis a la selección. Nightly, testers y merge_group validan
+el workspace completo. Los controles de distribución/instalación se conservan;
+solo se omiten en PR de vistas hoja del Hub. La instalación de Nextest ya
+comprobaba su versión en la base y conserva ese comportamiento.
 
-`native/scripts/comprobar.ps1 <crate>` selecciona el crate y sus dependientes
-directos. La CI de PR selecciona dependientes transitivos; en push/nightly y
-merge_group valida el workspace. Los cambios globales fuerzan el workspace.
-Clippy comprueba también los tipos y conserva el banco bench de Runtime.
-Nextest reúne suite y corpus cuando corresponde; lifecycle conserva su arnés.
-La cola conserva como máximo dos compilaciones y asigna targets estables en
-`D:/VantareServer/targets/slot-0` y `slot-1`, reutilizados entre ramas.
-El slot se limpia antes de usarlo si supera 20 GB o lleva 14 días sin usarse;
-solo bajo su mutex, sin enlaces y sin locks Cargo abiertos.
+El runner propio conserva sus artefactos e incremental; no ejecuta rust-cache,
+que eliminaba paquetes propios e incremental. Los targets explícitos de
+mediciones/distribución también deben estar en D: y tienen exclusión mutua.
 
 ## Evidencia
 
-En curso. Logs locales: `D:/VantareServer/evidence/isa-1993`.
-No confundir un check en frío con un build que genera ejecutables.
+En curso: `D:/VantareServer/evidence/isa-1993`.
+Base del Hub anterior a la cancelación: 652 tests PASS, 4 skips existentes;
+ejecución 308 s. No es una medición del camino rápido nuevo.
+Había una compilación ajena de frameworks de UI en C:; no se detuvo. Las
+mediciones afectadas por esa carga deben identificarse como tales.
+El intento de benchmark del Hub se detuvo al cambiar el alcance.
+No se ha usado el Mac ni se estima su rendimiento sin medirlo.
+
+Evidencia histórica conservada en [#1465/#1654](1465-compilacion-historico.md).

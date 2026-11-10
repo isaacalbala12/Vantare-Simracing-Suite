@@ -262,6 +262,8 @@ jobs:
     needs: policy
     if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
     runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Windows","X64","vantare-1565"]') || 'windows-latest' }}
+    env:
+      VANTARE_CI_TARGET: '1'
     defaults:
       run:
         shell: pwsh
@@ -283,6 +285,34 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
+
+      # Caché de los artefactos de *dependencias* (rust-cache borra antes de
+      # guardar los crates del workspace y el fork vendorizado, y limpia el
+      # incremental). Incluye el registro y el clon git de Cargo (~1 GB, zed
+      # 388 MB): sustituye a la caché `cargo-registry` de la ronda 1. Apunta a
+      # target/gates, el --target-dir que usa gates.ps1. La clave la calcula la
+      # acción con rustc, las variables CARGO/RUST/CC y el Cargo.lock/Cargo.toml
+      # de todo el repo: no cambia por PR, y si cambia el lock restaura la
+      # entrada anterior. Un cache creado en una PR solo lo ve esa PR; los del
+      # push a nightly los comparten todas las PRs con esa base (docs de
+      # GitHub: «Restrictions for accessing a cache»). Para invalidar a mano:
+      # subir `prefix-key`. Nota: la línea de la acción no lleva comentario de
+      # versión al final porque el test del flujo de canales exige que acabe en
+      # el SHA fijado.
+      - name: Cache de artefactos de dependencias (target)
+        if: needs.policy.outputs.native != 'false' && runner.environment == 'github-hosted'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: |
+            vantare-v2/native -> D:/VantareServer/targets/ci
+          shared-key: native-windows-gates
+          # El binario de nextest se cachea aparte: no guardar ~/.cargo/bin dos veces.
+          cache-bin: "false"
+
+      - name: Fetch locked native dependencies
+        if: needs.policy.outputs.native != 'false'
+        working-directory: ${{ env.VANTARE_DIR }}/native
+        run: cargo fetch --locked
 
       - name: Classify native installation surface
         id: build_surface
@@ -340,29 +370,6 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1 -EvidenceDirectory "$env:RUNNER_TEMP/build-crt"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-      # Caché de los artefactos de *dependencias* (rust-cache borra antes de
-      # guardar los crates del workspace y el fork vendorizado, y limpia el
-      # incremental). Incluye el registro y el clon git de Cargo (~1 GB, zed
-      # 388 MB): sustituye a la caché `cargo-registry` de la ronda 1. Apunta a
-      # target/gates, el --target-dir que usa gates.ps1. La clave la calcula la
-      # acción con rustc, las variables CARGO/RUST/CC y el Cargo.lock/Cargo.toml
-      # de todo el repo: no cambia por PR, y si cambia el lock restaura la
-      # entrada anterior. Un cache creado en una PR solo lo ve esa PR; los del
-      # push a nightly los comparten todas las PRs con esa base (docs de
-      # GitHub: «Restrictions for accessing a cache»). Para invalidar a mano:
-      # subir `prefix-key`. Nota: la línea de la acción no lleva comentario de
-      # versión al final porque el test del flujo de canales exige que acabe en
-      # el SHA fijado.
-      - name: Cache de artefactos de dependencias (target)
-        if: needs.policy.outputs.native != 'false' && runner.environment == 'github-hosted'
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          workspaces: |
-            vantare-v2/native -> D:/VantareServer/targets/slot-0
-          shared-key: native-windows-gates
-          # El binario de nextest se cachea aparte: no guardar ~/.cargo/bin dos veces.
-          cache-bin: "false"
-
       # El binario solo cambia al subir la versión: se guarda en caché y se
       # evita recompilarlo (342–430 s por trabajo aquí; 174–226 s en Linux).
       - name: Cache de cargo-nextest
@@ -389,13 +396,9 @@ jobs:
           if ($first -match 'cargo-nextest 0\.9\.146') {
             'cargo-nextest 0.9.146 ya disponible: no se instala'
           } else {
-            cargo install cargo-nextest --locked --version 0.9.146 --force
+            pwsh -NoProfile -File scripts/compilar.ps1 cargo install cargo-nextest --locked --version 0.9.146 --force
+            if ($LASTEXITCODE) { throw 'Nextest installation failed' }
           }
-
-      - name: Fetch locked native dependencies
-        if: needs.policy.outputs.native != 'false'
-        working-directory: ${{ env.VANTARE_DIR }}/native
-        run: cargo fetch --locked
 
       - name: Install verified DuckDB development library
         if: needs.policy.outputs.native != 'false'

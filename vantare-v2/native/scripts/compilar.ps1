@@ -3,6 +3,30 @@
 # Target persistente en D: por slot; cuatro jobs en el servidor (#1993).
 # El mínimo y el umbral de memoria se releen de Machine en cada vuelta.
 # VANTARE_SCCACHE=0 permite repetir un fallo sin caché.
+function Invoke-VantareQueuedCommand {
+    param([string]$CommandName, [object[]]$CommandArguments)
+    $previousTarget = [Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process')
+    try {
+        if ([IO.Path]::GetFileNameWithoutExtension($CommandName) -ieq 'cargo' -and
+            $CommandArguments.Count -and $CommandArguments[0] -in @('build', 'check', 'clippy', 'test', 'nextest', 'run', 'rustc', 'bench', 'doc', 'install')) {
+            if (-not ($CommandArguments | Where-Object { $_ -eq '--target-dir' -or $_ -like '--target-dir=*' })) {
+                $separator = [array]::IndexOf($CommandArguments, '--')
+                if ($separator -lt 0) { $CommandArguments += @('--target-dir', $previousTarget) }
+                else {
+                    $CommandArguments = @($CommandArguments[0..($separator - 1)]) +
+                        @('--target-dir', $previousTarget) + @($CommandArguments[$separator..($CommandArguments.Count - 1)])
+                }
+            }
+            # sccache keys CARGO_TARGET_DIR; use the CLI path to share dependencies across slots.
+            Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
+        }
+        $global:LASTEXITCODE = 0
+        & $CommandName @CommandArguments
+        $script:commandExitCode = if ($?) { [int]$global:LASTEXITCODE } else { [math]::Max(1, [int]$global:LASTEXITCODE) }
+    } finally {
+        [Environment]::SetEnvironmentVariable('CARGO_TARGET_DIR', $previousTarget, 'Process')
+    }
+}
 # A synchronous nested build (packaging/lifecycle) reuses its ancestor's lease.
 # A copied environment alone is insufficient: the owner must still be an ancestor.
 if ($env:VANTARE_CARGO_QUEUE_OWNER) {
@@ -16,13 +40,15 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
     }
     if ($leased) {
         if ($env:CARGO_TARGET_DIR -notmatch '^[dD]:[\\/]') { throw 'Target anidado fuera de D:.' }
+        . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
+        Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
         $cmd, $rest = $args
-        $global:LASTEXITCODE = 0
-        & $cmd @rest
-        exit $(if ($?) { [int]$global:LASTEXITCODE } else { [math]::Max(1, [int]$global:LASTEXITCODE) })
+        Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
+        exit $script:commandExitCode
     }
 }
 $env:SCCACHE_DIR = 'D:\VantareServer\cache\sccache'
+$env:SCCACHE_SERVER_PORT = '4227'
 $env:SCCACHE_CACHE_SIZE = '5G'
 if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [math]::Min(2, [int]($env:VANTARE_CARGO_SLOTS ?? 2))
@@ -105,9 +131,16 @@ if ($espera -gt 5) {
 }
 $code = 1
 $targetLease = $null
+$ciLease = $null
 try {
+    if ($env:VANTARE_CI_TARGET -eq '1') {
+        $ciPath = 'd:\vantareserver\targets\ci'
+        $ciDigest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($ciPath)))
+        $ciLease = [Threading.Mutex]::new($false, "Global\VantareCargoTarget-$ciDigest")
+        try { $null = $ciLease.WaitOne() } catch [Threading.AbandonedMutexException] { }
+    }
     . (Join-Path $PSScriptRoot 'target-slot.ps1')
-    $slotTarget = Initialize-VantareSlotTarget -Slot $slotNumbers[$held]
+    $slotTarget = Initialize-VantareSlotTarget -Slot $slotNumbers[$held] -Ci:($env:VANTARE_CI_TARGET -eq '1')
     $env:VANTARE_CARGO_QUEUE_OWNER = [string]$PID
     $env:VANTARE_SLOT_TARGET = $slotTarget
     $env:CARGO_TARGET_DIR = $slotTarget
@@ -122,20 +155,26 @@ try {
                 throw 'El target explícito debe ser absoluto y estar en D:.'
             }
             $explicitTarget = [IO.Path]::GetFullPath($rest[$index + 1]).ToLowerInvariant()
+            if ($explicitTarget -match '^d:\\vantareserver\\targets\\(slot-[01]|ci)$' -and $explicitTarget -ine $slotTarget) {
+                throw 'No se puede usar explícitamente el target reservado a otro slot o al runner.'
+            }
             $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($explicitTarget)))
             if ($targetLease) { throw 'Un solo target explícito por invocación.' }
             $targetLease = [Threading.Mutex]::new($false, "Global\VantareCargoTarget-$digest")
             try { $null = $targetLease.WaitOne() } catch [Threading.AbandonedMutexException] { }
         }
     }
-    $global:LASTEXITCODE = 0
-    & $cmd @rest
-    $code = if ($?) { [int]$global:LASTEXITCODE } else { [math]::Max(1, [int]$global:LASTEXITCODE) }
+    if ($targetLease) { $env:CARGO_TARGET_DIR = $explicitTarget; $env:VANTARE_SLOT_TARGET = $explicitTarget }
+    . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
+    Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
+    Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
+    $code = $script:commandExitCode
 } catch {
     Write-Host "[cola] el comando falló: $_"
     $code = 1
 } finally {
     if ($targetLease) { $targetLease.ReleaseMutex(); $targetLease.Dispose() }
+    if ($ciLease) { $ciLease.ReleaseMutex(); $ciLease.Dispose() }
     Remove-Item Env:VANTARE_CARGO_QUEUE_OWNER -ErrorAction SilentlyContinue
     $held.ReleaseMutex(); $held.Dispose()
 }

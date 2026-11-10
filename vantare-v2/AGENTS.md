@@ -211,7 +211,7 @@ conservan sus instrucciones propias.
 
 Desde `vantare-v2/`, el worker usa
 `pwsh -NoProfile -File native/scripts/comprobar.ps1 <crate>`: Clippy y tests del
-crate y sus dependientes directos. Clippy incluye la comprobación de tipos.
+crate y sus dependientes directos, excluyendo siempre Hub y Admin. Clippy incluye la comprobación de tipos.
 Para comandos específicos, usar `native/scripts/compilar.ps1 <comando> [args...]`.
 La cola permite como máximo dos compilaciones y asigna un target persistente
 por slot en `D:/VantareServer/targets/slot-N`, reutilizado entre ramas; nunca C:.

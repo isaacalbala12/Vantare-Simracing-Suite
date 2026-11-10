@@ -2,12 +2,14 @@
 function Initialize-VantareSlotTarget {
     param(
         [Parameter(Mandatory)][ValidateRange(0, 1)][int]$Slot,
-        [string]$Root = 'D:\VantareServer\targets'
+        [string]$Root = 'D:\VantareServer\targets',
+        [switch]$Ci
     )
     if ($Root -notmatch '^[dD]:[\\/]' -or $Root.Length -le 3) { throw 'Raíz de targets inválida.' }
     $root = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
-    $target = [IO.Path]::GetFullPath((Join-Path $root "slot-$Slot"))
-    if ($target -cne (Join-Path $root "slot-$Slot")) { throw 'Ruta de slot inválida.' }
+    $name = if ($Ci) { "ci" } else { "slot-$Slot" }
+    $target = [IO.Path]::GetFullPath((Join-Path $root $name))
+    if ($target -cne (Join-Path $root $name)) { throw 'Ruta de slot inválida.' }
     [IO.Directory]::CreateDirectory($target) | Out-Null
     # Never follow junctions or remove an arbitrary directory masquerading as a target.
     if ((Get-Item -LiteralPath $target).Attributes -band [IO.FileAttributes]::ReparsePoint) {
@@ -24,7 +26,7 @@ function Initialize-VantareSlotTarget {
             throw 'Hay enlaces dentro del target; revisar antes de limpiar.'
         }
         foreach ($file in $items | Where-Object { -not $_.PSIsContainer }) { $bytes += $file.Length }
-        if ($expired -or $bytes -gt 20GB) {
+        if ($expired -or $bytes -gt $(if ($Ci) { 35GB } else { 20GB })) {
             $locks = @()
             try {
                 foreach ($file in $items | Where-Object Name -EQ '.cargo-lock') {

@@ -57,23 +57,47 @@ def installation_affected(paths):
     return False
 
 
+LEGACY = {'vantare-hub', 'vantare-admin'}
+
+
+def select_for_crate(packages, crate):
+    names = {p['name'] for p in packages}
+    if crate not in names:
+        raise ValueError(f'Crate desconocido: {crate}')
+    if crate in LEGACY:
+        raise ValueError('Hub y Admin están fuera del camino rápido; usar su validación explícita.')
+    selected = {crate} | {
+        package['name'] for package in packages
+        if any(dep['name'] == crate and not dep.get('optional', False)
+               for dep in package['dependencies'])
+    }
+    return sorted(selected - LEGACY)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--base', required=True)
+    parser.add_argument('--base')
+    parser.add_argument('--crate')
     parser.add_argument('--installation', action='store_true')
     args = parser.parse_args()
     native = Path(__file__).resolve().parents[1]
+    paths = []
+    if args.base:
+        paths = subprocess.check_output(
+            ['git', 'diff', '--name-only', '--no-renames', '-z', args.base, 'HEAD'],
+            cwd=native).decode('utf-8').strip('\0').split('\0')
+        paths = [path for path in paths if path]
+    elif not args.crate:
+        parser.error('--base o --crate requerido')
+    if args.installation:
+        print('true' if installation_affected(paths) else 'false')
+        return
     metadata = json.loads(subprocess.check_output(
         ['cargo', 'metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'],
         cwd=native))
     members = [p for p in metadata['packages'] if p['id'] in metadata['workspace_members']]
-    # Include deletions and both names of renames; never omit a removed dependency.
-    paths = subprocess.check_output(
-        ['git', 'diff', '--name-only', '--no-renames', '-z', args.base, 'HEAD'],
-        cwd=native).decode('utf-8').strip('\0').split('\0')
-    paths = [path for path in paths if path]
-    if args.installation:
-        print('true' if installation_affected(paths) else 'false')
+    if args.crate:
+        print(','.join(select_for_crate(members, args.crate)))
     else:
         print(','.join(select(members, paths)))
 

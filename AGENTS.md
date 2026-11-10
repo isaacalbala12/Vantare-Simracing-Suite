@@ -56,6 +56,6 @@ históricos no se recalibran; los gates de producto son los de `native/`.
 ## Compilación incremental (#1993)
 
 Workers: `vantare-v2/native/scripts/comprobar.ps1 <crate>`; crate tocado y
-sus dependientes directos. La cola reutiliza dos targets por slot en D: entre
+sus dependientes directos, excluyendo Hub y Admin. La cola reutiliza dos targets por slot en D: entre
 ramas. No crear targets por rama ni compilar en C:. CI conserva el workspace
 completo en nightly. Detalles en `vantare-v2/native/README.md`.

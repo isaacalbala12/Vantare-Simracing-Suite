@@ -18,6 +18,8 @@ foreach ($case in $cases) {
 [IO.Directory]::CreateDirectory((Join-Path $fixture '.cargo')) | Out-Null
 Copy-Item (Join-Path $PSScriptRoot '.cargo/config.toml') (Join-Path $fixture '.cargo/config.toml')
 Copy-Item (Join-Path $PSScriptRoot 'gates.ps1') (Join-Path $fixture 'gates.ps1')
+[IO.Directory]::CreateDirectory((Join-Path $fixture 'scripts')) | Out-Null
+Copy-Item (Join-Path $PSScriptRoot 'scripts/slot-workspace.ps1') (Join-Path $fixture 'scripts/slot-workspace.ps1')
 Push-Location $fixture
 try {
     & cargo generate-lockfile --offline

@@ -495,7 +495,9 @@ pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path na
 ```
 
 `comprobar` ejecuta Clippy (incluye tipos) y Nextest del crate y sus dependientes
-directos. Cargo resuelve sus dependencias. CI de PR añade todos los dependientes
+directos, excluyendo siempre `vantare-hub` y `vantare-admin`. Un cambio en el
+núcleo o en `ui` no los compila ni los prueba en local. Cargo resuelve sus
+dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR añade todos los dependientes
 transitivos; push a nightly/testers y merge_group comprueban el workspace.
 Cambios de configuración global o rutas nativas desconocidas fuerzan el conjunto.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
@@ -503,9 +505,10 @@ Nextest usa `--build-jobs`; `-j` controla hilos de test.
 
 La cola admite como máximo dos compilaciones. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
-ramas. No crear targets por rama. Los comandos anidados síncronos reutilizan la
-reserva del ancestro. El runner propio conserva el target; no ejecuta la acción
-de caché que borra incremental y crates propios. Sccache sigue siendo opcional;
+ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
+evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
+reserva del ancestro. El runner propio usa `D:/VantareServer/targets/ci` y conserva el target; no ejecuta la acción
+de caché que borra incremental y crates propios. Sccache usa `D:/VantareServer/cache/sccache` (5 GB, puerto local 4227) y sigue siendo opcional;
 `VANTARE_SCCACHE=0` permite repetir un fallo conservando su primera evidencia.
 
 Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB. Solo

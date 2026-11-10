@@ -14,6 +14,8 @@ if ($Gate -eq 'distribution') {
     & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
     return
 }
+. (Join-Path $PSScriptRoot 'scripts/slot-workspace.ps1')
+Set-VantareSlotWorkspace -Target $TargetDirectory -NativeRoot $PSScriptRoot
 if ($Gate -eq 'prueba' -and -not $BuildConfig) { throw 'Prueba exige -BuildConfig con la configuración pública real.' }
 if ($BuildConfig -and $Gate -ne 'prueba') { throw '-BuildConfig solo se aplica al build prueba.' }
 if ($BuildConfig) { $BuildConfig = (Resolve-Path -LiteralPath $BuildConfig).Path }
@@ -22,6 +24,8 @@ if (-not (Test-Path -LiteralPath $DuckDbDirectory)) { throw 'Ejecuta .\setup-duc
 $directory = (Resolve-Path -LiteralPath $DuckDbDirectory).Path
 if (-not (Test-Path -LiteralPath (Join-Path $directory 'duckdb.lib')) -or
     -not (Test-Path -LiteralPath (Join-Path $directory 'duckdb.dll'))) { throw 'Se necesitan duckdb.lib y duckdb.dll oficiales (Windows).' }
+$previousTarget = [Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process')
+Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
 $previousDirectory = [Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process')
 $previousPath = $env:PATH
 $previousIncremental = [Environment]::GetEnvironmentVariable('CARGO_INCREMENTAL', 'Process')
@@ -57,7 +61,8 @@ try {
     if ($storage.Count -ne 1 -or @($storage[0].features.default).Count -ne 1 -or
         $storage[0].features.default[0] -cne 'bundled-duckdb') { throw 'El default de storage cambió: revisar gates.ps1 antes de desactivar bundled-duckdb.' }
     # /default conserva también los defaults de crates futuros, aunque estén vacíos.
-    $defaults = @($members | Where-Object { $_.name -cne 'vantare-storage' -and
+    $defaultMembers = if ($Packages.Count) { @($members | Where-Object { $_.name -cin $Packages }) } else { $members }
+    $defaults = @($defaultMembers | Where-Object { $_.name -cne 'vantare-storage' -and
         ($Gate -ne 'prueba' -or $_.name -cne 'vantare-admin') -and $null -ne $_.features.PSObject.Properties['default'] } |
         ForEach-Object { "$($_.name)/default" })
     $arguments = switch ($Gate) {
@@ -115,6 +120,7 @@ try {
         "Binarios públicos de prueba en $TargetDirectory/prueba; no distribuir ni medir rendimiento con este perfil."
     }
 } finally {
+    [Environment]::SetEnvironmentVariable('CARGO_TARGET_DIR', $previousTarget, 'Process')
     if ($null -eq $previousNativeRoot) { Remove-Item Env:VANTARE_NATIVE_DATA_ROOT -ErrorAction SilentlyContinue }
     else { [Environment]::SetEnvironmentVariable('VANTARE_NATIVE_DATA_ROOT', $previousNativeRoot, 'Process') }
     if ($null -eq $previousLocalData) { Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue }

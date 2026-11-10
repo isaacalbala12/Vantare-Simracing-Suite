@@ -45,6 +45,17 @@ class ScopeTests(unittest.TestCase):
                      'vantare-v2/native/services/src/lib.rs', '.github/workflows/ci.yml']:
             self.assertTrue(affected.installation_affected([path]))
 
+    def test_fast_path_never_selects_hub_or_admin(self):
+        packages = [
+            {'name': name, 'dependencies': [{'name': dep} for dep in deps]}
+            for name, deps in [('vantare-ui', []), ('vantare-hub', ['vantare-ui']),
+                               ('vantare-admin', ['vantare-ui']), ('vantare-runtime', ['vantare-ui'])]]
+        self.assertEqual(affected.select_for_crate(packages, 'vantare-ui'),
+                         ['vantare-runtime', 'vantare-ui'])
+        for legacy in ['vantare-hub', 'vantare-admin']:
+            with self.assertRaises(ValueError):
+                affected.select_for_crate(packages, legacy)
+
     def test_documentation_outside_native_has_no_native_scope(self):
         self.assertEqual(affected.select(self.packages, ['vantare-v2/docs/guide.md']), [])
 

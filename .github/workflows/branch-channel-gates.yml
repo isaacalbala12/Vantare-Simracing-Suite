@@ -23,6 +23,7 @@ env:
 jobs:
   policy:
     name: Validate promotion path
+    timeout-minutes: 15
     if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
     runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","X64","vantare-1565"]') || 'ubuntu-latest' }}
     outputs:
@@ -468,6 +469,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: native-overlays-${{ github.sha }}
+          overwrite: true
           path: ${{ runner.temp }}/vantare-targets/ci/debug/lifecycle
           if-no-files-found: error
           retention-days: 1
@@ -514,8 +516,8 @@ jobs:
       - name: Run original compiled lifecycle harnesses
         run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite lifecycle
 
-  native_installation:
-    name: Validate native distribution and installation
+  native_distribution:
+    name: Validate native QA distribution
     timeout-minutes: 60
     if: needs.policy.outputs.native != 'false' && needs.policy.outputs.installation != 'false'
     needs: policy
@@ -542,6 +544,28 @@ jobs:
           pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
           if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
 
+  native_installation:
+    # Retain the existing check name; product also requires native_distribution.
+    name: Validate native distribution and installation
+    timeout-minutes: 45
+    if: needs.policy.outputs.native != 'false' && needs.policy.outputs.installation != 'false'
+    needs: policy
+    runs-on: windows-latest
+    env:
+      VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/native-build-setup
       - name: Characterize Windows installation operations
         if: needs.policy.outputs.native != 'false'
         env:
@@ -556,6 +580,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: installation-matrix-windows
+          overwrite: true
           path: |
             ${{ runner.temp }}/installation-matrix/**/snapshot.json
             ${{ runner.temp }}/installation-matrix/**/stdout.log
@@ -566,7 +591,8 @@ jobs:
 
   product:
     name: Validate Vantare blocking gates
-    needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_installation]
+    timeout-minutes: 5
+    needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
     if: always()
     runs-on: ubuntu-latest
     steps:

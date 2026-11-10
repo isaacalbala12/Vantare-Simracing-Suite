@@ -75,6 +75,8 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         for gate in ("clippy", "captura", "archive"):
             self.assertIn(f"-Gate {gate}", gates)
         self.assertIn("telemetry = [bool]$Telemetry", gates)
+        self.assertIn('--legacy-check', gates)
+        self.assertIn('-Gate check -Packages $legacyChecks -PublicTargetsOnly', gates)
         self.assertIn('lifecycle = ($lifecycle.Count -gt 0)', gates)
         self.assertIn("if ($env:TELEMETRIA_SCOPE -ne 'false')", workflow)
         self.assertIn(
@@ -107,7 +109,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
         for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests'):
             self.assertIn(test, workflow)
-        for job in ('native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_installation'):
+        for job in ('policy', 'product', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
             block = re.split(r'\n  \S', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
             self.assertRegex(block, r'timeout-minutes: [1-9][0-9]*')
         archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_tests:', 1)[0]
@@ -123,7 +125,15 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
         self.assertIn('debug/ci-lifecycle/manifest.json', reuse)
         self.assertIn('foreach ($artifact in $lifecycle', reuse)
-        self.assertIn('needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_installation]', workflow)
+        self.assertIn('needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
+        distribution = re.split(r'\n  \S', workflow.split('\n  native_distribution:\n', 1)[1], maxsplit=1)[0]
+        installation = re.split(r'\n  \S', workflow.split('\n  native_installation:\n', 1)[1], maxsplit=1)[0]
+        self.assertIn('-Gate distribution', distribution)
+        self.assertNotIn('ci-installation.ps1', distribution)
+        self.assertIn('ci-installation.ps1', installation)
+        self.assertNotIn('-Gate distribution', installation)
+        self.assertIn('needs: policy', distribution)
+        self.assertIn('needs: policy', installation)
         self.assertIn('if: always()', workflow)
         self.assertIn('native_ci_results.py', workflow)
         self.assertIn("-Gate captura", ci)

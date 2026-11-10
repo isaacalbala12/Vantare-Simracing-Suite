@@ -28,6 +28,7 @@ pub fn typescript() -> String {
         crate::testing::ReportFields,
         crate::testing::TestingReport,
         crate::testing::TestingView,
+        crate::testing::LegacyMigration,
         crate::testing::ReportDraftView,
         crate::roadmap::RoadmapItem,
         crate::roadmap::RoadmapPublication,

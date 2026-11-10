@@ -1395,3 +1395,22 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   ejecutadas en Windows PASS. Sin datos, cuentas ni informes reales. CI pendiente.
 - Los avisos viajan por Reply::Draft.message; el PR de Informes conserva ese mensaje
   conforme al P3. #2026 ya está integrado en nightly@9916195d4 por el orquestador.
+
+
+### VANTA-138 / #2040 · correcciones de review (worker D)
+
+- Sustituye la decisión provisional de no limpiar: la importación aplica la misma
+  limpieza y recorte UTF-8 del GPUI; conserva los bytes originales en `.imported`.
+- Consulta y analiza los dos archivos una vez por sesión, solo al primer Load
+  aceptado. Save/Discard no los leen ni retiran si no hubo Load confirmado.
+- La vista añade `legacy: none | imported | importedTrimmed | preserved`, sin
+  texto libre. Informes debe mostrar el aviso correspondiente (requisito #1995).
+- No se revalida como entrada del editor un borrador que Services ya guardó.
+- Límite: un Discard cuyo archivado falle puede dejar el antiguo disponible para
+  importar en el siguiente Hub. Un archivado parcial conserva `.imported` y el
+  origen elegido hasta retirarlo; la siguiente sesión acepta un archivo idéntico.
+- Dos Hubs pueden guardar entre lectura y escritura: se mantiene la garantía sin
+  CAS del contrato actual, autorizada por Isaac; no se cambia IPC ni Services.
+- Tests con Root propio (sin dependencia de test_support Windows). Los casos de
+  handles/symlinks y el puente se ejecutan en Windows: 13 migración + 1 puente
+  Busy/CoreUnavailable PASS. Clippy cruzado `-D warnings` y compilación PASS.

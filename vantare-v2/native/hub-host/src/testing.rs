@@ -134,15 +134,27 @@ pub fn participation(data: &testing_document::Participation) -> TestingView {
     }
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LegacyMigration {
+    #[default]
+    None,
+    Imported,
+    ImportedTrimmed,
+    Preserved,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ReportDraftView {
+    pub legacy: LegacyMigration,
     pub fields: ReportFields,
     pub exists: bool,
     pub screenshots: Vec<ReportScreenshot>,
 }
 pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
     ReportDraftView {
+        legacy: LegacyMigration::None,
         fields: value.map_or_else(
             || ReportFields {
                 module: "unknown".into(),

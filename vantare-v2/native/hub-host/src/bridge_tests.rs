@@ -462,3 +462,47 @@ fn restart_rejects_live_existing_close_and_missing_ready() {
         restart_case((live, closing, ready), true);
     }
 }
+
+#[test]
+fn legacy_import_dispatch_busy_and_unavailable_preserve_unseen_source() {
+    use vantare_ipc::services_protocol::Reply as CoreReply;
+    for busy in [false, true] {
+        let root = Root::new();
+        let path = root.path.join("testing-center/editor-draft.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, br#"{"version":1,"fields":{"module":"hub","actionText":"old","expectedText":"","observedText":"","contextText":""}}"#).unwrap();
+        let photo = format!("legacy-import-{}", vantare_services::random_id().unwrap());
+        let mut session = restart_session(&root.path, &photo);
+        session.core.unavailable_for_test(busy);
+        session.legacy_draft.begin(crate::testing::Operation::Load);
+        let result = session.complete_testing(
+            7,
+            crate::testing::Operation::Load,
+            CoreReply::Draft {
+                draft: None,
+                message: String::new(),
+            },
+        );
+        assert!(matches!(
+            (busy, result),
+            (true, Err(HostError::Busy)) | (false, Err(HostError::CoreUnavailable))
+        ));
+        session
+            .legacy_draft
+            .begin(crate::testing::Operation::Discard);
+        let result = session
+            .complete_testing(
+                8,
+                crate::testing::Operation::Discard,
+                CoreReply::Draft {
+                    draft: None,
+                    message: String::new(),
+                },
+            )
+            .unwrap();
+        assert!(matches!(result, Some(Reply::DraftDiscard { value })
+            if value.legacy == crate::testing::LegacyMigration::Preserved));
+        assert!(path.exists());
+        assert!(!path.with_extension("json.imported").exists());
+    }
+}

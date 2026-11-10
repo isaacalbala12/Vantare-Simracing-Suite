@@ -701,7 +701,14 @@ impl Session {
     ) -> Result<Option<Reply>, HostError> {
         match self.legacy_draft.complete(operation, reply)? {
             crate::testing_legacy::Next::Complete(reply) => {
-                crate::testing::complete(operation, reply).map(Some)
+                let mut result = crate::testing::complete(operation, reply)?;
+                match &mut result {
+                    Reply::DraftLoad { value }
+                    | Reply::DraftSave { value }
+                    | Reply::DraftDiscard { value } => value.legacy = self.legacy_draft.legacy,
+                    _ => {}
+                }
+                Ok(Some(result))
             }
             crate::testing_legacy::Next::Import(command) => {
                 self.core.request(id, command)?;

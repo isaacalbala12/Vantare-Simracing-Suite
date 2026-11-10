@@ -1,7 +1,7 @@
 //! One-time import of the frozen Hub's two local drafts. Original bytes survive.
 use crate::{
     protocol::HostError,
-    testing::{Operation, ReportFields},
+    testing::{FIELD_LIMITS, LegacyMigration, Operation, ReportFields},
 };
 use serde::Deserialize;
 use std::{
@@ -36,6 +36,7 @@ struct Source {
     bytes: Vec<u8>,
     modified: SystemTime,
     fields: ReportFields,
+    trimmed: bool,
 }
 #[derive(Clone, Copy)]
 enum Failure {
@@ -58,6 +59,9 @@ pub(crate) struct State {
     selected: usize,
     warning: Option<Failure>,
     importing: bool,
+    scanned: bool,
+    surfaced: bool,
+    pub(crate) legacy: LegacyMigration,
 }
 pub(crate) enum Next {
     Import(Command),
@@ -78,6 +82,29 @@ fn module_id(value: &str) -> Option<&'static str> {
         _ => return None,
     })
 }
+// Frozen GPUI store::clean_field parity, without adding a domain dependency.
+fn clean_field(text: &str, limit: usize) -> String {
+    let mut out = String::with_capacity(text.len().min(limit));
+    for ch in text.chars() {
+        match ch {
+            '\n' | '\t' => out.push(ch),
+            '\u{202a}'..='\u{202e}'
+            | '\u{061c}'
+            | '\u{200b}'..='\u{200f}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{2069}'
+            | '\u{feff}' => {}
+            c if c.is_control() => out.push(' '),
+            _ => out.push(ch),
+        }
+    }
+    let mut end = out.len().min(limit);
+    while !out.is_char_boundary(end) {
+        end -= 1;
+    }
+    out.truncate(end);
+    out
+}
 fn source(path: PathBuf, editor: bool) -> Result<Option<Source>, Failure> {
     let info = match fs::symlink_metadata(&path) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -87,7 +114,7 @@ fn source(path: PathBuf, editor: bool) -> Result<Option<Source>, Failure> {
     let modified = info.modified().map_err(|_| Failure::Invalid)?;
     let bytes = files::read(&path, if editor { EDITOR_LIMIT } else { LOCAL_LIMIT })
         .map_err(|_| Failure::Invalid)?;
-    let fields = if editor {
+    let mut fields = if editor {
         let document: EditorDocument =
             serde_json::from_slice(&bytes).map_err(|_| Failure::Invalid)?;
         if document.version != 1 {
@@ -110,7 +137,19 @@ fn source(path: PathBuf, editor: bool) -> Result<Option<Source>, Failure> {
             module: module.into(),
         }
     };
-    // Malformed/oversized legacy text is preserved verbatim, never silently truncated.
+    let original = fields.clone();
+    for (text, limit) in [
+        &mut fields.action_text,
+        &mut fields.expected_text,
+        &mut fields.observed_text,
+        &mut fields.context_text,
+    ]
+    .into_iter()
+    .zip(FIELD_LIMITS)
+    {
+        *text = clean_field(text, limit);
+    }
+    let trimmed = fields != original;
     if !fields.valid() {
         return Err(Failure::Invalid);
     }
@@ -127,6 +166,7 @@ fn source(path: PathBuf, editor: bool) -> Result<Option<Source>, Failure> {
         bytes,
         modified,
         fields,
+        trimmed,
     }))
 }
 impl Source {
@@ -161,24 +201,29 @@ impl State {
             selected: 0,
             warning: None,
             importing: false,
+            scanned: false,
+            surfaced: false,
+            legacy: LegacyMigration::None,
         }
     }
     pub(crate) fn begin(&mut self, operation: Operation) {
-        if !matches!(
-            operation,
-            Operation::Load | Operation::Save | Operation::Discard
-        ) {
+        self.importing = false;
+        if !matches!(operation, Operation::Load) {
             return;
         }
-        self.sources.clear();
-        self.warning = None;
-        self.importing = false;
+        if self.scanned {
+            return;
+        }
+        self.scanned = true;
         for (name, editor) in [("editor-draft.json", true), ("report-draft.json", false)] {
             match source(self.base.join(name), editor) {
                 Ok(Some(source)) => self.sources.push(source),
                 Ok(None) => {}
                 Err(error) => self.warning = Some(error),
             }
+        }
+        if !self.sources.is_empty() || self.warning.is_some() {
+            self.legacy = LegacyMigration::Preserved;
         }
         self.selected = usize::from(
             self.sources.len() == 2 && self.sources[1].modified > self.sources[0].modified,
@@ -223,12 +268,6 @@ impl State {
             return Ok(Next::Complete(reply));
         }
         if let Reply::Draft { draft, message } = &mut reply {
-            if draft
-                .as_ref()
-                .is_some_and(|saved| !ReportFields::from(&saved.fields).valid())
-            {
-                return Err(HostError::Rejected);
-            }
             if matches!(operation, Operation::Load)
                 && draft.is_none()
                 && !self.importing
@@ -249,12 +288,26 @@ impl State {
                 self.importing = false;
                 return Err(HostError::Rejected);
             }
+            let imported = self.importing;
             self.importing = false;
-            if !self.sources.is_empty()
+            if matches!(operation, Operation::Load) && draft.is_some() {
+                self.surfaced = true;
+            }
+            if self.surfaced
+                && !self.sources.is_empty()
                 && (draft.is_some() || matches!(operation, Operation::Discard))
             {
                 match self.archive() {
                     Ok(()) => {
+                        self.legacy = if imported {
+                            if self.sources[self.selected].trimmed {
+                                LegacyMigration::ImportedTrimmed
+                            } else {
+                                LegacyMigration::Imported
+                            }
+                        } else {
+                            LegacyMigration::Preserved
+                        };
                         self.sources.clear();
                         message
                             .push_str(" · borradores antiguos archivados; prevalece el protegido");
@@ -263,6 +316,7 @@ impl State {
                 }
             }
             if let Some(warning) = self.warning {
+                self.legacy = LegacyMigration::Preserved;
                 message.push_str(" · ");
                 message.push_str(warning.message());
             }

@@ -69,6 +69,7 @@ export function createMockHost(sceneName = "ajustes-base") {
       contextText: "",
     },
     exists: false,
+    legacy: "none",
     screenshots: [],
   };
   const testing: import("../contract/generated/contract").TestingView = {
@@ -224,6 +225,7 @@ export function createMockHost(sceneName = "ajustes-base") {
           draft = {
             fields: structuredClone(request.fields),
             exists: true,
+            legacy: "none",
             screenshots: [],
           };
         if (request.method === "draft.discard")
@@ -236,6 +238,7 @@ export function createMockHost(sceneName = "ajustes-base") {
               contextText: "",
             },
             exists: false,
+            legacy: "none",
             screenshots: [],
           };
         return {

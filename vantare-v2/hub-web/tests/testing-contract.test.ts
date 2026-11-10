@@ -101,7 +101,7 @@ describe("Testing Center closed wire and local persistence double", () => {
       id: 42,
       result: {
         method: "draft.save",
-        value: { fields, exists: true, screenshots: [] },
+        value: { fields, exists: true, screenshots: [], legacy: "none" },
       },
     });
     expect(isHostMessage(save)).toBe(true);
@@ -117,6 +117,47 @@ describe("Testing Center closed wire and local persistence double", () => {
     expect(host(request("draft.load"))).toMatchObject({
       result: { value: { exists: false } },
     });
+  });
+  it("accepts only the closed migration states and never a free warning", () => {
+    const host = createMockHost("testing-reports");
+    const saved = host(request("draft.save", { fields }));
+    for (const legacy of ["none", "imported", "importedTrimmed", "preserved"]) {
+      expect(
+        isHostMessage({
+          ...saved,
+          result: {
+            method: "draft.load",
+            value: { fields, exists: true, screenshots: [], legacy },
+          },
+        }),
+      ).toBe(true);
+    }
+    for (const legacy of ["private text", null, 1, {}, []]) {
+      expect(
+        isHostMessage({
+          ...saved,
+          result: {
+            method: "draft.load",
+            value: { fields, exists: true, screenshots: [], legacy },
+          },
+        }),
+      ).toBe(false);
+    }
+    expect(
+      isHostMessage({
+        ...saved,
+        result: {
+          method: "draft.load",
+          value: {
+            fields,
+            exists: true,
+            screenshots: [],
+            legacy: "preserved",
+            message: "private",
+          },
+        },
+      }),
+    ).toBe(false);
   });
   it("denies missing rights and reports an unavailable core without saving", () => {
     expect(createMockHost()(request("draft.save", { fields }))).toMatchObject({

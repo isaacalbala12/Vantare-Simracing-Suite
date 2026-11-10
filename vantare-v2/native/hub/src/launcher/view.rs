@@ -1138,7 +1138,7 @@ mod tests {
     pub(super) fn with_decision_window(
         test: impl FnOnce(gpui::WindowHandle<Launcher>, &mut gpui::HeadlessAppContext) + 'static,
     ) {
-        gpui_platform::headless().run(move |app| {
+        gpui::platform::headless().run(move |app| {
             let root = std::env::temp_dir().join(format!(
                 "launcher-decisions-{}",
                 vantare_services::random_id().expect("id QA")
@@ -1147,7 +1147,7 @@ mod tests {
             let store = Store::in_memory(root.join("launcher.json"), Document::default())
                 .expect("documento QA");
             let mut cx = gpui::HeadlessAppContext::with_asset_source(
-                gpui_platform::current_platform(true).text_system(),
+                gpui::platform::current_platform(true).text_system(),
                 std::sync::Arc::new(crate::shell::assets::Icons),
             );
             cx.update(|cx| {
@@ -1537,7 +1537,7 @@ mod tests {
         let path = vantare_ipc::launcher::status_path(&settings);
         let status = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
         std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
-        gpui_platform::headless().run(move |cx| {
+        gpui::platform::headless().run(move |cx| {
             let store = Store::load(settings).expect("Launcher aislado");
             let view = cx.new(|cx| Launcher::build(store, Some(Discovery::default()), cx));
             view.update(cx, |launcher, _| {
@@ -1564,7 +1564,7 @@ mod tests {
     fn cached_resident_keeps_errors_decisions_and_freshness() {
         let settings = resident_test_settings("semantics");
         let path = vantare_ipc::launcher::status_path(&settings);
-        gpui_platform::headless().run(move |cx| {
+        gpui::platform::headless().run(move |cx| {
             let store = Store::load(settings).expect("Launcher aislado");
             let view = cx.new(|cx| Launcher::build(store, Some(Discovery::default()), cx));
             view.update(cx, |launcher, cx| {
@@ -1632,7 +1632,7 @@ mod tests {
             })
             .collect();
         std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
-        gpui_platform::headless().run(move |cx| {
+        gpui::platform::headless().run(move |cx| {
             let store = Store::load(settings).expect("Launcher aislado");
             let view = cx.new(|cx| Launcher::build(store, Some(Discovery::default()), cx));
             view.update(cx, |launcher, _| {

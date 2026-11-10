@@ -20,7 +20,7 @@ fn hidden_frames_are_not_projected_without_repainting() {
 }
 #[test]
 fn preview_mode_toolbar_builds_without_duplicate_hover_styles() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -32,7 +32,7 @@ fn preview_mode_toolbar_builds_without_duplicate_hover_styles() {
 }
 #[test]
 fn strip_visibility_toggle_resets_the_inspector() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -53,7 +53,7 @@ fn strip_visibility_toggle_resets_the_inspector() {
 }
 #[test]
 fn track_button_serves_cached_state_and_follows_tray_hide() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -120,7 +120,7 @@ fn start_preview(studio: &mut Studio, cx: &mut Context<Studio>) {
 }
 #[test]
 fn real_scene_and_photo_selection_use_same_snapshot_for_all_widgets_without_editing_layout() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -153,7 +153,7 @@ fn real_scene_and_photo_selection_use_same_snapshot_for_all_widgets_without_edit
 }
 #[test]
 fn resize_preview_freezes_document_and_commit_roundtrips_with_one_undo() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -228,7 +228,7 @@ fn resize_preview_freezes_document_and_commit_roundtrips_with_one_undo() {
 }
 #[test]
 fn geometry_edits_keep_dimension_control_identity_and_sync_both_axes() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -274,7 +274,7 @@ fn geometry_edits_keep_dimension_control_identity_and_sync_both_axes() {
 }
 #[test]
 fn clicking_resize_handle_without_motion_does_not_write_geometry_or_history() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -308,7 +308,7 @@ fn clicking_resize_handle_without_motion_does_not_write_geometry_or_history() {
 }
 #[test]
 fn resize_cancel_restores_renderer_and_keyboard_resize_keeps_position() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -360,7 +360,7 @@ fn resize_cancel_restores_renderer_and_keyboard_resize_keeps_position() {
 }
 #[test]
 fn geometry_changes_cancel_manual_and_fitted_gestures_without_a_document_edit() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         for step in [0, 3, 5] {
             for rail_change in [false, true] {
@@ -404,10 +404,10 @@ fn assert_canvas_elements(assertions: fn(&mut Studio, &mut Context<Studio>)) {
             div()
         }
     }
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let file = crate::document::tests::File::new();
         let mut test = gpui::HeadlessAppContext::with_asset_source(
-            gpui_platform::current_platform(true).text_system(),
+            gpui::platform::current_platform(true).text_system(),
             std::sync::Arc::new(crate::shell::assets::Icons),
         );
         test.update(|cx| cx.set_global(orbit::theme::Theme::default()));
@@ -491,7 +491,7 @@ fn selection_matches_painted_bounds_for_every_widget_and_zoom() {
 }
 #[test]
 fn live_starts_empty_and_uses_only_received_photos_even_during_a_gesture() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -521,7 +521,7 @@ fn live_starts_empty_and_uses_only_received_photos_even_during_a_gesture() {
 #[test]
 fn unavailable_scenarios_explain_their_state_without_offering_button_actions() {
     use gpui::Element;
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         for (index, label) in ["Salida", "Boxes", "Lluvia", "Noche"]
             .into_iter()
@@ -686,10 +686,10 @@ fn canvas_resolution_changes_preview_and_anchors_without_moving_widgets() {
             })
         }
     }
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let mut test = gpui::HeadlessAppContext::with_asset_source(
-            gpui_platform::current_platform(true).text_system(),
+            gpui::platform::current_platform(true).text_system(),
             std::sync::Arc::new(crate::shell::assets::Icons),
         );
         test.update(|cx| cx.set_global(orbit::theme::Theme::default()));
@@ -999,7 +999,7 @@ fn held_arrows_repeat_accelerate_and_commit_once_on_release() {
             expected.to_bits()
         );
     }
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -1040,7 +1040,7 @@ fn held_arrows_repeat_accelerate_and_commit_once_on_release() {
 }
 #[test]
 fn opacity_preview_keeps_renderers_and_disk_then_commits_one_undoable_edit() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -1085,7 +1085,7 @@ fn opacity_preview_keeps_renderers_and_disk_then_commits_one_undoable_edit() {
 }
 #[test]
 fn interrupted_opacity_preview_is_discarded() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -1103,7 +1103,7 @@ fn interrupted_opacity_preview_is_discarded() {
 }
 #[test]
 fn click_and_pointer_noise_leave_position_disk_and_history_unchanged() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -1224,7 +1224,7 @@ fn catalog_click_adds_selected_in_a_free_spot_and_locked_widgets_only_warn() {
     use super::add_widget::Toast;
     use crate::shell::navigation::Access;
     use vantare_ipc::control::CatalogAccess;
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
@@ -1382,7 +1382,7 @@ fn drop_adds_only_with_its_ghost_and_enter_adds_the_first_unlocked_match() {
     use super::add_widget::{Ghost, Snap};
     use crate::shell::navigation::Access;
     use vantare_ipc::control::CatalogAccess;
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));

@@ -198,7 +198,7 @@ mod tests {
         };
         let observed = Arc::new(AtomicU8::new(0));
         let result = Arc::clone(&observed);
-        gpui_platform::headless().run(move |cx| {
+        gpui::platform::headless().run(move |cx| {
             let file = crate::document::tests::File::new();
             let (send, _requests) = std::sync::mpsc::sync_channel(8);
             let remote = cx.new(|cx| {

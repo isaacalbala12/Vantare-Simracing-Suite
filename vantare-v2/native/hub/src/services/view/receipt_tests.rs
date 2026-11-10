@@ -19,7 +19,7 @@ fn legacy_files_are_archived_only_after_protected_draft_ack() {
     )
     .unwrap();
     let cleanup = root.clone();
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
@@ -68,7 +68,7 @@ fn different_protected_draft_wins_and_archives_plaintext() {
     let original = serde_json::json!({"version":1,"fields":legacy}).to_string();
     std::fs::write(&path, &original).unwrap();
     let cleanup = root.clone();
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
@@ -120,7 +120,7 @@ fn archive_failure_still_loads_protected_draft_and_keeps_both_files() {
     std::fs::write(&path, serde_json::json!({"version":1,"fields": Fields { action_text: "legacy".into(), module: "hub".into(), ..Default::default() }}).to_string()).unwrap();
     std::fs::write(path.with_extension("json.imported"), b"unrelated archive").unwrap();
     let cleanup = root.clone();
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
@@ -173,7 +173,7 @@ fn pending_discard_and_existing_queue_do_not_import_legacy_draft() {
     let path = directory.join("editor-draft.json");
     std::fs::write(&path, serde_json::json!({"version":1,"fields": Fields { action_text: "legacy".into(), module: "hub".into(), ..Default::default() }}).to_string()).unwrap();
     let cleanup = root.clone();
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
@@ -215,7 +215,7 @@ fn protected_save_failure_leaves_legacy_source_intact() {
     let original = serde_json::json!({"version":1,"fields": Fields { action_text: "legacy".into(), module: "hub".into(), ..Default::default() }}).to_string();
     std::fs::write(&path, &original).unwrap();
     let cleanup = root.clone();
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
@@ -248,7 +248,7 @@ fn protected_save_failure_leaves_legacy_source_intact() {
 #[test]
 fn final_save_acknowledges_only_the_requested_fields() {
     use super::*;
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote =
             cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
@@ -286,7 +286,7 @@ fn final_save_acknowledges_only_the_requested_fields() {
 #[test]
 fn busy_services_defers_final_draft_save_without_overwriting_the_queue() {
     use super::*;
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, requests) = mpsc::sync_channel(8);
         let remote =
             cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
@@ -304,7 +304,7 @@ fn busy_services_defers_final_draft_save_without_overwriting_the_queue() {
 #[test]
 fn inflight_without_queue_defers_final_draft_save() {
     use super::*;
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, requests) = mpsc::sync_channel(8);
         let remote =
             cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
@@ -321,7 +321,7 @@ fn inflight_without_queue_defers_final_draft_save() {
 #[test]
 fn autosave_waits_two_seconds_and_never_replaces_a_queued_user_save() {
     use super::*;
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, requests) = mpsc::sync_channel(8);
         let remote =
             cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
@@ -364,7 +364,7 @@ fn autosave_waits_two_seconds_and_never_replaces_a_queued_user_save() {
 #[test]
 fn autosave_reply_cannot_replace_a_later_edit() {
     use super::*;
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote =
             cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));

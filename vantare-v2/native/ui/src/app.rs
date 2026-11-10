@@ -1191,7 +1191,7 @@ fn run_host<T: Send + 'static>(
     start_hidden: bool,
     shutdown: Option<flume::Receiver<()>>,
 ) {
-    gpui_platform::application().run(move |cx: &mut App| {
+    gpui::platform::application().run(move |cx: &mut App| {
         if !init(cx) {
             return;
         }
@@ -2034,7 +2034,7 @@ mod tests {
                 let _ = self.0.send(()); // El receptor puede haber terminado el test.
             }
         }
-        let application = gpui_platform::application();
+        let application = gpui::platform::application();
         let executor = application.background_executor();
         let (started_tx, started_rx) = flume::bounded(1);
         let (released_tx, released_rx) = flume::bounded(1);

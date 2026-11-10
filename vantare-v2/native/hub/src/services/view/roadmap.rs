@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn failed_dispatch_is_throttled_instead_of_retrying_on_every_shell_tick() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn polling_loads_cache_refreshes_immediately_and_every_five_minutes_without_overlap() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn failed_refresh_preserves_publication_user_context_and_retries_after_five_minutes() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));

@@ -47,7 +47,7 @@ fn run() -> Result<(), String> {
     }
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
-    gpui_platform::application()
+    gpui::platform::application()
         .with_assets(AdminAssets)
         .run(move |cx: &mut App| {
             cx.on_window_closed(|cx, _| {

@@ -1,0 +1,492 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -225,3 +225,8 @@
+ [lints.rust.unexpected_cfgs]
+ level = "allow"
+ priority = 0
++
++[dependencies.vantare-profiling]
++path = "../../profiling"
++
++[workspace]
+--- a/src/direct_write.rs
++++ b/src/direct_write.rs
+@@ -175,6 +175,7 @@
+     }
+ 
+     fn layout_line(&self, text: &str, font_size: Pixels, runs: &[FontRun]) -> LineLayout {
++        let _span = crate::profiling::begin(crate::profiling::Stage::TextLayout);
+         self.state
+             .write()
+             .layout_line(&self.components, text, font_size, runs)
+@@ -690,7 +691,7 @@
+         params: &RenderGlyphParams,
+     ) -> Result<IDWriteGlyphRunAnalysis> {
+         let (rendering_mode, grid_fit_mode) = self.rendering_mode(params)?;
+-        let antialias_mode = if params.subpixel_rendering {
++        let antialias_mode = if params.subpixel_rendering || !params.is_emoji {
+             DWRITE_TEXT_ANTIALIAS_MODE_CLEARTYPE
+         } else {
+             DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE
+@@ -788,7 +789,7 @@
+                 .map(|layer| layer.analysis)
+                 .collect()
+         };
+-        let texture_type = if params.subpixel_rendering {
++        let texture_type = if params.subpixel_rendering || !params.is_emoji {
+             DWRITE_TEXTURE_CLEARTYPE_3x1
+         } else {
+             DWRITE_TEXTURE_ALIASED_1x1
+@@ -855,7 +856,7 @@
+         glyph_bounds: Bounds<DevicePixels>,
+     ) -> Result<Vec<u8>> {
+         let glyph_analysis = self.glyph_analysis(components, params)?;
+-        if !params.subpixel_rendering {
++        if !params.subpixel_rendering && params.is_emoji {
+             let mut bitmap_data =
+                 vec![0u8; glyph_bounds.size.width.0 as usize * glyph_bounds.size.height.0 as usize];
+             unsafe {
+@@ -880,6 +881,8 @@
+ 
+         let mut bitmap_data = vec![0u8; pixel_count * 4];
+ 
++        // SAFETY: the live analysis writes three bytes per pixel into the sized slice;
++        // RECT is the raster bounds returned by that same analysis.
+         unsafe {
+             glyph_analysis.CreateAlphaTexture(
+                 DWRITE_TEXTURE_CLEARTYPE_3x1,
+@@ -891,6 +894,20 @@
+                 },
+                 &mut bitmap_data[..pixel_count * 3],
+             )?;
++        }
++
++        if !params.subpixel_rendering {
++            // Skia's RGBToA8 averages coverage before the grayscale gamma correction.
++            // Compact in place: each write is behind the next unread RGB triple.
++            for pixel_ix in 0..pixel_count {
++                let src = pixel_ix * 3;
++                let coverage = u16::from(bitmap_data[src])
++                    + u16::from(bitmap_data[src + 1])
++                    + u16::from(bitmap_data[src + 2]);
++                bitmap_data[pixel_ix] = (coverage / 3) as u8;
++            }
++            bitmap_data.truncate(pixel_count);
++            return Ok(bitmap_data);
+         }
+ 
+         // The output buffer expects RGBA data, so pad the alpha channel with zeros.
+@@ -1800,7 +1817,7 @@
+     use super::DirectWriteTextSystem;
+     use crate::direct_write::ClusterAnalyzer;
+     use anyhow::Result;
+-    use gpui::{Font, FontWeight, PlatformTextSystem, TextRun, TextSystem, WindowTextSystem, px};
++    use gpui::{RenderGlyphParams, point, Font, FontWeight, PlatformTextSystem, TextRun, TextSystem, WindowTextSystem, px};
+     use std::sync::Arc;
+     use windows::Win32::Graphics::DirectWrite::{DWRITE_FONT_STRETCH_NORMAL, DWRITE_TEXT_METRICS};
+ 
+@@ -2038,6 +2055,47 @@
+     }
+ 
+     #[test]
++    fn grayscale_rasterization_matches_clear_type_coverage() -> Result<()> {
++        let text_system = DirectWriteTextSystem::new()?;
++        let font_id = text_system.font_id(&Font {
++            family: "Segoe UI".into(),
++            ..Default::default()
++        })?;
++        for ch in ['A', 'V'] {
++            let glyph_id = text_system
++                .glyph_for_char(font_id, ch)
++                .ok_or_else(|| anyhow::anyhow!("missing required glyph {ch}"))?;
++            for x in 0..gpui::SUBPIXEL_VARIANTS_X {
++                let params = RenderGlyphParams {
++                    font_id,
++                    glyph_id,
++                    font_size: px(13.0),
++                    subpixel_variant: point(x, 0u8),
++                    scale_factor: 1.0,
++                    is_emoji: false,
++                    subpixel_rendering: false,
++                    dilation: 0,
++                };
++                let color_params = RenderGlyphParams {
++                    subpixel_rendering: true,
++                    ..params.clone()
++                };
++                let bounds = text_system.glyph_raster_bounds(&color_params)?;
++                let (_, color) = text_system.rasterize_glyph(&color_params, bounds)?;
++                let expected: Vec<_> = color
++                    .chunks_exact(4)
++                    .map(|p| ((u16::from(p[0]) + u16::from(p[1]) + u16::from(p[2])) / 3) as u8)
++                    .collect();
++                assert!(expected.iter().any(|&coverage| coverage > 0));
++                let (size, grayscale) = text_system.rasterize_glyph(&params, bounds)?;
++                assert_eq!(size, bounds.size);
++                assert_eq!(grayscale, expected, "glyph {ch}, horizontal phase {x}");
++            }
++        }
++        Ok(())
++    }
++
++    #[test]
+     fn test_cluster_map() {
+         let cluster_map = [0];
+         let mut analyzer = ClusterAnalyzer::new(&cluster_map, 1);
+--- a/src/directx_renderer.rs
++++ b/src/directx_renderer.rs
+@@ -217,7 +217,8 @@
+                 grayscale_enhanced_contrast: self.font_info.grayscale_enhanced_contrast,
+                 subpixel_enhanced_contrast: self.font_info.subpixel_enhanced_contrast,
+                 is_bgr: self.font_info.is_bgr as u32,
+-                _pad: [0; 3],
++                opaque_window: u32::from(clear_color[3] == 1.0),
++                _pad: [0; 2],
+             }],
+         )?;
+         unsafe {
+@@ -243,6 +244,7 @@
+ 
+     #[inline]
+     fn present(&mut self) -> Result<()> {
++        let span = crate::profiling::begin(crate::profiling::Stage::Present);
+         let result = unsafe {
+             self.resources
+                 .as_ref()
+@@ -250,6 +252,8 @@
+                 .swap_chain
+                 .Present(0, DXGI_PRESENT(0))
+         };
++        drop(span);
++        crate::profiling::report_if_due();
+         result.ok().context("Presenting swap chain failed")
+     }
+ 
+@@ -351,6 +355,7 @@
+         scene: &Scene,
+         background_appearance: WindowBackgroundAppearance,
+     ) -> Result<()> {
++        let _span = crate::profiling::begin(crate::profiling::Stage::GpuSubmit);
+         self.pre_draw(&match background_appearance {
+             WindowBackgroundAppearance::Opaque => [1.0f32; 4],
+             _ => [0.0f32; 4],
+@@ -1073,8 +1078,11 @@
+     grayscale_enhanced_contrast: f32,
+     subpixel_enhanced_contrast: f32,
+     is_bgr: u32,
+-    _pad: [u32; 3],
+-}
++    opaque_window: u32,
++    _pad: [u32; 2],
++}
++
++const _: () = assert!(std::mem::size_of::<GlobalParams>() == 48);
+ 
+ #[derive(Clone, Copy, Debug, Default)]
+ #[repr(C, align(16))]
+--- a/src/events.rs
++++ b/src/events.rs
+@@ -28,6 +28,36 @@
+ pub(crate) const WM_GPUI_KEYBOARD_LAYOUT_CHANGED: u32 = WM_USER + 6;
+ pub(crate) const WM_GPUI_GPU_DEVICE_LOST: u32 = WM_USER + 7;
+ pub(crate) const WM_GPUI_DISPLAYS_CHANGED: u32 = WM_USER + 10;
++
++// Vantare per-window zoom protocol; kept in sync with vantare-ui/lib.rs.
++const WM_VANTARE_WINDOW_ZOOM: u32 = WM_APP + 0x1470;
++
++// Hub R9.5 supports 1280×720 at 100%; 800 forced the XS layout down to 90%.
++fn content_zoom_scale(width: f32, height: f32, dpi: f32, percent: u16) -> f32 {
++    let limit = (width / 1280.0).min(height / 720.0).max(dpi * 0.9);
++    (dpi * f32::from(percent) / 100.0).min(limit)
++}
++
++#[cfg(test)]
++mod zoom_tests {
++    use super::content_zoom_scale;
++
++    #[test]
++    fn supported_client_keeps_100_percent_and_limits_larger_zoom_per_window() {
++        for (width, height, dpi, requested, expected) in [
++            (1280.0, 720.0, 1.0, 100, 1.0),
++            (1280.0, 720.0, 1.0, 125, 1.0),
++            (1280.0, 720.0, 1.0, 90, 0.9),
++            (1600.0, 900.0, 1.25, 100, 1.25),
++            (1600.0, 900.0, 1.25, 125, 1.25),
++            (1920.0, 1080.0, 1.0, 125, 1.25),
++        ] {
++            assert!(
++                (content_zoom_scale(width, height, dpi, requested) - expected).abs() < f32::EPSILON
++            );
++        }
++    }
++}
+ 
+ const SIZE_MOVE_LOOP_TIMER_ID: usize = 1;
+ 
+@@ -103,6 +133,7 @@
+             WM_TIMER => self.handle_timer_msg(handle, wparam),
+             WM_NCCALCSIZE => self.handle_calc_client_size(handle, wparam, lparam),
+             WM_DPICHANGED => self.handle_dpi_changed_msg(handle, wparam, lparam),
++            WM_VANTARE_WINDOW_ZOOM => self.handle_zoom_msg(handle, wparam),
+             WM_DISPLAYCHANGE => self.handle_display_change_msg(handle),
+             WM_NCHITTEST => self.handle_hit_test_msg(handle, lparam),
+             WM_PAINT => self.handle_paint_msg(handle),
+@@ -205,7 +236,8 @@
+ 
+     fn handle_get_min_max_info_msg(&self, lparam: LPARAM) -> Option<isize> {
+         let min_size = self.state.min_size?;
+-        let scale_factor = self.state.scale_factor.get();
++        // Window constraints use monitor DPI, never the content zoom.
++        let scale_factor = self.state.dpi_scale.get();
+         let boarder_offset = &self.state.border_offset;
+ 
+         unsafe {
+@@ -257,6 +289,27 @@
+         scale_factor: f32,
+         should_resize_renderer: bool,
+     ) {
++        let scale_factor = if self.state.limit_zoom.get() {
++            let dpi = self.state.dpi_scale.get();
++            let effective = content_zoom_scale(
++                device_size.width.0 as f32,
++                device_size.height.0 as f32,
++                dpi,
++                self.state.zoom_percent.get(),
++            );
++            let ratio = self.state.scale_factor.get() / effective;
++            self.state.origin.set(self.state.origin.get() * ratio);
++            let restore = self.state.fullscreen_restore_bounds.get();
++            self.state.fullscreen_restore_bounds.set(Bounds::new(
++                restore.origin * ratio,
++                size(restore.size.width * ratio, restore.size.height * ratio),
++            ));
++            self.state.scale_factor.set(effective);
++            self.state.direct_manipulation.set_scale_factor(effective);
++            effective
++        } else {
++            scale_factor
++        };
+         let new_logical_size = device_size.to_pixels(scale_factor);
+ 
+         self.state.logical_size.set(new_logical_size);
+@@ -870,6 +923,35 @@
+         }
+     }
+ 
++    fn handle_zoom_msg(&self, handle: HWND, wparam: WPARAM) -> Option<isize> {
++        if !matches!(wparam.0, 90 | 100 | 110 | 125) {
++            return Some(0);
++        }
++        // SAFETY: handle is the live HWND currently dispatching this message.
++        let dpi = unsafe { GetDpiForWindow(handle) };
++        let mut rect = RECT::default();
++        // SAFETY: rect is valid writable storage for the current client bounds.
++        if unsafe { GetClientRect(handle, &mut rect) }.is_err() {
++            return Some(0);
++        }
++        self.state.zoom_percent.set(wparam.0 as u16);
++        self.state.limit_zoom.set(true);
++        self.state
++            .dpi_scale
++            .set(dpi as f32 / USER_DEFAULT_SCREEN_DPI as f32);
++        let scale = dpi as f32 / USER_DEFAULT_SCREEN_DPI as f32
++            * self.state.zoom_percent.get() as f32
++            / 100.0;
++        let device_size = size(
++            DevicePixels(rect.right - rect.left),
++            DevicePixels(rect.bottom - rect.top),
++        );
++        // Keep the physical client size and swap chain; GPUI re-reads scale,
++        // viewport and pointer coordinates through its existing resize callback.
++        self.handle_size_change(device_size, scale, false);
++        Some(0)
++    }
++
+     fn handle_dpi_changed_msg(
+         &self,
+         handle: HWND,
+@@ -877,9 +959,13 @@
+         lparam: LPARAM,
+     ) -> Option<isize> {
+         let new_dpi = wparam.loword() as f32;
++        self.state
++            .dpi_scale
++            .set(new_dpi / USER_DEFAULT_SCREEN_DPI as f32);
+ 
+         let is_maximized = self.state.is_maximized();
+-        let new_scale_factor = new_dpi / USER_DEFAULT_SCREEN_DPI as f32;
++        let new_scale_factor =
++            new_dpi / USER_DEFAULT_SCREEN_DPI as f32 * self.state.zoom_percent.get() as f32 / 100.0;
+         self.state.scale_factor.set(new_scale_factor);
+         self.state.border_offset.update(handle).log_err();
+ 
+--- a/src/gpui_windows.rs
++++ b/src/gpui_windows.rs
+@@ -1,4 +1,8 @@
+ #![cfg(target_os = "windows")]
++
++// Diagnóstico apagado por VANTARE_PROFILE_PHASES; no dependencia hacia ui.
++#[allow(dead_code)]
++use vantare_profiling as profiling;
+ 
+ mod clipboard;
+ mod destination_list;
+--- a/src/shaders.hlsl
++++ b/src/shaders.hlsl
+@@ -6,7 +6,8 @@
+     float grayscale_enhanced_contrast;
+     float subpixel_enhanced_contrast;
+     uint is_bgr;
+-    uint3 global_pad;
++    uint opaque_window;
++    uint2 global_pad;
+ };
+ 
+ cbuffer BatchParams: register(b1) {
+@@ -250,6 +251,9 @@
+ float4 over(float4 below, float4 above) {
+     float4 result;
+     float alpha = above.a + below.a * (1.0 - above.a);
++    if (alpha == 0.0) {
++        return float4(0., 0., 0., 0.);
++    }
+     result.rgb = (above.rgb * above.a + below.rgb * below.a * (1.0 - above.a)) / alpha;
+     result.a = alpha;
+     return result;
+@@ -396,7 +400,7 @@
+             // Triangular-distributed noise breaks up 8-bit quantization steps.
+             // ±2/255 for RGB (enough for dark-on-dark compositing),
+             // ±3/255 for alpha (needs more because alpha × dark color = tiny steps).
+-            {
++            if (opaque_window == 0u) {
+                 float2 seed = position * 0.6180339887; // golden ratio spread
+                 float r1 = frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
+                 float r2 = frac(sin(dot(seed, float2(39.3460, 11.135))) * 24634.6345);
+@@ -941,6 +945,7 @@
+         }
+     }
+ 
++    alpha = saturate(alpha); // Quadrature must not exceed unit coverage.
+     if (shadow.inset != 0u) {
+         // The inset shadow is the complement of the (blurred) hole rect, clipped to the element.
+         // `saturate(0.5 - d)` gives a 1-pixel antialiased edge: d <= -0.5 -> 1, d >= 0.5 -> 0.
+@@ -1183,7 +1188,10 @@
+ 
+ float4 monochrome_sprite_fragment(MonochromeSpriteFragmentInput input): SV_Target {
+     float sample = t_sprite.Sample(s_sprite, input.tile_position).r;
+-    float alpha_corrected = apply_contrast_and_gamma_correction(sample, input.color.rgb, grayscale_enhanced_contrast, gamma_ratios);
++    // ISA-1427: grayscale profile measured against the frozen Chrome references.
++    // gpui::get_gamma_correction_ratios(2.2); keep the system profile for ClearType.
++    const float4 grayscale_gamma_ratios = float4(0.2046960592f, -1.3918368816f, 2.0006999969f, -0.3514729738f);
++    float alpha_corrected = apply_contrast_and_gamma_correction(sample, input.color.rgb, 1.5f, grayscale_gamma_ratios);
+     return float4(input.color.rgb, input.color.a * alpha_corrected);
+ }
+ 
+--- a/src/window.rs
++++ b/src/window.rs
+@@ -51,6 +51,10 @@
+     pub appearance: Cell<WindowAppearance>,
+     pub background_appearance: Cell<WindowBackgroundAppearance>,
+     pub scale_factor: Cell<f32>,
++    /// Application zoom belongs to this HWND; monitor DPI remains independent.
++    pub zoom_percent: Cell<u16>,
++    pub dpi_scale: Cell<f32>,
++    pub limit_zoom: Cell<bool>,
+     pub restore_from_minimized: Cell<Option<Box<dyn FnMut(RequestFrameOptions)>>>,
+ 
+     pub callbacks: Callbacks,
+@@ -167,6 +171,9 @@
+             appearance: Cell::new(appearance),
+             background_appearance: Cell::new(WindowBackgroundAppearance::Opaque),
+             scale_factor: Cell::new(scale_factor),
++            zoom_percent: Cell::new(100),
++            dpi_scale: Cell::new(scale_factor),
++            limit_zoom: Cell::new(false),
+             restore_from_minimized: Cell::new(restore_from_minimized),
+             min_size,
+             callbacks,
+@@ -515,7 +522,6 @@
+         if !disable_direct_composition {
+             dwexstyle |= WS_EX_NOREDIRECTIONBITMAP;
+         }
+-
+         let hinstance = get_module_handle();
+         let display = if let Some(display_id) = params.display_id {
+             WindowsDisplay::new(display_id)
+@@ -524,6 +530,20 @@
+         }
+         .or_else(WindowsDisplay::primary_monitor)
+         .context("failed to find any monitor")?;
++        let initial = params.bounds.to_device_pixels(display.scale_factor());
++        // Only hidden popups explicitly placed left of the entire virtual
++        // desktop bypass placement. Onscreen hidden windows keep their normal
++        // deferred-show behavior. The capture owner enumerates the monitors
++        // and verifies the actual HWND before presenting it.
++        let hidden_popup = params.kind == WindowKind::PopUp
++            && !params.show
++            && !params.focus
++            && initial.origin.x.0.saturating_add(initial.size.width.0)
++                < unsafe { GetSystemMetrics(SM_XVIRTUALSCREEN) };
++        if hidden_popup {
++            dwexstyle |= WS_EX_NOACTIVATE;
++            dwexstyle &= !WS_EX_TOPMOST;
++        }
+         let appearance = system_appearance().unwrap_or_default();
+         let mut context = WindowCreateContext {
+             inner: None,
+@@ -554,10 +574,26 @@
+                 WINDOW_CLASS_NAME,
+                 &window_name,
+                 dwstyle,
+-                CW_USEDEFAULT,
+-                CW_USEDEFAULT,
+-                CW_USEDEFAULT,
+-                CW_USEDEFAULT,
++                if hidden_popup {
++                    initial.origin.x.0
++                } else {
++                    CW_USEDEFAULT
++                },
++                if hidden_popup {
++                    initial.origin.y.0
++                } else {
++                    CW_USEDEFAULT
++                },
++                if hidden_popup {
++                    initial.size.width.0
++                } else {
++                    CW_USEDEFAULT
++                },
++                if hidden_popup {
++                    initial.size.height.0
++                } else {
++                    CW_USEDEFAULT
++                },
+                 parent_hwnd,
+                 None,
+                 Some(hinstance.into()),
+@@ -575,6 +611,12 @@
+         set_non_rude_hwnd(hwnd, true);
+         configure_dwm_dark_mode(hwnd, appearance);
+         this.state.border_offset.update(hwnd)?;
++        if hidden_popup {
++            // SetWindowPlacement clamps offscreen rectangles to a monitor.
++            // Keep this HWND hidden at its creation coordinates; its owner
++            // verifies GetWindowRect before showing it with SWP_NOACTIVATE.
++            return Ok(Self(this));
++        }
+         let placement =
+             retrieve_window_placement(hwnd, display, params.bounds, &this.state.border_offset)?;
+         if params.show {
+@@ -656,7 +698,10 @@
+ 
+     fn resize(&mut self, size: Size<Pixels>) {
+         let hwnd = self.0.hwnd;
+-        let bounds = gpui::bounds(self.bounds().origin, size).to_device_pixels(self.scale_factor());
++        // Requested window sizes remain DPI-relative when content zoom changes.
++        let dpi_scale = self.state.dpi_scale.get();
++        let mut bounds = self.bounds().to_device_pixels(self.scale_factor());
++        bounds.size = size.to_device_pixels(dpi_scale);
+         let rect = calculate_window_rect(bounds, &self.state.border_offset);
+ 
+         self.0

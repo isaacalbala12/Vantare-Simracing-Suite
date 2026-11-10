@@ -2,6 +2,13 @@
 
 ADR 0107 congela el Hub GPUI; su reemplazo web vive fuera de `native/`.
 
+ADR 0107 congela el Hub GPUI. #1996 migra mecánicamente todos los consumidores
+existentes (ui, Hub congelado, Gestión e instalador) a la misma dependencia
+publicada `gpui-kit`/`gpui-pre`, sin cambiar `default-members` ni los gates.
+No incorpora trabajo de producto al Hub. No se compilan dos GPUI por defecto;
+el test `ui/tests/gpui_dependency.rs` comprueba el grafo resuelto. El backend
+Windows parcheado y sus instrucciones viven en `vendor/gpui-pre-windows`.
+
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. La cola asigna un target persistente configurable (D: en el servidor); ver «Workers».
 

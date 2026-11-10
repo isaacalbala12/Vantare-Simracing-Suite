@@ -7,7 +7,7 @@ use vantare_ui::{Settings, session::Session};
 
 #[test]
 fn new_standings_get_presets_and_each_tab_previews_its_session() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let file = crate::document::tests::File::new();
         let mut prepared = Prepared::load(file.path.clone()).expect("preparar Studio");

@@ -280,7 +280,7 @@ mod tests {
                 let _ = std::fs::remove_dir_all(&self.0);
             }
         }
-        gpui_platform::application().run(move |cx| {
+        gpui::platform::application().run(move |cx| {
             crate::orbit::theme::apply(
                 crate::orbit::theme::AppearanceSettings::default(),
                 gpui::WindowAppearance::Dark,

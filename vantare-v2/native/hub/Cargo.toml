@@ -33,9 +33,8 @@ vantare-ui = { path = "../ui" }
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
 vantare-strategy = { path = "../strategy" }
-# Reutiliza la revisión fijada de ui; no introduce una segunda versión de GPUI.
-gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["font-kit"] }
+# Misma versión publicada que ui; migración mecánica del Hub congelado.
+gpui = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Ya fijada por services/GPUI; miniaturas locales del contrato IPC.
@@ -43,9 +42,6 @@ base64 = "0.22"
 # Ya resuelta por GPUI; calendario civil/ventanas UTC, sin parser manual.
 chrono = "0.4"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-# Activa los backends de ventana solo en Linux; Windows mantiene sus rutas GPUI.
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["wayland", "x11"] }
 
 [lints]
 workspace = true
@@ -57,5 +53,5 @@ vantare-build-support.workspace = true
 # La dependencia ya existente activa también el guard de raíz QA en los tests del Hub.
 vantare-services = { workspace = true, features = ["test-support"] }
 # El arnés con eventos de foco/teclado usa TestPlatform, sin ventanas del SO.
-gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["test-support"] }
+gpui = { workspace = true, features = ["test-support"] }
 vantare-ipc = { workspace = true, features = ["test-support"] }

@@ -1716,9 +1716,9 @@ mod catalog_tests {
     #[test]
     #[allow(clippy::too_many_lines)] // Tres cambios de catálogo sobre el mismo documento renderizado.
     fn home_catalog_changes_without_editing_the_retained_document() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let mut test = gpui::HeadlessAppContext::with_asset_source(
-                gpui_platform::current_platform(true).text_system(),
+                gpui::platform::current_platform(true).text_system(),
                 std::sync::Arc::new(crate::shell::assets::Icons),
             );
             test.update(|cx| cx.set_global(orbit::theme::Theme::default()));

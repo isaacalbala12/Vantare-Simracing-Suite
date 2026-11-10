@@ -1079,7 +1079,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
 
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
-    gpui_platform::application().run(move |cx: &mut App| {
+    gpui::platform::application().run(move |cx: &mut App| {
         if !app::init(cx) {
             *failure.borrow_mut() = Some("no se pudieron registrar las fuentes".into());
             return;

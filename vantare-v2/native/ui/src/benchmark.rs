@@ -132,7 +132,7 @@ pub fn run_counted(
     }
     let failure = Rc::new(Cell::new(false));
     let flag = failure.clone();
-    gpui_platform::application().run(move |cx: &mut App| {
+    gpui::platform::application().run(move |cx: &mut App| {
         if !app::init(cx) {
             flag.set(true);
             return;

@@ -1617,7 +1617,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     let result = failure.clone();
     let exit_code = std::rc::Rc::new(std::cell::Cell::new(0));
     let exit_result = exit_code.clone();
-    gpui_platform::application()
+    gpui::platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
             if options.capture.is_none() && options.demo.is_none() {

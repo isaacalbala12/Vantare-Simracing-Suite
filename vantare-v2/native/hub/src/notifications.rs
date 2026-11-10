@@ -1340,7 +1340,7 @@ mod home_tests {
     use super::*;
     #[test]
     fn report_notices_acknowledge_and_clear_on_account_change() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let notifications = cx.new(|_| Notifications::default());
             let mut report = crate::services::protocol::testing_document::Contribution {
                 id: "16100000-0000-0000-0000-000000000010".into(),

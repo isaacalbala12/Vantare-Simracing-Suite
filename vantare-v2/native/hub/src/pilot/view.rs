@@ -826,7 +826,7 @@ impl PilotEditor {
                     }
                 }),
             )
-            .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
+            .on_scroll(cx.listener(|this, event: &gpui::ScrollEvent, _, cx| {
                 let delta = event.delta.pixel_delta(px(24.0)).y;
                 if delta != px(0.0) {
                     this.zoom(if delta > px(0.0) { 1.1 } else { 1.0 / 1.1 });

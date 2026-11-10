@@ -60,7 +60,7 @@ fn with_strategy(name: &str, test: impl FnOnce(&mut Strategy, &mut Context<Strat
     let scope = R9Directory::new();
     let directory = scope.0.join(name);
     std::fs::create_dir(&directory).expect("isolated Strategy directory");
-    gpui_platform::headless().run(move |cx| {
+    gpui::platform::headless().run(move |cx| {
         orbit::theme::apply(
             orbit::theme::AppearanceSettings::default(),
             gpui::WindowAppearance::Dark,

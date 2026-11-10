@@ -43,8 +43,10 @@ solo warmup/Other pasan a comparar mejor vuelta como Práctica.
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2`.
 
-GPUI de Zed (rev `72d28c32`, la del prototipo de paridad ISA-1410) usado
-directamente; el crate añade la integración Win32 (`overlay.rs`: transparencia,
+GPUI publicado: `gpui-kit 0.9.1`, sin componentes/assets opcionales, sobre
+`gpui-pre 0.3.12`. La versión se fija una sola vez en el workspace. El backend
+Windows publicado conserva el delta local en `vendor/gpui-pre-windows` mediante
+`[patch.crates-io]`; ver su README para regenerarlo. El crate añade la integración Win32 (`overlay.rs`: transparencia,
 click-through, sin foco, sin marco DWM, DPI), el texto Inter con `letter-spacing`
 (`text.rs`) y los 18 widgets del registro (Standings, Relative, Delta, Fuel, radar,
 pedales, mapas, flags y otros). Hub vive en el crate `hub`, no en `ui`.

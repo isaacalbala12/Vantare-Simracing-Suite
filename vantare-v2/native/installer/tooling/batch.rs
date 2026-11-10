@@ -134,7 +134,7 @@ pub fn run(manifest: &Path) -> Result<(), String> {
     let failure = Rc::new(RefCell::new(None::<String>));
     let flag = failure.clone();
     let started = Instant::now();
-    gpui_platform::application().run(move |cx: &mut App| {
+    gpui::platform::application().run(move |cx: &mut App| {
         if let Err(error) = crate::style::fonts(cx) {
             *flag.borrow_mut() = Some(error);
             cx.quit();

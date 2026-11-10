@@ -1156,7 +1156,7 @@ impl Render for Admin {
             .on_mouse_move(
                 cx.listener(|this, _, window, _| this.frame_timing("hover_to_frame", window)),
             )
-            .on_scroll_wheel(
+            .on_scroll(
                 cx.listener(|this, _, window, _| this.frame_timing("scroll_to_frame", window)),
             )
             .on_key_down(cx.listener(|this, key: &gpui::KeyDownEvent, window, cx| {

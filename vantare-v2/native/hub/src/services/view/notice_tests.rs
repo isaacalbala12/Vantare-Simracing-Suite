@@ -7,7 +7,7 @@ use vantare_ipc::{
 
 #[test]
 fn transient_with_active_or_grace_policy_never_paints_an_access_error_even_in_live() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for state in [AccessState::Active, AccessState::Grace] {
             for live in [false, true] {
                 let file = crate::document::tests::File::new();
@@ -69,7 +69,7 @@ fn transient_with_active_or_grace_policy_never_paints_an_access_error_even_in_li
 
 #[test]
 fn a_manual_transport_failure_preserves_the_prior_notice_and_shows_its_own_feedback() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for prior in [
             LicenseNotice::DeviceLimit {
                 message: "limit".into(),
@@ -121,7 +121,7 @@ fn a_manual_transport_failure_preserves_the_prior_notice_and_shows_its_own_feedb
 
 #[test]
 fn persistent_notice_is_visible_without_overwriting_user_feedback_or_requesting_http() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for user_message in ["", "Resultado del usuario"] {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
@@ -208,7 +208,7 @@ fn persistent_notice_is_visible_without_overwriting_user_feedback_or_requesting_
 
 #[test]
 fn needs_sign_in_reads_local_notices_and_confirmed_reset_clears_the_limit() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -274,7 +274,7 @@ fn needs_sign_in_reads_local_notices_and_confirmed_reset_clears_the_limit() {
 
 #[test]
 fn cached_session_after_a_failed_logout_preserves_error_and_retries_logout() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -331,7 +331,7 @@ fn cached_session_after_a_failed_logout_preserves_error_and_retries_logout() {
 
 #[test]
 fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -411,7 +411,7 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
 
 #[test]
 fn automatic_authentication_failure_requests_sign_in_without_a_license_rejection() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));

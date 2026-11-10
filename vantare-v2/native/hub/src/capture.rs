@@ -143,7 +143,7 @@ fn run_many_inner(options: Vec<Options>) -> Result<(), String> {
     let window_options = capture_window::options(width, height)?;
     let failure = Rc::new(RefCell::new(None));
     let flag = failure.clone();
-    gpui_platform::application()
+    gpui::platform::application()
         .with_assets(shell::assets::Icons)
         .run(move |cx: &mut App| {
             vantare_ui::analytics::init(cx);

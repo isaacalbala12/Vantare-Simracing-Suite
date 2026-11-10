@@ -1407,3 +1407,20 @@ va en su rama independiente; no se incluye silenciosamente en este PR.
 Integrado por el orquestador en nightly `3f2c1b3b0` (#1876), CI 5/5 verde.
 Código de revisión `9fb6c8987`, HEAD entregado `fae6374f0`. Sin merge propio,
 promoción a testers/master, release, instalación ni operaciones de este corte sobre datos reales.
+
+
+## VANTA-138 / #1995 · worker B · Próximamente web, 10-nov-2026
+
+Estrategia e Ingeniero muestran únicamente la página informativa vigente de
+shell.rs::upcoming_page: descripción, tres tarjetas y seguimiento en Roadmap.
+Sin formularios, estrategia completa, voz ni solicitudes de módulos. Entrar a
+estas páginas conserva el candado informativo, sin conceder permisos; la salida
+a Roadmap respeta el acceso. Se oculta el raíl contextual como en producción.
+Tipos/lint/build y 217 tests web PASS; navegador Windows comprueba ambos módulos,
+ambos temas, ausencia de controles operativos y salida a Roadmap, PASS. Axe sin
+serious/critical. Comparador oficial Engineer dark/light con Electron y PrintWindow
+PASS como ejecución; diferencias todavía presentes, no aceptación de paridad.
+No existe captura Strategy en la referencia: se usa la misma composición del
+código GPUI y Engineer, sin inventar referencia ni porcentaje de Strategy.
+Marco, fuentes y relleno general pendientes de A. Sin Rust, merge ni promoción.
+Evidencia: `D:/VantareServer/evidence/hub-web/isa-1995-b-proximamente`.

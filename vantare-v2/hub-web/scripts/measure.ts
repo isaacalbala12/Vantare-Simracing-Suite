@@ -27,6 +27,8 @@ export function summarize(values: number[]) {
 async function main() {
   if (process.platform !== "win32") throw new Error("Windows desktop required");
   const runs = Number(process.env.VANTARE_HUB_MEASURE_RUNS ?? "10");
+  const gpuMode = process.env.VANTARE_HUB_MEASURE_GPU ?? "default";
+  assert.ok(["default", "software"].includes(gpuMode));
   assert.ok(Number.isInteger(runs) && runs >= 10);
   const evidence = requiredPath("VANTARE_HUB_EVIDENCE");
   const driverSourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
@@ -104,9 +106,7 @@ async function main() {
     VANTARE_BOOT_TOKEN: randomBytes(16).toString("hex"),
     LOCALAPPDATA: join(qa, "local-host"),
     APPDATA: join(qa, "roaming-host"),
-    ...(process.env.VANTARE_HUB_MEASURE_GPU === "software"
-      ? { VANTARE_HUB_QA_GPU: "software" }
-      : {}),
+    ...(gpuMode === "software" ? { VANTARE_HUB_QA_GPU: "software" } : {}),
   };
   const gpuiEnv = {
     ...environment,
@@ -233,9 +233,14 @@ async function main() {
           event.processInfo = (
             await browserSession.send("SystemInfo.getProcessInfo")
           ).processInfo;
-          event.gpuFeatures = (
-            await browserSession.send("SystemInfo.getInfo")
-          ).gpu.featureStatus;
+          const features = (await browserSession.send("SystemInfo.getInfo")).gpu
+            .featureStatus;
+          event.gpuFeatures = features;
+          if (gpuMode === "software")
+            assert.match(
+              String(features?.gpu_compositing),
+              /disabled|software/,
+            );
           await browserSession.detach();
           const context = browser.contexts()[0];
           const page = context.pages()[0];
@@ -329,7 +334,7 @@ async function main() {
             compilation:
               "both Global VantareCargoSlot mutexes held for entire series",
             profile: "Release; QA CDP only",
-            gpuMode: process.env.VANTARE_HUB_MEASURE_GPU ?? "default",
+            gpuMode,
           },
           source: manifest,
           driverSourceSha,

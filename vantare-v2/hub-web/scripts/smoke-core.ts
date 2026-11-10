@@ -185,7 +185,13 @@ const host = spawn(
   join(bins, "vantare-hub.exe"),
   ["--control-stdin", "--pipe", photo, "--data-dir", join(qa, "native/hub")],
   {
-    env: { ...env, VANTARE_HUB_UI: join(qa, "hub-ui/vantare-hub-ui.exe") },
+    env: {
+      ...env,
+      VANTARE_HUB_UI: join(qa, "hub-ui/vantare-hub-ui.exe"),
+      ...(process.env.VANTARE_HUB_MEASURE_GPU === "software"
+        ? { VANTARE_HUB_QA_GPU: "software" }
+        : {}),
+    },
     windowsHide: true,
     stdio: ["pipe", "ignore", "pipe"],
   },

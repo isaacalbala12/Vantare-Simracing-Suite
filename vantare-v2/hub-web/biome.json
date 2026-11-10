@@ -1,6 +1,22 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
-  "files": { "includes": ["**", "!out", "!release", "!bun.lock"] },
-  "formatter": { "indentStyle": "space" },
-  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
+  "files": {
+    "includes": [
+      "**",
+      "!out",
+      "!release",
+      "!bun.lock",
+      "!src/renderer/design/generated",
+      "!src/renderer/assets"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space"
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended"
+    }
+  }
 }

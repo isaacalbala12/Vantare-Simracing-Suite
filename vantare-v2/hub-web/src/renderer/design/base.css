@@ -1,0 +1,49 @@
+@import "tailwindcss";
+@import "./generated/theme.css";
+@import "./generated/tokens.css";
+@import "./fonts.css";
+html {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  background: var(--bg-window);
+  color: var(--text-1);
+}
+body {
+  margin: 0;
+}
+header {
+  height: var(--topbar-h);
+  padding-inline: var(--space-9);
+  display: flex;
+  align-items: center;
+  background: var(--bg-sidebar);
+  -webkit-app-region: drag;
+}
+main {
+  padding: var(--space-9);
+}
+h1 {
+  font-family: var(--font-display);
+}
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+[data-density="compact"] {
+  --density: 0.875;
+}
+[data-density="comfortable"] {
+  --density: 1.125;
+}
+[data-motion="reduced"] {
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+  --dur-slow: 0ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+}

@@ -14,6 +14,24 @@ SPEC.loader.exec_module(M)
 
 
 class StableWindowTest(unittest.TestCase):
+    def test_stress_requires_notifications_and_predeclared_present_rate(self):
+        meta=dict(render_load=True,min_stress_presents_per_second=30)
+        for notifications,presents in ((0,60),(60,0),(60,10)):
+            with self.assertRaisesRegex(ValueError,'render_load requested but'):
+                M.validate_cadence(meta,notifications,presents,1)
+        self.assertEqual(M.validate_cadence(meta,60,60,1),60)
+
+    def test_quiet_widget_has_an_explicit_present_limit(self):
+        self.assertEqual(M.validate_cadence(dict(quiet_control=True),0,1,50),.02)
+        with self.assertRaisesRegex(ValueError,'quiet widget'):
+            M.validate_cadence(dict(quiet_control=True),0,6,50)
+
+    def test_frequency_data_is_read_and_invalid_samples_are_counted(self):
+        rows=[dict(path='host\\Processor Frequency',value='3500',status='0'),
+              dict(path='host\\Processor Frequency',value='NaN',status='0')]
+        result=M.frequency_summary(rows)['Processor Frequency']
+        self.assertEqual(result['median'],3500)
+        self.assertEqual(result['invalid'],1)
     def test_gpu_render_uses_query_duration_not_present_spacing(self):
         events=[dict(kind='gpu_frame',value=1_000_000),dict(kind='gpu_frame',value=3_000_000),
                 dict(kind='gpu_disjoint',value=0),dict(kind='gpu_skipped',value=0)]
@@ -27,7 +45,7 @@ class StableWindowTest(unittest.TestCase):
             root = pathlib.Path(directory)
             (root / "complete.txt").write_text("complete")
             metadata = dict(measurement_version=2, profile="release", stable_start_seconds=0,
-                            stable_end_seconds=2, recording_duration_seconds=2, maximum_total_system_load_percent=35, qpc_frequency=1000)
+                            stable_end_seconds=2, recording_duration_seconds=2, maximum_total_system_load_percent=35, qpc_frequency=1000,gpu_frame_timing=True)
             (root / "metadata.json").write_text(json.dumps(metadata))
             def write_csv(name, rows):
                 with (root / name).open("w", newline="") as stream:
@@ -49,7 +67,9 @@ class StableWindowTest(unittest.TestCase):
                 "trace\treceived\tipc\t1100\t0\t1\t2\t1000000000\n"
                 "trace\tpresent\tbase\t1125\t0\t0\t0\t0\n"
                 "trace\treceived\tipc\t2100\t0\t1\t3\t2000000000\n"
-                "trace_end events=7\n"
+                "trace\tgpu_frame\td3d11_render\t130\t140\t11\t1\t2000000\n"
+                "trace\tgpu_disjoint\td3d11_render\t1130\t1140\t11\t2\t0\n"
+                "trace_end events=9\n"
             )
             (root / "core.stderr.log").write_text(
                 "trace frequency=1000 overflow=0\n"
@@ -65,6 +85,8 @@ class StableWindowTest(unittest.TestCase):
             self.assertEqual(result["receive_to_paint_p99_ms"], 20)
             self.assertEqual(result["receive_to_submit_p99_ms"], 30)
             self.assertEqual(result["gpu"]["dwm"]["peak_dedicated_mib"], 1)
+            self.assertEqual(result['gpu_render']['disjoint'],1)
+            self.assertEqual(result['gpu_render']['mean_ms'],2)
 
     def test_alignment_uses_recording_position_not_process_start(self):
         events = [dict(kind="replay_event", label="ipc", clock=1000+i*100, end=0,

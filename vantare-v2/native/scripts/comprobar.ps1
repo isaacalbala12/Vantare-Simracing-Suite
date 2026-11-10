@@ -12,7 +12,8 @@ try {
     $packages = $selection.Split(',')
     Write-Host "Comprobar: $($packages -join ', ')"
     # One queue acquisition for all commands; all use exactly the same slot target.
+    $diagnostics=if ($Crate -in @('vantare-ui','vantare-profiling')) { @('-PaintStats') } else { @() }
     & (Join-Path $PSScriptRoot 'compilar.ps1') pwsh -NoProfile -File (
-        Join-Path $PSScriptRoot 'comprobar-seleccion.ps1') -Selection ($packages -join ',')
+        Join-Path $PSScriptRoot 'comprobar-seleccion.ps1') -Selection ($packages -join ',') @diagnostics
     if ($LASTEXITCODE) { throw 'Falló la comprobación del worker.' }
 } finally { Pop-Location }

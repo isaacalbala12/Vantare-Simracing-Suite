@@ -1,125 +1,69 @@
-# Comparación A/A y A/B · VANTA-139
+# Medición Release v3 · VANTA-139
 
-Estado: método en preparación. No hay una mejora de motor aceptada. La campaña
-Release de `5104c1bbf` es diagnóstico provisional; la referencia final se compila
-y mide desde el SHA que se fusione de #2001, conservando ese SHA y ambos hashes
-de ejecutable. El recolector tiene su propio `collector_sha`; no se mezclan.
+Estado: implementación y validación en curso. **Sin A/A real ni mejora de motor aceptados todavía.** Los tests sintéticos no son mediciones. Las pasadas de 5104 y las siete pasadas parciales con el colector v2 quedan como diagnóstico, no referencia final.
 
-## Diseño
+## Declaración previa y veredicto
 
-`measure-overlay-ab.ps1` recibe `-A`, `-B`, `-Core`, `-Recording`, `-Out`,
-`-Widgets`, `-Phases`, `-RenderLoad` y `-ReplaySpeed`. Primero ejecuta A/A: ambas etiquetas
-usan exactamente A. Después ejecuta A/B. Cada ronda contiene A, B, B, A en
-procesos nuevos, con el mismo núcleo y corpus. Una observación inválida detiene
-la campaña; no se sustituye silenciosamente por otra favorable.
+La única métrica para decidir CPU de servidor es **ciclos de proceso UI por segundo estable**, con **22 widgets, cadencia original, fases desactivadas y colector completo**. El resto es informativo: ciclos/foto recibida, normalización por Present, memoria, componentes de render y estrés. No se escoge después el escenario favorable.
 
-Se empieza con ocho rondas por experimento: 32 observaciones A/A y otras 32 A/B
-por configuración. Son ocho unidades pareadas independientes, no miles de
-frames tratados como repeticiones. Es un mínimo exploratorio, sin promesa de
-potencia estadística. Si el máximo desvío logarítmico A/A supera 2,5 %, no se
-acepta una diferencia del 5 %. Hay que corregir las condiciones y repetir una
-campaña completa, publicando también la fallida; aumentar N por sí solo no
-elimina sesgo. El script admite hasta 24 rondas.
-Al terminar A/A guarda `aa-noise.json`; si el límite del 2,5 % no se cumple,
-no inicia A/B. Se conservan los resultados fallidos para investigar la causa.
-Antes de empezar comprueba ambos binarios y las capacidades de carga solicitadas.
+`verdict` es `improvement`, `regression`, `inconclusive` o `invalid_noise`; `accepted` indica solo que la afirmación de mejora CPU principal supera el criterio estadístico. **No aprueba el motor para el PC de juego**: el [gate VRR](VRR-GATE.md) queda separado y pendiente.
 
-Con intervalos iguales, la razón por ronda es `sqrt(B1*B2/(A1*A2))`. El
-analizador usa los tiempos de inicio reales para interpolar log(A) hasta el
-punto medio de B1/B2; así compensa una deriva multiplicativa lineal incluso
-con pausas desiguales. Interrupciones o deriva no lineal siguen siendo
-limitaciones. Se publican las razones individuales,
-mediana, rango, CV entre razones y CV de las cuatro observaciones de cada ronda.
-La separación del ruido A/A es necesaria; no sustituye los gates visual y VRR.
-Se informa además un intervalo bootstrap del 95 % para la mediana A/B,
-remuestreando rondas completas con semilla fija. Es exploratorio: no demuestra
-independencia temporal ni corrige cambios no lineales de condiciones.
+## Secuencia pareada
 
-Ejemplo desde `vantare-v2`, con ejecutables Release instrumentados y hashes
-conservados, una carpeta nueva por configuración y campaña:
+Ocho rondas como mínimo, pares hasta 24. Cada ronda intercala un bloque A/A y otro A/B; en rondas pares se invierte su orden. A/A usa el binario A en ambos papeles. Los bloques alternan **ABBA / BAAB** para compensar curvatura, además de la deriva lineal.
+
+Cada observación arranca procesos nuevos. El instante de análisis es el **punto medio QPC de la ventana estable**, no la hora de invocación ni la espera de la cola. Se ajusta log(coste) por tiempo y pertenencia a B dentro de cada bloque. Con intervalos iguales, la razón es la media geométrica B dividida por A.
+
+Se publican razones por ronda, mediana, rango, CV y un **intervalo t bilateral del 95 % sobre log-ratios**, con rondas completas como unidades; nunca frames como repeticiones. Los valores críticos provienen de [NIST](https://www.itl.nist.gov/div898/handbook/eda/section3/eda3672.htm). Se necesitan estabilidad e independencia aproximada entre rondas; el intervalo no arregla cambios de entorno.
+
+El máximo desvío logarítmico A/A conserva el límite **2,5 %**, sin relajarlo. Mejora exige intervalo A/B por debajo de 1 y efecto mayor que ese suelo; regresión usa el criterio simétrico. Si falla A/A, no hay afirmación comparativa válida. Ocho rondas dan 32 observaciones por experimento y permiten contrabalancear los dos órdenes; es un mínimo, no una promesa de potencia bajo cualquier ruido.
+
+## Intentos, capacidades y entorno
+
+`overlay-campaign-attempts.jsonl` registra inicio, configuración completa, fallos y final antes de medir. Hay **máximo tres intentos por familia**; repetir exige motivo previo. No hay reintentos automáticos ni se borran intentos fallidos. Cambiar prioridad/afinidad o cantidad de rondas debe quedar declarado y consume otro intento; no cambiar el nombre para resetear el límite.
+
+Antes de cualquier observación se comprueban Release limpio, SHA, `PAINT_STATS` y **capacidades iguales de A/B**. Los hashes observados deben coincidir con la declaración. Se rechaza mezclar colector, configuración, núcleo o grabación.
+
+Plan de energía registrado y comprobado sin cambios por pasada. Prioridad y afinidad son parámetros declarados (`Normal`, todos los procesadores, por defecto). Si el ruido no permite comparar, investigar frecuencia/carga, fijar afinidad o prioridad y repetir de forma limitada, conservando el suelo real. La cola está reservada durante cada medición; no se compila en paralelo con ella.
+
+## Reproducción y estrés
+
+Python **3.11+** y PowerShell 7. Desde `vantare-v2`, con ejecutables instrumentados congelados y una carpeta nueva:
 
 ```powershell
-pwsh -NoProfile -File native/scripts/measure-overlay-ab.ps1 -A D:/evidence/A/overlay-replay.exe -B D:/evidence/B/overlay-replay.exe -Core D:/evidence/core/vantare-core.exe -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/evidence/ab-w4-speed4 -Widgets 4 -ReplaySpeed 4 -Rounds 8 -Phases
+pwsh -NoProfile -File native/scripts/measure-overlay-ab.ps1 -ComparisonName kit-vs-native -A <A.exe> -B <B.exe> -Core <core-fijo.exe> -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out <evidencia-nueva> -Widgets 22 -Rounds 8
 ```
 
-Repetir a velocidad 1 y 4, con 1, 4 y 22 widgets, con y sin `-Phases`.
-La comprobación A/A se hace antes de cada configuración A/B; no reutilizar
-un suelo de ruido de otra carga, velocidad o momento de la máquina.
+`-Stress` invalida todos los widgets y la pantalla en cada oportunidad de dibujo, sin esperar la siguiente foto. Es **el peor caso sin caché de entidades**, no el comportamiento normal ni una promesa de Hz ilimitados. Windows conserva su pulso de presentación. Se exige **≥30 presents/s** y notificaciones de estrés; queda informativo. `-QuietControl -Widgets 1` exige **≤0,1 presents/s** en el widget quieto. Cada control tiene su declaración y registro.
 
-## Deriva observada
+La aceleración de reproducción no se usa para aislar render: cambia decode/IPC y acorta la ventana. La comparación mantiene velocidad 1. p99 entre presents y latencia local de esa reproducción dependen de la entrada; no prueban velocidad del motor. La normalización por Present se publica como contexto; incluye trabajo ajeno al pintado.
 
-En la campaña provisional, 4 widgets sin fases pasó de 123,639 a 130,351
-millones de ticks/s entre rondas 1 y 5; las fotos recibidas fueron 2646 y 2672.
-El working set fue 45,57 y 45,59 MiB. Cada pasada abrió un proceso nuevo y el
-buffer tiene capacidad fija: no hay evidencia de crecimiento acumulativo del
-buffer entre pasadas. La carga total media subió de 0,62 a 0,96 %, pero esto
-no identifica la causa. No se registró temperatura ni frecuencia efectiva por
-intervalo: no se puede atribuir retrospectivamente a temperatura o caché.
-ABBA compensa la componente lineal; A/A debe demostrar si el residuo permite
-comparar un 5 %. Hasta entonces, las cifras no deciden ningún motor.
+## Separar render, CPU y GPU
 
-## Qué se mide
+Las fases CPU conservan decode, feed IPC, proyección, layout, paint GPUI y envío D3D por separado. Se publican ciclos por llamada de cada fase; son anidadas y no se suman. Present incluye HWND para no mezclar intervalos entre ventanas.
 
-La memoria de referencia es **working set**. La memoria privada se conserva
-como diagnóstico: incluye unos 137 MiB reservados por la traza de dos millones
-de eventos. Comparar privada como memoria del producto sería engañoso.
+Con fases, los binarios compatibles usan consultas D3D11 timestamp/disjoint alrededor del render, antes de Present. Ocho slots, DONOTFLUSH y lectura explícita de S_FALSE evitan espera y datos sin completar. Los resultados conservan el QPC original. **Disjoint descarta esa muestra**, no la campaña CPU; se publican muestras, cobertura, omitidas y duración GPU válida. Este tiempo excluye Present, DWM y pantalla física.
 
-En este servidor, los ciclos consultados son ticks de TSC, aproximadamente
-3,49 GHz, no instrucciones ni tiempo de CPU convertido. La frecuencia nominal
-WMI no describe turbo o limitación térmica. Se conserva el plan de energía;
-no se cambia globalmente en una máquina compartida. Una comparación solo es
-válida bajo el mismo plan y con A/A suficiente. No convertir a núcleos o ms.
+PresentMon/WPA/xperf no están en PATH del servidor; no se instala nada. Los contadores GPU/DWM de la sesión remota a 59 Hz son contexto. La referencia exacta acc6619b1 carece de timestamps GPU propios; su estado se informa como no disponible. A/B usa la misma instrumentación en ambos motores y sus SHA reales.
 
-`sampler.csv` conserva ticks del proceso recolector y duración de cada iteración
-Get-Counter y guardia WMI de la cola; incluye la espera de muestreo en tiempo
-de pared. `frequency.csv` conserva frecuencia, porcentaje de rendimiento y
-límite de rendimiento, con su estado de validez. Las zonas térmicas se guardan
-sin convertir ni asumir que son sensores del paquete CPU. No incluye el
-coste indirecto de los proveedores WMI/PDH en otros procesos. Por tanto, este
-dato caracteriza coste directo, y todavía se necesita un control pareado para
-cuantificar perturbación del sistema.
+## Memoria, frecuencia y coste del colector
 
-`-ReplaySpeed 4` usa la aceleración que ya admite el núcleo, conserva los mismos
-sucesos y alinea la ventana por posición del corpus. La duración real baja;
-no equivale a una prueba sin límite de render. Los Hz, p99 entre presents y
-latencias de la reproducción a velocidad 1 dependen de la cadencia de entrada;
-no demuestran que un motor renderice más rápido. Las fases CPU de pintado y
-envío D3D se deben comparar por llamada, separadas de decode, IPC y proyección.
-Los presents incluyen HWND para calcular intervalos dentro de cada ventana.
+La memoria de referencia es **working set**. La privada incluye unos **137 MiB reservados para la traza**; no equivale a memoria de producto. Se guardan ambas y se comparan con la misma instrumentación.
 
-## GPU y puerta de aceptación
+En este servidor los ciclos se describen como ticks TSC de aproximadamente **3,49 GHz**. La frecuencia WMI nominal no representa turbo ni una conversión universal. No convertirlos a segundos de CPU, núcleos o ms. `frequency.csv` se lee para publicar mediana/rango, validez, rendimiento y límites; las zonas térmicas se conservan sin asumir que son temperatura del paquete CPU.
 
-`-RenderLoad` invalida todos los widgets en cada oportunidad de dibujo. La
-cadencia ya no la fija la llegada de telemetría; Windows conserva su pulso de
-presentación. No se promete render sin límite de Hz físicos. Las notificaciones
-de carga se registran aparte de las provocadas por fotos. La condición de
-caracterización es que un widget quieto, que no presenta en la ventana estable
-normal, sí repinte continuamente al activar la carga.
+`sampler.csv` mide ticks directos del proceso colector, ciclos/s y duración de iteración. Para la perturbación completa usar **control pareado**: el mismo UI con muestreo completo frente a ligero, alternando ABBA/BAAB. El ligero mantiene procesos/QPC y carga por GetSystemTimes, pero omite PDH y WMI periódicos; las reservas de compilación permanecen. No se inventan contadores GPU ausentes. Esa comparación es informativa y no decide el motor.
 
-Con fases, los binarios nuevos usan consultas D3D11 de timestamp/disjoint alrededor
-de los comandos de render, antes de Present. Ocho juegos de consultas limitan
-memoria y trabajo pendiente. Se lee S_OK explícitamente, se respeta S_FALSE,
-se usa DONOTFLUSH, y nunca se espera a la GPU. Los resultados tardíos conservan
-el QPC del frame original. Un intervalo disjoint invalida la pasada; una cola
-llena registra muestras omitidas. Las últimas consultas sin resolver al salir
-no se inventan. Se publican cantidad, cobertura y tiempos individuales.
+```powershell
+pwsh -NoProfile -File native/scripts/measure-overlay-ab.ps1 -ComparisonName sampler-overhead -SamplingControl -A <A.exe> -B <el-mismo-A.exe> -Core <core-fijo.exe> -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out <control-nuevo> -Widgets 22 -Rounds 6
+```
 
-Este tiempo GPU excluye Present, DWM y pantalla física. Los contadores de GPU
-por segundo se conservan como contexto. PresentMon, WPA y xperf no están en
-PATH ni en la carpeta habitual del Windows Performance Toolkit. Para correlación
-ETW con frames físicos haría falta PresentMon o ese toolkit; no se instala nada.
-La línea base exacta acc6619b1 carece de estas consultas. Su binario se mide
-sin ellas y se publica como tal; A/B usa el mismo añadido diagnóstico en ambos
-motores, con el SHA real de cada build y acc6619b1 como ancestro de producto.
+## Línea base y procedencia
 
-VRR sigue sin comprobar. El estado `null` bloquea aceptar un motor, aunque
-mejore CPU. DWM/GPU del servidor remoto a 59 Hz son solo contexto. Hace falta
-la prueba local de Isaac en su PC de juego, autorizada por el orquestador,
-con juego sin bordes, monitor VRR, y comparación sin overlays / visibles /
-ocultos / restaurados. No se ejecuta remotamente por esta tarea.
+La referencia final se construye desde **nightly acc6619b1** y se mide con un colector v3 uniforme. Se guardan hashes de binarios, fuente compilada, perfil/features, colector y analizador. El UI se prepara y se toma una muestra inicial **antes** de iniciar el núcleo: la caracterización detectó un primer muestreo 0,9 s posterior al comienzo estable con el orden anterior. No se desplaza la ventana para salvarlo.
 
-## Procedencia de la compilación
+La campaña provisional de 5104 tuvo una subida de 123,639 a 130,351 millones de ticks/s entre rondas 1 y 5 con 4 widgets sin fases. El working set fue 45,57 → 45,59 MiB y cada proceso reservó un buffer nuevo; no hubo crecimiento acumulado entre pasadas. Los misses nativos de texto fueron cero en la ventana estable. No se registró temperatura/frecuencia por intervalo y no se atribuye retrospectivamente una causa. El diseño intercalado, órdenes contrabalanceados y A/A cuantifican el residuo.
 
-Antes de cada build instrumentado fijar `$env:VANTARE_MEASUREMENT_SOURCE_SHA = (git rev-parse HEAD).Trim()` y compilar por `compilar.ps1`. Este valor fuerza reevaluar el build script al reutilizar un target entre worktrees; el helper lo compara con Git y falla si no coincide. No reemplaza el SHA real. Tras compilar, comprobar `--measurement-info` contra el SHA esperado y el estado limpio antes de congelar el ejecutable. La caracterización detectó un binario con capacidades nuevas y metadatos acc6619b1 reutilizados: se rechazó, no es evidencia de rendimiento.
+Antes de compilar instrumentación, fijar `$env:VANTARE_MEASUREMENT_SOURCE_SHA = (git rev-parse HEAD).Trim()`. El helper lo valida contra Git y lo usa como entrada de invalidación de Cargo. Tras compilar, exigir SHA correcto y limpio de `--measurement-info`. Un ejecutable con código nuevo y metadatos acc reutilizados se rechazó antes de medir. `test-measurement-provenance.ps1` prueba build correcto → SHA incorrecto rechazado sobre caché → correcto restaurado.
 
-Regresión de caché reproducible: con target D: configurado y fuente limpia, ejecutar `pwsh -NoProfile -File native/scripts/test-measurement-provenance.ps1 -Out D:/VantareServer/evidence/isa-1996/provenance-NEW`. Compila correctamente, exige el fallo con SHA deliberadamente incorrecto sobre el mismo target y restaura la compilación correcta. Conserva los tres logs y ambos metadatos.
+`test-overlay-campaign.ps1` ejecuta el orquestador con observaciones sintéticas y el agregador real: verifica orden, A/A usando solo A, capacidades antes de muestrear y límite de intentos. Es prueba de software, no evidencia A/A real.

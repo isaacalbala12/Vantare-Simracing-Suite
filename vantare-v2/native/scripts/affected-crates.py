@@ -5,6 +5,11 @@ from pathlib import Path
 import subprocess
 
 
+def paint_stats_affected(paths):
+    return any(path.replace('\\','/').startswith(('vantare-v2/native/ui/','vantare-v2/native/profiling/'))
+               for path in paths)
+
+
 def changed_crates(packages, paths):
     """None means global/unknown inputs; a set means known crate paths only."""
     roots = {
@@ -119,6 +124,7 @@ def main():
     parser.add_argument('--crate')
     parser.add_argument('--installation', action='store_true')
     parser.add_argument('--overlays', action='store_true')
+    parser.add_argument('--paint-stats', action='store_true')
     parser.add_argument('--fast', action='store_true', help='Exclude frozen Hub/Admin for non-legacy PRs')
     parser.add_argument('--legacy-check', action='store_true', help='Legacy consumers requiring check, without tests')
     args = parser.parse_args()
@@ -131,6 +137,9 @@ def main():
         paths = [path for path in paths if path]
     elif not args.crate:
         parser.error('--base o --crate requerido')
+    if args.paint_stats:
+        print('true' if paint_stats_affected(paths) else 'false')
+        return
     if args.installation or args.overlays:
         decision = overlays_affected(paths) if args.overlays else installation_affected(paths)
         print('true' if decision else 'false')

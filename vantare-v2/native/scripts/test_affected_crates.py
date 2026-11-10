@@ -10,6 +10,11 @@ spec.loader.exec_module(affected)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_paint_stats_feature_gate_only_for_ui_and_profiling(self):
+        for path in ('vantare-v2/native/ui/src/app.rs','vantare-v2/native/profiling/src/lib.rs'):
+            self.assertTrue(affected.paint_stats_affected([path]))
+        self.assertFalse(affected.paint_stats_affected(['vantare-v2/native/domain/src/lib.rs']))
+        self.assertFalse(affected.paint_stats_affected(['vantare-v2/native/scripts/measure-overlays.ps1']))
     def setUp(self):
         self.packages = [
             {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{name}/Cargo.toml',

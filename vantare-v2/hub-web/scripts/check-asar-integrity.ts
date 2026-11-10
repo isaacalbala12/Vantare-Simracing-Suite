@@ -122,13 +122,15 @@ for (const mode of ["original", "header", "payload"] as const) {
       child.kill();
       await exited;
     }
-    assert.ok(resolve(folder).startsWith(resolve(root) + sep));
-    await rm(folder, {
-      recursive: true,
-      force: true,
-      maxRetries: 3,
-      retryDelay: 100,
-    });
+    for (const owned of [folder, join(root, `data-${mode}`)]) {
+      assert.ok(resolve(owned).startsWith(resolve(root) + sep));
+      await rm(owned, {
+        recursive: true,
+        force: true,
+        maxRetries: 3,
+        retryDelay: 100,
+      });
+    }
   }
 }
 await writeFile(

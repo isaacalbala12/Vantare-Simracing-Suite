@@ -10,7 +10,7 @@ const sans = {
   arial: "Arial, sans-serif",
 };
 const mono = {
-  cascadia: '"Cascadia Code", Consolas, "Space Mono", monospace',
+  cascadia: '"Space Mono", monospace',
   consolas: 'Consolas, "Space Mono", monospace',
   courier: '"Courier New", monospace',
 };

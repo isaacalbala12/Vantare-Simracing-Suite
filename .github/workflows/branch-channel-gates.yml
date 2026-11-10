@@ -284,6 +284,20 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
 
+      - name: Classify native installation surface
+        id: build_surface
+        if: needs.policy.outputs.native != 'false'
+        working-directory: ${{ env.VANTARE_DIR }}/native
+        run: |
+          $decision = 'true'
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+            $base = & git rev-parse 'HEAD^1'
+            if ($LASTEXITCODE) { throw 'Missing pull request diff base' }
+            $decision = & python scripts/affected-crates.py --base $base --installation
+            if ($LASTEXITCODE -or $decision -notin @('true', 'false')) { throw 'Invalid installation scope' }
+          }
+          "installation=$decision" >> $env:GITHUB_OUTPUT
+
       - name: Classify changed automatic scope
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ github.workspace }}
@@ -340,11 +354,11 @@ jobs:
       # versión al final porque el test del flujo de canales exige que acabe en
       # el SHA fijado.
       - name: Cache de artefactos de dependencias (target)
-        if: needs.policy.outputs.native != 'false'
+        if: needs.policy.outputs.native != 'false' && runner.environment == 'github-hosted'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           workspaces: |
-            vantare-v2/native -> ${{ runner.temp }}/vantare-targets/ci
+            vantare-v2/native -> D:/VantareServer/targets/slot-0
           shared-key: native-windows-gates
           # El binario de nextest se cachea aparte: no guardar ~/.cargo/bin dos veces.
           cache-bin: "false"
@@ -389,10 +403,10 @@ jobs:
         run: ./setup-duckdb.ps1
 
       - name: Verify build-candidate release package excludes QA feature and symbols
-        if: needs.policy.outputs.native != 'false'
+        if: needs.policy.outputs.native != 'false' && steps.build_surface.outputs.installation != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
-          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "D:/VantareServer/targets/qa-exclusion"
           if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
 
       - name: Native format and blocking gates
@@ -413,61 +427,25 @@ jobs:
           # distinto de «false» ⇒ corre el corpus: fail-closed.
           TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}
         run: |
-          cargo fmt --all -- --check
-          if ($LASTEXITCODE) { throw "native format failed" }
-          # `completa` = suite + corpus de telemetría en una sola invocación de
-          # nextest (perfil `ci`): mismos tests, sin segundo build ni serializar
-          # 5-6 min (#1654 ronda 7). `test` = solo la suite (perfil `default`),
-          # sin los 4 binarios del corpus: se usa cuando ninguna ruta cambiada
-          # toca runtime, domain, ipc ni testdata (#1654 ronda 12). La unión de
-          # `test` + `completa` es la misma que hoy: «todo menos lifecycle».
-          $suite = if ($env:TELEMETRIA_SCOPE -eq 'false') { 'test' } else { 'completa' }
-          # `captura`: clippy del banco de capturas QA del instalador (#1735).
-          foreach ($gate in @('check', 'clippy', 'captura', $suite, 'lifecycle')) {
-            ./gates.ps1 -Gate $gate
-            if ($LASTEXITCODE) { throw "native $gate failed" }
+          $base = @()
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+            $sha = & git rev-parse 'HEAD^1'
+            if ($LASTEXITCODE) { throw 'Missing pull request diff base' }
+            $base = @('-DiffBase', $sha)
           }
+          $telemetry = @()
+          if ($env:TELEMETRIA_SCOPE -ne 'false') { $telemetry = @('-Telemetry') }
+          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry
+          if ($LASTEXITCODE) { throw 'Native blocking gates failed' }
 
       - name: Characterize Windows installation operations
-        if: needs.policy.outputs.native != 'false'
+        if: needs.policy.outputs.native != 'false' && steps.build_surface.outputs.installation != 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           CARGO_BUILD_JOBS: '4'
         run: |
-          $env:CARGO_TARGET_DIR = '${{ runner.temp }}/vantare-targets/ci'
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --example matrix-verifier --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --bin vantare-services --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'real services signer build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --example verify-package --no-default-features --features write-engine --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'real package verifier build failed' }
-          foreach ($shell in @('powershell.exe', 'pwsh')) {
-            $policy = if ($shell -eq 'powershell.exe') { @('-ExecutionPolicy', 'Bypass') } else { @() }
-            & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -ServicesExecutable "$env:CARGO_TARGET_DIR/debug/vantare-services.exe" -PackageVerifier "$env:CARGO_TARGET_DIR/debug/examples/verify-package.exe"
-            if ($LASTEXITCODE) { throw "release tooling regression: $shell" }
-          }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --example probe-read-matrix --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'matrix read probe build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --features write-engine,test-installer --example installer-write-matrix --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'matrix writer build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-hub --example boot-confirmation-matrix --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'matrix boot confirmation fixture build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features installer-qa --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'matrix root launcher build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --manifest-path native/Cargo.toml -p vantare-hub --test installed_data_root --features installer-qa --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'installed Hub data-root regression' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-hub --bin vantare-hub --features installer-qa --locked --offline -j 4
-          if ($LASTEXITCODE) { throw 'standalone Hub QA build failed' }
-          pwsh -NoProfile -File native/hub/tests/development-fallback.ps1 -HubExecutable "$env:CARGO_TARGET_DIR/debug/vantare-hub.exe" -QaRoot "$env:RUNNER_TEMP/installation-hub-fallback"
-          if ($LASTEXITCODE) { throw 'development Hub data-root fallback' }
-          $legacy = Join-Path $env:RUNNER_TEMP 'matrix-legacy'
-          New-Item -ItemType Directory -Path $legacy -Force | Out-Null
-          gh release download native-beta-v0.0.975 --repo $env:GITHUB_REPOSITORY --pattern vantare-native-amd64-package.zip --dir $legacy
-          if ($LASTEXITCODE) { throw 'pinned historical package unavailable' }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/guard-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix-guard"
-          if ($LASTEXITCODE) { throw 'installation matrix isolation failed' }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix" -LegacyPackage "$legacy/vantare-native-amd64-package.zip" -TestVerifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -BootProbe "$env:CARGO_TARGET_DIR/debug/examples/boot-confirmation-matrix.exe" -ReadProbe "$env:CARGO_TARGET_DIR/debug/examples/probe-read-matrix.exe" -WriteEngine "$env:CARGO_TARGET_DIR/debug/examples/installer-write-matrix.exe" -RootLauncher "$env:CARGO_TARGET_DIR/debug/vantare.exe" -HubExecutable "$env:CARGO_TARGET_DIR/debug/vantare-hub.exe"
-          if ($LASTEXITCODE) { throw 'installation matrix regression' }
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/ci-installation.ps1
+          if ($LASTEXITCODE) { throw 'Installation characterization failed' }
 
       - name: Preserve installation matrix snapshots
         if: always() && needs.policy.outputs.native != 'false'

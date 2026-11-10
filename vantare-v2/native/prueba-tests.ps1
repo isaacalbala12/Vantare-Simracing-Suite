@@ -37,11 +37,11 @@ try {
     if ($LASTEXITCODE) { throw 'No se pudo preparar el fixture.' }
     & ./gates.ps1 prueba -BuildConfig $config
     foreach ($bin in @('vantare-storage', 'vantare-services', 'future-default')) {
-        $output = & (Join-Path $fixture "target/gates/prueba/$bin.exe")
+        $output = & (Join-Path $env:VANTARE_SLOT_TARGET "prueba/$bin.exe")
         if ($LASTEXITCODE -or $output -cne '0.0.0-prueba nightly') { throw 'La identidad pública no se compiló en todos los binarios.' }
     }
-    if (Test-Path (Join-Path $fixture 'target/gates/prueba/vantare-admin.exe')) { throw 'Admin entró en el build público.' }
-    if (-not (Test-Path (Join-Path $fixture 'target/gates/prueba/duckdb.dll'))) { throw 'Falta la DLL junto a los binarios.' }
+    if (Test-Path (Join-Path $env:VANTARE_SLOT_TARGET 'prueba/vantare-admin.exe')) { throw 'Admin entró en el build público.' }
+    if (-not (Test-Path (Join-Path $env:VANTARE_SLOT_TARGET 'prueba/duckdb.dll'))) { throw 'Falta la DLL junto a los binarios.' }
     foreach ($name in $names) {
         if ([Environment]::GetEnvironmentVariable($name, 'Process') -cne $previous[$name]) { throw "No se restauró $name." }
     }

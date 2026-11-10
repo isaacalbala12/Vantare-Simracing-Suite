@@ -4,10 +4,12 @@ param(
     [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba', 'distribution')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
-    [string]$TargetDirectory = $(if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-targets/ci' } else { 'D:/VantareServer/targets/ci' })
+    [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
+    [string[]]$Packages = @()
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ($TargetDirectory -notmatch '^[dD]:[\\/]') { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en D:).' }
 if ($Gate -eq 'distribution') {
     & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
     return
@@ -71,9 +73,20 @@ try {
         'captura' { @('clippy', '-p', 'vantare-installer', '--all-targets', '--features', 'parity-capture') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
+    if ($Packages.Count) {
+        $arguments = @($arguments | Where-Object { $_ -ne '--workspace' })
+        foreach ($package in $Packages) { $arguments += @('-p', $package) }
+    }
+    # Analysis launches storage as a real process. Include that package in the same
+    # test build to preserve the executable prerequisite without a second feature graph.
+    if ($Gate -in @('test', 'completa') -and $Packages.Count -and
+        'vantare-storage' -cnotin $Packages -and
+        ('vantare-hub' -cin $Packages -or 'vantare-hub-analysis' -cin $Packages)) {
+        $arguments += @('-p', 'vantare-storage')
+    }
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
     # `-j` son hilos de test; los jobs van en --build-jobs.
-    $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '2' }
+    $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '4' }
     if ($Gate -eq 'lifecycle' -and $IsWindows) {
         # Normal para cierre real; QA sólo para invocar los manejadores de bandeja.
         & (Join-Path $PSScriptRoot 'runtime/tests/lifecycle/build-overlays.ps1') -TargetDirectory $TargetDirectory
@@ -89,10 +102,11 @@ try {
     if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
     & cargo @arguments
     if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
-    if ($Gate -eq 'check') {
+    if ($Gate -in @('check', 'clippy') -and (-not $Packages.Count -or 'vantare-runtime' -cin $Packages)) {
         # El banco no forma parte del build normal, pero también debe compilar.
-        $bench = @('check', '-p', 'vantare-runtime', '--all-targets', '--features', 'bench',
+        $bench = @($Gate, '-p', 'vantare-runtime', '--all-targets', '--features', 'bench',
             '--target-dir', $TargetDirectory, '--locked', '--offline', '-j', $jobs)
+        if ($Gate -eq 'clippy') { $bench += @('--', '-D', 'warnings') }
         & cargo @bench
         if ($LASTEXITCODE) { throw "Check bench falló (código $LASTEXITCODE)." }
     }

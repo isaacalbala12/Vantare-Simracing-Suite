@@ -52,3 +52,10 @@ El script vive en `tools/quality/vantare_quality.py` (subcomandos:
 bootstrap/doctor/check/audit/report/baseline). #1533 retira los analizadores
 Go/React; `check` valida la retirada y las huellas conservadas. Los baselines
 históricos no se recalibran; los gates de producto son los de `native/`.
+
+## Compilación incremental (#1993)
+
+Workers: `vantare-v2/native/scripts/comprobar.ps1 <crate>`; crate tocado y
+sus dependientes directos. La cola reutiliza dos targets por slot en D: entre
+ramas. No crear targets por rama ni compilar en C:. CI conserva el workspace
+completo en nightly. Detalles en `vantare-v2/native/README.md`.

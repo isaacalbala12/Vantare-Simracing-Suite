@@ -168,3 +168,14 @@ Todo encargo incluye:
   repetir las del worker.
 - Al terminar cada worker: revisión, decisión sobre sus preguntas, actualización
   del handoff vivo y de la issue GitHub (ver `AGENTS.md`).
+
+## Compilaciones de workers (#1993)
+
+Encargar `native/scripts/comprobar.ps1 <crate>` (crate y dependientes directos).
+La CI valida dependientes transitivos y el workspace completo en nightly.
+Siempre por `compilar.ps1`: dos slots como máximo, cuatro jobs en el servidor,
+target persistente del slot en D:, reutilizado entre ramas. No targets por rama
+ni compilación en C:. Medir en serie, sin compartir el mismo target a mano.
+Los worktrees de este servidor van en `D:/VantareServer/worktrees`; comprobar la
+ruta que prepare T3 antes de editar. Si T3 usa C:, no compilar ni mover el
+checkout por cuenta propia: informar y seguir en el worktree autorizado.

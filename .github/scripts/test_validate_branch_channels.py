@@ -68,20 +68,14 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "native/retirement/verify.py",
         ):
             self.assertIn(required, workflow)
-        # El bucle fija las coberturas: check, clippy, captura (banco QA del
-        # instalador con parity-capture, #1735), lifecycle y la
-        # suite. La suite es `completa` (suite + corpus de telemetría) cuando el
-        # clasificador no descarta el corpus, y `test` (solo suite) cuando
-        # ninguna ruta cambiada toca runtime, domain, ipc ni testdata
-        # (#1654 ronda 12). La unión de `test` y `completa` es la de hoy.
-        self.assertIn(
-            "foreach ($gate in @('check', 'clippy', 'captura', $suite, 'lifecycle'))",
-            workflow,
-        )
-        self.assertIn(
-            "$suite = if ($env:TELEMETRIA_SCOPE -eq 'false') { 'test' } else { 'completa' }",
-            workflow,
-        )
+        native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
+        gates = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
+        self.assertIn("scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1", workflow)
+        for gate in ("clippy", "captura", "lifecycle"):
+            self.assertIn(f"-Gate {gate}", gates)
+        self.assertIn("$suite = if ($Telemetry) { 'completa' } else { 'test' }", gates)
+        self.assertIn("-Gate $suite -Packages $packages", gates)
+        self.assertIn("if ($env:TELEMETRIA_SCOPE -ne 'false')", workflow)
         self.assertIn(
             "telemetria: ${{ steps.native_scope.outputs.telemetria }}", workflow
         )
@@ -102,8 +96,16 @@ class ValidateBranchChannelsTest(unittest.TestCase):
     def test_blocking_native_gates_preserve_all_tests(self) -> None:
         workflow = (Path(__file__).resolve().parents[1] / "workflows/branch-channel-gates.yml").read_text(encoding="utf-8")
         self.assertIn("./setup-duckdb.ps1", workflow)
-        self.assertIn("./gates.ps1 -Gate $gate", workflow)
-        self.assertIn('if ($LASTEXITCODE) { throw "native $gate failed" }', workflow)
+        native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
+        gates = (native / "gates.ps1").read_text(encoding="utf-8")
+        ci = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
+        self.assertIn("if ($LASTEXITCODE) { throw 'Native blocking gates failed' }", workflow)
+        self.assertIn('throw "Gate $Gate falló (código $LASTEXITCODE)."', gates)
+        self.assertIn("-Gate lifecycle", ci)
+        self.assertIn("-Gate captura", ci)
+        self.assertIn("'completa'", ci)
+        self.assertNotIn("--exclude", ci)
+        self.assertNotIn("--skip", ci)
         self.assertNotIn("--exclude", workflow)
         self.assertNotIn("--skip", workflow)
         self.assertNotIn("continue-on-error", workflow)

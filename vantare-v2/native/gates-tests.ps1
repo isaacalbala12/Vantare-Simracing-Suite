@@ -29,7 +29,7 @@ try {
         $previousTarget = [Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process')
         $previousDirectory = [Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process')
         & (Join-Path $fixture 'gates.ps1') -Gate test -DuckDbDirectory $DuckDbDirectory
-        if (-not (Test-Path (Join-Path $fixture 'target/gates'))) { throw 'El gate no aisló su target dentro del workspace.' }
+        if ($env:VANTARE_SLOT_TARGET -notmatch '^[dD]:[\\/]' -or -not (Test-Path $env:VANTARE_SLOT_TARGET)) { throw 'El gate debe usar el target de slot en D:.' }
         if ([Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process') -cne $previousTarget) { throw 'El gate no restauró CARGO_TARGET_DIR.' }
         if ([Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process') -cne $previousDirectory) { throw 'El gate no restauró DUCKDB_LIB_DIR.' }
         'Defaults actuales y futuro PASS; bundled de storage desactivado.'

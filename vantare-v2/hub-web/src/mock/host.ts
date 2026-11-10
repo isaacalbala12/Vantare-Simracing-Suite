@@ -113,6 +113,8 @@ export function createMockHost(sceneName = "ajustes-base") {
   ) as SettingsView;
   if (visual) {
     settings.appearance.scheme = visual[1] as "dark" | "light";
+  }
+  if (visual && sceneName === "ajustes-con-diseno") {
     settings.startup.supported = true;
     core.rights = "connected";
     core.services = "connected";

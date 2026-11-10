@@ -259,6 +259,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
       const error = value.error;
       return oneOf(error.kind, [
         "rejected",
+        "evidencePending",
         "busy",
         "coreUnavailable",
         "unsupported",

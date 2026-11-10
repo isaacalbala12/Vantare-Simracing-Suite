@@ -357,7 +357,12 @@ impl Session {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
-        if let Some((id, result)) = self.core.reply() {
+        if let Some((id, result)) = self.core.reply()
+            && self
+                .remote
+                .as_ref()
+                .is_some_and(|(expected, _)| *expected == id)
+        {
             let result = match self.service_reply(id, result) {
                 Ok(Some(reply)) => Ok(reply),
                 Ok(None) => return Ok(true),

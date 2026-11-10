@@ -1,4 +1,6 @@
 //! Integration through real child processes and ACL-protected Win32 pipes.
+#[path = "testing_bridge_tests.rs"]
+mod testing;
 use super::*;
 use crate::test_support::{self, Root, Signal};
 use std::{

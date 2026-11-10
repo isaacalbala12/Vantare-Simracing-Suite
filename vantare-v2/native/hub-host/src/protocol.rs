@@ -317,6 +317,7 @@ pub enum Reply {
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
     Rejected,
+    EvidencePending,
     Busy,
     CoreUnavailable,
     Unsupported,

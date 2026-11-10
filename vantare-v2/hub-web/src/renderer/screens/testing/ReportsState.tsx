@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import {
+  type HostError,
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
@@ -17,6 +18,9 @@ import {
   type TestingView,
 } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
+import { HostFailure } from "../../bridge/client";
+import { testingText as text } from "./es";
+import { testingRequest } from "./TestingRequests";
 
 const empty = (): ReportFields => ({
   module: reportModules[0][0],
@@ -41,6 +45,7 @@ function useReportsState() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [failure, setFailure] = useState<HostError["kind"]>();
   const [preview, setPreview] = useState<ReportPreviewView>();
   const [receipt, setReceipt] = useState<ReportReceiptView>();
   const [participation, setParticipation] = useState<TestingView>({
@@ -52,33 +57,43 @@ function useReportsState() {
   state.current = { fields, saved, loaded, available };
   const inflight = useRef<Promise<unknown> | undefined>(undefined);
   const attempt = useRef<string | undefined>(undefined);
-  const saving = useRef(false);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const cancellation = useRef(new AbortController());
+  const [message, setMessage] = useState("");
   const generation = useRef(0);
   const identity = useRef(client);
   const dirty = JSON.stringify(fields) !== saved;
-  async function request(
-    request: Exclude<Request, { method: "window.close" }>,
-  ) {
-    if (!client || !state.current.available || saving.current)
-      throw new Error("report unavailable");
-    saving.current = true;
-    setBusy(true);
-    setError(false);
+  function request(request: Exclude<Request, { method: "window.close" }>) {
     const epoch = generation.current;
-    try {
-      const operation = client.request(request);
-      inflight.current = operation;
-      const reply = await operation;
-      if (epoch !== generation.current)
-        throw new Error("report session changed");
-      return reply;
-    } catch (error) {
-      if (epoch === generation.current) setError(true);
-      throw error;
-    } finally {
-      saving.current = false;
-      setBusy(false);
-    }
+    const signal = cancellation.current.signal;
+    const operation = queue.current
+      .catch(() => {})
+      .then(async () => {
+        if (!client || !state.current.available || epoch !== generation.current)
+          throw new Error("report unavailable");
+        setBusy(true);
+        setError(false);
+        setFailure(undefined);
+        try {
+          const reply = await testingRequest(client, request, signal);
+          if (epoch !== generation.current)
+            throw new Error("report session changed");
+          return reply;
+        } catch (error) {
+          if (epoch === generation.current) {
+            setError(true);
+            setFailure(
+              error instanceof HostFailure ? error.detail.kind : "rejected",
+            );
+          }
+          throw error;
+        } finally {
+          if (epoch === generation.current) setBusy(false);
+        }
+      });
+    queue.current = operation;
+    inflight.current = operation;
+    return operation;
   }
   async function load() {
     const baseline = JSON.parse(state.current.saved) as ReportFields;
@@ -93,6 +108,7 @@ function useReportsState() {
     setFields(fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLoaded(true);
+    setMessage(reply.value.message);
   }
   async function save() {
     if (
@@ -104,6 +120,7 @@ function useReportsState() {
     const reply = await request({ method: "draft.save", fields });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
+    setMessage(reply.value.message);
     state.current.saved = JSON.stringify(fields);
     setSaved(state.current.saved);
     setPreview(undefined);
@@ -116,7 +133,7 @@ function useReportsState() {
     const snapshot = JSON.stringify(fields);
     const timer = setTimeout(() => {
       if (JSON.stringify(state.current.fields) !== snapshot) return;
-      void saveCurrent.current().catch(() => {});
+      void saveCurrent.current().catch(() => setMessage(text.autosaveFailed));
     }, reportAutosaveMs);
     return () => clearTimeout(timer);
   }, [loaded, dirty, busy, error, available, fields]);
@@ -135,7 +152,14 @@ function useReportsState() {
     });
   }, [client]);
   useEffect(() => {
-    if (identity.current === client && available) return;
+    if (
+      identity.current === client &&
+      core.access.verified &&
+      !core.access.blocked
+    )
+      return;
+    cancellation.current.abort();
+    cancellation.current = new AbortController();
     identity.current = client;
     generation.current++;
     setFields(empty());
@@ -146,7 +170,8 @@ function useReportsState() {
     setConsent(false);
     setParticipation({ reports: [], questionnaires: [] });
     setError(false);
-  }, [client, available]);
+  }, [client, core.access.verified, core.access.blocked]);
+  useEffect(() => () => cancellation.current.abort(), []);
   function edit(patch: Partial<ReportFields>) {
     attempt.current = undefined;
     setError(false);
@@ -210,6 +235,7 @@ function useReportsState() {
   }
   async function send() {
     if (!preview || !consent || dirty) return;
+    const sentFields = JSON.stringify(state.current.fields);
     setConsent(false);
     const reply = await request({
       method: "report.send",
@@ -220,12 +246,15 @@ function useReportsState() {
       throw new Error("unexpected report reply");
     setReceipt(reply.value);
     setPreview(undefined);
-    if (reply.value.draftCleared) {
-      setFields(empty());
+    if (reply.value.draftState === "cleared") {
+      if (JSON.stringify(state.current.fields) === sentFields)
+        setFields(empty());
       setSaved(JSON.stringify(empty()));
     }
   }
   return {
+    access: core.access,
+    message,
     fields,
     edit,
     loaded,
@@ -233,6 +262,7 @@ function useReportsState() {
     busy,
     dirty,
     error,
+    failure,
     load,
     save,
     refresh,

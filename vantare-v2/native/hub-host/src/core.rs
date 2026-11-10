@@ -17,6 +17,11 @@ type ServiceReply = (
     u32,
     Result<vantare_ipc::services_protocol::Reply, crate::protocol::HostError>,
 );
+#[cfg(test)]
+pub(crate) struct TestServices {
+    pub incoming: std::sync::mpsc::Receiver<ServiceRequest>,
+    pub outgoing: std::sync::mpsc::Sender<ServiceReply>,
+}
 pub struct Core {
     photos: Subscriber,
     rights: control::Feed,
@@ -91,19 +96,36 @@ impl Core {
         Ok(())
     }
     pub fn reply(&mut self) -> Option<ServiceReply> {
-        match self.replies.try_recv() {
-            Ok(value) => {
-                self.pending = None;
-                Some(value)
-            }
-            Err(std::sync::mpsc::TryRecvError::Empty) => None,
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                self.service_ok.store(false, Ordering::Release);
-                self.pending
-                    .take()
-                    .map(|id| (id, Err(crate::protocol::HostError::CoreUnavailable)))
+        loop {
+            match self.replies.try_recv() {
+                Ok(value) if self.pending == Some(value.0) => {
+                    self.pending = None;
+                    return Some(value);
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => return None,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.service_ok.store(false, Ordering::Release);
+                    return self
+                        .pending
+                        .take()
+                        .map(|id| (id, Err(crate::protocol::HostError::CoreUnavailable)));
+                }
             }
         }
+    }
+    #[cfg(test)]
+    pub(crate) fn isolate_services(&mut self, connected: bool) -> TestServices {
+        self.stop.set();
+        if let Some(worker) = self.worker.take() {
+            worker.join().expect("services worker stops");
+        }
+        let (requests, incoming) = std::sync::mpsc::sync_channel(1);
+        let (outgoing, replies) = std::sync::mpsc::channel();
+        self.requests = requests;
+        self.replies = replies;
+        self.service_ok.store(connected, Ordering::Release);
+        TestServices { incoming, outgoing }
     }
     pub fn status(&mut self) -> CoreStatus {
         let activity = self.photos.activity();

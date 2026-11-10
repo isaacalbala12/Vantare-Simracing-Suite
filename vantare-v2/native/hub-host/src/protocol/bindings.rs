@@ -24,6 +24,7 @@ pub fn typescript() -> String {
         crate::testing::ReportScreenshot,
         crate::testing::ReportPreviewView,
         crate::testing::ReportReceiptView,
+        crate::testing::ReportDraftState,
         crate::testing::TestingQuestionnaire,
         crate::testing::ReportFields,
         crate::testing::TestingReport,
@@ -199,6 +200,26 @@ fn append_constants(text: &mut String) {
 }
 fn append_testing_id_constants(text: &mut String) {
     for (name, value) in [
+        (
+            "testingBusyRetry",
+            serde_json::json!({"delayMs":crate::testing::BUSY_RETRY_MS,"attempts":crate::testing::BUSY_RETRY_ATTEMPTS}),
+        ),
+        (
+            "reportDraftStates",
+            serde_json::json!([
+                crate::testing::ReportDraftState::Cleared,
+                crate::testing::ReportDraftState::Preserved,
+                crate::testing::ReportDraftState::CleanupPending
+            ]),
+        ),
+        (
+            "reportStates",
+            serde_json::json!(crate::testing::REPORT_STATES),
+        ),
+        (
+            "reportScreenshotLimits",
+            serde_json::json!({"jpeg":crate::testing::SCREENSHOT_JPEG_MAX,"side":crate::testing::SCREENSHOT_SIDE_MAX,"bytes":crate::testing::SCREENSHOT_BYTES_MAX,"count":crate::testing::SCREENSHOT_COUNT_MAX}),
+        ),
         (
             "testingIdLimits",
             serde_json::json!({"uuid":crate::testing::UUID_LENGTH,"previewId":crate::testing::PREVIEW_ID_LENGTH,"updatedAt":crate::testing::UPDATED_AT_MAX_BYTES}),
@@ -408,6 +429,7 @@ fn failure_samples(settings: SettingsView, privacy: PrivacyView) -> Vec<HostToUi
         },
         HostError::PrivacyCleanup { current: privacy },
         HostError::Rejected,
+        HostError::EvidencePending,
         HostError::Busy,
         HostError::CoreUnavailable,
         HostError::Unsupported,
@@ -537,7 +559,7 @@ fn testing_reply_samples() -> Vec<Reply> {
                 id: "qa".into(),
                 state: "submitted".into(),
                 created_at: "2026-11-10T12:00:00Z".into(),
-                draft_cleared: true,
+                draft_state: crate::testing::ReportDraftState::Cleared,
             },
         },
         Reply::ReportRetryPrepare {

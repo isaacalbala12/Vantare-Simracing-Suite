@@ -13,7 +13,7 @@ No usar sus cocientes de CPU como l√≠nea base de rendimiento.
 
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:/VantareServer/targets/isa-1996-medicion'
-# Construir el n˙cleo una vez y conservar ese mismo exe/hash para las variantes UI.
+# Construir el n√∫cleo una vez y conservar ese mismo exe/hash para las variantes UI.
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked -p vantare-runtime --bin vantare-core -j 2
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked -p vantare-ui --example overlay-replay --features paint-stats -j 2
 pwsh -NoProfile -File native/scripts/measure-overlays.ps1 -UI "$env:CARGO_TARGET_DIR/debug/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/debug/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Widgets 4 -Phases -Out D:/VantareServer/evidence/isa-1996/mi-pasada
@@ -184,45 +184,45 @@ Fmt y Clippy `-D warnings` PASS (UI/profiling, todos los targets, `paint-stats`)
 El primer Clippy se√±al√≥ dos nombres de m√©todo sin backticks en documentaci√≥n;
 se corrigieron y se repiti√≥ el check sin cambiar c√≥digo de comportamiento.
 
-## PrecisiÛn de CPU
+## Precisi√≥n de CPU
 
-El tiempo CPU de proceso de Windows est· cuantizado (15,625 ms aquÌ) y puede
-infraestimar r·fagas breves. Se recoge tambiÈn `QueryProcessCycleTime` del
+El tiempo CPU de proceso de Windows est√° cuantizado (15,625 ms aqu√≠) y puede
+infraestimar r√°fagas breves. Se recoge tambi√©n `QueryProcessCycleTime` del
 proceso completo y ciclos por llamada Present en el mismo intervalo QPC.
-Ese contador permite comparar trabajo CPU entre variantes en esta m·quina;
+Ese contador permite comparar trabajo CPU entre variantes en esta m√°quina;
 no se convierte a milisegundos ni se equipara con tiempo GPU. Los ms/frame
 cuantizados se conservan como dato secundario, nunca como prueba de ganancia.
 
-## LÌnea base cruda corregida (10-nov-2026)
+## L√≠nea base cruda corregida (10-nov-2026)
 
-Mismo servidor y perfil dev. GrabaciÛn cruda SHA-256
+Mismo servidor y perfil dev. Grabaci√≥n cruda SHA-256
 `c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c`,
-n˙cleo fijo `a77b1e288f9bf4992f53f7df43b9a94695b27d22ee293c3675162e31077beaf7`.
-Res˙menes completos versionados en `measurements/raw-cycles-baseline-*.json`;
-CSV y logs Ìntegros en `D:/VantareServer/evidence/isa-1996/raw-cycles-baseline-*`.
+n√∫cleo fijo `a77b1e288f9bf4992f53f7df43b9a94695b27d22ee293c3675162e31077beaf7`.
+Res√∫menes completos versionados en `measurements/raw-cycles-baseline-*.json`;
+CSV y logs √≠ntegros en `D:/VantareServer/evidence/isa-1996/raw-cycles-baseline-*`.
 
 | Widgets / fases | Ciclos CPU / DXGI Present estable | Privada media MiB | Present estables | Widgets notificados / snapshot cambiado | Widgets pintados / snapshot pintado |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 / sÌ | Sin cociente: reposo | 81,06 | 0 | 1,000 | 1,000 |
-| 4 / sÌ | 13.627.950 | 80,87 | 1.186 | 1,006 | 1,006 |
-| 4 / no | Contador Present apagado | 81,10 | ó | ó | ó |
-| 22 / sÌ | 49.652.692 | 84,05 | 1.187 | 7,031 | 7,036 |
+| 1 / s√≠ | Sin cociente: reposo | 81,06 | 0 | 1,000 | 1,000 |
+| 4 / s√≠ | 13.627.950 | 80,87 | 1.186 | 1,006 | 1,006 |
+| 4 / no | Contador Present apagado | 81,10 | ‚Äî | ‚Äî | ‚Äî |
+| 22 / s√≠ | 49.652.692 | 84,05 | 1.187 | 7,031 | 7,036 |
 
 El caso de un widget deja de presentar una vez asentado. El radar cambia con
-la posiciÛn espacial; las posiciones de tabla y el acelerador de este corpus
+la posici√≥n espacial; las posiciones de tabla y el acelerador de este corpus
 son casi constantes. Los 22 widgets repiten los tres tipos para medir fan-out,
-no representan 22 diseÒos distintos. La diferencia con el golden confirma que
-la cadencia debe venir del n˙cleo/replay crudo. No comparar aquellas cifras
-preliminares con las nuevas como una mejora de cÛdigo.
+no representan 22 dise√±os distintos. La diferencia con el golden confirma que
+la cadencia debe venir del n√∫cleo/replay crudo. No comparar aquellas cifras
+preliminares con las nuevas como una mejora de c√≥digo.
 
 Los ciclos de las fases completas de cuatro widgets permiten localizar coste:
-layout request 375 M, compute 454 M, prepaint 841 M, paint del ·rbol 5.572 M,
-DirectWrite 11,85 M, envÌo al driver 455 M y Present 1.034 M en la primera
-pasada cruda. Son fases anidadas y campaÒas ligeramente distintas: no sumarlas
-ni dividir esa primera suma por el n˙mero de frames de otra pasada.
+layout request 375 M, compute 454 M, prepaint 841 M, paint del √°rbol 5.572 M,
+DirectWrite 11,85 M, env√≠o al driver 455 M y Present 1.034 M en la primera
+pasada cruda. Son fases anidadas y campa√±as ligeramente distintas: no sumarlas
+ni dividir esa primera suma por el n√∫mero de frames de otra pasada.
 
-CaracterizaciÛn adicional: lifecycle completo pasÛ con 0 fallos. El ejemplo
-raw se compilÛ con el wrapper autorizado y su integraciÛn terminÛ UI/n˙cleo
+Caracterizaci√≥n adicional: lifecycle completo pas√≥ con 0 fallos. El ejemplo
+raw se compil√≥ con el wrapper autorizado y su integraci√≥n termin√≥ UI/n√∫cleo
 con exit 0 por EOF, sin juego, cuenta ni lectura de secretos. El resumen tiene
-3 tests Python de intervalos QPC, Present frente a render, y rechazo de campaÒas
-incompletas. El script reserva la cola durante cada mediciÛn.
+3 tests Python de intervalos QPC, Present frente a render, y rechazo de campa√±as
+incompletas. El script reserva la cola durante cada medici√≥n.

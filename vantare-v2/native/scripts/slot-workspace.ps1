@@ -1,5 +1,6 @@
 # Cargo 1.95 can treat equal package names in different checkouts as fresh.
 # Invalidate local packages on a checkout change; keep registry/git dependencies.
+. (Join-Path $PSScriptRoot 'target-slot.ps1')
 function Set-VantareSlotWorkspace {
     param([Parameter(Mandatory)][string]$Target, [Parameter(Mandatory)][string]$NativeRoot)
     $root = [IO.Path]::GetFullPath($NativeRoot)
@@ -14,19 +15,33 @@ function Set-VantareSlotWorkspace {
         $unknown = @(Get-ChildItem -LiteralPath $Target -Force | Where-Object {
             $_.Name -notin @('.vantare-last-build', '.vantare-workspace', 'tmp')
         })
-        if ($unknown.Count) { throw 'Target sin CACHEDIR.TAG con contenido desconocido; no se limpia.' }
-        [IO.File]::WriteAllText($stamp, $root)
-        return
+        if (-not $unknown.Count) {
+            [IO.File]::WriteAllText($stamp, $root)
+            return
+        }
+        # Cargo 1.95 targets predate CACHEDIR.TAG. A genuine compiler cache and
+        # its build lock identify that older layout; never fabricate the tag.
+        if (-not (Test-VantareCargoCache $Target)) {
+            throw 'Target sin CACHEDIR.TAG con contenido desconocido; no se limpia.'
+        }
     }
-    $json = & cargo metadata --manifest-path $manifest --no-deps --locked --offline --format-version 1
-    if ($LASTEXITCODE) { throw 'No se pudo identificar el workspace del slot.' }
-    $metadata = $json | ConvertFrom-Json
-    $packages = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members } | ForEach-Object name)
-    if (Test-Path -LiteralPath (Join-Path $root 'vendor/gpui_windows/Cargo.toml')) { $packages += 'gpui_windows' }
-    $clean = @('clean', '--manifest-path', $manifest, '--target-dir', $Target, '--locked', '--offline')
-    foreach ($package in $packages) { $clean += @('-p', $package) }
-    & cargo @clean
-    if ($LASTEXITCODE) { throw 'No se pudieron invalidar los paquetes locales del checkout anterior.' }
+    if (Get-ChildItem -LiteralPath $Target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
+        throw 'Hay enlaces dentro del target; no se invalidan paquetes.'
+    }
+    # --manifest-path does not select rustup's toolchain. Enter the native root
+    # so clean uses the same pinned Cargo that produced the artifacts.
+    Push-Location $root
+    try {
+        $json = & cargo metadata --manifest-path $manifest --no-deps --locked --offline --format-version 1
+        if ($LASTEXITCODE) { throw 'No se pudo identificar el workspace del slot.' }
+        $metadata = $json | ConvertFrom-Json
+        $packages = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members } | ForEach-Object name)
+        if (Test-Path -LiteralPath (Join-Path $root 'vendor/gpui_windows/Cargo.toml')) { $packages += 'gpui_windows' }
+        $clean = @('clean', '--manifest-path', $manifest, '--target-dir', $Target, '--locked', '--offline')
+        foreach ($package in $packages) { $clean += @('-p', $package) }
+        & cargo @clean
+        if ($LASTEXITCODE) { throw 'No se pudieron invalidar los paquetes locales del checkout anterior.' }
+    } finally { Pop-Location }
     [IO.Directory]::CreateDirectory($Target) | Out-Null
     [IO.File]::WriteAllText($stamp, $root)
     Write-Host '[cola] checkout nuevo: paquetes locales invalidados; dependencias conservadas.'

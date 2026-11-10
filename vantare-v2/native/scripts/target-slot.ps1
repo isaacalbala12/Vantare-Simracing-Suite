@@ -1,4 +1,15 @@
 # Called only while compilar.ps1 owns the corresponding global slot mutex.
+function Test-VantareCargoCache([string]$Target) {
+    if (Test-Path -LiteralPath (Join-Path $Target 'CACHEDIR.TAG')) { return $true }
+    $compilerInfo = Join-Path $Target '.rustc_info.json'
+    if (-not (Test-Path -LiteralPath $compilerInfo) -or
+        -not (Test-Path -LiteralPath (Join-Path $Target 'debug/.cargo-lock'))) { return $false }
+    try {
+        $info = Get-Content -LiteralPath $compilerInfo -Raw | ConvertFrom-Json
+        return $null -ne $info.PSObject.Properties['rustc_fingerprint']
+    } catch { return $false }
+}
+
 function Get-VantareTargetRoot {
     if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') {
         return [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets'))
@@ -37,11 +48,10 @@ function Initialize-VantareSlotTarget {
         throw 'El target de slot no puede ser un enlace.'
     }
     $stamp = Join-Path $target '.vantare-last-build'
-    $tag = Join-Path $target 'CACHEDIR.TAG'
     $expired = (Test-Path -LiteralPath $stamp) -and
         (Get-Item -LiteralPath $stamp).LastWriteTimeUtc -lt [DateTime]::UtcNow.AddDays(-14)
     $bytes = 0L
-    if (Test-Path -LiteralPath $tag) {
+    if (Test-VantareCargoCache $target) {
         $items = @(Get-ChildItem -LiteralPath $target -Recurse -Force -ErrorAction Stop)
         if ($items | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
             throw 'Hay enlaces dentro del target; revisar antes de limpiar.'

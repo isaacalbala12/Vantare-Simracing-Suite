@@ -12,6 +12,9 @@ runs:
         "SCCACHE_GHA_VERSION=vanta137-$env:LOCK_HASH" >> $env:GITHUB_ENV
         "SCCACHE_SERVER_PORT=4227" >> $env:GITHUB_ENV
         "RUSTC_WRAPPER=sccache" >> $env:GITHUB_ENV
+        # Installation invokes Cargo from vantare-v2/, above rust-toolchain.toml.
+        # Use the same compiler as archive/overlays, independent of runner defaults.
+        "RUSTUP_TOOLCHAIN=1.95.0" >> $env:GITHUB_ENV
     - name: Cache Cargo registry and git sources
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
       with:

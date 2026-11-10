@@ -12,6 +12,8 @@ foreach ($branch in @('A', 'B')) {
     [IO.Directory]::CreateDirectory((Join-Path $directory 'scripts')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $directory '.cargo')) | Out-Null
     [IO.File]::WriteAllText((Join-Path $directory 'Cargo.toml'), "[package]`nname = 'vantare-slot-reuse-probe'`nversion = '0.0.0'`nedition = '2024'`n")
+    # Exercise the pinned Cargo's pre-CACHEDIR.TAG layout even on newer runners.
+    [IO.File]::WriteAllText((Join-Path $directory 'rust-toolchain.toml'), "[toolchain]`nchannel = '1.95.0'`n")
     [IO.File]::WriteAllText((Join-Path $directory 'src/main.rs'), "fn main() { println!(`"$branch`"); }`n")
     foreach ($file in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $directory "scripts/$file")

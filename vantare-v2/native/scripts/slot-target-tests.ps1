@@ -22,6 +22,14 @@ try {
 $null = Initialize-VantareSlotTarget -Slot 0 -Root $root
 if (Test-Path -LiteralPath $marker) { throw 'No se limpió el target caducado.' }
 if (-not (Test-Path -LiteralPath $stamp)) { throw 'No se renovó el slot.' }
+# Cargo 1.95 caches have no CACHEDIR.TAG but still need bounded disk use.
+[IO.Directory]::CreateDirectory((Join-Path $target 'debug')) | Out-Null
+[IO.File]::WriteAllText((Join-Path $target 'debug/.cargo-lock'), '')
+[IO.File]::WriteAllText((Join-Path $target '.rustc_info.json'), '{"rustc_fingerprint":123}')
+[IO.File]::WriteAllText($marker, 'old Cargo artifact')
+[IO.File]::SetLastWriteTimeUtc($stamp, [DateTime]::UtcNow.AddDays(-15))
+$null = Initialize-VantareSlotTarget -Slot 0 -Root $root
+if (Test-Path -LiteralPath $marker) { throw 'No se limpió el target Cargo 1.95 caducado.' }
 $outside = Join-Path $root 'outside'
 [IO.Directory]::CreateDirectory($outside) | Out-Null
 $sentinel = Join-Path $outside 'keep.txt'

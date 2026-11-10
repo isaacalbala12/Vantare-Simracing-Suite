@@ -1,29 +1,43 @@
-## VANTA-137 · Compilación Rust y fiabilidad de CI (2026-11-10)
+## VANTA-137 · Cierre de compilación Rust y CI (2026-11-10)
 
 [#1993](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1993),
-area:plataforma / Project Vantare / Plane VANTA-137. ADR 0107 cancela partir el
-Hub: Orbit queda congelado sin PR en `D:/VantareServer/worktrees/isa-1993-orbit`.
-No forma parte de esta entrega; no se modifica UI, GPUI ni el Hub congelado.
+area:plataforma / Project Vantare / Plane VANTA-137, **Por revisar**.
+Integrados por el orquestador en nightly: #1997 (8dbad2e56), #2007
+(db1aa706d), #2003 (479cca4bf) y #2010 (2bde51160). El último cierre documental
+usa rama `vantareapp/isa-1993-cierre` desde 2bde51160; su PR y HEAD se enlazan
+en #1993. Sin merge, release ni despliegue del worker.
 
-Orden de revisión: [#2007](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2007)
-(independiente, #2006, 9fb72da36); [#1997](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1997)
-(perfiles, 44263d117, CI verde verificada); [#2003](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2003)
-(tooling/CI, implementación 35163bfa0 antes de este cierre documental). Los HEAD
-remotos y checks vigentes se verifican en esos PR antes de fusionar. Sin merge,
-release ni despliegue del worker. Descripción de #1993 e informe final contienen
-el cierre de CI y la tabla definitiva; [mediciones y procedimiento](../../analysis/1993-compilaciones.md).
+CI completa real windows-latest: **58m10s → 16m04s caliente; 44m27s fría**.
+#2010 probado en HEAD 262defc01, ejecución 42787239879, intentos 1/2 verdes:
+2530 tests generales, telemetría y ambos lifecycle. Candidato limpio
+33m36s → 4m20s; nodo C++ DuckDB 1134,83 → 113,94 s. Release usa sccache 0.19
+por compatibilidad MSVC, namespace/daemon propios; el resto conserva 0.18.
+Los gates no distribuibles ya usan DuckDB oficial precompilado; no se cambia
+bundled ni CRT estático del paquete. El minuto restante lo domina ahora
+archivo → suite (8m17s + 6m39s), no el C++ caliente. Opciones no baratas quedan
+[documentadas](../../analysis/1993-compilaciones.md), sin quitar cobertura.
+El workflow de medición pasa a manual, sin rama temporal ni disparo por push.
 
-Workers: comprobar por crate/dependientes directos, sin Hub/Admin; dos slots como
-máximo en D:, cuatro jobs, caché local 30 GiB en D:. GitHub usa windows-latest y
-RUNNER_TEMP, nunca runner propio público. Clippy, archivo de tests y ejecución
-paralela con ambos lifecycle; overlays y distribución tienen builders separados.
-El check obligatorio agrega todos los jobs aplicables. Hub web no dispara Rust.
+Local, mismo Strategy/50 tests tras editar una función usada: Clippy 3,28 →
+4,21 s, Nextest completo 32,16 → 31,15 s; total 35,44 → 35,36 s, sin mejora
+significativa. Runtime: compilar tests 14,78 → 8,91 s; build 3,94 → 5,90 s.
+Ocho crates (núcleo+overlays) limpios 267,74 s; target 2,76 GiB sin tests.
+Core+tests 1,60 → 1,36 GiB; slot-0 observado 3,46 GiB con historial/perfiles.
+Son alcances distintos de los 7–10 GB por rama antiguos. Dos slots fijos en D:,
+cuatro jobs y limpieza por tamaño/edad; targets de medición Windows conservados
+para Isaac. Hub/Admin quedan fuera del camino local; CI conserva su check
+público ante consumidores afectados y workspace completo en cambios globales.
 
-Verificado local: Runtime/dependientes 930 PASS, 14 exclusiones existentes;
-471 huellas conservadas. Rebuild Runtime 5,90 s y tests --lib 8,91 s; limpio de
-ocho default-members 267,74 s. M5: núcleo nativo limpio 19,17 s; check MSVC de
-bibliotecas 13,71 s con SDK descargado. Integración Unix bloqueada por #2004.
-#2006: 1/200 RED → 200/200 PASS paralelos y 57/57 Launcher, sin cambio de producción.
+M5: Core MSVC limpio 25,82 s; 649 tests nativos PASS, cuatro ignorados existentes;
+Storage/DuckDB 129,69 → 22,83 s con caché local. Targets privados limpiados;
+integración Unix pendiente de #2004. #2006: 1/200 fallos → 200/200 PASS y
+57/57 Launcher, sin cambio de producción. Retirada: 471 huellas conservadas.
+
+ADR 0107 cancela partir Hub. Orbit permanece incompleto, sin PR ni build validado
+en `D:/VantareServer/worktrees/isa-1993-orbit`; no se modifica ni se integra.
+No se toca native/ui ni GPUI (VANTA-139). Informe completo y datos:
+`D:/VantareServer/evidence/isa-1993/informe-final.md`; siguiente paso: review del
+último PR y pruebas de Isaac, manteniendo Windows CI sin runner propio público.
 
 ## VANTA-136 · R12: pasos 0–7 listos para revisar (2026-11-05)
 

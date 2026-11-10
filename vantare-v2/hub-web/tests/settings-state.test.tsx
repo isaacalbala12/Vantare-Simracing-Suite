@@ -30,6 +30,7 @@ import { Account } from "../src/renderer/screens/settings/Account";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
 import { Diagnostics } from "../src/renderer/screens/settings/Diagnostics";
 import { General } from "../src/renderer/screens/settings/General";
+import { GeneralRail } from "../src/renderer/screens/settings/GeneralRail";
 import { Performance } from "../src/renderer/screens/settings/Performance";
 import { Privacy } from "../src/renderer/screens/settings/Privacy";
 import { Settings } from "../src/renderer/screens/settings/Settings";
@@ -590,6 +591,45 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
         ([value]) => value.method === "diagnostics.copy",
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe("General context rail", () => {
+  it("prepares and copies through the host, and opens Updates", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const onUpdates = vi.fn();
+    const hook = mount(
+      "diagnostico-observado",
+      <GeneralRail onUpdates={onUpdates} />,
+    );
+    await loaded(hook);
+    const copy = await screen.findByRole("button", {
+      name: t("diagnostics.copy"),
+    });
+    expect(copy.hasAttribute("disabled")).toBe(true);
+    const user = userEvent.setup();
+    const prepare = await screen.findByRole("button", {
+      name: t("diagnostics.prepare"),
+    });
+    await waitFor(() => expect(prepare.hasAttribute("disabled")).toBe(false));
+    await user.click(prepare);
+    await waitFor(() => expect(copy.hasAttribute("disabled")).toBe(false));
+    await user.click(copy);
+    await screen.findByText(t("diagnostics.copied"));
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "diagnostics.prepare",
+      ),
+    ).toHaveLength(1);
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "diagnostics.copy",
+      ),
+    ).toHaveLength(1);
+    await user.click(
+      screen.getByRole("button", { name: t("settings.updates") }),
+    );
+    expect(onUpdates).toHaveBeenCalledOnce();
   });
 });
 

@@ -7,7 +7,7 @@ import { useHost } from "../../app/Host";
 import { useSettings } from "../../app/SettingsState";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
-import { Callout, Card, Pill, SettingRow } from "../../ui/Data";
+import { Callout, Pill, SettingGroup, SettingRow } from "../../ui/Data";
 import { Segmented, Switch } from "../../ui/Forms";
 import { useToastManager } from "../../ui/Layers";
 import { ZoomControl } from "../../ui/ZoomControl";
@@ -52,7 +52,7 @@ export function General() {
   }
   return (
     <>
-      <Card title={t("general.interface")}>
+      <SettingGroup number={1} title={t("general.interface")}>
         <SettingRow
           label={t("general.language")}
           description={t("general.languageHelp")}
@@ -90,8 +90,8 @@ export function General() {
             }}
           />
         </SettingRow>
-      </Card>
-      <Card title={t("general.start")}>
+      </SettingGroup>
+      <SettingGroup number={2} title={t("general.start")}>
         <SettingRow
           label={t("general.startup")}
           description={t(
@@ -117,8 +117,8 @@ export function General() {
         >
           {toggle("minimized", t("general.minimized"), view.general.minimized)}
         </SettingRow>
-      </Card>
-      <Card title={t("track.hide")}>
+      </SettingGroup>
+      <SettingGroup number={3} title={t("general.overlays")}>
         {!view.track.exists && (
           <Callout title={t("track.waiting")}>{t("track.waitingHelp")}</Callout>
         )}
@@ -134,8 +134,8 @@ export function General() {
             }
           />
         </SettingRow>
-      </Card>
-      <Card title={t("general.notices")}>
+      </SettingGroup>
+      <SettingGroup number={4} title={t("general.notices")}>
         <SettingRow
           label={t("general.updates")}
           description={t("general.updatesHelp")}
@@ -163,7 +163,7 @@ export function General() {
             {t("general.testNotice")}
           </Button>
         )}
-      </Card>
+      </SettingGroup>
     </>
   );
 }

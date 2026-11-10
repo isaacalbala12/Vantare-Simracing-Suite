@@ -2,7 +2,6 @@ import {
   defaultZoom,
   zoomLevels as domainZoomLevels,
 } from "../../contract/generated/contract";
-import { Icon } from "../assets/icons/Icon";
 import { Button, IconButton } from "./Button";
 
 export const zoomLevels: readonly number[] = domainZoomLevels;
@@ -35,34 +34,34 @@ export function ZoomControl({
       <legend className="v-sr-only">{label}</legend>
       <IconButton
         label={less}
+        className="v-zoom-step"
         disabled={disabled || index <= 0}
         onClick={() => {
           if (!pending) onChange(zoomLevels[index - 1]);
         }}
       >
-        <Icon name="min" />
+        {"−"}
       </IconButton>
       <Button
         variant="ghost"
+        className="v-zoom-reset"
         aria-label={reset}
         disabled={disabled}
         onClick={() => {
           if (!pending) onChange(defaultZoom);
         }}
       >
-        {new Intl.NumberFormat("es-ES", {
-          style: "percent",
-          maximumFractionDigits: 0,
-        }).format(value / 100)}
+        {`${value}%`}
       </Button>
       <IconButton
         label={more}
+        className="v-zoom-step"
         disabled={disabled || index >= zoomLevels.length - 1}
         onClick={() => {
           if (!pending) onChange(zoomLevels[index + 1]);
         }}
       >
-        <Icon name="plus" />
+        {"+"}
       </IconButton>
     </fieldset>
   );

@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Button } from "../src/renderer/ui/Button";
-import { Avatar, Callout, Table } from "../src/renderer/ui/Data";
+import { Avatar, Callout, SettingGroup, Table } from "../src/renderer/ui/Data";
 import {
   Checkbox,
   Input,
@@ -17,7 +17,7 @@ import {
   Switch,
   Tabs,
 } from "../src/renderer/ui/Forms";
-import { Sidebar } from "../src/renderer/ui/Frame";
+import { RailBlock, Sidebar } from "../src/renderer/ui/Frame";
 import { Dialog, TooltipProvider } from "../src/renderer/ui/Layers";
 
 function Demo() {
@@ -288,4 +288,19 @@ describe("public component behavior", () => {
     expect(document.querySelector("img[src]")).toBeNull();
     expect(screen.getByText("QA")).toBeTruthy();
   });
+});
+
+it("keeps tracked captions readable as complete accessible headings", () => {
+  render(
+    <>
+      <SettingGroup number={1} title="Interfaz">
+        <p>Preferencias</p>
+      </SettingGroup>
+      <RailBlock title="Diagnóstico" icon="v-monitor">
+        <p>Informe</p>
+      </RailBlock>
+    </>,
+  );
+  expect(screen.getByRole("heading", { name: "01 Interfaz" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Diagnóstico" })).toBeTruthy();
 });

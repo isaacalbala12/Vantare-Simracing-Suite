@@ -1,54 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   diagnosticCodes,
   diagnosticSections,
 } from "../../../contract/generated/contract";
-import { useHost } from "../../app/Host";
+import { useDiagnostics } from "../../app/DiagnosticsState";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Skeleton, Table } from "../../ui/Data";
 import { Select, Textarea } from "../../ui/Forms";
-import { useToastManager } from "../../ui/Layers";
 import { ActionGroup, CardGrid } from "../../ui/ShellLayout";
 
-const key = ["diagnostics"] as const;
 export function Diagnostics() {
-  const { client } = useHost();
-  const cache = useQueryClient();
-  const toast = useToastManager();
   const [section, setSection] = useState("all");
   const [code, setCode] = useState("all");
-  const query = useQuery({
-    queryKey: key,
-    enabled: !!client,
-    retry: false,
-    queryFn: async () => {
-      const reply = await client?.request({ method: "diagnostics.get" });
-      if (reply?.method !== "diagnostics.get")
-        throw new Error("diagnostics unavailable");
-      return reply.value;
-    },
-  });
-  const prepare = useMutation({
-    mutationFn: async () => {
-      const reply = await client?.request({ method: "diagnostics.prepare" });
-      if (reply?.method !== "diagnostics.prepare")
-        throw new Error("report unavailable");
-      return reply.value;
-    },
-    onSuccess: (value) => cache.setQueryData(key, value),
-    onError: () => toast.add({ title: t("diagnostics.failed"), type: "err" }),
-  });
-  const copy = useMutation({
-    mutationFn: async () => {
-      const reply = await client?.request({ method: "diagnostics.copy" });
-      if (reply?.method !== "diagnostics.copy")
-        throw new Error("copy unavailable");
-    },
-    onSuccess: () => toast.add({ title: t("diagnostics.copied") }),
-    onError: () => toast.add({ title: t("diagnostics.failed"), type: "err" }),
-  });
+  const { query, prepare, copy } = useDiagnostics();
   if (query.isPending) return <Skeleton label={t("settings.loading")} />;
   if (!query.data)
     return (

@@ -9,6 +9,7 @@ import { Callout, Skeleton } from "../../ui/Data";
 import { SearchInput } from "../../ui/Forms";
 import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
+import { GeneralRail } from "./GeneralRail";
 
 const Account = lazy(() =>
   import("./Account").then((module) => ({ default: module.Account })),
@@ -169,6 +170,11 @@ export function Settings() {
         }))}
         activeTab={selected}
         onTabChange={setTab}
+        rail={
+          selected === "general" ? (
+            <GeneralRail onUpdates={() => setTab("updates")} />
+          ) : undefined
+        }
       />
       <SectionPageHeader
         title={

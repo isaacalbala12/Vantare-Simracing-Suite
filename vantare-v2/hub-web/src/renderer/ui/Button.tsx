@@ -40,7 +40,7 @@ export function IconButton({
   return (
     <Tooltip label={label}>
       <span>
-        <Button {...props} aria-label={label}>
+        <Button {...props} className={className} aria-label={label}>
           {children}
         </Button>
       </span>

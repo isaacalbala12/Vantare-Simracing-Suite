@@ -8,6 +8,7 @@ import {
 import { Icon, type IconName } from "../assets/icons/Icon";
 import { Button, IconButton } from "./Button";
 import { Dialog } from "./Layers";
+import { TrackedCaps } from "./TrackedCaps";
 export function TitleBar({
   title,
   status,
@@ -143,14 +144,16 @@ export function ContextRail({
       aria-label={label}
       className={`v-context${collapsed ? " v-context--collapsed" : ""}`}
     >
-      <IconButton
-        label={toggleLabel}
-        variant="ghost"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-      >
-        <Icon name="i-panel" />
-      </IconButton>
+      {collapsed && (
+        <IconButton
+          label={toggleLabel}
+          variant="ghost"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+        >
+          <Icon name="i-panel" />
+        </IconButton>
+      )}
       {!collapsed && <SectionRailSlot fallback={children} />}
     </aside>
   );
@@ -258,5 +261,42 @@ export function CommandPalette({
         </Combobox.List>
       </Combobox.Root>
     </Dialog>
+  );
+}
+
+export function RailBlock({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: IconName;
+  children: ReactNode;
+}) {
+  return (
+    <section className="v-rail-block">
+      <h2>
+        <Icon name={icon} />
+        <TrackedCaps>{title}</TrackedCaps>
+      </h2>
+      <div className="v-rail-block-body">{children}</div>
+    </section>
+  );
+}
+export function RailVersion({ children }: { children: ReactNode }) {
+  return <strong className="v-rail-version">{children}</strong>;
+}
+export function RailShortcut({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="v-rail-shortcut">
+      <span>{label}</span>
+      {children}
+    </div>
   );
 }

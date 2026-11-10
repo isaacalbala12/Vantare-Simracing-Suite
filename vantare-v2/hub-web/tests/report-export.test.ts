@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { HostToUi } from "../src/contract/generated/contract";
+import { reportExportLimit } from "../src/contract/generated/contract";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
 import { reportExportSession, saveReport } from "../src/main/report-export";
 import { createMockHost } from "../src/mock/host";
@@ -62,6 +63,36 @@ describe("local report export stays in main", () => {
     expect(isHostMessage(reply)).toBe(true);
     expect(JSON.stringify(reply)).not.toContain(fields.actionText);
   });
+  it("bounds prepared reports and rejects unknown binary metadata", () => {
+    const valid = prepared();
+    if (
+      valid.kind !== "response" ||
+      valid.result.method !== "report.localPrepare"
+    )
+      throw new Error("fixture");
+    const value = valid.result.value;
+    const response = (patch: object) => ({
+      ...valid,
+      result: { method: "report.localPrepare", value: { ...value, ...patch } },
+    });
+    expect(
+      isHostMessage(response({ report: "x".repeat(reportExportLimit + 1) })),
+    ).toBe(false);
+    for (const binary of [
+      { name: "D:/private.exe", state: "missing", sha256: null },
+      { name: "vantare.exe", state: {}, sha256: null },
+      { name: "vantare.exe", state: "present", sha256: null },
+      { name: "vantare.exe", state: "present", sha256: "z".repeat(64) },
+    ])
+      expect(isHostMessage(response({ binaries: [binary] }))).toBe(false);
+    const binary = {
+      name: "vantare.exe",
+      state: "present",
+      sha256: "a".repeat(64),
+    };
+    expect(isHostMessage(response({ binaries: [binary] }))).toBe(true);
+    expect(isHostMessage(response({ binaries: [binary, binary] }))).toBe(false);
+  });
   it("exports only a matching prepared reply; cancellation writes nothing", async () => {
     const pick = vi.fn(async () => undefined);
     const save = vi.fn(async () => {});
@@ -109,7 +140,9 @@ describe("local report export stays in main", () => {
     session.observe(prepared(8));
     save.mockRejectedValueOnce(new Error("private filesystem path"));
     expect(await session.export()).toEqual({ error: { kind: "io" } });
-    save.mockRejectedValueOnce(Object.assign(new Error("exists"), { code: "EEXIST" }));
+    save.mockRejectedValueOnce(
+      Object.assign(new Error("exists"), { code: "EEXIST" }),
+    );
     expect(await session.export()).toEqual({ status: "conflict" });
   });
   it("publishes complete bytes exclusively and cleans temporary files on conflicts", async () => {

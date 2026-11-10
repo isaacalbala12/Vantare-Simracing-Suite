@@ -634,6 +634,8 @@ impl Session {
             Request::ReportLocalPrepare { fields } => {
                 if !crate::testing::allowed(&self.current.access) {
                     Err(HostError::Denied)
+                } else if !fields.valid() {
+                    Err(HostError::Rejected)
                 } else {
                     crate::report_local::prepare(
                         fields,

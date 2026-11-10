@@ -1394,3 +1394,17 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   usar el banco fijo. Responsable del banco: incorporar esta escena junto con
   #2030 y pasar --qa-testing con sus replies locales de tester; después guardar
   dark/light/testing-center-diagnostico.png como referencia común.
+### VANTA-138 · contrato de exportación local de Informes (worker D)
+
+- Métodos cerrados report.localPrepare (fields) y report.localExport (sin ruta).
+  Main elige el destino con diálogo y retiene solo la respuesta preparada con id
+  esperado. Cerrar el puerto invalida respuestas/destinos tardíos.
+- Exporta módulo y presencia de los campos privados, nunca su prosa. Diagnóstico
+  con proyección explícita y nueve nombres de binario fijos; no incluye cuenta,
+  rutas, informe previo de Ajustes ni telemetría no observada. Máximo 64 KiB.
+- Temporal exclusivo, sincronización y publicación por hard_link sin reemplazo;
+  resultados saved/cancelled/conflict. Ningún informe se envía a servicios.
+- Contrato independiente de #2041. La vista y sus botones se conectan en el PR
+  visual después de la referencia testing-center-diagnostico (#2042).
+- 266 pruebas web completas y seis de exportación PASS, tipos/lint PASS; dos
+  pruebas Rust Windows y Clippy cruzado -D warnings PASS. Sin nuevas dependencias.

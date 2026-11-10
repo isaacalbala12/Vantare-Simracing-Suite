@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { releaseChannels } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
@@ -70,6 +71,7 @@ export function Updates() {
         </Callout>
       )}
       <Card
+        variant="hero"
         title={t("updates.installed")}
         actions={
           <Button onClick={() => void query.refetch()}>
@@ -114,6 +116,22 @@ export function Updates() {
         </Card>
       )}
       <Card title={t("updates.channels")}>
+        {releaseChannels.map((channel) => (
+          <SettingRow
+            key={channel}
+            label={t(`updates.channel.${channel}`)}
+            description={t(`updates.channelHelp.${channel}`)}
+          >
+            <Pill>
+              {t(
+                view.channel === channel ||
+                  (view.channel === "beta" && channel === "testers")
+                  ? "updates.selected"
+                  : "updates.notSelected",
+              )}
+            </Pill>
+          </SettingRow>
+        ))}
         <Callout
           title={
             view.channel === "beta"

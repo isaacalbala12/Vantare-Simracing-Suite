@@ -33,7 +33,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         $ancestor = $process.ParentProcessId
     }
 }
-$env:SCCACHE_DIR = 'D:\VantareServer\cache\sccache'
+$env:SCCACHE_DIR = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-cache/sccache' } else { 'D:\VantareServer\cache\sccache' }
 $env:SCCACHE_CACHE_SIZE = '30G'
 $env:SCCACHE_SERVER_PORT = '4227'
 if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }

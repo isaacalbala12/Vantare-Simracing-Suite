@@ -25,6 +25,7 @@ function Measure-Core([string]$Name, [string]$Target, [bool]$UseCompilerCache) {
     [ordered]@{
         revision=(& git rev-parse HEAD)
         logical_cpus=[Environment]::ProcessorCount
+        build_jobs=$env:CARGO_BUILD_JOBS
         rustup_toolchain=$env:RUSTUP_TOOLCHAIN
         incremental=$env:CARGO_INCREMENTAL
         records=$script:records

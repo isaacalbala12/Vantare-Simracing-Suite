@@ -1,4 +1,5 @@
 import type { Page } from "playwright-core";
+import { notificationScenes } from "./notifications.ts";
 import { roadmapScenes } from "./roadmap.ts";
 import { upcomingScenes } from "./upcoming.ts";
 
@@ -19,6 +20,7 @@ const settingsTabs: Record<string, string> = {
 export const visualScenes: Record<string, VisualScene> = {
   ...upcomingScenes,
   ...roadmapScenes,
+  ...notificationScenes,
   ...Object.fromEntries(
     Object.entries(settingsTabs).map(([scene, tab]) => [
       scene,

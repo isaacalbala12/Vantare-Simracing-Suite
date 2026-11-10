@@ -1462,6 +1462,22 @@ tipos, lint y build PASS; navegador dark/light y preservación offline PASS.
 El comparador HWND vuelve a fallar por ventana oculta; se conservan ambos fallos.
 Comparación de capturas Chrome aportadas en `visual-supplied-{dark,light}`; marco,
 pestañas superiores y fuentes siguen pendientes de A. Sin merge ni promoción.
+## VANTA-138 / #1995 · worker B · Notificaciones web, 10-nov-2026
+
+Panel de 452 px y vista completa sobre el mismo historial/filtro en memoria.
+Deduplicación, máximo de 50 avisos, lectura individual/todos, limpieza y destinos
+cerrados; Beta solo con acceso tester fresco. Textos y disposición del GPUI.
+Las fuentes locales pueden publicar mediante el centro tipado; se observan errores
+reales del puente y el resultado de prueba de notificación. No hay persistencia,
+cuentas ni servicios nuevos. Constantes/listas exportadas desde Rust.
+Tipos/lint/build y 221 tests web PASS; navegador dark/light, anchura, cierre Escape,
+fallo simulado de cuenta, vista completa, marcado y limpieza PASS, axe sin serious
+ni critical. Bindings generados; repetición fmt/Clippy/Nextest nativa en cola.
+Comparador oficial: claro capturado con Electron; el PNG oscuro existe con recibo
+válido pero no figura en capture-batch.json. Se conserva el fallo y se compara
+con la función oficial, marcando entrada aportada y manifiesto ausente, sin tocar
+la referencia. Fondo Inicio/marco dependen de C/A; no se declara paridad final.
+Evidencia: `D:/VantareServer/evidence/hub-web/isa-1995-b-notificaciones`.
 
 
 ### Worker B · preparación del registro de pantallas, 10-nov-2026
@@ -1482,3 +1498,31 @@ Se aceptan publicaciones vacías; sin publicación no se anuncia una copia guard
 Validación local: tipos, Biome y lint de diseño PASS; 265 tests web PASS; fmt, Clippy -D warnings, 74 tests nativos PASS (1 helper omitido), arquitectura sin GPUI y build QA PASS. Registro nativo: review-native-final.log. Comparación oficial actualizada en review-visual; PR e issue mantienen SHA/CI finales. Sin merge ni promoción propios.
 
 Rebase final de #2031 sobre nightly 330681fd9 (#2039). Rust del anfitrión no cambia frente a la revisión ya validada (74 tests); tipos, Biome y 267 tests web pasan con el marco nuevo. Las capturas finales usan review-visual-latest.
+Tipos, lint de diseño y 229 pruebas web PASS. Rust: fmt, Clippy con -D warnings, 63 tests PASS (1 helper omitido) y build QA PASS; log native-final-retry.log. La entrada completa registra los filtros en SectionChrome, con SectionPanel enlazado; el panel de 452 px conserva filtros propios y se ancla al extremo de la campana. Navegador: historial compartido, lectura, limpieza, Escape y axe PASS.
+Integración local sobre el marco de #2034 (`db82bbfd2`), todavía sin fusionar en nightly. No se publica esa dependencia dentro del PR de pantalla: falta su merge para rebasar y empujar la entrega final. Próximamente ya fue integrado por el orquestador en nightly `97cfe1956`; Workshop queda excluido. Sin merge ni promoción propios.
+
+Comparación preliminar del panel con marco local: light oficial Electron 81,8461 % exacta / 27,8245 % perceptual (`visual-frame-final-2`). Dark auxiliar Chrome 81,4925 % / 14,6955 % (`browser-frame-final-2/visual-supplied-dark`), con PNG/receipt pero sin manifiesto: no equivale a captura oficial. Las métricas globales incluyen Inicio provisional; no se declara paridad completa. Evidencia con referencia/captura/diff preservada.
+
+
+### Worker B · marco integrado, 10-nov-2026
+
+Resuelta la dependencia #2034: rama rebasada sobre nightly `d74c07710`, con registro automático `entry.tsx`, SectionChrome y SectionPanel. 229 tests web, tipos y lint PASS. Rust conserva los fuentes ya verificados; se delega al CI del nuevo HEAD la validación de integración. Evidencia final de Electron/PrintWindow en `D:/VantareServer/evidence/hub-web/isa-1995-b-notificaciones/visual-nightly`; referencia/captura/diff e informes se adjuntan en el PR #2035. CI de la rama se verificará tras el push; el PR y #1995 mantienen SHA y resultado final. No se declara paridad aceptada: la revisión visual corresponde al orquestador. Sin merge ni promoción propios.
+
+Al revisar la integración de Notificaciones se conserva la altura completa de su tarjeta dentro de SectionPanel; prueba de navegador compara su altura con el área útil del marco. El panel compacto de 452 px no cambia. La referencia oscura se regeneró con el banco GPUI: PNG, recibo y fila del manifiesto válidos; provenance.json y copia anterior preservados en la evidencia del worker.
+
+Se igualan el tamaño visible de los filtros del botón GPUI (su etiqueta interior usa 14 px) y el contador `orbit::tag`: Inter 600 de 10,5 px, 20 px de alto, separación de letras, borde neutro y tinte cuando hay avisos sin leer. Se conserva el recorte lateral del panel de producción.
+
+
+### Worker B · revisión de Notificaciones (#2035), base nightly 9916195d4
+
+El centro solo avisa de fallos inesperados io, unsupported e incompatible. Conflictos, permisos, ocupación y desconexión siguen en su pantalla; no crean un aviso sin leer al arrancar. La acción se oculta cuando falta acceso y la guarda se comprueba antes de marcar leído. Tests con cliente falso cubren fallos, respuesta de prueba, deduplicación y cierre del listener; la pantalla cubre acceso bloqueado/no verificado y vuelta de Beta a Todas al perder tester.
+268 tests web, tipos, Biome y lint de diseño PASS; fmt, Clippy -D warnings, 71 tests nativos PASS (1 helper omitido), arquitectura sin GPUI y build QA PASS. Contrato/corpus regenerados preservando informes y borradores de nightly. Las listas de notificación de bindings.rs son herramientas de generación para el centro local del renderer; aún no hay entrada de notificación nativa.
+Launcher, Beta e Informes quedan vacíos hasta conectar emisores. GPUI emite errores locales explícitos, aplicaciones listas (launch_ready), actualización lista (update_ready) e informes aceptados/corregidos (sync_reports); Beta aparece en sus fixtures de QA. No se implementan esos emisores en este PR.
+Referencias oscura y clara regeneradas con el banco inmutable de #2037, hash 9463f44a518139469ebfa68471dd7411c5c013e3d5231f81c56830a4530db116. Se comprobaron panel vacío, acceso tester y 1440x900/zoom100; la plantilla del banco usa dos widgets de fondo frente a cuatro de la referencia anterior, guardada sin pérdida. PNG, bank.json de captura, inputs, recibo y manifiesto conservan procedencia en review-reference-provenance.json. Comparación final en review-visual y SHA/CI finales en PR/#1995. Sin merge ni promoción propios.
+
+Rebase final de #2035 sobre nightly 330681fd9 (#2039). El código Rust/contrato de esa base no cambia frente a 9916195d4, por lo que se conserva la validación nativa de 71 tests; tipos, lint y 270 tests web pasan de nuevo con el marco actualizado.
+
+### Worker B · Notificaciones tras integrar Roadmap, 10-nov-2026
+
+El orquestador fusionó #2031 en nightly 28a8c0657. #2035 se rebasa sobre esa integración: se conservan ambas escenas y los dos conjuntos de constantes generadas, el mock da acceso a cada escena y el handoff preserva las entregas de las dos pantallas. Contrato y corpus regenerados desde Rust. 281 tests web, tipos, Biome y lint de diseño PASS. El contenido de Notificaciones permanece idéntico al HEAD previamente verde; repetición nativa y visual de integración en review-roadmap-rebase-*. PR e issue conservan el SHA/CI definitivo. Sin merge ni promoción propios.
+

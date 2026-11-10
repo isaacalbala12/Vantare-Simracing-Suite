@@ -92,3 +92,8 @@ export const fieldsCoverContract: Exclude<SettingsPatch['field'], typeof setting
 export const roadmapRefreshMs = 300000 as const;
 export const roadmapMaxItems = 40 as const;
 export const roadmapMaxDocumentBytes = 40000 as const;
+export const notificationHistoryLimit = 50 as const;
+export const notificationTextLimit = 240 as const;
+export const notificationSources = ["updater","launcher","system","beta","report"] as const;
+export const notificationSeverities = ["info","warning","error"] as const;
+export const notificationDestinations = ["launcher","settings:updates","testing:reports"] as const;

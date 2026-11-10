@@ -22,3 +22,5 @@ mod job;
 mod test_support;
 
 pub mod shortcuts;
+
+pub mod updates;

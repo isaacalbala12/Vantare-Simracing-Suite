@@ -105,6 +105,44 @@ export const settingsText = {
     "Se aplicará cuando exista un diseño. Vuelve a cargar después de que Vantare cree los overlays iniciales.",
   "track.tableHelp":
     "Estas frecuencias globales no se aplican a widgets personalizados. Las banderas se actualizan siempre al instante.",
+  "updates.channel.development": "Desarrollo",
+  "updates.channel.unknown": "Canal desconocido",
+  "updates.channel.master": "Estable",
+  "updates.channel.testers": "Testers",
+  "updates.channel.nightly": "Nightly",
+  "updates.channelHelp.master": "Versiones probadas para todo el mundo.",
+  "updates.channelHelp.testers":
+    "Candidatas a Estable con el Testing Center activo. Requiere invitación.",
+  "updates.channelHelp.nightly":
+    "Cambios publicados para probar. Puede haber fallos. Requiere invitación.",
+  "updates.selected": "Canal instalado",
+  "updates.notSelected": "No seleccionado",
+
+  "settings.updates": "Actualizaciones",
+  "updates.installed": "Versión instalada",
+  "updates.version": "Versión",
+  "updates.channel": "Canal",
+  "updates.development": "Entorno de desarrollo",
+  "updates.invalid": "No se pudo verificar la instalación",
+  "updates.invalidHelp":
+    "Abre Vantare desde el instalador para comprobar la versión instalada.",
+  "updates.previous": "Hay una versión anterior disponible para recuperación",
+  "updates.beta": "Beta",
+  "updates.ready": "Hay una versión nueva",
+  "updates.restart": "Instalar y reiniciar",
+  "updates.restartHelp": "Aplicar la actualización y volver a abrir Vantare",
+  "updates.failed": "No se pudo solicitar la actualización",
+  "updates.failedHelp":
+    "Comprueba el estado del instalador y vuelve a intentarlo.",
+  "updates.registration": "Registro de Windows",
+  "updates.notes": "Notas de versión",
+  "updates.noNotes": "No hay notas de versión disponibles para este canal",
+  "updates.channels": "Canales",
+  "updates.channelsHelp":
+    "El instalador mantiene tu canal de distribución. Las actualizaciones disponibles se muestran aquí.",
+  "updates.betaHelp":
+    "Las nuevas versiones beta se descargan automáticamente y se aplican al cerrar o reiniciar el Hub.",
+  "updates.checking": "Consultando la instalación",
 
   "settings.performance": "Rendimiento en pista",
   "track.level": "Nivel de rendimiento",

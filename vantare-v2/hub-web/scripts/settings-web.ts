@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 import { preview } from "vite";
-import { until } from "./wait-for";
+import { until } from "./wait-for.ts";
 
 const evidence = resolve(
   process.env.VANTARE_HUB_EVIDENCE ?? "test-results/settings",
@@ -242,6 +242,37 @@ try {
     resolve(evidence, "axe.json"),
     JSON.stringify(reports, null, 2),
   );
+  await page.getByRole("tab", { name: "Actualizaciones", exact: true }).click();
+  await page.getByText("Entorno de desarrollo", { exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Instalar y reiniciar", exact: true })
+      .count(),
+    0,
+  );
+  await page.screenshot({ path: resolve(evidence, "updates-development.png") });
+  await open("actualizacion-lista");
+  await page.getByRole("tab", { name: "Actualizaciones", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Instalar y reiniciar", exact: true })
+    .waitFor();
+  const updateReport = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  assert.deepEqual(updateReport.violations, []);
+  reports.push({
+    screen: "updates",
+    scheme: "dark",
+    violations: updateReport.violations,
+  });
+  await page.screenshot({ path: resolve(evidence, "updates-ready.png") });
+  await page
+    .getByRole("button", { name: "Instalar y reiniciar", exact: true })
+    .click();
+  await writeFile(
+    resolve(evidence, "axe.json"),
+    JSON.stringify(reports, null, 2),
+  );
   await open("ajustes-conflicto");
   await minimized.click();
   const conflict = page
@@ -305,6 +336,7 @@ try {
         zoom: true,
         theme: true,
         commandWithCollapsedRail: true,
+        updates: true,
         performance: true,
         shortcuts: true,
         conflictRetry: true,

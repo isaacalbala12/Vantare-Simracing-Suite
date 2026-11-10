@@ -19,6 +19,9 @@ const Performance = lazy(() =>
 const Shortcuts = lazy(() =>
   import("./Shortcuts").then((module) => ({ default: module.Shortcuts })),
 );
+const Updates = lazy(() =>
+  import("./Updates").then((module) => ({ default: module.Updates })),
+);
 export function Settings() {
   const state = useSettings();
   const [tab, setTab] = useState("general");
@@ -130,6 +133,17 @@ export function Settings() {
                 <Suspense fallback={loading}>
                   <ContentStack>
                     <Shortcuts />
+                  </ContentStack>
+                </Suspense>
+              ),
+            },
+            {
+              value: "updates",
+              label: t("settings.updates"),
+              content: (
+                <Suspense fallback={loading}>
+                  <ContentStack>
+                    <Updates />
                   </ContentStack>
                 </Suspense>
               ),

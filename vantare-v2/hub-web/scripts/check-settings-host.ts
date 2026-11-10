@@ -237,6 +237,15 @@ export async function checkSettingsHost(
     "false",
   );
   await checkTrackHost(page, data, evidence);
+  await page.getByRole("tab", { name: "Actualizaciones", exact: true }).click();
+  await page.getByText("Entorno de desarrollo", { exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Instalar y reiniciar", exact: true })
+      .count(),
+    0,
+  );
+  await page.screenshot({ path: join(evidence, "updates-native.png") });
   await writeFile(
     join(evidence, "settings-native.json"),
     JSON.stringify({
@@ -251,6 +260,8 @@ export async function checkSettingsHost(
       layoutAbsencePreserved: process.env.VANTARE_HUB_LAYOUT_MISSING === "1",
       visibilitySaved: process.env.VANTARE_HUB_LAYOUT_MISSING !== "1",
       shortcutsRead: process.env.VANTARE_HUB_LAYOUT_MISSING !== "1",
+      updatesRead: true,
+      developmentCannotRestart: true,
     }),
   );
 }

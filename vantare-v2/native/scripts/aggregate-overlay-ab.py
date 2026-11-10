@@ -70,6 +70,14 @@ def aggregate(root):
             raise ValueError('duplicate ABBA slot')
         slots[entry['slot']] = dict(value=run['ui']['cycles_per_second'],
                                    started=datetime.datetime.fromisoformat(entry['started']).timestamp(),
+                                   metrics=dict(cycles_per_received_photo=run['ui'].get('cycles_per_received_photo'),
+                                                working_set_mib=run['ui'].get('mean_working_set_mib'),
+                                                presents_per_second=run.get('presents_per_second'),
+                                                receive_to_paint_median_ms=run.get('receive_to_paint_median_ms'),
+                                                receive_to_submit_median_ms=run.get('receive_to_submit_median_ms'),
+                                                **{f'{stage}.{field}':value for stage,fields in run.get('stages',{}).items()
+                                                   for field,value in fields.items()
+                                                   if field in ('cpu_cycles_per_call','wall_ns_per_call')}),
                                    summary_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
     if len(identities) != 1 or len(binaries['aa']) != 1 or len(binaries['ab']) != 2:
         raise ValueError('mixed collector/core/recording/configuration or invalid A/A–A/B binaries')
@@ -85,6 +93,19 @@ def aggregate(root):
                                                   [slots[i]['started'] for i in range(4)]))
     result = compare(ratios['aa'], ratios['ab'])
     result['rounds'] = rounds
+    result['metric_round_ratios'] = {}
+    for experiment,groups in rounds.items():
+        metrics=set().union(*(slot['metrics'] for slots in groups.values() for slot in slots.values()))
+        result['metric_round_ratios'][experiment]={}
+        for metric in sorted(metrics):
+            values=[]
+            for _,slots in sorted(groups.items()):
+                observations=[slots[i]['metrics'].get(metric) for i in range(4)]
+                values.append(round_ratio(observations,[slots[i]['started'] for i in range(4)])
+                              if all(value is not None and value>0 for value in observations) else None)
+            result['metric_round_ratios'][experiment][metric]=dict(
+                per_round=values,summary=describe([value for value in values if value is not None])
+                if any(value is not None for value in values) else None)
     result['within_round_cv'] = {
         experiment: {number: describe([slots[i]['value'] for i in range(4)])['cv']
                      for number, slots in groups.items()}

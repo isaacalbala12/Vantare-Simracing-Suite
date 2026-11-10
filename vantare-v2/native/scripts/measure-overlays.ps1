@@ -203,12 +203,12 @@ try {
         if ($cpuSample.Count -ne 1 -or $cpuSample[0].Status -notin @(0,1)) { throw 'Invalid total system CPU counter: discard run' }
         $load = $cpuSample[0].CookedValue
         $systemRows.Add([pscustomobject]@{qpc=$tick;load_percent=$load})
+        Assert-MeasurementQueueIdle
         [ulong]$samplerCyclesAfter = 0
         if (![Vantare.MeasurementCycles]::QueryProcessCycleTime($samplerProcess.Handle,[ref]$samplerCyclesAfter)) { throw 'Cannot query sampler cycles' }
         $samplerRows.Add([pscustomobject]@{qpc=$tick;cpu_cycles=($samplerCyclesAfter-$samplerCyclesBefore);elapsed_qpc=([Diagnostics.Stopwatch]::GetTimestamp()-$samplerStart)})
         if ($watch.Elapsed.TotalSeconds -gt 5 -and $load -gt $MaxSystemLoadPercent) { throw 'High total system load: discard run' }
         if ($watch.Elapsed.TotalSeconds -gt $Seconds + 120) { throw 'Replay exceeded its duration and shutdown margin' }
-        Assert-MeasurementQueueIdle
     }
     if ($process.ExitCode) { throw "Replay failed: $($process.ExitCode)" }
     if ($coreStarted) {

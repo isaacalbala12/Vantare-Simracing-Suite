@@ -1311,3 +1311,37 @@ textarea.v-input {
   color: var(--switch-thumb-on);
   background: var(--window-close-hover);
 }
+
+.v-sidebar .v-sidebar-footer .v-theme-toggle {
+  color: var(--accent-bright);
+}
+.v-nav-symbol {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 21px;
+}
+.v-sidebar .v-nav-symbol > svg {
+  width: 21px;
+  height: 21px;
+}
+.v-nav-lock {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  display: flex;
+  padding: 1px;
+  border-radius: 4px;
+  background: var(--bg-sidebar);
+  color: var(--text-3);
+}
+.v-sidebar .v-nav-lock > svg {
+  width: 12px;
+  height: 12px;
+}
+.v-sidebar-footer > .v-content-stack > .v-actions:last-child {
+  margin-top: 4px;
+  padding-block: 8px;
+}

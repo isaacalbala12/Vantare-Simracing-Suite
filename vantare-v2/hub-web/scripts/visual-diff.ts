@@ -171,6 +171,10 @@ async function capture(
       "--remote-debugging-port=0",
       "--remote-debugging-address=127.0.0.1",
       "--force-device-scale-factor=1",
+      // Visual QA runs without foreground activation; keep its renderer schedulable.
+      // These flags are not used by the product or the performance measurement.
+      "--disable-renderer-backgrounding",
+      "--disable-backgrounding-occluded-windows",
     ],
     { env, windowsHide: false, stdio: ["ignore", "ignore", "pipe"] },
   );
@@ -300,17 +304,22 @@ async function capture(
     );
     return await readFile(join(destination, "current.png"));
   } finally {
-    if (browser && child.exitCode === null) {
-      const closing = await browser.newBrowserCDPSession();
-      await closing.send("Browser.close").catch(() => {}); // Expected CDP disconnect on close.
-    }
-    await browser?.close();
+    // Detach CDP; Browser.close can wait forever behind the application's close guard.
+    await browser?.close().catch(() => {});
     if (child.pid && child.exitCode === null) {
-      const stopped = new Promise<void>((accept) =>
-        child.once("exit", () => accept()),
+      try {
+        execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+          windowsHide: true,
+          stdio: "ignore",
+        });
+      } catch {
+        if (child.exitCode === null) child.kill();
+      }
+      await until(
+        () => child.exitCode !== null || child.signalCode !== null,
+        10000,
+        "own visual QA process tree stops",
       );
-      child.kill();
-      await stopped;
     }
     await writeFile(join(destination, "stderr.log"), stderr);
   }

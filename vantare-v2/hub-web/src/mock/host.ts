@@ -59,6 +59,17 @@ export function createMockHost(
     );
   sceneName = visual?.[2] ?? sceneName;
   const core = structuredClone(coreScene) as CoreStatus;
+  // The GPUI visual bank grants the local capture snapshot these capabilities.
+  // This branch exists only inside the isolated mock, never the real host.
+  if (visual)
+    core.access = {
+      verified: true,
+      blocked: false,
+      tester: true,
+      calendar: true,
+      engineer: true,
+      strategy: true,
+    };
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../contract/generated/contract").PilotView;

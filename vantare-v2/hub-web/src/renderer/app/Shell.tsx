@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { defaultZoom } from "../../contract/generated/contract";
+import { demoProfileName } from "../../mock/demo-profile";
 import { Icon } from "../assets/icons/Icon";
 import { t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
@@ -14,6 +15,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
+import { initials } from "../ui/initials";
 import { Popover, ToastViewport, useToastManager } from "../ui/Layers";
 import {
   ActionGroup,
@@ -31,6 +33,7 @@ import { WindowControls } from "./WindowControls";
 
 export function Shell() {
   const host = useHost();
+  const profileName = host.hello?.demo ? demoProfileName : "";
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);
@@ -53,7 +56,8 @@ export function Shell() {
           ...item,
           locked: undefined,
           label: upcoming[item.id as "strategy" | "engineer"].title,
-          badge: <Icon name="i-lock" />,
+          lockBadge: true,
+          badge: <Badge tone="locked">{upcoming.soon}</Badge>,
         }
       : item,
   );
@@ -324,10 +328,10 @@ export function Shell() {
               </Button>
               <ActionGroup>
                 <Avatar
-                  label={t("shell.anonymous")}
-                  initials={t("shell.initials")}
+                  label={profileName || t("shell.anonymous")}
+                  initials={initials(profileName)}
                 />
-                {!ui.sidebarCollapsed && t("shell.anonymous")}
+                {!ui.sidebarCollapsed && (profileName || t("shell.anonymous"))}
                 <Badge>{t("shell.beta")}</Badge>
               </ActionGroup>
             </ContentStack>

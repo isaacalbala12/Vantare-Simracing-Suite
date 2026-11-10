@@ -41,6 +41,7 @@ export interface NavItem {
   label: string;
   icon: IconName;
   locked?: string;
+  lockBadge?: boolean;
   badge?: ReactNode;
 }
 export function Sidebar({
@@ -117,10 +118,17 @@ export function Sidebar({
                 if (!item.locked) onSelect(item.id);
               }}
             >
-              <Icon name={item.icon} />
+              <span className="v-nav-symbol">
+                <Icon name={item.icon} />
+                {collapsed && (item.locked || item.lockBadge) && (
+                  <span className="v-nav-lock">
+                    <Icon name="v-lock" />
+                  </span>
+                )}
+              </span>
               {!collapsed && <span>{item.label}</span>}
-              {item.badge}
-              {item.locked && <Icon name="i-lock" />}
+              {!collapsed && item.badge}
+              {!collapsed && item.locked && <Icon name="v-lock" />}
             </Button>
           ))}
         </div>

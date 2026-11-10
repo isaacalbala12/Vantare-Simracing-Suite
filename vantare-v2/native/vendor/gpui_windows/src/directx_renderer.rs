@@ -245,6 +245,9 @@ impl DirectXRenderer {
     #[inline]
     fn present(&mut self) -> Result<()> {
         let span = crate::profiling::begin(crate::profiling::Stage::Present);
+        if span.is_some() {
+            eprintln!("perf present clock={:?}", crate::profiling::clock());
+        }
         let result = unsafe {
             self.resources
                 .as_ref()

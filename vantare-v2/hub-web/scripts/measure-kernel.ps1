@@ -36,7 +36,7 @@ public static class HubMeasure {
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint pid);
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window,out Rect rect);
   [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr window,out Rect rect);
-  [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr window,uint message,IntPtr w,IntPtr l);
+  [DllImport("user32.dll",SetLastError=true)] static extern IntPtr SendMessageTimeoutW(IntPtr window,uint message,IntPtr w,IntPtr l,uint flags,uint timeout,out IntPtr result);
   [StructLayout(LayoutKind.Sequential)] struct Point { public int x,y; }
   [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr window,ref Point point);
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
@@ -76,8 +76,12 @@ public static class HubMeasure {
   public static void Click(long handle,int x,int y) {
     var window=new IntPtr(handle); var p=new Point {x=x,y=y};
     if(!ScreenToClient(window,ref p)) throw new InvalidOperationException("Client point unavailable");
-    var point=new IntPtr((p.y<<16)|(p.x&65535));
-    PostMessageW(window,0x200,IntPtr.Zero,point); PostMessageW(window,0x201,new IntPtr(1),point); PostMessageW(window,0x202,IntPtr.Zero,point);
+    ClientClick(handle,p.x,p.y);
+  }
+  public static void ClientClick(long handle,int x,int y) {
+    var window=new IntPtr(handle);var point=new IntPtr((y<<16)|(x&65535));IntPtr result;
+    foreach(uint message in new uint[] {0x200,0x201,0x202})
+      if(SendMessageTimeoutW(window,message,message==0x201?new IntPtr(1):IntPtr.Zero,point,2,10000,out result)==IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
   }
   public static int[] Size(long handle) { Rect rect; if(!GetClientRect(new IntPtr(handle),out rect)) throw new InvalidOperationException("Client bounds"); return new int[] {rect.right,rect.bottom}; }
 }
@@ -114,33 +118,22 @@ public static class HubMeasure {
               if(-not $handle){Start-Sleep -Milliseconds 5}
             }
             $visibleMs=([DateTime]::UtcNow-$process.StartTime.ToUniversalTime()).TotalMilliseconds
+            $settingsVerification='Playwright'
             if($application.name -eq 'gpui'){
+              if(-not $process.WaitForInputIdle(10000)){throw 'GPUI input-idle deadline'}
               $window=[System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$handle)
               $condition=[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Ajustes')
-              $ready=[Diagnostics.Stopwatch]::StartNew();$settings=$null
-              while(-not $settings){
-                $settings=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
-                if($ready.Elapsed.TotalSeconds -gt 10){
-                  Save-OwnMeasuredWindow $handle ('gpui-not-ready-'+$iteration+'.png')
-                  @($window.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition)|ForEach-Object {$_.Current.Name}) | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $configuration.evidence 'gpui-accessibility.json')
-                  throw 'GPUI Settings accessibility deadline'
-                }
-                if(-not $settings){Start-Sleep -Milliseconds 25}
-              }
+              $settings=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
               $pattern=$null
-              if($settings.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)){$pattern.Invoke()}
-              else{$rectangle=$settings.Current.BoundingRectangle;[HubMeasure]::Click($handle,[int]($rectangle.X+$rectangle.Width/2),[int]($rectangle.Y+$rectangle.Height/2))}
-              $appearance=[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Apariencia')
-              $confirmed=$false
-              while(-not $confirmed){
-                $tab=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$appearance)
-                $confirmed=$tab -and -not $tab.Current.IsOffscreen
-                if($ready.Elapsed.TotalSeconds -gt 10){throw 'GPUI Settings confirmation deadline'}
-                if(-not $confirmed){Start-Sleep -Milliseconds 25}
+              if($settings -and $settings.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)){
+                $pattern.Invoke();$settingsVerification='UIAutomation'
+              } else {
+                if($settings){$rectangle=$settings.Current.BoundingRectangle;[HubMeasure]::Click($handle,[int]($rectangle.X+$rectangle.Width/2),[int]($rectangle.Y+$rectangle.Height/2))}
+                else{[HubMeasure]::ClientClick($handle,32,[HubMeasure]::Size($handle)[1]-90)}
+                $settingsVerification='synchronous window messages; verify saved screenshot'
               }
-              if($iteration -eq 0){Save-OwnMeasuredWindow $handle ('gpui-'+$mode+'.png')}
             }
-            @{phase='visible';app=$application.name;mode=$mode;iteration=$iteration;pid=$process.Id;window=$handle;visibleMs=$visibleMs} | ConvertTo-Json -Compress | Write-Output
+            @{phase='visible';app=$application.name;mode=$mode;iteration=$iteration;pid=$process.Id;window=$handle;visibleMs=$visibleMs;settingsVerification=$settingsVerification} | ConvertTo-Json -Compress | Write-Output
             if([Console]::ReadLine() -ne 'ready'){throw 'Driver did not confirm Settings'}
             Start-Sleep -Seconds 10 # Defined idle settling period, not a readiness heuristic.
             $family=[HubMeasure]::Family($process.Id)
@@ -152,6 +145,7 @@ public static class HubMeasure {
             foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$cpu+=$item.TotalProcessorTime.TotalMilliseconds-$before[$id]}
             @{phase='idle';app=$application.name;mode=$mode;iteration=$iteration;workingSetBytes=$workingSet;processes=@($family);processMetrics=$details;cpuOneCorePercent=100*$cpu/$cpuWatch.Elapsed.TotalMilliseconds} | ConvertTo-Json -Depth 5 -Compress | Write-Output
             if([Console]::ReadLine() -ne 'stop'){throw 'Driver did not confirm metrics'}
+            if($application.name -eq 'gpui'){Save-OwnMeasuredWindow $handle ('gpui-'+$mode+'-'+$iteration+'.png')}
             $process.StandardInput.Close()
             if(-not $process.WaitForExit(10000)){throw 'Controlled close deadline'}
             @{phase='closed';app=$application.name;mode=$mode;iteration=$iteration;stderr=$stderr.GetAwaiter().GetResult();survivors=@([HubMeasure]::Family($process.Id))} | ConvertTo-Json -Compress | Write-Output

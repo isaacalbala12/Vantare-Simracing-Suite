@@ -66,6 +66,15 @@ async function main() {
     resolve("../native/ui/fixtures/layout.json"),
     join(gpuiData, "layout.json"),
   );
+  const deniedPrivacy = JSON.stringify({
+    generation: 0,
+    crashes: false,
+    usage: false,
+    crashes_decided: true,
+    usage_decided: true,
+  });
+  await writeFile(join(gpuiData, "privacy.json"), deniedPrivacy);
+  await writeFile(join(generation, "data/privacy.json"), deniedPrivacy);
   const environment: Record<string, string> = {};
   for (const name of [
     "SystemRoot",
@@ -202,10 +211,6 @@ async function main() {
           await page
             .getByRole("tab", { name: "General", exact: true })
             .waitFor();
-          if (event.iteration === 0)
-            await page.screenshot({
-              path: join(evidence, `electron-${event.mode}.png`),
-            });
         }
         driver.stdin.write("ready\n");
       } else if (event.phase === "idle") {
@@ -220,6 +225,10 @@ async function main() {
           const session = await context.newCDPSession(page);
           const heap = await session.send("Runtime.getHeapUsage");
           event.rendererHeapBytes = heap.usedSize;
+          if (event.iteration === 0)
+            await page.screenshot({
+              path: join(evidence, `electron-${event.mode}.png`),
+            });
           await session.detach();
           await browser.close();
           browser = undefined;

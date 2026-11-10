@@ -45,7 +45,7 @@ fn crate_boundaries_include_build_scripts_tests_and_vendor() {
     for other in [
         "launcher/src/lib.rs",
         "ipc/src/lib.rs",
-        "vendor/gpui_windows/src/gpui_windows.rs",
+        "vendor/gpui-pre-windows/src/gpui_windows.rs",
     ] {
         assert_ne!(crate_root(&hub), crate_root(&native.join(other)));
     }
@@ -112,7 +112,7 @@ fn profiling_consumers_use_distinct_stage_names() {
     }
     let native = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut owners = std::collections::BTreeMap::new();
-    for consumer in ["runtime", "ipc", "ui", "vendor/gpui_windows"] {
+    for consumer in ["runtime", "ipc", "ui", "vendor/gpui-pre-windows"] {
         let mut found = std::collections::BTreeSet::new();
         stages(&native.join(consumer).join("src"), &mut found);
         assert!(

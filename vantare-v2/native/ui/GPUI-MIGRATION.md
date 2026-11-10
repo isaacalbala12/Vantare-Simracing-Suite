@@ -36,7 +36,7 @@ DirectWrite publicó funciones separadas para análisis y capas de color: se
 adaptó la cobertura en esas funciones, conservando el código nuevo alrededor.
 La captura tiene prioridad y no depende de instrumentación para funcionar.
 El patch reproducible incluye manifest, dependencia al diagnóstico compartido
-y fuente; no añade un renderizador. La copia antigua queda inerte e identificada.
+y fuente; no añade un renderizador. La copia antigua se retira del árbol activo; queda conservada en el historial de Git y en la rama de medición de partida.
 
 ## Consumidores del workspace
 
@@ -144,3 +144,9 @@ el tiempo de estos rebuilds de cambio de perfil no los sustituye.
 `QueryProcessCycleTime` incluye los ciclos de todos los hilos, en usuario y
 kernel ([Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-queryprocesscycletime)).
 Se mantienen separados del tiempo CPU cuantizado de Windows y del tiempo GPU.
+
+## Retirada del backend git sustituido
+
+Se elimina `vendor/gpui_windows`: no pertenecía al grafo migrado y duplicaba una copia histórica. El delta propio está portado al backend publicado y el original sigue en Git. Los tests de límites de crates y nombres de fases apuntan ahora a `vendor/gpui-pre-windows`, con las mismas aserciones.
+
+La CI nueva de #2003 detectaba la carpeta antigua y ejecutaba `cargo clean -p gpui_windows`, fallando porque ese paquete ya no se resuelve. La retirada corrige ese fallo sin modificar el tooling de VANTA-137. Las mediciones siguen pendientes de la línea base Release corregida de #2001.

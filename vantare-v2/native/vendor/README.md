@@ -4,9 +4,10 @@ La ruta activa de VANTA-139 usa [`gpui-pre-windows`](gpui-pre-windows/README.md)
 publicado, con `[patch.crates-io]`. Todos los consumidores normales resuelven
 Kit/Pre y el lockfile no contiene dependencias git de Zed.
 
-`gpui_windows/` y el informe de abajo se conservan como referencia histórica
-inerte de la revisión anterior; su manifest no forma parte del workspace,
-los patches activos ni del grafo resuelto. No compilarlo para la ruta nueva.
+La carpeta antigua `gpui_windows/` se ha retirado del Ã¡rbol activo. Su cÃ³digo y
+el informe de abajo permanecen en el historial de Git y en la rama del paso 1.
+Los comandos histÃ³ricos de este informe no se ejecutan en el checkout migrado;
+para regenerar o probar el backend actual, seguir su README enlazado arriba.
 
 ---
 

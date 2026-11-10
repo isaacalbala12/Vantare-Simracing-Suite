@@ -438,10 +438,18 @@ export const t = (key: keyof typeof settingsText): string => settingsText[key];
 
 export const testingText = {
   title: "Informes",
-  description: "Cuéntanos qué falla o qué mejorarías. Cada informe llega al equipo de Vantare.",
+  description:
+    "Cuéntanos qué falla o qué mejorarías. Cada informe llega al equipo de Vantare.",
   diagnostic: "Diagnóstico local",
   newReport: "Nuevo informe",
   myReports: "Ver mis informes",
+  listTitle: "Mis informes",
+  credit: "Quiero aparecer en los agradecimientos",
+  creditHelp:
+    "Opcional y revocable. Las notas podrán acreditar tu informe con un identificador de colaborador, sin nombre ni email. Retirarlo no cambia notas ya publicadas.",
+  understood: "Entendido",
+  fixedNotice: "Tu informe está arreglado. Gracias por avisar.",
+  acceptedNotice: "Tu informe ha sido aceptado. Gracias por avisar.",
   withScreenshots: "Informe con capturas",
   failed: "No se pudo completar la operación. Se conserva tu borrador.",
   retry: "Reintentar",
@@ -451,8 +459,10 @@ export const testingText = {
   helpTitle: "Ayúdanos a mejorar Vantare",
   localTitle: "Título local · no se envía",
   localBody: "Notas locales · no se envían",
-  localConsent: "Consiento enviar los campos estructurados al equipo de Vantare",
-  localHelp: "El título y las notas son locales y no se envían. Se envían el canal, el identificador del informe y el consentimiento, ligados a tu cuenta por el servidor. Máximo 5 informes al día y 20 en 7 días. El crédito es opcional y se decide en Mis informes.",
+  localConsent:
+    "Consiento enviar los campos estructurados al equipo de Vantare",
+  localHelp:
+    "El título y las notas son locales y no se envían. Se envían el canal, el identificador del informe y el consentimiento, ligados a tu cuenta por el servidor. Máximo 5 informes al día y 20 en 7 días. El crédito es opcional y se decide en Mis informes.",
   send: "Enviar informe",
   compose: "Nuevo informe",
   module: "Módulo",
@@ -466,10 +476,29 @@ export const testingText = {
   consent: "He revisado y acepto enviar este contenido al equipo de Vantare",
   retryPrepare: "Revisar el último intento",
   received: "Informe recibido",
-  listHelp: "Últimos 20 informes de tu cuenta, entre canales. Los recibos antiguos se muestran aparte.",
+  listHelp:
+    "Últimos 20 informes de tu cuenta, entre canales. Los recibos antiguos se muestran aparte.",
   empty: "Aún no hay informes cargados",
   emptyHelp: "Inicia sesión y recarga para consultar tus informes.",
   unknownState: "Estado no disponible",
   fixedIn: "Arreglado en",
-  states: { received: "Recibido", reviewing: "En revisión", accepted: "Aceptado", fixed: "Arreglado", declined: "No aceptado", spam: "No aceptado" },
+  yourReports: "Tus informes",
+  loadedReports: "informes cargados",
+  acceptedReports: "aceptados",
+  fixedReports: "arreglados",
+  channelUnavailable: "Canal no disponible",
+  conversation: "Conversación",
+  conversationHelp:
+    "Respuestas, informes parecidos y apoyo a otros informes · Próximamente",
+  goodReport: "Un buen informe",
+  goodReportHelp:
+    "Cuenta qué hiciste, qué esperabas y qué ocurrió. Añade una captura si ayuda y revisa los datos personales.",
+  states: {
+    received: "Recibido",
+    reviewing: "En revisión",
+    accepted: "Aceptado",
+    fixed: "Arreglado",
+    declined: "No aceptado",
+    spam: "No aceptado",
+  },
 } as const;

@@ -488,11 +488,11 @@ fn application_reply_samples() -> [Reply; 7] {
                 draft: AppDraft {
                     id: None,
                     name: String::new(),
-                    args: vec![],
                     favorite: false,
                     use_discovery: false,
                 },
                 has_executable: false,
+                has_custom_arguments: false,
             },
         },
         Reply::LauncherAppPick {
@@ -604,7 +604,6 @@ fn application_request_samples() -> [Request; 7] {
             draft: AppDraft {
                 id: None,
                 name: "QA".into(),
-                args: vec![],
                 favorite: false,
                 use_discovery: false,
             },

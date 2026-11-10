@@ -17,23 +17,26 @@ const revision = (value: unknown) =>
 export function isAppDraft(value: unknown): value is AppDraft {
   return (
     record(value) &&
-    exact(value, ["id", "name", "args", "favorite", "useDiscovery"]) &&
+    exact(value, ["id", "name", "favorite", "useDiscovery"]) &&
     (value.id === null || id(value.id)) &&
     text(value.name, profileLimits.name) &&
     typeof value.favorite === "boolean" &&
-    typeof value.useDiscovery === "boolean" &&
-    Array.isArray(value.args) &&
-    value.args.length <= profileLimits.args &&
-    value.args.every((arg) => text(arg, profileLimits.arg))
+    typeof value.useDiscovery === "boolean"
   );
 }
 export function isAppEditor(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["revision", "draft", "hasExecutable"]) &&
+    exact(value, [
+      "revision",
+      "draft",
+      "hasExecutable",
+      "hasCustomArguments",
+    ]) &&
     revision(value.revision) &&
     isAppDraft(value.draft) &&
-    typeof value.hasExecutable === "boolean"
+    typeof value.hasExecutable === "boolean" &&
+    typeof value.hasCustomArguments === "boolean"
   );
 }
 export function isPickedApp(value: unknown): boolean {

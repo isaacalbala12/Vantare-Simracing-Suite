@@ -20,6 +20,24 @@ describe("executable picker boundary", () => {
       }),
     ).toBe(false);
     expect(
+      isUiMessage({
+        kind: "request",
+        id: 1,
+        request: {
+          method: "launcher.app.save",
+          baseRevision: "0".repeat(64),
+          pickToken: null,
+          draft: {
+            id: "obs",
+            name: "OBS",
+            favorite: false,
+            useDiscovery: false,
+            args: ["--renderer-cmd-prefix=untrusted"],
+          },
+        },
+      }),
+    ).toBe(false);
+    expect(
       isRendererMessage({
         kind: "request",
         id: 1,

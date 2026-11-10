@@ -25,7 +25,6 @@ pub struct AppDraft {
     pub use_discovery: bool,
     pub id: Option<String>,
     pub name: String,
-    pub args: Vec<String>,
     pub favorite: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -35,6 +34,7 @@ pub struct AppEditor {
     pub revision: String,
     pub draft: AppDraft,
     pub has_executable: bool,
+    pub has_custom_arguments: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -127,7 +127,6 @@ impl Picker {
         if draft.name.trim().is_empty()
             || draft.name.len() > editor::NAME_MAX
             || draft.name.contains('\0')
-            || vantare_launcher::validate_args(&draft.args).is_err()
         {
             return Err(HostError::Denied);
         }
@@ -164,7 +163,6 @@ impl Picker {
                 .find(|app| app.id == id)
                 .ok_or(HostError::Denied)?;
             app.name.clone_from(&draft.name);
-            app.args.clone_from(&draft.args);
             app.favorite = draft.favorite;
             if draft.use_discovery {
                 app.executable = None;
@@ -185,19 +183,28 @@ impl Picker {
 mod tests {
     use super::*;
     #[test]
-    fn oversized_app_arguments_are_protected_without_truncating_or_changing_the_document() {
+    fn app_arguments_cannot_cross_the_contract_and_saved_arguments_are_preserved() {
         let root = crate::test_support::Root::new();
         let path = root.path.join("launcher.json");
         let mut document = Document::fresh_install();
-        document.apps[0].args = vec!["x".repeat(editor::ARG_MAX); editor::ARGS_MAX];
+        document.apps[0].args = vec!["private-argument".repeat(500); 128];
         let bytes = serde_json::to_vec(&document).unwrap();
         assert!(Document::from_bytes(&bytes).is_ok());
         std::fs::write(&path, &bytes).unwrap();
-        assert_eq!(
-            get(&path, Some(&document.apps[0].id)),
-            Err(HostError::Protected)
-        );
-        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        let mut value = get(&path, Some(&document.apps[0].id)).unwrap();
+        assert!(value.has_custom_arguments);
+        let json = serde_json::to_string(&value).unwrap();
+        assert!(!json.contains("private-argument") && !json.contains("\"args\""));
+        let mut forged = serde_json::to_value(&value.draft).unwrap();
+        forged["args"] = serde_json::json!(["--renderer-cmd-prefix=untrusted"]);
+        assert!(serde_json::from_value::<AppDraft>(forged).is_err());
+        value.draft.name = "Nombre editado".into();
+        Picker::default()
+            .save(&path, &value.draft, None, &value.revision, Instant::now())
+            .unwrap();
+        let saved = Document::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved.apps[0].args, document.apps[0].args);
+        assert_eq!(saved.apps[0].name, "Nombre editado");
     }
     #[test]
     fn picker_rejects_scripts_network_paths_and_forged_or_expired_tokens() {
@@ -247,7 +254,6 @@ mod tests {
             use_discovery: false,
             id: None,
             name: "QA".into(),
-            args: vec![],
             favorite: true,
         };
         assert!(matches!(
@@ -294,7 +300,7 @@ mod tests {
         document.apps.push(vantare_launcher::App {
             id: "custom:vantare".into(),
             name: "Vantare Overlay".into(),
-            executable: Some(r"C:\QAantare.exe".into()),
+            executable: Some(r"C:/QA/vantare.exe".into()),
             args: vec![],
             favorite: false,
         });
@@ -365,7 +371,6 @@ pub fn get(path: &Path, id: Option<&str>) -> Result<AppEditor, HostError> {
                 use_discovery: false,
                 id: None,
                 name: String::new(),
-                args: vec![],
                 favorite: false,
             },
             false,
@@ -381,7 +386,6 @@ pub fn get(path: &Path, id: Option<&str>) -> Result<AppEditor, HostError> {
                     use_discovery: false,
                     id: Some(app.id.clone()),
                     name: app.name.clone(),
-                    args: app.args.clone(),
                     favorite: app.favorite,
                 },
                 app.executable.is_some(),
@@ -392,6 +396,9 @@ pub fn get(path: &Path, id: Option<&str>) -> Result<AppEditor, HostError> {
         revision: vantare_services::content_hash(&bytes),
         draft,
         has_executable,
+        has_custom_arguments: id
+            .and_then(|id| document.apps.iter().find(|app| app.id == id))
+            .is_some_and(|app| !app.args.is_empty()),
     };
     let response = crate::protocol::HostToUi::Response {
         id: u32::MAX,

@@ -1,23 +1,19 @@
 use super::{Error, Resultado, texto::Texto};
 use crate::escena::capas::{Color, Dibujo, Pintura, Rect};
 use windows::{
-    Win32::Graphics::{
-        Direct2D::{
-            CLSID_D2D1GaussianBlur,
-            Common::{
-                D2D_RECT_F, D2D_SIZE_F, D2D1_COLOR_F, D2D1_COMPOSITE_MODE_SOURCE_OVER,
-                D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_GRADIENT_STOP,
-            },
-            D2D1_ANTIALIAS_MODE_PER_PRIMITIVE, D2D1_ARC_SEGMENT, D2D1_ARC_SIZE_SMALL,
-            D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_DRAW_TEXT_OPTIONS_CLIP, D2D1_EXTEND_MODE_CLAMP,
-            D2D1_GAMMA_2_2, D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION,
-            D2D1_INTERPOLATION_MODE_LINEAR, D2D1_LAYER_PARAMETERS1,
-            D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES, D2D1_PROPERTY_TYPE_FLOAT,
-            D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES, D2D1_SWEEP_DIRECTION_CLOCKWISE,
-            D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE, ID2D1Brush, ID2D1DeviceContext, ID2D1PathGeometry,
-            ID2D1RenderTarget,
+    Win32::Graphics::Direct2D::{
+        CLSID_D2D1GaussianBlur,
+        Common::{
+            D2D_RECT_F, D2D_SIZE_F, D2D1_COLOR_F, D2D1_COMPOSITE_MODE_SOURCE_OVER,
+            D2D1_FIGURE_BEGIN_FILLED, D2D1_FIGURE_END_CLOSED, D2D1_GRADIENT_STOP,
         },
-        DirectWrite::IDWriteTextLayout,
+        D2D1_ANTIALIAS_MODE_PER_PRIMITIVE, D2D1_ARC_SEGMENT, D2D1_ARC_SIZE_SMALL,
+        D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_EXTEND_MODE_CLAMP, D2D1_GAMMA_2_2,
+        D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION, D2D1_INTERPOLATION_MODE_LINEAR,
+        D2D1_LAYER_PARAMETERS1, D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES, D2D1_PROPERTY_TYPE_FLOAT,
+        D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES, D2D1_SWEEP_DIRECTION_CLOCKWISE,
+        D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE, ID2D1Brush, ID2D1DeviceContext, ID2D1PathGeometry,
+        ID2D1RenderTarget,
     },
     core::Interface,
 };
@@ -118,7 +114,7 @@ fn pincel(ctx: &ID2D1DeviceContext, pintura: &Pintura, r: Rect) -> Resultado<ID2
         }
         let paradas = match pintura {
             Pintura::Lineal { paradas, .. } | Pintura::Radial { paradas, .. } => paradas,
-            Pintura::Solido(_) => unreachable!(),
+            Pintura::Solido(_) => return Err(Error::PropiedadInvalida),
         };
         let paradas: Vec<_> = paradas
             .iter()
@@ -160,7 +156,7 @@ fn pincel(ctx: &ID2D1DeviceContext, pintura: &Pintura, r: Rect) -> Resultado<ID2
                     &stops,
                 )?
                 .cast()?,
-            Pintura::Solido(_) => unreachable!(),
+            Pintura::Solido(_) => return Err(Error::PropiedadInvalida),
         })
     }
 }
@@ -189,7 +185,17 @@ pub(super) fn dibujar(
                             ctx.FillGeometry(&g, &pincel(ctx, p, *r)?, None);
                         }
                         if let Some((ancho, p)) = borde {
-                            ctx.DrawGeometry(&g, &pincel(ctx, p, *r)?, *ancho, None);
+                            let ancho = ancho.min(r.ancho.min(r.alto));
+                            let mitad = ancho / 2.0;
+                            let interior = Rect {
+                                x: r.x + mitad,
+                                y: r.y + mitad,
+                                ancho: (r.ancho - ancho).max(0.0),
+                                alto: (r.alto - ancho).max(0.0),
+                            };
+                            let borde =
+                                geometria(ctx, interior, radios.map(|v| (v - mitad).max(0.0)))?;
+                            ctx.DrawGeometry(&borde, &pincel(ctx, p, *r)?, ancho, None);
                         }
                     }
                     Dibujo::Texto {
@@ -199,19 +205,7 @@ pub(super) fn dibujar(
                         color: c,
                         alineacion,
                     } => {
-                        let layout: IDWriteTextLayout = texto
-                            .layout(contenido, fuente, caja.ancho, caja.alto, *alineacion)?
-                            .cast()?;
-                        let mut origen =
-                            D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES::default().startPoint;
-                        origen.X = caja.x;
-                        origen.Y = caja.y;
-                        ctx.DrawTextLayout(
-                            origen,
-                            &layout,
-                            &ctx.CreateSolidColorBrush(&color(*c), None)?,
-                            D2D1_DRAW_TEXT_OPTIONS_CLIP,
-                        );
+                        texto.dibujar(ctx, contenido, fuente, *caja, *alineacion, *c)?;
                     }
                     Dibujo::Recorte { rect: r, radios } => {
                         let g = geometria(ctx, *r, *radios)?;

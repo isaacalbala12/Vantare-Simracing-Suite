@@ -525,6 +525,136 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn validar_todo_el_lote_permite_corregir_fuente_sin_dejar_capas_creadas() -> Resultado<()> {
+        let mut p = escenario(Modo::PorOverlay)?;
+        let ventanas = p.ventanas().len();
+        let antes = p.diagnostico();
+        let mut lote = Lote {
+            operaciones: vec![
+                Operacion::Crear {
+                    id: CapaId(99),
+                    padre: None,
+                    orden: 2,
+                },
+                Operacion::Pintar {
+                    id: CapaId(99),
+                    dibujos: vec![Dibujo::Texto {
+                        caja: rect(),
+                        texto: "a".into(),
+                        fuente: Fuente {
+                            familia: "NoExiste".into(),
+                            peso: 400,
+                            tamano: 12.0,
+                            interletra: 0.0,
+                            interlinea: 16.0,
+                            tabulares: false,
+                            mayusculas: false,
+                        },
+                        color: Color {
+                            r: 1.0,
+                            g: 1.0,
+                            b: 1.0,
+                            a: 1.0,
+                        },
+                        alineacion: Alineacion::Inicio,
+                    }],
+                },
+            ],
+        };
+        assert!(matches!(
+            p.aplicar(&lote),
+            Err(Error::FuenteNoDisponible { .. })
+        ));
+        assert!(matches!(p.capa(CapaId(99)), Err(Error::Capa(CapaId(99)))));
+        assert_eq!(p.ventanas().len(), ventanas);
+        assert_eq!(p.diagnostico(), antes);
+        if let Operacion::Pintar { dibujos, .. } = &mut lote.operaciones[1]
+            && let Dibujo::Texto { fuente, .. } = &mut dibujos[0]
+        {
+            fuente.familia = "Inter".into();
+        }
+        p.aplicar(&lote)?;
+        assert!(p.capa(CapaId(99)).is_ok());
+        Ok(())
+    }
+    #[test]
+    fn pintar_reutiliza_la_superficie_y_un_lote_ajeno_no_reprograma_el_pulso() -> Resultado<()> {
+        use crate::escena::capas::{Curva, Tramo};
+        let mut p = escenario(Modo::Monitor)?;
+        let superficie = p.capa(CapaId(2))?.superficie.as_ref().unwrap().0.as_raw();
+        let dibujos = p.capa(CapaId(2))?.dibujos.clone();
+        let antes = p.diagnostico();
+        let inicio = Instante(p.ahora()?.0 - 100.0);
+        p.aplicar(&Lote {
+            operaciones: vec![Operacion::Animar {
+                id: CapaId(2),
+                propiedad: Propiedad::X,
+                curva: Curva {
+                    inicio,
+                    tramos: vec![Tramo {
+                        desde: 0.0,
+                        a: 0.0,
+                        b: 1.0,
+                        c: 0.0,
+                        d: 0.0,
+                    }],
+                    fin: 2.0,
+                    final_: 0.0,
+                    repetir: Some((0.0, 2.0)),
+                },
+            }],
+        })?;
+        p.aplicar(&Lote {
+            operaciones: vec![Operacion::Pintar {
+                id: CapaId(2),
+                dibujos,
+            }],
+        })?;
+        assert_eq!(
+            p.capa(CapaId(2))?.superficie.as_ref().unwrap().0.as_raw(),
+            superficie
+        );
+        assert_eq!(p.diagnostico(), (antes.0 + 1, antes.1, antes.2 + 1));
+        assert!(p.capa(CapaId(2))?.curvas.contains_key(&Propiedad::X));
+        Ok(())
+    }
+    #[test]
+    fn fallo_nativo_invalida_y_clasifica_la_perdida_de_dispositivo() -> Resultado<()> {
+        let mut p = escenario(Modo::Monitor)?;
+        let error: Error =
+            windows::core::Error::from(windows::Win32::Foundation::D2DERR_RECREATE_TARGET).into();
+        assert!(matches!(
+            p.finalizar_lote(Err(error)),
+            Err(Error::DispositivoPerdido)
+        ));
+        assert!(matches!(
+            p.aplicar(&Lote::default()),
+            Err(Error::PlataformaInvalida)
+        ));
+        Ok(())
+    }
+    #[test]
+    fn el_medidor_propaga_error_tipado_en_el_siguiente_lote_sin_nan() -> Resultado<()> {
+        let mut p = escenario(Modo::Monitor)?;
+        let fuente = Fuente {
+            familia: "NoExiste".into(),
+            peso: 400,
+            tamano: 12.0,
+            interletra: 0.0,
+            interlinea: 16.0,
+            tabulares: false,
+            mayusculas: false,
+        };
+        let (ancho, alto) = crate::escena::Medidor::medir(&p.texto, "abc", &fuente);
+        assert!(ancho.is_finite() && alto.is_finite());
+        assert!(matches!(
+            p.aplicar(&Lote::default()),
+            Err(Error::FuenteNoDisponible { .. })
+        ));
+        p.aplicar(&Lote::default())?;
+        Ok(())
+    }
+    #[test]
     fn pintar_con_un_peso_inexistente_devuelve_error_tipado() -> Resultado<()> {
         let mut p = escenario(Modo::Monitor)?;
         let resultado = p.aplicar(&Lote {

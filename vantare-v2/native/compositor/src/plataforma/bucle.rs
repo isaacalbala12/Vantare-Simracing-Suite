@@ -13,11 +13,11 @@ use windows::{
         },
         System::{
             LibraryLoader::{GetProcAddress, LoadLibraryW},
-            Threading::{CreateEventW, INFINITE, SetEvent},
+            Threading::{CreateEventW, INFINITE, ResetEvent, SetEvent},
         },
         UI::WindowsAndMessaging::{
             DispatchMessageW, MSG, MWMO_INPUTAVAILABLE, MsgWaitForMultipleObjectsEx, PM_REMOVE,
-            PeekMessageW, QS_ALLINPUT, TranslateMessage, WM_QUIT,
+            PeekMessageW, QS_ALLINPUT, TranslateMessage, WM_DPICHANGED, WM_QUIT,
         },
     },
     core::{PCWSTR, s},
@@ -62,6 +62,7 @@ pub enum Suceso {
     FicheroCambiado(PathBuf),
     Fotograma(Instante),
     Cerrar,
+    PantallasCambiadas,
 }
 
 /// Espera sin crear hilos. El lector conserva un Avisador y debe cerrarse antes del bucle.
@@ -70,12 +71,13 @@ pub struct Bucle {
     vigilancias: Vec<Vigilancia>,
     reloj: Option<unsafe extern "system" fn(u32, *const HANDLE, u32) -> u32>,
     biblioteca: HMODULE,
+    reloj_fallido: std::cell::Cell<bool>,
     estado_reloj: std::cell::Cell<Option<u32>>,
 }
 impl Bucle {
     pub fn nuevo() -> Resultado<Self> {
         unsafe {
-            let evento = Avisador(Arc::new(Evento(CreateEventW(None, false, false, None)?)));
+            let evento = Avisador(Arc::new(Evento(CreateEventW(None, true, false, None)?)));
             let biblioteca = LoadLibraryW(windows::core::w!("dcomp.dll"))?;
             let reloj =
                 GetProcAddress(biblioteca, s!("DCompositionWaitForCompositorClock")).map(|p| {
@@ -89,6 +91,7 @@ impl Bucle {
                 vigilancias: Vec::new(),
                 reloj,
                 biblioteca,
+                reloj_fallido: std::cell::Cell::new(false),
                 estado_reloj: std::cell::Cell::new(None),
             })
         }
@@ -126,6 +129,10 @@ impl Bucle {
             return Err(windows::core::Error::from_thread().into());
         }
         if resultado.0 == 0 {
+            // SAFETY: evento manual vivo; consumimos el aviso después de cualquier espera.
+            unsafe {
+                ResetEvent(self.evento.0.0)?;
+            }
             return Ok(Some(Suceso::ModeloNuevo));
         }
         if let Some(v) = resultado
@@ -179,7 +186,8 @@ impl Bucle {
                 let resultado = MsgWaitForMultipleObjectsEx(
                     Some(&handles),
                     if transiciones_pintadas {
-                        if self.estado_reloj.get() == Some(0xc01e_0006) {
+                        if self.estado_reloj.get() == Some(0xc01e_0006) || self.reloj_fallido.get()
+                        {
                             16
                         } else {
                             0
@@ -197,13 +205,18 @@ impl Bucle {
                     return Ok(suceso);
                 }
                 let mut mensaje = MSG::default();
+                let mut cambio_dpi = false;
                 while PeekMessageW(&raw mut mensaje, None, 0, 0, PM_REMOVE).as_bool() {
                     if mensaje.message == WM_QUIT {
                         return Ok(Suceso::Cerrar);
                     }
                     // FALSE significa que el mensaje no generó WM_CHAR; no es un error.
                     let _traducido = TranslateMessage(&raw const mensaje);
+                    cambio_dpi |= mensaje.message == WM_DPICHANGED;
                     DispatchMessageW(&raw const mensaje);
+                }
+                if cambio_dpi {
+                    return Ok(Suceso::PantallasCambiadas);
                 }
                 // Un despertar de mensajes puede adelantarse a un handle señalado.
                 // Priorizar los datos pendientes antes de producir un fotograma.
@@ -211,16 +224,25 @@ impl Bucle {
                     return Ok(suceso);
                 }
                 if transiciones_pintadas {
-                    if let Some(reloj) = self.reloj {
-                        // Con cero handles, el éxito del reloj es siempre cero. Los
-                        // eventos del lector/ficheros solo se consumen en MsgWait.
-                        let estado = reloj(0, std::ptr::null(), 16);
+                    if let Some(reloj) = self.reloj.filter(|_| !self.reloj_fallido.get()) {
+                        // SAFETY: handles vivos, el modelo es manual-reset para que el
+                        // reloj no consuma un aviso antes de identificarlo en pendiente.
+                        let cantidad = u32::try_from(handles.len())
+                            .map_err(|_| super::Error::Entrada("Demasiados handles"))?;
+                        let estado = reloj(cantidad, handles.as_ptr(), 16);
                         self.estado_reloj.set(Some(estado));
+                        if let Some(suceso) = self.pendiente(&handles)? {
+                            return Ok(suceso);
+                        }
                         match estado {
-                            0 => {}
-                            258 => continue, // timeout: atender mensajes y volver a esperar.
-                            0xc01e_0006 => DwmFlush()?, // Pantalla ocluida: no fingir un tick nativo.
-                            otro => return Err(super::Error::Reloj(otro)),
+                            258 => continue,
+                            0xc01e_0006 => DwmFlush()?,
+                            otro if otro <= cantidad => {}
+                            otro => {
+                                self.reloj_fallido.set(true);
+                                eprintln!("Reloj DComp 0x{otro:08x}; se usa DwmFlush");
+                                DwmFlush()?;
+                            }
                         }
                     } else {
                         DwmFlush()?;
@@ -251,6 +273,52 @@ mod tests {
         _plazo: u32,
     ) -> u32 {
         0
+    }
+    unsafe extern "system" fn avisar_durante_reloj(
+        cantidad: u32,
+        handles: *const HANDLE,
+        _plazo: u32,
+    ) -> u32 {
+        if cantidad == 0 || handles.is_null() {
+            return u32::MAX;
+        }
+        // SAFETY: el bucle suministra un array vivo con cantidad>0.
+        let handle = unsafe { *handles };
+        // SAFETY: es el evento manual válido del modelo, primero del array.
+        if unsafe { SetEvent(handle) }.is_ok() {
+            0
+        } else {
+            u32::MAX
+        }
+    }
+    unsafe extern "system" fn reloj_desconocido(
+        _cantidad: u32,
+        _handles: *const HANDLE,
+        _plazo: u32,
+    ) -> u32 {
+        u32::MAX
+    }
+    #[test]
+    fn reloj_recibe_handles_y_no_pierde_un_modelo_que_llega_durante_la_espera() -> Resultado<()> {
+        let p = Plataforma::nueva(
+            super::super::Modo::Monitor,
+            windows::Win32::Foundation::RECT {
+                left: 0,
+                top: 0,
+                right: 20,
+                bottom: 20,
+            },
+            Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../ui/assets/fonts")),
+        )?;
+        let mut bucle = Bucle::nuevo()?;
+        bucle.reloj = Some(avisar_durante_reloj);
+        assert!(matches!(bucle.esperar(&p, true)?, Suceso::ModeloNuevo));
+        assert_eq!(bucle.estado_reloj(), Some(0));
+        bucle.reloj = Some(reloj_desconocido);
+        assert!(matches!(bucle.esperar(&p, true)?, Suceso::Fotograma(_)));
+        assert_eq!(bucle.estado_reloj(), Some(u32::MAX));
+        assert!(bucle.reloj_fallido.get());
+        Ok(())
     }
     #[test]
     fn modelo_reloj_y_vigilancia_entregan_sucesos_distintos() -> Resultado<()> {

@@ -151,7 +151,7 @@ mod demo {
                 ],
                 fin: 20.0,
                 final_: 1.0,
-                repetir: Some((2.0, 2.0)),
+                repetir: Some((0.0, 2.0)),
             },
         }
     }
@@ -373,9 +373,92 @@ mod demo {
         println!("Captura premultiplicada: {}", ruta.display());
         Ok(())
     }
+    fn capturar_texto(
+        p: &mut Plataforma,
+        ruta: &std::path::Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let fuente = Fuente {
+            familia: "Inter".into(),
+            peso: 400,
+            tamano: 13.0,
+            interletra: 0.0,
+            interlinea: 24.0,
+            tabulares: true,
+            mayusculas: false,
+        };
+        let caja = rect(0.0, 0.0, 420.0, 212.0);
+        let dibujos = vec![
+            Dibujo::Sombra {
+                rect: caja,
+                radios: [10.0; 4],
+                color: c(0.0, 0.0, 0.0, 0.45),
+                desenfoque: 26.0,
+                desplazamiento: (0.0, 10.0),
+            },
+            Dibujo::Rect {
+                rect: caja,
+                radios: [10.0; 4],
+                relleno: Some(Pintura::Lineal {
+                    desde: (0.5, 0.0),
+                    hasta: (0.5, 1.0),
+                    paradas: vec![
+                        Parada {
+                            posicion: 0.0,
+                            color: c(28.0 / 255.0, 24.0 / 255.0, 26.0 / 255.0, 245.0 / 255.0),
+                        },
+                        Parada {
+                            posicion: 1.0,
+                            color: c(17.0 / 255.0, 15.0 / 255.0, 16.0 / 255.0, 245.0 / 255.0),
+                        },
+                    ],
+                }),
+                borde: Some((1.0, Pintura::Solido(c(1.0, 1.0, 1.0, 18.0 / 255.0)))),
+            },
+            Dibujo::Texto {
+                caja: rect(61.0, 57.0, 300.0, 24.0),
+                texto: "A. Lotterer".into(),
+                fuente: fuente.clone(),
+                color: c(236.0 / 255.0, 230.0 / 255.0, 231.0 / 255.0, 1.0),
+                alineacion: Alineacion::Inicio,
+            },
+            Dibujo::Texto {
+                caja: rect(300.0, 57.0, 108.0, 24.0),
+                texto: "-3.8".into(),
+                fuente: Fuente {
+                    familia: "Space Mono".into(),
+                    tamano: 12.0,
+                    ..fuente
+                },
+                color: c(163.0 / 255.0, 154.0 / 255.0, 156.0 / 255.0, 1.0),
+                alineacion: Alineacion::Fin,
+            },
+        ];
+        p.aplicar(&Lote {
+            operaciones: vec![
+                Operacion::Crear {
+                    id: CapaId(1),
+                    padre: None,
+                    orden: 0,
+                },
+                Operacion::Colocar {
+                    id: CapaId(1),
+                    rect: caja,
+                },
+                Operacion::Pintar {
+                    id: CapaId(1),
+                    dibujos,
+                },
+            ],
+        })?;
+        p.capturar(None, p.ahora()?, ruta)?;
+        Ok(())
+    }
     pub fn ejecutar() -> Result<(), Box<dyn std::error::Error>> {
         let mut modo = Modo::Monitor;
         let mut captura = None;
+        let mut texto_referencia = None;
+        let mut repintar_hz = 0.0_f64;
+        let mut monitor_confirmado = false;
         let mut en = 0.5_f64;
         let mut medir = None;
         let mut durante = 6.0_f64;
@@ -396,6 +479,15 @@ mod demo {
                     }
                 }
                 "--captura" => captura = Some(PathBuf::from(valor)),
+                "--texto-referencia" => texto_referencia = Some(PathBuf::from(valor)),
+                "--repintar-hz" => repintar_hz = valor.parse()?,
+                "--monitor-confirmado" => {
+                    monitor_confirmado = match valor.as_str() {
+                        "si" => true,
+                        "no" => false,
+                        _ => return Err("Usa si o no para --monitor-confirmado".into()),
+                    }
+                }
                 "--en" => en = valor.parse()?,
                 "--medir" => medir = Some(PathBuf::from(valor)),
                 "--durante" => durante = valor.parse()?,
@@ -407,7 +499,10 @@ mod demo {
         if !en.is_finite() || en < 0.0 || !durante.is_finite() || durante <= 0.0 {
             return Err("Tiempo inválido".into());
         }
-        let region = unsafe {
+        if !repintar_hz.is_finite() || !(0.0..=60.0).contains(&repintar_hz) {
+            return Err("Frecuencia de repintado inválida".into());
+        }
+        let mut region = unsafe {
             RECT {
                 left: 0,
                 top: 0,
@@ -415,7 +510,25 @@ mod demo {
                 bottom: GetSystemMetrics(SM_CYSCREEN),
             }
         };
+        if texto_referencia.is_some() {
+            modo = Modo::Monitor;
+            region = RECT {
+                left: 0,
+                top: 0,
+                right: 420,
+                bottom: 265,
+            };
+        }
         let mut p = Plataforma::nueva(modo, region, &fuentes)?;
+        if let Some(ruta) = texto_referencia {
+            return capturar_texto(&mut p, &ruta);
+        }
+        let mut medicion = if medir.is_some() {
+            medir_reposo(&p)?
+        } else {
+            Medicion::default()
+        };
+        medicion.confirmar_monitor_encendido(monitor_confirmado);
         if medir.is_some() {
             p.iniciar_medicion();
         }
@@ -425,20 +538,72 @@ mod demo {
         if let Some(ruta) = captura {
             return capturar_instante(&mut p, modo, inicio, en, &ruta);
         }
-        let bucle = Bucle::nuevo()?;
+        bucle_guion(p, inicio, medir, durante, salir, repintar_hz, medicion)
+    }
+    fn medir_reposo(p: &Plataforma) -> Result<Medicion, Box<dyn std::error::Error>> {
         let mut medicion = Medicion::default();
+        let fin = Instante(p.ahora()?.0 + 2.0);
+        medicion.comenzar_reposo(p, fin)?;
+        let bucle = Bucle::nuevo()?;
+        while p.ahora()?.0 < fin.0 {
+            if matches!(bucle.esperar_hasta(p, false, Some(fin))?, Suceso::Cerrar) {
+                return Err("Cerrado durante la muestra de reposo".into());
+            }
+        }
+        medicion.fotograma(p)?;
+        Ok(medicion)
+    }
+    fn repintado(numero: u32) -> Lote {
+        let mut lote = inicial(Instante(0.0));
+        lote.operaciones
+            .retain(|op| matches!(op,Operacion::Pintar{id,..} if (2..=4).contains(&id.0)));
+        for op in &mut lote.operaciones {
+            if let Operacion::Pintar { id, dibujos } = op {
+                for d in dibujos {
+                    if let Dibujo::Texto { texto, .. } = d {
+                        *texto = format!(
+                            "P{}  Inter   gap -{}.{}",
+                            id.0 - 1,
+                            numero / 10,
+                            numero % 10
+                        );
+                    }
+                }
+            }
+        }
+        lote
+    }
+    fn bucle_guion(
+        mut p: Plataforma,
+        inicio: Instante,
+        medir: Option<PathBuf>,
+        durante: f64,
+        salir: Option<f64>,
+        repintar_hz: f64,
+        mut medicion: Medicion,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let bucle = Bucle::nuevo()?;
+        if medir.is_some() {
+            medicion.comenzar_transicion(&p, "entrada y pulso", Instante(inicio.0 + 1.0))?;
+        }
         let mut siguiente = 1_usize;
+        let mut repintado_siguiente = 1_u32;
         let tiempos = [(1_u8, 1.0), (2, 1.5), (3, 3.0), (4, 4.0), (5, 6.0)];
         loop {
             let proximo = tiempos.get(siguiente - 1).map(|(_, t)| *t);
             let limite = proximo
                 .into_iter()
+                .chain((repintar_hz > 0.0).then_some(f64::from(repintado_siguiente) / repintar_hz))
                 .chain(salir)
                 .chain(medir.as_ref().map(|_| durante))
                 .min_by(f64::total_cmp)
                 .map(|t| Instante(inicio.0 + t));
-            if let Suceso::Cerrar = bucle.esperar_hasta(&p, medir.is_some(), limite)? {
-                break;
+            match bucle.esperar_hasta(&p, medir.is_some(), limite)? {
+                Suceso::Cerrar => break,
+                Suceso::PantallasCambiadas => {
+                    p.actualizar_dpi()?;
+                }
+                _ => {}
             }
             let transcurrido = p.ahora()?.0 - inicio.0;
             if medir.is_some() {
@@ -446,8 +611,22 @@ mod demo {
                 medicion.fotograma(&p)?;
             }
             if siguiente <= tiempos.len() && transcurrido >= tiempos[siguiente - 1].1 {
-                p.aplicar(&paso(tiempos[siguiente - 1].0, inicio))?;
+                let (numero, t) = tiempos[siguiente - 1];
+                if medir.is_some() {
+                    medicion.comenzar_transicion(
+                        &p,
+                        &format!("paso {numero}"),
+                        Instante(inicio.0 + t + 1.0),
+                    )?;
+                }
+                p.aplicar(&paso(numero, inicio))?;
                 siguiente += 1;
+            }
+            if repintar_hz > 0.0 && transcurrido >= f64::from(repintado_siguiente) / repintar_hz {
+                p.aplicar(&repintado(repintado_siguiente))?;
+                repintado_siguiente = repintado_siguiente
+                    .checked_add(1)
+                    .ok_or("Demasiados repintados")?;
             }
             if salir.is_some_and(|s| transcurrido >= s)
                 || (medir.is_some() && transcurrido >= durante)

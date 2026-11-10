@@ -19,7 +19,8 @@ use windows::{
 
 /// Colección privada de todos los TTF del paquete, sin sustitución por fuentes del sistema.
 pub struct Texto {
-    factory: IDWriteFactory3,
+    pub(super) factory: IDWriteFactory3,
+    error_medicion: std::cell::RefCell<Option<Error>>,
     fuentes: IDWriteFontCollection1,
     pub(super) parametros: IDWriteRenderingParams,
 }
@@ -76,13 +77,25 @@ impl Texto {
                 .CreateFontCollectionFromFontSet(&builder.CreateFontSet()?)?;
             Ok(Self {
                 factory: factory.cast()?,
+                error_medicion: std::cell::RefCell::new(None),
                 fuentes,
                 parametros: factory.CreateRenderingParams()?,
             })
         }
     }
 
+    pub fn tomar_error_medicion(&self) -> Option<Error> {
+        self.error_medicion.borrow_mut().take()
+    }
     fn formato(&self, fuente: &Fuente, alineacion: Alineacion) -> Resultado<IDWriteTextFormat> {
+        if ![fuente.tamano, fuente.interletra, fuente.interlinea]
+            .iter()
+            .all(|v| v.is_finite())
+            || fuente.tamano <= 0.0
+            || fuente.interlinea < 0.0
+        {
+            return Err(Error::TextoInvalido);
+        }
         let (nombre, peso) = if fuente.familia == "Inter" {
             (format!("Inter W{}", fuente.peso), 400)
         } else {
@@ -238,8 +251,12 @@ impl Medidor for Texto {
         match self.medir_resultado(contenido, fuente) {
             Ok(m) => m,
             Err(e) => {
-                eprintln!("DirectWrite no pudo medir texto: {e}");
-                (f32::NAN, f32::NAN)
+                let mut error = self.error_medicion.borrow_mut();
+                if error.is_none() {
+                    *error = Some(e);
+                }
+                // No propaga NaN/infinito a la maquetación; aplicar devuelve el error tipado.
+                (0.0, 0.0)
             }
         }
     }

@@ -88,9 +88,9 @@ pub(super) fn tinta(rect: Rect, dibujos: &[Dibujo]) -> Resultado<Limites> {
                 if !ancho.is_finite() || ancho < 0.0 {
                     return Err(Error::Entrada("Borde no finito o negativo"));
                 }
-                Limites::rect(*rect)?.inflar(ancho / 2.0)?
+                Limites::rect(*rect)?
             }
-            Dibujo::Texto { caja, .. } => Limites::rect(*caja)?,
+            Dibujo::Texto { caja, fuente, .. } => Limites::rect(*caja)?.inflar(fuente.tamano)?,
             Dibujo::Sombra {
                 rect,
                 desenfoque,
@@ -359,8 +359,8 @@ mod tests {
             )),
         };
         let limites = tinta(rect, &[borde])?;
-        assert!((limites.izquierda + 122.0).abs() < 0.001);
-        assert!((limites.arriba + 32.0).abs() < 0.001);
+        assert!((limites.izquierda + 120.0).abs() < 0.001);
+        assert!((limites.arriba + 30.0).abs() < 0.001);
         Ok(())
     }
 }

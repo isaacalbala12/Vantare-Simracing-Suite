@@ -138,6 +138,7 @@ dependencies = [
  "vantare-domain",
  "vantare-ipc",
  "windows",
+ "windows-core",
 ]
 
 [[package]]

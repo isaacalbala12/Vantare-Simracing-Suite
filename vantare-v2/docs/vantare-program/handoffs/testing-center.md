@@ -1338,3 +1338,19 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
 - Verificación P2: Clippy Windows cruzado y formato PASS; 8 tests Rust ejecutados
   en Windows PASS; typecheck PASS, contrato 134/134 y suite web completa 247/247.
   CI del nuevo SHA pendiente; los P3 se atienden en el PR de Informes.
+
+## 2026-11-10 — VANTA-138 / #1995, worker D: banco de capturas QA
+
+- Base `nightly@b1590f925`, rama `vantareapp/isa-1995-d-capturas`.
+- Excepción autorizada por el orquestador: `ui-quality --qa-testing` da a la raíz
+  de datos QA el nombre con PID que espera el selector de pestañas. La política
+  de tester llega por los pipes locales ya existentes, mediante fixture explícito.
+- Escena nueva `testing-center-triage`, solo en el camino de captura. Sin cambiar
+  la lógica de acceso productiva, UI, dependencias ni instalador.
+- Script `native/hub/reference/tools/capture-testing.ps1`: Resumen, Cuestionarios,
+  Comunidad y Triage en ambos temas, 1440×900, DPI 96, glassOpacity 80. Produce
+  recibos de hashes y conserva las otras entradas del manifiesto común.
+- Parser PowerShell y diff PASS; Rust formateado. Compilación y tests focales
+  pendientes: la cola Windows esperó más de 15 minutos sin RAM admisible.
+  No se han generado aún las referencias válidas; no usar las capturas previas
+  de Resumen que en realidad muestran Informes. Sin procesos QA propios vivos.

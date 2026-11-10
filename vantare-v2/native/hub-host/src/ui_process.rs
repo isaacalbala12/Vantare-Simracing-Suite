@@ -109,6 +109,12 @@ fn spawn_ui(
         .env("VANTARE_HUB_DATA_DIR", &args.data);
     #[cfg(feature = "qa-e2e")]
     {
+        if let Ok(mode) = std::env::var("VANTARE_HUB_QA_GPU") {
+            if mode != "software" {
+                return Err(io::ErrorKind::InvalidInput.into());
+            }
+            command.arg("--disable-gpu");
+        }
         if let Ok(scale) = std::env::var("VANTARE_HUB_QA_SCALE") {
             if !["1", "1.25", "1.5"].contains(&scale.as_str()) {
                 return Err(io::ErrorKind::InvalidInput.into());

@@ -12,7 +12,6 @@ try {
     if(-not [Threading.WaitHandle]::WaitAll([Threading.WaitHandle[]]$mutexes,[int]$configuration.waitMilliseconds)){throw 'Compilation queue stayed busy; measurement refused'}
     $leases=$mutexes
     if(Get-Process cargo,rustc -ErrorAction SilentlyContinue){throw 'Compiler process remains active despite slot reservation'}
-    Add-Type -AssemblyName UIAutomationClient
     Add-Type -TypeDefinition @'
 using System;
 using System.Collections.Generic;
@@ -36,9 +35,6 @@ public static class HubMeasure {
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint pid);
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window,out Rect rect);
   [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr window,out Rect rect);
-  [DllImport("user32.dll",SetLastError=true)] static extern IntPtr SendMessageTimeoutW(IntPtr window,uint message,IntPtr w,IntPtr l,uint flags,uint timeout,out IntPtr result);
-  [StructLayout(LayoutKind.Sequential)] struct Point { public int x,y; }
-  [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr window,ref Point point);
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
   public static void Dpi() { SetThreadDpiAwarenessContext(new IntPtr(-4)); }
   [DllImport("advapi32.dll",SetLastError=true)] static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token);
@@ -73,15 +69,11 @@ public static class HubMeasure {
       if(ids.Contains((int)pid)&&IsWindowVisible(window)&&GetWindowRect(window,out rect)&&rect.right-rect.left>200&&rect.bottom-rect.top>100) {result=window;return false;} return true; },IntPtr.Zero);
     return result.ToInt64();
   }
-  public static void Click(long handle,int x,int y) {
-    var window=new IntPtr(handle); var p=new Point {x=x,y=y};
-    if(!ScreenToClient(window,ref p)) throw new InvalidOperationException("Client point unavailable");
-    ClientClick(handle,p.x,p.y);
-  }
-  public static void ClientClick(long handle,int x,int y) {
-    var window=new IntPtr(handle);var point=new IntPtr((y<<16)|(x&65535));IntPtr result;
-    foreach(uint message in new uint[] {0x200,0x201,0x202})
-      if(SendMessageTimeoutW(window,message,message==0x201?new IntPtr(1):IntPtr.Zero,point,2,10000,out result)==IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
+  [DllImport("user32.dll",SetLastError=true)] static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
+  public static void Resize(long handle,int width,int height) {
+    var window=new IntPtr(handle);Rect outer,client;
+    if(!GetWindowRect(window,out outer)||!GetClientRect(window,out client)) throw new System.ComponentModel.Win32Exception();
+    if(!SetWindowPos(window,IntPtr.Zero,0,0,width+outer.right-outer.left-client.right,height+outer.bottom-outer.top-client.bottom,2|4|16)) throw new System.ComponentModel.Win32Exception();
   }
   public static int[] Size(long handle) { Rect rect; if(!GetClientRect(new IntPtr(handle),out rect)) throw new InvalidOperationException("Client bounds"); return new int[] {rect.right,rect.bottom}; }
 }
@@ -118,20 +110,12 @@ public static class HubMeasure {
               if(-not $handle){Start-Sleep -Milliseconds 5}
             }
             $visibleMs=([DateTime]::UtcNow-$process.StartTime.ToUniversalTime()).TotalMilliseconds
+            [HubMeasure]::Resize($handle,1440,900)
             $settingsVerification='Playwright'
             if($application.name -eq 'gpui'){
+              if(-not $application.initialSettings){throw 'GPUI measurement requires its explicit QA bank'}
               if(-not $process.WaitForInputIdle(10000)){throw 'GPUI input-idle deadline'}
-              $window=[System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$handle)
-              $condition=[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Ajustes')
-              $settings=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
-              $pattern=$null
-              if($settings -and $settings.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)){
-                $pattern.Invoke();$settingsVerification='UIAutomation'
-              } else {
-                if($settings){$rectangle=$settings.Current.BoundingRectangle;[HubMeasure]::Click($handle,[int]($rectangle.X+$rectangle.Width/2),[int]($rectangle.Y+$rectangle.Height/2))}
-                else{[HubMeasure]::ClientClick($handle,32,[HubMeasure]::Size($handle)[1]-90)}
-                $settingsVerification='synchronous window messages; verify saved screenshot'
-              }
+              $settingsVerification='QA bank starts in Settings; verify saved screenshots'
             }
             @{phase='visible';app=$application.name;mode=$mode;iteration=$iteration;pid=$process.Id;window=$handle;visibleMs=$visibleMs;settingsVerification=$settingsVerification} | ConvertTo-Json -Compress | Write-Output
             if([Console]::ReadLine() -ne 'ready'){throw 'Driver did not confirm Settings'}

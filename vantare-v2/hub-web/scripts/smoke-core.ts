@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { cp, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -24,6 +24,40 @@ const evidence = process.env.VANTARE_HUB_EVIDENCE
 await mkdir(evidence, { recursive: true });
 const target = requiredPath("VANTARE_HUB_CORE_BIN_DIR");
 const bins = join(qa, "bin");
+let packageSource = resolve("release/package-qa/vantare-hub-ui-win32-x64");
+let candidateProof:
+  | {
+      root: string;
+      manifestSha256: string;
+      asarSha256: string;
+      hostSha256: string;
+    }
+  | undefined;
+const hash = (bytes: Uint8Array) =>
+  createHash("sha256").update(bytes).digest("hex");
+if (process.env.VANTARE_HUB_CANDIDATE_ROOT) {
+  const root = requiredPath("VANTARE_HUB_CANDIDATE_ROOT");
+  await readFile(join(root, "QA-ONLY.txt"));
+  const state = JSON.parse(await readFile(join(root, "state.json"), "utf8"));
+  assert.match(state.active.generation, /^[a-f0-9]{32}$/);
+  const generation = join(root, "generations", state.active.generation);
+  const bytes = await readFile(join(generation, "manifest.json"));
+  assert.equal(hash(bytes), state.active.manifest_sha256);
+  const manifest = JSON.parse(bytes.toString());
+  const member = (path: string) =>
+    manifest.files.find((file: { path: string }) => file.path === path)?.sha256;
+  packageSource = join(generation, "hub-ui");
+  candidateProof = {
+    root,
+    manifestSha256: hash(bytes),
+    asarSha256: member("hub-ui/resources/app.asar"),
+    hostSha256: member("bin/vantare-hub.exe"),
+  };
+  assert.equal(
+    hash(await readFile(requiredPath("VANTARE_HUB_HOST_BINARY"))),
+    candidateProof.hostSha256,
+  );
+}
 for (const name of ["native", "local", "roaming", "tmp", "bin", "native/hub"])
   await mkdir(join(qa, name), { recursive: true });
 await writeFile(join(qa, "qa-e2e-owned"), "VANTA-126 qa-e2e fixture");
@@ -66,11 +100,17 @@ await cp(
   requiredPath("VANTARE_HUB_HOST_BINARY"),
   join(bins, "vantare-hub.exe"),
 );
-await cp(
-  resolve("release/package-qa/vantare-hub-ui-win32-x64"),
-  join(qa, "hub-ui"),
-  { recursive: true },
-);
+await cp(packageSource, join(qa, "hub-ui"), { recursive: true });
+if (candidateProof) {
+  assert.equal(
+    hash(await readFile(join(bins, "vantare-hub.exe"))),
+    candidateProof.hostSha256,
+  );
+  assert.equal(
+    hash(await readFile(join(qa, "hub-ui/resources/app.asar"))),
+    candidateProof.asarSha256,
+  );
+}
 const overlay = join(qa, "overlay.ps1");
 await writeFile(
   overlay,
@@ -238,9 +278,29 @@ try {
   await page.screenshot({ path: join(evidence, "host-core-local.png") });
   if (process.env.VANTARE_HUB_PILOT_TEST === "1")
     await checkPilotCore(page, evidence);
+  const system = await browser.newBrowserCDPSession();
+  const electronPids = (
+    await system.send("SystemInfo.getProcessInfo")
+  ).processInfo.map((item) => item.id);
+  await system.detach();
   await phase("Live");
   await until(() => host.exitCode !== null, 10000, "host closes on Live");
   assert.equal(host.exitCode, 0);
+  const survivors = () =>
+    electronPids.filter((pid) => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ESRCH") return false;
+        throw error;
+      }
+    });
+  await until(
+    () => survivors().length === 0,
+    10000,
+    "zero candidate Electron processes in Live",
+  );
   await writeFile(
     join(evidence, "core-smoke.json"),
     JSON.stringify(
@@ -253,6 +313,9 @@ try {
         realSupervisorAdmission: true,
         realCoreAdmission: true,
         liveExit: 0,
+        candidateProof,
+        electronPidsBeforeLive: electronPids,
+        electronPidsAfterLive: survivors(),
         backend: "loopback-only, unavailable; no account",
       },
       null,

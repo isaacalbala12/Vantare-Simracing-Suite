@@ -6,6 +6,7 @@ import { cpus, release, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { type Browser, chromium } from "playwright-core";
+import { gpuiReplies } from "./gpui-measure-replies.ts";
 import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
@@ -79,6 +80,10 @@ async function main() {
   await mkdir(hostShared, { recursive: true });
   await writeFile(join(gpuiShared, "privacy.json"), deniedPrivacy);
   await writeFile(join(hostShared, "privacy.json"), deniedPrivacy);
+  await writeFile(
+    join(gpuiData, "replies.json"),
+    JSON.stringify(await gpuiReplies()),
+  );
   const environment: Record<string, string> = {};
   for (const name of [
     "SystemRoot",
@@ -99,6 +104,9 @@ async function main() {
     VANTARE_BOOT_TOKEN: randomBytes(16).toString("hex"),
     LOCALAPPDATA: join(qa, "local-host"),
     APPDATA: join(qa, "roaming-host"),
+    ...(process.env.VANTARE_HUB_MEASURE_GPU === "software"
+      ? { VANTARE_HUB_QA_GPU: "software" }
+      : {}),
   };
   const gpuiEnv = {
     ...environment,
@@ -127,15 +135,17 @@ async function main() {
       },
       {
         name: "gpui",
+        initialSettings: true,
         exe: requiredPath("VANTARE_HUB_GPUI_BINARY"),
         arguments: [
           "--control-stdin",
-          "--data-dir",
-          join(gpuiData, "hub"),
-          "--layout",
-          join(gpuiData, "layout.json"),
-          "--pipe",
-          `vantare-measure-${randomBytes(16).toString("hex")}`,
+          "--qa-root",
+          gpuiData,
+          "--qa-measure",
+          "--capture",
+          "ajustes-aplicacion",
+          "--qa-catalog",
+          "pro",
         ],
         environment: gpuiEnv,
       },
@@ -223,6 +233,9 @@ async function main() {
           event.processInfo = (
             await browserSession.send("SystemInfo.getProcessInfo")
           ).processInfo;
+          event.gpuFeatures = (
+            await browserSession.send("SystemInfo.getInfo")
+          ).gpu.featureStatus;
           await browserSession.detach();
           const context = browser.contexts()[0];
           const page = context.pages()[0];
@@ -260,6 +273,15 @@ async function main() {
         );
         const visible = values.filter((sample) => sample.phase === "visible");
         const idle = values.filter((sample) => sample.phase === "idle");
+        const integrity = values
+          .filter((sample) => sample.phase === "closed")
+          .map((sample) =>
+            String(sample.stderr).match(
+              /HUB_QA_INTEGRITY first_walk_us=(\d+) verify_walk_and_hash_us=(\d+)/,
+            ),
+          );
+        if (app === "electron")
+          assert.ok(integrity.length === runs && integrity.every(Boolean));
         const numbers = (events: Record<string, unknown>[], key: string) =>
           events.map((event) => {
             assert.equal(typeof event[key], "number");
@@ -276,6 +298,14 @@ async function main() {
           rendererHeapBytes:
             app === "electron"
               ? summarize(numbers(idle, "rendererHeapBytes"))
+              : null,
+          firstInventoryWalkMs:
+            app === "electron"
+              ? summarize(integrity.map((value) => Number(value?.[1]) / 1000))
+              : null,
+          secondWalkAndHashMs:
+            app === "electron"
+              ? summarize(integrity.map((value) => Number(value?.[2]) / 1000))
               : null,
         });
       }
@@ -299,6 +329,7 @@ async function main() {
             compilation:
               "both Global VantareCargoSlot mutexes held for entire series",
             profile: "Release; QA CDP only",
+            gpuMode: process.env.VANTARE_HUB_MEASURE_GPU ?? "default",
           },
           source: manifest,
           driverSourceSha,

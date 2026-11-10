@@ -13,6 +13,9 @@ Copy-Item -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'release/vantare-hub-hos
 & cargo build --manifest-path $manifest --release -p vantare-hub --bin vantare-hub -j $env:CARGO_BUILD_JOBS
 if($LASTEXITCODE){exit $LASTEXITCODE}
 Copy-Item -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'release/vantare-hub.exe') -Destination (Join-Path $destination 'vantare-hub-gpui.exe')
+& cargo build --manifest-path $manifest --release -p vantare-hub --example ui-quality --features parity-capture -j $env:CARGO_BUILD_JOBS
+if($LASTEXITCODE){exit $LASTEXITCODE}
+Copy-Item -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'release/examples/ui-quality.exe') -Destination (Join-Path $destination 'vantare.exe')
 $inventory=Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '../../native/packaging/public-inventory.json') | ConvertFrom-Json
 foreach($resource in $inventory.resources){
     $target=Join-Path $destination ('fixtures/'+$resource)

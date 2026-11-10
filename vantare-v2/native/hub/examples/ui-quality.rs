@@ -236,6 +236,7 @@ fn serve(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), Str
 
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
+    let measuring = args.iter().any(|arg| arg == "--qa-measure");
     let root = PathBuf::from(argument(&args, "--qa-root").ok_or("falta root QA explícito")?);
     if !root.is_absolute() || !root.join("replies.json").is_file() {
         return Err(
@@ -303,11 +304,11 @@ fn main() -> Result<(), String> {
         } else {
             None
         },
-        capture: Some(state),
+        capture: if measuring { None } else { Some(state) },
         capture_output: None,
         capture_appearance: appearance,
-        capture_size: Some(size),
-        capture_zoom: Some(100),
+        capture_size: if measuring { None } else { Some(size) },
+        capture_zoom: if measuring { None } else { Some(100) },
     };
     let result = shell::run_with_access(
         options,

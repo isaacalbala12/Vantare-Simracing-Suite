@@ -1,6 +1,12 @@
 # Configuración pública de compilación: datos literales, nunca código PowerShell.
 function Import-NativeBuildConfig([string]$Path) {
-    $passthrough = @('VANTARE_SCCACHE', 'VANTARE_CARGO_SLOTS', 'VANTARE_CARGO_MIN_GB')
+    # Compiler queue context belongs to the invoking tool, not the product.
+    # Losing the owner makes a nested packager wait on its parent's target lease.
+    # These names remain forbidden in ConfigFile's public-value allowlist.
+    $passthrough = @('VANTARE_SCCACHE', 'VANTARE_CARGO_SLOTS', 'VANTARE_CARGO_MIN_GB',
+        'VANTARE_CARGO_QUEUE_OWNER', 'VANTARE_SLOT_TARGET', 'VANTARE_CI_TARGET',
+        'VANTARE_TARGET_ROOT', 'VANTARE_CARGO_COMMIT_2GB', 'VANTARE_CARGO_JOB_GB',
+        'VANTARE_CARGO_RESERVE_GB')
     $allowed = @('VANTARE_SUPABASE_URL', 'VANTARE_SUPABASE_ANON_KEY', 'VANTARE_LICENSE_PUBLIC_KEYS',
         'VANTARE_CLERK_ISSUER', 'VANTARE_CLERK_CLIENT_ID', 'VANTARE_CLERK_REDIRECT', 'VANTARE_CLERK_ACCOUNT_PORTAL_URL',
         'VANTARE_ACCOUNT_BRIDGE_URL', 'VANTARE_POSTHOG_KEY', 'VANTARE_ADMIN_URL',

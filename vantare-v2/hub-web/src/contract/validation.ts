@@ -1,30 +1,14 @@
 import {
   type HostToUi,
   methods,
+  palettes,
+  schemes,
   topics,
   type UiToHost,
 } from "./generated/contract";
+import { isSettings, isSettingsPatch } from "./settings-validation";
+import { exact, integer, oneOf, record } from "./validation-common";
 export const FRAME_LIMIT = 1024 * 1024;
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function exact(value: Record<string, unknown>, keys: string[]) {
-  return (
-    Object.keys(value).length === keys.length &&
-    keys.every((key) => Object.hasOwn(value, key))
-  );
-}
-function integer(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 0 &&
-    value <= 0xffffffff
-  );
-}
-function oneOf(value: unknown, values: string[]): boolean {
-  return typeof value === "string" && values.includes(value);
-}
 function core(value: unknown): boolean {
   if (
     !record(value) ||
@@ -73,10 +57,13 @@ export function isUiMessage(value: unknown): value is UiToHost {
         exact(value, ["kind", "id", "request"]) &&
         integer(value.id) &&
         record(value.request) &&
-        exact(value.request, ["method"]) &&
-        methods.some(
-          (method) => record(value.request) && method === value.request.method,
-        )
+        oneOf(value.request.method, methods) &&
+        (value.request.method === "settings.update"
+          ? exact(value.request, ["method", "patch", "baseRevision"]) &&
+            isSettingsPatch(value.request.patch) &&
+            typeof value.request.baseRevision === "string" &&
+            /^[0-9a-f]{64}$/.test(value.request.baseRevision)
+          : exact(value.request, ["method"]))
       );
     default:
       return false;
@@ -91,12 +78,21 @@ export function isHostMessage(value: unknown): value is HostToUi {
         integer(value.version) &&
         typeof value.demo === "boolean" &&
         record(value.theme) &&
-        exact(value.theme, ["window", "sidebar", "text1"]) &&
-        Object.values(value.theme).every(
+        exact(value.theme, [
+          "palette",
+          "scheme",
+          "window",
+          "sidebar",
+          "text1",
+        ]) &&
+        oneOf(value.theme.palette, palettes) &&
+        oneOf(value.theme.scheme, schemes) &&
+        [value.theme.window, value.theme.sidebar, value.theme.text1].every(
           (color) => typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color),
         ) &&
         record(value.window) &&
-        exact(value.window, ["width", "height", "minimized"]) &&
+        exact(value.window, ["zoom", "width", "height", "minimized"]) &&
+        [90, 100, 110, 125].includes(value.window.zoom as number) &&
         integer(value.window.width) &&
         value.window.width >= 1280 &&
         value.window.width <= 8192 &&
@@ -105,15 +101,34 @@ export function isHostMessage(value: unknown): value is HostToUi {
         value.window.height <= 8192 &&
         typeof value.window.minimized === "boolean"
       );
-    case "response":
+    case "response": {
+      if (
+        !exact(value, ["kind", "id", "result"]) ||
+        !integer(value.id) ||
+        !record(value.result)
+      )
+        return false;
+      const result = value.result;
+      if (
+        result.method === "notifications.test" ||
+        result.method === "launcher.favorite"
+      )
+        return (
+          exact(result, ["method", "accepted"]) &&
+          typeof result.accepted === "boolean"
+        );
       return (
-        exact(value, ["kind", "id", "result"]) &&
-        integer(value.id) &&
-        record(value.result) &&
-        exact(value.result, ["method", "value"]) &&
-        value.result.method === "core.get" &&
-        core(value.result.value)
+        exact(result, ["method", "value"]) &&
+        (result.method === "core.get"
+          ? core(result.value)
+          : oneOf(result.method, [
+              "settings.get",
+              "settings.update",
+              "settings.retry",
+              "settings.discard",
+            ]) && isSettings(result.value))
       );
+    }
     case "failure": {
       if (
         !exact(value, ["kind", "id", "error"]) ||
@@ -127,9 +142,13 @@ export function isHostMessage(value: unknown): value is HostToUi {
         "coreUnavailable",
         "unsupported",
         "denied",
+        "protected",
+        "io",
       ])
         ? exact(error, ["kind"])
-        : error.kind === "incompatible" &&
+        : error.kind === "conflict"
+          ? exact(error, ["kind", "current"]) && isSettings(error.current)
+          : error.kind === "incompatible" &&
             exact(error, ["kind", "expected", "found"]) &&
             integer(error.expected) &&
             integer(error.found);

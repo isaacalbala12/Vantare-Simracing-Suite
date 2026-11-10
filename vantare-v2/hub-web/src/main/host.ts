@@ -6,7 +6,7 @@ import {
   isHostMessage,
   isUiMessage,
 } from "../contract/validation";
-import { hello as mockHello, mockReply } from "./mock-host";
+import { createMockHost, helloForScene } from "./mock-host";
 export type Hello = Extract<HostToUi, { kind: "hello" }>;
 export interface HostLink {
   hello: Promise<Hello>;
@@ -19,9 +19,10 @@ export function createHost(): HostLink {
   const emit = (value: HostToUi) => {
     for (const receive of listeners) receive(value);
   };
-  if (process.env.VANTARE_HUB_HOST === "mock")
+  if (process.env.VANTARE_HUB_HOST === "mock") {
+    const mockReply = createMockHost(process.env.VANTARE_HUB_SCENE);
     return {
-      hello: Promise.resolve(mockHello),
+      hello: Promise.resolve(helloForScene(process.env.VANTARE_HUB_SCENE)),
       send: (message, flushed) => {
         const reply = mockReply(message);
         if (reply) queueMicrotask(() => emit(reply));
@@ -33,6 +34,7 @@ export function createHost(): HostLink {
       },
       close: () => listeners.clear(),
     };
+  }
   const name = process.env.VANTARE_HUB_PIPE,
     token = process.env.VANTARE_HUB_TOKEN;
   delete process.env.VANTARE_HUB_PIPE;

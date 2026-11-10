@@ -8,14 +8,22 @@ import {
   ipcMain,
   Menu,
   MessageChannelMain,
+  nativeTheme,
   net,
   protocol,
   screen,
   session,
 } from "electron";
+import type { SettingsView } from "../contract/generated/contract";
 import { HOST_PROTOCOL_VERSION } from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
+import {
+  paintWindow,
+  resolveTheme,
+  settingsTheme,
+  testNotification,
+} from "./appearance";
 import { createHost } from "./host";
 import {
   assetPath,
@@ -88,15 +96,17 @@ async function start() {
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
   Menu.setApplicationMenu(null);
+  nativeTheme.themeSource = hello.theme.scheme;
+  const colors = resolveTheme(hello.theme);
   window = new BrowserWindow({
     ...fitWindow(hello.window, screen.getPrimaryDisplay().workAreaSize),
     show: false,
-    backgroundColor: hello.theme.window,
+    backgroundColor: colors["bg-window"],
     title: "Vantare · Hub",
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: hello.theme.sidebar,
-      symbolColor: hello.theme.text1,
+      color: colors["bg-sidebar"],
+      symbolColor: colors["text-1"],
       height: 52,
     },
     webPreferences: webPreferences(
@@ -105,6 +115,17 @@ async function start() {
     ),
   });
   const contents = window.webContents;
+  let settings: SettingsView | undefined;
+  const repaint = () => {
+    if (window)
+      paintWindow(
+        window,
+        settings ? settingsTheme(settings) : hello.theme,
+        settings?.zoom ?? hello.window.zoom,
+      );
+  };
+  repaint();
+  nativeTheme.on("updated", repaint);
   const devUrl = !app.isPackaged
     ? developmentUrl(process.env.ELECTRON_RENDERER_URL)
     : undefined;
@@ -130,6 +151,20 @@ async function start() {
   let disconnect: (() => void) | undefined;
   const removeHostFailure = host.listen((message) => {
     if (
+      message.kind === "response" &&
+      (message.result.method === "settings.get" ||
+        message.result.method === "settings.update" ||
+        message.result.method === "settings.retry" ||
+        message.result.method === "settings.discard")
+    ) {
+      settings = message.result.value;
+      repaint();
+    }
+    if (message.kind === "failure" && message.error.kind === "conflict") {
+      settings = message.error.current;
+      repaint();
+    }
+    if (
       message.kind === "failure" &&
       message.id === 0 &&
       message.error.kind === "coreUnavailable"
@@ -137,6 +172,7 @@ async function start() {
       window?.destroy();
   });
   contents.once("destroyed", () => {
+    nativeTheme.removeListener("updated", repaint);
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
     removeHostFailure();
@@ -172,6 +208,22 @@ async function start() {
     };
     port1.on("message", ({ data }: { data: unknown }) => {
       if (!compatible || !isUiMessage(data) || !bounded(data)) return;
+      if (
+        data.kind === "request" &&
+        data.request.method === "notifications.test"
+      ) {
+        port1.postMessage({
+          kind: "response",
+          id: data.id,
+          result: {
+            method: "notifications.test",
+            accepted: testNotification(settings),
+          },
+        });
+        return;
+      }
+      if (QA_DRIVER && data.kind === "closeAnswer" && !data.allow)
+        console.error("HUB_QA_CLOSE_BLOCKED");
       if (data.kind === "closeAnswer" && data.allow)
         host.send(data, () => window?.destroy());
       else host.send(data);

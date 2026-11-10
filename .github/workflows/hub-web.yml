@@ -32,6 +32,7 @@ jobs:
       - run: bun x playwright-core install --with-deps chromium
       - run: bun run build
       - run: bun scripts/web-a11y.ts
+      - run: bun scripts/settings-web.ts
   windows-smoke:
     if: github.event_name == 'workflow_dispatch'
     timeout-minutes: 15

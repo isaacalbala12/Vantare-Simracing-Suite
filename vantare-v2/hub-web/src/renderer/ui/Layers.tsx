@@ -120,13 +120,17 @@ export function Popover({
   label,
   trigger,
   children,
+  open,
+  onOpenChange,
 }: {
   label: string;
   trigger: ReactNode;
   children: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <BasePopover.Root>
+    <BasePopover.Root open={open} onOpenChange={onOpenChange}>
       <BasePopover.Trigger
         aria-label={label}
         className="v-button v-button--ghost"

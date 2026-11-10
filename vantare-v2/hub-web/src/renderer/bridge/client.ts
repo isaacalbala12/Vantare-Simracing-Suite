@@ -9,7 +9,7 @@ import type {
 } from "../../contract/generated/contract";
 import { HOST_PROTOCOL_VERSION } from "../../contract/generated/contract";
 import { bounded, isHostMessage } from "../../contract/validation";
-import { mockReply } from "../../mock/host";
+import { createMockHost } from "../../mock/host";
 export class HostFailure extends Error {
   constructor(readonly detail: HostError) {
     super(detail.kind);
@@ -61,6 +61,9 @@ export class Client {
   static async connect(): Promise<Client> {
     if (!window.vantare) {
       const { port1, port2 } = new MessageChannel();
+      const mockReply = createMockHost(
+        new URLSearchParams(window.location.search).get("escena") ?? undefined,
+      );
       port2.onmessage = ({ data }) => {
         const response = mockReply(data);
         if (response) port2.postMessage(response);
@@ -87,7 +90,6 @@ export class Client {
       window.addEventListener("message", receive);
       void window.vantare?.connect().catch((error) => {
         clearTimeout(timeout);
-        window.removeEventListener("message", receive);
         window.removeEventListener("message", receive);
         reject(error);
       });

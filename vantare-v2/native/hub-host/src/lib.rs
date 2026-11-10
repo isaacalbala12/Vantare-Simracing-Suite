@@ -10,3 +10,7 @@ pub mod protocol;
 pub mod ready;
 #[cfg(windows)]
 pub mod ui_process;
+
+pub mod settings;
+
+pub mod favorite;

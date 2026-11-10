@@ -6596,8 +6596,11 @@ dependencies = [
  "serde_json",
  "ts-rs",
  "vantare-domain",
+ "vantare-installer",
  "vantare-ipc",
+ "vantare-launcher",
  "vantare-services",
+ "vantare-ui",
 ]
 
 [[package]]

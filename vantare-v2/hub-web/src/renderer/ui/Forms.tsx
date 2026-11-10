@@ -82,7 +82,9 @@ export function Select({
   value,
   onChange,
   disabled = false,
+  hideLabel = false,
 }: {
+  hideLabel?: boolean;
   label: string;
   options: Option[];
   value: string;
@@ -92,7 +94,11 @@ export function Select({
   const id = useId();
   return (
     <div className="v-field">
-      <label id={id} htmlFor={`${id}-control`}>
+      <label
+        id={id}
+        htmlFor={`${id}-control`}
+        className={hideLabel ? "v-sr-only" : undefined}
+      >
         {label}
       </label>
       <BaseSelect.Root
@@ -141,12 +147,19 @@ export function Select({
 export function Switch({
   label,
   pending = false,
+  hideLabel = false,
   ...props
-}: BaseSwitch.Root.Props & { label: string; pending?: boolean }) {
+}: BaseSwitch.Root.Props & {
+  label: string;
+  pending?: boolean;
+  hideLabel?: boolean;
+}) {
   const id = useId();
   return (
     <div className="v-switch-field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className={hideLabel ? "v-sr-only" : undefined}>
+        {label}
+      </label>
       <BaseSwitch.Root
         {...props}
         id={id}
@@ -168,7 +181,9 @@ export function Slider({
   onChange,
   onValueCommitted,
   disabled = false,
+  hideLabel = false,
 }: {
+  hideLabel?: boolean;
   label: string;
   value: number;
   min: number;
@@ -187,7 +202,9 @@ export function Slider({
       onValueCommitted={onValueCommitted}
       disabled={disabled}
     >
-      <BaseSlider.Label>{label}</BaseSlider.Label>
+      <BaseSlider.Label className={hideLabel ? "v-sr-only" : undefined}>
+        {label}
+      </BaseSlider.Label>
       <BaseSlider.Value />
       <BaseSlider.Control className="v-slider-control">
         <BaseSlider.Track className="v-slider-track">

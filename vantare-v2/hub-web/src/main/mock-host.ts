@@ -1,1 +1,1 @@
-export { hello, mockReply } from "../mock/host";
+export { createMockHost, hello, helloForScene, mockReply } from "../mock/host";

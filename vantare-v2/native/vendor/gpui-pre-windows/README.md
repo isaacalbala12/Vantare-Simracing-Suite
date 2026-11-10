@@ -21,6 +21,12 @@ lectura explícita de S_FALSE evitan esperas y resultados sin completar. No se
 compilan en el backend de producto por defecto. El módulo nuevo y la feature
 también forman parte del patch reproducible.
 
+Con `paint-stats` y `VANTARE_MEASUREMENT_RENDER_LOAD=1`, el modo estrés
+omite la espera `DwmFlush` y cede el turno al planificador sin temporizador.
+Es una carga deliberadamente saturada: el coste del hilo de pulsos forma parte
+del proceso; los spans de pintado y timestamps GPU lo separan del render.
+Sin esa variable se conserva la espera del compositor.
+
 **Regenerar al actualizar:** descargar la versión exacta que fije Kit en una
 carpeta temporal, comprobar SHA-256 con la API de crates.io y conservar licencia,
 `Cargo.toml`, `build.rs` y `src/`. Aplicar `vantare.patch` a esa base (desde

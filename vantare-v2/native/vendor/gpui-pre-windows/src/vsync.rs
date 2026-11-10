@@ -39,6 +39,15 @@ impl VSyncProvider {
     }
 
     pub(crate) fn wait_for_vsync(&self) -> FrameRequestSource {
+        // Diagnostic worst-case rendering must not be paced by DwmFlush.
+        // The existing weak-window ownership still stops the provider on exit.
+        // Yielding avoids monopolizing this thread's current scheduler quantum;
+        // this mode deliberately has no timer or display-frequency limit.
+        #[cfg(feature = "paint-stats")]
+        if crate::profiling::render_load() {
+            std::thread::yield_now();
+            return FrameRequestSource::LocalSchedule;
+        }
         let vsync_start = Instant::now();
         let wait_succeeded = (self.f)();
         let elapsed = vsync_start.elapsed();

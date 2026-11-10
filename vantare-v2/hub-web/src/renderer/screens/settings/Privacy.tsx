@@ -61,6 +61,13 @@ export function Privacy() {
         error instanceof HostFailure ? error : new HostFailure({ kind: "io" });
       if (failure.detail.kind === "privacyConflict")
         cache.setQueryData(key, failure.detail.current);
+      if (failure.detail.kind === "privacyCleanup") {
+        cache.setQueryData(key, failure.detail.current);
+        failed.current = undefined;
+        setFailure(undefined);
+        toast.add({ title: t("privacy.cleanup"), type: "warn" });
+        return;
+      }
       setFailure(failure);
       toast.add({ title: t("privacy.failed"), type: "err" });
     },
@@ -132,7 +139,8 @@ export function Privacy() {
       />
     );
   const view = query.data;
-  const blocked = view.protected || view.cleanupPending || !!failure;
+  const blocked =
+    view.protected || (view.cleanupPending && !view.cleanupBusy) || !!failure;
   return (
     <>
       {view.protected && (
@@ -143,7 +151,9 @@ export function Privacy() {
       {view.cleanupPending && (
         <Callout
           tone="warn"
-          title={t("privacy.cleanup")}
+          title={t(
+            view.cleanupBusy ? "privacy.cleanupBusy" : "privacy.cleanup",
+          )}
           actions={
             <Button onClick={() => void query.refetch()}>
               {t("settings.reload")}

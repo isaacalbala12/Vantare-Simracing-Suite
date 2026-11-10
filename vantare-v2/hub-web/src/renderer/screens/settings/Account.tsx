@@ -75,9 +75,14 @@ export function Account() {
             tone="err"
             title={t("pilot.failed")}
             actions={
-              <Button disabled={state.busy} onClick={() => void state.load()}>
-                {t("pilot.reload")}
-              </Button>
+              <ActionGroup>
+                <Button busy={state.busy} onClick={() => void state.retry()}>
+                  {t("pilot.retry")}
+                </Button>
+                <Button disabled={state.busy} onClick={() => void state.load()}>
+                  {t("pilot.reload")}
+                </Button>
+              </ActionGroup>
             }
           >
             {t("pilot.failedHelp")}

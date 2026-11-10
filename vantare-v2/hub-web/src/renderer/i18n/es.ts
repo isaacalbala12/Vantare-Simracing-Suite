@@ -100,6 +100,9 @@ export const paletteNames = {
 } as const;
 
 export const settingsText = {
+  "pilot.retry": "Reintentar conservando mis cambios",
+  "privacy.cleanupBusy":
+    "La limpieza está ocupada. Puedes volver a intentarlo.",
   "settings.results": "Pestañas disponibles",
   "updates.restarting": "Reiniciando…",
   "updates.restartVeto":

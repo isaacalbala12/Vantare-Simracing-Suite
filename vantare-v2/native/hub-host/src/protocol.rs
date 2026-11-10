@@ -220,6 +220,9 @@ pub enum HostError {
     PrivacyConflict {
         current: crate::privacy::PrivacyView,
     },
+    PrivacyCleanup {
+        current: crate::privacy::PrivacyView,
+    },
     Protected,
     Io,
 }

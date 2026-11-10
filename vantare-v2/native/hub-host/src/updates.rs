@@ -128,7 +128,7 @@ fn registration(root: &Path) -> Option<String> {
 }
 fn news(channel: &str) -> Vec<ReleaseNote> {
     let notes = serde_json::from_str::<Vec<ReleaseNote>>(include_str!(
-        "../../hub/src/settings/customer-news.json"
+        "../../resources/customer-news.json"
     ));
     notes
         .unwrap_or_default()

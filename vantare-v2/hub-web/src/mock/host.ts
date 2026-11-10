@@ -67,6 +67,10 @@ export function createMockHost(sceneName = "ajustes-base") {
   let privacyRevision = 0;
   let privacyConflict = false;
   if (sceneName === "privacidad-protegida") privacy.protected = true;
+  if (sceneName === "privacidad-limpieza-ocupada") {
+    privacy.cleanupPending = true;
+    privacy.cleanupBusy = true;
+  }
   if (sceneName === "diagnostico-observado")
     diagnostic.events = [
       { section: "services", code: "unavailable", sequence: 1 },
@@ -214,6 +218,14 @@ export function createMockHost(sceneName = "ajustes-base") {
           usageDecided: privacy.usageDecided || request.patch.field === "usage",
           revision: (++privacyRevision).toString(16).padStart(64, "0"),
         };
+        privacy.cleanupBusy = false;
+        privacy.cleanupPending = sceneName === "privacidad-limpieza-error";
+        if (privacy.cleanupPending)
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "privacyCleanup", current: privacy },
+          };
         return {
           kind: "response",
           id,

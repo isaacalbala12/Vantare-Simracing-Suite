@@ -313,7 +313,10 @@ fn failure_samples(settings: SettingsView, privacy: PrivacyView) -> Vec<HostToUi
     let mut current = settings;
     current.can_retry = true;
     for error in [
-        HostError::PrivacyConflict { current: privacy },
+        HostError::PrivacyConflict {
+            current: privacy.clone(),
+        },
+        HostError::PrivacyCleanup { current: privacy },
         HostError::Busy,
         HostError::CoreUnavailable,
         HostError::Unsupported,

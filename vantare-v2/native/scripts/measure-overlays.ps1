@@ -11,7 +11,6 @@ if (Test-Path -LiteralPath $Out) { throw 'Use a new evidence directory for every
 foreach ($file in @($UI,$Recording)) {
     if (!(Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing $file" }
 }
-if (Get-Process cargo,rustc -ErrorAction SilentlyContinue) { throw 'Wait until compilers finish before measuring' }
 New-Item -ItemType Directory -Path $Out | Out-Null
 $Out = (Resolve-Path -LiteralPath $Out).Path
 $info = [Diagnostics.ProcessStartInfo]::new((Resolve-Path -LiteralPath $UI).Path)
@@ -33,7 +32,21 @@ $mutex = [Threading.Mutex]::new($false,'Global\VantareParityCapture')
 $held = $false
 $started = $false
 $completed = $false
+$buildLocks = [Collections.Generic.List[Threading.Mutex]]::new()
 try {
+    # Reserve the existing build queue without changing its scripts/settings.
+    # Take build locks before the visual mutex: capture scripts may compile
+    # while owning the latter. Never wait for that visual mutex while reserved.
+    $configuredSlots = [Environment]::GetEnvironmentVariable('VANTARE_CARGO_SLOTS','Machine') ?? $env:VANTARE_CARGO_SLOTS ?? '4'
+    $slots = [Math]::Max(4,[int]$configuredSlots)
+    Write-Host 'Waiting for the build queue to finish before measurement'
+    for ($slot=0; $slot -lt $slots; $slot++) {
+        $buildLock = [Threading.Mutex]::new($false,"Global\VantareCargoSlot$slot")
+        try { $null = $buildLock.WaitOne() }
+        catch [Threading.AbandonedMutexException] { } # ownership was acquired
+        $buildLocks.Add($buildLock)
+    }
+    if (Get-Process cargo,rustc -ErrorAction SilentlyContinue) { throw 'An uncoordinated compiler is running: discard measurement' }
     $held = $mutex.WaitOne(0)
     if (!$held) { throw 'Visual capture/measurement already in progress' }
     $watch = [Diagnostics.Stopwatch]::StartNew()
@@ -60,6 +73,7 @@ try {
         executable_sha256=(Get-FileHash -LiteralPath $UI).Hash
         logical_processors=[Environment]::ProcessorCount
         os=[Environment]::OSVersion.VersionString
+        reserved_build_slots=$slots
         video=@(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate)
         cpu_unit='seconds across all process threads; 1 CPU second / wall second = one logical core'
         scope='Saved real telemetry snapshots; production host/renderers; no runtime/IPC/license cost'
@@ -79,4 +93,5 @@ try {
     $process.Dispose()
     if ($held) { $mutex.ReleaseMutex() }
     $mutex.Dispose()
+    foreach ($buildLock in $buildLocks) { $buildLock.ReleaseMutex(); $buildLock.Dispose() }
 }

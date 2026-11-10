@@ -16,9 +16,9 @@ def percentile(values, p):
 
 
 def recording_window(events, start, end):
-    photos = sorted((e for e in events if e['kind']=='received'), key=lambda e:e['clock'])
+    photos = sorted((e for e in events if e['kind']=='replay_event'), key=lambda e:e['clock'])
     if not photos or photos[0]['value'] > start*1e9:
-        raise ValueError('receiver started after stable recording window')
+        raise ValueError('recording trace started after stable window')
     endpoints = [next((e['clock'] for e in photos if e['value'] >= s*1e9), None) for s in (start,end)]
     if None in endpoints or endpoints[0]>=endpoints[1]:
         raise ValueError('recording position did not cover stable window')
@@ -59,16 +59,11 @@ def read_csv(path):
         return list(csv.DictReader(stream))
 
 
-def summarize(root):
-    if not (root/'complete.txt').exists():
-        raise ValueError('incomplete run')
-    metadata=json.loads((root/'metadata.json').read_text(encoding='utf-8-sig'))
-    if metadata.get('measurement_version')!=2 or metadata.get('profile')!='release':
-        raise ValueError('solo dev: not a Release v2 baseline')
+def read_trace(path):
     events=[]
     frequency=None
     expected_events=None
-    for line in (root/'stderr.log').read_text(encoding='utf-8-sig').splitlines():
+    for line in path.read_text(encoding='utf-8-sig').splitlines():
         if line.startswith('trace frequency='):
             header=dict(v.split('=') for v in line.split()[1:])
             frequency=int(header['frequency'])
@@ -83,9 +78,26 @@ def summarize(root):
         raise ValueError('missing trace clock')
     if expected_events!=len(events):
         raise ValueError('truncated trace: discard run')
-    if frequency!=metadata.get('qpc_frequency'):
+    return frequency, events
+
+
+def summarize(root):
+    if not (root/'complete.txt').exists():
+        raise ValueError('incomplete run')
+    metadata=json.loads((root/'metadata.json').read_text(encoding='utf-8-sig'))
+    if metadata.get('measurement_version')!=2 or metadata.get('profile')!='release':
+        raise ValueError('solo dev: not a Release v2 baseline')
+    frequency,events=read_trace(root/'stderr.log')
+    core_frequency,core_events=read_trace(root/'core.stderr.log')
+    if frequency!=metadata.get('qpc_frequency') or core_frequency!=frequency:
         raise ValueError('trace and sampler clocks differ')
-    start,end=recording_window(events,metadata['stable_start_seconds'],metadata['stable_end_seconds'])
+    positions=[e['value']/1e9 for e in core_events if e['kind']=='replay_event']
+    if not positions or max(positions)<metadata['recording_duration_seconds']-0.1:
+        raise ValueError('replay did not reach the end of the recording: discard run')
+    start,end=recording_window(core_events,metadata['stable_start_seconds'],metadata['stable_end_seconds'])
+    received_ticks=[e['clock'] for e in events if e['kind']=='received']
+    if not received_ticks or min(received_ticks)>start:
+        raise ValueError('receiver started after stable recording window')
     stable=[e for e in events if start<=e['clock']<=end]
     load=[number(r['load_percent']) for r in read_csv(root/'system.csv') if start<=int(r['qpc'])<=end]
     if not load or max(load)>metadata['maximum_total_system_load_percent']:
@@ -120,6 +132,8 @@ def summarize(root):
     if metadata.get('phases') and not stages:
         raise ValueError('phases requested but no stable spans were recorded')
     result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
+                recording_last_position_seconds=max(positions),
+                stable_recording_position_seconds=[metadata['stable_start_seconds'],metadata['stable_end_seconds']],
                 stable_system_load_mean_percent=sum(load)/len(load),stable_system_load_peak_percent=max(load),
                 present_calls=len(presents),present_intervals_ms=intervals,present_interval_p99_ms=percentile(intervals,99),
                 **latencies,**{k.replace('_ms','_p99_ms'):percentile(v,99) for k,v in latencies.items()},

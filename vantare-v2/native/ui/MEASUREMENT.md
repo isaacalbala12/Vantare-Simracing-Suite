@@ -2,11 +2,11 @@
 
 Las campañas anteriores son **solo dev**, no una línea base. Sus conclusiones de rendimiento se han retirado de #2001 y #2009. El informe histórico se conserva en [measurements/SOLO-DEV.md](measurements/SOLO-DEV.md); no usar sus tablas para comparar motores.
 
-La nueva campaña usa el perfil `--release` de distribución, sin cambiar LTO ni codegen-units: valores Cargo por defecto (`opt-level=3`, `lto=false`, `codegen-units=16`). Cada ejecutable expone `--measurement-info` con SHA compilado, perfil, optimización y features. El recolector rechaza dev. Se conserva el hash del binario, núcleo y grabación.
+La nueva campaña usa el perfil `--release` de distribución, sin cambiar LTO ni codegen-units: valores Cargo por defecto (`opt-level=3`, `lto=false`, `codegen-units=16`). UI y núcleo instrumentados exponen `--measurement-info` con SHA compilado, perfil, optimización y features. El recolector rechaza dev. Se conserva el hash del binario, núcleo y grabación.
 
 CPU: QueryProcessCycleTime, ciclos por segundo estable y por foto IPC recibida. Nunca convertir ciclos a segundos de CPU ni usar TotalProcessorTime. La frecuencia nominal/actual de CPU se anota como contexto; QPC proporciona la duración estable. Se mide UI y DWM por separado.
 
-La ventana estable se alinea con `Snapshot.origin.received_at` del replay (posición del reloj del núcleo sobre la grabación), desde 5 segundos hasta duración menos 5. Los contadores acumulados se interpolan a esos mismos extremos QPC. La duración solicitada debe coincidir con el manifiesto (100 ms de redondeo).
+La ventana estable se alinea con `ReplayEvent.at`, posición original del suceso en la grabación, desde 5 segundos hasta duración menos 5. El núcleo registra esa posición junto a QPC sin cambiar el snapshot ni el contrato IPC. No usar `origin.received_at` para esta alineación: el piloto mostró unos tres segundos de retraso acumulado del reloj del núcleo respecto a los sucesos originales. Los contadores acumulados se interpolan a esos mismos extremos QPC. La duración solicitada debe coincidir con el manifiesto (100 ms de redondeo).
 
 Se guardan intervalos individuales entre llamadas Present y su p99, latencia local recepción→pintado y recepción→retorno de Present. No son tiempos de visualización física. Las fases se filtran por inicio y fin dentro de la ventana estable; son anidadas y no se suman. Decode JSON se informa separado del feed IPC que incluye espera.
 
@@ -23,17 +23,37 @@ Desde `vantare-v2`, con el código confirmado en Git y sin overrides de perfil:
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:\VantareServer\targets\isa-1996-medicion'
 $env:CARGO_BUILD_JOBS = '2'
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core -j 2
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core --features paint-stats -j 2
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-ui --example overlay-replay --features paint-stats -j 2
 pwsh -NoProfile -File native/scripts/measure-overlay-campaign.ps1 -UI "$env:CARGO_TARGET_DIR/release/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/release/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/VantareServer/evidence/isa-1996/release-campaign-NEW -Runs 5
 ```
 
 No envolver la campaña en `compilar.ps1`: el recolector reserva la cola por sí mismo. Conservar el mismo núcleo y su hash en todas las variantes; su CPU no se atribuye al overlay. Cada salida debe ser nueva. Un fallo interrumpe la campaña y conserva la evidencia descartada, sin convertirla en una pasada válida.
 
-Cada pasada guarda `metadata.json`, `process.csv`, `dwm.csv`, `system.csv`, `gpu.csv`, los contadores GPU por motor en `gpu-counters.csv`, muestras PDH inválidas en `invalid-counters.csv`, logs, `complete.txt` y `summary.json`. Una muestra inválida de un proceso ajeno puede aparecer si éste destruye un motor entre las lecturas PDH; no invalida los contadores propios. Un contador inválido de UI, DWM o carga total sí descarta la pasada. Una traza truncada o desbordada también se rechaza.
+Cada pasada guarda `metadata.json`, `process.csv`, `dwm.csv`, `system.csv`, `gpu.csv`, los contadores GPU por motor en `gpu-counters.csv`, muestras PDH inválidas en `invalid-counters.csv`, logs, `complete.txt` y `summary.json`. Si la UI termina durante la última lectura PDH de drenaje, se cierra el muestreo sin atribuir esos contadores a la ventana estable. Una muestra inválida de un proceso ajeno puede aparecer si éste destruye un motor entre las lecturas PDH; no invalida los contadores propios. Un contador inválido de UI, DWM o carga total sí descarta la pasada. Una traza truncada o desbordada también se rechaza.
 
 `campaign.json` agrega las seis configuraciones por separado, con número de pasadas, mediana, mínimo y máximo. No mezcla binarios UI, núcleo o grabaciones distintos. Los intervalos y latencias individuales se conservan en cada `summary.json`.
 
 La memoria privada incluye el buffer de diagnóstico reservado, cuyo tamaño exacto aparece en `compiled_build.trace_capacity_bytes`; no equivale al consumo del producto sin instrumentación. Los controles sin Phases conservan las marcas mínimas de recepción, cambio de widget y presentación y reservan la misma capacidad, para medir el coste adicional de las fases. No sumar VRAM de UI y DWM: hay superficies compartidas.
 
 Fuentes primarias consultadas para el método: [QueryProcessCycleTime](https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-queryprocesscycletime) suma ciclos de todos los hilos, en usuario y kernel; [Microsoft DirectX: GPU en Task Manager](https://devblogs.microsoft.com/directx/gpus-in-the-task-manager/) explica motores independientes y memoria por proceso. La utilización principal de GPU usa el motor más ocupado por muestra; se conserva además la suma y cada contador bruto. La VRAM de UI y DWM se informa por separado porque las superficies compartidas pueden contabilizarse en ambos procesos.
+
+## Propagación de cambios
+
+El host recibe una `Photo`, verifica la demanda y conserva la última foto.
+`LiveScreens::ingest` actualiza visibilidad/sesión de cada entidad y aplica su
+cadencia. `Overlay::ingest` proyecta el snapshot y notifica **su propia entidad**
+solo cuando cambió la proyección. `Screen` contiene entidades cacheadas: GPUI
+reutiliza las primitivas de las que no se invalidaron. Un cambio de anchura de
+widget notifica también a `Screen`. Configuración/layout, estado de conexión,
+derechos y animaciones tienen sus propios despertares.
+
+La marca de traza `notify` identifica widget/época/secuencia de cada notificación por datos;
+la marca `data_paint` identifica el último snapshot pintado. El resumen distingue
+widgets notificados por snapshot cambiado y widgets pintados por snapshot
+pintado. GPUI puede coalescer fotos y las animaciones pueden pintar sin una
+foto nueva: esos cocientes no son intercambiables. Los contadores `paint` por
+widget incluyen las animaciones. Dos Standings son dos entidades, aunque el
+contador por tipo las agregue.
+
+El workload conserva el banco original: 1 Standings; 4 widgets en secuencia Standings/Radar/Pedals/Standings; 22 repiten ese ciclo de tres tipos en una ventana. La grabación es real; esta configuración no pretende representar los 19 tipos distintos a la vez.

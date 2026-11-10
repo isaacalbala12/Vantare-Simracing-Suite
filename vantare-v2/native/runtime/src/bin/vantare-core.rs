@@ -94,8 +94,41 @@ fn parse(args: &[String]) -> Result<Args, String> {
 use std::io::Write;
 use vantare_ipc::product;
 
-#[cfg(any(windows, unix))]
+#[cfg(all(any(windows, unix), not(feature = "paint-stats")))]
 fn main() -> std::process::ExitCode {
+    application_main()
+}
+
+#[cfg(all(any(windows, unix), feature = "paint-stats"))]
+fn main() -> std::process::ExitCode {
+    #[cfg(feature = "paint-stats")]
+    {
+        if std::env::args().skip(1).eq(["--measurement-info"]) {
+            let features: Vec<_> = env!("VANTARE_MEASUREMENT_FEATURES")
+                .split(',')
+                .filter(|v| !v.is_empty())
+                .collect();
+            println!(
+                "{}",
+                serde_json::json!({"sha":env!("VANTARE_MEASUREMENT_SHA"), "dirty":env!("VANTARE_MEASUREMENT_DIRTY")=="true", "profile":env!("VANTARE_MEASUREMENT_PROFILE"),
+                "opt_level":env!("VANTARE_MEASUREMENT_OPT_LEVEL"), "debug":env!("VANTARE_MEASUREMENT_DEBUG"), "features":features,
+                "release_options":"Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override"})
+            );
+            return std::process::ExitCode::SUCCESS;
+        }
+        vantare_runtime::profiling::initialize_trace();
+    }
+    let result = application_main();
+    #[cfg(feature = "paint-stats")]
+    if let Err(error) = vantare_runtime::profiling::flush() {
+        let _written = writeln!(std::io::stderr(), "measurement trace: {error}");
+        return std::process::ExitCode::FAILURE;
+    }
+    result
+}
+
+#[cfg(any(windows, unix))]
+fn application_main() -> std::process::ExitCode {
     use std::process::ExitCode;
     #[cfg(feature = "qa-e2e")]
     match vantare_ipc::qa::startup() {

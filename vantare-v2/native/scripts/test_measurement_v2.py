@@ -19,7 +19,7 @@ class StableWindowTest(unittest.TestCase):
             root = pathlib.Path(directory)
             (root / "complete.txt").write_text("complete")
             metadata = dict(measurement_version=2, profile="release", stable_start_seconds=0,
-                            stable_end_seconds=2, maximum_total_system_load_percent=35, qpc_frequency=1000)
+                            stable_end_seconds=2, recording_duration_seconds=2, maximum_total_system_load_percent=35, qpc_frequency=1000)
             (root / "metadata.json").write_text(json.dumps(metadata))
             def write_csv(name, rows):
                 with (root / name).open("w", newline="") as stream:
@@ -43,6 +43,13 @@ class StableWindowTest(unittest.TestCase):
                 "trace\treceived\tipc\t2100\t0\t1\t3\t2000000000\n"
                 "trace_end events=7\n"
             )
+            (root / "core.stderr.log").write_text(
+                "trace frequency=1000 overflow=0\n"
+                "trace\treplay_event\tlmu\t100\t0\t0\t0\t0\n"
+                "trace\treplay_event\tlmu\t1100\t0\t0\t0\t1000000000\n"
+                "trace\treplay_event\tlmu\t2100\t0\t0\t0\t2000000000\n"
+                "trace_end events=3\n"
+            )
             with contextlib.redirect_stdout(io.StringIO()):
                 result = M.summarize(root)
             self.assertEqual(result["ui"]["cycles_per_second"], 10000)
@@ -52,9 +59,13 @@ class StableWindowTest(unittest.TestCase):
             self.assertEqual(result["gpu"]["dwm"]["peak_dedicated_mib"], 1)
 
     def test_alignment_uses_recording_position_not_process_start(self):
-        events = [dict(kind="received", label="ipc", clock=1000+i*100, end=0,
+        events = [dict(kind="replay_event", label="ipc", clock=1000+i*100, end=0,
                        epoch=1, sequence=i, value=i*1_000_000_000) for i in range(61)]
         self.assertEqual(M.recording_window(events, 5, 55), (1500, 6500))
+
+    def test_replay_position_does_not_use_a_delayed_core_clock(self):
+        events = [dict(kind="replay_event", clock=100+i*110, value=i*1_000_000_000) for i in range(61)]
+        self.assertEqual(M.recording_window(events, 5, 55), (650, 6150))
 
     def test_cycle_rate_does_not_use_total_processor_time(self):
         rows = [dict(qpc=100, cpu_cycles=1000, cpu_seconds="nonsense", private_bytes=2**20),
@@ -65,9 +76,9 @@ class StableWindowTest(unittest.TestCase):
         self.assertFalse(any("cpu_seconds" in k or "logical_cores" in k for k in result))
 
     def test_late_receiver_must_not_shift_the_recording_window(self):
-        events = [dict(kind="received", clock=100, value=20_000_000_000),
-                  dict(kind="received", clock=200, value=55_000_000_000)]
-        with self.assertRaisesRegex(ValueError, "receiver started"):
+        events = [dict(kind="replay_event", clock=100, value=20_000_000_000),
+                  dict(kind="replay_event", clock=200, value=55_000_000_000)]
+        with self.assertRaisesRegex(ValueError, "recording trace started"):
             M.recording_window(events, 5, 55)
 
     def test_p99_keeps_intervals_and_does_not_average_rates(self):

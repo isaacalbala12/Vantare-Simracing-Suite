@@ -11,8 +11,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     vantare_ui::profiling::initialize_trace();
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.as_slice() == ["--measurement-info"] {
-        let mut build: serde_json::Value =
-            serde_json::from_str(option_env!("VANTARE_MEASUREMENT_BUILD").unwrap_or("{}"))?;
+        let features: Vec<_> = option_env!("VANTARE_MEASUREMENT_FEATURES")
+            .unwrap_or("")
+            .split(',')
+            .filter(|v| !v.is_empty())
+            .collect();
+        let mut build = serde_json::json!({"sha":option_env!("VANTARE_MEASUREMENT_SHA"), "dirty":option_env!("VANTARE_MEASUREMENT_DIRTY")!=Some("false"), "profile":option_env!("VANTARE_MEASUREMENT_PROFILE"),
+            "opt_level":option_env!("VANTARE_MEASUREMENT_OPT_LEVEL"), "debug":option_env!("VANTARE_MEASUREMENT_DEBUG"), "features":features,
+            "release_options":"Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override"});
         build["trace_capacity_bytes"] = vantare_ui::profiling::trace_capacity_bytes().into();
         println!("{build}");
         return Ok(());

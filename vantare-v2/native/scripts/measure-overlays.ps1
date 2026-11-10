@@ -18,7 +18,9 @@ foreach ($file in @($UI,$Recording)) {
 if ($Core -and !(Test-Path -LiteralPath $Core -PathType Leaf)) { throw "Missing $Core" }
 if (!$Core) { throw 'Baseline v2 requires the raw production IPC replay' }
 $build = (& $UI --measurement-info | ConvertFrom-Json)
-if ($LASTEXITCODE -or $build.profile -ne 'release' -or $build.opt_level -ne '3') { throw 'A Release executable with embedded provenance is required' }
+if ($LASTEXITCODE -or $build.profile -ne 'release' -or $build.opt_level -ne '3' -or $build.dirty -ne $false) { throw 'A clean Release executable with embedded provenance is required' }
+$coreBuild = (& $Core --measurement-info | ConvertFrom-Json)
+if ($LASTEXITCODE -or $coreBuild.profile -ne 'release' -or $coreBuild.opt_level -ne '3' -or $coreBuild.dirty -ne $false) { throw 'A clean Release replay core with embedded provenance is required' }
 $manifestText = & python "$PSScriptRoot/recording-metadata.py" $Recording
 if ($LASTEXITCODE) { throw 'Cannot read recording manifest' }
 $recordingManifest = $manifestText | ConvertFrom-Json
@@ -107,6 +109,7 @@ try {
             $coreInfo.Environment[$name] = "$Out/qa"
         }
         $coreInfo.Environment['VANTARE_PROFILE_PHASES'] = '0'
+        $coreInfo.Environment['VANTARE_MEASUREMENT_TRACE'] = '1'
         $coreProcess = [Diagnostics.Process]::new()
         $coreProcess.StartInfo = $coreInfo
         if (!$coreProcess.Start()) { throw 'Cannot start raw replay core' }
@@ -151,6 +154,9 @@ try {
         foreach ($sample in @($counters.CounterSamples | Where-Object { $_.Status -notin @(0,1) })) {
             $invalidCounterRows.Add([pscustomobject]@{qpc=$tick;path=$sample.Path;status=$sample.Status})
         }
+        # An orderly UI exit can remove its GPU instances during PDH's sampling
+        # interval. This is the drain after recording, not a stable GPU sample.
+        if ($process.HasExited) { break }
         foreach ($entry in @(@{name='ui';id=$process.Id},@{name='dwm';id=$dwm.Id})) {
             $samples = @($counters.CounterSamples | Where-Object { $_.InstanceName -match "^pid_$($entry.id)_" })
             if (@($samples | Where-Object { $_.Status -notin @(0,1) }).Count) { throw "Invalid GPU counter for $($entry.name): discard run" }
@@ -177,7 +183,7 @@ try {
         if ($coreProcess.ExitCode) { throw "Core failed: $($coreProcess.ExitCode)" }
     }
     [pscustomobject]@{
-        sha=$build.sha; profile=$build.profile; features=$build.features; compiled_build=$build
+        sha=$build.sha; profile=$build.profile; features=$build.features; compiled_build=$build; core_build=$coreBuild
         measurement_version=2; date=(Get-Date -Format o); widgets=$Widgets
         recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds
         stable_start_seconds=5; stable_end_seconds=($recordingDuration - 5)
@@ -197,7 +203,7 @@ try {
         reserved_build_slots=$slots
         video=@(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate)
         cpu_unit='QueryProcessCycleTime cycles per stable wall second and per received photo; no conversion to CPU seconds'
-        scope=$(if ($Core) { 'Raw recorded cadence through core and production IPC; core CPU excluded; no account' } else { 'Saved golden snapshots at coarse source-clock timestamps; characterization only, not production cadence' })
+        scope='Raw recorded cadence through core and production IPC; UI and DWM measured separately, fixed core producer excluded; no account or game'
     } | ConvertTo-Json -Depth 4 | Set-Content "$Out/metadata.json"
     $completed = $true
 } catch {

@@ -1,5 +1,6 @@
 """Aggregate independent v2 Release runs with median and full range."""
 import collections
+import hashlib
 import json
 import pathlib
 import statistics
@@ -9,15 +10,22 @@ import sys
 def aggregate(root):
     groups=collections.defaultdict(list)
     identities=set()
+    sources=[]
+    metadata=None
     for path in sorted(root.glob('round-*/summary.json')):
         if not (path.parent/'complete.txt').exists():
             raise ValueError('incomplete run: '+str(path.parent))
         run=json.loads(path.read_text(encoding='utf-8-sig'))
         meta=run['metadata']
+        if metadata is None:
+            metadata={k:v for k,v in meta.items() if k not in ('widgets','phases','date')}
         if meta['profile']!='release' or meta['measurement_version']!=2:
             raise ValueError('Release v2 required')
         identities.add((meta['executable_sha256'],meta['recording_sha256'],meta.get('core_sha256'),meta['profile']))
         groups[(meta['widgets'],meta['phases'])].append(run)
+        sources.append(dict(directory=path.parent.name,summary_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                            widgets=meta['widgets'],phases=meta['phases'],ui=run['ui'],dwm=run['dwm'],gpu=run['gpu'],
+                            received_photos=run.get('received_photos'),present_calls=run.get('present_calls')))
     if len(identities)!=1 or len(groups)!=6 or any(len(r)<5 for r in groups.values()):
         raise ValueError('need >=5 runs per six configurations from one Release executable and recording')
     result={}
@@ -36,6 +44,8 @@ def aggregate(root):
                     values.append(value)
             metrics['.'.join(path)]=dict(median=statistics.median(values),minimum=min(values),maximum=max(values)) if values else None
         result[f'widgets={widgets},phases={phases}']=dict(runs=len(runs),metrics=metrics)
+    result['_metadata']=metadata
+    result['_runs']=sources
     (root/'campaign.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(result,indent=2))
     return result

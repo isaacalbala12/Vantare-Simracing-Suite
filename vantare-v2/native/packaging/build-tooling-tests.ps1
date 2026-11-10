@@ -25,6 +25,10 @@ $qaProbe='root-launch-probe'
 $hubManifest=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../hub/Cargo.toml') -Raw
 if($hubManifest -notmatch '(?s)\[\[bin\]\]\s*name\s*=\s*"root-launch-probe"\s*path\s*=\s*"tests/support/root_launch_probe.rs"\s*required-features\s*=\s*\["installer-qa"\]'){throw 'Probe sin feature QA obligatoria'}
 Assert-PublicBins ($bins+@($qaProbe)) $inventory
+# ADR 0107: the replacement host remains internal until its packaging step.
+Assert-PublicBins ($bins+@('vantare-hub-host')) $inventory
+$rejected=$false;try{Assert-PublicBins (@($bins|Where-Object {$_ -cne 'vantare-hub'})+@('vantare-hub-host')) $inventory}catch{$rejected=$true}
+if(-not $rejected){throw 'El auxiliar sustituyó al Hub público antes de integrar el empaquetado'}
 $rejected=$false;try{Assert-PublicBins ($bins+@($qaProbe,'surprise')) $inventory}catch{$rejected=$true}
 if(-not $rejected){throw 'Binario desconocido aceptado'}
 $payload=Join-Path $root 'payload'
@@ -34,7 +38,7 @@ foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json')+@($
     [IO.File]::WriteAllText($file,'x')
 }
 Assert-PublicInventory $payload $inventory
-foreach($extra in @('bin/root-launch-probe.exe','bin/unknown.exe','bin/fixtures/telemetry-real/unwanted.json')){
+foreach($extra in @('bin/root-launch-probe.exe','bin/vantare-hub-host.exe','bin/unknown.exe','bin/fixtures/telemetry-real/unwanted.json')){
     $file=Join-Path $payload $extra
     [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file))|Out-Null
     [IO.File]::WriteAllText($file,'x')

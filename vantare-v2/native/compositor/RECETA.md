@@ -172,3 +172,10 @@ Las curvas admiten como máximo 1024 tramos, con suelo de tolerancia por ULP;
 una duración positiva debe ser al menos 1 ms. Los controles Bézier tienen
 x en 0..1 e y en −10..10. Fuera de esos límites se devuelve un error.
 Los errores al cargar o recargar conservan fichero y puntero JSON completos.
+
+Un muelle que no se asienta antes de 10 s con la velocidad real de interrupción,
+o una curva cuya precisión exige coeficientes fuera de f32, devuelve un error
+numérico explícito y conserva la escena anterior. No se emite una curva parcial
+ni se cambia por una curva lineal. Para admitir ese movimiento, reduce la
+velocidad de llegada o cambia la transición. Las tipografías requieren familia,
+peso, tamaño e interlínea; interletra (0), tabulares y mayúsculas (false) son opcionales.

@@ -403,7 +403,17 @@ impl Escena {
             } else {
                 actual
             };
-            viva.animar(i, &config, ahora, (desde, destino), Some(velocidad), lote)?;
+            if plano.visible
+                && let Some(b) = plano.bucle.as_ref().filter(|b| b.propiedad == i)
+            {
+                let curva = animacion::bucle_con_entrada(
+                    &config, &b.valores, b.duracion, ahora, desde, velocidad,
+                )
+                .map_err(|e| ErrorModelo::animacion(&plano.puntero, e))?;
+                viva.curva(i, curva, lote);
+            } else {
+                viva.animar(i, &config, ahora, (desde, destino), Some(velocidad), lote)?;
+            }
             *tocada = true;
         }
         Ok(tocadas)

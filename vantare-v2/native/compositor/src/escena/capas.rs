@@ -106,7 +106,10 @@ pub enum Dibujo {
         desplazamiento: (f32, f32),
     },
     /// Recorta los dibujos siguientes hasta `FinRecorte`.
-    Recorte { rect: Rect, radios: [f32; 4] },
+    Recorte {
+        rect: Rect,
+        radios: [f32; 4],
+    },
     FinRecorte,
 }
 

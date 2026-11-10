@@ -370,9 +370,13 @@ pub(crate) fn maquetar(
         Some(c) => c.evaluar(&contexto, "/visible")?,
         None => true,
     };
+    // Sin redondeo a píxel: como GPUI, el texto que sigue a otro empieza donde
+    // acaba el anterior (con decimales); la plataforma ajusta las superficies.
+    let mut tree = TaffyTree::new();
+    tree.disable_rounding();
     let mut e = Expansion {
         medidor,
-        tree: TaffyTree::new(),
+        tree,
         cantidad: 0,
     };
     let raiz = e.nodo(
@@ -422,6 +426,10 @@ pub(crate) fn maquetar(
 fn dibujos(n: &Expandido<'_>, rect: capas::Rect) -> Vec<Dibujo> {
     let e = &n.estilo;
     let mut salida = Vec::new();
+    // capas.rs: un dibujo siempre tiene área; una caja plegada o vacía no pinta nada.
+    if rect.ancho <= 0.0 || rect.alto <= 0.0 {
+        return salida;
+    }
     if let Some(s) = e.sombra {
         salida.push(Dibujo::Sombra {
             rect,
@@ -441,7 +449,7 @@ fn dibujos(n: &Expandido<'_>, rect: capas::Rect) -> Vec<Dibujo> {
             borde,
         });
     }
-    if let Some((texto, fuente, color)) = &n.texto {
+    if let Some((texto, fuente, color)) = n.texto.as_ref().filter(|(t, _, _)| !t.is_empty()) {
         salida.push(Dibujo::Texto {
             caja: rect,
             texto: texto.clone(),

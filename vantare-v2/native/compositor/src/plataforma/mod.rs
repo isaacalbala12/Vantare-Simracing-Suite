@@ -572,8 +572,8 @@ impl Plataforma {
                 if ![rect.x, rect.y, rect.ancho, rect.alto]
                     .iter()
                     .all(|n| n.is_finite())
-                    || rect.ancho <= 0.0
-                    || rect.alto <= 0.0
+                    || rect.ancho < 0.0
+                    || rect.alto < 0.0
                     || rect.ancho > 16384.0
                     || rect.alto > 16384.0
                 {
@@ -624,6 +624,13 @@ impl Plataforma {
     fn repintar(&mut self, id: CapaId) -> Resultado<()> {
         let dpi = self.dpi_capa(id)?;
         let c = self.capa(id)?;
+        if c.dibujos.is_empty() || c.rect.ancho <= 0.0 || c.rect.alto <= 0.0 {
+            // Capa vacía o plegada: sin superficie (contrato de capas.rs).
+            // SAFETY: visual de contenido vivo del mismo dispositivo y del mismo hilo.
+            unsafe { c.contenido.SetContent(None)? };
+            self.capas.get_mut(&id).ok_or(Error::Capa(id))?.superficie = None;
+            return Ok(());
+        }
         let mut tinta = limites::tinta(c.rect, &c.dibujos)?;
         // El origen del atlas debe corresponder a un píxel físico entero.
         tinta.izquierda = (tinta.izquierda * dpi / 96.0).floor() * 96.0 / dpi;

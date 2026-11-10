@@ -129,7 +129,7 @@ fn fila_de(fila: Option<&Row>, indice: usize, foto: &Snapshot, es: bool) -> Valu
             "vueltas_visible": false,
             "vueltas_tipo": "ninguna",
             "gap": "",
-            "clase": "otra",
+            "clase": "ninguna",
             "lado": lado_de_hueco(indice),
             "jugador": false,
             "cerca": false,
@@ -625,7 +625,7 @@ mod tests {
         let filas = filas(&modelo);
         assert_eq!(filas.len(), 7);
         let esperadas = [
-            ("hueco-0", "", "", "", "", "delante", "otra"),
+            ("hueco-0", "", "", "", "", "delante", "ninguna"),
             (
                 "3",
                 "P1",
@@ -663,7 +663,7 @@ mod tests {
                 "detras",
                 "hyper",
             ),
-            ("hueco-6", "", "", "", "", "detras", "otra"),
+            ("hueco-6", "", "", "", "", "detras", "ninguna"),
         ];
         for (fila, (id, posicion, piloto, detalle, gap, lado, clase)) in filas.iter().zip(esperadas)
         {

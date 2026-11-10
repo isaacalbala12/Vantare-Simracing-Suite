@@ -27,15 +27,8 @@
       "hyper": "#e14a54",
       "lmp": "#4f8ef7",
       "gt": "#22c55e",
-      "otra": "#b0a7a9"
-    },
-    "vueltas": {
-      "ninguna_fondo": "#00000000",
-      "ninguna_texto": "#00000000",
-      "abajo_fondo": "#4f8ef72e",
-      "abajo_texto": "#8db6ff",
-      "arriba_fondo": "#f25a5a33",
-      "arriba_texto": "#ff8a8a"
+      "otra": "#b0a7a9",
+      "ninguna": "#00000000"
     },
     "box": {
       "fondo": "#f59e0b",
@@ -53,6 +46,26 @@
       "ninguno_fondo": "#00000000",
       "ninguno_texto": "#00000000",
       "ninguno_linea": "#00000000"
+    },
+    "resalte_a": {
+      "jugador": "#e14a5452",
+      "delante": "#00000000",
+      "detras": "#00000000"
+    },
+    "resalte_b": {
+      "jugador": "#e14a540f",
+      "delante": "#00000000",
+      "detras": "#00000000"
+    },
+    "vueltas_fondo": {
+      "ninguna": "#00000000",
+      "abajo": "#4f8ef72e",
+      "arriba": "#f25a5a33"
+    },
+    "vueltas_texto": {
+      "ninguna": "#00000000",
+      "abajo": "#8db6ff",
+      "arriba": "#ff8a8a"
     }
   },
   "tipo": {
@@ -62,7 +75,7 @@
       "tamano": 11,
       "interletra": 0.3,
       "interlinea": 18,
-      "tabulares": false,
+      "tabulares": true,
       "mayusculas": false
     },
     "posicion": {
@@ -80,7 +93,7 @@
       "tamano": 13,
       "interletra": 0,
       "interlinea": 24,
-      "tabulares": false,
+      "tabulares": true,
       "mayusculas": false
     },
     "detalle": {
@@ -89,7 +102,7 @@
       "tamano": 12,
       "interletra": 0,
       "interlinea": 24,
-      "tabulares": false,
+      "tabulares": true,
       "mayusculas": false
     },
     "gap": {
@@ -125,7 +138,7 @@
       "tamano": 11,
       "interletra": 0,
       "interlinea": 20,
-      "tabulares": false,
+      "tabulares": true,
       "mayusculas": false
     }
   },
@@ -210,6 +223,7 @@
     "abajo": 11,
     "sangria": 6,
     "ancho_resalte": 408,
-    "ancho_linea": 396
+    "ancho_linea": 396,
+    "ajuste_display": 1
   }
 }

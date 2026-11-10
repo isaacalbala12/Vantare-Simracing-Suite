@@ -33,7 +33,9 @@ pub(super) fn evaluar(curva: &Curva, instante: Instante) -> Resultado<f32> {
         .iter()
         .rev()
         .find(|s| s.desde <= t)
-        .map_or(Err(Error::CurvaInvalida), |s| desplazar(s, t).map(|v| v[0]))
+        .map_or(Err(Error::CurvaInvalida), |s| {
+            desplazar(s, t - s.desde).map(|v| v[0])
+        })
 }
 #[derive(Debug)]
 pub(super) struct Programa {
@@ -83,7 +85,7 @@ pub(super) fn programar(curva: &Curva, frecuencia: i64) -> Resultado<Programa> {
         .tramos
         .iter()
         .filter(|s| repetir.is_none_or(|(fin, _)| s.desde < fin))
-        .map(|s| Ok((s.desde, desplazar(s, s.desde)?)))
+        .map(|s| Ok((s.desde, [s.a, s.b, s.c, s.d])))
         .collect::<Resultado<_>>()?;
     Ok(Programa {
         comienzo_qpc: ticks(curva.inicio, frecuencia)?,
@@ -126,7 +128,9 @@ pub(super) fn rango(curva: &Curva) -> super::Resultado<(f32, f32)> {
             .tramos
             .get(indice + 1)
             .map_or(limite, |s| s.desde.min(limite));
-        let mut puntos = vec![tramo.desde, fin];
+        // Tiempo local al tramo (capas.rs y AddCubic: t = 0 al comienzo del tramo).
+        let largo = fin - tramo.desde;
+        let mut puntos = vec![0.0, largo];
         let lineal = tramo.b;
         let cuadratico = 2.0 * tramo.c;
         let cubico = 3.0 * tramo.d;
@@ -144,10 +148,7 @@ pub(super) fn rango(curva: &Curva) -> super::Resultado<(f32, f32)> {
                 ]);
             }
         }
-        for t in puntos
-            .into_iter()
-            .filter(|t| *t >= tramo.desde && *t <= fin)
-        {
+        for t in puntos.into_iter().filter(|t| *t >= 0.0 && *t <= largo) {
             let valor = desplazar(tramo, t)?[0];
             if !valor.is_finite() {
                 return Err(super::Error::Entrada("La curva excede el rango de pintura"));
@@ -162,6 +163,39 @@ pub(super) fn rango(curva: &Curva) -> super::Resultado<(f32, f32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// capas.rs: el polinomio de cada tramo usa t local al tramo, igual que AddCubic.
+    #[test]
+    fn el_tiempo_de_cada_tramo_empieza_en_su_comienzo() {
+        let curva = Curva {
+            inicio: Instante(10.0),
+            tramos: vec![
+                Tramo {
+                    desde: 0.0,
+                    a: 0.0,
+                    b: 1.0,
+                    c: 0.0,
+                    d: 0.0,
+                },
+                Tramo {
+                    desde: 1.0,
+                    a: 1.0,
+                    b: -0.5,
+                    c: 0.0,
+                    d: 0.0,
+                },
+            ],
+            fin: 2.0,
+            final_: 0.5,
+            repetir: None,
+        };
+        // En t = 1,5 el segundo tramo vale 1 − 0,5·0,5 = 0,75 (no 1 − 0,5·1,5).
+        assert!((evaluar(&curva, Instante(11.5)).unwrap() - 0.75).abs() < 1e-5);
+        let programa = programar(&curva, 10_000_000).unwrap();
+        assert_eq!(programa.cubicos[1], (1.0, [1.0, -0.5, 0.0, 0.0]));
+        let (minimo, maximo) = rango(&curva).unwrap();
+        assert!((minimo - 0.0).abs() < 1e-5 && (maximo - 1.0).abs() < 1e-5);
+    }
     fn curva() -> Curva {
         Curva {
             inicio: Instante(100.0),

@@ -2,6 +2,8 @@
 use super::{Error, MotivoOrden, Plataforma, Resultado, limites, tiempo};
 use crate::escena::capas::{CapaId, Dibujo, Lote, Operacion, Pintura, Rect};
 use std::collections::{BTreeMap, BTreeSet};
+/// Exceso admitido en curvas de opacidad aproximadas por tramos cúbicos (DComp satura a 0..1).
+const OPACIDAD_TOLERANCIA: f32 = 0.01;
 
 impl Plataforma {
     pub(super) fn validar_lote(&self, lote: &Lote) -> Resultado<()> {
@@ -50,7 +52,7 @@ impl Plataforma {
                 }
                 Operacion::Colocar { id, rect: r } => {
                     existe(&capas, *id)?;
-                    rect(*r)?;
+                    rect_capa(*r)?;
                     capas.get_mut(id).ok_or(Error::Capa(*id))?.1 = *r;
                 }
                 Operacion::Pintar { id, dibujos } => {
@@ -82,8 +84,10 @@ impl Plataforma {
                     let (min, max) = tiempo::rango(curva)?;
                     if min.abs() > 1_000_000.0
                         || max.abs() > 1_000_000.0
+                        // Las aproximaciones cúbicas de una curva 0..1 rozan los extremos
+                        // por milésimas; DirectComposition satura la opacidad a 0..1.
                         || (*propiedad == crate::escena::capas::Propiedad::Opacidad
-                            && (min < 0.0 || max > 1.0))
+                            && (min < -OPACIDAD_TOLERANCIA || max > 1.0 + OPACIDAD_TOLERANCIA))
                     {
                         return Err(Error::CurvaInvalida);
                     }
@@ -173,6 +177,17 @@ fn rect(r: Rect) -> Resultado<()> {
         return Err(Error::RectInvalido);
     }
     Ok(())
+}
+/// Una capa puede medir cero (plegada o vacía): no tiene superficie hasta crecer.
+fn rect_capa(r: Rect) -> Resultado<()> {
+    if r.ancho == 0.0 || r.alto == 0.0 {
+        return rect(Rect {
+            ancho: r.ancho.max(1.0),
+            alto: r.alto.max(1.0),
+            ..r
+        });
+    }
+    rect(r)
 }
 fn esquinas(radios: [f32; 4]) -> Resultado<()> {
     if radios.iter().any(|v| !v.is_finite() || *v < 0.0) {

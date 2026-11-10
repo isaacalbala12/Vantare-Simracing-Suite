@@ -298,24 +298,39 @@ fn bucle_sale_sin_salto() {
 }
 #[test]
 fn cambio_sistema_funde_y_retira() {
-    let mut e = escenario(&receta());
-    e.actualizar(&datos(), Instante(0.0), &Fijo).unwrap();
-    let mut s = sistema();
-    s["color"]["a"] = json!("#00ff00");
-    let nuevo = carga(&receta(), &s).unwrap().sistema;
-    let l = e.cambiar_sistema(nuevo, Instante(1.0), &Fijo).unwrap();
+    let mut receta_actual = receta();
+    receta_actual["entrada"] = json!({"desde":{"opacidad":0},"transicion":"$mov.suave"});
+    let mut escena = escenario(&receta_actual);
+    escena.actualizar(&datos(), Instante(0.0), &Fijo).unwrap();
+    let mut sistema_nuevo = sistema();
+    sistema_nuevo["color"]["a"] = json!("#00ff00");
+    let nuevo = carga(&receta_actual, &sistema_nuevo).unwrap().sistema;
+    let lote = escena.cambiar_sistema(nuevo, Instante(1.0), &Fijo).unwrap();
+    let raiz_nueva = lote
+        .operaciones
+        .iter()
+        .find_map(|operacion| match operacion {
+            Operacion::Crear {
+                id, padre: None, ..
+            } => Some(*id),
+            _ => None,
+        })
+        .unwrap();
+    assert!((escena.valor(raiz_nueva, Propiedad::Opacidad, Instante(1.6)) - 1.0).abs() < 1.0e-5);
     assert!(
-        l.operaciones
+        lote.operaciones
             .iter()
             .any(|o| matches!(o, Operacion::Crear { .. }))
     );
     assert!(
-        !l.operaciones
+        !lote
+            .operaciones
             .iter()
             .any(|o| matches!(o, Operacion::Quitar { .. }))
     );
     assert!(
-        e.avanzar(Instante(1.6), &Fijo)
+        escena
+            .avanzar(Instante(1.6), &Fijo)
             .operaciones
             .iter()
             .any(|o| matches!(o, Operacion::Quitar { id: CapaId(1) }))

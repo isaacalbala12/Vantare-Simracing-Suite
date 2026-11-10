@@ -586,7 +586,12 @@ impl Escena {
         }
         self.aplicar(planos, ahora, &mut lote);
         for viva in self.vivas.values_mut().filter(|v| v.plano.padre.is_none()) {
-            let hasta = viva.muestra(Propiedad::Opacidad, ahora).0;
+            let hasta = viva
+                .plano
+                .valores
+                .iter()
+                .find(|(p, _)| *p == Propiedad::Opacidad)
+                .map_or(1.0, |(_, v)| *v);
             viva.animar(
                 Propiedad::Opacidad,
                 animacion::transicion(&cfg, ahora, 0.0, hasta, None),

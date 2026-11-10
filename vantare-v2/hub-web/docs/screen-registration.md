@@ -3,15 +3,25 @@
 Crear `src/renderer/screens/<id>/entry.tsx` con una exportación por defecto. `app/ScreenRegistry.tsx` descubre esos módulos con `import.meta.glob`; no hay que editar Shell ni un registro compartido. Los IDs del producto ya están cerrados en `app/sections.ts`: home, launcher, studio, roadmap, testing, calendar, strategy, engineer, settings, notifications, workshop, analysis y account. No se aceptan rutas o módulos arbitrarios.
 
 ```tsx
+import { useState } from "react";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 export default function Launcher() {
+  const [active, setActive] = useState("profiles");
   // Estado y datos del contrato dentro de la pantalla y sus proveedores.
-  return <>
-    <SectionChrome title="Launcher"
-      tabs={[{ id: "profiles", etiqueta: "Perfiles", visible: true }]}
-      activeTab={active} onTabChange={setActive} rail={<LauncherRail />} />
-    <SectionPanel activeTab={active}>{/* Contenido de la pestaña */}</SectionPanel>
-  </>;
+  return (
+    <>
+      <SectionChrome
+        title="Launcher"
+        tabs={[{ id: "profiles", etiqueta: "Perfiles", visible: true }]}
+        activeTab={active}
+        onTabChange={setActive}
+        rail={<p>Contexto de la pantalla</p>}
+      />
+      <SectionPanel activeTab={active}>
+        {/* Contenido de la pestaña */}
+      </SectionPanel>
+    </>
+  );
 }
 ```
 

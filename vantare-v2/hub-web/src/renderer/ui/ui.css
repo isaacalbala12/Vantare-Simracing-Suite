@@ -1054,3 +1054,12 @@ textarea.v-input {
     line-height: 28px;
   }
 }
+
+.v-settings-search .v-field {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+.v-settings-search .v-search {
+  width: 100%;
+}

@@ -7,7 +7,7 @@ import { settingsDescriptions } from "../../i18n/settings-frame.es";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { SearchInput } from "../../ui/Forms";
-import { PageHeader } from "../../ui/Frame";
+import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 
 const Account = lazy(() =>
@@ -170,31 +170,25 @@ export function Settings() {
         activeTab={selected}
         onTabChange={setTab}
       />
-      <div className="v-settings-heading">
-        <PageHeader
-          title={
-            (
-              items.find((item) => item.value === selected) ??
-              items.find((item) => item.value === tab) ??
-              items[1]
-            ).label
-          }
-          description={settingsDescriptions[selected || tab]}
-        />
-        <div className="v-settings-search">
+      <SectionPageHeader
+        title={
+          (
+            items.find((item) => item.value === selected) ??
+            items.find((item) => item.value === tab) ??
+            items[1]
+          ).label
+        }
+        description={settingsDescriptions[selected || tab]}
+        search={
           <SearchInput
             label={t("settings.search")}
             clearLabel={t("settings.clearSearch")}
             value={search}
             onChange={setSearch}
           />
-        </div>
-      </div>
-      <p
-        className="v-sr-only"
-        role="status"
-        aria-live="polite"
-      >{`${t("settings.results")}: ${visible.length}`}</p>
+        }
+      />
+      <StatusAnnouncement>{`${t("settings.results")}: ${visible.length}`}</StatusAnnouncement>
       {pilot.dirty && selected !== "account" && (
         <Callout
           title={t("pilot.unsaved")}

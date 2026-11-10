@@ -174,6 +174,29 @@ export function PageHeader({
     </div>
   );
 }
+export function SectionPageHeader({
+  title,
+  description,
+  search,
+}: {
+  title: string;
+  description?: string;
+  search?: ReactNode;
+}) {
+  return (
+    <div className="v-settings-heading">
+      <PageHeader title={title} description={description} />
+      {search && <div className="v-settings-search">{search}</div>}
+    </div>
+  );
+}
+export function StatusAnnouncement({ children }: { children: ReactNode }) {
+  return (
+    <p className="v-sr-only" role="status" aria-live="polite">
+      {children}
+    </p>
+  );
+}
 export function CommandPalette({
   title,
   description,

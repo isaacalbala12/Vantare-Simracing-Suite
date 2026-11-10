@@ -285,12 +285,18 @@ La caché fría de sccache añade coste de subida; no se oculta esa regresión.
 La segunda VM recompila los crates locales por timestamps del checkout,
 por lo que no se promete el 0,17 s observado en la restauración local del Mac.
 
-Se adopta un complemento acotado de target para el builder de tests: solo
-debug y marcadores Cargo, máximo 2 GiB sin comprimir. No se guardan datos QA,
-tmp ni el tar Nextest que ya es un artefacto compartido. Los targets mayores
-conservan sccache como alternativa. Clave por lock/toolchain/SHA y restauración
-por prefijo del mismo lock desde el PR/base accesible; no se deshabilita ninguna
-compilación ni test ante un acierto. El presupuesto del repo sigue siendo 10 GB.
+La repetición 42775335100, HEAD 533be7369, confirma cuatro jobs efectivos,
+pero cambia el resultado con sccache previamente caliente: sin caché 88,18 s;
+primer target con sccache 27,21 s; segundo 23,38 s; target restaurado en otra
+VM 49,31 s, antes de sumar descarga. Sccache acumula 208 hits Rust/30 misses,
+aunque registra seis errores de escritura en la segunda pasada (ambos builds
+PASS). No se trata esta repetición como caché fría ni se ocultan sus errores.
+
+Por ello se retira la caché adicional de target del camino normal: su ventaja
+no se sostiene frente a sccache caliente y duplica almacenamiento bajo el límite
+de 10 GB. Se conserva el experimento aislado, con targets pequeños de Core,
+para repetirlo si cambia la carga. El flujo normal conserva sccache GHA y la
+caché de registro/git; localmente sí se reutiliza siempre el target del slot.
 
 El árbol real de Core para Windows no contiene GPUI ni DuckDB. Ya limita image
 a JPEG/PNG y ureq a rustls; url/default solo añade std. Retirar esos formatos,

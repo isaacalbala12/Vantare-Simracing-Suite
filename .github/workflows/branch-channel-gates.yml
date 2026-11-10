@@ -151,7 +151,6 @@ jobs:
         run: |
           python .github/scripts/test_native_gate_scope.py
           python .github/scripts/test_native_ci_results.py
-          python .github/scripts/test_native_target_cache_budget.py
           python -m unittest vantare-v2/native/scripts/test_affected_crates.py
 
       - name: Test Testing Center trusted manifest collector
@@ -307,17 +306,6 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
       - uses: ./.github/actions/native-build-setup
-      - name: Restore bounded compiler target from PR or nightly
-        id: compiler_target
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            ${{ runner.temp }}/vantare-targets/ci/debug
-            ${{ runner.temp }}/vantare-targets/ci/.rustc_info.json
-            ${{ runner.temp }}/vantare-targets/ci/.vantare-workspace
-            ${{ runner.temp }}/vantare-targets/ci/CACHEDIR.TAG
-          key: native-target-windows-1.95-${{ hashFiles('vantare-v2/native/Cargo.lock') }}-${{ github.sha }}
-          restore-keys: native-target-windows-1.95-${{ hashFiles('vantare-v2/native/Cargo.lock') }}-
       - name: Test Windows worker tooling
         run: |
           $evidence = Join-Path $env:RUNNER_TEMP 'native-tooling'
@@ -412,20 +400,6 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
-      - name: Bound compiler target cache size
-        id: target_budget
-        working-directory: ${{ github.workspace }}
-        run: python .github/scripts/native_target_cache_budget.py "${{ runner.temp }}/vantare-targets/ci"
-      - name: Save bounded compiler target
-        if: steps.target_budget.outputs.save == 'true' && steps.compiler_target.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            ${{ runner.temp }}/vantare-targets/ci/debug
-            ${{ runner.temp }}/vantare-targets/ci/.rustc_info.json
-            ${{ runner.temp }}/vantare-targets/ci/.vantare-workspace
-            ${{ runner.temp }}/vantare-targets/ci/CACHEDIR.TAG
-          key: native-target-windows-1.95-${{ hashFiles('vantare-v2/native/Cargo.lock') }}-${{ github.sha }}
 
   native_tests:
     name: Run native ${{ matrix.suite }}

@@ -234,6 +234,7 @@ fn settings_response(
         Err(error) => HostToUi::Failure {
             id,
             error: match error {
+                SaveError::Busy => HostError::Busy,
                 SaveError::Conflict(current) => HostError::Conflict { current },
                 SaveError::Protected => HostError::Protected,
                 SaveError::Io => HostError::Io,

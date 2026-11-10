@@ -61,6 +61,7 @@ pub enum SettingsPatch {
 }
 #[derive(Debug)]
 pub enum SaveError {
+    Busy,
     Conflict(SettingsView),
     Protected,
     Io,
@@ -185,6 +186,7 @@ impl Settings {
     #[cfg(windows)]
     fn layout_result(&self, change: layout::Change) -> Result<bool, SaveError> {
         match change {
+            layout::Change::Busy => Err(SaveError::Busy),
             layout::Change::Fallback => Ok(false),
             layout::Change::Saved => Ok(true),
             layout::Change::Conflict => Err(SaveError::Conflict(self.view())),

@@ -142,3 +142,11 @@ conjunta puede volver a compilar GPUI también en la instancia compartida del
 instalador. No se promete aislamiento de features en `--workspace`; para producir
 el anfitrión sin GPUI hay que compilarlo por separado con `-p vantare-hub-host`.
 No se han modificado el instalador ni la topología de los overlays.
+
+
+Review #2015: un layout ausente solo se observa; el anfitrión nunca lo crea ni
+lo inicializa. El núcleo conserva la siembra de starter_layout y el criterio
+layout_preexisted del onboarding. Rendimiento/ocultar esperan al documento;
+reducedMotion mantiene exclusivamente su fallback en los ajustes del Hub.
+La cadencia y la validación del adaptador se comparan con el código productivo de
+UI en un test unitario de UI, que depende del host solo en dev-dependencies.

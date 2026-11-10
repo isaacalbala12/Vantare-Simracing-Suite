@@ -88,9 +88,16 @@ export function isSettings(value: unknown): value is SettingsView {
     typeof startup.supported === "boolean" &&
     typeof startup.enabled === "boolean" &&
     record(value.track) &&
-    exact(value.track, ["level", "customized", "hideOffTrack", "protected"]) &&
+    exact(value.track, [
+      "exists",
+      "level",
+      "customized",
+      "hideOffTrack",
+      "protected",
+    ]) &&
     oneOf(value.track.level, performanceLevels) &&
     [
+      value.track.exists,
       value.track.customized,
       value.track.hideOffTrack,
       value.track.protected,

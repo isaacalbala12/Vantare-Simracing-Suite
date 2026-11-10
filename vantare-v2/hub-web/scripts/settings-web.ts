@@ -161,6 +161,7 @@ try {
     JSON.stringify(reports, null, 2),
   );
   assert.deepEqual(appearance.violations, [], "Appearance");
+  await open("ajustes-con-diseno");
   await page
     .getByRole("tab", { name: "Rendimiento en pista", exact: true })
     .click();

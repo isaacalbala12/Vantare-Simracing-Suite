@@ -27,9 +27,15 @@ export function Performance() {
   if (!state.view) return null;
   const { track } = state.view;
   const disabled =
-    state.view.protected || track.protected || Boolean(state.error);
+    !track.exists ||
+    state.view.protected ||
+    track.protected ||
+    Boolean(state.error);
   return (
     <>
+      {!track.exists && (
+        <Callout title={t("track.waiting")}>{t("track.waitingHelp")}</Callout>
+      )}
       {track.protected && <Callout tone="warn" title={t("track.protected")} />}
       <Card title={t("track.level")}>
         {track.customized && <Pill>{t("track.custom")}</Pill>}
@@ -63,7 +69,7 @@ export function Performance() {
           </Button>
         </SettingRow>
       </Card>
-      <Card title={t("track.table")}>
+      <Card title={t("track.table")} footer={t("track.tableHelp")}>
         <Table
           caption={t("track.table")}
           empty={t("track.empty")}

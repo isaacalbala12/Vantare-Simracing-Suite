@@ -173,6 +173,7 @@
           },
           "track": {
             "customized": false,
+            "exists": false,
             "hideOffTrack": false,
             "level": "balanced",
             "protected": false
@@ -215,6 +216,7 @@
           },
           "track": {
             "customized": false,
+            "exists": false,
             "hideOffTrack": false,
             "level": "balanced",
             "protected": false
@@ -257,6 +259,7 @@
           },
           "track": {
             "customized": false,
+            "exists": false,
             "hideOffTrack": false,
             "level": "balanced",
             "protected": false
@@ -299,6 +302,7 @@
           },
           "track": {
             "customized": false,
+            "exists": false,
             "hideOffTrack": false,
             "level": "balanced",
             "protected": false
@@ -318,11 +322,13 @@
           "profiles": [
             {
               "hotkey": "Ctrl Alt F8",
+              "id": "qa-profile-0",
               "name": "Carrera QA",
               "state": "registered"
             },
             {
               "hotkey": "Ctrl Alt F9",
+              "id": "qa-profile-1",
               "name": "Streaming QA",
               "state": "unconfirmed"
             }
@@ -434,6 +440,7 @@
           },
           "track": {
             "customized": false,
+            "exists": false,
             "hideOffTrack": false,
             "level": "balanced",
             "protected": false

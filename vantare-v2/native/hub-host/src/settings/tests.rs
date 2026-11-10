@@ -268,14 +268,28 @@ fn track_conflict_retries_only_intent_and_preserves_widget_overrides() {
 }
 #[cfg(windows)]
 #[test]
-fn track_creates_missing_layout_but_never_rewrites_future_or_invalid_performance() {
+fn track_never_creates_missing_layout_or_rewrites_future_or_invalid_performance() {
     let root = Root::new();
     let mut settings = root.settings();
     let revision = settings.view().revision;
-    settings
-        .update(SettingsPatch::HideOffTrack(true), &revision)
-        .expect("create layout");
     let path = root.0.join("layout.json");
+    assert!(!settings.view().track.exists);
+    assert!(!settings.view().general.onboarding_completed);
+    for patch in [
+        SettingsPatch::HideOffTrack(true),
+        SettingsPatch::Performance(track::PerformanceLevel::Economy),
+    ] {
+        assert!(matches!(
+            settings.update(patch, &revision),
+            Err(SaveError::Protected)
+        ));
+        assert!(!path.exists(), "only the core may seed starter_layout");
+    }
+    settings
+        .update(SettingsPatch::ReducedMotion(true), &revision)
+        .expect("Hub appearance fallback");
+    assert!(!path.exists());
+    assert!(!root.settings().view().general.onboarding_completed);
     for bytes in [
         r#"{"version":99,"instances":[]}"#,
         r#"{"version":1,"instances":[],"performance":{"level":"future"}}"#,
@@ -291,4 +305,29 @@ fn track_creates_missing_layout_but_never_rewrites_future_or_invalid_performance
         ));
         assert_eq!(fs::read_to_string(&path).expect("unchanged"), bytes);
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn busy_layout_retains_the_intent_and_retries_after_the_lock_is_released() {
+    let root = Root::new();
+    let path = root.0.join("layout.json");
+    fs::write(&path, br#"{"version":1,"instances":[]}"#).expect("existing core fixture");
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    let lock = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(root.0.join("layout.json.lock"))
+        .expect("lock file");
+    lock.lock().expect("hold cooperative lock");
+    assert!(matches!(
+        settings.update(SettingsPatch::HideOffTrack(true), &revision),
+        Err(SaveError::Busy)
+    ));
+    assert!(settings.view().can_retry);
+    lock.unlock().expect("release lock");
+    assert!(settings.retry().expect("retry").track.hide_off_track);
 }

@@ -311,7 +311,7 @@ describe("saving keeps keyboard controls focusable", () => {
 describe("Rendimiento y atajos over the simulated host", () => {
   it("saves the global level, keeps focus through pending arrows and reads it back", async () => {
     const gate = hold("settings.update");
-    const hook = mount("ajustes-base", <Performance />);
+    const hook = mount("ajustes-con-diseno", <Performance />);
     await loaded(hook);
     const radio = screen.getByRole("radio", { name: t("track.balanced") });
     radio.focus();
@@ -324,7 +324,7 @@ describe("Rendimiento y atajos over the simulated host", () => {
     );
   });
   it("saves hide off track independently of other preferences", async () => {
-    const hook = mount("ajustes-base", <General />);
+    const hook = mount("ajustes-con-diseno", <General />);
     await loaded(hook);
     await userEvent
       .setup()
@@ -347,5 +347,51 @@ describe("Rendimiento y atajos over the simulated host", () => {
         ([value]) => value.method === "launcher.favorite",
       ),
     ).toBe(false);
+  });
+});
+
+describe("layout availability and shortcut read failures", () => {
+  it("waits for the core's initial layout without sending a write", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <Performance />);
+    await loaded(hook);
+    await screen.findByText(t("track.waiting"));
+    const option = screen.getByRole("radio", { name: t("track.economy") });
+    expect(option.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.setup().click(option);
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "settings.update",
+      ),
+    ).toHaveLength(0);
+  });
+  it("does not edit a protected layout", async () => {
+    const hook = mount("ajustes-layout-protegido", <Performance />);
+    await loaded(hook);
+    await screen.findByText(t("track.protected"));
+    expect(
+      screen
+        .getByRole("radio", { name: t("track.economy") })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+  it("shows shortcut failures with an explicit reload action", async () => {
+    const hook = mount("atajos-error", <Shortcuts />);
+    await loaded(hook);
+    await screen.findByText(t("shortcuts.protected"));
+    expect(
+      screen.getAllByRole("button", { name: t("settings.reload") }).length,
+    ).toBeGreaterThan(0);
+  });
+  it("keeps level keyboard focus even with the core offline", async () => {
+    const hook = mount("ajustes-con-diseno", <Performance />);
+    await loaded(hook);
+    const radio = screen.getByRole("radio", { name: t("track.balanced") });
+    radio.focus();
+    await userEvent.setup().keyboard("{ArrowRight}");
+    expect(document.activeElement).not.toBe(document.body);
+    await waitFor(() =>
+      expect(hook.result.current.view?.track.level).toBe("economy"),
+    );
   });
 });

@@ -23,6 +23,44 @@ export async function checkTrackHost(
     assert.ok(record(value));
     return value;
   }
+  if (process.env.VANTARE_HUB_LAYOUT_MISSING === "1") {
+    const missing = async () => {
+      try {
+        await readFile(path);
+        return false;
+      } catch (error) {
+        if (record(error) && error.code === "ENOENT") return true;
+        throw error;
+      }
+    };
+    assert.equal(await missing(), true);
+    assert.equal(
+      await page
+        .getByRole("switch", { name: "Ocultar fuera de pista", exact: true })
+        .getAttribute("aria-disabled"),
+      "true",
+    );
+    await page
+      .getByRole("tab", { name: "Rendimiento en pista", exact: true })
+      .click();
+    await page.getByText(t("track.waiting"), { exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole("radio", { name: "Ahorro", exact: true })
+        .getAttribute("aria-disabled"),
+      "true",
+    );
+    await page.reload();
+    await page
+      .getByRole("tab", { name: "Rendimiento en pista", exact: true })
+      .click();
+    await page.getByText(t("track.waiting"), { exact: true }).waitFor();
+    assert.equal(await missing(), true);
+    await page.screenshot({
+      path: join(evidence, "layout-missing-native.png"),
+    });
+    return;
+  }
   await page
     .getByRole("switch", { name: "Ocultar fuera de pista", exact: true })
     .click();

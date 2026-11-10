@@ -7,7 +7,7 @@ import { useHost } from "../../app/Host";
 import { useSettings } from "../../app/SettingsState";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
-import { Card, Pill, SettingRow } from "../../ui/Data";
+import { Callout, Card, Pill, SettingRow } from "../../ui/Data";
 import { Segmented, Switch } from "../../ui/Forms";
 import { useToastManager } from "../../ui/Layers";
 import { ZoomControl } from "../../ui/ZoomControl";
@@ -119,12 +119,15 @@ export function General() {
         </SettingRow>
       </Card>
       <Card title={t("track.hide")}>
+        {!view.track.exists && (
+          <Callout title={t("track.waiting")}>{t("track.waitingHelp")}</Callout>
+        )}
         <SettingRow label={t("track.hide")} description={t("track.hideHelp")}>
           <Switch
             hideLabel
             label={t("track.hide")}
             checked={view.track.hideOffTrack}
-            disabled={disabled || view.track.protected}
+            disabled={disabled || view.track.protected || !view.track.exists}
             pending={state.pending}
             onCheckedChange={(value) =>
               state.update({ field: "hideOffTrack", value })

@@ -120,7 +120,8 @@ export function isHostMessage(value: unknown): value is HostToUi {
           result.value.profiles.every(
             (item) =>
               record(item) &&
-              exact(item, ["name", "hotkey", "state"]) &&
+              exact(item, ["id", "name", "hotkey", "state"]) &&
+              typeof item.id === "string" &&
               typeof item.name === "string" &&
               typeof item.hotkey === "string" &&
               oneOf(item.state, registrationStates),

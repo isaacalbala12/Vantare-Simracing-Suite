@@ -45,6 +45,14 @@ if (process.env.VANTARE_HUB_STARTUP_TEST === "1") {
     { windowsHide: true },
   );
 }
+if (
+  process.env.VANTARE_HUB_SETTINGS_TEST === "1" &&
+  process.env.VANTARE_HUB_LAYOUT_MISSING !== "1"
+)
+  await cp(
+    resolve("../native/ui/fixtures/layout.json"),
+    join(data, "layout.json"),
+  );
 const boot = randomBytes(16).toString("hex");
 await writeFile(join(root, "boot-pending.json"), "{}");
 const env: Record<string, string> = {};

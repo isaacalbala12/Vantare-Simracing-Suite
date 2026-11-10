@@ -76,7 +76,7 @@ export function Shortcuts() {
         ) : query.data?.profiles.length ? (
           query.data.profiles.map((profile) => (
             <SettingRow
-              key={profile.name + profile.hotkey}
+              key={profile.id}
               label={profile.name}
               description={t(`shortcuts.${profile.state}`)}
             >

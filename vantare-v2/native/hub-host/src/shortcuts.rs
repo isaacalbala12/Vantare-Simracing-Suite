@@ -18,6 +18,7 @@ pub enum RegistrationState {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfileShortcut {
+    pub id: String,
     pub name: String,
     pub hotkey: String,
     pub state: RegistrationState,
@@ -73,6 +74,7 @@ pub fn read(path: &Path) -> ShortcutsView {
         .iter()
         .filter(|profile| !profile.hotkey.is_empty())
         .map(|profile| ProfileShortcut {
+            id: profile.id.clone(),
             name: profile.name.clone(),
             hotkey: profile.hotkey.clone(),
             state: state(profile, status.as_ref()),
@@ -121,5 +123,50 @@ mod tests {
         status.profiles[0].hotkey.clone_from(&profile.hotkey);
         status.profiles[0].error = Some("QA registration denied".into());
         assert_eq!(state(&profile, Some(&status)), RegistrationState::Error);
+    }
+}
+
+#[cfg(all(test, windows))]
+mod read_tests {
+    use super::*;
+    use crate::test_support::Root;
+    #[test]
+    fn missing_malformed_and_ordered_documents_remain_read_only() {
+        let root = Root::new();
+        let path = root.path.join("launcher.json");
+        let view = read(&path);
+        assert!(view.profiles.is_empty());
+        assert!(!view.protected);
+        assert!(!path.exists());
+        let invalid = br#"{"version":999}"#;
+        std::fs::write(&path, invalid).expect("invalid fixture");
+        assert!(read(&path).protected);
+        assert_eq!(std::fs::read(&path).expect("untouched"), invalid);
+        let mut document = vantare_launcher::Document::default();
+        for (id, name, hotkey) in [
+            ("qa-z", "Zulu", "Ctrl Alt F9"),
+            ("qa-a", "Alpha", "Ctrl Alt F8"),
+        ] {
+            let mut profile = vantare_launcher::Profile::new(id.into(), name.into());
+            profile.hotkey = hotkey.into();
+            document.profiles.push(profile);
+        }
+        let bytes = serde_json::to_vec(&document).expect("fixture");
+        std::fs::write(&path, &bytes).expect("valid fixture");
+        let view = read(&path);
+        assert!(!view.protected);
+        assert_eq!(
+            view.profiles
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>(),
+            ["qa-a", "qa-z"]
+        );
+        assert!(
+            view.profiles
+                .iter()
+                .all(|p| p.state == RegistrationState::Unconfirmed)
+        );
+        assert_eq!(std::fs::read(path).expect("still untouched"), bytes);
     }
 }

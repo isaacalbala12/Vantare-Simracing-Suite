@@ -100,6 +100,12 @@ export const paletteNames = {
 } as const;
 
 export const settingsText = {
+  "track.waiting": "Esperando un diseño",
+  "track.waitingHelp":
+    "Se aplicará cuando exista un diseño. Vuelve a cargar después de que Vantare cree los overlays iniciales.",
+  "track.tableHelp":
+    "Estas frecuencias globales no se aplican a widgets personalizados. Las banderas se actualizan siempre al instante.",
+
   "settings.performance": "Rendimiento en pista",
   "track.level": "Nivel de rendimiento",
   "track.maximum": "Máximo",
@@ -132,8 +138,7 @@ export const settingsText = {
   "shortcuts.empty": "Todavía no has asignado ninguna combinación",
   "shortcuts.protected": "No se pudieron leer los atajos del Launcher",
   "shortcuts.edit": "Editar atajos de perfiles",
-  "shortcuts.unconfirmed":
-    "Registro no confirmado · abre Vantare desde el instalador",
+  "shortcuts.unconfirmed": "Registro no confirmado por el Launcher",
   "shortcuts.registered": "Registrado en Windows",
   "shortcuts.inactive": "Sin registro activo",
   "shortcuts.error": "No se pudo registrar en Windows",

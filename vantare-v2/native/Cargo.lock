@@ -6724,6 +6724,7 @@ dependencies = [
  "serde_json",
  "vantare-build-support",
  "vantare-domain",
+ "vantare-hub-host",
  "vantare-ipc",
  "vantare-profiling",
  "vantare-services",

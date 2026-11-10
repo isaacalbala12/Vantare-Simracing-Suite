@@ -63,6 +63,11 @@ if (process.env.VANTARE_HUB_STARTUP_TEST === "1")
       "installer-fixture/qa-context.json",
     ),
   });
+if (process.env.VANTARE_HUB_LAYOUT_MISSING !== "1")
+  await copyFile(
+    resolve("../native/ui/fixtures/layout.json"),
+    join(data, "layout.json"),
+  );
 const executable = join(root, "vantare-hub.exe");
 const source = requiredPath("VANTARE_HUB_HOST_BINARY");
 if (resolve(source).toLowerCase() !== resolve(executable).toLowerCase())

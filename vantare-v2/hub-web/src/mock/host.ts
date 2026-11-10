@@ -48,6 +48,12 @@ export function createMockHost(sceneName = "ajustes-base") {
   let settings = structuredClone(
     sceneName === "ajustes-protegidos" ? protectedScene : settingsScene,
   ) as SettingsView;
+  if (
+    sceneName === "ajustes-con-diseno" ||
+    sceneName === "ajustes-layout-protegido"
+  )
+    settings.track.exists = true;
+  if (sceneName === "ajustes-layout-protegido") settings.track.protected = true;
   let revision = 0;
   let pending: SettingsPatch | undefined;
   let conflicted = false;
@@ -74,6 +80,8 @@ export function createMockHost(sceneName = "ajustes-base") {
     const { id, request } = value;
     switch (request.method) {
       case "shortcuts.get":
+        if (sceneName === "atajos-error")
+          return { kind: "failure", id, error: { kind: "io" } };
         return {
           kind: "response",
           id,
@@ -116,7 +124,7 @@ export function createMockHost(sceneName = "ajustes-base") {
           settings.protected ||
           ((request.patch.field === "performance" ||
             request.patch.field === "hideOffTrack") &&
-            settings.track.protected)
+            (settings.track.protected || !settings.track.exists))
         )
           return { kind: "failure", id, error: { kind: "protected" } };
         if (

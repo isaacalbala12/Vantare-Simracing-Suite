@@ -247,9 +247,10 @@ export async function checkSettingsHost(
       conflictProtectsClose: true,
       retryPreservesConcurrentWriter: true,
       paletteRestored: true,
-      performanceSaved: true,
-      visibilitySaved: true,
-      shortcutsRead: true,
+      performanceSaved: process.env.VANTARE_HUB_LAYOUT_MISSING !== "1",
+      layoutAbsencePreserved: process.env.VANTARE_HUB_LAYOUT_MISSING === "1",
+      visibilitySaved: process.env.VANTARE_HUB_LAYOUT_MISSING !== "1",
+      shortcutsRead: process.env.VANTARE_HUB_LAYOUT_MISSING !== "1",
     }),
   );
 }

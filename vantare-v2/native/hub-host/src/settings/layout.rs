@@ -25,6 +25,7 @@ pub enum Change {
     Saved,
     Conflict,
     Protected,
+    Busy,
     Io,
 }
 #[derive(Default)]
@@ -61,7 +62,7 @@ impl Document {
         let Some(bytes) = &observed else {
             return Ok(Self {
                 observed,
-                fields: serde_json::from_str(r#"{"version":1,"instances":[]}"#).map_err(|_| ())?,
+                fields: Fields::default(),
             });
         };
         let fields: Fields = serde_json::from_slice(bytes).map_err(|_| ())?;
@@ -115,13 +116,7 @@ impl Document {
         if let Some(widgets) = fields.0.get("widgets") {
             let widgets: BTreeMap<String, u16> =
                 serde_json::from_str(widgets.get()).map_err(|_| ())?;
-            if widgets.len() > 256
-                || widgets.iter().any(|(id, hz)| {
-                    id.is_empty()
-                        || id.len() > 128
-                        || !matches!(hz, 0 | 1 | 4 | 5 | 10 | 15 | 20 | 30 | 40 | 60)
-                })
-            {
+            if !super::track::valid_overrides(&widgets) {
                 return Err(());
             }
         }
@@ -146,6 +141,7 @@ impl Document {
             serde_json::from_str::<BTreeMap<String, u16>>(v.get()).is_ok_and(|v| !v.is_empty())
         });
         TrackView {
+            exists: self.observed.is_some(),
             level,
             customized,
             hide_off_track: self.hide().expect("validated visibility"),
@@ -210,6 +206,7 @@ impl Layout {
     pub fn track(&self) -> TrackView {
         self.document.as_ref().map_or_else(
             |()| TrackView {
+                exists: self.path.try_exists().unwrap_or(true),
                 protected: true,
                 ..Default::default()
             },
@@ -238,6 +235,9 @@ impl Layout {
         let Ok(document) = &mut self.document else {
             return Change::Protected;
         };
+        if document.observed.is_none() && !matches!(intent, Intent::Motion(_)) {
+            return Change::Protected;
+        }
         if matches!(intent, Intent::Motion(_)) && document.motion().is_none() {
             return if self.pending.is_some() {
                 Change::Protected
@@ -254,6 +254,10 @@ impl Layout {
                 self.pending = Some(intent);
                 self.document = Document::open(&self.path);
                 Change::Conflict
+            }
+            Err(error) if error.kind() == files::Kind::Busy => {
+                self.pending = Some(intent);
+                Change::Busy
             }
             Err(files::Error::InvalidInput(_) | files::Error::Unsupported(_)) => Change::Protected,
             Err(_) => Change::Io,

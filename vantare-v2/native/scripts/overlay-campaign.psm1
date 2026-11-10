@@ -22,6 +22,7 @@ function Assert-OverlayCapabilities($A,$B,$Core,[bool]$Stress) {
     $right=@($B.measurement_capabilities | Sort-Object -Unique)
     if (($left -join ',') -ne ($right -join ',')) { throw 'A and B capabilities differ; no observations started' }
     if ($Stress -and 'render_load' -notin $left) { throw 'Both UIs must support stress rendering' }
+    if ($Stress -and 'render_load_uncapped' -notin $left) { throw 'Stress requires the uncapped capability in both UIs' }
 }
 
 function Add-OverlayAttemptEvent($Registry,$Event) {

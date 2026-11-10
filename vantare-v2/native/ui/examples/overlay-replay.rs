@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(all(feature = "paint-stats", windows))]
         {
             build["measurement_capabilities"] =
-                serde_json::json!(["render_load", "d3d11_timestamps"]);
+                serde_json::json!(["render_load", "render_load_uncapped", "d3d11_timestamps"]);
         }
         #[cfg(all(feature = "paint-stats", not(windows)))]
         {

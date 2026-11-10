@@ -36,6 +36,11 @@ Assert-Condition (($calls[4..7].experiment -join ',') -eq 'ab,ab,ab,ab') 'A/B wa
 Assert-Condition (($calls[8..11].label -join '') -eq 'BAAB') 'BAAB alternation missing'
 Assert-Condition (@($calls | Where-Object { $_.experiment -eq 'aa' -and $_.engine -ne 'A' }).Count -eq 0) 'A/A used B'
 Assert-Condition ($result.verdict -eq 'improvement' -and $result.accepted) 'Predeclared primary metric produced wrong verdict'
+$bad=New-Config 'paced-stress' 'paced-stress'
+$bad.stress=$true
+$reason=$null
+try { Invoke-OverlayCampaign $bad $observe | Out-Null } catch { $reason=$_.Exception.Message }
+Assert-Condition ($reason -like '*uncapped capability*') 'Compositor-paced stress was accepted'
 for ($attempt=1;$attempt -le 4;$attempt++) {
  $bad=New-Config "invalid-$attempt" 'bounded'
  $bad.b_info.measurement_capabilities=@('render_load')

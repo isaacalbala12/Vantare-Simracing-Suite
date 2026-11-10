@@ -6,10 +6,24 @@ function Test-MeasurementCompilerProcess {
     if (!$CommandLine) { return $true }
     $compile = '(?i)(?:^|\s)"?(?:build|check|clippy|test|nextest|run|rustc|bench|doc|install|package)"?(?:\s|$)'
     if ($CommandLine -match $compile) { return $true }
-    if ($CommandLine -match '(?i)(?:^|\s)fmt(?:\s|$)' -and $CommandLine -match '(?:^|\s)--check(?:\s|$)') { return $false }
+    # Formatting another worktree is not compilation. The collector separately
+    # verifies its own clean revision before and after every observation.
+    if ($CommandLine -match '(?i)(?:^|\s)fmt(?:\s|$)') { return $false }
     # Unknown Cargo commands remain conservative; only the selector's known
     # metadata operation is allowed. No command-line arguments are logged.
     return $CommandLine -notmatch '(?i)(?:^|\s)"?metadata"?(?:\s|$)'
+}
+
+function Get-MeasurementSourceRevision([string]$Root) {
+    $revision=(& git -C $Root rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -or $revision -notmatch '^[a-f0-9]{40}$') { throw 'Cannot identify collector source' }
+    $changes=@(& git -C $Root status --porcelain)
+    if ($LASTEXITCODE -or $changes.Count) { throw 'Collector source changed or is dirty' }
+    return $revision
+}
+
+function Assert-MeasurementSourceRevision([string]$Root,[string]$Expected) {
+    if ((Get-MeasurementSourceRevision $Root) -ne $Expected) { throw 'Collector source revision changed during observation' }
 }
 
 function Get-MeasurementProcesses {

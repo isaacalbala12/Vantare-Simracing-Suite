@@ -153,3 +153,30 @@ describe("settings boundary rejects malformed intents and views", () => {
       expect(isHostMessage(failure(error))).toBe(false);
   });
 });
+
+describe("layout patches are closed and typed", () => {
+  it("accepts only known levels and boolean visibility", () => {
+    const request = (patch: unknown) => ({
+      kind: "request",
+      id: 1,
+      request: {
+        method: "settings.update",
+        baseRevision: "0".repeat(64),
+        patch,
+      },
+    });
+    for (const patch of [
+      { field: "performance", value: "economy" },
+      { field: "hideOffTrack", value: true },
+    ])
+      expect(isUiMessage(request(patch))).toBe(true);
+    for (const patch of [
+      { field: "performance", value: "automatic" },
+      { field: "performance", value: 1 },
+      { field: "performance", value: "high", widgets: {} },
+      { field: "hideOffTrack", value: "true" },
+      { field: "hideOffTrack", value: true, extra: 1 },
+    ])
+      expect(isUiMessage(request(patch))).toBe(false);
+  });
+});

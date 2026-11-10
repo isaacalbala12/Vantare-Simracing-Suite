@@ -304,3 +304,28 @@ fn owner_peer(mode: &str, name: &str, token: &str, done: &Signal) {
         let _joined = child.0.wait();
     }
 }
+
+#[test]
+fn owner_already_in_a_job_can_spawn_a_nested_ui_job() {
+    let root = Root::new();
+    let done = Signal::new().expect("stop");
+    let ready = Signal::new().expect("ready");
+    let path = root.path.join("nested-pids.json");
+    let command = command("owner", "", "", &done.name, &ready.name, &path);
+    let null = File::options().write(true).open("NUL").expect("stderr");
+    let mut owner = UiChild(crate::job::spawn(&command, &null).expect("owner in outer job"));
+    let owner_handle = test_support::process(owner.0.id()).expect("owner handle");
+    ready.wait_or_exit(&owner_handle);
+    let ids: Vec<u32> = serde_json::from_slice(&std::fs::read(path).expect("IDs")).expect("PIDs");
+    assert_eq!(ids.len(), 2);
+    let processes: Vec<_> = ids
+        .into_iter()
+        .map(|id| test_support::process(id).expect("nested process"))
+        .collect();
+    assert!(processes.iter().all(test_support::running));
+    owner.0.kill().expect("kill outer job");
+    owner.0.wait().expect("owner exit");
+    for process in &processes {
+        test_support::terminated(process);
+    }
+}

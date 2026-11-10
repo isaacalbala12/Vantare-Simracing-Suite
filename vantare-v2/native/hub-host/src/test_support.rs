@@ -11,12 +11,13 @@ use windows_sys::Win32::{
     System::{
         Pipes::CreatePipe,
         Threading::{
-            CreateEventW, EVENT_MODIFY_STATE, INFINITE, OpenEventW, OpenProcess,
-            PROCESS_SYNCHRONIZE, SYNCHRONIZATION_SYNCHRONIZE, SetEvent, WaitForMultipleObjects,
-            WaitForSingleObject,
+            CreateEventW, EVENT_MODIFY_STATE, OpenEventW, OpenProcess, PROCESS_SYNCHRONIZE,
+            SYNCHRONIZATION_SYNCHRONIZE, SetEvent, WaitForMultipleObjects, WaitForSingleObject,
         },
     },
 };
+// Deadlock guard only; readiness still uses kernel events, never elapsed sleeps.
+const TEST_DEADLINE_MS: u32 = 30_000;
 fn owned(handle: HANDLE) -> io::Result<OwnedHandle> {
     if handle.is_null() {
         return Err(io::Error::last_os_error());
@@ -63,7 +64,7 @@ impl Signal {
         let handles = [self.handle.as_raw_handle(), process.as_raw_handle()];
         // SAFETY: both borrowed handles remain live; a dying helper fails the test immediately.
         assert_eq!(
-            unsafe { WaitForMultipleObjects(2, handles.as_ptr(), 0, INFINITE) },
+            unsafe { WaitForMultipleObjects(2, handles.as_ptr(), 0, TEST_DEADLINE_MS) },
             WAIT_OBJECT_0,
             "helper exited before readiness"
         );
@@ -71,7 +72,7 @@ impl Signal {
     pub fn wait(&self) {
         // SAFETY: explicit kernel event synchronization; the peer owns the signal.
         assert_eq!(
-            unsafe { WaitForSingleObject(self.handle.as_raw_handle(), INFINITE) },
+            unsafe { WaitForSingleObject(self.handle.as_raw_handle(), TEST_DEADLINE_MS) },
             WAIT_OBJECT_0
         );
     }
@@ -101,7 +102,7 @@ pub fn running(process: &OwnedHandle) -> bool {
 pub fn terminated(process: &OwnedHandle) {
     // SAFETY: wait for our owned process after terminating its owner/job.
     assert_eq!(
-        unsafe { WaitForSingleObject(process.as_raw_handle(), INFINITE) },
+        unsafe { WaitForSingleObject(process.as_raw_handle(), TEST_DEADLINE_MS) },
         WAIT_OBJECT_0
     );
 }

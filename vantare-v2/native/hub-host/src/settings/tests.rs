@@ -236,3 +236,98 @@ fn malformed_or_future_layouts_stay_byte_exact_after_attempted_motion_save() {
         assert_eq!(fs::read(&path).expect("protected bytes"), original);
     }
 }
+
+#[cfg(windows)]
+#[test]
+fn track_conflict_retries_only_intent_and_preserves_widget_overrides() {
+    let root = Root::new();
+    let path = root.0.join("layout.json");
+    let initial = r#"{"version":1,"instances":[],"performance":{"level":"balanced","widgets":{"delta":4}},"extensions":{"opaque":1.0000000000000000001}}"#;
+    fs::write(&path, initial).expect("fixture");
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    fs::write(&path, initial.replace("balanced", "high")).expect("winner");
+    assert!(matches!(
+        settings.update(
+            SettingsPatch::Performance(track::PerformanceLevel::Economy),
+            &revision
+        ),
+        Err(SaveError::Conflict(_))
+    ));
+    let saved = settings.retry().expect("retry");
+    assert_eq!(saved.track.level, track::PerformanceLevel::Economy);
+    assert!(saved.track.customized);
+    let raw = fs::read_to_string(&path).expect("saved");
+    assert!(raw.contains("1.0000000000000000001"));
+    let document: serde_json::Value = serde_json::from_str(&raw).expect("JSON");
+    assert_eq!(document["performance"]["widgets"]["delta"], 4);
+    settings
+        .update(SettingsPatch::HideOffTrack(true), &saved.revision)
+        .expect("hide");
+    assert!(settings.view().track.hide_off_track);
+}
+#[cfg(windows)]
+#[test]
+fn track_never_creates_missing_layout_or_rewrites_future_or_invalid_performance() {
+    let root = Root::new();
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    let path = root.0.join("layout.json");
+    assert!(!settings.view().track.exists);
+    assert!(!settings.view().general.onboarding_completed);
+    for patch in [
+        SettingsPatch::HideOffTrack(true),
+        SettingsPatch::Performance(track::PerformanceLevel::Economy),
+    ] {
+        assert!(matches!(
+            settings.update(patch, &revision),
+            Err(SaveError::Protected)
+        ));
+        assert!(!path.exists(), "only the core may seed starter_layout");
+    }
+    settings
+        .update(SettingsPatch::ReducedMotion(true), &revision)
+        .expect("Hub appearance fallback");
+    assert!(!path.exists());
+    assert!(!root.settings().view().general.onboarding_completed);
+    for bytes in [
+        r#"{"version":99,"instances":[]}"#,
+        r#"{"version":1,"instances":[],"performance":{"level":"future"}}"#,
+        r#"{"version":1,"instances":[],"performance":{"widgets":{"delta":999}}}"#,
+    ] {
+        fs::write(&path, bytes).expect("protected fixture");
+        let mut settings = root.settings();
+        let revision = settings.view().revision;
+        assert!(settings.view().track.protected);
+        assert!(matches!(
+            settings.update(SettingsPatch::HideOffTrack(false), &revision),
+            Err(SaveError::Protected)
+        ));
+        assert_eq!(fs::read_to_string(&path).expect("unchanged"), bytes);
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn busy_layout_retains_the_intent_and_retries_after_the_lock_is_released() {
+    let root = Root::new();
+    let path = root.0.join("layout.json");
+    fs::write(&path, br#"{"version":1,"instances":[]}"#).expect("existing core fixture");
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    let lock = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(root.0.join("layout.json.lock"))
+        .expect("lock file");
+    lock.lock().expect("hold cooperative lock");
+    assert!(matches!(
+        settings.update(SettingsPatch::HideOffTrack(true), &revision),
+        Err(SaveError::Busy)
+    ));
+    assert!(settings.view().can_retry);
+    lock.unlock().expect("release lock");
+    assert!(settings.retry().expect("retry").track.hide_off_track);
+}

@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { HOST_PROTOCOL_VERSION } from "../src/contract/generated/contract";
 import { mockReply } from "../src/main/mock-host";
 import {
   assetPath,
@@ -47,15 +48,17 @@ describe("renderer boundary", () => {
     expect(CSP).toContain("object-src 'none'");
   });
   it("only answers the supported mock handshake", () => {
-    expect(mockReply({ kind: "hello", version: 1 })).toMatchObject({
+    expect(
+      mockReply({ kind: "hello", version: HOST_PROTOCOL_VERSION }),
+    ).toMatchObject({
       kind: "hello",
-      version: 1,
+      version: HOST_PROTOCOL_VERSION,
       demo: true,
     });
     for (const message of [
       null,
       {},
-      { kind: "hello", version: 2 },
+      { kind: "hello", version: HOST_PROTOCOL_VERSION + 1 },
       { kind: "request", method: "unknown" },
     ])
       expect(mockReply(message)).toBeNull();

@@ -8,6 +8,7 @@ use ts_rs::TS;
 pub mod bindings;
 pub const METHODS: &[&str] = &[
     "core.get",
+    "shortcuts.get",
     "window.close",
     "settings.get",
     "settings.update",
@@ -17,7 +18,7 @@ pub const METHODS: &[&str] = &[
     "notifications.test",
 ];
 pub const TOPICS: &[&str] = &["core", "simStatus"];
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -82,6 +83,8 @@ pub enum Topic {
 pub enum Request {
     #[serde(rename = "core.get")]
     CoreGet {},
+    #[serde(rename = "shortcuts.get")]
+    ShortcutsGet {},
     #[serde(rename = "window.close")]
     WindowClose {},
     #[serde(rename = "settings.get")]
@@ -107,6 +110,10 @@ pub enum Request {
 pub enum Reply {
     #[serde(rename = "core.get")]
     Core { value: CoreStatus },
+    #[serde(rename = "shortcuts.get")]
+    ShortcutsGet {
+        value: crate::shortcuts::ShortcutsView,
+    },
     #[serde(rename = "settings.get")]
     SettingsGet { value: SettingsView },
     #[serde(rename = "settings.update")]

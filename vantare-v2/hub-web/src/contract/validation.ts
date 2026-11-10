@@ -2,6 +2,7 @@ import {
   type HostToUi,
   methods,
   palettes,
+  registrationStates,
   schemes,
   topics,
   type UiToHost,
@@ -109,6 +110,23 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
+      if (result.method === "shortcuts.get")
+        return (
+          exact(result, ["method", "value"]) &&
+          record(result.value) &&
+          exact(result.value, ["profiles", "protected"]) &&
+          typeof result.value.protected === "boolean" &&
+          Array.isArray(result.value.profiles) &&
+          result.value.profiles.every(
+            (item) =>
+              record(item) &&
+              exact(item, ["id", "name", "hotkey", "state"]) &&
+              typeof item.id === "string" &&
+              typeof item.name === "string" &&
+              typeof item.hotkey === "string" &&
+              oneOf(item.state, registrationStates),
+          )
+        );
       if (
         result.method === "notifications.test" ||
         result.method === "launcher.favorite"

@@ -5,6 +5,7 @@ import {
   interfaceFonts,
   monoFonts,
   palettes,
+  performanceLevels,
   type SettingsPatch,
   type SettingsView,
   schemes,
@@ -33,6 +34,7 @@ export function isSettings(value: unknown): value is SettingsView {
       "canRetry",
       "warning",
       "startup",
+      "track",
     ])
   )
     return false;
@@ -84,7 +86,22 @@ export function isSettings(value: unknown): value is SettingsView {
     record(startup) &&
     exact(startup, ["supported", "enabled"]) &&
     typeof startup.supported === "boolean" &&
-    typeof startup.enabled === "boolean"
+    typeof startup.enabled === "boolean" &&
+    record(value.track) &&
+    exact(value.track, [
+      "exists",
+      "level",
+      "customized",
+      "hideOffTrack",
+      "protected",
+    ]) &&
+    oneOf(value.track.level, performanceLevels) &&
+    [
+      value.track.exists,
+      value.track.customized,
+      value.track.hideOffTrack,
+      value.track.protected,
+    ].every((item) => typeof item === "boolean")
   );
 }
 function exhaustive(_value: never): false {
@@ -95,6 +112,10 @@ export function isSettingsPatch(value: unknown): value is SettingsPatch {
   const field = value.field;
   if (!oneOf(field, settingsFields)) return false;
   switch (field) {
+    case "performance":
+      return oneOf(value.value, performanceLevels);
+    case "hideOffTrack":
+      return typeof value.value === "boolean";
     case "density":
       return oneOf(value.value, densities);
     case "palette":

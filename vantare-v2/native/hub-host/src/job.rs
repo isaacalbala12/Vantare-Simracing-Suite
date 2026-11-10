@@ -315,3 +315,39 @@ pub fn spawn(command: &Command, stderr: &File) -> io::Result<Child> {
         id: info.dwProcessId,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn arguments_quote_spaces_quotes_and_trailing_backslashes() {
+        let mut out = Vec::new();
+        argument(OsStr::new(r"C:\Program Files\Vantare\"), &mut out).expect("argument");
+        assert_eq!(
+            String::from_utf16(&out).expect("utf16"),
+            r#""C:\Program Files\Vantare\\""#
+        );
+        out.clear();
+        argument(OsStr::new("say \"hello\""), &mut out).expect("argument");
+        assert_eq!(
+            String::from_utf16(&out).expect("utf16"),
+            r#""say \"hello\"""#
+        );
+        assert!(argument(OsStr::new("bad\0value"), &mut out).is_err());
+    }
+    #[test]
+    fn environment_is_case_insensitively_sorted_and_double_nul_terminated() {
+        let mut command = Command::new("unused");
+        command
+            .env_clear()
+            .env("Zed", "last")
+            .env("Path", r"C:\Program Files\Vantare")
+            .env("alpha", "first");
+        assert_eq!(
+            String::from_utf16(&environment(&command).expect("block")).expect("utf16"),
+            "ALPHA=first\0PATH=C:\\Program Files\\Vantare\0ZED=last\0\0"
+        );
+        command.env("bad=name", "value");
+        assert!(environment(&command).is_err());
+    }
+}

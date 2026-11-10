@@ -54,8 +54,9 @@ Desde `vantare-v2`, usando los slots persistentes en D: del README nativo:
 
 ```powershell
 $env:VANTARE_TARGET_ROOT='D:/VantareServer/targets'
+$env:VANTARE_HUB_QA_ROOT='D:/VantareServer/qa/hub-host-check'
 pwsh -NoProfile -File native/scripts/comprobar.ps1 hub-host
-pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/hub-host/check.ps1 -ArtifactDirectory D:/VantareServer/qa/isa-1995-host-tools
+pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/hub-host/check.ps1 -ArtifactDirectory "$env:VANTARE_HUB_QA_ROOT/tools"
 ```
 
 Para regenerar tipos, sustituir el script final por `regenerate-and-check.ps1`.
@@ -127,3 +128,25 @@ Electron, DLL, recursos y `app.asar`, deben estar cubiertos por tamaño y SHA-25
 en el manifiesto de integridad, igual que `bin/`. No integrar en el instalador
 hasta completar esa cobertura y mantener en verde los tests de pipes reales.
 Este cambio no integra ni publica el instalador.
+
+
+El adaptador conserva los bytes de los valores JSON opacos, incluida su precisión,
+pero al guardar ordena las claves superiores y compacta ese objeto. No conserva
+la presentación original del objeto superior. Los documentos protegidos no se
+reescriben.
+
+El test de arquitectura cubre la construcción aislada `-p vantare-hub-host`, con
+todos sus features. Cargo unifica features de dependencias compartidas cuando se
+construye `--workspace`: otros binarios activan `installer/ui`, y esa compilación
+conjunta puede volver a compilar GPUI también en la instancia compartida del
+instalador. No se promete aislamiento de features en `--workspace`; para producir
+el anfitrión sin GPUI hay que compilarlo por separado con `-p vantare-hub-host`.
+No se han modificado el instalador ni la topología de los overlays.
+
+
+Review #2015: un layout ausente solo se observa; el anfitrión nunca lo crea ni
+lo inicializa. El núcleo conserva la siembra de starter_layout y el criterio
+layout_preexisted del onboarding. Rendimiento/ocultar esperan al documento;
+reducedMotion mantiene exclusivamente su fallback en los ajustes del Hub.
+La cadencia y la validación del adaptador se comparan con el código productivo de
+UI en un test unitario de UI, que depende del host solo en dev-dependencies.

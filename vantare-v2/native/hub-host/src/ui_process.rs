@@ -234,6 +234,7 @@ fn settings_response(
         Err(error) => HostToUi::Failure {
             id,
             error: match error {
+                SaveError::Busy => HostError::Busy,
                 SaveError::Conflict(current) => HostError::Conflict { current },
                 SaveError::Protected => HostError::Protected,
                 SaveError::Io => HostError::Io,
@@ -309,6 +310,15 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::ShortcutsGet {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::ShortcutsGet {
+                        value: crate::shortcuts::read(&self.launcher),
+                    },
+                },
+            ),
             Request::CoreGet {} => frame::write(
                 pipe,
                 &HostToUi::Response {

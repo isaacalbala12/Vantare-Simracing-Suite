@@ -138,15 +138,23 @@ pub struct Tramo {
     pub d: f32,
 }
 
-/// Curva completa: tramos ordenados, valor final, y repetición opcional
-/// (`IDCompositionAnimation::AddRepeat`) desde `desde` durante `duracion`.
+/// Curva completa: tramos ordenados (el primero con `desde == 0`), valor final
+/// y repetición opcional.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Curva {
     pub inicio: Instante,
     pub tramos: Vec<Tramo>,
     /// Instante relativo (segundos) en que termina y se queda en `final_`.
+    /// Sin repetición es el final de la animación. Con repetición debe ser
+    /// `>= desde + duracion` y no se alcanza nunca.
     pub fin: f64,
     pub final_: f32,
+    /// `Some((desde, duracion))`: a partir del instante relativo `desde`, el
+    /// tramo de tiempo `[desde, desde + duracion)` se repite para siempre:
+    /// `t' = desde + (t - desde) mod duracion` para todo `t >= desde`.
+    /// Lo anterior a `desde` (p. ej. una entrada suave al bucle) se recorre una vez.
+    /// En DirectComposition equivale a `AddRepeat(desde + duracion, duracion)`
+    /// (repite el intervalo que precede a `beginOffset`).
     pub repetir: Option<(f64, f64)>,
 }
 

@@ -5,6 +5,7 @@ import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { checkSettingsHost } from "./check-settings-host.ts";
+import { sealQaGeneration } from "./qa-inventory.ts";
 import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
@@ -54,6 +55,7 @@ if (
     join(data, "layout.json"),
   );
 const boot = randomBytes(16).toString("hex");
+await sealQaGeneration(root, basename(generation), "0".repeat(40));
 await writeFile(join(root, "boot-pending.json"), "{}");
 const env: Record<string, string> = {};
 for (const name of [

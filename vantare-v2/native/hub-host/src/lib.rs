@@ -5,6 +5,8 @@ mod control_stdin;
 #[cfg(windows)]
 pub mod core;
 pub mod frame;
+#[cfg(windows)]
+mod integrity;
 pub mod protocol;
 #[cfg(windows)]
 pub mod ready;

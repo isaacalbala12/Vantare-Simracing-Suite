@@ -1,5 +1,12 @@
 # Medición de overlays — VANTA-139 / #1996
 
+Las campañas registradas aquí se ejecutaron sobre `62dde8da4`, con símbolos
+`line-tables-only` en dev. La rama se rebasó después sobre `db1aa706d`, que
+incorpora #1997 (`debug = 0`), #2007 y el esqueleto hub-web de #1998. Los datos
+conservan su SHA y perfil originales: no se mezclan tiempos de compilación ni
+consumos de perfiles distintos. Las comparaciones posteriores repetirán el
+banco con la nueva configuración.
+
 ## Repetir el banco
 
 Desde `vantare-v2/`, Windows con escritorio activo, sin juego ni compiladores.

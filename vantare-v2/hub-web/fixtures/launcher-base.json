@@ -1,0 +1,77 @@
+{
+  "exists": true,
+  "protected": false,
+  "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+  "resident": true,
+  "running": false,
+  "apps": [
+    {
+      "id": "lmu",
+      "name": "Le Mans Ultimate",
+      "available": false
+    },
+    {
+      "id": "obs",
+      "name": "OBS Studio",
+      "available": false
+    },
+    {
+      "id": "crewchief",
+      "name": "CrewChief",
+      "available": false
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "available": false
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "available": false
+    },
+    {
+      "id": "motec",
+      "name": "MoTeC",
+      "available": false
+    },
+    {
+      "id": "simhub",
+      "name": "SimHub",
+      "available": false
+    }
+  ],
+  "profiles": [
+    {
+      "id": "creator",
+      "name": "Creador de Contenido",
+      "description": "Simulador, captura y música en tres pasos. Reintenta el paso fallido y deja el resto abierto al salir.",
+      "favorite": true,
+      "apps": ["lmu", "obs", "spotify"],
+      "launchable": false,
+      "options": {
+        "alreadyRunning": "reuse",
+        "firstStepDelay": 0,
+        "retries": 2,
+        "failure": "continue",
+        "startup": false
+      }
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "description": "",
+      "favorite": false,
+      "apps": ["lmu", "crewchief", "spotify", "motec"],
+      "launchable": false,
+      "options": {
+        "alreadyRunning": "reuse",
+        "firstStepDelay": 0,
+        "retries": 2,
+        "failure": "continue",
+        "startup": false
+      }
+    }
+  ],
+  "scanning": false
+}

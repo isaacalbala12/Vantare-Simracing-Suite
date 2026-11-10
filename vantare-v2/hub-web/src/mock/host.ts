@@ -1,6 +1,7 @@
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
 import diagnosticFixture from "../../fixtures/diagnostics-base.json";
+import launcherFixture from "../../fixtures/launcher-base.json";
 import pilotFixture from "../../fixtures/pilot-base.json";
 import privacyFixture from "../../fixtures/privacy-base.json";
 import publication from "../../fixtures/roadmap-publication.json";
@@ -51,7 +52,7 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;
@@ -61,6 +62,30 @@ export function createMockHost(sceneName = "ajustes-base") {
     core.access.verified = true;
     core.access.tester = true;
   }
+  if (sceneName.startsWith("launcher-")) {
+    core.rights = "connected";
+    core.access.verified = true;
+  }
+  const launcher = structuredClone(
+    launcherFixture,
+  ) as import("../contract/generated/contract").LauncherView;
+  if (sceneName === "launcher-ready") {
+    launcher.apps.forEach((app) => {
+      app.available = true;
+    });
+    launcher.profiles.forEach((profile) => {
+      profile.launchable = true;
+    });
+  }
+  if (sceneName === "launcher-protected") {
+    launcher.protected = true;
+    launcher.profiles = [];
+    launcher.apps = [];
+  }
+  if (sceneName === "launcher-offline") {
+    launcher.resident = false;
+  }
+
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../contract/generated/contract").PilotView;
@@ -164,6 +189,11 @@ export function createMockHost(sceneName = "ajustes-base") {
       return value.version === HOST_PROTOCOL_VERSION
         ? helloForScene(sceneName)
         : null;
+    if (value.kind === "subscribe" && value.topic === "launcher")
+      return {
+        kind: "event",
+        event: { topic: "launcher", value: structuredClone(launcher) },
+      };
     if (value.kind === "subscribe" && value.topic === "updates")
       return {
         kind: "event",
@@ -283,6 +313,41 @@ export function createMockHost(sceneName = "ajustes-base") {
           },
         };
       }
+      case "launcher.get":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(launcher) },
+        };
+      case "launcher.launch": {
+        if (request.baseRevision !== launcher.revision)
+          return {
+            kind: "failure",
+            id,
+            error: {
+              kind: "launcherConflict",
+              current: structuredClone(launcher),
+            },
+          };
+        if (!launcher.resident)
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        if (launcher.running)
+          return { kind: "failure", id, error: { kind: "busy" } };
+        if (
+          !launcher.profiles.some((profile) => profile.id === request.profile)
+        )
+          return { kind: "failure", id, error: { kind: "denied" } };
+        launcher.running = true;
+        launcher.profiles.forEach((profile) => {
+          profile.launchable = false;
+        });
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, accepted: true },
+        };
+      }
+
       case "pilot.load":
         if (sceneName === "cuenta-desconectada")
           return { kind: "failure", id, error: { kind: "coreUnavailable" } };

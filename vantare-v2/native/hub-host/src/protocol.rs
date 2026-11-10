@@ -42,9 +42,11 @@ pub const METHODS: &[&str] = &[
     "settings.retry",
     "settings.discard",
     "launcher.favorite",
+    "launcher.get",
+    "launcher.launch",
     "notifications.test",
 ];
-pub const TOPICS: &[&str] = &["core", "simStatus", "updates"];
+pub const TOPICS: &[&str] = &["core", "simStatus", "updates", "launcher"];
 pub const VERSION: u32 = 6;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -103,6 +105,7 @@ pub struct CoreStatus {
 #[serde(rename_all = "camelCase")]
 #[derive(PartialOrd, Ord)]
 pub enum Topic {
+    Launcher,
     Updates,
     Core,
     SimStatus,
@@ -158,6 +161,14 @@ pub enum Request {
     RoadmapCached {},
     #[serde(rename = "roadmap.refresh")]
     RoadmapRefresh {},
+    #[serde(rename = "launcher.get")]
+    LauncherGet {},
+    #[serde(rename = "launcher.launch")]
+    LauncherLaunch {
+        profile: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "pilot.load")]
     PilotLoad {},
     #[serde(rename = "pilot.save")]
@@ -265,6 +276,12 @@ pub enum Reply {
     RoadmapCached { value: crate::roadmap::RoadmapView },
     #[serde(rename = "roadmap.refresh")]
     RoadmapRefresh { value: crate::roadmap::RoadmapView },
+    #[serde(rename = "launcher.get")]
+    LauncherGet {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.launch")]
+    LauncherLaunch { accepted: bool },
     #[serde(rename = "pilot.load")]
     PilotLoad { value: crate::pilot::PilotView },
     #[serde(rename = "pilot.save")]
@@ -317,6 +334,9 @@ pub enum Reply {
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
     Rejected,
+    LauncherConflict {
+        current: crate::launcher::LauncherView,
+    },
     Busy,
     CoreUnavailable,
     Unsupported,
@@ -350,6 +370,9 @@ pub enum CloseReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
+    Launcher {
+        value: crate::launcher::LauncherView,
+    },
     Updates {
         value: Box<crate::updates::UpdatesView>,
     },

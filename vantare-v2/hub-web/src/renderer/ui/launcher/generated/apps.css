@@ -1,0 +1,34 @@
+/* Colors copied from orbit::app_badge, not a new palette. */
+.v-launcher-app-mark[data-app="lmu"] {
+  background: linear-gradient(135deg, #2f6ad8, #122e6a);
+  color: #ffffff;
+}
+.v-launcher-app-mark[data-app="crewchief"] {
+  background: linear-gradient(135deg, #e9852a, #8f450b);
+  color: #ffffff;
+}
+.v-launcher-app-mark[data-app="simhub"] {
+  background: linear-gradient(135deg, #8a4ce0, #40207a);
+  color: #ffffff;
+}
+.v-launcher-app-mark[data-app="obs"] {
+  background: linear-gradient(135deg, #5a5d64, #26272b);
+  color: #ffffff;
+}
+.v-launcher-app-mark[data-app="spotify"] {
+  background: linear-gradient(135deg, #22c35d, #0e6b30);
+  color: #ffffff;
+}
+.v-launcher-app-mark[data-app="discord"] {
+  background: linear-gradient(135deg, #6873f5, #2e3699);
+  color: #ffffff;
+}
+.v-launcher-app-mark[data-app="custom:vantare"] {
+  background: linear-gradient(135deg, #e3434e, #8e1823);
+  color: #ffffff;
+}
+
+/* orbit::Tokens.gradients.app_tools[1], copied for profile covers. */
+:root {
+  --launcher-profile-tools: #40207a;
+}

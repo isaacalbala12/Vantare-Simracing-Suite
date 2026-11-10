@@ -5,6 +5,7 @@ use super::{
     Topic, UiToHost, VERSION, WindowBoot, hello,
 };
 use crate::diagnostics::{DiagnosticCode, DiagnosticEntry, DiagnosticSection, DiagnosticView};
+use crate::launcher::{LauncherApp, LauncherOptions, LauncherProfile, LauncherView};
 use crate::pilot::{PilotFields, PilotView};
 use crate::privacy::{MailView, PrivacyPatch, PrivacyView};
 use crate::settings::StartupView;
@@ -36,6 +37,10 @@ pub fn typescript() -> String {
         crate::roadmap::RoadmapItem,
         crate::roadmap::RoadmapPublication,
         crate::roadmap::RoadmapView,
+        LauncherApp,
+        LauncherOptions,
+        LauncherProfile,
+        LauncherView,
         PilotFields,
         PilotView,
         PrivacyView,
@@ -125,6 +130,11 @@ fn append_notification_constants(text: &mut String) {
         .expect("String write");
     }
 }
+fn append_launcher_constants(text: &mut String) {
+    text.push_str("export const launcherLimits = ");
+    text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
+    text.push_str(" as const;\n");
+}
 fn append_constants(text: &mut String) {
     for (name, values) in [("methods", METHODS), ("topics", TOPICS)] {
         writeln!(
@@ -154,6 +164,7 @@ fn append_constants(text: &mut String) {
         "reportScreenshotsAvailable",
         crate::testing::SCREENSHOTS_AVAILABLE
     );
+    append_launcher_constants(text);
     constants!("pilotRevisionMax", u64::MAX.to_string());
     constants!("pilotCountries", crate::pilot::countries());
     constants!(
@@ -286,35 +297,7 @@ pub fn corpus() -> serde_json::Value {
     .expect("diagnostic fixture");
     let settings = settings_sample();
     let mut host = vec![hello(&settings).expect("boot view")];
-    for state in [
-        LinkState::Connected,
-        LinkState::Incompatible,
-        LinkState::Unavailable,
-    ] {
-        let value = CoreStatus {
-            photos: state,
-            rights: state,
-            services: state,
-            ..Default::default()
-        };
-        host.push(HostToUi::Response {
-            id: 1,
-            result: Reply::Core {
-                value: value.clone(),
-            },
-        });
-        host.push(HostToUi::Event {
-            event: Event::Updates {
-                value: serde_json::from_str(include_str!(
-                    "../../../../hub-web/fixtures/updates-ready.json"
-                ))
-                .expect("updates"),
-            },
-        });
-        host.push(HostToUi::Event {
-            event: Event::Core { value },
-        });
-    }
+    host.extend(core_samples());
     for result in [
         Reply::SettingsGet {
             value: settings.clone(),
@@ -363,9 +346,21 @@ pub fn corpus() -> serde_json::Value {
         },
         Reply::NotificationTest { accepted: true },
         Reply::LauncherFavorite { accepted: false },
+        Reply::LauncherGet {
+            value: serde_json::from_str(include_str!(
+                "../../../../hub-web/fixtures/launcher-base.json"
+            ))
+            .expect("launcher fixture"),
+        },
+        Reply::LauncherLaunch { accepted: true },
     ] {
         host.push(HostToUi::Response { id: 1, result });
     }
+    host.push(HostToUi::Event {
+        event: Event::Launcher {
+            value: crate::launcher::LauncherView::default(),
+        },
+    });
     host.push(HostToUi::Event {
         event: Event::SimStatus { live: true },
     });
@@ -408,6 +403,40 @@ fn roadmap_reply_samples() -> [Reply; 2] {
         },
     ]
 }
+fn core_samples() -> Vec<HostToUi> {
+    let mut host = Vec::new();
+    for state in [
+        LinkState::Connected,
+        LinkState::Incompatible,
+        LinkState::Unavailable,
+    ] {
+        let value = CoreStatus {
+            photos: state,
+            rights: state,
+            services: state,
+            ..Default::default()
+        };
+        host.push(HostToUi::Response {
+            id: 1,
+            result: Reply::Core {
+                value: value.clone(),
+            },
+        });
+        host.push(HostToUi::Event {
+            event: Event::Updates {
+                value: serde_json::from_str(include_str!(
+                    "../../../../hub-web/fixtures/updates-ready.json"
+                ))
+                .expect("updates"),
+            },
+        });
+        host.push(HostToUi::Event {
+            event: Event::Core { value },
+        });
+    }
+    host
+}
+
 fn pilot_reply_samples() -> [Reply; 2] {
     let value =
         crate::pilot::view(&vantare_ipc::services_protocol::pilot_document::PilotState::default());
@@ -428,6 +457,9 @@ fn failure_samples(settings: SettingsView, privacy: PrivacyView) -> Vec<HostToUi
         },
         HostError::PrivacyCleanup { current: privacy },
         HostError::Rejected,
+        HostError::LauncherConflict {
+            current: crate::launcher::LauncherView::default(),
+        },
         HostError::Busy,
         HostError::CoreUnavailable,
         HostError::Unsupported,
@@ -470,6 +502,12 @@ fn ui_samples() -> Vec<UiToHost> {
         UiToHost::Unsubscribe {
             topic: Topic::Updates,
         },
+        UiToHost::Subscribe {
+            topic: Topic::Launcher,
+        },
+        UiToHost::Unsubscribe {
+            topic: Topic::Launcher,
+        },
         UiToHost::Ready {},
         UiToHost::CloseAnswer { allow: true },
         UiToHost::CloseAnswer { allow: false },
@@ -506,6 +544,11 @@ fn ui_samples() -> Vec<UiToHost> {
         Request::SettingsRetry {},
         Request::SettingsDiscard {},
         Request::LauncherFavorite {},
+        Request::LauncherGet {},
+        Request::LauncherLaunch {
+            profile: "creator".into(),
+            base_revision: "0".repeat(64),
+        },
         Request::NotificationTest {},
     ] {
         ui.push(UiToHost::Request { id: 1, request });

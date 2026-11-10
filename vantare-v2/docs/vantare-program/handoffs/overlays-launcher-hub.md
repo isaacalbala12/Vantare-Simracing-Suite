@@ -1526,3 +1526,72 @@ Rebase final de #2035 sobre nightly 330681fd9 (#2039). El código Rust/contrato 
 
 El orquestador fusionó #2031 en nightly 28a8c0657. #2035 se rebasa sobre esa integración: se conservan ambas escenas y los dos conjuntos de constantes generadas, el mock da acceso a cada escena y el handoff preserva las entregas de las dos pantallas. Contrato y corpus regenerados desde Rust. 281 tests web, tipos, Biome y lint de diseño PASS. El contenido de Notificaciones permanece idéntico al HEAD previamente verde; repetición nativa y visual de integración en review-roadmap-rebase-*. PR e issue conservan el SHA/CI definitivo. Sin merge ni promoción propios.
 
+
+## VANTA-138 / #1995 · Worker C · Launcher (10-nov-2026)
+
+PR draft #2029: lista de perfiles y lanzamiento. Base nightly d74c07710
+(marco/registro de #2034). Launcher se registra con entry.tsx y SectionChrome /
+SectionPanel; no modifica Shell ni componentes comunes. C implementa
+launcher.launch { profile, baseRevision }; Inicio lo consume.
+
+Rust proyecta IDs y disponibilidad sin exponer rutas ni ejecutables. Si falta
+launcher.json, su primer acceso siembra las plantillas del Hub mediante CAS
+de ausencia (diseño 09 f.2); no repara ni pone en cuarentena documentos protegidos.
+Descubrimiento fuera del bucle UI, un worker con cancelación y join, observación
+solo con suscripción. El acuse de lanzamiento significa encolado: no se inventa
+el estado running ni n/total; se espera lo publicado por el residente.
+
+Decisión expresa de Isaac: lanzamiento ACTIVO con launch-v1. El anfitrión relee
+launcher.json inmediatamente antes de encolar y rechaza LauncherConflict si
+ya no coincide con baseRevision. No es atómico con el consumo/caché del residente;
+se acepta la garantía de paridad actual. #2028 reserva launch-v2 para el núcleo.
+No se toca IPC/runtime. #2023 cancelar, #2024 probar sin juego y #2025 edición
+sobre overlays conservan controles inactivos con motivo hasta tener soporte.
+
+Bindings regenerados desde Rust. Typecheck, Biome y lint de diseño pasan;
+234 tests web / 18 archivos pasan con un worker tras incorporar el marco.
+Corregidos los fallos propios detectados por CI: suscripción de Launcher,
+inicializador de Session en tests e import/longitud de las muestras del contrato.
+El gate nativo vuelve a cola, sin cancelar esperas legítimas. Mac: 35 tests del
+crate Launcher pasan; cargo-xwin no está disponible ni bajo zsh -lc ni como
+~/.cargo/bin/cargo-xwin (no se instala). Host Windows se verifica en servidor/CI.
+
+La herramienta visual corregida de nightly ya captura en ambos temas.
+Evidencia previa al marco: isa-1995-c-lista/visual-after-fonts; la nueva está en
+isa-1995-c-lista/visual-frame bajo D:/VantareServer/evidence/hub-web.
+Porcentajes y SHA/checks definitivos en el PR; no se declara aceptación visual.
+El editor sigue en rama apilada; Aplicaciones añade selección nativa y CAS.
+Studio: pertenencia = visible en layout actual, sin cambiar esquema ni geometría;
+miniaturas SVG estáticas, diferencia conocida exigida por el encargo.
+Sin merge, promoción, release ni datos/cuentas reales. Plane VANTA-138 sigue
+En curso; Project Vantare / area:ui.
+
+### Review P2 de #2029
+
+El Hub GPUI es quien siembra Launcher: native/hub/src/shell.rs:1537 llama a
+LauncherStore::load_production; native/launcher/src/lib.rs:467-470 usa
+Document::fresh_install y Store::replace. Se mantiene esa fábrica/escritor con
+CAS de ausencia, una sola vez en la primera apertura de Reader, con el mismo
+is_local_path de Store::load. Documento existente: un parseo por lectura.
+Se retiran notSeeded y el aviso muerto de !view.exists.
+La proyección calcula el tamaño con el sobre completo del protocolo: si no cabe,
+publica protected sin colecciones ni recortes silenciosos, conservando los bytes
+del archivo. Regresiones: descripción de 2 MiB, listas de pasos grandes, no volver
+a sembrar tras una lectura posterior y rechazo UNC. El test de privacidad añade
+custom:1 con C:\Users\x\a.exe y argumentos; comprueba ausencia de Users, barras
+invertidas y :/ en el JSON. Comprobaciones P2 en curso; sin merge propio.
+
+### C · Rebase de #2029 sobre nightly 330681fd9
+
+- Conservados los métodos de Testing/informes de nightly y Launcher; versión del protocolo 6 de nightly.
+- contract.ts y corpus.json regenerados desde Rust, sin resolverlos a mano.
+- Despachador de Launcher separado para conservar el límite de Clippy tras integrar Testing.
+- Biome y lint de diseño correctos; Rust y suite web en ejecución. Evidencia: `D:/VantareServer/evidence/hub-web/isa-1995-c-lista/*-rebase.log`.
+- #2038 reapilado localmente; regeneración propia en la cola. Sin merge ni promoción.
+
+### C · Turno de fusión de #2029 tras Notificaciones
+
+- Base nightly 9d624c41f (#2035), incluye Roadmap 28a8c0657. Conservados escenas, métodos, muestras y constantes de ambas pantallas.
+- Entrega de lista/lanzamiento consolidada en un bloque propio para resolver el rebase sin reaplicar conflictos históricos. Bindings y corpus regenerados desde Rust, sin edición manual; versión del protocolo de nightly conservada.
+- Exportación correcta; gate Rust y suite web en curso. Evidencia native-notifications-rebase.log y *-notifications-rebase.log en la carpeta propia de #2029. #2038 y #2044 se reapilan después, conservando el P0 corregido y el P2 de identidad de pasos pendiente de implementar.
+- Sin merge, promoción ni release propios.

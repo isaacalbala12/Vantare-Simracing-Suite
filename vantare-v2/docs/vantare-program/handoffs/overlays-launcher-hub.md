@@ -1588,3 +1588,10 @@ invertidas y :/ en el JSON. Comprobaciones P2 en curso; sin merge propio.
 - Despachador de Launcher separado para conservar el límite de Clippy tras integrar Testing.
 - Biome y lint de diseño correctos; Rust y suite web en ejecución. Evidencia: `D:/VantareServer/evidence/hub-web/isa-1995-c-lista/*-rebase.log`.
 - #2038 reapilado localmente; regeneración propia en la cola. Sin merge ni promoción.
+
+### C · Turno de fusión de #2029 tras Notificaciones
+
+- Base nightly 9d624c41f (#2035), incluye Roadmap 28a8c0657. Conservados escenas, métodos, muestras y constantes de ambas pantallas.
+- Entrega de lista/lanzamiento consolidada en un bloque propio para resolver el rebase sin reaplicar conflictos históricos. Bindings y corpus regenerados desde Rust, sin edición manual; versión del protocolo de nightly conservada.
+- Exportación correcta; gate Rust y suite web en curso. Evidencia native-notifications-rebase.log y *-notifications-rebase.log en la carpeta propia de #2029. #2038 y #2044 se reapilan después, conservando el P0 corregido y el P2 de identidad de pasos pendiente de implementar.
+- Sin merge, promoción ni release propios.

@@ -1,7 +1,7 @@
 import type { Page } from "playwright-core";
+import { launcherScenes } from "./launcher.ts";
 import { notificationScenes } from "./notifications.ts";
 import { roadmapScenes } from "./roadmap.ts";
-import { launcherScenes } from "./launcher.ts";
 import { upcomingScenes } from "./upcoming.ts";
 
 export interface VisualScene {

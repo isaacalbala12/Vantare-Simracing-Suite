@@ -4,9 +4,10 @@ struct Root {
 }
 impl Root {
     fn new() -> Self {
-        let base = std::env::var_os("VANTARE_HUB_QA_ROOT")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| std::env::temp_dir().join("vantare-hub-qa"));
+        let base = std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(
+            || std::env::temp_dir().join("vantare-hub-qa"),
+            PathBuf::from,
+        );
         let path = base.join(vantare_services::random_id().expect("fixture id"));
         fs::create_dir_all(&path).expect("fixture root");
         Self { path }

@@ -112,6 +112,50 @@ fn ticks(instante: Instante, frecuencia: i64) -> Resultado<i64> {
     )
     .map_err(|_| Error::CurvaInvalida)
 }
+/// Sustituye `AddRepeat` (infinito) por copias explícitas del intervalo repetido
+/// durante `segundos` y un `End` en el valor de reposo de la curva.
+pub(super) fn desenrollar(
+    programa: Programa,
+    curva: &Curva,
+    segundos: f64,
+) -> Resultado<Programa> {
+    let Some((fin_repeticion, duracion)) = programa.repetir else {
+        return Ok(programa);
+    };
+    let inicio_repeticion = fin_repeticion - duracion;
+    let ciclo: Vec<_> = programa
+        .cubicos
+        .iter()
+        .filter(|(desde, _)| *desde >= inicio_repeticion)
+        .copied()
+        .collect();
+    // El primer tramo del ciclo puede empezar antes del intervalo; se evalúa en su comienzo.
+    let primero = curva
+        .tramos
+        .iter()
+        .rev()
+        .find(|t| t.desde <= inicio_repeticion)
+        .ok_or(Error::CurvaInvalida)?;
+    let entrada = desplazar(primero, inicio_repeticion - primero.desde)?;
+    let mut cubicos = programa.cubicos;
+    let mut desplazamiento = fin_repeticion;
+    // Tope de tramos: nunca más de 4096 segmentos por animación.
+    while desplazamiento < fin_repeticion + segundos && cubicos.len() < 4096 {
+        cubicos.push((desplazamiento, entrada));
+        for (desde, coef) in ciclo.iter().filter(|(d, _)| *d > inicio_repeticion) {
+            cubicos.push((desplazamiento + desde - inicio_repeticion, *coef));
+        }
+        desplazamiento += duracion;
+    }
+    let reposo = evaluar(curva, Instante(curva.inicio.0 + inicio_repeticion))?;
+    Ok(Programa {
+        comienzo_qpc: programa.comienzo_qpc,
+        cubicos,
+        repetir: None,
+        fin: Some((desplazamiento, reposo)),
+    })
+}
+
 /// Envolvente de toda la curva, incluidos extremos interiores de cada cúbica.
 pub(super) fn rango(curva: &Curva) -> super::Resultado<(f32, f32)> {
     programar(curva, 10_000_000)?;
@@ -163,6 +207,44 @@ pub(super) fn rango(curva: &Curva) -> super::Resultado<(f32, f32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Modo sin animaciones infinitas: mismo valor que la curva repetida
+    /// mientras dura el desenrollado y reposo después (prueba pura, sin GPU).
+    #[test]
+    fn desenrollar_reproduce_la_repeticion_y_termina_en_reposo() {
+        let curva = Curva {
+            inicio: Instante(0.0),
+            tramos: vec![
+                Tramo { desde: 0.0, a: 0.0, b: 2.0, c: 0.0, d: 0.0 },
+                Tramo { desde: 0.5, a: 1.0, b: -1.0, c: 0.0, d: 0.0 },
+            ],
+            fin: 1.5,
+            final_: 0.5,
+            repetir: Some((0.5, 1.0)),
+        };
+        let programa = programar(&curva, 10_000_000).unwrap();
+        let finito = desenrollar(programa, &curva, 3.0).unwrap();
+        assert!(finito.repetir.is_none());
+        let (fin, reposo) = finito.fin.unwrap();
+        let valor = |t: f64| {
+            let (desde, [a, b, c, d]) = finito
+                .cubicos
+                .iter()
+                .rev()
+                .find(|(desde, _)| *desde <= t)
+                .unwrap();
+            let s = (t - desde) as f32;
+            a + s * (b + s * (c + s * d))
+        };
+        for paso in 0..30 {
+            let t = f64::from(paso) * 0.1;
+            if t < fin {
+                assert!((valor(t) - evaluar(&curva, Instante(t)).unwrap()).abs() < 1e-4, "t={t}");
+            }
+        }
+        assert!((reposo - 1.0).abs() < 1e-5);
+        assert!(fin >= 3.5);
+    }
 
     /// capas.rs: el polinomio de cada tramo usa t local al tramo, igual que AddCubic.
     #[test]

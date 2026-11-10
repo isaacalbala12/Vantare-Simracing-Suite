@@ -30,7 +30,7 @@ use windows::{
                 Common::D2D1_COLOR_F, D2D1_LAYER_PARAMETERS1, D2D1CreateDevice, ID2D1Device,
                 ID2D1DeviceContext,
             },
-            Direct3D::D3D_DRIVER_TYPE_HARDWARE,
+            Direct3D::{D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP},
             Direct3D11::{D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION, D3D11CreateDevice},
             DirectComposition::{
                 DCOMPOSITION_OPACITY_MODE_LAYER, DCompositionCreateDevice3,
@@ -139,6 +139,17 @@ pub struct TrabajoLote {
     superficies_nuevas: u64,
 }
 
+/// Opciones de diagnóstico (parada de seguridad del 2026-11-10, ver
+/// `evidence/isa-2022/estabilidad`): permiten aislar el controlador gráfico.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Opciones {
+    /// Dispositivo D3D11 por software (WARP) en lugar de la GPU.
+    pub warp: bool,
+    /// Sin animaciones infinitas: cada repetición se desenrolla durante estos
+    /// segundos y la animación termina en su valor de reposo.
+    pub repeticion_finita: Option<f64>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Modo {
     Monitor,
@@ -195,12 +206,28 @@ pub struct Plataforma {
     _hilo: std::marker::PhantomData<std::rc::Rc<()>>,
     #[cfg(test)]
     repintados: std::cell::Cell<usize>,
+    opciones: Opciones,
     _com: Com,
     _dpi: ventana::ContextoDpi,
 }
 
 impl Plataforma {
     pub fn nueva(modo: Modo, region: RECT, fuentes: &Path) -> Resultado<Self> {
+        Self::nueva_con(modo, region, fuentes, Opciones::default())
+    }
+
+    pub fn nueva_con(
+        modo: Modo,
+        region: RECT,
+        fuentes: &Path,
+        opciones: Opciones,
+    ) -> Resultado<Self> {
+        if opciones
+            .repeticion_finita
+            .is_some_and(|s| !s.is_finite() || !(0.0..=3600.0).contains(&s))
+        {
+            return Err(Error::Entrada("Repetición finita fuera de 0..3600 s"));
+        }
         let dpi = ventana::ContextoDpi::nuevo()?;
         // SAFETY: COM STA se inicializa en el hilo creador; Com lo equilibra al cerrar.
         unsafe {
@@ -212,7 +239,11 @@ impl Plataforma {
             let mut d3d = None;
             D3D11CreateDevice(
                 None,
-                D3D_DRIVER_TYPE_HARDWARE,
+                if opciones.warp {
+                    D3D_DRIVER_TYPE_WARP
+                } else {
+                    D3D_DRIVER_TYPE_HARDWARE
+                },
                 HMODULE::default(),
                 D3D11_CREATE_DEVICE_BGRA_SUPPORT,
                 None,
@@ -244,6 +275,7 @@ impl Plataforma {
             pintados: 0,
             superficies_creadas: 0,
             animaciones_programadas: 0,
+            opciones,
             _hilo: std::marker::PhantomData,
             #[cfg(test)]
             repintados: std::cell::Cell::new(0),
@@ -727,7 +759,10 @@ impl Plataforma {
     fn animar(&mut self, id: CapaId, p: Propiedad, curva: &Curva) -> Resultado<()> {
         // SAFETY: estadísticas del dispositivo vivo, frecuencia QPC del mismo reloj.
         let frecuencia = unsafe { self.dispositivo.GetFrameStatistics()? }.timeFrequency;
-        let programa = tiempo::programar(curva, frecuencia)?;
+        let mut programa = tiempo::programar(curva, frecuencia)?;
+        if let Some(segundos) = self.opciones.repeticion_finita {
+            programa = tiempo::desenrollar(programa, curva, segundos)?;
+        }
         // SAFETY: las interfaces son del mismo dispositivo; el programa ya está validado.
         unsafe {
             let animacion = self.dispositivo.CreateAnimation()?;

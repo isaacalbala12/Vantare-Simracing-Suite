@@ -11,6 +11,7 @@ import { es, specimen } from "./i18n/es";
 import { Callout, Skeleton } from "./ui/Data";
 import { ToastProvider, ToastViewport, TooltipProvider } from "./ui/Layers";
 import { ContentStack } from "./ui/ShellLayout";
+import { ReportsProvider } from "./screens/testing/ReportsState";
 import "./design/base.css";
 import "./ui/ui.css";
 
@@ -39,7 +40,7 @@ function Content() {
   return (
     <SettingsProvider>
       <PilotProvider>
-        <Shell />
+        <ReportsProvider><Shell /></ReportsProvider>
       </PilotProvider>
     </SettingsProvider>
   );

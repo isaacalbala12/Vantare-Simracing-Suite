@@ -346,7 +346,8 @@ impl Session {
             }
             (_, Err(error)) => Err(error),
             _ => Err(HostError::Denied),
-        }.map(Some)
+        }
+        .map(Some)
     }
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {

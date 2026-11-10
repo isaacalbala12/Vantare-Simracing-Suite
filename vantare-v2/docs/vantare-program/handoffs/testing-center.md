@@ -1414,3 +1414,16 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
 - Tests con Root propio (sin dependencia de test_support Windows). Los casos de
   handles/symlinks y el puente se ejecutan en Windows: 13 migración + 1 puente
   Busy/CoreUnavailable PASS. Clippy cruzado `-D warnings` y compilación PASS.
+
+
+### VANTA-138 / #2040 · rebase local preparado, publicación por turno
+
+- Preparado sobre nightly 28a8c0657 (Roadmap #2031), sin push por orden del
+  orquestador: primero Launcher #2029, luego Notificaciones #2035, después #2040.
+- Conserva el dispatcher de Roadmap y permite la respuesta diferida de importación.
+  Regenera contract/corpus con preserve_order; estados legacy exportados desde Rust.
+- El validador de lectura admite un CR ya guardado por Services; el de escritura
+  mantiene sus reglas. No se reinterpreta ni limpia el borrador protegido.
+- 269 pruebas web completas PASS; 13 migración + 1 puente + 3 Roadmap Windows
+  PASS. Clippy cruzado forzando recompilación del crate y tipos/formato PASS.
+- Al recibir turno: rebase otra vez sobre ese nightly, regenerar, comprobar y push.

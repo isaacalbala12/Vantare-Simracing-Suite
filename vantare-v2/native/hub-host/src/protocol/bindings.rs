@@ -207,6 +207,15 @@ fn append_testing_id_constants(text: &mut String) {
             "testingUuidGroups",
             serde_json::json!(crate::testing::UUID_GROUPS),
         ),
+        (
+            "reportLegacyStates",
+            serde_json::json!([
+                crate::testing::LegacyMigration::None,
+                crate::testing::LegacyMigration::Imported,
+                crate::testing::LegacyMigration::ImportedTrimmed,
+                crate::testing::LegacyMigration::Preserved
+            ]),
+        ),
     ] {
         writeln!(text, "export const {name} = {} as const;", canonical(value))
             .expect("String write");

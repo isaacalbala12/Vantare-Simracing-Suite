@@ -159,6 +159,33 @@ describe("Testing Center closed wire and local persistence double", () => {
       }),
     ).toBe(false);
   });
+  it("accepts already protected CR text without loosening editor writes", () => {
+    const stored = { ...fields, actionText: "already saved\r" };
+    const draft = {
+      fields: stored,
+      exists: true,
+      screenshots: [],
+      legacy: "none",
+    };
+    expect(
+      isHostMessage({
+        kind: "response",
+        id: 42,
+        result: { method: "draft.load", value: draft },
+      }),
+    ).toBe(true);
+    expect(isUiMessage(request("draft.save", { fields: stored }))).toBe(false);
+    expect(
+      isHostMessage({
+        kind: "response",
+        id: 42,
+        result: {
+          method: "draft.load",
+          value: { ...draft, fields: { ...stored, actionText: "bad\0" } },
+        },
+      }),
+    ).toBe(false);
+  });
   it("denies missing rights and reports an unavailable core without saving", () => {
     expect(createMockHost()(request("draft.save", { fields }))).toMatchObject({
       error: { kind: "denied" },

@@ -330,8 +330,25 @@ pub fn corpus() -> serde_json::Value {
     for result in pilot_reply_samples() {
         host.push(HostToUi::Response { id: 1, result });
     }
+    host.extend(window_samples());
     host.extend(failure_samples(settings, privacy));
     serde_json::json!({"host":host,"ui":ui_samples()})
+}
+
+fn window_samples() -> [HostToUi; 3] {
+    [
+        HostToUi::Response {
+            id: 1,
+            result: Reply::WindowMinimize { accepted: true },
+        },
+        HostToUi::Response {
+            id: 2,
+            result: Reply::WindowToggleMaximize { accepted: false },
+        },
+        HostToUi::Event {
+            event: Event::WindowState { maximized: false },
+        },
+    ]
 }
 
 fn pilot_reply_samples() -> [Reply; 2] {
@@ -425,6 +442,8 @@ fn ui_samples() -> Vec<UiToHost> {
         Request::ShortcutsGet {},
         Request::UpdatesGet {},
         Request::UpdatesRestart {},
+        Request::WindowMinimize {},
+        Request::WindowToggleMaximize {},
         Request::WindowClose {},
         Request::SettingsGet {},
         Request::SettingsRetry {},
@@ -446,6 +465,12 @@ fn ui_samples() -> Vec<UiToHost> {
             },
         });
     }
+    ui.push(UiToHost::Subscribe {
+        topic: Topic::WindowState,
+    });
+    ui.push(UiToHost::Unsubscribe {
+        topic: Topic::WindowState,
+    });
     ui
 }
 

@@ -34,6 +34,8 @@ pub const METHODS: &[&str] = &[
     "shortcuts.get",
     "updates.get",
     "updates.restart",
+    "window.minimize",
+    "window.toggleMaximize",
     "window.close",
     "settings.get",
     "settings.update",
@@ -42,8 +44,8 @@ pub const METHODS: &[&str] = &[
     "launcher.favorite",
     "notifications.test",
 ];
-pub const TOPICS: &[&str] = &["core", "simStatus", "updates"];
-pub const VERSION: u32 = 6;
+pub const TOPICS: &[&str] = &["core", "simStatus", "updates", "windowState"];
+pub const VERSION: u32 = 7;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -101,6 +103,7 @@ pub struct CoreStatus {
 #[serde(rename_all = "camelCase")]
 #[derive(PartialOrd, Ord)]
 pub enum Topic {
+    WindowState,
     Updates,
     Core,
     SimStatus,
@@ -188,6 +191,10 @@ pub enum Request {
     UpdatesGet {},
     #[serde(rename = "updates.restart")]
     UpdatesRestart {},
+    #[serde(rename = "window.minimize")]
+    WindowMinimize {},
+    #[serde(rename = "window.toggleMaximize")]
+    WindowToggleMaximize {},
     #[serde(rename = "window.close")]
     WindowClose {},
     #[serde(rename = "settings.get")]
@@ -255,6 +262,10 @@ pub enum Reply {
         value: crate::testing::ReportDraftView,
     },
 
+    #[serde(rename = "window.minimize")]
+    WindowMinimize { accepted: bool },
+    #[serde(rename = "window.toggleMaximize")]
+    WindowToggleMaximize { accepted: bool },
     #[serde(rename = "pilot.load")]
     PilotLoad { value: crate::pilot::PilotView },
     #[serde(rename = "pilot.save")]
@@ -340,6 +351,9 @@ pub enum CloseReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
+    WindowState {
+        maximized: bool,
+    },
     Updates {
         value: Box<crate::updates::UpdatesView>,
     },

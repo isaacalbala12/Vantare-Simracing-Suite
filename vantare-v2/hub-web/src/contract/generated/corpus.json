@@ -10,7 +10,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 6,
+      "version": 7,
       "window": {
         "height": 900,
         "minimized": false,
@@ -902,6 +902,29 @@
       }
     },
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": true,
+        "method": "window.minimize"
+      }
+    },
+    {
+      "id": 2,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "window.toggleMaximize"
+      }
+    },
+    {
+      "event": {
+        "maximized": false,
+        "topic": "windowState"
+      },
+      "kind": "event"
+    },
+    {
       "error": {
         "current": {
           "cleanupBusy": false,
@@ -965,8 +988,8 @@
     },
     {
       "error": {
-        "expected": 6,
-        "found": 7,
+        "expected": 7,
+        "found": 8,
         "kind": "incompatible"
       },
       "id": 1,
@@ -1056,7 +1079,7 @@
   "ui": [
     {
       "kind": "hello",
-      "version": 6
+      "version": 7
     },
     {
       "kind": "subscribe",
@@ -1217,6 +1240,20 @@
       "kind": "request",
       "request": {
         "method": "updates.restart"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "window.minimize"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "window.toggleMaximize"
       }
     },
     {
@@ -1575,6 +1612,14 @@
           "value": true
         }
       }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "windowState"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "windowState"
     }
   ]
 }

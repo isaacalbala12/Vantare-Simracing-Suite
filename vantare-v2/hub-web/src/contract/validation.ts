@@ -222,6 +222,8 @@ export function isHostMessage(value: unknown): value is HostToUi {
           )
         );
       if (
+        result.method === "window.minimize" ||
+        result.method === "window.toggleMaximize" ||
         result.method === "privacy.policy" ||
         result.method === "updates.restart" ||
         result.method === "notifications.test" ||
@@ -273,6 +275,11 @@ export function isHostMessage(value: unknown): value is HostToUi {
     case "event": {
       if (!exact(value, ["kind", "event"]) || !record(value.event))
         return false;
+      if (value.event.topic === "windowState")
+        return (
+          exact(value.event, ["topic", "maximized"]) &&
+          typeof value.event.maximized === "boolean"
+        );
       if (value.event.topic === "updates")
         return (
           exact(value.event, ["topic", "value"]) && isUpdates(value.event.value)

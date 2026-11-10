@@ -22,6 +22,7 @@ import {
   isTesting,
   isTestingId,
 } from "./testing-validation";
+import { isTriagePreview, isTriageRequest } from "./triage-validation";
 import { isUpdates } from "./updates-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
 export const FRAME_LIMIT = 1024 * 1024;
@@ -43,6 +44,16 @@ export function isUiMessage(value: unknown): value is UiToHost {
         topics.some((topic) => topic === value.topic)
       );
     case "request":
+      if (
+        record(value.request) &&
+        (value.request.method === "triage.prepare" ||
+          value.request.method === "triage.send")
+      )
+        return (
+          exact(value, ["kind", "id", "request"]) &&
+          integer(value.id) &&
+          isTriageRequest(value.request)
+        );
       return (
         exact(value, ["kind", "id", "request"]) &&
         integer(value.id) &&
@@ -150,6 +161,10 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
+      if (result.method === "triage.prepare")
+        return (
+          exact(result, ["method", "value"]) && isTriagePreview(result.value)
+        );
       if (
         result.method === "roadmap.cached" ||
         result.method === "roadmap.refresh"
@@ -157,6 +172,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
         return exact(result, ["method", "value"]) && isRoadmap(result.value);
       if (
         [
+          "triage.send",
           "testing.refresh",
           "testing.answer",
           "testing.contribute",

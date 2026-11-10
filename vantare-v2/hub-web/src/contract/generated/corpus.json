@@ -661,6 +661,28 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "triage.prepare",
+        "value": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "payload": "{}"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "triage.send",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "report.send",
         "value": {
           "createdAt": "2026-11-10T12:00:00Z",
@@ -1236,6 +1258,32 @@
       "request": {
         "consent": false,
         "method": "mail.set"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": false,
+        "method": "triage.prepare",
+        "selection": {
+          "items": [
+            "system",
+            "session",
+            "app_log",
+            "telemetry_fragment",
+            "posthog_session"
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "method": "triage.send",
+        "previewId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     },
     {

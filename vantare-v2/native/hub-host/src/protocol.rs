@@ -7,6 +7,8 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 pub const METHODS: &[&str] = &[
+    "triage.prepare",
+    "triage.send",
     "testing.answer",
     "testing.contribute",
     "testing.credit",
@@ -111,6 +113,17 @@ pub enum Topic {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "triage.prepare")]
+    TriagePrepare {
+        selection: crate::triage::TriageSelection,
+        consent: bool,
+    },
+    #[serde(rename = "triage.send")]
+    TriageSend {
+        #[serde(rename = "previewId")]
+        preview_id: String,
+        consent: bool,
+    },
     #[serde(rename = "testing.answer")]
     TestingAnswer { id: String, score: u8 },
     #[serde(rename = "testing.contribute")]
@@ -217,6 +230,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "triage.prepare")]
+    TriagePrepare { value: crate::triage::TriagePreview },
+    #[serde(rename = "triage.send")]
+    TriageSend { value: crate::testing::TestingView },
     #[serde(rename = "testing.answer")]
     TestingAnswer { value: crate::testing::TestingView },
     #[serde(rename = "testing.contribute")]

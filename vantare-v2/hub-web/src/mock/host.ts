@@ -17,6 +17,7 @@ import {
   type SettingsView,
 } from "../contract/generated/contract";
 import { isUiMessage } from "../contract/validation";
+import { createTriageMock } from "./triage";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   return name === "componentes-incompatibles"
@@ -84,6 +85,7 @@ export function createMockHost(sceneName = "ajustes-base") {
     };
     core.services = "connected";
   }
+  const triageHost = createTriageMock(sceneName, core);
   let pilotConflicted = false;
   if (sceneName.startsWith("cuenta-") && sceneName !== "cuenta-desconectada")
     core.services = "connected";
@@ -177,6 +179,9 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
+      case "triage.prepare":
+      case "triage.send":
+        return triageHost(id, request);
       case "testing.answer":
       case "testing.contribute":
       case "testing.credit":

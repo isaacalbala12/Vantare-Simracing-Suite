@@ -246,6 +246,7 @@ fn settings_response(
     frame::write(pipe, &message)
 }
 enum RemoteKind {
+    Triage(crate::triage::Operation),
     Testing(crate::testing::Operation),
     RoadmapCached,
     RoadmapRefresh,
@@ -297,6 +298,9 @@ impl Session {
         result: Result<vantare_ipc::services_protocol::Reply, HostError>,
     ) -> Result<Reply, HostError> {
         match (self.remote.take(), result) {
+            (Some((expected, RemoteKind::Triage(operation))), Ok(reply)) if expected == id => {
+                crate::triage::complete(operation, reply)
+            }
             (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
                 crate::testing::complete(operation, reply)
             }
@@ -455,6 +459,9 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::TriagePrepare { .. } | Request::TriageSend { .. } => {
+                self.triage_request(pipe, id, request)
+            }
             Request::TestingAnswer { .. }
             | Request::TestingContribute { .. }
             | Request::TestingCredit { .. }
@@ -678,6 +685,24 @@ impl Session {
             self.remote = Some((id, kind));
             Ok(())
         });
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.respond(
+                pipe,
+                id,
+                Err(error),
+                crate::diagnostics::DiagnosticSection::Services,
+            ),
+        }
+    }
+    fn triage_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        let result = crate::triage::intent(request, &self.current.access).and_then(
+            |(operation, command)| {
+                self.core.request(id, command)?;
+                self.remote = Some((id, RemoteKind::Triage(operation)));
+                Ok(())
+            },
+        );
         match result {
             Ok(()) => Ok(()),
             Err(error) => self.respond(

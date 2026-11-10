@@ -77,7 +77,12 @@ describe("protected report draft behavior", () => {
       calls.push(request.fields);
       return {
         method: "draft.save",
-        value: { fields: request.fields, exists: true, screenshots: [] },
+        value: {
+          fields: request.fields,
+          exists: true,
+          screenshots: [],
+          message: "",
+        },
       };
     });
     vi.useFakeTimers();

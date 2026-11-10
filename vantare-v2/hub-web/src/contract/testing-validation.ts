@@ -1,7 +1,10 @@
 import {
+  reportDraftStates,
   reportFieldLimits,
   reportLegacyStates,
   reportModules,
+  reportScreenshotLimits,
+  reportStates,
   testingIdLimits,
   testingUuidGroups,
 } from "./generated/contract";
@@ -81,8 +84,9 @@ export function isReportFields(value: unknown): boolean {
 export function isReportDraft(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["fields", "exists", "screenshots", "legacy"]) &&
+    exact(value, ["fields", "exists", "screenshots", "legacy", "message"]) &&
     reportLegacyStates.some((state) => state === value.legacy) &&
+    typeof value.message === "string" &&
     typeof value.exists === "boolean" &&
     validFields(value.fields, true) &&
     isScreenshots(value.screenshots)
@@ -120,6 +124,7 @@ export function isTesting(value: unknown): boolean {
           (text) => typeof text === "string",
         ) &&
         typeof report.credit === "boolean" &&
+        reportStates.some((state) => state === report.state) &&
         typeof report.notice === "boolean" &&
         (report.updatedAt === null || typeof report.updatedAt === "string") &&
         (report.fixedVersion === null ||
@@ -131,15 +136,24 @@ export function isTesting(value: unknown): boolean {
 function isScreenshots(value: unknown): boolean {
   return (
     Array.isArray(value) &&
+    value.length <= reportScreenshotLimits.count &&
     value.every(
       (s) =>
         record(s) &&
         exact(s, ["id", "jpeg", "width", "height", "byteSize"]) &&
-        typeof s.id === "string" &&
+        isReportPreviewId(s.id) &&
         typeof s.jpeg === "string" &&
+        s.jpeg.length <= reportScreenshotLimits.jpeg &&
+        /^[A-Za-z0-9+/=]*$/.test(s.jpeg) &&
         integer(s.width) &&
+        s.width >= 1 &&
+        s.width <= reportScreenshotLimits.side &&
         integer(s.height) &&
-        integer(s.byteSize),
+        s.height >= 1 &&
+        s.height <= reportScreenshotLimits.side &&
+        integer(s.byteSize) &&
+        s.byteSize >= 1 &&
+        s.byteSize <= reportScreenshotLimits.bytes,
     )
   );
 }
@@ -164,6 +178,8 @@ export function isReportPreview(value: unknown): boolean {
       value.channel,
     ].every((text) => typeof text === "string") &&
     isReportFields(value.fields) &&
+    isReportPreviewId(value.id) &&
+    isReportPreviewId(value.digest) &&
     typeof value.retry === "boolean" &&
     isScreenshots(value.screenshots)
   );
@@ -171,10 +187,10 @@ export function isReportPreview(value: unknown): boolean {
 export function isReportReceipt(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["id", "state", "createdAt", "draftCleared"]) &&
+    exact(value, ["id", "state", "createdAt", "draftState"]) &&
     [value.id, value.state, value.createdAt].every(
       (text) => typeof text === "string",
     ) &&
-    typeof value.draftCleared === "boolean"
+    reportDraftStates.some((state) => state === value.draftState)
   );
 }

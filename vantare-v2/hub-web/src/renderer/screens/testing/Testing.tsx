@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { reportModules } from "../../../contract/generated/contract";
-import { testingText as text } from "../../i18n/es";
+import { testingText as text } from "./es";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
-import { Checkbox, Input, Select, Textarea } from "../../ui/Forms";
+import { Checkbox, Input, Select, Tabs, Textarea } from "../../ui/Forms";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
   TestingCard,
@@ -14,8 +14,28 @@ import {
 } from "../../ui/TestingLayout";
 import { Diagnostics } from "../settings/Diagnostics";
 import { useReports } from "./ReportsState";
+import { useTestingTabs } from "./TestingTabs";
 
 export function Testing() {
+  const { access } = useReports();
+  const { tabs, active, change } = useTestingTabs(access);
+  return (
+    <Tabs
+      label="Testing Center"
+      value={active}
+      onChange={change}
+      items={tabs
+        .filter((tab) => tab.visible)
+        .map((tab) => ({
+          value: tab.id,
+          label: tab.etiqueta,
+          content: tab.id === "reports" ? <Reports /> : null,
+        }))}
+    />
+  );
+}
+
+function Reports() {
   const state = useReports();
   const [view, setView] = useState<"local" | "compose" | "list" | "diagnostic">(
     "local",
@@ -70,10 +90,19 @@ export function Testing() {
         )
       }
     >
+      {state.message && <Callout title={state.message} />}
       {state.error && (
         <Callout
           tone="err"
-          title={text.failed}
+          title={
+            state.failure === "coreUnavailable"
+              ? text.offline
+              : state.failure === "denied"
+                ? text.denied
+                : state.failure === "evidencePending"
+                  ? text.evidencePending
+                  : text.failed
+          }
           actions={
             <ActionGroup>
               <Button
@@ -277,7 +306,14 @@ export function Testing() {
         </TestingCard>
       )}
       {state.receipt && (
-        <Callout title={text.received}>{state.receipt.id}</Callout>
+        <Callout title={text.received}>
+          {state.receipt.id}
+          {state.receipt.draftState === "cleanupPending"
+            ? ` · ${text.cleanupPending}`
+            : state.receipt.draftState === "preserved"
+              ? ` · ${text.preserved}`
+              : ""}
+        </Callout>
       )}
     </TestingLayout>
   );

@@ -6,6 +6,7 @@ import type {
   Request,
   TestingView,
 } from "../contract/generated/contract";
+import { reportScreenshotsAvailable } from "../contract/generated/contract";
 
 export function createTestingMock(scene: string, core: CoreStatus) {
   const empty = (): ReportDraftView => ({
@@ -18,17 +19,40 @@ export function createTestingMock(scene: string, core: CoreStatus) {
     },
     exists: false,
     screenshots: [],
+    message: "",
   });
   let draft = empty();
   let preview: ReportPreviewView | undefined;
   const participation: TestingView = { reports: [], questionnaires: [] };
+  let busy = scene === "testing-busy";
+  if (core.access.tester)
+    participation.questionnaires.push({
+      id: "15350000-0000-0000-0000-000000000001",
+      version: "0.0.0",
+      title: "Cuestionario local de QA",
+      question: "¿Cómo funciona el Hub?",
+      score: null,
+    });
   return (id: number, request: Request): HostToUi => {
     if (!core.access.verified || core.access.blocked)
       return { kind: "failure", id, error: { kind: "denied" } };
     if (core.services !== "connected" || scene === "testing-offline")
       return { kind: "failure", id, error: { kind: "coreUnavailable" } };
-    if (scene === "testing-busy")
+    if (
+      ([
+        "testing.refresh",
+        "testing.answer",
+        "testing.credit",
+        "testing.noticeRead",
+      ].includes(request.method) &&
+        !core.access.tester) ||
+      (request.method === "testing.contribute" && core.access.tester)
+    )
+      return { kind: "failure", id, error: { kind: "denied" } };
+    if (busy) {
+      busy = false;
       return { kind: "failure", id, error: { kind: "busy" } };
+    }
     switch (request.method) {
       case "draft.load":
         return {
@@ -43,6 +67,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
           fields: structuredClone(request.fields),
           exists: true,
           screenshots: [],
+          message: "",
         };
         preview = undefined;
         return {
@@ -58,6 +83,43 @@ export function createTestingMock(scene: string, core: CoreStatus) {
           id,
           result: { method: request.method, value: structuredClone(draft) },
         };
+      case "report.capture":
+        return {
+          kind: "failure",
+          id,
+          error: {
+            kind: reportScreenshotsAvailable
+              ? "unsupported"
+              : "evidencePending",
+          },
+        };
+      case "report.removeScreenshot":
+        draft.screenshots = draft.screenshots.filter(
+          (screenshot) => screenshot.id !== request.id,
+        );
+        draft.fields = structuredClone(request.fields);
+        preview = undefined;
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(draft) },
+        };
+      case "testing.answer": {
+        const questionnaire = participation.questionnaires.find(
+          (item) => item.id === request.id,
+        );
+        if (!questionnaire)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        questionnaire.score = request.score;
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            value: structuredClone(participation),
+          },
+        };
+      }
       case "report.prepare":
       case "report.retryPrepare":
         if (!draft.exists)
@@ -91,7 +153,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
               id: "15350000-0000-0000-0000-000000000002",
               state: "submitted",
               createdAt: "2026-11-10T12:00:00Z",
-              draftCleared: true,
+              draftState: "cleared",
             },
           },
         };

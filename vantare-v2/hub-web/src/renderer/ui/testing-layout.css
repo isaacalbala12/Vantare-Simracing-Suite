@@ -67,7 +67,7 @@
 .v-testing-card p {
   margin: 0;
   font-size: 13px;
-  line-height: 20px;
+  line-height: 17px;
   color: var(--text-2);
 }
 .v-testing .v-testing-fine-print {
@@ -93,11 +93,13 @@
 }
 .v-testing-notes input {
   height: 40px;
+  width: 100%;
 }
 .v-testing-notes textarea {
+  width: 100%;
   height: 82px;
   min-height: 82px;
-  resize: vertical;
+  resize: none;
 }
 .v-testing .v-input {
   border-radius: 6px;
@@ -107,8 +109,32 @@
   box-shadow: inset 0 1px var(--line-1);
 }
 .v-testing .v-button {
-  min-height: 36px;
+  min-height: 34px;
   font-size: 14px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--text-1);
+  border-color: var(--line-3);
+  border-radius: 8px;
+}
+.v-testing .v-button:disabled {
+  background: var(--text-3);
+  color: var(--surface-1);
+}
+.v-testing-card > .v-button {
+  border-radius: var(--radius-pill);
+}
+.v-testing-card > .v-button:disabled {
+  background: transparent;
+  color: var(--text-3);
+  opacity: 0.5;
+}
+.v-testing .v-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border-color: var(--line-2);
 }
 .v-testing .v-choice {
   font-size: 14px;

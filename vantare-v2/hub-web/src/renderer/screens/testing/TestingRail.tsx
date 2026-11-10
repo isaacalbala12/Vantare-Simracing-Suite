@@ -1,4 +1,4 @@
-import { testingText as text } from "../../i18n/es";
+import { testingText as text } from "./es";
 import { TestingRailSection } from "../../ui/TestingLayout";
 import { useReports } from "./ReportsState";
 

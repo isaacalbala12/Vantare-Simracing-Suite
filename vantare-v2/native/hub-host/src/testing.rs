@@ -9,10 +9,24 @@ use vantare_ipc::services_protocol::{self as core, report_document, testing_docu
 
 pub use report_document::{FIELD_LIMITS, MODULES, SCREENSHOTS_AVAILABLE};
 pub const AUTOSAVE_MS: u32 = 2_000;
+pub const BUSY_RETRY_MS: u32 = 100;
+pub const BUSY_RETRY_ATTEMPTS: u8 = 2;
 pub const UUID_LENGTH: usize = 36;
 pub const UUID_GROUPS: [usize; 5] = [8, 4, 4, 4, 12];
 pub const PREVIEW_ID_LENGTH: usize = 64;
 pub const UPDATED_AT_MAX_BYTES: usize = 128;
+pub const SCREENSHOT_JPEG_MAX: usize = (10 * 1024_usize).div_ceil(3) * 4;
+pub const SCREENSHOT_SIDE_MAX: u32 = 1920;
+pub const SCREENSHOT_BYTES_MAX: u32 = 400 * 1024;
+pub const SCREENSHOT_COUNT_MAX: usize = 3;
+pub const REPORT_STATES: [&str; 6] = [
+    "received",
+    "reviewing",
+    "accepted",
+    "declined",
+    "spam",
+    "fixed",
+];
 pub fn testing_id(value: &str) -> bool {
     value.len() == UUID_LENGTH && vantare_services::license::uuid(value)
 }
@@ -153,6 +167,7 @@ pub struct ReportDraftView {
     pub fields: ReportFields,
     pub exists: bool,
     pub screenshots: Vec<ReportScreenshot>,
+    pub message: String,
 }
 pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
     ReportDraftView {
@@ -166,6 +181,7 @@ pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
         ),
         exists: value.is_some(),
         screenshots: value.map_or_else(Vec::new, |d| screenshots(&d.screenshots)),
+        message: String::new(),
     }
 }
 pub fn allowed(access: &AccessView) -> bool {
@@ -207,6 +223,21 @@ fn screenshots(values: &[report_document::ScreenshotPreview]) -> Vec<ReportScree
         })
         .collect()
 }
+fn valid_screenshots(values: &[report_document::ScreenshotPreview]) -> bool {
+    values.len() <= SCREENSHOT_COUNT_MAX
+        && values.iter().all(|s| {
+            preview_id(&s.id)
+                && s.jpeg.len() <= SCREENSHOT_JPEG_MAX
+                && s.jpeg.is_ascii()
+                && s.jpeg
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b"+/=".contains(&b))
+                && (1..=SCREENSHOT_SIDE_MAX).contains(&s.width)
+                && (1..=SCREENSHOT_SIDE_MAX).contains(&s.height)
+                && s.byte_size > 0
+                && s.byte_size <= SCREENSHOT_BYTES_MAX as usize
+        })
+}
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -238,7 +269,11 @@ pub fn preview(value: &report_document::Preview) -> Result<ReportPreviewView, Ho
         context_text: text("p_context_text")?,
         module: text("p_module")?,
     };
-    if !fields.valid() {
+    if !fields.valid()
+        || !preview_id(&value.id)
+        || !preview_id(&value.digest)
+        || !valid_screenshots(&value.screenshots)
+    {
         return Err(HostError::Rejected);
     }
     Ok(ReportPreviewView {
@@ -259,14 +294,26 @@ pub struct ReportReceiptView {
     pub id: String,
     pub state: String,
     pub created_at: String,
-    pub draft_cleared: bool,
+    pub draft_state: ReportDraftState,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ReportDraftState {
+    Cleared,
+    Preserved,
+    CleanupPending,
 }
 pub fn receipt(value: &report_document::Receipt, state: core::DraftState) -> ReportReceiptView {
     ReportReceiptView {
         id: value.report_id.clone(),
         state: value.report_state.clone(),
         created_at: value.created_at.clone(),
-        draft_cleared: state == core::DraftState::Cleared,
+        draft_state: match state {
+            core::DraftState::Cleared => ReportDraftState::Cleared,
+            core::DraftState::Preserved => ReportDraftState::Preserved,
+            core::DraftState::CleanupPending => ReportDraftState::CleanupPending,
+        },
     }
 }
 
@@ -294,6 +341,9 @@ pub fn intent(
     use core::Command;
     if !allowed(access) {
         return Err(HostError::Denied);
+    }
+    if matches!(request, Request::ReportCapture { .. }) && !SCREENSHOTS_AVAILABLE {
+        return Err(HostError::EvidencePending);
     }
     let tester_only = matches!(
         request,
@@ -378,6 +428,13 @@ pub fn complete(
     use crate::protocol::Reply;
     match reply {
         core::Reply::Testing { data } => {
+            if data
+                .contributions
+                .iter()
+                .any(|report| !REPORT_STATES.contains(&report.state.as_str()))
+            {
+                return Err(HostError::Rejected);
+            }
             let value = participation(&data);
             match operation {
                 Operation::Refresh => Ok(Reply::TestingRefresh { value }),
@@ -388,8 +445,18 @@ pub fn complete(
                 _ => Err(HostError::Rejected),
             }
         }
-        core::Reply::Draft { draft: saved, .. } => {
-            let value = draft(saved.as_ref());
+        core::Reply::Draft {
+            draft: saved,
+            message,
+        } => {
+            if saved
+                .as_ref()
+                .is_some_and(|draft| !valid_screenshots(&draft.screenshots))
+            {
+                return Err(HostError::Rejected);
+            }
+            let mut value = draft(saved.as_ref());
+            value.message = message;
             match operation {
                 Operation::Load => Ok(Reply::DraftLoad { value }),
                 Operation::Save => Ok(Reply::DraftSave { value }),
@@ -696,5 +763,88 @@ mod tests {
             ..preview
         };
         assert!(super::preview(&malformed).is_err());
+    }
+    #[test]
+    fn capture_is_locally_unavailable_and_draft_message_is_preserved() {
+        let request = crate::protocol::Request::ReportCapture {
+            fields: ReportFields {
+                module: "hub".into(),
+                ..Default::default()
+            },
+        };
+        assert_eq!(
+            intent(&request, &access(false)).err(),
+            Some(HostError::EvidencePending)
+        );
+        assert_eq!(
+            intent(&request, &AccessView::default()).err(),
+            Some(HostError::Denied)
+        );
+        let reply = complete(
+            Operation::Load,
+            core::Reply::Draft {
+                draft: None,
+                message: "El borrador se conserva".into(),
+            },
+        )
+        .unwrap();
+        assert!(
+            matches!(reply,crate::protocol::Reply::DraftLoad{value} if value.message == "El borrador se conserva")
+        );
+    }
+    #[test]
+    fn screenshot_metadata_and_encoded_preview_are_bounded() {
+        let valid = report_document::ScreenshotPreview {
+            id: "a".repeat(64),
+            jpeg: "/9j/".into(),
+            width: 1920,
+            height: 1080,
+            byte_size: 400 * 1024,
+        };
+        assert!(valid_screenshots(std::slice::from_ref(&valid)));
+        for invalid in [
+            report_document::ScreenshotPreview {
+                jpeg: "a".repeat(SCREENSHOT_JPEG_MAX + 1),
+                ..valid.clone()
+            },
+            report_document::ScreenshotPreview {
+                width: SCREENSHOT_SIDE_MAX + 1,
+                ..valid.clone()
+            },
+            report_document::ScreenshotPreview {
+                height: 0,
+                ..valid.clone()
+            },
+            report_document::ScreenshotPreview {
+                byte_size: SCREENSHOT_BYTES_MAX as usize + 1,
+                ..valid.clone()
+            },
+            report_document::ScreenshotPreview {
+                id: "A".repeat(64),
+                ..valid.clone()
+            },
+        ] {
+            assert!(!valid_screenshots(&[invalid]));
+        }
+        assert!(!valid_screenshots(&vec![valid; SCREENSHOT_COUNT_MAX + 1]));
+    }
+    #[test]
+    fn receipt_preserves_all_three_cleanup_states() {
+        let value = report_document::Receipt {
+            report_id: ID.into(),
+            report_state: "submitted".into(),
+            created_at: "2026-11-10T12:00:00Z".into(),
+            idempotent: false,
+        };
+        for (state, expected) in [
+            (core::DraftState::Cleared, ReportDraftState::Cleared),
+            (core::DraftState::Preserved, ReportDraftState::Preserved),
+            (
+                core::DraftState::CleanupPending,
+                ReportDraftState::CleanupPending,
+            ),
+        ] {
+            assert_eq!(receipt(&value, state).draft_state, expected);
+        }
     }
 }

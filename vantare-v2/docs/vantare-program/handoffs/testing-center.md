@@ -1367,3 +1367,16 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   temporal; no se cambia vendor, ui, IPC, Services ni el instalador.
 - Las primeras imágenes de Inicio se apartaron a evidencia propia: no son referencias.
   La captura válida espera la reserva global de GPUI, ocupada por otro worker.
+
+### Estado tras integrar #2026 y #2037
+
+- #2026 quedó verde en ec27cb839 y el orquestador lo fusionó en nightly@9916195d4.
+  Los tres P2 están resueltos; el límite semántico de IPC/Services sigue en #2032.
+- #2030 se rebasa sobre nightly tras #2037. Cuatro tests QA ejecutados en Windows
+  PASS. Resumen oscuro válido y recibo verificado en referencia-gpui/dark.
+- Para las siguientes capturas se usa el banco fijo de hub-web/docs/gpui-capture-bank.md;
+  D no vuelve a compilar GPUI ni modifica su ejecutable o plantilla compartidos.
+  El banco actual declara source_commit 3304ea358 y aún necesita incorporar los
+  cambios de #2030 para --qa-testing y testing-center-triage; lo gestiona su responsable.
+- Informes ya usa entry.tsx/SectionChrome, con Shell intacto. Su comparación registra
+  el desplazamiento del raíl derecho del marco; datos y pruebas continúan en D.

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { chromium } from "playwright-core";
+import { checkSettingsHost } from "./check-settings-host.ts";
 import { until } from "./wait-for.ts";
 
 const qa =
@@ -20,9 +21,11 @@ const data = join(generation, "data");
 const hubData = join(data, "hub");
 await mkdir(join(generation, "bin"), { recursive: true });
 await mkdir(hubData, { recursive: true });
+if (process.env.VANTARE_HUB_SETTINGS_PROTECTED === "1")
+  await writeFile(join(hubData, "hub-settings.json"), '{"version":999}');
 await cp(
   process.env.VANTARE_HUB_HOST_BINARY ??
-    "D:/VantareServer/targets/isa-1995-puente/debug/vantare-hub-host.exe",
+    "D:/VantareServer/qa/isa-1995-host-tools/vantare-hub-host.exe",
   join(generation, "bin/vantare-hub.exe"),
 );
 await cp(
@@ -30,6 +33,21 @@ await cp(
   join(generation, "hub-ui"),
   { recursive: true },
 );
+if (process.env.VANTARE_HUB_STARTUP_TEST === "1") {
+  execFileSync(
+    "pwsh",
+    [
+      "-NoProfile",
+      "-File",
+      resolve("scripts/prepare-startup-qa.ps1"),
+      "-Root",
+      root,
+      "-Generation",
+      basename(generation),
+    ],
+    { windowsHide: true },
+  );
+}
 const boot = randomBytes(16).toString("hex");
 await writeFile(join(root, "boot-pending.json"), "{}");
 const env: Record<string, string> = {};
@@ -51,7 +69,16 @@ Object.assign(env, {
   LOCALAPPDATA: join(qa, "local"),
   APPDATA: join(qa, "roaming"),
   VANTARE_BOOT_TOKEN: boot,
+  VANTARE_HUB_QA_SCALE: process.env.VANTARE_HUB_SCALE ?? "1",
 });
+if (process.env.VANTARE_HUB_STARTUP_TEST === "1") {
+  env.VANTARE_BETA_ROOT = join(root, "installer-fixture");
+  env.VANTARE_INSTALLER_QA_CONTEXT = join(
+    root,
+    "installer-fixture",
+    "qa-context.json",
+  );
+}
 const host = spawn(
   join(generation, "bin/vantare-hub.exe"),
   [
@@ -63,6 +90,8 @@ const host = spawn(
   ],
   { env, windowsHide: true, stdio: ["pipe", "ignore", "pipe"] },
 );
+const nativeLog: string[] = [];
+host.stderr.on("data", (chunk) => nativeLog.push(chunk.toString()));
 const startedAt = Date.now();
 const endpoint = await new Promise<string>((accept, reject) => {
   // First launch from a fresh QA generation also includes Windows image loading.
@@ -98,6 +127,9 @@ const endpoint = await new Promise<string>((accept, reject) => {
     clearInterval(timer);
     reject(new Error(`Host exited early ${code}`));
   });
+}).catch(async (error: unknown) => {
+  await writeFile(join(evidence, "native-stderr.log"), nativeLog.join(""));
+  throw error;
 });
 const initialBootMs = Date.now() - startedAt;
 const browser = await chromium.connectOverCDP(endpoint);
@@ -126,6 +158,13 @@ try {
     bridge: Object.keys(window.vantare ?? {}),
   }));
   if (isolation.node !== "undefined") throw new Error("Renderer has Node");
+  if (process.env.VANTARE_HUB_SETTINGS_TEST === "1")
+    await checkSettingsHost(
+      page,
+      hubData,
+      evidence,
+      join(root, "installer-fixture"),
+    );
   const crash = process.env.VANTARE_HUB_QA_CRASH === "1";
   if (crash) {
     const debug = await context.newCDPSession(page);
@@ -155,6 +194,7 @@ try {
     ),
   );
 } finally {
+  await writeFile(join(evidence, "native-stderr.log"), nativeLog.join(""));
   await browser.close().catch(() => {});
   if (host.exitCode === null) host.kill();
 }

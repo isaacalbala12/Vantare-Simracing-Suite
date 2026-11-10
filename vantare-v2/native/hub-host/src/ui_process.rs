@@ -4,6 +4,7 @@ use crate::{
     frame,
     protocol::{self, CloseReason, Event, HostError, HostToUi, Reply, Request, Topic, UiToHost},
     ready,
+    settings::{SaveError, Settings},
 };
 use serde::Deserialize;
 use std::{
@@ -14,6 +15,15 @@ use std::{
     time::{Duration, Instant},
 };
 use vantare_ipc::transport::{Event as Stop, Listener, Pipe};
+#[cfg(feature = "qa-e2e")]
+fn qa_phase(args: &Args, phase: &str) -> io::Result<()> {
+    use std::io::Write as _;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(args.data.join("hub-host-qa.log"))?;
+    writeln!(file, "{phase}")
+}
 struct UiChild(Child);
 impl Drop for UiChild {
     fn drop(&mut self) {
@@ -93,6 +103,12 @@ fn spawn_ui(
         .stdout(Stdio::null());
     #[cfg(feature = "qa-e2e")]
     {
+        if let Ok(scale) = std::env::var("VANTARE_HUB_QA_SCALE") {
+            if !["1", "1.25", "1.5"].contains(&scale.as_str()) {
+                return Err(io::ErrorKind::InvalidInput.into());
+            }
+            command.arg(format!("--force-device-scale-factor={scale}"));
+        }
         command
             .args([
                 "--remote-debugging-port=0",
@@ -102,7 +118,12 @@ fn spawn_ui(
     }
     #[cfg(not(feature = "qa-e2e"))]
     command.stderr(Stdio::null());
-    Ok((UiChild(command.spawn()?), ui))
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-ui-spawn")?;
+    let child = command.spawn()?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "ui-spawned")?;
+    Ok((UiChild(child), ui))
 }
 fn accept_ui(
     args: &Args,
@@ -179,6 +200,8 @@ fn accept_ui(
             if !authenticated(&value, token) {
                 return Err(io::ErrorKind::PermissionDenied.into());
             }
+            #[cfg(feature = "qa-e2e")]
+            qa_phase(args, "ui-authenticated")?;
             return Ok(Some((pipe, reader)));
         }
     }
@@ -191,8 +214,33 @@ fn entered_live(previous: Option<&protocol::CoreStatus>, current: &protocol::Cor
             && current.live
     })
 }
+fn settings_response(
+    pipe: &mut Pipe,
+    id: u32,
+    result: Result<crate::settings::SettingsView, SaveError>,
+    reply: impl FnOnce(crate::settings::SettingsView) -> Reply,
+) -> io::Result<()> {
+    let message = match result {
+        Ok(value) => HostToUi::Response {
+            id,
+            result: reply(value),
+        },
+        Err(error) => HostToUi::Failure {
+            id,
+            error: match error {
+                SaveError::Conflict(current) => HostError::Conflict { current },
+                SaveError::Protected => HostError::Protected,
+                SaveError::Io => HostError::Io,
+                SaveError::Unsupported => HostError::Unsupported,
+            },
+        },
+    };
+    frame::write(pipe, &message)
+}
 struct Session {
+    launcher: PathBuf,
     core: Core,
+    settings: Settings,
     confirmation: Option<ready::Ready>,
     current: protocol::CoreStatus,
     last: Option<protocol::CoreStatus>,
@@ -253,6 +301,68 @@ impl Session {
             reason != CloseReason::ControlEof || time.elapsed() <= Duration::from_secs(2)
         }))
     }
+    fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        match request {
+            Request::CoreGet {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::Core {
+                        value: self.current.clone(),
+                    },
+                },
+            ),
+            Request::LauncherFavorite {} => {
+                let message = match crate::favorite::launch(&self.launcher, &self.current) {
+                    Ok(accepted) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherFavorite { accepted },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
+            Request::SettingsDiscard {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::SettingsDiscard {
+                        value: self.settings.discard(),
+                    },
+                },
+            ),
+            Request::WindowClose {} => self.request_close(pipe, CloseReason::Window),
+            // Native notifications are a platform UI action handled by Electron.
+            Request::NotificationTest {} => frame::write(
+                pipe,
+                &HostToUi::Failure {
+                    id,
+                    error: HostError::Unsupported,
+                },
+            ),
+            Request::SettingsGet {} => {
+                let value = self.settings.refresh();
+                frame::write(
+                    pipe,
+                    &HostToUi::Response {
+                        id,
+                        result: Reply::SettingsGet { value },
+                    },
+                )
+            }
+            Request::SettingsUpdate {
+                patch,
+                base_revision,
+            } => {
+                let result = self.settings.update(*patch, base_revision);
+                settings_response(pipe, id, result, |value| Reply::SettingsUpdate { value })
+            }
+            Request::SettingsRetry {} => {
+                let result = self.settings.retry();
+                settings_response(pipe, id, result, |value| Reply::SettingsRetry { value })
+            }
+        }
+    }
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
         match message {
             UiToHost::Hello { version } => {
@@ -277,22 +387,7 @@ impl Session {
                     confirmation.publish()?;
                 }
             }
-            UiToHost::Request {
-                id,
-                request: Request::CoreGet {},
-            } => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id: *id,
-                    result: Reply::Core {
-                        value: self.current.clone(),
-                    },
-                },
-            )?,
-            UiToHost::Request {
-                request: Request::WindowClose {},
-                ..
-            } => self.request_close(pipe, CloseReason::Window)?,
+            UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic: Topic::Core } => {
                 self.subscribed = true;
                 self.send_core(pipe)?;
@@ -356,8 +451,18 @@ pub fn run(args: &Args) -> io::Result<()> {
     else {
         return Ok(());
     };
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-core-start")?;
+    let core = Core::start(&args.pipe, directory)?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-settings-load")?;
+    let settings = Settings::load(args);
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "settings-loaded")?;
     let mut session = Session {
-        core: Core::start(&args.pipe, directory)?,
+        launcher: args.launcher.clone(),
+        core,
+        settings,
         confirmation: ready::Ready::from_executable(&executable)?,
         current: protocol::CoreStatus::default(),
         last: None,
@@ -367,7 +472,11 @@ pub fn run(args: &Args) -> io::Result<()> {
         sim_subscribed: false,
         handshaken: false,
     };
-    frame::write(&mut pipe, &protocol::hello())?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "before-hello")?;
+    frame::write(&mut pipe, &protocol::hello(&session.settings.view())?)?;
+    #[cfg(feature = "qa-e2e")]
+    qa_phase(args, "hello-sent")?;
     while child.0.try_wait()?.is_none() && session.tick(args, &mut pipe)? {
         if let Some(message) = reader.next::<UiToHost>(&mut pipe)?
             && !session.receive(&mut pipe, &message)?

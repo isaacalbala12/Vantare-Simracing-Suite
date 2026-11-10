@@ -1,0 +1,358 @@
+import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense, useEffect } from "react";
+import { Icon } from "../assets/icons/Icon";
+import { es, t } from "../i18n/es";
+import { Button, IconButton } from "../ui/Button";
+import { Avatar, Badge, Callout, Skeleton } from "../ui/Data";
+import {
+  CommandPalette,
+  ContextRail,
+  PageHeader,
+  Sidebar,
+  TitleBar,
+} from "../ui/Frame";
+import { Popover, useToastManager } from "../ui/Layers";
+import {
+  ActionGroup,
+  ContentStack,
+  InfoList,
+  ShellLayout,
+} from "../ui/ShellLayout";
+import { zoomLevels } from "../ui/ZoomControl";
+import { coreKey, offline, useHost } from "./Host";
+import { isSection, lock, navigation, visible } from "./navigation";
+import { useSettings } from "./SettingsState";
+import { type Section, useUi } from "./UiState";
+
+const Settings = lazy(() =>
+  import("../screens/settings/Settings").then((module) => ({
+    default: module.Settings,
+  })),
+);
+export function Shell() {
+  const host = useHost();
+  const toast = useToastManager();
+  const settings = useSettings();
+  const editBlocked =
+    !settings.view ||
+    settings.pending ||
+    settings.view.protected ||
+    Boolean(settings.error);
+  const { data: core = offline } = useQuery({
+    queryKey: coreKey,
+    queryFn: async () => offline,
+    enabled: false,
+  });
+  const ui = useUi((state) => state);
+  const items = navigation(core.access);
+  function navigate(section: Section) {
+    if (visible(section, core.access) && !lock(section, core.access))
+      ui.navigate(section);
+  }
+  async function launchFavorite() {
+    if (!host.client) return;
+    try {
+      const reply = await host.client.request({ method: "launcher.favorite" });
+      if (reply.method !== "launcher.favorite") return;
+      if (!reply.accepted) {
+        navigate("launcher");
+        toast.add({ title: t("shell.profileNeeded") });
+      } else toast.add({ title: t("shell.favoriteSent") });
+    } catch {
+      toast.add({ title: t("shell.favoriteFailed"), type: "err" });
+    }
+  }
+  function zoom(direction: -1 | 0 | 1) {
+    if (
+      !settings.view ||
+      settings.pending ||
+      settings.view.protected ||
+      settings.error
+    )
+      return;
+    const index = zoomLevels.indexOf(settings.view.zoom);
+    const value =
+      direction === 0
+        ? 100
+        : zoomLevels[
+            Math.max(0, Math.min(zoomLevels.length - 1, index + direction))
+          ];
+    settings.update({ field: "zoom", value });
+  }
+  function toggleTheme() {
+    if (
+      settings.view &&
+      !settings.pending &&
+      !settings.view.protected &&
+      !settings.error
+    )
+      settings.update({
+        field: "scheme",
+        value:
+          document.documentElement.dataset.scheme === "dark" ? "light" : "dark",
+      });
+  }
+  useEffect(() => {
+    if (!visible(ui.section, core.access)) ui.navigate("home");
+  }, [ui.section, ui.navigate, core.access]);
+  useEffect(() => {
+    function key(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      if (key === "escape") {
+        ui.commands(false);
+        ui.notices(false);
+        return;
+      }
+      if (!event.ctrlKey || event.metaKey) return;
+      if (key === "k") {
+        event.preventDefault();
+        ui.commands(!ui.commandsOpen);
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest(
+            "input,textarea,select,[role=textbox],[role=combobox]",
+          ))
+      )
+        return;
+      if (key === "b") {
+        event.preventDefault();
+        if (event.altKey) ui.toggleRail();
+        else ui.toggleSidebar();
+      }
+      if (key === "n" && event.shiftKey) {
+        event.preventDefault();
+        ui.notices(!ui.noticesOpen);
+      }
+      if (key === "l") {
+        event.preventDefault();
+        void launchFavorite();
+      }
+      if (
+        ["+", "=", "-", "0"].includes(key) &&
+        settings.view &&
+        !settings.pending &&
+        !settings.view.protected &&
+        !settings.error
+      ) {
+        event.preventDefault();
+        zoom(key === "0" ? 0 : key === "-" ? -1 : 1);
+      }
+    }
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
+  const status =
+    host.issue ??
+    (host.hello?.demo
+      ? es.mock
+      : core.photos === "connected"
+        ? es.coreConnected
+        : core.photos === "incompatible"
+          ? es.incompatible
+          : es.coreUnavailable);
+  const title =
+    items.find((item) => item.id === ui.section)?.label ?? t("settings.title");
+  const groups = [
+    {
+      label: t("shell.main"),
+      items: items.filter((item) =>
+        ["home", "launcher", "studio", "roadmap", "testing"].includes(item.id),
+      ),
+    },
+    {
+      label: t("shell.testers"),
+      items: items.filter((item) => item.id === "calendar"),
+    },
+    {
+      label: t("shell.modules"),
+      items: items.filter(
+        (item) => item.id === "strategy" || item.id === "engineer",
+      ),
+    },
+  ].filter((group) => group.items.length);
+  return (
+    <ShellLayout
+      header={
+        <TitleBar
+          title={title}
+          status={status}
+          actions={
+            <ActionGroup>
+              <IconButton
+                label={t("shell.railToggle")}
+                aria-expanded={!ui.railCollapsed}
+                onClick={ui.toggleRail}
+              >
+                <Icon name="i-panel" />
+              </IconButton>
+              <CommandPalette
+                title={t("shell.commands")}
+                description={t("shell.commandsHelp")}
+                trigger={t("shell.commands")}
+                closeLabel={t("shell.close")}
+                empty={t("shell.emptyCommands")}
+                commands={[
+                  ...items.map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                    disabled: !!item.locked,
+                    run: () => navigate(item.id),
+                  })),
+                  {
+                    id: "theme",
+                    label: t("shell.toggleTheme"),
+                    disabled: editBlocked,
+                    run: toggleTheme,
+                  },
+                  {
+                    id: "sidebar",
+                    label: t("shell.sidebar"),
+                    run: ui.toggleSidebar,
+                  },
+                  {
+                    id: "rail",
+                    label: t("shell.railToggle"),
+                    run: ui.toggleRail,
+                  },
+                  {
+                    id: "notices",
+                    label: t("shell.notices"),
+                    run: () => ui.notices(true),
+                  },
+                  {
+                    id: "zoom-less",
+                    label: t("general.zoomLess"),
+                    disabled: editBlocked,
+                    run: () => zoom(-1),
+                  },
+                  {
+                    id: "zoom-more",
+                    label: t("general.zoomMore"),
+                    disabled: editBlocked,
+                    run: () => zoom(1),
+                  },
+                  {
+                    id: "zoom-reset",
+                    label: t("general.zoomReset"),
+                    disabled: editBlocked,
+                    run: () => zoom(0),
+                  },
+                  {
+                    id: "favorite",
+                    label: t("shell.favorite"),
+                    disabled: !!lock("launcher", core.access),
+                    run: () => void launchFavorite(),
+                  },
+                  {
+                    id: "close",
+                    label: t("shell.closeHub"),
+                    run: () => host.client?.closeWindow(),
+                  },
+                ]}
+                open={ui.commandsOpen}
+                onOpenChange={ui.commands}
+              />
+              <Popover
+                label={t("shell.notices")}
+                trigger={<Icon name="i-campana" />}
+                open={ui.noticesOpen}
+                onOpenChange={ui.notices}
+              >
+                <ContentStack>
+                  <strong>{t("shell.notices")}</strong>
+                  <p>{t("shell.noNotices")}</p>
+                </ContentStack>
+              </Popover>
+            </ActionGroup>
+          }
+        />
+      }
+      sidebar={
+        <Sidebar
+          label={t("shell.navigation")}
+          groups={groups}
+          active={ui.section}
+          collapsed={ui.sidebarCollapsed}
+          onSelect={(id) => {
+            if (isSection(id)) navigate(id);
+          }}
+          footer={
+            <ContentStack>
+              <ActionGroup>
+                <IconButton
+                  label={t("shell.sidebar")}
+                  onClick={ui.toggleSidebar}
+                  aria-expanded={!ui.sidebarCollapsed}
+                >
+                  <Icon name="i-panel" />
+                </IconButton>
+                <IconButton
+                  label={t("shell.toggleTheme")}
+                  onClick={toggleTheme}
+                  disabled={editBlocked}
+                >
+                  <Icon name="v-palette" />
+                </IconButton>
+              </ActionGroup>
+              <Button
+                variant="ghost"
+                aria-current={ui.section === "settings" ? "page" : undefined}
+                aria-label={t("settings.title")}
+                onClick={() => navigate("settings")}
+              >
+                <Icon name="i-ajustes" />
+                {!ui.sidebarCollapsed && t("settings.title")}
+              </Button>
+              <ActionGroup>
+                <Avatar
+                  label={t("shell.anonymous")}
+                  initials={t("shell.initials")}
+                />
+                {!ui.sidebarCollapsed && t("shell.anonymous")}
+                <Badge>{t("shell.beta")}</Badge>
+              </ActionGroup>
+            </ContentStack>
+          }
+        />
+      }
+      rail={
+        <ContextRail
+          label={t("shell.rail")}
+          collapsed={ui.railCollapsed}
+          onToggle={ui.toggleRail}
+          toggleLabel={t("shell.railToggle")}
+        >
+          <ContentStack>
+            <InfoList
+              items={[
+                {
+                  label: t("shell.version"),
+                  value: settings.view?.version ?? t("settings.loading"),
+                },
+                { label: t("shell.shortcuts"), value: t("shell.ctrlK") },
+                { label: t("shell.sidebar"), value: t("shell.ctrlB") },
+                { label: t("shell.railToggle"), value: t("shell.ctrlAltB") },
+                { label: t("general.zoom"), value: t("shell.ctrlZoom") },
+              ]}
+            />
+          </ContentStack>
+        </ContextRail>
+      }
+    >
+      {ui.section === "settings" ? (
+        <Suspense fallback={<Skeleton label={t("settings.loading")} />}>
+          <Settings />
+        </Suspense>
+      ) : (
+        <ContentStack>
+          <PageHeader title={title} />
+          <Callout title={t("shell.soon")} />
+        </ContentStack>
+      )}
+    </ShellLayout>
+  );
+}

@@ -1,0 +1,29 @@
+{
+  "general": {
+    "onboarding_completed": true,
+    "density": "balanced",
+    "minimized": false,
+    "updates": true,
+    "launcher": true,
+    "toasts": false
+  },
+  "appearance": {
+    "palette": "vantare",
+    "scheme": "dark",
+    "contrast": 100,
+    "glassOpacity": 80,
+    "interfaceFont": "inter",
+    "monoFont": "cascadia",
+    "reducedMotion": false
+  },
+  "zoom": 100,
+  "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+  "protected": false,
+  "canRetry": false,
+  "warning": false,
+  "startup": {
+    "supported": false,
+    "enabled": false
+  },
+  "version": "0.0.0"
+}

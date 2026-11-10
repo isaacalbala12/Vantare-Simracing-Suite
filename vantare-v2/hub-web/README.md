@@ -2,7 +2,8 @@
 
 VANTA-138, issue #1995. Interfaz Electron aislada y anfitrión Rust conectado
 a los canales existentes. También funciona con el anfitrión simulado.
-Ajustes todavía no guarda datos en este paso.
+General y Apariencia leen y guardan sus documentos mediante Rust. El resto de
+Ajustes se incorpora en las dos entregas siguientes del diseño.
 
 Bun 1.4.4, versiones exactas en package.json y bun.lock. En este servidor:
 
@@ -109,3 +110,55 @@ El staging de cada variante se limpia antes de copiar, dentro de `release`.
 En el smoke del anfitrión, `VANTARE_HUB_QA_CRASH=1` provoca una caída deliberada
 del renderer y comprueba la salida de error del anfitrión. Sin esa variable,
 comprueba cierre por EOF con salida 0. El paquete de QA nunca se distribuye.
+
+## Ajustes I y QA local
+
+General guarda zoom, densidad, arranque minimizado y avisos. Apariencia guarda
+esquema, paleta, contraste, cristal, fuentes y movimiento. Los cambios de
+contraste/cristal se previsualizan y se guardan al soltar. El inicio con Windows
+usa `installer::engine::shell::sync_running`; sin instalación válida se muestra
+desactivado. La UI no lee documentos ni ejecuta comandos del sistema.
+
+El almacén Rust conserva CAS, reintento de la intención y documentos futuros
+protegidos del Hub congelado. Descartar olvida la intención sin sobrescribir al
+otro escritor. Un fallo de guardado impide cerrar hasta reintentar o descartar.
+Si `reducedMotion` ya pertenece al layout, se usa su lector/escritor existente,
+sin añadir ese campo a un layout antiguo ni cambiar su versión. La dependencia
+temporal de `vantare-ui` está autorizada por D2 y se separa en #1999; no se
+inicializa una aplicación GPUI. «Ocultar fuera de pista» y las frecuencias entran
+en Ajustes II.
+
+`bun scripts/settings-web.ts` comprueba guardado simulado, zoom, temas, paleta de
+comandos con barra recogida, conflicto/reintento, descarte, documento protegido e
+incompatibilidad. Ejecutar después del build; usa Chromium instalado con
+`bun x playwright-core install chromium`. En este servidor fijar
+`PLAYWRIGHT_BROWSERS_PATH=D:/VantareServer/tools/playwright-browsers`.
+
+Para comprobar el anfitrión real con documentos nuevos y una copia empaquetada QA:
+
+```powershell
+$env:VANTARE_HUB_HOST_BINARY='D:/VantareServer/qa/isa-1995-host-tools/vantare-hub-host.exe'
+$env:VANTARE_HUB_QA_ROOT='D:/VantareServer/qa/isa-1995-ajustes-general'
+$env:VANTARE_HUB_SETTINGS_TEST='1'
+$env:VANTARE_HUB_STARTUP_TEST='1'
+$env:VANTARE_HUB_SCALE='1'
+bun scripts/smoke-host.ts
+```
+
+La prueba de inicio crea metadatos inertes con el fixture canónico del instalador,
+un contexto Rust explícito, carpetas de shell bajo QA y una subclave exclusiva
+`Software\VantareInstallerMatrix\<id>`. No lanza los ejecutables de relleno ni
+escribe en las carpetas de inicio reales. La build del anfitrión debe tener
+`qa-e2e`, que exige ese contexto y rechaza usar el registro normal. Para documento
+protegido usar `VANTARE_HUB_SETTINGS_PROTECTED=1` sin la prueba de inicio.
+Las escalas admitidas son 1, 1.25 y 1.5. Los JSON de resultados separan las pruebas
+web de las que realmente escriben desde Rust.
+
+La copia del anfitrión QA debe prepararse dentro de la reserva de compilación con
+`native/hub-host/check.ps1 -ArtifactDirectory D:/VantareServer/qa/isa-1995-host-tools`,
+según el README del crate. Los smokes no consumen ejecutables de slots liberados.
+
+`scripts/smoke-settings.ts` contrasta el mismo flujo de Ajustes contra el paquete
+QA estable, sin copiar una generación. Se ejecuta con Node y acepta las mismas
+variables de escala y evidencia; `smoke-host.ts` sigue verificando la generación
+instalada y su señal de listo.

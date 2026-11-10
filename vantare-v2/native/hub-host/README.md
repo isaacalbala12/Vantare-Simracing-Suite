@@ -1,6 +1,6 @@
 # Anfitrión del Hub web — ADR 0107 / VANTA-138
 
-Proceso Rust sin GPUI que conserva la identidad `vantare-hub.exe` ante el núcleo.
+Proceso Rust que no inicializa una aplicación GPUI y conserva la identidad `vantare-hub.exe` ante el núcleo.
 Cargo produce `vantare-hub-host.exe` para evitar colisionar con el Hub congelado;
 la preparación de QA lo copia como `bin/vantare-hub.exe`. Todavía no sustituye al
 Hub distribuido. No cambia el núcleo, sus servicios ni sus derechos.
@@ -75,3 +75,14 @@ Windows 10 22H2 sigue pendiente de una máquina o VM de Isaac: ejecutar ambos
 smokes, comprobar el foco y cierre nativo, cambiar escala al 125/150 % y guardar
 las capturas junto con versión de Windows, SHA y resultados. No afirmar soporte
 probado en Windows 10 a partir de la ejecución del servidor.
+
+
+Ajustes I copia el almacén y las formas persistidas del Hub congelado, sin alterar
+sus archivos. Exporta `SettingsView` y parches tipados mediante ts-rs. El descarte
+recarga el documento actual; no guarda la intención que perdió un conflicto.
+Para el movimiento ya presente en layout se usa temporalmente `vantare-ui::layout`
+(D2 / #1999), conservando CAS y el resto del layout; no se modifica el crate UI ni
+su versión de GPUI. Ctrl L reutiliza el documento y el buzón del residente del
+Launcher y exige derechos frescos; el renderer no recibe rutas ni ejecutables.
+El inicio con Windows llama al motor del instalador existente. En una build
+`qa-e2e`, el motor solo admite contexto de registro/shell aislado explícito.

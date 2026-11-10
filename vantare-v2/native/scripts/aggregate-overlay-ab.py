@@ -66,7 +66,9 @@ def aggregate(root):
         if not collector or meta['profile'] != 'release':
             raise ValueError('Release and explicit collector_sha required')
         identities.add((collector, meta['core_sha256'], meta['recording_sha256'],
-                        meta['widgets'], meta['phases'], meta.get('replay_speed',1),meta.get('render_load',False)))
+                        meta['widgets'], meta['phases'], meta.get('replay_speed',1),meta.get('render_load',False),
+                        meta.get('gpu_frame_timing',False),meta.get('collector_script_sha256'),
+                        meta.get('stable_start_seconds'),meta.get('stable_end_seconds')))
         expected_label = 'A' if entry['slot'] in (0,3) else 'B'
         if entry['label'] != expected_label:
             raise ValueError('ABBA label does not match slot')

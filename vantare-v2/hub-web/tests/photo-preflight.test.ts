@@ -67,4 +67,10 @@ describe("photo preflight before allocating decoded pixels", () => {
     );
     expect(() => preflightPhoto(bytes.length + 1, bytes)).toThrow();
   });
+  it("rejects an unsupported first frame instead of trusting a later SOF", () => {
+    const first = jpeg(30000, 30000);
+    first[9] = 0xc1;
+    const bytes = new Uint8Array([...first, ...jpeg(1, 1).subarray(8)]);
+    expect(() => preflightPhoto(bytes.length, bytes)).toThrow();
+  });
 });

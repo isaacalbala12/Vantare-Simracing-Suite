@@ -69,6 +69,12 @@ export function preflightPhoto(size: number, bytes: Uint8Array): PhotoHeader {
         view.getUint16(offset + 3),
       );
     }
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      ![0xc4, 0xc8, 0xcc].includes(marker)
+    )
+      throw new Error("JPEG unsupported frame");
     offset += length;
   }
   throw new Error("JPEG missing frame");

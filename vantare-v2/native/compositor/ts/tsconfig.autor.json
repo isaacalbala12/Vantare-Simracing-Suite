@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "jsx": "preserve", "noEmit": true },
+  "include": ["pruebas/ejemplo.tsx", "receta/**/*.ts", "generado/**/*.ts"]
+}

@@ -1,0 +1,8 @@
+{
+  "sistema": 1, "nombre": "ejemplo", "fuentes": ["Inter"],
+  "color": { "texto": "#ffffff", "panel": "#17171b", "clase": { "hyper": "#ff0000", "lmp": "#0000ff", "gt": "#00ff00", "otra": "#aaaaaa" } },
+  "tipo": { "fila": { "familia": "Inter", "peso": 500, "tamano": 13 } },
+  "medida": { "fila": 24, "hueco": 4 },
+  "mov": { "aparecer": { "duracion": 200, "curva": "salida" } },
+  "efecto": { "panel": { "sombra": { "desenfoque": 4 } } }
+}

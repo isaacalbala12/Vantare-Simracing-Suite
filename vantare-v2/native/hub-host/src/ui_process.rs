@@ -721,6 +721,16 @@ impl Session {
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
+    fn launch_favorite(&self, pipe: &mut Pipe, id: u32) -> io::Result<()> {
+        let message = match crate::favorite::launch(&self.launcher, &self.current) {
+            Ok(accepted) => HostToUi::Response {
+                id,
+                result: Reply::LauncherFavorite { accepted },
+            },
+            Err(error) => HostToUi::Failure { id, error },
+        };
+        frame::write(pipe, &message)
+    }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
             Request::TestingAnswer { .. }
@@ -803,16 +813,7 @@ impl Session {
             }
             Request::LauncherGet {} => self.launcher_snapshot(pipe, id),
             Request::LauncherLaunch { .. } => self.launcher_request(pipe, id, request),
-            Request::LauncherFavorite {} => {
-                let message = match crate::favorite::launch(&self.launcher, &self.current) {
-                    Ok(accepted) => HostToUi::Response {
-                        id,
-                        result: Reply::LauncherFavorite { accepted },
-                    },
-                    Err(error) => HostToUi::Failure { id, error },
-                };
-                frame::write(pipe, &message)
-            }
+            Request::LauncherFavorite {} => self.launch_favorite(pipe, id),
             Request::SettingsGet {}
             | Request::SettingsDiscard {}
             | Request::SettingsUpdate { .. }

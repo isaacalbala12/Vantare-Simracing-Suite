@@ -24,6 +24,9 @@ Conservar los originales de A/B en subcarpetas. Copiar A como `vantare-overlays.
 
 Preparar estas variables con rutas de este PC: `$Slot`, `$EngineA`, `$EngineB`, `$Layout`, `$PresentMon`, `$Out`. `$Out` debe ser nuevo; no hay una unidad fija. El juego sigue abierto durante la prueba.
 
+Crear `$Out` antes de capturar: `New-Item -ItemType Directory -Path $Out`.
+Los comandos siguientes admiten Windows PowerShell 5.1 y PowerShell 7.
+
 Para mantener abierta la entrada del núcleo independiente del supervisor:
 
 ```powershell
@@ -32,7 +35,8 @@ $Info = [Diagnostics.ProcessStartInfo]::new((Join-Path $Slot 'vantare-core.exe')
 $Info.UseShellExecute = $false
 $Info.CreateNoWindow = $true
 $Info.RedirectStandardInput = $true
-foreach ($Arg in @('--live','--simulator','lmu','--pipe',$Pipe)) { $Info.ArgumentList.Add($Arg) }
+# Arguments conserva compatibilidad con Windows PowerShell 5.1; Pipe es el GUID anterior.
+$Info.Arguments = '--live --simulator lmu --pipe ' + $Pipe
 $Core = [Diagnostics.Process]::new()
 $Core.StartInfo = $Info
 if (!$Core.Start()) { throw 'No arrancó el núcleo de prueba' }
@@ -41,7 +45,13 @@ if (!$Core.Start()) { throw 'No arrancó el núcleo de prueba' }
 Tras copiar A o B al slot, iniciar el overlay con el mismo layout y pipe:
 
 ```powershell
-$Ui = Start-Process -FilePath (Join-Path $Slot 'vantare-overlays.exe') -ArgumentList @('--layout',$Layout,'--fuente',"pipe:$Pipe") -PassThru
+$LayoutFile = (Resolve-Path -LiteralPath $Layout).Path
+$UiInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $Slot 'vantare-overlays.exe'))
+$UiInfo.UseShellExecute = $false
+$UiInfo.CreateNoWindow = $true
+# Las comillas conservan las rutas del layout que contienen espacios.
+$UiInfo.Arguments = '--layout "' + $LayoutFile + '" --fuente "pipe:' + $Pipe + '"'
+$Ui = [Diagnostics.Process]::Start($UiInfo)
 ```
 
 Comprobar widgets y datos reales. Un aviso de derechos o componentes incompatibles invalida la prueba; no saltarse esa comprobación. Registrar hashes del slot antes de cada motor. Al acabar, salir del overlay y cerrar `$Core.StandardInput`; esperar su salida. No arrancar dos núcleos con el mismo pipe.

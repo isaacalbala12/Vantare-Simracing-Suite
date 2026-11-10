@@ -73,8 +73,12 @@ async function main() {
     crashes_decided: true,
     usage_decided: true,
   });
-  await writeFile(join(gpuiData, "privacy.json"), deniedPrivacy);
-  await writeFile(join(generation, "data/privacy.json"), deniedPrivacy);
+  const gpuiShared = join(gpuiData, "Vantare/native");
+  const hostShared = join(generation, "data/Vantare/native");
+  await mkdir(gpuiShared, { recursive: true });
+  await mkdir(hostShared, { recursive: true });
+  await writeFile(join(gpuiShared, "privacy.json"), deniedPrivacy);
+  await writeFile(join(hostShared, "privacy.json"), deniedPrivacy);
   const environment: Record<string, string> = {};
   for (const name of [
     "SystemRoot",

@@ -137,7 +137,7 @@ incompatibilidad. Ejecutar después del build; usa Chromium instalado con
 Para comprobar el anfitrión real con documentos nuevos y una copia empaquetada QA:
 
 ```powershell
-$env:VANTARE_HUB_HOST_BINARY='D:/VantareServer/targets/isa-1995-ajustes-general/debug/vantare-hub-host.exe'
+$env:VANTARE_HUB_HOST_BINARY='D:/VantareServer/qa/isa-1995-host-tools/vantare-hub-host.exe'
 $env:VANTARE_HUB_QA_ROOT='D:/VantareServer/qa/isa-1995-ajustes-general'
 $env:VANTARE_HUB_SETTINGS_TEST='1'
 $env:VANTARE_HUB_STARTUP_TEST='1'
@@ -153,3 +153,12 @@ escribe en las carpetas de inicio reales. La build del anfitrión debe tener
 protegido usar `VANTARE_HUB_SETTINGS_PROTECTED=1` sin la prueba de inicio.
 Las escalas admitidas son 1, 1.25 y 1.5. Los JSON de resultados separan las pruebas
 web de las que realmente escriben desde Rust.
+
+La copia del anfitrión QA debe prepararse dentro de la reserva de compilación con
+`native/hub-host/check.ps1 -ArtifactDirectory D:/VantareServer/qa/isa-1995-host-tools`,
+según el README del crate. Los smokes no consumen ejecutables de slots liberados.
+
+`scripts/smoke-settings.ts` contrasta el mismo flujo de Ajustes contra el paquete
+QA estable, sin copiar una generación. Se ejecuta con Node y acepta las mismas
+variables de escala y evidencia; `smoke-host.ts` sigue verificando la generación
+instalada y su señal de listo.

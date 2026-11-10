@@ -25,7 +25,7 @@ if (process.env.VANTARE_HUB_SETTINGS_PROTECTED === "1")
   await writeFile(join(hubData, "hub-settings.json"), '{"version":999}');
 await cp(
   process.env.VANTARE_HUB_HOST_BINARY ??
-    "D:/VantareServer/targets/isa-1995-puente/debug/vantare-hub-host.exe",
+    "D:/VantareServer/qa/isa-1995-host-tools/vantare-hub-host.exe",
   join(generation, "bin/vantare-hub.exe"),
 );
 await cp(
@@ -159,7 +159,12 @@ try {
   }));
   if (isolation.node !== "undefined") throw new Error("Renderer has Node");
   if (process.env.VANTARE_HUB_SETTINGS_TEST === "1")
-    await checkSettingsHost(page, hubData, evidence);
+    await checkSettingsHost(
+      page,
+      hubData,
+      evidence,
+      join(root, "installer-fixture"),
+    );
   const crash = process.env.VANTARE_HUB_QA_CRASH === "1";
   if (crash) {
     const debug = await context.newCDPSession(page);

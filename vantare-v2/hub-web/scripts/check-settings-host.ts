@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "playwright-core";
-import { record } from "../src/contract/validation-common";
-import { until } from "./wait-for";
+import { record } from "../src/contract/validation-common.ts";
+import { until } from "./wait-for.ts";
 export async function checkSettingsHost(
   page: Page,
   data: string,
   evidence: string,
+  installation?: string,
 ) {
   page.setDefaultTimeout(15000);
   const path = join(data, "hub-settings.json");
@@ -51,7 +52,8 @@ export async function checkSettingsHost(
       15000,
       "installer acknowledges startup",
     );
-    const root = join(data, "../../../../installer-fixture");
+    assert.ok(installation, "Explicit isolated installation required");
+    const root = installation;
     const context: unknown = JSON.parse(
       await readFile(join(root, "qa-context.json"), "utf8"),
     );

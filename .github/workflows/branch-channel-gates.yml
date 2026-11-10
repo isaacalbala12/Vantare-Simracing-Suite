@@ -344,7 +344,7 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           workspaces: |
-            vantare-v2/native -> target/gates
+            vantare-v2/native -> ${{ runner.temp }}/vantare-targets/ci
           shared-key: native-windows-gates
           # El binario de nextest se cachea aparte: no guardar ~/.cargo/bin dos veces.
           cache-bin: "false"
@@ -392,7 +392,7 @@ jobs:
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
-          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "$env:RUNNER_TEMP/qa-exclusion-target"
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
           if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
 
       - name: Native format and blocking gates
@@ -434,7 +434,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CARGO_BUILD_JOBS: '4'
         run: |
-          $env:CARGO_TARGET_DIR = Join-Path (Get-Location) 'native/target/gates'
+          $env:CARGO_TARGET_DIR = '${{ runner.temp }}/vantare-targets/ci'
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --example matrix-verifier --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --bin vantare-services --locked --offline -j 4

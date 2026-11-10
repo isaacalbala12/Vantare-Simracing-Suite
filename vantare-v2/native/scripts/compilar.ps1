@@ -18,6 +18,24 @@
 # CARGO_TARGET_DIR y CARGO_INCREMENTAL, pero NO CARGO_BUILD_JOBS, CARGO_MAKEFLAGS ni
 # CARGO_REGISTRIES_* (sccache 0.18, rust.rs; #1654 r12). Antes de fijarlo, medir (#1654).
 # VANTARE_SCCACHE=0 lo desactiva para repetir un fallo sospechoso sin caché.
+# Nested packaging builds reuse the live ancestor lease.
+if ($env:VANTARE_CARGO_QUEUE_OWNER) {
+    $ancestor = $PID
+    for ($depth = 0; $depth -lt 32 -and $ancestor -gt 0; $depth++) {
+        if ($ancestor -eq [int]$env:VANTARE_CARGO_QUEUE_OWNER) {
+            $cmd, $rest = $args
+            $global:LASTEXITCODE = 0
+            & $cmd @rest
+            exit $(if ($?) { [int]$global:LASTEXITCODE } else { [math]::Max(1, [int]$global:LASTEXITCODE) })
+        }
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId=$ancestor"
+        if (-not $process) { break }
+        $ancestor = $process.ParentProcessId
+    }
+}
+$env:SCCACHE_DIR = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-cache/sccache' } else { 'D:\VantareServer\cache\sccache' }
+$env:SCCACHE_CACHE_SIZE = '30G'
+$env:SCCACHE_SERVER_PORT = '4227'
 if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [int]($env:VANTARE_CARGO_SLOTS ?? 4)
 if ($slots -lt 1) { $slots = 1 }
@@ -96,6 +114,7 @@ if ($espera -gt 5) {
 }
 $code = 1
 try {
+    $env:VANTARE_CARGO_QUEUE_OWNER = [string]$PID
     $cmd, $rest = $args
     $global:LASTEXITCODE = 0
     & $cmd @rest
@@ -104,6 +123,7 @@ try {
     Write-Host "[cola] el comando falló: $_"
     $code = 1
 } finally {
+    Remove-Item Env:VANTARE_CARGO_QUEUE_OWNER -ErrorAction SilentlyContinue
     $held.ReleaseMutex(); $held.Dispose()
 }
 exit $code

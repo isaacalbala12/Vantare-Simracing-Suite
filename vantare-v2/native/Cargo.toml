@@ -3,7 +3,7 @@ resolver = "3"
 members = ["launcher", "profiling", "build-support", "domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy", "admin", "installer"]
 # DuckDB bundled solo se compila al pedir storage o los gates --workspace.
 # Admin es privado: compilarlo explícitamente y excluirlo del instalador público.
-default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services", "strategy"]
+default-members = ["domain", "runtime", "ipc", "ui", "engineer", "services", "strategy", "launcher"]
 
 [workspace.package]
 version = "0.0.0"
@@ -33,12 +33,11 @@ missing_panics_doc = "allow"
 [patch."https://github.com/zed-industries/zed"]
 gpui_windows = { path = "vendor/gpui_windows" }
 
-# Solo líneas de depuración: las trazas siguen dando fichero y línea, pero se
-# enlaza más rápido y los target/ ocupan ~25 % menos.
+# Dev/test sin símbolos, también en crates propios (#1993). Release no cambia.
 [profile.dev]
-debug = "line-tables-only"
+debug = 0
 
-# Los crates propios conservan fichero/línea; las dependencias no generan símbolos.
+# Para depurar solo crates propios: --config 'profile.dev.debug="line-tables-only"'.
 # Test hereda dev. Release mantiene su configuración de distribución.
 [profile.dev.package."*"]
 debug = 0

@@ -41,7 +41,6 @@ try {
       await page
         .getByRole("heading", { name: "Qué podrás hacer", exact: true })
         .waitFor();
-      await page.keyboard.press("Control+b");
       await page.evaluate(async () => {
         await document.fonts.ready;
       });

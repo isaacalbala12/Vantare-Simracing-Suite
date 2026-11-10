@@ -20,6 +20,7 @@ interface State {
   dirty: boolean;
   load(): Promise<void>;
   save(): Promise<void>;
+  retry(): Promise<void>;
   discard(): void;
   edit(fields: PilotFields | ((current: PilotFields) => PilotFields)): void;
 }
@@ -98,6 +99,33 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       toast.add({ title: t("pilot.saved") });
     });
   }
+  async function retry() {
+    if (!view || !draft || !isPilotFields(draft)) return;
+    const base = structuredClone(view.fields);
+    const intent = structuredClone(draft);
+    await run(async () => {
+      const latest = await client?.request({ method: "pilot.load" });
+      if (latest?.method !== "pilot.load") throw new Error("pilot unavailable");
+      const fields = structuredClone(latest.value.fields);
+      const apply = <K extends keyof PilotFields>(key: K) => {
+        if (JSON.stringify(base[key]) !== JSON.stringify(intent[key]))
+          fields[key] = structuredClone(intent[key]);
+      };
+      for (const key of Object.keys(base) as (keyof PilotFields)[]) apply(key);
+      setView(latest.value);
+      setDraft(fields);
+      const saved = await client?.request({
+        method: "pilot.save",
+        fields,
+        baseRevision: latest.value.revision,
+      });
+      if (saved?.method !== "pilot.save") throw new Error("pilot not saved");
+      setView(saved.value);
+      setDraft(structuredClone(saved.value.fields));
+      unsaved.current = false;
+      toast.add({ title: t("pilot.saved") });
+    });
+  }
   return (
     <Context.Provider
       value={{
@@ -108,6 +136,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         dirty,
         load,
         save,
+        retry,
         discard: () => {
           setDraft(view && structuredClone(view.fields));
           setError(false);

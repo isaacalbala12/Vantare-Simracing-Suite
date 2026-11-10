@@ -10,7 +10,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 5,
+      "version": 6,
       "window": {
         "height": 900,
         "minimized": false,
@@ -520,6 +520,7 @@
       "result": {
         "method": "privacy.get",
         "value": {
+          "cleanupBusy": false,
           "cleanupPending": false,
           "crashes": false,
           "crashesDecided": false,
@@ -536,6 +537,7 @@
       "result": {
         "method": "privacy.update",
         "value": {
+          "cleanupBusy": false,
           "cleanupPending": false,
           "crashes": false,
           "crashesDecided": false,
@@ -698,6 +700,7 @@
     {
       "error": {
         "current": {
+          "cleanupBusy": false,
           "cleanupPending": false,
           "crashes": false,
           "crashesDecided": false,
@@ -707,6 +710,23 @@
           "usageDecided": false
         },
         "kind": "privacyConflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "current": {
+          "cleanupBusy": false,
+          "cleanupPending": false,
+          "crashes": false,
+          "crashesDecided": false,
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "usage": false,
+          "usageDecided": false
+        },
+        "kind": "privacyCleanup"
       },
       "id": 1,
       "kind": "failure"
@@ -734,8 +754,8 @@
     },
     {
       "error": {
-        "expected": 5,
-        "found": 6,
+        "expected": 6,
+        "found": 7,
         "kind": "incompatible"
       },
       "id": 1,
@@ -825,7 +845,7 @@
   "ui": [
     {
       "kind": "hello",
-      "version": 5
+      "version": 6
     },
     {
       "kind": "subscribe",

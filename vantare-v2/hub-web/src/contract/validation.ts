@@ -178,7 +178,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
         "io",
       ])
         ? exact(error, ["kind"])
-        : error.kind === "privacyConflict"
+        : error.kind === "privacyConflict" || error.kind === "privacyCleanup"
           ? exact(error, ["kind", "current"]) && isPrivacy(error.current)
           : error.kind === "conflict"
             ? exact(error, ["kind", "current"]) && isSettings(error.current)

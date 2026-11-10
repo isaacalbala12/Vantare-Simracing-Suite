@@ -30,7 +30,7 @@ pub const METHODS: &[&str] = &[
     "notifications.test",
 ];
 pub const TOPICS: &[&str] = &["core", "simStatus", "updates"];
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -218,6 +218,9 @@ pub enum HostError {
         current: SettingsView,
     },
     PrivacyConflict {
+        current: crate::privacy::PrivacyView,
+    },
+    PrivacyCleanup {
         current: crate::privacy::PrivacyView,
     },
     Protected,

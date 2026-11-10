@@ -451,6 +451,28 @@ describe("Actualizaciones over the simulated host", () => {
 });
 
 describe("Privacidad and Diagnóstico over the simulated host", () => {
+  it("keeps choices reachable during a transient cleanup lock", async () => {
+    mount("privacidad-limpieza-ocupada", <Privacy />);
+    await screen.findByText(t("privacy.cleanupBusy"));
+    const choice = screen.getByRole("switch", { name: t("privacy.crashes") });
+    expect(choice.hasAttribute("disabled")).toBe(false);
+    await userEvent.setup().click(choice);
+    await waitFor(() =>
+      expect(choice.getAttribute("aria-checked")).toBe("true"),
+    );
+    expect(screen.queryByText(t("privacy.cleanupBusy"))).toBeNull();
+  });
+  it("acknowledges a durable choice with cleanup pending without conflict or unsaved guard", async () => {
+    const hook = mount("privacidad-limpieza-error", <Privacy />);
+    const choice = await screen.findByRole("switch", {
+      name: t("privacy.crashes"),
+    });
+    await userEvent.setup().click(choice);
+    await screen.findAllByText(t("privacy.cleanup"));
+    expect(choice.getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByText(t("privacy.conflict"))).toBeNull();
+    expect(await hook.guard("window")).toBe(true);
+  });
   it("saves an explicit local choice without enabling the other permission", async () => {
     const hook = mount("privacidad-mail", <Privacy />);
     await loaded(hook);
@@ -628,6 +650,25 @@ describe("pilot editor over the simulated host", () => {
         ).toBe("Cambio concurrente QA");
     },
   );
+  it("retries a stale pilot revision preserving both the draft and concurrent fields", async () => {
+    mount("cuenta-conflicto", <Account />);
+    const name = await screen.findByRole("textbox", { name: t("pilot.name") });
+    fireEvent.change(name, { target: { value: "Mi borrador" } });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: t("pilot.save") }));
+    await user.click(
+      await screen.findByRole("button", { name: t("pilot.retry") }),
+    );
+    await screen.findByText(t("pilot.saved"));
+    expect((name as HTMLInputElement).value).toBe("Mi borrador");
+    expect(
+      (
+        screen.getByRole("textbox", {
+          name: t("pilot.team"),
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("Cambio concurrente QA");
+  });
   it("retains draft when changing tabs and searches without accents", async () => {
     mount("cuenta-base", <Settings />);
     await screen.findByRole("tab", {

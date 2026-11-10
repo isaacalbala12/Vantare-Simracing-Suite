@@ -19,6 +19,7 @@ pub struct PrivacyView {
     pub revision: String,
     pub protected: bool,
     pub cleanup_pending: bool,
+    pub cleanup_busy: bool,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -44,6 +45,7 @@ pub struct State {
     observed: Option<Vec<u8>>,
     protected: bool,
     cleanup_pending: bool,
+    cleanup_busy: bool,
 }
 fn adopt(data: &Path, shared: &Path) -> Result<(), HostError> {
     if data == shared {
@@ -115,6 +117,7 @@ impl State {
             observed: None,
             protected: false,
             cleanup_pending: false,
+            cleanup_busy: false,
         };
         state.reload();
         state
@@ -135,7 +138,9 @@ impl State {
                 self.value = value;
                 self.observed = bytes;
                 self.protected = false;
-                self.cleanup_pending = value.discard_disabled(root).is_err();
+                let cleanup = value.discard_disabled(root);
+                self.cleanup_busy = matches!(cleanup, Err(vantare_services::Error::Busy));
+                self.cleanup_pending = cleanup.is_err();
             }
             Err(_) => self.protect(),
         }
@@ -145,6 +150,7 @@ impl State {
         self.observed = None;
         self.protected = true;
         self.cleanup_pending = false;
+        self.cleanup_busy = false;
     }
     pub fn view(&self) -> PrivacyView {
         PrivacyView {
@@ -155,6 +161,7 @@ impl State {
             revision: vantare_services::content_hash(self.observed.as_deref().unwrap_or_default()),
             protected: self.protected,
             cleanup_pending: self.cleanup_pending,
+            cleanup_busy: self.cleanup_busy,
         }
     }
     pub fn refresh(&mut self) -> PrivacyView {
@@ -208,10 +215,20 @@ impl State {
                 self.value = value;
                 self.observed = saved;
                 self.cleanup_pending = false;
+                self.cleanup_busy = false;
                 Ok(self.view())
             }
             Err(ConsentSaveError::Busy) => Err(HostError::Busy),
             Err(ConsentSaveError::Failed(_)) => {
+                if let Some(bytes) = saved {
+                    self.value = serde_json::from_slice(&bytes).map_err(|_| HostError::Io)?;
+                    self.observed = Some(bytes);
+                    self.cleanup_pending = true;
+                    self.cleanup_busy = false;
+                    return Err(HostError::PrivacyCleanup {
+                        current: self.view(),
+                    });
+                }
                 let before = self.observed.clone();
                 self.reload();
                 if self.protected {
@@ -231,6 +248,66 @@ impl State {
 mod tests {
     use super::*;
     use crate::test_support::Root;
+    #[test]
+    fn a_busy_cleanup_does_not_protect_the_document_and_can_retry_without_reload() {
+        let root = Root::new();
+        let mut state = State::isolated(&root.path);
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(root.path.join("consent.lock"))
+            .expect("lock");
+        lock.try_lock().expect("exclusive consent");
+        let view = state.refresh();
+        assert!(view.cleanup_pending && view.cleanup_busy && !view.protected);
+        assert!(matches!(
+            state.update(PrivacyPatch::Crashes(true), &view.revision),
+            Err(HostError::Busy)
+        ));
+        drop(lock);
+        let saved = state
+            .update(PrivacyPatch::Crashes(true), &view.revision)
+            .expect("retry without reload");
+        assert!(saved.crashes && !saved.cleanup_busy && !saved.cleanup_pending);
+    }
+    #[test]
+    fn a_durable_choice_with_failed_cleanup_is_not_a_conflict() {
+        let root = Root::new();
+        let mut state = State::isolated(&root.path);
+        std::fs::create_dir(root.path.join("anonymous-id")).expect("inert cleanup obstruction");
+        let result = state.update(PrivacyPatch::Crashes(true), &state.view().revision);
+        assert!(
+            matches!(result, Err(HostError::PrivacyCleanup { current }) if current.crashes && current.cleanup_pending)
+        );
+        assert!(Privacy::load(&root.path).expect("durable consent").crashes);
+        std::fs::remove_dir(root.path.join("anonymous-id")).expect("remove obstruction");
+        assert!(!state.refresh().cleanup_pending);
+    }
+    #[test]
+    fn persist_failure_preserves_the_document_and_confirmed_choice() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = Root::new();
+        let mut state = State::isolated(&root.path);
+        let view = state
+            .update(PrivacyPatch::Crashes(true), &state.view().revision)
+            .expect("initial choice");
+        let path = root.path.join(PRIVACY_FILE);
+        let bytes = std::fs::read(&path).expect("initial bytes");
+        let guard = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&path)
+            .expect("deny atomic replacement");
+        assert!(matches!(
+            state.update(PrivacyPatch::Crashes(false), &view.revision),
+            Err(HostError::Io)
+        ));
+        assert_eq!(state.view(), view);
+        assert_eq!(std::fs::read(&path).expect("preserved bytes"), bytes);
+        drop(guard);
+    }
     #[test]
     fn explicit_choices_cas_and_cleanup_preserve_the_other_permission() {
         let root = Root::new();

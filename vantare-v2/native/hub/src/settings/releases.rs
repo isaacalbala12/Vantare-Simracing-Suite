@@ -13,8 +13,9 @@ pub(crate) struct Release {
 }
 
 pub(super) fn news() -> Result<Vec<Release>, &'static str> {
-    let releases: Vec<Release> = serde_json::from_str(include_str!("customer-news.json"))
-        .map_err(|_| "Notas de versión inválidas")?;
+    let releases: Vec<Release> =
+        serde_json::from_str(include_str!("../../../resources/customer-news.json"))
+            .map_err(|_| "Notas de versión inválidas")?;
     releases
         .into_iter()
         .map(|release| {

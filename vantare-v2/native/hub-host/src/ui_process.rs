@@ -249,10 +249,13 @@ fn settings_response(
     frame::write(pipe, &message)
 }
 enum RemoteKind {
+    PilotLoad,
+    PilotSave,
     MailGet,
     MailSet,
 }
 struct Session {
+    pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
     diagnostic: crate::diagnostics::Observed,
     remote: Option<(u32, RemoteKind)>,
@@ -300,10 +303,26 @@ impl Session {
                     Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
                 ) if expected == id => {
                     let value = crate::privacy::MailView { consent };
-                    Ok(match kind {
-                        RemoteKind::MailGet => Reply::MailGet { value },
-                        RemoteKind::MailSet => Reply::MailSet { value },
-                    })
+                    match kind {
+                        RemoteKind::MailGet => Ok(Reply::MailGet { value }),
+                        RemoteKind::MailSet => Ok(Reply::MailSet { value }),
+                        _ => Err(HostError::Denied),
+                    }
+                }
+                (
+                    Some((expected, kind)),
+                    Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
+                ) if expected == id => {
+                    let value = crate::pilot::view(&state);
+                    let reply = match kind {
+                        RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
+                        RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
+                        _ => Err(HostError::Denied),
+                    };
+                    if reply.is_ok() {
+                        self.pilot = Some(state);
+                    }
+                    reply
                 }
                 (_, Err(error)) => Err(error),
                 _ => Err(HostError::Denied),
@@ -365,6 +384,9 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::PilotLoad {} | Request::PilotSave { .. } => {
+                self.pilot_request(pipe, id, request)
+            }
             Request::PrivacyPolicy {} => self.respond(
                 pipe,
                 id,
@@ -421,15 +443,10 @@ impl Session {
                 };
                 frame::write(pipe, &message)
             }
-            Request::SettingsDiscard {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::SettingsDiscard {
-                        value: self.settings.discard(),
-                    },
-                },
-            ),
+            Request::SettingsGet {}
+            | Request::SettingsDiscard {}
+            | Request::SettingsUpdate { .. }
+            | Request::SettingsRetry {} => self.settings_request(pipe, id, request),
             Request::WindowClose {} => self.request_close(pipe, CloseReason::Window),
             // Native notifications are a platform UI action handled by Electron.
             Request::NotificationTest {} => frame::write(
@@ -437,6 +454,19 @@ impl Session {
                 &HostToUi::Failure {
                     id,
                     error: HostError::Unsupported,
+                },
+            ),
+        }
+    }
+    fn settings_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        match request {
+            Request::SettingsDiscard {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::SettingsDiscard {
+                        value: self.settings.discard(),
+                    },
                 },
             ),
             Request::SettingsGet {} => {
@@ -464,6 +494,7 @@ impl Session {
                     Reply::SettingsRetry { value }
                 })
             }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
     fn restart_update_when(
@@ -538,6 +569,34 @@ impl Session {
             result,
             crate::diagnostics::DiagnosticSection::Privacy,
         )
+    }
+    fn pilot_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        let intent = match request {
+            Request::PilotLoad {} => Ok((
+                RemoteKind::PilotLoad,
+                vantare_ipc::services_protocol::Command::PilotLoad,
+            )),
+            Request::PilotSave {
+                fields,
+                base_revision,
+            } => crate::pilot::save(self.pilot.as_ref(), fields, base_revision)
+                .map(|command| (RemoteKind::PilotSave, command)),
+            _ => Err(HostError::Denied),
+        };
+        let result = intent.and_then(|(kind, command)| {
+            self.core.request(id, command)?;
+            self.remote = Some((id, kind));
+            Ok(())
+        });
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.respond(
+                pipe,
+                id,
+                Err(error),
+                crate::diagnostics::DiagnosticSection::Services,
+            ),
+        }
     }
     fn mail_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         use vantare_ipc::services_protocol::{Command, MailSource};
@@ -692,6 +751,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        pilot: None,
         privacy: crate::privacy::State::open(&args.data),
         diagnostic: crate::diagnostics::Observed::default(),
         remote: None,

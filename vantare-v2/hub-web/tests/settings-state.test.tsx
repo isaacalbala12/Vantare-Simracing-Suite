@@ -10,9 +10,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HostProvider } from "../src/renderer/app/Host";
+import { HostProvider, useHost } from "../src/renderer/app/Host";
+import { PilotProvider } from "../src/renderer/app/PilotState";
 import {
   SettingsProvider,
   useSettings,
@@ -21,11 +22,13 @@ import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { Client } from "../src/renderer/bridge/client";
 import { t } from "../src/renderer/i18n/es";
+import { Account } from "../src/renderer/screens/settings/Account";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
 import { Diagnostics } from "../src/renderer/screens/settings/Diagnostics";
 import { General } from "../src/renderer/screens/settings/General";
 import { Performance } from "../src/renderer/screens/settings/Performance";
 import { Privacy } from "../src/renderer/screens/settings/Privacy";
+import { Settings } from "../src/renderer/screens/settings/Settings";
 import { Shortcuts } from "../src/renderer/screens/settings/Shortcuts";
 import { Updates } from "../src/renderer/screens/settings/Updates";
 import {
@@ -75,10 +78,12 @@ function mount(scene = "ajustes-base", content?: ReactNode) {
             <CSPProvider disableStyleElements>
               <TooltipProvider delay={0}>
                 <ToastProvider>
-                  <SettingsProvider>
-                    {content}
-                    {children}
-                  </SettingsProvider>
+                  <PilotProvider>
+                    <SettingsProvider>
+                      {content}
+                      {children}
+                    </SettingsProvider>
+                  </PilotProvider>
                   <ToastViewport closeLabel="Cerrar aviso" />
                 </ToastProvider>
               </TooltipProvider>
@@ -558,5 +563,165 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
         ([value]) => value.method === "diagnostics.copy",
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe("pilot editor over the simulated host", () => {
+  it("saves with the loaded revision, reloads the ACK and discards later edits", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    mount("cuenta-base", <Account />);
+    const name = await screen.findByRole("textbox", { name: t("pilot.name") });
+    await waitFor(() =>
+      expect((name as HTMLInputElement).value).toBe("Piloto QA"),
+    );
+    fireEvent.change(name, { target: { value: "Ana QA" } });
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: t("pilot.save") }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t("pilot.save") })
+          .hasAttribute("disabled"),
+      ).toBe(true),
+    );
+    expect(
+      request.mock.calls.some(
+        ([r]) =>
+          r.method === "pilot.save" &&
+          r.baseRevision === "1" &&
+          r.fields.publicName === "Ana QA",
+      ),
+    ).toBe(true);
+    fireEvent.change(name, { target: { value: "Borrador" } });
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: t("pilot.discard") }));
+    expect((name as HTMLInputElement).value).toBe("Ana QA");
+  });
+  it.each(["cuenta-error", "cuenta-ocupada", "cuenta-conflicto"])(
+    "preserves the draft after %s and reloads only explicitly",
+    async (scene) => {
+      mount(scene, <Account />);
+      const name = await screen.findByRole("textbox", {
+        name: t("pilot.name"),
+      });
+      fireEvent.change(name, { target: { value: "Borrador QA" } });
+      await userEvent
+        .setup()
+        .click(screen.getByRole("button", { name: t("pilot.save") }));
+      await screen.findAllByText(t("pilot.failed"));
+      expect((name as HTMLInputElement).value).toBe("Borrador QA");
+      await userEvent
+        .setup()
+        .click(screen.getByRole("button", { name: t("pilot.reload") }));
+      await waitFor(() =>
+        expect((name as HTMLInputElement).value).toBe("Piloto QA"),
+      );
+      if (scene === "cuenta-conflicto")
+        expect(
+          (
+            screen.getByRole("textbox", {
+              name: t("pilot.team"),
+            }) as HTMLInputElement
+          ).value,
+        ).toBe("Cambio concurrente QA");
+    },
+  );
+  it("retains draft when changing tabs and searches without accents", async () => {
+    mount("cuenta-base", <Settings />);
+    await screen.findByRole("tab", {
+      name: t("settings.account"),
+    });
+    await userEvent
+      .setup()
+      .click(screen.getByRole("tab", { name: t("settings.account") }));
+    const name = await screen.findByRole("textbox", { name: t("pilot.name") });
+    fireEvent.change(name, { target: { value: "Pendiente QA" } });
+    await userEvent
+      .setup()
+      .click(screen.getByRole("tab", { name: t("settings.general") }));
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: t("settings.search") }),
+      { target: { value: "pais" } },
+    );
+    const restored = await screen.findByRole("textbox", {
+      name: t("pilot.name"),
+    });
+    expect((restored as HTMLInputElement).value).toBe("Pendiente QA");
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: t("settings.search") }),
+      { target: { value: "zzzzzz" } },
+    );
+    await screen.findByText(t("settings.noResults"));
+    await screen.findByText(t("pilot.unsaved"));
+    expect(screen.getByText(`${t("settings.results")}: 0`)).toBeTruthy();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: t("settings.clearSearch") }));
+    expect(screen.getAllByRole("tab")).toHaveLength(8);
+  });
+  it("keeps a reachable reload action when the core is disconnected", async () => {
+    mount("cuenta-desconectada", <Account />);
+    await screen.findByText(t("pilot.unavailable"));
+    const reload = screen.getByRole("button", { name: t("settings.reload") });
+    reload.focus();
+    expect(document.activeElement).toBe(reload);
+  });
+  it("vetoes ordinary close for a dirty draft but lets Live discard it", async () => {
+    const guards: Guard[] = [];
+    const add = Client.prototype.addCloseGuard;
+    vi.spyOn(Client.prototype, "addCloseGuard").mockImplementation(function (
+      this: Client,
+      guard,
+    ) {
+      guards.push(guard);
+      return add.call(this, guard);
+    });
+    mount("cuenta-base", <Account />);
+    const name = await screen.findByRole("textbox", { name: t("pilot.name") });
+    fireEvent.change(name, { target: { value: "Pendiente" } });
+    expect(await guards[0]("window")).toBe(false);
+    let allowed = false;
+    await act(async () => {
+      allowed = await guards[0]("live");
+    });
+    expect(allowed).toBe(true);
+  });
+});
+
+function RestartVeto() {
+  const { client } = useHost();
+  useEffect(() => client?.addCloseGuard(() => false), [client]);
+  return null;
+}
+describe("restart feedback", () => {
+  it("announces a veto and makes restart available again without a timer", async () => {
+    mount(
+      "actualizacion-lista",
+      <>
+        <RestartVeto />
+        <Updates />
+      </>,
+    );
+    const restart = await screen.findByRole("button", {
+      name: t("updates.restart"),
+    });
+    await userEvent.setup().click(restart);
+    await screen.findByText(t("updates.restartVeto"));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t("updates.restart") })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
+  });
+  it("shows closing after accepted restart until the real window closes", async () => {
+    mount("actualizacion-lista", <Updates />);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: t("updates.restart") }));
+    await screen.findByRole("button", { name: t("updates.restarting") });
   });
 });

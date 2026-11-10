@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { HostProvider, useHost } from "./app/Host";
+import { PilotProvider } from "./app/PilotState";
 import { SettingsProvider } from "./app/SettingsState";
 import { Shell } from "./app/Shell";
 import { UiProvider } from "./app/UiState";
@@ -36,7 +37,9 @@ function Content() {
     );
   return (
     <SettingsProvider>
-      <Shell />
+      <PilotProvider>
+        <Shell />
+      </PilotProvider>
     </SettingsProvider>
   );
 }

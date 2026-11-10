@@ -1,3 +1,61 @@
+## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
+
+[#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),
+area:ui / GitHub Project Vantare / Plane VANTA-138, entrega hasta Ajustes **Por
+revisar**. ADR 0107 y `D:/VantareServer/evidence/hub-web/DISENO.md` son el plan.
+El anfitrión conserva el nombre vantare-hub.exe, usa los pipes existentes y no
+compila ni enlaza GPUI en su construcción aislada. Protocolo final 5: interfaz
+y anfitrión deben proceder de la misma generación.
+
+El orquestador integró esqueleto #1998, tokens #2002, componentes #2005, puente
+#2008, General/Apariencia #2011, endurecimiento #2014 y Rendimiento/Atajos #2015.
+Último nightly verificado: **263954e2a**, squash de Actualizaciones #2016. Sin
+merge propio, promoción a testers/master, release, instalación ni despliegue.
+
+[#2017](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2017),
+Privacidad/Diagnóstico, head f27942161, rebasado con --onto sobre ese nightly;
+CI pendiente a esta verificación. Incluye el P2 de corrupción: borra cualquier
+sí anterior y protege el documento sin reescribirlo. 54 tests Rust pasan.
+[#2019](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2019),
+Cuenta/búsqueda, apilado sobre #2017, cierra las ocho secciones y añade feedback
+del veto de reinicio mediante el puente. Rama vantareapp/isa-1995-cuenta-busqueda,
+worktree propio D:/VantareServer/worktrees/isa-1995-endurecer-anfitrion.
+Código validado **5cc4de7dd97deaff8f1ef8d7910cbb1dd744a7a3**; árbol native
+**2214d1070f98519d7f99b213e7413743a982dfb4**. El cierre documental conserva ese
+árbol. HEAD final y CI se consultan en el PR y en #1995; review de Cuenta pendiente.
+
+Formato, Clippy -D warnings, corpus/tipos generados, arquitectura y build QA:
+**56 tests Rust y 180 web PASS**. Chromium Windows y axe: General, Apariencia,
+Rendimiento, Atajos, Actualizaciones, Privacidad, Diagnóstico y Cuenta; temas
+claros/oscuros. Paquete Windows con Rust: CAS/reintento, restauración de ajustes,
+consentimiento/revocación e informe/copia. Supervisor, núcleo y servicios QA
+reales: guardar y reabrir perfil/foto; Live con borrador cierra con 0. Backend
+solo loopback, raíz pública RFC8032 de QA, sin credenciales ni cuentas reales.
+Probe solo no demuestra que el helper esté instalado ni que admita PilotLoad.
+
+82 capturas GPUI de partida y una adicional del editor del piloto, sin modificar
+el Hub congelado. Comparación manual de las ocho secciones, sin igualdad de
+píxeles, en `D:/VantareServer/evidence/hub-web/comparacion-ajustes.html`.
+Resultados y fallos anteriores conservados en `settings-complete-*`,
+`settings-final-*`, `account-*`, `updates-review-*` y `privacy-review-*`.
+Windows 11 probado; Windows 10 real queda para la máquina/VM de Isaac. Arranque
+y memoria aún no medidos; el paso opcional se pospone.
+
+Antes de instalar: cubrir **hub-ui/** (Electron, DLL y app.asar) por tamaño/hash
+en el manifiesto igual que bin/, manteniendo el test de pipe real en CI. No se
+ha integrado el paquete en el instalador. Siguen #1999 (contrato de layout
+independiente de GPUI), #2000 (reutilizar archivos de Electron por hash) y
+[#2018](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2018)
+(P3 menores de privacidad/notas, ya enlazados al Project Vantare). El Hub congelado
+solo recibió el exportador histórico de tokens; native/ui solo recibió el test
+inverso de paridad autorizado por el orquestador, sin tocar GPUI ni su dependencia.
+
+Siguiente paso: integrar #2017 y rebasar #2019 con --onto; revisión de Sonnet y
+prueba de Isaac. Después, acceso/cuenta de sesión y onboarding según el diseño;
+no confundir el editor local del piloto con el login. Los slots de compilación
+son compartidos y los gestiona la cola. El target antiguo isa-1995-tokens quedó
+conservado porque la revisión automática rechazó su borrado; no se reintentó.
+
 ## VANTA-137 · Cierre de compilación Rust y CI (2026-11-10)
 
 [#1993](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1993),

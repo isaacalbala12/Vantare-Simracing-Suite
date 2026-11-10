@@ -24,6 +24,7 @@ export class Client {
   private extraGuards = new Set<
     (reason: CloseReason) => boolean | Promise<boolean>
   >();
+  private vetoListeners = new Set<(reason: CloseReason) => void>();
   private closeGuard?: (reason: CloseReason) => boolean | Promise<boolean>;
   private pending = new Map<
     number,
@@ -78,6 +79,15 @@ export class Client {
       port2.onmessage = ({ data }) => {
         const response = mockReply(data);
         if (response) port2.postMessage(response);
+        if (
+          response?.kind === "response" &&
+          response.result.method === "updates.restart" &&
+          response.result.accepted
+        )
+          port2.postMessage({
+            kind: "closeRequested",
+            reason: "restart",
+          } satisfies HostToUi);
       };
       port2.start();
       return new Client(
@@ -124,6 +134,12 @@ export class Client {
     this.listeners.add(receive);
     return () => this.listeners.delete(receive);
   }
+  onCloseVeto(receive: (reason: CloseReason) => void) {
+    this.vetoListeners.add(receive);
+    return () => {
+      this.vetoListeners.delete(receive);
+    };
+  }
   setCloseGuard(guard: (reason: CloseReason) => boolean | Promise<boolean>) {
     this.closeGuard = guard;
   }
@@ -156,6 +172,7 @@ export class Client {
           this.closeAnswered = false;
         }
         this.send({ kind: "closeAnswer", allow });
+        if (!allow) for (const receive of this.vetoListeners) receive(reason);
       });
   }
   request(
@@ -194,6 +211,7 @@ export class Client {
     this.pending.clear();
     this.listeners.clear();
     this.extraGuards.clear();
+    this.vetoListeners.clear();
     this.port.close();
     this.cleanup();
   }

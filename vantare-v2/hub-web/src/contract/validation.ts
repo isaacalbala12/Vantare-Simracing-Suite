@@ -8,6 +8,7 @@ import {
   topics,
   type UiToHost,
 } from "./generated/contract";
+import { isPilot, isPilotFields, isPilotRevision } from "./pilot-validation";
 import { isDiagnostic, isPrivacy, isPrivacyPatch } from "./privacy-validation";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
 import { isUpdates } from "./updates-validation";
@@ -36,20 +37,24 @@ export function isUiMessage(value: unknown): value is UiToHost {
         integer(value.id) &&
         record(value.request) &&
         oneOf(value.request.method, methods) &&
-        (value.request.method === "privacy.update"
-          ? exact(value.request, ["method", "patch", "baseRevision"]) &&
-            isPrivacyPatch(value.request.patch) &&
-            typeof value.request.baseRevision === "string" &&
-            /^[0-9a-f]{64}$/.test(value.request.baseRevision)
-          : value.request.method === "mail.set"
-            ? exact(value.request, ["method", "consent"]) &&
-              typeof value.request.consent === "boolean"
-            : value.request.method === "settings.update"
-              ? exact(value.request, ["method", "patch", "baseRevision"]) &&
-                isSettingsPatch(value.request.patch) &&
-                typeof value.request.baseRevision === "string" &&
-                /^[0-9a-f]{64}$/.test(value.request.baseRevision)
-              : exact(value.request, ["method"]))
+        (value.request.method === "pilot.save"
+          ? exact(value.request, ["method", "fields", "baseRevision"]) &&
+            isPilotFields(value.request.fields) &&
+            isPilotRevision(value.request.baseRevision)
+          : value.request.method === "privacy.update"
+            ? exact(value.request, ["method", "patch", "baseRevision"]) &&
+              isPrivacyPatch(value.request.patch) &&
+              typeof value.request.baseRevision === "string" &&
+              /^[0-9a-f]{64}$/.test(value.request.baseRevision)
+            : value.request.method === "mail.set"
+              ? exact(value.request, ["method", "consent"]) &&
+                typeof value.request.consent === "boolean"
+              : value.request.method === "settings.update"
+                ? exact(value.request, ["method", "patch", "baseRevision"]) &&
+                  isSettingsPatch(value.request.patch) &&
+                  typeof value.request.baseRevision === "string" &&
+                  /^[0-9a-f]{64}$/.test(value.request.baseRevision)
+                : exact(value.request, ["method"]))
       );
     default:
       return false;
@@ -95,6 +100,8 @@ export function isHostMessage(value: unknown): value is HostToUi {
       )
         return false;
       const result = value.result;
+      if (result.method === "pilot.load" || result.method === "pilot.save")
+        return exact(result, ["method", "value"]) && isPilot(result.value);
       if (result.method === "privacy.get" || result.method === "privacy.update")
         return exact(result, ["method", "value"]) && isPrivacy(result.value);
       if (result.method === "mail.get" || result.method === "mail.set")

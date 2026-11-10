@@ -364,6 +364,7 @@ fn restart_peer(pipe: &mut Pipe, mode: &str) {
 }
 fn restart_session(root: &Path, photo: &str) -> Session {
     Session {
+        pilot: None,
         privacy: crate::privacy::State::isolated(root),
         diagnostic: crate::diagnostics::Observed::default(),
         remote: None,

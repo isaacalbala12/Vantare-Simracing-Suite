@@ -432,7 +432,7 @@ impl DemoData {
     }
 }
 
-const TESTING_CAPTURE_SCREENS: [&str; 3] = [
+const TESTING_CAPTURE_SCREENS: [&str; 4] = [
     "testing-center-resumen",
     "testing-center-triage",
     "testing-center-cuestionarios",

@@ -179,6 +179,13 @@ pub enum Operacion {
     },
     /// Destruye la capa y todas sus hijas.
     Quitar { id: CapaId },
+    /// Fija el orden z de las hijas de `padre` (None = raíz de la salida):
+    /// `hijos` contiene TODAS sus hijas existentes (vivas y fantasmas), de la
+    /// de más abajo a la de más arriba. No repinta ni recrea capas.
+    Ordenar {
+        padre: Option<CapaId>,
+        hijos: Vec<CapaId>,
+    },
 }
 
 /// Lote de operaciones de un instante, en el orden en que deben aplicarse.

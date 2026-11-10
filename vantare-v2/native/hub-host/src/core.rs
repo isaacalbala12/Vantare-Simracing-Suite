@@ -15,6 +15,9 @@ mod client;
 pub struct Core {
     photos: Subscriber,
     rights: control::Feed,
+    requests: std::sync::mpsc::SyncSender<(u32,vantare_ipc::services_protocol::Command)>,
+    replies: std::sync::mpsc::Receiver<(u32,Result<vantare_ipc::services_protocol::Reply,crate::protocol::HostError>)>,
+    pending: bool,
     service_ok: Arc<AtomicBool>,
     stop: Arc<Event>,
     worker: Option<JoinHandle<()>>,
@@ -36,31 +39,27 @@ impl Core {
         let cancel = Arc::clone(&stop);
         let supervisor = directory.join("vantare.exe");
         let photo = photo.to_owned();
-        let worker = std::thread::Builder::new()
-            .name("hub-supervisor-link".into())
-            .spawn(move || {
-                let mut connection = None;
-                while !cancel.is_set() {
-                    if connection.is_none() {
-                        connection =
-                            client::Client::start(&supervisor, &photo, Arc::clone(&cancel)).ok();
-                    }
-                    let ok = connection.as_mut().is_some_and(|client| {
-                        client
-                            .request(vantare_ipc::services_protocol::Command::Probe)
-                            .is_ok()
-                    });
-                    target.store(ok, Ordering::Release);
-                    if !ok {
-                        connection = None;
-                    }
-                    if cancel.wait(Duration::from_secs(2)) {
-                        break;
-                    }
+        let (requests,incoming)=std::sync::mpsc::sync_channel(1);
+        let (outgoing,replies)=std::sync::mpsc::channel();
+        let worker=std::thread::Builder::new().name("hub-supervisor-link".into()).spawn(move||{
+            let mut connection=None;
+            while !cancel.is_set(){
+                if connection.is_none(){connection=client::Client::start(&supervisor,&photo,Arc::clone(&cancel)).ok();}
+                let ok=connection.as_mut().is_some_and(|client|client.request(vantare_ipc::services_protocol::Command::Probe).is_ok());
+                target.store(ok,Ordering::Release);if !ok{connection=None;}
+                match incoming.recv_timeout(Duration::from_millis(250)){
+                    Ok((id,command))=>{
+                        let result=connection.as_mut().ok_or(crate::protocol::HostError::CoreUnavailable).and_then(|client|client.request(command).map_err(|_|crate::protocol::HostError::CoreUnavailable));
+                        if outgoing.send((id,result)).is_err(){break;}
+                    },
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected)=>break,
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout)=>{}
                 }
-                target.store(false, Ordering::Release);
-            })?;
+            }
+            target.store(false,Ordering::Release);
+        })?;
         Ok(Self {
+            requests,replies,pending:false,
             photos,
             rights,
             service_ok,
@@ -69,6 +68,14 @@ impl Core {
             last_activity: 0,
             last_photo: None,
         })
+    }
+    pub fn request(&mut self,id:u32,command:vantare_ipc::services_protocol::Command)->Result<(),crate::protocol::HostError>{
+        if self.pending{return Err(crate::protocol::HostError::Busy);}
+        if !self.service_ok.load(Ordering::Acquire){return Err(crate::protocol::HostError::CoreUnavailable);}
+        self.requests.try_send((id,command)).map_err(|_|crate::protocol::HostError::Busy)?;self.pending=true;Ok(())
+    }
+    pub fn reply(&mut self)->Option<(u32,Result<vantare_ipc::services_protocol::Reply,crate::protocol::HostError>)>{
+        let result=self.replies.try_recv().ok()?;self.pending=false;Some(result)
     }
     pub fn status(&mut self) -> CoreStatus {
         let activity = self.photos.activity();

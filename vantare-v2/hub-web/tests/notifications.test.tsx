@@ -148,7 +148,7 @@ it("renders accessible panel actions and the empty state", async () => {
   ).toBe(true);
 });
 
-it("registers full-view filters in the frame and keeps their panel linked by keyboard", async () => {
+it("keeps full-view filters inside the notification card and usable by keyboard", async () => {
   const user = userEvent.setup();
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -163,16 +163,18 @@ it("registers full-view filters in the frame and keeps their panel linked by key
     </QueryClientProvider>,
   );
   expect(
-    screen.getByRole("tab", { name: "Todas" }).getAttribute("aria-selected"),
+    screen.getByRole("button", { name: "Todas" }).getAttribute("aria-pressed"),
   ).toBe("true");
-  expect(screen.queryByRole("tab", { name: "Beta" })).toBeNull();
-  await user.click(screen.getByRole("tab", { name: "Sin leer" }));
-  await user.keyboard("{End}");
-  const tab = screen.getByRole("tab", { name: "Sistema" });
-  expect(tab.getAttribute("aria-selected")).toBe("true");
-  expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(
-    tab.id,
-  );
+  expect(screen.queryByRole("button", { name: "Beta" })).toBeNull();
+  const unread = screen.getByRole("button", { name: "Sin leer · 0" });
+  expect(
+    screen.getByRole("region", { name: "Notificaciones" }).contains(unread),
+  ).toBe(true);
+  expect(screen.queryByRole("tab")).toBeNull();
+  await user.click(unread);
+  await user.keyboard("{End}{Enter}");
+  const system = screen.getByRole("button", { name: "Sistema" });
+  expect(system.getAttribute("aria-pressed")).toBe("true");
 });
 
 it("observes only explicit unexpected failures and test replies, deduplicating both", () => {
@@ -341,9 +343,9 @@ it("returns Beta to All when tester access is lost", async () => {
     action: "testing:reports",
   };
   const view = render(<NotificationsHarness access={access} input={input} />);
-  await user.click(await screen.findByRole("tab", { name: "Beta" }));
+  await user.click(await screen.findByRole("button", { name: "Beta" }));
   expect(
-    screen.getByRole("tab", { name: "Beta" }).getAttribute("aria-selected"),
+    screen.getByRole("button", { name: "Beta" }).getAttribute("aria-pressed"),
   ).toBe("true");
   view.rerender(
     <NotificationsHarness
@@ -353,10 +355,12 @@ it("returns Beta to All when tester access is lost", async () => {
   );
   await waitFor(() =>
     expect(
-      screen.getByRole("tab", { name: "Todas" }).getAttribute("aria-selected"),
+      screen
+        .getByRole("button", { name: "Todas" })
+        .getAttribute("aria-pressed"),
     ).toBe("true"),
   );
-  expect(screen.queryByRole("tab", { name: "Beta" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Beta" })).toBeNull();
   expect(screen.queryByText(notice.title)).toBeNull();
   expect(screen.getByText("0 sin leer")).toBeTruthy();
 });

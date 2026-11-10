@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 import { preview } from "vite";
+import { notificationScenes } from "./visual-diff/notifications.ts";
 
 const evidence = resolve(
   process.env.VANTARE_HUB_EVIDENCE ?? "test-results/notifications",
@@ -105,6 +106,41 @@ try {
   await page.getByText("0 sin leer", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Limpiar", exact: true }).click();
   await page.getByText("Todo al día", { exact: true }).waitFor();
+  const fullEmptyContentHeight: Record<string, number> = {};
+  for (const scheme of ["dark", "light"]) {
+    await page.goto(
+      `${server.resolvedUrls?.local[0]}?escena=visual-${scheme}:notificaciones-base`,
+    );
+    await page.getByRole("tab", { name: "General", exact: true }).waitFor();
+    await notificationScenes["notificaciones-completa-vacio"].prepare(page);
+    const card = page.locator(".v-notifications--full");
+    await card.getByRole("button", { name: "Todas", exact: true }).waitFor();
+    assert.equal(
+      await page.getByRole("tab").count(),
+      0,
+      "Notification filters stay inside the card",
+    );
+    fullEmptyContentHeight[scheme] = Math.round(
+      (await card.locator(".v-notifications-content").boundingBox())?.height ??
+        0,
+    );
+    await page.screenshot({
+      path: resolve(evidence, `notificaciones-completa-vacio-${scheme}.png`),
+    });
+    const audit = await new AxeBuilder({ page })
+      .include(".v-notifications")
+      .analyze();
+    assert.deepEqual(
+      audit.violations.filter(
+        (v) => v.impact === "serious" || v.impact === "critical",
+      ),
+      [],
+    );
+    await writeFile(
+      resolve(evidence, `axe-full-${scheme}.json`),
+      JSON.stringify(audit, null, 2),
+    );
+  }
   assert.deepEqual(errors, []);
   await writeFile(
     resolve(evidence, "browser.json"),
@@ -114,6 +150,8 @@ try {
         scale: 1,
         panelWidth: 452,
         fullHeight,
+        fullEmptyContentHeight,
+        fullFiltersInCard: true,
         errors,
         sharedSessionHistory: true,
       },

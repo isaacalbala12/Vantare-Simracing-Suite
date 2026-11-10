@@ -552,7 +552,12 @@ export function createMockHost(sceneName = "ajustes-base") {
           result: { method: "settings.get", value: settings },
         };
       case "settings.update": {
-        if (sceneName === "ajustes-error")
+        // The notification QA scene reaches the full view through a real local error,
+        // then clears it; it never bypasses the Windows-only notification control.
+        if (
+          sceneName === "ajustes-error" ||
+          sceneName === "notificaciones-base"
+        )
           return { kind: "failure", id, error: { kind: "io" } };
         if (
           settings.protected ||

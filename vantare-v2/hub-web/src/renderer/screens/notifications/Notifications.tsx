@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { coreKey, offline } from "../../app/Host";
-import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
+import { SectionChrome } from "../../app/SectionChrome";
 import { type Section, useUi } from "../../app/UiState";
 import { notices as text } from "../../i18n/notifications";
 import { NotificationsLayout } from "../../ui/NotificationsLayout";
-import type { Destination, Filter } from "./center";
+import type { Destination } from "./center";
 import { useNotifications } from "./NotificationsState";
 export function Notifications({ compact = false }: { compact?: boolean }) {
   const center = useNotifications();
@@ -58,31 +58,10 @@ export function Notifications({ compact = false }: { compact?: boolean }) {
     />
   );
   if (compact) return content;
-  const filters = [
-    "all",
-    "unread",
-    "launcher",
-    "beta",
-    "report",
-    "system",
-  ] as const;
-  const active = filter === "beta" && !tester ? "all" : filter;
   return (
     <>
-      <SectionChrome
-        title={text.title}
-        tabs={filters.map((id) => ({
-          id,
-          etiqueta: text[id],
-          visible: id !== "beta" || tester,
-        }))}
-        activeTab={active}
-        onTabChange={(id) => {
-          if (filters.includes(id as Filter) && (id !== "beta" || tester))
-            setFilter(id as Filter);
-        }}
-      />
-      <SectionPanel activeTab={active}>{content}</SectionPanel>
+      <SectionChrome title={text.title} />
+      {content}
     </>
   );
 }

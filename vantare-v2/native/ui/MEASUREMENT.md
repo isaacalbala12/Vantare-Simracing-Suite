@@ -181,3 +181,12 @@ fallidos se conservan. Comparador: 3/3 tests Python PASS. Retirada: 471 huellas 
 Fmt y Clippy `-D warnings` PASS (UI/profiling, todos los targets, `paint-stats`).
 El primer Clippy se√±al√≥ dos nombres de m√©todo sin backticks en documentaci√≥n;
 se corrigieron y se repiti√≥ el check sin cambiar c√≥digo de comportamiento.
+
+## PrecisiÛn de CPU
+
+El tiempo CPU de proceso de Windows est· cuantizado (15,625 ms aquÌ) y puede
+infraestimar r·fagas breves. Se recoge tambiÈn `QueryProcessCycleTime` del
+proceso completo y ciclos por llamada Present en el mismo intervalo QPC.
+Ese contador permite comparar trabajo CPU entre variantes en esta m·quina;
+no se convierte a milisegundos ni se equipara con tiempo GPU. Los ms/frame
+cuantizados se conservan como dato secundario, nunca como prueba de ganancia.

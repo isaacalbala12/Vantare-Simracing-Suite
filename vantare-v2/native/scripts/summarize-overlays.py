@@ -22,6 +22,7 @@ def summarize(root):
         raise ValueError("recording too short for a steady interval")
     duration = number(active[-1]["seconds"]) - number(active[0]["seconds"])
     cpu = number(active[-1]["cpu_seconds"]) - number(active[0]["cpu_seconds"])
+    cycles = int(active[-1]["cpu_cycles"]) - int(active[0]["cpu_cycles"]) if "cpu_cycles" in active[0] else None
     out = (root / "stdout.log").read_text(encoding="utf-8-sig")
     err = (root / "stderr.log").read_text(encoding="utf-8-sig")
     frames = sum(map(int, re.findall(r"^frames/s=(\d+)", out, re.M)))
@@ -46,6 +47,8 @@ def summarize(root):
         "metadata": json.loads((root / "metadata.json").read_text(encoding="utf-8-sig")),
         "steady_seconds": duration, "steady_cpu_seconds": cpu,
         "steady_logical_cores": cpu / duration,
+        "steady_cpu_cycles": cycles,
+        "steady_cpu_cycles_per_frame": cycles / frame_count if cycles is not None and frame_count else None,
         "steady_screen_frames": steady_frames,
         "steady_present_calls": steady_presents if presents else None,
         "frame_counter": "dxgi_present" if presents else "screen_render_proxy" if frames else "disabled",

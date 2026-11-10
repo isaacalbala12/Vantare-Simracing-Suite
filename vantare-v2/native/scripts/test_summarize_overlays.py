@@ -23,10 +23,10 @@ class MeasurementTest(unittest.TestCase):
             (root / "complete.txt").write_text("complete")
             (root / "metadata.json").write_text("{}")
             with (root / "process.csv").open("w", newline="") as stream:
-                writer = csv.DictWriter(stream, fieldnames=["seconds", "qpc", "cpu_seconds", "private_bytes"])
+                writer = csv.DictWriter(stream, fieldnames=["seconds", "qpc", "cpu_seconds", "cpu_cycles", "private_bytes"])
                 writer.writeheader()
                 for second in range(1, 11):
-                    writer.writerow(dict(seconds=second, qpc=second*100, cpu_seconds=second*0.1, private_bytes=2**20))
+                    writer.writerow(dict(seconds=second, qpc=second*100, cpu_seconds=second*0.1, cpu_cycles=second*1200, private_bytes=2**20))
             (root / "stdout.log").write_text("frames/s=8  pedals render=8 paint=8\n")
             (root / "stderr.log").write_text(
                 "perf frame window=1 clock=Some(200)\n"
@@ -50,6 +50,7 @@ class MeasurementTest(unittest.TestCase):
             self.assertAlmostEqual(result["steady_cpu_ms_per_frame"], 400 / 3)
             self.assertAlmostEqual(result["steady_cpu_ms_per_screen_frame"], 200)
             self.assertAlmostEqual(result["steady_logical_cores"], 0.1)
+            self.assertEqual(result["steady_cpu_cycles_per_frame"], 1600)
             self.assertEqual(result["mean_private_mib"], 1)
             self.assertEqual(result["changed_widgets_per_changed_snapshot"], 2)
             self.assertEqual(result["stages_full_run"]["paint"]["cpu_cycles"], 80)

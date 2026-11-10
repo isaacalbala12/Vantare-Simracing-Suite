@@ -33,6 +33,18 @@ $info.RedirectStandardOutput = $true
 $info.RedirectStandardError = $true
 $process = [Diagnostics.Process]::new()
 $process.StartInfo = $info
+if (!("Vantare.MeasurementCycles" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+namespace Vantare {
+ public static class MeasurementCycles {
+  [DllImport("kernel32.dll", SetLastError=true)]
+  public static extern bool QueryProcessCycleTime(IntPtr process, out ulong cycles);
+ }
+}
+"@
+}
 $rows = [Collections.Generic.List[object]]::new()
 $mutex = [Threading.Mutex]::new($false,'Global\VantareParityCapture')
 $held = $false
@@ -86,10 +98,15 @@ try {
     while (!$process.WaitForExit(1000)) {
         $process.Refresh()
         if ($coreStarted -and $coreProcess.HasExited) { throw 'Core exited before the measurement ended' }
+        [ulong]$cycles = 0
+        if (![Vantare.MeasurementCycles]::QueryProcessCycleTime($process.Handle,[ref]$cycles)) {
+            throw 'QueryProcessCycleTime failed'
+        }
         $rows.Add([pscustomobject]@{
             seconds=$watch.Elapsed.TotalSeconds.ToString('R',[Globalization.CultureInfo]::InvariantCulture)
             qpc=[Diagnostics.Stopwatch]::GetTimestamp()
             cpu_seconds=$process.TotalProcessorTime.TotalSeconds.ToString('R',[Globalization.CultureInfo]::InvariantCulture)
+            cpu_cycles=$cycles
             private_bytes=$process.PrivateMemorySize64
             working_set_bytes=$process.WorkingSet64
         })

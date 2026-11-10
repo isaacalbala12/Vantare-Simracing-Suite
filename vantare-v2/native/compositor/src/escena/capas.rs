@@ -110,7 +110,7 @@ pub enum Dibujo {
     FinRecorte,
 }
 
-/// Propiedades que compone DirectComposition sin repintar el contenido.
+/// Propiedades que compone `DirectComposition` sin repintar el contenido.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Propiedad {
     Opacidad,

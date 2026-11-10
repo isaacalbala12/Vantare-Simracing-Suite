@@ -1,1 +1,1 @@
-//! Plataforma Windows: DirectComposition + Direct2D/DirectWrite.
+//! Plataforma Windows: `DirectComposition` + Direct2D/DirectWrite.

@@ -99,8 +99,7 @@ try {
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
     # `-j` son hilos de test; los jobs van en --build-jobs.
     $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '4' }
-    if (($Gate -eq 'lifecycle' -or ($Gate -eq 'archive' -and
-        (-not $Packages.Count -or 'vantare-runtime' -cin $Packages))) -and $IsWindows) {
+    if ($Gate -eq 'lifecycle' -and $IsWindows) {
         # Normal para cierre real; QA sólo para invocar los manejadores de bandeja.
         & (Join-Path $PSScriptRoot 'runtime/tests/lifecycle/build-overlays.ps1') -TargetDirectory $TargetDirectory
     }

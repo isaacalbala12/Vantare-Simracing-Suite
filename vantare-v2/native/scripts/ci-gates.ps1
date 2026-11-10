@@ -28,6 +28,7 @@ try {
         workspace = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
         target = $env:VANTARE_SLOT_TARGET
         telemetry = [bool]$Telemetry
+        overlays = (-not $packages.Count -or 'vantare-runtime' -cin $packages)
         lifecycle = ($lifecycle.Count -gt 0)
         packages = $packages
     } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8

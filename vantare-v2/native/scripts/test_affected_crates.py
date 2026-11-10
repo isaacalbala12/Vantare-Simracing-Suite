@@ -45,6 +45,14 @@ class ScopeTests(unittest.TestCase):
                      'vantare-v2/native/runtime/build.rs', '.github/workflows/ci.yml']:
             self.assertTrue(affected.installation_affected([path]))
 
+    def test_overlay_build_is_needed_for_runtime_dependencies_and_unknown_inputs(self):
+        for crate in ['runtime', 'domain', 'ipc', 'services', 'launcher', 'profiling', 'ui', 'installer']:
+            self.assertTrue(affected.overlays_affected([f'vantare-v2/native/{crate}/src/lib.rs']))
+        for crate in ['engineer', 'strategy', 'storage', 'hub', 'admin']:
+            self.assertFalse(affected.overlays_affected([f'vantare-v2/native/{crate}/src/lib.rs']))
+            self.assertTrue(affected.overlays_affected([f'vantare-v2/native/{crate}/Cargo.toml']))
+        self.assertTrue(affected.overlays_affected(['vantare-v2/native/new-module/data.json']))
+
     def test_fast_path_never_selects_hub_or_admin(self):
         packages = [
             {'name': name, 'dependencies': [{'name': dep} for dep in deps]}

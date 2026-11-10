@@ -30,6 +30,7 @@ jobs:
       # su check requerido. Vacío o distinto de «false» ⇒ los gates corren.
       native: ${{ steps.native_scope.outputs.native }}
       installation: ${{ steps.installation_scope.outputs.installation }}
+      overlays: ${{ steps.installation_scope.outputs.overlays }}
       # Lo lee `product` para elegir el gate de suite: `test` excluye el corpus
       # de telemetría y `completa` lo incluye. Vacío o distinto de «false» ⇒
       # corre el corpus (fail-closed).
@@ -107,14 +108,19 @@ jobs:
         run: |
           set -euo pipefail
           decision=true
+          overlays=true
           if [ "$NATIVE_SCOPE" = false ]; then
             decision=false
+            overlays=false
           elif [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$GITHUB_BASE_REF" = nightly ]; then
             base="$(git rev-parse HEAD^1)"
             decision="$(python vantare-v2/native/scripts/affected-crates.py --base "$base" --installation)"
+            overlays="$(python vantare-v2/native/scripts/affected-crates.py --base "$base" --overlays)"
           fi
           case "$decision" in true|false) ;; *) exit 1 ;; esac
+          case "$overlays" in true|false) ;; *) exit 1 ;; esac
           echo "installation=$decision" >> "$GITHUB_OUTPUT"
+          echo "overlays=$overlays" >> "$GITHUB_OUTPUT"
 
       - name: Check branch topology
         env:
@@ -391,7 +397,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [test, telemetria, lifecycle]
+        suite: [test, telemetria]
     defaults:
       run:
         shell: pwsh
@@ -421,6 +427,78 @@ jobs:
           path: ${{ runner.temp }}/vantare-test-archive
       - name: Run compiled tests without rebuilding
         run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}'
+
+  native_lifecycle_build:
+    name: Build lifecycle overlays in parallel
+    needs: policy
+    if: needs.policy.outputs.native != 'false' && needs.policy.outputs.overlays != 'false'
+    runs-on: windows-latest
+    env:
+      VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/native-build-setup
+      - name: Build normal and QA overlays without Hub or Admin
+        run: |
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/ci-build-overlays.ps1
+          if ($LASTEXITCODE) { throw 'Lifecycle overlays build failed' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-overlays-${{ github.sha }}
+          path: ${{ runner.temp }}/vantare-targets/ci/debug/lifecycle
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 1
+
+  native_lifecycle:
+    name: Run native lifecycle
+    needs: [policy, native_build, native_lifecycle_build]
+    if: >-
+      always() && needs.policy.outputs.native != 'false' &&
+      needs.native_build.result == 'success' &&
+      (needs.native_lifecycle_build.result == 'success' || needs.native_lifecycle_build.result == 'skipped')
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install prebuilt Nextest
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
+        with:
+          tool: cargo-nextest@0.9.146
+          fallback: none
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-tests-${{ github.sha }}
+          path: ${{ runner.temp }}/vantare-test-archive
+      - name: Read archived lifecycle scope
+        id: scope
+        run: |
+          $scope = Get-Content (Join-Path $env:RUNNER_TEMP 'vantare-test-archive/ci-scope.json') -Raw | ConvertFrom-Json
+          "overlays=$($scope.overlays.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: steps.scope.outputs.overlays != 'false'
+        with:
+          name: native-overlays-${{ github.sha }}
+          path: ${{ runner.temp }}/vantare-overlay-archive
+      - name: Run original compiled lifecycle harnesses
+        run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite lifecycle
 
   native_installation:
     name: Validate native distribution and installation
@@ -473,7 +551,7 @@ jobs:
 
   product:
     name: Validate Vantare blocking gates
-    needs: [policy, native_build, native_tests, native_installation]
+    needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_installation]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -59,6 +59,8 @@ IGNORED_SUFFIXES = (".md",)
 # cambia de dependencias, ampliar esta lista con ellas.
 TELEMETRY_PREFIXES = (
     "vantare-v2/native/domain/",
+    "vantare-v2/native/installer/",
+    "vantare-v2/native/build-support/",
     "vantare-v2/native/ipc/",
     "vantare-v2/native/launcher/",
     "vantare-v2/native/profiling/",

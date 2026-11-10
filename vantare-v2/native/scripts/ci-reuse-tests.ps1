@@ -37,6 +37,18 @@ $env:PATH = "$(Join-Path $target 'debug');$env:PATH"
 Push-Location $native
 try {
     if ($Suite -eq 'lifecycle') {
+        if ($scope.overlays) {
+            $overlayArchive = Join-Path $env:RUNNER_TEMP 'vantare-overlay-archive'
+            $overlayRevision = (Get-Content (Join-Path $overlayArchive 'source-sha.txt') -Raw).Trim()
+            if ($overlayRevision -cne $scope.revision) { throw 'Los overlays archivados pertenecen a otro SHA.' }
+            foreach ($variant in @('normal', 'qa')) {
+                $source = Join-Path $overlayArchive $variant
+                if (-not (Test-Path (Join-Path $source 'vantare-overlays.exe'))) { throw "Faltan overlays $variant." }
+                $destination = Join-Path $target "debug/lifecycle/$variant"
+                [IO.Directory]::CreateDirectory($destination) | Out-Null
+                Copy-Item -LiteralPath (Join-Path $source 'vantare-overlays.exe') -Destination $destination -Force
+            }
+        }
         $lifecycle = @(Get-Content (Join-Path $target 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
         if (-not $lifecycle.Count) { throw 'El scope exige lifecycle pero no hay arneses archivados.' }
         foreach ($artifact in $lifecycle | Sort-Object package) {
@@ -52,6 +64,15 @@ try {
             } finally { Pop-Location }
         }
     } else {
+        if ($Suite -eq 'test') {
+            # Architecture tests embed env!(CARGO): install the exact prebuilt
+            # toolchain at that path before invoking it, without compiling.
+            & rustup toolchain install 1.95.0 --profile minimal --no-self-update
+            if ($LASTEXITCODE) { throw 'No se pudo instalar el toolchain precompilado 1.95.0.' }
+            & rustup run 1.95.0 cargo --version
+            if ($LASTEXITCODE) { throw 'No se pudo preparar Cargo 1.95 para los tests de arquitectura.' }
+        }
+        $env:CARGO_TARGET_DIR = $target
         $profile = if ($Suite -eq 'telemetria') { 'telemetria' } else { 'default' }
         & cargo-nextest nextest run --binaries-metadata (Join-Path $target 'nextest/binaries-metadata.json') --cargo-metadata (Join-Path $target 'nextest/cargo-metadata.json') --profile $profile
     }

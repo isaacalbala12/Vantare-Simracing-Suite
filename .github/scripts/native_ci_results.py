@@ -9,8 +9,9 @@ def validate(needs):
     outputs = needs['policy']['outputs']
     native = outputs.get('native') != 'false'
     installation = outputs.get('installation') != 'false'
-    for job in ('native_build', 'native_tests', 'native_installation'):
-        required = native and (job != 'native_installation' or installation)
+    overlays = outputs.get('overlays') != 'false'
+    for job in ('native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_installation'):
+        required = native and (job != 'native_installation' or installation) and (job != 'native_lifecycle_build' or overlays)
         result = needs[job]['result']
         if (required and result != 'success') or result not in ('success', 'skipped'):
             raise ValueError(f'{job}: {result}')

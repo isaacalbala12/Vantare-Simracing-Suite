@@ -110,7 +110,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
         self.assertIn('debug/ci-lifecycle/manifest.json', reuse)
         self.assertIn('foreach ($artifact in $lifecycle', reuse)
-        self.assertIn('needs: [policy, native_build, native_tests, native_installation]', workflow)
+        self.assertIn('needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_installation]', workflow)
         self.assertIn('if: always()', workflow)
         self.assertIn('native_ci_results.py', workflow)
         self.assertIn("-Gate captura", ci)

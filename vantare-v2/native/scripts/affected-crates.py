@@ -57,6 +57,21 @@ def installation_affected(paths):
     return False
 
 
+def overlays_affected(paths):
+    # These current leaf crates cannot change Runtime/UI. Manifests, new paths,
+    # and every integration push remain conservative. The archive's actual scope
+    # independently requires the UI artifact when Runtime was selected.
+    independent = {'engineer', 'strategy', 'storage', 'hub', 'admin'}
+    for path in paths:
+        if path.endswith('.md'):
+            continue
+        parts = path.replace('\\', '/').split('/')
+        if len(parts) >= 5 and parts[:2] == ['vantare-v2', 'native'] and parts[2] in independent and parts[3] in {'src', 'tests', 'benches'}:
+            continue
+        return True
+    return False
+
+
 LEGACY = {'vantare-hub', 'vantare-admin'}
 
 
@@ -86,6 +101,7 @@ def main():
     parser.add_argument('--base')
     parser.add_argument('--crate')
     parser.add_argument('--installation', action='store_true')
+    parser.add_argument('--overlays', action='store_true')
     parser.add_argument('--fast', action='store_true', help='Exclude frozen Hub/Admin for non-legacy PRs')
     args = parser.parse_args()
     native = Path(__file__).resolve().parents[1]
@@ -97,8 +113,9 @@ def main():
         paths = [path for path in paths if path]
     elif not args.crate:
         parser.error('--base o --crate requerido')
-    if args.installation:
-        print('true' if installation_affected(paths) else 'false')
+    if args.installation or args.overlays:
+        decision = overlays_affected(paths) if args.overlays else installation_affected(paths)
+        print('true' if decision else 'false')
         return
     metadata = json.loads(subprocess.check_output(
         ['cargo', 'metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'],

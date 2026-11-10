@@ -54,14 +54,6 @@ fn read<T: Default>(context: &ID3D11DeviceContext, query: &ID3D11Query) -> Resul
     Ok(Some(value))
 }
 
-fn duration_ns(start: u64, end: u64, frequency: u64, disjoint: bool) -> Option<u64> {
-    if disjoint || frequency == 0 {
-        return None;
-    }
-    let ticks = end.checked_sub(start)?;
-    u64::try_from(u128::from(ticks) * 1_000_000_000 / u128::from(frequency)).ok()
-}
-
 impl GpuMeasurement {
     pub(crate) fn new(device: &ID3D11Device) -> Result<Self> {
         let mut slots = Vec::with_capacity(8);
@@ -96,7 +88,12 @@ impl GpuMeasurement {
             let Some(finish) = read::<u64>(context, &slot.end)? else {
                 continue;
             };
-            let duration = duration_ns(start, finish, timing.Frequency, timing.Disjoint.as_bool());
+            let duration = crate::profiling::gpu_duration_ns(
+                start,
+                finish,
+                timing.Frequency,
+                timing.Disjoint.as_bool(),
+            );
             crate::profiling::record(crate::profiling::Event {
                 kind: if duration.is_some() {
                     "gpu_frame"
@@ -140,17 +137,5 @@ impl GpuMeasurement {
         if let Some(pending) = &mut slot.pending {
             pending.1 = crate::profiling::clock().unwrap_or(0);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::duration_ns;
-    #[test]
-    fn timestamps_require_valid_stable_frequency() {
-        assert_eq!(duration_ns(100, 110, 1000, false), Some(10_000_000));
-        assert_eq!(duration_ns(100, 110, 1000, true), None);
-        assert_eq!(duration_ns(100, 110, 0, false), None);
-        assert_eq!(duration_ns(110, 100, 1000, false), None);
     }
 }

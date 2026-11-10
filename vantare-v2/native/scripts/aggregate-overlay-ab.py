@@ -49,13 +49,15 @@ def compare(aa, ab):
                 acceptance='Noise separation is necessary, not sufficient: game-PC VRR and visual gates remain mandatory.')
 
 
-def aggregate(root):
+def aggregate(root, aa_only=False):
     manifest = json.loads((root / 'ab-order.json').read_text(encoding='utf-8-sig'))
     rounds = {'aa': {}, 'ab': {}}
     identities = set()
     binaries = {'aa': set(), 'ab': set()}
     labels = {}
     for entry in manifest:
+        if aa_only and entry['experiment']!='aa':
+            continue
         folder = root / entry['directory']
         if not (folder / 'complete.txt').exists():
             raise ValueError('incomplete run: ' + str(folder))
@@ -66,7 +68,9 @@ def aggregate(root):
         if not collector or meta['profile'] != 'release':
             raise ValueError('Release and explicit collector_sha required')
         identities.add((collector, meta['core_sha256'], meta['recording_sha256'],
-                        meta['widgets'], meta['phases'], meta.get('replay_speed',1),meta.get('render_load',False)))
+                        meta['widgets'], meta['phases'], meta.get('replay_speed',1),meta.get('render_load',False),
+                        meta.get('gpu_frame_timing',False),meta.get('collector_script_sha256'),
+                        meta.get('stable_start_seconds'),meta.get('stable_end_seconds')))
         expected_label = 'A' if entry['slot'] in (0,3) else 'B'
         if entry['label'] != expected_label:
             raise ValueError('ABBA label does not match slot')
@@ -92,9 +96,9 @@ def aggregate(root):
                                                    for field,value in fields.items()
                                                    if field in ('cpu_cycles_per_call','wall_ns_per_call')}),
                                    summary_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
-    if len(identities) != 1 or len(binaries['aa']) != 1 or len(binaries['ab']) != 2:
+    if len(identities) != 1 or len(binaries['aa']) != 1 or (not aa_only and len(binaries['ab']) != 2):
         raise ValueError('mixed collector/core/recording/configuration or invalid A/A–A/B binaries')
-    if labels.get(('aa','A')) != labels.get(('ab','A')):
+    if not aa_only and labels.get(('aa','A')) != labels.get(('ab','A')):
         raise ValueError('A/A must characterize the actual A reference binary')
     ratios = {}
     for experiment, groups in rounds.items():
@@ -104,6 +108,14 @@ def aggregate(root):
                 raise ValueError('incomplete ABBA round')
             ratios[experiment].append(round_ratio([slots[i]['value'] for i in range(4)],
                                                   [slots[i]['started'] for i in range(4)]))
+    if aa_only:
+        if len(ratios['aa'])<8:
+            raise ValueError('at least eight complete A/A rounds required')
+        bound=max(abs(math.log(value)) for value in ratios['aa'])
+        result=dict(aa=describe(ratios['aa']),ratios=ratios['aa'],noise_log_bound=bound,
+                    noise_gate_passed=bound<=math.log(1.025))
+        (root/'aa-noise.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+        return result
     result = compare(ratios['aa'], ratios['ab'])
     result['rounds'] = rounds
     result['metric_round_ratios'] = {}
@@ -136,4 +148,6 @@ def aggregate(root):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory', type=pathlib.Path)
-    print(json.dumps(aggregate(parser.parse_args().directory), indent=2))
+    parser.add_argument('--aa-only',action='store_true')
+    arguments=parser.parse_args()
+    print(json.dumps(aggregate(arguments.directory,arguments.aa_only), indent=2))

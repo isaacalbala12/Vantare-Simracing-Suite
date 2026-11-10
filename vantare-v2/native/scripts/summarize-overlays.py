@@ -1,5 +1,6 @@
 """Release v2 measurement. Process cycles are never converted to CPU seconds."""
 import collections
+import hashlib
 import csv
 import json
 import math
@@ -184,7 +185,8 @@ def summarize(root):
                  cpu_cycles=sum(int(r['cpu_cycles']) for r in sampler_rows) if sampler_rows else None,
                  iterations=len(sampler_rows),
                  scope='Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded')
-    result=dict(metadata=metadata,stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
+    result=dict(metadata=metadata,analyzer_sha256=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
+                stable_qpc=[start,end],received_photos=len(received),**processes,gpu=gpu,
                 native_text_layout=text_diagnostics,sampler=sampler,gpu_render=frame_gpu,
                 render_load_notifications=load_notifications,
                 recording_last_position_seconds=max(positions),

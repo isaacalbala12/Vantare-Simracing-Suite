@@ -153,26 +153,7 @@ fn append_constants(text: &mut String) {
     append_testing_id_constants(text);
     constants!("reportFieldLimits", crate::testing::FIELD_LIMITS);
     constants!("reportModules", crate::testing::MODULES);
-    constants!("reportExportLimit", crate::report_local::EXPORT_LIMIT);
-    constants!("reportExportName", crate::report_local::EXPORT_NAME);
-    constants!("reportBinaryNames", crate::report_local::BINARIES);
-    constants!(
-        "reportBinaryStates",
-        [
-            crate::report_local::BinaryState::Present,
-            crate::report_local::BinaryState::Missing,
-            crate::report_local::BinaryState::Unreadable,
-            crate::report_local::BinaryState::Unavailable
-        ]
-    );
-    constants!(
-        "reportExportStatuses",
-        [
-            crate::report_local::ExportStatus::Saved,
-            crate::report_local::ExportStatus::Cancelled,
-            crate::report_local::ExportStatus::Conflict
-        ]
-    );
+    append_report_local_constants(text);
     constants!("reportAutosaveMs", crate::testing::AUTOSAVE_MS);
     constants!(
         "reportScreenshotsAvailable",
@@ -249,6 +230,43 @@ fn append_constants(text: &mut String) {
         .collect();
     constants!("settingsFields", fields);
     text.push_str("export const methodsCoverContract: Exclude<Request['method'], typeof methods[number]> extends never ? true : never = true;\nexport const fieldsCoverContract: Exclude<SettingsPatch['field'], typeof settingsFields[number]> extends never ? true : never = true;\n");
+}
+fn append_report_local_constants(text: &mut String) {
+    use crate::report_local::{BinaryState, ExportStatus};
+    for (name, value) in [
+        (
+            "reportExportLimit",
+            serde_json::json!(crate::report_local::EXPORT_LIMIT),
+        ),
+        (
+            "reportExportName",
+            serde_json::json!(crate::report_local::EXPORT_NAME),
+        ),
+        (
+            "reportBinaryNames",
+            serde_json::json!(crate::report_local::BINARIES),
+        ),
+        (
+            "reportBinaryStates",
+            serde_json::json!([
+                BinaryState::Present,
+                BinaryState::Missing,
+                BinaryState::Unreadable,
+                BinaryState::Unavailable
+            ]),
+        ),
+        (
+            "reportExportStatuses",
+            serde_json::json!([
+                ExportStatus::Saved,
+                ExportStatus::Cancelled,
+                ExportStatus::Conflict
+            ]),
+        ),
+    ] {
+        writeln!(text, "export const {name} = {} as const;", canonical(value))
+            .expect("String write");
+    }
 }
 fn append_testing_id_constants(text: &mut String) {
     for (name, value) in [
@@ -393,24 +411,7 @@ pub fn corpus() -> serde_json::Value {
     host.push(HostToUi::Event {
         event: Event::SimStatus { live: true },
     });
-    host.push(sample_response(Reply::ReportLocalPrepare {
-        value: crate::report_local::prepare(
-            &crate::testing::ReportFields {
-                module: "hub".into(),
-                ..Default::default()
-            },
-            crate::diagnostics::Observed::default()
-                .view(&crate::protocol::CoreStatus::default(), false),
-            vec![],
-        )
-        .expect("local report sample"),
-    }));
-    host.push(sample_response(Reply::ReportLocalExport {
-        status: crate::report_local::ExportStatus::Saved,
-    }));
-    host.push(sample_response(Reply::ReportLocalExport {
-        status: crate::report_local::ExportStatus::Cancelled,
-    }));
+    host.extend(local_report_samples().into_iter().map(sample_response));
     host.extend(testing_reply_samples().into_iter().map(sample_response));
     for result in pilot_reply_samples() {
         host.push(HostToUi::Response { id: 1, result });
@@ -447,6 +448,28 @@ fn roadmap_reply_samples() -> [Reply; 2] {
                 false,
             )
             .expect("publication"),
+        },
+    ]
+}
+fn local_report_samples() -> [Reply; 3] {
+    [
+        Reply::ReportLocalPrepare {
+            value: crate::report_local::prepare(
+                &crate::testing::ReportFields {
+                    module: "hub".into(),
+                    ..Default::default()
+                },
+                &crate::diagnostics::Observed::default()
+                    .view(&crate::protocol::CoreStatus::default(), false),
+                vec![],
+            )
+            .expect("local report sample"),
+        },
+        Reply::ReportLocalExport {
+            status: crate::report_local::ExportStatus::Saved,
+        },
+        Reply::ReportLocalExport {
+            status: crate::report_local::ExportStatus::Cancelled,
         },
     ]
 }

@@ -639,7 +639,7 @@ impl Session {
                 } else {
                     crate::report_local::prepare(
                         fields,
-                        self.diagnostic.view(&self.current, protected),
+                        &self.diagnostic.view(&self.current, protected),
                         crate::report_local::collect_binaries(),
                     )
                     .map(|value| Reply::ReportLocalPrepare { value })

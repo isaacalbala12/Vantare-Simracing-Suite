@@ -57,7 +57,7 @@ pub enum ExportStatus {
 
 pub fn prepare(
     fields: &ReportFields,
-    observed: DiagnosticView,
+    observed: &DiagnosticView,
     binaries: Vec<BinaryView>,
 ) -> Result<LocalReportView, HostError> {
     #[derive(Serialize)]
@@ -174,7 +174,7 @@ mod tests {
             assert!(matches!(
                 prepare(
                     &fields,
-                    crate::diagnostics::Observed::default()
+                    &crate::diagnostics::Observed::default()
                         .view(&crate::protocol::CoreStatus::default(), false),
                     vec![]
                 ),
@@ -193,7 +193,7 @@ mod tests {
         let mut observed = crate::diagnostics::Observed::default()
             .view(&crate::protocol::CoreStatus::default(), false);
         observed.report = Some("previous private message".into());
-        let result = prepare(&fields, observed, vec![]).unwrap();
+        let result = prepare(&fields, &observed, vec![]).unwrap();
         for private in [
             &fields.action_text,
             &fields.context_text,

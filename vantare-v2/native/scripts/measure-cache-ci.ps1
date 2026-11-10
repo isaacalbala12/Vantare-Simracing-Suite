@@ -9,12 +9,13 @@ $native = Split-Path $PSScriptRoot
 $root = Join-Path $env:RUNNER_TEMP 'vantare-cache-measure'
 [IO.Directory]::CreateDirectory($root) | Out-Null
 $records = @()
+$compilerCache = 'sccache'
 $wrapper = $env:RUSTC_WRAPPER
 $previousTarget = $env:CARGO_TARGET_DIR
 . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
 function Measure-Core([string]$Name, [string]$Target, [bool]$UseCompilerCache) {
     Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
-    if ($UseCompilerCache) { $env:RUSTC_WRAPPER = 'sccache' }
+    if ($UseCompilerCache) { $env:RUSTC_WRAPPER = $compilerCache }
     else { Remove-Item Env:RUSTC_WRAPPER -ErrorAction SilentlyContinue }
     Set-VantareSlotWorkspace -Target $Target -NativeRoot $native
     $clock = [Diagnostics.Stopwatch]::StartNew()
@@ -39,24 +40,30 @@ try {
             if (Test-Path -LiteralPath (Join-Path $root $name)) { throw 'El experimento debe empezar sin targets.' }
         }
         Measure-Core 'cold-no-cache' (Join-Path $root 'target-shared') $false
-        & sccache --zero-stats
+        & $compilerCache --zero-stats
         if ($LASTEXITCODE) { throw 'No se pudo iniciar el contador de sccache.' }
         Measure-Core 'sccache-first' (Join-Path $root 'sccache-first') $true
-        & sccache --show-stats --stats-format=json | Set-Content (Join-Path $root 'sccache-first-stats.json')
+        & $compilerCache --show-stats --stats-format=json | Set-Content (Join-Path $root 'sccache-first-stats.json')
         Measure-Core 'sccache-second' (Join-Path $root 'sccache-second') $true
-        & sccache --show-stats --stats-format=json | Set-Content (Join-Path $root 'sccache-second-stats.json')
+        & $compilerCache --show-stats --stats-format=json | Set-Content (Join-Path $root 'sccache-second-stats.json')
         [ordered]@{
             target_bytes=[long](Get-ChildItem (Join-Path $root 'target-shared') -Recurse -File | Measure-Object Length -Sum).Sum
         } | ConvertTo-Json | Set-Content (Join-Path $root 'target-size.json')
     } elseif ($Mode -eq 'sccache19') {
-        & sccache --version | Set-Content (Join-Path $root 'sccache19-version.txt')
-        & sccache --zero-stats
+        # Mozilla's action adds its 0.18 toolcache ahead of Cargo's bin directory.
+        # Resolve the taiki binary explicitly; PATH alone measures the old version.
+        $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+        $compilerCache = Join-Path $cargoHome 'bin/sccache.exe'
+        $version = & $compilerCache --version
+        $version | Set-Content (Join-Path $root 'sccache19-version.txt')
+        if ($LASTEXITCODE -or $version -notmatch '^sccache 0\.19\.0$') { throw 'La comparación exige el binario 0.19.0 real.' }
+        & $compilerCache --zero-stats
         if ($LASTEXITCODE) { throw 'No se pudo iniciar sccache 0.19.' }
         foreach ($name in @('sccache19-first', 'sccache19-second')) {
             $target = Join-Path $root $name
             if (Test-Path -LiteralPath $target) { throw 'El experimento requiere targets vacíos.' }
             Measure-Core $name $target $true
-            & sccache --show-stats --stats-format=json | Set-Content (Join-Path $root "$name-stats.json")
+            & $compilerCache --show-stats --stats-format=json | Set-Content (Join-Path $root "$name-stats.json")
         }
     } else {
         $target = Join-Path $root 'target-shared'

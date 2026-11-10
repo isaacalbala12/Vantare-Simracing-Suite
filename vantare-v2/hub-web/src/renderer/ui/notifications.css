@@ -19,18 +19,20 @@
 }
 .v-notifications--full {
   height: 100%;
+  padding: 0;
   border: 1px solid var(--line-1);
   border-radius: 10px;
   background: var(--grad-neo);
 }
 .v-notifications > header,
+.v-notifications-content > header,
 .v-notification-body > header {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .v-notifications h1 {
-  font: 600 22px / 28px var(--font-display);
+  font: 600 22px / 1.618 var(--font-display);
   margin: 0;
   white-space: nowrap;
 }
@@ -48,7 +50,7 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-:where(.v-notifications > header) > button {
+:where(.v-notifications > header, .v-notifications-content > header) > button {
   margin-left: auto;
   white-space: nowrap;
 }
@@ -219,14 +221,14 @@
 }
 
 .v-notifications-empty strong {
-  line-height: 24px;
+  line-height: 1.618;
 }
 .v-notifications-empty p,
 .v-notifications footer {
-  line-height: 20px;
+  line-height: 1.618;
 }
 
-.v-shell-main > [role="tabpanel"]:has(> .v-notifications--full) {
+.v-shell-main > .v-notifications--full {
   height: 100%;
 }
 
@@ -234,4 +236,16 @@
   color: var(--accent-bright);
   background: var(--accent-tint);
   border-color: transparent;
+}
+
+.v-notifications-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  max-height: calc(100vh - 130px);
+  box-sizing: border-box;
+}
+.v-notifications-content[data-visible="true"] {
+  height: calc(100vh - 130px);
 }

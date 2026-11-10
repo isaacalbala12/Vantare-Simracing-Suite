@@ -51,11 +51,8 @@ export function NotificationsLayout({
       ),
     }))
     .filter((group) => group.items.length);
-  return (
-    <section
-      className={`v-notifications ${compact ? "v-notifications--compact" : "v-notifications--full"}`}
-      aria-label={text.title}
-    >
+  const content = (
+    <>
       <header>
         <h1>{text.title}</h1>
         <span className="v-notification-count" data-unread={unread > 0}>
@@ -65,39 +62,35 @@ export function NotificationsLayout({
           {text.readAll}
         </button>
       </header>
-      {compact && (
-        <div className="v-notifications-filters">
-          <Segmented
-            label={text.filters}
-            value={filter}
-            onChange={(value) => {
-              if (
-                [
-                  "all",
-                  "unread",
-                  "launcher",
-                  "beta",
-                  "report",
-                  "system",
-                ].includes(value) &&
-                (value !== "beta" || tester)
-              )
-                onFilter(value as Filter);
-            }}
-            options={(
-              ["all", "unread", "launcher", "beta", "report", "system"] as const
+      <div className="v-notifications-filters">
+        <Segmented
+          label={text.filters}
+          value={filter}
+          onChange={(value) => {
+            if (
+              [
+                "all",
+                "unread",
+                "launcher",
+                "beta",
+                "report",
+                "system",
+              ].includes(value) &&
+              (value !== "beta" || tester)
             )
-              .filter((value) => value !== "beta" || tester)
-              .map((value) => ({
-                value,
-                label:
-                  value === "unread"
-                    ? `${text.unread} · ${unread}`
-                    : text[value],
-              }))}
-          />
-        </div>
-      )}
+              onFilter(value as Filter);
+          }}
+          options={(
+            ["all", "unread", "launcher", "beta", "report", "system"] as const
+          )
+            .filter((value) => value !== "beta" || tester)
+            .map((value) => ({
+              value,
+              label:
+                value === "unread" ? `${text.unread} · ${unread}` : text[value],
+            }))}
+        />
+      </div>
       <div className="v-notifications-history">
         {!visible.length ? (
           <div className="v-notifications-empty">
@@ -174,6 +167,23 @@ export function NotificationsLayout({
         <button type="button" onClick={onFull}>
           {text.full}
         </button>
+      )}
+    </>
+  );
+  return (
+    <section
+      className={`v-notifications ${compact ? "v-notifications--compact" : "v-notifications--full"}`}
+      aria-label={text.title}
+    >
+      {compact ? (
+        content
+      ) : (
+        <div
+          className="v-notifications-content"
+          data-visible={visible.length > 0}
+        >
+          {content}
+        </div>
       )}
     </section>
   );

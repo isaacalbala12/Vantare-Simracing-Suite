@@ -88,6 +88,7 @@ export class Client {
       void window.vantare?.connect().catch((error) => {
         clearTimeout(timeout);
         window.removeEventListener("message", receive);
+        window.removeEventListener("message", receive);
         reject(error);
       });
     });

@@ -1,8 +1,10 @@
+import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { chromium, expect } from "@playwright/test";
+import { chromium } from "playwright-core";
+import { until } from "./wait-for.ts";
 
 const qa =
   process.env.VANTARE_HUB_QA_ROOT ?? "D:/VantareServer/qa/isa-1995-puente";
@@ -24,7 +26,7 @@ await cp(
   join(generation, "bin/vantare-hub.exe"),
 );
 await cp(
-  resolve("release/package/vantare-hub-ui-win32-x64"),
+  resolve("release/package-qa/vantare-hub-ui-win32-x64"),
   join(generation, "hub-ui"),
   { recursive: true },
 );
@@ -106,15 +108,17 @@ try {
     .getByRole("status")
     .filter({ hasText: "Núcleo no disponible" })
     .waitFor();
-  await expect
-    .poll(async () => {
+  await until(
+    async () => {
       try {
         return (await readFile(join(root, "hub-ready"), "utf8")) === boot;
       } catch {
         return false;
       }
-    })
-    .toBe(true);
+    },
+    10000,
+    "host publishes matching ready token",
+  );
   await unlink(join(root, "boot-pending.json"));
   await page.screenshot({ path: join(evidence, "host-local.png") });
   const isolation = await page.evaluate(() => ({
@@ -122,17 +126,27 @@ try {
     bridge: Object.keys(window.vantare ?? {}),
   }));
   if (isolation.node !== "undefined") throw new Error("Renderer has Node");
-  host.stdin.end();
-  await expect.poll(() => host.exitCode, { timeout: 10000 }).toBe(0);
+  const crash = process.env.VANTARE_HUB_QA_CRASH === "1";
+  if (crash) {
+    const debug = await context.newCDPSession(page);
+    await debug.send("Page.crash").catch(() => {});
+  } else host.stdin.end();
+  await until(
+    () => host.exitCode !== null,
+    10000,
+    crash ? "renderer crash propagates to host" : "host exits on stdin EOF",
+  );
+  assert.equal(host.exitCode, crash ? 1 : 0);
   await writeFile(
-    join(evidence, "host-smoke.json"),
+    join(evidence, crash ? "host-crash.json" : "host-smoke.json"),
     JSON.stringify(
       {
         passed: true,
         initialBootMs,
         privateTransport: true,
         readyAfterVisible: true,
-        controlEofExit: 0,
+        controlEofExit: crash ? null : 0,
+        rendererCrashExit: crash ? 1 : null,
         core: "unavailable (isolated pipe; no real services)",
         ...isolation,
       },
@@ -141,6 +155,6 @@ try {
     ),
   );
 } finally {
-  await browser.close();
+  await browser.close().catch(() => {});
   if (host.exitCode === null) host.kill();
 }

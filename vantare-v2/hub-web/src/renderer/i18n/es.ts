@@ -1,5 +1,8 @@
 export const es = {
   title: "Vantare · Hub",
+  startupErrorTitle: "Vantare no pudo abrirse",
+  startupError:
+    "No se pudo preparar el Hub. Abre Vantare desde su acceso directo. Si continúa, reinstala la aplicación.",
   settings: "Ajustes",
   coreConnected: "Núcleo conectado",
   coreUnavailable: "Núcleo no disponible",

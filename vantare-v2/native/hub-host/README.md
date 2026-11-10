@@ -51,7 +51,8 @@ Este actualiza los bindings y luego ejecuta las mismas comprobaciones.
 solo en loopback. **Ese feature no se habilita en distribución.** No abre el
 inspector de Node ni cambia los fuses cerrados.
 
-Desde `hub-web`, tras compilar y empaquetar la interfaz:
+Desde `hub-web`, tras compilar y empaquetar la interfaz con
+`VANTARE_HUB_QA_BUILD=1` (copia separada `release/package-qa`):
 
 ```powershell
 node --experimental-strip-types scripts/smoke-host.ts

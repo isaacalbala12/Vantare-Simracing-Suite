@@ -1,3 +1,5 @@
+import { isAbsolute } from "node:path";
+import type { WebPreferences } from "electron";
 export const CSP =
   "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'";
 export function isAppDocument(value: string): boolean {
@@ -41,4 +43,65 @@ export function developmentUrl(value: string | undefined): string | undefined {
   )
     throw new Error("Renderer development server must use loopback");
   return url.href;
+}
+
+declare const __VANTARE_QA_DRIVER__: boolean;
+export const QA_DRIVER =
+  typeof __VANTARE_QA_DRIVER__ === "boolean" && __VANTARE_QA_DRIVER__;
+export function requireDataDirectory(value: string | undefined): string {
+  if (!value || !isAbsolute(value))
+    throw new Error("Hub data directory is missing or relative");
+  return value;
+}
+export function hasDebuggerArguments(args: readonly string[]): boolean {
+  return args.some((arg) =>
+    ["--remote-debugging-port", "--remote-debugging-pipe"].includes(
+      arg.split("=")[0].toLowerCase(),
+    ),
+  );
+}
+export function navigationAllowed(
+  value: string,
+  development?: string,
+): boolean {
+  if (isAppDocument(value)) return true;
+  try {
+    return (
+      development !== undefined &&
+      new URL(value).origin ===
+        new URL(developmentUrl(development) as string).origin
+    );
+  } catch {
+    return false;
+  }
+}
+export function webPreferences(
+  preload: string,
+  devTools: boolean,
+): WebPreferences {
+  return {
+    preload,
+    contextIsolation: true,
+    sandbox: true,
+    nodeIntegration: false,
+    webviewTag: false,
+    webSecurity: true,
+    spellcheck: false,
+    v8CacheOptions: "bypassHeatCheck",
+    backgroundThrottling: true,
+    devTools,
+  };
+}
+export function fitWindow(
+  desired: { width: number; height: number },
+  area: { width: number; height: number },
+) {
+  const width = Math.min(desired.width, area.width);
+  const height = Math.min(desired.height, area.height);
+  return {
+    width,
+    height,
+    minWidth: Math.min(1280, width),
+    minHeight: Math.min(720, height),
+  };
 }

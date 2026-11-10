@@ -1,5 +1,6 @@
 node_modules/
 out/
+out-qa/
 release/
 playwright-report/
 test-results/

@@ -4,6 +4,7 @@
     "includes": [
       "**",
       "!out",
+      "!out-qa",
       "!release",
       "!bun.lock",
       "!src/renderer/design/generated",

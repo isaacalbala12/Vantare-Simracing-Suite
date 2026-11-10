@@ -1,11 +1,19 @@
 import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { FuseV1Options, FuseVersion, flipFuses } from "@electron/fuses";
 import { packager } from "@electron/packager";
 
-const staging = "release/staging";
+const qa = process.env.VANTARE_HUB_QA_BUILD === "1";
+const project = resolve(import.meta.dirname, "..");
+const release = join(project, "release");
+const staging = join(release, qa ? "staging-qa" : "staging");
+if (dirname(staging) !== release)
+  throw new Error("Staging must remain inside the project release directory");
+await rm(staging, { recursive: true, force: true });
 await mkdir(staging, { recursive: true });
-await cp("out", join(staging, "out"), { recursive: true });
+await cp(join(project, qa ? "out-qa" : "out"), join(staging, "out"), {
+  recursive: true,
+});
 await writeFile(
   join(staging, "package.json"),
   JSON.stringify({
@@ -17,7 +25,7 @@ await writeFile(
 );
 const paths = await packager({
   dir: staging,
-  out: "release/package",
+  out: join(release, qa ? "package-qa" : "package"),
   name: "vantare-hub-ui",
   platform: "win32",
   arch: "x64",
@@ -25,6 +33,7 @@ const paths = await packager({
   asar: true,
   overwrite: true,
   prune: false,
+  tmpdir: false,
 });
 for (const folder of paths) {
   for (const locale of await readdir(join(folder, "locales"))) {

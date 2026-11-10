@@ -1,11 +1,13 @@
+import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { cp, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { join, resolve } from "node:path";
-import { chromium, expect } from "@playwright/test";
+import { chromium } from "playwright-core";
 import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
+import { until } from "./wait-for.ts";
 
 // Existing qa-e2e runtime: loopback endpoints, no account or credentials.
 const qa = `D:/VantareServer/qa/licencias-e2e/isa-1995-${randomBytes(8).toString("hex")}`;
@@ -29,7 +31,18 @@ async function phase(value: string) {
     }),
   );
   // Windows readers may briefly hold the previous clock; retry the atomic replacement.
-  await expect(() => rename(`${clock}.new`, clock)).toPass({ timeout: 5000 });
+  await until(
+    async () => {
+      try {
+        await rename(`${clock}.new`, clock);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    5000,
+    "atomic QA clock replacement",
+  );
 }
 await phase("Waiting");
 await cp(resolve("../testdata/lmu-fixture.bin"), join(qa, "replay.bin"));
@@ -37,7 +50,7 @@ for (const binary of ["vantare.exe", "vantare-core.exe"])
   await cp(join(target, binary), join(bins, binary));
 await cp(join(target, "vantare-hub-host.exe"), join(bins, "vantare-hub.exe"));
 await cp(
-  resolve("release/package/vantare-hub-ui-win32-x64"),
+  resolve("release/package-qa/vantare-hub-ui-win32-x64"),
   join(qa, "hub-ui"),
   { recursive: true },
 );
@@ -124,21 +137,20 @@ host.stderr.pipe(createWriteStream(join(qa, "host.log")));
 let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
 try {
   let debug = "";
-  await expect
-    .poll(
-      async () => {
-        try {
-          const log = await readFile(
-            join(qa, "native/hub/hub-ui-qa.log"),
-            "utf8",
-          );
-          debug = log.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1] ?? "";
-        } catch {}
-        return debug.length > 0;
-      },
-      { timeout: 60000 },
-    )
-    .toBe(true);
+  await until(
+    async () => {
+      try {
+        const log = await readFile(
+          join(qa, "native/hub/hub-ui-qa.log"),
+          "utf8",
+        );
+        debug = log.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1] ?? "";
+      } catch {}
+      return debug.length > 0;
+    },
+    60000,
+    "QA Electron debugger",
+  );
   browser = await chromium.connectOverCDP(debug);
   const context = browser.contexts()[0];
   const page = context.pages()[0] ?? (await context.waitForEvent("page"));
@@ -162,30 +174,30 @@ try {
     });
   });
   await page.reload();
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () => (window as unknown as { qaCore?: CoreStatus }).qaCore,
-        ),
-      { timeout: 20000 },
-    )
-    .toMatchObject({
-      photos: "connected",
-      rights: "connected",
-      services: "connected",
-      access: {
-        verified: false,
-        blocked: true,
-        tester: false,
-        calendar: false,
-        engineer: false,
-        strategy: false,
-      },
-    });
+  await until(
+    async () => {
+      const view = await page.evaluate(
+        () => (window as unknown as { qaCore?: CoreStatus }).qaCore,
+      );
+      return (
+        view?.photos === "connected" &&
+        view.rights === "connected" &&
+        view.services === "connected" &&
+        !view.access.verified &&
+        view.access.blocked &&
+        !view.access.tester &&
+        !view.access.calendar &&
+        !view.access.engineer &&
+        !view.access.strategy
+      );
+    },
+    20000,
+    "real core and supervisor admission without authority grants",
+  );
   await page.screenshot({ path: join(evidence, "host-core-local.png") });
   await phase("Live");
-  await expect.poll(() => host.exitCode, { timeout: 10000 }).toBe(0);
+  await until(() => host.exitCode !== null, 10000, "host closes on Live");
+  assert.equal(host.exitCode, 0);
   await writeFile(
     join(evidence, "core-smoke.json"),
     JSON.stringify(
@@ -213,8 +225,6 @@ try {
     { env, windowsHide: true, stdio: "ignore" },
   );
   await new Promise<void>((accept) => stop.once("exit", () => accept()));
-  await expect
-    .poll(() => supervisor.exitCode, { timeout: 10000 })
-    .not.toBeNull();
+  await until(() => supervisor.exitCode !== null, 10000, "QA supervisor stops");
   backend.close();
 }

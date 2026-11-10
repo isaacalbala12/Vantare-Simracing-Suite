@@ -375,6 +375,9 @@ pub fn run(args: &Args) -> io::Result<()> {
             break;
         }
     }
+    if child.0.try_wait()?.is_some_and(|status| !status.success()) {
+        return Err(io::ErrorKind::BrokenPipe.into());
+    }
     Ok(())
 }
 #[cfg(test)]

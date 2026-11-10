@@ -59,6 +59,8 @@ export function SearchInput({
     <div className="v-search">
       <Input
         label={label}
+        aria-label={label}
+        placeholder={label}
         type="search"
         value={value}
         onChange={(e) => onChange(e.currentTarget.value)}

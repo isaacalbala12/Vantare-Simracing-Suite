@@ -1,5 +1,10 @@
 import { Combobox } from "@base-ui/react/combobox";
 import { type ReactNode, useRef, useState } from "react";
+import {
+  SectionRailSlot,
+  SectionTabsSlot,
+  SectionTitle,
+} from "../app/SectionChrome";
 import { Icon, type IconName } from "../assets/icons/Icon";
 import { Button, IconButton } from "./Button";
 import { Dialog } from "./Layers";
@@ -14,12 +19,15 @@ export function TitleBar({
 }) {
   return (
     <header className="v-titlebar">
-      <span>{title}</span>
+      <span className="v-section-title">
+        <SectionTitle fallback={title} />
+      </span>
+      <SectionTabsSlot />
       <div className="v-titlebar-actions">
-        {actions}
-        <span role="status" className="v-muted">
+        <span role="status" className="v-simulator-pill">
           {status}
         </span>
+        {actions}
       </div>
     </header>
   );
@@ -84,6 +92,9 @@ export function Sidebar({
       ref={nav}
       onKeyDown={navigate}
     >
+      <div className="v-sidebar-brand" aria-hidden="true">
+        <Icon name="mark" />
+      </div>
       {groups.map((group) => (
         <div className="v-nav-group" key={group.label}>
           {!collapsed && <div className="v-caption">{group.label}</div>}
@@ -140,7 +151,7 @@ export function ContextRail({
       >
         <Icon name="i-panel" />
       </IconButton>
-      {!collapsed && children}
+      {!collapsed && <SectionRailSlot fallback={children} />}
     </aside>
   );
 }

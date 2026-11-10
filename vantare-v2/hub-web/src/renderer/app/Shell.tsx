@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { defaultZoom } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
-import { es, t } from "../i18n/es";
+import { t } from "../i18n/es";
+import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
 import { Button, IconButton } from "../ui/Button";
-import { Avatar, Badge, Callout, Skeleton } from "../ui/Data";
+import { Avatar, Badge, Callout } from "../ui/Data";
 import {
   CommandPalette,
   ContextRail,
@@ -13,7 +14,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
-import { Popover, useToastManager } from "../ui/Layers";
+import { Popover, ToastViewport, useToastManager } from "../ui/Layers";
 import {
   ActionGroup,
   ContentStack,
@@ -23,19 +24,10 @@ import {
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
+import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
 
-const Upcoming = lazy(() =>
-  import("../screens/upcoming/Upcoming").then((module) => ({
-    default: module.Upcoming,
-  })),
-);
-const Settings = lazy(() =>
-  import("../screens/settings/Settings").then((module) => ({
-    default: module.Settings,
-  })),
-);
 export function Shell() {
   const host = useHost();
   const toast = useToastManager();
@@ -170,15 +162,9 @@ export function Shell() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   });
-  const status =
-    host.issue ??
-    (host.hello?.demo
-      ? es.mock
-      : core.photos === "connected"
-        ? es.coreConnected
-        : core.photos === "incompatible"
-          ? es.incompatible
-          : es.coreUnavailable);
+  const status = core.live
+    ? shellText.simulatorConnected
+    : shellText.waitingSimulator;
   const title =
     items.find((item) => item.id === ui.section)?.label ?? t("settings.title");
   const groups = [
@@ -201,16 +187,11 @@ export function Shell() {
   ].filter((group) => group.items.length);
   return (
     <ShellLayout
+      toasts={<ToastViewport closeLabel={t("shell.close")} inline />}
       header={
         <TitleBar
           title={title}
-          status={
-            settings.error
-              ? t("settings.failed")
-              : settings.pending
-                ? t("settings.saving")
-                : status
-          }
+          status={status}
           actions={
             <ActionGroup>
               <IconButton
@@ -223,7 +204,7 @@ export function Shell() {
               <CommandPalette
                 title={t("shell.commands")}
                 description={t("shell.commandsHelp")}
-                trigger={t("shell.commands")}
+                trigger={null}
                 closeLabel={t("shell.close")}
                 empty={t("shell.emptyCommands")}
                 commands={[
@@ -376,42 +357,38 @@ export function Shell() {
         )
       }
     >
-      {ui.section === "strategy" || ui.section === "engineer" ? (
-        <Suspense fallback={<Skeleton label={t("settings.loading")} />}>
-          <Upcoming module={ui.section} />
-        </Suspense>
-      ) : ui.section === "settings" ? (
-        <Suspense fallback={<Skeleton label={t("settings.loading")} />}>
-          <Settings />
-        </Suspense>
-      ) : (
-        <ContentStack>
-          {settings.error && (
-            <Callout
-              tone="err"
-              title={t("settings.failed")}
-              actions={
-                <ActionGroup>
-                  <Button busy={settings.pending} onClick={settings.retry}>
-                    {t("settings.retry")}
-                  </Button>
-                  <Button
-                    disabled={settings.pending}
-                    variant="ghost"
-                    onClick={settings.discard}
-                  >
-                    {t("settings.discard")}
-                  </Button>
-                </ActionGroup>
-              }
-            >
-              {t("settings.failedHelp")}
-            </Callout>
-          )}
-          <PageHeader title={title} />
-          <Callout title={t("shell.soon")} />
-        </ContentStack>
-      )}
+      <RegisteredScreen
+        section={ui.section}
+        loading={t("settings.loading")}
+        fallback={
+          <ContentStack>
+            {settings.error && (
+              <Callout
+                tone="err"
+                title={t("settings.failed")}
+                actions={
+                  <ActionGroup>
+                    <Button busy={settings.pending} onClick={settings.retry}>
+                      {t("settings.retry")}
+                    </Button>
+                    <Button
+                      disabled={settings.pending}
+                      variant="ghost"
+                      onClick={settings.discard}
+                    >
+                      {t("settings.discard")}
+                    </Button>
+                  </ActionGroup>
+                }
+              >
+                {t("settings.failedHelp")}
+              </Callout>
+            )}
+            <PageHeader title={title} />
+            <Callout title={t("shell.soon")} />
+          </ContentStack>
+        }
+      />
     </ShellLayout>
   );
 }

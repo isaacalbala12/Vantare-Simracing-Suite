@@ -49,16 +49,18 @@ export function Dialog({
 }) {
   return (
     <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
-      <BaseDialog.Trigger
-        className="v-button v-button--neutral"
-        render={
-          isValidElement<HTMLAttributes<HTMLElement>>(trigger)
-            ? trigger
-            : undefined
-        }
-      >
-        {isValidElement(trigger) ? undefined : trigger}
-      </BaseDialog.Trigger>
+      {trigger !== null && (
+        <BaseDialog.Trigger
+          className="v-button v-button--neutral"
+          render={
+            isValidElement<HTMLAttributes<HTMLElement>>(trigger)
+              ? trigger
+              : undefined
+          }
+        >
+          {isValidElement(trigger) ? undefined : trigger}
+        </BaseDialog.Trigger>
+      )}
       <BaseDialog.Portal>
         <BaseDialog.Backdrop className="v-backdrop" />
         <BaseDialog.Popup className="v-dialog">
@@ -183,26 +185,31 @@ export function Menu({
 }
 export const ToastProvider = BaseToast.Provider;
 export const useToastManager = BaseToast.useToastManager;
-export function ToastViewport({ closeLabel }: { closeLabel: string }) {
+export function ToastViewport({
+  closeLabel,
+  inline = false,
+}: {
+  closeLabel: string;
+  inline?: boolean;
+}) {
   const { toasts } = BaseToast.useToastManager();
-  return (
-    <BaseToast.Portal>
-      <BaseToast.Viewport className="v-toast-viewport">
-        {toasts.map((toast) => (
-          <BaseToast.Root key={toast.id} toast={toast} className="v-toast">
-            <BaseToast.Content>
-              <BaseToast.Title />
-              <BaseToast.Description />
-              <BaseToast.Close
-                aria-label={closeLabel}
-                className="v-button v-button--ghost"
-              >
-                <Icon name="i-chevron" />
-              </BaseToast.Close>
-            </BaseToast.Content>
-          </BaseToast.Root>
-        ))}
-      </BaseToast.Viewport>
-    </BaseToast.Portal>
+  const viewport = (
+    <BaseToast.Viewport className="v-toast-viewport">
+      {toasts.map((toast) => (
+        <BaseToast.Root key={toast.id} toast={toast} className="v-toast">
+          <BaseToast.Content>
+            <BaseToast.Title />
+            <BaseToast.Description />
+            <BaseToast.Close
+              aria-label={closeLabel}
+              className="v-button v-button--ghost"
+            >
+              <Icon name="i-chevron" />
+            </BaseToast.Close>
+          </BaseToast.Content>
+        </BaseToast.Root>
+      ))}
+    </BaseToast.Viewport>
   );
+  return inline ? viewport : <BaseToast.Portal>{viewport}</BaseToast.Portal>;
 }

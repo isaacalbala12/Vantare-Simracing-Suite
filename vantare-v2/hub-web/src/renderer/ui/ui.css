@@ -675,8 +675,10 @@ textarea.v-input {
 .v-shell {
   height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
+  background: var(--grad-window);
+  --shell-gap: 12px;
 }
 .v-shell-body {
   display: flex;
@@ -687,7 +689,7 @@ textarea.v-input {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: var(--space-9);
+  padding: 16px 24px 18px;
 }
 .v-content-stack {
   display: flex;
@@ -738,4 +740,317 @@ textarea.v-input {
       minmax(min(100%, var(--field-w)), 1fr)
     );
   gap: var(--space-4);
+}
+
+/* GPUI adapt.rs: M density; the left navigation spans the full window. */
+.v-shell-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  isolation: isolate;
+}
+.v-shell-wash {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 420px;
+  background: linear-gradient(180deg, var(--wash), transparent);
+  pointer-events: none;
+  z-index: -1;
+}
+.v-shell-body {
+  overflow: hidden;
+}
+.v-shell-main {
+  position: relative;
+}
+.v-shell .v-content-stack {
+  gap: var(--shell-gap);
+}
+.v-shell,
+.v-shell * {
+  scrollbar-width: none;
+}
+.v-shell::-webkit-scrollbar,
+.v-shell ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.v-shell .v-context {
+  width: clamp(320px, 22vw, 400px);
+  overflow: hidden;
+}
+.v-shell .v-context--collapsed {
+  width: 56px;
+}
+.v-section-tabs-slot {
+  min-width: 0;
+}
+.v-section-tabs-slot:empty,
+.v-section-rail-slot:empty {
+  display: none;
+}
+@media (min-height: 1000px) {
+  .v-shell {
+    --shell-gap: 16px;
+  }
+  .v-shell-main {
+    padding: 24px 28px 28px;
+  }
+}
+@media (max-height: 819px) {
+  .v-shell {
+    --shell-gap: 10px;
+  }
+  .v-shell-main {
+    padding: 12px 20px 14px;
+  }
+  .v-shell .v-page-header p {
+    display: none;
+  }
+}
+
+.v-content-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.v-shell-main {
+  min-height: 0;
+}
+.v-shell-toast-anchor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.v-shell-toast-anchor .v-toast-viewport {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  max-width: calc(100% - 40px);
+  pointer-events: auto;
+}
+
+.v-section-tabs-slot {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  margin-left: 12px;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+.v-section-tabs,
+.v-section-tab-list {
+  height: 100%;
+  min-width: 0;
+}
+.v-section-tab-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 20px;
+  overflow-x: auto;
+}
+.v-section-tab {
+  position: relative;
+  flex: none;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
+.v-section-tab:hover {
+  color: var(--text-2);
+}
+.v-section-tab[data-active] {
+  color: var(--text-1);
+}
+.v-section-tab[data-active]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--grad-brand);
+}
+
+.v-titlebar {
+  flex: none;
+  gap: 14px;
+  padding-left: 28px;
+  padding-right: 150px;
+  border-bottom: 1px solid var(--line-sidebar);
+  background: transparent;
+}
+.v-section-title {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.v-titlebar-actions {
+  flex: none;
+  gap: 14px;
+}
+.v-titlebar .v-actions {
+  flex-wrap: nowrap;
+  gap: 14px;
+}
+.v-simulator-pill {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.v-titlebar-actions .v-button {
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+}
+.v-sidebar-brand {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-mark);
+}
+.v-sidebar-brand svg {
+  width: 26px;
+  height: 26px;
+}
+.v-sidebar--collapsed {
+  width: 76px;
+  padding: 0 14px 12px;
+  gap: 0;
+}
+.v-sidebar--collapsed .v-nav-group {
+  gap: 2px;
+}
+.v-sidebar--collapsed .v-nav-group + .v-nav-group {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line-1);
+}
+.v-sidebar--collapsed .v-nav-group .v-button,
+.v-sidebar--collapsed .v-sidebar-footer .v-button {
+  width: 48px;
+  min-width: 48px;
+  height: 44px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-3);
+  justify-content: center;
+}
+.v-sidebar--collapsed .v-nav-group [aria-current="page"],
+.v-sidebar--collapsed .v-sidebar-footer [aria-current="page"] {
+  background: var(--grad-nav-active);
+  color: var(--accent-bright);
+}
+.v-sidebar--collapsed .v-sidebar-footer .v-actions {
+  justify-content: center;
+  gap: 2px;
+}
+.v-sidebar--collapsed .v-sidebar-footer .v-badge {
+  display: none;
+}
+.v-sidebar--collapsed .v-sidebar-footer .v-content-stack {
+  gap: 2px;
+}
+
+.v-sr-only,
+.v-settings-search label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.v-settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.v-settings-heading .v-page-header {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.v-settings-heading h1 {
+  font-size: 28px;
+  line-height: 32px;
+}
+.v-settings-heading .v-page-header p {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-settings-search {
+  width: 300px;
+  flex: none;
+}
+.v-settings-search .v-input {
+  width: 100%;
+  height: 39px;
+  min-height: 39px;
+  padding: 0 13px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 14px;
+}
+.v-settings-search .v-input::placeholder {
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 400;
+}
+.v-settings-search .v-field {
+  gap: 0;
+}
+@media (min-height: 1000px) {
+  .v-settings-heading h1 {
+    font-size: 32px;
+    line-height: 36px;
+  }
+}
+@media (max-height: 819px) {
+  .v-settings-heading h1 {
+    font-size: 24px;
+    line-height: 28px;
+  }
 }

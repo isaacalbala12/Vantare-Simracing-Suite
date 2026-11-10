@@ -45,5 +45,4 @@ export function navigation(access: AccessView) {
       locked: lock(entry.id, access),
     }));
 }
-export const isSection = (value: string): value is Section =>
-  entries.some((entry) => entry.id === value);
+export { isSection } from "./sections";

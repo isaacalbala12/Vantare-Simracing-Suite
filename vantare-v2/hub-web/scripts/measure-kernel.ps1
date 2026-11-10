@@ -79,9 +79,11 @@ public static class HubMeasure {
 '@
     [HubMeasure]::Dpi()
     $configuration=Get-Content -Raw -LiteralPath $Config | ConvertFrom-Json
-    foreach($application in $configuration.apps){
-      foreach($mode in @('cold','warm')){
-        for($iteration=0;$iteration -lt $configuration.runs;$iteration++){
+    for($iteration=0;$iteration -lt $configuration.runs;$iteration++){
+      $ordered=@($configuration.apps)
+      if($iteration%2){[array]::Reverse($ordered)}
+      foreach($application in $ordered){
+        foreach($mode in @('cold','warm')){
           @{phase='before';app=$application.name;mode=$mode;iteration=$iteration} | ConvertTo-Json -Compress | Write-Output
           if([Console]::ReadLine() -ne 'launch'){throw 'Driver did not prepare the run'}
           if($mode -eq 'cold'){[HubMeasure]::Cold()}

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { cpus, release, totalmem } from "node:os";
@@ -28,6 +28,15 @@ async function main() {
   const runs = Number(process.env.VANTARE_HUB_MEASURE_RUNS ?? "10");
   assert.ok(Number.isInteger(runs) && runs >= 10);
   const evidence = requiredPath("VANTARE_HUB_EVIDENCE");
+  const driverSourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    encoding: "utf8",
+    windowsHide: true,
+  }).trim();
+  const driverSourceDirty =
+    execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
+      encoding: "utf8",
+      windowsHide: true,
+    }).trim().length > 0;
   await mkdir(evidence, { recursive: true });
   const qa = join(
     requiredPath("VANTARE_HUB_QA_ROOT"),
@@ -258,6 +267,8 @@ async function main() {
             profile: "Release; QA CDP only",
           },
           source: manifest,
+          driverSourceSha,
+          driverSourceDirty,
           summary,
         },
         null,

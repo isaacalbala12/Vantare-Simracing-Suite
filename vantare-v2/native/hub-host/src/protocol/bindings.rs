@@ -234,8 +234,25 @@ fn ui_samples() -> Vec<UiToHost> {
     ui
 }
 
+// Cargo can unify serde_json/preserve_order from runtime in a workspace build.
+// Sort recursively so the committed wire corpus does not depend on that feature.
+fn canonical(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(object) => {
+            let ordered: std::collections::BTreeMap<_, _> = object
+                .into_iter()
+                .map(|(key, value)| (key, canonical(value)))
+                .collect();
+            serde_json::Value::Object(ordered.into_iter().collect())
+        }
+        serde_json::Value::Array(values) => {
+            serde_json::Value::Array(values.into_iter().map(canonical).collect())
+        }
+        value => value,
+    }
+}
 pub fn corpus_json() -> String {
-    serde_json::to_string_pretty(&corpus()).expect("wire corpus") + "\n"
+    serde_json::to_string_pretty(&canonical(corpus())).expect("wire corpus") + "\n"
 }
 
 #[cfg(test)]
@@ -310,6 +327,15 @@ mod tests {
         assert_eq!(
             values(host.iter().map(|item| &item["event"]["value"]["photos"])),
             string_union::<LinkState>()
+        );
+    }
+    #[test]
+    fn corpus_sorting_is_recursive_and_preserves_array_order() {
+        let value =
+            serde_json::from_str(r#"{"z":{"b":1,"a":2},"a":[{"z":1,"a":2},3]}"#).expect("fixture");
+        assert_eq!(
+            serde_json::to_string(&canonical(value)).expect("canonical"),
+            r#"{"a":[{"a":2,"z":1},3],"z":{"a":2,"b":1}}"#
         );
     }
     #[test]

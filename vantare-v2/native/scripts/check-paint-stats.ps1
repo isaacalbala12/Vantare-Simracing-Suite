@@ -2,6 +2,8 @@
 $ErrorActionPreference='Stop'
 & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'test-measurement-processes.ps1')
 if ($LASTEXITCODE) { throw 'Collector source/process guard regression' }
+& pwsh -NoProfile -File (Join-Path $PSScriptRoot 'test-measurement-drain.ps1')
+if ($LASTEXITCODE) { throw 'Buffered process-drain regression' }
 $testOut=Join-Path ([IO.Path]::GetTempPath()) ('overlay-orchestration-'+[guid]::NewGuid().ToString('N'))
 & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'test-overlay-campaign.ps1') -Out $testOut
 if ($LASTEXITCODE) { throw 'Overlay campaign orchestration regression' }

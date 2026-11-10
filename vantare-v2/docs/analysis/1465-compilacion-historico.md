@@ -48,4 +48,3 @@ cambiaban las features unificadas (`resolver.feature-unification` aún es inesta
 desde #1654 r3 hub declara `network` explícito, así que `-p vantare-hub` compila solo
 y ya no recompila services y sus dependientes al alternar (quedan las diferencias de
 `--all-targets` y `test-support`).
-

@@ -3,7 +3,7 @@
 ADR 0107 congela el Hub GPUI; su reemplazo web vive fuera de `native/`.
 
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
-cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. La cola asigna un target persistente en D:; ver «Workers».
+cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. La cola asigna un target persistente configurable (D: en el servidor); ver «Workers».
 
 ## Rutas locales — #1869, paso 3
 
@@ -40,7 +40,7 @@ overrides QA de native/LocalAppData/AppData.
 ## Mapa de crates
 
 El workspace tiene 14 crates. La selección `default-members` enumera ocho:
-`domain`, `runtime`, `ipc`, `ui`, `hub`, `engineer`, `services` y `strategy`.
+`domain`, `runtime`, `ipc`, `ui`, `engineer`, `services`, `strategy` y `launcher`.
 Los demás pueden compilarse como dependencias; no estar en esa lista no los
 excluye del grafo de compilación.
 
@@ -259,8 +259,10 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 > por PR). El desarrollo local en Linux/macOS sigue soportado por la base Unix (#1437) y este README, pero
 > ya no lo verifica la CI: si se retoma, volver a añadir el job (histórico en el cuaderno de #1654).
 
-La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
-completo:
+La base Unix (#1437) cubre desarrollo en Linux y macOS. La medición actual
+verifica las bibliotecas domain/ipc/strategy/runtime; la integración completa
+está bloqueada por el fallo Unix de [#2004](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2004).
+El soporte histórico incluye
 los 14 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
 cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
 un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`

@@ -1,6 +1,6 @@
 # Cola de compilación: como máximo dos slots globales, limitados además por RAM.
 # Uso: native/scripts/compilar.ps1 <comando> [args...]
-# Target persistente en D: por slot; cuatro jobs en el servidor (#1993).
+# Target persistente configurable por slot; cuatro jobs en el servidor (#1993).
 # El mínimo y el umbral de memoria se releen de Machine en cada vuelta.
 # VANTARE_SCCACHE=0 permite repetir un fallo sin caché.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
@@ -14,7 +14,7 @@ $args = $normalized
 for ($index = 0; $index -lt $args.Count; $index++) {
     if ($args[$index] -in @('--target-dir', '-TargetDirectory')) {
         if ($index + 1 -ge $args.Count -or -not (Test-VantareTargetPath $args[$index + 1])) {
-            throw 'El target explícito debe ser absoluto y estar dentro de D:.'
+            throw 'El target explícito debe ser absoluto y respetar la raíz configurada.'
         }
     }
 }
@@ -54,7 +54,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         $ancestor = $process.ParentProcessId
     }
     if ($leased) {
-        if (-not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) { throw 'Target anidado fuera de D:.' }
+        if (-not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) { throw 'Target anidado fuera del volumen configurado.' }
         . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
         Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
         $cmd, $rest = $args
@@ -169,11 +169,11 @@ try {
     $env:TEMP = $env:TMP
     [IO.Directory]::CreateDirectory($env:TMP) | Out-Null
     $cmd, $rest = $args
-    # Explicit targets remain available for controlled measurements/distribution, on D: only.
+    # Explicit targets for measurements/distribution stay on the configured volume.
     for ($index = 0; $index -lt $rest.Count; $index++) {
         if ($rest[$index] -in @('--target-dir', '-TargetDirectory')) {
             if ($index + 1 -ge $rest.Count -or -not (Test-VantareTargetPath $rest[$index + 1])) {
-                throw 'El target explícito debe ser absoluto y estar en D:.'
+                throw 'El target explícito debe ser absoluto y respetar la raíz configurada.'
             }
             $explicitTarget = [IO.Path]::GetFullPath($rest[$index + 1]).ToLowerInvariant()
             $reserved = @('slot-0', 'slot-1', 'ci') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $targetRoot $_)) }

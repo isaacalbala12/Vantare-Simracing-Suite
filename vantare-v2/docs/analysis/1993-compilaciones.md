@@ -1,11 +1,12 @@
 # VANTA-137 / #1993 — compilación Rust
 
-Base: nightly `62dde8da4cdbec03604304d9253f016d924f4e26`, ADR 0107.
+Mediciones iniciales sobre nightly `62dde8da4cdbec03604304d9253f016d924f4e26`, ADR 0107.
+Rebase del tooling sobre nightly `db1aa706d`, con #1997 y #2007 ya fusionados.
 Sin cambios de lógica ni dependencias de producto nuevas. No se modifica UI ni GPUI.
 PR en orden: [#1997](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1997),
 [#2003](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2003). El arreglo independiente
 [#2007](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2007), para #2006,
-puede entrar primero. Todos son draft a nightly.
+ya está fusionado junto con #1997. #2003 sigue como draft a nightly.
 
 ## Alcance
 
@@ -39,6 +40,8 @@ con el servidor en reposo. Todos los tiempos siguientes son segundos.
 | PDB de esta muestra | 147,28 MiB | 109,51 MiB |
 | Targets de workers | 7–10 GB por rama (dato inicial) | dos slots reutilizados |
 | Build limpio de los ocho default-members, sin sccache | No medido equivalente | 267,74 s |
+| Recompilar UI con dependencias calientes | No medido equivalente | 241,22 s |
+| Cambio Runtime, build de los ocho default-members | No medido equivalente | 77,22 s |
 | Caché sccache local | 15 GiB llena en C: (dato inicial) | máximo 30 GiB en D: |
 
 *El target anterior conservaba dependencias de un intento interrumpido; esos
@@ -86,6 +89,11 @@ la suite de integración completa y lifecycle fallan en código Unix previo:
 [#2004](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2004).
 No se modifica lógica para ocultarlo.
 
+Mismo Rust 1.95, target Windows MSVC y SDK de xwin ya descargado: el M5
+construyó Core limpio en 25,82 s; preparó tests Runtime --lib en 16,16 s.
+Tras la misma edición privada: build 0,99 s y compilación de tests 1,71 s.
+Estos binarios de tests no se ejecutaron en macOS: es compilación cruzada.
+
 ## Herramientas verificadas
 
 | Prueba | Resultado y decisión |
@@ -129,7 +137,9 @@ se conserva incremental. El test ejecuta los tres binarios reales.
 
 Isaac corrigió la premisa inicial: CI corre en windows-latest de GitHub (4 vCPU),
 no en este servidor. API verificada: cero runners registrados. No se registra
-ninguno. Todas las rutas de CI parten de RUNNER_TEMP; D queda como default local.
+ninguno. Todas las rutas de CI parten de RUNNER_TEMP. Localmente se respeta
+VANTARE_TARGET_ROOT y SCCACHE_DIR; el fallback es LocalApplicationData/Vantare.
+En el servidor ambas variables de Machine apuntan a D:.
 No debe presentarse el target efímero de GitHub como caché persistente del servidor.
 
 Los checks obligatorios conservan nombre. Clippy cubre tipos y el banco bench de

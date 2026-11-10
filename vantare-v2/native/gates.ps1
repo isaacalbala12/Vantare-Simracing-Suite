@@ -10,7 +10,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'scripts/target-slot.ps1')
-if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en D:).' }
+if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en el volumen configurado).' }
 if ($Gate -eq 'distribution') {
     & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
     return

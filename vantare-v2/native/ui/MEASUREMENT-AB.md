@@ -121,3 +121,5 @@ ocultos / restaurados. No se ejecuta remotamente por esta tarea.
 ## Procedencia de la compilación
 
 Antes de cada build instrumentado fijar `$env:VANTARE_MEASUREMENT_SOURCE_SHA = (git rev-parse HEAD).Trim()` y compilar por `compilar.ps1`. Este valor fuerza reevaluar el build script al reutilizar un target entre worktrees; el helper lo compara con Git y falla si no coincide. No reemplaza el SHA real. Tras compilar, comprobar `--measurement-info` contra el SHA esperado y el estado limpio antes de congelar el ejecutable. La caracterización detectó un binario con capacidades nuevas y metadatos acc6619b1 reutilizados: se rechazó, no es evidencia de rendimiento.
+
+Regresión de caché reproducible: con target D: configurado y fuente limpia, ejecutar `pwsh -NoProfile -File native/scripts/test-measurement-provenance.ps1 -Out D:/VantareServer/evidence/isa-1996/provenance-NEW`. Compila correctamente, exige el fallo con SHA deliberadamente incorrecto sobre el mismo target y restaura la compilación correcta. Conserva los tres logs y ambos metadatos.

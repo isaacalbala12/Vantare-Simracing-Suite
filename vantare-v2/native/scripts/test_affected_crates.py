@@ -31,18 +31,18 @@ class ScopeTests(unittest.TestCase):
         packages = self.packages + [
             {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{name}/Cargo.toml',
              'dependencies': []}
-            for name in ['vantare-storage', 'vantare-hub-analysis', 'vantare-hub']]
+            for name in ['vantare-storage', 'vantare-hub']]
         self.assertEqual(affected.select(packages, ['vantare-v2/native/vantare-storage/src/main.rs']),
-                         ['vantare-hub', 'vantare-hub-analysis', 'vantare-storage'])
+                         ['vantare-hub', 'vantare-storage'])
 
     def test_leaf_views_do_not_rebuild_distribution_but_global_and_root_changes_do(self):
-        for path in ['vantare-v2/native/hub-strategy/src/strategy/editor.rs',
-                     'vantare-v2/native/hub/src/orbit.rs']:
+        for path in ['vantare-v2/native/runtime/src/core/mod.rs',
+                     'vantare-v2/native/ui/src/lib.rs']:
             self.assertFalse(affected.installation_affected([path]))
         for path in ['vantare-v2/native/hub-strategy/Cargo.toml',
                      'vantare-v2/native/hub/src/main.rs',
                      'vantare-v2/native/hub-shell/src/settings/mod.rs',
-                     'vantare-v2/native/services/src/lib.rs', '.github/workflows/ci.yml']:
+                     'vantare-v2/native/runtime/build.rs', '.github/workflows/ci.yml']:
             self.assertTrue(affected.installation_affected([path]))
 
     def test_fast_path_never_selects_hub_or_admin(self):

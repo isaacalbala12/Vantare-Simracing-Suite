@@ -49,7 +49,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
 }
 $env:SCCACHE_DIR = 'D:\VantareServer\cache\sccache'
 $env:SCCACHE_SERVER_PORT = '4227'
-$env:SCCACHE_CACHE_SIZE = '5G'
+$env:SCCACHE_CACHE_SIZE = '30G'
 if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [math]::Min(2, [int]($env:VANTARE_CARGO_SLOTS ?? 2))
 if ($slots -lt 1) { $slots = 1 }

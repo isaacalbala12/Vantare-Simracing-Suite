@@ -320,7 +320,7 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: |
           $decision = 'true'
-          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request' -and $env:GITHUB_BASE_REF -eq 'nightly') {
             $base = & git rev-parse 'HEAD^1'
             if ($LASTEXITCODE) { throw 'Missing pull request diff base' }
             $decision = & python scripts/affected-crates.py --base $base --installation
@@ -431,7 +431,7 @@ jobs:
           TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}
         run: |
           $base = @()
-          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request' -and $env:GITHUB_BASE_REF -eq 'nightly') {
             $sha = & git rev-parse 'HEAD^1'
             if ($LASTEXITCODE) { throw 'Missing pull request diff base' }
             $base = @('-DiffBase', $sha)

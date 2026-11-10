@@ -33,7 +33,7 @@ def select(packages, paths):
         if 'vantare-ui' in changed:
             reverse |= names & {'vantare-runtime'}
         if 'vantare-storage' in changed:
-            reverse |= names & {'vantare-hub-analysis', 'vantare-hub'}
+            reverse |= names & {'vantare-hub'}
         expanded = changed | reverse
         if expanded == changed:
             return sorted(changed)
@@ -43,15 +43,15 @@ def select(packages, paths):
 def installation_affected(paths):
     # Release/installation controls run on every integration push. A PR changing
     # only leaf view code cannot change packaging, trust, installer or root launch.
-    leaves = {'orbit', 'strategy', 'analysis', 'studio', 'pilot', 'engineer', 'workshop', 'launcher'}
+    # Leaf Rust source changes use selected gates; full packaging remains on
+    # every integration push and whenever installer/launch/build inputs change.
+    leaves = {'domain', 'ipc', 'strategy', 'runtime', 'engineer', 'services', 'ui', 'storage'}
     for path in paths:
         if path.endswith('.md'):
             continue
         parts = path.replace('\\', '/').split('/')
         if len(parts) >= 5 and parts[:2] == ['vantare-v2', 'native']:
-            if parts[2].startswith('hub-') and parts[2][4:] in leaves and parts[3] == 'src':
-                continue
-            if parts[2:4] == ['hub', 'src'] and parts[4].removesuffix('.rs') in leaves:
+            if parts[2] in leaves and parts[3] in {'src', 'tests', 'benches'}:
                 continue
         return True
     return False
@@ -79,6 +79,7 @@ def main():
     parser.add_argument('--base')
     parser.add_argument('--crate')
     parser.add_argument('--installation', action='store_true')
+    parser.add_argument('--fast', action='store_true', help='Exclude frozen Hub/Admin for non-legacy PRs')
     args = parser.parse_args()
     native = Path(__file__).resolve().parents[1]
     paths = []
@@ -99,7 +100,11 @@ def main():
     if args.crate:
         print(','.join(select_for_crate(members, args.crate)))
     else:
-        print(','.join(select(members, paths)))
+        selected = select(members, paths)
+        legacy_changed = any(path.replace('\\', '/').startswith(('vantare-v2/native/hub/', 'vantare-v2/native/admin/')) for path in paths)
+        if args.fast and not legacy_changed:
+            selected = sorted(set(selected) - LEGACY)
+        print(','.join(selected))
 
 
 if __name__ == '__main__':

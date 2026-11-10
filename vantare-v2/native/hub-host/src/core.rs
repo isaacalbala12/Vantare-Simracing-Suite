@@ -178,17 +178,25 @@ fn service_worker(
     outgoing: &std::sync::mpsc::Sender<ServiceReply>,
 ) {
     let mut connection = None;
+    let mut connection_error = crate::protocol::HostError::CoreUnavailable;
     let mut last_probe: Option<Instant> = None;
     while !cancel.is_set() {
         if last_probe.is_none_or(|last| last.elapsed() >= Duration::from_secs(2)) {
             last_probe = Some(Instant::now());
             if connection.is_none() {
-                connection = client::Client::start(supervisor, photo, Arc::clone(cancel)).ok();
+                match client::Client::start(supervisor, photo, Arc::clone(cancel)) {
+                    Ok(client) => connection = Some(client),
+                    Err(error) => connection_error = error,
+                }
             }
             let ok = connection.as_mut().is_some_and(|client| {
-                client
-                    .request(vantare_ipc::services_protocol::Command::Probe)
-                    .is_ok()
+                match client.request(vantare_ipc::services_protocol::Command::Probe) {
+                    Ok(_) => true,
+                    Err(error) => {
+                        connection_error = error;
+                        false
+                    }
+                }
             });
             target.store(ok, Ordering::Release);
             if !ok {
@@ -199,12 +207,8 @@ fn service_worker(
             Ok((id, command)) => {
                 let result = connection
                     .as_mut()
-                    .ok_or(crate::protocol::HostError::CoreUnavailable)
-                    .and_then(|client| {
-                        client
-                            .request(command)
-                            .map_err(|_| crate::protocol::HostError::CoreUnavailable)
-                    });
+                    .ok_or_else(|| connection_error.clone())
+                    .and_then(|client| client.request(command));
                 if outgoing.send((id, result)).is_err() {
                     break;
                 }

@@ -1298,3 +1298,43 @@ La CI del HEAD publicado queda pendiente; sin despliegue ni merge.
 Re-review de #1966: Services conserva el vector multibyte de 4098 bytes,
 además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
 `testing::model`. Test aislado de Hub y Services, Clippy y formato PASS.
+
+
+## 2026-11-10 — VANTA-138 / #1995, worker D: contrato del Hub web
+
+- Rama `vantareapp/isa-1995-d-contrato-borrador`, base `nightly@de286e930`.
+- El anfitrión expone por separado TestingRefresh/Answer/Contribute/Credit/NoticeRead,
+  DraftLoad/Save/Discard y ReportCapture/RemoveScreenshot/Prepare/RetryPrepare/Send.
+  El núcleo conserva los documentos y sus efectos. Las notas libres de participación
+  no se reenvían; los envíos estructurados conservan el comportamiento GPUI.
+- Las proyecciones no publican el cuerpo privado de las contribuciones, la identidad
+  de cuenta de la vista previa ni las claves de idempotencia. Límites, módulos y los
+  2 segundos de autoguardado salen de Rust; contrato y corpus se regeneran con ts-rs.
+- Decisión provisional explícita del orquestador: conservar DraftSave/DraftDiscard
+  sin CAS entre procesos, tal como están en el núcleo. No se promete CAS nuevo.
+- Evidencia: Clippy cruzado Windows con `-D warnings` PASS, tests nuevos ejecutados
+  en Windows 4/4; typecheck y Biome PASS; contrato Vitest 132/132. Suite web: 237/238;
+  qa-inventory agota sus 5 segundos también aislado, sin modificar su test ni timeout.
+  La suite Rust completa y la CI quedan pendientes. No cambia ninguna pantalla todavía.
+- Siguiente: Informes; después, capturas QA válidas de las pestañas para testers.
+  Sin servicios reales, merge, release ni promoción.
+
+### Revisión P2 de #2026
+
+- Se exigen UUID minúsculos para participación, 64 hex minúsculos para previewId
+  y los identificadores de capturas existentes, y updatedAt ASCII de 1–128 bytes.
+  Rust exporta los límites y la forma UUID; TypeScript usa esos mismos datos.
+- El anfitrión exige tester para refresh/answer/credit/noticeRead y no tester
+  para contribute; borradores e informes siguen disponibles para verificados
+  no bloqueados. El SQL actual ya filtra los cuestionarios por canal/rol; crédito
+  y avisos comprueban cuenta propietaria, sin imponer tester de forma general.
+- Los fallos de transporte se conservan como coreUnavailable, incompatibilidad
+  como incompatible y errores de protocolo/respuestas inesperadas como rejected.
+  Reply::Error no permite recuperar códigos: se devuelve rejected sin texto libre.
+  El GPUI actual muestra el mensaje del núcleo; la pantalla nueva debe conservar
+  su contexto y usar textos seguros hasta resolver la mejora #2032, enlazada a #1995.
+- Decisión explícita: no modificar IPC ni Services. HTTP 429 y el resto de errores
+  semánticos perdidos por el núcleo no pueden distinguirse con el contrato actual.
+- Verificación P2: Clippy Windows cruzado y formato PASS; 8 tests Rust ejecutados
+  en Windows PASS; typecheck PASS, contrato 134/134 y suite web completa 247/247.
+  CI del nuevo SHA pendiente; los P3 se atienden en el PR de Informes.

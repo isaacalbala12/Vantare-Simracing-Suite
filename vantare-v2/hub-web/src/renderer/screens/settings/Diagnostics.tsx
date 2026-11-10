@@ -72,12 +72,8 @@ export function Diagnostics() {
     <>
       <CardGrid>
         <Card title={t("diagnostics.hub")}>
-          <p>
-            {t("shell.version")}: {view.version}
-          </p>
-          <p>
-            {t("diagnostics.system")}: {view.os} {view.arch}
-          </p>
+          <p>{`${t("shell.version")}: ${view.version}`}</p>
+          <p>{`${t("diagnostics.system")}: ${view.os} ${view.arch}`}</p>
         </Card>
         <Card title={t("diagnostics.core")}>
           <Callout title={t(`diagnostics.link.${view.core.photos}`)} />

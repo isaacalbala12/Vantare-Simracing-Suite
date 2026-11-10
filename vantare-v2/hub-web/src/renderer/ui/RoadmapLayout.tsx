@@ -34,7 +34,7 @@ function Heading({
   icon = "v-roadmap",
 }: {
   children: string;
-  icon?: "v-roadmap" | "layers" | "check";
+  icon?: "v-roadmap" | "v-calendar" | "layers" | "check";
 }) {
   return (
     <h2 className="v-roadmap-heading">
@@ -97,8 +97,8 @@ export function RoadmapLayout({
         (a.version ?? "").localeCompare(b.version ?? ""),
     );
   const season = (
-    <section className="v-roadmap-lane">
-      <Heading>{text.season}</Heading>
+    <section className="v-roadmap-lane v-roadmap-season">
+      <Heading icon="v-calendar">{text.season}</Heading>
       <p>{text.schedule}</p>
       {p && (
         <p>

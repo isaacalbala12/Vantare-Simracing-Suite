@@ -29,3 +29,11 @@ Revisar cada rechazo contra el delta antiguo; no sustituir el backend publicado
 por el antiguo. Regenerar el patch contra el paquete prístino, actualizar este
 README, versión y lockfile. Ejecutar caracterización, arquitectura, capturas
 reales y la misma campaña de medición antes/después antes de aceptar el porte.
+
+Desde `vantare-v2`, para generar y comprobar el delta tras verificar el archivo
+descargado (sustituir la carpeta prístina por la de la versión nueva):
+
+```powershell
+python native/scripts/vendor-backend-patch.py --pristine D:/VantareServer/evidence/isa-1996/crates/gpui-pre-windows-0.3.12 --vendor native/vendor/gpui-pre-windows
+git apply --check --reverse --directory=native/vendor/gpui-pre-windows native/vendor/gpui-pre-windows/vantare.patch
+```

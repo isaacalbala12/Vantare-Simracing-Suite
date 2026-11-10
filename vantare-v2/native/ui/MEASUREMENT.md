@@ -22,9 +22,9 @@ Desde `vantare-v2`, con el código confirmado en Git y sin overrides de perfil:
 
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:\VantareServer\targets\isa-1996-medicion'
-$env:CARGO_BUILD_JOBS = '2'
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core --features paint-stats -j 2
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-ui --example overlay-replay --features paint-stats -j 2
+$env:CARGO_BUILD_JOBS = '4'
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core --features paint-stats -j 4
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-ui --example overlay-replay --features paint-stats -j 4
 pwsh -NoProfile -File native/scripts/measure-overlay-campaign.ps1 -UI "$env:CARGO_TARGET_DIR/release/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/release/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/VantareServer/evidence/isa-1996/release-campaign-NEW -Runs 5
 ```
 
@@ -61,3 +61,5 @@ El workload conserva el banco original: 1 Standings; 4 widgets en secuencia Stan
 El resumen informa memoria privada y working set por separado; ambas incluyen la instrumentación. El buffer reservado puede elevar la privada aunque sus páginas todavía no sean residentes. No se presenta ese presupuesto como consumo del producto sin diagnóstico.
 
 `native_text_layout` distingue medición disponible, fases apagadas y backend sin instrumentar. Una caché caliente puede tener cero llamadas nativas durante la ventana y llamadas durante el arranque: ese cero no significa que el texto no cueste CPU; la consulta de caché y el pintado de glifos están dentro de paint. Las fases anidadas no se suman. Los contadores de proceso se interpolan desde muestras aproximadamente cada segundo a los extremos QPC comunes; esa interpolación limita su precisión temporal.
+
+El selector de crates de #2003 ejecuta `cargo metadata` antes de entrar en la cola. El guard distingue solo esa consulta de lectura, registrada por PID/QPC en `readonly-cargo.csv`, de compilaciones, Clippy, Nextest y comandos desconocidos, que descartan la pasada. El límite de carga total sigue activo. Los procesos que provocan contención quedan registrados por nombre/PID, sin publicar sus argumentos. `collector_sha` y los hashes del script/guard identifican el método usado; `sha` sigue siendo exclusivamente el SHA compilado del ejecutable UI.

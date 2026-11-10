@@ -11,6 +11,7 @@ param(
     [ValidateRange(1,100)][double]$MaxSystemLoadPercent = 35
 )
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot/measurement-processes.ps1"
 if (Test-Path -LiteralPath $Out) { throw 'Use a new evidence directory for every run' }
 foreach ($file in @($UI,$Recording)) {
     if (!(Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing $file" }
@@ -66,6 +67,7 @@ $gpuRows = [Collections.Generic.List[object]]::new()
 $gpuCounterRows = [Collections.Generic.List[object]]::new()
 $invalidCounterRows = [Collections.Generic.List[object]]::new()
 $systemRows = [Collections.Generic.List[object]]::new()
+$readOnlyRows = [Collections.Generic.List[object]]::new()
 $dwm = @(Get-Process dwm -ErrorAction Stop)
 if ($dwm.Count -ne 1) { throw 'Exactly one DWM process is required for an unambiguous baseline' }
 $dwm = $dwm[0]
@@ -79,6 +81,20 @@ $completed = $false
 $coreProcess = $null
 $coreStarted = $false
 $buildLocks = [Collections.Generic.List[Threading.Mutex]]::new()
+function Assert-MeasurementQueueIdle {
+    $compilers = @()
+    foreach ($candidate in @(Get-MeasurementProcesses)) {
+        if (Test-MeasurementCompilerProcess -Name $candidate.Name -CommandLine $candidate.CommandLine) {
+            $compilers += [pscustomobject]@{pid=$candidate.ProcessId;parent_pid=$candidate.ParentProcessId;name=$candidate.Name}
+        } else {
+            $readOnlyRows.Add([pscustomobject]@{qpc=[Diagnostics.Stopwatch]::GetTimestamp();pid=$candidate.ProcessId;kind='cargo metadata'})
+        }
+    }
+    if ($compilers.Count) {
+        $compilers | ConvertTo-Json | Set-Content "$Out/competing-processes.json"
+        throw 'Compiler contention: discard run; process IDs recorded in competing-processes.json'
+    }
+}
 try {
     # Reserve the existing build queue without changing its scripts/settings.
     # Take build locks before the visual mutex: capture scripts may compile
@@ -93,7 +109,7 @@ try {
         catch [Threading.AbandonedMutexException] { } # ownership was acquired
         $buildLocks.Add($buildLock)
     }
-    if (Get-Process cargo,rustc -ErrorAction SilentlyContinue) { throw 'An uncoordinated compiler is running: discard measurement' }
+    Assert-MeasurementQueueIdle
     $held = $mutex.WaitOne(0)
     if (!$held) { throw 'Visual capture/measurement already in progress' }
     $powerPlan = (& powercfg /getactivescheme | Out-String).Trim()
@@ -176,7 +192,7 @@ try {
         $systemRows.Add([pscustomobject]@{qpc=$tick;load_percent=$load})
         if ($watch.Elapsed.TotalSeconds -gt 5 -and $load -gt $MaxSystemLoadPercent) { throw 'High total system load: discard run' }
         if ($watch.Elapsed.TotalSeconds -gt $Seconds + 120) { throw 'Replay exceeded its duration and shutdown margin' }
-        if (Get-Process cargo,rustc -ErrorAction SilentlyContinue) { throw 'Compiler contention: discard run' }
+        Assert-MeasurementQueueIdle
     }
     if ($process.ExitCode) { throw "Replay failed: $($process.ExitCode)" }
     if ($coreStarted) {
@@ -186,6 +202,10 @@ try {
     }
     [pscustomobject]@{
         sha=$build.sha; profile=$build.profile; features=$build.features; compiled_build=$build; core_build=$coreBuild
+        collector_sha=(& git -C $PSScriptRoot rev-parse HEAD)
+        collector_script_sha256=(Get-FileHash -LiteralPath $PSCommandPath).Hash
+        process_guard_sha256=(Get-FileHash -LiteralPath "$PSScriptRoot/measurement-processes.ps1").Hash
+        readonly_cargo_observations=$readOnlyRows.Count
         measurement_version=2; date=(Get-Date -Format o); widgets=$Widgets
         recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds
         recording_event_count=$recordingManifest.events.Count; recording_first_event_seconds=$firstEventSeconds
@@ -233,6 +253,7 @@ try {
         $gpuCounterRows | Export-Csv -NoTypeInformation "$Out/gpu-counters.csv"
         $invalidCounterRows | Export-Csv -NoTypeInformation "$Out/invalid-counters.csv"
         $systemRows | Export-Csv -NoTypeInformation "$Out/system.csv"
+        $readOnlyRows | Export-Csv -NoTypeInformation "$Out/readonly-cargo.csv"
         if ($completed) { 'complete' | Set-Content "$Out/complete.txt" }
     }
     $process.Dispose()

@@ -480,6 +480,39 @@ fn un_bucle_no_muestra_una_raiz_oculta() {
     e.actualizar(&m, Instante(0.0), &Fijo).unwrap();
     assert!(e.valor(CapaId(1), Propiedad::Opacidad, Instante(2.0)).abs() < 1.0e-6);
 }
+
+#[test]
+fn documentos_minimos_v1() {
+    let r = r#"{"receta":1,"tipo":"overlay","nombre":"minima","modelo":"minima/1","raiz":{"tipo":"caja"}}"#;
+    let s = r#"{"sistema":1,"nombre":"minimo","fuentes":[]}"#;
+    let m = r#"{"modelo":"minima/1","campos":{}}"#;
+    let c = cargar(("r.json", r), ("s.json", s), ("m.json", m)).unwrap();
+    let mut escena = Escena::nueva(c.receta, c.sistema);
+    assert!(escena.actualizar(&json!({}), Instante(0.0), &Fijo).is_ok());
+}
+#[test]
+fn errores_json_y_tipo_llevan_puntero() {
+    let errores = cargar(("roto.json", "{"), ("s.json", "{}"), ("m.json", "{}")).unwrap_err();
+    assert_eq!(errores[0].causa, Causa::Json);
+    assert_eq!(errores[0].puntero, "");
+    assert_eq!(errores[0].fichero, "roto.json");
+    let mut r = receta();
+    r["raiz"]["tipo"] = json!("imagen");
+    error(&r, &sistema(), Causa::Tipo, "/raiz/tipo");
+}
+#[test]
+fn limite_estatico_de_capas_y_fuentes_del_paquete() {
+    let mut r = receta();
+    r["raiz"]["hijos"] = Value::Array(
+        (0..256)
+            .map(|_| json!({"tipo":"caja","capa":true}))
+            .collect(),
+    );
+    error(&r, &sistema(), Causa::Limite, "/raiz/hijos/255");
+    let mut s = sistema();
+    s["fuentes"] = json!(["Ajena"]);
+    error(&receta(), &s, Causa::Fuente, "/fuentes/0");
+}
 fn bezier_exacta(puntos: [f32; 4], tiempo: f64) -> f64 {
     let [x1, y1, x2, y2] = puntos.map(f64::from);
     let evaluar =

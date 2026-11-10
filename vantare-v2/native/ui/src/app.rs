@@ -388,6 +388,14 @@ impl Overlay {
             #[cfg(feature = "paint-stats")]
             {
                 self.profile_photo = Some((snapshot.epoch, snapshot.sequence));
+                if crate::profiling::enabled() {
+                    eprintln!(
+                        "perf notify widget={} epoch={} seq={}",
+                        self.kind.name(),
+                        snapshot.epoch,
+                        snapshot.sequence
+                    );
+                }
             }
             cx.notify();
         }
@@ -548,6 +556,10 @@ impl Render for Overlay {
                     && let Some((epoch, sequence)) = profile_photo
                 {
                     crate::profiling::photo("ui_paint", epoch, sequence);
+                    eprintln!(
+                        "perf data_paint widget={} epoch={epoch} seq={sequence}",
+                        kind.name()
+                    );
                 }
             },
         )
@@ -619,7 +631,7 @@ impl Render for Screen {
             .iter()
             .find(|first| crate::rights::denied(first.view.read(cx).kind, cx))
             .map(|first| license_notice(first.at, crate::rights::notice(cx)));
-        div()
+        let root = div()
             .size_full()
             .children(notice)
             .children(self.widgets.iter().map(|placed| {
@@ -649,7 +661,15 @@ impl Render for Screen {
                         vantare_ipc::INCOMPATIBLE_COMPONENTS.into(),
                     ))
                 },
-            )
+            );
+        #[cfg(feature = "paint-stats")]
+        {
+            crate::profile_element::Timed(root)
+        }
+        #[cfg(not(feature = "paint-stats"))]
+        {
+            root
+        }
     }
 }
 

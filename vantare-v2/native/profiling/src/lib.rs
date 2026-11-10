@@ -32,9 +32,13 @@ pub enum Stage {
     IpcWrite,
     Decode,
     Dto,
+    GpuiLayoutRequest,
+    GpuiLayoutCompute,
+    GpuiPrepaint,
+    GpuiPaint,
 }
 
-const NAMES: [&str; 24] = [
+const NAMES: [&str; 28] = [
     "poll",
     "observe",
     "publish",
@@ -59,6 +63,10 @@ const NAMES: [&str; 24] = [
     "ipc_write",
     "decode",
     "dto",
+    "gpui_layout_request",
+    "gpui_layout_compute",
+    "gpui_prepaint",
+    "gpui_paint",
 ];
 static COUNTS: [AtomicU64; NAMES.len() * 4] = [const { AtomicU64::new(0) }; NAMES.len() * 4];
 
@@ -238,7 +246,7 @@ mod tests {
 
     #[test]
     fn span_records_one_completed_call_and_qpc_duration() {
-        assert_eq!(Stage::Dto as usize + 1, NAMES.len());
+        assert_eq!(Stage::GpuiPaint as usize + 1, NAMES.len());
         let offset = Stage::VmDiff as usize * 4;
         let before = COUNTS[offset].load(Relaxed);
         let wall_before = COUNTS[offset + 1].load(Relaxed);

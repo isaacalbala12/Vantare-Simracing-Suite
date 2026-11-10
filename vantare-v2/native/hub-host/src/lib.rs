@@ -31,3 +31,5 @@ pub mod diagnostics;
 pub mod privacy;
 
 pub mod pilot;
+
+pub mod testing;

@@ -7,6 +7,19 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 pub const METHODS: &[&str] = &[
+    "testing.answer",
+    "testing.contribute",
+    "testing.credit",
+    "testing.noticeRead",
+    "report.capture",
+    "report.removeScreenshot",
+    "report.prepare",
+    "report.retryPrepare",
+    "report.send",
+    "testing.refresh",
+    "draft.load",
+    "draft.save",
+    "draft.discard",
     "pilot.load",
     "pilot.save",
     "privacy.policy",
@@ -96,6 +109,49 @@ pub enum Topic {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "testing.answer")]
+    TestingAnswer { id: String, score: u8 },
+    #[serde(rename = "testing.contribute")]
+    TestingContribute { id: String, consent: bool },
+    #[serde(rename = "testing.credit")]
+    TestingCredit { id: String, consent: bool },
+    #[serde(rename = "testing.noticeRead")]
+    TestingNoticeRead {
+        id: String,
+        #[serde(rename = "updatedAt")]
+        updated_at: String,
+    },
+    #[serde(rename = "report.capture")]
+    ReportCapture {
+        fields: crate::testing::ReportFields,
+    },
+    #[serde(rename = "report.removeScreenshot")]
+    ReportRemoveScreenshot {
+        id: String,
+        fields: crate::testing::ReportFields,
+    },
+    #[serde(rename = "report.prepare")]
+    ReportPrepare {},
+    #[serde(rename = "report.retryPrepare")]
+    ReportRetryPrepare {},
+    #[serde(rename = "report.send")]
+    ReportSend {
+        #[serde(rename = "previewId")]
+        preview_id: String,
+        consent: bool,
+    },
+
+    #[serde(rename = "testing.refresh")]
+    TestingRefresh {},
+    #[serde(rename = "draft.load")]
+    DraftLoad {},
+    #[serde(rename = "draft.save")]
+    DraftSave {
+        fields: crate::testing::ReportFields,
+    },
+    #[serde(rename = "draft.discard")]
+    DraftDiscard {},
+
     #[serde(rename = "pilot.load")]
     PilotLoad {},
     #[serde(rename = "pilot.save")]
@@ -155,6 +211,50 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "testing.answer")]
+    TestingAnswer { value: crate::testing::TestingView },
+    #[serde(rename = "testing.contribute")]
+    TestingContribute { value: crate::testing::TestingView },
+    #[serde(rename = "testing.credit")]
+    TestingCredit { value: crate::testing::TestingView },
+    #[serde(rename = "testing.noticeRead")]
+    TestingNoticeRead { value: crate::testing::TestingView },
+    #[serde(rename = "report.capture")]
+    ReportCapture {
+        value: crate::testing::ReportDraftView,
+    },
+    #[serde(rename = "report.removeScreenshot")]
+    ReportRemoveScreenshot {
+        value: crate::testing::ReportDraftView,
+    },
+    #[serde(rename = "report.prepare")]
+    ReportPrepare {
+        value: crate::testing::ReportPreviewView,
+    },
+    #[serde(rename = "report.retryPrepare")]
+    ReportRetryPrepare {
+        value: crate::testing::ReportPreviewView,
+    },
+    #[serde(rename = "report.send")]
+    ReportSend {
+        value: crate::testing::ReportReceiptView,
+    },
+
+    #[serde(rename = "testing.refresh")]
+    TestingRefresh { value: crate::testing::TestingView },
+    #[serde(rename = "draft.load")]
+    DraftLoad {
+        value: crate::testing::ReportDraftView,
+    },
+    #[serde(rename = "draft.save")]
+    DraftSave {
+        value: crate::testing::ReportDraftView,
+    },
+    #[serde(rename = "draft.discard")]
+    DraftDiscard {
+        value: crate::testing::ReportDraftView,
+    },
+
     #[serde(rename = "pilot.load")]
     PilotLoad { value: crate::pilot::PilotView },
     #[serde(rename = "pilot.save")]

@@ -661,6 +661,210 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "report.send",
+        "value": {
+          "createdAt": "2026-11-10T12:00:00Z",
+          "draftCleared": true,
+          "id": "qa",
+          "state": "submitted"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.retryPrepare",
+        "value": {
+          "appVersion": "QA",
+          "channel": "nightly",
+          "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "hub",
+            "observedText": ""
+          },
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "osVersion": "Windows",
+          "retry": false,
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.prepare",
+        "value": {
+          "appVersion": "QA",
+          "channel": "nightly",
+          "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "hub",
+            "observedText": ""
+          },
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "osVersion": "Windows",
+          "retry": false,
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.removeScreenshot",
+        "value": {
+          "exists": false,
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "unknown",
+            "observedText": ""
+          },
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.capture",
+        "value": {
+          "exists": false,
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "unknown",
+            "observedText": ""
+          },
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "testing.noticeRead",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "testing.credit",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "testing.contribute",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "testing.answer",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "testing.refresh",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "draft.load",
+        "value": {
+          "exists": false,
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "unknown",
+            "observedText": ""
+          },
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "draft.save",
+        "value": {
+          "exists": false,
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "unknown",
+            "observedText": ""
+          },
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "draft.discard",
+        "value": {
+          "exists": false,
+          "fields": {
+            "actionText": "",
+            "contextText": "",
+            "expectedText": "",
+            "module": "unknown",
+            "observedText": ""
+          },
+          "screenshots": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "pilot.load",
         "value": {
           "fields": {
@@ -1048,6 +1252,129 @@
       "kind": "request",
       "request": {
         "method": "notifications.test"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "method": "report.send",
+        "previewId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "report.retryPrepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "report.prepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method": "report.removeScreenshot"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "method": "report.capture"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "qa",
+        "method": "testing.noticeRead",
+        "updatedAt": "2026-11-10T12:00:00Z"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "id": "qa",
+        "method": "testing.credit"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "id": "qa",
+        "method": "testing.contribute"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "qa",
+        "method": "testing.answer",
+        "score": 3
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "testing.refresh"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "draft.load"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "draft.discard"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "method": "draft.save"
       }
     },
     {

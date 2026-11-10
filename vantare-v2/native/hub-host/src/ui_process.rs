@@ -246,11 +246,13 @@ fn settings_response(
     frame::write(pipe, &message)
 }
 enum RemoteKind {
+    Testing(crate::testing::Operation),
     PilotLoad,
     PilotSave,
     MailGet,
     MailSet,
 }
+
 struct Session {
     pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
@@ -295,6 +297,9 @@ impl Session {
         self.current = self.core.status();
         if let Some((id, result)) = self.core.reply() {
             let result = match (self.remote.take(), result) {
+                (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
+                    crate::testing::complete(operation, reply)
+                }
                 (
                     Some((expected, kind)),
                     Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
@@ -381,6 +386,19 @@ impl Session {
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::TestingAnswer { .. }
+            | Request::TestingContribute { .. }
+            | Request::TestingCredit { .. }
+            | Request::TestingNoticeRead { .. }
+            | Request::ReportCapture { .. }
+            | Request::ReportRemoveScreenshot { .. }
+            | Request::ReportPrepare {}
+            | Request::ReportRetryPrepare {}
+            | Request::ReportSend { .. }
+            | Request::TestingRefresh {}
+            | Request::DraftLoad {}
+            | Request::DraftSave { .. }
+            | Request::DraftDiscard {} => self.testing_request(pipe, id, request),
             Request::PilotLoad {} | Request::PilotSave { .. } => {
                 self.pilot_request(pipe, id, request)
             }
@@ -585,6 +603,24 @@ impl Session {
             self.remote = Some((id, kind));
             Ok(())
         });
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.respond(
+                pipe,
+                id,
+                Err(error),
+                crate::diagnostics::DiagnosticSection::Services,
+            ),
+        }
+    }
+    fn testing_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        let result = crate::testing::intent(request, &self.current.access).and_then(
+            |(operation, command)| {
+                self.core.request(id, command)?;
+                self.remote = Some((id, RemoteKind::Testing(operation)));
+                Ok(())
+            },
+        );
         match result {
             Ok(()) => Ok(()),
             Err(error) => self.respond(

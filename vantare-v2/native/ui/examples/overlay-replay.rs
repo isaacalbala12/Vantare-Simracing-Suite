@@ -8,7 +8,7 @@ use std::{
 use vantare_domain::{Snapshot, format::Preferences};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    vantare_ui::profiling::initialize_trace();
+    vantare_profiling::initialize_trace();
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.as_slice() == ["--measurement-info"] {
         let features: Vec<_> = option_env!("VANTARE_MEASUREMENT_FEATURES")
@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut build = serde_json::json!({"sha":option_env!("VANTARE_MEASUREMENT_SHA"), "dirty":option_env!("VANTARE_MEASUREMENT_DIRTY")!=Some("false"), "profile":option_env!("VANTARE_MEASUREMENT_PROFILE"),
             "opt_level":option_env!("VANTARE_MEASUREMENT_OPT_LEVEL"), "debug":option_env!("VANTARE_MEASUREMENT_DEBUG"), "features":features,
             "release_options":"Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override"});
-        build["trace_capacity_bytes"] = vantare_ui::profiling::trace_capacity_bytes().into();
+        build["trace_capacity_bytes"] = vantare_profiling::trace_capacity_bytes().into();
         println!("{build}");
         return Ok(());
     }
@@ -117,7 +117,7 @@ fn run_pipe(pipe: &str, count: usize, seconds: u64) -> Result<(), Box<dyn std::e
     );
     let _ = cancel.send(());
     timer.join().map_err(|_| "replay timer panicked")?;
-    vantare_ui::profiling::flush()?;
+    vantare_profiling::flush()?;
     Ok(())
 }
 

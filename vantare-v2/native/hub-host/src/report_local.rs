@@ -57,7 +57,7 @@ pub enum ExportStatus {
 
 pub fn prepare(
     fields: &ReportFields,
-    mut observed: DiagnosticView,
+    observed: DiagnosticView,
     binaries: Vec<BinaryView>,
 ) -> Result<LocalReportView, HostError> {
     #[derive(Serialize)]
@@ -65,7 +65,11 @@ pub fn prepare(
     struct Diagnostic<'a> {
         schema_version: u32,
         channel: &'static str,
-        observed: &'a DiagnosticView,
+        version: &'a str,
+        os: &'a str,
+        arch: &'a str,
+        core: &'a LinkState,
+        section_errors: &'a [crate::diagnostics::DiagnosticEntry],
         binaries: &'a [BinaryView],
         uninstrumented_sections: [&'static str; 2],
     }
@@ -81,8 +85,7 @@ pub fn prepare(
     if !fields.valid() {
         return Err(HostError::Rejected);
     }
-    // Do not nest the previous Settings report or any future free-form diagnostic.
-    observed.report = None;
+    // Explicit projection: do not serialize the Settings report or account capabilities.
     let report = serde_json::to_string_pretty(&Report {
         schema_version: 1,
         module: &fields.module,
@@ -97,7 +100,11 @@ pub fn prepare(
         diagnostic: Diagnostic {
             schema_version: 1,
             channel: vantare_ipc::product::CHANNEL,
-            observed: &observed,
+            version: &observed.version,
+            os: &observed.os,
+            arch: &observed.arch,
+            core: &observed.core.photos,
+            section_errors: &observed.events,
             binaries: &binaries,
             uninstrumented_sections: ["studio", "analysis"],
         },
@@ -152,6 +159,30 @@ pub fn collect_binaries() -> Vec<BinaryView> {
 mod tests {
     use super::*;
     #[test]
+    fn export_rejects_invalid_fields_instead_of_silently_changing_them() {
+        for fields in [
+            ReportFields {
+                module: "private/path".into(),
+                ..Default::default()
+            },
+            ReportFields {
+                module: "hub".into(),
+                action_text: "x".repeat(crate::testing::FIELD_LIMITS[0] + 1),
+                ..Default::default()
+            },
+        ] {
+            assert!(matches!(
+                prepare(
+                    &fields,
+                    crate::diagnostics::Observed::default()
+                        .view(&crate::protocol::CoreStatus::default(), false),
+                    vec![]
+                ),
+                Err(HostError::Rejected)
+            ));
+        }
+    }
+    #[test]
     fn export_omits_all_private_prose_and_previous_report_text() {
         let fields = ReportFields {
             module: "hub".into(),
@@ -177,6 +208,9 @@ mod tests {
         );
         assert_eq!(value["privateText"], "omitted_for_privacy");
         assert_eq!(value.as_object().unwrap().len(), 5);
-        assert!(value["diagnostic"]["observed"]["report"].is_null());
+        let diagnostic = value["diagnostic"].as_object().unwrap();
+        assert_eq!(diagnostic.len(), 9);
+        assert!(!diagnostic.contains_key("observed"));
+        assert!(!result.report.contains("tester"));
     }
 }

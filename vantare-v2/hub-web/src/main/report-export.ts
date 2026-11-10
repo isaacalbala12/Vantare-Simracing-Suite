@@ -79,7 +79,12 @@ export function reportExportSession(
         await save(path, snapshot);
         return { status: "saved" };
       } catch (error) {
-        if (typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST")
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "EEXIST"
+        )
           return { status: "conflict" };
         return { error: { kind: "io" } };
       } finally {

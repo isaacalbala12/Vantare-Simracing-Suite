@@ -104,7 +104,9 @@ export function SectionChrome({
                     value={tab.id}
                     className="v-section-tab"
                     id={sectionTabId(tab.id)}
-                    aria-controls={sectionPanelId(tab.id)}
+                    aria-controls={
+                      activeTab === tab.id ? sectionPanelId(tab.id) : undefined
+                    }
                   >
                     {tab.etiqueta}
                   </Tabs.Tab>

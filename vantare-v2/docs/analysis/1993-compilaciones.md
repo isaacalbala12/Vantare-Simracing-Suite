@@ -244,3 +244,67 @@ entre jobs simulados sin disponer del target original, reserva anidada, limpieza
 por edad con rechazo de locks/enlaces, rutas RUNNER_TEMP y A → B → A. Retirada:
 471 huellas intactas. OpenCode 2.2.6 comprobado; no se lanzan nuevos delegates
 porque T3 preparaba su worktree en C:. Se completa el trabajo directamente.
+
+## Segunda tanda: enlazado, genéricos y caché de target
+
+Rama de mediciones sobre #2003, sin modificar código Rust ni UI. Windows:
+Core preparado sin sccache, tres relinks alternando el enlazador mediante
+`cargo rustc`; se mide la invocación completa, no exclusivamente el linker.
+M5: cuatro jobs, incremental=0, targets vacíos e independientes.
+
+| Prueba | Antes | Después | Decisión |
+|---|---:|---:|---|
+| Windows Core, mediana de tres relinks | link.exe 2,40 s | rust-lld 1,98 s | Conservar rust-lld, que ya era el default. |
+| M5 nightly, Core limpio | genéricos automático 18,71 s | share-generics=yes 15,16 s | Experimento; 1.95 rechaza -Z. Con no: 18,26 s. |
+| M5, dos targets con CARGO_TARGET_DIR distinto | sccache frío 16,56 s | segundo 16,14 s | Cero hits Rust: esa variable separa sus claves. |
+| M5, dos targets pasando --target-dir | sccache frío 16,08 s | segundo 10,80 s | Conservar la forma CLI ya adoptada; 85 hits Rust. |
+| M5 Core, target propio sin sccache | limpio 19,65 s | caliente 0,31 s | Mantener target persistente local. |
+| Mismo target restaurado desde zstd local | sin target 19,65 s | Cargo 0,17 s | Más 0,51 s empaquetar y 0,48 s extraer, sin red. |
+
+El target de Core de esta prueba ocupa 264,34 MiB; su archivo zstd, 78,28 MiB.
+La restauración prueba el mismo checkout y rutas, no una VM nueva de GitHub.
+No se reemplaza sccache GHA por un target del workspace completo basándose
+solo en este caso pequeño: faltan transporte real y presupuesto de los targets
+con Hub/UI/release. Evitar duplicar ambos caches bajo los 10 GB del repo.
+
+El árbol real de Core para Windows no contiene GPUI ni DuckDB. Ya limita image
+a JPEG/PNG y ureq a rustls; url/default solo añade std. Retirar esos formatos,
+TLS, IDNA o network quitaría funciones usadas, no solo tiempo de compilación.
+No se recortan features sin una alternativa equivalente demostrada. El spike
+de Hakari descrito arriba tampoco respeta esa equivalencia.
+
+[Wild](https://github.com/wild-linker/wild#feature-support) todavía enumera
+Windows como trabajo futuro y [mold](https://github.com/rui314/mold) es un
+linker Unix; no sustituyen al linker MSVC de este producto. El flag
+[share-generics de Rust 1.95](https://github.com/rust-lang/rust/blob/1.95.0/compiler/rustc_session/src/options.rs)
+es inestable. No se usa RUSTC_BOOTSTRAP ni se cambia el toolchain fijado.
+
+### Ejecución real adicional de CI: 42760109740
+
+HEAD bbfff6c30, anterior a los reparos de Sonnet. Builder 9 min 33 s,
+overlays paralelos 3 min 02 s; suite 1827 PASS/22 exclusiones, telemetría
+34 PASS/1 exclusión y ambos lifecycle PASS. Desde inicio del builder de
+overlays (05:08:22 UTC) hasta fin de telemetría (05:22:36): **14 min 14 s**.
+Sccache del builder: 698 hits/86 misses, 89,03 %, sin errores de escritura.
+
+Esto no es una CI completa verde ni un antes/después de idéntica cobertura:
+el reparo P1 exige que los cambios globales también validen Hub/Admin.
+Instalación seguía compilando Hub en release al cancelarse a los 20 min 30 s
+por el push del arreglo. Su coste no desaparece por medir solo el tramo Rust.
+El HEAD corregido requiere otra ejecución completa, que vigila el orquestador.
+
+Los targets de la segunda tanda del Mac se eliminaron y quedaron 28 GiB
+libres. Las carpetas de medición Windows se conservan por instrucción de Isaac.
+Logs, scripts y JSON: evidence/isa-1993, incluidos linker-comparison.json,
+mac/followup y ci-bbfff-times.json. No se copian caches de compilación a evidencia.
+
+### Overlays macOS nativos
+
+La primera prueba no compiló: faltaba Metal Toolchain. Se instaló el componente
+de Xcode 27B47 (descarga 838,9 MB), sin modificar GPUI ni native/ui, y se repitió
+con un target vacío. Rust 1.95, cuatro jobs, sin sccache: `vantare-overlays`
+limpio **42,44 s**. Tras `cargo clean -p vantare-ui`, mismo binario y
+dependencias calientes: **3,99 s**. Ambos builds PASS; no se abre la aplicación
+ni se afirma paridad funcional con Windows. La prueba Windows de 241,22 s
+construía todos los binarios por defecto; no es un antes/después equivalente
+al único binario macOS. El target propio se eliminó y el checkout quedó limpio.

@@ -1,9 +1,11 @@
-//! One-time export for ADR 0107. The JSON becomes the web design source afterwards.
+//! histórico: exportación inicial, NO regenera tokens.json
+//! La fuente vigente es hub-web/design/tokens.json. Solo imprime a stdout;
+//! cualquier archivo de salida requiere una redirección explícita del llamador.
 use serde_json::{Map, Value, json};
 use vantare_hub::orbit::{
     self,
     skin::{Ramp, Skin},
-    theme::{Palette, Scheme, Theme, design_tokens},
+    theme::{Palette, Scheme},
 };
 fn rgb(value: u32) -> String {
     format!("#{value:06x}")
@@ -96,16 +98,10 @@ fn semantic_values(skin: &Skin) -> Map<String, Value> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut themes = Map::new();
-    let mut canonical = Value::Null;
     for palette in Palette::ALL {
         let mut schemes = Map::new();
         for (name, scheme) in [("light", Scheme::Light), ("dark", Scheme::Dark)] {
             let skin = Skin::resolve(palette, scheme);
-            let _theme = Theme::resolve(palette, scheme, 100, 80);
-            let design = design_tokens(&skin);
-            if palette == Palette::Vantare && scheme == Scheme::Dark {
-                canonical = json!({"geometry":{"sidebar":design.geometry.sidebar,"sidebarCollapsed":design.geometry.sidebar_collapsed,"gap":design.geometry.gap,"gutter":design.geometry.gutter,"controlHeight":design.geometry.control_height,"topbar":design.geometry.topbar},"fonts":{"body":design.fonts.body,"display":design.fonts.display,"mono":design.fonts.mono,"bodySize":design.fonts.body_size,"smallSize":design.fonts.small_size,"titleSize":design.fonts.title_size},"shadow":{"alpha":design.shadow.alpha,"blur":design.shadow.blur,"y":design.shadow.y}});
-            }
             let values = semantic_values(&skin);
             schemes.insert(name.into(), Value::Object(values));
         }
@@ -124,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("theme")?;
     let semantic: Vec<_> = first.keys().collect();
     let result = json!({"version":1, "source":"ADR 0107; native/hub orbit skin/theme", "semantic":semantic, "themes":themes,
-        "primitives":{"nativeDesign":canonical, "row-h":orbit::ROW_H,"chip-h":orbit::CHIP_H,"pill-h":orbit::PILL_H,
+        "primitives":{ "row-h":orbit::ROW_H,"chip-h":orbit::CHIP_H,"pill-h":orbit::PILL_H,
           "text-body":orbit::BODY,"text-small":orbit::SECONDARY,"text-micro":orbit::MICRO,
           "control-h":36,"topbar-h":52,"sidebar-w":272,"sidebar-w-collapsed":76,
           "palette-w":orbit::PALETTE_W,"popover-w":orbit::POPOVER_W,"option-h":orbit::OPTION_H,

@@ -1,4 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
+import { parse } from "@babel/parser";
 
 async function* files(folder: string): AsyncGenerator<string> {
   for (const entry of await readdir(folder, { withFileTypes: true })) {
@@ -24,13 +25,42 @@ for await (const path of files("src/renderer")) {
     failed = true;
   }
   if (!path.endsWith(".tsx") || path.includes("/i18n/")) continue;
-  // Static JSX literals; translated expressions remain in i18n/es.ts.
-  if (
-    />[\t ]*[^<>{}\s][^<>{}]*</u.test(source) ||
-    /(?:aria-label|placeholder|title|alt)="[^"]+"/u.test(source)
-  ) {
-    console.error(`${path}: literal translated JSX`);
-    failed = true;
+  const ast = parse(source, {
+    sourceType: "module",
+    plugins: ["typescript", "jsx"],
+  });
+  function visit(value: unknown): void {
+    if (!value || typeof value !== "object") return;
+    const node = value as Record<string, unknown>;
+    if (
+      node.type === "JSXText" &&
+      typeof node.value === "string" &&
+      node.value.trim()
+    ) {
+      console.error(`${path}: literal JSX text`);
+      failed = true;
+    }
+    if (
+      node.type === "JSXAttribute" &&
+      node.name &&
+      typeof node.name === "object" &&
+      node.value &&
+      typeof node.value === "object"
+    ) {
+      const name = (node.name as Record<string, unknown>).name;
+      if (
+        typeof name === "string" &&
+        ["aria-label", "placeholder", "title", "alt"].includes(name) &&
+        (node.value as Record<string, unknown>).type === "StringLiteral"
+      ) {
+        console.error(`${path}: literal translated attribute`);
+        failed = true;
+      }
+    }
+    for (const child of Object.values(node))
+      if (Array.isArray(child)) child.forEach(visit);
+      else if (child && typeof child === "object") visit(child);
   }
+  visit(ast);
 }
 if (failed) process.exitCode = 1;

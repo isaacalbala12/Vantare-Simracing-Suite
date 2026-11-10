@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -16,11 +16,19 @@ function objeto(campos) {
   return `{\n${Object.entries(campos).map(([k,v]) => `readonly ${JSON.stringify(k)}: ${tipo(v)};`).join('\n')}\n}`;
 }
 mkdirSync(path.join(base, 'generado'), { recursive: true });
+const vigentes = new Set();
 for (const fichero of readdirSync(path.join(base, '../modelos')).filter(f => f.endsWith('.modelo.json')).sort()) {
   const contrato = JSON.parse(readFileSync(path.join(base, '../modelos', fichero), 'utf8'));
   const nombre = fichero.replace('.modelo.json', '');
-  const interfaz = nombre[0].toUpperCase() + nombre.slice(1);
+  const partes = nombre.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  const pascal = partes.map(p => p[0].toUpperCase() + p.slice(1)).join('');
+  const interfaz = /^[A-Za-z]/.test(pascal) ? pascal : 'Modelo' + pascal;
+  vigentes.add(`${nombre}.d.ts`);
   writeFileSync(path.join(base, 'generado', `${nombre}.d.ts`), cabecera + `export type ${interfaz} = ${objeto(contrato.campos)};\nexport declare const m: ${interfaz};\n`);
+}
+for (const fichero of readdirSync(path.join(base, 'generado'))) {
+  const ruta = path.join(base, 'generado', fichero);
+  if (fichero.endsWith('.d.ts') && !vigentes.has(fichero) && readFileSync(ruta, 'utf8').startsWith(cabecera)) unlinkSync(ruta);
 }
 const sistemas = path.join(base, '../sistemas');
 const archivos = existsSync(sistemas) ? readdirSync(sistemas).filter(f => f.endsWith('.sistema.json')).sort().map(f => path.join(sistemas, f)) : [];

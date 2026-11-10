@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { traducir, ErrorTraduccion, ErroresTipo } from '../dist/traductor.js';
+import { traducir, ErrorTraduccion, ErroresTraduccion } from '../dist/traductor.js';
 
 const ejemplo = fileURLToPath(new URL('ejemplo.tsx', import.meta.url));
 const temporal = fileURLToPath(new URL('.temporal-caso.tsx', import.meta.url));
@@ -46,13 +46,13 @@ const errores = [
   ['TIPO', overlay('<Texto estilo={{color: tokens.color.inventado}}>hola</Texto>')],
   ['TIPO', overlay('<Texto estilo={{color: "#ffffff"}}>hola</Texto>')],
   ['TIPO', overlay('<Caja estilo={{alto: 24}}/>')],
-  ['TIPO', overlay('<Texto>{m.no_existe}</Texto>')],
+  ['MODELO', overlay('<Texto>{m.no_existe}</Texto>')],
   ['TIPO', overlay('<Caja visible={es(m.titulo, "x")}/>')],
   ['TIPO', overlay('<Caja visible={es(m.aviso, "inexistente")}/>')],
   ['TIPO', overlay('<Caja visible={no(m.titulo)}/>')],
   ['TIPO', overlay('<Caja estilo={{fondo: "rojo" as any}}/>')],
-  ['TIPO', overlay('<Caja estilo={{propiedad_inventada: 0}}/>')],
-  ['TIPO', overlay('<Lista de={m.filas} clave="no_existe">{fila => <Texto>{fila.piloto}</Texto>}</Lista>')],
+  ['SINTAXIS', overlay('<Caja estilo={{propiedad_inventada: 0}}/>')],
+  ['MODELO', overlay('<Lista de={m.filas} clave="no_existe">{fila => <Texto>{fila.piloto}</Texto>}</Lista>')],
   ['TIPO', overlay('<Lista de={m.filas} clave="id">{fila => <Texto estilo={{color: `$color.clase.${fila.lado}`}}>{fila.piloto}</Texto>}</Lista>')],
 ];
 for (const [codigo, fuente] of errores) test(`rechaza ${codigo}: ${fuente.slice(0, 95)}`, () => {
@@ -72,7 +72,7 @@ test('posición exacta del ternario (línea y columna base uno)', () => {
 test('contrato inexistente produce error tipado en el fichero de autor', () => {
   assert.throws(() => caso(overlay(''), 'inventado'), e => {
     assert.ok(e instanceof ErrorTraduccion); assert.equal(e.codigo, 'MODELO');
-    assert.equal(e.linea, 3); return true;
+    assert.equal(e.linea, 2); assert.equal(e.columna, 19); return true;
   });
 });
 
@@ -87,10 +87,11 @@ test('devuelve todos los errores tsc con código y posición propios', () => {
   const codigo = overlay('<Texto estilo={{color: "#fff", alto: 24}}>{m.no_existe}</Texto>');
   const fuente = imports + codigo;
   assert.throws(() => caso(codigo), error => {
-    assert.ok(error instanceof ErroresTipo);
-    assert.equal(error.diagnosticos.length, 3);
+    assert.ok(error instanceof ErroresTraduccion);
+    const tipos = error.diagnosticos.filter(d => d.codigoTs !== undefined);
+    assert.equal(tipos.length, 3);
     const esperados = [['color:', 2322], ['alto:', 2322], ['no_existe', 2339]];
-    for (const [i, diagnostico] of error.diagnosticos.entries()) {
+    for (const [i, diagnostico] of tipos.entries()) {
       const [campo, codigoTs] = esperados[i];
       const antes = fuente.slice(0, fuente.indexOf(campo)).split('\n');
       assert.equal(diagnostico.codigoTs, codigoTs);

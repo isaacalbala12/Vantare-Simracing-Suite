@@ -1,10 +1,12 @@
-# Medición VANTA-139 — método Release v3 en preparación
+# Medición VANTA-139 — referencia Release v3 publicada
 
 La definición vigente es [MEASUREMENT-AB.md](MEASUREMENT-AB.md): CPU principal
 a cadencia normal, A/A intercalado, ABBA/BAAB, intervalo t y registro limitado
 de intentos. Las siete pasadas parciales v2 no se mezclan con la referencia v3.
 La referencia final usa los ejecutables congelados de acc6619b1 y un colector
-uniforme; todavía está pendiente publicarla. Los detalles v2 siguientes
+uniforme; está publicada en [measurements/release-v3](measurements/release-v3/README.md).
+La comparación de motores sigue bloqueada por ruido y una reproducción incompleta.
+Los detalles v2 siguientes
 describen la caracterización previa y se conservan para interpretar sus datos.
 
 La comparación entre motores requiere [A/A y ABBA](MEASUREMENT-AB.md) y el
@@ -27,7 +29,7 @@ PresentMon no aparece en PATH. Se usan los contadores Windows GPU Engine y GPU P
 
 La traza se acumula en memoria acotada y se vuelca tras cerrar el host; un overflow invalida la pasada. Se reserva la cola de compilación con plazo máximo, se registra plan de energía, prioridad Normal y carga total del sistema. Una compilación ajena o carga por encima del umbral descarta la pasada.
 
-Pendiente antes de aceptar cifras: verificar la implementación, ejecutar al menos cinco pasadas alternadas de cada configuración (1/4/22 widgets, con y sin Phases), publicar mediana y rango, y completar los checks. No hay aún una línea base Release aceptada.
+La referencia acc6619b1 completó 30/30 observaciones: cinco pasadas alternadas por configuración (1/4/22 widgets, con y sin Phases). Medianas, rangos, procedencia y límites están en [el informe publicado](measurements/release-v3/README.md). Esto caracteriza la referencia; no valida una mejora entre motores.
 
 ## Repetir la campaña
 

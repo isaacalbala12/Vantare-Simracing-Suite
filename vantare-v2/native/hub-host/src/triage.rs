@@ -9,6 +9,8 @@ use serde_json::Value;
 use ts_rs::TS;
 use vantare_ipc::services_protocol::{self as core, triage_document as document};
 
+pub const LOCAL_TITLE_MAX_CHARS: usize = 120;
+pub const LOCAL_BODY_MAX_CHARS: usize = 1_000;
 pub const PREVIEW_LIMIT: usize = core::MAX_FRAME;
 const PRIVATE_TEXT: &str = "[contenido retirado por privacidad]";
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -105,9 +107,12 @@ pub(crate) fn complete(operation: Operation, reply: core::Reply) -> Result<Reply
         (Operation::Prepare, core::Reply::TriagePreview { preview }) => {
             view(&preview).map(|value| Reply::TriagePrepare { value })
         }
-        (Operation::Send, core::Reply::Testing { data }) => Ok(Reply::TriageSend {
-            value: testing::participation(&data),
-        }),
+        (Operation::Send, core::Reply::Testing { data }) => {
+            match testing::complete(testing::Operation::Refresh, core::Reply::Testing { data })? {
+                Reply::TestingRefresh { value } => Ok(Reply::TriageSend { value }),
+                _ => Err(HostError::Rejected),
+            }
+        }
         _ => Err(HostError::Rejected),
     }
 }

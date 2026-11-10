@@ -210,6 +210,10 @@ fn append_triage_constants(text: &mut String) {
             "triagePreviewLimit",
             serde_json::json!(crate::triage::PREVIEW_LIMIT),
         ),
+        (
+            "triageLocalTextLimits",
+            serde_json::json!({"title":crate::triage::LOCAL_TITLE_MAX_CHARS,"body":crate::triage::LOCAL_BODY_MAX_CHARS}),
+        ),
     ] {
         writeln!(text, "export const {name} = {} as const;", canonical(value))
             .expect("String write");

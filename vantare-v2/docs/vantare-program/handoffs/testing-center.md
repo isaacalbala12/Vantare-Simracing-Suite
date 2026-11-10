@@ -1380,3 +1380,19 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
   cambios de #2030 para --qa-testing y testing-center-triage; lo gestiona su responsable.
 - Informes ya usa entry.tsx/SectionChrome, con Shell intacto. Su comparación registra
   el desplazamiento del raíl derecho del marco; datos y pruebas continúan en D.
+
+
+### VANTA-138 · contrato local de Triage preparado, sin publicar
+
+- triage.prepare y triage.send separados y tipados; verificado/no bloqueado/tester
+  exigidos por el anfitrión. Título y notas no son parámetros de IPC: siguen locales.
+- Selección de cinco categorías, consentimiento e ids acotados. Previsualización
+  igual a GPUI tras validar contexto/adjuntos por lista cerrada y comprobar hash.
+  No se reenvía texto de Reply::Error; envío y consentimiento vigentes los impone
+  el núcleo. No se cambia IPC/Services ni se envía a servicios reales.
+- Tipos/constantes/corpus regenerados; doble local con derechos, desconexión,
+  Busy, id nuevo por preparación y rechazo de ids antiguos o ya enviados.
+- 5 Triage + 3 Roadmap Rust Windows PASS; 141 pruebas web de contrato tras rebase,
+  tipos, Biome, diseño y Clippy cruzado forzado PASS. Vista pendiente de referencia.
+- Rama local vantareapp/isa-1995-d-triage, worktree isa-1995-d-triage. Sin push ni PR
+  hasta que el orquestador libere la cola; PR preparado en evidencia del worker.

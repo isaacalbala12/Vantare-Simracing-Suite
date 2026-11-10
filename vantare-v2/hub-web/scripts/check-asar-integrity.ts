@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { chromium } from "playwright-core";
+import { shellText } from "../src/renderer/i18n/shell.es.ts";
 import { verifyQaFuses } from "./qa-fuses.ts";
 import { requiredPath } from "./qa-paths.ts";
 
@@ -95,7 +96,7 @@ for (const mode of ["original", "header", "payload"] as const) {
         const context = browser.contexts()[0];
         const page = context.pages()[0] ?? (await context.waitForEvent("page"));
         await page
-          .getByText("Núcleo simulado", { exact: false })
+          .getByText(shellText.waitingSimulator, { exact: false })
           .first()
           .waitFor();
       } finally {

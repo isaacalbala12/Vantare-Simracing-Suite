@@ -75,6 +75,7 @@ export class Client {
       const { port1, port2 } = new MessageChannel();
       const mockReply = createMockHost(
         new URLSearchParams(window.location.search).get("escena") ?? undefined,
+        (message) => port2.postMessage(message),
       );
       port2.onmessage = ({ data }) => {
         const response = mockReply(data);

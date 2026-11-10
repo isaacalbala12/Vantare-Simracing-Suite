@@ -6,6 +6,7 @@ import type {
   UiToHost,
 } from "../contract/generated/contract";
 export interface MockContext {
+  readonly emit: (message: HostToUi) => void;
   readonly sceneName: string;
   readonly visual: RegExpExecArray | null;
   readonly core: CoreStatus;

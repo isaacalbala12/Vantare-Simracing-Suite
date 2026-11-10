@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "playwright-core";
 import { record } from "../src/contract/validation-common.ts";
+import { shellText } from "../src/renderer/i18n/shell.es.ts";
 import { checkPrivacyHost } from "./check-privacy-host.ts";
 import { checkTrackHost } from "./check-track-host.ts";
 import { until } from "./wait-for.ts";
@@ -268,4 +269,24 @@ export async function checkSettingsHost(
       developmentCannotRestart: true,
     }),
   );
+}
+
+/** The frame shows simulator state; source availability is asserted in Diagnostics. */
+export async function waitForIsolatedCore(page: Page) {
+  await page
+    .getByRole("status")
+    .filter({ hasText: shellText.waitingSimulator })
+    .waitFor();
+  await page.getByRole("tab", { name: "Diagnóstico", exact: true }).click();
+  await until(
+    async () =>
+      (await page
+        .getByRole("status")
+        .filter({ hasText: /^No disponible$/ })
+        .count()) === 3,
+    15000,
+    "isolated photos, rights and services are unavailable",
+  );
+  await page.getByRole("tab", { name: "General", exact: true }).click();
+  await page.getByRole("heading", { name: "General", exact: true }).waitFor();
 }

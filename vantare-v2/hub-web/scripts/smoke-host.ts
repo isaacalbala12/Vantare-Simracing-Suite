@@ -4,7 +4,10 @@ import { randomBytes } from "node:crypto";
 import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { checkSettingsHost } from "./check-settings-host.ts";
+import {
+  checkSettingsHost,
+  waitForIsolatedCore,
+} from "./check-settings-host.ts";
 import { hostVersion, sealQaGeneration } from "./qa-inventory.ts";
 import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
@@ -150,10 +153,7 @@ const browser = await chromium.connectOverCDP(endpoint);
 try {
   const context = browser.contexts()[0];
   const page = context.pages()[0] ?? (await context.waitForEvent("page"));
-  await page
-    .getByRole("status")
-    .filter({ hasText: "Núcleo no disponible" })
-    .waitFor();
+  await waitForIsolatedCore(page);
   await until(
     async () => {
       try {

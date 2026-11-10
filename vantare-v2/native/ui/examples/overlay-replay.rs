@@ -8,7 +8,12 @@ use std::{
 use vantare_domain::{Snapshot, format::Preferences};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    vantare_ui::profiling::initialize_trace();
     let args: Vec<_> = std::env::args().skip(1).collect();
+    if args.as_slice() == ["--measurement-info"] {
+        println!("{}", env!("VANTARE_MEASUREMENT_BUILD"));
+        return Ok(());
+    }
     if !matches!(args.len(), 2 | 3) {
         return Err(
             "usage: overlay-replay <recording.jsonl.gz|pipe:name> <1|4|22> [seconds]".into(),
@@ -88,10 +93,15 @@ fn run_pipe(pipe: &str, count: usize, seconds: u64) -> Result<(), Box<dyn std::e
     let connection = handle.connection();
     let photos = vantare_ui::source::pipe_feed_observed(pipe, Some(handle))?;
     let (send, stop) = flume::bounded(1);
+    let (cancel, cancelled) = flume::bounded::<()>(1);
     let timer = std::thread::spawn(move || {
         // Fixed measurement window: recorded duration plus report/idle drain.
-        std::thread::sleep(Duration::from_secs(seconds + 3));
-        let _ = send.send(());
+        if matches!(
+            cancelled.recv_timeout(Duration::from_secs(seconds + 3)),
+            Err(flume::RecvTimeoutError::Timeout)
+        ) {
+            let _ = send.send(());
+        }
     });
     vantare_ui::run_with_connection(
         count,
@@ -101,7 +111,9 @@ fn run_pipe(pipe: &str, count: usize, seconds: u64) -> Result<(), Box<dyn std::e
         Some(connection),
         Some(stop),
     );
+    let _ = cancel.send(());
     timer.join().map_err(|_| "replay timer panicked")?;
+    vantare_ui::profiling::flush();
     Ok(())
 }
 

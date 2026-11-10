@@ -41,6 +41,9 @@ pub fn frame(window: &gpui::Window) {
         return;
     }
     COUNTS[FRAMES].fetch_add(1, Relaxed);
+    if crate::profiling::buffered() {
+        return;
+    }
     eprintln!(
         "perf frame window={:?} clock={:?}",
         window.window_handle().window_id(),
@@ -50,7 +53,7 @@ pub fn frame(window: &gpui::Window) {
 
 /// Imprime cada segundo lo contado en ese segundo (suma de todas las ventanas).
 pub fn report() {
-    if !crate::profiling::enabled() {
+    if !crate::profiling::enabled() || crate::profiling::buffered() {
         return;
     }
     thread::spawn(|| {

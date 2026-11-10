@@ -384,11 +384,21 @@ impl Overlay {
         if crate::rights::denied(self.kind, cx) {
             return;
         }
-        if self.project_snapshot(snapshot) {
+        let changed = self.project_snapshot(snapshot);
+        #[cfg(feature = "paint-stats")]
+        drop(_span);
+        if changed {
             #[cfg(feature = "paint-stats")]
             {
                 self.profile_photo = Some((snapshot.epoch, snapshot.sequence));
-                if crate::profiling::enabled() {
+                crate::profiling::mark(
+                    "notify",
+                    self.kind.name(),
+                    snapshot.epoch,
+                    snapshot.sequence,
+                    0,
+                );
+                if crate::profiling::enabled() && !crate::profiling::buffered() {
                     eprintln!(
                         "perf notify widget={} epoch={} seq={}",
                         self.kind.name(),
@@ -552,14 +562,17 @@ impl Render for Overlay {
                     }
                 });
                 #[cfg(feature = "paint-stats")]
-                if crate::profiling::enabled()
+                if (crate::profiling::enabled() || crate::profiling::buffered())
                     && let Some((epoch, sequence)) = profile_photo
                 {
                     crate::profiling::photo("ui_paint", epoch, sequence);
-                    eprintln!(
-                        "perf data_paint widget={} epoch={epoch} seq={sequence}",
-                        kind.name()
-                    );
+                    crate::profiling::mark("data_paint", kind.name(), epoch, sequence, 0);
+                    if !crate::profiling::buffered() {
+                        eprintln!(
+                            "perf data_paint widget={} epoch={epoch} seq={sequence}",
+                            kind.name()
+                        );
+                    }
                 }
             },
         )

@@ -6,6 +6,86 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Instant;
 
+/// Measurement-only, bounded trace. Allocate once before starting the host and
+/// write only after its event loop has stopped. Overflow invalidates a run.
+#[derive(Clone, Copy, Debug)]
+pub struct Event {
+    pub kind: &'static str,
+    pub label: &'static str,
+    pub clock: u64,
+    pub end: u64,
+    pub epoch: u64,
+    pub sequence: u64,
+    pub value: u64,
+}
+const TRACE_LIMIT: usize = 2_000_000;
+static TRACE: OnceLock<std::sync::Mutex<Vec<Event>>> = OnceLock::new();
+static OVERFLOW: AtomicU64 = AtomicU64::new(0);
+
+pub fn buffered() -> bool {
+    static BUFFERED: OnceLock<bool> = OnceLock::new();
+    *BUFFERED.get_or_init(|| std::env::var("VANTARE_MEASUREMENT_TRACE").is_ok_and(|v| v == "1"))
+}
+
+pub fn initialize_trace() {
+    if buffered() {
+        TRACE.get_or_init(|| std::sync::Mutex::new(Vec::with_capacity(TRACE_LIMIT)));
+    }
+}
+
+pub fn record(event: Event) {
+    if !buffered() {
+        return;
+    }
+    if let Some(trace) = TRACE.get() {
+        let mut trace = trace
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if trace.len() < TRACE_LIMIT {
+            trace.push(event);
+        } else {
+            OVERFLOW.fetch_add(1, Relaxed);
+        }
+    }
+}
+
+pub fn mark(kind: &'static str, label: &'static str, epoch: u64, sequence: u64, value: u64) {
+    if buffered() {
+        record(Event {
+            kind,
+            label,
+            clock: clock().unwrap_or(0),
+            end: 0,
+            epoch,
+            sequence,
+            value,
+        });
+    }
+}
+
+pub fn flush() {
+    if let Some(trace) = TRACE.get() {
+        use std::io::Write;
+        let mut output = std::io::BufWriter::new(std::io::stderr().lock());
+        let mut trace = trace
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _ = writeln!(
+            output,
+            "trace frequency={} overflow={}",
+            frequency().unwrap_or(0),
+            OVERFLOW.load(Relaxed)
+        );
+        for e in trace.drain(..) {
+            let _ = writeln!(
+                output,
+                "trace\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                e.kind, e.label, e.clock, e.end, e.epoch, e.sequence, e.value
+            );
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum Stage {
     Poll,
@@ -96,6 +176,23 @@ pub fn begin(stage: Stage) -> Option<Span> {
 
 impl Drop for Span {
     fn drop(&mut self) {
+        let end = clock();
+        let delta = self
+            .cycles
+            .zip(cycles(false))
+            .and_then(|(a, b)| b.checked_sub(a));
+        if buffered() {
+            record(Event {
+                kind: "span",
+                label: NAMES[self.stage],
+                clock: self.clock.unwrap_or(0),
+                end: end.unwrap_or(0),
+                epoch: 0,
+                sequence: 0,
+                value: delta.unwrap_or(u64::MAX),
+            });
+            return;
+        }
         let offset = self.stage * 4;
         COUNTS[offset].fetch_add(1, Relaxed);
         let nanoseconds = self
@@ -126,7 +223,7 @@ impl Drop for Span {
 
 /// Una muestra por segundo; contadores acotados, sin guardar fotos ni cadenas.
 pub fn report() {
-    if !enabled() {
+    if !enabled() || buffered() {
         return;
     }
     eprintln!(
@@ -153,7 +250,7 @@ pub fn report() {
 /// con una emisión acotada por segundo.
 pub fn report_if_due() {
     static PREVIOUS: AtomicU64 = AtomicU64::new(0);
-    if !enabled() {
+    if !enabled() || buffered() {
         return;
     }
     if let Some((now, hz)) = clock().zip(frequency()) {
@@ -168,11 +265,23 @@ pub fn report_if_due() {
     }
 }
 
-pub fn photo(stage: &str, epoch: u64, sequence: u64) {
+pub fn photo(stage: &'static str, epoch: u64, sequence: u64) {
     photo_at(stage, epoch, sequence, clock());
 }
 
-pub fn photo_at(stage: &str, epoch: u64, sequence: u64, clock: Option<u64>) {
+pub fn photo_at(stage: &'static str, epoch: u64, sequence: u64, clock: Option<u64>) {
+    if buffered() {
+        record(Event {
+            kind: "photo",
+            label: stage,
+            clock: clock.unwrap_or(0),
+            end: 0,
+            epoch,
+            sequence,
+            value: 0,
+        });
+        return;
+    }
     if !enabled() {
         return;
     }

@@ -23,19 +23,14 @@
     "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account"
   },
   "steady_seconds": 56.6324073,
-  "steady_cpu_seconds": 0.171875,
-  "steady_logical_cores": 0.0030349230801636788,
   "steady_cpu_cycles": 16162748910,
   "steady_cpu_cycles_per_frame": 13627950.177065767,
   "steady_screen_frames": 1186,
   "steady_present_calls": 1186,
   "frame_counter": "dxgi_present",
-  "steady_cpu_ms_per_frame": 0.14491989881956155,
-  "steady_cpu_ms_per_screen_frame": 0.14491989881956155,
   "mean_private_mib": 80.87417763157895,
   "peak_private_mib": 104.01953125,
   "reported_frames_full_run": 1276,
-  "cpu_ms_per_frame_full_run": 0.1469435736677116,
   "notifications_full_run": {
     "standings": 8,
     "pedals": 2,
@@ -150,5 +145,6 @@
       "cycle_errors": 0
     }
   },
-  "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI."
+  "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI.",
+  "measurement_status": "solo dev; not a baseline; invalid for engine performance comparisons"
 }

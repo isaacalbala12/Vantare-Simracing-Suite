@@ -6,7 +6,7 @@ Sin cambios de lógica ni dependencias de producto nuevas. No se modifica UI ni 
 PR en orden: [#1997](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1997),
 [#2003](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2003). El arreglo independiente
 [#2007](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2007), para #2006,
-ya está fusionado junto con #1997. #2003 sigue como draft a nightly.
+ya está fusionado junto con #1997. #2003 y #2010 también están integrados: 479cca4bf y 2bde51160. El apartado de cierre al final reúne las cifras definitivas; los intentos previos se conservan como histórico.
 
 ## Alcance
 
@@ -412,3 +412,100 @@ con el mismo C1083; 0.19 pasa, restaura el mismo objeto y baja de 2,63 s a
 con daemon y namespace GHA propios `vanta137-release019-v1`. El resto de jobs
 conserva 0.18; no se mezclan sus entradas. El namespace sigue siendo fijo,
 independiente del Cargo.lock. El toolchain Rust permanece en 1.95.
+
+## Cierre VANTA-137: alcance de las cifras y coste restante
+
+#1997, #2007, #2003 y #2010 están integrados en nightly por el orquestador.
+Este cierre parte de 2bde51160. `measure-rust-cache.yml` queda solo manual
+(`workflow_dispatch`), sin referencia a una rama temporal ni ejecución automática.
+El comportamiento de la app y los bytes que se distribuyen no cambian.
+
+### CI: frío, caliente y el minuto restante
+
+Medición completa real de #2010, HEAD 262defc01, en VMs nuevas windows-latest:
+44 min 27 s en frío y 16 min 04 s en caliente, frente a 58 min 10 s del baseline
+#1997. Es `run_started_at → updated_at`, no la duración del agregador.
+Todos los jobs aplicables pasan; suite 2530 PASS/26 exclusiones existentes,
+telemetría 34 PASS y ambos lifecycle. El objetivo estricto de quince minutos
+queda a 64 segundos; no se presenta un límite físico absoluto del hardware.
+
+En frío domina el candidato Release limpio: **2016,23 s**, de los que su nodo
+C++ `libduckdb-sys` ocupa **1134,83 s**. Son duraciones solapadas, no sumables.
+Los otros dos controles Release tardan 227,32 y 224,30 s. El job de distribución
+termina en 43 min 16 s y determina el cierre frío. En caliente, el candidato
+baja a **260,43 s** y el nodo C++ a **113,94 s**: 280 hits C++ MSVC, 48 C y
+772 Rust, cero errores de escritura. Los tres controles se mantienen.
+
+El camino crítico caliente ya es archivo de tests → suite: builder **8m17s**
+y suite **6m39s**; desde iniciar el builder hasta acabar la suite son 14m58s.
+El workflow completo añade arranque, policy y cierre. Dentro del job de suite,
+checkout 24 s, restauración de fuentes Cargo 49 s, Nextest 8 s, descarga del
+archivo 13 s y ejecución 4m57s (2530 tests: 284,249 s). Los tramos se tomaron de
+los pasos del intento 2, sin sumar jobs que ya corren en paralelo.
+
+**DuckDB precompilado ya está aplicado fuera de distribución**: setup instala
+el oficial 1.5.5 con SHA-256 verificado; gates usa esa biblioteca y desactiva
+solo el default bundled de storage, conservando los demás defaults. La matriz
+de instalación usa los fixtures/binarios de desarrollo. No queda una recompilación
+C++ bundled barata que quitar de esos jobs. El candidato público exige bundled
+y CRT estático: sustituirlo por la DLL de desarrollo cambiaría lo distribuido y
+el control de cobertura. No se hace.
+
+Opciones para otro encargo, sin aplicar ajustes no medidos en este cierre:
+
+- Solapar instalación de herramientas con restauración de caché puede recortar
+  parte del minuto restante. Requiere comprobar errores/cancelación del proceso
+  propio y medir el workflow entero; no se promete ahorrar los 64 s.
+- Un artefacto estático DuckDB preconstruido podría evitar el coste frío, pero
+  requiere productor mantenido, versión/flags/CRT/arquitectura y hash verificables,
+  adaptación del builder y sus controles. No equivale a activar DUCKDB_LIB_DIR:
+  el builder lo rechaza para proteger distribución. No es un cambio barato.
+- La caché puede expulsarse bajo el presupuesto compartido de 10 GB. Nightly
+  debe sembrar las mismas claves y namespaces; frío y caliente siguen siendo
+  casos distintos, sin prometer 16m04s para cualquier ejecución.
+
+No se suben jobs ni se cambian perfiles de Release sin medir, ni se recorta
+cobertura para cruzar el umbral de quince minutos.
+
+### Lo que nota un worker en este servidor
+
+Nueva comparación controlada sobre el mismo código 2bde51160: Strategy,
+50 tests, función usada `projection::presence` con una inserción temporal de
+`black_box(())`, restaurada byte a byte. Ambos ajustes se preparan primero.
+Antes reconstruido: dos jobs y line-tables-only propios; después: cuatro jobs
+y debug=0. Incremental local activo, sccache desactivado en ambos casos,
+mismo slot-0; los cronómetros no incluyen adquisición de la cola. No es una
+medición del antiguo workspace completo ni una mediana con servidor en reposo.
+
+| Trabajo local | Antes | Después |
+|---|---:|---:|
+| Strategy: Clippy (incluye check) después de editar función | 3,28 s | 4,21 s |
+| Strategy: Nextest, compilar y ejecutar sus 50 tests | 32,16 s | 31,15 s |
+| Ambos gates de ese crate | 35,44 s | 35,36 s |
+| Runtime: solo compilar tests tras editar función (tanda anterior) | 14,78 s | 8,91 s |
+| Runtime: build de Core tras editar función (tanda anterior) | 3,94 s | 5,90 s |
+| Núcleo + overlays: build limpio de ocho default-members | Sin baseline limpio equivalente | 267,74 s, sin sccache |
+| Target equivalente Core + tests preparados | 1,60 GiB | 1,36 GiB |
+| Carpetas de build del worker | 7–10 GB por rama, dato inicial | slot-0/1 fijos reutilizados |
+
+El flujo completo del crate pequeño queda por debajo de un minuto, pero esta
+muestra **no acredita acelerar Clippy ni el conjunto check/test**: el total
+queda igual y Clippy empeora. El ahorro al seleccionar crates y evitar Hub/Admin
+localmente no se cuantifica como si se hubiese cronometrado el flujo antiguo.
+
+Disco observado: slot-0 **3,46 GiB** al terminar esta comparación, con dependencias
+retenidas de otros usos y ambos perfiles del experimento. El build limpio de los
+ocho crates por defecto ocupó **2,76 GiB**, sin tests; Core + tests, **1,36 GiB**.
+Son alcances distintos. No se vende 7–10 GB → 1,36 GiB como ahorro equivalente:
+el primero incluía el Hub. La diferencia estructural es que cambiar de rama
+reutiliza el slot, no añade otra carpeta de 7–10 GB. Dos slots, limpieza local
+por 20 GiB/14 días y caché sccache compartida configurada a 30 GiB; esos límites
+no son consumo medido ni garantía instantánea durante un build.
+
+Fuente reproducible y resultados: `worker-used-function-compare.ps1/.json/.log`,
+`closeout-slot-size.json`, `core-before.json`, `core-after.json`, `core-disk.json`
+y `clean-default-members.json` en `D:/VantareServer/evidence/isa-1993`.
+El primer sondeo con función sin lectores se conserva como exploratorio en
+worker-crate-compare; la tabla usa la función realmente utilizada. Todos los
+comandos pasaron por compilar.ps1, máximo dos compilaciones; los targets Windows
+se dejan para Isaac. No queda ningún cambio Rust de las mediciones.

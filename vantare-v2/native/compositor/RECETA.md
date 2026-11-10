@@ -62,6 +62,11 @@ Maquetación (flexbox, como CSS): `ancho`, `alto`, `min_ancho`, `max_ancho`,
 valores), `crecer`, `encoger`, `posicion` (`relativa`|`absoluta`), `arriba`,
 `izquierda`, `derecha`, `abajo`.
 
+Si se omiten, `direccion` es `columna` y `alinear` es `estirar` (STRETCH).
+La posición es relativa, el relleno y hueco son cero; ancho y alto son automáticos.
+`crecer` vale 0 y `encoger` vale 1. Las propiedades compuestas parten de
+opacidad 1, x/y/giro 0 y escala 1. Los insets `auto` permanecen automáticos.
+
 Pintura: `fondo` (color o degradado), `borde` (`{ "ancho", "color" }`),
 `radio` (1 o 4 valores), `sombra` (token `$efecto.*`), `opacidad`.
 Texto: `tipo` (token `$tipo.*`), `color`, `alinear_texto`.
@@ -153,3 +158,17 @@ Tipos: `bool`, `texto`, `numero` (solo para estilos acotados, p. ej. `opacidad`)
 | Duración de una transición / bucle | 10 s |
 | Fuentes | solo las del paquete del producto |
 | Imágenes, sombreadores, rutas, red | no admitidos en v1 |
+
+La carga devuelve un `Programa` opaco y tipado: resuelve tokens, condiciones,
+rutas, tablas de enumerados y estilos taffy antes de crear la escena. El JSON
+original se conserva solo para recompilar al cambiar receta o sistema; en cada
+foto solo se lee el modelo, con ámbitos de lista prestados. Un cambio inválido
+no modifica la escena. `Escena::nueva` recibe ese `Programa`; `avanzar` no recibe
+medidor y devuelve `Result`, igual que las entradas con reloj inyectado.
+
+Las medidas y números del modelo están acotados a ±1 000 000. La expansión de
+tokens tiene un presupuesto de 256 KiB; el modelo, 1 MiB y 65 536 valores.
+Las curvas admiten como máximo 1024 tramos, con suelo de tolerancia por ULP;
+una duración positiva debe ser al menos 1 ms. Los controles Bézier tienen
+x en 0..1 e y en −10..10. Fuera de esos límites se devuelve un error.
+Los errores al cargar o recargar conservan fichero y puntero JSON completos.

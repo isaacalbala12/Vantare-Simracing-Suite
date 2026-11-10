@@ -13,8 +13,6 @@ pub mod ready;
 #[cfg(windows)]
 pub mod ui_process;
 
-pub mod settings;
-
 pub mod favorite;
 
 #[cfg(windows)]
@@ -23,14 +21,10 @@ mod job;
 #[cfg(all(test, windows))]
 mod test_support;
 
-pub mod shortcuts;
+include!(concat!(env!("OUT_DIR"), "/models.rs"));
 
-pub mod updates;
+include!(concat!(env!("OUT_DIR"), "/models.rs"));
 
-pub mod diagnostics;
-pub mod privacy;
+include!(concat!(env!("OUT_DIR"), "/models.rs"));
 
-pub mod pilot;
-
-pub mod roadmap;
-pub mod testing;
+include!(concat!(env!("OUT_DIR"), "/models.rs"));

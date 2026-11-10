@@ -1,0 +1,1 @@
+    diagnostic: crate::diagnostics::Observed,

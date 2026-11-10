@@ -1427,3 +1427,29 @@ además del de 4097; el Hub importa `FIELD_LIMITS` solo a través de
 - 269 pruebas web completas PASS; 13 migración + 1 puente + 3 Roadmap Windows
   PASS. Clippy cruzado forzando recompilación del crate y tipos/formato PASS.
 - Al recibir turno: rebase otra vez sobre ese nightly, regenerar, comprobar y push.
+
+
+### VANTA-138 · Informes web sobre el marco #2034 (worker D, draft)
+
+- Registro `screens/testing/entry.tsx`, SectionChrome/SectionPanel y pestañas
+  como datos; derechos del núcleo. Sin modificaciones de Shell ni ContextRail.
+- Borrador protegido con autoguardado 2 s, cola local y reintento solo Busy,
+  descarte de respuestas tardías, guard de cierre solo window, conservación de
+  cambios locales posteriores a un envío. Consentimiento invalidado al editar
+  y tras fallos. Vista de lista y redacción con métodos cerrados de #2026.
+- P3: tres estados de recibo; límites y estados Rust/TS; Capture rechazado
+  mientras no esté disponible; doble con derechos, conexión y sesión tester.
+- Pendiente antes de aceptar la pestaña completa: integrar el estado cerrado de
+  migración #2040; vista de diagnóstico propia y exportación local desde main;
+  Triage en su vista/PR. Las otras tres pestañas se implementan por separado.
+- Evidencia: D:/VantareServer/evidence/hub-web/isa-1995-d-informes/visual-final/.
+  RGBA distintos dark 42.5110 %, light 48.6499 %; perceptual 4.0452/3.7272 %.
+  Sin máscaras. Contenido comparado visualmente; paridad final sin aceptar.
+  El rail compartido tiene un botón duplicado que lo desplaza unos 50 px. La
+  referencia antigua tiene pestañas/calendario de tester con cuerpo sin tester;
+  el nuevo conserva los derechos reales del doble. Gradiente compartido 155°,
+  GPUI 180°. Resolver con A y referencias de banco coherentes, sin tocar Shell.
+- Pruebas: 265 web completas y seis de estado de Informes PASS (dos nuevas),
+  tipos/lint de diseño PASS; 10 Rust de contrato y 2 del puente Windows PASS,
+  Clippy cruzado -D warnings PASS. Un arranque de worker Vitest falló con
+  Electron abierto y pasó al cerrar el candidato propio. Sin servicios reales.

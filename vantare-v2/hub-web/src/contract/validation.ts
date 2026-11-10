@@ -18,6 +18,7 @@ import {
 import { isLauncher, isLauncherLaunch } from "./launcher-validation";
 import { isPilot, isPilotFields, isPilotRevision } from "./pilot-validation";
 import { isDiagnostic, isPrivacy, isPrivacyPatch } from "./privacy-validation";
+import { isProfileAction, isProfileActionMethod } from "./profile-actions";
 import { isProfileEditor, isProfileRequest } from "./profile-validation";
 import { isRoadmap } from "./roadmap-validation";
 import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
@@ -63,78 +64,83 @@ export function isUiMessage(value: unknown): value is UiToHost {
         value.request.method === "launcher.scan" ||
         value.request.method.startsWith("launcher.app.")
           ? isAppRequest(value.request)
-          : value.request.method === "launcher.profile.get" ||
-              value.request.method === "launcher.profile.save"
-            ? isProfileRequest(value.request)
-            : value.request.method === "launcher.launch"
-              ? isLauncherLaunch(value.request)
-              : value.request.method === "testing.answer"
-                ? exact(value.request, ["method", "id", "score"]) &&
-                  isTestingId(value.request.id) &&
-                  integer(value.request.score) &&
-                  value.request.score >= 1 &&
-                  value.request.score <= 5
-                : value.request.method === "testing.contribute" ||
-                    value.request.method === "testing.credit"
-                  ? exact(value.request, ["method", "id", "consent"]) &&
+          : isProfileActionMethod(value.request.method)
+            ? isProfileAction(value.request)
+            : value.request.method === "launcher.profile.get" ||
+                value.request.method === "launcher.profile.save"
+              ? isProfileRequest(value.request)
+              : value.request.method === "launcher.launch"
+                ? isLauncherLaunch(value.request)
+                : value.request.method === "testing.answer"
+                  ? exact(value.request, ["method", "id", "score"]) &&
                     isTestingId(value.request.id) &&
-                    typeof value.request.consent === "boolean"
-                  : value.request.method === "testing.noticeRead"
-                    ? exact(value.request, ["method", "id", "updatedAt"]) &&
+                    integer(value.request.score) &&
+                    value.request.score >= 1 &&
+                    value.request.score <= 5
+                  : value.request.method === "testing.contribute" ||
+                      value.request.method === "testing.credit"
+                    ? exact(value.request, ["method", "id", "consent"]) &&
                       isTestingId(value.request.id) &&
-                      isReportUpdatedAt(value.request.updatedAt)
-                    : value.request.method === "report.send"
-                      ? exact(value.request, [
-                          "method",
-                          "previewId",
-                          "consent",
-                        ]) &&
-                        isReportPreviewId(value.request.previewId) &&
-                        typeof value.request.consent === "boolean"
-                      : value.request.method === "report.removeScreenshot"
-                        ? exact(value.request, ["method", "id", "fields"]) &&
-                          isReportPreviewId(value.request.id) &&
-                          isReportFields(value.request.fields)
-                        : value.request.method === "report.capture" ||
-                            value.request.method === "draft.save"
-                          ? exact(value.request, ["method", "fields"]) &&
+                      typeof value.request.consent === "boolean"
+                    : value.request.method === "testing.noticeRead"
+                      ? exact(value.request, ["method", "id", "updatedAt"]) &&
+                        isTestingId(value.request.id) &&
+                        isReportUpdatedAt(value.request.updatedAt)
+                      : value.request.method === "report.send"
+                        ? exact(value.request, [
+                            "method",
+                            "previewId",
+                            "consent",
+                          ]) &&
+                          isReportPreviewId(value.request.previewId) &&
+                          typeof value.request.consent === "boolean"
+                        : value.request.method === "report.removeScreenshot"
+                          ? exact(value.request, ["method", "id", "fields"]) &&
+                            isReportPreviewId(value.request.id) &&
                             isReportFields(value.request.fields)
-                          : value.request.method === "pilot.save"
-                            ? exact(value.request, [
-                                "method",
-                                "fields",
-                                "baseRevision",
-                              ]) &&
-                              isPilotFields(value.request.fields) &&
-                              isPilotRevision(value.request.baseRevision)
-                            : value.request.method === "privacy.update"
+                          : value.request.method === "report.capture" ||
+                              value.request.method === "draft.save"
+                            ? exact(value.request, ["method", "fields"]) &&
+                              isReportFields(value.request.fields)
+                            : value.request.method === "pilot.save"
                               ? exact(value.request, [
                                   "method",
-                                  "patch",
+                                  "fields",
                                   "baseRevision",
                                 ]) &&
-                                isPrivacyPatch(value.request.patch) &&
-                                typeof value.request.baseRevision ===
-                                  "string" &&
-                                /^[0-9a-f]{64}$/.test(
-                                  value.request.baseRevision,
-                                )
-                              : value.request.method === "mail.set"
-                                ? exact(value.request, ["method", "consent"]) &&
-                                  typeof value.request.consent === "boolean"
-                                : value.request.method === "settings.update"
+                                isPilotFields(value.request.fields) &&
+                                isPilotRevision(value.request.baseRevision)
+                              : value.request.method === "privacy.update"
+                                ? exact(value.request, [
+                                    "method",
+                                    "patch",
+                                    "baseRevision",
+                                  ]) &&
+                                  isPrivacyPatch(value.request.patch) &&
+                                  typeof value.request.baseRevision ===
+                                    "string" &&
+                                  /^[0-9a-f]{64}$/.test(
+                                    value.request.baseRevision,
+                                  )
+                                : value.request.method === "mail.set"
                                   ? exact(value.request, [
                                       "method",
-                                      "patch",
-                                      "baseRevision",
+                                      "consent",
                                     ]) &&
-                                    isSettingsPatch(value.request.patch) &&
-                                    typeof value.request.baseRevision ===
-                                      "string" &&
-                                    /^[0-9a-f]{64}$/.test(
-                                      value.request.baseRevision,
-                                    )
-                                  : exact(value.request, ["method"]))
+                                    typeof value.request.consent === "boolean"
+                                  : value.request.method === "settings.update"
+                                    ? exact(value.request, [
+                                        "method",
+                                        "patch",
+                                        "baseRevision",
+                                      ]) &&
+                                      isSettingsPatch(value.request.patch) &&
+                                      typeof value.request.baseRevision ===
+                                        "string" &&
+                                      /^[0-9a-f]{64}$/.test(
+                                        value.request.baseRevision,
+                                      )
+                                    : exact(value.request, ["method"]))
       );
     default:
       return false;
@@ -238,6 +244,8 @@ export function isHostMessage(value: unknown): value is HostToUi {
         return (
           exact(result, ["method", "value"]) && isProfileEditor(result.value)
         );
+      if (isProfileActionMethod(result.method))
+        return exact(result, ["method", "value"]) && isLauncher(result.value);
       if (result.method === "launcher.profile.save")
         return exact(result, ["method", "value"]) && isLauncher(result.value);
       if (result.method === "launcher.get")

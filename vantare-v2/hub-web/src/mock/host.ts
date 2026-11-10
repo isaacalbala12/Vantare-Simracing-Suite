@@ -21,6 +21,7 @@ import {
 } from "../contract/generated/contract";
 import { isUiMessage } from "../contract/validation";
 import { createLauncherAppsMock } from "./launcher-apps";
+import { profileActionReply } from "./profile-actions";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   return name === "componentes-incompatibles"
@@ -247,6 +248,8 @@ export function createMockHost(sceneName = "ajustes-base") {
         : { kind: "event", event: { topic: "simStatus", live: false } };
     if (value.kind !== "request") return null;
     const { id, request } = value;
+    const profileAction = profileActionReply(id, request, launcher, drafts);
+    if (profileAction) return profileAction;
     switch (request.method) {
       case "testing.answer":
       case "testing.contribute":
@@ -449,6 +452,8 @@ export function createMockHost(sceneName = "ajustes-base") {
             retries: request.draft.policy.retries,
             failure: request.draft.policy.failure,
             startup: request.draft.startup,
+            closeOnExit: request.draft.policy.exit === "closeStarted",
+            retryFailed: request.draft.policy.retry === "failed",
           },
         };
         const existing = launcher.profiles.findIndex(

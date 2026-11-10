@@ -47,14 +47,20 @@
       "name": "Creador de Contenido",
       "description": "Simulador, captura y música en tres pasos. Reintenta el paso fallido y deja el resto abierto al salir.",
       "favorite": true,
-      "apps": ["lmu", "obs", "spotify"],
+      "apps": [
+        "lmu",
+        "obs",
+        "spotify"
+      ],
       "launchable": false,
       "options": {
         "alreadyRunning": "reuse",
         "firstStepDelay": 0,
         "retries": 2,
         "failure": "continue",
-        "startup": false
+        "startup": false,
+        "closeOnExit": false,
+        "retryFailed": false
       }
     },
     {
@@ -62,16 +68,24 @@
       "name": "Pro",
       "description": "",
       "favorite": false,
-      "apps": ["lmu", "crewchief", "spotify", "motec"],
+      "apps": [
+        "lmu",
+        "crewchief",
+        "spotify",
+        "motec"
+      ],
       "launchable": false,
       "options": {
         "alreadyRunning": "reuse",
         "firstStepDelay": 0,
         "retries": 2,
         "failure": "continue",
-        "startup": false
+        "startup": false,
+        "closeOnExit": false,
+        "retryFailed": false
       }
     }
   ],
-  "scanning": false
+  "scanning": false,
+  "lmuTrigger": null
 }

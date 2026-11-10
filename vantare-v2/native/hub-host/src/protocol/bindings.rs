@@ -47,6 +47,7 @@ pub fn typescript() -> String {
         AppEditor,
         CatalogApp,
         CatalogView,
+        crate::launcher::actions::ProfileOption,
         ProfileRunning,
         ProfileFailure,
         ProfileClose,
@@ -353,6 +354,9 @@ pub fn corpus() -> serde_json::Value {
     let settings = settings_sample();
     let mut host = vec![hello(&settings).expect("boot view")];
     host.extend(core_samples());
+    for result in profile_action_reply_samples() {
+        host.push(HostToUi::Response { id: 1, result });
+    }
     for result in application_reply_samples() {
         host.push(HostToUi::Response { id: 1, result });
     }
@@ -649,55 +653,59 @@ fn ui_samples() -> Vec<UiToHost> {
         UiToHost::CloseAnswer { allow: true },
         UiToHost::CloseAnswer { allow: false },
     ];
-    for request in application_request_samples().into_iter().chain([
-        Request::RoadmapCached {},
-        Request::RoadmapRefresh {},
-        Request::PilotLoad {},
-        Request::PilotSave {
-            fields: PilotFields::default(),
-            base_revision: "0".into(),
-        },
-        Request::PrivacyPolicy {},
-        Request::PrivacyGet {},
-        Request::PrivacyUpdate {
-            patch: PrivacyPatch::Crashes(true),
-            base_revision: "0".repeat(64),
-        },
-        Request::PrivacyUpdate {
-            patch: PrivacyPatch::Usage(false),
-            base_revision: "0".repeat(64),
-        },
-        Request::MailGet {},
-        Request::MailSet { consent: false },
-        Request::DiagnosticsGet {},
-        Request::DiagnosticsPrepare {},
-        Request::DiagnosticsCopy {},
-        Request::CoreGet {},
-        Request::ShortcutsGet {},
-        Request::UpdatesGet {},
-        Request::UpdatesRestart {},
-        Request::WindowClose {},
-        Request::SettingsGet {},
-        Request::SettingsRetry {},
-        Request::SettingsDiscard {},
-        Request::LauncherFavorite {},
-        Request::LauncherGet {},
-        Request::LauncherProfileGet { id: None },
-        Request::LauncherProfileGet {
-            id: Some("creator".into()),
-        },
-        Request::LauncherProfileSave {
-            draft: crate::launcher::editor::draft(
-                &vantare_launcher::Document::fresh_install().profiles[0],
-            ),
-            base_revision: "0".repeat(64),
-        },
-        Request::LauncherLaunch {
-            profile: "creator".into(),
-            base_revision: "0".repeat(64),
-        },
-        Request::NotificationTest {},
-    ]) {
+    for request in application_request_samples()
+        .into_iter()
+        .chain(profile_action_request_samples())
+        .chain([
+            Request::RoadmapCached {},
+            Request::RoadmapRefresh {},
+            Request::PilotLoad {},
+            Request::PilotSave {
+                fields: PilotFields::default(),
+                base_revision: "0".into(),
+            },
+            Request::PrivacyPolicy {},
+            Request::PrivacyGet {},
+            Request::PrivacyUpdate {
+                patch: PrivacyPatch::Crashes(true),
+                base_revision: "0".repeat(64),
+            },
+            Request::PrivacyUpdate {
+                patch: PrivacyPatch::Usage(false),
+                base_revision: "0".repeat(64),
+            },
+            Request::MailGet {},
+            Request::MailSet { consent: false },
+            Request::DiagnosticsGet {},
+            Request::DiagnosticsPrepare {},
+            Request::DiagnosticsCopy {},
+            Request::CoreGet {},
+            Request::ShortcutsGet {},
+            Request::UpdatesGet {},
+            Request::UpdatesRestart {},
+            Request::WindowClose {},
+            Request::SettingsGet {},
+            Request::SettingsRetry {},
+            Request::SettingsDiscard {},
+            Request::LauncherFavorite {},
+            Request::LauncherGet {},
+            Request::LauncherProfileGet { id: None },
+            Request::LauncherProfileGet {
+                id: Some("creator".into()),
+            },
+            Request::LauncherProfileSave {
+                draft: crate::launcher::editor::draft(
+                    &vantare_launcher::Document::fresh_install().profiles[0],
+                ),
+                base_revision: "0".repeat(64),
+            },
+            Request::LauncherLaunch {
+                profile: "creator".into(),
+                base_revision: "0".repeat(64),
+            },
+            Request::NotificationTest {},
+        ])
+    {
         ui.push(UiToHost::Request { id: 1, request });
     }
     for request in testing_request_samples() {
@@ -858,6 +866,53 @@ fn testing_request_samples() -> Vec<Request> {
                 module: "hub".into(),
                 ..Default::default()
             },
+        },
+    ]
+}
+
+fn profile_action_reply_samples() -> [Reply; 5] {
+    [
+        Reply::LauncherProfileDelete {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherProfileDuplicate {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherProfileFavorite {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherProfileOption {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherTrigger {
+            value: LauncherView::default(),
+        },
+    ]
+}
+
+fn profile_action_request_samples() -> [Request; 5] {
+    [
+        Request::LauncherProfileDelete {
+            id: "qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherProfileDuplicate {
+            id: "qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherProfileFavorite {
+            id: "qa".into(),
+            favorite: true,
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherProfileOption {
+            id: "qa".into(),
+            patch: crate::launcher::actions::ProfileOption::Retries(2),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherTrigger {
+            id: None,
+            base_revision: "0".repeat(64),
         },
     ]
 }

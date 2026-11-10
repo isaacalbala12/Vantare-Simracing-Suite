@@ -221,6 +221,7 @@ fn entered_live(previous: Option<&protocol::CoreStatus>, current: &protocol::Cor
     })
 }
 fn settings_response(
+    observed: &mut crate::diagnostics::Observed,
     pipe: &mut Pipe,
     id: u32,
     result: Result<crate::settings::SettingsView, SaveError>,
@@ -242,6 +243,9 @@ fn settings_response(
             },
         },
     };
+    if let HostToUi::Failure { error, .. } = &message {
+        observed.note(crate::diagnostics::DiagnosticSection::Settings, error);
+    }
     frame::write(pipe, &message)
 }
 enum RemoteKind {
@@ -450,11 +454,15 @@ impl Session {
                 base_revision,
             } => {
                 let result = self.settings.update(*patch, base_revision);
-                settings_response(pipe, id, result, |value| Reply::SettingsUpdate { value })
+                settings_response(&mut self.diagnostic, pipe, id, result, |value| {
+                    Reply::SettingsUpdate { value }
+                })
             }
             Request::SettingsRetry {} => {
                 let result = self.settings.retry();
-                settings_response(pipe, id, result, |value| Reply::SettingsRetry { value })
+                settings_response(&mut self.diagnostic, pipe, id, result, |value| {
+                    Reply::SettingsRetry { value }
+                })
             }
         }
     }

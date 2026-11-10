@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "playwright-core";
 import { record } from "../src/contract/validation-common.ts";
+import { checkPrivacyHost } from "./check-privacy-host.ts";
 import { checkTrackHost } from "./check-track-host.ts";
 import { until } from "./wait-for.ts";
 export async function checkSettingsHost(
@@ -246,9 +247,12 @@ export async function checkSettingsHost(
     0,
   );
   await page.screenshot({ path: join(evidence, "updates-native.png") });
+  await checkPrivacyHost(page, data, evidence);
   await writeFile(
     join(evidence, "settings-native.json"),
     JSON.stringify({
+      privacySavedAndRevoked: true,
+      diagnosticsPreparedAndCopied: true,
       passed: true,
       scale,
       realRustSave: true,

@@ -538,6 +538,8 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
       - uses: ./.github/actions/native-build-setup
+      - name: Enable compiler cache for bundled Release C and C++
+        run: . ./native/scripts/setup-msvc-cache.ps1
       - name: Verify actual MSVC compiler cache reuse
         run: |
           pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/scripts/msvc-cache-tests.ps1 -EvidenceDirectory (Join-Path $env:RUNNER_TEMP 'msvc-cache-probe')

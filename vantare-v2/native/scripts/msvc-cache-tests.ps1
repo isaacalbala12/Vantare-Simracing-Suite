@@ -2,7 +2,9 @@ param([Parameter(Mandatory)][string]$EvidenceDirectory)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 if (-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:VANTARE_SLOT_TARGET) { throw 'Ejecutar mediante compilar.ps1.' }
-. (Join-Path $PSScriptRoot 'setup-msvc-cache.ps1')
+if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'setup-msvc-cache.ps1')
+}
 $root=Join-Path $env:VANTARE_SLOT_TARGET ('msvc-probe-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
 [IO.Directory]::CreateDirectory($EvidenceDirectory)|Out-Null

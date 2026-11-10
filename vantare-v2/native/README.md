@@ -612,7 +612,7 @@ comparar CPU, memoria o fluidez: para ello sigue usando Release con DuckDB bundl
 Las reglas de herencia y overrides son las estándar de
 [Cargo](https://doc.rust-lang.org/cargo/reference/profiles.html).
 
-La CI prepara MSVC x64 con el Developer PowerShell instalado y configura
+El job de distribución Release prepara MSVC x64 con el Developer PowerShell instalado y configura
 `CC`/`CXX` con sccache, respetando valores previos. `RUSTC_WRAPPER` solo no
 cubre el MSVC autodetectado por cc 1.5.1. El gate de distribución comprueba un
 acierto C++ real y que el objeto restaurado conserve su SHA-256; la distribución

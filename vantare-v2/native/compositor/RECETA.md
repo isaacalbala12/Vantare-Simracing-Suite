@@ -72,6 +72,9 @@ Valores:
   o `0`, `"auto"`, `"100%"`. Un número suelto es error con sugerencia.
 - Degradado: `{ "lineal": { "angulo": 90, "paradas": [["$color.a", 0], ["$color.b", 1]] } }`.
 - `opacidad`: número 0..1 (no es una medida del diseño).
+- Token con enlace a un **enumerado** del modelo: `"$color.clase.{fila.clase}"`.
+  Solo se admite si el campo es `enum` y el sistema define un token para
+  **cada** valor del enumerado (se comprueba al cargar, no en carrera).
 
 ### Condiciones
 

@@ -29,18 +29,34 @@ export function snapshot(
   };
 }
 const EditorContext = createContext<{
+  tab: "profiles" | "applications";
+  setTab: Dispatch<SetStateAction<"profiles" | "applications">>;
+  createApplication: boolean;
+  setCreateApplication: Dispatch<SetStateAction<boolean>>;
   value: EditorSnapshot | null;
   set: Dispatch<SetStateAction<EditorSnapshot | null>>;
   update: (patch: Partial<ProfileDraft>) => void;
 } | null>(null);
 export function ProfileEditorProvider({ children }: { children: ReactNode }) {
   const [value, set] = useState<EditorSnapshot | null>(null);
+  const [tab, setTab] = useState<"profiles" | "applications">("profiles");
+  const [createApplication, setCreateApplication] = useState(false);
   const update = (patch: Partial<ProfileDraft>) =>
     set((current) =>
       current ? { ...current, draft: { ...current.draft, ...patch } } : null,
     );
   return (
-    <EditorContext.Provider value={{ value, set, update }}>
+    <EditorContext.Provider
+      value={{
+        value,
+        set,
+        update,
+        tab,
+        setTab,
+        createApplication,
+        setCreateApplication,
+      }}
+    >
       {children}
     </EditorContext.Provider>
   );

@@ -20,6 +20,7 @@ import {
   type SettingsView,
 } from "../contract/generated/contract";
 import { isUiMessage } from "../contract/validation";
+import { createLauncherAppsMock } from "./launcher-apps";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   return name === "componentes-incompatibles"
@@ -54,7 +55,7 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;
@@ -93,6 +94,7 @@ export function createMockHost(sceneName = "ajustes-base") {
     launcher.resident = false;
   }
 
+  const appReply = createLauncherAppsMock(launcher, sceneName);
   const drafts = new Map<string, ProfileDraft>(
     launcher.profiles.map((profile) => [
       profile.id,
@@ -213,6 +215,8 @@ export function createMockHost(sceneName = "ajustes-base") {
   }
   return (value: unknown): HostToUi | null => {
     if (!isUiMessage(value)) return null;
+    const application = appReply(value);
+    if (application) return application;
     if (value.kind === "closeAnswer" && sceneName === "cierre-live-pendiente")
       return {
         kind: "event",
@@ -244,14 +248,6 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
-      case "launcher.catalog":
-      case "launcher.scan":
-      case "launcher.app.get":
-      case "launcher.app.pick":
-      case "launcher.app.save":
-      case "launcher.app.remove":
-      case "launcher.app.favorite":
-        return { kind: "failure", id, error: { kind: "unsupported" } };
       case "testing.answer":
       case "testing.contribute":
       case "testing.credit":
@@ -759,6 +755,8 @@ export function createMockHost(sceneName = "ajustes-base") {
           },
         };
     }
+    // Application methods were dispatched to their owned mock above.
+    return null;
   };
 }
 // Pure single-message helper retained for boundary tests; live sessions own their state.

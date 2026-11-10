@@ -46,6 +46,31 @@ pub const fn trace_capacity_bytes() -> usize {
     TRACE_LIMIT * std::mem::size_of::<Event>()
 }
 
+/// GPU timestamps have their own measured frequency; unlike process cycle
+/// counters, a valid non-disjoint query interval can be converted to time.
+pub fn gpu_duration_ns(start: u64, end: u64, frequency: u64, disjoint: bool) -> Option<u64> {
+    if disjoint || frequency == 0 {
+        return None;
+    }
+    let ticks = end.checked_sub(start)?;
+    u64::try_from(u128::from(ticks) * 1_000_000_000 / u128::from(frequency)).ok()
+}
+
+#[cfg(test)]
+mod gpu_timing_tests {
+    #[test]
+    fn timestamps_require_valid_stable_frequency() {
+        assert_eq!(
+            super::gpu_duration_ns(100, 110, 1000, false),
+            Some(10_000_000)
+        );
+        assert_eq!(super::gpu_duration_ns(100, 110, 1000, true), None);
+        assert_eq!(super::gpu_duration_ns(100, 110, 0, false), None);
+        assert_eq!(super::gpu_duration_ns(110, 100, 1000, false), None);
+        assert_eq!(super::gpu_duration_ns(0, u64::MAX, 1, false), None);
+    }
+}
+
 pub fn record(event: Event) {
     if !buffered() {
         return;

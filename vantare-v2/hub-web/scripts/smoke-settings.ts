@@ -5,15 +5,15 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { checkSettingsHost } from "./check-settings-host.ts";
+import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
-const base = "D:/VantareServer/qa/isa-1995-ajustes-general";
+const base = requiredPath("VANTARE_HUB_QA_ROOT");
 const root = join(base, `standalone-${randomBytes(8).toString("hex")}`);
 const data = join(root, "data");
 const hub = join(data, "hub");
 const evidence =
-  process.env.VANTARE_HUB_EVIDENCE ??
-  "D:/VantareServer/evidence/hub-web/ajustes-general/native-stable";
+  process.env.VANTARE_HUB_EVIDENCE ?? resolve("test-results/settings-native");
 await mkdir(hub, { recursive: true });
 await mkdir(evidence, { recursive: true });
 if (process.env.VANTARE_HUB_SETTINGS_PROTECTED === "1")
@@ -63,10 +63,8 @@ if (process.env.VANTARE_HUB_STARTUP_TEST === "1")
       "installer-fixture/qa-context.json",
     ),
   });
-const executable = "D:/VantareServer/qa/isa-1995-host-tools/vantare-hub.exe";
-const source =
-  process.env.VANTARE_HUB_HOST_BINARY ??
-  "D:/VantareServer/qa/isa-1995-host-tools/vantare-hub-host.exe";
+const executable = join(root, "vantare-hub.exe");
+const source = requiredPath("VANTARE_HUB_HOST_BINARY");
 if (resolve(source).toLowerCase() !== resolve(executable).toLowerCase())
   await copyFile(source, executable);
 const child = spawn(

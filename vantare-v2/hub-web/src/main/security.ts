@@ -1,5 +1,7 @@
 import { isAbsolute } from "node:path";
 import type { WebPreferences } from "electron";
+import type { UiToHost } from "../contract/generated/contract";
+import { isUiMessage } from "../contract/validation";
 export const CSP =
   "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'";
 export function isAppDocument(value: string): boolean {
@@ -104,4 +106,20 @@ export function fitWindow(
     minWidth: Math.min(1280, width),
     minHeight: Math.min(720, height),
   };
+}
+
+// Only the main process owns the host handshake and window readiness.
+export function isRendererMessage(
+  value: unknown,
+): value is Exclude<UiToHost, { kind: "hello" | "ready" }> {
+  return (
+    isUiMessage(value) &&
+    (value.kind === "request" ||
+      value.kind === "subscribe" ||
+      value.kind === "unsubscribe" ||
+      value.kind === "closeAnswer")
+  );
+}
+export function mockAllowed(packaged: boolean, qa = QA_DRIVER): boolean {
+  return !packaged || qa;
 }

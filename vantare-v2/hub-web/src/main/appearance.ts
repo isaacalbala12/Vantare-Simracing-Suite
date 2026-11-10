@@ -2,7 +2,7 @@ import { type BrowserWindow, Notification, nativeTheme } from "electron";
 import tokens from "../../design/tokens.json";
 import type { SettingsView, ThemeBoot } from "../contract/generated/contract";
 import { t } from "../renderer/i18n/es";
-export function resolveTheme(theme: ThemeBoot) {
+export function resolveTheme(theme: Pick<ThemeBoot, "palette" | "scheme">) {
   const scheme =
     theme.scheme === "system"
       ? nativeTheme.shouldUseDarkColors
@@ -13,7 +13,7 @@ export function resolveTheme(theme: ThemeBoot) {
 }
 export function paintWindow(
   window: BrowserWindow,
-  theme: ThemeBoot,
+  theme: Pick<ThemeBoot, "palette" | "scheme">,
   zoom: number,
 ) {
   if (window.isDestroyed()) return;
@@ -27,19 +27,6 @@ export function paintWindow(
     height: 52,
   });
   window.webContents.setZoomFactor(zoom / 100);
-}
-export function settingsTheme(view: SettingsView): ThemeBoot {
-  const colors =
-    tokens.themes[view.appearance.palette][
-      view.appearance.scheme === "dark" ? "dark" : "light"
-    ];
-  return {
-    palette: view.appearance.palette,
-    scheme: view.appearance.scheme,
-    window: colors["bg-window"],
-    sidebar: colors["bg-sidebar"],
-    text1: colors["text-1"],
-  };
 }
 export function testNotification(view?: SettingsView): boolean {
   if (

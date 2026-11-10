@@ -4,6 +4,7 @@ import { useId } from "react";
 import type { Palette } from "../../contract/generated/contract";
 export function PalettePicker({
   label,
+  pending = false,
   options,
   value,
   scheme,
@@ -11,6 +12,7 @@ export function PalettePicker({
   disabled,
 }: {
   label: string;
+  pending?: boolean;
   options: { value: Palette; label: string }[];
   value: Palette;
   scheme: "dark" | "light";
@@ -21,12 +23,14 @@ export function PalettePicker({
   return (
     <RadioGroup
       aria-label={label}
+      aria-busy={pending || undefined}
+      aria-disabled={disabled || pending || undefined}
       className="v-palettes"
       value={value}
       disabled={disabled}
       onValueChange={(next) => {
         const option = options.find((option) => option.value === next);
-        if (option) onChange(option.value);
+        if (!pending && option) onChange(option.value);
       }}
     >
       {options.map((option) => (

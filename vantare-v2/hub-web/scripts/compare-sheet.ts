@@ -3,8 +3,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root =
-  process.env.VANTARE_HUB_COMPARISON_ROOT ??
-  "D:/VantareServer/evidence/hub-web";
+  process.env.VANTARE_HUB_COMPARISON_ROOT ?? resolve("test-results/comparison");
 const destination = join(root, "ajustes-general", "comparacion.html");
 const rows = [
   {

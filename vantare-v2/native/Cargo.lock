@@ -6595,12 +6595,11 @@ dependencies = [
  "serde",
  "serde_json",
  "ts-rs",
- "vantare-domain",
  "vantare-installer",
  "vantare-ipc",
  "vantare-launcher",
  "vantare-services",
- "vantare-ui",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

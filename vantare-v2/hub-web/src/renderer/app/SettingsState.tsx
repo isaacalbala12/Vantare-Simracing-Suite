@@ -14,6 +14,8 @@ import type {
 } from "../../contract/generated/contract";
 import { HostFailure } from "../bridge/client";
 import { applySettings } from "../design/appearance";
+import { t } from "../i18n/es";
+import { useToastManager } from "../ui/Layers";
 import { settingsKey, useHost } from "./Host";
 
 function settingsReply(reply: Reply): SettingsView {
@@ -46,6 +48,7 @@ export function useSettings() {
 }
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { client } = useHost();
+  const toast = useToastManager();
   const cache = useQueryClient();
   const [error, setError] = useState<HostFailure>();
   const failed = useRef<SettingsPatch | undefined>(undefined);
@@ -92,12 +95,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (failure.detail.kind === "conflict")
         cache.setQueryData(settingsKey, failure.detail.current);
       setError(failure);
+      toast.add({
+        title: t(
+          failure.detail.kind === "conflict"
+            ? "settings.conflict"
+            : failure.detail.kind === "protected"
+              ? "settings.protected"
+              : "settings.failed",
+        ),
+        type: "err",
+      });
     },
   });
   useEffect(() => {
     if (!client) return;
-    client.setCloseGuard(async () => {
+    client.setCloseGuard(async (reason) => {
       await inFlight.current;
+      if (reason !== "window") {
+        failed.current = undefined;
+        setError(undefined);
+        return true;
+      }
       return failed.current === undefined;
     });
   }, [client]);

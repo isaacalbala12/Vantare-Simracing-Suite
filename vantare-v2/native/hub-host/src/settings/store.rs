@@ -1,6 +1,9 @@
 //! Copied from frozen Hub settings/store.rs at 62dde8da4; CAS/migration preserved.
 //! Documento agregado del Hub; migración pura y publicación con CAS.
-use super::model::{AppearanceSettings, Preferences};
+use super::model::{
+    AppearanceSettings, CONTRAST_MAX, CONTRAST_MIN, DEFAULT_ZOOM, GLASS_OPACITY_MAX,
+    GLASS_OPACITY_MIN, Preferences, ZOOM_LEVELS,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -29,7 +32,7 @@ impl Default for Document {
             version: 2,
             general: Preferences::default(),
             appearance: AppearanceSettings::default(),
-            zoom: 100,
+            zoom: DEFAULT_ZOOM,
             migration_pending: Vec::new(),
         }
     }
@@ -71,7 +74,7 @@ impl Legacy {
                 super::appearance::read_settings(&value)?;
             }
             Self::Zoom => {
-                if !matches!(value.as_u64(), Some(90 | 100 | 110 | 125)) {
+                if !valid_zoom_value(&value) {
                     return Err(Error::InvalidInput("Tamaño de interfaz no válido".into()));
                 }
             }
@@ -221,10 +224,7 @@ impl Store {
                 if !matches!(value.get("version").and_then(Value::as_u64), Some(2 | 3)) {
                     files::future_version(&value, "version", 3)?;
                 }
-                let bad_zoom = !matches!(
-                    value.get("zoom").and_then(Value::as_u64),
-                    Some(90 | 100 | 110 | 125)
-                );
+                let bad_zoom = !value.get("zoom").is_some_and(valid_zoom_value);
                 let mut doc: Document = serde_json::from_slice(bytes)
                     .map_err(|e| Error::InvalidInput(e.to_string()))?;
                 if doc.version == 2 && !doc.migration_pending.is_empty() {
@@ -353,7 +353,7 @@ impl Store {
     }
     pub fn save_zoom(&mut self, zoom: u16) -> Result<(), String> {
         self.ensure_section(Legacy::Zoom)?;
-        if !matches!(zoom, 90 | 100 | 110 | 125) {
+        if !ZOOM_LEVELS.contains(&zoom) {
             return Err("Tamaño de interfaz no válido".into());
         }
         let mut next = self.value.clone();
@@ -403,18 +403,19 @@ impl Store {
     }
 }
 fn clamp(settings: &mut AppearanceSettings) {
-    settings.contrast = settings.contrast.clamp(80, 120);
-    settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
+    settings.contrast = settings.contrast.clamp(CONTRAST_MIN, CONTRAST_MAX);
+    settings.glass_opacity = settings
+        .glass_opacity
+        .clamp(GLASS_OPACITY_MIN, GLASS_OPACITY_MAX);
 }
 
 fn read_zoom<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u16, D::Error> {
     let value = Value::deserialize(deserializer)?;
-    Ok(match value.as_u64() {
-        Some(90) => 90,
-        Some(110) => 110,
-        Some(125) => 125,
-        _ => 100,
-    })
+    Ok(value
+        .as_u64()
+        .and_then(|value| u16::try_from(value).ok())
+        .filter(|value| ZOOM_LEVELS.contains(value))
+        .unwrap_or(DEFAULT_ZOOM))
 }
 
 /// Solo reaplica las claves editadas; las otras decisiones del ganador sobreviven.
@@ -439,5 +440,12 @@ fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
 }
 
 const fn default_zoom() -> u16 {
-    100
+    DEFAULT_ZOOM
+}
+
+fn valid_zoom_value(value: &Value) -> bool {
+    value
+        .as_u64()
+        .and_then(|value| u16::try_from(value).ok())
+        .is_some_and(|value| ZOOM_LEVELS.contains(&value))
 }

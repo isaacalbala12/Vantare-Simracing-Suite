@@ -6,7 +6,7 @@ import {
   topics,
   type UiToHost,
 } from "./generated/contract";
-import { isSettings, isSettingsPatch } from "./settings-validation";
+import { isSettings, isSettingsPatch, isZoom } from "./settings-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
 export const FRAME_LIMIT = 1024 * 1024;
 function core(value: unknown): boolean {
@@ -92,7 +92,7 @@ export function isHostMessage(value: unknown): value is HostToUi {
         ) &&
         record(value.window) &&
         exact(value.window, ["zoom", "width", "height", "minimized"]) &&
-        [90, 100, 110, 125].includes(value.window.zoom as number) &&
+        isZoom(value.window.zoom) &&
         integer(value.window.width) &&
         value.window.width >= 1280 &&
         value.window.width <= 8192 &&

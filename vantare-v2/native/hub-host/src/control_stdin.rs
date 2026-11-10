@@ -1,33 +1,24 @@
-//! Poll the inherited anonymous pipe without spawning an uncancellable stdin reader.
+//! Poll the inherited anonymous pipe without an uncancellable stdin thread.
 #![allow(unsafe_code)]
-use std::{ffi::c_void, ptr};
-#[link(name = "kernel32")]
-unsafe extern "system" {
-    fn GetStdHandle(kind: u32) -> *mut c_void;
-    fn PeekNamedPipe(
-        pipe: *mut c_void,
-        buffer: *mut c_void,
-        size: u32,
-        read: *mut u32,
-        available: *mut u32,
-        left: *mut u32,
-    ) -> i32;
-    fn ReadFile(
-        file: *mut c_void,
-        buffer: *mut c_void,
-        size: u32,
-        read: *mut u32,
-        overlapped: *mut c_void,
-    ) -> i32;
-}
+use std::ptr;
+use windows_sys::Win32::{
+    Foundation::{HANDLE, INVALID_HANDLE_VALUE},
+    Storage::FileSystem::ReadFile,
+    System::{
+        Console::{GetStdHandle, STD_INPUT_HANDLE},
+        Pipes::PeekNamedPipe,
+    },
+};
 pub fn closed() -> bool {
-    // SAFETY: borrowed process STD_INPUT_HANDLE; no ownership or pointer escapes.
-    let handle = unsafe { GetStdHandle(0xffff_fff6) };
-    if handle.is_null() || handle as isize == -1 {
+    // SAFETY: borrowing the process standard handle, never closing or retaining it.
+    closed_handle(unsafe { GetStdHandle(STD_INPUT_HANDLE) })
+}
+pub(crate) fn closed_handle(handle: HANDLE) -> bool {
+    if handle.is_null() || handle == INVALID_HANDLE_VALUE {
         return true;
     }
     let mut available = 0;
-    // SAFETY: only the available count is requested; all other buffers are null.
+    // SAFETY: only the available count is requested; no buffer is read here.
     if unsafe {
         PeekNamedPipe(
             handle,
@@ -46,11 +37,11 @@ pub fn closed() -> bool {
     }
     let mut bytes = [0_u8; 256];
     let mut read = 0;
-    // SAFETY: one owner reads stdin, and Peek reported at least this many available bytes.
+    // SAFETY: one owner drains only bytes reported available; the buffer is sized accordingly.
     (unsafe {
         ReadFile(
             handle,
-            bytes.as_mut_ptr().cast(),
+            bytes.as_mut_ptr(),
             available.min(256),
             &raw mut read,
             ptr::null_mut(),

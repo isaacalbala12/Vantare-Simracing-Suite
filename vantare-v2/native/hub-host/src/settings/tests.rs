@@ -8,11 +8,10 @@ struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
         static NEXT: AtomicU64 = AtomicU64::new(0);
-        let base = if cfg!(windows) {
-            PathBuf::from("D:/VantareServer/qa/isa-1995-settings")
-        } else {
-            std::env::temp_dir().join("vantare-hub-settings")
-        };
+        let base = std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(
+            || std::env::temp_dir().join("vantare-hub-settings"),
+            PathBuf::from,
+        );
         let root = base.join(format!(
             "{}-{}",
             std::process::id(),
@@ -159,11 +158,7 @@ fn discarding_a_conflict_forgets_only_the_pending_intent_and_preserves_the_winne
 fn existing_layout_owns_motion_and_conflicts_preserve_other_overlay_preferences() {
     let root = Root::new();
     let path = root.0.join("layout.json");
-    let initial = vantare_ui::layout::Layout {
-        version: 2,
-        reduced_motion: Some(true),
-        ..Default::default()
-    };
+    let initial = serde_json::json!({"version":2,"instances":[],"reducedMotion":true,"extensions":{"qa":"preserve me"}});
     fs::write(&path, serde_json::to_vec(&initial).expect("layout")).expect("fixture");
     let mut settings = root.settings();
     assert!(settings.view().appearance.reduced_motion);
@@ -171,7 +166,7 @@ fn existing_layout_owns_motion_and_conflicts_preserve_other_overlay_preferences(
     let preferences = root.0.join("hub-settings.json");
     let untouched = fs::read(&preferences).expect("migrated preferences");
     let mut external = initial;
-    external.hide_off_track = true;
+    external["hideOffTrack"] = true.into();
     fs::write(&path, serde_json::to_vec(&external).expect("winner")).expect("concurrent write");
     assert!(matches!(
         settings.update(SettingsPatch::ReducedMotion(false), &revision),
@@ -179,11 +174,65 @@ fn existing_layout_owns_motion_and_conflicts_preserve_other_overlay_preferences(
     ));
     let saved = settings.retry().expect("motion retry");
     assert!(!saved.appearance.reduced_motion);
-    let document = vantare_ui::layout::Document::open(path).expect("persisted");
-    assert!(document.layout().hide_off_track);
-    assert_eq!(document.layout().reduced_motion, Some(false));
+    let document: serde_json::Value =
+        serde_json::from_slice(&fs::read(path).expect("persisted")).expect("layout");
+    assert_eq!(document["hideOffTrack"], true);
+    assert_eq!(document["reducedMotion"], false);
+    assert_eq!(document["extensions"]["qa"], "preserve me");
     assert_eq!(
         fs::read(preferences).expect("preferences preserved"),
         untouched
     );
+}
+
+#[test]
+fn mock_scene_matches_the_native_default_projection() {
+    let mut fixture: SettingsView = serde_json::from_str(include_str!(
+        "../../../../hub-web/fixtures/settings-base.json"
+    ))
+    .expect("view fixture");
+    let default = crate::protocol::bindings::settings_sample();
+    // Build identity varies by channel; all preferences and view defaults must match.
+    fixture.version.clone_from(&default.version);
+    assert_eq!(fixture, default);
+}
+
+#[cfg(windows)]
+#[test]
+fn motion_only_changes_its_field_and_preserves_opaque_layout_bytes() {
+    let root = Root::new();
+    let path = root.0.join("layout.json");
+    let original=br#"{"version":2,"instances":[],"reducedMotion":true,"extensions":{ "precise" : 1.000000000000000000001, "opaque" : [true, null] }}"#;
+    fs::write(&path, original).expect("opaque fixture");
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    settings
+        .update(SettingsPatch::ReducedMotion(false), &revision)
+        .expect("save motion");
+    let saved = String::from_utf8(fs::read(path).expect("saved")).expect("utf8");
+    assert!(saved.contains(r#"{ "precise" : 1.000000000000000000001, "opaque" : [true, null] }"#));
+    assert!(saved.contains(r#""reducedMotion":false"#));
+}
+#[cfg(windows)]
+#[test]
+fn malformed_or_future_layouts_stay_byte_exact_after_attempted_motion_save() {
+    let root = Root::new();
+    let path = root.0.join("layout.json");
+    for original in [
+        br#"{"version":999,"instances":[],"reducedMotion":true}"#.as_slice(),
+        br#"{"version":1,"instances":[],"reducedMotion":true}"#.as_slice(),
+        br#"{"version":2,"instances":[],"reducedMotion":"true"}"#.as_slice(),
+        br#"{"version":2,"version":2,"instances":[],"reducedMotion":true}"#.as_slice(),
+        br#"{"version":2,"instances":[],"extensions":{},"extensions":{},"reducedMotion":true}"#
+            .as_slice(),
+    ] {
+        fs::write(&path, original).expect("protected fixture");
+        let mut settings = root.settings();
+        let revision = settings.view().revision;
+        assert!(matches!(
+            settings.update(SettingsPatch::ReducedMotion(false), &revision),
+            Err(SaveError::Protected)
+        ));
+        assert_eq!(fs::read(&path).expect("protected bytes"), original);
+    }
 }

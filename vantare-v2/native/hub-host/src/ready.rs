@@ -4,7 +4,19 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
-pub fn generation(executable: &Path) -> Option<&Path> {
+pub fn canonical_executable(path: &Path) -> io::Result<PathBuf> {
+    let canonical = std::fs::canonicalize(path)?;
+    if let Some(local) = canonical
+        .to_str()
+        .and_then(|value| value.strip_prefix(r"\\?\"))
+        && matches!(local.as_bytes(), [drive,b':',b'\\',..] if drive.is_ascii_alphabetic())
+    {
+        return Ok(PathBuf::from(local));
+    }
+    Ok(canonical)
+}
+pub fn generation(executable: &Path) -> Option<PathBuf> {
+    let executable = canonical_executable(executable).ok()?;
     let bin = executable.parent()?;
     let generation = bin.parent()?;
     let parent = generation.parent()?;
@@ -22,7 +34,7 @@ pub fn generation(executable: &Path) -> Option<&Path> {
         && id
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)))
-    .then_some(generation)
+    .then(|| generation.to_owned())
 }
 pub fn redirect_if_needed(executable: &Path) -> io::Result<bool> {
     let Some(generation) = generation(executable) else {
@@ -116,19 +128,32 @@ impl Ready {
 mod tests {
     use super::*;
     #[test]
-    fn only_the_installed_image_layout_can_publish_ready() {
-        assert!(
-            generation(Path::new(
-                "root/generations/0123456789abcdef0123456789abcdef/bin/vantare-hub.exe"
-            ))
-            .is_some()
+    fn only_the_canonical_installed_image_layout_can_publish_ready() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-hub-ready-{}",
+            vantare_services::random_id().expect("QA id")
+        ));
+        let lower = root.join("lower/generations/0123456789abcdef0123456789abcdef/bin");
+        let upper = root.join("upper/generations/0123456789ABCDEF0123456789ABCDEF/bin");
+        for bin in [&lower, &upper] {
+            std::fs::create_dir_all(bin).expect("QA bin");
+            std::fs::write(bin.join("vantare-hub.exe"), b"inert fixture").expect("fixture");
+        }
+        let expected = canonical_executable(&lower)
+            .expect("canonical bin")
+            .parent()
+            .expect("generation")
+            .to_owned();
+        assert_eq!(
+            generation(&lower.join("../bin/vantare-hub.exe")),
+            Some(expected)
         );
-        assert!(
-            generation(Path::new(
-                "root/generations/0123456789ABCDEF0123456789ABCDEF/bin/vantare-hub.exe"
-            ))
-            .is_none()
-        );
-        assert!(generation(Path::new("root/vantare-hub.exe")).is_none());
+        assert!(generation(&upper.join("vantare-hub.exe")).is_none());
+        std::fs::write(root.join("vantare-hub.exe"), b"inert fixture").expect("standalone");
+        assert!(generation(&root.join("vantare-hub.exe")).is_none());
+        let resolved = root.canonicalize().expect("owned QA");
+        let namespace = std::env::temp_dir().canonicalize().expect("temp namespace");
+        assert!(resolved.starts_with(&namespace) && resolved != namespace);
+        std::fs::remove_dir_all(resolved).expect("remove own fixtures");
     }
 }

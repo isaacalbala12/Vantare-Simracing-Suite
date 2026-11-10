@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
+import { isRendererMessage, mockAllowed } from "../src/main/security";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 
 describe("typed client with an isolated simulated host", () => {
@@ -75,4 +76,35 @@ describe("typed client with an isolated simulated host", () => {
       }
     },
   );
+});
+
+describe("main process trust boundary", () => {
+  it("rejects renderer handshakes and premature readiness while forwarding UI operations", () => {
+    for (const message of [
+      { kind: "hello", version: 1 },
+      { kind: "hello", version: 999 },
+      { kind: "ready" },
+    ])
+      expect(isRendererMessage(message)).toBe(false);
+    for (const message of [
+      { kind: "request", id: 1, request: { method: "core.get" } },
+      { kind: "request", id: 0, request: { method: "window.close" } },
+      { kind: "subscribe", topic: "core" },
+      { kind: "unsubscribe", topic: "simStatus" },
+      { kind: "closeAnswer", allow: false },
+    ])
+      expect(isRendererMessage(message)).toBe(true);
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 1,
+        request: { method: "arbitrary" },
+      }),
+    ).toBe(false);
+  });
+  it("does not enable a packaged mock through a runtime environment value", () => {
+    expect(mockAllowed(true, false)).toBe(false);
+    expect(mockAllowed(true, true)).toBe(true);
+    expect(mockAllowed(false, false)).toBe(true);
+  });
 });

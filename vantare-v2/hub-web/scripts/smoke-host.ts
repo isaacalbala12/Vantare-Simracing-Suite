@@ -5,15 +5,13 @@ import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { checkSettingsHost } from "./check-settings-host.ts";
+import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
-const qa =
-  process.env.VANTARE_HUB_QA_ROOT ?? "D:/VantareServer/qa/isa-1995-puente";
-if (!resolve(qa).toLowerCase().startsWith("d:\\vantareserver\\qa\\"))
-  throw new Error("QA root required");
-const evidence =
-  process.env.VANTARE_HUB_EVIDENCE ??
-  "D:/VantareServer/evidence/hub-web/puente";
+const qa = requiredPath("VANTARE_HUB_QA_ROOT");
+const evidence = process.env.VANTARE_HUB_EVIDENCE
+  ? requiredPath("VANTARE_HUB_EVIDENCE")
+  : resolve("test-results/host");
 await mkdir(evidence, { recursive: true });
 const root = join(qa, `installed-${randomBytes(8).toString("hex")}`);
 const generation = join(root, "generations", randomBytes(16).toString("hex"));
@@ -24,8 +22,7 @@ await mkdir(hubData, { recursive: true });
 if (process.env.VANTARE_HUB_SETTINGS_PROTECTED === "1")
   await writeFile(join(hubData, "hub-settings.json"), '{"version":999}');
 await cp(
-  process.env.VANTARE_HUB_HOST_BINARY ??
-    "D:/VantareServer/qa/isa-1995-host-tools/vantare-hub-host.exe",
+  requiredPath("VANTARE_HUB_HOST_BINARY"),
   join(generation, "bin/vantare-hub.exe"),
 );
 await cp(

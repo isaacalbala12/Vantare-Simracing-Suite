@@ -1,0 +1,307 @@
+// @vitest-environment jsdom
+import { CSPProvider } from "@base-ui/react/csp-provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HostProvider } from "../src/renderer/app/Host";
+import {
+  SettingsProvider,
+  useSettings,
+} from "../src/renderer/app/SettingsState";
+import { Shell } from "../src/renderer/app/Shell";
+import { UiProvider, useUi } from "../src/renderer/app/UiState";
+import { Client } from "../src/renderer/bridge/client";
+import { t } from "../src/renderer/i18n/es";
+import { Appearance } from "../src/renderer/screens/settings/Appearance";
+import { General } from "../src/renderer/screens/settings/General";
+import {
+  ToastProvider,
+  ToastViewport,
+  TooltipProvider,
+} from "../src/renderer/ui/Layers";
+
+type Guard = Parameters<Client["setCloseGuard"]>[0];
+const caches: QueryClient[] = [];
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+});
+afterEach(() => {
+  cleanup();
+  for (const cache of caches) cache.clear();
+  caches.length = 0;
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/");
+  document.documentElement.removeAttribute("style");
+});
+function mount(scene = "ajustes-base", content?: ReactNode) {
+  window.history.replaceState(null, "", `/?escena=${scene}`);
+  const cache = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  caches.push(cache);
+  let guard: Guard | undefined;
+  const setGuard = Client.prototype.setCloseGuard;
+  vi.spyOn(Client.prototype, "setCloseGuard").mockImplementation(function (
+    this: Client,
+    value,
+  ) {
+    guard = value;
+    setGuard.call(this, value);
+  });
+  const hook = renderHook(useSettings, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={cache}>
+        <HostProvider>
+          <UiProvider>
+            <CSPProvider disableStyleElements>
+              <TooltipProvider delay={0}>
+                <ToastProvider>
+                  <SettingsProvider>
+                    {content}
+                    {children}
+                  </SettingsProvider>
+                  <ToastViewport closeLabel="Cerrar aviso" />
+                </ToastProvider>
+              </TooltipProvider>
+            </CSPProvider>
+          </UiProvider>
+        </HostProvider>
+      </QueryClientProvider>
+    ),
+  });
+  return {
+    ...hook,
+    guard: (reason: Parameters<Guard>[0]) => {
+      if (!guard) throw new Error("Guard not installed");
+      return guard(reason);
+    },
+  };
+}
+function deferred() {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
+function hold(method: "settings.update" | "launcher.favorite") {
+  const gate = deferred();
+  const request = Client.prototype.request;
+  const spy = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(async function (this: Client, value) {
+      if (value.method === method) await gate.promise;
+      return request.call(this, value);
+    });
+  return {
+    ...gate,
+    calls: () =>
+      spy.mock.calls.filter(([value]) => value.method === method).length,
+  };
+}
+async function loaded(hook: ReturnType<typeof mount>) {
+  await waitFor(() => expect(hook.result.current.view).toBeDefined());
+}
+async function conflict(hook: ReturnType<typeof mount>) {
+  await loaded(hook);
+  act(() => hook.result.current.update({ field: "minimized", value: true }));
+  await waitFor(() =>
+    expect(hook.result.current.error?.detail.kind).toBe("conflict"),
+  );
+}
+function Outside() {
+  const navigate = useUi((state) => state.navigate);
+  return (
+    <button type="button" onClick={() => navigate("home")}>
+      Fuera de Ajustes
+    </button>
+  );
+}
+
+describe("SettingsState through createMockHost and a real MessageChannel", () => {
+  it("retries only the losing intent and preserves the winner", async () => {
+    const hook = mount("ajustes-conflicto");
+    await conflict(hook);
+    expect(hook.result.current.view?.general.updates).toBe(false);
+    expect(await hook.guard("window")).toBe(false);
+    await act(async () => hook.result.current.retry());
+    await waitFor(() =>
+      expect(hook.result.current.view?.general.minimized).toBe(true),
+    );
+    expect(hook.result.current.view?.general.updates).toBe(false);
+    expect(hook.result.current.error).toBeUndefined();
+    expect(await hook.guard("window")).toBe(true);
+  });
+  it("discards a failed intent without writing it", async () => {
+    const hook = mount("ajustes-conflicto");
+    await conflict(hook);
+    await act(async () => hook.result.current.discard());
+    await waitFor(() => expect(hook.result.current.error).toBeUndefined());
+    expect(hook.result.current.view?.general.minimized).toBe(false);
+    expect(hook.result.current.view?.general.updates).toBe(false);
+    expect(await hook.guard("window")).toBe(true);
+  });
+  it("allows Live to close and forgets a failed intent", async () => {
+    const hook = mount("ajustes-conflicto");
+    await conflict(hook);
+    expect(await hook.guard("window")).toBe(false);
+    let allowed: boolean | undefined;
+    await act(async () => {
+      allowed = await hook.guard("live");
+    });
+    expect(allowed).toBe(true);
+    expect(hook.result.current.error).toBeUndefined();
+    expect(hook.result.current.view?.general.minimized).toBe(false);
+    expect(await hook.guard("window")).toBe(true);
+  });
+  it.each(["ajustes-error", "ajustes-protegidos"])(
+    "announces %s without overwriting the confirmed value",
+    async (scene) => {
+      const hook = mount(scene);
+      await loaded(hook);
+      act(() =>
+        hook.result.current.update({ field: "minimized", value: true }),
+      );
+      await waitFor(() =>
+        expect(hook.result.current.error?.detail.kind).toBe(
+          scene === "ajustes-error" ? "io" : "protected",
+        ),
+      );
+      expect(hook.result.current.view?.general.minimized).toBe(false);
+      expect(await hook.guard("window")).toBe(false);
+      expect(
+        (
+          await screen.findAllByText(
+            scene === "ajustes-error"
+              ? t("settings.failed")
+              : t("settings.protected"),
+          )
+        ).length,
+      ).toBeGreaterThan(0);
+    },
+  );
+  it("does not send another update while a request is busy", async () => {
+    const pending = hold("settings.update");
+    const hook = mount();
+    await loaded(hook);
+    act(() => {
+      hook.result.current.update({ field: "minimized", value: true });
+      hook.result.current.update({ field: "palette", value: "rose" });
+    });
+    await waitFor(() => expect(hook.result.current.pending).toBe(true));
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+    await waitFor(() =>
+      expect(hook.result.current.view?.general.minimized).toBe(true),
+    );
+    expect(hook.result.current.view?.appearance.palette).toBe("vantare");
+  });
+  it("keeps an error and recovery actions visible outside Settings", async () => {
+    const hook = mount(
+      "ajustes-error",
+      <>
+        <Outside />
+        <Shell />
+      </>,
+    );
+    await loaded(hook);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Fuera de Ajustes" }));
+    fireEvent.keyDown(window, { key: "=", ctrlKey: true });
+    await waitFor(() =>
+      expect(hook.result.current.error?.detail.kind).toBe("io"),
+    );
+    expect(
+      screen.getByRole("button", { name: t("settings.retry") }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: t("settings.discard") }),
+    ).toBeDefined();
+    expect(screen.getAllByText(t("settings.failed")).length).toBeGreaterThan(1);
+    await user.click(
+      screen.getByRole("button", { name: t("settings.discard") }),
+    );
+    await waitFor(() => expect(hook.result.current.error).toBeUndefined());
+  });
+  it("does not relaunch a favorite on repeated keydown or while pending", async () => {
+    const pending = hold("launcher.favorite");
+    const hook = mount("ajustes-base", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true, repeat: true });
+    expect(pending.calls()).toBe(0);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+  });
+});
+
+describe("saving keeps keyboard controls focusable", () => {
+  it("keeps radio focus through two arrows and ignores changes while pending", async () => {
+    const pending = hold("settings.update");
+    const hook = mount("ajustes-base", <Appearance />);
+    await loaded(hook);
+    const group = screen.getByRole("radiogroup", {
+      name: t("appearance.scheme"),
+    });
+    const radio = screen.getByRole("radio", {
+      name: t("appearance.dark"),
+    });
+    radio.focus();
+    await userEvent.setup().keyboard("{ArrowLeft}{ArrowLeft}");
+    expect(group.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+    await waitFor(() => expect(hook.result.current.pending).toBe(false));
+  });
+  it("keeps segmented focus through two arrows while saving", async () => {
+    const pending = hold("settings.update");
+    const hook = mount("ajustes-base", <General />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: t("general.compact") }),
+    );
+    await waitFor(() => expect(hook.result.current.pending).toBe(true));
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expect(
+      screen
+        .getByRole("group", { name: t("general.density") })
+        .contains(document.activeElement),
+    ).toBe(true);
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+  });
+  it("keeps the select focusable while its selection is saving", async () => {
+    const pending = hold("settings.update");
+    const hook = mount("ajustes-base", <Appearance />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    const select = screen.getByRole("combobox", { name: t("appearance.font") });
+    await user.click(select);
+    await user.click(
+      await screen.findByRole("option", { name: t("appearance.segoe") }),
+    );
+    await waitFor(() => expect(hook.result.current.pending).toBe(true));
+    expect(select.hasAttribute("disabled")).toBe(false);
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(document.activeElement).not.toBe(document.body);
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+  });
+});

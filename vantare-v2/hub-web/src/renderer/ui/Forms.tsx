@@ -78,6 +78,7 @@ export function SearchInput({
 }
 export function Select({
   label,
+  pending = false,
   options,
   value,
   onChange,
@@ -86,6 +87,7 @@ export function Select({
 }: {
   hideLabel?: boolean;
   label: string;
+  pending?: boolean;
   options: Option[];
   value: string;
   onChange: (value: string) => void;
@@ -105,13 +107,15 @@ export function Select({
         items={options}
         value={value}
         onValueChange={(v) => {
-          if (v !== null) onChange(v);
+          if (!pending && v !== null) onChange(v);
         }}
         disabled={disabled}
       >
         <BaseSelect.Trigger
           id={`${id}-control`}
           aria-labelledby={id}
+          aria-busy={pending || undefined}
+          aria-disabled={disabled || pending || undefined}
           className="v-input v-select-trigger"
         >
           <BaseSelect.Value />
@@ -164,7 +168,11 @@ export function Switch({
         {...props}
         id={id}
         className="v-switch"
-        disabled={props.disabled || pending}
+        disabled={props.disabled}
+        aria-disabled={props.disabled || pending || undefined}
+        onCheckedChange={(checked, details) => {
+          if (!pending) props.onCheckedChange?.(checked, details);
+        }}
         aria-busy={pending || undefined}
       >
         <BaseSwitch.Thumb className="v-switch-thumb" />
@@ -175,6 +183,7 @@ export function Switch({
 }
 export function Slider({
   label,
+  pending = false,
   value,
   min,
   max,
@@ -185,6 +194,7 @@ export function Slider({
 }: {
   hideLabel?: boolean;
   label: string;
+  pending?: boolean;
   value: number;
   min: number;
   max: number;
@@ -198,8 +208,14 @@ export function Slider({
       value={value}
       min={min}
       max={max}
-      onValueChange={onChange}
-      onValueCommitted={onValueCommitted}
+      aria-busy={pending || undefined}
+      aria-disabled={disabled || pending || undefined}
+      onValueChange={(value) => {
+        if (!pending) onChange(value);
+      }}
+      onValueCommitted={(value) => {
+        if (!pending) onValueCommitted(value);
+      }}
       disabled={disabled}
     >
       <BaseSlider.Label className={hideLabel ? "v-sr-only" : undefined}>
@@ -217,12 +233,14 @@ export function Slider({
 }
 export function Segmented({
   label,
+  pending = false,
   options,
   value,
   onChange,
   disabled = false,
 }: {
   label: string;
+  pending?: boolean;
   options: Option[];
   value: string;
   onChange: (value: string) => void;
@@ -232,10 +250,12 @@ export function Segmented({
     <ToggleGroup
       className="v-segmented"
       aria-label={label}
+      aria-busy={pending || undefined}
+      aria-disabled={disabled || pending || undefined}
       value={[value]}
       disabled={disabled}
       onValueChange={(v) => {
-        if (v[0]) onChange(v[0]);
+        if (!pending && v[0]) onChange(v[0]);
       }}
     >
       {options.map((option) => (
@@ -269,11 +289,13 @@ export function Checkbox({
 }
 export function RadioGroup({
   label,
+  pending = false,
   options,
   value,
   onChange,
 }: {
   label: string;
+  pending?: boolean;
   options: Option[];
   value: string;
   onChange: (value: string) => void;
@@ -283,8 +305,12 @@ export function RadioGroup({
     <BaseRadioGroup
       className="v-radio-group"
       aria-label={label}
+      aria-busy={pending || undefined}
+      aria-disabled={pending || undefined}
       value={value}
-      onValueChange={(v) => onChange(String(v))}
+      onValueChange={(v) => {
+        if (!pending) onChange(String(v));
+      }}
     >
       {options.map((option) => (
         <label

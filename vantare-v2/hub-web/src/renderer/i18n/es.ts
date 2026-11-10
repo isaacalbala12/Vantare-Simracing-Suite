@@ -257,7 +257,8 @@ export const settingsText = {
   "track.automatic": "Automático",
   "track.soon": "Próximamente",
   "track.hide": "Ocultar fuera de pista",
-  "track.hideHelp": "Oculta los overlays cuando no estás en pista",
+  "track.hideHelp":
+    "Garaje, pausa y replay. Paradas y colas en boxes siguen visibles; Studio también.",
   "track.custom": "Personalizado",
   "track.customHelp":
     "Las frecuencias por widget se editan en Studio. Se conservan al cambiar el nivel global.",
@@ -326,6 +327,7 @@ export const settingsText = {
   "settings.unavailable": "No se pudieron cargar los ajustes",
   "settings.reload": "Volver a cargar",
   "general.interface": "Interfaz",
+  "general.overlays": "Overlays",
   "general.language": "Idioma del Hub",
   "general.languageHelp": "Idioma de la interfaz",
   "general.spanish": "Español",
@@ -335,7 +337,7 @@ export const settingsText = {
   "general.zoomMore": "Aumentar tamaño de la interfaz",
   "general.zoomReset": "Restablecer tamaño de la interfaz",
   "general.density": "Densidad",
-  "general.densityHelp": "Espacio entre textos y controles",
+  "general.densityHelp": "La ventana conserva sus límites de adaptación",
   "general.compact": "Compacta",
   "general.balanced": "Equilibrada",
   "general.comfortable": "Cómoda",

@@ -304,6 +304,7 @@ export function Shell() {
                 </IconButton>
                 <IconButton
                   label={t("shell.toggleTheme")}
+                  className="v-theme-toggle"
                   onClick={toggleTheme}
                   disabled={editBlocked}
                 >

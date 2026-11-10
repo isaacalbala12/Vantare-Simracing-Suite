@@ -8,3 +8,16 @@ export const settingsDescriptions: Record<string, string> = {
   privacy: "Elige qué informes y datos de uso puede enviar Vantare.",
   diagnostics: "Estado de las fuentes, datos locales y registros.",
 };
+
+export const generalRailText = {
+  launchKey: "Ctrl L",
+  searchKey: "Ctrl K",
+  collapseKey: "Ctrl B",
+  preferences: "Preferencias del Hub",
+  preferencesHelp:
+    "Los cambios se guardan en este equipo. Empezar minimizado se aplica en el siguiente arranque.",
+  shortcuts: "Atajos del Hub",
+  launch: "Lanzar perfil",
+  search: "Buscar",
+  collapse: "Contraer barra",
+};

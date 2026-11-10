@@ -2,6 +2,30 @@ import { Avatar as BaseAvatar } from "@base-ui/react/avatar";
 import { Progress as BaseProgress } from "@base-ui/react/progress";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type CSSProperties, type ReactNode, useRef } from "react";
+import { TrackedCaps } from "./TrackedCaps";
+export function SettingGroup({
+  number,
+  title,
+  children,
+}: {
+  number: number;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="v-setting-group">
+      <h2
+        className="v-setting-group-title"
+        aria-label={`${String(number).padStart(2, "0")} ${title}`}
+      >
+        <span>{String(number).padStart(2, "0")}</span>
+        <TrackedCaps>{title}</TrackedCaps>
+        <i aria-hidden="true" />
+      </h2>
+      <div className="v-card v-setting-group-card">{children}</div>
+    </section>
+  );
+}
 export function Card({
   title,
   actions,

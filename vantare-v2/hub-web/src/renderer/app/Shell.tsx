@@ -27,6 +27,7 @@ import { isSection, lock, navigation, visible } from "./navigation";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
+import { WindowControls } from "./WindowControls";
 
 export function Shell() {
   const host = useHost();
@@ -192,6 +193,7 @@ export function Shell() {
         <TitleBar
           title={title}
           status={status}
+          controls={<WindowControls />}
           actions={
             <ActionGroup>
               <IconButton

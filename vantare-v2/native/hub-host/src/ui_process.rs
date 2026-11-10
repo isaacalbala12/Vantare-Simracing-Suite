@@ -464,7 +464,9 @@ impl Session {
             | Request::SettingsRetry {} => self.settings_request(pipe, id, request),
             Request::WindowClose {} => self.request_close(pipe, CloseReason::Window),
             // Native notifications are a platform UI action handled by Electron.
-            Request::NotificationTest {} => frame::write(
+            Request::NotificationTest {}
+            | Request::WindowMinimize {}
+            | Request::WindowToggleMaximize {} => frame::write(
                 pipe,
                 &HostToUi::Failure {
                     id,
@@ -736,7 +738,14 @@ impl Session {
             {
                 self.closing = None;
             }
-            UiToHost::CloseAnswer { .. } => {}
+            // Window state belongs to Electron, never to a core service.
+            UiToHost::Subscribe {
+                topic: Topic::WindowState,
+            }
+            | UiToHost::Unsubscribe {
+                topic: Topic::WindowState,
+            }
+            | UiToHost::CloseAnswer { .. } => {}
         }
         Ok(true)
     }

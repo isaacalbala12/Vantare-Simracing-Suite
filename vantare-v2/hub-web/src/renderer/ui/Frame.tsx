@@ -13,10 +13,12 @@ export function TitleBar({
   title,
   status,
   actions,
+  controls,
 }: {
   title: string;
   status: string;
   actions?: ReactNode;
+  controls?: ReactNode;
 }) {
   return (
     <header className="v-titlebar">
@@ -30,6 +32,7 @@ export function TitleBar({
         </span>
         {actions}
       </div>
+      {controls}
     </header>
   );
 }

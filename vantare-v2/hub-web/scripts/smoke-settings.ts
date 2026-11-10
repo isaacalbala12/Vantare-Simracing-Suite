@@ -4,7 +4,10 @@ import { randomBytes } from "node:crypto";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { checkSettingsHost } from "./check-settings-host.ts";
+import {
+  checkSettingsHost,
+  waitForIsolatedCore,
+} from "./check-settings-host.ts";
 import { requiredPath } from "./qa-paths.ts";
 import { until } from "./wait-for.ts";
 
@@ -110,10 +113,7 @@ try {
   browser = await chromium.connectOverCDP(endpoint);
   const context = browser.contexts()[0];
   const page = context.pages()[0] ?? (await context.waitForEvent("page"));
-  await page
-    .getByRole("status")
-    .filter({ hasText: "Núcleo no disponible" })
-    .waitFor();
+  await waitForIsolatedCore(page);
   await checkSettingsHost(page, hub, evidence, join(root, "installer-fixture"));
   child.stdin.end();
   await until(() => child.exitCode !== null, 10000, "host closes on EOF");

@@ -48,7 +48,11 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
       };
   }
 }
-export function createMockHost(sceneName = "ajustes-base") {
+export function createMockHost(
+  sceneName = "ajustes-base",
+  emit: (message: HostToUi) => void = () => {},
+) {
+  let maximized = false;
   const visual =
     /^visual-(dark|light):(ajustes-con-diseno|proximamente-base)$/.exec(
       sceneName,
@@ -158,6 +162,8 @@ export function createMockHost(sceneName = "ajustes-base") {
       return value.version === HOST_PROTOCOL_VERSION
         ? helloForScene(sceneName)
         : null;
+    if (value.kind === "subscribe" && value.topic === "windowState")
+      return { kind: "event", event: { topic: "windowState", maximized } };
     if (value.kind === "subscribe" && value.topic === "updates")
       return {
         kind: "event",
@@ -425,6 +431,27 @@ export function createMockHost(sceneName = "ajustes-base") {
           id,
           result: { method: "core.get", value: core },
         };
+      case "window.minimize":
+        return {
+          kind: "response",
+          id,
+          result: { method: "window.minimize", accepted: true },
+        };
+      case "window.toggleMaximize": {
+        maximized = !maximized;
+        const windowMaximized = maximized;
+        queueMicrotask(() =>
+          emit({
+            kind: "event",
+            event: { topic: "windowState", maximized: windowMaximized },
+          }),
+        );
+        return {
+          kind: "response",
+          id,
+          result: { method: "window.toggleMaximize", accepted: true },
+        };
+      }
       case "window.close":
         return { kind: "closeRequested", reason: "window" };
       case "launcher.favorite":

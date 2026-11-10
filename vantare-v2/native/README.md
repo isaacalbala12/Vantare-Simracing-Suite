@@ -523,6 +523,7 @@ el slot automáticamente. No se borran targets ajenos.
 La CI usa exclusivamente `windows-latest` y rutas bajo `RUNNER_TEMP`. Instala
 Nextest precompilado, ejecuta Clippy y construye un archivo de tests. Suite,
 telemetría y los arneses lifecycle de Runtime/Engineer se ejecutan en jobs paralelos sin recompilar;
+los overlays normal/QA se compilan en otro builder paralelo y
 distribución/instalación corre en paralelo cuando el diff lo exige y siempre
 en integración. El check obligatorio agrega todos sus resultados. El Hub web
 no dispara Rust salvo cambios en `native/` o entradas globales del build.

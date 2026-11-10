@@ -3,7 +3,9 @@
 Base: nightly `62dde8da4cdbec03604304d9253f016d924f4e26`, ADR 0107.
 Sin cambios de lógica ni dependencias de producto nuevas. No se modifica UI ni GPUI.
 PR en orden: [#1997](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1997),
-[#2003](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2003), ambos draft a nightly.
+[#2003](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2003). El arreglo independiente
+[#2007](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2007), para #2006,
+puede entrar primero. Todos son draft a nightly.
 
 ## Alcance
 
@@ -97,7 +99,12 @@ No se modifica lógica para ocultarlo.
 | split-debuginfo Windows | Rust 1.95 MSVC solo ofrece packed. Con debug=0 no aporta ahorro adicional; no se cambia el formato. |
 | Cargo build-dir 1.95, fixture mínima M5 | Default 1.067.279 bytes / 0,128 s; separado 1.067.529 bytes / 0,138 s. Mueve intermediarios, no elimina su espacio; no se añade otra carpeta por rama. |
 | Frontend paralelo y Cranelift con 1.95 | -Zthreads es rechazado; componente Cranelift no disponible en el toolchain fijado. No se alteran defaults. |
-| Nightly 1.102.0 del 9-nov-2026, M5 | LLVM 19,50 s; -Zthreads=4: 17,25 s; Cranelift: 13,68 s. Targets vacíos, todos con panic=abort, solo build del núcleo. Opción experimental: no demuestra compatibilidad MSVC ni permite cambiar comportamiento/toolchain de producto. |
+| Nightly 1.102.0 del 9-nov-2026, M5 nativo | LLVM 19,50 s; -Zthreads=4: 17,25 s; Cranelift: 13,68 s. Targets vacíos, todos con panic=abort, solo build del núcleo. Opción experimental: no demuestra compatibilidad MSVC ni permite cambiar comportamiento/toolchain de producto. |
+
+En compilación cruzada al target MSVC, con esa misma nightly y panic=abort:
+LLVM 22,82 s; frontend paralelo 22,09 s; Cranelift 16,02 s. Son builds limpios
+del núcleo desde el M5, no mediciones del host Windows ni pruebas funcionales
+de esos binarios. Se mantienen como experimento; el producto conserva 1.95.0.
 
 El informe investigador contiene propuestas, no mediciones equivalentes: se
 verifican contra Cargo 1.95 y los comandos anteriores. No se adopta una opción
@@ -130,7 +137,10 @@ Runtime. Build de tests archivado una vez; suite y telemetría usan el mismo arc
 y lifecycle ejecuta los dos arneses originales (Engineer y Runtime), identificados
 por paquete y empaquetados con overlays normal/QA. La primera CI detectó la
 colisión de nombres; no se elige uno ni se pierde el otro. Los jobs
-de ejecución no compilan. Distribución/matriz siguen verificando los mismos
+de ejecución no compilan. La preparación normal/QA de overlays va en un builder
+paralelo; su artefacto tiene que coincidir con el SHA del archivo de tests.
+El job de suite instala el Cargo 1.95 precompilado porque arquitectura invoca
+una ruta absoluta de Cargo; no se cambia ni se omite esa prueba. Distribución/matriz siguen verificando los mismos
 controles en paralelo cuando afectan al diff y siempre en integración.
 El agregador exige éxito de todos los jobs aplicables, también si se cancelan.
 
@@ -151,7 +161,15 @@ Primera ejecución real #2003, SHA 5d825f29f: Clippy 3 min 12 s, banco bench
 6 min 40 s. Falló después al asumir un único lifecycle; se corrige para preservar
 ambos paquetes. Caché GHA fría: 0 hits / 816 misses, 57 errores de escritura.
 Esto no acredita el objetivo de 15 minutos ni un porcentaje de aciertos futuro.
-**Ejecución final y repetición con caché: pendientes de validación.**
+Ejecución d06d906f1: build archivado PASS en 13 min 06 s; lifecycle PASS en
+2 min y telemetría PASS en 4 min 20 s. Tramo Rust: 17 min 28 s desde el inicio
+del builder. La suite detectó la ausencia de Cargo 1.95 en la segunda VM; se
+añade su instalación precompilada y se paralelizan los 3 min 40 s de overlays.
+Baseline real #1997, ejecución 42744850027: check obligatorio completo PASS,
+57 min 24 s (02:45:35 → 03:42:59 UTC). No se compara este job con el agregador
+de unos segundos: el cierre final se mide de inicio a fin de todos sus jobs.
+La tabla definitiva y el HEAD verificado quedan en la descripción de #1993
+y en el informe `D:/VantareServer/evidence/isa-1993/informe-final.md`.
 No usar la duración del job agregador como si fuera la duración de CI completa.
 
 ## Evidencia y fuentes
@@ -167,3 +185,20 @@ Fuentes primarias consultadas: [Cargo performance](https://doc.rust-lang.org/nig
 [cargo-xwin](https://github.com/rust-cross/cargo-xwin),
 [Cranelift](https://github.com/rust-lang/rustc_codegen_cranelift),
 [cargo-llvm-lines](https://github.com/dtolnay/cargo-llvm-lines).
+
+## Fiabilidad adicional: #2006
+
+La ruta de cada test Launcher ya es exclusiva (PID/contador). El fallo estaba
+dentro de un test que abría una segunda cadena al recibir Done, antes de recoger
+el worker de la primera. Reproducción Windows: 1/200 fallos con cuatro procesos,
+mismo os error 32. PR #2007 añade Drop explícito y comprueba la retirada del lock:
+200/200 PASS y 57/57 Launcher PASS. Fmt y Clippy MSVC all-targets PASS desde M5.
+Los consumidores actuales esperan finished/shutdown; no se encontró una P1.
+No se cambia producción, no se añaden retries, sleeps ni ignores. Evidencia
+con ambos binarios y SHA-256: `D:/VantareServer/evidence/isa-2006`.
+
+Pruebas de tooling: dos lifecycle homónimos archivados y ejecutados, transporte
+entre jobs simulados sin disponer del target original, reserva anidada, limpieza
+por edad con rechazo de locks/enlaces, rutas RUNNER_TEMP y A → B → A. Retirada:
+471 huellas intactas. OpenCode 2.2.6 comprobado; no se lanzan nuevos delegates
+porque T3 preparaba su worktree en C:. Se completa el trabajo directamente.

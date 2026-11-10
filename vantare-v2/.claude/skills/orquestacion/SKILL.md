@@ -185,6 +185,6 @@ checkout por cuenta propia: informar y seguir en el worktree autorizado.
 GitHub usa `windows-latest`, nunca el servidor como runner público. Targets bajo
 `RUNNER_TEMP`; registro/git y sccache GHA comparten los 10 GB de caché del repo.
 Nextest se instala precompilado. Un build archivado alimenta suite, telemetría y
-lifecycle en paralelo; el check obligatorio exige todos los jobs aplicables.
+lifecycle en paralelo; sus overlays también tienen builder paralelo. El check obligatorio exige todos los jobs aplicables.
 PR: diff y dependientes, sin Hub/Admin por cambios de núcleo/ui. Integración:
 workspace completo. `hub-web/` y su workflow no disparan Rust por sí solos.

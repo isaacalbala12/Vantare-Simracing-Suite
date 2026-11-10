@@ -21,10 +21,15 @@ export function createTestingMock(scene: string, core: CoreStatus) {
       contextText: "",
     },
     exists: false,
+    legacy: "none",
     screenshots: [],
     message: "",
   });
   let draft = empty();
+  if (scene === "testing-legacy-imported") draft.legacy = "imported";
+  if (scene === "testing-legacy-trimmed") draft.legacy = "importedTrimmed";
+  if (scene === "testing-legacy-preserved") draft.legacy = "preserved";
+
   let preview: ReportPreviewView | undefined;
   let previewSequence = 0;
   const participation: TestingView = { reports: [], questionnaires: [] };
@@ -70,6 +75,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
         draft = {
           fields: structuredClone(request.fields),
           exists: true,
+          legacy: draft.legacy,
           screenshots: [],
           message: "",
         };
@@ -80,7 +86,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
           result: { method: request.method, value: structuredClone(draft) },
         };
       case "draft.discard":
-        draft = empty();
+        draft = { ...empty(), legacy: draft.legacy };
         preview = undefined;
         return {
           kind: "response",

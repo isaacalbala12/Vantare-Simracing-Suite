@@ -68,6 +68,22 @@ async function mount(scene = "testing-reports") {
   };
 }
 describe("protected report draft behavior", () => {
+  it.each([
+    ["testing-legacy-imported", "imported"],
+    ["testing-legacy-trimmed", "importedTrimmed"],
+    ["testing-legacy-preserved", "preserved"],
+  ] as const)(
+    "retains the closed migration notice from %s after saving",
+    async (scene, legacy) => {
+      const hook = await mount(scene);
+      expect(hook.result.current.legacy).toBe(legacy);
+      act(() => hook.result.current.edit({ actionText: "Texto nuevo" }));
+      await act(async () => {
+        await hook.result.current.save();
+      });
+      expect(hook.result.current.legacy).toBe(legacy);
+    },
+  );
   it("rejects oversized private text before the bridge and keeps the editor intact", async () => {
     const hook = await mount();
     const calls = vi.spyOn(Client.prototype, "request");
@@ -118,6 +134,7 @@ describe("protected report draft behavior", () => {
         method: "draft.save",
         value: {
           fields: request.fields,
+          legacy: "none",
           exists: true,
           screenshots: [],
           message: "",

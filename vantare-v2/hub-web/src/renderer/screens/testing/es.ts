@@ -1,4 +1,11 @@
 export const testingText = {
+  legacy: {
+    imported:
+      "Se recuperó el borrador antiguo. Se conserva una copia original.",
+    importedTrimmed:
+      "Se recuperó el borrador antiguo y se limpió o recortó el texto. Se conserva una copia original.",
+    preserved: "El borrador antiguo se ha conservado.",
+  },
   sectionTitle: "Testing Center",
   summary: "Resumen",
   questionnaires: "Cuestionarios",

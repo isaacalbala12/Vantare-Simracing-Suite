@@ -314,15 +314,13 @@ try {
             $shutdown=@{request_qpc=$shutdownStart;visible_windows_after_five_seconds=$remainingWindows;process_exited_within_five_seconds=$exited;producer_stopped_for_drain=$false}
             $shutdown | ConvertTo-Json | Set-Content "$Out/shutdown.json"
             if ($remainingWindows) { throw 'Owned overlay windows did not close within five seconds' }
-            if (!$exited) {
-                # Window closure and buffered-trace/process drain are different
-                # deadlines, both outside the stable recording window. Stop the
-                # already-finished producer before waiting for IPC teardown.
-                $coreProcess.StandardInput.Close()
-                if (!$coreProcess.WaitForExit(5000)) { throw 'Core did not stop for diagnostic drain' }
-                $shutdown.producer_stopped_for_drain=$true
-                if (!$process.WaitForExit(20000)) { throw 'Diagnostic process did not drain after its windows closed' }
-            }
+            # Signal both completed workloads, then allow their buffered trace
+            # writers to drain under one thirty-second post-window budget.
+            $remaining=[int][Math]::Floor(30000-([Diagnostics.Stopwatch]::GetTimestamp()-$shutdownStart)*1000/[Diagnostics.Stopwatch]::Frequency)
+            if ($remaining -le 0) { throw 'Diagnostic drain budget exhausted before shutdown' }
+            $shutdown.producer_stopped_for_drain=$true
+            $shutdown | ConvertTo-Json | Set-Content "$Out/shutdown.json"
+            $shutdown.drain_seconds=Wait-MeasurementDrain $process $coreProcess $remaining
             $shutdown.total_seconds=([Diagnostics.Stopwatch]::GetTimestamp()-$shutdownStart)/[Diagnostics.Stopwatch]::Frequency
             $shutdown | ConvertTo-Json | Set-Content "$Out/shutdown.json"
             break
@@ -331,8 +329,7 @@ try {
     Assert-MeasurementQueueIdle
     if ($process.ExitCode) { throw "Replay failed: $($process.ExitCode)" }
     if ($coreStarted) {
-        $coreProcess.StandardInput.Close()
-        if (!$coreProcess.WaitForExit(5000)) { throw 'Core did not stop on EOF' }
+        if (!$coreProcess.HasExited) { $null=Wait-MeasurementDrain $process $coreProcess }
         if ($coreProcess.ExitCode) { throw "Core failed: $($coreProcess.ExitCode)" }
     }
     Assert-MeasurementSourceRevision $PSScriptRoot $collectorSha
@@ -348,6 +345,7 @@ try {
         compositor_pacing=$(if ($RenderLoad) { 'diagnostic DwmFlush bypass; scheduler yield without timer; no physical display-rate guarantee' } else { 'normal backend DwmFlush pacing' })
         min_stress_presents_per_second=$MinStressPresentsPerSecond; max_quiet_presents_per_second=0.1
         startup_policy='UI window and initial samples precede replay; bounded parent WM_CLOSE of owned QA windows after recording+4s'
+        shutdown_policy='Owned visible windows close within 5s; UI and finished Core share a 30s post-window process/trace-drain budget, outside the stable window'
         initial_sample_qpc=$initialQpc
         gpu_frame_timing=$gpuTiming
         recording_duration_seconds=$recordingDuration; requested_seconds=$Seconds; replay_speed=1

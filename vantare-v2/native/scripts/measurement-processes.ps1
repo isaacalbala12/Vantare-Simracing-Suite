@@ -39,3 +39,18 @@ function Resolve-MeasurementProcessSnapshot($Snapshot) {
     if ($Snapshot.CreationDate -and $live.CreationDate -and $Snapshot.CreationDate -ne $live.CreationDate) { return $null }
     return $live
 }
+
+# Called only after overlay windows closed: both buffered writers may still be
+# draining. One shared deadline bounds the pair, rather than two short waits.
+function Wait-MeasurementDrain($UIProcess,$CoreProcess,[ValidateRange(1,30000)][int]$BudgetMilliseconds=30000) {
+    $watch=[Diagnostics.Stopwatch]::StartNew()
+    if (!$CoreProcess.HasExited) { $CoreProcess.StandardInput.Close() }
+    while (!$UIProcess.HasExited -or !$CoreProcess.HasExited) {
+        $remaining=$BudgetMilliseconds-$watch.Elapsed.TotalMilliseconds
+        if ($remaining -le 0) { throw [TimeoutException]::new('Diagnostic processes did not drain before the deadline') }
+        if (!$UIProcess.HasExited) { $null=$UIProcess.WaitForExit([int][Math]::Min(100,$remaining)) }
+        $remaining=$BudgetMilliseconds-$watch.Elapsed.TotalMilliseconds
+        if (!$CoreProcess.HasExited -and $remaining -gt 0) { $null=$CoreProcess.WaitForExit([int][Math]::Min(100,$remaining)) }
+    }
+    return $watch.Elapsed.TotalSeconds
+}

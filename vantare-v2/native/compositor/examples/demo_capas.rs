@@ -10,8 +10,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(windows)]
 mod demo {
     use std::path::PathBuf;
-    use vantare_compositor::{escena::capas::*, plataforma::*};
-    use windows::Win32::{Foundation::RECT, UI::WindowsAndMessaging::*};
+    use vantare_compositor::{
+        escena::capas::{
+            Alineacion, CapaId, Color, Curva, Dibujo, Fuente, Instante, Lote, Operacion, Parada,
+            Pintura, Propiedad, Rect, Tramo,
+        },
+        plataforma::{Bucle, Medicion, Modo, Plataforma, Suceso},
+    };
+    use windows::Win32::{
+        Foundation::RECT,
+        UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN},
+    };
 
     fn c(r: f32, g: f32, b: f32, a: f32) -> Color {
         Color { r, g, b, a }
@@ -57,7 +66,7 @@ mod demo {
             },
         }
     }
-    fn segunda_raiz(inicio: Instante) -> [Operacion; 4] {
+    fn segunda_raiz(inicio: Instante) -> [Operacion; 6] {
         [
             Operacion::Crear {
                 id: CapaId(10),
@@ -85,6 +94,16 @@ mod demo {
                         alineacion: Alineacion::Centro,
                     },
                 ],
+            },
+            Operacion::Fijar {
+                id: CapaId(10),
+                propiedad: Propiedad::Giro,
+                valor: -5.0,
+            },
+            Operacion::Fijar {
+                id: CapaId(10),
+                propiedad: Propiedad::Escala,
+                valor: 0.9,
             },
             animacion(10, Propiedad::Opacidad, inicio, 0.0, 1.0, 1.0, 1.0),
         ]
@@ -236,6 +255,24 @@ mod demo {
             ],
             4 => vec![
                 animacion(
+                    10,
+                    Propiedad::Escala,
+                    Instante(inicio.0 + 4.0),
+                    0.9,
+                    0.1,
+                    1.0,
+                    1.0,
+                ),
+                animacion(
+                    10,
+                    Propiedad::Giro,
+                    Instante(inicio.0 + 4.0),
+                    -5.0,
+                    5.0,
+                    1.0,
+                    0.0,
+                ),
+                animacion(
                     1,
                     Propiedad::Opacidad,
                     Instante(inicio.0 + 4.0),
@@ -254,6 +291,7 @@ mod demo {
                     0.0,
                 ),
             ],
+            5 => vec![Operacion::Quitar { id: CapaId(10) }],
             _ => Vec::new(),
         };
         Lote { operaciones }
@@ -308,7 +346,7 @@ mod demo {
         p.aplicar(&inicial(inicio))?;
         println!("Ventanas: {}", p.ventanas().len());
         if let Some(ruta) = captura {
-            for (n, t) in [(1, 1.0), (2, 1.5), (3, 3.0), (4, 4.0)] {
+            for (n, t) in [(1, 1.0), (2, 1.5), (3, 3.0), (4, 4.0), (5, 6.0)] {
                 if en >= t {
                     p.aplicar(&paso(n, inicio))?;
                 }
@@ -328,7 +366,7 @@ mod demo {
         let bucle = Bucle::nuevo()?;
         let mut medicion = Medicion::default();
         let mut siguiente = 1_usize;
-        let tiempos = [(1_u8, 1.0), (2, 1.5), (3, 3.0), (4, 4.0)];
+        let tiempos = [(1_u8, 1.0), (2, 1.5), (3, 3.0), (4, 4.0), (5, 6.0)];
         loop {
             let proximo = tiempos.get(siguiente - 1).map(|(_, t)| *t);
             let limite = proximo

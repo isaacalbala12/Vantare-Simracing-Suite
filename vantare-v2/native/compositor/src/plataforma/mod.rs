@@ -271,6 +271,54 @@ impl Plataforma {
         self.capas.get(&id).ok_or(Error::Capa(id))
     }
 
+    fn insertar_orden(&mut self, padre: Option<CapaId>, orden: u32) -> Resultado<u32> {
+        let hermanas = u32::try_from(self.capas.values().filter(|c| c.padre == padre).count())
+            .map_err(|_| Error::Entrada("Demasiadas capas hermanas"))?;
+        let orden = orden.min(hermanas);
+        for capa in self
+            .capas
+            .values_mut()
+            .filter(|c| c.padre == padre && c.orden >= orden)
+        {
+            capa.orden = capa
+                .orden
+                .checked_add(1)
+                .ok_or(Error::Entrada("Orden de capa fuera de rango"))?;
+        }
+        Ok(orden)
+    }
+    fn ordenar_ventana(&self, id: CapaId, orden: u32) -> Resultado<()> {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetWindowPos,
+        };
+        let superior = self
+            .capas
+            .iter()
+            .filter(|(_, c)| c.padre.is_none() && c.orden > orden)
+            .min_by_key(|(_, c)| c.orden);
+        if let Some((superior, _)) = superior {
+            let ventana = self
+                .salidas
+                .get(&Some(id))
+                .ok_or(Error::Entrada("Salida nueva ausente"))?;
+            let encima = self
+                .salidas
+                .get(&Some(*superior))
+                .ok_or(Error::Entrada("Salida superior ausente"))?;
+            unsafe {
+                SetWindowPos(
+                    ventana.ventana.hwnd,
+                    Some(encima.ventana.hwnd),
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                )?;
+            }
+        }
+        Ok(())
+    }
     fn crear(&mut self, id: CapaId, padre: Option<CapaId>, orden: u32) -> Resultado<()> {
         unsafe {
             if self.capas.contains_key(&id) {
@@ -279,6 +327,7 @@ impl Plataforma {
             if let Some(padre) = padre {
                 self.capa(padre)?;
             }
+            let orden = self.insertar_orden(padre, orden)?;
             let posicion = self.dispositivo.CreateVisual()?;
             let visual: IDCompositionVisual3 = self.dispositivo.CreateVisual()?.cast()?;
             let contenido = self.dispositivo.CreateVisual()?;
@@ -323,14 +372,22 @@ impl Plataforma {
                 .values()
                 .filter(|c| {
                     c.padre == padre
-                        && c.orden <= orden
+                        && c.orden < orden
                         && (padre.is_some() || self.modo == Modo::Monitor)
                 })
                 .max_by_key(|c| c.orden);
-            let referencia = anterior
+            let mut referencia = anterior
                 .map(|c| c.posicion.cast::<IDCompositionVisual>())
                 .transpose()?;
-            contenedor.AddVisual(&posicion, true, referencia.as_ref())?;
+            if referencia.is_none()
+                && let Some(padre) = padre
+            {
+                referencia = Some(self.capa(padre)?.contenido.cast()?);
+            }
+            contenedor.AddVisual(&posicion, referencia.is_some(), referencia.as_ref())?;
+            if padre.is_none() && self.modo == Modo::PorOverlay {
+                self.ordenar_ventana(id, orden)?;
+            }
             self.capas.insert(
                 id,
                 Capa {
@@ -568,6 +625,8 @@ impl Plataforma {
             self.quitar(hijo)?;
         }
         let c = self.capa(id)?;
+        let padre = c.padre;
+        let orden = c.orden;
         unsafe {
             if let Some(padre) = c.padre {
                 self.capa(padre)?.visual.RemoveVisual(&c.posicion)?;
@@ -582,6 +641,13 @@ impl Plataforma {
             }
         }
         self.capas.remove(&id);
+        for hermana in self
+            .capas
+            .values_mut()
+            .filter(|c| c.padre == padre && c.orden > orden)
+        {
+            hermana.orden -= 1;
+        }
         Ok(())
     }
 }

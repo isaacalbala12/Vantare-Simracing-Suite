@@ -15,7 +15,7 @@ use windows::Win32::{
         },
         Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM,
         Imaging::{
-            CLSID_WICImagingFactory, GUID_ContainerFormatPng, GUID_WICPixelFormat32bppRGBA,
+            CLSID_WICImagingFactory, GUID_ContainerFormatPng, GUID_WICPixelFormat32bppBGRA,
             IWICImagingFactory, WICBitmapEncoderNoCache,
         },
     },
@@ -111,11 +111,8 @@ impl Plataforma {
                 )
                 .ok_or(Error::Entrada("Captura demasiado grande"))?;
             // SAFETY: Map mantiene bits válidos para pitch*alto hasta Unmap.
-            let mut bytes = std::slice::from_raw_parts(mapa.bits, cantidad).to_vec();
+            let bytes = std::slice::from_raw_parts(mapa.bits, cantidad).to_vec();
             lectura.Unmap()?;
-            for pixel in bytes.chunks_exact_mut(4) {
-                pixel.swap(0, 2);
-            }
             guardar_png(ruta, ancho_px, alto_px, mapa.pitch, &bytes)?;
         }
         Ok(())
@@ -217,10 +214,10 @@ unsafe fn guardar_png(
         let frame = frame.ok_or(Error::Entrada("WIC no devolvió frame"))?;
         frame.Initialize(opciones.as_ref())?;
         frame.SetSize(ancho_px, alto)?;
-        let mut formato = GUID_WICPixelFormat32bppRGBA;
+        let mut formato = GUID_WICPixelFormat32bppBGRA;
         frame.SetPixelFormat(&raw mut formato)?;
-        if formato != GUID_WICPixelFormat32bppRGBA {
-            return Err(Error::Entrada("WIC no admite PNG RGBA"));
+        if formato != GUID_WICPixelFormat32bppBGRA {
+            return Err(Error::Entrada("WIC no admite PNG BGRA de 32 bits"));
         }
         frame.WritePixels(alto, stride, bytes)?;
         frame.Commit()?;

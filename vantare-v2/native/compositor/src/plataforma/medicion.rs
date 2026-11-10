@@ -23,7 +23,7 @@ impl Distribucion {
             } else {
                 valores[n / 2]
             },
-            p99_ms: valores[(n - 1) * 99 / 100],
+            p99_ms: valores[n - n / 100 - 1],
             maximo_ms: valores[n - 1],
         }
     }
@@ -68,5 +68,18 @@ impl Medicion {
         };
         std::fs::write(ruta, serde_json::to_vec_pretty(&informe)?)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn el_p99_de_una_ventana_corta_incluye_el_peor_lote() {
+        let medidas = Distribucion::de(vec![100.0, 1.0, 3.0, 2.0]);
+        assert_eq!(medidas.muestras, 4);
+        assert!((medidas.mediana_ms - 2.5).abs() < f64::EPSILON);
+        assert!((medidas.p99_ms - 100.0).abs() < f64::EPSILON);
+        assert!((medidas.maximo_ms - 100.0).abs() < f64::EPSILON);
     }
 }

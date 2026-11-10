@@ -68,6 +68,18 @@ impl Texto {
     ) -> Resultado<IDWriteTextLayout1> {
         unsafe {
             let familia: Vec<u16> = fuente.familia.encode_utf16().chain(Some(0)).collect();
+            let mut indice = 0;
+            let mut existe = windows::core::BOOL::default();
+            self.fuentes.FindFamilyName(
+                PCWSTR(familia.as_ptr()),
+                &raw mut indice,
+                &raw mut existe,
+            )?;
+            if !existe.as_bool() {
+                return Err(Error::Entrada(
+                    "La familia de fuente no está en la colección del paquete",
+                ));
+            }
             let formato = self.factory.CreateTextFormat(
                 PCWSTR(familia.as_ptr()),
                 &self.fuentes,

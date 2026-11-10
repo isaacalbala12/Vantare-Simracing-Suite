@@ -44,8 +44,9 @@ propagar errores debe usar `Texto::medir_resultado`.
 
 Captura: contexto D2D fuera de pantalla, curvas evaluadas en el instante indicado,
 composición por capas y lectura CPU; WIC escribe PNG con bytes RGBA premultiplicados.
-Se declara formato RGBA al encoder para conservar esos bytes (PNG por sí mismo no
-lleva una marca de alfa premultiplicado). No es una captura del escritorio ni de
+WIC recibe BGRA de 32 bits, su formato admitido por el encoder PNG, y escribe los
+canales en el orden PNG sin deshacer la premultiplicación (PNG no lleva una marca
+de alfa premultiplicado). No es una captura del escritorio ni de
 Windows.Graphics.Capture.
 
 Fluidez: `Medicion::fotograma` toma `lastFrameTime` de GetFrameStatistics y omite

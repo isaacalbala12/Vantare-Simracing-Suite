@@ -1,0 +1,195 @@
+.v-launcher-removal {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 30;
+  width: min(420px, 100vw);
+  padding: 24px;
+  background: var(--bg-window);
+  border-left: 1px solid var(--line-2);
+  color: var(--text-1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.v-launcher-removal h2 {
+  font: 600 24px var(--font-display);
+  margin: 0;
+}
+.v-launcher-removal p {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.v-launcher-catalog {
+  border: 1px solid var(--line-1);
+  border-radius: 14px;
+  background: var(--grad-neo);
+  overflow: hidden;
+}
+.v-launcher-catalog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-launcher-catalog > header h2 {
+  margin: 0;
+  font: 600 15px var(--font-display);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.v-launcher-catalog > header > span {
+  font: 500 12px var(--font-mono);
+  color: var(--text-3);
+}
+.v-launcher-catalog-body {
+  padding: 21px;
+}
+.v-launcher-app-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v-launcher-app-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 8px;
+  border: 1px solid var(--line-1);
+  border-radius: 11px;
+  background: var(--surface-1);
+}
+.v-launcher-app-row .v-launcher-app-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.v-launcher-app-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  color: var(--text-2);
+  border: 0;
+  cursor: pointer;
+}
+.v-launcher-app-name strong,
+.v-launcher-add-app strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+}
+.v-launcher-app-name small,
+.v-launcher-add-app small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.v-launcher-app-name strong,
+.v-launcher-app-name small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.v-launcher-app-status {
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-pill);
+  padding: 3px 8px;
+  font: 500 10px var(--font-mono);
+  color: var(--text-3);
+}
+.v-launcher-app-status[data-found="true"] {
+  color: var(--ok);
+}
+.v-launcher-app-favorite[data-favorite="true"] {
+  color: var(--accent-bright);
+}
+.v-launcher-app-row .v-button {
+  min-width: 30px;
+  height: 30px;
+  padding: 5px;
+}
+.v-launcher-add-app {
+  min-height: 72px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.v-launcher-add-app > span:first-child {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  font-size: 17px;
+}
+.v-launcher-app-editor .v-launcher-catalog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.v-launcher-executable {
+  font-size: 13px;
+}
+.v-launcher-executable p {
+  font-size: 12px;
+  color: var(--text-3);
+  margin: 4px 0 12px;
+}
+
+.v-launcher-app-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-launcher-app-search > .v-field {
+  flex: 1;
+}
+.v-launcher-app-search > .v-field > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.v-launcher-app-search .v-button:first-child {
+  min-height: 36px;
+}
+.v-launcher-catalog > header {
+  min-height: 60px;
+  box-sizing: border-box;
+}
+.v-launcher-app-status {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 9px;
+}
+
+.v-launcher-app-row .v-launcher-app-mark {
+  font-size: 16px;
+  font-weight: 600;
+}
+.v-launcher-app-row .v-launcher-app-mark svg {
+  width: 19.2px;
+  height: 19.2px;
+}

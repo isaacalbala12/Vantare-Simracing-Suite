@@ -1,3 +1,4 @@
+import { Applications } from "./Applications";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { launcherText as text } from "../../i18n/launcher";
 import { ProfileEditorProvider, useProfileEditorState } from "./editor-state";
@@ -12,14 +13,14 @@ export default function LauncherEntry() {
 }
 function LauncherContent() {
   const editor = useProfileEditorState();
-  const activeTab = editor.value ? "profile" : "profiles";
+  const activeTab = editor.value ? "profile" : editor.tab;
   return (
     <>
       <SectionChrome
         title={text.title}
         tabs={[
           { id: "profiles", etiqueta: text.profilesTab, visible: true },
-          { id: "applications", etiqueta: text.applications, visible: false },
+          { id: "applications", etiqueta: text.applications, visible: true },
           {
             id: "profile",
             etiqueta: text.profileTab,
@@ -28,12 +29,12 @@ function LauncherContent() {
         ]}
         activeTab={activeTab}
         onTabChange={(id) => {
-          if (id === "profiles" && !editor.value?.pending) editor.close();
+          if (id === "profiles" || id === "applications") editor.navigate(id);
         }}
         rail={<LauncherRail />}
       />
       <SectionPanel activeTab={activeTab}>
-        <Launcher />
+        {editor.tab === "applications" && !editor.value ? <Applications /> : <Launcher />}
       </SectionPanel>
     </>
   );

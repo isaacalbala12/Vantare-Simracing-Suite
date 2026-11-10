@@ -40,6 +40,11 @@ export function snapshot(
   };
 }
 const EditorContext = createContext<{
+  tab: "profiles" | "applications";
+  navigate: (tab: "profiles" | "applications") => void;
+  setTab: Dispatch<SetStateAction<"profiles" | "applications">>;
+  createApplication: boolean;
+  setCreateApplication: Dispatch<SetStateAction<boolean>>;
   value: EditorSnapshot | null;
   set: Dispatch<SetStateAction<EditorSnapshot | null>>;
   update: (patch: Partial<ProfileDraft>) => void;
@@ -61,6 +66,15 @@ export function ProfileEditorProvider({ children }: { children: ReactNode }) {
     return saved ? { ...saved, pending: false, restored: true } : null;
   });
   const [confirmClose, setConfirmClose] = useState(false);
+  const [tab, setTab] = useState<"profiles" | "applications">("profiles");
+  const [createApplication, setCreateApplication] = useState(false);
+  const requestedTab = useRef<"profiles" | "applications" | undefined>(undefined);
+  const finishClose = () => {
+    if (requestedTab.current) setTab(requestedTab.current);
+    requestedTab.current = undefined;
+    setConfirmClose(false);
+    set(null);
+  };
   const wasEditing = useRef(value !== null);
   useLayoutEffect(() => {
     if (wasEditing.current && !value)
@@ -93,22 +107,25 @@ export function ProfileEditorProvider({ children }: { children: ReactNode }) {
   const close = () => {
     if (value?.pending) return;
     if (isDirty(value)) setConfirmClose(true);
-    else set(null);
+    else finishClose();
+  };
+  const navigate = (target: "profiles" | "applications") => {
+    if (value?.pending) return;
+    if (!value) {setTab(target);return;}
+    requestedTab.current = target;
+    close();
   };
   const update = (patch: Partial<ProfileDraft>) =>
     set((current) =>
       current ? { ...current, draft: { ...current.draft, ...patch } } : null,
     );
   return (
-    <EditorContext.Provider value={{ value, set, update, close }}>
+    <EditorContext.Provider value={{ value, set, update, close, tab, navigate, setTab, createApplication, setCreateApplication }}>
       {children}
       <DiscardProfileDialog
         open={confirmClose}
-        onCancel={() => setConfirmClose(false)}
-        onConfirm={() => {
-          setConfirmClose(false);
-          set(null);
-        }}
+        onCancel={() => {setConfirmClose(false);requestedTab.current = undefined;}}
+        onConfirm={finishClose}
       />
     </EditorContext.Provider>
   );

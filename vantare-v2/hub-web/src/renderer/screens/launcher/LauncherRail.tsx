@@ -20,5 +20,14 @@ export function LauncherRail() {
       />
     );
   if (!view) return null;
-  return <LauncherApplicationsRail view={view} selected={selected} />;
+  return (
+    <LauncherApplicationsRail
+      view={view}
+      selected={selected}
+      onApplications={(create = false) => {
+        editor.setTab("applications");
+        editor.setCreateApplication(create);
+      }}
+    />
+  );
 }

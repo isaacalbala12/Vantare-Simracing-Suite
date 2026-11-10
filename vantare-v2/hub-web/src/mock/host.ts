@@ -16,7 +16,7 @@ export function helloForScene(name?: string): typeof hello {
 }
 export function createMockHost(sceneName = "ajustes-base") {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;

@@ -298,9 +298,25 @@ try {
         $samplerRows.Add([pscustomobject]@{qpc=$tick;cpu_cycles=($samplerCyclesAfter-$samplerCyclesBefore);elapsed_qpc=([Diagnostics.Stopwatch]::GetTimestamp()-$samplerStart)})
         if ($watch.Elapsed.TotalSeconds -gt $Seconds + 120) { throw 'Replay exceeded its duration and shutdown margin' }
         if (!$closeRequested -and $coreWatch.Elapsed.TotalSeconds -ge $Seconds+4) {
+            $shutdownStart=[Diagnostics.Stopwatch]::GetTimestamp()
             if ([Vantare.MeasurementCycles]::Windows($process.Id,$true) -eq 0) { throw 'Overlay windows vanished before controlled shutdown' }
             $closeRequested=$true
-            if (!$process.WaitForExit(5000)) { throw 'Owned overlay windows did not close gracefully' }
+            $exited=$process.WaitForExit(5000)
+            $remainingWindows=if ($exited) { 0 } else { [Vantare.MeasurementCycles]::Windows($process.Id,$false) }
+            $shutdown=@{request_qpc=$shutdownStart;visible_windows_after_five_seconds=$remainingWindows;process_exited_within_five_seconds=$exited;producer_stopped_for_drain=$false}
+            $shutdown | ConvertTo-Json | Set-Content "$Out/shutdown.json"
+            if ($remainingWindows) { throw 'Owned overlay windows did not close within five seconds' }
+            if (!$exited) {
+                # Window closure and buffered-trace/process drain are different
+                # deadlines, both outside the stable recording window. Stop the
+                # already-finished producer before waiting for IPC teardown.
+                $coreProcess.StandardInput.Close()
+                if (!$coreProcess.WaitForExit(5000)) { throw 'Core did not stop for diagnostic drain' }
+                $shutdown.producer_stopped_for_drain=$true
+                if (!$process.WaitForExit(20000)) { throw 'Diagnostic process did not drain after its windows closed' }
+            }
+            $shutdown.total_seconds=([Diagnostics.Stopwatch]::GetTimestamp()-$shutdownStart)/[Diagnostics.Stopwatch]::Frequency
+            $shutdown | ConvertTo-Json | Set-Content "$Out/shutdown.json"
             break
         }
     }

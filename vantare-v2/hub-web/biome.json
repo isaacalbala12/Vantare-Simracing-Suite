@@ -7,7 +7,8 @@
       "!release",
       "!bun.lock",
       "!src/renderer/design/generated",
-      "!src/renderer/assets"
+      "!src/renderer/assets",
+      "!src/contract/generated"
     ]
   },
   "formatter": {

@@ -1,6 +1,8 @@
 export const es = {
   title: "Vantare · Hub",
   settings: "Ajustes",
+  coreConnected: "Núcleo conectado",
+  coreUnavailable: "Núcleo no disponible",
   loading: "Conectando con el anfitrión…",
   mock: "Núcleo simulado · sin datos reales",
   unavailable: "No se pudo conectar con el anfitrión",
@@ -69,6 +71,8 @@ export const specimen = {
   nav: "Navegación",
   main: "Principal",
   settings: "Ajustes",
+  coreConnected: "Núcleo conectado",
+  coreUnavailable: "Núcleo no disponible",
   home: "Inicio",
   studio: "Studio",
   locked: "Próximamente",

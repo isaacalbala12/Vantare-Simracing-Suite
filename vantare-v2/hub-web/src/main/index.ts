@@ -10,8 +10,10 @@ import {
   protocol,
   session,
 } from "electron";
-import { hello, mockReply } from "./mock-host";
-import { assetPath, CSP, isAppDocument } from "./security";
+import { HOST_PROTOCOL_VERSION } from "../contract/generated/contract";
+import { bounded, isUiMessage } from "../contract/validation";
+import { createHost } from "./host";
+import { assetPath, CSP, developmentUrl, isAppDocument } from "./security";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -38,8 +40,11 @@ else {
   void app
     .whenReady()
     .then(async () => {
-      if (process.env.VANTARE_HUB_HOST !== "mock")
-        throw new Error("Only the explicit mock host is available in step 1");
+      const host = createHost();
+      const hello = await host.hello;
+      const compatible = hello.version === HOST_PROTOCOL_VERSION;
+      if (compatible)
+        host.send({ kind: "hello", version: HOST_PROTOCOL_VERSION });
       const renderer = resolve(import.meta.dirname, "../renderer");
       protocol.handle("app", async (request) => {
         const relative = assetPath(request.url);
@@ -92,7 +97,7 @@ else {
       });
       const contents = window.webContents;
       const devUrl = !app.isPackaged
-        ? process.env.ELECTRON_RENDERER_URL
+        ? developmentUrl(process.env.ELECTRON_RENDERER_URL)
         : undefined;
       const allowed = (value: string) =>
         isAppDocument(value) ||
@@ -105,6 +110,29 @@ else {
         if (!allowed(url)) event.preventDefault();
       });
       contents.setWindowOpenHandler(() => ({ action: "deny" }));
+      let disconnect: (() => void) | undefined;
+      const removeHostFailure = host.listen((message) => {
+        if (
+          message.kind === "failure" &&
+          message.id === 0 &&
+          message.error.kind === "coreUnavailable"
+        )
+          window?.destroy();
+      });
+      contents.once("destroyed", () => {
+        disconnect?.();
+        removeHostFailure();
+        host.close();
+      });
+      window.on("close", (event) => {
+        if (!compatible) return;
+        event.preventDefault();
+        host.send({
+          kind: "request",
+          id: 0,
+          request: { method: "window.close" },
+        });
+      });
       ipcMain.on("vantare:connect", (event) => {
         if (
           event.sender !== contents ||
@@ -112,17 +140,28 @@ else {
           !allowed(event.senderFrame.url)
         )
           return;
+        disconnect?.();
         const { port1, port2 } = new MessageChannelMain();
-        port1.on("message", ({ data }) => {
-          const response = mockReply(data);
-          if (response) port1.postMessage(response);
+        const unsubscribe = host.listen((message) =>
+          port1.postMessage(message),
+        );
+        disconnect = () => {
+          unsubscribe();
+          port1.close();
+        };
+        port1.on("message", ({ data }: { data: unknown }) => {
+          if (!compatible || !isUiMessage(data) || !bounded(data)) return;
+          if (data.kind === "closeAnswer" && data.allow)
+            host.send(data, () => window?.destroy());
+          else host.send(data);
         });
         port1.start();
-        contents.once("destroyed", () => port1.close());
         event.senderFrame.postMessage("vantare:port", null, [port2]);
+        port1.postMessage(hello);
       });
       window.once("ready-to-show", () => {
         window?.show();
+        if (compatible) host.send({ kind: "ready" });
         if (hello.window.minimized) window?.minimize();
       });
       if (devUrl) await window.loadURL(devUrl);

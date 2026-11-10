@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import hello from "../../fixtures/ajustes-base.json";
+import type { CoreStatus } from "../contract/generated/contract";
+import { HOST_PROTOCOL_VERSION } from "../contract/generated/contract";
+import { Client } from "./bridge/client";
 import { es } from "./i18n/es";
 import "./design/base.css";
 import "./ui/ui.css";
@@ -21,33 +23,50 @@ declare global {
 function App() {
   const [status, setStatus] = useState<string>(es.loading);
   useEffect(() => {
-    if (!window.vantare) {
-      setStatus(es.mock);
-      return;
+    let active = true;
+    let client: Client | undefined;
+    let unsubscribe: (() => void) | undefined;
+    function coreStatus(value: CoreStatus) {
+      setStatus(
+        value.photos === "connected"
+          ? es.coreConnected
+          : value.photos === "incompatible"
+            ? es.incompatible
+            : es.coreUnavailable,
+      );
     }
-    let port: MessagePort | undefined;
-    const receive = (event: MessageEvent) => {
-      if (
-        event.source !== window ||
-        event.data !== "vantare:port" ||
-        !event.ports[0]
-      )
-        return;
-      port = event.ports[0];
-      port.onmessage = ({ data }) => {
-        if (data?.kind === "hello")
-          setStatus(data.version === hello.version ? es.mock : es.incompatible);
-      };
-      port.start();
-      port.postMessage({ kind: "hello", version: 1 });
-    };
-    window.addEventListener("message", receive);
-    void window.vantare.connect().catch(() => setStatus(es.unavailable));
+    void Client.connect()
+      .then((connection) => {
+        if (!active) {
+          connection.close();
+          return;
+        }
+        client = connection;
+        connection.listen((message) => {
+          if (message.kind === "hello") {
+            if (message.version !== HOST_PROTOCOL_VERSION) {
+              setStatus(es.incompatible);
+              return;
+            }
+            setStatus(message.demo ? es.mock : es.coreUnavailable);
+            if (!message.demo) unsubscribe = connection.subscribe("core");
+          }
+          if (message.kind === "event" && message.event.topic === "core")
+            coreStatus(message.event.value);
+          if (message.kind === "failure") setStatus(es.coreUnavailable);
+        });
+        connection.start();
+      })
+      .catch(() => {
+        if (active) setStatus(es.unavailable);
+      });
     return () => {
-      window.removeEventListener("message", receive);
-      port?.close();
+      active = false;
+      unsubscribe?.();
+      client?.close();
     };
   }, []);
+
   return (
     <>
       <header className="v-app-header">{es.title}</header>

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { mockReply } from "../src/main/mock-host";
-import { assetPath, CSP, isAppDocument } from "../src/main/security";
+import {
+  assetPath,
+  CSP,
+  developmentUrl,
+  isAppDocument,
+} from "../src/main/security";
 
 describe("renderer boundary", () => {
   it("rejects foreign origins and malformed paths", () => {
@@ -17,6 +22,19 @@ describe("renderer boundary", () => {
     expect(isAppDocument("invalid")).toBe(false);
     expect(assetPath("app://hub/")).toBe("index.html");
     expect(assetPath("app://hub/assets/main.js")).toBe("assets/main.js");
+  });
+  it("limits the development renderer to loopback", () => {
+    expect(developmentUrl(undefined)).toBeUndefined();
+    expect(developmentUrl("http://127.0.0.1:5173/")).toBe(
+      "http://127.0.0.1:5173/",
+    );
+    for (const value of [
+      "https://example.com",
+      "http://example.com",
+      "file:///tmp/x",
+      "http://user@localhost:5173/",
+    ])
+      expect(() => developmentUrl(value)).toThrow();
   });
   it("disables network and embedded objects", () => {
     expect(CSP).toContain("connect-src 'none'");

@@ -21,9 +21,13 @@ usa un valor aleatorio de un solo arranque que Electron elimina del entorno
 antes de crear el renderer. No se registra el valor.
 
 El formato es JSON precedido por longitud u32 little endian, máximo 1 MiB.
-`protocol.rs` genera `hub-web/src/contract/generated/contract.ts` mediante
-`ts-rs = 12.0.1`. El test de bindings compara el archivo completo y falla si
-alguien cambia Rust sin regenerar TypeScript. Los dos extremos validan mensajes.
+Cada pantalla aporta su contrato en `src/protocol/modules/<id>/`.
+`build.rs` descubre los módulos y ensambla enums, modelos, estado y tabla de
+despacho sin índices versionados. El exportador usa `ts-rs = 12.0.1` y escribe
+un TypeScript y un corpus por módulo; los tests comparan esos archivos con Rust
+(y rechazan módulos sobrantes), comprueban la cobertura del wire y un único
+handler por solicitud. Los dos extremos validan los mensajes. Instrucciones y
+firmas en [screen-contracts.md](../../hub-web/docs/screen-contracts.md).
 El núcleo simulado comparte el contrato y solo se activa explícitamente en una
 interfaz sin empaquetar o en la copia QA. `hello` y `ready` pertenecen al proceso
 principal: el renderer solo puede enviar solicitudes, suscripciones y respuestas

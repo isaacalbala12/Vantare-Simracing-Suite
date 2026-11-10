@@ -245,40 +245,8 @@ fn settings_response(
     }
     frame::write(pipe, &message)
 }
-enum RemoteKind {
-    Testing(crate::testing::Operation),
-    RoadmapCached,
-    RoadmapRefresh,
-    PilotLoad,
-    PilotSave,
-    MailGet,
-    MailSet,
-}
 
-struct Session {
-    reserved_profile: Option<String>,
-    profile_step_keys: crate::launcher::editor::StepKeys,
-    launcher_reader: crate::launcher::Reader,
-    pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
-    privacy: crate::privacy::State,
-    diagnostic: crate::diagnostics::Observed,
-    remote: Option<(u32, RemoteKind)>,
-    updates: Option<crate::updates::Reader>,
-    subscriptions: std::collections::BTreeSet<Topic>,
-    last_updates: Option<Instant>,
-    last_roadmap_refresh: Option<Instant>,
-    roadmap: crate::roadmap::RoadmapView,
-    exit_code: u8,
-    launcher: PathBuf,
-    core: Core,
-    settings: Settings,
-    confirmation: Option<ready::Ready>,
-    current: protocol::CoreStatus,
-    last: Option<protocol::CoreStatus>,
-    last_event: Option<Instant>,
-    closing: Option<(CloseReason, Instant)>,
-    handshaken: bool,
-}
+include!(concat!(env!("OUT_DIR"), "/session.rs"));
 impl Session {
     fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
         self.closing = Some((reason, Instant::now()));
@@ -294,76 +262,7 @@ impl Session {
             },
         )
     }
-    fn service_reply(
-        &mut self,
-        id: u32,
-        result: Result<vantare_ipc::services_protocol::Reply, HostError>,
-    ) -> Result<Reply, HostError> {
-        match (self.remote.take(), result) {
-            (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
-                crate::testing::complete(operation, reply)
-            }
-            (
-                Some((expected, kind)),
-                Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
-            ) if expected == id => {
-                let value = crate::privacy::MailView { consent };
-                match kind {
-                    RemoteKind::MailGet => Ok(Reply::MailGet { value }),
-                    RemoteKind::MailSet => Ok(Reply::MailSet { value }),
-                    _ => Err(HostError::Denied),
-                }
-            }
-            (
-                Some((expected, kind)),
-                Ok(vantare_ipc::services_protocol::Reply::Pilot { state, .. }),
-            ) if expected == id => {
-                let value = crate::pilot::view(&state);
-                let reply = match kind {
-                    RemoteKind::PilotLoad => Ok(Reply::PilotLoad { value }),
-                    RemoteKind::PilotSave => Ok(Reply::PilotSave { value }),
-                    _ => Err(HostError::Denied),
-                };
-                if reply.is_ok() {
-                    self.pilot = Some(state);
-                }
-                reply
-            }
-            (
-                Some((expected, kind @ (RemoteKind::RoadmapCached | RemoteKind::RoadmapRefresh))),
-                Ok(vantare_ipc::services_protocol::Reply::Roadmap {
-                    publication, stale, ..
-                }),
-            ) if expected == id => crate::roadmap::project(publication, stale).and_then(|value| {
-                self.roadmap = value.clone();
-                match kind {
-                    RemoteKind::RoadmapCached => Ok(Reply::RoadmapCached { value }),
-                    RemoteKind::RoadmapRefresh => Ok(Reply::RoadmapRefresh { value }),
-                    _ => Err(HostError::Denied),
-                }
-            }),
-            (Some((expected, RemoteKind::RoadmapRefresh)), Err(error)) if expected == id => {
-                self.roadmap.stale = true;
-                Err(error)
-            }
-            (_, Err(error)) => Err(error),
-            _ => Err(HostError::Denied),
-        }
-    }
-    fn publish_launcher(&mut self, pipe: &mut Pipe) -> io::Result<()> {
-        if let Some(value) = self.launcher_reader.changed(
-            self.subscriptions.contains(&Topic::Launcher),
-            Instant::now(),
-        ) {
-            frame::write(
-                pipe,
-                &HostToUi::Event {
-                    event: Event::Launcher { value },
-                },
-            )?;
-        }
-        Ok(())
-    }
+
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
             confirmation.check_confirmation()?;
@@ -372,7 +271,6 @@ impl Session {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
-        self.publish_launcher(pipe)?;
         if let Some((id, result)) = self.core.reply() {
             let result = self.service_reply(id, result);
             self.respond(
@@ -382,24 +280,8 @@ impl Session {
                 crate::diagnostics::DiagnosticSection::Services,
             )?;
         }
-        if self.subscriptions.contains(&Topic::Updates)
-            && self
-                .last_updates
-                .is_none_or(|last| last.elapsed() >= Duration::from_secs(2))
-        {
-            self.last_updates = Some(Instant::now());
-            let value = self
-                .updates
-                .get_or_insert_with(crate::updates::Reader::current)
-                .view();
-            frame::write(
-                pipe,
-                &HostToUi::Event {
-                    event: Event::Updates {
-                        value: Box::new(value),
-                    },
-                },
-            )?;
+        for tick in SCREEN_TICKS {
+            tick(self, pipe)?;
         }
         if entered_live(self.last.as_ref(), &self.current) && self.closing.is_none() {
             self.request_close(pipe, CloseReason::Live)?;
@@ -430,310 +312,7 @@ impl Session {
                 || time.elapsed() <= Duration::from_secs(2)
         }))
     }
-    fn roadmap_request(
-        &mut self,
-        pipe: &mut Pipe,
-        id: u32,
-        refresh: bool,
-        now: Instant,
-    ) -> io::Result<()> {
-        if refresh
-            && let Some(value) = crate::roadmap::cached_if_throttled(
-                &mut self.last_roadmap_refresh,
-                now,
-                &self.roadmap,
-            )
-        {
-            return frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::RoadmapRefresh { value },
-                },
-            );
-        }
-        let (kind, command) = if refresh {
-            (
-                RemoteKind::RoadmapRefresh,
-                vantare_ipc::services_protocol::Command::RoadmapRefresh,
-            )
-        } else {
-            (
-                RemoteKind::RoadmapCached,
-                vantare_ipc::services_protocol::Command::RoadmapCached,
-            )
-        };
-        match self.core.request(id, command) {
-            Ok(()) => {
-                self.remote = Some((id, kind));
-                Ok(())
-            }
-            Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
-        }
-    }
-    fn save_profile_draft(
-        &mut self,
-        draft: &crate::launcher::editor::ProfileDraft,
-        base_revision: &str,
-    ) -> Result<(), HostError> {
-        let current = crate::launcher::read(&self.launcher);
-        if !current.exists || current.protected {
-            return Err(HostError::Protected);
-        }
-        if current.revision != base_revision {
-            return Err(HostError::LauncherConflict {
-                current: self.launcher_reader.view(),
-            });
-        }
-        let found = self
-            .launcher_reader
-            .discovered(base_revision)
-            .ok_or(HostError::Busy)?;
-        crate::launcher::editor::save(
-            &self.launcher,
-            draft,
-            base_revision,
-            found,
-            self.reserved_profile.as_deref(),
-            Some(&self.profile_step_keys),
-        )
-    }
-    fn profile_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        match request {
-            Request::LauncherProfileGet { id: profile_id } => {
-                let message = match self
-                    .profile_step_keys
-                    .open(&self.launcher, profile_id.as_deref())
-                {
-                    Ok(value) => {
-                        if profile_id.is_none() {
-                            self.reserved_profile.clone_from(&value.draft.id);
-                        }
-                        HostToUi::Response {
-                            id,
-                            result: Reply::LauncherProfileGet { value },
-                        }
-                    }
-                    Err(error) => HostToUi::Failure { id, error },
-                };
-                frame::write(pipe, &message)
-            }
-            Request::LauncherProfileSave {
-                draft,
-                base_revision,
-            } => {
-                let saved = self.save_profile_draft(draft, base_revision);
-                let message = match saved {
-                    Ok(()) => HostToUi::Response {
-                        id,
-                        result: Reply::LauncherProfileSave {
-                            value: self.launcher_reader.view(),
-                        },
-                    },
-                    Err(error) => HostToUi::Failure { id, error },
-                };
-                frame::write(pipe, &message)
-            }
-            _ => Err(io::ErrorKind::InvalidInput.into()),
-        }
-    }
-    fn launcher_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        match request {
-            Request::LauncherLaunch {
-                profile,
-                base_revision,
-            } => {
-                let message = match crate::launcher::launch(
-                    &self.launcher,
-                    &self.current,
-                    profile,
-                    base_revision,
-                ) {
-                    Ok(accepted) => HostToUi::Response {
-                        id,
-                        result: Reply::LauncherLaunch { accepted },
-                    },
-                    Err(error) => HostToUi::Failure { id, error },
-                };
-                frame::write(pipe, &message)
-            }
-            _ => Err(io::ErrorKind::InvalidInput.into()),
-        }
-    }
-    fn launcher_snapshot(&mut self, pipe: &mut Pipe, id: u32) -> io::Result<()> {
-        frame::write(
-            pipe,
-            &HostToUi::Response {
-                id,
-                result: Reply::LauncherGet {
-                    value: self.launcher_reader.view(),
-                },
-            },
-        )
-    }
-    fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        match request {
-            Request::TestingAnswer { .. }
-            | Request::TestingContribute { .. }
-            | Request::TestingCredit { .. }
-            | Request::TestingNoticeRead { .. }
-            | Request::ReportCapture { .. }
-            | Request::ReportRemoveScreenshot { .. }
-            | Request::ReportPrepare {}
-            | Request::ReportRetryPrepare {}
-            | Request::ReportSend { .. }
-            | Request::TestingRefresh {}
-            | Request::DraftLoad {}
-            | Request::DraftSave { .. }
-            | Request::DraftDiscard {} => self.testing_request(pipe, id, request),
-            Request::RoadmapCached {} | Request::RoadmapRefresh {} => self.roadmap_request(
-                pipe,
-                id,
-                matches!(request, Request::RoadmapRefresh {}),
-                Instant::now(),
-            ),
-            Request::PilotLoad {} | Request::PilotSave { .. } => {
-                self.pilot_request(pipe, id, request)
-            }
-            Request::PrivacyPolicy {} => self.respond(
-                pipe,
-                id,
-                Err(HostError::Unsupported),
-                crate::diagnostics::DiagnosticSection::Privacy,
-            ),
-            Request::PrivacyGet {}
-            | Request::PrivacyUpdate { .. }
-            | Request::DiagnosticsGet {}
-            | Request::DiagnosticsPrepare {}
-            | Request::DiagnosticsCopy {} => self.local_request(pipe, id, request),
-            Request::MailGet {} | Request::MailSet { .. } => self.mail_request(pipe, id, request),
-            Request::UpdatesGet {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::UpdatesGet {
-                        value: self
-                            .updates
-                            .get_or_insert_with(crate::updates::Reader::current)
-                            .view(),
-                    },
-                },
-            ),
-            Request::UpdatesRestart {} => {
-                self.restart_update_when(pipe, id, crate::updates::Reader::can_restart)
-            }
 
-            Request::ShortcutsGet {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::ShortcutsGet {
-                        value: crate::shortcuts::read(&self.launcher),
-                    },
-                },
-            ),
-            Request::CoreGet {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::Core {
-                        value: self.current.clone(),
-                    },
-                },
-            ),
-            Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
-                self.profile_request(pipe, id, request)
-            }
-            Request::LauncherGet {} => self.launcher_snapshot(pipe, id),
-            Request::LauncherLaunch { .. } => self.launcher_request(pipe, id, request),
-            Request::LauncherFavorite {} => {
-                let message = match crate::favorite::launch(&self.launcher, &self.current) {
-                    Ok(accepted) => HostToUi::Response {
-                        id,
-                        result: Reply::LauncherFavorite { accepted },
-                    },
-                    Err(error) => HostToUi::Failure { id, error },
-                };
-                frame::write(pipe, &message)
-            }
-            Request::SettingsGet {}
-            | Request::SettingsDiscard {}
-            | Request::SettingsUpdate { .. }
-            | Request::SettingsRetry {} => self.settings_request(pipe, id, request),
-            Request::WindowClose {} => self.request_close(pipe, CloseReason::Window),
-            // Native notifications are a platform UI action handled by Electron.
-            Request::NotificationTest {} => frame::write(
-                pipe,
-                &HostToUi::Failure {
-                    id,
-                    error: HostError::Unsupported,
-                },
-            ),
-        }
-    }
-    fn settings_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        match request {
-            Request::SettingsDiscard {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::SettingsDiscard {
-                        value: self.settings.discard(),
-                    },
-                },
-            ),
-            Request::SettingsGet {} => {
-                let value = self.settings.refresh();
-                frame::write(
-                    pipe,
-                    &HostToUi::Response {
-                        id,
-                        result: Reply::SettingsGet { value },
-                    },
-                )
-            }
-            Request::SettingsUpdate {
-                patch,
-                base_revision,
-            } => {
-                let result = self.settings.update(*patch, base_revision);
-                settings_response(&mut self.diagnostic, pipe, id, result, |value| {
-                    Reply::SettingsUpdate { value }
-                })
-            }
-            Request::SettingsRetry {} => {
-                let result = self.settings.retry();
-                settings_response(&mut self.diagnostic, pipe, id, result, |value| {
-                    Reply::SettingsRetry { value }
-                })
-            }
-            _ => Err(io::ErrorKind::InvalidInput.into()),
-        }
-    }
-    fn restart_update_when(
-        &mut self,
-        pipe: &mut Pipe,
-        id: u32,
-        ready: impl FnOnce() -> bool,
-    ) -> io::Result<()> {
-        let accepted = self.closing.is_none() && !self.current.live && ready();
-        frame::write(
-            pipe,
-            &HostToUi::Response {
-                id,
-                result: Reply::UpdatesRestart { accepted },
-            },
-        )?;
-        if accepted {
-            self.request_close(pipe, CloseReason::Restart)?;
-        } else {
-            self.diagnostic.note(
-                crate::diagnostics::DiagnosticSection::Updates,
-                &HostError::Denied,
-            );
-        }
-        Ok(())
-    }
     fn respond(
         &mut self,
         pipe: &mut Pipe,
@@ -750,111 +329,7 @@ impl Session {
         };
         frame::write(pipe, &message)
     }
-    fn local_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        let protected = self.settings.view().protected;
-        let result = match request {
-            Request::PrivacyGet {} => Ok(Reply::PrivacyGet {
-                value: self.privacy.refresh(),
-            }),
-            Request::PrivacyUpdate {
-                patch,
-                base_revision,
-            } => self
-                .privacy
-                .update(*patch, base_revision)
-                .map(|value| Reply::PrivacyUpdate { value }),
-            Request::DiagnosticsGet {} => Ok(Reply::DiagnosticsGet {
-                value: self.diagnostic.view(&self.current, protected),
-            }),
-            Request::DiagnosticsPrepare {} => self
-                .diagnostic
-                .prepare(&self.current, protected)
-                .map(|value| Reply::DiagnosticsPrepare { value }),
-            Request::DiagnosticsCopy {} => self
-                .diagnostic
-                .copy()
-                .map(|text| Reply::DiagnosticsCopy { text }),
-            _ => Err(HostError::Unsupported),
-        };
-        self.respond(
-            pipe,
-            id,
-            result,
-            crate::diagnostics::DiagnosticSection::Privacy,
-        )
-    }
-    fn pilot_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        let intent = match request {
-            Request::PilotLoad {} => Ok((
-                RemoteKind::PilotLoad,
-                vantare_ipc::services_protocol::Command::PilotLoad,
-            )),
-            Request::PilotSave {
-                fields,
-                base_revision,
-            } => crate::pilot::save(self.pilot.as_ref(), fields, base_revision)
-                .map(|command| (RemoteKind::PilotSave, command)),
-            _ => Err(HostError::Denied),
-        };
-        let result = intent.and_then(|(kind, command)| {
-            self.core.request(id, command)?;
-            self.remote = Some((id, kind));
-            Ok(())
-        });
-        match result {
-            Ok(()) => Ok(()),
-            Err(error) => self.respond(
-                pipe,
-                id,
-                Err(error),
-                crate::diagnostics::DiagnosticSection::Services,
-            ),
-        }
-    }
-    fn testing_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        let result = crate::testing::intent(request, &self.current.access).and_then(
-            |(operation, command)| {
-                self.core.request(id, command)?;
-                self.remote = Some((id, RemoteKind::Testing(operation)));
-                Ok(())
-            },
-        );
-        match result {
-            Ok(()) => Ok(()),
-            Err(error) => self.respond(
-                pipe,
-                id,
-                Err(error),
-                crate::diagnostics::DiagnosticSection::Services,
-            ),
-        }
-    }
-    fn mail_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
-        use vantare_ipc::services_protocol::{Command, MailSource};
-        let (kind, command) = match request {
-            Request::MailGet {} => (RemoteKind::MailGet, Command::MailConsentGet),
-            Request::MailSet { consent } => (
-                RemoteKind::MailSet,
-                Command::MailConsentSet {
-                    consent: *consent,
-                    source: MailSource::Settings,
-                },
-            ),
-            _ => return Err(io::ErrorKind::InvalidInput.into()),
-        };
-        match self.core.request(id, command) {
-            Ok(()) => {
-                self.remote = Some((id, kind));
-                Ok(())
-            }
-            Err(error) => self.respond(
-                pipe,
-                id,
-                Err(error),
-                crate::diagnostics::DiagnosticSection::Services,
-            ),
-        }
-    }
+
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
         match message {
             UiToHost::Hello { version } => {
@@ -880,58 +355,16 @@ impl Session {
                 }
             }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
-            UiToHost::Subscribe {
-                topic: Topic::Launcher,
-            } => {
-                self.subscriptions.insert(Topic::Launcher);
-                let value = self.launcher_reader.view();
-                frame::write(
-                    pipe,
-                    &HostToUi::Event {
-                        event: Event::Launcher { value },
-                    },
-                )?;
+            UiToHost::Subscribe { topic } => {
+                self.subscriptions.insert(*topic);
+                let (_, handler) = SCREEN_SUBSCRIPTIONS
+                    .iter()
+                    .find(|(accept, _)| accept(*topic))
+                    .ok_or(io::ErrorKind::InvalidInput)?;
+                handler(self, pipe, *topic)?;
             }
-            UiToHost::Unsubscribe {
-                topic: Topic::Launcher,
-            } => {
-                self.subscriptions.remove(&Topic::Launcher);
-            }
-            UiToHost::Subscribe {
-                topic: Topic::Updates,
-            } => {
-                self.subscriptions.insert(Topic::Updates);
-                self.last_updates = None;
-            }
-            UiToHost::Unsubscribe {
-                topic: Topic::Updates,
-            } => {
-                self.subscriptions.remove(&Topic::Updates);
-            }
-            UiToHost::Subscribe { topic: Topic::Core } => {
-                self.subscriptions.insert(Topic::Core);
-                self.send_core(pipe)?;
-            }
-            UiToHost::Subscribe {
-                topic: Topic::SimStatus,
-            } => {
-                self.subscriptions.insert(Topic::SimStatus);
-                frame::write(
-                    pipe,
-                    &HostToUi::Event {
-                        event: Event::SimStatus {
-                            live: self.current.live,
-                        },
-                    },
-                )?;
-            }
-            UiToHost::Unsubscribe { topic: Topic::Core } => {
-                self.subscriptions.remove(&Topic::Core);
-            }
-            UiToHost::Unsubscribe {
-                topic: Topic::SimStatus,
-            } => {
-                self.subscriptions.remove(&Topic::SimStatus);
+            UiToHost::Unsubscribe { topic } => {
+                self.subscriptions.remove(topic);
             }
             UiToHost::CloseAnswer { allow: true } if self.closing.is_some() => {
                 self.exit_code = if self
@@ -998,33 +431,12 @@ pub fn run(args: &Args) -> io::Result<u8> {
     let settings = Settings::load(args);
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
-    let mut session = Session {
-        reserved_profile: None,
-        profile_step_keys: crate::launcher::editor::StepKeys::default(),
-        pilot: None,
-        privacy: crate::privacy::State::open(&args.data),
-        diagnostic: crate::diagnostics::Observed::default(),
-        remote: None,
-        updates: None,
-        subscriptions: std::collections::BTreeSet::new(),
-        last_updates: None,
-        last_roadmap_refresh: None,
-        roadmap: crate::roadmap::RoadmapView {
-            publication: None,
-            stale: true,
-        },
-        exit_code: 0,
-        launcher: args.launcher.clone(),
-        launcher_reader: crate::launcher::Reader::new(args.launcher.clone()),
+    let mut session = Session::new(
+        args,
         core,
         settings,
-        confirmation: ready::Ready::from_executable(&executable)?,
-        current: protocol::CoreStatus::default(),
-        last: None,
-        last_event: None,
-        closing: None,
-        handshaken: false,
-    };
+        ready::Ready::from_executable(&executable)?,
+    );
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "before-hello")?;
     frame::write(&mut pipe, &protocol::hello(&session.settings.view())?)?;

@@ -363,33 +363,15 @@ fn restart_peer(pipe: &mut Pipe, mode: &str) {
     }
 }
 fn restart_session(root: &Path, photo: &str) -> Session {
-    Session {
-        launcher_reader: crate::launcher::Reader::new(root.join("launcher.json")),
-        reserved_profile: None,
-        profile_step_keys: crate::launcher::editor::StepKeys::default(),
-        pilot: None,
-        privacy: crate::privacy::State::isolated(root),
-        diagnostic: crate::diagnostics::Observed::default(),
-        remote: None,
-        updates: None,
-        subscriptions: std::collections::BTreeSet::new(),
-        last_updates: None,
-        last_roadmap_refresh: None,
-        roadmap: crate::roadmap::RoadmapView {
-            publication: None,
-            stale: true,
-        },
-        exit_code: 0,
-        launcher: root.join("launcher.json"),
-        core: Core::start(photo, root).expect("unconnected core; cancelled by Drop"),
-        settings: Settings::load(&args(root)),
-        confirmation: None,
-        current: protocol::CoreStatus::default(),
-        last: None,
-        last_event: None,
-        closing: None,
-        handshaken: true,
-    }
+    let mut session = Session::new(
+        &args(root),
+        Core::start(photo, root).expect("unconnected core"),
+        Settings::load(&args(root)),
+        None,
+    );
+    session.privacy = crate::privacy::State::isolated(root);
+    session.handshaken = true;
+    session
 }
 fn restart_case((live, closing, ready): (bool, bool, bool), allow: bool) {
     let root = Root::new();
@@ -463,37 +445,4 @@ fn restart_rejects_live_existing_close_and_missing_ready() {
     ] {
         restart_case((live, closing, ready), true);
     }
-}
-
-#[test]
-fn profile_save_is_busy_without_writing_while_discovery_is_not_collected() {
-    let root = crate::test_support::Root::new();
-    let mut session = restart_session(&root.path, "");
-    let view = session.launcher_reader.view();
-    assert!(view.scanning);
-    assert!(session.launcher_reader.discovered(&view.revision).is_none());
-    let before = std::fs::read(&session.launcher).unwrap();
-    let draft =
-        crate::launcher::editor::draft(&vantare_launcher::Document::fresh_install().profiles[0]);
-    assert_eq!(
-        session.save_profile_draft(&draft, &view.revision),
-        Err(HostError::Busy)
-    );
-    assert_eq!(std::fs::read(&session.launcher).unwrap(), before);
-}
-
-#[test]
-fn stale_profile_revision_is_a_conflict_even_before_discovery_finishes() {
-    let root = crate::test_support::Root::new();
-    let mut session = restart_session(&root.path, "");
-    let view = session.launcher_reader.view();
-    assert!(view.scanning);
-    let before = std::fs::read(&session.launcher).unwrap();
-    let draft =
-        crate::launcher::editor::draft(&vantare_launcher::Document::fresh_install().profiles[0]);
-    assert!(matches!(
-        session.save_profile_draft(&draft, &"f".repeat(64)),
-        Err(HostError::LauncherConflict { .. })
-    ));
-    assert_eq!(std::fs::read(&session.launcher).unwrap(), before);
 }

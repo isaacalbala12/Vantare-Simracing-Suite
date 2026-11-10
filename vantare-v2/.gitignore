@@ -52,3 +52,9 @@ smoke-jwt.txt
 
 # Raw diagnostic CPU profiles (local evidence only)
 *.cpuprofile
+
+# Rebuilt from the independently committed screen contracts.
+hub-web/src/contract/generated/contract.ts
+hub-web/src/contract/generated/corpus.json
+hub-web/src/contract/generated/validators.ts
+hub-web/src/contract/generated/mocks/

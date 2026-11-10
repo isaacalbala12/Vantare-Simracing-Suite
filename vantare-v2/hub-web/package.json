@@ -9,7 +9,7 @@
     "dev": "electron-vite dev",
     "dev:web": "vite --config vite.web.config.ts --host 127.0.0.1",
     "build": "electron-vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun run contract:index && tsc --noEmit",
     "lint": "biome check . && bun run lint:design",
     "test": "vitest run",
     "package": "bun scripts/package.ts",
@@ -18,7 +18,8 @@
     "fonts": "bun scripts/fonts.ts",
     "icons": "bun scripts/icons.ts",
     "lint:design": "bun scripts/lint-design.ts",
-    "lint:i18n": "bun scripts/lint-design.ts"
+    "lint:i18n": "bun scripts/lint-design.ts",
+    "contract:index": "bun scripts/contract-index.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

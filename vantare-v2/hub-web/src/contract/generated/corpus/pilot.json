@@ -1,0 +1,70 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "pilot.load",
+        "value": {
+          "fields": {
+            "country": null,
+            "description": "",
+            "favoriteCar": "",
+            "favoriteTeam": "",
+            "photo": null,
+            "publicName": "",
+            "simulators": []
+          },
+          "pending": false,
+          "revision": "0"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "pilot.save",
+        "value": {
+          "fields": {
+            "country": null,
+            "description": "",
+            "favoriteCar": "",
+            "favoriteTeam": "",
+            "photo": null,
+            "publicName": "",
+            "simulators": []
+          },
+          "pending": false,
+          "revision": "0"
+        }
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "pilot.load"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0",
+        "fields": {
+          "country": null,
+          "description": "",
+          "favoriteCar": "",
+          "favoriteTeam": "",
+          "photo": null,
+          "publicName": "",
+          "simulators": []
+        },
+        "method": "pilot.save"
+      }
+    }
+  ]
+}

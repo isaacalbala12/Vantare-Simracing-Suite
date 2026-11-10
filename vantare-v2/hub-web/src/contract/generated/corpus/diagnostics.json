@@ -1,0 +1,93 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.get",
+        "value": {
+          "arch": "x86_64",
+          "core": {
+            "access": {
+              "blocked": false,
+              "calendar": false,
+              "engineer": false,
+              "strategy": false,
+              "tester": false,
+              "verified": false
+            },
+            "live": false,
+            "photos": "unavailable",
+            "rights": "unavailable",
+            "services": "unavailable"
+          },
+          "events": [],
+          "os": "windows",
+          "report": null,
+          "settingsProtected": false,
+          "version": "0.0.0"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.prepare",
+        "value": {
+          "arch": "x86_64",
+          "core": {
+            "access": {
+              "blocked": false,
+              "calendar": false,
+              "engineer": false,
+              "strategy": false,
+              "tester": false,
+              "verified": false
+            },
+            "live": false,
+            "photos": "unavailable",
+            "rights": "unavailable",
+            "services": "unavailable"
+          },
+          "events": [],
+          "os": "windows",
+          "report": null,
+          "settingsProtected": false,
+          "version": "0.0.0"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "diagnostics.copy",
+        "text": "{\"schemaVersion\":1}"
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.prepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "diagnostics.copy"
+      }
+    }
+  ]
+}

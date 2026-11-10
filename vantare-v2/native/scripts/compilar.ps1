@@ -62,9 +62,14 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         exit $script:commandExitCode
     }
 }
-$env:SCCACHE_DIR = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-cache/sccache' } else { 'D:\VantareServer\cache\sccache' }
-$env:SCCACHE_SERVER_PORT = '4227'
-$env:SCCACHE_CACHE_SIZE = '30G'
+if (-not $env:SCCACHE_DIR) {
+    $cacheDirectory = if ($IsWindows) { [Environment]::GetEnvironmentVariable('SCCACHE_DIR', 'Machine') } else { $null }
+    $env:SCCACHE_DIR = $cacheDirectory ?? $(if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') {
+        Join-Path $env:RUNNER_TEMP 'vantare-cache/sccache'
+    } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Vantare/sccache' })
+}
+$env:SCCACHE_SERVER_PORT = $env:SCCACHE_SERVER_PORT ?? '4227'
+$env:SCCACHE_CACHE_SIZE = $(if ($IsWindows) { [Environment]::GetEnvironmentVariable('SCCACHE_CACHE_SIZE', 'Machine') }) ?? $env:SCCACHE_CACHE_SIZE ?? '5G'
 if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [math]::Min(2, [int]($env:VANTARE_CARGO_SLOTS ?? 2))
 if ($slots -lt 1) { $slots = 1 }
@@ -147,7 +152,7 @@ if ($espera -gt 5) {
 $code = 1
 $targetLease = $null
 $ciLease = $null
-$targetRoot = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { Join-Path $env:RUNNER_TEMP 'vantare-targets' } else { 'D:\VantareServer\targets' }
+$targetRoot = Get-VantareTargetRoot
 try {
     if ($env:VANTARE_CI_TARGET -eq '1') {
         $ciPath = [IO.Path]::GetFullPath((Join-Path $targetRoot 'ci')).ToLowerInvariant()

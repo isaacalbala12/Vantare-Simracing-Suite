@@ -506,6 +506,12 @@ Los tests de procesos de Runtime preparan también el ejecutable Services.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
 Nextest usa `--build-jobs`; `-j` controla hilos de test.
 
+`VANTARE_TARGET_ROOT` configura la raíz de slots (proceso o Machine en Windows).
+Sin ella se usa `LocalApplicationData/Vantare/targets`; GitHub usa RUNNER_TEMP.
+Se respeta SCCACHE_DIR ya definido; sin él se consulta Machine y después
+LocalApplicationData/Vantare/sccache. Este servidor tiene VANTARE_TARGET_ROOT=
+`D:/VantareServer/targets` y SCCACHE_DIR=`D:/VantareServer/cache/sccache` en Machine.
+
 La cola admite como máximo dos compilaciones. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
 ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para

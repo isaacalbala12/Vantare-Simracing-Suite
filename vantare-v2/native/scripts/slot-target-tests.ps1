@@ -52,3 +52,14 @@ try {
     if ($null -eq $temporaryBefore) { Remove-Item Env:RUNNER_TEMP -ErrorAction SilentlyContinue }
     else { $env:RUNNER_TEMP = $temporaryBefore }
 }
+
+$targetRootBefore = $env:VANTARE_TARGET_ROOT
+try {
+    $env:VANTARE_TARGET_ROOT = 'C:/portable-worker/targets'
+    if ((Get-VantareTargetRoot) -ine [IO.Path]::GetFullPath($env:VANTARE_TARGET_ROOT)) { throw 'No se respeta VANTARE_TARGET_ROOT.' }
+    if (-not (Test-VantareTargetPath 'C:/portable-worker/targets/slot-0') -or (Test-VantareTargetPath 'D:/outside-configured-volume')) { throw 'La validación no sigue el volumen configurado.' }
+    'PASS: raíz configurable de otro PC, sin crear targets en C: en este servidor.'
+} finally {
+    if ($null -eq $targetRootBefore) { Remove-Item Env:VANTARE_TARGET_ROOT -ErrorAction SilentlyContinue }
+    else { $env:VANTARE_TARGET_ROOT = $targetRootBefore }
+}

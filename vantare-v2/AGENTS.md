@@ -214,7 +214,9 @@ Desde `vantare-v2/`, el worker usa
 crate y sus dependientes directos, excluyendo siempre Hub y Admin. Clippy incluye la comprobación de tipos.
 Para comandos específicos, usar `native/scripts/compilar.ps1 <comando> [args...]`.
 La cola permite como máximo dos compilaciones y asigna un target persistente
-por slot en `D:/VantareServer/targets/slot-N`, reutilizado entre ramas; nunca C:.
+por slot bajo `VANTARE_TARGET_ROOT`, reutilizado entre ramas. En este servidor
+Machine lo fija a `D:/VantareServer/targets`; nunca C:. Otros PC usan por defecto
+LocalApplicationData/Vantare/targets. Se respeta SCCACHE_DIR configurado.
 No pasar targets por rama salvo mediciones aisladas. Limpieza automática del
 slot inactivo: más de 20 GB o 14 días sin uso. No borrar targets ajenos.
 Usar cuatro jobs en este servidor (`CARGO_BUILD_JOBS=4`); nextest los recibe en

@@ -1,4 +1,15 @@
 # Called only while compilar.ps1 owns the corresponding global slot mutex.
+function Get-VantareTargetRoot {
+    if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') {
+        return [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets'))
+    }
+    $configured = $env:VANTARE_TARGET_ROOT
+    if (-not $configured -and $IsWindows) { $configured = [Environment]::GetEnvironmentVariable('VANTARE_TARGET_ROOT', 'Machine') }
+    if (-not $configured) { $configured = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Vantare/targets' }
+    if (-not [IO.Path]::IsPathRooted($configured)) { throw 'VANTARE_TARGET_ROOT debe ser absoluto.' }
+    return [IO.Path]::GetFullPath($configured)
+}
+
 function Test-VantareTargetPath([string]$Path) {
     if (-not [IO.Path]::IsPathRooted($Path)) { return $false }
     $full = [IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
@@ -7,12 +18,12 @@ function Test-VantareTargetPath([string]$Path) {
         $temporary = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
         return $full.StartsWith($temporary, [StringComparison]::OrdinalIgnoreCase)
     }
-    return $full -match '^[dD]:[\\/]'
+    return [IO.Path]::GetPathRoot($full) -ieq [IO.Path]::GetPathRoot((Get-VantareTargetRoot))
 }
 function Initialize-VantareSlotTarget {
     param(
         [Parameter(Mandatory)][ValidateRange(0, 1)][int]$Slot,
-        [string]$Root = 'D:\VantareServer\targets',
+        [string]$Root = (Get-VantareTargetRoot),
         [switch]$Ci
     )
     if (-not (Test-VantareTargetPath $Root)) { throw 'Raíz de targets inválida.' }
@@ -53,8 +64,8 @@ function Initialize-VantareSlotTarget {
         }
     }
     $minimum = if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') { 2GB } else { 15GB }
-    $drive = [IO.Path]::GetPathRoot($target).TrimEnd('\', '/')
-    if ((Get-PSDrive -Name $drive.TrimEnd(':')).Free -lt $minimum) { throw "$drive tiene menos de $($minimum / 1GB) GB libres." }
+    $drive = [IO.DriveInfo]::new([IO.Path]::GetPathRoot($target))
+    if ($drive.AvailableFreeSpace -lt $minimum) { throw "El volumen del target tiene menos de $($minimum / 1GB) GB libres." }
     [IO.File]::WriteAllText($stamp, [DateTime]::UtcNow.ToString('O'))
     Write-Host "[cola] target persistente: $target"
     return $target

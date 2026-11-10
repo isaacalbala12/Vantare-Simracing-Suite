@@ -95,6 +95,7 @@ async function main() {
   };
   const configuration = {
     runs,
+    evidence,
     waitMilliseconds: 15 * 60 * 1000,
     apps: [
       {
@@ -128,6 +129,7 @@ async function main() {
     ],
   };
   const config = join(qa, "config.json");
+  configuration.apps.reverse();
   await writeFile(config, JSON.stringify(configuration));
   const driver = spawn(
     "pwsh",

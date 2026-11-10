@@ -79,9 +79,16 @@ public static class HubMeasure {
     var point=new IntPtr((p.y<<16)|(p.x&65535));
     PostMessageW(window,0x200,IntPtr.Zero,point); PostMessageW(window,0x201,new IntPtr(1),point); PostMessageW(window,0x202,IntPtr.Zero,point);
   }
+  public static int[] Size(long handle) { Rect rect; if(!GetClientRect(new IntPtr(handle),out rect)) throw new InvalidOperationException("Client bounds"); return new int[] {rect.right,rect.bottom}; }
 }
 '@
     [HubMeasure]::Dpi()
+    . (Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-bitmap.ps1')
+    function Save-OwnMeasuredWindow([long]$Handle,[string]$Name){
+      $size=[HubMeasure]::Size($Handle)
+      $bitmap=[HubCaptureBitmap]::new($size[0],$size[1])
+      try{if(-not $bitmap.Capture([IntPtr]$Handle)){throw 'Measured window capture failed'};Save-HubCaptureBitmap $bitmap (Join-Path $configuration.evidence $Name)}finally{$bitmap.Dispose()}
+    }
     for($iteration=0;$iteration -lt $configuration.runs;$iteration++){
       $ordered=@($configuration.apps)
       if($iteration%2){[array]::Reverse($ordered)}
@@ -113,7 +120,11 @@ public static class HubMeasure {
               $ready=[Diagnostics.Stopwatch]::StartNew();$settings=$null
               while(-not $settings){
                 $settings=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
-                if($ready.Elapsed.TotalSeconds -gt 10){throw 'GPUI Settings accessibility deadline'}
+                if($ready.Elapsed.TotalSeconds -gt 10){
+                  Save-OwnMeasuredWindow $handle ('gpui-not-ready-'+$iteration+'.png')
+                  @($window.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition)|ForEach-Object {$_.Current.Name}) | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $configuration.evidence 'gpui-accessibility.json')
+                  throw 'GPUI Settings accessibility deadline'
+                }
                 if(-not $settings){Start-Sleep -Milliseconds 25}
               }
               $pattern=$null
@@ -127,6 +138,7 @@ public static class HubMeasure {
                 if($ready.Elapsed.TotalSeconds -gt 10){throw 'GPUI Settings confirmation deadline'}
                 if(-not $confirmed){Start-Sleep -Milliseconds 25}
               }
+              if($iteration -eq 0){Save-OwnMeasuredWindow $handle ('gpui-'+$mode+'.png')}
             }
             @{phase='visible';app=$application.name;mode=$mode;iteration=$iteration;pid=$process.Id;window=$handle;visibleMs=$visibleMs} | ConvertTo-Json -Compress | Write-Output
             if([Console]::ReadLine() -ne 'ready'){throw 'Driver did not confirm Settings'}

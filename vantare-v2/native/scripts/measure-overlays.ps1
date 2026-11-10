@@ -176,10 +176,10 @@ try {
         # Other processes may destroy an engine between PDH's two reads. Keep
         # their invalid samples, but require valid data for our UI, DWM and CPU.
         $counterErrors = @()
-        $counters = Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage','\GPU Process Memory(*)\Dedicated Usage','\Processor(_Total)\% Processor Time','\Processor Information(_Total)\% Processor Performance','\Processor Information(_Total)\% Performance Limit','\Processor Information(_Total)\Processor Frequency' -ErrorAction SilentlyContinue -ErrorVariable counterErrors
+        $counters = Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage','\GPU Process Memory(*)\Dedicated Usage','\Processor(_Total)\% Processor Time','\Processor Information(_Total)\% Processor Performance','\Processor Information(_Total)\% Performance Limit','\Processor Information(_Total)\Processor Frequency','\Thermal Zone Information(*)\High Precision Temperature' -ErrorAction SilentlyContinue -ErrorVariable counterErrors
         $tick = [Diagnostics.Stopwatch]::GetTimestamp()
         if (!$counters) { throw 'GPU/system counter collection returned no data' }
-        foreach ($sample in @($counters.CounterSamples | Where-Object Path -Like '*\processor information(*)\*')) {
+        foreach ($sample in @($counters.CounterSamples | Where-Object { $_.Path -like '*\processor information(*)\*' -or $_.Path -like '*\thermal zone information(*)\*' })) {
             $frequencyRows.Add([pscustomobject]@{qpc=$tick;path=$sample.Path;value=$sample.CookedValue;status=$sample.Status})
         }
         foreach ($sample in @($counters.CounterSamples | Where-Object { $_.Status -notin @(0,1) })) {

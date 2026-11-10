@@ -28,6 +28,20 @@ con pausas desiguales. Interrupciones o deriva no lineal siguen siendo
 limitaciones. Se publican las razones individuales,
 mediana, rango, CV entre razones y CV de las cuatro observaciones de cada ronda.
 La separación del ruido A/A es necesaria; no sustituye los gates visual y VRR.
+Se informa además un intervalo bootstrap del 95 % para la mediana A/B,
+remuestreando rondas completas con semilla fija. Es exploratorio: no demuestra
+independencia temporal ni corrige cambios no lineales de condiciones.
+
+Ejemplo desde `vantare-v2`, con ejecutables Release instrumentados y hashes
+conservados, una carpeta nueva por configuración y campaña:
+
+```powershell
+pwsh -NoProfile -File native/scripts/measure-overlay-ab.ps1 -A D:/evidence/A/overlay-replay.exe -B D:/evidence/B/overlay-replay.exe -Core D:/evidence/core/vantare-core.exe -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/evidence/ab-w4-speed4 -Widgets 4 -ReplaySpeed 4 -Rounds 8 -Phases
+```
+
+Repetir a velocidad 1 y 4, con 1, 4 y 22 widgets, con y sin `-Phases`.
+La comprobación A/A se hace antes de cada configuración A/B; no reutilizar
+un suelo de ruido de otra carga, velocidad o momento de la máquina.
 
 ## Deriva observada
 
@@ -54,7 +68,10 @@ no se cambia globalmente en una máquina compartida. Una comparación solo es
 válida bajo el mismo plan y con A/A suficiente. No convertir a núcleos o ms.
 
 `sampler.csv` conserva ticks del proceso recolector y duración de cada iteración
-Get-Counter; incluye la espera de muestreo en tiempo de pared. No incluye el
+Get-Counter y guardia WMI de la cola; incluye la espera de muestreo en tiempo
+de pared. `frequency.csv` conserva frecuencia, porcentaje de rendimiento y
+límite de rendimiento, con su estado de validez. Las zonas térmicas se guardan
+sin convertir ni asumir que son sensores del paquete CPU. No incluye el
 coste indirecto de los proveedores WMI/PDH en otros procesos. Por tanto, este
 dato caracteriza coste directo, y todavía se necesita un control pareado para
 cuantificar perturbación del sistema.

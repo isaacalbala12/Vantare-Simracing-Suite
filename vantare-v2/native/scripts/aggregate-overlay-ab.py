@@ -6,6 +6,7 @@ import math
 import pathlib
 import statistics
 import datetime
+import random
 
 
 def round_ratio(values, times=None):
@@ -26,13 +27,23 @@ def describe(values):
                 cv=statistics.stdev(values) / mean if len(values) > 1 else None)
 
 
+def median_interval(values):
+    # Resample complete rounds, never individual frames. Fixed seed is reproducible.
+    generator=random.Random(139)
+    medians=sorted(statistics.median(generator.choices(values,k=len(values))) for _ in range(4000))
+    return [medians[99],medians[3899]]
+
+
 def compare(aa, ab):
     if min(len(aa), len(ab)) < 8:
         raise ValueError('at least eight complete rounds in A/A and A/B required')
     # Conservative empirical bound: no normal-distribution or independent-frame assumption.
     floor = max(abs(math.log(value)) for value in aa)
     effect = abs(math.log(statistics.median(ab)))
+    interval=median_interval(ab)
     return dict(aa=describe(aa), ab=describe(ab), aa_ratios=aa, ab_ratios=ab,
+                ab_median_round_bootstrap_95=interval,
+                interval_excludes_no_change=interval[1]<1 or interval[0]>1,
                 noise_log_bound=floor, separates_from_noise=effect > floor,
                 noise_gate_passed=floor <= math.log(1.025),
                 acceptance='Noise separation is necessary, not sufficient: game-PC VRR and visual gates remain mandatory.')

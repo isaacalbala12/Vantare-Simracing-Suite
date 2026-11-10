@@ -1,0 +1,213 @@
+{
+  "sistema": 1,
+  "nombre": "vantare",
+  "fuentes": [
+    "Inter",
+    "Rajdhani",
+    "Space Mono"
+  ],
+  "color": {
+    "texto": "#ece6e7",
+    "apagado": "#8e8587",
+    "gap": "#a39a9c",
+    "gap_fcy": "#6e6668",
+    "linea": "#ffffff0f",
+    "panel": {
+      "arriba": "#1c181af5",
+      "abajo": "#110f10f5",
+      "borde": "#ffffff12"
+    },
+    "sombra": "#00000073",
+    "acento": "#e14a54",
+    "acento_fuerte": "#e14a5452",
+    "acento_suave": "#e14a540f",
+    "cerca": "#f5b83d",
+    "cerca_fondo": "#f5b83d29",
+    "clase": {
+      "hyper": "#e14a54",
+      "lmp": "#4f8ef7",
+      "gt": "#22c55e",
+      "otra": "#b0a7a9"
+    },
+    "vueltas": {
+      "abajo_fondo": "#4f8ef72e",
+      "abajo_texto": "#8db6ff",
+      "arriba_fondo": "#f25a5a33",
+      "arriba_texto": "#ff8a8a"
+    },
+    "box": {
+      "fondo": "#f59e0b",
+      "texto": "#1a1205"
+    },
+    "aviso": {
+      "fcy_fondo": "#f59e0b",
+      "fcy_texto": "#1a1205",
+      "amarilla_fondo": "#33291a",
+      "amarilla_texto": "#f5b83d",
+      "amarilla_linea": "#f59e0b80",
+      "boxes_fondo": "#ffffff12",
+      "boxes_texto": "#ece6e7",
+      "boxes_linea": "#ffffff0f",
+      "ninguno_fondo": "#00000000",
+      "ninguno_texto": "#00000000",
+      "ninguno_linea": "#00000000"
+    }
+  },
+  "tipo": {
+    "cabecera": {
+      "familia": "Inter",
+      "peso": 400,
+      "tamano": 11,
+      "interletra": 0.3,
+      "interlinea": 18,
+      "tabulares": false,
+      "mayusculas": false
+    },
+    "posicion": {
+      "familia": "Rajdhani",
+      "peso": 600,
+      "tamano": 14,
+      "interletra": 0,
+      "interlinea": 24,
+      "tabulares": true,
+      "mayusculas": false
+    },
+    "piloto": {
+      "familia": "Inter",
+      "peso": 400,
+      "tamano": 13,
+      "interletra": 0,
+      "interlinea": 24,
+      "tabulares": false,
+      "mayusculas": false
+    },
+    "detalle": {
+      "familia": "Inter",
+      "peso": 400,
+      "tamano": 12,
+      "interletra": 0,
+      "interlinea": 24,
+      "tabulares": false,
+      "mayusculas": false
+    },
+    "gap": {
+      "familia": "Space Mono",
+      "peso": 400,
+      "tamano": 12,
+      "interletra": 0,
+      "interlinea": 24,
+      "tabulares": true,
+      "mayusculas": false
+    },
+    "pildora": {
+      "familia": "Inter",
+      "peso": 600,
+      "tamano": 10,
+      "interletra": 0.5,
+      "interlinea": 16,
+      "tabulares": true,
+      "mayusculas": false
+    },
+    "aviso": {
+      "familia": "Rajdhani",
+      "peso": 600,
+      "tamano": 12,
+      "interletra": 1.4,
+      "interlinea": 22,
+      "tabulares": false,
+      "mayusculas": true
+    },
+    "pie": {
+      "familia": "Inter",
+      "peso": 400,
+      "tamano": 11,
+      "interletra": 0,
+      "interlinea": 20,
+      "tabulares": false,
+      "mayusculas": false
+    }
+  },
+  "medida": {
+    "margen": 12,
+    "hueco": 10,
+    "fila": 24,
+    "cabecera": 18,
+    "radio_panel": 10,
+    "radio_fila": 6,
+    "radio_pildora": 3,
+    "pildora": 16,
+    "punto": 7,
+    "radio_punto": 3.5,
+    "linea": 1,
+    "aviso": 22
+  },
+  "mov": {
+    "aparecer": {
+      "duracion": 260,
+      "curva": [
+        0.16,
+        1,
+        0.3,
+        1
+      ]
+    },
+    "desaparecer": {
+      "duracion": 200,
+      "curva": [
+        0.4,
+        0,
+        1,
+        1
+      ]
+    },
+    "desliza": {
+      "duracion": 320,
+      "curva": [
+        0.2,
+        0,
+        0,
+        1
+      ]
+    },
+    "fila_entra": {
+      "duracion": 220,
+      "curva": "salida"
+    },
+    "fila_sale": {
+      "duracion": 220,
+      "curva": "entrada"
+    },
+    "resalte": {
+      "duracion": 180,
+      "curva": "salida"
+    },
+    "cambio_sistema": {
+      "duracion": 300,
+      "curva": "entrada-salida"
+    }
+  },
+  "efecto": {
+    "panel": {
+      "sombra": {
+        "color": "$color.sombra",
+        "desenfoque": 26,
+        "x": 0,
+        "y": 10
+      }
+    }
+  },
+  "relativo": {
+    "ancho": 420,
+    "col_posicion": 22,
+    "col_piloto": 239,
+    "col_vueltas": 40,
+    "col_gap": 48,
+    "pulso_ms": 1200,
+    "arriba": 11,
+    "bajo_cabecera": 4,
+    "abajo": 11,
+    "sangria": 6,
+    "ancho_resalte": 408,
+    "ancho_linea": 396
+  }
+}

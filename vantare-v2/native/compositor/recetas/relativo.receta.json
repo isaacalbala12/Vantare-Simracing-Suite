@@ -1,0 +1,164 @@
+{
+  "receta": 1,
+  "tipo": "overlay",
+  "nombre": "relativo",
+  "modelo": "relativo/1",
+  "visible": "!en_garaje",
+  "entrada": { "desde": { "opacidad": 0, "y": -8 }, "transicion": "$mov.aparecer" },
+  "salida": { "hacia": { "opacidad": 0, "y": -8 }, "transicion": "$mov.desaparecer" },
+  "raiz": {
+    "tipo": "caja",
+    "id": "panel",
+    "estilo": {
+      "ancho": "$relativo.ancho",
+      "direccion": "columna",
+      "relleno": ["$relativo.arriba", 0, "$relativo.abajo", 0],
+      "fondo": { "lineal": { "angulo": 180, "paradas": [["$color.panel.arriba", 0], ["$color.panel.abajo", 1]] } },
+      "borde": { "ancho": "$medida.linea", "color": "$color.panel.borde" },
+      "radio": "$medida.radio_panel",
+      "sombra": "$efecto.panel"
+    },
+    "hijos": [
+      {
+        "tipo": "caja",
+        "id": "cabecera",
+        "estilo": {
+          "direccion": "fila",
+          "justificar": "entre",
+          "alinear": "centro",
+          "alto": "$medida.cabecera",
+          "relleno": [0, "$medida.margen"]
+        },
+        "hijos": [
+          { "tipo": "texto", "id": "titulo", "texto": "{titulo}", "estilo": { "tipo": "$tipo.cabecera", "color": "$color.apagado" } },
+          { "tipo": "texto", "id": "contexto", "texto": "{contexto}", "estilo": { "tipo": "$tipo.cabecera", "color": "$color.apagado" } }
+        ]
+      },
+      { "tipo": "caja", "id": "separacion", "estilo": { "alto": "$relativo.bajo_cabecera" } },
+      {
+        "tipo": "lista",
+        "id": "filas",
+        "de": "filas",
+        "como": "fila",
+        "clave": "id",
+        "movimiento": "$mov.desliza",
+        "entrada": { "desde": { "opacidad": 0 }, "transicion": "$mov.fila_entra" },
+        "salida": { "hacia": { "opacidad": 0 }, "transicion": "$mov.fila_sale" },
+        "plantilla": {
+          "tipo": "caja",
+          "id": "fila",
+          "estilo": {
+            "direccion": "fila",
+            "alinear": "centro",
+            "alto": "$medida.fila",
+            "hueco": "$medida.hueco",
+            "relleno": [0, "$medida.margen"]
+          },
+          "hijos": [
+            {
+              "tipo": "caja",
+              "id": "resalte_jugador",
+              "visible": "fila.jugador",
+              "estilo": {
+                "posicion": "absoluta",
+                "izquierda": "$relativo.sangria",
+                "arriba": 0,
+                "ancho": "$relativo.ancho_resalte",
+                "alto": "$medida.fila",
+                "radio": "$medida.radio_fila",
+                "fondo": { "lineal": { "angulo": 90, "paradas": [["$color.acento_fuerte", 0], ["$color.acento_suave", 1]] } }
+              }
+            },
+            {
+              "tipo": "caja",
+              "id": "resalte_cerca",
+              "capa": true,
+              "estilo": {
+                "posicion": "absoluta",
+                "izquierda": "$relativo.sangria",
+                "arriba": 0,
+                "ancho": "$relativo.ancho_resalte",
+                "alto": "$medida.fila",
+                "radio": "$medida.radio_fila",
+                "fondo": "$color.cerca_fondo",
+                "borde": { "ancho": "$medida.linea", "color": "$color.cerca" },
+                "opacidad": 0
+              },
+              "transiciones": { "opacidad": "$mov.resalte" },
+              "estados": [
+                { "cuando": "fila.cerca", "bucle": { "propiedad": "opacidad", "valores": [1, 0.35, 1], "duracion": 1200 } }
+              ]
+            },
+            {
+              "tipo": "caja",
+              "id": "punto",
+              "estilo": { "ancho": "$medida.punto", "alto": "$medida.punto", "radio": "$medida.radio_punto", "fondo": "$color.clase.{fila.clase}" },
+              "estados": [{ "cuando": "fila.vacio", "estilo": { "opacidad": 0 } }]
+            },
+            {
+              "tipo": "texto",
+              "id": "posicion",
+              "texto": "{fila.posicion}",
+              "estilo": { "ancho": "$relativo.col_posicion", "tipo": "$tipo.posicion", "color": "$color.apagado", "alinear_texto": "fin" }
+            },
+            {
+              "tipo": "caja",
+              "id": "nombre",
+              "estilo": { "ancho": "$relativo.col_piloto", "direccion": "fila", "alinear": "centro" },
+              "hijos": [
+                { "tipo": "texto", "id": "piloto", "texto": "{fila.piloto}", "estilo": { "tipo": "$tipo.piloto", "color": "$color.texto", "encoger": 0 } },
+                { "tipo": "texto", "id": "detalle", "texto": "{fila.detalle}", "estilo": { "tipo": "$tipo.detalle", "color": "$color.apagado", "encoger": 1 } }
+              ]
+            },
+            {
+              "tipo": "caja",
+              "id": "vueltas",
+              "estilo": { "ancho": "$relativo.col_vueltas", "alinear": "centro" },
+              "hijos": [
+                {
+                  "tipo": "texto",
+                  "id": "pildora",
+                  "visible": "fila.vueltas_visible",
+                  "texto": "{fila.vueltas}",
+                  "estilo": {
+                    "alto": "$medida.pildora",
+                    "relleno": [0, "$medida.radio_pildora"],
+                    "radio": "$medida.radio_pildora",
+                    "tipo": "$tipo.pildora",
+                    "fondo": "$color.vueltas.abajo_fondo",
+                    "color": "$color.vueltas.abajo_texto"
+                  }
+                }
+              ]
+            },
+            {
+              "tipo": "texto",
+              "id": "gap",
+              "texto": "{fila.gap}",
+              "estilo": { "ancho": "$relativo.col_gap", "tipo": "$tipo.gap", "color": "$color.gap", "alinear_texto": "fin" },
+              "estados": [{ "cuando": "fila.jugador", "estilo": { "color": "$color.texto" } }]
+            }
+          ]
+        }
+      },
+      {
+        "tipo": "caja",
+        "id": "pie",
+        "visible": "pie_visible",
+        "estilo": { "direccion": "columna", "relleno": [0, "$medida.margen"] },
+        "hijos": [
+          { "tipo": "caja", "id": "linea", "estilo": { "alto": "$medida.linea", "fondo": "$color.linea" } },
+          {
+            "tipo": "caja",
+            "id": "textos",
+            "estilo": { "direccion": "fila", "justificar": "entre", "alinear": "centro", "alto": "$medida.fila" },
+            "hijos": [
+              { "tipo": "texto", "id": "izquierda", "texto": "{pie_trafico}{pie_salida}{pie_sesion}", "estilo": { "tipo": "$tipo.pie", "color": "$color.apagado" } },
+              { "tipo": "texto", "id": "derecha", "texto": "{pie_perdida}", "estilo": { "tipo": "$tipo.pie", "color": "$color.apagado" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

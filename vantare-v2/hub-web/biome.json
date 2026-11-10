@@ -2,5 +2,5 @@
   "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
   "files": { "includes": ["**", "!out", "!release", "!bun.lock"] },
   "formatter": { "indentStyle": "space" },
-  "linter": { "enabled": true, "rules": { "preset": "none" } }
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
 }

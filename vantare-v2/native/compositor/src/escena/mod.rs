@@ -101,6 +101,7 @@ struct Fantasma {
     viva: Viva,
     fin: Instante,
     quitar: bool,
+    recuperable: bool,
 }
 /// Estado del compositor puro. El anfitrión suministra todos los instantes.
 pub struct Escena {
@@ -142,7 +143,13 @@ impl Escena {
         let planos = maquetacion::maquetar(&self.receta, &self.sistema, modelo, medidor)?;
         let nuevas = planos
             .iter()
-            .filter(|p| !self.vivas.contains_key(&p.clave))
+            .filter(|p| {
+                !self.vivas.contains_key(&p.clave)
+                    && !self
+                        .fantasmas
+                        .iter()
+                        .any(|f| f.recuperable && f.viva.plano.clave == p.clave)
+            })
             .count();
         if self.vivas.len() + self.fantasmas.len() + nuevas > 256 {
             return Err(ErrorModelo::limite("/capas"));
@@ -161,6 +168,7 @@ impl Escena {
     }
     fn aplicar(&mut self, planos: Vec<Plano>, ahora: Instante, lote: &mut Lote) {
         let mut anteriores = std::mem::take(&mut self.vivas);
+        self.recuperar(&planos, &mut anteriores);
         let mut ordenes = BTreeMap::new();
         for plano in planos {
             let orden = ordenes.entry(plano.padre.clone()).or_insert(0_u32);
@@ -175,6 +183,26 @@ impl Escena {
             self.vivas.insert(clave, viva);
         }
         self.retirar(anteriores, ahora, lote);
+    }
+    fn recuperar(&mut self, planos: &[Plano], anteriores: &mut BTreeMap<String, Viva>) {
+        for mut fantasma in std::mem::take(&mut self.fantasmas) {
+            let clave = &fantasma.viva.plano.clave;
+            if fantasma.recuperable
+                && !anteriores.contains_key(clave)
+                && planos.iter().any(|p| p.clave == *clave)
+            {
+                for (p, curva) in &fantasma.viva.curvas {
+                    if let Some((_, valor)) =
+                        fantasma.viva.plano.valores.iter_mut().find(|(k, _)| k == p)
+                    {
+                        *valor = curva.final_;
+                    }
+                }
+                anteriores.insert(clave.clone(), fantasma.viva);
+            } else {
+                self.fantasmas.push(fantasma);
+            }
+        }
     }
     fn modificar(&self, mut viva: Viva, plano: Plano, ahora: Instante, lote: &mut Lote) -> Viva {
         if viva.plano.rect != plano.rect {
@@ -344,7 +372,11 @@ impl Escena {
                         lote,
                     );
                 } else if let Some(t) = plano.transiciones.get(nombre(*p)).or({
-                    if cambio_bucle {
+                    if cambio_bucle
+                        || viva.curvas.iter().any(|(k, c)| {
+                            k == p && (c.repetir.is_some() || ahora.0 < c.inicio.0 + c.fin)
+                        })
+                    {
                         Some(&Value::Null)
                     } else {
                         None
@@ -484,7 +516,12 @@ impl Escena {
             if fin > ahora {
                 self.fantasmas.extend(retiradas.into_iter().map(|viva| {
                     let quitar = Some(viva.id) == id_raiz;
-                    Fantasma { viva, fin, quitar }
+                    Fantasma {
+                        viva,
+                        fin,
+                        quitar,
+                        recuperable: true,
+                    }
                 }));
             } else if let Some(id) = id_raiz {
                 lote.operaciones.push(Operacion::Quitar { id });
@@ -559,6 +596,10 @@ impl Escena {
         Ok(self.fundir(planos, ahora))
     }
     fn fundir(&mut self, planos: Vec<Plano>, ahora: Instante) -> Lote {
+        // Sus padres pertenecen al árbol anterior: no pueden recuperarse en el nuevo.
+        for fantasma in &mut self.fantasmas {
+            fantasma.recuperable = false;
+        }
         let mut lote = Lote::default();
         let token = Value::String("$mov.cambio_sistema".into());
         let cfg = config(&self.sistema, Some(&token));
@@ -575,12 +616,14 @@ impl Escena {
                     viva,
                     fin,
                     quitar: true,
+                    recuperable: false,
                 });
             } else {
                 self.fantasmas.push(Fantasma {
                     viva,
                     fin: fin_arbol,
                     quitar: false,
+                    recuperable: false,
                 });
             }
         }

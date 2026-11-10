@@ -528,6 +528,72 @@ fn limite_estatico_de_capas_y_fuentes_del_paquete() {
     s["fuentes"] = json!(["Ajena"]);
     error(&receta(), &s, Causa::Fuente, "/fuentes/0");
 }
+
+#[test]
+fn reaparecer_durante_salida_recupera_identidad_y_c1() {
+    use vantare_compositor::escena::capas::Dibujo;
+    let mut escena = escenario(&lista());
+    let mut modelo = datos();
+    let inicial = escena.actualizar(&modelo, Instante(0.0), &Fijo).unwrap();
+    let id_fila = inicial
+        .operaciones
+        .iter()
+        .find_map(|operacion| match operacion {
+            Operacion::Pintar { id, dibujos }
+                if dibujos
+                    .iter()
+                    .any(|d| matches!(d,Dibujo::Texto {texto,..} if texto=="Dos")) =>
+            {
+                Some(*id)
+            }
+            _ => None,
+        })
+        .unwrap();
+    modelo["filas"].as_array_mut().unwrap().pop();
+    let salida = escena.actualizar(&modelo, Instante(1.0), &Fijo).unwrap();
+    let curva_salida = salida
+        .operaciones
+        .iter()
+        .find_map(|operacion| match operacion {
+            Operacion::Animar {
+                id,
+                propiedad: Propiedad::Opacidad,
+                curva,
+            } if *id == id_fila => Some(curva),
+            _ => None,
+        })
+        .unwrap();
+    let antes = animacion::muestra(curva_salida, Instante(1.2));
+    let regreso = escena.actualizar(&datos(), Instante(1.2), &Fijo).unwrap();
+    assert!(
+        !regreso
+            .operaciones
+            .iter()
+            .any(|operacion| matches!(operacion, Operacion::Crear { .. }))
+    );
+    let curva_regreso = regreso
+        .operaciones
+        .iter()
+        .find_map(|operacion| match operacion {
+            Operacion::Animar {
+                id,
+                propiedad: Propiedad::Opacidad,
+                curva,
+            } if *id == id_fila => Some(curva),
+            _ => None,
+        })
+        .unwrap();
+    let despues = animacion::muestra(curva_regreso, Instante(1.2));
+    assert!((antes.0 - despues.0).abs() < 1.0e-5 && (antes.1 - despues.1).abs() < 1.0e-5);
+    assert!(
+        !escena
+            .avanzar(Instante(2.0), &Fijo)
+            .operaciones
+            .iter()
+            .any(|operacion| matches!(operacion,Operacion::Quitar {id} if *id==id_fila))
+    );
+    assert!((escena.valor(id_fila, Propiedad::Opacidad, Instante(2.0)) - 1.0).abs() < 1.0e-5);
+}
 fn bezier_exacta(puntos: [f32; 4], tiempo: f64) -> f64 {
     let [x1, y1, x2, y2] = puntos.map(f64::from);
     let evaluar =

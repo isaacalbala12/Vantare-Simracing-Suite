@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon } from "../assets/icons/Icon";
+import { Icon, type IconName } from "../assets/icons/Icon";
 import "./testing-layout.css";
 
 export function TestingLayout({
@@ -70,15 +70,17 @@ export function TestingFinePrint({ children }: { children: ReactNode }) {
 }
 export function TestingRailSection({
   title,
+  icon = "v-testing",
   children,
 }: {
   title: string;
+  icon?: IconName;
   children: ReactNode;
 }) {
   return (
     <section className="v-testing-rail-section">
       <h3>
-        <Icon name="v-testing" />
+        <Icon name={icon} />
         {title}
       </h3>
       {children}

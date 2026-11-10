@@ -14,12 +14,6 @@ export const testingScenes: Record<string, VisualScene> = {
           exact: true,
         })
         .waitFor();
-      await page
-        .getByRole("button", {
-          name: "Contraer o ampliar navegación",
-          exact: true,
-        })
-        .click();
     },
   },
 };

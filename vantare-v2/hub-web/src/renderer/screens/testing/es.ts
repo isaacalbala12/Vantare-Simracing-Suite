@@ -1,4 +1,5 @@
 export const testingText = {
+  sectionTitle: "Testing Center",
   summary: "Resumen",
   questionnaires: "Cuestionarios",
   community: "Comunidad",

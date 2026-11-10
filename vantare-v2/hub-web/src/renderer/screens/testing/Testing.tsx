@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { reportModules } from "../../../contract/generated/contract";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
-import { Checkbox, Input, Select, Tabs, Textarea } from "../../ui/Forms";
+import { Checkbox, Input, Select, Textarea } from "../../ui/Forms";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
   TestingCard,
@@ -14,28 +14,8 @@ import {
 import { Diagnostics } from "../settings/Diagnostics";
 import { testingText as text } from "./es";
 import { useReports } from "./ReportsState";
-import { useTestingTabs } from "./TestingTabs";
 
-export function Testing() {
-  const { access } = useReports();
-  const { tabs, active, change } = useTestingTabs(access);
-  return (
-    <Tabs
-      label="Testing Center"
-      value={active}
-      onChange={change}
-      items={tabs
-        .filter((tab) => tab.visible)
-        .map((tab) => ({
-          value: tab.id,
-          label: tab.etiqueta,
-          content: tab.id === "reports" ? <Reports /> : null,
-        }))}
-    />
-  );
-}
-
-function Reports() {
+export function Reports() {
   const state = useReports();
   const [view, setView] = useState<"local" | "compose" | "list" | "diagnostic">(
     "local",
@@ -137,15 +117,19 @@ function Reports() {
                 {report.fixedVersion && (
                   <p>{`${text.fixedIn} ${report.fixedVersion}`}</p>
                 )}
-                <Checkbox
-                  label={text.credit}
-                  checked={report.credit}
-                  disabled={blocked}
-                  onCheckedChange={(consent) =>
-                    run(() => state.credit(report.id, consent))
-                  }
-                />
-                <TestingFinePrint>{text.creditHelp}</TestingFinePrint>
+                {state.access.tester && (
+                  <>
+                    <Checkbox
+                      label={text.credit}
+                      checked={report.credit}
+                      disabled={blocked}
+                      onCheckedChange={(consent) =>
+                        run(() => state.credit(report.id, consent))
+                      }
+                    />
+                    <TestingFinePrint>{text.creditHelp}</TestingFinePrint>
+                  </>
+                )}
                 {report.notice && (
                   <Callout
                     title={
@@ -154,6 +138,7 @@ function Reports() {
                         : text.acceptedNotice
                     }
                     actions={
+                      state.access.tester &&
                       report.updatedAt && (
                         <Button
                           disabled={blocked}

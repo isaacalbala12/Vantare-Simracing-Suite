@@ -29,10 +29,25 @@ describe("Testing Center closed wire and local persistence double", () => {
     ).toMatchObject({ kind: "failure" });
     const prepared = host(request("report.prepare"));
     expect(prepared).toMatchObject({ result: { method: "report.prepare" } });
+    if (
+      prepared?.kind !== "response" ||
+      prepared.result.method !== "report.prepare"
+    )
+      throw new Error("missing preview");
+    const oldId = prepared.result.value.id;
+    const current = host(request("report.prepare"));
+    if (
+      current?.kind !== "response" ||
+      current.result.method !== "report.prepare"
+    )
+      throw new Error("missing current preview");
+    const previewId = current.result.value.id;
+    expect(previewId).not.toBe(oldId);
     expect(
-      host(
-        request("report.send", { previewId: "a".repeat(64), consent: false }),
-      ),
+      host(request("report.send", { previewId: oldId, consent: true })),
+    ).toMatchObject({ error: { kind: "rejected" } });
+    expect(
+      host(request("report.send", { previewId, consent: false })),
     ).toMatchObject({ kind: "failure" });
     expect(
       host(
@@ -40,16 +55,12 @@ describe("Testing Center closed wire and local persistence double", () => {
       ),
     ).toMatchObject({ kind: "failure" });
     expect(
-      host(
-        request("report.send", { previewId: "a".repeat(64), consent: true }),
-      ),
+      host(request("report.send", { previewId, consent: true })),
     ).toMatchObject({
       result: { method: "report.send", value: { draftState: "cleared" } },
     });
     expect(
-      host(
-        request("report.send", { previewId: "a".repeat(64), consent: true }),
-      ),
+      host(request("report.send", { previewId, consent: true })),
     ).toMatchObject({ kind: "failure" });
     expect(host(request("draft.load"))).toMatchObject({
       result: { value: { exists: false } },

@@ -16,7 +16,7 @@ export function TestingRail() {
       <TestingRailSection title={text.yourReports}>
         <p>{`${count} ${text.loadedReports} · ${accepted} ${text.acceptedReports} · ${fixed} ${text.fixedReports} · ${text.channelUnavailable}`}</p>
       </TestingRailSection>
-      <TestingRailSection title={text.conversation}>
+      <TestingRailSection title={text.conversation} icon="v-chat">
         <p>{text.conversationHelp}</p>
       </TestingRailSection>
       <TestingRailSection title={text.goodReport}>

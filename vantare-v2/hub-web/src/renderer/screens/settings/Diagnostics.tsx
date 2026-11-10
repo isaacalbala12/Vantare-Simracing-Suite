@@ -7,7 +7,7 @@ import {
 import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
-import { Callout, Card, SettingRow, Skeleton, Table } from "../../ui/Data";
+import { Callout, Card, Skeleton, Table } from "../../ui/Data";
 import { Select, Textarea } from "../../ui/Forms";
 import { useToastManager } from "../../ui/Layers";
 import { ActionGroup, CardGrid } from "../../ui/ShellLayout";
@@ -72,10 +72,12 @@ export function Diagnostics() {
     <>
       <CardGrid>
         <Card title={t("diagnostics.hub")}>
-          <SettingRow label={t("shell.version")}>{view.version}</SettingRow>
-          <SettingRow label={t("diagnostics.system")}>
-            {view.os} {view.arch}
-          </SettingRow>
+          <p>
+            {t("shell.version")}: {view.version}
+          </p>
+          <p>
+            {t("diagnostics.system")}: {view.os} {view.arch}
+          </p>
         </Card>
         <Card title={t("diagnostics.core")}>
           <Callout title={t(`diagnostics.link.${view.core.photos}`)} />

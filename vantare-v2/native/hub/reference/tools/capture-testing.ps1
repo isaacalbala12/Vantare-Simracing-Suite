@@ -5,6 +5,17 @@ param(
     [Parameter(Mandatory)][string]$EvidenceRoot
 )
 $ErrorActionPreference='Stop'
+function Get-CaptureReceiptHash([string]$Path){
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    $parts=[Text.StringBuilder]::new()
+    for($offset=0;$offset -lt $bytes.Length;$offset+=1048576){
+        $length=[Math]::Min(1048576,$bytes.Length-$offset)
+        $chunk=[byte[]]::new($length)
+        [Buffer]::BlockCopy($bytes,$offset,$chunk,0,$length)
+        [void]$parts.Append([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($chunk)).ToLowerInvariant())
+    }
+    [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($parts.ToString()))).ToLowerInvariant()
+}
 $binary=[IO.Path]::GetFullPath($Executable)
 if([IO.Path]::GetFileName($binary) -ne 'vantare.exe'){throw 'Usa la copia QA de ui-quality como vantare.exe'}
 $fixtures=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../fixtures'))
@@ -48,7 +59,7 @@ foreach($theme in @('dark','light')){
             $png=Join-Path $folder "$scene.png"
             $inputs=@{scene=$scene;appearance="vantare-$theme";size=@(1440,900);executable=(Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash;replies=$replies} | ConvertTo-Json -Depth 30 -Compress
             $inputHash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($inputs))).ToLowerInvariant()
-            @{inputs=$inputHash;png=(Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash.ToLowerInvariant()} | ConvertTo-Json -Compress | Set-Content -LiteralPath "$png.capture.json" -Encoding utf8
+            @{inputs=$inputHash;png=(Get-CaptureReceiptHash $png)} | ConvertTo-Json -Compress | Set-Content -LiteralPath "$png.capture.json" -Encoding utf8
             $manifest=Join-Path $folder 'capture-batch.json'
             $entries=if(Test-Path -LiteralPath $manifest){@(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json)}else{@()}
             $entries=@($entries | Where-Object {$_.scene -ne $scene}) + @(@{scene=$scene;appearance="vantare-$theme";size=@(1440,900);output=$png})

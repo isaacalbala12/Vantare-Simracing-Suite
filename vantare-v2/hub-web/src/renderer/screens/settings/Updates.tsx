@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { releaseChannels } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
-import { useToastManager } from "../../ui/Layers";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Pill, SettingRow, Skeleton } from "../../ui/Data";
+import { useToastManager } from "../../ui/Layers";
 
 function channelLabel(raw: string) {
   const channel = releaseChannels.find(

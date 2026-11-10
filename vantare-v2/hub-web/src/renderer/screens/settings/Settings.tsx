@@ -158,7 +158,13 @@ export function Settings() {
     <ContentStack>
       <PageHeader
         title={t("settings.title")}
-        description={t(state.pending ? "settings.saving" : "shell.autoSave")}
+        description={t(
+          selected === "account"
+            ? "pilot.manualSave"
+            : state.pending
+              ? "settings.saving"
+              : "shell.autoSave",
+        )}
       />
       <SearchInput
         label={t("settings.search")}

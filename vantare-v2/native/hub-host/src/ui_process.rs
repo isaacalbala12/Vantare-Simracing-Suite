@@ -441,15 +441,10 @@ impl Session {
                 };
                 frame::write(pipe, &message)
             }
-            Request::SettingsDiscard {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::SettingsDiscard {
-                        value: self.settings.discard(),
-                    },
-                },
-            ),
+            Request::SettingsGet {}
+            | Request::SettingsDiscard {}
+            | Request::SettingsUpdate { .. }
+            | Request::SettingsRetry {} => self.settings_request(pipe, id, request),
             Request::WindowClose {} => self.request_close(pipe, CloseReason::Window),
             // Native notifications are a platform UI action handled by Electron.
             Request::NotificationTest {} => frame::write(
@@ -457,6 +452,19 @@ impl Session {
                 &HostToUi::Failure {
                     id,
                     error: HostError::Unsupported,
+                },
+            ),
+        }
+    }
+    fn settings_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        match request {
+            Request::SettingsDiscard {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::SettingsDiscard {
+                        value: self.settings.discard(),
+                    },
                 },
             ),
             Request::SettingsGet {} => {
@@ -484,6 +492,7 @@ impl Session {
                     Reply::SettingsRetry { value }
                 })
             }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
     fn restart_update_when(

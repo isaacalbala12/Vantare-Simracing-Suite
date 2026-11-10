@@ -107,6 +107,7 @@ export const settingsText = {
   "settings.search": "Buscar un ajuste…",
   "settings.clearSearch": "Borrar búsqueda de ajustes",
   "settings.noResults": "No hay ajustes para esta búsqueda",
+  "pilot.manualSave": "Guarda o descarta los cambios de tu perfil",
   "pilot.title": "Perfil del piloto",
   "pilot.local": "Guardado en este equipo; solo tú puedes verlo.",
   "pilot.private": "Este nombre no cambia tu cuenta ni tus permisos.",

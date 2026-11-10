@@ -127,6 +127,7 @@ fn fila_de(fila: Option<&Row>, indice: usize, foto: &Snapshot, es: bool) -> Valu
             "detalle": "",
             "vueltas": "",
             "vueltas_visible": false,
+            "vueltas_tipo": "ninguna",
             "gap": "",
             "clase": "otra",
             "lado": lado_de_hueco(indice),
@@ -136,6 +137,12 @@ fn fila_de(fila: Option<&Row>, indice: usize, foto: &Snapshot, es: bool) -> Valu
         });
     };
     let (vueltas, vueltas_visible) = vueltas_de(fila, es);
+    // Color de la píldora (vantare.rs:1216-1221): déficit «abajo», ventaja «arriba».
+    let vueltas_tipo = match fila.lap_delta {
+        Some(v) if v < 0 => "abajo",
+        Some(v) if v > 0 => "arriba",
+        _ => "ninguna",
+    };
     json!({
         "id": fila.id.0.to_string(),
         "vacio": false,
@@ -144,6 +151,7 @@ fn fila_de(fila: Option<&Row>, indice: usize, foto: &Snapshot, es: bool) -> Valu
         "detalle": detalle_de(&fila.vehicle, &fila.number),
         "vueltas": vueltas,
         "vueltas_visible": vueltas_visible,
+        "vueltas_tipo": vueltas_tipo,
         "gap": fila.rich_gap.as_ref(),
         "clase": clase_de(&fila.class),
         "lado": lado_de(fila.side),
@@ -668,6 +676,7 @@ mod tests {
             assert_eq!(fila["clase"], clase);
             assert_eq!(bool_de(&fila["vacio"]), id.starts_with("hueco-"));
             assert_eq!(fila["vueltas"], "");
+            assert_eq!(fila["vueltas_tipo"], "ninguna");
             assert!(!bool_de(&fila["vueltas_visible"]));
             assert_eq!(bool_de(&fila["jugador"]), id == "5");
             assert!(!bool_de(&fila["cerca"]));
@@ -795,6 +804,7 @@ mod tests {
         assert!(bool_de(&ingles["marca"]));
         assert_eq!(fila_por_id(&ingles, "5")["piloto"], "You");
         assert_eq!(fila_por_id(&ingles, "3")["vueltas"], "+2 L");
+        assert_eq!(fila_por_id(&ingles, "3")["vueltas_tipo"], "arriba");
         assert!(bool_de(&fila_por_id(&ingles, "3")["vueltas_visible"]));
         let trafico = modelo(
             &fotos()[1],

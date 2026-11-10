@@ -30,6 +30,8 @@
       "otra": "#b0a7a9"
     },
     "vueltas": {
+      "ninguna_fondo": "#00000000",
+      "ninguna_texto": "#00000000",
       "abajo_fondo": "#4f8ef72e",
       "abajo_texto": "#8db6ff",
       "arriba_fondo": "#f25a5a33",

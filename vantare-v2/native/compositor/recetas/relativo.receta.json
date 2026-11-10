@@ -125,8 +125,8 @@
                     "relleno": [0, "$medida.radio_pildora"],
                     "radio": "$medida.radio_pildora",
                     "tipo": "$tipo.pildora",
-                    "fondo": "$color.vueltas.abajo_fondo",
-                    "color": "$color.vueltas.abajo_texto"
+                    "fondo": "$color.vueltas.{fila.vueltas_tipo}_fondo",
+                    "color": "$color.vueltas.{fila.vueltas_tipo}_texto"
                   }
                 }
               ]

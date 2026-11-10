@@ -18,6 +18,7 @@
         "detalle": "texto",
         "vueltas": "texto",
         "vueltas_visible": "bool",
+        "vueltas_tipo": { "enum": ["ninguna", "abajo", "arriba"] },
         "gap": "texto",
         "clase": { "enum": ["hyper", "lmp", "gt", "otra"] },
         "lado": { "enum": ["delante", "jugador", "detras"] },

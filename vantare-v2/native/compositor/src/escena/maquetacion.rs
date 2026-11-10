@@ -419,7 +419,7 @@ pub(crate) fn maquetar(
         validar_modelo(modelo, &c.campos, "", 0)?;
     }
     let mut expansion = Expansion {
-        sistema: sistema,
+        sistema,
         medidor,
         tree: TaffyTree::new(),
         cantidad: 0,

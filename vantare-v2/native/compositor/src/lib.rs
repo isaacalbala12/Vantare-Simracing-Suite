@@ -8,7 +8,9 @@
 //!   Direct2D/DirectWrite, reloj del compositor, captura y recarga en caliente.
 //!
 //! El overlay no tiene lógica: el núcleo entrega un modelo ya calculado.
+
 pub mod escena;
+pub mod receta;
+
 #[cfg(windows)]
 pub mod plataforma;
-pub mod receta;

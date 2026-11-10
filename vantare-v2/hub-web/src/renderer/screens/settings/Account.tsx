@@ -29,7 +29,7 @@ export function Account() {
   }, [client, state.view, state.load]);
   const draft = state.draft;
   if (!draft)
-    return state.busy ? (
+    return state.busy || !state.error ? (
       <Skeleton label={t("settings.loading")} />
     ) : (
       <Callout

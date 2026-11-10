@@ -76,6 +76,10 @@ impl Testing {
         };
         #[cfg(not(feature = "parity-capture"))]
         let report_view = ReportView::compose(remote.read(cx).navigation_access().tester);
+        #[cfg(feature = "parity-capture")]
+        let local_open = selected_capture_diagnostic(&data);
+        #[cfg(not(feature = "parity-capture"))]
+        let local_open = false;
         let channel_label = super::model::channel_label(Some(crate::product::CHANNEL));
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
@@ -116,7 +120,7 @@ impl Testing {
             adapt: orbit::Adapt::default(),
             remote,
             tabs,
-            local_open: false,
+            local_open,
             report_view,
             expanded_receipt: None,
             observed: Observed::default(),
@@ -294,7 +298,8 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
         "testing-center-informe"
         | "testing-center-detalle"
         | "testing-center-mis-reportes"
-        | "testing-center-triage" => Some(2),
+        | "testing-center-triage"
+        | "testing-center-diagnostico" => Some(2),
         "testing-center-validar" | "testing-center-cuestionarios" => Some(1),
         "testing-center-comunidad" => Some(3),
         _ => None,
@@ -752,6 +757,16 @@ impl Testing {
 }
 
 #[cfg(any(feature = "parity-capture", test))]
+fn selected_capture_diagnostic(data_dir: &Path) -> bool {
+    selected_capture_tab(data_dir) == Some(2)
+        && data_dir
+            .parent()
+            .and_then(Path::file_name)
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with("-testing-center-diagnostico"))
+}
+
+#[cfg(any(feature = "parity-capture", test))]
 fn selected_capture_triage(data_dir: &Path) -> bool {
     selected_capture_tab(data_dir) == Some(2)
         && data_dir
@@ -797,6 +812,17 @@ mod capture_view_tests {
     #[test]
     fn capture_list_isolated_from_composer_and_from_other_processes() {
         let pid = std::process::id();
+        let diagnostic = std::env::temp_dir()
+            .join(format!("{pid}-0-testing-center-diagnostico"))
+            .join("data");
+        assert!(super::selected_capture_diagnostic(&diagnostic));
+        let other_diagnostic = std::env::temp_dir()
+            .join(format!(
+                "{}-0-testing-center-diagnostico",
+                pid.wrapping_add(1)
+            ))
+            .join("data");
+        assert!(!super::selected_capture_diagnostic(&other_diagnostic));
         let triage = std::env::temp_dir()
             .join(format!("{pid}-0-testing-center-triage"))
             .join("data");

@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][string]$Executable,
     [Parameter(Mandatory)][string]$QaRoot,
     [Parameter(Mandatory)][string]$EvidenceRoot,
-    [ValidateSet('resumen','cuestionarios','comunidad','triage')][string[]]$Tabs=@('resumen','cuestionarios','comunidad','triage')
+    [ValidateSet('resumen','cuestionarios','comunidad','triage','diagnostico')][string[]]$Tabs=@('resumen','cuestionarios','comunidad','triage')
 )
 $ErrorActionPreference='Stop'
 function Get-CaptureReceiptHash([string]$Path){

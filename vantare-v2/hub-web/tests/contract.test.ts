@@ -180,3 +180,39 @@ describe("layout patches are closed and typed", () => {
       expect(isUiMessage(request(patch))).toBe(false);
   });
 });
+
+describe("privacy wire boundary", () => {
+  it("rejects unknown fields, malformed revisions and non-boolean choices", () => {
+    const valid = {
+      kind: "request",
+      id: 1,
+      request: {
+        method: "privacy.update",
+        patch: { field: "crashes", value: true },
+        baseRevision: "0".repeat(64),
+      },
+    };
+    expect(isUiMessage(valid)).toBe(true);
+    for (const patch of [
+      { field: "unknown", value: true },
+      { field: "crashes", value: "true" },
+      { field: "crashes", value: true, extra: true },
+    ])
+      expect(
+        isUiMessage({ ...valid, request: { ...valid.request, patch } }),
+      ).toBe(false);
+    expect(
+      isUiMessage({
+        ...valid,
+        request: { ...valid.request, baseRevision: "bad" },
+      }),
+    ).toBe(false);
+    expect(
+      isUiMessage({
+        kind: "request",
+        id: 1,
+        request: { method: "mail.set", consent: true, source: "arbitrary" },
+      }),
+    ).toBe(false);
+  });
+});

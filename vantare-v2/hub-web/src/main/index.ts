@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   type IpcMainEvent,
   ipcMain,
@@ -13,9 +14,13 @@ import {
   protocol,
   screen,
   session,
+  shell,
 } from "electron";
 import type { SettingsView } from "../contract/generated/contract";
-import { HOST_PROTOCOL_VERSION } from "../contract/generated/contract";
+import {
+  HOST_PROTOCOL_VERSION,
+  privacyPolicyUrl,
+} from "../contract/generated/contract";
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
@@ -197,13 +202,53 @@ async function start() {
       return;
     disconnect?.();
     const { port1, port2 } = new MessageChannelMain();
-    const unsubscribe = host.listen((message) => port1.postMessage(message));
+    let portAlive = true;
+    const copies = new Set<number>();
+    const unsubscribe = host.listen((message) => {
+      if (
+        message.kind === "response" &&
+        message.result.method === "diagnostics.copy" &&
+        copies.delete(message.id)
+      ) {
+        try {
+          clipboard.writeText(message.result.text);
+        } catch {
+          port1.postMessage({
+            kind: "failure",
+            id: message.id,
+            error: { kind: "io" },
+          });
+          return;
+        }
+      }
+      if (message.kind === "failure") copies.delete(message.id);
+      port1.postMessage(message);
+    });
     disconnect = () => {
       unsubscribe();
       port1.close();
+      copies.clear();
+      portAlive = false;
     };
     port1.on("message", ({ data }: { data: unknown }) => {
       if (!compatible || !isRendererMessage(data) || !bounded(data)) return;
+      if (data.kind === "request" && data.request.method === "privacy.policy") {
+        void shell
+          .openExternal(privacyPolicyUrl)
+          .then(
+            () => true,
+            () => false,
+          )
+          .then((accepted) => {
+            if (portAlive)
+              port1.postMessage({
+                kind: "response",
+                id: data.id,
+                result: { method: "privacy.policy", accepted },
+              });
+          });
+        return;
+      }
       if (
         data.kind === "request" &&
         data.request.method === "notifications.test"
@@ -218,6 +263,8 @@ async function start() {
         });
         return;
       }
+      if (data.kind === "request" && data.request.method === "diagnostics.copy")
+        copies.add(data.id);
       if (QA_DRIVER && data.kind === "closeAnswer" && !data.allow)
         console.error("HUB_QA_CLOSE_BLOCKED");
       if (data.kind === "closeAnswer" && data.allow)

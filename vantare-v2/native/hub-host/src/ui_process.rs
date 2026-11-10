@@ -244,7 +244,14 @@ fn settings_response(
     };
     frame::write(pipe, &message)
 }
+enum RemoteKind {
+    MailGet,
+    MailSet,
+}
 struct Session {
+    privacy: crate::privacy::State,
+    diagnostic: crate::diagnostics::Observed,
+    remote: Option<(u32, RemoteKind)>,
     updates: Option<crate::updates::Reader>,
     subscriptions: std::collections::BTreeSet<Topic>,
     last_updates: Option<Instant>,
@@ -282,6 +289,28 @@ impl Session {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
+        if let Some((id, result)) = self.core.reply() {
+            let result = match (self.remote.take(), result) {
+                (
+                    Some((expected, kind)),
+                    Ok(vantare_ipc::services_protocol::Reply::MailConsent { consent, .. }),
+                ) if expected == id => {
+                    let value = crate::privacy::MailView { consent };
+                    Ok(match kind {
+                        RemoteKind::MailGet => Reply::MailGet { value },
+                        RemoteKind::MailSet => Reply::MailSet { value },
+                    })
+                }
+                (_, Err(error)) => Err(error),
+                _ => Err(HostError::Denied),
+            };
+            self.respond(
+                pipe,
+                id,
+                result,
+                crate::diagnostics::DiagnosticSection::Services,
+            )?;
+        }
         if self.subscriptions.contains(&Topic::Updates)
             && self
                 .last_updates
@@ -326,11 +355,24 @@ impl Session {
             self.last = Some(self.current.clone());
         }
         Ok(self.closing.is_none_or(|(reason, time)| {
-            reason != CloseReason::ControlEof || time.elapsed() <= Duration::from_secs(2)
+            !matches!(reason, CloseReason::ControlEof | CloseReason::Live)
+                || time.elapsed() <= Duration::from_secs(2)
         }))
     }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::PrivacyPolicy {} => self.respond(
+                pipe,
+                id,
+                Err(HostError::Unsupported),
+                crate::diagnostics::DiagnosticSection::Privacy,
+            ),
+            Request::PrivacyGet {}
+            | Request::PrivacyUpdate { .. }
+            | Request::DiagnosticsGet {}
+            | Request::DiagnosticsPrepare {}
+            | Request::DiagnosticsCopy {} => self.local_request(pipe, id, request),
+            Request::MailGet {} | Request::MailSet { .. } => self.mail_request(pipe, id, request),
             Request::UpdatesGet {} => frame::write(
                 pipe,
                 &HostToUi::Response {
@@ -435,6 +477,81 @@ impl Session {
         }
         Ok(())
     }
+    fn respond(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        result: Result<Reply, HostError>,
+        section: crate::diagnostics::DiagnosticSection,
+    ) -> io::Result<()> {
+        let message = match result {
+            Ok(result) => HostToUi::Response { id, result },
+            Err(error) => {
+                self.diagnostic.note(section, &error);
+                HostToUi::Failure { id, error }
+            }
+        };
+        frame::write(pipe, &message)
+    }
+    fn local_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        let protected = self.settings.view().protected;
+        let result = match request {
+            Request::PrivacyGet {} => Ok(Reply::PrivacyGet {
+                value: self.privacy.refresh(),
+            }),
+            Request::PrivacyUpdate {
+                patch,
+                base_revision,
+            } => self
+                .privacy
+                .update(*patch, base_revision)
+                .map(|value| Reply::PrivacyUpdate { value }),
+            Request::DiagnosticsGet {} => Ok(Reply::DiagnosticsGet {
+                value: self.diagnostic.view(&self.current, protected),
+            }),
+            Request::DiagnosticsPrepare {} => self
+                .diagnostic
+                .prepare(&self.current, protected)
+                .map(|value| Reply::DiagnosticsPrepare { value }),
+            Request::DiagnosticsCopy {} => self
+                .diagnostic
+                .copy()
+                .map(|text| Reply::DiagnosticsCopy { text }),
+            _ => Err(HostError::Unsupported),
+        };
+        self.respond(
+            pipe,
+            id,
+            result,
+            crate::diagnostics::DiagnosticSection::Privacy,
+        )
+    }
+    fn mail_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        use vantare_ipc::services_protocol::{Command, MailSource};
+        let (kind, command) = match request {
+            Request::MailGet {} => (RemoteKind::MailGet, Command::MailConsentGet),
+            Request::MailSet { consent } => (
+                RemoteKind::MailSet,
+                Command::MailConsentSet {
+                    consent: *consent,
+                    source: MailSource::Settings,
+                },
+            ),
+            _ => return Err(io::ErrorKind::InvalidInput.into()),
+        };
+        match self.core.request(id, command) {
+            Ok(()) => {
+                self.remote = Some((id, kind));
+                Ok(())
+            }
+            Err(error) => self.respond(
+                pipe,
+                id,
+                Err(error),
+                crate::diagnostics::DiagnosticSection::Services,
+            ),
+        }
+    }
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
         match message {
             UiToHost::Hello { version } => {
@@ -508,9 +625,9 @@ impl Session {
                 return Ok(false);
             }
             UiToHost::CloseAnswer { allow: false }
-                if self
-                    .closing
-                    .is_some_and(|(reason, _)| reason != CloseReason::ControlEof) =>
+                if self.closing.is_some_and(|(reason, _)| {
+                    matches!(reason, CloseReason::Window | CloseReason::Restart)
+                }) =>
             {
                 self.closing = None;
             }
@@ -562,6 +679,9 @@ pub fn run(args: &Args) -> io::Result<u8> {
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "settings-loaded")?;
     let mut session = Session {
+        privacy: crate::privacy::State::open(&args.data),
+        diagnostic: crate::diagnostics::Observed::default(),
+        remote: None,
         updates: None,
         subscriptions: std::collections::BTreeSet::new(),
         last_updates: None,

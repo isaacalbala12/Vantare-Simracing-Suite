@@ -1,0 +1,22 @@
+{
+  "version": "0.0.0",
+  "os": "windows",
+  "arch": "x86_64",
+  "core": {
+    "photos": "unavailable",
+    "rights": "unavailable",
+    "services": "unavailable",
+    "access": {
+      "verified": false,
+      "blocked": false,
+      "tester": false,
+      "calendar": false,
+      "engineer": false,
+      "strategy": false
+    },
+    "live": false
+  },
+  "settingsProtected": false,
+  "events": [],
+  "report": null
+}

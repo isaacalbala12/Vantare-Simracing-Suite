@@ -7,6 +7,7 @@ import type {
   Topic,
   UiToHost,
 } from "../../contract/generated/contract";
+import { requestTimeoutMs } from "../../contract/generated/contract";
 import { bounded, isHostMessage } from "../../contract/validation";
 import { createMockHost, helloForScene } from "../../mock/host";
 export class HostFailure extends Error {
@@ -20,6 +21,9 @@ export class Client {
   private closeAnswered = false;
   private closeSequence = 0;
   private closeReason: CloseReason = "window";
+  private extraGuards = new Set<
+    (reason: CloseReason) => boolean | Promise<boolean>
+  >();
   private closeGuard?: (reason: CloseReason) => boolean | Promise<boolean>;
   private pending = new Map<
     number,
@@ -52,6 +56,13 @@ export class Client {
         this.closing = true;
         this.closeAnswered = false;
         this.closeReason = data.reason;
+        if (data.reason === "live") {
+          for (const pending of this.pending.values()) {
+            clearTimeout(pending.timer);
+            pending.reject(new HostFailure({ kind: "busy" }));
+          }
+          this.pending.clear();
+        }
         this.closeSequence++;
         this.answerWhenIdle();
       }
@@ -116,16 +127,28 @@ export class Client {
   setCloseGuard(guard: (reason: CloseReason) => boolean | Promise<boolean>) {
     this.closeGuard = guard;
   }
+  addCloseGuard(guard: (reason: CloseReason) => boolean | Promise<boolean>) {
+    this.extraGuards.add(guard);
+    return () => {
+      this.extraGuards.delete(guard);
+    };
+  }
   private answerWhenIdle() {
     if (!this.closing || this.closeAnswered || this.pending.size > 0) return;
     this.closeAnswered = true;
     const sequence = this.closeSequence;
     const reason = this.closeReason;
     void Promise.resolve()
-      .then(() =>
-        reason === "controlEof" ? true : (this.closeGuard?.(reason) ?? true),
-      )
-      .catch(() => false)
+      .then(async () => {
+        if (reason === "controlEof") return true;
+        const guards = [
+          ...(this.closeGuard ? [this.closeGuard] : []),
+          ...this.extraGuards,
+        ];
+        const answers = await Promise.all(guards.map((guard) => guard(reason)));
+        return reason === "live" || answers.every(Boolean);
+      })
+      .catch(() => reason === "live")
       .then((allow) => {
         if (sequence !== this.closeSequence) return;
         if (!allow && reason !== "controlEof") {
@@ -145,7 +168,7 @@ export class Client {
         this.pending.delete(id);
         this.answerWhenIdle();
         reject(new HostFailure({ kind: "coreUnavailable" }));
-      }, 45000);
+      }, requestTimeoutMs);
       this.pending.set(id, { resolve, reject, timer });
       this.send({ kind: "request", id, request });
     });
@@ -170,6 +193,7 @@ export class Client {
     }
     this.pending.clear();
     this.listeners.clear();
+    this.extraGuards.clear();
     this.port.close();
     this.cleanup();
   }

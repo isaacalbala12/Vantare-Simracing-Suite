@@ -4,6 +4,29 @@ import { isRendererMessage, mockAllowed } from "../src/main/security";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 
 describe("typed client with an isolated simulated host", () => {
+  it("Live cancels an outstanding request and overrides a failing guard", async () => {
+    window.history.replaceState(null, "", "/?escena=cierre-live-pendiente");
+    const client = await Client.connect();
+    try {
+      client.start();
+      client.addCloseGuard(() => {
+        throw new Error("failed save");
+      });
+      const acknowledged = new Promise<boolean>((resolve) =>
+        client.listen((message) => {
+          if (message.kind === "event" && message.event.topic === "simStatus")
+            resolve(message.event.live);
+        }),
+      );
+      await expect(
+        client.request({ method: "diagnostics.prepare" }),
+      ).rejects.toEqual(new HostFailure({ kind: "busy" }));
+      expect(await acknowledged).toBe(true);
+    } finally {
+      client.close();
+      window.history.replaceState(null, "", "/");
+    }
+  });
   it("resolves a correlated request through a real MessageChannel and cleans up", async () => {
     const client = await Client.connect();
     try {

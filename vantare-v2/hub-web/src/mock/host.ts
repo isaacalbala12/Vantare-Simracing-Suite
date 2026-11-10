@@ -1,5 +1,7 @@
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
+import diagnosticFixture from "../../fixtures/diagnostics-base.json";
+import privacyFixture from "../../fixtures/privacy-base.json";
 import settingsScene from "../../fixtures/settings-base.json";
 import protectedScene from "../../fixtures/settings-protected.json";
 import shortcuts from "../../fixtures/shortcuts-base.json";
@@ -19,7 +21,6 @@ export function helloForScene(name?: string): typeof hello {
     ? { ...hello, version: HOST_PROTOCOL_VERSION + 1 }
     : hello;
 }
-const core = coreScene as CoreStatus;
 function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
   switch (patch.field) {
     case "performance":
@@ -47,6 +48,36 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
   }
 }
 export function createMockHost(sceneName = "ajustes-base") {
+  const core = structuredClone(coreScene) as CoreStatus;
+  if (sceneName === "privacidad-mail") core.services = "connected";
+  let privacy = structuredClone(
+    privacyFixture,
+  ) as import("../contract/generated/contract").PrivacyView;
+  let diagnostic = structuredClone(
+    diagnosticFixture,
+  ) as import("../contract/generated/contract").DiagnosticView;
+  let consent = false;
+  let privacyRevision = 0;
+  let privacyConflict = false;
+  if (sceneName === "privacidad-protegida") privacy.protected = true;
+  if (sceneName === "diagnostico-observado")
+    diagnostic.events = [
+      { section: "services", code: "unavailable", sequence: 1 },
+      { section: "privacy", code: "conflict", sequence: 2 },
+    ];
+  function note(
+    section: import("../contract/generated/contract").DiagnosticSection,
+    code: import("../contract/generated/contract").DiagnosticCode,
+  ) {
+    diagnostic = {
+      ...diagnostic,
+      events: [
+        ...diagnostic.events,
+        { section, code, sequence: diagnostic.events.length + 1 },
+      ],
+    };
+  }
+
   let settings = structuredClone(
     sceneName === "ajustes-protegidos" ? protectedScene : settingsScene,
   ) as SettingsView;
@@ -70,6 +101,11 @@ export function createMockHost(sceneName = "ajustes-base") {
   }
   return (value: unknown): HostToUi | null => {
     if (!isUiMessage(value)) return null;
+    if (value.kind === "closeAnswer" && sceneName === "cierre-live-pendiente")
+      return {
+        kind: "event",
+        event: { topic: "simStatus", live: value.allow },
+      };
     if (value.kind === "hello")
       return value.version === HOST_PROTOCOL_VERSION
         ? helloForScene(sceneName)
@@ -91,6 +127,106 @@ export function createMockHost(sceneName = "ajustes-base") {
     if (value.kind !== "request") return null;
     const { id, request } = value;
     switch (request.method) {
+      case "privacy.policy":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, accepted: false },
+        };
+      case "privacy.get":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: privacy },
+        };
+      case "privacy.update": {
+        if (privacy.protected)
+          return { kind: "failure", id, error: { kind: "protected" } };
+        if (sceneName === "privacidad-ocupada") {
+          note("privacy", "busy");
+          return { kind: "failure", id, error: { kind: "busy" } };
+        }
+        if (
+          request.baseRevision !== privacy.revision ||
+          (sceneName === "privacidad-conflicto" && !privacyConflict)
+        ) {
+          privacyConflict = true;
+          privacy = {
+            ...privacy,
+            usage: true,
+            usageDecided: true,
+            revision: (++privacyRevision).toString(16).padStart(64, "0"),
+          };
+          note("privacy", "conflict");
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "privacyConflict", current: privacy },
+          };
+        }
+        privacy = {
+          ...privacy,
+          [request.patch.field]: request.patch.value,
+          crashesDecided:
+            privacy.crashesDecided || request.patch.field === "crashes",
+          usageDecided: privacy.usageDecided || request.patch.field === "usage",
+          revision: (++privacyRevision).toString(16).padStart(64, "0"),
+        };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: privacy },
+        };
+      }
+      case "mail.get":
+        return core.services === "connected"
+          ? {
+              kind: "response",
+              id,
+              result: { method: request.method, value: { consent } },
+            }
+          : { kind: "failure", id, error: { kind: "coreUnavailable" } };
+      case "mail.set": {
+        if (core.services !== "connected")
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        consent = request.consent;
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: { consent } },
+        };
+      }
+      case "diagnostics.get":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: diagnostic },
+        };
+      case "diagnostics.prepare": {
+        if (sceneName === "cierre-live-pendiente")
+          return { kind: "closeRequested", reason: "live" };
+        diagnostic = {
+          ...diagnostic,
+          report: JSON.stringify({
+            schemaVersion: 1,
+            observed: { ...diagnostic, report: null },
+          }),
+        };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: diagnostic },
+        };
+      }
+      case "diagnostics.copy":
+        return diagnostic.report
+          ? {
+              kind: "response",
+              id,
+              result: { method: request.method, text: diagnostic.report },
+            }
+          : { kind: "failure", id, error: { kind: "unsupported" } };
+
       case "updates.get":
         if (sceneName === "actualizacion-error")
           return { kind: "failure", id, error: { kind: "io" } };

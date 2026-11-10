@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "sha": "d0985241e98e19cae7860a276c66e1ae5fadd1a4",
+    "sha": null,
     "date": "2026-11-10T04:44:33.3186059+01:00",
     "widgets": 4,
     "phases": false,
@@ -20,26 +20,24 @@
       }
     ],
     "cpu_unit": "seconds across all process threads; 1 CPU second / wall second = one logical core",
-    "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account"
+    "scope": "Raw recorded cadence through core and production IPC; core CPU excluded; no account",
+    "legacy_collection_sha": "d0985241e98e19cae7860a276c66e1ae5fadd1a4",
+    "compiled_sha_status": "Unknown: historical dev executables did not embed compilation provenance; excluded from baseline"
   },
   "steady_seconds": 56.5747296,
-  "steady_cpu_seconds": 0.015625,
-  "steady_logical_cores": 0.00027618337923085716,
   "steady_cpu_cycles": 14966286335,
   "steady_cpu_cycles_per_frame": null,
   "steady_screen_frames": 0,
   "steady_present_calls": null,
   "frame_counter": "disabled",
-  "steady_cpu_ms_per_frame": null,
-  "steady_cpu_ms_per_screen_frame": null,
   "mean_private_mib": 80.87081962719299,
   "peak_private_mib": 104.02734375,
   "reported_frames_full_run": 0,
-  "cpu_ms_per_frame_full_run": null,
   "notifications_full_run": {},
   "widget_paints_full_run": {},
   "changed_widgets_per_changed_snapshot": null,
   "data_widget_paints_per_painted_snapshot": null,
   "stages_full_run": {},
-  "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI."
+  "limits": "steady CPU/frame uses common QPC endpoints, excludes warmup/drain. Full-run CPU/frame includes startup/idle. Stages overlap: do not sum. wall_ns is elapsed time, cycles are not CPU nanoseconds. layout is widget planning; gpui_layout_compute brackets root layout plus framework overhead. frame_counter identifies DXGI calls or the legacy Screen proxy, whose total must match Present; neither proves physical display presents. Changed widgets counts data notifications; animations can repaint independently; counts are coalesced by GPUI.",
+  "measurement_status": "solo dev; not a baseline; invalid for engine performance comparisons"
 }

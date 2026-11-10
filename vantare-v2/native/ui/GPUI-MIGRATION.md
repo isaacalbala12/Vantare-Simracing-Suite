@@ -1,3 +1,5 @@
+> SOLO DEV: todas las tablas de rendimiento y conclusiones comparativas de este documento quedan retiradas como evidencia. La revisión de #2001 exige repetirlas en Release con cinco pasadas y el método corregido. Las pruebas funcionales y visuales conservan su resultado independiente.
+
 # Kit / Pre publicados — VANTA-139
 
 ## Resolución y licencia comprobadas

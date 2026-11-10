@@ -14,7 +14,10 @@ export function helloForScene(name?: string): typeof hello {
     ? { ...hello, version: HOST_PROTOCOL_VERSION + 1 }
     : hello;
 }
-export function createMockHost(sceneName = "ajustes-base") {
+export function createMockHost(
+  sceneName = "ajustes-base",
+  emit: (message: HostToUi) => void = () => {},
+) {
   const visual =
     /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app)$/.exec(
       sceneName,
@@ -24,6 +27,7 @@ export function createMockHost(sceneName = "ajustes-base") {
 
   const notes: MockContext["notes"] = [];
   const context: MockContext = {
+    emit,
     sceneName,
     visual,
     core,

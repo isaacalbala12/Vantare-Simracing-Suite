@@ -24,6 +24,7 @@ import {
 } from "../src/renderer/app/SettingsState";
 import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
+import { WindowControls } from "../src/renderer/app/WindowControls";
 import { Client } from "../src/renderer/bridge/client";
 import { t } from "../src/renderer/i18n/es";
 import { Account } from "../src/renderer/screens/settings/Account";
@@ -591,6 +592,20 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
         ([value]) => value.method === "diagnostics.copy",
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe("window controls over the simulated bridge", () => {
+  it("reflects maximize/restore and closes through the existing client guard", async () => {
+    const close = vi.spyOn(Client.prototype, "closeWindow");
+    const hook = mount("ajustes-base", <WindowControls />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Maximizar" }));
+    await user.click(await screen.findByRole("button", { name: "Restaurar" }));
+    await screen.findByRole("button", { name: "Maximizar" });
+    await user.click(screen.getByRole("button", { name: "Cerrar ventana" }));
+    expect(close).toHaveBeenCalledOnce();
   });
 });
 

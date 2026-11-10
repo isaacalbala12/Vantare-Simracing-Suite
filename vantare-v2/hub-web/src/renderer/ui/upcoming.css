@@ -1,0 +1,173 @@
+.v-upcoming {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--text-1);
+  font-family: var(--font-sans);
+}
+.v-upcoming p,
+.v-upcoming h1,
+.v-upcoming h2,
+.v-upcoming h3 {
+  margin: 0;
+}
+.v-upcoming-intro,
+.v-upcoming-features section,
+.v-upcoming-roadmap {
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--grad-neo);
+  padding: 20px;
+  box-shadow: inset 0 1px 0 var(--neo-light);
+}
+.v-upcoming-intro {
+  flex: none;
+  min-height: 132px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.v-upcoming-intro > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.v-upcoming-intro svg {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  color: var(--accent-bright);
+}
+.v-upcoming-intro h1 {
+  font: 600 30px / 45px var(--font-sans);
+}
+.v-upcoming-intro p {
+  font: 400 16px / 24px var(--font-sans);
+  color: var(--text-2);
+}
+.v-upcoming-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  font: 400 12px / 18px var(--font-sans);
+  width: max-content;
+  box-sizing: border-box;
+}
+.v-upcoming > h2,
+.v-upcoming-features h3 {
+  font: 600 18px / 27px var(--font-sans);
+}
+.v-upcoming-features {
+  display: flex;
+  gap: 20px;
+  flex: none;
+}
+.v-upcoming-features section {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.v-upcoming-features svg {
+  width: 40px;
+  height: 40px;
+  color: var(--accent-bright);
+}
+.v-upcoming-features p,
+.v-upcoming-roadmap p {
+  font: 400 14px / 23px var(--font-sans);
+  color: var(--text-2);
+}
+.v-upcoming-roadmap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+.v-upcoming-roadmap > h2 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font: 600 15px / 18px var(--font-display);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
+.v-upcoming-preview {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+.v-upcoming-preview > svg {
+  width: 100px;
+  height: 100px;
+  color: var(--text-3);
+}
+.v-upcoming-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-upcoming-preview h3 {
+  font: 600 28px / 42px var(--font-sans);
+}
+.v-upcoming-roadmap > button {
+  font: 500 14px / 20px var(--font-sans);
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--text-1);
+  cursor: pointer;
+}
+@media (max-width: 1099px) {
+  .v-upcoming-features {
+    flex-wrap: wrap;
+  }
+  .v-upcoming-features section {
+    flex-basis: 240px;
+  }
+  .v-upcoming {
+    height: auto;
+  }
+  .v-upcoming-roadmap {
+    min-height: 320px;
+  }
+}
+
+.v-upcoming-roadmap > h2 svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+
+.v-upcoming-intro,
+.v-upcoming-features section,
+.v-upcoming-roadmap {
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    0 12px 28px color-mix(in srgb, var(--bg-window) 35%, transparent);
+}
+[data-scheme="light"] .v-upcoming-intro,
+[data-scheme="light"] .v-upcoming-features section,
+[data-scheme="light"] .v-upcoming-roadmap {
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    0 12px 28px color-mix(in srgb, var(--text-1) 35%, transparent);
+}

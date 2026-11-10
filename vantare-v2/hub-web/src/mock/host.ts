@@ -49,7 +49,10 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
   }
 }
 export function createMockHost(sceneName = "ajustes-base") {
-  const visual = /^visual-(dark|light):(ajustes-con-diseno)$/.exec(sceneName);
+  const visual =
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base)$/.exec(
+      sceneName,
+    );
   sceneName = visual?.[2] ?? sceneName;
   const core = structuredClone(coreScene) as CoreStatus;
   let pilot = structuredClone(

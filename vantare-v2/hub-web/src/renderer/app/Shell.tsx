@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useRef } from "react";
 import { defaultZoom } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { es, t } from "../i18n/es";
+import { upcoming } from "../i18n/upcoming";
 import { Button, IconButton } from "../ui/Button";
 import { Avatar, Badge, Callout, Skeleton } from "../ui/Data";
 import {
@@ -25,6 +26,11 @@ import { isSection, lock, navigation, visible } from "./navigation";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
 
+const Upcoming = lazy(() =>
+  import("../screens/upcoming/Upcoming").then((module) => ({
+    default: module.Upcoming,
+  })),
+);
 const Settings = lazy(() =>
   import("../screens/settings/Settings").then((module) => ({
     default: module.Settings,
@@ -46,9 +52,23 @@ export function Shell() {
     enabled: false,
   });
   const ui = useUi((state) => state);
-  const items = navigation(core.access);
+  const isUpcoming = (section: Section) =>
+    section === "strategy" || section === "engineer";
+  const items = navigation(core.access).map((item) =>
+    isUpcoming(item.id)
+      ? {
+          ...item,
+          locked: undefined,
+          label: upcoming[item.id as "strategy" | "engineer"].title,
+          badge: <Icon name="i-lock" />,
+        }
+      : item,
+  );
   function navigate(section: Section) {
-    if (visible(section, core.access) && !lock(section, core.access))
+    if (
+      isUpcoming(section) ||
+      (visible(section, core.access) && !lock(section, core.access))
+    )
       ui.navigate(section);
   }
   async function launchFavorite() {
@@ -331,30 +351,36 @@ export function Shell() {
         />
       }
       rail={
-        <ContextRail
-          label={t("shell.rail")}
-          collapsed={ui.railCollapsed}
-          onToggle={ui.toggleRail}
-          toggleLabel={t("shell.railToggle")}
-        >
-          <ContentStack>
-            <InfoList
-              items={[
-                {
-                  label: t("shell.version"),
-                  value: settings.view?.version ?? t("settings.loading"),
-                },
-                { label: t("shell.shortcuts"), value: t("shell.ctrlK") },
-                { label: t("shell.sidebar"), value: t("shell.ctrlB") },
-                { label: t("shell.railToggle"), value: t("shell.ctrlAltB") },
-                { label: t("general.zoom"), value: t("shell.ctrlZoom") },
-              ]}
-            />
-          </ContentStack>
-        </ContextRail>
+        isUpcoming(ui.section) ? null : (
+          <ContextRail
+            label={t("shell.rail")}
+            collapsed={ui.railCollapsed}
+            onToggle={ui.toggleRail}
+            toggleLabel={t("shell.railToggle")}
+          >
+            <ContentStack>
+              <InfoList
+                items={[
+                  {
+                    label: t("shell.version"),
+                    value: settings.view?.version ?? t("settings.loading"),
+                  },
+                  { label: t("shell.shortcuts"), value: t("shell.ctrlK") },
+                  { label: t("shell.sidebar"), value: t("shell.ctrlB") },
+                  { label: t("shell.railToggle"), value: t("shell.ctrlAltB") },
+                  { label: t("general.zoom"), value: t("shell.ctrlZoom") },
+                ]}
+              />
+            </ContentStack>
+          </ContextRail>
+        )
       }
     >
-      {ui.section === "settings" ? (
+      {ui.section === "strategy" || ui.section === "engineer" ? (
+        <Suspense fallback={<Skeleton label={t("settings.loading")} />}>
+          <Upcoming module={ui.section} />
+        </Suspense>
+      ) : ui.section === "settings" ? (
         <Suspense fallback={<Skeleton label={t("settings.loading")} />}>
           <Settings />
         </Suspense>

@@ -256,6 +256,7 @@ enum RemoteKind {
 }
 
 struct Session {
+    launcher_reader: crate::launcher::Reader,
     pilot: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     privacy: crate::privacy::State,
     diagnostic: crate::diagnostics::Observed,
@@ -347,6 +348,20 @@ impl Session {
             _ => Err(HostError::Denied),
         }
     }
+    fn publish_launcher(&mut self, pipe: &mut Pipe) -> io::Result<()> {
+        if let Some(value) = self.launcher_reader.changed(
+            self.subscriptions.contains(&Topic::Launcher),
+            Instant::now(),
+        ) {
+            frame::write(
+                pipe,
+                &HostToUi::Event {
+                    event: Event::Launcher { value },
+                },
+            )?;
+        }
+        Ok(())
+    }
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
             confirmation.check_confirmation()?;
@@ -355,6 +370,7 @@ impl Session {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
+        self.publish_launcher(pipe)?;
         if let Some((id, result)) = self.core.reply() {
             let result = self.service_reply(id, result);
             self.respond(
@@ -523,6 +539,9 @@ impl Session {
                     },
                 },
             ),
+            Request::LauncherGet {} | Request::LauncherLaunch { .. } => {
+                self.launcher_request(pipe, id, request)
+            }
             Request::LauncherFavorite {} => {
                 let message = match crate::favorite::launch(&self.launcher, &self.current) {
                     Ok(accepted) => HostToUi::Response {
@@ -546,6 +565,38 @@ impl Session {
                     error: HostError::Unsupported,
                 },
             ),
+        }
+    }
+    fn launcher_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
+        match request {
+            Request::LauncherGet {} => frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::LauncherGet {
+                        value: self.launcher_reader.view(),
+                    },
+                },
+            ),
+            Request::LauncherLaunch {
+                profile,
+                base_revision,
+            } => {
+                let message = match crate::launcher::launch(
+                    &self.launcher,
+                    &self.current,
+                    profile,
+                    base_revision,
+                ) {
+                    Ok(accepted) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherLaunch { accepted },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
     fn settings_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
@@ -758,6 +809,23 @@ impl Session {
             }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe {
+                topic: Topic::Launcher,
+            } => {
+                self.subscriptions.insert(Topic::Launcher);
+                let value = self.launcher_reader.view();
+                frame::write(
+                    pipe,
+                    &HostToUi::Event {
+                        event: Event::Launcher { value },
+                    },
+                )?;
+            }
+            UiToHost::Unsubscribe {
+                topic: Topic::Launcher,
+            } => {
+                self.subscriptions.remove(&Topic::Launcher);
+            }
+            UiToHost::Subscribe {
                 topic: Topic::Updates,
             } => {
                 self.subscriptions.insert(Topic::Updates);
@@ -873,6 +941,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
         },
         exit_code: 0,
         launcher: args.launcher.clone(),
+        launcher_reader: crate::launcher::Reader::new(args.launcher.clone()),
         core,
         settings,
         confirmation: ready::Ready::from_executable(&executable)?,

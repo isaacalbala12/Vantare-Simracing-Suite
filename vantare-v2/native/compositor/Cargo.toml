@@ -41,6 +41,11 @@ windows = { version = "0.62.2", features = [
 vantare-domain = { path = "../domain" }
 vantare-ipc = { path = "../ipc" }
 
+[[example]]
+name = "relativo"
+path = "examples/relativo/main.rs"
+test = true
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "warn"

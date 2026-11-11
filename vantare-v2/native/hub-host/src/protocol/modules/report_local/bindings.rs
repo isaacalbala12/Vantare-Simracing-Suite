@@ -70,6 +70,12 @@ fn append_report_local_constants(text: &mut String) {
 }
 
 fn local_report_samples() -> [Reply; 3] {
+    let mut observed = crate::diagnostics::Observed::default()
+        .view(&crate::protocol::CoreStatus::default(), false);
+    // A corpus is a fixed QA example, independent of the generator's platform.
+    observed.os = "windows".into();
+    observed.arch = "x86_64".into();
+    observed.version = "0.0.0".into();
     [
         Reply::ReportLocalPrepare {
             value: crate::report_local::prepare(
@@ -77,8 +83,7 @@ fn local_report_samples() -> [Reply; 3] {
                     module: "hub".into(),
                     ..Default::default()
                 },
-                &crate::diagnostics::Observed::default()
-                    .view(&crate::protocol::CoreStatus::default(), false),
+                &observed,
                 vec![],
             )
             .expect("local report sample"),

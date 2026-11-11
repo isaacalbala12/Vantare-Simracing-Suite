@@ -1,5 +1,6 @@
 import type { Page } from "playwright-core";
 import { homeScenes } from "./home.ts";
+import { calendarScenes } from "./calendar-scenes.ts";
 import { launcherScenes } from "./launcher.ts";
 import { notificationScenes } from "./notifications.ts";
 import { pilotScenes } from "./pilot.ts";
@@ -26,6 +27,7 @@ const settingsTabs: Record<string, string> = {
 // Each screen worker adds its own module, imported here. No fallback to another scene.
 export const visualScenes: Record<string, VisualScene> = {
   ...homeScenes,
+  ...calendarScenes,
   ...pilotScenes,
   ...privacyScenes,
   ...testingScenes,

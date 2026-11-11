@@ -47,6 +47,8 @@ public static class FirstHubMeasure {
 }
 '@
 [FirstHubMeasure]::Dpi()
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
 . (Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-bitmap.ps1')
 function Save-Window([long]$Handle,[string]$Path) {
     $size=[FirstHubMeasure]::Size($Handle)
@@ -80,7 +82,20 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
             [FirstHubMeasure]::Resize($window)
             if(-not [FirstHubMeasure]::Responsive($window)){throw 'Window did not answer WM_NULL'}
             $responsiveMs=$clock.Elapsed.TotalMilliseconds
-            @{phase='visible';app=$application.name;iteration=$iteration;pid=$process.Id;window=$window;visibleMs=$visibleMs;responsiveMs=$responsiveMs} | ConvertTo-Json -Compress | Write-Output
+            $controlProof='renderer focus verified by Playwright'
+            if($application.name -eq 'gpui') {
+                $root=[System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$window)
+                $condition=[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Empezar minimizado')
+                $controlDeadline=[Diagnostics.Stopwatch]::StartNew()
+                do {
+                    $control=$root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
+                    if($control -and $control.Current.IsEnabled){break}
+                    if($controlDeadline.Elapsed.TotalSeconds -gt 15){throw 'GPUI General control unavailable: this is not a comparable measurement'}
+                    Start-Sleep -Milliseconds 10
+                } while($true)
+                $controlProof='UIAutomation: enabled Empezar minimizado in the measured HWND'
+            }
+            @{phase='visible';app=$application.name;iteration=$iteration;pid=$process.Id;window=$window;visibleMs=$visibleMs;responsiveMs=$responsiveMs;controlProof=$controlProof} | ConvertTo-Json -Compress | Write-Output
             if([Console]::ReadLine() -ne 'ready'){throw 'Missing renderer ready acknowledgement'}
             $verifiedMs=$clock.Elapsed.TotalMilliseconds
             foreach($section in @('settings','home')) {

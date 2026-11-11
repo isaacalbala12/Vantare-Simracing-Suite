@@ -180,6 +180,7 @@ async function main() {
           environment: {
             ...environment,
             VANTARE_NATIVE_DATA_ROOT: gpui,
+            VANTARE_CAPTURE_POLICY: "ipc",
             LOCALAPPDATA: gpui,
             APPDATA: join(gpui, "roaming"),
           },
@@ -352,7 +353,16 @@ async function main() {
     assert.equal(samples.filter((event) => event.phase === "idle").length, 20);
   } finally {
     await browser?.close().catch(() => {});
-    if (driver?.exitCode === null) driver.kill();
+    if (driver?.exitCode === null && driver.pid) {
+      try {
+        execFileSync("taskkill", ["/PID", String(driver.pid), "/T", "/F"], {
+          windowsHide: true,
+          stdio: "ignore",
+        });
+      } catch {
+        driver.kill();
+      }
+    }
     for (const peer of peers) {
       peer.stdin?.end();
       if (peer.exitCode === null)

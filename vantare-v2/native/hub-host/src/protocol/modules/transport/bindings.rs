@@ -22,6 +22,7 @@ pub(crate) fn typescript() -> String {
     )
     .expect("String write");
     constants!(&mut text, "requestTimeoutMs", REQUEST_TIMEOUT_MS);
+    constants!(&mut text, "demoNameMax", crate::protocol::DEMO_NAME_LIMIT);
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {

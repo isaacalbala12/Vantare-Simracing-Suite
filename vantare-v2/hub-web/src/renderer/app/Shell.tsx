@@ -41,18 +41,8 @@ export function Shell() {
 }
 function ShellContent() {
   const host = useHost();
-  const { data: pilotName = "" } = useQuery({
-    queryKey: ["demo-pilot-name"],
-    enabled: !!host.client && host.hello?.demo === true,
-    queryFn: async () => {
-      const reply = await host.client?.request({ method: "pilot.load" });
-      if (reply?.method !== "pilot.load")
-        throw new Error("Demo identity unavailable");
-      return reply.value.fields.publicName;
-    },
-  });
-  // No account identity is exposed yet: production stays anonymous until Access.
-  const profileName = host.hello?.demo ? pilotName : "";
+  // QA identity is separate from the editable pilot draft. Production remains anonymous until Access.
+  const profileName = host.hello?.demo ? (host.hello.demoName ?? "") : "";
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);

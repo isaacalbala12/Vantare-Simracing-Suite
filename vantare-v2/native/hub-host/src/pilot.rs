@@ -1,4 +1,5 @@
 //! Editable presentation fields only. Opaque profile extensions stay in Rust.
+pub mod presentation;
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "bindings"))]

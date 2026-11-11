@@ -7,7 +7,7 @@ export function create(context: MockContext): MockHandler {
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../../contract/generated/contract").PilotView;
-  if (context.visual) pilot.fields.publicName = visualPilot.publicName;
+  if (context.visual) pilot.fields = structuredClone(visualPilot);
   let pilotConflicted = false;
   if (sceneName.startsWith("cuenta-") && sceneName !== "cuenta-desconectada")
     core.services = "connected";

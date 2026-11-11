@@ -2,11 +2,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
-import { seriesHistory } from "../src/renderer/screens/calendar/series";
+import {
+  seriesHistory,
+  slotGroups,
+} from "../src/renderer/screens/calendar/series";
 import { CalendarSeriesView } from "../src/renderer/ui/CalendarSeriesView";
 
 const series = fixture.series.find((s) => s.recurrence.kind === "interval");
 if (!series) throw new Error("fixture must include a daily series");
+const seriesId = series.id;
 afterEach(cleanup);
 const from = Date.parse(fixture.validFrom),
   until = Date.parse(fixture.validUntil);
@@ -39,7 +43,7 @@ it("counts only this series inside the published week, with GPUI integer roundin
     mean: "—",
   });
 });
-function view(id = series.id) {
+function view(id = seriesId) {
   const onBack = vi.fn(),
     onFollow = vi.fn(),
     onDetail = vi.fn();
@@ -96,4 +100,18 @@ it("offers a way back if a refreshed publication removes the selected series", (
   expect(screen.queryByText("Band controls")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Volver" }));
   expect(v.onBack).toHaveBeenCalledOnce();
+});
+
+it("keeps a post-midnight departure with the previous race day until 03:00", () => {
+  const groups = slotGroups(
+    [
+      "2026-10-08T22:00:00Z",
+      "2026-10-09T02:30:00Z",
+      "2026-10-09T03:00:00Z",
+    ].map(Date.parse),
+    Date.parse("2026-10-08T12:00:00Z"),
+    true,
+  );
+  expect(groups.map((group) => group.label)).toEqual(["hoy", "mañana"]);
+  expect(groups.map((group) => group.starts.length)).toEqual([2, 1]);
 });

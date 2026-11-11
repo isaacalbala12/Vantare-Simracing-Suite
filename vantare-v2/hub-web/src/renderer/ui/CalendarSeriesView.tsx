@@ -16,8 +16,10 @@ import {
 import { starts } from "../screens/calendar/schedule";
 import {
   type CalendarRun,
+  relativeDay,
   seriesHistory,
   seriesRules,
+  slotGroups,
 } from "../screens/calendar/series";
 import { Button } from "./Button";
 import {
@@ -55,6 +57,7 @@ export function CalendarSeriesView({
   alertControls,
   rotation = [],
   runs = [],
+  updated = 0,
   onBack,
   onSeries,
   onFollow,
@@ -74,6 +77,7 @@ export function CalendarSeriesView({
   alertControls: ReactNode;
   rotation?: readonly { from: number; track: string }[];
   runs?: readonly CalendarRun[];
+  updated?: number;
   onBack: () => void;
   onSeries: (id: string) => void;
   onFollow: (followed: boolean) => void;
@@ -95,6 +99,7 @@ export function CalendarSeriesView({
     isDaily = daily(series);
   const upcoming = starts(schedule, series, now, until, limit),
     all = starts(schedule, series, from, until, limit);
+  const groups = slotGroups(all, now, utc);
   const first = upcoming[0] ?? all[0],
     band = alerts.bands.find((b) => b.seriesId === seriesId);
   const every = series.recurrence.intervalMinutes,
@@ -145,7 +150,12 @@ export function CalendarSeriesView({
                 ? text.daily(every)
                 : series.eventKind === "special"
                   ? text.special
-                  : text.weekly}
+                  : groups.length
+                    ? text.weeklyRange(
+                        datePart(groups[0].day, "weekday", utc),
+                        datePart(groups[groups.length - 1].day, "weekday", utc),
+                      )
+                    : text.weekly}
             </span>
           </div>
           <h2>{series.name}</h2>
@@ -186,7 +196,7 @@ export function CalendarSeriesView({
         <section className="v-calendar-serie-card v-calendar-serie-outings">
           <Heading
             title={isDaily ? text.outings : text.slots}
-            detail={utc ? "UTC" : zoneLabel(now, true)}
+            detail={`${isDaily ? "" : `${text.slotHint}${calendarText.separator}`}${utc ? "UTC" : zoneLabel(now, true)}`}
           />
           {isDaily ? (
             <>
@@ -277,17 +287,26 @@ export function CalendarSeriesView({
             </>
           ) : (
             <div className="v-calendar-serie-fixed">
-              {all.map((at) => (
-                <Button
-                  key={at}
-                  data-past={at < now || undefined}
-                  data-alert={
-                    alertAt(schedule, series, at, alerts, limit) || undefined
-                  }
-                  onClick={() => onSlot(seriesId, at)}
-                >
-                  {datePart(at, "weekday", utc)} {clock(at, utc)}
-                </Button>
+              {groups.map((group) => (
+                <div key={group.day} className="v-calendar-serie-fixed-day">
+                  <strong>{group.label}</strong>
+                  <div>
+                    {group.starts.map((at) => (
+                      <Button
+                        key={at}
+                        data-past={at < now || undefined}
+                        data-alert={
+                          alertAt(schedule, series, at, alerts, limit) ||
+                          undefined
+                        }
+                        data-next={at === first || undefined}
+                        onClick={() => onSlot(seriesId, at)}
+                      >
+                        {clock(at, utc)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -346,6 +365,15 @@ export function CalendarSeriesView({
           <footer>
             {series.source === "racecontrol" ? text.fallback : text.official}
             {calendarText.separator}
+            {updated > 0 && (
+              <>
+                {text.updated(
+                  relativeDay(civilDay(updated * 1000, 0, utc), now, utc),
+                  clock(updated * 1000, utc),
+                )}
+                {calendarText.separator}
+              </>
+            )}
             {text.simulator}{" "}
             <strong>
               {text.multiplayer}

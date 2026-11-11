@@ -345,3 +345,29 @@
   padding: 80px 24px;
   text-align: center;
 }
+.v-calendar-serie-fixed-day {
+  display: flex;
+  width: 100%;
+  align-items: start;
+  gap: 12px;
+}
+.v-calendar-serie-fixed-day > strong {
+  width: 64px;
+  flex: none;
+  padding-top: 7px;
+  color: var(--text-3);
+  font: 500 10.5px / 14px var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.v-calendar-serie-fixed-day > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v-calendar-serie-fixed .v-button[data-past] {
+  opacity: 0.45;
+}
+.v-calendar-serie-fixed .v-button[data-next] {
+  border-color: var(--text-1);
+}

@@ -1,5 +1,8 @@
 use super::{Event, HostError, HostToUi, Pipe, Reply, Request, Session, Topic, frame, io};
 fn access(session: &Session) -> Option<vantare_ipc::control::CatalogAccess> {
+    if !session.current.access.verified || session.current.access.blocked {
+        return None;
+    }
     #[cfg(windows)]
     {
         session.core.catalog()

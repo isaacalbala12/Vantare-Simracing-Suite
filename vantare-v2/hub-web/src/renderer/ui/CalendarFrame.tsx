@@ -16,8 +16,8 @@ export function CalendarFrame({
   subtitle: string;
   count: number;
   busy: boolean;
-  onAlerts: () => void;
-  onExport: () => void;
+  onAlerts?: () => void;
+  onExport?: () => void;
   onRefresh: () => void;
   children: ReactNode;
 }) {
@@ -29,14 +29,14 @@ export function CalendarFrame({
           <p>{subtitle}</p>
         </div>
         <div className="v-calendar-header-actions">
-          <Button onClick={onAlerts}>
+          <Button onClick={onAlerts} disabled={!onAlerts}>
             <Icon name="bell-fill" />
             {text.alerts}
             <span className="v-calendar-pill v-calendar-pill--accent">
               {count}
             </span>
           </Button>
-          <Button onClick={onExport}>
+          <Button onClick={onExport} disabled={!onExport}>
             <Icon name="v-calendar" />
             {text.export}
           </Button>

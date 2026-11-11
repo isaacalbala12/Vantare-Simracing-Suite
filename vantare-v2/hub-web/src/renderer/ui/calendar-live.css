@@ -474,3 +474,19 @@
 .v-calendar-hero-actions .v-button.v-calendar-launch-pending:disabled {
   opacity: 1;
 }
+
+.v-calendar-live-classes span[data-class="hypercar"]::before {
+  background: var(--calendar-class-hypercar);
+}
+.v-calendar-live-classes span[data-class="lmp2"]::before {
+  background: var(--calendar-class-lmp2);
+}
+.v-calendar-live-classes span[data-class="lmp3"]::before {
+  background: var(--calendar-class-lmp3);
+}
+.v-calendar-live-classes span[data-class="lmgt3"]::before {
+  background: var(--calendar-class-lmgt3);
+}
+.v-calendar-live-classes span[data-class="gte"]::before {
+  background: var(--calendar-class-gte);
+}

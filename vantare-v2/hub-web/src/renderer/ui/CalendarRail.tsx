@@ -42,6 +42,7 @@ export function CalendarRail({
   limit,
   nextPublication,
   onUtc,
+  utcDisabled = false,
   onAlerts,
   onExport,
 }: {
@@ -53,8 +54,9 @@ export function CalendarRail({
   limit: number;
   nextPublication: number;
   onUtc: (utc: boolean) => void;
-  onAlerts: () => void;
-  onExport: () => void;
+  utcDisabled?: boolean;
+  onAlerts?: () => void;
+  onExport?: () => void;
 }) {
   const labels: Record<CalendarHealth, string> = {
     ok: text.upToDate,
@@ -140,6 +142,7 @@ export function CalendarRail({
             <dt>{text.hours}</dt>
             <dd>
               <Segmented
+                disabled={utcDisabled}
                 label={text.hours}
                 value={view.utc ? "utc" : "local"}
                 onChange={(value) => onUtc(value === "utc")}
@@ -197,7 +200,7 @@ export function CalendarRail({
               : text.noAlerts}
           </p>
         )}
-        <Button onClick={onAlerts}>
+        <Button onClick={onAlerts} disabled={!onAlerts}>
           <Icon name="v-sliders" />
           {text.configure}
         </Button>
@@ -207,7 +210,7 @@ export function CalendarRail({
         <p>{text.exportHelp}</p>
         <div className="v-calendar-export-providers">
           {[text.google, text.apple, text.outlook].map((provider) => (
-            <Button key={provider} onClick={onExport}>
+            <Button key={provider} onClick={onExport} disabled={!onExport}>
               {provider}
             </Button>
           ))}

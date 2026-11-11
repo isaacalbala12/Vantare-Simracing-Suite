@@ -4,6 +4,16 @@ const durationText = (minutes: number) => {
   return hours ? `${hours} h${rest ? ` ${rest} min` : ""}` : `${minutes} min`;
 };
 export const calendarText = {
+  noAccess: "Calendario no está disponible con los derechos de esta cuenta.",
+  loadingHelp: "Comprobando el horario de las carreras online de LMU",
+  defaultSubtitle: "Horario de las carreras online de Le Mans Ultimate",
+  scheduleSubtitle: (week: string, count: number, perHour: number) =>
+    `Semana LMU · ${week} · ${count} series · ${perHour} salidas por hora`,
+  preferencesFailed:
+    "No se pudo guardar la preferencia. El último valor confirmado se conserva.",
+  scheduleRequired: "Descarga un horario vigente antes de seguir una serie.",
+  launchFailed: "No se pudo lanzar el perfil. Comprueba su estado en Launcher.",
+  discardChange: "Descartar cambio",
   separator: " · ",
   yourNext: "Tu próxima carrera",
   alertAt: (time: string) => `aviso a las ${time}`,

@@ -1,6 +1,6 @@
 import type { Page } from "playwright-core";
-import { homeScenes } from "./home.ts";
 import { calendarScenes } from "./calendar-scenes.ts";
+import { homeScenes } from "./home.ts";
 import { launcherScenes } from "./launcher.ts";
 import { notificationScenes } from "./notifications.ts";
 import { pilotScenes } from "./pilot.ts";

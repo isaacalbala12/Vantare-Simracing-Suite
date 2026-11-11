@@ -12,6 +12,7 @@ export function CalendarUpcomingView({
   following,
   limit,
   notifyWeek,
+  notifyDisabled = false,
   onNotifyWeek,
   onRefresh,
   busy,
@@ -21,6 +22,7 @@ export function CalendarUpcomingView({
   following: number;
   limit: number;
   notifyWeek: boolean;
+  notifyDisabled?: boolean;
   onNotifyWeek: () => void;
   onRefresh: () => void;
   busy: boolean;
@@ -55,6 +57,7 @@ export function CalendarUpcomingView({
           </Button>
           <div className="v-calendar-notify">
             <Switch
+              disabled={notifyDisabled}
               label={text.notifyWeek}
               checked={notifyWeek}
               onCheckedChange={onNotifyWeek}

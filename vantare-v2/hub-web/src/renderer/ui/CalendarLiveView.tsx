@@ -42,6 +42,8 @@ export function CalendarLiveView({
   now,
   limit,
   profile,
+  canLaunch = true,
+  canFollow = true,
   onFollow,
   onDetail,
   onLaunch,
@@ -53,8 +55,10 @@ export function CalendarLiveView({
   now: number;
   limit: number;
   profile?: string;
+  canLaunch?: boolean;
+  canFollow?: boolean;
   onFollow: (id: string, on: boolean) => void;
-  onDetail: (id: string, at?: number) => void;
+  onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
 }) {
   const [query, setQuery] = useState(""),
@@ -92,6 +96,7 @@ export function CalendarLiveView({
           variant="ghost"
           className="v-calendar-star"
           aria-label={text.toggleFavorite(s.name)}
+          disabled={!canFollow}
           onClick={() => onFollow(s.id, !row.favorite)}
         >
           <Icon name={row.favorite ? "star" : "star-line"} />
@@ -99,7 +104,8 @@ export function CalendarLiveView({
         <button
           type="button"
           className="v-calendar-live-series"
-          onClick={() => onDetail(s.id, row.next)}
+          disabled={!onDetail}
+          onClick={() => onDetail?.(s.id, row.next)}
         >
           <strong>{s.name}</strong>
           <span>
@@ -115,7 +121,14 @@ export function CalendarLiveView({
             : (s.classes.length
                 ? s.classes.map((c) => c.name)
                 : [s.vehicleClass]
-              ).map((c) => <span key={c}>{c.replace(" Class", "")}</span>)}
+              ).map((c) => (
+                <span
+                  key={c}
+                  data-class={c.replace(" Class", "").toLowerCase()}
+                >
+                  {c.replace(" Class", "")}
+                </span>
+              ))}
         </div>
         <div className="v-calendar-live-next">
           <strong>{row.next === undefined ? "—" : clock(row.next, utc)}</strong>
@@ -139,7 +152,8 @@ export function CalendarLiveView({
               style={{
                 left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
               }}
-              onClick={() => onDetail(s.id, at)}
+              disabled={!onDetail}
+              onClick={() => onDetail?.(s.id, at)}
             >
               {clock(at, utc)}
             </button>
@@ -148,7 +162,8 @@ export function CalendarLiveView({
             <button
               type="button"
               className="v-calendar-event-range"
-              onClick={() => onDetail(s.id)}
+              disabled={!onDetail}
+              onClick={() => onDetail?.(s.id)}
             >
               {s.track.split(" (")[0]}
               {text.separator}
@@ -204,13 +219,20 @@ export function CalendarLiveView({
             </p>
           </div>
           <div className="v-calendar-hero-actions">
-            <Button variant="primary" onClick={onLaunch} disabled={!profile}>
+            <Button
+              variant="primary"
+              onClick={onLaunch}
+              disabled={!profile || !canLaunch}
+            >
               <Icon name="play" />
               {text.launch(profile ?? "LMU")}
               <kbd>{text.launchShortcut}</kbd>
             </Button>
             <div>
-              <Button onClick={() => onDetail(hero.series.id, hero.at)}>
+              <Button
+                disabled={!onDetail}
+                onClick={() => onDetail?.(hero.series.id, hero.at)}
+              >
                 {text.detail}
               </Button>
               <Button
@@ -234,7 +256,11 @@ export function CalendarLiveView({
               .map((t) => schedule.series.find((s) => s.tier === t))
               .filter((s): s is CalendarSeries => !!s)
               .map((s) => (
-                <Button key={s.id} onClick={() => onFollow(s.id, true)}>
+                <Button
+                  key={s.id}
+                  disabled={!canFollow}
+                  onClick={() => onFollow(s.id, true)}
+                >
                   <Tier series={s} />
                   {s.name}
                   {text.separator}

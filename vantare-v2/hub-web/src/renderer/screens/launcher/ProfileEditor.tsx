@@ -127,7 +127,10 @@ export function ProfileEditor() {
     source = current,
   ) {
     if (!client || busy.current || !view) return;
-    if (readInvalid.current) { await retry(); return; }
+    if (readInvalid.current) {
+      await retry();
+      return;
+    }
     const nameBytes = new TextEncoder().encode(source.draft.name).length;
     if (
       !source.draft.name.trim() ||
@@ -248,7 +251,10 @@ export function ProfileEditor() {
         );
         // Across revisions there is no persistent step identity in launcher.json.
         // Do not silently attach private arguments by index after an external edit.
-        const candidate = fresh.revision === current.revision ? fresh.draft.steps[index] : undefined;
+        const candidate =
+          fresh.revision === current.revision
+            ? fresh.draft.steps[index]
+            : undefined;
         return {
           ...step,
           key: candidate?.appId === step.appId ? candidate.key : null,

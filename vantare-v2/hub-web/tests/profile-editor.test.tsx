@@ -216,13 +216,21 @@ describe("profile editor", () => {
     // The ordinary Save action must also reread, not reuse the expired key.
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
-    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: text.cancel }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: text.cancel,
+      }),
+    );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    expect((screen.getByRole("textbox", { name: text.name }) as HTMLInputElement).value).toBe("Borrador tras conflicto");
+    expect(
+      (screen.getByRole("textbox", { name: text.name }) as HTMLInputElement)
+        .value,
+    ).toBe("Borrador tras conflicto");
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
-    fireEvent.click(screen.getByRole("button", { name: text.confirmArgumentLoss }));
+    fireEvent.click(
+      screen.getByRole("button", { name: text.confirmArgumentLoss }),
+    );
     await screen.findByRole("button", { name: "Borrador tras conflicto" });
   });
-
 });

@@ -74,7 +74,7 @@ Status o refresco manual. No se cambia la autoridad del Feed ni se añade sondeo
 
 El instante de aceptación se conserva, con reloj inyectado en los tests. Antes
 de iniciar una espera se exige que queden los 30 s de margen del plazo del renderer
-(45 s): a los 15 s se rechaza con Busy SIN enviar. El worker vuelve a comprobarlo
+(45 s): a los 12 s se rechaza con Busy SIN enviar, reservando 3 s de seguridad. El worker vuelve a comprobarlo
 tras esperar en su canal y tras Probe/reconexión, inmediatamente antes del efecto.
 No se vuelve a interpretar una espera vencida como petición nueva.
 

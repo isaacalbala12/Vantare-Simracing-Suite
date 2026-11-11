@@ -45,7 +45,7 @@ pub struct Core {
     worker: Option<JoinHandle<()>>,
     last_activity: u64,
     last_photo: Option<Instant>,
-    authority: Option<(u64, u64, AccessView)>,
+    authority: Option<AccessView>,
     account_session: Option<vantare_ipc::services_protocol::Session>,
 }
 impl Core {
@@ -224,7 +224,7 @@ impl Core {
         let access = control::wall_ms()
             .map(|now| access_view(&policy, now))
             .unwrap_or_default();
-        self.observe_authority(policy.epoch, policy.revision, access.clone());
+        self.observe_authority(access.clone());
         CoreStatus {
             photos: if self.photos.connection().incompatible() {
                 LinkState::Incompatible
@@ -254,8 +254,9 @@ impl Core {
             live: policy.epoch > 0 && policy.live,
         }
     }
-    pub(crate) fn observe_authority(&mut self, epoch: u64, revision: u64, access: AccessView) {
-        let next = (epoch, revision, access);
+    pub(crate) fn observe_authority(&mut self, access: AccessView) {
+        // Feed revisions also change on harmless refreshes; only capabilities matter.
+        let next = access;
         if self
             .authority
             .as_ref()
@@ -353,6 +354,27 @@ fn service_worker(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_full_worker_channel_fails_only_one_waiter_and_preserves_the_next() {
+        use vantare_ipc::services_protocol::Command;
+        let root = crate::test_support::Root::new();
+        let mut core = Core::start("queue-full-unused", &root.path).unwrap();
+        let local = core.isolate_services(true);
+        let now = Instant::now();
+        core.requests.try_send((99, Command::Probe, now)).unwrap();
+        core.queue.submit_at(1, Command::PilotLoad, now).unwrap();
+        core.queue.submit_background(2, Command::Status).unwrap();
+        core.dispatch_waiting_at(now);
+        assert_eq!(
+            core.queue.failure(),
+            Some((1, crate::protocol::HostError::Busy))
+        );
+        assert!(core.queue.failure().is_none());
+        assert_eq!(local.incoming.try_recv().unwrap().0, 99);
+        core.dispatch_waiting_at(now);
+        assert_eq!(local.incoming.try_recv().unwrap().0, 2);
+        assert!(local.incoming.try_recv().is_err());
+    }
     fn policy(state: control::AccessState) -> control::Policy {
         control::Policy {
             version: control::VERSION,

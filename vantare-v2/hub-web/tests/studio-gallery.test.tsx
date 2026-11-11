@@ -10,6 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   afterEach,
   beforeAll,
@@ -104,11 +105,11 @@ describe("Studio gallery", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-vacio");
     await screen.findByText(t.empty);
-    const catalogButton = await screen.findByRole("button", {
-      name: /Standings/,
-    });
+    const catalogButton = await within(
+      screen.getByRole("complementary", { name: t.inspector }),
+    ).findByRole("button", { name: "Añadir Standings" });
     fireEvent.click(catalogButton);
-    await screen.findByText(t.added);
+    await screen.findByText(t.addedName("Standings"));
     expect(
       await screen.findByRole("button", { name: "Standings" }),
     ).toBeTruthy();
@@ -201,5 +202,147 @@ describe("Studio gallery", () => {
     expect(
       requests.mock.calls.find(([r]) => r.method === "studio.track")?.[0],
     ).toEqual({ method: "studio.track", show: false });
+  });
+  it("requires confirmation again after a removal conflict", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-error");
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    fireEvent.click(await screen.findByRole("button", { name: t.remove }));
+    const dialog = await screen.findByRole("dialog", { name: t.removeTitle });
+    fireEvent.click(within(dialog).getByRole("button", { name: t.remove }));
+    await screen.findByText(t.reconfirm);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("button", { name: t.retry })).toBeNull();
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === "studio.remove"),
+    ).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Standings" })).toBeTruthy();
+  });
+  it("saves session and off-track choices as closed patches", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    fireEvent.click(await screen.findByRole("switch", { name: t.practice }));
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([r]) => r.method === "studio.instance" && r.patch.field === "showIn",
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: t.offTrack })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: t.offTrack }));
+    await user.click(await screen.findByRole("option", { name: t.always }));
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([r]) =>
+            r.method === "studio.instance" &&
+            r.patch.field === "offTrack" &&
+            r.patch.value === "alwaysVisible",
+        ),
+      ).toBe(true),
+    );
+    expect(
+      requests.mock.calls.find(
+        ([r]) => r.method === "studio.instance" && r.patch.field === "showIn",
+      )?.[0],
+    ).toMatchObject({
+      id: "widget-1",
+      patch: {
+        field: "showIn",
+        value: { practice: false, qualifying: true, race: true },
+      },
+      baseRevision: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+  });
+  it("commits opacity with the native bounds after keyboard adjustment", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    const slider = await screen.findByRole("slider", { name: t.opacity });
+    expect(slider.getAttribute("min")).toBe("20");
+    expect(slider.getAttribute("max")).toBe("100");
+    slider.focus();
+    await userEvent.setup().keyboard("{ArrowLeft}");
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([r]) =>
+            r.method === "studio.instance" &&
+            r.patch.field === "opacity" &&
+            r.patch.value === 99,
+        ),
+      ).toBe(true),
+    );
+  });
+  it("opens the same confirmation with Delete without removing until confirmed", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const card = await screen.findByRole("button", {
+      name: "Standings",
+    });
+    fireEvent.keyDown(card, { key: "Delete" });
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(t.removeNamed("Standings"))).toBeTruthy();
+    expect(
+      requests.mock.calls.some(([r]) => r.method === "studio.remove"),
+    ).toBe(false);
+    fireEvent.click(within(dialog).getByRole("button", { name: t.cancel }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Standings" })).toBeTruthy();
+  });
+  it("adds a suggested kind once and keeps its name and owned count in the catalog", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-pocos");
+    await screen.findByRole("button", { name: "Standings" });
+    const suggestion = within(
+      screen.getByRole("region", { name: t.kit }),
+    ).getAllByRole("button")[0];
+    const name = suggestion.querySelector("strong")?.textContent;
+    if (!name) throw new Error("Missing suggestion name");
+    fireEvent.click(suggestion);
+    await screen.findByRole("button", { name });
+    fireEvent.click(screen.getByRole("button", { name: t.addShort }));
+    await screen.findByText(t.addedName(name));
+    const catalog = screen.getByRole("button", {
+      name: `${t.addShort} ${name}`,
+    });
+    expect(within(catalog).getByText(t.owned(1))).toBeTruthy();
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === "studio.add"),
+    ).toHaveLength(1);
+  });
+  it("filters thirty overlays without writing the document", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-muchos");
+    await screen.findByRole("button", { name: "Standings 1" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: t.filterLabel }));
+    await user.click(
+      await screen.findByRole("option", { name: t.filters.hidden }),
+    );
+    expect(await screen.findByText(t.noHidden)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Standings 1" })).toBeNull();
+    await user.click(screen.getByRole("combobox", { name: t.filterLabel }));
+    await user.click(
+      await screen.findByRole("option", { name: t.filters.all }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Standings 1" }),
+    ).toBeTruthy();
+    expect(requests.mock.calls.every(([r]) => r.method === "studio.get")).toBe(
+      true,
+    );
   });
 });

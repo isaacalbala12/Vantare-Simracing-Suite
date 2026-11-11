@@ -95,3 +95,18 @@ for (const count of [4, 30]) {
     };
   }
 }
+
+for (const mock of [
+  "studio-muchos",
+  "studio-pocos",
+  "studio-bloqueado",
+  "studio-miniatura-ausente",
+]) {
+  studioScenes[mock] = {
+    mock,
+    async prepare(page) {
+      await studioScenes["studio-base"].prepare(page);
+      await page.locator(".v-studio-grid").waitFor();
+    },
+  };
+}

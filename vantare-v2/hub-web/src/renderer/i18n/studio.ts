@@ -95,6 +95,19 @@ export const studioText = {
   planNote: (plan: string, what: string, locked: number) =>
     `${plan} incluye ${what}. Pro desbloquea los ${locked} restantes.`,
   added: "Widget añadido",
+  addedName: (name: string) =>
+    `${name} añadido. Aparecerá en un hueco libre de la pantalla.`,
+  owned: (count: number) => `En tu diseño${count > 1 ? ` ×${count}` : ""}`,
+  allCategories: "Todos",
+  filterLabel: "Filtrar overlays",
+  filters: { all: "Todos", visible: "Visibles", hidden: "Ocultos" },
+  noVisible: "No hay overlays visibles.",
+  noHidden: "No hay overlays ocultos.",
+  suggestionHelp: "Añadir al diseño",
+  suggestedAdd: (name: string) => `${name}: añadir al diseño`,
+  removeNamed: (name: string) =>
+    `${name}. Se eliminará del diseño. Puedes recuperarlo con Deshacer.`,
+
   undo: "Deshacer",
   redo: "Rehacer",
   remove: "Eliminar widget",

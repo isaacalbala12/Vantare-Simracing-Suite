@@ -8,7 +8,9 @@ import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
+import { Select } from "../../ui/Forms";
 import { Tooltip } from "../../ui/Layers";
+import { RemoveWidget } from "./RemoveWidget";
 import {
   VisibilityIcon,
   WidgetPreview,
@@ -22,6 +24,24 @@ export function Gallery() {
     focusInspector = useRef(false);
   const { view, selected, pending } = state;
   const [catalogFocus, setCatalogFocus] = useState(0);
+  const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
+  const [columns, setColumns] = useState(3);
+  useLayoutEffect(() => {
+    const node = grid.current;
+    if (!view || !node) return;
+    const measure = () =>
+      setColumns(
+        Math.max(
+          1,
+          getComputedStyle(node).gridTemplateColumns.split(/\s+/).length,
+        ),
+      );
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [view]);
   const openCatalog = () => {
     state.setSelected(null);
     setCatalogFocus((value) => value + 1);
@@ -38,6 +58,12 @@ export function Gallery() {
       focusInspector.current = false;
     }
   }, [selected]);
+  useLayoutEffect(() => {
+    if (state.added && state.added.revision === view?.revision)
+      grid.current
+        ?.querySelector<HTMLElement>(`[data-widget="${state.added.id}"]`)
+        ?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
+  }, [state.added, view?.revision]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (document.querySelector('[role="dialog"],[role="alertdialog"]'))
@@ -87,8 +113,22 @@ export function Gallery() {
     );
   const disabled =
     pending || view.state !== "ready" || view.plan === "unverified";
+  const activeFilter = view.instances.length >= 9 ? filter : "all";
+  const instances = view.instances.filter(
+    (item) =>
+      activeFilter === "all" || item.visible === (activeFilter === "visible"),
+  );
+  const suggestions = view.catalog
+    .filter(
+      (widget) =>
+        widget.allowed &&
+        widget.suggested &&
+        !view.instances.some((item) => item.kind === widget.kind),
+    )
+    .slice(0, columns);
   return (
     <div className="v-studio">
+      <RemoveWidget />
       <div className="v-studio-topbar">
         <Tooltip label={t.localHelp}>
           <Button className="v-studio-layout" disabled aria-label={t.layout}>
@@ -185,6 +225,24 @@ export function Gallery() {
               </span>
             )}
             <small>{t.placementHint}</small>
+            {view.instances.length >= 9 && (
+              <Select
+                label={t.filterLabel}
+                value={filter}
+                options={Object.entries(t.filters).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+                onChange={(value) => {
+                  if (
+                    value === "all" ||
+                    value === "visible" ||
+                    value === "hidden"
+                  )
+                    setFilter(value);
+                }}
+              />
+            )}
           </header>
           {!view.instances.length && view.state === "ready" && (
             <div className="v-studio-empty">
@@ -192,8 +250,13 @@ export function Gallery() {
               <p>{t.emptyHelp}</p>
             </div>
           )}
+          {!instances.length && view.instances.length > 0 && (
+            <p className="v-studio-filter-empty">
+              {activeFilter === "hidden" ? t.noHidden : t.noVisible}
+            </p>
+          )}
           <section className="v-studio-grid" ref={grid} aria-label={t.title}>
-            {view.instances.map((item, index) => {
+            {instances.map((item, index) => {
               const active = selected === item.id;
               const name = widgetName(item, view);
               return (
@@ -201,6 +264,10 @@ export function Gallery() {
                   key={item.id}
                   className="v-studio-overlay"
                   data-selected={active}
+                  data-recent={
+                    state.added?.id === item.id &&
+                    state.added.revision === view.revision
+                  }
                   data-hidden={!item.visible}
                   data-locked={item.locked}
                 >
@@ -228,6 +295,10 @@ export function Gallery() {
                       state.setSelected(item.id);
                     }}
                     onKeyDown={(event) => {
+                      if (event.key === "Delete" && !disabled && !item.locked) {
+                        event.preventDefault();
+                        state.setRemoving(item.id);
+                      }
                       if (event.key === " ") {
                         event.preventDefault();
                         if (!disabled && !item.locked)
@@ -336,6 +407,39 @@ export function Gallery() {
               </Tooltip>
             )}
           </section>
+          {view.state === "ready" &&
+            view.plan !== "unverified" &&
+            view.instances.length < 6 &&
+            suggestions.length > 0 && (
+              <section className="v-studio-suggestions" aria-label={t.kit}>
+                <h3>{t.kit}</h3>
+                <div
+                  style={{
+                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {suggestions.map((widget) => (
+                    <button
+                      type="button"
+                      key={widget.kind}
+                      disabled={disabled}
+                      aria-label={t.suggestedAdd(widget.name)}
+                      onClick={() =>
+                        void state.execute({
+                          method: "studio.add",
+                          kind: widget.kind,
+                          baseRevision: view.revision,
+                        })
+                      }
+                    >
+                      <WidgetPreview kind={widget.kind} />
+                      <strong>{widget.name}</strong>
+                      <small>{t.suggestionHelp}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           <footer className="v-studio-footer">
             <span>{t.tryWith}</span>
             {t.scenes.map((scene) => (

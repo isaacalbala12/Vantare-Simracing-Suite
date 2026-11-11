@@ -8,16 +8,12 @@ pub(crate) fn typescript() -> String {
     declare::<crate::testing::ReportScreenshot>(&mut text);
     declare::<crate::testing::ReportPreviewView>(&mut text);
     declare::<crate::testing::ReportReceiptView>(&mut text);
+    declare::<crate::testing::ReportDraftState>(&mut text);
     declare::<crate::testing::TestingQuestionnaire>(&mut text);
     declare::<crate::testing::ReportFields>(&mut text);
     declare::<crate::testing::TestingReport>(&mut text);
     declare::<crate::testing::TestingView>(&mut text);
     declare::<crate::testing::LegacyMigration>(&mut text);
-    constants!(
-        &mut text,
-        "reportLegacyStates",
-        ["none", "imported", "importedTrimmed", "preserved"]
-    );
     declare::<crate::testing::ReportDraftView>(&mut text);
     constants!(&mut text, "reportFieldLimits", crate::testing::FIELD_LIMITS);
     constants!(&mut text, "reportModules", crate::testing::MODULES);
@@ -33,6 +29,10 @@ pub(crate) fn typescript() -> String {
 pub(crate) fn corpus() -> serde_json::Value {
     let mut host = Vec::<HostToUi>::new();
     let mut ui = Vec::<UiToHost>::new();
+    host.push(HostToUi::Failure {
+        id: 1,
+        error: crate::protocol::HostError::EvidencePending,
+    });
     host.extend(testing_reply_samples().into_iter().map(sample_response));
     ui.extend(
         testing_request_samples()
@@ -96,7 +96,7 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
                 id: "qa".into(),
                 state: "submitted".into(),
                 created_at: "2026-11-10T12:00:00Z".into(),
-                draft_cleared: true,
+                draft_state: crate::testing::ReportDraftState::Cleared,
             },
         },
         Reply::ReportRetryPrepare {
@@ -161,8 +161,36 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
         },
     ]
 }
-pub(crate) fn append_testing_id_constants(text: &mut String) {
+fn append_testing_id_constants(text: &mut String) {
     for (name, value) in [
+        (
+            "reportReceiptStates",
+            serde_json::json!(crate::testing::RECEIPT_STATES),
+        ),
+        (
+            "reportReceiptLegacyPrefix",
+            serde_json::json!(crate::testing::RECEIPT_LEGACY_PREFIX),
+        ),
+        (
+            "testingBusyRetry",
+            serde_json::json!({"delayMs":crate::testing::BUSY_RETRY_MS,"attempts":crate::testing::BUSY_RETRY_ATTEMPTS}),
+        ),
+        (
+            "reportDraftStates",
+            serde_json::json!([
+                crate::testing::ReportDraftState::Cleared,
+                crate::testing::ReportDraftState::Preserved,
+                crate::testing::ReportDraftState::CleanupPending
+            ]),
+        ),
+        (
+            "reportStates",
+            serde_json::json!(crate::testing::REPORT_STATES),
+        ),
+        (
+            "reportScreenshotLimits",
+            serde_json::json!({"jpeg":crate::testing::SCREENSHOT_JPEG_MAX,"side":crate::testing::SCREENSHOT_SIDE_MAX,"bytes":crate::testing::SCREENSHOT_BYTES_MAX,"count":crate::testing::SCREENSHOT_COUNT_MAX}),
+        ),
         (
             "testingIdLimits",
             serde_json::json!({"uuid":crate::testing::UUID_LENGTH,"previewId":crate::testing::PREVIEW_ID_LENGTH,"updatedAt":crate::testing::UPDATED_AT_MAX_BYTES}),
@@ -170,6 +198,15 @@ pub(crate) fn append_testing_id_constants(text: &mut String) {
         (
             "testingUuidGroups",
             serde_json::json!(crate::testing::UUID_GROUPS),
+        ),
+        (
+            "reportLegacyStates",
+            serde_json::json!([
+                crate::testing::LegacyMigration::None,
+                crate::testing::LegacyMigration::Imported,
+                crate::testing::LegacyMigration::ImportedTrimmed,
+                crate::testing::LegacyMigration::Preserved
+            ]),
         ),
     ] {
         writeln!(text, "export const {name} = {} as const;", canonical(value))

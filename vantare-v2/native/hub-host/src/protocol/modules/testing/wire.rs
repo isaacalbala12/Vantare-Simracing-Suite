@@ -99,5 +99,12 @@ pub enum Reply {
     },
 }
 
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum HostError {
+    EvidencePending,
+}
+
 #[cfg(any(test, feature = "bindings"))]
 pub(crate) mod bindings;

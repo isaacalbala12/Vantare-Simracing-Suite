@@ -204,6 +204,13 @@ señalan mediante `invalidCache`, sin rutas ni mensajes libres y sin retirar el 
 Ambos métodos requieren `verified && !blocked && AccessView.calendar` en el
 anfitrión. La finalización vuelve a comprobar el permiso, la familia y el ID de
 respuesta; rechaza una respuesta inválida antes de sustituir ningún snapshot.
+El refresco usa la cola compartida de servicios; otra solicitud de refresco en
+vuelo devuelve `busy`. La capa de memoria del núcleo prevalece sobre una caché
+de disco anterior durante la sesión. Sin esa capa, retirar un fichero retira su
+publicación. Ningún refresco inventa sellos de comprobación: se conservan los
+sellos válidos del núcleo leídos del documento de caché.
+Las fechas exigen `T`/`Z` mayúsculas, segundos de 00 a 59 y, si hay fracción,
+de una a tres cifras; Rust y TypeScript comparten el corpus de casos límite.
 Errores del servicio sin clasificación tipada se agrupan en `rejected`; transporte
 y ocupación conservan `coreUnavailable` y `busy`. No hay método genérico, URL,
 ruta ni JSON abierto del renderer. Se proyectan los campos públicos conocidos y

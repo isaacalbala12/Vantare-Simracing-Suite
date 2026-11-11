@@ -105,18 +105,20 @@ fn write_bindings(output: &std::path::Path, modules: &[PathBuf], sources: &[Stri
         "#[allow(clippy::too_many_lines, reason = \"generated enumeration grows with the closed screen modules\")]\n\
         pub fn module_outputs()->Vec<(&'static str,String,serde_json::Value)>{let mut modules=vec![\n",
     );
+    let mut owned = String::new();
     for (path, source) in modules.iter().zip(sources) {
         let id = path.file_name().expect("id").to_str().expect("UTF-8");
+        writeln!(bindings, "module_{id}(),").expect("String write");
         writeln!(
-            bindings,
-            "({id:?}, {{let mut text=super::modules::{id}::bindings::typescript();"
+            owned,
+            "fn module_{id}()->(&'static str,String,serde_json::Value){{({id:?}, {{let mut text=super::modules::{id}::bindings::typescript();"
         )
         .expect("String write");
         for kind in ["Request", "Reply", "HostError", "Topic", "Event"] {
             if enum_body(source, kind).is_some() {
                 let prefix = module_prefix(id);
                 writeln!(
-                    bindings,
+                    owned,
                     "declare_named::<super::modules::{id}::{kind}>(&mut text,\"{prefix}{kind}\");"
                 )
                 .expect("String write");
@@ -130,16 +132,17 @@ fn write_bindings(output: &std::path::Path, modules: &[PathBuf], sources: &[Stri
                 } else {
                     "Topics"
                 };
-                writeln!(bindings,"append_names::<super::modules::{id}::{kind}>(&mut text,{id:?},{suffix:?},{tag:?});").expect("String write");
+                writeln!(owned,"append_names::<super::modules::{id}::{kind}>(&mut text,{id:?},{suffix:?},{tag:?});").expect("String write");
             }
         }
         writeln!(
-            bindings,
-            "text}},canonical(super::modules::{id}::bindings::corpus())),"
+            owned,
+            "text}},canonical(super::modules::{id}::bindings::corpus()))}}"
         )
         .expect("String write");
     }
     bindings.push_str("] ; add_type_imports(&mut modules); modules}\n");
+    bindings.push_str(&owned);
     fs::write(output.join("binding_registry.rs"), bindings).expect("write bindings registry");
 }
 

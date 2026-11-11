@@ -18,11 +18,24 @@ mod ready {
 #[derive(Default)]
 struct Core {
     requests: usize,
+    sent: Vec<(u32, vantare_ipc::services_protocol::Command)>,
+    policy: vantare_ipc::control::Policy,
     cancelled: Vec<u32>,
     available: bool,
     busy: bool,
 }
 impl Core {
+    fn policy(&self) -> vantare_ipc::control::Policy {
+        self.policy.clone()
+    }
+    fn request_background(
+        &mut self,
+        id: u32,
+        command: vantare_ipc::services_protocol::Command,
+    ) -> Result<(), HostError> {
+        self.request(id, command)
+    }
+
     fn cancel_queued(&mut self, id: u32) {
         self.cancelled.push(id);
     }
@@ -48,13 +61,14 @@ impl Core {
     }
     fn request(
         &mut self,
-        _id: u32,
-        _command: vantare_ipc::services_protocol::Command,
+        id: u32,
+        command: vantare_ipc::services_protocol::Command,
     ) -> Result<(), HostError> {
         self.requests += 1;
         if self.busy {
             Err(HostError::Busy)
         } else if self.available {
+            self.sent.push((id, command));
             Ok(())
         } else {
             Err(HostError::CoreUnavailable)
@@ -205,6 +219,8 @@ mod testing_deferred_tests;
 mod calendar_dispatch_tests;
 
 // The existing portable-dispatch Linux gate runs these all-target checks too.
+#[path = "account/bridge_tests.rs"]
+mod account_tests;
 #[path = "../tests/architecture.rs"]
 mod architecture;
 

@@ -1,0 +1,1125 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.get",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.begin",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.cancel",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.copyLink",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.email",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.logout",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.check",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.photoRefresh",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.portal",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.purchase",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.purchaseStop",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.deviceReset",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.retry",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.back",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.choose",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "account",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "error": {
+        "kind": "accountInvalid"
+      },
+      "id": 1,
+      "kind": "failure"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.begin"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.cancel"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.copyLink"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "open",
+          "mode": "signInCode"
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.logout"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.check"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.photoRefresh"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.portal",
+        "page": "profile"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.purchase",
+        "product": "founders"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.purchaseStop"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.deviceReset"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.retry"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.back"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "account.choose"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "begin",
+          "email": "qa@example.invalid",
+          "mode": "signInCode",
+          "password": ""
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "verify",
+          "code": "123456"
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "reset",
+          "password": "example",
+          "signOutOthers": true
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "resend"
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "finish"
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "action": {
+          "action": "cancel"
+        },
+        "method": "account.email"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "account"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "account"
+    }
+  ]
+}

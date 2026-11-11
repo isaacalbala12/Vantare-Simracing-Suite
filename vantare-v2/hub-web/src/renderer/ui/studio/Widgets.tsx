@@ -22,7 +22,7 @@ export function WidgetThumb({
     />
   ) : (
     <img
-      alt=""
+      alt={""}
       aria-hidden="true"
       src={source}
       className="v-studio-widget-thumb"

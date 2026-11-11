@@ -63,6 +63,18 @@ export const studioText = {
   unverifiedTitle: "Pendiente de verificar acceso",
   verify: "Verifica tu acceso para aÃ±adir widgets.",
   plans: "Ver planes",
+  planNames: {
+    free: "Tu plan Gratis",
+    launch: "Tu acceso de lanzamiento",
+    pro: "Tu plan Pro",
+    founders: "Tu plan Founders",
+  },
+  included: (names: string[]) =>
+    names.length === 2
+      ? `${names[0]} y ${names[1]}`
+      : `${names.length} widgets`,
+  planNote: (plan: string, what: string, locked: number) =>
+    `${plan} incluye ${what}. Pro desbloquea los ${locked} restantes.`,
   added: "Widget aÃ±adido",
   undo: "Deshacer",
   redo: "Rehacer",

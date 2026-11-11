@@ -3,7 +3,7 @@ import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { PrivacyGate } from "../src/renderer/app/PrivacyGate";
 import { SettingsProvider } from "../src/renderer/app/SettingsState";
@@ -12,6 +12,13 @@ import { privacyGateText as text } from "../src/renderer/i18n/privacy-gate.es";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+});
 function Content() {
   return useHost().hello ? (
     <SettingsProvider>
@@ -46,6 +53,8 @@ afterEach(() => {
   cleanup();
   for (const cache of caches.splice(0)) cache.clear();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  document.documentElement.removeAttribute("style");
   window.history.replaceState(null, "", "/");
 });
 it("asks crashes first, starts on rejection and traps keyboard focus", async () => {

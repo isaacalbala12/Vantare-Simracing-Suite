@@ -11,11 +11,11 @@ pub mod app;
 pub mod billing;
 #[cfg(feature = "network")]
 pub mod bridge;
-#[cfg(feature = "network")]
-mod browser;
+#[cfg(feature = "browser")]
+pub mod browser;
 #[cfg(feature = "network")]
 pub mod calendar;
-#[cfg(feature = "network")]
+#[cfg(feature = "browser")]
 pub mod config;
 pub mod diagnostics;
 pub mod error;

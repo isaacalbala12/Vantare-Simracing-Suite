@@ -3,6 +3,7 @@ use crate::{Error, Result};
 #[cfg(windows)]
 mod registered;
 
+#[cfg(feature = "network")]
 pub(crate) fn begin(
     account: &mut crate::account::Account,
     open: impl FnOnce(&url::Url) -> Result<()>,
@@ -165,7 +166,7 @@ fn open_default(url: &url::Url) -> Result<()> {
 }
 
 #[cfg(windows)]
-pub(crate) fn open(url: &url::Url) -> Result<()> {
+pub fn open(url: &url::Url) -> Result<()> {
     #[cfg(feature = "qa-e2e")]
     if crate::qa::active() {
         return Err(Error::BrowserUnavailable);
@@ -182,7 +183,7 @@ fn with_fallback(
 }
 
 #[cfg(not(windows))]
-pub(crate) fn open(url: &url::Url) -> Result<()> {
+pub fn open(url: &url::Url) -> Result<()> {
     #[cfg(target_os = "linux")]
     let executable = "xdg-open";
     #[cfg(target_os = "macos")]
@@ -234,6 +235,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn rejected_browser_preserves_copy_link_until_expiry_or_explicit_retry() {
         use super::*;

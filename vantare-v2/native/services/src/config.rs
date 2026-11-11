@@ -4,6 +4,7 @@ use crate::{Error, Result};
 
 /// Solo nombres públicos existentes en build/producto. No aliases de entorno
 /// runtime; OAuth nativo no se inventa a partir de una publishable key.
+#[cfg(feature = "network")]
 pub struct BuildConfig {
     pub supabase: Option<Url>,
     pub anon_key: Option<&'static str>,
@@ -14,12 +15,14 @@ pub struct BuildConfig {
 
 /// Configuración pública fijada al compilar. No es
 /// un secreto ni una reinterpretación de la publishable key del SDK Wails.
+#[cfg(feature = "network")]
 pub struct OAuthBuild {
     pub issuer: Url,
     pub client_id: String,
     pub redirect_uri: Url,
 }
 
+#[cfg(feature = "network")]
 impl BuildConfig {
     pub fn load() -> Self {
         let config = Self {
@@ -64,6 +67,7 @@ impl BuildConfig {
     }
 }
 
+#[cfg(feature = "network")]
 impl OAuthBuild {
     /// Validate public OAuth values without reading runtime configuration.
     pub fn from_build_values(
@@ -151,6 +155,7 @@ mod tests {
 
     #[test]
     fn account_portal_supports_production_and_preserves_development() {
+        #[cfg(feature = "network")]
         for issuer in [
             "https://clerk.vantare.app",
             "https://fixture.clerk.accounts.dev",
@@ -218,6 +223,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn data_bridge_requires_complete_configuration_and_exact_edge_exception() {
         let mut config = BuildConfig::load();
@@ -263,6 +269,7 @@ mod tests {
         assert!(remote_url("https://example.invalid").is_ok());
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn native_oauth_requires_all_three_public_build_values() {
         let issuer = "https://example.invalid";
@@ -285,6 +292,7 @@ mod tests {
         assert_eq!(config.redirect_uri.as_str(), redirect);
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn native_oauth_rejects_invalid_public_build_values() {
         let issuer = Some("https://example.invalid");

@@ -10,7 +10,8 @@ publish.workspace = true
 test-support = ["vantare-ipc/test-support"]
 qa-e2e = ["network", "vantare-ipc/qa-e2e"]
 default = ["network"]
-network = ["dep:ureq", "dep:url"]
+browser = ["dep:url"]
+network = ["browser", "dep:ureq"]
 
 [[bin]]
 name = "vantare-services"

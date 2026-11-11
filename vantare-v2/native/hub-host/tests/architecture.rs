@@ -26,7 +26,10 @@ fn dependency_tree() -> String {
 fn host_has_no_gpui_dependency() {
     for line in dependency_tree().lines() {
         let name = line.split_whitespace().next().unwrap_or_default();
-        assert!(!name.starts_with("gpui") && name != "vantare-ui", "host must not compile/link {name}");
+        assert!(
+            !name.starts_with("gpui") && name != "vantare-ui",
+            "host must not compile/link {name}"
+        );
     }
 }
 #[test]

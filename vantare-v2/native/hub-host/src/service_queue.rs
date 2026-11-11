@@ -285,7 +285,9 @@ mod tests {
         queue.submit_at(1, Command::Probe, now).unwrap();
         assert!(queue.start_next_at(now).is_some());
         queue.submit_at(2, Command::Logout, now).unwrap();
-        queue.submit_at(3, Command::PilotLoad, now + Duration::from_secs(10)).unwrap();
+        queue
+            .submit_at(3, Command::PilotLoad, now + Duration::from_secs(10))
+            .unwrap();
         assert!(queue.finish(1));
         assert!(queue.start_next_at(now + Duration::from_secs(16)).is_none());
         assert_eq!(queue.failure(), Some((2, HostError::Busy)));

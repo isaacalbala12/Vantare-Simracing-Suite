@@ -154,21 +154,51 @@ fn another_screen_can_finish_between_import_load_and_save_without_an_early_archi
     let (name, stop, _listener, mut pipe) = endpoint();
     let _peer = connect(&name, stop, Duration::from_secs(5)).unwrap();
     pipe.accept().unwrap();
-    session.testing_request(&mut pipe, 7, &Request::DraftLoad {}).unwrap();
-    assert!(matches!(local.incoming.try_recv().unwrap(), (7, ServiceCommand::DraftLoad)));
-    session.request_remote(9, RemoteKind::MailGet, ServiceCommand::MailConsentGet).unwrap();
-    deliver(&local, 7, ServiceReply::Draft { draft: None, message: String::new() });
+    session
+        .testing_request(&mut pipe, 7, &Request::DraftLoad {})
+        .unwrap();
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (7, ServiceCommand::DraftLoad)
+    ));
+    session
+        .request_remote(9, RemoteKind::MailGet, ServiceCommand::MailConsentGet)
+        .unwrap();
+    deliver(
+        &local,
+        7,
+        ServiceReply::Draft {
+            draft: None,
+            message: String::new(),
+        },
+    );
     let (id, result) = session.core.reply().unwrap();
     // Mail is now active; a third screen occupies the external user slot.
     // Import must retain a separate continuation slot rather than fail Busy.
-    session.request_remote(10, RemoteKind::PilotLoad, ServiceCommand::PilotLoad).unwrap();
+    session
+        .request_remote(10, RemoteKind::PilotLoad, ServiceCommand::PilotLoad)
+        .unwrap();
     assert_eq!(session.service_reply(id, result), Ok(None));
     assert!(path.exists() && !path.with_extension("json.imported").exists());
-    assert!(matches!(local.incoming.try_recv().unwrap(), (9, ServiceCommand::MailConsentGet)));
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (9, ServiceCommand::MailConsentGet)
+    ));
     assert_eq!(session.deferred.map(|(id, _)| id), Some(7));
-    deliver(&local, 9, ServiceReply::MailConsent { consent: true, locale: None, revision: 1 });
+    deliver(
+        &local,
+        9,
+        ServiceReply::MailConsent {
+            consent: true,
+            locale: None,
+            revision: 1,
+        },
+    );
     let (id, result) = session.core.reply().unwrap();
-    assert!(matches!(session.service_reply(id, result), Ok(Some(Reply::MailGet { .. }))));
+    assert!(matches!(
+        session.service_reply(id, result),
+        Ok(Some(Reply::MailGet { .. }))
+    ));
     assert_eq!(session.deferred.map(|(id, _)| id), Some(7));
     let (id, ServiceCommand::DraftSave { fields }) = local.incoming.try_recv().unwrap() else {
         panic!("the import save must follow the mail response");
@@ -176,19 +206,38 @@ fn another_screen_can_finish_between_import_load_and_save_without_an_early_archi
     assert_eq!(id, 7);
     assert_eq!(fields.action_text, "old");
     assert!(path.exists() && !path.with_extension("json.imported").exists());
-    deliver(&local, 7, ServiceReply::Draft {
-        draft: Some(vantare_ipc::services_protocol::report_document::Draft {
-            schema_version: 1, idempotency_key: "queue-qa".into(), fields, screenshots: vec![],
-        }), message: String::new(),
-    });
+    deliver(
+        &local,
+        7,
+        ServiceReply::Draft {
+            draft: Some(vantare_ipc::services_protocol::report_document::Draft {
+                schema_version: 1,
+                idempotency_key: "queue-qa".into(),
+                fields,
+                screenshots: vec![],
+            }),
+            message: String::new(),
+        },
+    );
     let (id, result) = session.core.reply().unwrap();
-    assert!(matches!(session.service_reply(id,result),Ok(Some(Reply::DraftLoad{value})) if value.legacy==crate::testing::LegacyMigration::Imported));
+    assert!(
+        matches!(session.service_reply(id,result),Ok(Some(Reply::DraftLoad{value})) if value.legacy==crate::testing::LegacyMigration::Imported)
+    );
     assert!(session.deferred.is_none() && session.remotes.contains_key(&10));
     assert!(!path.exists() && path.with_extension("json.imported").exists());
-    assert!(matches!(local.incoming.try_recv().unwrap(), (10, ServiceCommand::PilotLoad)));
-    local.outgoing.send((10, Err(HostError::CoreUnavailable))).unwrap();
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (10, ServiceCommand::PilotLoad)
+    ));
+    local
+        .outgoing
+        .send((10, Err(HostError::CoreUnavailable)))
+        .unwrap();
     let (id, result) = session.core.reply().unwrap();
-    assert_eq!(session.service_reply(id, result), Err(HostError::CoreUnavailable));
+    assert_eq!(
+        session.service_reply(id, result),
+        Err(HostError::CoreUnavailable)
+    );
     assert!(session.remotes.is_empty());
 }
 

@@ -645,3 +645,10 @@
 .v-studio-catalog .v-search .v-field {
   min-width: 0;
 }
+
+[data-scheme="light"]
+  .v-studio-topbar
+  :is(.v-studio-obs-button, .v-studio-edit-button) {
+  border: 1px solid var(--line-2);
+  background: var(--surface-1);
+}

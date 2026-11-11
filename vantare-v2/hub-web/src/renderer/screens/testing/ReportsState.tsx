@@ -66,6 +66,13 @@ function useReportsState() {
   const [legacy, setLegacy] = useState<LegacyMigration>("none");
   const [consent, setConsent] = useState(false);
   const [localNotes, setLocalNotes] = useState({ title: "", body: "" });
+  const [answerDraft, setAnswerDraft] = useState<{
+    id?: string;
+    score: number;
+    note: string;
+  }>({ score: 3, note: "" });
+  const [participationLoaded, setParticipationLoaded] = useState(false);
+  const answering = useRef(false);
   const failedRequest = useRef<
     Exclude<Request, { method: "window.close" }> | undefined
   >(undefined);
@@ -249,6 +256,8 @@ function useReportsState() {
     identity.current = client;
     generation.current++;
     sending.current = false;
+    answering.current = false;
+    setAnswerDraft({ score: 3, note: "" });
     closePermit.current = undefined;
     setCloseBlocked(false);
     setCloseConfirmation(false);
@@ -289,6 +298,32 @@ function useReportsState() {
     if (reply.method === "testing.refresh") {
       setParticipation(reply.value);
       setParticipationLoaded(true);
+    }
+  }
+  function selectQuestionnaire(id: string) {
+    const item = participation.questionnaires.find((item) => item.id === id);
+    if (!item || !core.access.tester) return;
+    setAnswerDraft({ id, score: item.score ?? 3, note: "" });
+  }
+  async function answer() {
+    if (
+      answering.current ||
+      !core.access.tester ||
+      !answerDraft.id ||
+      !participation.questionnaires.some((item) => item.id === answerDraft.id)
+    )
+      return;
+    answering.current = true;
+    const epoch = generation.current;
+    try {
+      const reply = await request({
+        method: "testing.answer",
+        id: answerDraft.id,
+        score: answerDraft.score,
+      });
+      if (reply.method === "testing.answer") setParticipation(reply.value);
+    } finally {
+      if (epoch === generation.current) answering.current = false;
     }
   }
   async function contribute() {
@@ -434,6 +469,11 @@ function useReportsState() {
     load,
     save,
     refresh,
+    answerDraft,
+    participationLoaded,
+    setAnswerDraft,
+    selectQuestionnaire,
+    answer,
     contribute,
     credit,
     notice,

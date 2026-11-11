@@ -149,10 +149,15 @@ export function CalendarSeriesView({
         </Button>
         <div className="v-calendar-serie-name">
           <div>
-            <span className="v-calendar-tier" data-tier={series.tier}>
-              {calendarText.tiers[
-                series.tier as keyof typeof calendarText.tiers
-              ] ?? series.tier}
+            <span
+              className="v-calendar-tier"
+              data-tier={series.eventKind === "special" ? "event" : series.tier}
+            >
+              {series.eventKind === "special"
+                ? calendarText.specialty
+                : (calendarText.tiers[
+                    series.tier as keyof typeof calendarText.tiers
+                  ] ?? series.tier)}
             </span>
             <span>
               {isDaily

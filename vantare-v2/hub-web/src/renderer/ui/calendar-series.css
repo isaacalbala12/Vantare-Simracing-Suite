@@ -371,3 +371,23 @@
 .v-calendar-serie-fixed .v-button[data-next] {
   border-color: var(--text-1);
 }
+
+.v-calendar-serie .v-calendar-tier {
+  color: var(--calendar-tier-event);
+  background: var(--calendar-tier-event-bg);
+  padding: 2px 6px;
+  font: 700 10.5px / 14px var(--font-sans);
+  border-radius: 4px;
+}
+.v-calendar-serie .v-calendar-tier[data-tier="beginner"] {
+  color: var(--calendar-tier-beginner);
+  background: var(--calendar-tier-beginner-bg);
+}
+.v-calendar-serie .v-calendar-tier[data-tier="intermediate"] {
+  color: var(--calendar-tier-intermediate);
+  background: var(--calendar-tier-intermediate-bg);
+}
+.v-calendar-serie .v-calendar-tier[data-tier="advanced"] {
+  color: var(--calendar-tier-advanced);
+  background: var(--calendar-tier-advanced-bg);
+}

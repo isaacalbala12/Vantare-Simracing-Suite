@@ -336,6 +336,12 @@ it("continues from a protected privacy file without deciding, private escape or 
   expect(
     screen.getByRole("button", { name: "Terminar" }).hasAttribute("disabled"),
   ).toBe(true);
+  expect(
+    screen.getByText(
+      "Tus permisos están protegidos. Puedes continuar sin enviar datos.",
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByText(/Puedes activarlos si quieres/)).toBeNull();
   expect(screen.queryAllByRole("switch")).toHaveLength(0);
   expect(
     screen.queryByRole("button", { name: "Entrar sin guardar" }),

@@ -1,4 +1,6 @@
 export const onboardingSummaryText = {
+  privacyProtectedSay:
+    "Tus permisos están protegidos. Puedes continuar sin enviar datos.",
   privacyProtectedLead:
     "No podemos leer los permisos de privacidad con seguridad.",
   privacyProtected:

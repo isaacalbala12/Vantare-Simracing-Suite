@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
+import { windowText } from "../src/renderer/i18n/window.es.ts";
 import { auditFontSources } from "./visual-diff/fonts.ts";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
@@ -319,19 +320,26 @@ async function capture(
         }
       }
     };
-    const deadline = setTimeout(stopTree, 3000);
+    const deadline = setTimeout(stopTree, 5000);
     try {
       if (cleanupPage && !cleanupPage.isClosed())
         await adapter.cleanup?.(cleanupPage).catch(() => {
           cleanupFailed = true;
         });
-      if (browser && child.exitCode === null) {
+      const close = cleanupPage?.getByRole("button", {
+        name: windowText.close,
+        exact: true,
+      });
+      if (close && (await close.count()) && (await close.isEnabled())) {
+        // Keep the renderer alive until its normal close guards have answered.
+        await close.click({ timeout: 1000 }).catch(() => {});
+      } else if (browser && child.exitCode === null) {
         const closing = await browser.newBrowserCDPSession();
         await closing.send("Browser.close").catch(() => {});
       }
-      await browser?.close();
       if (child.exitCode === null)
         await new Promise<void>((accept) => child.once("exit", () => accept()));
+      await browser?.close().catch(() => {});
     } finally {
       clearTimeout(deadline);
       if (child.exitCode === null) {

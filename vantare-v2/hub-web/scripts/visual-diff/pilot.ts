@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const pilotScenes: Record<string, VisualScene> = {
   "ajustes-perfil-recorte": {
@@ -14,8 +15,14 @@ export const pilotScenes: Record<string, VisualScene> = {
         name: "Descartar",
         exact: true,
       });
-      if ((await discard.count()) && (await discard.isEnabled()))
+      if ((await discard.count()) && (await discard.isEnabled())) {
         await discard.click();
+        await until(
+          () => discard.isDisabled(),
+          2000,
+          "pilot discard committed",
+        );
+      }
     },
     async prepare(page) {
       await page.getByRole("tab", { name: "Cuenta", exact: true }).click();

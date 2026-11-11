@@ -163,7 +163,7 @@ fn application_request_samples() -> [Request; 7] {
         Request::LauncherCatalog {},
         Request::LauncherScan {},
         Request::LauncherAppGet { id: None },
-        Request::LauncherAppPick {},
+        Request::LauncherAppPick { id: None },
         Request::LauncherAppSave {
             draft: AppDraft {
                 id: None,

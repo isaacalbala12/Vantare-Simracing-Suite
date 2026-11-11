@@ -5,7 +5,7 @@ impl Session {
             Request::LauncherCatalog {}
             | Request::LauncherScan {}
             | Request::LauncherAppGet { .. }
-            | Request::LauncherAppPick {}
+            | Request::LauncherAppPick { .. }
             | Request::LauncherAppSave { .. }
             | Request::LauncherAppRemove { .. }
             | Request::LauncherAppFavorite { .. } => self.application_request(pipe, id, request),
@@ -231,12 +231,17 @@ impl Session {
             ),
             // Main consumes this null acknowledgement and opens its own dialog.
             // The final result uses the same request id and is accepted only once.
-            Request::LauncherAppPick {} => frame::write(
+            Request::LauncherAppPick { id: target } => frame::write(
                 pipe,
-                &match self
-                    .app_picker
-                    .request_dialog(id, std::time::Instant::now())
-                {
+                &match crate::launcher::apps::get(&self.launcher, target.as_deref()).and_then(
+                    |_| {
+                        self.app_picker.request_dialog(
+                            id,
+                            target.clone(),
+                            std::time::Instant::now(),
+                        )
+                    },
+                ) {
                     Ok(()) => HostToUi::Response {
                         id,
                         result: Reply::LauncherAppPick { value: None },

@@ -55,6 +55,7 @@ export function executablePicker(
     cancel,
     request(
       id: number,
+      target: string | null,
       reply: (message: HostToUi) => void,
       connected: () => boolean,
     ) {
@@ -75,7 +76,7 @@ export function executablePicker(
       sendHost({
         kind: "request",
         id,
-        request: { method: "launcher.app.pick" },
+        request: { method: "launcher.app.pick", id: target },
       });
     },
     receive(message: HostToUi): boolean {

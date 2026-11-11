@@ -111,7 +111,10 @@ export function fitWindow(
 // Only the main process owns the host handshake and window readiness.
 export function isRendererMessage(
   value: unknown,
-): value is Exclude<UiToHost, { kind: "hello" | "ready" }> {
+): value is Exclude<
+  UiToHost,
+  { kind: "hello" | "ready" | "pickedExecutable" }
+> {
   return (
     isUiMessage(value) &&
     (value.kind === "request" ||

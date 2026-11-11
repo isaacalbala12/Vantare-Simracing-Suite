@@ -1,11 +1,45 @@
 import { describe, expect, it, vi } from "vitest";
+import type { UiToHost } from "../src/contract/generated/contract";
 import { launcherPickLifetimeSeconds } from "../src/contract/generated/contract";
 import { isReply, isRequest } from "../src/contract/modules/launcher";
 import { isUiMessage } from "../src/contract/validation";
 import { executablePicker } from "../src/main/launcher-picker";
 import { isRendererMessage } from "../src/main/security";
 
+type Guarded<T> = T extends (value: unknown) => value is infer V ? V : never;
+const excludesTrustedSelection: Extract<
+  Guarded<typeof isRendererMessage>,
+  Extract<UiToHost, { kind: "pickedExecutable" }>
+> extends never
+  ? true
+  : false = true;
 describe("executable picker boundary", () => {
+  it("excludes trusted selections in the type predicate and sends the app destination to Rust", () => {
+    expect(excludesTrustedSelection).toBe(true);
+    const host = vi.fn();
+    executablePicker(async () => undefined, host).request(
+      7,
+      "obs",
+      vi.fn(),
+      () => true,
+    );
+    expect(host).toHaveBeenCalledWith({
+      kind: "request",
+      id: 7,
+      request: { method: "launcher.app.pick", id: "obs" },
+    });
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 8,
+        request: {
+          method: "launcher.app.pick",
+          id: "obs",
+          path: "D:/QA/chosen.exe",
+        },
+      }),
+    ).toBe(false);
+  });
   it("rejects unregistered methods even at the screen validator", () => {
     expect(isRequest({ method: "pickedExecutable" })).toBe(false);
     expect(isReply({ method: "pickedExecutable", accepted: true })).toBe(false);
@@ -54,7 +88,7 @@ describe("executable picker boundary", () => {
       isRendererMessage({
         kind: "request",
         id: 1,
-        request: { method: "launcher.app.pick" },
+        request: { method: "launcher.app.pick", id: null },
       }),
     ).toBe(true);
   });
@@ -75,11 +109,11 @@ describe("executable picker boundary", () => {
       renderer = vi.fn();
     const pick = executablePicker(open, host);
     expect(pick.receive(ack(1))).toBe(false);
-    pick.request(1, renderer, () => true);
+    pick.request(1, null, renderer, () => true);
     expect(host).toHaveBeenCalledWith({
       kind: "request",
       id: 1,
-      request: { method: "launcher.app.pick" },
+      request: { method: "launcher.app.pick", id: null },
     });
     expect(open).not.toHaveBeenCalled();
     expect(pick.receive(ack(2))).toBe(false);
@@ -87,7 +121,7 @@ describe("executable picker boundary", () => {
     expect(pick.receive(ack(1))).toBe(true);
     expect(pick.receive(ack(1))).toBe(true);
     expect(open).toHaveBeenCalledTimes(1);
-    pick.request(2, renderer, () => true);
+    pick.request(2, null, renderer, () => true);
     expect(renderer).toHaveBeenCalledWith({
       kind: "failure",
       id: 2,
@@ -118,11 +152,11 @@ describe("executable picker boundary", () => {
         }),
     );
     const pick = executablePicker(open, host, () => now);
-    pick.request(1, renderer, () => connected);
+    pick.request(1, null, renderer, () => connected);
     now = launcherPickLifetimeSeconds * 1000;
     expect(pick.receive(ack(1))).toBe(true);
     expect(open).not.toHaveBeenCalled();
-    pick.request(2, renderer, () => connected);
+    pick.request(2, null, renderer, () => connected);
     pick.receive(ack(2));
     connected = false;
     finish("D:/QA/chosen.exe");
@@ -149,7 +183,7 @@ describe("executable picker boundary", () => {
         }),
       host,
     );
-    pick.request(7, vi.fn(), () => true);
+    pick.request(7, null, vi.fn(), () => true);
     pick.receive(ack(7));
     pick.cancel();
     pick.cancel();

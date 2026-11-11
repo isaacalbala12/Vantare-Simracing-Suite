@@ -70,26 +70,63 @@ struct Pick {
     token: String,
     path: PathBuf,
     expires: Instant,
+    target: Option<String>,
+}
+struct Dialog {
+    request: u32,
+    target: Option<String>,
+    expires: Instant,
 }
 #[derive(Default)]
 pub struct Picker {
     pending: Option<Pick>,
-    dialog: Option<(u32, Instant)>,
+    dialog: Option<Dialog>,
 }
-fn executable(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
-        && vantare_launcher::is_executable(path)
-        && std::fs::canonicalize(path)
-            .is_ok_and(|resolved| vantare_launcher::is_local_path(&resolved))
+fn canonical_executable(path: &Path) -> Result<PathBuf, HostError> {
+    if !vantare_launcher::is_local_path(path)
+        || !path
+            .extension()
+            .and_then(|value| value.to_str())
+            .is_some_and(|value| value.eq_ignore_ascii_case("exe"))
+    {
+        return Err(HostError::Denied);
+    }
+    let canonical = std::fs::canonicalize(path).map_err(|_| HostError::Denied)?;
+    if !vantare_launcher::is_local_path(&canonical) || !canonical.is_file() {
+        return Err(HostError::Denied);
+    }
+    #[cfg(windows)]
+    let canonical = PathBuf::from(
+        canonical
+            .to_str()
+            .ok_or(HostError::Denied)?
+            .strip_prefix(r"\\?\")
+            .unwrap_or(canonical.to_str().ok_or(HostError::Denied)?),
+    );
+    if !vantare_launcher::is_local_path(&canonical) {
+        return Err(HostError::Denied);
+    }
+    Ok(canonical)
 }
 impl Picker {
-    pub fn request_dialog(&mut self, id: u32, now: Instant) -> Result<(), HostError> {
-        if self.dialog.is_some_and(|(_, expires)| now < expires) {
+    pub fn request_dialog(
+        &mut self,
+        id: u32,
+        target: Option<String>,
+        now: Instant,
+    ) -> Result<(), HostError> {
+        if self
+            .dialog
+            .as_ref()
+            .is_some_and(|dialog| now < dialog.expires)
+        {
             return Err(HostError::Busy);
         }
-        self.dialog = Some((id, now + Duration::from_secs(PICK_LIFETIME_SECONDS)));
+        self.dialog = Some(Dialog {
+            request: id,
+            target,
+            expires: now + Duration::from_secs(PICK_LIFETIME_SECONDS),
+        });
         Ok(())
     }
     pub fn complete_dialog(
@@ -97,22 +134,23 @@ impl Picker {
         selection: &ExecutableSelection,
         now: Instant,
     ) -> Result<Option<PickedApp>, HostError> {
-        let Some((id, expires)) = self.dialog else {
+        let Some(dialog) = self.dialog.as_ref() else {
             return Err(HostError::Denied);
         };
-        if selection.id != id {
+        if selection.id != dialog.request {
             return Err(HostError::Denied);
         }
-        self.dialog = None;
-        if now >= expires {
+        let dialog = self.dialog.take().expect("matched dialog");
+        if now >= dialog.expires {
             return Err(HostError::Denied);
         }
-        self.selected(selection.path.as_deref(), now)
+        self.selected(selection.path.as_deref(), dialog.target, now)
     }
 
     fn selected(
         &mut self,
         path: Option<&str>,
+        target: Option<String>,
         now: Instant,
     ) -> Result<Option<PickedApp>, HostError> {
         let Some(path) = path else {
@@ -121,10 +159,7 @@ impl Picker {
         if path.len() > PICK_PATH_MAX || path.contains('\0') {
             return Err(HostError::Denied);
         }
-        let path = PathBuf::from(path);
-        if !executable(&path) {
-            return Err(HostError::Denied);
-        }
+        let path = canonical_executable(Path::new(path))?;
         let name = path
             .file_stem()
             .and_then(|name| name.to_str())
@@ -136,16 +171,19 @@ impl Picker {
             token: token.clone(),
             path,
             expires: now + Duration::from_secs(PICK_LIFETIME_SECONDS),
+            target,
         });
         Ok(Some(PickedApp { token, name }))
     }
-    fn path(&self, token: &str, now: Instant) -> Result<&Path, HostError> {
+    fn path(&self, token: &str, target: Option<&str>, now: Instant) -> Result<&Path, HostError> {
         let pick = self
             .pending
             .as_ref()
-            .filter(|pick| pick.token == token && now < pick.expires)
+            .filter(|pick| {
+                pick.token == token && now < pick.expires && pick.target.as_deref() == target
+            })
             .ok_or(HostError::Denied)?;
-        if !executable(&pick.path) {
+        if canonical_executable(&pick.path).as_ref() != Ok(&pick.path) {
             return Err(HostError::Denied);
         }
         Ok(&pick.path)
@@ -174,7 +212,7 @@ impl Picker {
             return Err(HostError::Denied);
         }
         let selected = token
-            .map(|token| self.path(token, now))
+            .map(|token| self.path(token, draft.id.as_deref(), now))
             .transpose()?
             .map(Path::to_path_buf);
         edit(path, revision, |document| {
@@ -199,10 +237,14 @@ impl Picker {
             app.name.clone_from(&draft.name);
             app.favorite = draft.favorite;
             if draft.use_discovery {
+                if app.executable.is_some() {
+                    app.args.clear();
+                }
                 app.executable = None;
             }
             if let Some(selected) = &selected {
                 app.executable = Some(selected.clone());
+                app.args.clear();
             }
             Ok(())
         })?;
@@ -232,8 +274,8 @@ mod tests {
             Err(HostError::Denied)
         );
         assert!(picker.pending.is_none());
-        picker.request_dialog(7, now).unwrap();
-        assert_eq!(picker.request_dialog(8, now), Err(HostError::Busy));
+        picker.request_dialog(7, None, now).unwrap();
+        assert_eq!(picker.request_dialog(8, None, now), Err(HostError::Busy));
         selection.id = 8;
         assert_eq!(
             picker.complete_dialog(&selection, now),
@@ -247,14 +289,14 @@ mod tests {
             Err(HostError::Denied)
         );
         assert_eq!(picker.pending.as_ref().unwrap().token, chosen.token);
-        picker.request_dialog(9, now).unwrap();
+        picker.request_dialog(9, None, now).unwrap();
         selection.id = 9;
         assert_eq!(
             picker.complete_dialog(&selection, now + Duration::from_secs(PICK_LIFETIME_SECONDS)),
             Err(HostError::Denied)
         );
         assert_eq!(picker.pending.as_ref().unwrap().token, chosen.token);
-        picker.request_dialog(10, now).unwrap();
+        picker.request_dialog(10, None, now).unwrap();
         selection.id = 10;
         selection.path = None;
         assert_eq!(picker.complete_dialog(&selection, now), Ok(None));
@@ -298,28 +340,32 @@ mod tests {
         let now = Instant::now();
         let mut picker = Picker::default();
         assert_eq!(
-            picker.selected(script.to_str(), now),
+            picker.selected(script.to_str(), None, now),
             Err(HostError::Denied)
         );
         assert_eq!(
-            picker.selected(Some(r"\\server\share\app.exe"), now),
+            picker.selected(Some(r"\\server\share\app.exe"), None, now),
             Err(HostError::Denied)
         );
-        let selected = picker.selected(exe.to_str(), now).unwrap().unwrap();
-        assert_eq!(picker.path("forged", now), Err(HostError::Denied));
+        let selected = picker.selected(exe.to_str(), None, now).unwrap().unwrap();
+        assert_eq!(picker.path("forged", None, now), Err(HostError::Denied));
         assert_eq!(
             picker.path(
                 &selected.token,
+                None,
                 now + Duration::from_secs(PICK_LIFETIME_SECONDS)
             ),
             Err(HostError::Denied)
         );
-        assert!(picker.path(&selected.token, now).is_ok());
-        assert_eq!(picker.selected(None, now).unwrap(), None);
-        assert!(picker.path(&selected.token, now).is_ok());
-        let replacement = picker.selected(exe.to_str(), now).unwrap().unwrap();
-        assert_eq!(picker.path(&selected.token, now), Err(HostError::Denied));
-        assert!(picker.path(&replacement.token, now).is_ok());
+        assert!(picker.path(&selected.token, None, now).is_ok());
+        assert_eq!(picker.selected(None, None, now).unwrap(), None);
+        assert!(picker.path(&selected.token, None, now).is_ok());
+        let replacement = picker.selected(exe.to_str(), None, now).unwrap().unwrap();
+        assert_eq!(
+            picker.path(&selected.token, None, now),
+            Err(HostError::Denied)
+        );
+        assert!(picker.path(&replacement.token, None, now).is_ok());
     }
     #[test]
     fn conflict_preserves_the_selection_for_explicit_retry_and_success_consumes_it() {
@@ -331,7 +377,7 @@ mod tests {
         std::fs::write(&path, &bytes).unwrap();
         let now = Instant::now();
         let mut picker = Picker::default();
-        let selected = picker.selected(exe.to_str(), now).unwrap().unwrap();
+        let selected = picker.selected(exe.to_str(), None, now).unwrap().unwrap();
         let draft = AppDraft {
             use_discovery: false,
             id: None,
@@ -599,7 +645,7 @@ mod dialog_wire_tests {
             error: HostError::Denied,
         };
         assert_eq!(deliver(&mut picker, &selection), denied);
-        picker.request_dialog(7, Instant::now()).unwrap();
+        picker.request_dialog(7, None, Instant::now()).unwrap();
         assert_eq!(
             deliver(&mut picker, &ExecutableSelection { id: 8, path: None }),
             HostToUi::Failure {
@@ -618,3 +664,7 @@ mod dialog_wire_tests {
         assert!(picker.pending.is_none());
     }
 }
+
+#[cfg(all(test, windows))]
+#[path = "apps/picker_tests.rs"]
+mod picker_tests;

@@ -13,7 +13,7 @@ pub enum Request {
     #[serde(rename = "launcher.app.get")]
     LauncherAppGet { id: Option<String> },
     #[serde(rename = "launcher.app.pick")]
-    LauncherAppPick {},
+    LauncherAppPick { id: Option<String> },
     #[serde(rename = "launcher.app.save")]
     LauncherAppSave {
         draft: crate::launcher::apps::AppDraft,

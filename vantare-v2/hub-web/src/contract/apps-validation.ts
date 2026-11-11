@@ -86,8 +86,8 @@ export function isAppRequest(value: Record<string, unknown>): boolean {
   switch (value.method) {
     case "launcher.catalog":
     case "launcher.scan":
-    case "launcher.app.pick":
       return exact(value, ["method"]);
+    case "launcher.app.pick":
     case "launcher.app.get":
       return (
         exact(value, ["method", "id"]) && (value.id === null || id(value.id))

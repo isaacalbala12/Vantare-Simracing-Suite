@@ -255,6 +255,7 @@ async function start() {
       ) {
         pickExecutable.request(
           data.id,
+          data.request.id,
           (message) => port1.postMessage(message),
           () => portAlive,
         );

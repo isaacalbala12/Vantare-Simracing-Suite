@@ -317,17 +317,16 @@ fn an_expired_core_waiter_is_never_sent_and_its_owner_receives_busy() {
 #[test]
 fn a_confirmed_session_change_rejects_a_waiting_intent_without_sending_it() {
     use vantare_ipc::services_protocol::Session as Identity;
+    for license_status in [false, true] {
     let root = Root::new();
     let mut session = restart_session(&root.path, "queue-local-unused");
     let local = session.core.isolate_services(true);
     for (id, identity) in [(1, Identity::SignedIn), (2, Identity::SignedOut)] {
-        session
-            .core
-            .request(id, ServiceCommand::AccountPoll)
-            .unwrap();
+        let command = if id == 2 && license_status { ServiceCommand::LicenseStatus } else { ServiceCommand::AccountPoll };
+        session.core.request(id, command).unwrap();
         assert!(matches!(
             local.incoming.try_recv().unwrap(),
-            (_, ServiceCommand::AccountPoll)
+            (_, ServiceCommand::AccountPoll | ServiceCommand::LicenseStatus)
         ));
         if id == 2 {
             session
@@ -341,11 +340,12 @@ fn a_confirmed_session_change_rejects_a_waiting_intent_without_sending_it() {
                 )
                 .unwrap();
         }
-        local
-            .outgoing
-            .send((
-                id,
-                Ok(ServiceReply::Account {
+        let reply = if id == 2 && license_status {
+            ServiceReply::LicenseStatus {
+                policy: vantare_ipc::control::Policy::default(), session: Some(identity), notice: None,
+            }
+        } else {
+            ServiceReply::Account {
                     session: identity,
                     copy_link: false,
                     signed_in: identity == Identity::SignedIn,
@@ -354,15 +354,16 @@ fn a_confirmed_session_change_rejects_a_waiting_intent_without_sending_it() {
                     pending: false,
                     message: String::new(),
                     error: None,
-                }),
-            ))
-            .unwrap();
+            }
+        };
+        deliver(&local, id, reply);
         assert_eq!(session.core.reply().unwrap().0, id);
     }
     let (id, result) = session.core.reply().unwrap();
     assert_eq!(id, 3);
     assert_eq!(session.service_reply(id, result), Err(HostError::Denied));
     assert!(local.incoming.try_recv().is_err());
+    }
 }
 #[test]
 fn logout_and_authority_changes_deny_waiting_effects_but_never_discard_logout() {

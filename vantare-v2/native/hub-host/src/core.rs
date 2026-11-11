@@ -172,8 +172,12 @@ impl Core {
         loop {
             match self.replies.try_recv() {
                 Ok(value) if self.queue.finish(value.0) => {
-                    if let Ok(vantare_ipc::services_protocol::Reply::Account { session, .. }) =
-                        &value.1
+                    if let Ok(
+                        vantare_ipc::services_protocol::Reply::Account { session, .. }
+                        | vantare_ipc::services_protocol::Reply::LicenseStatus {
+                            session: Some(session), ..
+                        },
+                    ) = &value.1
                     {
                         if self.account_session != Some(*session) {
                             self.queue.invalidate_waiting();

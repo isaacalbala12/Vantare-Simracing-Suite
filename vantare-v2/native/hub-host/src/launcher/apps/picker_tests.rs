@@ -252,6 +252,14 @@ fn malformed_and_ambiguous_choices_never_mint_a_selection() {
     std::fs::create_dir(&directory).unwrap();
     let ordinary = root.path.join("chosen.exe");
     std::fs::write(&ordinary, b"inert").unwrap();
+    let folder = root.path.join("folder");
+    std::fs::create_dir(&folder).unwrap();
+    std::fs::write(folder.join("x.exe"), b"inert").unwrap();
+    std::fs::write(
+        format!("{}:stream.exe", ordinary.display()),
+        b"inert stream",
+    )
+    .unwrap();
     let bad = [
         directory.to_str().unwrap().to_owned(),
         "relative.exe".into(),
@@ -295,4 +303,43 @@ fn approved_file_leaf_is_projected_without_its_directory() {
             .unwrap()
             .contains(root.path.to_str().unwrap())
     );
+}
+
+#[test]
+fn an_approved_selection_cannot_exceed_the_application_limit() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("launcher.json");
+    let executable = root.path.join("chosen.exe");
+    std::fs::write(&executable, b"inert").unwrap();
+    let mut document = Document::fresh_install();
+    while document.apps.len() < APP_LIMIT {
+        let mut app = document.apps[0].clone();
+        app.id = format!("custom:{}", document.apps.len());
+        document.apps.push(app);
+    }
+    let bytes = serde_json::to_vec(&document).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let now = Instant::now();
+    let mut picker = Picker::default();
+    let picked = picker
+        .selected(executable.to_str(), None, now)
+        .unwrap()
+        .unwrap();
+    let draft = AppDraft {
+        id: None,
+        name: "QA".into(),
+        favorite: false,
+        use_discovery: false,
+    };
+    assert_eq!(
+        picker.save(
+            &path,
+            &draft,
+            Some(&picked.token),
+            &vantare_services::content_hash(&bytes),
+            now
+        ),
+        Err(HostError::Denied)
+    );
+    assert_eq!(std::fs::read(path).unwrap(), bytes);
 }

@@ -85,17 +85,17 @@ congelado: `email-formulario` (form), `email-codigo` (code),
 y `email-espera` (waiting). Son datos ficticios; el hook detiene las peticiones.
 No ofrece una escena de nueva contraseña o de acceso alojado.
 
-Validación parcial: tres tests del ejemplo y build Release pasan en Windows.
-Hay 12 capturas válidas 1440×900/DPI 96: las tres puertas y ocho escenas de email en
-oscuro, y privacidad-pendiente en claro. Sus recibos y entradas están en el
-catálogo. Informe: `D:/VantareServer/evidence/hub-web/acceso-referencias-v2/reference-report.json`.
-Faltan privacidad-uso, acceso-base y las ocho escenas de email en claro.
+Validación: tres tests del ejemplo y build Release aprobados en Windows.
+Las 22 referencias (tres puertas y ocho escenas de email en ambos esquemas)
+están en el catálogo, a 1440×900 y DPI 96, con sus recibos.
+Informe: `D:/VantareServer/evidence/hub-web/acceso-referencias-v2/reference-report.json`.
 
-La sesión de captura se detuvo al fallar el helper PowerShell de privacidad-uso
-claro con `Fatal error. Internal CLR error (0x80131506)` en Roslyn/Add-Type.
-Los procesos propios se cerraron. Diagnóstico: `acceso-referencias-v2/capture-stall.json`
-y `acceso-referencias-v2/light-privacidad-uso.log`. No ejecutar más capturas o
-smokes en el servidor hasta que el orquestador indique que se puede reanudar.
-
+Un helper PowerShell falló una vez con CLR `0x80131506` en Roslyn/Add-Type.
+El orquestador autorizó una única repetición: pasó, al igual que las otras nueve
+referencias claras pendientes. El registro original se conserva en
+`acceso-referencias-v2/capture-stall.json` y `light-privacidad-uso.log`;
+la repetición, en `light-privacidad-uso-retry-once.log`. No se repitió el error.
+Si reaparece, compilar el auxiliar una vez a DLL bajo la raíz QA y cargarlo por
+`Add-Type -Path`, según la instrucción del orquestador; no relanzar en bucle.
 El Clippy del crate GPUI congelado conserva 17 hallazgos previos fuera del ejemplo;
 no se modifica ni se silencia. No se distribuye este banco.

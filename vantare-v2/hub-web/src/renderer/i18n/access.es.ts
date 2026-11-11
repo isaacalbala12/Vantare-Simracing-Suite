@@ -1,0 +1,13 @@
+export const accessText = {
+ title:"Bienvenido a Vantare",subtitle:"Inicia sesión o crea tu cuenta",footer:"made by Vantare",
+ google:"CONTINUAR CON GOOGLE",discord:"CONTINUAR CON DISCORD",or:"o",email:"INICIAR SESIÓN CON EMAIL",
+ create:"¿No tienes cuenta? Crear cuenta",recover:"¿Olvidaste tu contraseña?",browserNote:"Discord y Google continúan en el navegador de Clerk.",
+ checking:"Comprobando sesión…",canceling:"Cancelando…",loggingOut:"Cerrando sesión…",logoutFailed:"El cierre de sesión no se ha confirmado",waitingBrowser:"Continúa en tu navegador…",
+ cancel:"Cancelar",back:"Volver",retry:"Reintentar",retryLogout:"Reintentar cierre de sesión",copy:"Copiar enlace",copied:"Enlace copiado. Pégalo en tu navegador para continuar.",
+ busy:"Inténtalo de nuevo.",failed:"No se pudo completar el acceso. Inténtalo de nuevo.",waiting:"Esperando respuesta",
+ emailLabel:"Email",password:"Contraseña",code:"Código de seis dígitos",newPassword:"Nueva contraseña",signOutOthers:"Cerrar otras sesiones de Clerk",resend:"Reenviar código",
+ consent:"Permites a Vantare acceder a tu identidad y perfil, y mantener la sesión en este equipo. Puedes cancelar.",authorizing:"Esperando la autorización…",hosted:"Continuar en el navegador",
+ submit:{enter:"Entrar",continue:"Continuar",newCode:"Pedir otro código",verify:"Verificar código",password:"Guardar contraseña",authorize:"Autorizar Vantare y entrar",waiting:"Esperando…"},
+ titles:{signInCode:"Entrar con un código por email",signInPassword:"Entrar con contraseña",signUpCode:"Crear cuenta con un código por email",signUpPassword:"Crear cuenta con contraseña",recovery:"Recuperar contraseña"},
+ modes:{signInCode:"Entrar con código",signInPassword:"Entrar con contraseña",signUpCode:"Crear cuenta sin contraseña",signUpPassword:"Crear cuenta con contraseña",recovery:"¿Olvidaste tu contraseña?"},
+} as const;

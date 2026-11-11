@@ -117,7 +117,7 @@ export function isRendererMessage(
 > {
   return (
     isUiMessage(value) &&
-    (value.kind === "request" ||
+    ((value.kind === "request" && value.id < 0x80000000) ||
       value.kind === "subscribe" ||
       value.kind === "unsubscribe" ||
       value.kind === "closeAnswer")

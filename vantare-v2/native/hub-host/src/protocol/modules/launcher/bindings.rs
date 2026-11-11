@@ -145,6 +145,7 @@ fn application_reply_samples() -> [Reply; 7] {
             value: Some(PickedApp {
                 token: "0".repeat(64),
                 name: "QA".into(),
+                file_name: "QA.exe".into(),
             }),
         },
         Reply::LauncherAppSave {

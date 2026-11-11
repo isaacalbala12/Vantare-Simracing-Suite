@@ -277,7 +277,7 @@ export function ApplicationFields({
           <p>{text.executableHelp}</p>
           <div className="v-launcher-actions">
             <span>
-              {selected?.name ??
+              {selected?.fileName ??
                 (value.draft.useDiscovery || !value.hasExecutable
                   ? text.automatic
                   : text.configured)}

@@ -244,3 +244,55 @@ fn discovery_reset_clears_only_the_app_and_its_profile_overrides_in_one_cas() {
         serde_json::to_value(&document.profiles[0].steps[1]).unwrap()
     );
 }
+
+#[test]
+fn malformed_and_ambiguous_choices_never_mint_a_selection() {
+    let root = crate::test_support::Root::new();
+    let directory = root.path.join("directory.exe");
+    std::fs::create_dir(&directory).unwrap();
+    let ordinary = root.path.join("chosen.exe");
+    std::fs::write(&ordinary, b"inert").unwrap();
+    let bad = [
+        directory.to_str().unwrap().to_owned(),
+        "relative.exe".into(),
+        r"\\?\UNC\server\share\x.exe".into(),
+        "a\0.exe".into(),
+        format!("{}{}.exe", root.path.display(), "x".repeat(PICK_PATH_MAX)),
+        format!("{}:stream.exe", ordinary.display()),
+        root.path
+            .join("folder.")
+            .join("x.exe")
+            .to_string_lossy()
+            .into_owned(),
+        root.path
+            .join("folder ")
+            .join("x.exe")
+            .to_string_lossy()
+            .into_owned(),
+    ];
+    for path in bad {
+        let mut picker = Picker::default();
+        assert_eq!(
+            picker.selected(Some(&path), None, Instant::now()),
+            Err(HostError::Denied)
+        );
+        assert!(picker.pending.is_none());
+    }
+}
+#[test]
+fn approved_file_leaf_is_projected_without_its_directory() {
+    let root = crate::test_support::Root::new();
+    let executable = root.path.join("chosen.exe");
+    std::fs::write(&executable, b"inert").unwrap();
+    let picked = Picker::default()
+        .selected(executable.to_str(), None, Instant::now())
+        .unwrap()
+        .unwrap();
+    assert_eq!(picked.file_name, "chosen.exe");
+    assert_eq!(picked.name, "chosen");
+    assert!(
+        !serde_json::to_string(&picked)
+            .unwrap()
+            .contains(root.path.to_str().unwrap())
+    );
+}

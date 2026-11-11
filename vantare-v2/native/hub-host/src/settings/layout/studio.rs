@@ -333,6 +333,19 @@ pub(crate) fn edit(
             opened.bytes()?
         }
     };
+    // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
+    let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
+    let restored: Vec<Fields> = read(&root, "instances")?;
+    for fields in &restored {
+        let item = instance(fields, access)?;
+        let existed = opened.instances.iter().any(|old| {
+            read::<String>(old, "id").as_deref() == Ok(item.id.as_str())
+                && instance(old, access).is_ok_and(|prior| prior.kind == item.kind)
+        });
+        if !existed && item.locked {
+            return Err(HostError::Denied);
+        }
+    }
     save(&state.path, &before, &after)?;
     match edit {
         Edit::Undo => {

@@ -172,3 +172,22 @@ fn track_requests_use_the_native_counter_and_hide_removes_the_request() {
     assert!(!path.with_extension("show.json").exists());
     assert_eq!(std::fs::read(path).unwrap(), bytes);
 }
+
+#[test]
+fn redo_cannot_restore_a_pro_addition_after_access_is_downgraded() {
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path.clone());
+    let pro = Some(CatalogAccess::Pro);
+    let view = state.view(pro);
+    let added = state
+        .edit(Edit::Add(WidgetKind::Radar), &view.revision, pro)
+        .unwrap();
+    let undone = state.edit(Edit::Undo, &added.revision, pro).unwrap();
+    let before = std::fs::read(&path).unwrap();
+    assert_eq!(
+        state.edit(Edit::Redo, &undone.revision, Some(CatalogAccess::Free)),
+        Err(HostError::Denied)
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert!(state.edit(Edit::Redo, &undone.revision, pro).is_ok());
+}

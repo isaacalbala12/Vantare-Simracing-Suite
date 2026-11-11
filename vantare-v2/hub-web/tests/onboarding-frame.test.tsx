@@ -82,7 +82,7 @@ it("allows Escape only after the first step and while no write is pending", () =
   fireEvent.keyDown(frame, { key: "Escape" });
   expect(p.back).toHaveBeenCalledTimes(1);
 });
-it("shows complete assistant text with reduced motion and hides the finished primary action", () => {
+it("keeps the summary primary hidden but forwards Enter to its explicit finish handler", () => {
   const p = props({ step: 7, message: "Todo preparado." });
   render(<OnboardingFrame {...p} />);
   expect(screen.getByText("Todo preparado.")).toBeTruthy();
@@ -91,7 +91,7 @@ it("shows complete assistant text with reduced motion and hides the finished pri
     screen.getByRole("region", { name: "Configuración inicial" }),
     { key: "Enter" },
   );
-  expect(p.next).not.toHaveBeenCalled();
+  expect(p.next).toHaveBeenCalledTimes(1);
 });
 
 function Harness() {

@@ -69,6 +69,7 @@
   border-bottom: 0;
 }
 
-.v-privacy .v-button[aria-busy="true"] .v-button-label {
+.v-privacy-mail .v-button[aria-busy="true"] .v-button-label,
+.v-privacy-policy .v-button[aria-busy="true"] .v-button-label {
   opacity: 1;
 }

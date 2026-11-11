@@ -342,3 +342,18 @@ it("keeps a decorative Soon lock navigable while protecting a restricted item", 
   await user.click(screen.getByRole("button", { name: "Restringido" }));
   expect(select.mock.calls).toEqual([["soon"]]);
 });
+
+it("preserves caller busy semantics and always announces an actual button operation", () => {
+  const view = render(<Button aria-busy>Acción</Button>);
+  expect(
+    screen.getByRole("button", { name: "Acción" }).getAttribute("aria-busy"),
+  ).toBe("true");
+  view.rerender(
+    <Button busy aria-busy={false}>
+      Acción
+    </Button>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Acción" }).getAttribute("aria-busy"),
+  ).toBe("true");
+});

@@ -1,19 +1,68 @@
-import { useState } from "react";
-import {
-  diagnosticCodes,
-  diagnosticSections,
-} from "../../../contract/generated/contract";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useDiagnostics } from "../../app/DiagnosticsState";
+import { coreKey, offline, useHost } from "../../app/Host";
+import { useSettings } from "../../app/SettingsState";
+import { diagnosticsText as text } from "../../i18n/diagnostics.es";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
-import { Callout, Card, Skeleton, Table } from "../../ui/Data";
-import { Select, Textarea } from "../../ui/Forms";
-import { ActionGroup, CardGrid } from "../../ui/ShellLayout";
-
+import { Callout, SettingGroup, SettingRow, Skeleton } from "../../ui/Data";
+import {
+  DiagnosticHealth,
+  DiagnosticLog,
+  DiagnosticsLayout,
+} from "../../ui/DiagnosticsPresentation";
+import { StatusAnnouncement } from "../../ui/Frame";
+import { launcherKey } from "../launcher/state";
 export function Diagnostics() {
-  const [section, setSection] = useState("all");
-  const [code, setCode] = useState("all");
-  const { query, prepare, copy } = useDiagnostics();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const cache = useQueryClient();
+  const { client } = useHost();
+  const settings = useSettings();
+  const { query, prepare, copy } = useDiagnostics({
+    notifyCopied: false,
+    notifyErrors: false,
+  });
+  const core = useQuery({
+    queryKey: coreKey,
+    queryFn: async () => offline,
+    enabled: false,
+  }).data;
+  const privacy = useQuery({
+    queryKey: ["privacy"],
+    enabled: !!client,
+    retry: false,
+    queryFn: async () => {
+      const reply = await client?.request({ method: "privacy.get" });
+      if (reply?.method !== "privacy.get")
+        throw new Error("privacy unavailable");
+      return reply.value;
+    },
+  });
+  const launcher = useQuery({
+    queryKey: launcherKey,
+    enabled: !!client,
+    retry: false,
+    queryFn: async () => {
+      const reply = await client?.request({ method: "launcher.get" });
+      if (reply?.method !== "launcher.get")
+        throw new Error("launcher unavailable");
+      return reply.value;
+    },
+  });
+  useEffect(() => {
+    if (!client) return;
+    const off = client.listen((message) => {
+      if (message.kind === "event" && message.event.topic === "launcher")
+        cache.setQueryData(launcherKey, message.event.value);
+    });
+    const unsubscribe = client.subscribe("launcher");
+    return () => {
+      off();
+      unsubscribe();
+    };
+  }, [client, cache]);
   if (query.isPending) return <Skeleton label={t("settings.loading")} />;
   if (!query.data)
     return (
@@ -28,120 +77,65 @@ export function Diagnostics() {
       />
     );
   const view = query.data;
-  const rows = view.events.filter(
-    (item) =>
-      (section === "all" || item.section === section) &&
-      (code === "all" || item.code === code),
-  );
   return (
-    <>
-      <CardGrid>
-        <Card title={t("diagnostics.hub")}>
-          <p>{`${t("shell.version")}: ${view.version}`}</p>
-          <p>{`${t("diagnostics.system")}: ${view.os} ${view.arch}`}</p>
-        </Card>
-        <Card title={t("diagnostics.core")}>
-          <Callout title={t(`diagnostics.link.${view.core.photos}`)} />
-        </Card>
-        <Card title={t("diagnostics.rights")}>
-          <Callout title={t(`diagnostics.link.${view.core.rights}`)} />
-        </Card>
-        <Card title={t("diagnostics.services")}>
-          <Callout title={t(`diagnostics.link.${view.core.services}`)} />
-        </Card>
-        <Card title={t("diagnostics.settings")}>
-          <Callout
-            title={t(
-              view.settingsProtected
-                ? "settings.protected"
-                : "diagnostics.readable",
-            )}
-          />
-        </Card>
-      </CardGrid>
-      <Card
-        title={t("diagnostics.report")}
-        actions={
-          <ActionGroup>
-            <Button busy={prepare.isPending} onClick={() => prepare.mutate()}>
-              {t("diagnostics.prepare")}
-            </Button>
+    <DiagnosticsLayout>
+      <DiagnosticHealth
+        live={(core ?? view.core).live}
+        launching={launcher.data?.running}
+        preferences={
+          settings.view
+            ? !(
+                settings.view.protected ||
+                settings.view.warning ||
+                settings.error
+              )
+            : undefined
+        }
+        configured={privacy.data?.reportingConfigured}
+        prepared={Boolean(view.report)}
+      />
+      <SettingGroup number={2} title={text.local}>
+        <SettingRow label={text.sanitized} description={text.safe}>
+          <Button
+            variant="primary"
+            aria-busy={prepare.isPending || undefined}
+            aria-disabled={prepare.isPending || undefined}
+            onClick={() => {
+              if (!prepare.isPending) prepare.mutate();
+            }}
+          >
+            {prepare.isPending ? text.preparing : t("diagnostics.prepare")}
+          </Button>
+        </SettingRow>
+        {view.report && (
+          <SettingRow label={text.reportPrepared} description={text.localCopy}>
             <Button
+              size="sm"
               busy={copy.isPending}
-              disabled={!view.report}
               onClick={() => copy.mutate()}
             >
               {t("diagnostics.copy")}
             </Button>
-          </ActionGroup>
-        }
-      >
-        <Callout title={t("diagnostics.safe")} />
-        {(prepare.isError || copy.isError) && (
-          <Callout tone="err" title={t("diagnostics.failed")} />
+          </SettingRow>
         )}
-        {view.report && (
-          <Textarea
-            label={t("diagnostics.preview")}
-            readOnly
-            value={view.report}
-          />
-        )}
-      </Card>
-      <Card
-        title={t("diagnostics.observed")}
-        actions={
-          <Button onClick={() => void query.refetch()}>
-            {t("settings.reload")}
-          </Button>
-        }
-      >
-        <ActionGroup>
-          <Select
-            label={t("diagnostics.section")}
-            value={section}
-            onChange={setSection}
-            options={[
-              { value: "all", label: t("diagnostics.all") },
-              ...diagnosticSections.map((value) => ({
-                value,
-                label: t(`diagnostics.section.${value}`),
-              })),
-            ]}
-          />
-          <Select
-            label={t("diagnostics.code")}
-            value={code}
-            onChange={setCode}
-            options={[
-              { value: "all", label: t("diagnostics.all") },
-              ...diagnosticCodes.map((value) => ({
-                value,
-                label: t(`diagnostics.code.${value}`),
-              })),
-            ]}
-          />
-        </ActionGroup>
-        <Table
-          caption={t("diagnostics.observed")}
-          empty={t(
-            view.events.length ? "diagnostics.noMatches" : "diagnostics.empty",
-          )}
-          columns={[
-            { key: "section", label: t("diagnostics.section") },
-            { key: "code", label: t("diagnostics.code") },
-            { key: "sequence", label: t("diagnostics.sequence") },
-          ]}
-          rows={rows.map((item) => ({
-            id: String(item.sequence),
-            cells: [
-              t(`diagnostics.section.${item.section}`),
-              t(`diagnostics.code.${item.code}`),
-              String(item.sequence),
-            ],
-          }))}
-        />
-      </Card>
-    </>
+      </SettingGroup>
+      {(prepare.isError || copy.isError) && (
+        <Callout tone="err" title={t("diagnostics.failed")} />
+      )}
+      {copy.isSuccess && (
+        <StatusAnnouncement>{t("diagnostics.copied")}</StatusAnnouncement>
+      )}
+      <DiagnosticLog
+        events={view.events}
+        query={search}
+        onQuery={setSearch}
+        filter={filter}
+        onFilter={setFilter}
+        onClear={() => {
+          setFilter("all");
+          setSearch("");
+        }}
+      />
+    </DiagnosticsLayout>
   );
 }

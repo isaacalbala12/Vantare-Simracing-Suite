@@ -22,7 +22,7 @@ export function Button({
         `v-button v-button--${variant} v-button--${size} ${typeof className === "function" ? className(state) : (className ?? "")}`
       }
       disabled={disabled || busy}
-      aria-busy={busy || undefined}
+      aria-busy={busy || props["aria-busy"]}
     >
       <span className="v-button-label">{children}</span>
       {busy && (

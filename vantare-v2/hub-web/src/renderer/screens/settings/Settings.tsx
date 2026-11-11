@@ -14,6 +14,7 @@ import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import { UpdatesRailContent } from "../../ui/UpdatesRailContent";
 import { AppearanceRail } from "./AppearanceRail";
+import { DiagnosticsRail } from "./DiagnosticsRail";
 import { GeneralRail } from "./GeneralRail";
 import { PerformanceRail } from "./PerformanceRail";
 import { ShortcutsRail } from "./ShortcutsRail";
@@ -190,6 +191,8 @@ export function Settings() {
             <ShortcutsRail />
           ) : selected === "privacy" ? (
             <PrivacyRail />
+          ) : selected === "diagnostics" ? (
+            <DiagnosticsRail />
           ) : undefined
         }
       />

@@ -15,6 +15,7 @@ export const performanceText = {
 
   help: "El nivel limita la actualización de los widgets. Los cambios de estado y las banderas se aplican inmediatamente.",
 
+  ownFrequencySingular: "widget con frecuencia propia",
   ownFrequency: "widgets con frecuencia propia",
 
   everyPhoto: "Cada foto",

@@ -50,6 +50,33 @@ pub(crate) fn typescript() -> String {
         serde_json::to_string(&sizes).expect("sizes")
     )
     .expect("sizes");
+    let free: Vec<_> = WidgetKind::CATALOG
+        .iter()
+        .copied()
+        .filter(|kind| {
+            kind.info(Some(vantare_ipc::control::CatalogAccess::Free))
+                .allowed
+        })
+        .collect();
+    writeln!(
+        text,
+        "export const studioFreeKinds = {} as const;",
+        serde_json::to_string(&free).expect("free kinds")
+    )
+    .expect("free kinds");
+    let mut categories = vec!["Todos".to_owned()];
+    for kind in WidgetKind::CATALOG {
+        let category = kind.info(None).category;
+        if !categories.contains(&category) {
+            categories.push(category);
+        }
+    }
+    writeln!(
+        text,
+        "export const studioCategories = {} as const;",
+        serde_json::to_string(&categories).expect("categories")
+    )
+    .expect("categories");
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {

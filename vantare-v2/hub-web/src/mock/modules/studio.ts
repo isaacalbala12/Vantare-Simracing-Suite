@@ -1,5 +1,5 @@
 import type {HostToUi,OverlayInstance,StudioView} from "../../contract/generated/contract";
-import {studioCatalog,studioLimits,studioAddAvailable,studioSizes} from "../../contract/generated/studio";
+import {studioCatalog,studioLimits,studioAddAvailable,studioSizes,studioFreeKinds} from "../../contract/generated/studio";
 import type {MockContext,MockHandler} from "../context";
 export function create(context:MockContext):MockHandler{
  const {sceneName}=context;
@@ -12,6 +12,8 @@ export function create(context:MockContext):MockHandler{
  ].map(item=>({...item,visible:true,locked:false,opacity:100,showIn:{practice:true,qualifying:true,race:true},offTrack:"inherit"})) as OverlayInstance[];
  let view:StudioView={state:sceneName==="studio-missing"?"missing":sceneName==="studio-protegido"?"protected":"ready",revision:"0".repeat(64),instances:sceneName==="studio-vacio"?[]:instances,catalog:studioCatalog.map(item=>({...item,allowed:true})),showing:sceneName==="studio-mostrando",plan:"pro",canUndo:false,canRedo:false};
  if(sceneName==="studio-oculto")view.instances[0].visible=false;
+ if(view.state!=="ready")view.instances=[];
+ if(sceneName==="studio-pro-bloqueado") {view.plan="free";view.catalog=view.catalog.map(w=>({...w,allowed:studioFreeKinds.some(kind=>kind===w.kind)}));view.instances=view.instances.map(w=>({...w,locked:!view.catalog.some(c=>c.kind===w.kind&&c.allowed)}));}
  const undo:OverlayInstance[][]=[],redo:OverlayInstance[][]=[];
  let conflict=sceneName==="studio-error";
  const bump=()=>{view.revision=(BigInt(`0x${view.revision}`)+1n).toString(16).padStart(64,"0");view.canUndo=undo.length>0;view.canRedo=redo.length>0;};

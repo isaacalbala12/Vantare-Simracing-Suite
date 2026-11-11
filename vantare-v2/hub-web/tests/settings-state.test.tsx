@@ -513,6 +513,24 @@ describe("Actualizaciones over the simulated host", () => {
       ).toHaveLength(1),
     );
   });
+  it("announces a vetoed restart inline without covering the page", async () => {
+    let veto: Parameters<Client["onCloseVeto"]>[0] | undefined;
+    vi.spyOn(Client.prototype, "onCloseVeto").mockImplementation((listener) => {
+      veto = listener;
+      return () => {};
+    });
+    const hook = mount("actualizacion-lista", <Updates />);
+    await loaded(hook);
+    await screen.findByRole("button", { name: t("updates.restart") });
+    act(() => veto?.("restart"));
+    expect(screen.getByText(t("updates.restartVeto"))).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: t("updates.installed") }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: t("updates.restart") }),
+    ).toBeTruthy();
+  });
   it("shows a read error and keeps reload available", async () => {
     const hook = mount("actualizacion-error", <Updates />);
     await loaded(hook);

@@ -231,13 +231,13 @@
   font-weight: 700;
   letter-spacing: calc(1.7 * var(--ob-unit));
 }
-.v-ob-assistant-label > span {
+.v-ob-assistant-label > span[aria-hidden="true"] {
   width: calc(7 * var(--ob-unit));
   height: calc(7 * var(--ob-unit));
   border-radius: 50%;
   background: var(--ob-c-887f82);
 }
-.v-ob-bubble--writing .v-ob-assistant-label > span {
+.v-ob-bubble--writing .v-ob-assistant-label > span[aria-hidden="true"] {
   background: var(--ob-c-ff6b6b);
 }
 .v-ob-bubble p {

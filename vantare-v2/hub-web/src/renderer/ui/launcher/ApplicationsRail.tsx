@@ -39,7 +39,9 @@ export function LauncherApplicationsRail({
             <div key={app.id} className="v-launcher-app-tile">
               <AppMark app={app} small />
               <strong>{app.name}</strong>
-              <small>{app.available ? text.available : text.unavailable}</small>
+              <small data-available={app.available}>
+                {app.available ? text.available : text.unavailable}
+              </small>
             </div>
           ))}
           <button

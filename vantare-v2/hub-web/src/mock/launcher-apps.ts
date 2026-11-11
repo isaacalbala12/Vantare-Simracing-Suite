@@ -50,7 +50,9 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       },
     ]),
   );
-  const customized = new Set(scene === "launcher-aplicaciones-args" ? ["obs"] : []);
+  const customized = new Set(
+    scene === "launcher-aplicaciones-args" ? ["obs"] : [],
+  );
   let selectionTarget: string | null | undefined;
   let serial = 0;
   let conflictOnce = scene.endsWith("-conflicto");
@@ -143,7 +145,8 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
                 revision: view.revision,
                 draft: structuredClone(draft),
                 hasExecutable: draft.id?.startsWith("custom:") ?? false,
-                hasCustomArguments: draft.id !== null && customized.has(draft.id),
+                hasCustomArguments:
+                  draft.id !== null && customized.has(draft.id),
               },
             },
           }
@@ -185,7 +188,9 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       const draft = request.draft;
       if (
         !draft.name.trim() ||
-        (request.pickToken !== null && (request.pickToken !== selection?.token || selectionTarget !== draft.id))
+        (request.pickToken !== null &&
+          (request.pickToken !== selection?.token ||
+            selectionTarget !== draft.id))
       )
         return fail("denied");
       const existing =

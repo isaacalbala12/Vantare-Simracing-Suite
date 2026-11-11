@@ -15,10 +15,10 @@ import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { useToastManager } from "../../ui/Layers";
 import {
+  ApplicationArgumentReset,
   ApplicationCatalog,
   ApplicationFields,
   ApplicationRemoval,
-  ApplicationArgumentReset,
 } from "../../ui/launcher/Applications";
 import { useProfileEditorState } from "./editor-state";
 import { launcherKey, useLauncherSnapshot } from "./state";
@@ -171,7 +171,10 @@ export function Applications() {
     busy.current = true;
     setPending(true);
     try {
-      const result = await client.request({ method: "launcher.app.pick", id: editor.draft.id });
+      const result = await client.request({
+        method: "launcher.app.pick",
+        id: editor.draft.id,
+      });
       if (
         alive.current &&
         result.method === "launcher.app.pick" &&
@@ -205,7 +208,11 @@ export function Applications() {
       setError(text.missing);
       return;
     }
-    if (!confirmed && editor.hasCustomArguments && (selected !== null || (editor.hasExecutable && draft.useDiscovery))) {
+    if (
+      !confirmed &&
+      editor.hasCustomArguments &&
+      (selected !== null || (editor.hasExecutable && draft.useDiscovery))
+    ) {
       setArgumentReset(revision);
       return;
     }
@@ -319,7 +326,15 @@ export function Applications() {
           onDiscard={discard}
         />
       )}
-      <ApplicationArgumentReset open={argumentReset !== undefined} onCancel={() => setArgumentReset(undefined)} onConfirm={() => {const revision = argumentReset;setArgumentReset(undefined);if(revision) save(revision, true);}} />
+      <ApplicationArgumentReset
+        open={argumentReset !== undefined}
+        onCancel={() => setArgumentReset(undefined)}
+        onConfirm={() => {
+          const revision = argumentReset;
+          setArgumentReset(undefined);
+          if (revision) save(revision, true);
+        }}
+      />
       <ApplicationRemoval
         app={removal}
         pending={pending}

@@ -68,7 +68,9 @@ export function ProfileEditorProvider({ children }: { children: ReactNode }) {
   const [confirmClose, setConfirmClose] = useState(false);
   const [tab, setTab] = useState<"profiles" | "applications">("profiles");
   const [createApplication, setCreateApplication] = useState(false);
-  const requestedTab = useRef<"profiles" | "applications" | undefined>(undefined);
+  const requestedTab = useRef<"profiles" | "applications" | undefined>(
+    undefined,
+  );
   const finishClose = () => {
     if (requestedTab.current) setTab(requestedTab.current);
     requestedTab.current = undefined;
@@ -111,7 +113,10 @@ export function ProfileEditorProvider({ children }: { children: ReactNode }) {
   };
   const navigate = (target: "profiles" | "applications") => {
     if (value?.pending) return;
-    if (!value) {setTab(target);return;}
+    if (!value) {
+      setTab(target);
+      return;
+    }
     requestedTab.current = target;
     close();
   };
@@ -120,11 +125,26 @@ export function ProfileEditorProvider({ children }: { children: ReactNode }) {
       current ? { ...current, draft: { ...current.draft, ...patch } } : null,
     );
   return (
-    <EditorContext.Provider value={{ value, set, update, close, tab, navigate, setTab, createApplication, setCreateApplication }}>
+    <EditorContext.Provider
+      value={{
+        value,
+        set,
+        update,
+        close,
+        tab,
+        navigate,
+        setTab,
+        createApplication,
+        setCreateApplication,
+      }}
+    >
       {children}
       <DiscardProfileDialog
         open={confirmClose}
-        onCancel={() => {setConfirmClose(false);requestedTab.current = undefined;}}
+        onCancel={() => {
+          setConfirmClose(false);
+          requestedTab.current = undefined;
+        }}
         onConfirm={finishClose}
       />
     </EditorContext.Provider>

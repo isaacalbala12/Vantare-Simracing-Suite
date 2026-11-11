@@ -1,6 +1,6 @@
-import { Applications } from "./Applications";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { launcherText as text } from "../../i18n/launcher";
+import { Applications } from "./Applications";
 import { ProfileEditorProvider, useProfileEditorState } from "./editor-state";
 import { Launcher } from "./Launcher";
 import { LauncherRail } from "./LauncherRail";
@@ -34,7 +34,11 @@ function LauncherContent() {
         rail={<LauncherRail />}
       />
       <SectionPanel activeTab={activeTab}>
-        {editor.tab === "applications" && !editor.value ? <Applications /> : <Launcher />}
+        {editor.tab === "applications" && !editor.value ? (
+          <Applications />
+        ) : (
+          <Launcher />
+        )}
       </SectionPanel>
     </>
   );

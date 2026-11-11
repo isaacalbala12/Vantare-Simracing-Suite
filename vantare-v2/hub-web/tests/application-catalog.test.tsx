@@ -1,4 +1,3 @@
-import { Client } from "../src/renderer/bridge/client";
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
+import { Client } from "../src/renderer/bridge/client";
 import { appText as text } from "../src/renderer/i18n/launcher-apps";
 import { Applications } from "../src/renderer/screens/launcher/Applications";
 import { ProfileEditorProvider } from "../src/renderer/screens/launcher/editor-state";
@@ -67,23 +67,41 @@ describe("application catalog", () => {
   it("warns before replacing an app executable discards its saved arguments", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-args");
-    fireEvent.click(await screen.findByRole("button", {name:text.edit("OBS Studio")}));
+    fireEvent.click(
+      await screen.findByRole("button", { name: text.edit("OBS Studio") }),
+    );
     await screen.findByText(text.customArguments);
-    fireEvent.click(screen.getByRole("button", {name:text.pick}));
+    fireEvent.click(screen.getByRole("button", { name: text.pick }));
     await screen.findByText("Aplicación QA");
-    fireEvent.click(screen.getByRole("button", {name:text.save}));
-    await screen.findByRole("alertdialog", {name:text.argumentResetTitle});
-    expect(requests.mock.calls.filter(([request]) => request.method === "launcher.app.pick")).toEqual([[{method:"launcher.app.pick", id:"obs"}]]);
-    expect(requests.mock.calls.filter(([request]) => request.method === "launcher.app.save")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", {name:text.cancel}));
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentResetTitle });
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.app.pick",
+      ),
+    ).toEqual([[{ method: "launcher.app.pick", id: "obs" }]]);
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.app.save",
+      ),
+    ).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: text.cancel }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(screen.getByText(text.customArguments)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", {name:text.save}));
-    await screen.findByRole("alertdialog", {name:text.argumentResetTitle});
-    fireEvent.click(screen.getByRole("button", {name:text.confirmArgumentReset}));
-    await screen.findByRole("button", {name:text.edit("OBS Studio")});
-    expect(requests.mock.calls.filter(([request]) => request.method === "launcher.app.save")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", {name:text.edit("OBS Studio")}));
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentResetTitle });
+    fireEvent.click(
+      screen.getByRole("button", { name: text.confirmArgumentReset }),
+    );
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.app.save",
+      ),
+    ).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: text.edit("OBS Studio") }),
+    );
     await screen.findByText(text.defaultArguments);
     expect(screen.queryByText(text.customArguments)).toBeNull();
   });

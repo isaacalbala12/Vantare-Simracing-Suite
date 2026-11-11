@@ -5,32 +5,51 @@ import {
   calendarMinuteLimit,
   calendarTextLimit,
 } from "../src/contract/generated/calendar";
-import type { CoreStatus } from "../src/contract/generated/contract";
+import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus/calendar.json";
 import {
   isCalendarDate,
   isCalendarSchedule,
   isCalendarView,
+  isError,
   isReply,
   isRequest,
 } from "../src/contract/modules/calendar";
 import { create } from "../src/mock/modules/calendar";
 
-describe("calendar closed read-only contract", () => {
+const samples = corpus.host as unknown as HostToUi[];
+function readSample(method: "calendar.load" | "calendar.refresh") {
+  const item = samples.find(
+    (s) => s.kind === "response" && s.result.method === method,
+  );
+  if (
+    item?.kind !== "response" ||
+    (item.result.method !== "calendar.load" &&
+      item.result.method !== "calendar.refresh")
+  )
+    throw new Error("missing Rust calendar sample");
+  return item.result.value;
+}
+describe("calendar closed contract", () => {
   it("accepts every Rust reply and rejects unknown renderer arguments", () => {
-    for (const sample of corpus.host) expect(isReply(sample.result)).toBe(true);
+    for (const sample of samples) {
+      if (sample.kind === "response") expect(isReply(sample.result)).toBe(true);
+      else if (sample.kind === "failure")
+        expect(isError(sample.error)).toBe(true);
+      else throw new Error("unexpected calendar corpus kind");
+    }
     expect(isRequest({ method: "calendar.load", path: "C:/private" })).toBe(
       false,
     );
     expect(isRequest({ method: "calendar.load" })).toBe(true);
   });
   it("rejects unknown view keys and invalid timestamps", () => {
-    const value = corpus.host[0].result.value;
+    const value = readSample("calendar.load");
     expect(isCalendarView({ ...value, token: "secret" })).toBe(false);
     expect(isCalendarView({ ...value, checked: -1 })).toBe(false);
   });
   it("rejects oversized text, duration, duplicated identity and invalid recurrence", () => {
-    const schedule = corpus.host[1].result.value.official;
+    const schedule = readSample("calendar.refresh").official;
     expect(schedule).not.toBeNull();
     for (const change of [
       { name: "x".repeat(calendarTextLimit + 1) },
@@ -90,6 +109,7 @@ it("local double checks capability and connection before answering", () => {
   expect(host(refresh)).toMatchObject({ error: { kind: "denied" } });
 });
 
+<<<<<<< HEAD
 it("matches the shared strict date and Unicode identity corpus", () => {
   for (const row of validationCorpus.dates)
     expect(isCalendarDate(row.value), row.value).toBe(row.valid);
@@ -107,10 +127,56 @@ it("mock can return a populated schedule while preserving permission checks", ()
   const host = create({
     core,
     sceneName: "calendar-data",
+=======
+it("rejects revisions, extra keys and wrong config values before dispatch", () => {
+  expect(
+    isRequest({
+      method: "calendar.utcSet",
+      utc: true,
+      expectedRevision: "a".repeat(64),
+    }),
+  ).toBe(true);
+  for (const expectedRevision of [
+    "a".repeat(63),
+    "A".repeat(64),
+    "g".repeat(64),
+  ])
+    expect(
+      isRequest({ method: "calendar.utcSet", utc: true, expectedRevision }),
+    ).toBe(false);
+  expect(
+    isRequest({
+      method: "calendar.followSet",
+      seriesId: "bad\n",
+      followed: true,
+      expectedRevision: "a".repeat(64),
+    }),
+  ).toBe(false);
+  expect(
+    isRequest({
+      method: "calendar.notifyWeekSet",
+      enabled: true,
+      expectedRevision: "a".repeat(64),
+      path: "C:/private",
+    }),
+  ).toBe(false);
+  expect(isReply({ method: "calendar.unknown", value: {} })).toBe(false);
+});
+
+it("mock writes use revisions and refuse the previous revision without changing the winner", () => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  core.access.verified = true;
+  core.access.blocked = false;
+  core.access.calendar = true;
+  const host = create({
+    core,
+    sceneName: "calendar-test",
+>>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
     visual: null,
     notes: [],
     note: () => {},
   });
+<<<<<<< HEAD
   expect(
     host({ kind: "request", id: 1, request: { method: "calendar.load" } }),
   ).toMatchObject({
@@ -119,5 +185,53 @@ it("mock can return a populated schedule while preserving permission checks", ()
   core.access.calendar = false;
   expect(
     host({ kind: "request", id: 2, request: { method: "calendar.load" } }),
+=======
+  const loaded = host({
+    kind: "request",
+    id: 1,
+    request: { method: "calendar.configLoad" },
+  });
+  if (
+    loaded?.kind !== "response" ||
+    loaded.result.method !== "calendar.configLoad"
+  )
+    throw new Error("missing config");
+  const revision = loaded.result.value.prefsRevision;
+  expect(
+    host({
+      kind: "request",
+      id: 2,
+      request: {
+        method: "calendar.utcSet",
+        utc: true,
+        expectedRevision: revision,
+      },
+    }),
+  ).toMatchObject({ result: { value: { utc: true } } });
+  expect(
+    host({
+      kind: "request",
+      id: 3,
+      request: {
+        method: "calendar.utcSet",
+        utc: false,
+        expectedRevision: revision,
+      },
+    }),
+  ).toMatchObject({
+    error: { kind: "calendarConflict", current: { utc: true } },
+  });
+  core.access.calendar = false;
+  expect(
+    host({
+      kind: "request",
+      id: 4,
+      request: {
+        method: "calendar.utcSet",
+        utc: false,
+        expectedRevision: revision,
+      },
+    }),
+>>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
   ).toMatchObject({ error: { kind: "denied" } });
 });

@@ -229,7 +229,7 @@ mod tests {
         };
         let accepted = Instant::now();
         let calls = Cell::new(0);
-        assert_eq!(
+        assert!(matches!(
             client.request_before_clock(Command::MailConsentGet, accepted, || {
                 let call = calls.get();
                 calls.set(call + 1);
@@ -241,7 +241,7 @@ mod tests {
                     }
             }),
             Err(HostError::Busy)
-        );
+        ));
         assert_eq!(calls.get(), 2);
         assert_eq!(client.sequence, 1);
         drop(client);

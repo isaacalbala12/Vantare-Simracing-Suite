@@ -280,3 +280,100 @@ mod tests {
         ));
     }
 }
+
+#[cfg_attr(any(test, feature = "bindings"), derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalendarIcsScope {
+    Favs,
+    Events,
+    All,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalendarIcsStatus {
+    Saved,
+    Cancelled,
+    Conflict,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CalendarIcsEntry {
+    pub series_id: String,
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
+    pub start: i64,
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
+    pub end: i64,
+    pub summary: String,
+    pub track: String,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CalendarIcsView {
+    pub calendar: String,
+    pub prepared_hash: String,
+    pub entries: Vec<CalendarIcsEntry>,
+    pub total: u32,
+    pub valid_until: String,
+}
+impl super::State {
+    pub fn ics_prepare(
+        &mut self,
+        scope: CalendarIcsScope,
+        alarm: bool,
+        now: i64,
+    ) -> Result<CalendarIcsView, crate::protocol::HostError> {
+        use crate::protocol::HostError;
+        let view = self.load();
+        let config = self.config();
+        let schedule = agenda::current(&view, now).ok_or(HostError::CalendarScheduleUnavailable)?;
+        let check = |state| match state {
+            super::CalendarDocumentState::Ready => Ok(()),
+            super::CalendarDocumentState::Protected => Err(HostError::Protected),
+            super::CalendarDocumentState::Unavailable => Err(HostError::Io),
+        };
+        if scope == CalendarIcsScope::Favs {
+            check(config.documents.following)?;
+        }
+        if alarm || scope != CalendarIcsScope::Events {
+            check(config.documents.alerts)?;
+        }
+        let scope = match scope {
+            CalendarIcsScope::Favs => Scope::Favs,
+            CalendarIcsScope::Events => Scope::Events,
+            CalendarIcsScope::All => Scope::All,
+        };
+        let value = prepare(
+            &schedule,
+            &config.following,
+            &config.alerts,
+            scope,
+            alarm,
+            now,
+        )
+        .map_err(|error| match error {
+            Error::Invalid => HostError::Rejected,
+            Error::Limit => HostError::CalendarExportTooLarge,
+        })?;
+        Ok(CalendarIcsView {
+            prepared_hash: vantare_services::content_hash(value.calendar.as_bytes()),
+            calendar: value.calendar,
+            total: u32::try_from(value.total).map_err(|_| HostError::CalendarExportTooLarge)?,
+            valid_until: schedule.valid_until,
+            entries: value
+                .entries
+                .into_iter()
+                .map(|entry| CalendarIcsEntry {
+                    series_id: entry.series_id,
+                    start: entry.start,
+                    end: entry.end,
+                    summary: entry.summary,
+                    track: entry.track,
+                })
+                .collect(),
+        })
+    }
+}

@@ -123,6 +123,13 @@ export function create(context: MockContext): MockHandler {
       error: { kind: "calendarConflict", current: structuredClone(config) },
     });
     switch (request.method) {
+      case "calendar.icsPrepare": {
+        const sample = (corpus.host as unknown as HostToUi[]).find((message) => message.kind === "response" && message.result.method === "calendar.icsPrepare");
+        if (!value.official && !value.fallback) return { kind: "failure", id, error: { kind: "calendarScheduleUnavailable" } };
+        return sample ? { ...structuredClone(sample), id } as HostToUi : { kind: "failure", id, error: { kind: "rejected" } };
+      }
+      case "calendar.icsExport":
+        return { kind: "response", id, result: { method: request.method, status: "cancelled" } };
       case "calendar.historyLoad":
         return {
           kind: "response",

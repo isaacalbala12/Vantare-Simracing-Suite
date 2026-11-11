@@ -12,6 +12,16 @@ pub enum Request {
         #[serde(rename = "expectedRevision")]
         expected_revision: String,
     },
+    #[serde(rename = "calendar.icsPrepare")]
+    CalendarIcsPrepare {
+        scope: crate::calendar::CalendarIcsScope,
+        alarm: bool,
+    },
+    #[serde(rename = "calendar.icsExport")]
+    CalendarIcsExport {
+        #[serde(rename = "preparedHash")]
+        prepared_hash: String,
+    },
     #[serde(rename = "calendar.historyLoad")]
     CalendarHistoryLoad {},
     #[serde(rename = "calendar.configLoad")]
@@ -49,6 +59,14 @@ pub enum Reply {
     CalendarAlertsSave {
         value: Box<crate::calendar::CalendarConfigView>,
     },
+    #[serde(rename = "calendar.icsPrepare")]
+    CalendarIcsPrepare {
+        value: Box<crate::calendar::CalendarIcsView>,
+    },
+    #[serde(rename = "calendar.icsExport")]
+    CalendarIcsExport {
+        status: crate::calendar::CalendarIcsStatus,
+    },
     #[serde(rename = "calendar.historyLoad")]
     CalendarHistoryLoad {
         value: Box<crate::calendar::CalendarHistoryView>,
@@ -82,6 +100,8 @@ pub enum Reply {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum HostError {
+    #[serde(rename = "calendarExportTooLarge")]
+    CalendarExportTooLarge,
     #[serde(rename = "calendarScheduleUnavailable")]
     CalendarScheduleUnavailable,
     #[serde(rename = "calendarConflict")]

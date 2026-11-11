@@ -9,6 +9,7 @@ pub mod ics;
 pub use history::{
     CalendarHistoryTrack, CalendarHistoryView, CalendarHistoryWeek, HISTORY_WEEKS_LIMIT,
 };
+pub use ics::{CalendarIcsEntry, CalendarIcsScope, CalendarIcsStatus, CalendarIcsView};
 #[path = "config.rs"]
 pub mod config;
 pub use config::{

@@ -29,6 +29,8 @@ import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
 import { reportExportSession } from "./report-export";
+import { calendarExportSession } from "./calendar-export";
+import { calendarIcsName } from "../contract/generated/calendar";
 import {
   assetPath,
   CSP,
@@ -228,9 +230,18 @@ async function start() {
       });
       return result.canceled ? undefined : result.filePath;
     });
+    const calendarExport = calendarExportSession(async () => {
+      if (!window || window.isDestroyed()) return undefined;
+      const result = await dialog.showSaveDialog(window, {
+        defaultPath: calendarIcsName,
+        filters: [{ name: "iCalendar", extensions: ["ics"] }],
+      });
+      return result.canceled ? undefined : result.filePath;
+    });
     const unsubscribe = host.listen((message) => {
       if (pickExecutable.receive(message)) return;
       message = reportExport.observe(message);
+      message = calendarExport.observe(message);
       if (
         message.kind === "response" &&
         message.result.method === "diagnostics.copy" &&
@@ -271,6 +282,7 @@ async function start() {
       port1.close();
       copies.clear();
       reportExport.close();
+      calendarExport.close();
     }
     disconnect = dispose;
     port1.once("close", dispose);
@@ -323,6 +335,40 @@ async function start() {
                   id: data.id,
                   result: {
                     method: "report.localExport",
+                    status: outcome.status,
+                  },
+                },
+          );
+        });
+        return;
+      }
+      if (
+        data.kind === "request" &&
+        data.request.method === "calendar.icsPrepare"
+      ) {
+        if (!calendarExport.expect(data.id)) {
+          port1.postMessage({
+            kind: "failure",
+            id: data.id,
+            error: { kind: "busy" },
+          });
+          return;
+        }
+      }
+      if (
+        data.kind === "request" &&
+        data.request.method === "calendar.icsExport"
+      ) {
+        void calendarExport.export(data.request.preparedHash).then((outcome) => {
+          if (!portAlive) return;
+          port1.postMessage(
+            "error" in outcome
+              ? { kind: "failure", id: data.id, error: outcome.error }
+              : {
+                  kind: "response",
+                  id: data.id,
+                  result: {
+                    method: "calendar.icsExport",
                     status: outcome.status,
                   },
                 },

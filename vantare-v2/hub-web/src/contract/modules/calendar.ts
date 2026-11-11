@@ -13,6 +13,8 @@ import {
 import { isCalendarHistory } from "../calendar-history-validation";
 import {
   calendarDateLimit,
+  calendarIcsLimit,
+  calendarTextLimit,
   calendarListLimit,
   calendarMinuteLimit,
   calendarSeriesLimit,
@@ -168,6 +170,14 @@ export function isCalendarView(v: unknown) {
     typeof v.invalidCache === "boolean"
   );
 }
+export function isCalendarIcsView(v: unknown) {
+  return record(v) && exact(v, ["calendar", "preparedHash", "entries", "total", "validUntil"]) &&
+    typeof v.calendar === "string" && new TextEncoder().encode(v.calendar).length <= calendarIcsLimit &&
+    v.calendar.startsWith("BEGIN:VCALENDAR\r\n") && v.calendar.endsWith("END:VCALENDAR\r\n") &&
+    isCalendarRevision(v.preparedHash) && number(v.total, calendarIcsLimit) && isCalendarDate(v.validUntil) &&
+    list(v.entries, 4, (entry) => record(entry) && exact(entry, ["seriesId", "start", "end", "summary", "track"]) && text(entry.seriesId) && entry.seriesId.trim().length > 0 && typeof entry.summary === "string" && !/[\u0000-\u001f\u007f]/u.test(entry.summary) && new TextEncoder().encode(entry.summary).length <= 2 * calendarTextLimit + 4 && text(entry.track) && number(entry.start, calendarTimestampLimit * 1000) && number(entry.end, calendarTimestampLimit * 1000) && entry.end >= entry.start) &&
+    v.entries.length === Math.min(v.total, 4);
+}
 export function isRequest(v: Record<string, unknown>) {
   switch (v.method) {
     case "calendar.alertsSave":
@@ -176,6 +186,10 @@ export function isRequest(v: Record<string, unknown>) {
         isCalendarAlerts(v.alerts) &&
         isCalendarRevision(v.expectedRevision)
       );
+    case "calendar.icsPrepare":
+      return exact(v, ["method", "scope", "alarm"]) && (v.scope === "favs" || v.scope === "events" || v.scope === "all") && typeof v.alarm === "boolean";
+    case "calendar.icsExport":
+      return exact(v, ["method", "preparedHash"]) && isCalendarRevision(v.preparedHash);
     case "calendar.load":
     case "calendar.refresh":
     case "calendar.configLoad":
@@ -206,8 +220,11 @@ export function isRequest(v: Record<string, unknown>) {
   }
 }
 export function isReply(v: Record<string, unknown>) {
+  if (v.method === "calendar.icsExport") return exact(v, ["method", "status"]) && (v.status === "saved" || v.status === "cancelled" || v.status === "conflict");
   if (!exact(v, ["method", "value"])) return false;
   switch (v.method) {
+    case "calendar.icsPrepare":
+      return isCalendarIcsView(v.value);
     case "calendar.historyLoad":
       return isCalendarHistory(v.value);
     case "calendar.load":
@@ -224,7 +241,7 @@ export function isReply(v: Record<string, unknown>) {
   }
 }
 export const isError = (v: Record<string, unknown>) =>
-  v.kind === "calendarScheduleUnavailable"
+  (v.kind === "calendarScheduleUnavailable" || v.kind === "calendarExportTooLarge")
     ? exact(v, ["kind"])
     : v.kind === "calendarConflict" &&
       exact(v, ["kind", "current"]) &&

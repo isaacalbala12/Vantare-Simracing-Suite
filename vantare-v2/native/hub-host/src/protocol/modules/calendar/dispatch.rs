@@ -12,6 +12,14 @@ fn local(
                 value: Box::new(value),
             }
         })),
+        Request::CalendarIcsPrepare { scope, alarm } => Some(
+            state
+                .ics_prepare(*scope, *alarm, chrono::Utc::now().timestamp_millis())
+                .map(|value| Reply::CalendarIcsPrepare {
+                    value: Box::new(value),
+                }),
+        ),
+        Request::CalendarIcsExport { .. } => Some(Err(HostError::Unsupported)),
         Request::CalendarHistoryLoad {} => Some(Ok(Reply::CalendarHistoryLoad {
             value: Box::new(state.history()),
         })),

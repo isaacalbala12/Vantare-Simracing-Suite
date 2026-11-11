@@ -1,13 +1,12 @@
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useId } from "react";
+import "./appearance-controls.css";
 import type { Palette } from "../../contract/generated/contract";
 export function PalettePicker({
   label,
   pending = false,
   options,
   value,
-  scheme,
   onChange,
   disabled,
 }: {
@@ -19,7 +18,6 @@ export function PalettePicker({
   onChange: (value: Palette) => void;
   disabled: boolean;
 }) {
-  const id = useId();
   return (
     <RadioGroup
       aria-label={label}
@@ -34,29 +32,26 @@ export function PalettePicker({
       }}
     >
       {options.map((option) => (
-        <label
-          className="v-palette-option"
+        <Radio.Root
+          className="v-palette-card"
           key={option.value}
-          htmlFor={`${id}-${option.value}`}
-          data-palette={option.value}
-          data-scheme={scheme}
+          value={option.value}
+          aria-label={option.label}
         >
-          <span className="v-palette-preview" aria-hidden="true">
-            <span />
-            <span />
-            <span />
+          <span>{option.label}</span>
+          <span className="v-palette-orbs" aria-hidden="true">
+            <span
+              className="v-palette-orb"
+              data-palette={option.value}
+              data-scheme="light"
+            />
+            <span
+              className="v-palette-orb"
+              data-palette={option.value}
+              data-scheme="dark"
+            />
           </span>
-          <span className="v-palette-name">
-            <Radio.Root
-              className="v-radio"
-              id={`${id}-${option.value}`}
-              value={option.value}
-            >
-              <Radio.Indicator className="v-radio-indicator" />
-            </Radio.Root>
-            {option.label}
-          </span>
-        </label>
+        </Radio.Root>
       ))}
     </RadioGroup>
   );

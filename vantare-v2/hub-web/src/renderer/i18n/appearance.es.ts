@@ -1,0 +1,15 @@
+export const appearanceText = {
+  overlays: "Estilo de los overlays",
+  overlaysHelp: "Los widgets tienen su propia apariencia en Overlay Studio.",
+  openStudio: "Abrir Overlay Studio",
+  preview: "Vista previa",
+  brand: "VANTARE",
+  home: "Inicio",
+  launcher: "Launcher",
+  studio: "Studio",
+  profile: "Tu perfil",
+  noProfile: "Sin perfil favorito",
+  waiting: "Esperando simulador",
+  connected: "Simulador conectado",
+  apps: (count: number) => `${count} aplicaciones`,
+} as const;

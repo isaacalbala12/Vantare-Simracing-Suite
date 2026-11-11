@@ -4,12 +4,14 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useSettings } from "../../app/SettingsState";
 import { settingsText, t } from "../../i18n/es";
 import { settingsDescriptions } from "../../i18n/settings-frame.es";
+import { AppearanceGroups } from "../../ui/AppearanceGroups";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { SearchInput } from "../../ui/Forms";
 import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
 import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
+import { AppearanceRail } from "./AppearanceRail";
 import { GeneralRail } from "./GeneralRail";
 import { ShortcutsRail } from "./ShortcutsRail";
 
@@ -70,9 +72,9 @@ export function Settings() {
       label: t("settings.appearance"),
       content: (
         <Suspense fallback={loading}>
-          <ContentStack>
+          <AppearanceGroups>
             <Appearance />
-          </ContentStack>
+          </AppearanceGroups>
         </Suspense>
       ),
     },
@@ -175,6 +177,8 @@ export function Settings() {
         rail={
           selected === "general" ? (
             <GeneralRail onUpdates={() => setTab("updates")} />
+          ) : selected === "appearance" ? (
+            <AppearanceRail />
           ) : selected === "shortcuts" ? (
             <ShortcutsRail />
           ) : undefined

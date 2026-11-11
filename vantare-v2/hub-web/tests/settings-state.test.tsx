@@ -26,9 +26,11 @@ import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { WindowControls } from "../src/renderer/app/WindowControls";
 import { Client } from "../src/renderer/bridge/client";
+import { appearanceText } from "../src/renderer/i18n/appearance.es";
 import { t } from "../src/renderer/i18n/es";
 import { Account } from "../src/renderer/screens/settings/Account";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
+import { AppearanceRail } from "../src/renderer/screens/settings/AppearanceRail";
 import { Diagnostics } from "../src/renderer/screens/settings/Diagnostics";
 import { General } from "../src/renderer/screens/settings/General";
 import { GeneralRail } from "../src/renderer/screens/settings/GeneralRail";
@@ -304,15 +306,35 @@ describe("saving keeps keyboard controls focusable", () => {
     expect(pending.calls()).toBe(1);
     await act(async () => pending.release());
   });
+  it("keeps the interface font segmented control focusable through two arrows", async () => {
+    const pending = hold("settings.update");
+    const hook = mount("ajustes-base", <Appearance />);
+    await loaded(hook);
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: t("appearance.segoe") }),
+    );
+    await waitFor(() => expect(hook.result.current.pending).toBe(true));
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expect(
+      screen
+        .getByRole("group", { name: t("appearance.font") })
+        .contains(document.activeElement),
+    ).toBe(true);
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+  });
   it("keeps the select focusable while its selection is saving", async () => {
     const pending = hold("settings.update");
     const hook = mount("ajustes-base", <Appearance />);
     await loaded(hook);
     const user = userEvent.setup();
-    const select = screen.getByRole("combobox", { name: t("appearance.font") });
+    const select = screen.getByRole("combobox", {
+      name: t("appearance.monoFont"),
+    });
     await user.click(select);
     await user.click(
-      await screen.findByRole("option", { name: t("appearance.segoe") }),
+      await screen.findByRole("option", { name: t("appearance.consolas") }),
     );
     await waitFor(() => expect(hook.result.current.pending).toBe(true));
     expect(select.hasAttribute("disabled")).toBe(false);
@@ -320,6 +342,35 @@ describe("saving keeps keyboard controls focusable", () => {
     expect(document.activeElement).not.toBe(document.body);
     expect(pending.calls()).toBe(1);
     await act(async () => pending.release());
+  });
+});
+
+describe("Appearance context preview", () => {
+  it("reads the saved profile without launching or writing anything", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <AppearanceRail />);
+    await loaded(hook);
+    await screen.findByText("Creador de Contenido");
+    expect(screen.getByText(appearanceText.apps(3))).toBeTruthy();
+    expect(
+      request.mock.calls.filter(([value]) => value.method === "launcher.get"),
+    ).toHaveLength(1);
+    expect(
+      request.mock.calls.some(([value]) =>
+        [
+          "launcher.launch",
+          "launcher.favorite",
+          "profile.save",
+          "settings.update",
+        ].includes(value.method),
+      ),
+    ).toBe(false);
+  });
+  it("does not project profile details from a protected Launcher", async () => {
+    const hook = mount("launcher-protected", <AppearanceRail />);
+    await loaded(hook);
+    await screen.findByText(appearanceText.noProfile);
+    expect(screen.queryByText("Creador de Contenido")).toBeNull();
   });
 });
 

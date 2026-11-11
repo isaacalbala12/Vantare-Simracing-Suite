@@ -10,9 +10,10 @@ import {
 import { useSettings } from "../../app/SettingsState";
 import { applyAppearance } from "../../design/appearance";
 import { t } from "../../i18n/es";
-import { Card, SettingRow } from "../../ui/Data";
-import { RadioGroup, Select, Slider, Switch } from "../../ui/Forms";
+import { SettingGroup, SettingRow } from "../../ui/Data";
+import { Segmented, Select, Slider, Switch } from "../../ui/Forms";
 import { PalettePicker } from "../../ui/PalettePicker";
+import { SchemePicker } from "../../ui/SchemePicker";
 
 function AppearanceSlider({
   field,
@@ -31,6 +32,7 @@ function AppearanceSlider({
     <Slider
       label={label}
       hideLabel
+      variant="appearance"
       value={preview}
       min={field === "contrast" ? contrastRange[0] : glassOpacityRange[0]}
       max={field === "contrast" ? contrastRange[1] : glassOpacityRange[1]}
@@ -67,8 +69,10 @@ export function Appearance() {
   const scheme = appearance.scheme === "system" ? system : appearance.scheme;
   return (
     <>
-      <Card title={t("appearance.scheme")}>
-        <RadioGroup
+      <SettingGroup number={1} title={t("appearance.scheme")} surface={false}>
+        <SchemePicker
+          palette={appearance.palette}
+          disabled={disabled}
           pending={state.pending}
           label={t("appearance.scheme")}
           value={appearance.scheme}
@@ -82,8 +86,8 @@ export function Appearance() {
             if (value) state.update({ field: "scheme", value });
           }}
         />
-      </Card>
-      <Card title={t("appearance.themes")}>
+      </SettingGroup>
+      <SettingGroup number={2} title={t("appearance.themes")} surface={false}>
         <PalettePicker
           label={t("appearance.themes")}
           value={appearance.palette}
@@ -96,8 +100,8 @@ export function Appearance() {
           pending={state.pending}
           onChange={(value) => state.update({ field: "palette", value })}
         />
-      </Card>
-      <Card title={t("general.interface")}>
+      </SettingGroup>
+      <SettingGroup number={3} title={t("general.interface")}>
         <SettingRow
           label={t("appearance.contrast")}
           description={t("appearance.contrastHelp")}
@@ -117,9 +121,8 @@ export function Appearance() {
           label={t("appearance.font")}
           description={t("appearance.fontHelp")}
         >
-          <Select
+          <Segmented
             label={t("appearance.font")}
-            hideLabel
             options={interfaceFonts.map((value) => ({
               value,
               label: t(`appearance.${value}`),
@@ -134,6 +137,7 @@ export function Appearance() {
           />
         </SettingRow>
         <SettingRow
+          optional
           label={t("appearance.monoFont")}
           description={t("appearance.monoFontHelp")}
         >
@@ -153,8 +157,8 @@ export function Appearance() {
             }}
           />
         </SettingRow>
-      </Card>
-      <Card title={t("appearance.motion")}>
+      </SettingGroup>
+      <SettingGroup number={4} title={t("appearance.motion")}>
         <SettingRow
           label={t("appearance.reduce")}
           description={t("appearance.reduceHelp")}
@@ -170,7 +174,7 @@ export function Appearance() {
             }
           />
         </SettingRow>
-      </Card>
+      </SettingGroup>
     </>
   );
 }

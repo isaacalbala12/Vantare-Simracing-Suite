@@ -7,7 +7,9 @@ export function SettingGroup({
   number,
   title,
   children,
+  surface = true,
 }: {
+  surface?: boolean;
   number: number;
   title: string;
   children: ReactNode;
@@ -22,7 +24,13 @@ export function SettingGroup({
         <TrackedCaps>{title}</TrackedCaps>
         <i aria-hidden="true" />
       </h2>
-      <div className="v-card v-setting-group-card">{children}</div>
+      <div
+        className={
+          surface ? "v-card v-setting-group-card" : "v-setting-group-content"
+        }
+      >
+        {children}
+      </div>
     </section>
   );
 }
@@ -55,14 +63,18 @@ export function SettingRow({
   description,
   children,
   note,
+  optional = false,
 }: {
+  optional?: boolean;
   label: string;
   description?: string;
   children: ReactNode;
   note?: ReactNode;
 }) {
   return (
-    <div className="v-setting-row">
+    <div
+      className={`v-setting-row${optional ? " v-setting-row--optional" : ""}`}
+    >
       <div>
         <div className="v-setting-label">{label}</div>
         {description && <p className="v-muted">{description}</p>}

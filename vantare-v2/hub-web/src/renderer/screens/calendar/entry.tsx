@@ -93,7 +93,7 @@ export default function CalendarEntry() {
           { id: "calendar", etiqueta: text.calendar, visible: state.allowed },
           {
             id: "events",
-            etiqueta: text.events(
+            etiqueta: text.eventsTab(
               schedule?.series.filter((s) => s.recurrence.kind !== "interval")
                 .length ?? 0,
             ),

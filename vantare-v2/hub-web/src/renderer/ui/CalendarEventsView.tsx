@@ -190,10 +190,9 @@ export function CalendarEventsView({
                             onClick={() => onToggleSlot?.(series.id, at)}
                           >
                             {alerted && (
-                              <Icon
-                                className="v-calendar-event-slot-icon"
-                                name="bell-fill"
-                              />
+                              <span className="v-calendar-event-slot-icon">
+                                <Icon name="bell-fill" />
+                              </span>
                             )}
                             <b>{clock(at, utc)}</b>
                             {at === next && <small>{text.nextTag}</small>}

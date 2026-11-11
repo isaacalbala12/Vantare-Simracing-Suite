@@ -106,11 +106,12 @@ pub fn option(
             {
                 current.first_step_delay = value
             }
-            ProfileOption::FirstStepDelay(_) => return Err(HostError::Denied),
             ProfileOption::Retries(value) if value <= editor::RETRIES_MAX => {
                 current.max_retries = value;
             }
-            ProfileOption::Retries(_) => return Err(HostError::Denied),
+            ProfileOption::FirstStepDelay(_) | ProfileOption::Retries(_) => {
+                return Err(HostError::Denied);
+            }
             ProfileOption::Failure(value) => {
                 current.failure = match value {
                     editor::ProfileFailure::Ask => policy::Failure::Ask,

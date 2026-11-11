@@ -382,6 +382,9 @@ pub(crate) fn track(
     access: Option<CatalogAccess>,
 ) -> Result<StudioView, HostError> {
     Open::read(&state.path)?;
+    if show && showing(&state.path) {
+        return Ok(view(state, access));
+    }
     let path = state.path.with_extension("show.json");
     let before = files::read_optional(&path, LIMIT).map_err(|_| HostError::Protected)?;
     if show {

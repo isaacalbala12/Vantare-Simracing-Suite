@@ -166,7 +166,7 @@ fn track_requests_use_the_native_counter_and_hide_removes_the_request() {
     assert!(state.track(true, access).unwrap().showing);
     assert_eq!(
         std::fs::read(path.with_extension("show.json")).unwrap(),
-        b"2"
+        b"1"
     );
     assert!(!state.track(false, access).unwrap().showing);
     assert!(!path.with_extension("show.json").exists());

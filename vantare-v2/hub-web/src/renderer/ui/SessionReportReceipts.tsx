@@ -64,12 +64,12 @@ export function SessionReportReceipts({
           <button
             type="button"
             aria-expanded={expanded === value.id}
-            aria-label={`${text.detail} ${title || text.missingTitle}`}
+            aria-label={`${text.detail} ${title.trim() ? title : text.missingTitle}`}
             onClick={() =>
               setExpanded(expanded === value.id ? undefined : value.id)
             }
           >
-            <strong>{title || text.missingTitle}</strong>
+            <strong>{title.trim() ? title : text.missingTitle}</strong>
             <TestingFinePrint>{value.id}</TestingFinePrint>
             <span>
               {reportModules.find(([id]) => id === module)?.[1] ??

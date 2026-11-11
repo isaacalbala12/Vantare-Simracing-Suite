@@ -57,10 +57,7 @@
   color: var(--text-3);
   line-height: 18.75px;
 }
-.v-account-identity > .v-account-pill {
-  align-self: flex-start;
-  margin-top: 8px;
-}
+
 .v-account-identity-actions,
 .v-account-photo-actions {
   display: flex;
@@ -148,9 +145,7 @@
   line-height: 18px;
   color: var(--text-2);
 }
-.v-account-founders > p + p {
-  color: var(--text-3);
-}
+
 .v-account-founders > div {
   margin-top: -2px;
   display: flex;
@@ -246,13 +241,7 @@
   gap: 4px;
   margin: 0;
 }
-.v-account-rail dl > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  border-bottom: 1px solid var(--line-1);
-}
+
 .v-account-rail dl > div:last-child {
   border: 0;
 }
@@ -380,4 +369,19 @@
   background: var(--bg-sidebar);
   border-color: var(--line-2);
   border-radius: 10px;
+}
+
+.v-account-identity > .v-account-pill {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+.v-account-founders > p + p {
+  color: var(--text-3);
+}
+.v-account-rail dl > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border-bottom: 1px solid var(--line-1);
 }

@@ -17,7 +17,7 @@ pub const PREVIEW_ID_LENGTH: usize = 64;
 pub const UPDATED_AT_MAX_BYTES: usize = 128;
 pub const SCREENSHOT_JPEG_MAX: usize = (10 * 1024_usize).div_ceil(3) * 4;
 pub const SCREENSHOT_SIDE_MAX: u32 = 1920;
-pub const SCREENSHOT_BYTES_MAX: u32 = 400 * 1024;
+pub const SCREENSHOT_BYTES_MAX: u32 = vantare_services::report::screenshots::MAX_BYTES as u32;
 pub const SCREENSHOT_COUNT_MAX: usize = 3;
 pub const REPORT_STATES: [&str; 6] = [
     "received",
@@ -263,6 +263,9 @@ pub struct ReportPreviewView {
     pub screenshots: Vec<ReportScreenshot>,
 }
 pub fn preview(value: &report_document::Preview) -> Result<ReportPreviewView, HostError> {
+    if !SCREENSHOTS_AVAILABLE && !value.screenshots.is_empty() {
+        return Err(HostError::EvidencePending);
+    }
     let payload: serde_json::Value =
         serde_json::from_str(&value.payload).map_err(|_| HostError::Rejected)?;
     let report = payload.get("reporte").unwrap_or(&payload);
@@ -771,6 +774,17 @@ mod tests {
         let preview = report_document::Preview { id: "a".repeat(64), digest: "b".repeat(64), account_id: "private account".into(), channel: "nightly".into(), retry: false, screenshots: vec![], payload: serde_json::json!({"p_module":"hub", "p_action_text":"action", "p_expected_text":"expected", "p_observed_text":"observed", "p_context_text":"context", "p_app_version":"QA", "p_os_version":"Windows", "p_idempotency_key":"private key"}).to_string() };
         let value = serde_json::to_string(&super::preview(&preview).unwrap()).unwrap();
         assert!(!value.contains("private account") && !value.contains("private key"));
+        let with_image = report_document::Preview {
+            screenshots: vec![report_document::ScreenshotPreview {
+                id: "a".repeat(64),
+                jpeg: "/9j/".into(),
+                width: 1,
+                height: 1,
+                byte_size: 3,
+            }],
+            ..preview.clone()
+        };
+        assert_eq!(super::preview(&with_image), Err(HostError::EvidencePending));
         let malformed = report_document::Preview {
             payload: "{}".into(),
             ..preview

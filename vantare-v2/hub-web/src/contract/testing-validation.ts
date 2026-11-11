@@ -6,6 +6,7 @@ import {
   reportReceiptLegacyPrefix,
   reportReceiptStates,
   reportScreenshotLimits,
+  reportScreenshotsAvailable,
   reportStates,
   testingIdLimits,
   testingUuidGroups,
@@ -183,7 +184,9 @@ export function isReportPreview(value: unknown): boolean {
     isReportPreviewId(value.id) &&
     isReportPreviewId(value.digest) &&
     typeof value.retry === "boolean" &&
-    isScreenshots(value.screenshots)
+    isScreenshots(value.screenshots) &&
+    (reportScreenshotsAvailable ||
+      (Array.isArray(value.screenshots) && value.screenshots.length === 0))
   );
 }
 export function isReportReceipt(value: unknown): boolean {

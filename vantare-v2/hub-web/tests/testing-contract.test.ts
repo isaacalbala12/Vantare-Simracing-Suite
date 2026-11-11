@@ -358,3 +358,26 @@ describe("Testing Center closed wire and local persistence double", () => {
     ).toBe(false);
   });
 });
+
+it("rejects a preview containing screenshots while capture is unavailable", () => {
+  const value = {
+    id: "a".repeat(64),
+    digest: "b".repeat(64),
+    fields,
+    appVersion: "QA",
+    osVersion: "Windows",
+    channel: "nightly",
+    retry: false,
+    screenshots: [] as unknown[],
+  };
+  const message = () => ({
+    kind: "response",
+    id: 42,
+    result: { method: "report.prepare", value },
+  });
+  expect(isHostMessage(message())).toBe(true);
+  value.screenshots = [
+    { id: "c".repeat(64), jpeg: "/9j/", width: 1, height: 1, byteSize: 3 },
+  ];
+  expect(isHostMessage(message())).toBe(false);
+});

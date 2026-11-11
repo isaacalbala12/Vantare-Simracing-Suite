@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { reportModules } from "../../../contract/generated/contract";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
+import { DiscardReportDialog } from "../../ui/DiscardReportDialog";
 import { Checkbox, Input, Select, Textarea } from "../../ui/Forms";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
@@ -17,6 +18,7 @@ import { useReports } from "./ReportsState";
 
 export function Reports() {
   const state = useReports();
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [view, setView] = useState<"local" | "compose" | "list" | "diagnostic">(
     "local",
   );
@@ -70,6 +72,15 @@ export function Reports() {
         )
       }
     >
+      <DiscardReportDialog
+        open={discardOpen}
+        disabled={blocked}
+        onCancel={() => setDiscardOpen(false)}
+        onConfirm={() => {
+          setDiscardOpen(false);
+          run(state.discard);
+        }}
+      />
       {state.legacy !== "none" && <Callout title={text.legacy[state.legacy]} />}
       {state.message && <Callout title={state.message} />}
       {state.error && (
@@ -86,13 +97,10 @@ export function Reports() {
           }
           actions={
             <ActionGroup>
-              <Button
-                disabled={blocked}
-                onClick={() => run(state.loaded ? state.save : state.load)}
-              >
+              <Button disabled={blocked} onClick={() => run(state.retry)}>
                 {text.retry}
               </Button>
-              <Button disabled={blocked} onClick={() => run(state.discard)}>
+              <Button disabled={blocked} onClick={() => setDiscardOpen(true)}>
                 {text.discard}
               </Button>
             </ActionGroup>
@@ -176,27 +184,25 @@ export function Reports() {
             <TestingNotes>
               <Input
                 label={text.localTitle}
-                value={state.fields.actionText}
+                value={state.localNotes.title}
                 disabled={state.busy}
                 onChange={(event) =>
-                  state.edit({ actionText: event.currentTarget.value })
+                  state.editLocal({ title: event.currentTarget.value })
                 }
               />
               <Textarea
                 label={text.localBody}
-                value={state.fields.observedText}
+                value={state.localNotes.body}
                 disabled={state.busy}
                 onChange={(event) =>
-                  state.edit({ observedText: event.currentTarget.value })
+                  state.editLocal({ body: event.currentTarget.value })
                 }
               />
             </TestingNotes>
             <ActionGroup>
               <Button
                 variant="primary"
-                disabled={
-                  blocked || !state.consent || !state.loaded || state.dirty
-                }
+                disabled={blocked || !state.consent || state.access.tester}
                 onClick={() => run(state.contribute)}
               >
                 {text.send}
@@ -259,13 +265,14 @@ export function Reports() {
             >
               {state.dirty ? text.save : text.prepare}
             </Button>
-            <Button disabled={blocked} onClick={() => run(state.discard)}>
+            <Button disabled={blocked} onClick={() => setDiscardOpen(true)}>
               {text.discard}
             </Button>
           </ActionGroup>
           {state.preview && (
             <ContentStack>
               <strong>{text.preview}</strong>
+              <p>{`${text.module}: ${reportModules.find(([id]) => id === state.preview?.fields.module)?.[1] ?? state.preview.fields.module}`}</p>
               <p>{state.preview.fields.actionText}</p>
               <p>{state.preview.fields.expectedText}</p>
               <p>{state.preview.fields.observedText}</p>

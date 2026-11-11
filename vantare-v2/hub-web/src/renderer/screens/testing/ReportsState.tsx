@@ -56,6 +56,11 @@ function useReportsState() {
   });
   const [legacy, setLegacy] = useState<LegacyMigration>("none");
   const [consent, setConsent] = useState(false);
+  const [localNotes, setLocalNotes] = useState({ title: "", body: "" });
+  const failedRequest = useRef<
+    Exclude<Request, { method: "window.close" }> | undefined
+  >(undefined);
+  const sending = useRef(false);
   const state = useRef({ fields, saved, loaded, available });
   state.current = { fields, saved, loaded, available };
   const inflight = useRef<Promise<unknown> | undefined>(undefined);
@@ -73,10 +78,11 @@ function useReportsState() {
       .catch(() => {})
       .then(async () => {
         if (!client || !state.current.available || epoch !== generation.current)
-          throw new Error("report unavailable");
+          throw new HostFailure({ kind: "coreUnavailable" });
         setBusy(true);
         setError(false);
         setFailure(undefined);
+        failedRequest.current = undefined;
         try {
           const reply = await testingRequest(client, request, signal);
           if (epoch !== generation.current)
@@ -84,6 +90,7 @@ function useReportsState() {
           return reply;
         } catch (error) {
           if (epoch === generation.current) {
+            failedRequest.current = request;
             setError(true);
             if (
               request.method.startsWith("report.") ||
@@ -157,17 +164,29 @@ function useReportsState() {
   useEffect(() => {
     if (!client) return;
     return client.addCloseGuard(async (reason) => {
-      if (reason !== "window") return true;
-      // A failed preview/refresh must not block closing a clean draft.
+      if (reason === "live" || reason === "controlEof") return true;
       await inflight.current?.catch(() => {});
-      try {
-        await saveCurrent.current();
-        return JSON.stringify(state.current.fields) === state.current.saved;
-      } catch {
-        return false;
-      }
+      const clean =
+        JSON.stringify(state.current.fields) === state.current.saved;
+      if (!clean) setMessage(text.closeUnsaved);
+      return clean;
     });
   }, [client]);
+  useEffect(() => {
+    const flush = () => {
+      if (!state.current.available || !state.current.loaded) return;
+      void saveCurrent.current().catch(() => setMessage(text.autosaveFailed));
+    };
+    const hidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("blur", flush);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      window.removeEventListener("blur", flush);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, []);
   useEffect(() => {
     if (
       identity.current === client &&
@@ -179,6 +198,10 @@ function useReportsState() {
     cancellation.current = new AbortController();
     identity.current = client;
     generation.current++;
+    sending.current = false;
+    failedRequest.current = undefined;
+    setBusy(false);
+    setLocalNotes({ title: "", body: "" });
     setFields(empty());
     setSaved(JSON.stringify(empty()));
     setLoaded(false);
@@ -193,18 +216,24 @@ function useReportsState() {
   useEffect(() => () => cancellation.current.abort(), []);
   function edit(patch: Partial<ReportFields>) {
     attempt.current = undefined;
+    failedRequest.current = undefined;
     setError(false);
     setFields((current) => ({ ...current, ...patch }));
     setPreview(undefined);
     setConsent(false);
     setReceipt(undefined);
   }
+  function editLocal(patch: Partial<typeof localNotes>) {
+    setLocalNotes((current) => ({ ...current, ...patch }));
+    attempt.current = undefined;
+    setConsent(false);
+  }
   async function refresh() {
     const reply = await request({ method: "testing.refresh" });
     if (reply.method === "testing.refresh") setParticipation(reply.value);
   }
   async function contribute() {
-    if (!consent || dirty) return;
+    if (!consent) return;
     const id = attempt.current ?? crypto.randomUUID();
     attempt.current = id;
     setConsent(false);
@@ -254,26 +283,56 @@ function useReportsState() {
     }
   }
   async function send() {
-    if (!preview || !consent || dirty) return;
-    const sentFields = JSON.stringify(state.current.fields);
-    setConsent(false);
-    const reply = await request({
-      method: "report.send",
-      previewId: preview.id,
-      consent: true,
-    });
-    if (reply.method !== "report.send")
-      throw new Error("unexpected report reply");
-    setReceipt(reply.value);
-    setPreview(undefined);
-    if (reply.value.draftState === "cleared") {
-      if (JSON.stringify(state.current.fields) === sentFields)
-        setFields(empty());
-      setSaved(JSON.stringify(empty()));
+    if (sending.current || !preview || !consent || dirty) return;
+    sending.current = true;
+    const epoch = generation.current;
+    try {
+      const sentFields = JSON.stringify(state.current.fields);
+      setConsent(false);
+      const reply = await request({
+        method: "report.send",
+        previewId: preview.id,
+        consent: true,
+      });
+      if (reply.method !== "report.send")
+        throw new Error("unexpected report reply");
+      setReceipt(reply.value);
+      setPreview(undefined);
+      if (reply.value.draftState === "cleared") {
+        if (JSON.stringify(state.current.fields) === sentFields)
+          setFields(empty());
+        setSaved(JSON.stringify(empty()));
+      }
+    } finally {
+      if (epoch === generation.current) sending.current = false;
     }
   }
+  async function retry() {
+    const failed = failedRequest.current;
+    setError(false);
+    setFailure(undefined);
+    failedRequest.current = undefined;
+    switch (failed?.method) {
+      case "draft.load":
+        return load();
+      case "draft.save":
+        return save();
+      case "testing.refresh":
+        return refresh();
+      case "report.prepare":
+        return prepare();
+      case "report.retryPrepare":
+        return prepare(true);
+      default:
+        setMessage(text.reviewAgain);
+    }
+  }
+
   return {
     access: core.access,
+    localNotes,
+    editLocal,
+    retry,
     legacy,
     message,
     fields,

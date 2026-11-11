@@ -3,17 +3,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  type CloseReason,
+  type CoreStatus,
+  type Reply,
   reportAutosaveMs,
   reportFieldLimits,
 } from "../src/contract/generated/contract";
-import { HostProvider } from "../src/renderer/app/Host";
+import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
 import {
   ReportsProvider,
   useReports,
 } from "../src/renderer/screens/testing/ReportsState";
 
-type Guard = Parameters<Client["addCloseGuard"]>[0];
 const caches: QueryClient[] = [];
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({
@@ -37,13 +39,24 @@ async function mount(scene = "testing-reports") {
     defaultOptions: { queries: { retry: false } },
   });
   caches.push(cache);
-  let guard: Guard | undefined;
+  let client: Client | undefined;
+  let peer: MessagePort | undefined;
+  const RealMessageChannel = globalThis.MessageChannel;
+  vi.stubGlobal(
+    "MessageChannel",
+    class extends RealMessageChannel {
+      constructor() {
+        super();
+        peer = this.port2;
+      }
+    },
+  );
   const original = Client.prototype.addCloseGuard;
   vi.spyOn(Client.prototype, "addCloseGuard").mockImplementation(function (
     this: Client,
     value,
   ) {
-    guard = value;
+    client = this;
     return original.call(this, value);
   });
   const hook = renderHook(useReports, {
@@ -61,9 +74,23 @@ async function mount(scene = "testing-reports") {
   });
   return {
     ...hook,
-    guard: (reason: Parameters<Guard>[0]) => {
-      if (!guard) throw new Error("missing report guard");
-      return guard(reason);
+    cache,
+    close: (reason: CloseReason): Promise<boolean> => {
+      if (!client || !peer) throw new Error("missing report port");
+      const connected = client;
+      return new Promise((resolve) => {
+        const send = connected.send.bind(connected);
+        const capture = vi
+          .spyOn(connected, "send")
+          .mockImplementation((value) => {
+            send(value);
+            if (value.kind === "closeAnswer") {
+              capture.mockRestore();
+              resolve(value.allow);
+            }
+          });
+        peer?.postMessage({ kind: "closeRequested", reason });
+      });
     },
   };
 }
@@ -158,7 +185,7 @@ describe("protected report draft behavior", () => {
     expect(calls).toMatchObject([{ actionText: "Última nota" }]);
     expect(hook.result.current.dirty).toBe(false);
   });
-  it("preserves a failed save, vetoes only window close, and permits Live and restart", async () => {
+  it("preserves a failed save, explains close vetoes and permits Live", async () => {
     const hook = await mount("testing-save-error");
     act(() => hook.result.current.edit({ actionText: "Conservar esta nota" }));
     await act(async () => {
@@ -166,22 +193,135 @@ describe("protected report draft behavior", () => {
     });
     expect(hook.result.current.fields.actionText).toBe("Conservar esta nota");
     expect(hook.result.current.error).toBe(true);
-    expect(await hook.guard("window")).toBe(false);
-    expect(await hook.guard("live")).toBe(true);
-    expect(await hook.guard("restart")).toBe(true);
+    let allow = true;
+    await act(async () => {
+      allow = await hook.close("window");
+    });
+    expect(allow).toBe(false);
+    expect(hook.result.current.message).toContain("sin guardar");
+    await act(async () => {
+      allow = await hook.close("restart");
+    });
+    expect(allow).toBe(false);
+    await act(async () => {
+      allow = await hook.close("live");
+    });
+    expect(allow).toBe(true);
   });
-  it("flushes an unsaved edit when closing the window", async () => {
+  it("receives closeRequested through the real port, never saves in the guard, and flushes on blur", async () => {
     const hook = await mount();
     act(() =>
       hook.result.current.edit({ actionText: "Último cambio antes de cerrar" }),
     );
-    let allow = false;
+    const requests = vi.spyOn(Client.prototype, "request");
+    let allow = true;
     await act(async () => {
-      allow = await hook.guard("window");
+      allow = await hook.close("window");
+    });
+    expect(allow).toBe(false);
+    expect(requests).not.toHaveBeenCalled();
+    expect(hook.result.current.message).toContain("sin guardar");
+    act(() => window.dispatchEvent(new Event("blur")));
+    await waitFor(() => expect(hook.result.current.dirty).toBe(false));
+    requests.mockClear();
+    await act(async () => {
+      allow = await hook.close("restart");
     });
     expect(allow).toBe(true);
-    expect(hook.result.current.dirty).toBe(false);
+    expect(requests).not.toHaveBeenCalled();
   });
+  it("keeps local contribution notes out of the protected fields and later structured preview", async () => {
+    const hook = await mount();
+    act(() =>
+      hook.result.current.editLocal({
+        title: "LOCAL_PRIVATE_TITLE",
+        body: "LOCAL_PRIVATE_BODY",
+      }),
+    );
+    expect(hook.result.current.dirty).toBe(false);
+    expect(hook.result.current.fields.actionText).not.toContain(
+      "LOCAL_PRIVATE",
+    );
+    act(() =>
+      hook.result.current.edit({
+        actionText: "Acción",
+        expectedText: "Esperado",
+        observedText: "Resultado",
+      }),
+    );
+    await act(async () => {
+      await hook.result.current.prepare();
+    });
+    expect(JSON.stringify(hook.result.current.preview)).not.toContain(
+      "LOCAL_PRIVATE",
+    );
+  });
+  it("serializes two immediate send calls into a single submission", async () => {
+    const hook = await mount();
+    act(() =>
+      hook.result.current.edit({
+        actionText: "Acción",
+        expectedText: "Esperado",
+        observedText: "Resultado",
+      }),
+    );
+    await act(async () => {
+      await hook.result.current.prepare();
+    });
+    act(() => hook.result.current.setConsent(true));
+    const calls = vi.spyOn(Client.prototype, "request");
+    await act(async () => {
+      await Promise.all([
+        hook.result.current.send(),
+        hook.result.current.send(),
+      ]);
+    });
+    expect(
+      calls.mock.calls.filter(([request]) => request.method === "report.send"),
+    ).toHaveLength(1);
+    expect(hook.result.current.receipt).toBeDefined();
+  });
+  it.each(["testing.refresh", "report.prepare"] as const)(
+    "retries the failed %s operation rather than a clean save",
+    async (method) => {
+      const hook = await mount("testing-tester");
+      const original = Client.prototype.request;
+      let failed = false;
+      const calls = vi
+        .spyOn(Client.prototype, "request")
+        .mockImplementation(function (this: Client, request) {
+          if (request.method === method && !failed) {
+            failed = true;
+            return Promise.reject(new Error("local failure"));
+          }
+          return original.call(this, request);
+        });
+      if (method === "report.prepare")
+        act(() =>
+          hook.result.current.edit({
+            actionText: "Acción",
+            expectedText: "Esperado",
+            observedText: "Resultado",
+          }),
+        );
+      await act(async () => {
+        await expect(
+          method === "testing.refresh"
+            ? hook.result.current.refresh()
+            : hook.result.current.prepare(),
+        ).rejects.toBeDefined();
+      });
+      await act(async () => {
+        await hook.result.current.retry();
+      });
+      expect(
+        calls.mock.calls.filter(([request]) => request.method === method),
+      ).toHaveLength(2);
+      expect(hook.result.current.error).toBe(false);
+      if (method === "report.prepare")
+        expect(hook.result.current.preview).toBeDefined();
+    },
+  );
   it("invalidates preview and consent when its fields change", async () => {
     const hook = await mount();
     act(() =>
@@ -204,4 +344,50 @@ describe("protected report draft behavior", () => {
     });
     expect(hook.result.current.receipt).toBeUndefined();
   });
+});
+
+it("resets busy on account loss and ignores the old in-flight reply", async () => {
+  const hook = await mount("testing-tester");
+  const original = Client.prototype.request;
+  let deliver: ((reply: Reply) => void) | undefined;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request,
+  ) {
+    return request.method === "testing.refresh"
+      ? new Promise((resolve) => {
+          deliver = resolve;
+        })
+      : original.call(this, request);
+  });
+  let pending: Promise<unknown>;
+  act(() => {
+    pending = hook.result.current.refresh().catch((error) => error);
+  });
+  await waitFor(() => expect(hook.result.current.busy).toBe(true));
+  const core = hook.cache.getQueryData<CoreStatus>(coreKey);
+  if (!core || !deliver) throw new Error("missing fixture");
+  act(() =>
+    hook.cache.setQueryData(coreKey, {
+      ...core,
+      access: { ...core.access, verified: false },
+    }),
+  );
+  await waitFor(() => expect(hook.result.current.busy).toBe(false));
+  await act(async () => {
+    deliver?.({
+      method: "testing.refresh",
+      value: { reports: [], questionnaires: [] },
+    });
+    await pending;
+  });
+  expect(hook.result.current.busy).toBe(false);
+  expect(hook.result.current.loaded).toBe(false);
+});
+it("flushes a draft when the document becomes hidden before a close request", async () => {
+  const hook = await mount();
+  act(() => hook.result.current.edit({ actionText: "Guardar al ocultarse" }));
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+  act(() => document.dispatchEvent(new Event("visibilitychange")));
+  await waitFor(() => expect(hook.result.current.dirty).toBe(false));
 });

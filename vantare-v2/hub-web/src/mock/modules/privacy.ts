@@ -11,13 +11,22 @@ export function create(context: MockContext): MockHandler {
   let consent = false;
   let privacyRevision = 0;
   let privacyConflict = false;
-  if (["privacidad-pendiente", "privacidad-uso", "privacidad-error", "privacidad-puerta-conflicto"].includes(sceneName)) {
+  if (
+    [
+      "privacidad-pendiente",
+      "privacidad-uso",
+      "privacidad-error",
+      "privacidad-puerta-conflicto",
+      "privacidad-puerta-protegida",
+    ].includes(sceneName)
+  ) {
     privacy.crashes = false;
     privacy.usage = false;
     privacy.crashesDecided = sceneName === "privacidad-uso";
     privacy.usageDecided = false;
   }
   if (sceneName === "privacidad-protegida") privacy.protected = true;
+  if (sceneName === "privacidad-puerta-protegida") privacy.protected = true;
   if (sceneName === "privacidad-limpieza-ocupada") {
     privacy.cleanupPending = true;
     privacy.cleanupBusy = true;
@@ -39,7 +48,8 @@ export function create(context: MockContext): MockHandler {
           result: { method: request.method, value: privacy },
         };
       case "privacy.update": {
-        if (sceneName === "privacidad-error") return { kind: "failure", id, error: { kind: "io" } };
+        if (sceneName === "privacidad-error")
+          return { kind: "failure", id, error: { kind: "io" } };
         if (privacy.protected)
           return { kind: "failure", id, error: { kind: "protected" } };
         if (sceneName === "privacidad-ocupada") {
@@ -48,7 +58,10 @@ export function create(context: MockContext): MockHandler {
         }
         if (
           request.baseRevision !== privacy.revision ||
-          (["privacidad-conflicto", "privacidad-puerta-conflicto"].includes(sceneName) && !privacyConflict)
+          (["privacidad-conflicto", "privacidad-puerta-conflicto"].includes(
+            sceneName,
+          ) &&
+            !privacyConflict)
         ) {
           privacyConflict = true;
           privacy = {

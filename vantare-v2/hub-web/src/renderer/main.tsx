@@ -40,13 +40,15 @@ function Content() {
       </ContentStack>
     );
   return (
-    <PrivacyGate><SettingsProvider>
-      <PilotProvider>
-        <ReportsProvider>
-          <Shell />
-        </ReportsProvider>
-      </PilotProvider>
-    </SettingsProvider></PrivacyGate>
+    <PrivacyGate>
+      <SettingsProvider>
+        <PilotProvider>
+          <ReportsProvider>
+            <Shell />
+          </ReportsProvider>
+        </PilotProvider>
+      </SettingsProvider>
+    </PrivacyGate>
   );
 }
 function App() {

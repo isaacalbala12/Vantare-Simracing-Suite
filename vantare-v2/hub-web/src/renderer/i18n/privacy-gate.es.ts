@@ -2,15 +2,19 @@ export const privacyGateText = {
   title: "Tu privacidad",
   crashesLabel: "Consentimiento para informes de fallos",
   usageLabel: "Consentimiento para datos de uso",
-  crashesQuestion: "¿Quieres enviar informes de fallos para ayudarnos a corregir errores?",
+  crashesQuestion:
+    "¿Quieres enviar informes de fallos para ayudarnos a corregir errores?",
   usageQuestion: "¿Quieres compartir datos de uso para mejorar Vantare?",
-  crashesDescription: "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.",
-  usageDescription: "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos.",
-  optional: "Es opcional. Puedes usar Vantare si rechazas y cambiar tu decisión en Ajustes › Privacidad. Uso e informes de fallos se aceptan por separado.",
+  crashesDescription:
+    "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.",
+  usageDescription:
+    "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos.",
+  optional:
+    "Es opcional. Puedes usar Vantare si rechazas y cambiar tu decisión en Ajustes › Privacidad. Uso e informes de fallos se aceptan por separado.",
   reject: "No, gracias",
   accept: "Aceptar",
   continue: "Continuar",
-  usage: "Enviar datos de uso anónimos",
+  usage: "Acepto compartir datos de uso",
   policy: "Política de privacidad",
   failed: "No se pudo confirmar tu decisión. Puedes volver a intentarlo.",
   loading: "Cargando privacidad",

@@ -4,8 +4,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
-import { PNG } from "pngjs";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
+import {
+  captureOnlyMode,
+  captureUncompared,
+} from "./visual-diff/capture-only.ts";
 import { auditFontSources } from "./visual-diff/fonts.ts";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
@@ -37,11 +40,6 @@ const currentOnly = option("--current");
 const captureOnly = args.includes("--capture-only");
 const invalidReason = option("--invalid-reference-reason");
 const selected = option("--scene");
-const captureOnly = args.includes("--capture-only");
-assert.ok(
-  !captureOnly || (selected && !currentOnly),
-  "Capture-only requires a live named scene",
-);
 assert.ok(
   !args.includes("--capture-expanded-sidebar") || !currentOnly,
   "Expanded sidebar requires a live capture",
@@ -56,10 +54,13 @@ assert.ok(
   !currentOnly || (selected && schemes.length === 1),
   "--current requires one scene and theme",
 );
-assert.ok(
-  !captureOnly || (selected && schemes.length === 1 && invalidReason?.trim()),
-  "--capture-only requires one scene, one theme and --invalid-reference-reason",
-);
+const captureMode = captureOnlyMode({
+  enabled: captureOnly,
+  scene: selected,
+  current: currentOnly,
+  invalidReason,
+  themes: schemes.length,
+});
 await mkdir(output, { recursive: true });
 await writeFile(
   join(output, "font-sources.json"),
@@ -70,7 +71,7 @@ for (const scheme of schemes) {
   assert.ok(scheme === "dark" || scheme === "light");
   const directory = join(reference, scheme);
   const batch = JSON.parse(
-    captureOnly
+    captureMode === "live"
       ? "[]"
       : await readFile(join(directory, "capture-batch.json"), "utf8"),
   ) as {
@@ -86,19 +87,18 @@ for (const scheme of schemes) {
   for (const scene of scenes) {
     try {
       assert.match(scene, /^[a-z0-9-]+$/);
-      if (captureOnly) {
+      if (captureMode === "live") {
         const adapter = visualScenes[scene];
         assert.ok(adapter, `No explicit adapter for ${scene}`);
         const destination = join(output, scheme, scene);
-        await mkdir(destination, { recursive: true });
-        const current = await capture(adapter, scheme, destination);
-        await writeFile(join(destination, "current.png"), current);
-        report.push({
-          scene,
-          scheme,
-          status: "captured-without-comparison",
-          currentPngSha256: digest(current),
-        });
+        report.push(
+          await captureUncompared({
+            scene,
+            scheme,
+            destination,
+            capture: () => capture(adapter, scheme, destination),
+          }),
+        );
         continue;
       }
       const entry = batch.find((item) => item.scene === scene);
@@ -135,18 +135,16 @@ for (const scheme of schemes) {
         ? await readFile(resolve(currentOnly))
         : await capture(adapter, scheme, destination);
       if (captureOnly) {
-        const png = PNG.sync.read(current);
-        assert.deepEqual([png.width, png.height], [1440, 900]);
-        await writeFile(join(destination, "current.png"), current);
-        report.push({
-          scene,
-          scheme,
-          status: "captured",
-          referenceStatus: "invalid",
-          reason: invalidReason,
-          currentPngSha256: digest(current),
-          suppliedCapture: Boolean(currentOnly),
-        });
+        report.push(
+          await captureUncompared({
+            scene,
+            scheme,
+            destination,
+            capture: async () => current,
+            invalidReason,
+            suppliedCapture: Boolean(currentOnly),
+          }),
+        );
         continue;
       }
       await writeFile(join(destination, "reference.png"), old);
@@ -186,7 +184,7 @@ const rows = report.map((item) =>
 await writeFile(
   join(output, "report.md"),
   captureOnly
-    ? `# Captura sin comparación\n\nReferencia no válida: ${invalidReason}. No se calculan porcentajes ni diferencias.\n\n| Tema | Escena | Estado |\n|---|---|---|\n${rows.join("\n")}\n`
+    ? `# Captura sin comparación\n\n${invalidReason ? `Referencia no válida: ${invalidReason}.` : "Comparación diferida al informe del barrido."} No se calculan porcentajes ni diferencias.\n\n| Tema | Escena | Estado |\n|---|---|---|\n${rows.join("\n")}\n`
     : `# Paridad visual\n\nPíxeles RGBA distintos, sin máscaras ni alineado, es la cifra principal. Pixelmatch (umbral 0,1, antialias incluido) es complementario. La revisión humana sigue siendo obligatoria.\n\n| Tema | Escena | Estado | Exacto % | Perceptual % |\n|---|---|---|---:|---:|\n${rows.join("\n")}\n`,
 );
 console.log(join(output, "report.json"));

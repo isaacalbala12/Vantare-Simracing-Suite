@@ -517,3 +517,39 @@ it("continues from a protected privacy file without deciding, private escape or 
     ),
   ).toHaveLength(0);
 });
+
+it("rechecks protected privacy before leaving and keeps the wizard when the file becomes readable", async () => {
+  respond("onboarding-privacidad-protegida");
+  const { complete } = mount(true, true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name: "Saltar" }));
+  const proceed = await screen.findByRole("button", {
+    name: "Continuar sin enviar datos",
+  });
+  const readable = createMockHost("onboarding-sin-diseno")({
+    kind: "request",
+    id: 1,
+    request: { method: "privacy.get" },
+  });
+  if (readable?.kind !== "response" || readable.result.method !== "privacy.get")
+    throw new Error("privacy view missing");
+  expect(readable.result.value.protected).toBe(false);
+  fake.request.mockResolvedValueOnce(readable.result);
+  fireEvent.click(proceed);
+  await screen.findByRole("alert");
+  expect(complete).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole("button", { name: "Continuar sin enviar datos" }),
+  ).toBeNull();
+  expect(screen.getAllByRole("switch")).toHaveLength(3);
+  expect(
+    fake.request.mock.calls.filter(([request]) =>
+      [
+        "privacy.update",
+        "onboarding.skipPrivate",
+        "onboarding.finish",
+      ].includes(request.method),
+    ),
+  ).toHaveLength(0);
+});

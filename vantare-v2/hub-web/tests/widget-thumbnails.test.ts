@@ -35,6 +35,9 @@ describe("thumbnail assets and deferred recipe", () => {
       );
       const png = resolve(directory, `${item.kind}.png`);
       if (existsSync(png)) {
+        expect(manifest.engineCommit).toMatch(/^[0-9a-f]{40}$/);
+        expect(manifest.executableSha256).toMatch(/^[0-9a-f]{64}$/);
+        expect(item.engineCommit).toBe(manifest.engineCommit);
         pngDimensions(
           readFileSync(png),
           item.width * item.scale,

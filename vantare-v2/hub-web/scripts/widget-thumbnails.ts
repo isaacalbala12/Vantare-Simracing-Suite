@@ -42,6 +42,10 @@ const git = (...args: string[]) =>
     windowsHide: true,
   }).trim();
 export function pngDimensions(bytes: Buffer, width: number, height: number) {
+  assert.equal(bytes.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  // Check IHDR before decompressing, so a corrupt size cannot allocate a huge buffer.
+  assert.equal(bytes.readUInt32BE(16), width);
+  assert.equal(bytes.readUInt32BE(20), height);
   assert.equal(bytes[24], 8, "PNG must use 8-bit channels");
   assert.equal(bytes[25], 6, "PNG must have RGBA channels");
   const decoded = PNG.sync.read(bytes);
@@ -312,7 +316,7 @@ export async function run(args: string[]) {
         item.width,
         item.height,
       );
-    // Publish only after every PNG passes: a failed run keeps the checked-in assets.
+    // Publish only after every PNG passes: a render/validation failure keeps the checked-in assets.
     const date = new Date().toISOString();
     for (const item of manifest.widgets) {
       await copyFile(

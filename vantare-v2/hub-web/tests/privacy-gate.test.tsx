@@ -134,3 +134,11 @@ it("keeps the close action accessible while the consent question is open", async
   await user.click(screen.getByRole("button", { name: "Cerrar ventana" }));
   expect(close).toHaveBeenCalledOnce();
 });
+
+it("keeps existing-user QA scenes accessible without changing permission values", async () => {
+  const request = vi.spyOn(Client.prototype, "request");
+  mount("ajustes-base");
+  await screen.findByRole("heading", { name: "Hub" });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(request.mock.calls.some(([value]) => value.method === "privacy.update")).toBe(false);
+});

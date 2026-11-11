@@ -8,6 +8,10 @@ export function create(context: MockContext): MockHandler {
   let privacy = structuredClone(
     privacyFixture,
   ) as import("../../contract/generated/contract").PrivacyView;
+  // Ordinary QA scenes represent an existing user who declined both options.
+  // The explicit first-run scenes below alone leave decisions pending.
+  privacy.crashesDecided = true;
+  privacy.usageDecided = true;
   let consent = false;
   let privacyRevision = 0;
   let privacyConflict = false;

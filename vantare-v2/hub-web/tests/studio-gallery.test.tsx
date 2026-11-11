@@ -232,4 +232,42 @@ describe("Studio gallery", () => {
       baseRevision: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
   });
+  it("moves between cards with arrows and returns from the inspector with Escape", async () => {
+    mount();
+    const first = await screen.findByRole("button", { name: "Standings" });
+    const next = screen.getByRole("button", { name: "Delta" });
+    first.focus();
+    fireEvent.keyDown(first, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(next);
+    fireEvent.click(next);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Delta" }),
+      ),
+    );
+    fireEvent.keyDown(document.activeElement ?? window, { key: "Escape" });
+    await screen.findByRole("searchbox", { name: t.search });
+    expect(document.activeElement).toBe(first);
+  });
+  it("commits opacity with the native bounds after keyboard adjustment", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    const slider = await screen.findByRole("slider", { name: t.opacity });
+    expect(slider.getAttribute("aria-valuemin")).toBe("20");
+    expect(slider.getAttribute("aria-valuemax")).toBe("100");
+    slider.focus();
+    await userEvent.setup().keyboard("{ArrowLeft}");
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([r]) =>
+            r.method === "studio.instance" &&
+            r.patch.field === "opacity" &&
+            r.patch.value === 99,
+        ),
+      ).toBe(true),
+    );
+  });
 });

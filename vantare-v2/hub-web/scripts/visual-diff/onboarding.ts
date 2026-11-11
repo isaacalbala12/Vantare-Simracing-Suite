@@ -38,7 +38,12 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
             .getByRole("button", { name: "Continuar", exact: true })
             .click();
         const primary = page.getByRole("button", {
-          name: step === 0 ? "Empezar" : step === 3 ? "Ahora no" : "Continuar",
+          name:
+            step === 0
+              ? "Empezar"
+              : step === 3
+                ? /^(Ahora no|Continuar)$/
+                : "Continuar",
           exact: true,
         });
         await primary.hover();

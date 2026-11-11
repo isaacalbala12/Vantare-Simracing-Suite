@@ -85,28 +85,30 @@ export function AccountPanel({
           <span className={`v-account-pill${verified ? " is-success" : ""}`}>
             {verified ? text.active : plan}
           </span>
-          {!demo && signedIn && (
-            <div className="v-account-photo-actions">
-              {value.portal && (
+          <div className="v-account-photo-actions">
+            {!demo && signedIn && (
+              <>
+                {value.portal && (
+                  <Button
+                    size="sm"
+                    disabled={pending}
+                    onClick={() =>
+                      action({ method: "account.portal", page: "profile" })
+                    }
+                  >
+                    {text.photo}
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   disabled={pending}
-                  onClick={() =>
-                    action({ method: "account.portal", page: "profile" })
-                  }
+                  onClick={() => action({ method: "account.photoRefresh" })}
                 >
-                  {text.photo}
+                  {text.refreshPhoto}
                 </Button>
-              )}
-              <Button
-                size="sm"
-                disabled={pending}
-                onClick={() => action({ method: "account.photoRefresh" })}
-              >
-                {text.refreshPhoto}
-              </Button>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
         <div className="v-account-identity-actions">
           <Button
@@ -157,20 +159,22 @@ export function AccountPanel({
           )}
         </div>
       </section>
-      {value.purchase.message && (
-        <div className="v-account-purchase">
-          <AccountNotice>{value.purchase.message}</AccountNotice>
-          {value.purchase.waiting && (
-            <Button
-              size="sm"
-              disabled={pending}
-              onClick={() => action({ method: "account.purchaseStop" })}
-            >
-              {text.stopPurchase}
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="v-account-purchase">
+        {value.purchase.message && (
+          <>
+            <AccountNotice>{value.purchase.message}</AccountNotice>
+            {value.purchase.waiting && (
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => action({ method: "account.purchaseStop" })}
+              >
+                {text.stopPurchase}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
       <div className="v-account-overview">
         <section className="v-account-card">
           <h2>{text.beta}</h2>

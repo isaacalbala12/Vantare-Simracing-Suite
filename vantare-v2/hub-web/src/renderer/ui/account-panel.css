@@ -50,12 +50,11 @@
   font-size: 32px;
   font-weight: 600;
   line-height: 36px;
-  transform: translateY(-2px);
 }
 .v-account-identity > p {
   font-size: 12.5px;
   color: var(--text-3);
-  line-height: 18.75px;
+  line-height: 1.618034;
 }
 
 .v-account-identity-actions,
@@ -69,9 +68,7 @@
   flex-direction: column;
   max-width: 45%;
 }
-.v-account-photo-actions {
-  margin-top: 4px;
-}
+
 .v-account-pill {
   display: inline-flex;
   align-items: center;
@@ -86,7 +83,7 @@
   color: var(--text-2);
   font-size: 12px;
   font-weight: 500;
-  line-height: 16.5px;
+  line-height: 1.618034;
   white-space: nowrap;
 }
 .v-account-pill.is-success {
@@ -109,17 +106,16 @@
 }
 .v-account-card h2 {
   margin: 0;
-  font: 600 16px / 28px var(--font-sans);
+  font: 600 16px / 1.618034 var(--font-sans);
 }
 .v-account-card > p {
   font-size: 13px;
-  line-height: 20.5px;
+  line-height: 1.618034;
   color: var(--text-2);
 }
 .v-account-overview {
   display: flex;
   gap: 12px;
-  margin-top: 12px;
 }
 .v-account-overview > .v-account-card {
   flex: 1;
@@ -128,26 +124,26 @@
 .v-account-contribution > p:last-child {
   font-size: 12px;
   color: var(--text-3);
-  line-height: 18px;
+  line-height: 1.618034;
 }
 .v-account-founders {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 6px;
 }
 .v-account-founders > strong {
   font-size: 14px;
   font-weight: 600;
-  line-height: 21px;
+  line-height: 1.618034;
+  color: var(--text-2);
 }
 .v-account-founders > p {
   font-size: 12px;
-  line-height: 18px;
+  line-height: 1.618034;
   color: var(--text-2);
 }
 
 .v-account-founders > div {
-  margin-top: -2px;
   display: flex;
   gap: 6px;
 }
@@ -169,13 +165,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 58px;
+  min-height: 54px;
   border-bottom: 1px solid var(--line-1);
 }
 .v-account-module + .v-account-module {
   margin-top: 4px;
 }
 .v-account-module-icon {
+  align-self: flex-start;
+  margin-top: 11px;
   display: grid;
   place-items: center;
   width: 32px;
@@ -190,17 +188,19 @@
   height: 18px;
 }
 .v-account-module > div {
+  padding-block: 8px;
   flex: 1;
   min-width: 0;
 }
 .v-account-module strong {
   font-size: 13.5px;
   font-weight: 650;
-  line-height: 20.25px;
+  line-height: 1.618034;
+  display: block;
 }
 .v-account-module p {
   font-size: 12px;
-  line-height: 18px;
+  line-height: 1.618034;
   color: var(--text-3);
 }
 .v-account-news {
@@ -228,7 +228,8 @@
   gap: 8px;
 }
 .v-account-meta {
-  height: 9px;
+  height: 10px;
+  letter-spacing: 0.4px;
   font-family: var(--font-mono);
   font-size: 10px;
   line-height: 15px;
@@ -273,9 +274,7 @@
 .v-account-rail i.is-active {
   background: var(--ok);
 }
-.v-account-rail .v-rail-block:first-child .v-account-meta {
-  height: 11px;
-}
+
 .v-account-device {
   width: 100%;
   min-height: 65px;
@@ -307,19 +306,20 @@
   min-width: 0;
 }
 .v-account-device strong {
+  display: block;
   font-size: 13px;
   font-weight: 650;
-  line-height: 19.5px;
+  line-height: 1.618034;
 }
 .v-account-device p {
   margin-top: 3px;
   font-size: 11.5px;
-  line-height: 17.25px;
+  line-height: 1.618034;
   color: var(--text-3);
 }
 .v-account-rail .v-rail-block-body > p:not(.v-account-notice) {
   font-size: 13px;
-  line-height: 19.5px;
+  line-height: 1.618034;
   color: var(--text-3);
 }
 @media (max-height: 780px) {
@@ -335,6 +335,8 @@
   }
   .v-account-module p,
   .v-account-module-icon {
+    align-self: flex-start;
+    margin-top: 11px;
     display: none;
   }
   .v-account-identity h1 {

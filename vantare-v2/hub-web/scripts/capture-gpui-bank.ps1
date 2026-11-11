@@ -7,6 +7,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $QaRoot) { throw 'Define VANTARE_HUB_QA_ROOT con una carpeta QA propia.' }
+$Output = [IO.Path]::GetFullPath($Output)
+$repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
+if ($Output.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'La evidencia debe quedar fuera del repo' }
+[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Output))
 $bankRoot = [IO.Path]::GetFullPath($Bank)
 $inventory = Get-Content -LiteralPath (Join-Path $bankRoot 'bank.json') -Raw | ConvertFrom-Json
 $binary = Join-Path $bankRoot $inventory.binary

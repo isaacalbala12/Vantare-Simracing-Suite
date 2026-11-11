@@ -86,7 +86,9 @@ for (const count of [4, 30]) {
           throw new Error("Studio QA instance count differs");
         if (
           collapsed &&
-          (await page.getByRole("complementary", { name: "Inspector de widgets" }).count())
+          (await page
+            .getByRole("complementary", { name: "Inspector de widgets" })
+            .count())
         )
           throw new Error("Collapsed Studio inspector is still mounted");
       },

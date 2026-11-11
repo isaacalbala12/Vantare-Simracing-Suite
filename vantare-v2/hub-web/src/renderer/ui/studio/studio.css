@@ -430,9 +430,6 @@
 .v-context:has(.v-studio-rail) > .v-tooltip-trigger {
   display: none;
 }
-.v-studio-catalog .v-search .v-field {
-  min-width: 0;
-}
 .v-studio-topbar :is(.v-studio-obs-button, .v-studio-edit-button) {
   font-size: 14px;
   min-height: 36px;
@@ -442,6 +439,9 @@
 .v-studio-catalog .v-search,
 .v-studio-catalog .v-field {
   width: 100%;
+}
+.v-studio-catalog .v-search .v-field {
+  min-width: 0;
 }
 @media (min-width: 1600px) {
   .v-studio-topbar .v-studio-layout {

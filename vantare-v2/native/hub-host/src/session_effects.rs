@@ -56,7 +56,7 @@ impl Session {
     ) -> Result<Option<Reply>, HostError> {
         let result = match result {
             Ok(None)
-                if !self.deferred.is_some_and(|(expected, _)| expected == id)
+                if self.deferred.is_none_or(|(expected, _)| expected != id)
                     || !matches!(self.remotes.get(&id), Some(RemoteKind::Testing(_))) =>
             {
                 Err(HostError::Rejected)

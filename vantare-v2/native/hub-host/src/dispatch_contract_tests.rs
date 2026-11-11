@@ -18,11 +18,14 @@ mod ready {
 #[derive(Default)]
 struct Core {
     requests: usize,
+    cancelled: Vec<u32>,
     available: bool,
     busy: bool,
 }
 impl Core {
-    fn cancel_queued(&mut self, _id: u32) {}
+    fn cancel_queued(&mut self, id: u32) {
+        self.cancelled.push(id);
+    }
     fn request(
         &mut self,
         _id: u32,

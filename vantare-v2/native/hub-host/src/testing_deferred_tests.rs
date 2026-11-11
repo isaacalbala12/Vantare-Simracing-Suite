@@ -327,6 +327,7 @@ fn cancelling_an_import_preserves_another_screens_correlation() {
     session.remotes.insert(9, RemoteKind::MailGet);
     let mut pipe = Pipe::new(Vec::new());
     session.cancel_deferred(&mut pipe).unwrap();
+    assert_eq!(session.core.cancelled, vec![7]);
     assert!(!session.remotes.contains_key(&7));
     assert!(session.remotes.contains_key(&9));
     assert!(matches!(

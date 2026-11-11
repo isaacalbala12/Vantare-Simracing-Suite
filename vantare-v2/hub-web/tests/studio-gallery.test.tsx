@@ -255,8 +255,8 @@ describe("Studio gallery", () => {
     await screen.findByRole("button", { name: "Standings" });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
     const slider = await screen.findByRole("slider", { name: t.opacity });
-    expect(slider.getAttribute("aria-valuemin")).toBe("20");
-    expect(slider.getAttribute("aria-valuemax")).toBe("100");
+    expect(slider.getAttribute("min")).toBe("20");
+    expect(slider.getAttribute("max")).toBe("100");
     slider.focus();
     await userEvent.setup().keyboard("{ArrowLeft}");
     await waitFor(() =>

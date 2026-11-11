@@ -1,0 +1,226 @@
+.v-profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-profile-form {
+  min-height: calc(100vh - 152px);
+  padding: 20px;
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--grad-neo);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+.v-profile-form > .v-field {
+  width: 100%;
+}
+.v-profile-form .v-input {
+  /* GPUI orbit/controls.rs: field uses skin.l2 and skin.line2. */
+  background: var(--surface-2);
+  border-color: var(--line-2);
+  width: 100%;
+  height: 38px;
+  font-size: 14px;
+}
+.v-profile-form .v-field label,
+.v-profile-decorations > div > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.v-profile-favorite {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+}
+.v-profile-favorite .v-switch-field {
+  flex-direction: row-reverse;
+  gap: 10px;
+}
+.v-profile-decorations {
+  display: flex;
+  gap: 12px;
+}
+.v-profile-decorations > div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-profile-decorations .v-button {
+  width: 130px;
+}
+.v-profile-step-heading {
+  border-top: 1px solid var(--line-1);
+  margin-top: 6px;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.v-profile-step-heading h2 {
+  font: 600 12px var(--font-sans);
+  color: var(--text-3);
+  margin: 0;
+}
+.v-profile-form > .v-button {
+  min-height: 36px;
+  height: 36px;
+  font-size: 12px;
+  font-weight: 600;
+  align-self: start;
+  border: 1px dashed var(--line-2);
+  border-radius: 18px;
+}
+.v-profile-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-profile-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 12px;
+}
+.v-profile-step legend {
+  font: 12px var(--font-mono);
+  color: var(--text-3);
+}
+.v-profile-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.v-profile-rail h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font: 600 15px var(--font-display);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.v-profile-rail h2 svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+.v-profile-preview {
+  height: 230px;
+  padding: 12px;
+  box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--grad-neo);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+}
+.v-profile-preview .v-launcher-circuit {
+  top: 10px;
+  left: 14px;
+  width: calc(100% - 28px);
+  height: 80px;
+  opacity: 1;
+}
+.v-profile-preview strong {
+  display: block;
+  margin-top: 92px;
+  font: 600 24px var(--font-display);
+}
+.v-profile-behavior {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 14px;
+  padding-top: 18px;
+}
+.v-profile-behavior p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 18px;
+}
+.v-profile-behavior > .v-field:first-of-type {
+  width: 100%;
+}
+.v-profile-behavior .v-field label {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.v-profile-behavior .v-input {
+  background: var(--surface-2);
+  border-color: var(--line-2);
+  height: 38px;
+}
+
+.v-profile-step-heading > .v-button {
+  min-height: 28px;
+  height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.v-profile-step-list:empty {
+  display: none;
+}
+.v-profile-behavior > .v-field:first-of-type .v-input {
+  width: 100%;
+}
+.v-profile-preview p {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 8px 0;
+}
+.v-profile-preview-apps,
+.v-profile-preview-keys {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.v-profile-editor > .v-launcher-heading .v-button {
+  min-height: 36px;
+  height: 36px;
+}
+
+.v-profile-form .v-input:focus-visible,
+.v-profile-behavior .v-input:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 0;
+}
+.v-profile-behavior > p {
+  margin-bottom: 0;
+}
+.v-profile-behavior .v-field label {
+  font-weight: 600;
+}
+.v-profile-behavior .v-choice {
+  min-height: 22px;
+  gap: 14px;
+}
+.v-profile-behavior .v-checkbox {
+  width: 18px;
+  height: 18px;
+  border-color: var(--line-2);
+}
+.v-profile-behavior .v-select-trigger svg {
+  width: 12px;
+  height: 12px;
+  transform: rotate(90deg);
+}
+.v-profile-decorations .v-button:disabled {
+  color: var(--text-3);
+  font-size: 14px;
+  font-weight: 400;
+}
+.v-profile-editor > .v-launcher-heading .v-button--primary {
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  border: 0;
+}

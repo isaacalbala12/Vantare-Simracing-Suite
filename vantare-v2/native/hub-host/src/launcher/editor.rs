@@ -41,10 +41,23 @@ choice!(ProfileRetry { Ask, Failed, All });
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfileStep {
+    #[serde(deserialize_with = "step_key")]
     pub key: Option<String>,
     pub app_id: String,
     pub delay_seconds: u32,
     pub has_custom_arguments: bool,
+}
+fn step_key<'de, D: serde::Deserializer<'de>>(input: D) -> Result<Option<String>, D::Error> {
+    let key = Option::<String>::deserialize(input)?;
+    if key.as_ref().is_some_and(|key| {
+        key.len() != 64
+            || !key
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    }) {
+        return Err(serde::de::Error::custom("invalid step key"));
+    }
+    Ok(key)
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -252,6 +265,8 @@ pub fn save(
             current: read(path),
         });
     }
+    // Establish preserve()'s invariant before apply: this exact document revision
+    // and profile own the current read capabilities. CAS checks the bytes again.
     if keys.is_some_and(|keys| !keys.matches(value.id.as_deref(), revision)) {
         return Err(HostError::Denied);
     }
@@ -281,6 +296,69 @@ mod tests {
         assert!(serde_json::from_value::<ProfileDraft>(value).is_err());
         let value = serde_json::json!({ "appId":"lmu", "delaySeconds":0, "hasCustomArguments":false, "path":"D:/QA/forbidden.exe" });
         assert!(serde_json::from_value::<ProfileStep>(value).is_err());
+    }
+    #[test]
+    fn step_key_is_required_nullable_or_exactly_lowercase_hex() {
+        let value = serde_json::json!({ "key":null, "appId":"lmu", "delaySeconds":0, "hasCustomArguments":false });
+        assert!(serde_json::from_value::<ProfileStep>(value.clone()).is_ok());
+        let mut valid = value.clone();
+        valid["key"] = serde_json::json!("a".repeat(64));
+        assert!(serde_json::from_value::<ProfileStep>(valid).is_ok());
+        for invalid in [
+            serde_json::json!("A".repeat(64)),
+            serde_json::json!("a".repeat(63)),
+            serde_json::json!("g".repeat(64)),
+            serde_json::json!(7),
+        ] {
+            let mut malformed = value.clone();
+            malformed["key"] = invalid;
+            assert!(serde_json::from_value::<ProfileStep>(malformed).is_err());
+        }
+        let mut absent = value;
+        absent.as_object_mut().expect("step").remove("key");
+        assert!(serde_json::from_value::<ProfileStep>(absent).is_err());
+    }
+    #[cfg(windows)]
+    #[test]
+    fn key_from_another_profile_and_failed_read_are_rejected_without_writes() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let document = Document::fresh_install();
+        let bytes = serde_json::to_vec(&document).expect("document");
+        std::fs::write(&path, &bytes).expect("fixture");
+        let found = available(&document);
+        let mut keys = StepKeys::default();
+        let first = keys
+            .open(&path, Some(&document.profiles[0].id))
+            .expect("first");
+        let mut other = get(&path, Some(&document.profiles[1].id)).expect("other");
+        other.draft.steps[0]
+            .key
+            .clone_from(&first.draft.steps[0].key);
+        assert_eq!(
+            save(
+                &path,
+                &other.draft,
+                &other.revision,
+                &found,
+                None,
+                Some(&keys)
+            ),
+            Err(HostError::Denied)
+        );
+        assert_eq!(keys.open(&path, Some("missing")), Err(HostError::Denied));
+        assert_eq!(
+            save(
+                &path,
+                &first.draft,
+                &first.revision,
+                &found,
+                None,
+                Some(&keys)
+            ),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).expect("untouched"), bytes);
     }
     #[test]
     fn mock_new_profile_is_exactly_the_rust_default() {

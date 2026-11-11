@@ -26,7 +26,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--text-1);
-  font: 500 14px var(--font-sans);
+  font: 500 14px / 24px var(--font-sans);
   cursor: pointer;
 }
 .v-scheme-preview {

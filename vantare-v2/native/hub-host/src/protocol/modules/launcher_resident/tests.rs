@@ -116,3 +116,20 @@ fn freshness_registration_matching_and_polling_never_write_a_request() {
     assert_eq!(std::fs::read(&path).expect("unchanged"), bytes);
     assert!(!mailbox::request_path(&path).exists());
 }
+
+#[test]
+fn the_renderer_cannot_supply_an_answer_or_extra_read_parameters() {
+    for request in [
+        serde_json::json!({"method":"launcher.resident.get","path":"private"}),
+        serde_json::json!({"method":"launcher.resident.get","action":"trust"}),
+        serde_json::json!({"method":"launcher.answer","decision":"1","action":"trust"}),
+        serde_json::json!({"method":"launcher.resident.answer","decision":"1","action":"trust"}),
+    ] {
+        assert!(
+            serde_json::from_value::<crate::protocol::UiToHost>(
+                serde_json::json!({"kind":"request","id":1,"request":request})
+            )
+            .is_err()
+        );
+    }
+}

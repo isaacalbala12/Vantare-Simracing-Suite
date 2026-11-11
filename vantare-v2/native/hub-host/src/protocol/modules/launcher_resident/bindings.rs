@@ -21,6 +21,26 @@ pub(crate) fn typescript() -> String {
         "residentIdLimit",
         crate::launcher_resident::DECISION_ID_MAX
     );
+    constants!(&mut text, "residentIdMaximum", u64::MAX.to_string());
+    constants!(
+        &mut text,
+        "residentIdPattern",
+        crate::launcher_resident::DECISION_ID_PATTERN
+    );
+    let labels: std::collections::BTreeMap<_, _> = ResidentAction::ALL
+        .into_iter()
+        .map(|action| {
+            (
+                serde_json::to_value(action)
+                    .expect("action id")
+                    .as_str()
+                    .expect("string id")
+                    .to_owned(),
+                action.label(),
+            )
+        })
+        .collect();
+    constants!(&mut text, "residentActionLabels", labels);
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {

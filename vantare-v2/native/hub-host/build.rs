@@ -201,19 +201,7 @@ fn write_session(
             )
             .expect("String write");
         }
-        let patterns: Vec<_> = variant_names(&operations)
-            .into_iter()
-            .map(|variant| {
-                let suffix = if operations.contains(&format!("{variant}(")) {
-                    "(..)"
-                } else if operations.contains(&format!("{variant} {{")) {
-                    "{..}"
-                } else {
-                    ""
-                };
-                format!("RemoteKind::{variant}{suffix}")
-            })
-            .collect();
+        let patterns = remote_patterns(&operations);
         if !patterns.is_empty() {
             writeln!(
                 completes,
@@ -258,6 +246,22 @@ fn write_session(
     fs::write(output.join("models.rs"), models).expect("write model aggregation");
     write_dispatch_tests(output, modules, sources);
     println!("cargo:rerun-if-changed=src/ui_process");
+}
+
+fn remote_patterns(operations: &str) -> Vec<String> {
+    variant_names(operations)
+            .into_iter()
+            .map(|variant| {
+                let suffix = if operations.contains(&format!("{variant}(")) {
+                    "(..)"
+                } else if operations.contains(&format!("{variant} {{")) {
+                    "{..}"
+                } else {
+                    ""
+                };
+                format!("RemoteKind::{variant}{suffix}")
+            })
+            .collect()
 }
 
 fn module_prefix(id: &str) -> String {

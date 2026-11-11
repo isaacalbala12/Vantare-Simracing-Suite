@@ -151,6 +151,21 @@ impl Client {
 mod tests {
     use super::*;
     #[test]
+    fn an_expired_channel_request_does_not_even_send_probe() {
+        let (_name, stop, _listener, pipe) = crate::test_support::endpoint();
+        let mut client = Client {
+            pipe,
+            stop,
+            nonce: String::new(),
+            sequence: 0,
+            binary: "unused".into(),
+            photo_pipe: String::new(),
+        };
+        let accepted = std::time::Instant::now() - Duration::from_secs(45);
+        assert!(matches!(client.request_before(Command::MailConsentGet, accepted), Err(HostError::Busy)));
+        assert_eq!(client.sequence, 0);
+    }
+    #[test]
     fn transport_protocol_and_generation_failures_stay_distinct() {
         assert_eq!(
             RequestError::Transport(std::io::ErrorKind::BrokenPipe).host_error(),

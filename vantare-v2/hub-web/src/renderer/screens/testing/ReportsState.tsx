@@ -27,6 +27,7 @@ import { CloseUnsavedReportDialog } from "../../ui/DiscardReportDialog";
 import { useToastManager } from "../../ui/Layers";
 import { testingText as text } from "./es";
 import { testingRequest } from "./TestingRequests";
+import { useTriageState } from "./TriageState";
 
 const empty = (): ReportFields => ({
   module: reportModules[0][0],
@@ -445,7 +446,33 @@ function useReportsState() {
     }
   }
 
+  const triage = useTriageState({
+    session: client,
+    allowed: core.access.verified && !core.access.blocked && core.access.tester,
+    available,
+    async prepare(selection) {
+      const reply = await request({
+        method: "triage.prepare",
+        selection,
+        consent: true,
+      });
+      if (reply.method !== "triage.prepare")
+        throw new Error("unexpected triage reply");
+      return reply.value;
+    },
+    async send(previewId) {
+      const reply = await request({
+        method: "triage.send",
+        previewId,
+        consent: true,
+      });
+      if (reply.method !== "triage.send")
+        throw new Error("unexpected triage reply");
+      setParticipation(reply.value);
+    },
+  });
   return {
+    triage,
     access: core.access,
     closeBlocked,
     closeConfirmation,

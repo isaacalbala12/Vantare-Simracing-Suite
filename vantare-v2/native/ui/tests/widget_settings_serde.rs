@@ -21,16 +21,15 @@ fn real_layout_settings_keep_identical_serialized_bytes_after_the_move() {
         include_str!("../../hub-host/data/widget-defaults.json"),
     ] {
         let document: Value = serde_json::from_str(fixture).expect("real fixture");
-        let instances = document["instances"]
-            .as_array()
-            .map(|values| values.iter().collect::<Vec<_>>())
-            .unwrap_or_else(|| {
-                document["widgets"]
-                    .as_object()
-                    .expect("widget export")
-                    .values()
-                    .collect()
-            });
+        let instances = if let Some(values) = document["instances"].as_array() {
+            values.iter().collect::<Vec<_>>()
+        } else {
+            document["widgets"]
+                .as_object()
+                .expect("widget export")
+                .values()
+                .collect()
+        };
         for instance in instances {
             let original = &instance["settings"];
             let after = match original["kind"].as_str().expect("kind") {

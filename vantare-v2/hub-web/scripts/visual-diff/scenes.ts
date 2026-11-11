@@ -3,6 +3,7 @@ import { homeScenes } from "./home.ts";
 import { launcherScenes } from "./launcher.ts";
 import { notificationScenes } from "./notifications.ts";
 import { pilotScenes } from "./pilot.ts";
+import { privacyScenes } from "./privacy.ts";
 import { roadmapScenes } from "./roadmap.ts";
 import { testingScenes } from "./testing-scenes.ts";
 import { upcomingScenes } from "./upcoming.ts";
@@ -26,6 +27,7 @@ const settingsTabs: Record<string, string> = {
 export const visualScenes: Record<string, VisualScene> = {
   ...homeScenes,
   ...pilotScenes,
+  ...privacyScenes,
   ...testingScenes,
   ...upcomingScenes,
   ...roadmapScenes,

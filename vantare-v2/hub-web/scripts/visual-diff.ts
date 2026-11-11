@@ -216,7 +216,9 @@ async function capture(
     const context = browser.contexts()[0];
     const page = context.pages()[0] ?? (await context.waitForEvent("page"));
     cleanupPage = page;
-    await page.getByRole("tab", { name: "General", exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: windowText.close, exact: true })
+      .waitFor();
     const session = await context.newCDPSession(page);
     const preparedWindow = execFileSync(
       "pwsh",

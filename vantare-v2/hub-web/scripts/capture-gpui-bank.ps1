@@ -7,6 +7,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $QaRoot) { throw 'Define VANTARE_HUB_QA_ROOT con una carpeta QA propia.' }
+$Output = [IO.Path]::GetFullPath($Output)
+$repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
+if ($Output.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'La evidencia debe quedar fuera del repo' }
+[void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Output))
 $bankRoot = [IO.Path]::GetFullPath($Bank)
 $inventory = Get-Content -LiteralPath (Join-Path $bankRoot 'bank.json') -Raw | ConvertFrom-Json
 $binary = Join-Path $bankRoot $inventory.binary
@@ -15,7 +19,26 @@ $run = Join-Path ([IO.Path]::GetFullPath($QaRoot)) ('gpui-' + [Guid]::NewGuid().
 [void][IO.Directory]::CreateDirectory($run)
 Copy-Item -Path (Join-Path $bankRoot 'template/*') -Destination $run -Recurse
 $testing = $Scene.StartsWith('testing-center-', [StringComparison]::Ordinal)
+$gate = $Scene -in @('privacidad-pendiente','privacidad-uso','acceso-base')
+$emailScenes = @{'email-formulario'='form';'email-codigo'='code';'email-crear-contrasena'='password';'email-consentimiento'='consent';'email-autorizando'='pending';'email-reiniciado'='expired';'email-ocupado'='queue';'email-espera'='waiting'}
+$emailScene = $emailScenes[$Scene]
 $replies = Join-Path $run 'replies.json'
+if ($gate) {
+    $scripted = Get-Content -LiteralPath $replies -Raw | ConvertFrom-Json -AsHashtable
+    foreach ($method in @('AccountPoll', 'AccountProfileRefresh')) {
+        $scripted[$method]['session'] = 'SignedOut'
+        $scripted[$method]['signed_in'] = $false
+        $scripted[$method]['profile'] = $null
+        $scripted[$method]['pending'] = $false
+        $scripted[$method]['message'] = 'Sesión cerrada en este dispositivo'
+    }
+    $scripted['Status']['message'] = 'servicio disponible'
+    $scripted | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $replies -Encoding utf8
+    $privacyRoot = Join-Path $run 'Vantare/native'
+    [void][IO.Directory]::CreateDirectory($privacyRoot)
+    # All permissions stay denied: these references never opt into collection.
+    @{generation=0;crashes=$false;usage=$false;crashes_decided=($Scene -ne 'privacidad-pendiente');usage_decided=($Scene -eq 'acceso-base')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $privacyRoot 'privacy.json') -Encoding utf8
+}
 if ($testing) {
     # Local contract fixtures grant tester access, never a real account or license.
     $fixtures = Join-Path $PSScriptRoot '../../native/hub/reference/fixtures'
@@ -45,7 +68,15 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
-foreach ($argument in @('--qa-root',$run,'--capture',$Scene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--demo','--control-stdin')) { $start.ArgumentList.Add($argument) }
+$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } else { $Scene }
+foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
+if ($gate) {
+    $start.ArgumentList.Add('--qa-measure')
+    $start.Environment['VANTARE_BACKGROUND_STARTUP'] = '1'
+} else {
+    $start.ArgumentList.Add('--demo')
+}
+if ($emailScene) { $start.Environment['VANTARE_CAPTURE_EMAIL'] = $emailScene }
 if ($testing) {
     $start.ArgumentList.Add('--qa-testing')
     # The existing frozen QA hook validates the rights peer against this bank,
@@ -55,19 +86,29 @@ if ($testing) {
 $process = [Diagnostics.Process]::Start($start)
 try {
     # Wait for the GUI message loop, then the declared offscreen capture HWND.
-    if (-not $process.WaitForInputIdle(15000)) { throw 'El banco no ha creado su bucle de ventana en 15 s.' }
-    if ($testing) {
+    if (-not $process.WaitForInputIdle(330000)) { throw "El banco no ha creado su bucle tras esperar el turno de captura: $run" }
+    if ($testing -or $gate) {
         $ready = [Diagnostics.Stopwatch]::StartNew()
         do {
             if ($process.HasExited) { throw 'El banco terminó antes de recibir la política QA' }
             $rightsLog = Join-Path $run 'rights-requests.jsonl'
             $requestsLog = Join-Path $run 'requests.jsonl'
-            $rightsReady = (Test-Path -LiteralPath $rightsLog) -and (Get-Item -LiteralPath $rightsLog).Length -gt 0
+            $rightsReady = -not $testing -or ((Test-Path -LiteralPath $rightsLog) -and (Get-Item -LiteralPath $rightsLog).Length -gt 0)
             $accountReady = (Test-Path -LiteralPath $requestsLog) -and (Select-String -LiteralPath $requestsLog -SimpleMatch '"command":"AccountPoll"' -Quiet)
             if ($rightsReady -and $accountReady) { break }
-            if ($ready.Elapsed.TotalSeconds -ge 15) { throw "El banco no recibió la política/cuenta QA en 15 s: $run" }
+            if ($ready.Elapsed.TotalSeconds -ge 15) { throw "El banco no recibió la política/cuenta QA de $Scene en 15 s: $run" }
             Start-Sleep -Milliseconds 50
         } while ($true)
+    }
+    if ($gate) {
+        $stored = Get-Content -LiteralPath (Join-Path $run 'hub-settings.json') -Raw | ConvertFrom-Json
+        if ($stored.appearance.palette -ne 'vantare' -or $stored.appearance.scheme -ne $Theme -or $stored.zoom -ne 100) { throw "Apariencia QA no coincide con el recibo: $run" }
+        # Normal QA gates use the real shell; prepare only their verified HWND.
+        $prepared = & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'visual-diff/capture.ps1') -ProcessId $process.Id -Executable $binary -Prepare -Offscreen
+        if ($LASTEXITCODE) { throw "No se pudo preparar la ventana QA: $run" }
+        $window = $prepared | ConvertFrom-Json
+        if ($window.foreground -or -not $window.visible) { throw "Ventana QA sin aislamiento: $prepared" }
+        $prepared | Set-Content -LiteralPath "$Output.window.json" -Encoding utf8
     }
     $helper = Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-window.ps1'
     $deadline = [Diagnostics.Stopwatch]::StartNew()
@@ -80,7 +121,7 @@ try {
     } while ($true)
     $repliesHash = (Get-FileHash -LiteralPath $replies -Algorithm SHA256).Hash.ToLowerInvariant()
     $pngHash = (Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()
-    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
+    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;qa_measure=$gate;qa_email=$emailScene;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
     $inputs = [ordered]@{scene=$Scene;appearance="vantare-$Theme";size=@(1440,900);zoom=100;bank=$inventory.sha256;replies=$repliesHash} | ConvertTo-Json -Compress
     $inputHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($inputs))).ToLowerInvariant()
     $receiptHash = & node --experimental-strip-types (Join-Path $PSScriptRoot 'reference-receipt.ts') $Output

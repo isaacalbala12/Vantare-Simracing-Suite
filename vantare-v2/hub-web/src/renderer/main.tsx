@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { HostProvider, useHost } from "./app/Host";
 import { HostIssue } from "./app/HostIssue";
 import { PilotProvider } from "./app/PilotState";
+import { PrivacyGate } from "./app/PrivacyGate";
 import { SettingsProvider } from "./app/SettingsState";
 import { Shell } from "./app/Shell";
 import { UiProvider } from "./app/UiState";
@@ -40,11 +41,13 @@ function Content() {
     );
   return (
     <SettingsProvider>
-      <PilotProvider>
-        <ReportsProvider>
-          <Shell />
-        </ReportsProvider>
-      </PilotProvider>
+      <PrivacyGate>
+        <PilotProvider>
+          <ReportsProvider>
+            <Shell />
+          </ReportsProvider>
+        </PilotProvider>
+      </PrivacyGate>
     </SettingsProvider>
   );
 }

@@ -117,12 +117,12 @@ evento `updates`; permanece la cobertura de todas sus variantes.
 
 ### Respuestas diferidas
 
-Un m骴ulo con `deferred.reply` puede devolver `Result<Option<Reply>, HostError>`
-desde `complete`: `None` retiene la petici髇 mientras llega la confirmaci髇 de
-una segunda operaci髇 del n鷆leo. Los m骴ulos sin ese archivo conservan su
+Un m贸dulo con `deferred.reply` puede devolver `Result<Option<Reply>, HostError>`
+desde `complete`: `None` retiene la petici贸n mientras llega la confirmaci贸n de
+una segunda operaci贸n del n煤cleo. Los m贸dulos sin ese archivo conservan su
 firma y el generador envuelve su respuesta en `Some`, sin cambiar su wire.
-El m骴ulo registra `(id, Instant)` en `session.deferred` 鷑icamente despu閟 de
-que la segunda operaci髇 se acepte. El receptor env韆 la respuesta final o el
-error; una desconexi髇, el plazo del protocolo o un cierre responde
-`CoreUnavailable` antes de retirar la petici髇. Las respuestas tard韆s de esa
-petici髇 cancelada se descartan. No se introducen variantes en el wire v6.
+El m贸dulo registra `(id, Instant)` en `session.deferred` 煤nicamente despu茅s de
+que la segunda operaci贸n se acepte. El receptor env铆a la respuesta final o el
+error; una desconexi贸n, el plazo del protocolo o un cierre responde
+`CoreUnavailable` antes de retirar la petici贸n. Las respuestas tard铆as de esa
+petici贸n cancelada se descartan. No se introducen variantes en el wire v6.

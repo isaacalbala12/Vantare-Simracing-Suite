@@ -175,3 +175,19 @@ fn import_dispatch_busy_and_unavailable_never_archive_unseen_sources() {
         assert!(path.exists() && !path.with_extension("json.imported").exists());
     }
 }
+
+#[test]
+fn another_module_keeps_its_immediate_reply_and_closed_error() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.remote = Some((9, RemoteKind::MailGet));
+    assert!(
+        matches!(session.service_reply(9, Ok(CoreReply::MailConsent { consent: true, locale: None, revision: 1 })), Ok(Some(Reply::MailGet { value })) if value.consent)
+    );
+    assert!(session.deferred.is_none());
+    session.remote = Some((10, RemoteKind::MailGet));
+    assert_eq!(
+        session.service_reply(10, Err(HostError::CoreUnavailable)),
+        Err(HostError::CoreUnavailable)
+    );
+}

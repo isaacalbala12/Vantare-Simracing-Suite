@@ -3,13 +3,17 @@ import { link, open, unlink } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join } from "node:path";
 import {
   type CalendarIcsStatus,
+  calendarIcsLimit,
   type HostError,
   type HostToUi,
-  calendarIcsLimit,
 } from "../contract/generated/contract";
 
 // Called only with a path returned by main's own native dialog. Never an IPC argument.
-export async function saveCalendar(path: string, calendar: string, publish = link) {
+export async function saveCalendar(
+  path: string,
+  calendar: string,
+  publish = link,
+) {
   if (
     !isAbsolute(path) ||
     path.startsWith("\\\\") ||
@@ -82,7 +86,9 @@ export function calendarExportSession(
         message.result.method === "calendar.icsPrepare"
       ) {
         const calendar = message.result.value.calendar;
-        const hash = createHash("sha256").update(calendar, "utf8").digest("hex");
+        const hash = createHash("sha256")
+          .update(calendar, "utf8")
+          .digest("hex");
         prepared = { calendar, hash };
         return {
           ...message,

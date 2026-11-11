@@ -16,6 +16,7 @@ import {
   session,
   shell,
 } from "electron";
+import { calendarIcsName } from "../contract/generated/calendar";
 import type { SettingsView } from "../contract/generated/contract";
 import {
   HOST_PROTOCOL_VERSION,
@@ -25,12 +26,11 @@ import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
+import { calendarExportSession } from "./calendar-export";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
 import { reportExportSession } from "./report-export";
-import { calendarExportSession } from "./calendar-export";
-import { calendarIcsName } from "../contract/generated/calendar";
 import {
   assetPath,
   CSP,
@@ -359,21 +359,23 @@ async function start() {
         data.kind === "request" &&
         data.request.method === "calendar.icsExport"
       ) {
-        void calendarExport.export(data.request.preparedHash).then((outcome) => {
-          if (!portAlive) return;
-          port1.postMessage(
-            "error" in outcome
-              ? { kind: "failure", id: data.id, error: outcome.error }
-              : {
-                  kind: "response",
-                  id: data.id,
-                  result: {
-                    method: "calendar.icsExport",
-                    status: outcome.status,
+        void calendarExport
+          .export(data.request.preparedHash)
+          .then((outcome) => {
+            if (!portAlive) return;
+            port1.postMessage(
+              "error" in outcome
+                ? { kind: "failure", id: data.id, error: outcome.error }
+                : {
+                    kind: "response",
+                    id: data.id,
+                    result: {
+                      method: "calendar.icsExport",
+                      status: outcome.status,
+                    },
                   },
-                },
-          );
-        });
+            );
+          });
         return;
       }
       if (

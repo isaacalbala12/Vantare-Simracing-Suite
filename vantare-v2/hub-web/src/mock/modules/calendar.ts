@@ -16,6 +16,7 @@ import {
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/calendar.json";
 import { starts } from "../../renderer/screens/calendar/schedule";
+import { mockCalendarIcs } from "../calendar-ics";
 import {
   calendarHistoryReference,
   calendarReference,
@@ -124,12 +125,27 @@ export function create(context: MockContext): MockHandler {
     });
     switch (request.method) {
       case "calendar.icsPrepare": {
-        const sample = (corpus.host as unknown as HostToUi[]).find((message) => message.kind === "response" && message.result.method === "calendar.icsPrepare");
-        if (!value.official && !value.fallback) return { kind: "failure", id, error: { kind: "calendarScheduleUnavailable" } };
-        return sample ? { ...structuredClone(sample), id } as HostToUi : { kind: "failure", id, error: { kind: "rejected" } };
+        const prepared = mockCalendarIcs(
+          value,
+          config,
+          request.scope,
+          request.alarm,
+          Date.now(),
+        );
+        return typeof prepared === "string"
+          ? { kind: "failure", id, error: { kind: prepared } }
+          : {
+              kind: "response",
+              id,
+              result: { method: request.method, value: prepared },
+            };
       }
       case "calendar.icsExport":
-        return { kind: "response", id, result: { method: request.method, status: "cancelled" } };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, status: "cancelled" },
+        };
       case "calendar.historyLoad":
         return {
           kind: "response",

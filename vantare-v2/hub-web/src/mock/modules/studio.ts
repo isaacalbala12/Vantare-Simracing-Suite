@@ -34,15 +34,18 @@ export function create(context: MockContext): MockHandler {
     showIn: { practice: true, qualifying: true, race: true },
     offTrack: "inherit",
   })) as OverlayInstance[];
-  if (sceneName === "studio-muchos") {
+  if (sceneName === "studio-muchos" || sceneName === "studio-nueve") {
     const originals = structuredClone(instances);
     instances.splice(
       0,
       instances.length,
-      ...Array.from({ length: 30 }, (_, index) => ({
-        ...structuredClone(originals[index % originals.length]),
-        id: `widget-${index + 1}`,
-      })),
+      ...Array.from(
+        { length: sceneName === "studio-nueve" ? 9 : 30 },
+        (_, index) => ({
+          ...structuredClone(originals[index % originals.length]),
+          id: `widget-${index + 1}`,
+        }),
+      ),
     );
   }
   if (sceneName === "studio-pocos") instances.splice(2);
@@ -63,7 +66,10 @@ export function create(context: MockContext): MockHandler {
   };
   if (sceneName === "studio-oculto") view.instances[0].visible = false;
   if (view.state !== "ready") view.instances = [];
-  if (sceneName === "studio-pro-bloqueado") {
+  if (
+    sceneName === "studio-pro-bloqueado" ||
+    sceneName === "studio-bloqueado"
+  ) {
     view.plan = "free";
     view.catalog = view.catalog.map((w) => ({
       ...w,

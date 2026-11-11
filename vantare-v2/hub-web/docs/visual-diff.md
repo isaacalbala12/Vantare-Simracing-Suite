@@ -39,3 +39,7 @@ resto de capturas, adquirir antes el cerrojo global y no compilar simultáneamen
 ## Referencia declarada no válida
 
 Si el orquestador descarta una referencia, `--capture-only --invalid-reference-reason "motivo"` admite una única escena y tema. Conserva `current.png` y un informe `captured/referenceStatus:invalid`, sin copia de referencia, diferencias ni porcentajes. Sigue comprobando los recibos del banco y las dimensiones 1440×900; no convierte la referencia en válida. Requiere el mismo cerrojo global para capturas reales. `--current` permite probar este modo con una imagen ya tomada sin abrir Electron.
+
+El barrido usa `--capture-only --scene <escena> --theme both`, sin `--current` ni motivo de referencia inválida. No lee el banco de referencias: guarda cada PNG real y los recibos de la matriz; el informe del barrido compara esas imágenes después. El modo Onboarding con `--invalid-reference-reason` conserva la validación de recibos y acepta una imagen suministrada con `--current`, pero exige un tema y un motivo no vacío. Ambos modos verifican 1440×900 y nunca generan diferencias ni porcentajes en esta fase.
+
+CI comprueba explícitamente los scripts con `bun run typecheck:scripts`; incluye sus tipos globales existentes. El workflow también corre tras integrar cambios en nightly para validar el resultado combinado de PR independientes.

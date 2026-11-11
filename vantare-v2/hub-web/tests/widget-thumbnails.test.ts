@@ -5,7 +5,10 @@ import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 import { anonymize, pngDimensions } from "../scripts/widget-thumbnails";
 import { studioKinds, studioSizes } from "../src/contract/generated/studio";
-import { thumbnailGeometry } from "../src/renderer/ui/widgets/WidgetThumb";
+import {
+  fallbackGeometry,
+  thumbnailGeometry,
+} from "../src/renderer/ui/widgets/WidgetThumb";
 
 const directory = resolve("src/renderer/assets/widgets/thumbs");
 const manifest = JSON.parse(
@@ -68,6 +71,16 @@ describe("thumbnail assets and deferred recipe", () => {
       cropped: true,
     });
     expect(thumbnailGeometry("broadcast-tower", 124, 60, 20).height).toBe(20);
+  });
+  it("enlarges SVG drawings independently of PNG natural dimensions", () => {
+    for (const kind of studioKinds) {
+      const size = fallbackGeometry(kind, 293, 132);
+      expect(size.height).toBeGreaterThanOrEqual(132 * 0.65 - 0.001);
+      expect(size.height).toBeLessThanOrEqual(132);
+      expect(size.width).toBeGreaterThan(0);
+    }
+    expect(fallbackGeometry("delta", 293, 132).height).toBeGreaterThan(85);
+    expect(thumbnailGeometry("delta", 293, 132).height).toBe(36);
   });
   it("anonymizes names consistently while preserving telemetry and the original input", () => {
     const source = JSON.parse(

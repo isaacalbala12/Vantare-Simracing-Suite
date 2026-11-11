@@ -4,8 +4,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
-import { PNG } from "pngjs";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
+import {
+  captureOnlyMode,
+  captureUncompared,
+} from "./visual-diff/capture-only.ts";
 import { auditFontSources } from "./visual-diff/fonts.ts";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
@@ -51,10 +54,13 @@ assert.ok(
   !currentOnly || (selected && schemes.length === 1),
   "--current requires one scene and theme",
 );
-assert.ok(
-  !captureOnly || (selected && schemes.length === 1 && invalidReason?.trim()),
-  "--capture-only requires one scene, one theme and --invalid-reference-reason",
-);
+const captureMode = captureOnlyMode({
+  enabled: captureOnly,
+  scene: selected,
+  current: currentOnly,
+  invalidReason,
+  themes: schemes.length,
+});
 await mkdir(output, { recursive: true });
 await writeFile(
   join(output, "font-sources.json"),
@@ -65,7 +71,9 @@ for (const scheme of schemes) {
   assert.ok(scheme === "dark" || scheme === "light");
   const directory = join(reference, scheme);
   const batch = JSON.parse(
-    await readFile(join(directory, "capture-batch.json"), "utf8"),
+    captureMode === "live"
+      ? "[]"
+      : await readFile(join(directory, "capture-batch.json"), "utf8"),
   ) as {
     scene: string;
     appearance: string;
@@ -79,6 +87,20 @@ for (const scheme of schemes) {
   for (const scene of scenes) {
     try {
       assert.match(scene, /^[a-z0-9-]+$/);
+      if (captureMode === "live") {
+        const adapter = visualScenes[scene];
+        assert.ok(adapter, `No explicit adapter for ${scene}`);
+        const destination = join(output, scheme, scene);
+        report.push(
+          await captureUncompared({
+            scene,
+            scheme,
+            destination,
+            capture: () => capture(adapter, scheme, destination),
+          }),
+        );
+        continue;
+      }
       const entry = batch.find((item) => item.scene === scene);
       assert.ok(entry, `Reference manifest missing scene ${scene}`);
       assert.deepEqual(entry.size, [1440, 900]);
@@ -113,18 +135,16 @@ for (const scheme of schemes) {
         ? await readFile(resolve(currentOnly))
         : await capture(adapter, scheme, destination);
       if (captureOnly) {
-        const png = PNG.sync.read(current);
-        assert.deepEqual([png.width, png.height], [1440, 900]);
-        await writeFile(join(destination, "current.png"), current);
-        report.push({
-          scene,
-          scheme,
-          status: "captured",
-          referenceStatus: "invalid",
-          reason: invalidReason,
-          currentPngSha256: digest(current),
-          suppliedCapture: Boolean(currentOnly),
-        });
+        report.push(
+          await captureUncompared({
+            scene,
+            scheme,
+            destination,
+            capture: async () => current,
+            invalidReason,
+            suppliedCapture: Boolean(currentOnly),
+          }),
+        );
         continue;
       }
       await writeFile(join(destination, "reference.png"), old);
@@ -164,7 +184,7 @@ const rows = report.map((item) =>
 await writeFile(
   join(output, "report.md"),
   captureOnly
-    ? `# Captura sin comparación\n\nReferencia no válida: ${invalidReason}. No se calculan porcentajes ni diferencias.\n\n| Tema | Escena | Estado |\n|---|---|---|\n${rows.join("\n")}\n`
+    ? `# Captura sin comparación\n\n${invalidReason ? `Referencia no válida: ${invalidReason}.` : "Comparación diferida al informe del barrido."} No se calculan porcentajes ni diferencias.\n\n| Tema | Escena | Estado |\n|---|---|---|\n${rows.join("\n")}\n`
     : `# Paridad visual\n\nPíxeles RGBA distintos, sin máscaras ni alineado, es la cifra principal. Pixelmatch (umbral 0,1, antialias incluido) es complementario. La revisión humana sigue siendo obligatoria.\n\n| Tema | Escena | Estado | Exacto % | Perceptual % |\n|---|---|---|---:|---:|\n${rows.join("\n")}\n`,
 );
 console.log(join(output, "report.json"));
@@ -337,6 +357,46 @@ async function capture(
         { windowsHide: true },
       );
     saveWindow("current.png");
+    if (args.includes("--capture-sidebar-matrix")) {
+      const nav = page.locator(".v-sidebar");
+      const applicable = (await nav.count()) > 0;
+      const matrix = [];
+      for (const expanded of [false, true]) {
+        if (applicable) {
+          const current = await nav.evaluate(
+            (node) => !node.classList.contains("v-sidebar--collapsed"),
+          );
+          if (current !== expanded)
+            await page
+              .getByRole("button", {
+                name: "Contraer o ampliar navegación",
+                exact: true,
+              })
+              .click();
+          await until(
+            async () =>
+              (await nav.boundingBox())?.width === (expanded ? 272 : 76),
+            5000,
+            "sidebar matrix width",
+          );
+          await page.mouse.move(1000, 890);
+        }
+        const filename = expanded
+          ? "sidebar-expanded.png"
+          : "sidebar-collapsed.png";
+        saveWindow(filename);
+        matrix.push({
+          expanded,
+          applicable,
+          filename,
+          width: applicable ? (await nav.boundingBox())?.width : null,
+        });
+      }
+      await writeFile(
+        join(destination, "sidebar-matrix.json"),
+        JSON.stringify(matrix, null, 2),
+      );
+    }
     if (args.includes("--capture-expanded-sidebar")) {
       const nav = page.locator(".v-sidebar");
       await nav.waitFor();
@@ -372,6 +432,23 @@ async function capture(
       );
     }
     return await readFile(join(destination, "current.png"));
+  } catch (error) {
+    if (cleanupPage && !cleanupPage.isClosed()) {
+      await cleanupPage
+        .screenshot({
+          path: join(destination, "failed-diagnostic.png"),
+          timeout: 3000,
+        })
+        .catch(() => {});
+      await writeFile(
+        join(destination, "failed-dom.txt"),
+        (await cleanupPage
+          .locator("body")
+          .textContent({ timeout: 3000 })
+          .catch(() => "DOM unavailable")) ?? "DOM unavailable",
+      );
+    }
+    throw error;
   } finally {
     // A dirty native close guard can veto Browser.close. Bound QA teardown and
     // kill only this spawned process tree if scene cleanup cannot release it.

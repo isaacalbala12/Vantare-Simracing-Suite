@@ -12,6 +12,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
+import {
+  captureOnlyMode,
+  captureUncompared,
+} from "../scripts/visual-diff/capture-only";
 import { compareImages } from "../scripts/visual-diff/image";
 import { referenceReceiptHash } from "../scripts/visual-diff/reference-hash";
 
@@ -21,6 +25,77 @@ function png(width = 2, height = 2) {
   return image;
 }
 describe("visual comparison", () => {
+  it("accepts a live two-theme sweep and a supplied invalid single-theme capture", () => {
+    expect(
+      captureOnlyMode({
+        enabled: true,
+        scene: "ajustes-aplicacion",
+        themes: 2,
+      }),
+    ).toBe("live");
+    expect(
+      captureOnlyMode({
+        enabled: true,
+        scene: "onboarding-2",
+        themes: 1,
+        current: "current.png",
+        invalidReason: "empty bank",
+      }),
+    ).toBe("invalid");
+    expect(() =>
+      captureOnlyMode({
+        enabled: true,
+        scene: "ajustes-aplicacion",
+        themes: 2,
+        current: "current.png",
+      }),
+    ).toThrow();
+    expect(() =>
+      captureOnlyMode({
+        enabled: true,
+        scene: "onboarding-2",
+        themes: 2,
+        invalidReason: "empty bank",
+      }),
+    ).toThrow();
+    expect(() =>
+      captureOnlyMode({
+        enabled: true,
+        scene: "onboarding-2",
+        themes: 1,
+        invalidReason: " ",
+      }),
+    ).toThrow();
+  });
+  it("saves both sweep themes without reading any reference or producing metrics", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "live sweep "));
+    const bytes = PNG.sync.write(png(1440, 900));
+    const captured: string[] = [];
+    try {
+      for (const scheme of ["dark", "light"]) {
+        const destination = join(directory, scheme, "ajustes-aplicacion");
+        const result = await captureUncompared({
+          scene: "ajustes-aplicacion",
+          scheme,
+          destination,
+          capture: async () => {
+            captured.push(scheme);
+            return bytes;
+          },
+        });
+        expect(result.status).toBe("captured-without-comparison");
+        expect(result).not.toHaveProperty("referenceStatus");
+        expect(result).not.toHaveProperty("perceptualPercent");
+        expect(result).not.toHaveProperty("exactPercent");
+        expect(readFileSync(join(destination, "current.png"))).toEqual(bytes);
+        expect(existsSync(join(destination, "reference.png"))).toBe(false);
+        expect(existsSync(join(destination, "diff.png"))).toBe(false);
+      }
+      expect(captured).toEqual(["dark", "light"]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
   it("captures without metrics or a diff when a reference is explicitly invalid", () => {
     const directory = mkdtempSync(join(tmpdir(), "invalid reference "));
     try {

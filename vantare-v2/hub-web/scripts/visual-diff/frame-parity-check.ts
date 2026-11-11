@@ -35,7 +35,8 @@ export async function checkFrameParity(page: Page, expanded: boolean) {
     "keyboard reveals the last tab",
   ).catch(async (error) => {
     const bounds = await last.evaluate((node) => {
-      const list = node.parentElement!;
+      const list = node.parentElement;
+      if (!list) return { missingList: true };
       return {
         tab: node.getBoundingClientRect().toJSON(),
         list: list.getBoundingClientRect().toJSON(),

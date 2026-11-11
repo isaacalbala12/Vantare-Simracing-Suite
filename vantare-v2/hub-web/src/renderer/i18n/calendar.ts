@@ -4,6 +4,7 @@ const durationText = (minutes: number) => {
   return hours ? `${hours} h${rest ? ` ${rest} min` : ""}` : `${minutes} min`;
 };
 export const calendarText = {
+  eventsTab: (count: number) => `Eventos${count ? ` ${count}` : ""}`,
   noAccess: "Calendario no está disponible con los derechos de esta cuenta.",
   loadingHelp: "Comprobando el horario de las carreras online de LMU",
   defaultSubtitle: "Horario de las carreras online de Le Mans Ultimate",

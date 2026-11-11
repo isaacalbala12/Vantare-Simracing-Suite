@@ -1,0 +1,356 @@
+/* Preserve the global Orbit hero before Calendar's local palette override. */
+[data-palette][data-scheme] {
+  --calendar-event-hero: var(--grad-hero);
+  --calendar-event-hero-wash: var(--grad-hero-wash);
+}
+.v-calendar-events {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.v-calendar-events > article {
+  display: flex;
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+.v-calendar-event-poster {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 380px;
+  padding: 18px 20px;
+  overflow: hidden;
+  gap: 16px;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 7.5px,
+      color-mix(in srgb, var(--text-on-accent) 7%, transparent) 7.5px 8.5px
+    ),
+    var(--calendar-event-hero-wash), var(--calendar-event-hero);
+  border: 1px solid var(--hero-ring);
+  border-radius: 10px;
+}
+.v-calendar-event-poster > i {
+  position: absolute;
+  right: -10px;
+  bottom: -46px;
+  opacity: 0.1;
+  font: 600 170px / 180px var(--font-display);
+  color: var(--accent);
+  font-style: normal;
+  pointer-events: none;
+}
+.v-calendar-event-date-range {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.v-calendar-event-date-range b {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.v-calendar-event-poster h2 {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  font: 600 32px / 34px var(--font-display);
+}
+.v-calendar-event-title {
+  border: 0;
+  background: transparent;
+  color: var(--text-on-accent);
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.v-calendar-event-poster > p {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.v-calendar-event-track-name {
+  font-weight: 700;
+  color: var(--text-1);
+}
+.v-calendar-event-classes {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.v-calendar-event-classes > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.v-calendar-event-classes i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.v-calendar-event-classes i[data-class="LMGT3"] {
+  background: var(--calendar-class-lmgt3);
+}
+.v-calendar-event-classes i[data-class="Hypercar"] {
+  background: var(--calendar-class-hypercar);
+}
+.v-calendar-event-classes i[data-class="LMP2"] {
+  background: var(--calendar-class-lmp2);
+}
+.v-calendar-event-favorite {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+.v-calendar-event-favorite > .v-button {
+  height: 28px;
+  min-height: 28px;
+  font-size: 12.5px;
+}
+.v-calendar-event-favorite > .v-button[data-selected] {
+  border-color: var(--hero-ring);
+  color: var(--accent-bright);
+}
+.v-calendar-event-favorite > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.v-calendar-event-favorite b {
+  font: 600 12.5px / 17px var(--font-mono);
+  color: var(--text-1);
+}
+.v-calendar-event-detail {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.v-calendar-event-detail > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-calendar-event-detail h3 {
+  margin: 0;
+  font: 500 11.5px / 15px var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.v-calendar-event-hint {
+  margin: 0;
+  flex: 1;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.v-calendar-event-days {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.v-calendar-event-day {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.v-calendar-event-day > strong {
+  width: 64px;
+  flex: none;
+  padding-top: 7px;
+  font: 400 10.5px / 14px var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-caption);
+}
+.v-calendar-event-day > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.v-calendar-event-day button,
+.v-calendar-event-gone {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line-1);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+}
+.v-calendar-event-day button {
+  cursor: pointer;
+}
+.v-calendar-event-day button b {
+  font: 600 11px / 14px var(--font-mono);
+}
+.v-calendar-event-slot-icon svg {
+  width: 10px;
+  height: 10px;
+}
+.v-calendar-event-day button[data-gone],
+.v-calendar-event-gone {
+  opacity: 0.45;
+}
+.v-calendar-event-day button[data-next] {
+  border-color: var(--text-1);
+  color: var(--text-1);
+}
+.v-calendar-event-day button[data-alert] {
+  background: var(--grad-button);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+.v-calendar-event-facts {
+  display: flex;
+  gap: 8px;
+}
+.v-calendar-event-facts > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-1);
+  border-radius: 7px;
+  background: var(--surface-2);
+}
+.v-calendar-event-facts span {
+  font: 400 10.5px / 12px var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-caption);
+}
+.v-calendar-event-facts strong {
+  line-height: 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.v-calendar-event-udp {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 22%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.v-calendar-event-udp > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--warn);
+}
+.v-calendar-event-udp p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-2);
+}
+.v-calendar-event-detail > footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+.v-calendar-event-detail > footer > .v-button:last-child {
+  margin-left: auto;
+}
+.v-calendar-events-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+@media (max-width: 1399px) {
+  .v-calendar-event-poster {
+    width: 300px;
+  }
+}
+
+.v-calendar-event-title:disabled,
+.v-calendar-event-day button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.v-calendar-event-day button[data-gone]:disabled {
+  opacity: 0.45;
+}
+
+.v-calendar-event-poster-spacer,
+.v-calendar-event-detail-spacer {
+  flex: 1;
+  min-height: 0;
+}
+.v-calendar-event-detail > footer {
+  margin-top: 0;
+}
+.v-calendar-event-detail > footer .v-button {
+  height: 34px;
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 13px;
+}
+.v-calendar-event-favorite > .v-button svg {
+  width: 14px;
+  height: 14px;
+}
+.v-calendar-event-detail > footer .v-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.v-calendar-event-udp > div {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-event-udp p + p {
+  margin-top: 4px;
+}
+.v-calendar-event-udp strong {
+  color: var(--text-1);
+}
+.v-calendar-event-udp code {
+  font: 400 12px / 17px var(--font-mono);
+}

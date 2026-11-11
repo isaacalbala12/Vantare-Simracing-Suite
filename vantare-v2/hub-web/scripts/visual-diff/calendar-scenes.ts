@@ -136,4 +136,25 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-eventos-contraida": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page.getByRole("tab", { name: /^Eventos(?: 2)?$/ }).click();
+      await page
+        .getByRole("article", { name: "WEC Weekly", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
 };

@@ -8,6 +8,7 @@ import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
+import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarLiveView } from "../../ui/CalendarLiveView";
 import { CalendarMineView } from "../../ui/CalendarMineView";
@@ -90,6 +91,14 @@ export default function CalendarEntry() {
           { id: "upcoming", etiqueta: text.upcoming, visible: state.allowed },
           { id: "mine", etiqueta: text.mine, visible: state.allowed },
           { id: "calendar", etiqueta: text.calendar, visible: state.allowed },
+          {
+            id: "events",
+            etiqueta: text.eventsTab(
+              schedule?.series.filter((s) => s.recurrence.kind !== "interval")
+                .length ?? 0,
+            ),
+            visible: state.allowed,
+          },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -172,6 +181,22 @@ export default function CalendarEntry() {
                 canLaunch={launcher.canLaunch}
                 onUpcoming={() => setActiveTab("upcoming")}
                 onSeries={() => setActiveTab("calendar")}
+                onLaunch={() => void launcher.launch()}
+              />
+            ) : activeTab === "events" && schedule && view ? (
+              <CalendarEventsView
+                schedule={schedule}
+                alerts={alerts}
+                following={view.following}
+                now={state.now}
+                utc={view.utc}
+                limit={calendarStartsLimit}
+                profile={launcher.profile?.name}
+                canLaunch={launcher.canLaunch}
+                canFollow={preferences.canFollow}
+                onFollow={(id, followed) =>
+                  void preferences.follow(id, followed)
+                }
                 onLaunch={() => void launcher.launch()}
               />
             ) : activeTab === "calendar" && view ? (

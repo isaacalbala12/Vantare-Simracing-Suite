@@ -1,5 +1,5 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSeries,
@@ -21,11 +21,17 @@ import { WeekBoard } from "./CalendarWeekBoard";
 import { civilDay, clock, datePart, weekTitle } from "./calendarDate";
 import { Segmented } from "./Forms";
 import "./calendar-week-live.css";
+export interface CalendarWeekState {
+  offset: number;
+  filter: string;
+}
 export function CalendarWeekView({
   view,
   alerts,
   now,
   limit,
+  initialState,
+  onViewStateChange,
   onSpan,
   spans = ["week"],
   canFollow = true,
@@ -38,6 +44,8 @@ export function CalendarWeekView({
   alerts: CalendarAlerts;
   now: number;
   limit: number;
+  initialState?: CalendarWeekState;
+  onViewStateChange?: (state: CalendarWeekState) => void;
   onSpan?: (span: string) => void;
   spans?: readonly string[];
   canFollow?: boolean;
@@ -47,8 +55,11 @@ export function CalendarWeekView({
   onDetail?: (id: string, at?: number) => void;
 }) {
   const [full, setFull] = useState(false);
-  const [offset, setOffset] = useState(0),
-    [filter, setFilter] = useState("all");
+  const [offset, setOffset] = useState(initialState?.offset ?? 0),
+    [filter, setFilter] = useState(initialState?.filter ?? "all");
+  useEffect(() => {
+    onViewStateChange?.({ offset, filter });
+  }, [offset, filter, onViewStateChange]);
   const date = new Date(now),
     base = Date.UTC(
       date.getUTCFullYear(),

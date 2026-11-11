@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   calendarAlertLeads,
   calendarBandModes,
@@ -16,13 +16,19 @@ import { CalendarBandControls } from "../../ui/CalendarBandControls";
 import { CalendarDayView } from "../../ui/CalendarDayView";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
-import { CalendarLiveView } from "../../ui/CalendarLiveView";
+import {
+  type CalendarLiveFilters,
+  CalendarLiveView,
+} from "../../ui/CalendarLiveView";
 import { CalendarMineView } from "../../ui/CalendarMineView";
 import { CalendarMonthView } from "../../ui/CalendarMonthView";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
 import { CalendarSeriesView } from "../../ui/CalendarSeriesView";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
-import { CalendarWeekView } from "../../ui/CalendarWeekView";
+import {
+  type CalendarWeekState,
+  CalendarWeekView,
+} from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
 import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarLauncher } from "./CalendarLauncher";
@@ -42,10 +48,37 @@ function nextPublication(now: number) {
 export default function CalendarEntry() {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
+  const liveFilters = useRef<CalendarLiveFilters>({
+    searchOpen: false,
+    query: "",
+    tier: "all",
+    only: "all",
+    vehicle: "all",
+  });
+  const weekState = useRef<CalendarWeekState>({ offset: 0, filter: "all" });
+  const rememberLive = useCallback((filters: CalendarLiveFilters) => {
+    liveFilters.current = filters;
+  }, []);
+  const rememberWeek = useCallback((value: CalendarWeekState) => {
+    weekState.current = value;
+  }, []);
   const [selectedSerie, setSelectedSerie] = useState<string>();
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
+  useEffect(() => {
+    if (!state.allowed) {
+      setSelectedSerie(undefined);
+      liveFilters.current = {
+        searchOpen: false,
+        query: "",
+        tier: "all",
+        only: "all",
+        vehicle: "all",
+      };
+      weekState.current = { offset: 0, filter: "all" };
+    }
+  }, [state.allowed]);
   const { hello } = useHost();
   const runs = useCalendarQARuns(state.allowed && hello?.demo === true);
   const raw = state.view;
@@ -335,6 +368,8 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "calendar" && view ? (
               <CalendarWeekView
+                initialState={weekState.current}
+                onViewStateChange={rememberWeek}
                 onSpan={setCalendarSpan}
                 spans={["day", "week", "month"]}
                 onSerie={setSelectedSerie}
@@ -349,6 +384,8 @@ export default function CalendarEntry() {
               />
             ) : schedule && view ? (
               <CalendarLiveView
+                initialFilters={liveFilters.current}
+                onFiltersChange={rememberLive}
                 onSerie={setSelectedSerie}
                 schedule={schedule}
                 alerts={alerts}

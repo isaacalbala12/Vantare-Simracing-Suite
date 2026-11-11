@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -37,6 +37,13 @@ function countdown(at: number, now: number) {
     minutes = Math.floor(seconds / 60) % 60;
   return `${hours ? `${hours}:${String(minutes).padStart(2, "0")}` : minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
+export interface CalendarLiveFilters {
+  searchOpen: boolean;
+  query: string;
+  tier: string;
+  only: string;
+  vehicle: string;
+}
 export function CalendarLiveView({
   schedule,
   alerts,
@@ -47,6 +54,8 @@ export function CalendarLiveView({
   profile,
   canLaunch = true,
   canFollow = true,
+  initialFilters,
+  onFiltersChange,
   onFollow,
   onSerie,
   onDetail,
@@ -61,17 +70,24 @@ export function CalendarLiveView({
   profile?: string;
   canLaunch?: boolean;
   canFollow?: boolean;
+  initialFilters?: CalendarLiveFilters;
+  onFiltersChange?: (filters: CalendarLiveFilters) => void;
   onFollow: (id: string, on: boolean) => void;
   onSerie?: (id: string) => void;
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
 }) {
   const launchPendingId = useId();
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState(""),
-    [tier, setTier] = useState("all"),
-    [only, setOnly] = useState("all"),
-    [vehicle, setVehicle] = useState("all");
+  const [searchOpen, setSearchOpen] = useState(
+    initialFilters?.searchOpen ?? false,
+  );
+  const [query, setQuery] = useState(initialFilters?.query ?? ""),
+    [tier, setTier] = useState(initialFilters?.tier ?? "all"),
+    [only, setOnly] = useState(initialFilters?.only ?? "all"),
+    [vehicle, setVehicle] = useState(initialFilters?.vehicle ?? "all");
+  useEffect(() => {
+    onFiltersChange?.({ searchOpen, query, tier, only, vehicle });
+  }, [searchOpen, query, tier, only, vehicle, onFiltersChange]);
   const hero = nextRace(schedule, now, following, limit),
     rows = board(schedule, now, following, limit);
   const classes = [

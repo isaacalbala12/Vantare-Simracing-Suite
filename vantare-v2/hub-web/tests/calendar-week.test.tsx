@@ -9,7 +9,10 @@ import {
 import { afterEach, expect, it, vi } from "vitest";
 import { calendarReference } from "../src/mock/calendar-reference";
 import { calendarWeekText as text } from "../src/renderer/i18n/calendarWeek";
-import { CalendarWeekView } from "../src/renderer/ui/CalendarWeekView";
+import {
+  type CalendarWeekState,
+  CalendarWeekView,
+} from "../src/renderer/ui/CalendarWeekView";
 
 afterEach(cleanup);
 const alerts = {
@@ -137,4 +140,38 @@ it("marks the upcoming daily departure with its band bell", () => {
   );
   expect(marker?.textContent).toContain("18:00");
   expect(marker?.querySelector("svg")).not.toBeNull();
+});
+
+it("restores the selected week and favorites after returning from a series", () => {
+  let saved: CalendarWeekState = { offset: 0, filter: "all" };
+  const remember = (next: CalendarWeekState) => {
+    saved = next;
+  };
+  const view = calendarReference();
+  view.utc = true;
+  const mount = () =>
+    render(
+      <CalendarWeekView
+        view={view}
+        alerts={alerts}
+        now={Date.parse("2026-10-08T17:47:13Z")}
+        limit={1000}
+        onFollow={vi.fn()}
+        initialState={saved}
+        onViewStateChange={remember}
+      />,
+    );
+  const first = mount();
+  fireEvent.click(screen.getByRole("button", { name: text.previous }));
+  fireEvent.click(screen.getByRole("button", { name: text.favorites }));
+  first.unmount();
+  mount();
+  expect(
+    screen.getByRole("heading", { name: "Semana pasada · 29 sep–5 oct" }),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("button", { name: text.favorites })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
 });

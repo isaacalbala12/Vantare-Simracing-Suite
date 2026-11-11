@@ -7,6 +7,8 @@ fn dependency_tree() -> String {
             "--package",
             "vantare-hub-host",
             "--all-features",
+            "--target",
+            "all",
             "--edges",
             "normal",
             "--prefix",
@@ -36,6 +38,21 @@ fn host_has_no_gpui_dependency() {
 fn host_has_no_http_dependency() {
     for line in dependency_tree().lines() {
         let name = line.split_whitespace().next().unwrap_or_default();
-        assert_ne!(name, "ureq", "host must not compile/link an HTTP client");
+        assert!(
+            ![
+                "ureq",
+                "reqwest",
+                "hyper",
+                "attohttpc",
+                "minreq",
+                "isahc",
+                "curl",
+                "rustls",
+                "native-tls",
+                "openssl"
+            ]
+            .contains(&name),
+            "host must not compile/link HTTP or TLS dependency {name} on any target"
+        );
     }
 }

@@ -21,6 +21,7 @@ import {
 import { isReportFields } from "../../../contract/testing-validation";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
+import { useToastManager } from "../../ui/Layers";
 import { testingText as text } from "./es";
 import { testingRequest } from "./TestingRequests";
 
@@ -33,6 +34,7 @@ const empty = (): ReportFields => ({
 });
 function useReportsState() {
   const { client } = useHost();
+  const toast = useToastManager();
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
     queryFn: async () => offline,
@@ -168,10 +170,13 @@ function useReportsState() {
       await inflight.current?.catch(() => {});
       const clean =
         JSON.stringify(state.current.fields) === state.current.saved;
-      if (!clean) setMessage(text.closeUnsaved);
+      if (!clean) {
+        setMessage(text.closeUnsaved);
+        toast.add({ title: text.closeUnsaved, type: "warn" });
+      }
       return clean;
     });
-  }, [client]);
+  }, [client, toast]);
   useEffect(() => {
     const flush = () => {
       if (!state.current.available || !state.current.loaded) return;

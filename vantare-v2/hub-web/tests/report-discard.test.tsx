@@ -15,6 +15,7 @@ import { testingDiscardText as dialog } from "../src/renderer/i18n/testing-disca
 import { testingText as text } from "../src/renderer/screens/testing/es";
 import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
 import { Reports } from "../src/renderer/screens/testing/Testing";
+import { ToastProvider } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
 beforeEach(() =>
@@ -48,9 +49,11 @@ it.each(["editor", "error"] as const)(
     render(
       <QueryClientProvider client={cache}>
         <HostProvider>
-          <ReportsProvider>
-            <Reports />
-          </ReportsProvider>
+          <ToastProvider>
+            <ReportsProvider>
+              <Reports />
+            </ReportsProvider>
+          </ToastProvider>
         </HostProvider>
       </QueryClientProvider>,
     );

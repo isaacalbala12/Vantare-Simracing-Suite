@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type CloseReason,
@@ -11,10 +17,12 @@ import {
 } from "../src/contract/generated/contract";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
+import { testingText as text } from "../src/renderer/screens/testing/es";
 import {
   ReportsProvider,
   useReports,
 } from "../src/renderer/screens/testing/ReportsState";
+import { ToastProvider, ToastViewport } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
 beforeEach(() => {
@@ -63,7 +71,12 @@ async function mount(scene = "testing-reports") {
     wrapper: ({ children }) => (
       <QueryClientProvider client={cache}>
         <HostProvider>
-          <ReportsProvider>{children}</ReportsProvider>
+          <ToastProvider>
+            <ReportsProvider>
+              {children}
+              <ToastViewport closeLabel="Cerrar" />
+            </ReportsProvider>
+          </ToastProvider>
         </HostProvider>
       </QueryClientProvider>
     ),
@@ -223,6 +236,7 @@ describe("protected report draft behavior", () => {
     });
     expect(allow).toBe(false);
     expect(requests).not.toHaveBeenCalled();
+    expect(screen.getByText(text.closeUnsaved)).toBeDefined();
     expect(hook.result.current.message).toContain("sin guardar");
     act(() => window.dispatchEvent(new Event("blur")));
     await waitFor(() => expect(hook.result.current.dirty).toBe(false));

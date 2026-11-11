@@ -308,11 +308,6 @@
   background: var(--calendar-class-gte);
 }
 
-.v-calendar-mine-list header .v-button {
-  height: 32px;
-  min-height: 32px;
-  font-size: 13px;
-}
 .v-calendar-mine-row > .v-button {
   height: 30px;
   min-height: 30px;
@@ -329,4 +324,9 @@
 .v-calendar-mine-slots button:disabled {
   opacity: 1;
   cursor: default;
+}
+.v-calendar-mine-list header .v-button {
+  height: 32px;
+  min-height: 32px;
+  font-size: 13px;
 }

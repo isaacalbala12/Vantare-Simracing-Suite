@@ -2,7 +2,6 @@ fn dependency_tree() -> String {
     let output = std::process::Command::new(env!("CARGO"))
         .args([
             "tree",
-            "--offline",
             "--locked",
             "--package",
             "vantare-hub-host",

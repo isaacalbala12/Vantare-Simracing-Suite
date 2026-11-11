@@ -199,3 +199,7 @@ mod testing_deferred_tests;
 
 #[path = "protocol/modules/calendar/dispatch_tests.rs"]
 mod calendar_dispatch_tests;
+
+// The existing portable-dispatch Linux gate runs these all-target checks too.
+#[path = "../tests/architecture.rs"]
+mod architecture;

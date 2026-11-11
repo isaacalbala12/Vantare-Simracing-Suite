@@ -1,5 +1,8 @@
 import type { VisualScene } from "./scenes.ts";
-import { assertTestingConsentFits } from "./testing-readability.ts";
+import {
+  assertTestingConsentFits,
+  settingsTabsStyle,
+} from "./testing-readability.ts";
 
 export const testingScenes: Record<string, VisualScene> = {
   "testing-center-comunidad": {
@@ -22,6 +25,25 @@ export const testingScenes: Record<string, VisualScene> = {
   "testing-center-triage": {
     mock: "testing-tester-reference",
     async prepare(page) {
+      const settings = page.getByRole("button", {
+        name: "Ajustes",
+        exact: true,
+      });
+      await settings.click();
+      const before = await settingsTabsStyle(page);
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Testing Center", exact: true })
+        .click();
+      await page.getByRole("tab", { name: "Informes", exact: true }).click();
+      await page
+        .getByRole("heading", { name: "Informe para revisión", exact: true })
+        .waitFor();
+      await assertTestingConsentFits(page, true);
+      await settings.click();
+      const after = await settingsTabsStyle(page);
+      if (JSON.stringify(before) !== JSON.stringify(after))
+        throw new Error("Testing styles changed Settings tabs");
       await page
         .getByRole("navigation", { name: "Navegación principal" })
         .getByRole("button", { name: "Testing Center", exact: true })

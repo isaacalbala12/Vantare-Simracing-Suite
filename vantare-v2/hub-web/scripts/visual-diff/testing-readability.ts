@@ -41,3 +41,20 @@ export async function assertTestingConsentFits(
   if (requireWrapping && !labels.some((label) => label.lines > 1))
     throw new Error("Long Testing consent did not wrap");
 }
+
+export async function settingsTabsStyle(page: Page) {
+  const list = page.getByRole("tablist", { name: "Ajustes", exact: true });
+  await list.waitFor();
+  return list.evaluate((element) => {
+    const tab = element.querySelector(".v-section-tab");
+    if (!tab) throw new Error("Settings tabs missing");
+    const style = getComputedStyle(tab);
+    return {
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      height: style.height,
+      padding: style.padding,
+      gap: getComputedStyle(element).gap,
+    };
+  });
+}

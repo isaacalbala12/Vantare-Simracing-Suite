@@ -2,7 +2,7 @@
 use super::{Error, MotivoOrden, Plataforma, Resultado, limites, tiempo};
 use crate::escena::capas::{CapaId, Dibujo, Lote, Operacion, Pintura, Rect};
 use std::collections::{BTreeMap, BTreeSet};
-/// Exceso admitido en curvas de opacidad aproximadas por tramos cúbicos (DComp satura a 0..1).
+/// Exceso admitido en curvas de opacidad aproximadas por tramos cúbicos (`DComp` satura a 0..1).
 const OPACIDAD_TOLERANCIA: f32 = 0.01;
 
 impl Plataforma {

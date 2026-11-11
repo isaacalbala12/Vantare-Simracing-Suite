@@ -218,7 +218,7 @@ mod ventana {
     }
 
     /// Fotogramas a 60 Hz de las dos transiciones pedidas, evaluando las mismas
-    /// curvas que recibe DirectComposition: sale del garaje, entra en él y vuelve,
+    /// curvas que recibe `DirectComposition`: sale del garaje, entra en él y vuelve,
     /// y luego un rival a menos de 1 s (resalte pulsante). Escena `-carrera`.
     fn guion_capturas(
         fotos: &[Snapshot],
@@ -299,7 +299,14 @@ mod ventana {
             let (buzon, parar, aviso) = (buzon.clone(), parar.clone(), bucle.avisador());
             let mut canal = nucleo::Canal::abrir(None).map_err(|e| e.to_string())?;
             Some(std::thread::spawn(move || {
+                let mut avisado = false;
                 while !parar.load(Ordering::Relaxed) {
+                    if !avisado && canal.incompatible() {
+                        eprintln!(
+                            "Componentes incompatibles. Reinstala la misma versión de Vantare"
+                        );
+                        avisado = true;
+                    }
                     if let Some(foto) = canal.siguiente(Duration::from_millis(100)) {
                         if let Ok(mut b) = buzon.lock() {
                             *b = Some(foto);
@@ -316,10 +323,10 @@ mod ventana {
         };
         let resultado = recorrer(o, fotos, p, escena, &bucle, &buzon);
         parar.store(true, Ordering::Relaxed);
-        if let Some(h) = lector {
-            if h.join().is_err() {
-                eprintln!("el lector del pipe terminó con pánico");
-            }
+        if let Some(h) = lector
+            && h.join().is_err()
+        {
+            eprintln!("el lector del pipe terminó con pánico");
         }
         resultado
     }

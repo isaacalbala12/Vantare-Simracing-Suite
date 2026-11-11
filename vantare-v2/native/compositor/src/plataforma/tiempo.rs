@@ -114,11 +114,7 @@ fn ticks(instante: Instante, frecuencia: i64) -> Resultado<i64> {
 }
 /// Sustituye `AddRepeat` (infinito) por copias explícitas del intervalo repetido
 /// durante `segundos` y un `End` en el valor de reposo de la curva.
-pub(super) fn desenrollar(
-    programa: Programa,
-    curva: &Curva,
-    segundos: f64,
-) -> Resultado<Programa> {
+pub(super) fn desenrollar(programa: Programa, curva: &Curva, segundos: f64) -> Resultado<Programa> {
     let Some((fin_repeticion, duracion)) = programa.repetir else {
         return Ok(programa);
     };
@@ -215,8 +211,20 @@ mod tests {
         let curva = Curva {
             inicio: Instante(0.0),
             tramos: vec![
-                Tramo { desde: 0.0, a: 0.0, b: 2.0, c: 0.0, d: 0.0 },
-                Tramo { desde: 0.5, a: 1.0, b: -1.0, c: 0.0, d: 0.0 },
+                Tramo {
+                    desde: 0.0,
+                    a: 0.0,
+                    b: 2.0,
+                    c: 0.0,
+                    d: 0.0,
+                },
+                Tramo {
+                    desde: 0.5,
+                    a: 1.0,
+                    b: -1.0,
+                    c: 0.0,
+                    d: 0.0,
+                },
             ],
             fin: 1.5,
             final_: 0.5,
@@ -227,26 +235,29 @@ mod tests {
         assert!(finito.repetir.is_none());
         let (fin, reposo) = finito.fin.unwrap();
         let valor = |t: f64| {
-            let (desde, [a, b, c, d]) = finito
+            let (desde, coef) = finito
                 .cubicos
                 .iter()
                 .rev()
                 .find(|(desde, _)| *desde <= t)
                 .unwrap();
-            let s = (t - desde) as f32;
-            a + s * (b + s * (c + s * d))
+            let local = std::time::Duration::from_secs_f64(t - desde).as_secs_f32();
+            coef[0] + local * (coef[1] + local * (coef[2] + local * coef[3]))
         };
         for paso in 0..30 {
             let t = f64::from(paso) * 0.1;
             if t < fin {
-                assert!((valor(t) - evaluar(&curva, Instante(t)).unwrap()).abs() < 1e-4, "t={t}");
+                assert!(
+                    (valor(t) - evaluar(&curva, Instante(t)).unwrap()).abs() < 1e-4,
+                    "t={t}"
+                );
             }
         }
         assert!((reposo - 1.0).abs() < 1e-5);
         assert!(fin >= 3.5);
     }
 
-    /// capas.rs: el polinomio de cada tramo usa t local al tramo, igual que AddCubic.
+    /// `capas.rs`: el polinomio de cada tramo usa t local al tramo, igual que `AddCubic`.
     #[test]
     fn el_tiempo_de_cada_tramo_empieza_en_su_comienzo() {
         let curva = Curva {

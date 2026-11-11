@@ -1,4 +1,4 @@
-import { TestingRailSection } from "../../ui/TestingLayout";
+import { TestingRailLayout, TestingRailSection } from "../../ui/TestingLayout";
 import { testingText as text } from "./es";
 import { useReports } from "./ReportsState";
 
@@ -12,7 +12,7 @@ export function TestingRail() {
     (report) => report.state === "fixed",
   ).length;
   return (
-    <div className="v-testing-rail">
+    <TestingRailLayout>
       <TestingRailSection title={text.yourReports}>
         <p>{`${count} ${text.loadedReports} · ${accepted} ${text.acceptedReports} · ${fixed} ${text.fixedReports} · ${text.channelUnavailable}`}</p>
       </TestingRailSection>
@@ -22,6 +22,6 @@ export function TestingRail() {
       <TestingRailSection title={text.goodReport}>
         <p>{text.goodReportHelp}</p>
       </TestingRailSection>
-    </div>
+    </TestingRailLayout>
   );
 }

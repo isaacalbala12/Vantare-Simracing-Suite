@@ -85,3 +85,7 @@ export function TestingRailSection({
     </RailBlock>
   );
 }
+
+export function TestingRailLayout({ children }: { children: ReactNode }) {
+  return <div className="v-testing-rail">{children}</div>;
+}

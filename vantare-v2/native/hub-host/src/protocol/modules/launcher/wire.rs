@@ -6,6 +6,35 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "launcher.catalog")]
+    LauncherCatalog {},
+    #[serde(rename = "launcher.scan")]
+    LauncherScan {},
+    #[serde(rename = "launcher.app.get")]
+    LauncherAppGet { id: Option<String> },
+    #[serde(rename = "launcher.app.pick")]
+    LauncherAppPick {},
+    #[serde(rename = "launcher.app.save")]
+    LauncherAppSave {
+        draft: crate::launcher::apps::AppDraft,
+        #[serde(rename = "pickToken")]
+        pick_token: Option<String>,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.app.remove")]
+    LauncherAppRemove {
+        id: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.app.favorite")]
+    LauncherAppFavorite {
+        id: String,
+        favorite: bool,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet { id: Option<String> },
     #[serde(rename = "launcher.profile.save")]
@@ -29,6 +58,34 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "launcher.catalog")]
+    LauncherCatalog {
+        value: crate::launcher::apps::CatalogView,
+    },
+    #[serde(rename = "launcher.scan")]
+    LauncherScan {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.app.get")]
+    LauncherAppGet {
+        value: crate::launcher::apps::AppEditor,
+    },
+    #[serde(rename = "launcher.app.pick")]
+    LauncherAppPick {
+        value: Option<crate::launcher::apps::PickedApp>,
+    },
+    #[serde(rename = "launcher.app.save")]
+    LauncherAppSave {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.app.remove")]
+    LauncherAppRemove {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.app.favorite")]
+    LauncherAppFavorite {
+        value: crate::launcher::LauncherView,
+    },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet {
         value: crate::launcher::editor::ProfileEditorView,

@@ -482,3 +482,5 @@ pub use reader::Reader;
 
 #[path = "launcher/editor.rs"]
 pub mod editor;
+
+pub mod apps;

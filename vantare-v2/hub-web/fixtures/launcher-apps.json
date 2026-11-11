@@ -1,0 +1,86 @@
+{
+  "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+  "scanning": false,
+  "apps": [
+    {
+      "id": "lmu",
+      "name": "Le Mans Ultimate",
+      "category": "Simulador",
+      "steam": true,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "crewchief",
+      "name": "CrewChief",
+      "category": "Utilidad",
+      "steam": false,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "simhub",
+      "name": "SimHub",
+      "category": "Telemetría",
+      "steam": false,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "obs",
+      "name": "OBS Studio",
+      "category": "Streaming",
+      "steam": false,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "category": "Audio",
+      "steam": false,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "Utilidad",
+      "steam": false,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "motec",
+      "name": "MoTeC",
+      "category": "Telemetría",
+      "steam": false,
+      "favorite": false,
+      "removable": false,
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "custom:vantare",
+      "name": "Vantare Overlay",
+      "category": "Manual",
+      "steam": false,
+      "favorite": false,
+      "removable": true,
+      "found": true,
+      "installed": true
+    }
+  ]
+}

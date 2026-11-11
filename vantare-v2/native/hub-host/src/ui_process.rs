@@ -304,6 +304,9 @@ impl Session {
                     confirmation.publish()?;
                 }
             }
+            UiToHost::PickedExecutable(selection) => {
+                self.picked_executable(pipe, selection.id, selection.path.as_deref())?;
+            }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic } => {
                 self.subscriptions.insert(*topic);

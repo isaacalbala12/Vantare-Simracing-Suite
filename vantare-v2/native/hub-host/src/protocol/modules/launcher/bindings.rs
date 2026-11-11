@@ -1,3 +1,4 @@
+use crate::launcher::apps::{AppDraft, AppEditor, CatalogApp, CatalogView, PickedApp, ExecutableSelection};
 use crate::launcher::editor::{
     ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
     ProfileRunning, ProfileStep,
@@ -9,6 +10,13 @@ use std::fmt::Write as _;
 
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<ExecutableSelection>(&mut text);
+    declare::<AppDraft>(&mut text);
+    declare::<AppEditor>(&mut text);
+    declare::<CatalogApp>(&mut text);
+    declare::<CatalogView>(&mut text);
+    declare::<PickedApp>(&mut text);
+    append_apps_constants(&mut text);
     declare::<ProfileRunning>(&mut text);
     declare::<ProfileFailure>(&mut text);
     declare::<ProfileClose>(&mut text);
@@ -27,7 +35,7 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    let host: Vec<HostToUi> = vec![
+    let mut host: Vec<HostToUi> = vec![
         HostToUi::Response {
             id: 1,
             result: profile_keys_sample(),
@@ -77,7 +85,7 @@ pub(crate) fn corpus() -> serde_json::Value {
             result: Reply::LauncherFavorite { accepted: false },
         },
     ];
-    let ui: Vec<UiToHost> = vec![
+    let mut ui: Vec<UiToHost> = vec![
         UiToHost::Request {
             id: 1,
             request: Request::LauncherProfileGet { id: None },
@@ -120,6 +128,9 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
     ];
 
+    host.extend(application_reply_samples().into_iter().map(|result| HostToUi::Response { id: 1, result }));
+    ui.extend(application_request_samples().into_iter().map(|request| UiToHost::Request { id: 1, request }));
+    ui.push(UiToHost::PickedExecutable(ExecutableSelection { id: 1, path: None }));
     serde_json::json!({"host":host,"ui":ui})
 }
 
@@ -174,4 +185,79 @@ fn profile_keys_sample() -> Reply {
             draft,
         },
     }
+}
+
+fn append_apps_constants(text: &mut String) {
+    writeln!(text, "export const launcherPickPathMax = {} as const;\nexport const launcherPickLifetimeSeconds = {} as const;", crate::launcher::apps::PICK_PATH_MAX, crate::launcher::apps::PICK_LIFETIME_SECONDS).expect("String write");
+}
+
+fn application_reply_samples() -> [Reply; 7] {
+    [
+        Reply::LauncherCatalog {
+            value: CatalogView {
+                revision: "0".repeat(64),
+                scanning: false,
+                apps: vec![],
+            },
+        },
+        Reply::LauncherScan {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppGet {
+            value: AppEditor {
+                revision: "0".repeat(64),
+                draft: AppDraft {
+                    id: None,
+                    name: String::new(),
+                    favorite: false,
+                    use_discovery: false,
+                },
+                has_executable: false,
+                has_custom_arguments: false,
+            },
+        },
+        Reply::LauncherAppPick {
+            value: Some(PickedApp {
+                token: "0".repeat(64),
+                name: "QA".into(),
+            }),
+        },
+        Reply::LauncherAppSave {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppRemove {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppFavorite {
+            value: LauncherView::default(),
+        },
+    ]
+}
+
+fn application_request_samples() -> [Request; 7] {
+    [
+        Request::LauncherCatalog {},
+        Request::LauncherScan {},
+        Request::LauncherAppGet { id: None },
+        Request::LauncherAppPick {},
+        Request::LauncherAppSave {
+            draft: AppDraft {
+                id: None,
+                name: "QA".into(),
+                favorite: false,
+                use_discovery: false,
+            },
+            pick_token: Some("0".repeat(64)),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherAppRemove {
+            id: "custom:qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherAppFavorite {
+            id: "lmu".into(),
+            favorite: true,
+            base_revision: "0".repeat(64),
+        },
+    ]
 }

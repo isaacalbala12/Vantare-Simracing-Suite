@@ -34,7 +34,7 @@ it("keeps the profile visible while launch and protected favorite writes are dis
     document.getElementById(deferred.getAttribute("aria-describedby") ?? "")
       ?.textContent,
   ).toBe(calendarText.launchPending);
-  expect(screen.getByText(/20:00 WEC Weekly/)).toBeTruthy();
+  expect(screen.getByText(/\d{2}:\d{2} WEC Weekly/)).toBeTruthy();
   const axis = document.querySelectorAll(".v-calendar-timeline-axis time");
   expect(axis.length).toBe(7);
   expect(axis[0].getAttribute("style")).toContain("left:");

@@ -98,6 +98,8 @@
   text-overflow: ellipsis;
 }
 .v-calendar-day-head span {
+  align-self: flex-start;
+  font: 700 10.5px / 14px var(--font-sans);
   color: var(--calendar-tier-event);
   background: var(--calendar-tier-event-bg);
   padding: 2px 6px;

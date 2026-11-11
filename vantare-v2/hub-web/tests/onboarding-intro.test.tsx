@@ -10,7 +10,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import settingsFixture from "../fixtures/settings-base.json";
-import type { HostToUi, Request } from "../src/contract/generated/contract";
+import type {
+  HostToUi,
+  PerformanceLevel,
+  Request,
+} from "../src/contract/generated/contract";
 import { createMockHost } from "../src/mock/host";
 import { HostFailure } from "../src/renderer/bridge/client";
 import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/IntroPreview";
@@ -267,8 +271,8 @@ it("updates the assistant voice when Account changes while the step stays open",
   );
 });
 
-async function accountPage() {
-  const view = mount(true);
+async function accountPage(full = false) {
+  const view = mount(true, full);
   const start = await screen.findByRole("button", { name: "Empezar" });
   await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
   fireEvent.click(start);
@@ -369,13 +373,18 @@ it("ignores a late prices error after leaving and reentering Account", async () 
     fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
   ).toHaveLength(2);
 });
-function respond(scene: string) {
+function respond(scene: string, recommended?: PerformanceLevel) {
   const host = createMockHost(scene);
   let id = 0;
   fake.request.mockImplementation(async (request: Request) => {
     const reply = host({ kind: "request", id: ++id, request });
     if (reply?.kind === "failure") throw new HostFailure(reply.error);
     if (reply?.kind !== "response") throw new Error("response missing");
+    if (reply.result.method === "onboarding.get" && recommended)
+      return {
+        ...reply.result,
+        value: { ...reply.result.value, recommendedLevel: recommended },
+      };
     return reply.result;
   });
 }
@@ -560,4 +569,72 @@ it("rechecks protected privacy before leaving and keeps the wizard when the file
       ].includes(request.method),
     ),
   ).toHaveLength(0);
+});
+
+it("commits the chosen cadence and kit after going back from Appearance, with a different recommendation", async () => {
+  respond("onboarding-sin-diseno", "economy");
+  const view = await accountPage(true);
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  expect(
+    screen.getByText("Ahora en Ahorro · recomendado para tu PC"),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("radio", { name: "Alto" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "← Atrás" }));
+  expect(
+    screen.getByRole("radio", { name: "Alto" }).getAttribute("aria-checked"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  const finishButton = await screen.findByRole("button", { name: "Terminar" });
+  await waitFor(() =>
+    expect(finishButton.hasAttribute("disabled")).toBe(false),
+  );
+  fireEvent.click(finishButton);
+  const prepare = await screen.findByRole("button", {
+    name: "Preparar desde Inicio",
+  });
+  await waitFor(() => expect(prepare.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(prepare);
+  await waitFor(() => expect(view.complete).toHaveBeenCalledWith(false, true));
+  expect(
+    fake.request.mock.calls.find(
+      ([request]) => request.method === "onboarding.finish",
+    )?.[0],
+  ).toMatchObject({
+    level: "high",
+    kit: ["standings", "relative", "delta", "pedals"],
+    layoutRevision: null,
+    show: true,
+  });
+});
+it("keeps first-run settings pending and errors from reaching consent or finish", async () => {
+  respond("onboarding-sin-diseno");
+  const view = await accountPage(true);
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  const account = { signedIn: false, checking: false, blocked: false };
+  for (const state of [
+    { pending: true },
+    { error: "failed" },
+    { view: undefined },
+  ]) {
+    fake.settings = state;
+    view.account(account);
+    expect(
+      screen
+        .getByRole("button", { name: "Continuar" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  }
+  expect(
+    fake.request.mock.calls.filter(([r]) =>
+      ["privacy.update", "onboarding.finish"].includes(r.method),
+    ),
+  ).toHaveLength(0);
+  fake.settings = undefined;
+  view.account(account);
+  expect(
+    screen.getByRole("button", { name: "Continuar" }).hasAttribute("disabled"),
+  ).toBe(false);
 });

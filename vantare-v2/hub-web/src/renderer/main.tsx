@@ -43,7 +43,15 @@ function Content() {
       </ContentStack>
     );
   const hub = (
-    <AccountProvider><PilotProvider><ReportsProvider><AccountGate><Shell /></AccountGate></ReportsProvider></PilotProvider></AccountProvider>
+    <AccountProvider>
+      <PilotProvider>
+        <ReportsProvider>
+          <AccountGate>
+            <Shell />
+          </AccountGate>
+        </ReportsProvider>
+      </PilotProvider>
+    </AccountProvider>
   );
   return (
     <SettingsProvider>

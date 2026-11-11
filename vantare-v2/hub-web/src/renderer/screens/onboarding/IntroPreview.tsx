@@ -269,16 +269,16 @@ export function OnboardingIntroPreview({
           step === 6 && completion.privacy.data?.protected
             ? summaryText.privacyProtectedSay
             : step === 3
-            ? account.blocked
-              ? stepsText.accountBlocked
-              : account.failed
-                ? accountText.failed
-                : account.checking
-                  ? stepsText.accountChecking
-                  : account.signedIn
-                    ? stepsText.signedSay
-                    : stepsText.accountSay
-            : voice.text
+              ? account.blocked
+                ? stepsText.accountBlocked
+                : account.failed
+                  ? accountText.failed
+                  : account.checking
+                    ? stepsText.accountChecking
+                    : account.signedIn
+                      ? stepsText.signedSay
+                      : stepsText.accountSay
+              : voice.text
         }
         messageRevision={voice.revision}
         emotion={

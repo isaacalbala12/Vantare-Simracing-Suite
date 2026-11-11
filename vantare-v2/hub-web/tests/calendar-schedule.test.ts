@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import type {
   CalendarSchedule,
@@ -6,6 +6,9 @@ import type {
 } from "../src/contract/generated/calendar";
 import { publication, starts } from "../src/renderer/screens/calendar/schedule";
 
+import { civilDay } from "../src/renderer/ui/calendarDate";
+
+afterEach(() => vi.unstubAllEnvs());
 const schedule: CalendarSchedule = fixture;
 describe("calendar UTC projection", () => {
   it("clamps intervals to the publication and excludes the right edge", () => {
@@ -59,4 +62,20 @@ describe("calendar UTC projection", () => {
     expect(projected.schedule).toBeNull();
     expect(projected.previous).toEqual(schedule);
   });
+});
+
+it("uses civil midnights across 23 and 25 hour days", () => {
+  vi.stubEnv("TZ", "Europe/Madrid");
+  for (const [date, hours] of [
+    ["2026-03-29T12:00:00Z", 23],
+    ["2026-10-25T12:00:00Z", 25],
+  ] as const) {
+    const at = Date.parse(date);
+    expect(civilDay(at, 1, false) - civilDay(at, 0, false)).toBe(
+      hours * 60 * 60_000,
+    );
+    expect(civilDay(at, 1, true) - civilDay(at, 0, true)).toBe(
+      24 * 60 * 60_000,
+    );
+  }
 });

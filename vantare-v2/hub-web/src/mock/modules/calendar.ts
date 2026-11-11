@@ -1,3 +1,4 @@
+import fixture from "../../../fixtures/calendar-demo.json";
 import {
   type CalendarConfigView,
   type CalendarView,
@@ -32,6 +33,12 @@ export function create(context: MockContext): MockHandler {
     context.core.access.verified = true;
     context.core.access.calendar = true;
     context.core.access.blocked = false;
+  }
+  if (context.sceneName === "calendar-reference") {
+    context.core.access.verified = true;
+    context.core.access.blocked = false;
+    context.core.access.calendar = true;
+    value.official = structuredClone(fixture);
   }
   const config: CalendarConfigView = {
     utc: false,

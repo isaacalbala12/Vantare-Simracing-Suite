@@ -45,7 +45,7 @@ import {
 import { SummaryStep } from "../../ui/onboarding/SummaryStep";
 import { useCompletion } from "./useCompletion";
 
-/** Component-catalog entry only; the complete first-run gate belongs to block 7c. */
+/** Shared controller for the first-run gate and its component-catalog preview. */
 export function OnboardingIntroPreview({
   onLeave,
   extended = false,

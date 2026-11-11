@@ -23,6 +23,7 @@ export async function saveConsents(
   client: Pick<Client, "request">,
   intent: { crashes: boolean; usage: boolean },
   publish: (value: PrivacyView) => void,
+  onWriteFailure?: (error: unknown) => void,
 ) {
   const reply = await client.request({ method: "privacy.get" });
   if (reply.method !== "privacy.get") throw new HostFailure({ kind: "io" });
@@ -51,6 +52,7 @@ export async function saveConsents(
         error.detail.kind === "privacyCleanup")
     )
       publish(error.detail.current);
+    onWriteFailure?.(error);
     throw error;
   }
   if (!privacyReady(current))

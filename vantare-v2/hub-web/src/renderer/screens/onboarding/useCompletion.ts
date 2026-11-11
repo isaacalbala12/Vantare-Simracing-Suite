@@ -22,6 +22,7 @@ export function useCompletion(
   const edited = useRef(false);
   const inFlight = useRef<Promise<void> | undefined>(undefined);
   const [pending, setPending] = useState(false);
+  const [saveFailure, setSaveFailure] = useState<unknown>();
   const [failure, setFailure] = useState<unknown>();
   const privacy = useQuery({
     queryKey: ["privacy"],
@@ -57,6 +58,7 @@ export function useCompletion(
     if (!client || inFlight.current) return;
     setPending(true);
     setFailure(undefined);
+    setSaveFailure(undefined);
     inFlight.current = task()
       .catch((error) => setFailure(error))
       .finally(() => {
@@ -69,7 +71,7 @@ export function useCompletion(
   function consent(done: () => void) {
     run(async () => {
       if (!client) return;
-      await saveConsents(client, intent, publish);
+      await saveConsents(client, intent, publish, setSaveFailure);
       done();
     });
   }
@@ -116,7 +118,7 @@ export function useCompletion(
   }
   function enterPrivate() {
     run(async () => {
-      if (!client || !canEnterPrivate(failure, privacy.data))
+      if (!client || !canEnterPrivate(saveFailure, privacy.data))
         throw new HostFailure({ kind: "denied" });
       const reply = await client.request({ method: "onboarding.skipPrivate" });
       if (reply.method !== "onboarding.skipPrivate" || !reply.accepted)
@@ -139,7 +141,7 @@ export function useCompletion(
     finish,
     policy,
     enterPrivate,
-    privateAllowed: canEnterPrivate(failure, privacy.data),
+    privateAllowed: canEnterPrivate(saveFailure, privacy.data),
     error: failure
       ? failure instanceof HostFailure &&
         failure.detail.kind === "onboardingConflict"

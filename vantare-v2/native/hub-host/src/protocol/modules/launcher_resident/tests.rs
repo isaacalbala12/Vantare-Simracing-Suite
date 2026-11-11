@@ -86,7 +86,7 @@ fn freshness_registration_matching_and_polling_never_write_a_request() {
             mailbox::status_path(&path),
             serde_json::to_vec(status).expect("status"),
         )
-        .expect("fixture")
+        .expect("fixture");
     };
     publish(&status);
     let mut state = State::new(path.clone());

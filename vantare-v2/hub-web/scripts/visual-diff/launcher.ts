@@ -48,3 +48,22 @@ launcherScenes["launcher-aplicaciones"] = {
       .waitFor();
   },
 };
+
+// The native reference uses the launcher-base QA bank with a pending decision.
+// Collapse navigation before opening Launcher: the decision makes it inert.
+launcherScenes["launcher-decision"] = {
+  mock: "launcher-decision",
+  async prepare(page) {
+    const toggle = page.getByRole("button", {
+      name: "Contraer o ampliar navegación",
+      exact: true,
+    });
+    if ((await toggle.getAttribute("aria-expanded")) === "true")
+      await toggle.click();
+    await page.getByRole("button", { name: "Launcher", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .filter({ hasText: "Decisión de lanzamiento" })
+      .waitFor();
+  },
+};

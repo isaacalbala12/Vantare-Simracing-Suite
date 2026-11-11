@@ -33,11 +33,29 @@ $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
 foreach ($argument in @('--qa-root',$run,'--capture',$Scene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--demo','--control-stdin')) { $start.ArgumentList.Add($argument) }
-if ($testing) { $start.ArgumentList.Add('--qa-testing') }
+if ($testing) {
+    $start.ArgumentList.Add('--qa-testing')
+    # The existing frozen QA hook validates the rights peer against this bank,
+    # rather than against the productive vantare-core.exe image.
+    $start.Environment['VANTARE_CAPTURE_POLICY'] = 'ipc'
+}
 $process = [Diagnostics.Process]::Start($start)
 try {
     # Wait for the GUI message loop, then the declared offscreen capture HWND.
     if (-not $process.WaitForInputIdle(15000)) { throw 'El banco no ha creado su bucle de ventana en 15 s.' }
+    if ($testing) {
+        $ready = [Diagnostics.Stopwatch]::StartNew()
+        do {
+            if ($process.HasExited) { throw 'El banco terminó antes de recibir la política QA' }
+            $rightsLog = Join-Path $run 'rights-requests.jsonl'
+            $requestsLog = Join-Path $run 'requests.jsonl'
+            $rightsReady = (Test-Path -LiteralPath $rightsLog) -and (Get-Item -LiteralPath $rightsLog).Length -gt 0
+            $accountReady = (Test-Path -LiteralPath $requestsLog) -and (Select-String -LiteralPath $requestsLog -SimpleMatch '"command":"AccountPoll"' -Quiet)
+            if ($rightsReady -and $accountReady) { break }
+            if ($ready.Elapsed.TotalSeconds -ge 15) { throw "El banco no recibió la política/cuenta QA en 15 s: $run" }
+            Start-Sleep -Milliseconds 50
+        } while ($true)
+    }
     $helper = Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-window.ps1'
     $deadline = [Diagnostics.Stopwatch]::StartNew()
     do {

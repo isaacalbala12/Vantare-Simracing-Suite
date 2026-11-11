@@ -32,9 +32,12 @@ Escenas adicionales del banco QA (sin ampliar el catálogo del Hub productivo):
 `strategy-proximamente` muestra la página real «Próximamente», sin forzar el viejo
 planificador; `notificaciones-completa` muestra la sección completa, sin popup.
 Las cinco escenas `testing-center-{resumen,cuestionarios,comunidad,triage,diagnostico}`
-añaden automáticamente `--qa-testing` y replies locales de tester, con el cuestionario
+añaden automáticamente `--qa-testing`, el hook existente `VANTARE_CAPTURE_POLICY=ipc`
+y replies locales de tester, con el cuestionario
 y la contribución públicos de QA. No usan una cuenta real. La selección de pestaña
-conserva el directorio propio con PID que verifica el banco.
+conserva el directorio propio con PID que verifica el banco. Antes de capturar se
+esperan las lecturas de política y cuenta en los logs QA, con plazo de 15 s; no se
+confunde el subrayado de una pestaña con la admisión real del tester.
 
 Cada `.capture.json` conserva el hash de las entradas y del PNG para la herramienta
 de diferencias. Cada `.bank.json` conserva escena, tema, paleta, zoom, DPI, tamaño, SHA del binario,

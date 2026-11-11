@@ -21,10 +21,12 @@ const Context = createContext<
       tabs: HTMLDivElement | null;
       rail: HTMLDivElement | null;
       railActive: boolean;
+      railHidden: boolean;
       title: string | undefined;
       setTabs: (node: HTMLDivElement | null) => void;
       setRail: (node: HTMLDivElement | null) => void;
       setRailActive: (active: boolean) => void;
+      setRailHidden: (hidden: boolean) => void;
       setTitle: (title: string | undefined) => void;
     }
   | undefined
@@ -34,19 +36,22 @@ export function SectionChromeProvider({ children }: { children: ReactNode }) {
   const [tabs, setTabs] = useState<HTMLDivElement | null>(null);
   const [rail, setRail] = useState<HTMLDivElement | null>(null);
   const [railActive, setRailActive] = useState(false);
+  const [railHidden, setRailHidden] = useState(false);
   const [title, setTitle] = useState<string>();
   const value = useMemo(
     () => ({
       tabs,
       rail,
       railActive,
+      railHidden,
       title,
       setTabs,
       setRail,
       setRailActive,
+      setRailHidden,
       setTitle,
     }),
-    [tabs, rail, railActive, title],
+    [tabs, rail, railActive, railHidden, title],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
@@ -70,8 +75,10 @@ export function SectionChrome({
   rail?: ReactNode;
 }) {
   const targets = useChrome();
-  const active = rail !== undefined && rail !== null;
+  const hidden = rail === false;
+  const active = rail !== undefined && rail !== null && !hidden;
   const setActive = targets.setRailActive;
+  const setHidden = targets.setRailHidden;
   const setTitle = targets.setTitle;
   useLayoutEffect(() => {
     setTitle(title);
@@ -79,8 +86,12 @@ export function SectionChrome({
   }, [title, setTitle]);
   useLayoutEffect(() => {
     setActive(active);
-    return () => setActive(false);
-  }, [active, setActive]);
+    setHidden(hidden);
+    return () => {
+      setActive(false);
+      setHidden(false);
+    };
+  }, [active, hidden, setActive, setHidden]);
   const visibleTabs = tabs?.filter((tab) => tab.visible) ?? [];
   return (
     <>
@@ -155,4 +166,9 @@ export function SectionRailSlot({ fallback }: { fallback: ReactNode }) {
       <div hidden={chrome.railActive}>{fallback}</div>
     </>
   );
+}
+
+/** The frame removes its rail only while the mounted screen explicitly opts out. */
+export function SectionRailVisibility({ children }: { children: ReactNode }) {
+  return useChrome().railHidden ? null : children;
 }

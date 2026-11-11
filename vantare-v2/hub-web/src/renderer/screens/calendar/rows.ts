@@ -144,3 +144,38 @@ export function nextRace(
     );
   return { ...row, at, raceAt: at + leadMinutes(row.series) * minute, after };
 }
+
+export function upcomingAlerts(
+  schedule: CalendarSchedule,
+  now: number,
+  alerts: CalendarAlerts,
+  limit: number,
+) {
+  const items: {
+    series: CalendarSeries;
+    at: number;
+    band?: CalendarAlerts["bands"][number];
+  }[] = [];
+  for (const band of alerts.bands) {
+    const series = schedule.series.find((s) => s.id === band.seriesId);
+    if (!series) continue;
+    const at = starts(
+      schedule,
+      series,
+      now,
+      Math.min(Date.parse(schedule.validUntil), now + 8 * 86400000),
+      limit,
+    ).find((at) => alertAt(schedule, series, at, alerts, limit));
+    if (at !== undefined) items.push({ series, at, band });
+  }
+  for (const slot of alerts.slots) {
+    const series = schedule.series.find((s) => s.id === slot.seriesId);
+    if (series && slot.at * 1000 >= now)
+      items.push({ series, at: slot.at * 1000 });
+  }
+  return items.sort(
+    (a, b) =>
+      a.at - b.at ||
+      (a.series.id < b.series.id ? -1 : a.series.id > b.series.id ? 1 : 0),
+  );
+}

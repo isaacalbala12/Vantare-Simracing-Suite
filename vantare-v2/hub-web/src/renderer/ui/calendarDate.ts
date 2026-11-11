@@ -19,11 +19,14 @@ export function datePart(
     [part]: part === "day" ? "numeric" : "short",
     ...(utc ? { timeZone: "UTC" } : {}),
   }).format(at);
-  return value.replace(/\.$/u, "");
+  return value.replace(/\.$/u, "").replace(/^sept$/u, "sep");
 }
 export function weekTitle(at: number, utc: boolean) {
   const last = civilDay(at, 6, utc);
-  return `${datePart(at, "day", utc)}–${datePart(last, "day", utc)} ${datePart(last, "month", utc)}`;
+  const firstMonth = datePart(at, "month", utc),
+    lastMonth = datePart(last, "month", utc);
+  const first = `${datePart(at, "day", utc)}${firstMonth === lastMonth ? "" : ` ${firstMonth}`}`;
+  return `${first}–${datePart(last, "day", utc)} ${lastMonth}`;
 }
 export function clock(at: number, utc: boolean) {
   return new Intl.DateTimeFormat("es", {
@@ -35,4 +38,21 @@ export function clock(at: number, utc: boolean) {
 }
 export function elapsedDays(from: number, until: number) {
   return Math.max(0, Math.floor((until - from) / day));
+}
+
+export function weekDays(start: number, utc: boolean) {
+  const date = new Date(start);
+  const first = utc
+    ? Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+    : new Date(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+      ).getTime();
+  return Array.from({ length: 7 }, (_, i) => civilDay(first, i, utc));
+}
+export function weekLongTitle(start: number) {
+  const days = weekDays(start, true),
+    last = days[6];
+  return `${datePart(start, "weekday", true)} ${datePart(start, "day", true)} – ${datePart(last, "weekday", true)} ${datePart(last, "day", true)} ${datePart(last, "month", true)}`;
 }

@@ -188,3 +188,20 @@ it("omits over-limit expansions instead of rendering a partial agenda or throwin
   expect(starts(schedule, schedule.series[0], from, until, 3)).toEqual([]);
   expect(starts(schedule, schedule.series[0], from, until, 4)).toHaveLength(4);
 });
+
+it("keeps the published Tuesday date when local time is west of UTC", () => {
+  const source = new URL("../src/renderer/ui/calendarDate.ts", import.meta.url)
+    .href;
+  const script = `import {weekDays,datePart,weekTitle} from ${JSON.stringify(source)};const start=weekDays(Date.parse("2026-09-29T00:00:00Z"),false)[0];process.stdout.write(JSON.stringify([datePart(start,"weekday",false),datePart(start,"day",false),weekTitle(start,false)]));`;
+  const output = execFileSync(
+    process.execPath,
+    ["--experimental-strip-types", "--input-type=module", "-e", script],
+    {
+      env: { ...process.env, TZ: "America/Los_Angeles" },
+      encoding: "utf8",
+      timeout: 5000,
+      windowsHide: true,
+    },
+  );
+  expect(JSON.parse(output)).toEqual(["mar", "29", "29 sep–5 oct"]);
+});

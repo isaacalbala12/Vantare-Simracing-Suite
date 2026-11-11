@@ -24,11 +24,12 @@
   --button-pressed: #ae1f2b;
   --ok: #15803d;
   --warn: #b45309;
-  --error: #c42b36;
+  --err: #c42b36;
   --grad-hero: linear-gradient(118deg, #fbe4e6 0%, #ffffff 100%);
+  --grad-neo: linear-gradient(145deg, #ffffff 0%, #faf7f7 100%);
   --grad-button: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
   --grad-button-hover: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
-  --on-accent: #ffffff;
+  --text-on-accent: #ffffff;
 }
 
 [data-scheme="light"] :is(.v-calendar, .v-calendar-rail) {
@@ -63,11 +64,12 @@
   --button-pressed: #b92a35;
   --ok: #22c55e;
   --warn: #f59e0b;
-  --error: #f25a5a;
+  --err: #f25a5a;
   --grad-hero: linear-gradient(118deg, #5c1720 0%, #1e1517 100%);
+  --grad-neo: linear-gradient(145deg, #262022 0%, #1f1a1c 100%);
   --grad-button: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
   --grad-button-hover: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
-  --on-accent: #ffffff;
+  --text-on-accent: #ffffff;
 }
 
 [data-scheme="dark"] :is(.v-calendar, .v-calendar-rail) {

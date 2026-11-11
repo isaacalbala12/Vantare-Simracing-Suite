@@ -36,8 +36,8 @@ export function CalendarUpcomingView({
         </Button>
       </section>
     );
-  const week = weekTitle(Date.parse(previous.validFrom), utc),
-    next = weekTitle(Date.parse(previous.validUntil), utc);
+  const week = weekTitle(Date.parse(previous.validFrom), true),
+    next = weekTitle(Date.parse(previous.validUntil), true);
   return (
     <div className="v-calendar-upcoming">
       <section className="v-calendar-expired">

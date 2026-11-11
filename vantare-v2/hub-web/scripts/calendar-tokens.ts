@@ -24,7 +24,7 @@ const fields: Record<string, string> = {
   button_pressed: "button-pressed",
   ok: "ok",
   warn: "warn",
-  err: "error",
+  err: "err",
 };
 const classes: Record<string, string> = {
   Hypercar: "hypercar",
@@ -56,6 +56,7 @@ export function calendarTokens(source: string) {
     }
     for (const [field, token, angle] of [
       ["hero", "grad-hero", 118],
+      ["neo", "grad-neo", 145],
       ["button", "grad-button", 180],
       ["button_hover", "grad-button-hover", 180],
     ] as const) {
@@ -71,7 +72,7 @@ export function calendarTokens(source: string) {
     }
     const white = source.match(/s\.on_primary = 0x([A-Fa-f0-9_]+);/);
     if (!white) throw new Error("Calendar primary text missing");
-    values["on-accent"] = color(white[1]);
+    values["text-on-accent"] = color(white[1]);
     css.push(
       `[data-palette="vantare"][data-scheme="${scheme}"] :is(.v-calendar, .v-calendar-rail),\n[data-palette="classic"][data-scheme="${scheme}"] :is(.v-calendar, .v-calendar-rail) {\n${Object.entries(
         values,

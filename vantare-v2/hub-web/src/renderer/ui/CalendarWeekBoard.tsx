@@ -4,7 +4,7 @@ import type {
 } from "../../contract/generated/calendar";
 import { calendarText as text } from "../i18n/calendar";
 import { starts } from "../screens/calendar/schedule";
-import { civilDay, datePart, weekTitle } from "./calendarDate";
+import { civilDay, datePart, weekDays, weekTitle } from "./calendarDate";
 
 function Identity({ series }: { series: CalendarSeries }) {
   const label =
@@ -30,7 +30,7 @@ export function WeekBoard({
   limit: number;
 }) {
   const at = Date.parse(schedule.validFrom);
-  const days = Array.from({ length: 7 }, (_, i) => civilDay(at, i, utc));
+  const days = weekDays(at, utc);
   const events = schedule.series.filter(
     (s) => s.recurrence.kind !== "interval",
   );
@@ -38,10 +38,10 @@ export function WeekBoard({
   return (
     <section
       className="v-calendar-week"
-      aria-label={text.lastWeek(weekTitle(at, utc))}
+      aria-label={text.lastWeek(weekTitle(days[0], utc))}
     >
       <div className="v-calendar-week-title">
-        <h2>{text.lastWeek(weekTitle(at, utc))}</h2>
+        <h2>{text.lastWeek(weekTitle(days[0], utc))}</h2>
         <span className="v-calendar-pill">{text.readonly}</span>
         <span>{text.readonlyHelp}</span>
       </div>
@@ -64,7 +64,7 @@ export function WeekBoard({
             <Identity series={s} />
             <div className="v-calendar-week-cells">
               {days.map((d, i) => {
-                const end = civilDay(at, i + 1, utc);
+                const end = civilDay(days[i], 1, utc);
                 const times = starts(schedule, s, d, end, limit);
                 return (
                   <div className="v-calendar-event-cell" key={d}>

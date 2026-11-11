@@ -16,7 +16,7 @@
   gap: 0;
   overflow: hidden;
   border-left: 1px solid var(--line-2);
-  background: var(--grad-neo);
+  background: var(--calendar-detail-neo);
   outline: none;
   color: var(--text-1);
 }
@@ -36,7 +36,7 @@
 }
 .v-calendar-detail-header h2 {
   margin: 8px 0 0;
-  font: 600 30px / 36px var(--font-display);
+  font: 600 30px / 33px var(--font-display);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -118,7 +118,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .v-calendar-detail-caption h3 {
   margin: 0;
@@ -369,4 +369,21 @@
 }
 .v-calendar-detail-footer .v-tooltip-trigger {
   display: flex;
+}
+
+.v-calendar-detail .v-calendar-tier[data-tier="beginner"] {
+  color: var(--calendar-tier-beginner);
+  background: var(--calendar-tier-beginner-bg);
+}
+.v-calendar-detail .v-calendar-tier[data-tier="intermediate"] {
+  color: var(--calendar-tier-intermediate);
+  background: var(--calendar-tier-intermediate-bg);
+}
+.v-calendar-detail .v-calendar-tier[data-tier="advanced"] {
+  color: var(--calendar-tier-advanced);
+  background: var(--calendar-tier-advanced-bg);
+}
+.v-calendar-detail .v-calendar-tier[data-tier="event"] {
+  color: var(--calendar-tier-event);
+  background: var(--calendar-tier-event-bg);
 }

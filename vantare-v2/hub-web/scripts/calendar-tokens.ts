@@ -71,6 +71,11 @@ export function calendarTokens(source: string, filters: string) {
       values[token] =
         `linear-gradient(${angle}deg, ${color(match[1])} 0%, ${color(match[2])} 100%)`;
     }
+    // Frozen ficha.rs uses the same neo ramp at 180 degrees.
+    values["calendar-detail-neo"] = values["grad-neo"].replace(
+      "145deg",
+      "180deg",
+    );
     const white = source.match(/s\.on_primary = 0x([A-Fa-f0-9_]+);/);
     if (!white) throw new Error("Calendar primary text missing");
     values["text-on-accent"] = color(white[1]);

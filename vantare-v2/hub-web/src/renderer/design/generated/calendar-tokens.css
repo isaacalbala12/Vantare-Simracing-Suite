@@ -29,6 +29,7 @@
   --grad-neo: linear-gradient(145deg, #ffffff 0%, #faf7f7 100%);
   --grad-button: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
   --grad-button-hover: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
+  --calendar-detail-neo: linear-gradient(180deg, #ffffff 0%, #faf7f7 100%);
   --text-on-accent: #ffffff;
 }
 
@@ -80,6 +81,7 @@
   --grad-neo: linear-gradient(145deg, #262022 0%, #1f1a1c 100%);
   --grad-button: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
   --grad-button-hover: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
+  --calendar-detail-neo: linear-gradient(180deg, #262022 0%, #1f1a1c 100%);
   --text-on-accent: #ffffff;
 }
 

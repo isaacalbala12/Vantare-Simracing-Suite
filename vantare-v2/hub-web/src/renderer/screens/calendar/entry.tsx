@@ -220,10 +220,10 @@ export default function CalendarEntry() {
                     ?.recurrence.intervalMinutes ?? 15
                 }
                 lead={alerts.leadMin}
-                leads={calendarAlertLeads}
+                leads={calendarAlertLeads.slice(0, 3)}
                 days={calendarDays}
                 modes={calendarBandModes}
-                stepMinutes={15}
+                stepMinutes={30}
                 dayMinutes={calendarDayMinutes}
                 busy
               />

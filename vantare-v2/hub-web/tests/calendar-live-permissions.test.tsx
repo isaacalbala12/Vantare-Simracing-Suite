@@ -83,7 +83,7 @@ it("routes series names separately from a departure Ficha", () => {
   fireEvent.click(series);
   expect(onSerie).toHaveBeenCalledWith("beginner-lmgt3-fixed");
   expect(onDetail).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Ficha", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
   expect(onDetail).toHaveBeenCalledOnce();
   expect(onSerie).toHaveBeenCalledOnce();
 });

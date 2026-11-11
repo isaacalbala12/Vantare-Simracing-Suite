@@ -58,6 +58,7 @@ export function CalendarDayView({
       (a, b) =>
         Number(following.includes(b.id)) - Number(following.includes(a.id)) ||
         rank(a.tier) - rank(b.tier) ||
+        Number(a.eventKind === "special") - Number(b.eventKind === "special") ||
         (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     );
   const slots = series.map((s) => starts(schedule, s, at, until, limit)),
@@ -153,7 +154,9 @@ export function CalendarDayView({
                 data-favorite={following.includes(s.id) || undefined}
               >
                 <strong>{s.name}</strong>
-                <span data-tier={s.tier}>
+                <span
+                  data-tier={s.eventKind === "special" ? "special" : s.tier}
+                >
                   {s.eventKind === "special"
                     ? text.special
                     : (text.tiers[s.tier as keyof typeof text.tiers] ?? s.tier)}

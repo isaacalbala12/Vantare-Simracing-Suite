@@ -52,8 +52,8 @@
 }
 .v-calendar-day-tools > p {
   width: 84px;
-  flex: 1;
-  margin: 0;
+  flex: none;
+  margin: 0 auto 0 0;
   font-size: 12px;
   color: var(--text-caption);
 }
@@ -254,4 +254,54 @@
   display: flex;
   padding: 12px;
   outline: none;
+}
+
+.v-calendar-day-tools .v-segmented {
+  height: 34px;
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: var(--surface-1);
+  flex: none;
+}
+.v-calendar-day-tools .v-segment {
+  height: 26px;
+  min-height: 26px;
+  padding-inline: 10px;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.v-calendar-day-tools .v-segmented:nth-last-child(2) {
+  width: 176px;
+}
+.v-calendar-day-tools .v-segmented:last-child {
+  width: 180px;
+}
+.v-calendar-day-tools .v-segmented:last-child .v-segment:first-child {
+  width: 66px;
+  flex: none;
+}
+.v-calendar-day-tools .v-segmented:last-child .v-segment:last-child {
+  flex: 1;
+}
+.v-calendar-day-tools .v-segmented:last-child .v-segment:last-child::before {
+  content: "★" / "";
+  margin-right: 6px;
+  color: var(--accent);
+}
+.v-calendar-day-hour button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.v-calendar-day-hour button[data-gone]:disabled {
+  opacity: 0.6;
+}
+.v-calendar-day-head span[data-tier="intermediate"] {
+  color: var(--text-3);
+  background: var(--surface-3);
+}
+.v-calendar-day-head span[data-tier="advanced"] {
+  color: var(--warn);
+  background: var(--warn-tint);
 }

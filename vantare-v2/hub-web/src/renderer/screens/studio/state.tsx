@@ -17,11 +17,25 @@ function useStateValue() {
   const { client } = useHost();
   const [view, setView] = useState<StudioView>(),
     [selected, setSelected] = useState<string | null>(null),
+    [added, setAdded] = useState<{
+      id: string;
+      name: string;
+      revision: string;
+    }>(),
+    [notice, setNotice] = useState<{
+      kind: "added" | "removed";
+      name: string;
+      revision: string;
+    }>(),
+    [removing, setRemoving] = useState<string | null>(null),
     [pending, setPending] = useState(false),
     [failure, setFailure] = useState<{
       message: string;
       request: StudioRequest;
     }>();
+  const focusAfter = useRef<{ id: string; index: number } | undefined>(
+    undefined,
+  );
   const busy = useRef(false),
     alive = useRef(true),
     opened = useRef(false);
@@ -46,6 +60,27 @@ function useStateValue() {
           response.method.startsWith("studio.")
         ) {
           update(response.value as StudioView);
+          if (response.method === "studio.add") {
+            const item = response.value.instances.find(
+              (item) => item.id === response.added,
+            );
+            const name =
+              response.value.catalog.find(
+                (widget) => widget.kind === item?.kind,
+              )?.name ?? item?.kind;
+            if (name) {
+              setNotice({
+                kind: "added",
+                name,
+                revision: response.value.revision,
+              });
+              setAdded({
+                id: response.added,
+                name,
+                revision: response.value.revision,
+              });
+            }
+          }
           return response.value as StudioView;
         }
       } catch (error) {
@@ -109,6 +144,12 @@ function useStateValue() {
     view,
     selected,
     setSelected,
+    removing,
+    setRemoving,
+    added,
+    notice,
+    setNotice,
+    focusAfter,
     pending,
     failure,
     execute,

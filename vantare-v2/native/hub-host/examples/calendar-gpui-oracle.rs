@@ -67,7 +67,7 @@ fn sample(source: &str, case: &str, document: &Value, index: usize, first: bool)
     json!({"source":source,"case":case,"seriesId":series.id,"intervalMinutes":raw["recurrence"]["intervalMinutes"].as_u64().unwrap_or(0),"startOffsetMinute":raw["startOffsetMinute"].as_i64().unwrap_or(0),"from":from.timestamp_millis(),"until":until.timestamp_millis(),"offsetSeconds":Local.from_utc_datetime(&from.naive_utc()).offset().fix().local_minus_utc(),"alerts":alerts,"starts":starts.iter().map(chrono::DateTime::timestamp_millis).collect::<Vec<_>>(),"causes":causes})
 }
 fn main() {
-    let cases: Value = serde_json::from_str(include_str!("../../fixtures/calendar/cases.json"))
+    let cases: Value = serde_json::from_str(include_str!("../../../fixtures/calendar/cases.json"))
         .expect("frozen GPUI oracle fixture");
     let mut rows = Vec::new();
     for case in cases

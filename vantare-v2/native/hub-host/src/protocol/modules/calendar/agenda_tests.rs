@@ -184,7 +184,7 @@ fn civil_weekdays_weekends_and_repeated_hour_are_injected() {
 fn pure_host_agenda_matches_generated_frozen_gpui_oracle() {
     let cases: serde_json::Value = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../fixtures/calendar/cases.json"
+        "/../../fixtures/calendar/cases.json"
     )))
     .unwrap();
     let october: serde_json::Value = serde_json::from_str(include_str!(concat!(

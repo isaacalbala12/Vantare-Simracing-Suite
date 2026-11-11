@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import type { VisualScene } from "./scenes.ts";
 export const studioScenes: Record<string, VisualScene> = {
   "studio-base": {
@@ -80,6 +81,58 @@ for (const count of [4, 30]) {
         });
         if ((await toggle.getAttribute("aria-expanded")) !== String(!collapsed))
           await toggle.click();
+        if (collapsed) {
+          await page.getByRole("button", { name: /^Añadir widget/ }).click();
+          const search = page.getByRole("searchbox", {
+            name: "Buscar widget",
+            exact: true,
+          });
+          await search.waitFor();
+          assert.equal(
+            await search.evaluate((node) => node === document.activeElement),
+            true,
+            "Add must focus the reopened catalog",
+          );
+          await page.locator(".v-studio-overlay-select").first().click();
+          await page
+            .getByRole("heading", { name: /^Standings(?: 1)?$/, exact: true })
+            .waitFor();
+          await toggle.click();
+        }
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            ),
+        );
+        const previewChecks = await page
+          .locator(".v-widget-preview")
+          .evaluateAll((nodes) =>
+            nodes.map((node) => {
+              const image = node.querySelector<SVGElement>(
+                'svg[data-fallback="true"]',
+              );
+              const css = getComputedStyle(node);
+              const usefulHeight =
+                node.clientHeight -
+                parseFloat(css.paddingTop) -
+                parseFloat(css.paddingBottom);
+              return (
+                !image ||
+                image.getBoundingClientRect().height >= usefulHeight * 0.6
+              );
+            }),
+          );
+        assert.ok(
+          previewChecks.every(Boolean),
+          "SVG fallback must occupy at least 60% of useful height",
+        );
+        const borders = await page
+          .locator(".v-studio-obs-button,.v-studio-edit-button")
+          .evaluateAll((nodes) =>
+            nodes.map((node) => getComputedStyle(node).borderTopWidth),
+          );
+        assert.deepEqual(borders, ["1px", "1px"]);
         const cards = page.locator(".v-studio-overlay");
         await cards.first().waitFor();
         if ((await cards.count()) !== count)

@@ -142,6 +142,7 @@ fn selection_is_bound_to_its_app_and_replacement_clears_old_arguments() {
     document.profiles[0].steps[1].app_id = document.apps[1].id.clone();
     document.profiles[0].steps[1].args_override = Some(vec!["private-other-app".into()]);
     let bytes = serde_json::to_vec(&document).unwrap();
+    Document::from_bytes(&bytes).expect("valid full catalog");
     std::fs::write(&path, &bytes).unwrap();
     let now = Instant::now();
     let mut picker = Picker::default();
@@ -315,9 +316,11 @@ fn an_approved_selection_cannot_exceed_the_application_limit() {
     while document.apps.len() < APP_LIMIT {
         let mut app = document.apps[0].clone();
         app.id = format!("custom:{}", document.apps.len());
+        app.executable = Some(executable.clone());
         document.apps.push(app);
     }
     let bytes = serde_json::to_vec(&document).unwrap();
+    Document::from_bytes(&bytes).expect("valid full catalog");
     std::fs::write(&path, &bytes).unwrap();
     let now = Instant::now();
     let mut picker = Picker::default();

@@ -1,3 +1,4 @@
+import type { Page } from "playwright-core";
 import type { VisualScene } from "./scenes.ts";
 // Navigation belongs to the QA adapter. The actual Intro components never read
 // capture scene names, query strings, clocks, or reference image state.
@@ -6,7 +7,7 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
     `onboarding-${step}`,
     {
       mock: `onboarding-${step}`,
-      async prepare(page) {
+      async prepare(page: Page) {
         await page.emulateMedia({ reducedMotion: "reduce" });
         const catalog = new URL(page.url());
         catalog.searchParams.set("escena", "specimen");

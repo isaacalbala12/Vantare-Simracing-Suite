@@ -63,7 +63,10 @@ export function create(context: MockContext): MockHandler {
   };
   if (sceneName === "studio-oculto") view.instances[0].visible = false;
   if (view.state !== "ready") view.instances = [];
-  if (sceneName === "studio-pro-bloqueado") {
+  if (
+    sceneName === "studio-pro-bloqueado" ||
+    sceneName === "studio-bloqueado"
+  ) {
     view.plan = "free";
     view.catalog = view.catalog.map((w) => ({
       ...w,

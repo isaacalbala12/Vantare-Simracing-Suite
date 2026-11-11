@@ -1,13 +1,18 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { useState } from "react";
-import { studioLimits } from "../../../contract/generated/studio";
+import {
+  studioAddAvailable,
+  studioCategories,
+  studioLimits,
+} from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
 import { Callout, Skeleton } from "../Data";
-import { SearchInput, Switch } from "../Forms";
+import { SearchInput } from "../Forms";
 import { Tooltip } from "../Layers";
+import { TrackInspector } from "./TrackInspector";
 import { WidgetPreview, WidgetThumb, widgetName } from "./Widgets";
 
 const fold = (value: string) =>
@@ -17,8 +22,6 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
     view = state.view;
   const selected = view?.instances.find((item) => item.id === state.selected);
   const info = view?.catalog.find((widget) => widget.kind === selected?.kind);
-  const disabled =
-    state.pending || view?.state !== "ready" || view.plan === "unverified";
   return (
     <aside className="v-studio-rail" aria-label={t.inspector}>
       {view?.state !== "missing" && (
@@ -97,26 +100,12 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                     <Tabs.Tab value="track">{t.track}</Tabs.Tab>
                   </Tabs.List>
                   <Tabs.Panel value="track">
-                    <div className="v-studio-track-summary">
-                      <Switch
-                        label={t.visible}
-                        checked={selected.visible}
-                        disabled={disabled || selected.locked}
-                        onCheckedChange={(visible) =>
-                          void state.execute({
-                            method: "studio.visibility",
-                            id: selected.id,
-                            visible,
-                            baseRevision: view.revision,
-                          })
-                        }
-                      />
-                    </div>
+                    <TrackInspector key={selected.id} item={selected} />
                   </Tabs.Panel>
                 </Tabs.Root>
               </>
             ) : (
-              <Catalog />
+              <Catalog onPlans={onPlans} />
             )}
           </div>
         </>
@@ -132,12 +121,34 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
     </aside>
   );
 }
-function Catalog() {
+function Catalog({ onPlans }: { onPlans: () => void }) {
   const state = useStudio(),
-    view = state.view;
-  const [search, setSearch] = useState(""),
-    [added, setAdded] = useState<string>();
+    [search, setSearch] = useState(""),
+    [category, setCategory] = useState(t.allCategories);
+  const view = state.view;
   if (!view) return null;
+  const widgets = view.catalog.filter(
+    (w) =>
+      (category === t.allCategories || category === w.category) &&
+      fold(`${w.name} ${w.about}`).includes(fold(search)),
+  );
+  const suggested = widgets.filter(
+    (w) =>
+      w.allowed &&
+      w.suggested &&
+      !view.instances.some((i) => i.kind === w.kind),
+  );
+  const groups = [
+    { title: t.kit, items: suggested },
+    {
+      title: t.planWidgets,
+      items: widgets.filter((w) => w.allowed && !suggested.includes(w)),
+    },
+    {
+      title: view.plan === "unverified" ? t.unverifiedTitle : t.proTitle,
+      items: widgets.filter((w) => !w.allowed),
+    },
+  ];
   return (
     <div className="v-studio-catalog">
       <SearchInput
@@ -146,56 +157,140 @@ function Catalog() {
         value={search}
         onChange={setSearch}
       />
-      {!view.catalog.some((widget) =>
-        fold(`${widget.name} ${widget.about}`).includes(fold(search)),
-      ) && <p>{t.noResults}</p>}
-      <div className="v-studio-basic-catalog">
-        {view.catalog
-          .filter((widget) =>
-            fold(`${widget.name} ${widget.about}`).includes(fold(search)),
-          )
-          .map((widget) => (
-            <Tooltip
-              key={widget.kind}
-              label={
-                !widget.allowed
-                  ? t.verifyWidget
-                  : view.instances.length >= studioLimits.instances
-                    ? t.atLimit(studioLimits.instances)
-                    : widget.about
-              }
-            >
-              <Button
-                className="v-studio-catalog-choice"
-                aria-label={`${t.addShort} ${widget.name}`}
-                disabled={
-                  !widget.allowed ||
-                  state.pending ||
-                  view.state !== "ready" ||
-                  view.instances.length >= studioLimits.instances
-                }
-                onClick={() =>
-                  void state
-                    .execute({
-                      method: "studio.add",
-                      kind: widget.kind,
-                      baseRevision: view.revision,
-                    })
-                    .then((value) => {
-                      if (value) setAdded(value.revision);
-                    })
-                }
-              >
-                <WidgetThumb kind={widget.kind} icon />
-                {widget.name}
-                {!widget.allowed && <Icon name="lock" />}
-              </Button>
-            </Tooltip>
-          ))}
+      <div className="v-studio-categories">
+        {[
+          t.allCategories,
+          ...studioCategories.filter((value) => value !== t.allCategories),
+        ].map((value) => (
+          <Button
+            size="sm"
+            variant="ghost"
+            key={value}
+            aria-pressed={category === value}
+            onClick={() => setCategory(value)}
+          >
+            {value}
+          </Button>
+        ))}
       </div>
-      {added === view.revision && (
+      {!widgets.length && <p>{t.noResults}</p>}
+      {groups.map(
+        (group) =>
+          group.items.length > 0 && (
+            <section key={group.title}>
+              <h3>{group.title}</h3>
+              <fieldset
+                className="v-studio-catalog-grid"
+                aria-label={group.title}
+              >
+                {group.items.map((widget, index) => (
+                  <Tooltip
+                    key={widget.kind}
+                    label={
+                      view.instances.length >= studioLimits.instances
+                        ? t.atLimit(studioLimits.instances)
+                        : !widget.allowed
+                          ? view.plan === "unverified"
+                            ? t.verify
+                            : t.pro
+                          : t.add
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="v-studio-catalog-widget"
+                      data-kind={widget.kind}
+                      aria-label={`${t.addShort} ${widget.name}`}
+                      aria-disabled={!widget.allowed}
+                      disabled={
+                        state.pending ||
+                        !widget.allowed ||
+                        view.instances.length >= studioLimits.instances ||
+                        !studioAddAvailable ||
+                        view.state !== "ready"
+                      }
+                      onKeyDown={(event) => {
+                        const buttons = Array.from(
+                          event.currentTarget
+                            .closest("fieldset")
+                            ?.querySelectorAll<HTMLButtonElement>(
+                              "[data-kind]",
+                            ) ?? [],
+                        );
+                        const step =
+                          event.key === "ArrowRight"
+                            ? 1
+                            : event.key === "ArrowLeft"
+                              ? -1
+                              : event.key === "ArrowDown"
+                                ? 2
+                                : event.key === "ArrowUp"
+                                  ? -2
+                                  : 0;
+                        if (step) {
+                          event.preventDefault();
+                          buttons[
+                            (index + step + buttons.length) % buttons.length
+                          ]?.focus();
+                        }
+                      }}
+                      onClick={() => {
+                        if (!widget.allowed) return;
+                        void state.execute({
+                          method: "studio.add",
+                          kind: widget.kind,
+                          baseRevision: view.revision,
+                        });
+                      }}
+                    >
+                      <WidgetPreview
+                        kind={widget.kind}
+                        small
+                        locked={!widget.allowed}
+                        unverified={view.plan === "unverified"}
+                      />
+                      <strong>
+                        {!widget.allowed && <Icon name="lock" />}
+                        {widget.name}
+                      </strong>
+                      <small>{widget.about}</small>
+                      {view.instances.some(
+                        (item) => item.kind === widget.kind,
+                      ) && (
+                        <span className="v-studio-owned">
+                          {t.owned(
+                            view.instances.filter(
+                              (item) => item.kind === widget.kind,
+                            ).length,
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  </Tooltip>
+                ))}
+              </fieldset>
+            </section>
+          ),
+      )}
+      {view.plan === "unverified" ? (
+        <p>{t.verify}</p>
+      ) : view.catalog.some((w) => !w.allowed) ? (
+        <p>
+          {t.planNote(
+            t.planNames[view.plan],
+            t.included(
+              view.catalog.filter((w) => w.allowed).map((w) => w.name),
+            ),
+            view.catalog.filter((w) => !w.allowed).length,
+          )}
+        </p>
+      ) : null}
+      {view.catalog.some((w) => !w.allowed) && (
+        <Button onClick={onPlans}>{t.plans}</Button>
+      )}
+      {state.added?.revision === view.revision && (
         <Callout
-          title={t.added}
+          title={t.addedName(state.added.name)}
           actions={
             <Button
               disabled={state.pending || !view.canUndo}

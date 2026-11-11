@@ -146,10 +146,6 @@ pub fn hello(settings: &SettingsView) -> std::io::Result<HostToUi> {
         demo: false,
     })
 }
-#[cfg(any(test, feature = "bindings"))]
-pub fn typescript() -> String {
-    bindings::typescript()
-}
 #[cfg(test)]
 mod tests {
     use super::*;

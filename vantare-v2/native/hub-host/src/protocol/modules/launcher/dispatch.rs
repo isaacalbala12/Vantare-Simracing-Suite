@@ -71,7 +71,7 @@ pub(super) fn subscribe(
 }
 
 impl Session {
-    fn save_profile_draft(
+    pub(super) fn save_profile_draft(
         &mut self,
         draft: &crate::launcher::editor::ProfileDraft,
         base_revision: &str,

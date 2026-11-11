@@ -22,3 +22,9 @@ mod job;
 mod test_support;
 
 include!(concat!(env!("OUT_DIR"), "/models.rs"));
+
+#[cfg(test)]
+mod dispatch_contract_tests;
+#[cfg(test)]
+#[path = "../build_support.rs"]
+mod wire_source_tests;

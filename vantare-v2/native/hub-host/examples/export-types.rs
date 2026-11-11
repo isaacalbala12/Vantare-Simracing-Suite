@@ -15,12 +15,5 @@ fn main() -> std::io::Result<()> {
             serde_json::to_string_pretty(&corpus).expect("corpus") + "\n",
         )?;
     }
-    std::fs::write(
-        path.join("contract.ts"),
-        vantare_hub_host::protocol::typescript(),
-    )?;
-    std::fs::write(
-        path.join("corpus.json"),
-        vantare_hub_host::protocol::bindings::corpus_json(),
-    )
+    Ok(())
 }

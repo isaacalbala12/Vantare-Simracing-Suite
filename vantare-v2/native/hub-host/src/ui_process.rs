@@ -217,52 +217,12 @@ fn entered_live(previous: Option<&protocol::CoreStatus>, current: &protocol::Cor
             && current.live
     })
 }
-fn settings_response(
-    observed: &mut crate::diagnostics::Observed,
-    pipe: &mut Pipe,
-    id: u32,
-    result: Result<crate::settings::SettingsView, SaveError>,
-    reply: impl FnOnce(crate::settings::SettingsView) -> Reply,
-) -> io::Result<()> {
-    let message = match result {
-        Ok(value) => HostToUi::Response {
-            id,
-            result: reply(value),
-        },
-        Err(error) => HostToUi::Failure {
-            id,
-            error: match error {
-                SaveError::Busy => HostError::Busy,
-                SaveError::Conflict(current) => HostError::Conflict { current },
-                SaveError::Protected => HostError::Protected,
-                SaveError::Io => HostError::Io,
-                SaveError::Unsupported => HostError::Unsupported,
-            },
-        },
-    };
-    if let HostToUi::Failure { error, .. } = &message {
-        observed.note(crate::diagnostics::DiagnosticSection::Settings, error);
-    }
-    frame::write(pipe, &message)
-}
 
 include!(concat!(env!("OUT_DIR"), "/session.rs"));
+#[path = "session_effects.rs"]
+mod session_effects;
+use session_effects::settings_response;
 impl Session {
-    fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
-        self.closing = Some((reason, Instant::now()));
-        frame::write(pipe, &HostToUi::CloseRequested { reason })
-    }
-    fn send_core(&self, pipe: &mut Pipe) -> io::Result<()> {
-        frame::write(
-            pipe,
-            &HostToUi::Event {
-                event: Event::Core {
-                    value: self.current.clone(),
-                },
-            },
-        )
-    }
-
     fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
             confirmation.check_confirmation()?;
@@ -311,23 +271,6 @@ impl Session {
             !matches!(reason, CloseReason::ControlEof | CloseReason::Live)
                 || time.elapsed() <= Duration::from_secs(2)
         }))
-    }
-
-    fn respond(
-        &mut self,
-        pipe: &mut Pipe,
-        id: u32,
-        result: Result<Reply, HostError>,
-        section: crate::diagnostics::DiagnosticSection,
-    ) -> io::Result<()> {
-        let message = match result {
-            Ok(result) => HostToUi::Response { id, result },
-            Err(error) => {
-                self.diagnostic.note(section, &error);
-                HostToUi::Failure { id, error }
-            }
-        };
-        frame::write(pipe, &message)
     }
 
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
@@ -436,6 +379,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
         core,
         settings,
         ready::Ready::from_executable(&executable)?,
+        crate::privacy::State::open(&args.data),
     );
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "before-hello")?;

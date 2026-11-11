@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { privacyGateText as text } from "../i18n/privacy-gate.es";
 import { Button } from "./Button";
 import { Checkbox } from "./Forms";
+import { TrackedCaps } from "./TrackedCaps";
 export function PrivacyQuestion({
   usage,
   checked,
@@ -34,7 +35,7 @@ export function PrivacyQuestion({
         aria-label={usage ? text.usageLabel : text.crashesLabel}
       >
         <Dialog.Title className="v-privacy-question-title">
-          {text.title}
+          <TrackedCaps>{text.title}</TrackedCaps>
         </Dialog.Title>
         <div className="v-privacy-question-body">
           <h2>{usage ? text.usageQuestion : text.crashesQuestion}</h2>

@@ -1,4 +1,5 @@
 .v-gate {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -6,6 +7,11 @@
   background: var(--grad-window);
 }
 .v-gate-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1;
   height: 36px;
   flex: none;
   display: flex;
@@ -45,13 +51,20 @@
 }
 .v-privacy-question-title {
   margin: 0;
-  font: 600 15px / 22.5px var(--font-sans);
+  min-height: 60px;
+  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line-1);
+  font: 600 15px / 18px var(--font-display);
+  letter-spacing: 1.6px;
 }
 .v-privacy-question-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
+  padding: 12px 20px;
 }
 .v-privacy-question-body h2 {
   margin: 0;

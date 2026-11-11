@@ -152,9 +152,15 @@ pub(crate) fn corpus() -> serde_json::Value {
     host.push(HostToUi::Event {
         event: Event::Studio { value },
     });
-    let ui: Vec<UiToHost> = requests
+    let mut ui: Vec<UiToHost> = requests
         .into_iter()
         .map(|request| UiToHost::Request { id: 1, request })
         .collect();
+    ui.push(UiToHost::Subscribe {
+        topic: crate::protocol::Topic::Studio,
+    });
+    ui.push(UiToHost::Unsubscribe {
+        topic: crate::protocol::Topic::Studio,
+    });
     serde_json::json!({"host":host,"ui":ui})
 }

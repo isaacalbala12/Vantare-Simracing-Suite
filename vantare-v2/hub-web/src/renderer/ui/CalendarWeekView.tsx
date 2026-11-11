@@ -86,7 +86,7 @@ export function CalendarWeekView({
                   s.tier as keyof typeof calendarText.tiers
                 ] ?? s.tier)}
           </b>
-          {s.track.split(" (")[0]}
+          {s.track.replace(" (", " ").replace(/\)$/u, "")}
           {text.separator}
           {calendarText.minutes(raceMinutes(s))}
         </p>
@@ -188,7 +188,11 @@ export function CalendarWeekView({
             {series
               .filter((s) => !daily(s))
               .map((s) => (
-                <div className="v-calendar-week-live-event" key={s.id}>
+                <div
+                  className="v-calendar-week-live-event"
+                  data-favorite={view.following.includes(s.id) || undefined}
+                  key={s.id}
+                >
                   {identity(s)}
                   {dates.map((at) => {
                     const until = civilDay(at, 1, view.utc),
@@ -243,50 +247,65 @@ export function CalendarWeekView({
               {text.daily}
               <span>{text.dailyHint}</span>
             </div>
-            {series.filter(daily).map((s) => {
-              const next = nextStart(schedule, s, now, limit);
-              return (
-                <div className="v-calendar-week-live-daily" key={s.id}>
-                  {identity(s)}
-                  <button
-                    type="button"
-                    disabled={!onDetail}
-                    onClick={() => onDetail?.(s.id, next)}
+            {series
+              .filter(daily)
+              .sort((a, b) => {
+                const tiers = ["beginner", "intermediate", "advanced"];
+                const rank = (s: CalendarSeries) =>
+                  tiers.includes(s.tier) ? tiers.indexOf(s.tier) : 3;
+                return (
+                  rank(a) - rank(b) ||
+                  (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+                );
+              })
+              .map((s) => {
+                const next = nextStart(schedule, s, now, limit);
+                return (
+                  <div
+                    className="v-calendar-week-live-daily"
+                    data-favorite={view.following.includes(s.id) || undefined}
+                    key={s.id}
                   >
-                    {alerts.bands
-                      .filter((band) => band.seriesId === s.id)
-                      .slice(0, 1)
-                      .flatMap((band) => bandSegments(dates, band, view.utc))
-                      .map((segment) => (
-                        <span
-                          key={segment.from}
-                          className="v-calendar-week-band"
-                          style={{
-                            left: `${(100 * (segment.from - dates[0])) / (end - dates[0])}%`,
-                            width: `${(100 * (segment.until - segment.from)) / (end - dates[0])}%`,
-                          }}
-                        />
-                      ))}
-                    <span
-                      className="v-calendar-week-live-past"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, (100 * (now - dates[0])) / (end - dates[0])))}%`,
-                      }}
-                    />
-                    {next !== undefined && (
-                      <b
+                    {identity(s)}
+                    <button
+                      type="button"
+                      disabled={!onDetail}
+                      onClick={() => onDetail?.(s.id, next)}
+                    >
+                      {alerts.bands
+                        .filter((band) => band.seriesId === s.id)
+                        .slice(0, 1)
+                        .flatMap((band) => bandSegments(dates, band, view.utc))
+                        .map((segment) => (
+                          <span
+                            key={segment.from}
+                            className="v-calendar-week-band"
+                            style={{
+                              left: `${(100 * (segment.from - dates[0])) / (end - dates[0])}%`,
+                              width: `${(100 * (segment.until - segment.from)) / (end - dates[0])}%`,
+                            }}
+                          />
+                        ))}
+                      <span
+                        className="v-calendar-week-live-past"
                         style={{
-                          left: `${(100 * (next - dates[0])) / (end - dates[0])}%`,
+                          width: `${Math.max(0, Math.min(100, (100 * (now - dates[0])) / (end - dates[0])))}%`,
                         }}
-                      >
-                        {clock(next, view.utc)}
-                      </b>
-                    )}
-                    <span>{text.every(s.recurrence.intervalMinutes)}</span>
-                  </button>
-                </div>
-              );
-            })}
+                      />
+                      {next !== undefined && (
+                        <b
+                          style={{
+                            left: `${(100 * (next - dates[0])) / (end - dates[0])}%`,
+                          }}
+                        >
+                          {clock(next, view.utc)}
+                        </b>
+                      )}
+                      <span>{text.every(s.recurrence.intervalMinutes)}</span>
+                    </button>
+                  </div>
+                );
+              })}
             {offset === 0 && (
               <i
                 className="v-calendar-week-live-now"

@@ -250,6 +250,7 @@
   background: var(--canvas);
 }
 .v-calendar-week-full {
+  display: flex;
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);

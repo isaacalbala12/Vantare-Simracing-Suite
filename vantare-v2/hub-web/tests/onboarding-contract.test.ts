@@ -309,3 +309,32 @@ it("uses null for missing layouts and includes the fresh view in a layout confli
     isOnboarding({ ...loaded.result.value, layoutRevision: "a".repeat(64) }),
   ).toBe(false);
 });
+
+it("keeps the requested appearance and pending onboarding in every intro capture scene", () => {
+  for (const theme of ["dark", "light"])
+    for (const step of [0, 1, 2]) {
+      const host = createMockHost(`visual-${theme}:onboarding-${step}`);
+      const settings = host({
+        kind: "request",
+        id: 1,
+        request: { method: "settings.get" },
+      });
+      if (
+        settings?.kind !== "response" ||
+        settings.result.method !== "settings.get"
+      )
+        throw new Error("settings");
+      expect(settings.result.value.appearance.scheme).toBe(theme);
+      const onboarding = host({
+        kind: "request",
+        id: 2,
+        request: { method: "onboarding.get" },
+      });
+      if (
+        onboarding?.kind !== "response" ||
+        onboarding.result.method !== "onboarding.get"
+      )
+        throw new Error("onboarding");
+      expect(onboarding.result.value.pending).toBe(true);
+    }
+});

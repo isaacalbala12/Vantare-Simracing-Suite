@@ -40,7 +40,10 @@ pub(crate) fn typescript() -> String {
             let value = crate::widget_defaults::get(kind.id()).expect("generated defaults");
             (
                 kind.id(),
-                serde_json::json!({"width":value.size.width,"height":value.size.height}),
+                std::collections::BTreeMap::from([
+                    ("height", value.size.height),
+                    ("width", value.size.width),
+                ]),
             )
         })
         .collect();

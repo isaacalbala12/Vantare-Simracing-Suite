@@ -205,4 +205,24 @@ describe("profile editor", () => {
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
   });
+  it("rereads after conflict and warns instead of rebinding custom arguments across revisions", async () => {
+    mount("launcher-editor-custom-conflicto");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    const name = await screen.findByRole("textbox", { name: text.name });
+    fireEvent.change(name, { target: { value: "Borrador tras conflicto" } });
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByText(text.conflict);
+    // The ordinary Save action must also reread, not reuse the expired key.
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: text.cancel }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect((screen.getByRole("textbox", { name: text.name }) as HTMLInputElement).value).toBe("Borrador tras conflicto");
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
+    fireEvent.click(screen.getByRole("button", { name: text.confirmArgumentLoss }));
+    await screen.findByRole("button", { name: "Borrador tras conflicto" });
+  });
+
 });

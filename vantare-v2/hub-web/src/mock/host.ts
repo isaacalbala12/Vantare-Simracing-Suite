@@ -74,7 +74,7 @@ export function createMockHost(sceneName = "ajustes-base") {
   if (
     sceneName === "launcher-ready" ||
     sceneName === "launcher-editor-ready" ||
-    sceneName === "launcher-editor-custom" ||
+    sceneName.startsWith("launcher-editor-custom") ||
     sceneName === "launcher-conflicto"
   ) {
     launcher.apps.forEach((app) => {
@@ -107,13 +107,14 @@ export function createMockHost(sceneName = "ajustes-base") {
           appId,
           delaySeconds: index ? 2 : 0,
           hasCustomArguments:
-            sceneName === "launcher-editor-custom" && index === 0,
+            sceneName.startsWith("launcher-editor-custom") && index === 0,
         })),
       } as ProfileDraft,
     ]),
   );
   let profileSerial = 0;
   let keySerial = 0;
+  let profileRead: { profile: string | null; revision: string } | undefined;
   const stepKeys = new Map<
     string,
     { profile: string; revision: string; appId: string; customized: boolean }
@@ -347,6 +348,8 @@ export function createMockHost(sceneName = "ajustes-base") {
         };
       }
       case "launcher.profile.get": {
+        profileRead = undefined;
+        stepKeys.clear();
         const draft =
           request.id === null
             ? (structuredClone(editorFixture.draft) as ProfileDraft)
@@ -356,7 +359,7 @@ export function createMockHost(sceneName = "ajustes-base") {
           draft.id = `profile-qa-${++profileSerial}`;
           reservedProfile = draft.id;
         }
-        stepKeys.clear();
+        profileRead = { profile: draft.id, revision: launcher.revision };
         for (const step of draft.steps) {
           step.key = (++keySerial).toString(16).padStart(64, "0");
           stepKeys.set(step.key, {
@@ -379,8 +382,12 @@ export function createMockHost(sceneName = "ajustes-base") {
         };
       }
       case "launcher.profile.save": {
+        const consumed = profileRead;
+        profileRead = undefined;
+        const readKeys = new Map(stepKeys);
+        stepKeys.clear();
         if (
-          sceneName === "launcher-conflicto" &&
+          (sceneName === "launcher-conflicto" || sceneName === "launcher-editor-custom-conflicto") &&
           launcher.revision === "0".repeat(64)
         )
           launcher.revision = "1".repeat(64);
@@ -406,6 +413,7 @@ export function createMockHost(sceneName = "ajustes-base") {
         if (request.draft.id === null)
           return { kind: "failure", id, error: { kind: "denied" } };
         const profileId = request.draft.id;
+        if (!consumed || consumed.profile !== profileId || consumed.revision !== request.baseRevision) return { kind: "failure", id, error: { kind: "denied" } };
         if (
           request.draft.id !== null &&
           !drafts.has(profileId) &&
@@ -415,7 +423,7 @@ export function createMockHost(sceneName = "ajustes-base") {
         const seen = new Set<string>();
         const saved = structuredClone(request.draft);
         for (const step of saved.steps) {
-          const source = step.key === null ? undefined : stepKeys.get(step.key);
+          const source = step.key === null ? undefined : readKeys.get(step.key);
           if (
             step.key !== null &&
             (!source ||

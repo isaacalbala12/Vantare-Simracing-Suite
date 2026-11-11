@@ -334,6 +334,19 @@ fn patch_samples() -> Vec<SettingsPatch> {
         SettingsPatch::HideOffTrack(true),
     ]
 }
+fn profile_keys_sample() -> Reply {
+    let document = vantare_launcher::Document::fresh_install();
+    let mut draft = crate::launcher::editor::draft(&document.profiles[0]);
+    for (index, step) in draft.steps.iter_mut().enumerate() {
+        step.key = Some(format!("{:064x}", index + 1));
+    }
+    Reply::LauncherProfileGet {
+        value: ProfileEditorView {
+            revision: "0".repeat(64),
+            draft,
+        },
+    }
+}
 pub fn corpus() -> serde_json::Value {
     let privacy = privacy_sample();
     let diagnostic: DiagnosticView = serde_json::from_str(include_str!(
@@ -343,6 +356,10 @@ pub fn corpus() -> serde_json::Value {
     let settings = settings_sample();
     let mut host = vec![hello(&settings).expect("boot view")];
     host.extend(core_samples());
+    host.push(HostToUi::Response {
+        id: 1,
+        result: profile_keys_sample(),
+    });
     for result in [
         Reply::SettingsGet {
             value: settings.clone(),

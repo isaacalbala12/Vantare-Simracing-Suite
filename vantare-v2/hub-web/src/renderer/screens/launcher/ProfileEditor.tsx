@@ -36,7 +36,7 @@ export function ProfileEditor() {
   const { value, set, update } = useProfileEditorState();
   const toast = useToastManager();
   const [error, setError] = useState<string>();
-  const [conflictRevision, setConflictRevision] = useState<string>();
+  const readInvalid = useRef(false);
   const [confirmation, setConfirmation] = useState<{
     revision: string;
     source: EditorSnapshot;
@@ -127,6 +127,7 @@ export function ProfileEditor() {
     source = current,
   ) {
     if (!client || busy.current || !view) return;
+    if (readInvalid.current) { await retry(); return; }
     const nameBytes = new TextEncoder().encode(source.draft.name).length;
     if (
       !source.draft.name.trim() ||
@@ -167,6 +168,7 @@ export function ProfileEditor() {
         draft,
         baseRevision: revision,
       });
+      readInvalid.current = true;
       if (!alive.current) return;
       if (reply.method === "launcher.profile.save") {
         query.setQueryData(launcherKey, reply.value);
@@ -174,13 +176,13 @@ export function ProfileEditor() {
         toast.add({ title: text.saved });
       }
     } catch (failure) {
+      readInvalid.current = true;
       if (!alive.current) return;
       set({ ...source, pending: false });
       if (
         failure instanceof HostFailure &&
         failure.detail.kind === "launcherConflict"
       ) {
-        setConflictRevision(failure.detail.current.revision);
         query.setQueryData(launcherKey, failure.detail.current);
         setError(text.conflict);
       } else setError(text.failed);
@@ -204,7 +206,7 @@ export function ProfileEditor() {
       if (alive.current && reply.method === "launcher.profile.get") {
         set(snapshot(reply.value));
         setError(undefined);
-        setConflictRevision(undefined);
+        readInvalid.current = false;
       }
     } catch {
       if (alive.current) {
@@ -244,7 +246,9 @@ export function ProfileEditor() {
         const index = current.original.steps.findIndex(
           (original) => original.key !== null && original.key === step.key,
         );
-        const candidate = fresh.draft.steps[index];
+        // Across revisions there is no persistent step identity in launcher.json.
+        // Do not silently attach private arguments by index after an external edit.
+        const candidate = fresh.revision === current.revision ? fresh.draft.steps[index] : undefined;
         return {
           ...step,
           key: candidate?.appId === step.appId ? candidate.key : null,
@@ -258,7 +262,7 @@ export function ProfileEditor() {
         stepKeys: current.stepKeys,
       };
       set(source);
-      setConflictRevision(undefined);
+      readInvalid.current = false;
       setError(undefined);
       busy.current = false;
       await save(source.revision, false, source);
@@ -301,7 +305,7 @@ export function ProfileEditor() {
         onAdd={add}
         onSave={() => void save()}
         onCancel={() => set(null)}
-        onRetry={() => void (conflictRevision ? retry() : save())}
+        onRetry={() => void retry()}
         onDiscard={() => void discard()}
       />
       <ArgumentLossDialog

@@ -11,6 +11,8 @@ pub struct StepKeys {
 }
 impl StepKeys {
     pub fn open(&mut self, path: &Path, id: Option<&str>) -> Result<ProfileEditorView, HostError> {
+        // Any new read replaces the preceding capabilities, including a failed read.
+        *self = Self::default();
         let mut view = super::get(path, id)?;
         let next = Self::issue(&mut view)?;
         let view = super::checked(view)?;

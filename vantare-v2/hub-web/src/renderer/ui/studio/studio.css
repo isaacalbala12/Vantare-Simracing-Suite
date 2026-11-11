@@ -74,11 +74,11 @@
   flex: none;
   font-size: 15px;
 }
-.v-studio-topbar > .v-tooltip-trigger:nth-last-of-type(2) .v-button {
+.v-studio-obs-button {
   font-size: 12px;
   padding-inline: 10px;
 }
-.v-studio-topbar > .v-tooltip-trigger:last-of-type .v-button {
+.v-studio-edit-button {
   font-size: 12px;
   padding-inline: 10px;
 }
@@ -174,7 +174,7 @@
   right: 2px;
   top: 6px;
 }
-.v-studio-eye .v-button {
+.v-studio-eye :where(.v-button) {
   padding: 4px;
   min-height: 30px;
   border: 0;
@@ -198,7 +198,7 @@
   color: var(--text-3);
   margin-right: 4px;
 }
-.v-studio-footer .v-button {
+.v-studio-footer :where(.v-button) {
   min-height: 30px;
   min-width: 0;
   border: 0;
@@ -206,7 +206,7 @@
   color: var(--text-3);
   opacity: 1;
 }
-.v-studio-footer .v-button[data-active="true"] {
+.v-studio-footer :where(.v-button)[data-active="true"] {
   color: var(--text-1);
 }
 .v-studio-footer small {
@@ -243,12 +243,12 @@
   width: 22px;
   height: 22px;
 }
-.v-studio-rail > header .v-button {
+.v-studio-rail > :where(header) :where(.v-button) {
   min-height: 30px;
   font-size: 12px;
   padding: 0 6px;
 }
-.v-studio-rail > header .v-button svg {
+.v-studio-rail > :where(header .v-button) svg {
   width: 14px;
   height: 14px;
 }
@@ -291,7 +291,7 @@
   text-transform: uppercase;
   margin: 0 0 12px;
 }
-.v-studio-obs h3 svg {
+.v-studio-obs :where(h3) svg {
   width: 16px;
   height: 16px;
 }
@@ -338,7 +338,7 @@
   flex-wrap: wrap;
   gap: 4px;
 }
-.v-studio-categories .v-button {
+.v-studio-categories :where(.v-button) {
   font-size: 11px;
   min-height: 28px;
   padding: 0 6px;
@@ -383,7 +383,7 @@
   gap: 4px;
   font-size: 12px;
 }
-.v-studio-catalog-widget strong svg {
+.v-studio-catalog-widget :where(strong) svg {
   width: 12px;
   height: 12px;
   flex: none;
@@ -419,4 +419,19 @@
   display: block;
   height: 100%;
   max-width: 100%;
+}
+
+.v-studio-catalog-grid {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.v-studio-widget-icon {
+  display: inline-block;
+  flex: none;
+  background: var(--text-2);
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
 }

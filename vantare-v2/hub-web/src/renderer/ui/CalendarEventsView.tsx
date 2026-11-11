@@ -224,7 +224,12 @@ export function CalendarEventsView({
                   onClick={onLaunch}
                 >
                   <Icon name="play" />
-                  {text.launch(profile ?? "LMU")}
+                  {text.launch(
+                    profile
+                      ? Array.from(profile).slice(0, 18).join("") +
+                          (Array.from(profile).length > 18 ? "…" : "")
+                      : "LMU",
+                  )}
                 </Button>
                 <Button onClick={onExport} disabled={!onExport}>
                   <Icon name="v-calendar" />

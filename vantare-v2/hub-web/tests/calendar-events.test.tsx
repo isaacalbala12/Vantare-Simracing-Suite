@@ -107,3 +107,38 @@ it("does not fabricate an event when the publication contains only daily series"
   );
   expect(screen.getByRole("heading", { name: text.empty })).toBeTruthy();
 });
+
+it("keeps revoked launch and favorite actions disabled and does not invent missing actions", () => {
+  const view = calendarReference();
+  if (!view.official) throw new Error("Missing public schedule");
+  const follow = vi.fn(),
+    launch = vi.fn();
+  render(
+    <CalendarEventsView
+      schedule={view.official}
+      alerts={alerts as CalendarAlerts}
+      following={view.following}
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      utc
+      limit={10000}
+      profile="Carrera LMU"
+      canLaunch={false}
+      canFollow={false}
+      onFollow={follow}
+      onLaunch={launch}
+    />,
+  );
+  const event = within(screen.getByRole("article", { name: "WEC Weekly" }));
+  for (const button of [
+    event.getByRole("button", { name: text.inFavorites }),
+    event.getByRole("button", { name: text.launch("Carrera LMU") }),
+    event.getByRole("button", { name: text.detail }),
+    event.getByRole("button", { name: text.export }),
+    event.getByRole("button", { name: /^18:00\s*siguiente$/u }),
+  ]) {
+    expect(button).toHaveProperty("disabled", true);
+    fireEvent.click(button);
+  }
+  expect(follow).not.toHaveBeenCalled();
+  expect(launch).not.toHaveBeenCalled();
+});

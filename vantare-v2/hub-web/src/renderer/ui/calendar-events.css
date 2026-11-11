@@ -208,7 +208,7 @@
 .v-calendar-event-day button b {
   font: 600 11px / 14px var(--font-mono);
 }
-.v-calendar-event-slot-icon {
+.v-calendar-event-slot-icon svg {
   width: 10px;
   height: 10px;
 }
@@ -296,4 +296,8 @@
 .v-calendar-event-day button:disabled {
   opacity: 1;
   cursor: default;
+}
+
+.v-calendar-event-day button[data-gone]:disabled {
+  opacity: 0.45;
 }

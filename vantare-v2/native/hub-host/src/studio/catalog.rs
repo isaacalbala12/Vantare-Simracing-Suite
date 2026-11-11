@@ -37,7 +37,8 @@ pub struct WidgetInfo {
     pub allowed: bool,
 }
 impl WidgetKind {
-    pub const ALL: &'static [Self] = &[
+ pub const ALL: &'static [Self]=&[Self::Standings,Self::Radar,Self::Pedals,Self::Delta,Self::CarDamageVisual,Self::InputTelemetry,Self::MulticlassRelative,Self::BroadcastTower,Self::DeltaTrace,Self::TrackMap,Self::TrackWeather,Self::CarDamageNumbers,Self::HeadToHead,Self::FuelStrategy,Self::PedalsTelemetry,Self::Relative,Self::RacingFlags,Self::FastestLap,Self::SessionAlerts];
+    pub const CATALOG: &'static [Self] = &[
         Self::Standings,
         Self::Relative,
         Self::MulticlassRelative,

@@ -20,7 +20,7 @@ pub(crate) fn typescript() -> String {
         text,
         "export const studioCatalog = {} as const;",
         serde_json::to_string(
-            &WidgetKind::ALL
+            &WidgetKind::CATALOG
                 .iter()
                 .map(|kind| kind.info(None))
                 .collect::<Vec<_>>()
@@ -28,6 +28,7 @@ pub(crate) fn typescript() -> String {
         .expect("catalog")
     )
     .expect("catalog");
+    writeln!(text,"export const studioKinds = {} as const;",serde_json::to_string(WidgetKind::ALL).expect("kinds")).expect("kinds");
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {

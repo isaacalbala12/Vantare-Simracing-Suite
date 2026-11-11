@@ -5,6 +5,28 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "calendar.configLoad")]
+    CalendarConfigLoad {},
+    #[serde(rename = "calendar.utcSet")]
+    CalendarUtcSet {
+        utc: bool,
+        #[serde(rename = "expectedRevision")]
+        expected_revision: String,
+    },
+    #[serde(rename = "calendar.notifyWeekSet")]
+    CalendarNotifyWeekSet {
+        enabled: bool,
+        #[serde(rename = "expectedRevision")]
+        expected_revision: String,
+    },
+    #[serde(rename = "calendar.followSet")]
+    CalendarFollowSet {
+        #[serde(rename = "seriesId")]
+        series_id: String,
+        followed: bool,
+        #[serde(rename = "expectedRevision")]
+        expected_revision: String,
+    },
     #[serde(rename = "calendar.load")]
     CalendarLoad {},
     #[serde(rename = "calendar.refresh")]
@@ -14,6 +36,22 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "calendar.configLoad")]
+    CalendarConfigLoad {
+        value: Box<crate::calendar::CalendarConfigView>,
+    },
+    #[serde(rename = "calendar.utcSet")]
+    CalendarUtcSet {
+        value: Box<crate::calendar::CalendarConfigView>,
+    },
+    #[serde(rename = "calendar.notifyWeekSet")]
+    CalendarNotifyWeekSet {
+        value: Box<crate::calendar::CalendarConfigView>,
+    },
+    #[serde(rename = "calendar.followSet")]
+    CalendarFollowSet {
+        value: Box<crate::calendar::CalendarConfigView>,
+    },
     #[serde(rename = "calendar.load")]
     CalendarLoad {
         value: Box<crate::calendar::CalendarView>,
@@ -21,6 +59,15 @@ pub enum Reply {
     #[serde(rename = "calendar.refresh")]
     CalendarRefresh {
         value: Box<crate::calendar::CalendarView>,
+    },
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", deny_unknown_fields)]
+pub enum HostError {
+    #[serde(rename = "calendarConflict")]
+    CalendarConflict {
+        current: Box<crate::calendar::CalendarConfigView>,
     },
 }
 #[cfg(any(test, feature = "bindings"))]

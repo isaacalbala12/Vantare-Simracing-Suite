@@ -1,4 +1,10 @@
-//! Read-only projection of the frozen calendar documents. No network or writes.
+#[path = "config.rs"]
+pub mod config;
+pub use config::{
+    CalendarAlerts, CalendarBand, CalendarBandMode, CalendarChannels, CalendarConfigView,
+    CalendarDays, CalendarSlot,
+};
+// Calendar publication projection and local preferences.
 use crate::protocol::{AccessView, HostError};
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};

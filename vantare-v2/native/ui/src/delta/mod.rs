@@ -2,8 +2,6 @@
 //! Con el sistema Vantare (por defecto) pinta `vantare.rs` (#1497).
 
 #[cfg(test)]
-use crate::widget_settings::SettingsDemand as _;
-#[cfg(test)]
 mod contract_tests;
 mod eficiencia;
 mod motion;

@@ -2,6 +2,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
+use vantare_ui::standings::SessionSettings as _;
 
 use gpui::{
     Context, Entity, IntoElement, Render, RenderImage, Window, div, img, prelude::*, px, rgb, rgba,

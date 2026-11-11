@@ -8,9 +8,19 @@ pub use vantare_domain::widget_settings::look::Tone;
 pub use vantare_domain::widget_settings::look::Accent;
 
 pub(crate) trait WorkshopLook {
+    fn choices() -> Vec<(&'static str, &'static str)>;
     fn workshop_defaults(self, kind: crate::Kind) -> crate::Settings;
 }
 impl WorkshopLook for Look {
+    fn choices() -> Vec<(&'static str, &'static str)> {
+        let mut looks = Self::ALL.to_vec();
+        looks.sort_by_key(|look| *look != Self::default());
+        looks
+            .into_iter()
+            .map(|look| (look.name(), look.label()))
+            .collect()
+    }
+
     fn workshop_defaults(self, kind: crate::Kind) -> crate::Settings {
         use crate::{Kind, Settings};
         match kind {

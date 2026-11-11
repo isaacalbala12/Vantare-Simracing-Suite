@@ -4,6 +4,7 @@
 //! 2 px); con el ajuste histórico de 8 px el ancho es 120 px. El Look Vantare
 //! (`pedals/vantare.rs`, #1566) pinta el mismo ViewModel en columnas más juntas.
 
+#[cfg(test)]
 use crate::look::WorkshopLook as _;
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;

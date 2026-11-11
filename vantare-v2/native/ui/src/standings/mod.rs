@@ -33,7 +33,9 @@ pub(crate) mod vantare;
 pub(crate) mod view;
 
 use crate::app::Paint;
-use crate::look::{Accent, Look, Tone};
+use crate::look::Look;
+#[cfg(test)]
+use crate::look::{Accent, Tone};
 use crate::session::Session;
 use model::{Config, Metric};
 use motion::Wake;

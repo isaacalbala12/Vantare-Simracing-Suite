@@ -62,14 +62,6 @@ impl Look {
             Self::Vantare => "Vantare",
         }
     }
-    pub fn choices() -> Vec<(&'static str, &'static str)> {
-        let mut looks = Self::ALL.to_vec();
-        looks.sort_by_key(|look| *look != Self::default());
-        looks
-            .into_iter()
-            .map(|look| (look.name(), look.label()))
-            .collect()
-    }
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.iter().copied().find(|l| l.name() == name)
     }

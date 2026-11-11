@@ -3,6 +3,7 @@
 //! con el `ViewModel` de `domain` que le corresponde y solo repinta cuando ese
 //! ViewModel cambia.
 
+use crate::standings::SessionSettings as _;
 use std::cell::RefCell;
 use std::collections::HashMap;
 #[cfg(windows)]

@@ -1,4 +1,5 @@
 //! Eficiencia: presentación del Board común, sin Snapshot, proyección ni historial.
+use super::SettingsPresentation as _;
 use super::motion::Visual as RowVisual;
 use super::{
     App, BAND, BorderStyle, ContentMask, Corners, EDGES, Edges, FOOTER, Ink, Instant, Language,

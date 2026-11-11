@@ -1,5 +1,6 @@
 //! Carga, tira de widgets y fotos/ejemplos de la preview; el catálogo «Añadir widget» está en `add_widget.rs`. Mapa: `README.md`.
 use super::*;
+#[cfg(feature = "parity-capture")]
 use vantare_ui::standings::SessionSettings as _;
 
 pub(super) fn unavailable_scenario(

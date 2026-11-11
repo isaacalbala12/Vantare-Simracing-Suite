@@ -115,7 +115,7 @@ export function Gallery() {
         </Tooltip>
         <Button
           variant="primary"
-          disabled={disabled || view.plan === "unverified"}
+          disabled={pending || (!view.showing && disabled)}
           onClick={() =>
             void state.execute({ method: "studio.track", show: !view.showing })
           }

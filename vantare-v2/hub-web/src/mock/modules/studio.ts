@@ -62,6 +62,13 @@ export function create(context: MockContext): MockHandler {
       locked: !view.catalog.some((c) => c.kind === w.kind && c.allowed),
     }));
   }
+  if (sceneName === "studio-protegido-mostrando") {
+    view.state = "protected";
+    view.showing = true;
+    view.plan = "unverified";
+    view.instances = [];
+    view.catalog = view.catalog.map((w) => ({ ...w, allowed: false }));
+  }
   const undo: OverlayInstance[][] = [],
     redo: OverlayInstance[][] = [];
   let conflict = sceneName === "studio-error";

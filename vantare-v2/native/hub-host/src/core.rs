@@ -248,7 +248,7 @@ impl Core {
     }
     pub fn catalog(&self) -> Option<control::CatalogAccess> {
         let policy = self.rights.policy();
-        let now = control::wall_ms()?;
+        let now = control::wall_ms().ok()?;
         let access = access_view(&policy, now);
         (access.verified && !access.blocked).then_some(policy.catalog)
     }

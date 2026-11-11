@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { LocalReportView } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
-import { Button } from "../../ui/Button";
-import { TrackedCaps } from "../../ui/TrackedCaps";
-import { localDiagnosticText as text } from "./local-diagnostic.es";
+import { localDiagnosticText as text } from "../../i18n/testing-local";
+import { LocalDiagnosticView } from "../../ui/LocalDiagnosticView";
 import { useReports } from "./ReportsState";
 import { testingRequest } from "./TestingRequests";
-import "./local-diagnostic.css";
 
 export function LocalDiagnostic() {
   const { client } = useHost();
@@ -89,61 +87,14 @@ export function LocalDiagnostic() {
     });
   }
   return (
-    <div className="v-testing-diagnostic">
-      <div className="v-testing-diagnostic-note">{text.privacy}</div>
-      <div className="v-testing-diagnostic-actions">
-        <Button disabled={!allowed || busy} onClick={() => void prepare()}>
-          {busy ? text.preparing : text.prepare}
-        </Button>
-        <Button disabled={!allowed || busy} onClick={() => void exportReport()}>
-          {text.export}
-        </Button>
-      </div>
-      <p className="v-testing-diagnostic-status" role="status">
-        {status}
-      </p>
-      {error && (
-        <div className="v-testing-diagnostic-note" role="alert">
-          {error}
-        </div>
-      )}
-      <section className="v-testing-diagnostic-card">
-        <header>
-          <h2>
-            <TrackedCaps>{text.title}</TrackedCaps>
-          </h2>
-        </header>
-        <div className="v-testing-diagnostic-body">
-          {view ? (
-            <>
-              <p>{`${text.core}: ${text.links[view.core]}`}</p>
-              <dl>
-                {view.binaries.map((binary) => (
-                  <div
-                    className="v-testing-diagnostic-binary"
-                    key={binary.name}
-                  >
-                    <dt>
-                      <strong>{binary.name}</strong>
-                      <span>{text.binaryStates[binary.state]}</span>
-                    </dt>
-                    <dd>{binary.sha256 ?? text.unavailable}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className="v-testing-diagnostic-uninstrumented">
-                {text.uninstrumented}
-              </p>
-              <h3>
-                <TrackedCaps>{text.payload}</TrackedCaps>
-              </h3>
-              <pre>{view.report}</pre>
-            </>
-          ) : (
-            <p>{text.empty}</p>
-          )}
-        </div>
-      </section>
-    </div>
+    <LocalDiagnosticView
+      view={view}
+      busy={busy}
+      status={status}
+      error={error}
+      allowed={allowed}
+      prepare={prepare}
+      exportReport={exportReport}
+    />
   );
 }

@@ -1,5 +1,5 @@
 import { Tabs } from "@base-ui/react/tabs";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   studioAddAvailable,
   studioCategories,
@@ -122,6 +122,11 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
   );
 }
 function Catalog({ onPlans }: { onPlans: () => void }) {
+  const catalog = useRef<HTMLDivElement>(null);
+  useLayoutEffect(
+    () => catalog.current?.querySelector<HTMLInputElement>("input")?.focus(),
+    [],
+  );
   const state = useStudio(),
     [search, setSearch] = useState(""),
     [category, setCategory] = useState(t.allCategories);
@@ -150,7 +155,7 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
     },
   ];
   return (
-    <div className="v-studio-catalog">
+    <div className="v-studio-catalog" ref={catalog}>
       <SearchInput
         label={t.search}
         clearLabel={t.cancel}

@@ -221,3 +221,26 @@ que Services y reutiliza `chrono 0.4.45` del lock; no se añade paquete nuevo.
 No se modifica IPC/Services, runtime, derechos, supervisor ni el GPUI congelado.
 Las vistas, favoritos/avisos, ICS y publicación de `session-alerts-feed.json` se
 entregan por separado. El feed conserva el esquema IPC existente.
+
+## Studio (`studio`, v17)
+
+El módulo ofrece `studio.get`, tema `studio`, `visibility`, `add`, `remove`,
+`instance`, `undo`, `redo` y `track`. Todas las escrituras del diseño requieren
+`baseRevision`; el historial de sesión conserva como máximo 50 pasos. `add`
+devuelve `{ value, added }`, con la identidad asignada por Rust. El catálogo,
+enums, límites y patrón de revisión se generan desde Rust. No acepta posiciones,
+tamaños, rutas ni ajustes internos del widget.
+
+El diseño ausente no se crea. Se conservan los campos desconocidos y los valores
+JSON opacos; la primera edición ordena alfabéticamente las claves raíz y compacta
+el documento, igual que Ajustes. Las minis con `settings.companionFor` se ocultan;
+quitar y cambiar la visibilidad del principal afectan también a sus minis.
+Quitar borra sus frecuencias específicas. El núcleo genera la mini de avisos de
+sesión al cargar: el anfitrión no la fabrica.
+
+Las modificaciones y mostrar exigen derechos frescos y no estar en Live. Ocultar
+es una retirada segura de la petición y no exige derechos ni diseño válido.
+La suscripción emite una vez y sondea cada 500 ms; al desuscribirse o entrar en
+Live no lee el diseño. Deshacer/rehacer vuelve a comprobar los derechos al
+restaurar un widget Pro. Posición/tamaño se editan sobre los overlays, no en el Hub;
+la entrada a ese modo está inactiva hasta #2025.

@@ -14,6 +14,9 @@ pub const ID_LIMIT: usize = 256;
 pub const SIZE_LIMIT: u32 = 32768;
 pub const LABEL_LIMIT: usize = 256;
 pub const ABOUT_LIMIT: usize = 512;
+pub const REVISION_PATTERN: &str = "^[0-9a-f]{64}$";
+pub const GEOMETRY_MIN: (f64, f64) = (64.0, 32.0);
+pub const GEOMETRY_MAX: (f64, f64) = (3840.0, 2160.0);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]
@@ -159,6 +162,36 @@ impl State {
             let _ = (edit, revision, access);
             Err(crate::protocol::HostError::Protected)
         }
+    }
+    pub fn add(
+        &mut self,
+        kind: WidgetKind,
+        revision: &str,
+        access: Option<vantare_ipc::control::CatalogAccess>,
+    ) -> Result<(StudioView, String), crate::protocol::HostError> {
+        #[cfg(windows)]
+        {
+            let (value, added) =
+                crate::settings::studio::edit_result(self, Edit::Add(kind), revision, access)?;
+            Ok((value, added.ok_or(crate::protocol::HostError::Io)?))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (kind, revision, access);
+            Err(crate::protocol::HostError::Protected)
+        }
+    }
+    pub fn reset_subscription(&mut self) {
+        self.last = None;
+    }
+    pub fn observed(
+        &mut self,
+        now: Instant,
+        access: Option<vantare_ipc::control::CatalogAccess>,
+    ) -> StudioView {
+        let value = self.view(access);
+        self.last = Some((now, value.clone()));
+        value
     }
     pub fn track(
         &mut self,

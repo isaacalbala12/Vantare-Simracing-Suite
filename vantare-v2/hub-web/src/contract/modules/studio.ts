@@ -1,4 +1,4 @@
-import { studioKinds, studioLimits, studioMethods } from "../generated/studio";
+import { studioKinds, studioLimits, studioMethods, studioStates,studioPlans,studioOffTracks,studioAddKinds,studioRevisionPattern } from "../generated/studio";
 import { exact, integer, oneOf, record } from "../validation-common";
 
 export { studioMethods as methods };
@@ -9,7 +9,7 @@ const id = (v: unknown): v is string =>
   !v.includes("\0") &&
   new TextEncoder().encode(v).length <= studioLimits.id;
 const revision = (v: unknown) =>
-  typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+  typeof v === "string" && new RegExp(studioRevisionPattern).test(v);
 function showIn(v: unknown) {
   return (
     record(v) &&
@@ -37,7 +37,7 @@ function instance(v: unknown) {
     integer(v.opacity) &&
     v.opacity <= studioLimits.opacityMax &&
     showIn(v.showIn) &&
-    oneOf(v.offTrack, ["inherit", "alwaysVisible", "hide"] as const) &&
+    oneOf(v.offTrack, studioOffTracks) &&
     record(v.size) &&
     exact(v.size, ["width", "height"]) &&
     integer(v.size.width) &&
@@ -61,7 +61,7 @@ export function isStudio(v: unknown) {
       "canUndo",
       "canRedo",
     ]) &&
-    oneOf(v.state, ["missing", "protected", "ready"] as const) &&
+    oneOf(v.state, studioStates) &&
     revision(v.revision) &&
     Array.isArray(v.instances) &&
     v.instances.length <= studioLimits.instances &&
@@ -90,13 +90,7 @@ export function isStudio(v: unknown) {
         typeof w.suggested === "boolean",
     ) &&
     typeof v.showing === "boolean" &&
-    oneOf(v.plan, [
-      "unverified",
-      "free",
-      "launch",
-      "pro",
-      "founders",
-    ] as const) &&
+    oneOf(v.plan, studioPlans) &&
     typeof v.canUndo === "boolean" &&
     typeof v.canRedo === "boolean"
   );
@@ -114,7 +108,7 @@ export function isRequest(v: Record<string, unknown>): boolean {
     case "studio.add":
       return (
         exact(v, ["method", "kind", "baseRevision"]) &&
-        oneOf(v.kind, studioKinds)
+        oneOf(v.kind, studioAddKinds)
       );
     case "studio.remove":
       return exact(v, ["method", "id", "baseRevision"]) && id(v.id);
@@ -140,13 +134,14 @@ export function isRequest(v: Record<string, unknown>): boolean {
         : p.field === "showIn"
           ? showIn(p.value)
           : p.field === "offTrack" &&
-            oneOf(p.value, ["inherit", "alwaysVisible", "hide"] as const);
+            oneOf(p.value, studioOffTracks);
     }
     default:
       return false;
   }
 }
 export function isReply(v: Record<string, unknown>) {
+  if(v.method === "studio.add") return exact(v,["method","value","added"]) && id(v.added) && isStudio(v.value);
   return (
     studioMethods.some((method) => method === v.method) &&
     exact(v, ["method", "value"]) &&

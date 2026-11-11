@@ -22,10 +22,14 @@ pub(super) fn dispatch(
 ) -> io::Result<()> {
     let catalog = access(session);
     let result = (|| {
-        if !matches!(request, Request::StudioGet {}) && (session.current.live || catalog.is_none())
+        if !matches!(
+            request,
+            Request::StudioGet {} | Request::StudioTrack { show: false }
+        ) && (session.current.live || catalog.is_none())
         {
             return Err(HostError::Denied);
         }
+        let mut added = None;
         let value = match request {
             Request::StudioGet {} => session.studio.view(catalog),
             Request::StudioVisibility {
@@ -40,9 +44,11 @@ pub(super) fn dispatch(
             Request::StudioAdd {
                 kind,
                 base_revision,
-            } => session
-                .studio
-                .edit(Edit::Add(*kind), base_revision, catalog)?,
+            } => {
+                let (value, id) = session.studio.add(*kind, base_revision, catalog)?;
+                added = Some(id);
+                value
+            }
             Request::StudioRemove { id, base_revision } => {
                 session
                     .studio
@@ -69,7 +75,10 @@ pub(super) fn dispatch(
         Ok(match request {
             Request::StudioGet {} => Reply::StudioGet { value },
             Request::StudioVisibility { .. } => Reply::StudioVisibility { value },
-            Request::StudioAdd { .. } => Reply::StudioAdd { value },
+            Request::StudioAdd { .. } => Reply::StudioAdd {
+                value,
+                added: added.ok_or(HostError::Io)?,
+            },
             Request::StudioRemove { .. } => Reply::StudioRemove { value },
             Request::StudioInstance { .. } => Reply::StudioInstance { value },
             Request::StudioUndo { .. } => Reply::StudioUndo { value },
@@ -86,8 +95,12 @@ pub(super) fn dispatch(
     )
 }
 pub(super) fn subscribe(session: &mut Session, pipe: &mut Pipe, _topic: Topic) -> io::Result<()> {
+    if session.current.live {
+        session.studio.reset_subscription();
+        return Ok(());
+    }
     let access = access(session);
-    let value = session.studio.view(access);
+    let value = session.studio.observed(std::time::Instant::now(), access);
     frame::write(
         pipe,
         &HostToUi::Event {

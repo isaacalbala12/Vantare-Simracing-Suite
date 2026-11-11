@@ -78,11 +78,15 @@ impl Client {
         self.request_before(command, std::time::Instant::now())
     }
     pub(crate) fn request_before(
-        &mut self,
-        command: Command,
-        accepted: std::time::Instant,
+        &mut self, command: Command, accepted: std::time::Instant,
     ) -> Result<Reply, HostError> {
-        if !crate::service_queue::can_start(accepted, std::time::Instant::now()) {
+        self.request_before_clock(command, accepted, std::time::Instant::now)
+    }
+    fn request_before_clock(
+        &mut self, command: Command, accepted: std::time::Instant,
+        now: impl Fn() -> std::time::Instant,
+    ) -> Result<Reply, HostError> {
+        if !crate::service_queue::can_start(accepted, now()) {
             return Err(HostError::Busy);
         }
         // Probe only a local, idempotent operation before dispatching effects.
@@ -105,7 +109,7 @@ impl Client {
         }
         // The queue/channel/Probe can all consume the remaining renderer budget.
         // Recheck immediately before the effect; a late Probe must not start it.
-        if !crate::service_queue::can_start(accepted, std::time::Instant::now()) {
+        if !crate::service_queue::can_start(accepted, now()) {
             return Err(HostError::Busy);
         }
         self.request_once(command).map_err(RequestError::host_error)
@@ -169,9 +173,9 @@ mod tests {
             binary: "unused".into(),
             photo_pipe: String::new(),
         };
-        let accepted = std::time::Instant::now() - std::time::Duration::from_secs(45);
+        let accepted = std::time::Instant::now();
         assert!(matches!(
-            client.request_before(Command::MailConsentGet, accepted),
+            client.request_before_clock(Command::MailConsentGet, accepted, || accepted + std::time::Duration::from_secs(15)),
             Err(HostError::Busy)
         ));
         assert_eq!(client.sequence, 0);

@@ -129,9 +129,9 @@ try {
     "slider commit",
   );
   await page
-    .getByRole("combobox", { name: "Fuente de interfaz", exact: true })
+    .getByRole("group", { name: "Fuente de interfaz", exact: true })
+    .getByRole("button", { name: "Arial", exact: true })
     .click();
-  await page.getByRole("option", { name: "Arial", exact: true }).click();
   await until(
     async () =>
       await page.evaluate(() =>

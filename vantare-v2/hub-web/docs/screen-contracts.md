@@ -287,7 +287,6 @@ Live no lee el diseño. Deshacer/rehacer vuelve a comprobar los derechos al
 restaurar un widget Pro. Posición/tamaño se editan sobre los overlays, no en el Hub;
 la entrada a ese modo está inactiva hasta #2025.
 
-
 ### Historial local de Calendario (wire provisional 21)
 
 `calendar.historyLoad` ofrece las ocho últimas publicaciones de

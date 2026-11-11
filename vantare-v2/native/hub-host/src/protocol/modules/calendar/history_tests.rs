@@ -28,7 +28,7 @@ impl Drop for Root {
     }
 }
 fn sample() -> serde_json::Value {
-    json!({"weeks":[{"from":1791244800i64,"until":1791849600i64,"seenAt":1791187200i64,"tracks":[{"seriesId":"weekly-wec-weekly","name":"WEC Weekly","track":"Sebring"}]}]})
+    json!({"weeks":[{"from":1_791_244_800_i64,"until":1_791_849_600_i64,"seenAt":1_791_187_200_i64,"tracks":[{"seriesId":"weekly-wec-weekly","name":"WEC Weekly","track":"Sebring"}]}]})
 }
 
 #[test]

@@ -127,6 +127,23 @@ fn config_constants(text: &mut String) {
         ]
     );
 }
+fn history_sample() -> HostToUi {
+    sample_response(Reply::CalendarHistoryLoad {
+        value: Box::new(crate::calendar::CalendarHistoryView {
+            weeks: vec![crate::calendar::CalendarHistoryWeek {
+                from: 1_791_244_800,
+                until: 1_791_849_600,
+                seen_at: 1_791_187_200,
+                tracks: vec![crate::calendar::CalendarHistoryTrack {
+                    series_id: "weekly-wec-weekly".into(),
+                    name: "WEC Weekly".into(),
+                    track: "Sebring".into(),
+                }],
+            }],
+            invalid_cache: false,
+        }),
+    })
+}
 fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
     let config = crate::calendar::CalendarConfigView {
         utc: false,
@@ -142,21 +159,7 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
         },
     };
     let host = vec![
-        sample_response(Reply::CalendarHistoryLoad {
-            value: Box::new(crate::calendar::CalendarHistoryView {
-                weeks: vec![crate::calendar::CalendarHistoryWeek {
-                    from: 1791244800,
-                    until: 1791849600,
-                    seen_at: 1791187200,
-                    tracks: vec![crate::calendar::CalendarHistoryTrack {
-                        series_id: "weekly-wec-weekly".into(),
-                        name: "WEC Weekly".into(),
-                        track: "Sebring".into(),
-                    }],
-                }],
-                invalid_cache: false,
-            }),
-        }),
+        history_sample(),
         HostToUi::Failure {
             id: 1,
             error: HostError::CalendarScheduleUnavailable,

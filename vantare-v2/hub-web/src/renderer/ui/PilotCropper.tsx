@@ -19,7 +19,7 @@ export function PilotCropper({
   image: ImageBitmap;
   crop: PhotoCrop;
   pending: boolean;
-  onChange: (crop: PhotoCrop) => void;
+  onChange: (update: (crop: PhotoCrop) => PhotoCrop) => void;
   onCancel: () => void;
   onApply: () => void;
 }) {
@@ -39,10 +39,16 @@ export function PilotCropper({
     context.drawImage(image, 0, 0, width, height);
   }, [image, width, height]);
   const move = (dx: number, dy: number) => {
-    if (!pending) onChange(moveCrop(crop, dx, dy, image.width, image.height));
+    if (!pending)
+      onChange((current) =>
+        moveCrop(current, dx, dy, image.width, image.height),
+      );
   };
   const zoom = (factor: number) => {
-    if (!pending) onChange(zoomCrop(crop, factor, image.width, image.height));
+    if (!pending)
+      onChange((current) =>
+        zoomCrop(current, factor, image.width, image.height),
+      );
   };
   useEffect(() => {
     const node = stage.current;
@@ -51,9 +57,9 @@ export function PilotCropper({
       if (pending || !event.deltaY) return;
       event.preventDefault();
       event.stopPropagation();
-      onChange(
+      onChange((current) =>
         zoomCrop(
-          crop,
+          current,
           event.deltaY < 0 ? 1.1 : 1 / 1.1,
           image.width,
           image.height,
@@ -62,7 +68,7 @@ export function PilotCropper({
     };
     node.addEventListener("wheel", wheel, { passive: false });
     return () => node.removeEventListener("wheel", wheel);
-  }, [crop, image, pending, onChange]);
+  }, [image, pending, onChange]);
   return (
     <div className="v-pilot-cropper">
       <button

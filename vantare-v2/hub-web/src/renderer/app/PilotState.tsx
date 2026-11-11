@@ -21,7 +21,7 @@ interface State {
   photoBusy: boolean;
   photoError: boolean;
   choosePhoto(file: File): Promise<void>;
-  cropPhoto(crop: PhotoCrop): void;
+  cropPhoto(crop: PhotoCrop | ((current: PhotoCrop) => PhotoCrop)): void;
   cancelPhoto(): void;
   applyPhoto(): void;
   view?: PilotView;
@@ -236,7 +236,13 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         applyPhoto,
         cropPhoto: (crop) => {
           if (!saving.current)
-            setPhoto((current) => current && { ...current, crop });
+            setPhoto(
+              (current) =>
+                current && {
+                  ...current,
+                  crop: typeof crop === "function" ? crop(current.crop) : crop,
+                },
+            );
         },
         view,
         draft,

@@ -57,9 +57,19 @@ it("retains a crop across rerenders and closes its bitmap exactly once on cancel
   await act(() => hook.result.current.pilot.choosePhoto(file));
   expect(hook.result.current.pilot.dirty).toBe(true);
   act(() => hook.result.current.pilot.cropPhoto({ x: 0.3, y: 0.1, side: 0.5 }));
+  act(() => {
+    hook.result.current.pilot.cropPhoto((current) => ({
+      ...current,
+      x: current.x + 0.02,
+    }));
+    hook.result.current.pilot.cropPhoto((current) => ({
+      ...current,
+      x: current.x + 0.02,
+    }));
+  });
   hook.rerender();
   expect(hook.result.current.pilot.photo?.crop).toEqual({
-    x: 0.3,
+    x: 0.34,
     y: 0.1,
     side: 0.5,
   });

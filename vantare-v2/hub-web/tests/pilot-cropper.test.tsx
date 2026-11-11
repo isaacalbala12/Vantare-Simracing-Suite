@@ -39,8 +39,10 @@ it("moves and zooms with the native keyboard gestures and cancels the scroll def
   const stage = screen.getByRole("button", { name: text.cropLabel });
   stage.focus();
   await userEvent.setup().keyboard("{ArrowRight}+");
-  expect(onChange.mock.calls[0][0].x).toBeCloseTo(0.27);
-  expect(onChange.mock.calls[1][0].side).toBeCloseTo(0.8);
+  expect(onChange.mock.calls[0][0](centeredCrop(800, 400)).x).toBeCloseTo(0.27);
+  expect(onChange.mock.calls[1][0](centeredCrop(800, 400)).side).toBeCloseTo(
+    0.8,
+  );
   expect(document.activeElement).toBe(stage);
   const wheel = new WheelEvent("wheel", {
     deltaY: -100,
@@ -71,4 +73,14 @@ it("ignores gestures while persistence is pending", async () => {
   fireEvent.wheel(stage, { deltaY: -10 });
   expect(onChange).not.toHaveBeenCalled();
   expect(document.activeElement).toBe(stage);
+});
+
+it("composes two moves before a paint instead of losing the first delta", () => {
+  const { onChange } = mount();
+  const stage = screen.getByRole("button", { name: text.cropLabel });
+  fireEvent.keyDown(stage, { key: "ArrowRight" });
+  fireEvent.keyDown(stage, { key: "ArrowRight" });
+  let crop = centeredCrop(800, 400);
+  for (const [update] of onChange.mock.calls) crop = update(crop);
+  expect(crop.x).toBeCloseTo(0.29);
 });

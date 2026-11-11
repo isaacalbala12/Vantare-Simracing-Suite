@@ -248,6 +248,13 @@ export function createMockHost(sceneName = "ajustes-base") {
         : { kind: "event", event: { topic: "simStatus", live: false } };
     if (value.kind !== "request") return null;
     const { id, request } = value;
+    if (
+      sceneName === "launcher-actions-conflicto" &&
+      request.method.startsWith("launcher.profile.") &&
+      request.method !== "launcher.profile.get" &&
+      launcher.revision === "0".repeat(64)
+    )
+      launcher.revision = "1".repeat(64);
     const profileAction = profileActionReply(id, request, launcher, drafts);
     if (profileAction) return profileAction;
     switch (request.method) {

@@ -14,6 +14,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
 import { launcherText } from "../src/renderer/i18n/launcher";
+import { actionText } from "../src/renderer/i18n/launcher-actions";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
 import { ProfileEditorProvider } from "../src/renderer/screens/launcher/editor-state";
 import { Launcher } from "../src/renderer/screens/launcher/Launcher";
@@ -204,5 +205,72 @@ describe("profile editor", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("alertdialog", { name: text.argumentLossTitle });
+  });
+  it("marks another favorite from the list without clearing the existing favorite", async () => {
+    mount();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    const pro = screen.getByRole("button", { name: "Pro" });
+    fireEvent.contextMenu(pro);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.favorite }),
+    );
+    await waitFor(() =>
+      expect(within(pro).getByText(launcherText.favorite)).toBeTruthy(),
+    );
+    expect(within(creator).getByText(launcherText.favorite)).toBeTruthy();
+  });
+  it("confirms profile deletion and cancellation has no effect", async () => {
+    mount();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.remove }),
+    );
+    let dialog = await screen.findByRole("dialog", {
+      name: actionText.removeTitle,
+    });
+    expect(
+      within(dialog).getByText(actionText.removeMessage("creator")),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: actionText.cancel }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(creator).toBeTruthy();
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.remove }),
+    );
+    dialog = await screen.findByRole("dialog", {
+      name: actionText.removeTitle,
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: actionText.remove }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", {
+          name: "Creador de Contenido",
+        }),
+      ).toBeNull(),
+    );
+  });
+  it("keeps an action after conflict and only saves on explicit retry", async () => {
+    mount("launcher-actions-conflicto");
+    const pro = await screen.findByRole("button", { name: "Pro" });
+    fireEvent.contextMenu(pro);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.favorite }),
+    );
+    await screen.findByText(actionText.conflict);
+    expect(within(pro).queryByText(launcherText.favorite)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: actionText.retry }));
+    await waitFor(() =>
+      expect(within(pro).getByText(launcherText.favorite)).toBeTruthy(),
+    );
   });
 });

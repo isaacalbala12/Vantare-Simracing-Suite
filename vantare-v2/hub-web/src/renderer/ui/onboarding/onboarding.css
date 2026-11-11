@@ -147,6 +147,7 @@
   width: calc(200 * var(--ob-unit));
 }
 .v-onboarding .v-ob-back {
+  justify-content: flex-start;
   background: transparent;
   border-color: transparent;
   padding: 0 calc(16 * var(--ob-unit));

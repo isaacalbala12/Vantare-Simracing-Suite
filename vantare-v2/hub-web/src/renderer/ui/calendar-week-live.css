@@ -1,0 +1,460 @@
+.v-calendar-week-live {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+.v-calendar-week-live > header {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+  padding: 12px 14px;
+}
+.v-calendar-week-live > header h2 {
+  margin: 0;
+  min-width: 128px;
+  max-width: 128px;
+  text-align: center;
+  font: 500 19px / 21px var(--font-display);
+}
+.v-calendar-week-live-caption {
+  flex: none;
+  width: 92px;
+  min-width: 92px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-caption);
+}
+.v-calendar-week-live-days {
+  display: grid;
+  grid-template-columns: 240px repeat(7, minmax(0, 1fr));
+  border-block: 1px solid var(--line-1);
+  height: 45px;
+  flex: none;
+}
+.v-calendar-week-live-days > span {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font: 400 10.5px / 14px var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-caption);
+}
+.v-calendar-week-live-days > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--line-1);
+}
+.v-calendar-week-live-days small {
+  font: 400 10.5px / 14px var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-caption);
+}
+.v-calendar-week-live-days strong {
+  font: 500 17px / 20px var(--font-display);
+}
+.v-calendar-week-live-days > div[data-today] {
+  background: var(--accent-tint);
+  border-bottom: 2px solid var(--accent);
+}
+.v-calendar-week-live-body {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: none;
+}
+.v-calendar-week-live-event {
+  display: grid;
+  grid-template-columns: 240px repeat(7, minmax(0, 1fr));
+  height: 50px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-week-live-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 12px;
+}
+.v-calendar-week-live-identity > .v-button {
+  flex: none;
+}
+.v-calendar-week-live-identity > button:not(.v-button) {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+.v-calendar-week-live-identity strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+.v-calendar-week-live-identity p {
+  display: flex;
+  gap: 5px;
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.v-calendar-week-live-identity b {
+  padding: 2px 5px;
+  color: var(--accent);
+  background: var(--accent-tint);
+  font-size: 10.5px;
+  border-radius: 3px;
+}
+.v-calendar-week-live-identity b[data-tier="beginner"] {
+  color: var(--warn);
+  background: var(--warn-tint);
+}
+.v-calendar-week-live-identity b[data-tier="intermediate"] {
+  color: var(--text-3);
+  background: var(--surface-3);
+}
+.v-calendar-week-live-identity b[data-tier="advanced"] {
+  color: var(--warn);
+  background: var(--warn-tint);
+}
+.v-calendar-week-live-event-day {
+  padding: 8px;
+  border-left: 1px solid var(--line-1);
+  overflow: hidden;
+}
+.v-calendar-week-live-event-day[data-today] {
+  background: var(--accent-tint);
+}
+.v-calendar-week-live-event-day button {
+  padding: 1px 4px;
+  border: 1px solid var(--text-1);
+  background: transparent;
+  color: var(--text-1);
+  font: 600 11px / 14px var(--font-mono);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.v-calendar-week-live-event-day button[data-alert] {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-color: var(--accent);
+}
+.v-calendar-week-live-event-day small {
+  font-size: 11px;
+  color: var(--text-caption);
+}
+.v-calendar-week-live-daily {
+  position: relative;
+  display: flex;
+  height: 47px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-week-live-daily > .v-calendar-week-live-identity {
+  width: 240px;
+  flex: none;
+}
+.v-calendar-week-live-daily > button {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+  height: 32px;
+  border: 1px solid var(--line-1);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  text-align: right;
+  padding: 0 8px;
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 12px;
+}
+.v-calendar-week-live-daily > button > b {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font: 600 11px / 16px var(--font-mono);
+  padding: 1px 5px;
+}
+.v-calendar-week-live-past {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 4px,
+    var(--line-1) 4px,
+    var(--line-1) 5px
+  );
+  opacity: 0.6;
+}
+.v-calendar-week-live-now {
+  position: absolute;
+  top: 26px;
+  bottom: 0;
+  width: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.v-calendar-week-live > footer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line-1);
+  flex: none;
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.v-calendar-week-live > footer p {
+  margin: 0 0 0 auto;
+}
+.v-calendar-week-live-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.v-calendar-week-full-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--canvas);
+}
+.v-calendar-week-full {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  padding: 12px;
+  background: var(--canvas);
+  outline: none;
+}
+.v-calendar-week-band {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.v-calendar-week-live-identity > button:disabled,
+.v-calendar-week-live-daily > button:disabled,
+.v-calendar-week-live-event-day > button:disabled {
+  opacity: 1;
+}
+
+.v-calendar-week-live-identity > .v-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 8px;
+}
+.v-calendar-week-live-identity > .v-button svg {
+  width: 17px;
+  height: 17px;
+}
+.v-calendar-week-live-body [data-favorite] {
+  position: relative;
+}
+.v-calendar-week-live-body [data-favorite]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+.v-calendar-week-live-body
+  [data-favorite]
+  .v-calendar-week-live-identity
+  > .v-button {
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.v-calendar-week-live > header .v-segmented {
+  height: 34px;
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: var(--surface-1);
+}
+.v-calendar-week-live > header .v-segment {
+  height: 26px;
+  min-height: 26px;
+  padding-inline: 10px;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.v-calendar-week-live [data-favorite] .v-calendar-event-track i {
+  background: var(--accent);
+  opacity: 1;
+}
+.v-calendar-week-live [data-favorite] .v-calendar-event-track i[data-gone] {
+  opacity: 0.35;
+}
+.v-calendar-week-live .v-calendar-event-track i[data-highlight] {
+  width: 9px;
+  height: 9px;
+  top: -1px;
+  border: 2px solid var(--text-1);
+}
+.v-calendar-week-live > footer > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-calendar-week-legend-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding-inline: 7px;
+  border-radius: 4px;
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  font: 700 11px / 22px var(--font-mono);
+}
+.v-calendar-week-live .v-calendar-week-legend-time svg {
+  width: 10px;
+  height: 10px;
+}
+.v-calendar-week-legend-band {
+  display: block;
+  width: 22px;
+  height: 12px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.v-calendar-week-legend-now {
+  display: block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent);
+}
+
+.v-calendar-week-live > header .v-button[aria-label] {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+.v-calendar-week-live-daily > button > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  line-height: 22px;
+  padding: 0 7px;
+  top: 3px;
+}
+.v-calendar-week-live
+  :is(
+    .v-calendar-week-live-daily > button > b,
+    .v-calendar-week-live-event-day button
+  )
+  svg {
+  width: 10px;
+  height: 10px;
+}
+.v-calendar-week-live .v-calendar-week-live-event-day button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.v-calendar-week-full-toggle {
+  margin-left: auto;
+}
+.v-calendar-week-live > header .v-segmented:nth-last-child(2) {
+  width: 176px;
+  flex: none;
+}
+.v-calendar-week-live > header .v-segmented:last-child {
+  width: 180px;
+  flex: none;
+}
+.v-calendar-week-live > header .v-segmented:last-child .v-segment:first-child {
+  width: 66px;
+  flex: none;
+}
+.v-calendar-week-live > header .v-segmented:last-child .v-segment:last-child {
+  flex: 1;
+}
+.v-calendar-week-live
+  > header
+  .v-segmented:last-child
+  .v-segment:last-child::before {
+  content: "★" / "";
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.v-calendar-week-daily-days {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 240px;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  pointer-events: none;
+}
+.v-calendar-week-live .v-calendar-week-daily-days > span {
+  border-left: 1px solid var(--line-1);
+}
+.v-calendar-week-live .v-calendar-week-daily-days > span[data-today] {
+  background: var(--accent-tint);
+}
+
+.v-calendar-week-live {
+  container-type: inline-size;
+}
+@container (min-width: 900px) {
+  .v-calendar-week-live > header h2 {
+    max-width: none;
+    white-space: nowrap;
+  }
+  .v-calendar-week-live-caption {
+    flex: 1;
+    width: auto;
+    white-space: nowrap;
+  }
+}
+.v-calendar-week-live-daily > button > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}

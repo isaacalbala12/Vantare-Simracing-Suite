@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   calendarDefaultAlerts,
   calendarSeriesLimit,
@@ -10,6 +11,7 @@ import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarLiveView } from "../../ui/CalendarLiveView";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
+import { CalendarWeekView } from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarPreferences } from "./CalendarPreferences";
@@ -25,6 +27,7 @@ function nextPublication(now: number) {
 }
 
 export default function CalendarEntry() {
+  const [activeTab, setActiveTab] = useState("upcoming");
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
@@ -80,8 +83,10 @@ export default function CalendarEntry() {
         title={text.section}
         tabs={[
           { id: "upcoming", etiqueta: text.upcoming, visible: state.allowed },
+          { id: "calendar", etiqueta: text.calendar, visible: state.allowed },
         ]}
-        activeTab="upcoming"
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         rail={
           state.allowed && view ? (
             <CalendarRail
@@ -98,7 +103,7 @@ export default function CalendarEntry() {
           ) : undefined
         }
       />
-      <SectionPanel activeTab="upcoming">
+      <SectionPanel activeTab={activeTab}>
         {!state.allowed ? (
           <p role="status">{text.noAccess}</p>
         ) : (
@@ -149,6 +154,17 @@ export default function CalendarEntry() {
             {launcher.failure && <p role="alert">{text.launchFailed}</p>}
             {!state.loaded && !view ? (
               <p role="status">{text.loading}</p>
+            ) : activeTab === "calendar" && view ? (
+              <CalendarWeekView
+                view={{ ...view, official: schedule ?? view.official }}
+                alerts={alerts}
+                now={state.now}
+                limit={calendarStartsLimit}
+                canFollow={preferences.canFollow}
+                onFollow={(id, followed) =>
+                  void preferences.follow(id, followed)
+                }
+              />
             ) : schedule && view ? (
               <CalendarLiveView
                 schedule={schedule}

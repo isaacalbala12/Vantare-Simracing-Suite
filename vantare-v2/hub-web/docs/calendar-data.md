@@ -22,9 +22,9 @@ contrato de preferencias de #2088: usa sus tipos generados y errores cerrados.
   sobrescritura automática, reintento y descarte explícitos. Un cambio de cliente
   o derechos invalida las respuestas anteriores y libera el estado ocupado.
   Cada documento expone su estado por separado: protegido o inaccesible implica
-  revisi�n nula y bloquea solo sus propias acciones. Recargar permite recuperar
-  un documento reparado. `calendarScheduleUnavailable` explica que todav�a no
-  hay horario vigente para a�adir una serie a favoritas.
+  revisión nula y bloquea solo sus propias acciones. Recargar permite recuperar
+  un documento reparado. `calendarScheduleUnavailable` explica que todavía no
+  hay horario vigente para añadir una serie a favoritas.
 
 Las pruebas solo usan fixtures públicos y dobles locales. La publicación de
 referencia de octubre se obtiene del corpus generado por Rust y aplica los

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -64,6 +64,7 @@ export function CalendarLiveView({
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
 }) {
+  const launchPendingId = useId();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState(""),
     [tier, setTier] = useState("all"),
@@ -259,7 +260,7 @@ export function CalendarLiveView({
                 <span key={`${r.series.id}:${r.time}`}>
                   {r.time === hero.at && <Icon name="star" />}
                   {clock(r.time, utc)}
-                  {r.series.id !== hero.series.id && r.series.name}
+                  {r.series.id !== hero.series.id && ` ${r.series.name}`}
                 </span>
               ))}
             </div>
@@ -298,12 +299,16 @@ export function CalendarLiveView({
               </Button>
               <Button
                 className="v-calendar-launch-pending"
+                aria-describedby={launchPendingId}
                 title={text.launchPending}
                 disabled
               >
                 <Icon name="clock" />
                 {text.launchAt(clock(hero.at - 3 * 60_000, utc))}
               </Button>
+              <span className="v-sr-only" id={launchPendingId}>
+                {text.launchPending}
+              </span>
             </div>
           </div>
         </section>
@@ -361,6 +366,7 @@ export function CalendarLiveView({
           />
           <IconButton
             label={text.search}
+            className="v-calendar-search-toggle"
             variant="ghost"
             onClick={() => setSearchOpen(!searchOpen)}
           >
@@ -380,14 +386,23 @@ export function CalendarLiveView({
           {[text.series, text.classes, text.next].map((label) => (
             <span key={label}>{label}</span>
           ))}
-          <span>
-            {Array.from({ length: 7 }, (_, i) =>
-              clock(
+          <span className="v-calendar-timeline-axis">
+            {Array.from({ length: 7 }, (_, i) => {
+              const at =
                 Math.ceil((now - 10 * 60_000) / (15 * 60_000)) * 15 * 60_000 +
-                  i * 15 * 60_000,
-                utc,
-              ),
-            ).join(" ")}
+                i * 15 * 60_000;
+              return (
+                <time
+                  key={at}
+                  dateTime={new Date(at).toISOString()}
+                  style={{
+                    left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
+                  }}
+                >
+                  {clock(at, utc)}
+                </time>
+              );
+            })}
           </span>
         </div>
         <div className="v-calendar-live-body">

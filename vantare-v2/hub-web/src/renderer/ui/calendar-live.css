@@ -479,7 +479,7 @@
 }
 /* Issue 2089: keep the frozen appearance while the deferred action is unavailable. */
 .v-calendar-hero-actions .v-button.v-calendar-launch-pending:disabled {
-  opacity: 1;
+  opacity: 0.45;
 }
 
 .v-calendar-live-classes span[data-class="hypercar"]::before {
@@ -677,4 +677,27 @@
 .v-calendar-live-tools .v-segment[data-pressed] {
   background: var(--hover);
   box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+.v-calendar-timeline-axis {
+  position: relative;
+  align-self: stretch;
+}
+.v-calendar-timeline-axis time {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.v-calendar-live-tools .v-button.v-calendar-search-toggle {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+.v-calendar-search-toggle svg {
+  width: 16px;
+  height: 16px;
 }

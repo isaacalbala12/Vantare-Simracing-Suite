@@ -131,7 +131,7 @@ it("marks the upcoming daily departure with its band bell", () => {
       }}
     />,
   );
-  const marker = container.querySelector(".v-calendar-week-live-daily b");
+  const marker = container.querySelector(".v-calendar-week-live-daily > button > b");
   expect(marker?.textContent).toContain("18:00");
   expect(marker?.querySelector("svg")).not.toBeNull();
 });

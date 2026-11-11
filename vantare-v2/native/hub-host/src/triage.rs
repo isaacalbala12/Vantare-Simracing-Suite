@@ -357,8 +357,11 @@ pub fn view(value: &document::Preview) -> Result<TriagePreview, HostError> {
     {
         return Err(HostError::Rejected);
     }
-    let payload = serde_json::to_string_pretty(&value.packet.rpc_payload(&value.channel))
-        .map_err(|_| HostError::Rejected)?;
+    // Workspace feature unification may enable serde_json/preserve_order.
+    // The JSON embedded in the wire remains deterministic in either build.
+    let mut packet = value.packet.rpc_payload(&value.channel);
+    packet.sort_all_objects();
+    let payload = serde_json::to_string_pretty(&packet).map_err(|_| HostError::Rejected)?;
     if payload.len() > PREVIEW_LIMIT {
         return Err(HostError::Rejected);
     }

@@ -224,3 +224,36 @@ fn service_errors_and_other_families_are_rejected_without_forwarding_message() {
         Ok(Reply::TriageSend { .. })
     ));
 }
+
+#[test]
+fn embedded_payload_has_stable_key_order_with_preserve_order_enabled() {
+    let payload = view(&fixture()).unwrap().payload;
+    for keys in [
+        &[
+            "p_attachments",
+            "p_body",
+            "p_channel",
+            "p_context",
+            "p_id",
+            "p_title",
+        ][..],
+        &[
+            "app_channel",
+            "app_version",
+            "consent",
+            "game",
+            "game_version",
+            "posthog_session_id",
+            "system",
+            "telemetry_summary",
+        ][..],
+        &["accepted_at", "items", "version"][..],
+    ] {
+        let mut remaining = payload.as_str();
+        for key in keys {
+            let marker = format!("\"{key}\":");
+            let offset = remaining.find(&marker).expect("canonical key sequence");
+            remaining = &remaining[offset + marker.len()..];
+        }
+    }
+}

@@ -24,6 +24,7 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
           await page
             .getByRole("button", { name: "Continuar", exact: true })
             .click();
+        await page.mouse.move(0, 0);
         await page.waitForFunction(async () => {
           await Promise.all(
             Array.from(document.images, (image) =>

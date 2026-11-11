@@ -437,3 +437,20 @@
   font: 400 12px var(--font-mono);
   color: var(--text-2);
 }
+
+.v-launcher-options .v-select-trigger {
+  background: var(--surface-2);
+  border-color: var(--line-2);
+  color: var(--text-1);
+}
+.v-launcher-quick {
+  display: none;
+}
+@media (min-height: 1000px) {
+  .v-launcher-quick {
+    display: flex;
+    border-top: 1px solid var(--line-1);
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+}

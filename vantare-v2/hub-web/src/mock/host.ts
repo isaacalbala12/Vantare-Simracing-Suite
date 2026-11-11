@@ -96,6 +96,8 @@ export function createMockHost(sceneName = "ajustes-base") {
   }
 
   const appReply = createLauncherAppsMock(launcher, sceneName);
+  if (sceneName === "launcher-options-custom")
+    launcher.profiles[0].options.firstStepDelay = 17;
   const drafts = new Map<string, ProfileDraft>(
     launcher.profiles.map((profile) => [
       profile.id,
@@ -105,6 +107,16 @@ export function createMockHost(sceneName = "ajustes-base") {
         name: profile.name,
         description: profile.description,
         favorite: profile.favorite,
+        startup: profile.options.startup,
+        policy: {
+          ...editorFixture.draft.policy,
+          alreadyRunning: profile.options.alreadyRunning,
+          failure: profile.options.failure,
+          firstStepDelay: profile.options.firstStepDelay,
+          retries: profile.options.retries,
+          exit: profile.options.closeOnExit ? "closeStarted" : "leave",
+          retry: profile.options.retryFailed ? "failed" : "ask",
+        },
         steps: profile.apps.map((appId, index) => ({
           key: null,
           appId,

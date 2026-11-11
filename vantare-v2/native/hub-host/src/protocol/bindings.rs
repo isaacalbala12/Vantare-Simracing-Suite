@@ -150,6 +150,12 @@ fn append_notification_constants(text: &mut String) {
     }
 }
 fn append_launcher_constants(text: &mut String) {
+    writeln!(
+        text,
+        "export const launcherFirstDelays = {:?} as const;",
+        crate::launcher::actions::FIRST_STEP_DELAYS
+    )
+    .expect("String write");
     text.push_str("export const launcherLimits = ");
     text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
     text.push_str(" as const;\n");

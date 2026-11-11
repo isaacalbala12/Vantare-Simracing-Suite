@@ -7,6 +7,8 @@ use std::path::Path;
 use ts_rs::TS;
 use vantare_launcher::{Profile, policy};
 
+pub const FIRST_STEP_DELAYS: [u32; 6] = [0, 5, 10, 20, 30, 60];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(
@@ -284,6 +286,21 @@ mod tests {
                 .filter(|profile| profile.launch_on_windows_startup)
                 .count(),
             1
+        );
+    }
+    #[test]
+    fn a_custom_first_delay_survives_changes_to_other_preferences() {
+        let (_root, path, bytes, revision) = fixture();
+        let document = Document::from_bytes(&bytes).expect("document");
+        let id = &document.profiles[0].id;
+        option(&path, id, ProfileOption::FirstStepDelay(17), &revision).expect("custom delay");
+        let revision = vantare_services::content_hash(&std::fs::read(&path).expect("saved"));
+        option(&path, id, ProfileOption::Retries(3), &revision).expect("retries");
+        let after = Document::from_bytes(&std::fs::read(&path).expect("saved")).expect("document");
+        assert_eq!(after.profiles[0].effective_policy().first_step_delay, 17);
+        assert_eq!(
+            after.profiles[0].effective_policy().retry,
+            policy::Retry::Failed
         );
     }
 }

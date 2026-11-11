@@ -294,4 +294,28 @@ describe("profile editor", () => {
     fireEvent.contextMenu(creator);
     await screen.findByRole("menuitem", { name: actionText.trigger });
   });
+  it("saves rail preferences and retains a custom first-step delay", async () => {
+    mount("launcher-options-custom");
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    const delay = screen.getByRole("combobox", {
+      name: launcherText.firstDelay,
+    });
+    expect(delay.textContent).toContain("17 s");
+    await user.click(
+      screen.getByRole("combobox", { name: launcherText.retries }),
+    );
+    await user.click(await screen.findByRole("option", { name: "3" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: launcherText.retries })
+          .textContent,
+      ).toContain("3"),
+    );
+    expect(delay.textContent).toContain("17 s");
+    await user.click(delay);
+    await screen.findByRole("option", { name: "17 s" });
+    await user.click(screen.getByRole("option", { name: "20 s" }));
+    await waitFor(() => expect(delay.textContent).toContain("20 s"));
+  });
 });

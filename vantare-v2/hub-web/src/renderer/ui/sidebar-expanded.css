@@ -296,3 +296,21 @@
 .v-sidebar:not(.v-sidebar--collapsed) .v-nav-group + .v-nav-group {
   margin-top: 2px;
 }
+
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group [aria-current="page"],
+.v-sidebar:not(.v-sidebar--collapsed)
+  .v-sidebar-expanded-footer
+  [aria-current="page"] {
+  background: var(--grad-nav-active);
+  box-shadow:
+    inset 0 1px 0 var(--nav-light),
+    0 0 0 1px var(--nav-ring),
+    var(--shadow-nav);
+}
+.v-sidebar:not(.v-sidebar--collapsed)
+  .v-sidebar-expanded-footer
+  [aria-current="page"]
+  > .v-button-label
+  > svg {
+  color: var(--accent-bright);
+}

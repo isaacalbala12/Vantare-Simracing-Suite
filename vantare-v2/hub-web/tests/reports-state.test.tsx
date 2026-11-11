@@ -628,3 +628,32 @@ it("closes normally if a veto notice is clicked after the draft was saved", asyn
   );
   expect(screen.queryByRole("alertdialog")).toBeNull();
 });
+it("keeps deduplicated session receipts across edits without retaining private prose", async () => {
+  const hook = await mount();
+  for (const title of ["Primer título", "Otro intento"]) {
+    act(() =>
+      hook.result.current.edit({
+        actionText: title,
+        module: "hub",
+        expectedText: "EXPECT_PRIVATE",
+        observedText: "OBSERVED_PRIVATE",
+        contextText: "CONTEXT_PRIVATE",
+      }),
+    );
+    await act(async () => {
+      await hook.result.current.prepare();
+    });
+    act(() => hook.result.current.setConsent(true));
+    await act(async () => {
+      await hook.result.current.send();
+    });
+  }
+  expect(hook.result.current.sessionReceipts).toHaveLength(1);
+  expect(hook.result.current.sessionReceipts[0].title).toBe("Primer título");
+  act(() => hook.result.current.edit({ actionText: "Borrador siguiente" }));
+  expect(hook.result.current.receipt).toBeUndefined();
+  expect(hook.result.current.sessionReceipts).toHaveLength(1);
+  expect(JSON.stringify(hook.result.current.sessionReceipts)).not.toMatch(
+    /EXPECT_PRIVATE|OBSERVED_PRIVATE|CONTEXT_PRIVATE/,
+  );
+});

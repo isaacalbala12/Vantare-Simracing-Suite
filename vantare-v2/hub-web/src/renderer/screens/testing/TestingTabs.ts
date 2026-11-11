@@ -26,9 +26,10 @@ export function testingTabs(access: AccessView) {
 }
 export function useTestingTabs(access: AccessView) {
   const tabs = testingTabs(access);
-  const [selected, setSelected] = useState<TestingTab>("reports");
-  const active = tabs.some((tab) => tab.id === selected && tab.visible)
-    ? selected
+  const [selected, setSelected] = useState<TestingTab>();
+  const preferred = selected ?? (access.tester ? "summary" : "reports");
+  const active = tabs.some((tab) => tab.id === preferred && tab.visible)
+    ? preferred
     : "reports";
   function change(id: string) {
     const tab = tabs.find((tab) => tab.id === id && tab.visible);

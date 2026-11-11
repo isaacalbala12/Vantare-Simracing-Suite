@@ -67,7 +67,9 @@ it("keeps loaded contributions visible when the QA service disconnects and preve
   fireEvent.click(screen.getByRole("button", { name: testingText.reload }));
   await screen.findByText("QA · documentación de una prueba · En revisión");
   await waitFor(() => expect(hook.result.current.available).toBe(false));
-  expect(hook.result.current.participationLoaded).toBe(true);
+  await waitFor(() =>
+    expect(hook.result.current.participationLoaded).toBe(true),
+  );
   expect(
     screen
       .getByRole("button", { name: testingText.reload })
@@ -101,7 +103,9 @@ it("updates the community list after a local mock Triage send without retaining 
   fireEvent.click(screen.getByRole("checkbox", { name: triageText.consent }));
   fireEvent.click(screen.getByRole("button", { name: triageText.send }));
   await screen.findByText("[contenido retirado por privacidad] · Recibida");
-  expect(hook.result.current.participationLoaded).toBe(true);
+  await waitFor(() =>
+    expect(hook.result.current.participationLoaded).toBe(true),
+  );
   expect(JSON.stringify(hook.result.current.participation.reports)).not.toMatch(
     /PRIVATE COMMUNITY/,
   );

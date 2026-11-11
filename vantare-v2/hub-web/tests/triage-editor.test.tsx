@@ -101,7 +101,9 @@ it("sends only the reviewed structured selection and opaque id, never local pros
     /PRIVATE_LOCAL_TITLE|PRIVATE_LOCAL_BODY/,
   );
   expect(screen.queryByRole("region", { name: text.preview })).toBeNull();
-  expect(hook.result.current.participationLoaded).toBe(true);
+  await waitFor(() =>
+    expect(hook.result.current.participationLoaded).toBe(true),
+  );
   await act(async () => {
     await hook.result.current.refresh();
   });

@@ -140,5 +140,7 @@ it("keeps existing-user QA scenes accessible without changing permission values"
   mount("ajustes-base");
   await screen.findByRole("heading", { name: "Hub" });
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(request.mock.calls.some(([value]) => value.method === "privacy.update")).toBe(false);
+  expect(
+    request.mock.calls.some(([value]) => value.method === "privacy.update"),
+  ).toBe(false);
 });

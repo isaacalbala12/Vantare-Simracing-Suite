@@ -14,6 +14,7 @@ const key = ["privacy"] as const;
 export function PrivacyGate({ children }: { children: ReactNode }) {
   const { client } = useHost();
   const cache = useQueryClient();
+  const [passed, setPassed] = useState(false);
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -38,14 +39,22 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
     [client],
   );
   const value = query.data;
-  // A protected document is denied by the host. Like GPUI's unreadable store,
-  // it must not trap the user in a question that cannot be persisted.
-  if (
-    value &&
-    (value.protected || (value.crashesDecided && value.usageDecided))
-  )
-    return children;
+  // Passing this first-run gate is latched for this renderer session. Later
+  // privacy invalidations must not unmount the Hub and its unsaved drafts.
+  const resolved =
+    !!value &&
+    (value.protected || (value.crashesDecided && value.usageDecided));
+  useEffect(() => {
+    if (resolved) setPassed(true);
+  }, [resolved]);
   const usage = value?.crashesDecided ?? false;
+  useEffect(() => {
+    if (usage) {
+      setChecked(false);
+      setError(undefined);
+    }
+  }, [usage]);
+  if (passed || resolved) return children;
   function decide(accepted: boolean) {
     if (!value || !client || inFlight.current) return;
     setPending(true);
@@ -63,11 +72,25 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
       } catch (failure) {
         if (
           failure instanceof HostFailure &&
+          failure.detail.kind === "protected"
+        ) {
+          setPassed(true);
+          return;
+        }
+        if (
+          failure instanceof HostFailure &&
           (failure.detail.kind === "privacyConflict" ||
             failure.detail.kind === "privacyCleanup")
         ) {
-          cache.setQueryData<PrivacyView>(key, failure.detail.current);
-          if (failure.detail.kind === "privacyCleanup") return;
+          const current = failure.detail.current;
+          cache.setQueryData<PrivacyView>(key, current);
+          if (
+            failure.detail.kind === "privacyCleanup" ||
+            current.crashesDecided !== usage
+          ) {
+            setError(undefined);
+            return;
+          }
         }
         setError(text.failed);
       } finally {
@@ -91,6 +114,7 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         query.isError ? (
           <Callout title={text.failed}>
             <Button onClick={() => void query.refetch()}>{text.retry}</Button>
+            <Button onClick={() => setPassed(true)}>{text.skip}</Button>
           </Callout>
         ) : (
           <Skeleton label={text.loading} />

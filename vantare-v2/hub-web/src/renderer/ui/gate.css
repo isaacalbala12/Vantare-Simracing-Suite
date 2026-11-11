@@ -86,16 +86,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  order: 4;
-}
-.v-privacy-question-policy {
-  order: 3;
-}
-.v-privacy-question-check {
-  order: 2;
-}
-.v-privacy-question-body p[role="alert"] {
-  order: 3;
 }
 
 .v-privacy-question .v-button {

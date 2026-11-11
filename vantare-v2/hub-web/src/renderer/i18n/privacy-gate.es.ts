@@ -19,5 +19,6 @@ export const privacyGateText = {
   failed: "No se pudo confirmar tu decisión. Puedes volver a intentarlo.",
   loading: "Cargando privacidad",
   retry: "Volver a cargar",
+  skip: "Continuar sin enviar datos",
   policyFailed: "No se pudo abrir la política de privacidad.",
 };

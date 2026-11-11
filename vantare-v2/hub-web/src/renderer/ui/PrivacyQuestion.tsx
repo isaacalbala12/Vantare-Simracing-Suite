@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { privacyGateText as text } from "../i18n/privacy-gate.es";
 import { Button } from "./Button";
 import { Checkbox } from "./Forms";
@@ -23,23 +23,6 @@ export function PrivacyQuestion({
 }) {
   const reject = useRef<HTMLButtonElement>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  function cycleFocus(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== "Tab") return;
-    // GPUI cycles these explicit targets while keeping window controls accessible.
-    const targets = Array.from(
-      event.currentTarget.querySelectorAll<HTMLElement>("[data-privacy-focus]"),
-    ).filter((node) => !node.hasAttribute("disabled"));
-    const current = targets.indexOf(document.activeElement as HTMLElement);
-    const next =
-      current < 0
-        ? event.shiftKey
-          ? targets.length - 1
-          : 0
-        : (current + (event.shiftKey ? -1 : 1) + targets.length) %
-          targets.length;
-    targets[next]?.focus();
-    event.preventDefault();
-  }
   return (
     <div ref={setContainer} className="v-privacy-question-anchor">
       <Dialog.Root
@@ -58,7 +41,6 @@ export function PrivacyQuestion({
               initialFocus={reject}
               aria-labelledby={undefined}
               aria-label={usage ? text.usageLabel : text.crashesLabel}
-              onKeyDownCapture={cycleFocus}
             >
               <Dialog.Title className="v-privacy-question-title">
                 <TrackedCaps>{text.title}</TrackedCaps>
@@ -69,6 +51,21 @@ export function PrivacyQuestion({
                   {usage ? text.usageDescription : text.crashesDescription}
                 </Dialog.Description>
                 <p>{text.optional}</p>
+                {usage && (
+                  <div className="v-privacy-question-check">
+                    <Checkbox
+                      data-privacy-focus=""
+                      label={text.usage}
+                      checked={checked}
+                      onCheckedChange={onChecked}
+                    />
+                  </div>
+                )}
+                <div className="v-privacy-question-policy">
+                  <Button data-privacy-focus="" onClick={onPolicy}>
+                    {text.policy}
+                  </Button>
+                </div>
                 {error && <p role="alert">{error}</p>}
                 <div className="v-privacy-question-actions">
                   <Button
@@ -91,21 +88,6 @@ export function PrivacyQuestion({
                     {usage ? text.continue : text.accept}
                   </Button>
                 </div>
-                <div className="v-privacy-question-policy">
-                  <Button data-privacy-focus="" onClick={onPolicy}>
-                    {text.policy}
-                  </Button>
-                </div>
-                {usage && (
-                  <div className="v-privacy-question-check">
-                    <Checkbox
-                      data-privacy-focus=""
-                      label={text.usage}
-                      checked={checked}
-                      onCheckedChange={onChecked}
-                    />
-                  </div>
-                )}
               </div>
             </Dialog.Popup>
           </Dialog.Portal>

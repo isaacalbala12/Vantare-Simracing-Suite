@@ -103,12 +103,12 @@ fn freshness_registration_matching_and_polling_never_write_a_request() {
     status.updated_ms = 0;
     publish(&status);
     assert!(state.changed(now + Duration::from_millis(999)).is_none());
-    let stale = state
+    let expired = state
         .changed(now + Duration::from_secs(1))
         .expect("expired status");
-    assert!(!stale.online && !stale.running && !stale.error && stale.decision.is_none());
+    assert!(!expired.online && !expired.running && !expired.error && expired.decision.is_none());
     assert_eq!(
-        stale.registrations[0].state,
+        expired.registrations[0].state,
         crate::shortcuts::RegistrationState::Unconfirmed
     );
     state.reset();

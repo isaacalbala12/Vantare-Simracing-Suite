@@ -217,7 +217,18 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
           />
           <div className="v-calendar-detail-phase">
             {[text.practice, text.qualifying, text.race].map((name, i) => (
-              <div key={name} style={{ flexGrow: phase.weights[i] }}>
+              <div
+                key={name}
+                style={{
+                  width: `${
+                    (100 * phase.weights[i]) /
+                    Math.max(
+                      1,
+                      phase.weights.reduce((sum, weight) => sum + weight, 0),
+                    )
+                  }%`,
+                }}
+              >
                 <b>{name}</b>
                 <span>
                   {i === 2

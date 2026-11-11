@@ -139,9 +139,10 @@
 .v-calendar-detail-picks .v-button {
   height: 30px;
   min-height: 30px;
-  padding: 0 9px;
-  border-radius: 6px;
-  font: 400 12.5px / 16px var(--font-mono);
+  min-width: 58px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font: 400 12px / 16px var(--font-mono);
 }
 .v-calendar-detail-picks .v-button[aria-pressed="true"] {
   outline: 2px solid var(--text-1);
@@ -159,7 +160,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  flex-basis: 0;
+  flex: 0 1 auto;
   min-width: 64px;
   padding: 0 8px;
   background: var(--surface-3);

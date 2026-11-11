@@ -29,7 +29,26 @@ pub(super) fn settings_response(
     }
     frame::write(pipe, &message)
 }
+pub(super) fn finish_session(exit_code: u8, cancel: impl FnOnce() -> io::Result<()>) -> u8 {
+    let _ = cancel();
+    exit_code
+}
 impl Session {
+    pub(super) fn validate_service_completion(
+        &mut self,
+        result: Result<Option<Reply>, HostError>,
+    ) -> Result<Option<Reply>, HostError> {
+        let result = match result {
+            Ok(None) if self.deferred.is_none() || self.remote.is_none() => {
+                Err(HostError::Rejected)
+            }
+            other => other,
+        };
+        if !matches!(&result, Ok(None)) {
+            self.deferred = None;
+        }
+        result
+    }
     pub(super) fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
         self.cancel_deferred(pipe)?;
         self.closing = Some((reason, Instant::now()));

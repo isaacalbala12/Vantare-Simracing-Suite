@@ -191,3 +191,32 @@ fn another_module_keeps_its_immediate_reply_and_closed_error() {
         Err(HostError::CoreUnavailable)
     );
 }
+
+#[test]
+fn a_module_cannot_leave_a_request_unregistered_when_it_defers() {
+    let fixture = Fixture::new();
+    for (deferred, remote) in [(false, false), (false, true), (true, false)] {
+        let mut session = fixture.session();
+        session.deferred = deferred.then_some((7, Instant::now()));
+        session.remote = remote.then_some((7, RemoteKind::Testing(Operation::Load)));
+        assert_eq!(
+            session.validate_service_completion(Ok(None)),
+            Err(HostError::Rejected)
+        );
+        assert!(session.deferred.is_none());
+    }
+    let mut session = fixture.session();
+    session.deferred = Some((7, Instant::now()));
+    session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
+    assert_eq!(session.validate_service_completion(Ok(None)), Ok(None));
+}
+#[test]
+fn a_closed_pipe_during_cleanup_keeps_the_restart_exit_code() {
+    let mut cancelled = false;
+    let result = session_effects::finish_session(10, || {
+        cancelled = true;
+        Err(io::ErrorKind::BrokenPipe.into())
+    });
+    assert_eq!(result, 10);
+    assert!(cancelled);
+}

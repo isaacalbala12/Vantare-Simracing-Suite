@@ -117,7 +117,7 @@ evento `updates`; permanece la cobertura de todas sus variantes.
 
 ### Respuestas diferidas
 
-Un módulo con `deferred.reply` puede devolver `Result<Option<Reply>, HostError>`
+Solo el módulo `testing` puede declarar `deferred.reply` (el build rechaza cualquier otro conjunto). Puede devolver `Result<Option<Reply>, HostError>`
 desde `complete`: `None` retiene la petición mientras llega la confirmación de
 una segunda operación del núcleo. Los módulos sin ese archivo conservan su
 firma y el generador envuelve su respuesta en `Some`, sin cambiar su wire.

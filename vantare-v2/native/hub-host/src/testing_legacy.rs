@@ -61,6 +61,7 @@ pub(crate) struct State {
     importing: bool,
     scanned: bool,
     surfaced: bool,
+    archive_failed: bool,
     pub(crate) legacy: LegacyMigration,
 }
 pub(crate) enum Next {
@@ -203,6 +204,7 @@ impl State {
             importing: false,
             scanned: false,
             surfaced: false,
+            archive_failed: false,
             legacy: LegacyMigration::None,
         }
     }
@@ -294,11 +296,13 @@ impl State {
                 self.surfaced = true;
             }
             if self.surfaced
+                && (!self.archive_failed || matches!(operation, Operation::Load))
                 && !self.sources.is_empty()
                 && (draft.is_some() || matches!(operation, Operation::Discard))
             {
                 match self.archive() {
                     Ok(()) => {
+                        self.archive_failed = false;
                         self.legacy = if imported {
                             if self.sources[self.selected].trimmed {
                                 LegacyMigration::ImportedTrimmed
@@ -312,7 +316,10 @@ impl State {
                         message
                             .push_str(" · borradores antiguos archivados; prevalece el protegido");
                     }
-                    Err(error) => self.warning = Some(error),
+                    Err(error) => {
+                        self.archive_failed = true;
+                        self.warning = Some(error);
+                    }
                 }
             }
             if let Some(warning) = self.warning {

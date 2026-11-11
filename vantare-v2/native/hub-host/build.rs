@@ -14,6 +14,16 @@ fn main() {
         .filter(|path| path.is_dir())
         .collect();
     modules.sort();
+    let deferred: Vec<_> = modules
+        .iter()
+        .filter(|path| path.join("deferred.reply").exists())
+        .map(|path| path.file_name().expect("module").to_str().expect("UTF-8"))
+        .collect();
+    assert_eq!(
+        deferred,
+        ["testing"],
+        "only Testing may defer service replies"
+    );
     let mut registry = String::from("pub mod modules {\n");
     let mut wire = String::new();
     let mut sources = Vec::new();
@@ -239,7 +249,7 @@ fn write_session(
     writeln!(registry,"type TopicHandler=(fn(Topic)->bool,fn(&mut Session,&mut Pipe,Topic)->io::Result<()>);\nconst SCREEN_SUBSCRIPTIONS:&[TopicHandler]=&[{subscriptions}];").expect("String write");
     writeln!(registry,"impl Session{{fn new(args:&Args,core:Core,settings:Settings,confirmation:Option<ready::Ready>,privacy:crate::privacy::State)->Self{{Self{{{base}\n{init}}}}}").expect("String write");
     registry.push_str("fn request(&mut self,pipe:&mut Pipe,id:u32,request:&Request)->io::Result<()>{let (_,handler)=SCREEN_HANDLERS.iter().find(|(accept,_)|accept(request)).ok_or(io::ErrorKind::InvalidInput)?;handler(self,pipe,id,request)}\n");
-    writeln!(registry,"fn service_reply(&mut self,id:u32,result:Result<vantare_ipc::services_protocol::Reply,HostError>)->Result<Option<Reply>,HostError>{{if self.abandoned_deferred==Some(id){{self.abandoned_deferred=None;return Ok(None);}}\nif self.deferred.is_some() && self.remote.as_ref().is_some_and(|(expected,_)|*expected!=id){{return Ok(None);}} let reply=match self.remote.take(){{Some((expected,kind))=>match kind{{{completes}}},None=>result.and(Err(HostError::Denied))}};if !matches!(&reply,Ok(None)){{self.deferred=None;}} reply}}}}").expect("String write");
+    writeln!(registry,"fn service_reply(&mut self,id:u32,result:Result<vantare_ipc::services_protocol::Reply,HostError>)->Result<Option<Reply>,HostError>{{if self.abandoned_deferred==Some(id){{self.abandoned_deferred=None;return Ok(None);}}\nif self.deferred.is_some() && self.remote.as_ref().is_some_and(|(expected,_)|*expected!=id){{return Ok(None);}} let reply=match self.remote.take(){{Some((expected,kind))=>match kind{{{completes}}},None=>result.and(Err(HostError::Denied))}};self.validate_service_completion(reply)}}}}").expect("String write");
     fs::write(output.join("session.rs"), registry).expect("write session aggregation");
     fs::write(output.join("models.rs"), models).expect("write model aggregation");
     write_dispatch_tests(output, modules, sources);

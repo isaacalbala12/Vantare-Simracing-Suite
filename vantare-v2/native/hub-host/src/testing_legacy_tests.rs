@@ -408,3 +408,40 @@ fn every_field_uses_its_gpui_byte_limit_without_splitting_utf8() {
     }
     assert_eq!(clean_field("a\0b\r\nc\td\u{200b}e", 4096), "a b \nc\tde");
 }
+
+#[test]
+fn failed_archiving_is_not_retried_by_autosave_or_discard_until_load() {
+    let root = Root::new();
+    let path = editor(&root.path, "old", 100);
+    let archive = path.with_extension("json.imported");
+    fs::write(&archive, b"conflicting old archive").unwrap();
+    let mut state = State::new(&root.path);
+    state.begin(Operation::Load);
+    state
+        .complete(Operation::Load, reply(Some(fields("protected"))))
+        .unwrap();
+    assert!(state.archive_failed);
+    fs::remove_file(&archive).unwrap();
+    for operation in [Operation::Save, Operation::Save, Operation::Discard] {
+        state.begin(operation);
+        state
+            .complete(
+                operation,
+                reply(if matches!(operation, Operation::Discard) {
+                    None
+                } else {
+                    Some(fields("protected"))
+                }),
+            )
+            .unwrap();
+        assert!(
+            path.exists() && !archive.exists(),
+            "no filesystem retry until an explicit Load"
+        );
+    }
+    state.begin(Operation::Load);
+    state
+        .complete(Operation::Load, reply(Some(fields("protected"))))
+        .unwrap();
+    assert!(!path.exists() && archive.exists());
+}

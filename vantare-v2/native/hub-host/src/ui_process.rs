@@ -396,11 +396,12 @@ pub fn run(args: &Args) -> io::Result<u8> {
             break;
         }
     }
-    session.cancel_deferred(&mut pipe)?;
+    let exit_code =
+        session_effects::finish_session(session.exit_code, || session.cancel_deferred(&mut pipe));
     if child.0.try_wait()?.is_some_and(|status| !status.success()) {
         return Err(io::ErrorKind::BrokenPipe.into());
     }
-    Ok(session.exit_code)
+    Ok(exit_code)
 }
 #[cfg(test)]
 mod tests {

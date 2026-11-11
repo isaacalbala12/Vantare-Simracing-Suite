@@ -27,7 +27,6 @@ import {
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
-import { usePilotName } from "./PilotState";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
@@ -42,7 +41,16 @@ export function Shell() {
 }
 function ShellContent() {
   const host = useHost();
-  const pilotName = usePilotName();
+  const { data: pilotName = "" } = useQuery({
+    queryKey: ["demo-pilot-name"],
+    enabled: !!host.client && host.hello?.demo === true,
+    queryFn: async () => {
+      const reply = await host.client?.request({ method: "pilot.load" });
+      if (reply?.method !== "pilot.load")
+        throw new Error("Demo identity unavailable");
+      return reply.value.fields.publicName;
+    },
+  });
   // No account identity is exposed yet: production stays anonymous until Access.
   const profileName = host.hello?.demo ? pilotName : "";
   const toast = useToastManager();

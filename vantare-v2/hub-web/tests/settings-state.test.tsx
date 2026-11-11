@@ -345,6 +345,17 @@ describe("saving keeps keyboard controls focusable", () => {
   });
 });
 
+describe("visual QA avatar projection", () => {
+  it("loads the demo name without requiring a visit to Account", async () => {
+    const hook = mount("visual-dark:ajustes-con-diseno", <Shell />);
+    await loaded(hook);
+    expect((await screen.findByLabelText("Isaac Albalá")).textContent).toBe(
+      "IA",
+    );
+    expect(screen.getByRole("heading", { name: /^General$/ })).toBeTruthy();
+  });
+});
+
 describe("Appearance context preview", () => {
   it("reads the saved profile without launching or writing anything", async () => {
     const request = vi.spyOn(Client.prototype, "request");

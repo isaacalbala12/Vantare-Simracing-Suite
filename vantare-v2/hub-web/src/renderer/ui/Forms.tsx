@@ -122,13 +122,13 @@ export function Select({
           className="v-input v-select-trigger"
         >
           <BaseSelect.Value />
-          <BaseSelect.Icon>
-            <Icon name="i-chevron" />
+          <BaseSelect.Icon className="v-select-icon">
+            <Icon name="down" />
           </BaseSelect.Icon>
         </BaseSelect.Trigger>
         <BaseSelect.Portal>
           <BaseSelect.Positioner className="v-positioner" sideOffset={6}>
-            <BaseSelect.Popup className="v-popup">
+            <BaseSelect.Popup className="v-popup v-select-popup">
               <BaseSelect.List>
                 {options.map((option) => (
                   <BaseSelect.Item

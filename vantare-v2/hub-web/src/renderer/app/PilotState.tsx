@@ -25,9 +25,6 @@ interface State {
   edit(fields: PilotFields | ((current: PilotFields) => PilotFields)): void;
 }
 const Context = createContext<State | undefined>(undefined);
-export function usePilotName() {
-  return useContext(Context)?.view?.fields.publicName ?? "";
-}
 export function usePilot() {
   const state = useContext(Context);
   if (!state) throw new Error("PilotProvider missing");

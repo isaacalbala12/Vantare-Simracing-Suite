@@ -3,7 +3,8 @@ param(
     [ValidateSet('dark','light')][string]$Theme = 'dark',
     [Parameter(Mandatory)][string]$Output,
     [string]$Bank = 'D:/VantareServer/qa/referencia-gpui-bin',
-    [string]$QaRoot = $env:VANTARE_HUB_QA_ROOT
+    [string]$QaRoot = $env:VANTARE_HUB_QA_ROOT,
+    [string]$OtherSidebarOutput
 )
 $ErrorActionPreference = 'Stop'
 if (-not $QaRoot) { throw 'Define VANTARE_HUB_QA_ROOT con una carpeta QA propia.' }
@@ -68,7 +69,9 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
-$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } else { $Scene }
+$calendarSpec = if ($Scene -eq 'calendario-eventos-contraida') { 'state=ok;view=eventos' } else { $null }
+if ($calendarSpec) { $start.Environment['VANTARE_CAPTURE_CALENDAR'] = $calendarSpec }
+$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } elseif ($Scene -in @('roadmap-tablero','roadmap-temporada')) { 'roadmap-base' } elseif ($Scene -eq 'ajustes-cuenta') { 'ajustes-perfil' } elseif ($Scene -eq 'calendario-eventos-contraida') { 'calendario-base' } else { $Scene }
 foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
 if ($gate) {
     $start.ArgumentList.Add('--qa-measure')
@@ -110,6 +113,11 @@ try {
         if ($window.foreground -or -not $window.visible) { throw "Ventana QA sin aislamiento: $prepared" }
         $prepared | Set-Content -LiteralPath "$Output.window.json" -Encoding utf8
     }
+    if ($Scene -in @('roadmap-tablero','roadmap-temporada')) {
+        $tabX = if ($Scene -eq 'roadmap-tablero') { 296 } else { 373 }
+        & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'gpui-sidebar.ps1') -ProcessId $process.Id -Executable $binary -ClientX $tabX -ClientY 25 | Set-Content -LiteralPath "$Output.tab-input.json" -Encoding utf8
+        if ($LASTEXITCODE) { throw 'No se pudo elegir la pestaña de Roadmap' }
+    }
     $helper = Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-window.ps1'
     $deadline = [Diagnostics.Stopwatch]::StartNew()
     do {
@@ -127,6 +135,24 @@ try {
     $receiptHash = & node --experimental-strip-types (Join-Path $PSScriptRoot 'reference-receipt.ts') $Output
     if ($LASTEXITCODE -ne 0 -or $receiptHash -cnotmatch '^[0-9a-f]{64}$') { throw "No se pudo calcular el recibo nativo: $Output" }
     [ordered]@{inputs=$inputHash;png=$receiptHash} | ConvertTo-Json -Compress | Set-Content -LiteralPath "$Output.capture.json" -Encoding utf8
+    if ($OtherSidebarOutput) {
+        if ($gate -or $emailScene) { throw 'Las puertas no tienen barra lateral' }
+        $OtherSidebarOutput = [IO.Path]::GetFullPath($OtherSidebarOutput)
+        if ($OtherSidebarOutput.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'La evidencia debe quedar fuera del repo' }
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($OtherSidebarOutput))
+        $inputReceipt = & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'gpui-sidebar.ps1') -ProcessId $process.Id -Executable $binary
+        if ($LASTEXITCODE) { throw 'No se pudo cambiar la barra del banco' }
+        $inputReceipt | Set-Content -LiteralPath "$OtherSidebarOutput.input.json" -Encoding utf8
+        & pwsh -NoProfile -File $helper -ProcessId $process.Id -ExpectedExecutable $binary -OutputPath $OtherSidebarOutput -Width 1440 -Height 900
+        if ($LASTEXITCODE) { throw 'No se pudo capturar la otra barra' }
+        $otherHash = & node --experimental-strip-types (Join-Path $PSScriptRoot 'reference-receipt.ts') $OtherSidebarOutput
+        if ($LASTEXITCODE -or $otherHash -cnotmatch '^[0-9a-f]{64}$') { throw 'Recibo de barra no válido' }
+        [ordered]@{inputs=$inputHash;png=$otherHash} | ConvertTo-Json -Compress | Set-Content -LiteralPath "$OtherSidebarOutput.capture.json" -Encoding utf8
+        $bankReceipt = Get-Content -LiteralPath "$Output.bank.json" -Raw | ConvertFrom-Json -AsHashtable
+        $bankReceipt.png_sha256 = (Get-FileHash -LiteralPath $OtherSidebarOutput -Algorithm SHA256).Hash.ToLowerInvariant()
+        $bankReceipt.sidebar_input = 'client-click-38-724'
+        $bankReceipt | ConvertTo-Json | Set-Content -LiteralPath "$OtherSidebarOutput.bank.json" -Encoding utf8
+    }
 } finally {
     $process.StandardInput.Close()
     if (-not $process.WaitForExit(10000)) { $process.Kill($true); $process.WaitForExit() }

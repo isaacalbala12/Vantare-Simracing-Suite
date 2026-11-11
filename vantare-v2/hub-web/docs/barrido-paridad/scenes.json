@@ -1,0 +1,266 @@
+[
+  {
+    "owner": "B",
+    "section": "Inicio",
+    "scene": "inicio-base",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Inicio",
+    "scene": "inicio-vacio",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Inicio",
+    "scene": "inicio-cargando",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Inicio",
+    "scene": "inicio-error",
+    "frameless": false
+  },
+  {
+    "owner": "C",
+    "section": "Launcher",
+    "scene": "launcher-base",
+    "frameless": false
+  },
+  {
+    "owner": "C",
+    "section": "Launcher",
+    "scene": "launcher-nuevo-perfil",
+    "frameless": false
+  },
+  {
+    "owner": "C",
+    "section": "Launcher",
+    "scene": "launcher-aplicaciones",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Roadmap",
+    "scene": "roadmap-base",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Testing Center",
+    "scene": "testing-center-resumen",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Testing Center",
+    "scene": "testing-center-cuestionarios",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Testing Center",
+    "scene": "testing-center-comunidad",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Testing Center",
+    "scene": "testing-center-triage",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Testing Center",
+    "scene": "testing-center-diagnostico",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Testing Center",
+    "scene": "testing-center-informe",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Calendario",
+    "scene": "calendario-r6-proximas",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Calendario",
+    "scene": "calendario-r6-mias",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Calendario",
+    "scene": "calendario-r6-semana",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Calendario",
+    "scene": "calendario-mes",
+    "frameless": false
+  },
+  {
+    "owner": "D",
+    "section": "Calendario",
+    "scene": "calendario-eventos-contraida",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-aplicacion",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-apariencia",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-rendimiento",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-atajos",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-actualizaciones",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-privacidad",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-diagnostico",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Ajustes",
+    "scene": "ajustes-cuenta",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Cuenta",
+    "scene": "cuenta-base",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Notificaciones",
+    "scene": "notificaciones-completa",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Próximamente",
+    "scene": "strategy-proximamente",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Próximamente",
+    "scene": "engineer-base",
+    "frameless": false
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "privacidad-pendiente",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "privacidad-uso",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "acceso-base",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-formulario",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-codigo",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-crear-contrasena",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-consentimiento",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-autorizando",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-reiniciado",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-ocupado",
+    "frameless": true
+  },
+  {
+    "owner": "A",
+    "section": "Puertas",
+    "scene": "email-espera",
+    "frameless": true
+  },
+  {
+    "owner": "B",
+    "section": "Roadmap",
+    "scene": "roadmap-tablero",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Roadmap",
+    "scene": "roadmap-temporada",
+    "frameless": false
+  }
+]

@@ -56,9 +56,7 @@ it("shows the native scope labels, published preview and current reminder lead",
   expect(props.onAlarm).toHaveBeenLastCalledWith(false);
   expect(screen.getByText(text.alarmHint(10))).toBeTruthy();
   expect(props.onDownload).not.toHaveBeenCalled();
-  fireEvent.click(
-    screen.getByRole("button", { name: text.download, exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: text.download }));
   expect(props.onDownload).toHaveBeenCalledOnce();
 });
 it("prevents export without a preview and exposes explicit retry and cancel", () => {
@@ -66,9 +64,10 @@ it("prevents export without a preview and exposes explicit retry and cancel", ()
   expect(screen.getByRole("alert").textContent).toContain(
     text.error("calendarExportTooLarge"),
   );
-  expect(
-    screen.getByRole("button", { name: text.download, exact: true }),
-  ).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: text.download })).toHaveProperty(
+    "disabled",
+    true,
+  );
   fireEvent.click(screen.getByRole("button", { name: text.retry }));
   expect(props.onRetry).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: text.cancel }));
@@ -80,7 +79,8 @@ it("keeps the conflict explanation readable and freezes options while busy", () 
   expect(screen.getByText(text.conflict)).toBeTruthy();
   for (const radio of screen.getAllByRole("radio"))
     expect(radio.getAttribute("aria-disabled")).toBe("true");
-  expect(
-    screen.getByRole("button", { name: text.download, exact: true }),
-  ).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: text.download })).toHaveProperty(
+    "disabled",
+    true,
+  );
 });

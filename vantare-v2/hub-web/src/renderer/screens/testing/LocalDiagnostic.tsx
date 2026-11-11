@@ -59,6 +59,7 @@ export function LocalDiagnostic() {
     await run(async (signal) => {
       if (!client) return;
       setView(undefined);
+      setStatus(text.initialStatus);
       const reply = await testingRequest(
         client,
         { method: "report.localPrepare", fields },
@@ -66,7 +67,11 @@ export function LocalDiagnostic() {
       );
       if (reply.method !== "report.localPrepare")
         throw new Error("unexpected local report reply");
-      if ((await reportDigest(reply.value.report)) !== reply.value.preparedHash || signal.aborted) throw new Error("local report digest mismatch");
+      if (
+        (await reportDigest(reply.value.report)) !== reply.value.preparedHash ||
+        signal.aborted
+      )
+        throw new Error("local report digest mismatch");
       setView(reply.value);
       setStatus(text.prepared);
     });
@@ -79,18 +84,19 @@ export function LocalDiagnostic() {
     await run(async (signal) => {
       if (!client) return;
       try {
-      const reply = await testingRequest(
-        client,
-        { method: "report.localExport", preparedHash: view.preparedHash },
-        signal,
-      );
-      if (reply.method !== "report.localExport")
-        throw new Error("unexpected local export reply");
-      setView(undefined);
-      if (reply.status === "saved") setStatus(text.saved);
-      if (reply.status === "cancelled") setStatus(text.prepareFirst);
-      if (reply.status === "conflict") setError(text.conflict);
-      } finally { if (!signal.aborted) setView(undefined); }
+        const reply = await testingRequest(
+          client,
+          { method: "report.localExport", preparedHash: view.preparedHash },
+          signal,
+        );
+        if (reply.method !== "report.localExport")
+          throw new Error("unexpected local export reply");
+        if (reply.status === "saved") setStatus(text.saved);
+        if (reply.status === "cancelled") setStatus(text.prepareFirst);
+        if (reply.status === "conflict") setError(text.conflict);
+      } finally {
+        if (!signal.aborted) setView(undefined);
+      }
     });
   }
   return (

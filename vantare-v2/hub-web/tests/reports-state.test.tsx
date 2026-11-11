@@ -498,6 +498,48 @@ async function failedCloseDraft() {
   requests.mockClear();
   return { hook, requests };
 }
+it("clears the unsaved-close permission even if an earlier guard throws before the report guard runs", async () => {
+  const { hook, requests } = await failedCloseDraft();
+  hook.connection.setCloseGuard(() => {
+    throw new Error("another section veto");
+  });
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  const popup = await screen.findByRole("alertdialog", {
+    name: closeDialog.title,
+  });
+  const vetoed = new Promise<void>((resolve) =>
+    hook.connection.onCloseVeto(() => resolve()),
+  );
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.confirm }),
+  );
+  await act(async () => {
+    await vetoed;
+  });
+  hook.connection.setCloseGuard(() => true);
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  expect(requests).not.toHaveBeenCalled();
+});
+it("clears a confirmed permission when control EOF bypasses the report close guard", async () => {
+  const { hook, requests } = await failedCloseDraft();
+  vi.spyOn(hook.connection, "closeWindow").mockImplementation(() => {});
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  const popup = await screen.findByRole("alertdialog", {
+    name: closeDialog.title,
+  });
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.confirm }),
+  );
+  await act(async () => {
+    expect(await hook.close("controlEof")).toBe(true);
+  });
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  expect(requests).not.toHaveBeenCalled();
+});
 it("offers a confirmed exit after persistent save failure without changing the protected draft", async () => {
   const { hook, requests } = await failedCloseDraft();
   const sent = vi.spyOn(hook.connection, "send");

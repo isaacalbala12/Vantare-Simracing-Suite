@@ -31,12 +31,22 @@ export async function saveReport(path: string, report: string, publish = link) {
     try {
       await publish(temporary, path);
     } catch (error) {
-      if (typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST") throw error;
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "EEXIST"
+      )
+        throw error;
       // exFAT/FAT32 and some cloud providers cannot create hard links.
       // O_EXCL still refuses any existing destination, including a symlink.
       const destination = await open(path, "wx");
-      try { await destination.writeFile(report, "utf8"); await destination.sync(); }
-      finally { await destination.close(); }
+      try {
+        await destination.writeFile(report, "utf8");
+        await destination.sync();
+      } finally {
+        await destination.close();
+      }
     }
   } finally {
     await file.close().catch(() => {});
@@ -74,7 +84,13 @@ export function reportExportSession(
         const report = message.result.value.report;
         const hash = createHash("sha256").update(report, "utf8").digest("hex");
         prepared = { report, hash };
-        return { ...message, result: { ...message.result, value: { ...message.result.value, preparedHash: hash } } };
+        return {
+          ...message,
+          result: {
+            ...message.result,
+            value: { ...message.result.value, preparedHash: hash },
+          },
+        };
       }
       return message;
     },

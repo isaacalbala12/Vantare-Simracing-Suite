@@ -123,6 +123,7 @@ pub fn prepare(
 }
 
 #[derive(Default)]
+#[cfg(any(windows, test))]
 pub(crate) struct State {
     #[cfg(any(windows, test))]
     root: Option<std::path::PathBuf>,
@@ -135,6 +136,7 @@ struct CachedBinary {
     modified: std::time::SystemTime,
     view: BinaryView,
 }
+#[cfg(any(windows, test))]
 impl State {
     #[cfg(windows)]
     pub(crate) fn collect_binaries(&mut self) -> Vec<BinaryView> {

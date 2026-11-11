@@ -7,8 +7,8 @@ import type {
   Topic,
   UiToHost,
 } from "../../contract/generated/contract";
-import { requestDeadline } from "./request-deadlines";
 import { bounded, isHostMessage } from "../../contract/validation";
+import { requestDeadline } from "./request-deadlines";
 
 declare const __VANTARE_RENDERER_MOCK__: boolean;
 export class HostFailure extends Error {
@@ -26,7 +26,9 @@ export class Client {
     (reason: CloseReason) => boolean | Promise<boolean>
   >();
   private vetoListeners = new Set<(reason: CloseReason) => void>();
-  private closeListeners = new Set<(reason: CloseReason, allow: boolean) => void>();
+  private closeListeners = new Set<
+    (reason: CloseReason, allow: boolean) => void
+  >();
   private closeGuard?: (reason: CloseReason) => boolean | Promise<boolean>;
   private pending = new Map<
     number,
@@ -147,7 +149,9 @@ export class Client {
   }
   onCloseSettled(receive: (reason: CloseReason, allow: boolean) => void) {
     this.closeListeners.add(receive);
-    return () => { this.closeListeners.delete(receive); };
+    return () => {
+      this.closeListeners.delete(receive);
+    };
   }
   setCloseGuard(guard: (reason: CloseReason) => boolean | Promise<boolean>) {
     this.closeGuard = guard;
@@ -195,11 +199,14 @@ export class Client {
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
       const deadline = requestDeadline(request.method);
-      const timer = deadline === undefined ? undefined : setTimeout(() => {
-        this.pending.delete(id);
-        this.answerWhenIdle();
-        reject(new HostFailure({ kind: "coreUnavailable" }));
-      }, deadline);
+      const timer =
+        deadline === undefined
+          ? undefined
+          : setTimeout(() => {
+              this.pending.delete(id);
+              this.answerWhenIdle();
+              reject(new HostFailure({ kind: "coreUnavailable" }));
+            }, deadline);
       this.pending.set(id, { resolve, reject, timer });
       this.send({ kind: "request", id, request });
     });

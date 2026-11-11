@@ -1,7 +1,6 @@
 import { reportExportStatuses } from "../generated/report_local";
 import { isLocalReport } from "../report-local-validation";
-import { isReportFields } from "../testing-validation";
-import { isReportPreviewId } from "../testing-validation";
+import { isReportFields, isReportPreviewId } from "../testing-validation";
 import { exact } from "../validation-common";
 
 export { report_localMethods as methods } from "../generated/report_local";
@@ -10,7 +9,10 @@ export function isRequest(value: Record<string, unknown>): boolean {
     case "report.localPrepare":
       return exact(value, ["method", "fields"]) && isReportFields(value.fields);
     case "report.localExport":
-      return exact(value, ["method", "preparedHash"]) && isReportPreviewId(value.preparedHash);
+      return (
+        exact(value, ["method", "preparedHash"]) &&
+        isReportPreviewId(value.preparedHash)
+      );
     default:
       return false;
   }

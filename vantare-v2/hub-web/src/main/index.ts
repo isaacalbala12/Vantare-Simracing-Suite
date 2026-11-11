@@ -299,7 +299,11 @@ async function start() {
         data.request.method === "report.localPrepare"
       ) {
         if (!reportExport.expect(data.id)) {
-          port1.postMessage({ kind: "failure", id: data.id, error: { kind: "busy" } });
+          port1.postMessage({
+            kind: "failure",
+            id: data.id,
+            error: { kind: "busy" },
+          });
           return;
         }
       }

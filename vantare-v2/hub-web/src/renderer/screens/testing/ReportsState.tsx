@@ -176,7 +176,13 @@ function useReportsState() {
     }, reportAutosaveMs);
     return () => clearTimeout(timer);
   }, [loaded, dirty, busy, error, available, fields]);
-  useEffect(() => client?.onCloseSettled(() => { closePermit.current = undefined; }), [client]);
+  useEffect(
+    () =>
+      client?.onCloseSettled(() => {
+        closePermit.current = undefined;
+      }),
+    [client],
+  );
   useEffect(() => {
     if (!client) return;
     return client.addCloseGuard(async (reason) => {

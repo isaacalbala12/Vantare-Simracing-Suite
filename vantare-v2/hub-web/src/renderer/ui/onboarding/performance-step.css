@@ -1,0 +1,164 @@
+.v-ob-equipment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(8 * var(--ob-unit));
+}
+.v-ob-equipment > span {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--ob-unit));
+  max-width: calc(300 * var(--ob-unit));
+  padding: calc(10 * var(--ob-unit)) calc(12 * var(--ob-unit));
+  border: 1px solid var(--ob-c-292325);
+  border-radius: calc(8 * var(--ob-unit));
+  background: var(--ob-c-121011);
+  color: var(--text-3);
+  font-size: calc(13 * var(--ob-unit));
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-ob-equipment svg {
+  width: calc(14 * var(--ob-unit));
+  height: calc(14 * var(--ob-unit));
+  flex-shrink: 0;
+}
+.v-onboarding .v-ob-auto-card {
+  display: block;
+  min-height: 0;
+  height: calc(85 * var(--ob-unit));
+  padding: calc(18 * var(--ob-unit)) calc(20 * var(--ob-unit));
+  border: 1px solid var(--ob-c-292325);
+  border-radius: calc(14 * var(--ob-unit));
+  background: var(--ob-c-121011);
+  color: var(--text-1);
+}
+.v-onboarding .v-ob-auto-card[aria-pressed="true"] {
+  border-color: var(--ob-c-d80000);
+}
+.v-ob-auto-card > .v-button-label {
+  display: flex;
+  align-items: center;
+  gap: calc(18 * var(--ob-unit));
+  width: 100%;
+  text-align: left;
+}
+.v-ob-auto-icon {
+  width: calc(42 * var(--ob-unit));
+  height: calc(42 * var(--ob-unit));
+  display: grid;
+  place-items: center;
+  background: var(--ob-c-d80000);
+  color: var(--ob-raw-ffffff);
+  border-radius: calc(10 * var(--ob-unit));
+  flex-shrink: 0;
+}
+.v-ob-auto-icon svg {
+  width: calc(22 * var(--ob-unit));
+  height: calc(22 * var(--ob-unit));
+}
+.v-ob-auto-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(6 * var(--ob-unit));
+}
+.v-ob-auto-copy strong {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--ob-unit));
+  font-size: calc(16 * var(--ob-unit));
+  font-weight: 700;
+}
+.v-ob-auto-copy small {
+  color: var(--ob-c-22c55e);
+  font-size: calc(8.8 * var(--ob-unit));
+  font-weight: 700;
+}
+.v-ob-auto-copy > span {
+  color: var(--text-3);
+  font-size: calc(13 * var(--ob-unit));
+}
+.v-ob-manual-help {
+  margin: 0;
+  font-size: calc(13.6 * var(--ob-unit));
+  color: var(--text-3);
+}
+.v-onboarding .v-ob-performance-levels {
+  display: flex;
+  height: calc(52 * var(--ob-unit));
+  border: 1px solid var(--ob-c-292325);
+  border-radius: calc(10 * var(--ob-unit));
+  overflow: hidden;
+  background: var(--ob-c-121011);
+  gap: 0;
+}
+.v-onboarding .v-ob-performance-levels .v-performance-level {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 calc(2 * var(--ob-unit));
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-1);
+}
+.v-onboarding .v-ob-performance-levels .v-performance-level[data-checked] {
+  background: color-mix(in srgb, var(--ob-c-d80000) 18%, transparent);
+}
+.v-ob-performance-levels .v-performance-level-title {
+  justify-content: center;
+}
+.v-ob-performance-levels .v-performance-level-title strong {
+  font-size: calc(16 * var(--ob-unit));
+  font-weight: 600;
+}
+.v-ob-performance-levels .v-performance-level-title > span,
+.v-ob-performance-levels .v-performance-cadence,
+.v-ob-performance-levels .v-performance-meter {
+  display: none;
+}
+.v-ob-performance-art {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: calc(24 * var(--ob-unit));
+  color: var(--ob-raw-ffffff);
+}
+.v-ob-gauge {
+  width: calc(560 * var(--ob-unit));
+  height: calc(330 * var(--ob-unit));
+  overflow: visible;
+}
+.v-ob-gauge-center {
+  fill: var(--ob-raw-b3101d);
+}
+.v-ob-performance-art h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: calc(60 * var(--ob-unit));
+  font-weight: 600;
+  line-height: 0.9;
+  color: var(--ob-raw-faf7f7);
+}
+.v-ob-performance-art p {
+  margin: 0;
+  font-size: calc(15 * var(--ob-unit));
+  font-weight: 500;
+  color: var(--ob-raw-f3eeee);
+}
+.v-onboarding .v-ob-auto-card:is(:hover, :active):not(:disabled) {
+  background: var(--ob-c-121011);
+}
+
+.v-ob-equipment > span:last-child {
+  max-width: calc(100 * var(--ob-unit));
+}

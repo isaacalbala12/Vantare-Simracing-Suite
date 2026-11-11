@@ -21,8 +21,12 @@ export function PerformanceLevels({
   studioLock,
   onChange,
   onStudio,
+  variant = "settings",
+  automatic = false,
 }: {
   value: PerformanceLevel;
+  variant?: "settings" | "onboarding";
+  automatic?: boolean;
   disabled: boolean;
   pending: boolean;
   studioLock?: string;
@@ -32,9 +36,13 @@ export function PerformanceLevels({
 }) {
   return (
     <RadioGroup
-      className="v-performance-levels"
+      className={
+        variant === "onboarding"
+          ? "v-performance-levels v-ob-performance-levels"
+          : "v-performance-levels"
+      }
       aria-label={t("track.level")}
-      value={value}
+      value={variant === "onboarding" && automatic ? "" : value}
       disabled={disabled}
       aria-busy={pending || undefined}
       aria-disabled={disabled || pending || undefined}
@@ -44,10 +52,12 @@ export function PerformanceLevels({
         if (!pending && level) onChange(level);
       }}
     >
-      <div className="v-performance-level v-performance-auto">
-        <strong>{t("track.automatic")}</strong>
-        <small>{text.automaticHelp}</small>
-      </div>
+      {variant !== "onboarding" && (
+        <div className="v-performance-level v-performance-auto">
+          <strong>{t("track.automatic")}</strong>
+          <small>{text.automaticHelp}</small>
+        </div>
+      )}
       {performanceLevels.map((level, index) => {
         const cadence = `${widgetHz[index] === 0 ? text.everyPhoto : `${text.upTo} ${widgetHz[index]} Hz`} · ${text.tablesAt} ${tableHz[index]} Hz`;
 
@@ -77,17 +87,19 @@ export function PerformanceLevels({
           </Radio.Root>
         );
       })}
-      <button
-        type="button"
-        className="v-performance-level v-performance-custom"
-        disabled={Boolean(studioLock)}
-        aria-label={text.customAction}
-        aria-description={studioLock}
-        onClick={onStudio}
-      >
-        <strong>{t("track.custom")}</strong>
-        <small>{text.customHelp}</small>
-      </button>
+      {variant !== "onboarding" && (
+        <button
+          type="button"
+          className="v-performance-level v-performance-custom"
+          disabled={Boolean(studioLock)}
+          aria-label={text.customAction}
+          aria-description={studioLock}
+          onClick={onStudio}
+        >
+          <strong>{t("track.custom")}</strong>
+          <small>{text.customHelp}</small>
+        </button>
+      )}
     </RadioGroup>
   );
 }

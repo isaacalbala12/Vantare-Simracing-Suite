@@ -343,7 +343,13 @@ async function capture(
           const current = await nav.evaluate(
             (node) => !node.classList.contains("v-sidebar--collapsed"),
           );
-          if (current !== expanded) await page.keyboard.press("Control+b");
+          if (current !== expanded)
+            await page
+              .getByRole("button", {
+                name: "Contraer o ampliar navegación",
+                exact: true,
+              })
+              .click();
           await until(
             async () =>
               (await nav.boundingBox())?.width === (expanded ? 272 : 76),
@@ -403,6 +409,23 @@ async function capture(
       );
     }
     return await readFile(join(destination, "current.png"));
+  } catch (error) {
+    if (cleanupPage && !cleanupPage.isClosed()) {
+      await cleanupPage
+        .screenshot({
+          path: join(destination, "failed-diagnostic.png"),
+          timeout: 3000,
+        })
+        .catch(() => {});
+      await writeFile(
+        join(destination, "failed-dom.txt"),
+        (await cleanupPage
+          .locator("body")
+          .textContent({ timeout: 3000 })
+          .catch(() => "DOM unavailable")) ?? "DOM unavailable",
+      );
+    }
+    throw error;
   } finally {
     // A dirty native close guard can veto Browser.close. Bound QA teardown and
     // kill only this spawned process tree if scene cleanup cannot release it.

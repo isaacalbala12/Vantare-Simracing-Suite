@@ -90,7 +90,7 @@ pub(crate) mod bindings;
 
 `wire.rs`, `dispatch.rs`, `bindings.rs` y `tick.rs` no son recorridos por
 `cargo fmt`, porque los módulos se incluyen desde `OUT_DIR`. Formatearlos
-explícitamente con `rustfmt --edition 2024 --config skip_children=true <archivos>`.
+explícitamente con `rustfmt --edition 2024 <archivos>`.
 Un test invoca `rustfmt --check` sobre todos ellos y falla si no están formateados.
 El build rechaza variantes/renombres en la misma línea, temas agrupados y nombres
 serializados duplicados entre solicitudes o entre respuestas de distintos módulos.
@@ -103,6 +103,21 @@ No editar los índices, `protocol.rs`, `protocol/bindings.rs`, `lib.rs` ni
 (versión, autenticación, cierre, cola de servicios) sigue requiriendo coordinación.
 
 ## Migrar un PR ya abierto
+
+Antes de portar las variantes, respetar las tres reglas que `build.rs` impone:
+
+1. El id admite solo letras minúsculas y `_` entre palabras, sin segmentos vacíos.
+   `contract` y `validators` están reservados.
+2. Cada `wire.rs` termina con el submódulo de bindings:
+
+   ```rust
+   #[cfg(any(test, feature = "bindings"))]
+   pub(crate) mod bindings;
+   ```
+
+3. El atributo `#[serde(rename = "pantalla.accion")]` y su variante van en
+   **líneas separadas**, con el formato de rustfmt. Los temas son variantes
+   unitarias, una por línea. El build rechaza nombres que no pueda enrutar.
 
 Rebasar con `--onto` sobre el nightly que integre esta separación. Portar sus
 variantes, DTO/constantes/muestras, estado y handlers al módulo de la pantalla,

@@ -92,7 +92,7 @@ pub(crate) fn typescript() -> String {
         })
         .collect();
     constants!(&mut text, "settingsFields", fields);
-    text.push_str("export const fieldsCoverContract: Exclude<SettingsPatch['field'], typeof settingsFields[number]> extends never ? true : never = true;\n");
+    text.push_str("export const fieldsCoverContract: (Exclude<SettingsPatch['field'], typeof settingsFields[number]> | Exclude<typeof settingsFields[number], SettingsPatch['field']>) extends never ? true : never = true;\n");
 
     text
 }

@@ -291,3 +291,9 @@
     width: 300px;
   }
 }
+
+.v-calendar-event-title:disabled,
+.v-calendar-event-day button:disabled {
+  opacity: 1;
+  cursor: default;
+}

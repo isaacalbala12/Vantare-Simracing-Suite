@@ -19,6 +19,8 @@ export function CalendarEventsView({
   utc,
   limit,
   profile,
+  canLaunch = true,
+  canFollow = true,
   onFollow,
   onSerie,
   onDetail,
@@ -33,12 +35,14 @@ export function CalendarEventsView({
   utc: boolean;
   limit: number;
   profile?: string;
+  canLaunch?: boolean;
+  canFollow?: boolean;
   onFollow: (id: string, followed: boolean) => void;
-  onSerie: (id: string) => void;
-  onDetail: (id: string) => void;
-  onToggleSlot: (id: string, at: number) => void;
+  onSerie?: (id: string) => void;
+  onDetail?: (id: string) => void;
+  onToggleSlot?: (id: string, at: number) => void;
   onLaunch: () => void;
-  onExport: () => void;
+  onExport?: () => void;
 }) {
   const events = calendarEvents(schedule, now, limit),
     today = civilDay(now, 0, utc),
@@ -105,7 +109,8 @@ export function CalendarEventsView({
                 <button
                   className="v-calendar-event-title"
                   type="button"
-                  onClick={() => onSerie(series.id)}
+                  disabled={!onSerie}
+                  onClick={() => onSerie?.(series.id)}
                 >
                   {series.name}
                 </button>
@@ -132,6 +137,7 @@ export function CalendarEventsView({
               <div className="v-calendar-event-favorite">
                 <Button
                   data-selected={favorite || undefined}
+                  disabled={!canFollow}
                   onClick={() => onFollow(series.id, !favorite)}
                 >
                   <Icon name={favorite ? "star" : "star-line"} />
@@ -180,7 +186,8 @@ export function CalendarEventsView({
                             data-next={at === next || undefined}
                             data-alert={alerted || undefined}
                             aria-pressed={alerted}
-                            onClick={() => onToggleSlot(series.id, at)}
+                            disabled={!onToggleSlot}
+                            onClick={() => onToggleSlot?.(series.id, at)}
                           >
                             {alerted && (
                               <Icon
@@ -214,17 +221,21 @@ export function CalendarEventsView({
               <footer>
                 <Button
                   variant="primary"
-                  disabled={!profile}
+                  disabled={!profile || !canLaunch}
                   onClick={onLaunch}
                 >
                   <Icon name="play" />
                   {text.launch(profile ?? "LMU")}
                 </Button>
-                <Button onClick={onExport}>
+                <Button onClick={onExport} disabled={!onExport}>
                   <Icon name="v-calendar" />
                   {text.export}
                 </Button>
-                <Button variant="ghost" onClick={() => onDetail(series.id)}>
+                <Button
+                  variant="ghost"
+                  disabled={!onDetail}
+                  onClick={() => onDetail?.(series.id)}
+                >
                   <Icon name="info" />
                   {text.detail}
                 </Button>

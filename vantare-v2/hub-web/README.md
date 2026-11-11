@@ -195,3 +195,5 @@ Para el editor local, compilar los tres ejecutables QA con la raíz pública
 RFC8032 del tooling existente (`tools/qa/build-license-e2e.py`), sin credenciales.
 Se espera NoCredential y ningún derecho concedido. Un núcleo sin raíz pública
 queda Unconfigured: Probe conecta, pero no admite consultas ordinarias de perfil.
+
+La preparación de miniaturas GPUI y sus requisitos de ejecución están en [la receta aplazada](docs/widget-thumbnails.md).

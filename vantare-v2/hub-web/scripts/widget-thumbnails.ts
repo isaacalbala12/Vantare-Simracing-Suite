@@ -179,9 +179,10 @@ async function capture(executable: string, batch: string) {
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
       });
+      let stopped: Error | undefined;
       const stop = () => {
+        stopped = new Error("Capture interrupted");
         child.kill();
-        reject(new Error("Capture interrupted"));
       };
       const unlisten = () => {
         process.removeListener("SIGINT", stop);
@@ -193,8 +194,8 @@ async function capture(executable: string, batch: string) {
       const arm = () => {
         clearTimeout(idle);
         idle = setTimeout(() => {
+          stopped = new Error("Workshop made no progress for ten minutes");
           child.kill();
-          reject(new Error("Workshop made no progress for ten minutes"));
         }, 600_000);
       };
       arm();
@@ -210,10 +211,11 @@ async function capture(executable: string, batch: string) {
         unlisten();
         reject(error);
       });
-      child.once("exit", (value) => {
+      child.once("close", (value) => {
         clearTimeout(idle);
         unlisten();
-        resolveCode(value ?? 1);
+        if (stopped) reject(stopped);
+        else resolveCode(value ?? 1);
       });
     });
     if (code === 0) return;

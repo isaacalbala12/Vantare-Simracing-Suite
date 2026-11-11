@@ -1,5 +1,6 @@
 import alertsReference from "../../../fixtures/calendar-alerts-reference.json";
 import fixture from "../../../fixtures/calendar-demo.json";
+import { isCalendarAlerts } from "../../contract/calendar-config-validation";
 import {
   type CalendarAlerts,
   type CalendarConfigView,
@@ -147,6 +148,8 @@ export function create(context: MockContext): MockHandler {
           result: { method: request.method, value: structuredClone(config) },
         };
       case "calendar.alertsSave": {
+        if (!isCalendarAlerts(request.alerts))
+          return { kind: "failure", id, error: { kind: "rejected" } };
         if (request.expectedRevision !== config.alertsRevision)
           return conflict();
         const proposed = request.alerts,
@@ -205,6 +208,9 @@ export function create(context: MockContext): MockHandler {
                 schedule.series.some(
                   (series) =>
                     series.id === slot.seriesId &&
+                    (series.recurrence.kind !== "interval" ||
+                      series.eventKind === "weekly" ||
+                      series.eventKind === "special") &&
                     starts(
                       schedule,
                       series,

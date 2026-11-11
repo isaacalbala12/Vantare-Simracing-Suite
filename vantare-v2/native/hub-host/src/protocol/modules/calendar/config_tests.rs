@@ -484,8 +484,20 @@ fn alerts_save_requires_published_series_and_an_exact_future_departure() {
     let revision = saved.alerts_revision.unwrap();
     let at = (now / 1000 / 900 + 1) * 900;
     alerts.slots.push(CalendarSlot { series_id: id, at });
-    let saved = state.alerts_save_at(&alerts, &revision, now).unwrap();
-    let revision = saved.alerts_revision.unwrap();
+    assert_eq!(
+        state.alerts_save_at(&alerts, &revision, now),
+        Err(HostError::Rejected)
+    );
+    let weekly = state
+        .view
+        .official
+        .as_ref()
+        .unwrap()
+        .series
+        .iter()
+        .find(|series| series.recurrence.kind != "interval")
+        .unwrap();
+    alerts.slots[0].series_id.clone_from(&weekly.id);
     alerts.slots[0].at += 1;
     assert_eq!(
         state.alerts_save_at(&alerts, &revision, now),
@@ -594,4 +606,90 @@ fn alerts_save_rejects_malformed_preferences_before_writing() {
         Err(HostError::Rejected)
     );
     assert!(!root.0.join("calendar-alerts.json").exists());
+}
+
+#[test]
+fn alerts_write_rejects_duplicates_and_invalid_bands_but_read_preserves_gpui_documents() {
+    let root = Root::new();
+    let mut state = root.state();
+    let revision = state.config().alerts_revision.unwrap();
+    let band = CalendarBand {
+        series_id: "qa".into(),
+        from: 1200,
+        to: 1380,
+        days: CalendarDays::All,
+        mode: CalendarBandMode::Each,
+    };
+    let slot = CalendarSlot {
+        series_id: "qa".into(),
+        at: 1,
+    };
+    for alerts in [
+        CalendarAlerts {
+            bands: vec![band.clone(), band.clone()],
+            ..Default::default()
+        },
+        CalendarAlerts {
+            slots: vec![slot.clone(), slot],
+            ..Default::default()
+        },
+        CalendarAlerts {
+            bands: vec![CalendarBand {
+                from: 1380,
+                ..band.clone()
+            }],
+            ..Default::default()
+        },
+        CalendarAlerts {
+            bands: vec![CalendarBand {
+                to: 1441,
+                ..band.clone()
+            }],
+            ..Default::default()
+        },
+        CalendarAlerts {
+            bands: vec![CalendarBand {
+                series_id: " ".into(),
+                ..band.clone()
+            }],
+            ..Default::default()
+        },
+    ] {
+        assert_eq!(
+            state.alerts_save_at(&alerts, &revision, 0),
+            Err(HostError::Rejected)
+        );
+        assert!(!root.0.join("calendar-alerts.json").exists());
+    }
+    let legacy = CalendarAlerts {
+        bands: vec![
+            CalendarBand {
+                series_id: "\n".repeat(301),
+                ..band.clone()
+            },
+            band.clone(),
+            band,
+        ],
+        slots: vec![
+            CalendarSlot {
+                series_id: String::new(),
+                at: i64::MIN,
+            },
+            CalendarSlot {
+                series_id: String::new(),
+                at: i64::MIN,
+            },
+        ],
+        ..Default::default()
+    };
+    let bytes = serde_json::to_vec(&legacy).unwrap();
+    root.seed("calendar-alerts.json", &bytes);
+    let loaded = state.config();
+    assert_eq!(loaded.documents.alerts, CalendarDocumentState::Ready);
+    assert_eq!(loaded.alerts, legacy);
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+    assert_eq!(
+        state.alerts_save_at(&legacy, loaded.alerts_revision.as_deref().unwrap(), 0),
+        Err(HostError::Rejected)
+    );
 }

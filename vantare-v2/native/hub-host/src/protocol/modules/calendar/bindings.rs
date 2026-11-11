@@ -150,7 +150,7 @@ fn sample_config() -> crate::calendar::CalendarConfigView {
         prefs_revision: Some(vantare_services::content_hash(&[0])),
         following: vec![],
         following_revision: Some(vantare_services::content_hash(&[0])),
-        alerts: crate::calendar::CalendarAlerts::default(),
+        alerts: sample_alerts(),
         alerts_revision: Some(vantare_services::content_hash(&[0])),
         documents: crate::calendar::CalendarDocumentStates {
             prefs: crate::calendar::CalendarDocumentState::Ready,
@@ -269,4 +269,20 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
     });
     serde_json::json!({"host":host,"ui":ui})
+}
+
+fn sample_alerts() -> crate::calendar::CalendarAlerts {
+    let mut alerts = crate::calendar::CalendarAlerts::default();
+    alerts.bands.push(crate::calendar::CalendarBand {
+        series_id: "beginner-lmgt3-fixed".into(),
+        from: 1200,
+        to: 1380,
+        days: crate::calendar::CalendarDays::All,
+        mode: crate::calendar::CalendarBandMode::Each,
+    });
+    alerts.slots.push(crate::calendar::CalendarSlot {
+        series_id: "weekly-wec-weekly".into(),
+        at: 1_791_489_600,
+    });
+    alerts
 }

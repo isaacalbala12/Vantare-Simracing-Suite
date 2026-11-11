@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import coreFixture from "../fixtures/core-offline.json";
 import {
+  isCalendarAlerts,
+  isCalendarConfig,
+} from "../src/contract/calendar-config-validation";
+import {
   type CalendarAlerts,
   calendarBandsLimit,
   calendarDefaultAlerts,
@@ -8,7 +12,9 @@ import {
 } from "../src/contract/generated/calendar";
 import type { CoreStatus } from "../src/contract/generated/contract";
 import { isReply, isRequest } from "../src/contract/modules/calendar";
+import { calendarReference } from "../src/mock/calendar-reference";
 import { create } from "../src/mock/modules/calendar";
+import { starts } from "../src/renderer/screens/calendar/schedule";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -187,10 +193,19 @@ it("mock accepts an exact published slot and rejects a fabricated second", () =>
   const { host, config } = mock("calendar-live-reference");
   if (!config.alertsRevision) throw new Error("missing revision");
   const alerts = structuredClone(config.alerts);
-  alerts.slots.push({
-    seriesId: "beginner-lmgt3-fixed",
-    at: Date.parse("2026-10-08T18:00:00Z") / 1000,
-  });
+  const schedule = calendarReference().official;
+  if (!schedule) throw new Error("missing publication");
+  const series = schedule.series.find((s) => s.eventKind === "weekly");
+  if (!series) throw new Error("missing weekly series");
+  const at = starts(
+    schedule,
+    series,
+    Date.now(),
+    Date.parse(schedule.validUntil),
+    10000,
+  )[0];
+  if (at === undefined) throw new Error("missing departure");
+  alerts.slots.push({ seriesId: series.id, at: at / 1000 });
   const saved = host({
     kind: "request",
     id: 2,
@@ -215,6 +230,76 @@ it("mock accepts an exact published slot and rejects a fabricated second", () =>
         method: "calendar.alertsSave",
         alerts,
         expectedRevision: saved.result.value.alertsRevision,
+      },
+    }),
+  ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });
+});
+
+it("rejects duplicate bands and slots on writes and in the mock, but reads GPUI legacy identities", () => {
+  const { host, config } = mock();
+  const band = {
+    seriesId: "qa",
+    from: 1200,
+    to: 1380,
+    days: "all" as const,
+    mode: "each" as const,
+  };
+  for (const alerts of [
+    { ...defaults(), bands: [band, band] },
+    {
+      ...defaults(),
+      slots: [
+        { seriesId: "qa", at: 1 },
+        { seriesId: "qa", at: 1 },
+      ],
+    },
+  ]) {
+    expect(isCalendarAlerts(alerts)).toBe(false);
+    expect(isRequest(request(alerts))).toBe(false);
+    expect(
+      host({
+        kind: "request",
+        id: 2,
+        request: {
+          method: "calendar.alertsSave",
+          alerts,
+          expectedRevision: config.alertsRevision ?? "",
+        },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });
+  }
+  const legacy = {
+    ...defaults(),
+    bands: [band, band, { ...band, seriesId: "\n".repeat(301) }],
+    slots: [
+      { seriesId: "", at: -1 },
+      { seriesId: "", at: -1 },
+    ],
+  };
+  expect(isCalendarAlerts(legacy)).toBe(false);
+  expect(isCalendarAlerts(legacy, false)).toBe(true);
+  expect(isCalendarConfig({ ...config, alerts: legacy })).toBe(true);
+});
+it("mock refuses a new explicit slot on a daily series", () => {
+  const { host, config } = mock("calendar-live-reference");
+  const alerts = {
+    ...config.alerts,
+    slots: [
+      ...config.alerts.slots,
+      {
+        seriesId: "beginner-lmgt3-fixed",
+        at: Date.parse("2026-10-08T18:00:00Z") / 1000,
+      },
+    ],
+  };
+  expect(
+    host({
+      kind: "request",
+      id: 2,
+      request: {
+        method: "calendar.alertsSave",
+        alerts,
+        expectedRevision: config.alertsRevision ?? "",
       },
     }),
   ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });

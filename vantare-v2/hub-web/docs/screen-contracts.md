@@ -369,3 +369,21 @@ No habilita lanzamiento automático: se puede conservar un `autoLaunch` antiguo
 sin activarlo en el anfitrión, o apagarlo. Pasar de falso a verdadero se rechaza.
 El lanzamiento diferido sigue pendiente en #2089; no se cambian IPC, runtime,
 rights ni supervisor. El feed de sesión y la exportación ICS van en PR propios.
+
+
+### Avisos: compatibilidad de lectura y diferencias conocidas
+
+La lectura de `calendar-alerts.json` mantiene la misma estrictez que
+`native/hub/src/calendar/alerts.rs::Alerts::parse`: límites de colección,
+antelación y franjas válidas. Conserva documentos antiguos con duplicados,
+identificadores vacíos, extensos o con controles y fechas fuera de rango.
+Estas restricciones adicionales y la unicidad se aplican solo a `alertsSave`.
+Cada escritura admite una banda por serie y una tanda por `(seriesId, at)`;
+una tanda nueva solo puede pertenecer a una serie no diaria.
+
+Diferencia conocida (P3-4): editar una banda existente sin horario vigente
+requiere descargarlo y devuelve `calendarScheduleUnavailable`; GPUI permite
+esa edición. La decisión de ampliar esa compatibilidad queda pendiente de Isaac.
+Diferencia conocida (P3-6): la respuesta de guardado actualiza el documento de
+avisos dentro de la vista de preferencias ya observada; los otros documentos
+pueden conservar su lectura anterior hasta el siguiente `configLoad`.

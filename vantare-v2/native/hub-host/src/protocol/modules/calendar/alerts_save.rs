@@ -77,7 +77,10 @@ impl State {
             }
             if !active.iter().any(|schedule| {
                 schedule.series.iter().any(|series| {
-                    series.id == slot.series_id && occurrence(schedule, series, slot.at)
+                    series.id == slot.series_id
+                        && (series.recurrence.kind != "interval"
+                            || matches!(series.event_kind.as_str(), "weekly" | "special"))
+                        && occurrence(schedule, series, slot.at)
                 })
             }) {
                 return Err(HostError::Rejected);

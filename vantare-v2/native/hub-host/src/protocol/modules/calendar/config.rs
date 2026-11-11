@@ -105,18 +105,40 @@ impl Default for CalendarAlerts {
     }
 }
 impl CalendarAlerts {
-    fn valid(&self) -> bool {
+    fn valid_read(&self) -> bool {
         ALERT_LEADS.contains(&self.lead_min)
             && self.bands.len() <= BANDS_LIMIT
             && self.slots.len() <= SLOTS_LIMIT
-            && self.bands.iter().all(|b| {
-                text(&b.series_id) && nonblank(&b.series_id) && b.from < b.to && b.to <= DAY_MINUTES
-            })
+            && self
+                .bands
+                .iter()
+                .all(|b| b.from < b.to && b.to <= DAY_MINUTES)
+    }
+    fn valid(&self) -> bool {
+        self.valid_read()
+            && self
+                .bands
+                .iter()
+                .all(|b| text(&b.series_id) && nonblank(&b.series_id))
             && self.slots.iter().all(|s| {
                 text(&s.series_id)
                     && nonblank(&s.series_id)
                     && (0..=TIMESTAMP_LIMIT).contains(&s.at)
             })
+            && self
+                .bands
+                .iter()
+                .map(|b| &b.series_id)
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                == self.bands.len()
+            && self
+                .slots
+                .iter()
+                .map(|s| (&s.series_id, s.at))
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                == self.slots.len()
     }
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -206,7 +228,7 @@ impl Document {
             "calendar-alerts.json" => {
                 let alerts: CalendarAlerts =
                     serde_json::from_value(value.clone()).map_err(|_| HostError::Protected)?;
-                if !alerts.valid() {
+                if !alerts.valid_read() {
                     return Err(HostError::Protected);
                 }
                 Contents::Alerts(alerts)

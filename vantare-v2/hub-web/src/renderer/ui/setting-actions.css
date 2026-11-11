@@ -3,3 +3,18 @@
   justify-content: flex-end;
   padding: 8px 20px;
 }
+
+/* GPUI clips neo shadows at the scroll body's bounds, including the bottom gutter. */
+.v-shortcut-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+.v-shortcut-groups .v-setting-group-title {
+  line-height: 14px;
+}
+.v-shortcut-rail .v-rail-block {
+  border-bottom: 0;
+}

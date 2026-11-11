@@ -1,4 +1,5 @@
 import type { VisualScene } from "./scenes.ts";
+import { assertTestingConsentFits } from "./testing-readability.ts";
 
 export const testingScenes: Record<string, VisualScene> = {
   "testing-center-comunidad": {
@@ -29,6 +30,7 @@ export const testingScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Informe para revisión", exact: true })
         .waitFor();
+      await assertTestingConsentFits(page, true);
       await page.mouse.move(600, 850);
     },
   },
@@ -126,6 +128,7 @@ export const testingScenes: Record<string, VisualScene> = {
           exact: true,
         })
         .waitFor();
+      await assertTestingConsentFits(page);
     },
   },
 };

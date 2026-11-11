@@ -165,6 +165,7 @@
   opacity: var(--disabled-opacity);
 }
 .v-testing .v-checkbox {
+  flex: 0 0 18px;
   width: 18px;
   height: 18px;
   border-radius: 4px;
@@ -172,6 +173,8 @@
   border-color: var(--line-2);
 }
 .v-testing .v-choice {
+  min-width: 0;
+  align-items: flex-start;
   min-height: 20px;
   font-size: 14px;
   font-weight: 600;
@@ -184,4 +187,35 @@
 .v-testing-rail p {
   color: var(--text-3);
   line-height: 21px;
+}
+
+.v-testing .v-choice > span:not(.v-checkbox) {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* GPUI Choice::Tabs: 13.5 px / 650, 14 px side padding, 4 px between options.
+   Keep the existing Settings chrome unchanged. */
+.v-section-tabs:has(> .v-section-tab-list[aria-label="Testing Center"]) {
+  display: flex;
+  align-items: center;
+}
+.v-section-tab-list[aria-label="Testing Center"] {
+  width: max-content;
+  max-width: 100%;
+  height: 39px;
+  gap: 4px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-section-tab-list[aria-label="Testing Center"] .v-section-tab {
+  height: 38px;
+  padding-inline: 14px;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.v-section-tab-list[aria-label="Testing Center"]
+  .v-section-tab[data-active]::after {
+  left: 10px;
+  right: 10px;
 }

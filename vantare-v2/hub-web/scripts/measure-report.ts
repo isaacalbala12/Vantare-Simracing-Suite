@@ -26,8 +26,15 @@ const samples = JSON.parse(
 const provenance = JSON.parse(
   await readFile(join(evidence, "provenance.json"), "utf8"),
 );
-const environment = JSON.parse(await readFile(join(evidence,"environment.json"),"utf8").catch(()=>"{}"));
-assert.ok(samples.filter(sample=>sample.phase==="idle").every(sample=>sample.cpuSource==="CIM PerfProc raw"),"CPU source was not validated PerfProc");
+const environment = JSON.parse(
+  await readFile(join(evidence, "environment.json"), "utf8").catch(() => "{}"),
+);
+assert.ok(
+  samples
+    .filter((sample) => sample.phase === "idle")
+    .every((sample) => sample.cpuSource === "CIM PerfProc raw"),
+  "CPU source was not validated PerfProc",
+);
 const closed = samples.filter((sample) => sample.phase === "closed");
 assert.equal(closed.length, 10, "Incomplete paired run");
 assert.ok(closed.every((sample) => sample.survivors?.length === 0));
@@ -63,7 +70,11 @@ function row(
           sample.app === app &&
           (!section || sample.section === section),
       )
-      .map((sample) => { const value=sample[field]; assert.ok(typeof value==="number" && Number.isFinite(value)); return value / divisor; });
+      .map((sample) => {
+        const value = sample[field];
+        assert.ok(typeof value === "number" && Number.isFinite(value));
+        return value / divisor;
+      });
     const result = fiveSampleStats(values);
     statistics[`${app}.${key}`] = result;
     cells.push(
@@ -140,17 +151,43 @@ for (const key of ["walk", "verify", "total"] as const)
   );
 const size = (bytes: number) =>
   `${format(bytes / (1024 * 1024), 2)} MiB (${bytes} bytes)`;
-const previous=JSON.parse(await readFile(join(evidence,"invalid-cpu-trial-4/samples.json"),"utf8")) as typeof samples;
-const earlierRows=[];
-for(const [label,phase,field,section,divisor] of [
-  ["Ventana visible (ms)","visible","visibleMs",null,1],
-  ["Interacción verificada (ms)","idle","verifiedMs","settings",1],
-  ["Working set de Ajustes (MiB)","idle","workingSetBytes","settings",1024*1024],
-  ["Working set de Inicio (MiB)","idle","workingSetBytes","home",1024*1024],
+const previous = JSON.parse(
+  await readFile(join(evidence, "invalid-cpu-trial-4/samples.json"), "utf8"),
+) as typeof samples;
+const earlierRows = [];
+for (const [label, phase, field, section, divisor] of [
+  ["Ventana visible (ms)", "visible", "visibleMs", null, 1],
+  ["Interacción verificada (ms)", "idle", "verifiedMs", "settings", 1],
+  [
+    "Working set de Ajustes (MiB)",
+    "idle",
+    "workingSetBytes",
+    "settings",
+    1024 * 1024,
+  ],
+  [
+    "Working set de Inicio (MiB)",
+    "idle",
+    "workingSetBytes",
+    "home",
+    1024 * 1024,
+  ],
 ] as const) {
-  const cells=["gpui","electron"].map(app=>{
-    const values=previous.filter(sample=>sample.app===app && sample.phase===phase && (!section || sample.section===section)).map(sample=>{const value=sample[field];assert.ok(typeof value==="number");return value/divisor;});
-    const result=fiveSampleStats(values);return `${format(result.median,1)} (${format(result.min,1)}–${format(result.max,1)})`;
+  const cells = ["gpui", "electron"].map((app) => {
+    const values = previous
+      .filter(
+        (sample) =>
+          sample.app === app &&
+          sample.phase === phase &&
+          (!section || sample.section === section),
+      )
+      .map((sample) => {
+        const value = sample[field];
+        assert.ok(typeof value === "number");
+        return value / divisor;
+      });
+    const result = fiveSampleStats(values);
+    return `${format(result.median, 1)} (${format(result.min, 1)}–${format(result.max, 1)})`;
   });
   earlierRows.push(`| ${label} | ${cells.join(" | ")} |`);
 }
@@ -191,7 +228,7 @@ ${earlierRows.join("\n")}
 - El candidato QA conserva validación de inventario antes de lanzar. Su recorrido inicial cuesta mediana ${format(statistics["integrity.walkMs"].median, 1)} ms; verificación, segundo recorrido y hashes ${format(statistics["integrity.verifyMs"].median, 1)} ms; total ${format(statistics["integrity.totalMs"].median, 1)} ms (${format(statistics["integrity.totalMs"].min, 1)}–${format(statistics["integrity.totalMs"].max, 1)}). Incluye los pequeños peers QA sellados junto al anfitrión; no es una optimización del instalador.
 - Hub nuevo: CDP de QA activado para comprobar interacción. GPUI: ventana normal --qa-measure con VANTARE_CAPTURE_POLICY=ipc, sin escena visual congelada ni demo. Los peers del anfitrión son procesos externos y se excluyen; en el banco GPUI los replies locales viven dentro del proceso. Es una limitación del banco, documentada para interpretar memoria y CPU.
 - Se revisan las capturas de ambas pantallas para evitar medir una puerta protegida. Diez cierres controlados, cero descendientes supervivientes en todos. Esto comprueba el cierre de la medición; no se atribuye a una prueba de entrada en pista.
-- Tres intentos previos incompletos se descartaron: uno por política no verificada y dos por la sonda UIAutomation. Sus muestras y diagnósticos se conservan en invalid-*/. UIAutomation se sustituyó por interacción y pintura verificables. La cuarta serie completa se publica arriba sin CPU y se conserva en invalid-cpu-trial-4/; la tabla principal pertenece solo a la repetición completa con PerfProc.
+- Cinco intentos previos incompletos se descartaron: uno por política no verificada, dos por la sonda UIAutomation, uno por entrega de entradas y otro por un bloqueo al renombrar el perfil. Cada ejecución usa ahora una ruta nueva sin mover cachés. Sus muestras y diagnósticos se conservan en invalid-*/. UIAutomation se sustituyó por interacción y pintura verificables. La cuarta serie completa se publica arriba sin CPU y se conserva en invalid-cpu-trial-4/; la tabla principal pertenece solo a la repetición completa con PerfProc.
 
 ## Evidencia y reproducción
 

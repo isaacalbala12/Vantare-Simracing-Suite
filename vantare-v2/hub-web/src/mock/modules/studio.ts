@@ -89,7 +89,11 @@ export function create(context: MockContext): MockHandler {
       id,
       error: { kind },
     });
-    if (request.method !== "studio.get" && !(request.method === "studio.track" && !request.show) && view.state !== "ready")
+    if (
+      request.method !== "studio.get" &&
+      !(request.method === "studio.track" && !request.show) &&
+      view.state !== "ready"
+    )
       return fail("protected");
     if (
       "baseRevision" in request &&
@@ -189,7 +193,14 @@ export function create(context: MockContext): MockHandler {
       redo.length = 0;
       bump();
     }
-    if(request.method === "studio.add") { if(!added) return fail("denied"); return {kind:"response",id,result:{method:"studio.add",value:structuredClone(view),added}}; }
+    if (request.method === "studio.add") {
+      if (!added) return fail("denied");
+      return {
+        kind: "response",
+        id,
+        result: { method: "studio.add", value: structuredClone(view), added },
+      };
+    }
     return {
       kind: "response",
       id,

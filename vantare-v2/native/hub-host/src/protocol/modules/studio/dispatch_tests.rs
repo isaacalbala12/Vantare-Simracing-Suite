@@ -2,7 +2,8 @@ use super::*;
 fn response(session: &mut Session, request: &Request) -> HostToUi {
     let mut pipe = Pipe::new(Vec::new());
     studio::dispatch(session, &mut pipe, 42, request).unwrap();
-    frame::read(&mut Pipe::new(pipe.into_inner()))
+    frame::Reader::default()
+        .next(&mut Pipe::new(pipe.into_inner()))
         .unwrap()
         .unwrap()
 }

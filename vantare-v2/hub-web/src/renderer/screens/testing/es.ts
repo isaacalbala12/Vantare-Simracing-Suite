@@ -37,6 +37,7 @@ export const testingText = {
   cleanupPending: "Borrador pendiente de limpiar",
   preserved: "Borrador posterior conservado",
   retry: "Reintentar",
+  closeWithoutSave: "Cerrar sin guardar",
   closeUnsaved:
     "Hay cambios sin guardar. Guarda o descarta el borrador antes de cerrar o reiniciar.",
   reviewAgain: "Revisa de nuevo la operación antes de continuar.",

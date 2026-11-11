@@ -220,7 +220,10 @@ async function start() {
     const copies = new Set<number>();
     const reportExport = reportExportSession(async () => {
       if (!window || window.isDestroyed()) return undefined;
-      const result = await dialog.showSaveDialog(window, { defaultPath: reportExportName, filters: [{ name: "JSON", extensions: ["json"] }] });
+      const result = await dialog.showSaveDialog(window, {
+        defaultPath: reportExportName,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
       return result.canceled ? undefined : result.filePath;
     });
     const unsubscribe = host.listen((message) => {
@@ -291,11 +294,29 @@ async function start() {
         );
         return;
       }
-      if (data.kind === "request" && data.request.method === "report.localPrepare") reportExport.expect(data.id);
-      if (data.kind === "request" && data.request.method === "report.localExport") {
-        void reportExport.export().then(outcome => {
+      if (
+        data.kind === "request" &&
+        data.request.method === "report.localPrepare"
+      )
+        reportExport.expect(data.id);
+      if (
+        data.kind === "request" &&
+        data.request.method === "report.localExport"
+      ) {
+        void reportExport.export().then((outcome) => {
           if (!portAlive) return;
-          port1.postMessage("error" in outcome ? { kind: "failure", id: data.id, error: outcome.error } : { kind: "response", id: data.id, result: { method: "report.localExport", status: outcome.status } });
+          port1.postMessage(
+            "error" in outcome
+              ? { kind: "failure", id: data.id, error: outcome.error }
+              : {
+                  kind: "response",
+                  id: data.id,
+                  result: {
+                    method: "report.localExport",
+                    status: outcome.status,
+                  },
+                },
+          );
         });
         return;
       }

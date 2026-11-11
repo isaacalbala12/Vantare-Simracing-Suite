@@ -82,7 +82,18 @@ export function Reports() {
         }}
       />
       {state.legacy !== "none" && <Callout title={text.legacy[state.legacy]} />}
-      {state.message && <Callout title={state.message} />}
+      {state.message && (
+        <Callout
+          title={state.message}
+          actions={
+            state.closeBlocked ? (
+              <Button onClick={state.askCloseWithoutSave}>
+                {text.closeWithoutSave}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
       {state.error && (
         <Callout
           tone="err"

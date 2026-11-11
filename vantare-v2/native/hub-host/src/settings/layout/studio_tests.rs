@@ -277,7 +277,7 @@ fn removing_and_readding_a_reused_identity_does_not_inherit_frequency() {
     let (_root, path, _) = fixture();
     let bytes = std::fs::read_to_string(&path).unwrap();
     let bytes = bytes.replacen(
-        "{",
+        '{',
         r#"{"performance":{"widgets":{"z":10,"widget-1":4,"a":5},"level":"balanced"},"#,
         1,
     );
@@ -392,7 +392,7 @@ fn polling_is_subscription_scoped_and_never_duplicates_the_initial_event() {
     );
     assert!(
         state
-            .changed(true, now + Duration::from_millis(1000), access)
+            .changed(true, now + Duration::from_secs(1), access)
             .is_none()
     );
     let revision = state.revision.clone();

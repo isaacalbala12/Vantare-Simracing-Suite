@@ -1,4 +1,13 @@
-import { studioKinds, studioLimits, studioMethods, studioStates,studioPlans,studioOffTracks,studioAddKinds,studioRevisionPattern } from "../generated/studio";
+import {
+  studioAddKinds,
+  studioKinds,
+  studioLimits,
+  studioMethods,
+  studioOffTracks,
+  studioPlans,
+  studioRevisionPattern,
+  studioStates,
+} from "../generated/studio";
 import { exact, integer, oneOf, record } from "../validation-common";
 
 export { studioMethods as methods };
@@ -133,15 +142,17 @@ export function isRequest(v: Record<string, unknown>): boolean {
             p.value <= studioLimits.opacityMax
         : p.field === "showIn"
           ? showIn(p.value)
-          : p.field === "offTrack" &&
-            oneOf(p.value, studioOffTracks);
+          : p.field === "offTrack" && oneOf(p.value, studioOffTracks);
     }
     default:
       return false;
   }
 }
 export function isReply(v: Record<string, unknown>) {
-  if(v.method === "studio.add") return exact(v,["method","value","added"]) && id(v.added) && isStudio(v.value);
+  if (v.method === "studio.add")
+    return (
+      exact(v, ["method", "value", "added"]) && id(v.added) && isStudio(v.value)
+    );
   return (
     studioMethods.some((method) => method === v.method) &&
     exact(v, ["method", "value"]) &&

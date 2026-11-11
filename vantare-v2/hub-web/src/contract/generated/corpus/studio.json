@@ -328,6 +328,7 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "added": "widget-1",
         "method": "studio.add",
         "value": {
           "canRedo": false,

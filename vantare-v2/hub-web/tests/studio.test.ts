@@ -162,11 +162,27 @@ describe("Studio document contract", () => {
     send(host, "studio.track", { show: false });
     expect(view(host)).toEqual(before);
   });
- it("rejects non-catalog additions and identifies the exact added instance",()=>{
-  const host=createMockHost("studio-vacio"),before=view(host);
-  expect(isUiMessage({kind:"request",id:1,request:{method:"studio.add",kind:"car-damage-numbers",baseRevision:before.revision}})).toBe(false);
-  const reply=send(host,"studio.add",{kind:"delta",baseRevision:before.revision});
-  expect(reply).toMatchObject({kind:"response",result:{method:"studio.add",added:"widget-1"}});
- });
-
+  it("rejects non-catalog additions and identifies the exact added instance", () => {
+    const host = createMockHost("studio-vacio"),
+      before = view(host);
+    expect(
+      isUiMessage({
+        kind: "request",
+        id: 1,
+        request: {
+          method: "studio.add",
+          kind: "car-damage-numbers",
+          baseRevision: before.revision,
+        },
+      }),
+    ).toBe(false);
+    const reply = send(host, "studio.add", {
+      kind: "delta",
+      baseRevision: before.revision,
+    });
+    expect(reply).toMatchObject({
+      kind: "response",
+      result: { method: "studio.add", added: "widget-1" },
+    });
+  });
 });

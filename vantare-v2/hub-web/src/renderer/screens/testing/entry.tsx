@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
+import { TestingQuestionnairesRail } from "../../ui/TestingQuestionnairesView";
 import { TestingSummaryRail } from "../../ui/TestingSummaryView";
 import { testingText as text } from "./es";
+import { TestingQuestionnaires } from "./Questionnaires";
 import { useReports } from "./ReportsState";
 import { TestingSummary } from "./Summary";
 import { Reports, type ReportsView } from "./Testing";
@@ -36,6 +38,10 @@ export default function TestingEntry() {
         rail={
           active === "summary" ? (
             <TestingSummaryRail count={railCount} receipts={railCount} />
+          ) : active === "questionnaires" ? (
+            <TestingQuestionnairesRail
+              count={participation.questionnaires.length}
+            />
           ) : (
             <TestingRail />
           )
@@ -52,6 +58,8 @@ export default function TestingEntry() {
             onNewReport={() => showReports("local")}
             onDiagnostic={() => setDiagnosticOpen(true)}
           />
+        ) : active === "questionnaires" ? (
+          <TestingQuestionnaires onDiagnostic={() => setDiagnosticOpen(true)} />
         ) : null}
       </SectionPanel>
     </>

@@ -1,0 +1,79 @@
+.v-testing-questionnaires {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-testing-questionnaires > section:first-child {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.v-testing-questionnaires > section:last-child:not(:first-child) {
+  flex: none;
+}
+.v-testing-questionnaires h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.v-testing-questionnaire-scores {
+  display: flex;
+  gap: 8px;
+}
+.v-testing-questionnaire-scores > .v-button {
+  min-width: 34px;
+  padding: 0 10px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+}
+.v-testing-questionnaires .v-field {
+  gap: 0;
+}
+.v-testing-questionnaires .v-field label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.v-testing-questionnaires textarea {
+  width: 100%;
+  min-height: 83px;
+  height: 83px;
+  resize: none;
+}
+.v-testing-questionnaires .v-testing-fine-print {
+  white-space: pre-wrap;
+}
+.v-testing-questionnaires > section > .v-button--primary {
+  align-self: flex-start;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.v-testing .v-testing-questionnaires > section > .v-button--primary:disabled {
+  background: color-mix(
+    in srgb,
+    var(--text-1) var(--testing-disabled),
+    transparent
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--text-1) var(--testing-disabled),
+    transparent
+  );
+  color: color-mix(
+    in srgb,
+    var(--text-on-primary) var(--testing-disabled),
+    transparent
+  );
+  opacity: 1;
+}
+.v-shell-main > [role="tabpanel"]:has(.v-testing-questionnaires),
+.v-testing:has(> .v-testing-questionnaires) {
+  height: 100%;
+}

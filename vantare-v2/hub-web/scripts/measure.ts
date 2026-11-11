@@ -1,14 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import {
-  cp,
-  mkdir,
-  readFile,
-  rename,
-  unlink,
-  writeFile,
-} from "node:fs/promises";
+import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { cpus, freemem, release, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -268,6 +261,7 @@ async function main() {
       driver?.once("error", reject);
     });
     assert.ok(driver.stdout && driver.stdin);
+    let activeHub = hub;
     for await (const line of createInterface({ input: driver.stdout })) {
       const event = JSON.parse(line) as Record<string, unknown>;
       samples.push(event);
@@ -279,13 +273,12 @@ async function main() {
         JSON.stringify(samples, null, 2),
       );
       if (event.phase === "before") {
-        const profile = event.app === "gpui" ? gpui : hub;
-        const archived = `${profile}-previous-${event.iteration}`;
-        assert.ok(
-          resolve(profile).startsWith(`${resolve(qa)}\\`) &&
-            resolve(archived).startsWith(`${resolve(qa)}\\`),
-        );
-        await rename(profile, archived);
+        const profile =
+          event.app === "gpui"
+            ? join(qa, `gpui-run-${event.iteration}`)
+            : join(data, `hub-run-${event.iteration}`);
+        assert.ok(resolve(profile).startsWith(`${resolve(qa)}\\`));
+        event.profile = profile;
         await mkdir(profile, { recursive: true });
         await writeFile(
           join(profile, "appearance.json"),
@@ -307,8 +300,9 @@ async function main() {
           );
         }
         if (event.app === "electron") {
+          activeHub = profile;
           for (const file of [
-            join(hub, "hub-ui-qa.log"),
+            join(activeHub, "hub-ui-qa.log"),
             join(qa, "hub-ready"),
           ])
             await unlink(file).catch((error) => {
@@ -316,14 +310,39 @@ async function main() {
             });
           await writeFile(join(qa, "boot-pending.json"), "{}");
         }
-        driver.stdin.write("launch\n");
+        const application = configuration.apps.find(
+          (app) => app.name === event.app,
+        );
+        assert.ok(application);
+        const argumentsForRun = [...application.arguments];
+        const option = event.app === "gpui" ? "--qa-root" : "--data-dir";
+        const index = argumentsForRun.indexOf(option);
+        assert.ok(index >= 0);
+        argumentsForRun[index + 1] = profile;
+        const environmentForRun = {
+          ...application.environment,
+          ...(event.app === "gpui"
+            ? {
+                VANTARE_NATIVE_DATA_ROOT: profile,
+                LOCALAPPDATA: profile,
+                APPDATA: join(profile, "roaming"),
+              }
+            : {}),
+        };
+        await writeFile(
+          join(evidence, "samples.json"),
+          JSON.stringify(samples, null, 2),
+        );
+        driver.stdin.write(
+          `${JSON.stringify({ command: "launch", arguments: argumentsForRun, environment: environmentForRun })}\n`,
+        );
       } else if (event.phase === "visible") {
         if (event.app === "electron") {
           let endpoint = "";
           await until(
             async () => {
               const log = await readFile(
-                join(hub, "hub-ui-qa.log"),
+                join(activeHub, "hub-ui-qa.log"),
                 "utf8",
               ).catch(() => "");
               endpoint =

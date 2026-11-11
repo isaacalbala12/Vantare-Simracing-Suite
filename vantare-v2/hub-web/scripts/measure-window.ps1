@@ -92,12 +92,13 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
     if($iteration % 2){[array]::Reverse($applications)}
     foreach($application in $applications) {
         @{phase='before';app=$application.name;iteration=$iteration} | ConvertTo-Json -Compress | Write-Output
-        if([Console]::ReadLine() -ne 'launch'){throw 'Missing launch acknowledgement'}
+        $launch=[Console]::ReadLine() | ConvertFrom-Json
+        if($launch.command -ne 'launch'){throw 'Missing launch acknowledgement'}
         $info=[Diagnostics.ProcessStartInfo]::new($application.exe)
         $info.UseShellExecute=$false;$info.RedirectStandardInput=$true;$info.RedirectStandardError=$true;$info.CreateNoWindow=$true
         $info.WorkingDirectory=[IO.Path]::GetDirectoryName($application.exe)
-        foreach($argument in $application.arguments){$info.ArgumentList.Add($argument)}
-        foreach($property in $application.environment.PSObject.Properties){$info.Environment[$property.Name]=[string]$property.Value}
+        foreach($argument in $launch.arguments){$info.ArgumentList.Add($argument)}
+        foreach($property in $launch.environment.PSObject.Properties){$info.Environment[$property.Name]=[string]$property.Value}
         $process=[Diagnostics.Process]::new();$process.StartInfo=$info
         $clock=[Diagnostics.Stopwatch]::StartNew()
         if(-not $process.Start()){throw 'Process failed to start'}

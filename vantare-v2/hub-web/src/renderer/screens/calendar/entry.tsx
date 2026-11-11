@@ -121,7 +121,7 @@ export default function CalendarEntry() {
           setActiveTab(tab);
         }}
         rail={
-          selectedSerie && state.allowed && view ? (
+          selectedSerie && state.allowed && schedule && view ? (
             false
           ) : state.allowed && view ? (
             <CalendarRail
@@ -184,7 +184,7 @@ export default function CalendarEntry() {
               <>
                 {(history.failure || history.view?.invalidCache) && (
                   <div role="alert">
-                    <p>{text.corrupted}</p>
+                    <p>{history.failure ? text.failed : text.corrupted}</p>
                     <Button onClick={history.reload}>{text.retry}</Button>
                   </div>
                 )}

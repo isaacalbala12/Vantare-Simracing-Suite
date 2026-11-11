@@ -13,7 +13,7 @@ El anfitrión valida y proyecta la previsualización con lista cerrada de claves
 límites; no reenvía mensajes libres del servicio. La pantalla invalida la revisión
 y el consentimiento al cambiar datos, selección, sesión o conexión, y serializa
 las peticiones mediante la cola de Testing. Añadir estos métodos sube el wire de
-9 a 10. El módulo no declara respuestas diferidas.
+10 a 11. El módulo no declara respuestas diferidas.
 
 La vista muestra el contenido del informe, no la petición HTTP completa: el núcleo
 lo envía dentro de un sobre fijo con versión, consentimiento e identificador

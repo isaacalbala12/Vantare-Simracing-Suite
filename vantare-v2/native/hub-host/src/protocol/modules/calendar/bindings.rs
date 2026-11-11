@@ -100,7 +100,7 @@ pub(crate) fn typescript() -> String {
     );
     text
 }
-pub(crate) fn corpus() -> serde_json::Value {
+fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
     let config = crate::calendar::CalendarConfigView {
         utc: false,
         prefs_revision: vantare_services::content_hash(&[0]),
@@ -180,5 +180,10 @@ pub(crate) fn corpus() -> serde_json::Value {
             request: Request::CalendarRefresh {},
         },
     ];
+    (host, ui)
+}
+
+pub(crate) fn corpus() -> serde_json::Value {
+    let (host, ui) = samples();
     serde_json::json!({"host":host,"ui":ui})
 }

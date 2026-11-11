@@ -299,6 +299,31 @@ fn an_expired_core_waiter_is_never_sent_and_its_owner_receives_busy() {
     assert!(!session.remotes.contains_key(&2));
 }
 #[test]
+fn a_confirmed_session_change_rejects_a_waiting_intent_without_sending_it() {
+    use vantare_ipc::services_protocol::Session as Identity;
+    let root = Root::new();
+    let mut session = restart_session(&root.path, "queue-local-unused");
+    let local = session.core.isolate_services(true);
+    for (id, identity) in [(1, Identity::SignedIn), (2, Identity::SignedOut)] {
+        session.core.request(id, ServiceCommand::AccountPoll).unwrap();
+        assert!(matches!(local.incoming.try_recv().unwrap(), (_, ServiceCommand::AccountPoll)));
+        if id == 2 {
+            session.request_remote(3, RemoteKind::MailSet, ServiceCommand::MailConsentSet {
+                consent: true, source: vantare_ipc::services_protocol::MailSource::Settings,
+            }).unwrap();
+        }
+        local.outgoing.send((id, Ok(ServiceReply::Account {
+            session: identity, copy_link: false, signed_in: identity == Identity::SignedIn,
+            profile: None, expires_at: None, pending: false, message: String::new(), error: None,
+        }))).unwrap();
+        assert_eq!(session.core.reply().unwrap().0, id);
+    }
+    let (id, result) = session.core.reply().unwrap();
+    assert_eq!(id, 3);
+    assert_eq!(session.service_reply(id, result), Err(HostError::Denied));
+    assert!(local.incoming.try_recv().is_err());
+}
+#[test]
 fn logout_and_authority_changes_deny_waiting_effects_but_never_discard_logout() {
     let root = Root::new();
     let mut session = restart_session(&root.path, "queue-local-unused");

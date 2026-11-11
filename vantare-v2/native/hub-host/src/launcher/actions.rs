@@ -85,6 +85,7 @@ pub fn option(
             ProfileOption::FirstStepDelay(value) => current.first_step_delay = value,
             ProfileOption::Retries(value) if value <= editor::RETRIES_MAX => {
                 current.max_retries = value;
+                current.retry = policy::Retry::Failed;
             }
             ProfileOption::Retries(_) => return Err(HostError::Denied),
             ProfileOption::Failure(value) => {
@@ -165,6 +166,10 @@ mod tests {
             serde_json::to_value(&before.profiles[0].steps).expect("QA fixture")
         );
         assert_eq!(after.profiles[0].effective_policy().max_retries, 3);
+        assert_eq!(
+            after.profiles[0].effective_policy().retry,
+            policy::Retry::Failed
+        );
         assert_eq!(
             serde_json::to_value(&after.profiles[1..]).expect("QA fixture"),
             serde_json::to_value(&before.profiles[1..]).expect("QA fixture")

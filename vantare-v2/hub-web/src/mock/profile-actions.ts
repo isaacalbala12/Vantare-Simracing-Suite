@@ -73,6 +73,8 @@ export function profileActionReply(
           break;
         case "retries":
           draft.policy.retries = summary.options.retries = patch.value;
+          draft.policy.retry = "failed";
+          summary.options.retryFailed = true;
           break;
         case "startup":
           if (patch.value) {

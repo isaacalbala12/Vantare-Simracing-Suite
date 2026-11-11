@@ -10,7 +10,13 @@ import {
 import {
   type FrameProps,
   OnboardingFrame,
+  type OnboardingStep,
 } from "../src/renderer/ui/onboarding/Frame";
+
+import {
+  canAdvance,
+  onboardingMotion,
+} from "../src/renderer/ui/onboarding/navigation";
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -153,4 +159,93 @@ it("keeps independent style selections and blocks changes while saving", async (
   );
   await user.click(screen.getByRole("button", { name: "Ligas" }));
   expect(toggle).toHaveBeenCalledTimes(1);
+});
+
+function FlowHarness() {
+  const [step, setStep] = useState<OnboardingStep>(0);
+  const [simulators, setSimulators] = useState<[boolean, boolean]>([
+    true,
+    false,
+  ]);
+  const [styles, setStyles] = useState<[boolean, boolean, boolean, boolean]>([
+    true,
+    false,
+    false,
+    false,
+  ]);
+  const allowed = canAdvance(step, simulators, styles);
+  function move(action: "next" | "back" | "skip") {
+    const result = onboardingMotion(action, step, allowed);
+    if (result.kind === "page") setStep(result.step);
+  }
+  return (
+    <OnboardingFrame
+      {...props()}
+      step={step}
+      canContinue={allowed}
+      next={() => move("next")}
+      back={() => move("back")}
+      skip={() => move("skip")}
+    >
+      {step === 1 && (
+        <SimulatorChoices
+          found={[true, false]}
+          selected={simulators}
+          toggle={(id) =>
+            setSimulators((previous) => {
+              const next: [boolean, boolean] = [...previous];
+              next[id] = !next[id];
+              return next;
+            })
+          }
+        />
+      )}
+      {step === 2 && (
+        <StyleChoices
+          selected={styles}
+          toggle={(id) =>
+            setStyles((previous) => {
+              const next: [boolean, boolean, boolean, boolean] = [...previous];
+              next[id] = !next[id];
+              return next;
+            })
+          }
+        />
+      )}
+    </OnboardingFrame>
+  );
+}
+it("blocks the real first steps until the user selects a simulator and a style", async () => {
+  const user = userEvent.setup();
+  render(<FlowHarness />);
+  expect(screen.queryByRole("button", { name: "← Atrás" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Empezar" }));
+  await user.click(screen.getByRole("button", { name: "Le Mans Ultimate" }));
+  expect(
+    (screen.getByRole("button", { name: "Continuar" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  fireEvent.keyDown(screen.getByRole("region"), { key: "Enter" });
+  expect(screen.getByRole("heading", { name: "¿A QUÉ CORRES?" })).toBeTruthy();
+  await user.click(
+    screen.getByRole("button", { name: "Assetto Corsa Competizione" }),
+  );
+  await user.click(screen.getByRole("button", { name: "Continuar" }));
+  await user.click(screen.getByRole("button", { name: "Carreras online" }));
+  expect(
+    (screen.getByRole("button", { name: "Continuar" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  await user.click(screen.getByRole("button", { name: "Ligas" }));
+  await user.click(screen.getByRole("button", { name: "Continuar" }));
+  expect(screen.getByRole("heading", { name: /GUARDA TU/ })).toBeTruthy();
+});
+it("skips to privacy and restores the previous step with Escape", async () => {
+  const user = userEvent.setup();
+  render(<FlowHarness />);
+  await user.click(screen.getByRole("button", { name: "Saltar" }));
+  expect(screen.getByRole("heading", { name: "TÚ DECIDES." })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Saltar" })).toBeNull();
+  fireEvent.keyDown(screen.getByRole("region"), { key: "Escape" });
+  expect(screen.getByRole("heading", { name: "A TU GUSTO." })).toBeTruthy();
 });

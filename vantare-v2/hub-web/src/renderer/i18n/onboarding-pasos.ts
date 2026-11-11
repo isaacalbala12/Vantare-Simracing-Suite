@@ -67,6 +67,11 @@ export const onboardingStepsText = {
   minimumSay: "Mínimo: usa los menos recursos posibles.",
   fixedSay: (label: string) => `Nivel fijado: ${label}.`,
   automaticSay: "Recomiendo Automático: ajusta el rendimiento según tu PC.",
+  loginDiscord: "Continuar con Discord",
+  loginGoogle: "Continuar con Google",
+  loginEmail: "Continuar con email",
+  emailDescription: "Abre el acceso por email en el asistente.",
+  nextArrow: "→",
   accountSay:
     "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
   signedSay: "Sesión iniciada. Tu configuración se guarda en este PC.",

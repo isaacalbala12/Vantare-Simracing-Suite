@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PerformanceLevel } from "../../../contract/generated/settings";
 import { useHost } from "../../app/Host";
 import { useSettings } from "../../app/SettingsState";
@@ -40,9 +40,17 @@ export function OnboardingIntroPreview({
   onLeave,
   extended = false,
   account = signedOutAccount,
+  accountActions,
+  accountPending = false,
+  onPro,
+  proDescription,
 }: {
   extended?: boolean;
   account?: OnboardingAccountStatus;
+  accountActions?: ReactNode;
+  accountPending?: boolean;
+  onPro?: () => void;
+  proDescription?: string;
   onLeave: (step: 3 | 6) => void;
 }) {
   const { client } = useHost();
@@ -252,7 +260,13 @@ export function OnboardingIntroPreview({
               reducedMotion={reducedMotion}
             />
           ) : step === 3 ? (
-            <PlansArt onPrices={() => void prices()} pending={pricesPending} />
+            <PlansArt
+              onPrices={() => void prices()}
+              onPro={onPro}
+              proDescription={proDescription}
+              pending={pricesPending}
+              proPending={accountPending}
+            />
           ) : step === 4 ? (
             <PerformanceArt automatic={automatic} level={level} />
           ) : settings.view ? (
@@ -270,7 +284,7 @@ export function OnboardingIntroPreview({
             toggleStyle={toggleStyle}
           />
         ) : step === 3 ? (
-          <AccountStep value={account} />
+          <AccountStep value={account} actions={accountActions} />
         ) : step === 4 && query.data ? (
           <PerformanceStep
             equipment={query.data.equipment}

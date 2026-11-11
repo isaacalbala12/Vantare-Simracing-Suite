@@ -10,6 +10,9 @@ await mkdir(destination, { recursive: true });
 for (const name of [
   "backdrop.svg",
   "helmet.svg",
+  "discord.svg",
+  "google.svg",
+  "email.svg",
   "panel.svg",
   "track.svg",
   "pro.png",

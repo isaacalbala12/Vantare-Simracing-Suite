@@ -37,6 +37,16 @@ export function create(context: MockContext): MockHandler {
       plan: { kind: "unverified" },
     };
   }
+  if (context.sceneName === "onboarding-cuenta-cargando")
+    current = { ...current, session: "pending", gate: "checking" };
+  if (context.sceneName === "onboarding-cuenta-sesion")
+    current = {
+      ...current,
+      session: "signedIn",
+      verified: true,
+      name: demoIdentity.name,
+      plan: { kind: "verified" },
+    };
   if (
     context.sceneName === "cuenta-base" ||
     context.sceneName === "cuenta-sesion" ||
@@ -111,6 +121,11 @@ export function create(context: MockContext): MockHandler {
     const { id, request } = value;
     const method = request.method;
     if (!oneOf(method, accountMethods)) return undefined;
+    if (
+      request.method === "account.get" &&
+      context.sceneName === "onboarding-cuenta-error"
+    )
+      return fail(id, "coreUnavailable");
     if (
       request.method !== "account.get" &&
       context.sceneName === "acceso-ocupado"

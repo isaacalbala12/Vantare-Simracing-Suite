@@ -112,6 +112,12 @@ fn profile_keys_sample() -> Reply {
 }
 
 fn append_apps_constants(text: &mut String) {
+    writeln!(
+        text,
+        "export const launcherPickCooldownMs = {} as const;",
+        crate::launcher::apps::PICK_COOLDOWN_MS
+    )
+    .expect("String write");
     writeln!(text, "export const launcherPickPathMax = {} as const;\nexport const launcherPickLifetimeSeconds = {} as const;", crate::launcher::apps::PICK_PATH_MAX, crate::launcher::apps::PICK_LIFETIME_SECONDS).expect("String write");
 }
 

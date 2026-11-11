@@ -18,6 +18,7 @@ pub struct ExecutableSelection {
     pub path: Option<String>,
 }
 pub const PICK_LIFETIME_SECONDS: u64 = 600;
+pub const PICK_COOLDOWN_MS: u64 = 1500;
 pub const PICK_PATH_MAX: usize = 32768;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

@@ -119,7 +119,14 @@ impl Reader {
     }
     pub fn rescan(&mut self) {
         // An explicit reload refreshes availability without launching a second worker.
-        self.scanned_revision = None;
+        let now = Instant::now();
+        if self
+            .last_scan
+            .is_none_or(|last| now.saturating_duration_since(last).as_secs() >= 2)
+        {
+            self.last_scan = Some(now);
+            self.scanned_revision = None;
+        }
     }
     pub fn scan(&mut self) -> Result<LauncherView, HostError> {
         self.scan_at(Instant::now())

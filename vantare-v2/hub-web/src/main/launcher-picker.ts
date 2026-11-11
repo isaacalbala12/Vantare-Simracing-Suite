@@ -1,5 +1,5 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
-import { launcherPickLifetimeSeconds } from "../contract/generated/contract";
+import { launcherPickLifetimeSeconds, launcherPickCooldownMs } from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
 
 /** The host must acknowledge a pending request before main opens a dialog. */
@@ -24,7 +24,7 @@ export function executablePicker(
     const current = pending;
     pending = undefined;
     if (current) {
-      nextDialog = now() + 1500;
+      nextDialog = now() + launcherPickCooldownMs;
       sendHost({ kind: "pickedExecutable", id: current.id, path: null });
     }
   }
@@ -43,7 +43,7 @@ export function executablePicker(
       };
       if (!isUiMessage(message) || !bounded(message))
         throw new Error("Invalid dialog result");
-      if (path === undefined) nextDialog = now() + 1500;
+      if (path === undefined) nextDialog = now() + launcherPickCooldownMs;
       current.phase = "result";
       sendHost(message);
     } catch {

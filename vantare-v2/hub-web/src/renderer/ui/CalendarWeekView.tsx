@@ -62,6 +62,15 @@ export function CalendarWeekView({
     schedule?.series.filter(
       (s) => filter !== "favorites" || view.following.includes(s.id),
     ) ?? [];
+  const rangeFrom = Math.max(
+    dates[0],
+    schedule ? Date.parse(schedule.validFrom) : dates[0],
+  );
+  const rangeUntil = Math.min(
+    end,
+    schedule ? Date.parse(schedule.validUntil) : end,
+  );
+  const rangeMs = Math.max(1, rangeUntil - rangeFrom);
   const identity = (s: CalendarSeries) => (
     <div className="v-calendar-week-live-identity">
       <Button
@@ -86,7 +95,7 @@ export function CalendarWeekView({
                   s.tier as keyof typeof calendarText.tiers
                 ] ?? s.tier)}
           </b>
-          {s.track.replace(" (", " ").replace(/\)$/u, "")}
+          {s.track.split(" (")[0]}
           {text.separator}
           {calendarText.minutes(raceMinutes(s))}
         </p>
@@ -236,6 +245,9 @@ export function CalendarWeekView({
                             disabled={!onDetail}
                             onClick={() => onDetail?.(s.id, chosen)}
                           >
+                            {alertAt(schedule, s, chosen, alerts, limit) && (
+                              <Icon name="bell-fill" />
+                            )}
                             {clock(chosen, view.utc)}
                             {highlighted.length > 1 && (
                               <small>{`+${highlighted.length - 1}`}</small>
@@ -275,6 +287,11 @@ export function CalendarWeekView({
                     {identity(s)}
                     <button
                       type="button"
+                      style={{
+                        flex: "none",
+                        marginLeft: `calc((100% - 240px) * ${(rangeFrom - dates[0]) / (end - dates[0])})`,
+                        width: `calc((100% - 240px) * ${(rangeUntil - rangeFrom) / (end - dates[0])})`,
+                      }}
                       disabled={!onDetail}
                       onClick={() => onDetail?.(s.id, next)}
                     >
@@ -282,26 +299,31 @@ export function CalendarWeekView({
                         .filter((band) => band.seriesId === s.id)
                         .slice(0, 1)
                         .flatMap((band) => bandSegments(dates, band, view.utc))
+                        .map((segment) => ({
+                          from: Math.max(segment.from, rangeFrom),
+                          until: Math.min(segment.until, rangeUntil),
+                        }))
+                        .filter((segment) => segment.until > segment.from)
                         .map((segment) => (
                           <span
                             key={segment.from}
                             className="v-calendar-week-band"
                             style={{
-                              left: `${(100 * (segment.from - dates[0])) / (end - dates[0])}%`,
-                              width: `${(100 * (segment.until - segment.from)) / (end - dates[0])}%`,
+                              left: `${(100 * (segment.from - rangeFrom)) / rangeMs}%`,
+                              width: `${(100 * (segment.until - segment.from)) / rangeMs}%`,
                             }}
                           />
                         ))}
                       <span
                         className="v-calendar-week-live-past"
                         style={{
-                          width: `${Math.max(0, Math.min(100, (100 * (now - dates[0])) / (end - dates[0])))}%`,
+                          width: `${Math.max(0, Math.min(100, (100 * (now - rangeFrom)) / rangeMs))}%`,
                         }}
                       />
                       {next !== undefined && view.following.includes(s.id) && (
                         <b
                           style={{
-                            left: `${(100 * (next - dates[0])) / (end - dates[0])}%`,
+                            left: `${(100 * (next - rangeFrom)) / rangeMs}%`,
                           }}
                         >
                           {clock(next, view.utc)}

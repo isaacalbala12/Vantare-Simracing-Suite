@@ -224,25 +224,46 @@ entregan por separado. El feed conserva el esquema IPC existente.
 
 ### Calendario: preferencias con CAS
 
-Tras el contrato inicial de lectura, `calendar.configLoad` proyecta las revisiones
-independientes de preferencias, series seguidas y avisos. `calendar.utcSet`,
-`calendar.notifyWeekSet` y `calendar.followSet` exigen `expectedRevision` de 64
-hexadecimales y el mismo permiso `AccessView.calendar` del módulo. Se sube el
-wire provisionalmente a 19. El número definitivo lo asigna el orquestador al
-aprobar el PR, seguido de un único rebase y regeneración sobre nightly.
+`calendar.configLoad` devuelve los valores y las revisiones independientes de
+preferencias, series seguidas y avisos. `documents` distingue `ready`, `protected`
+y `unavailable` por documento; solo `ready` lleva una revisión utilizable. Un
+archivo ausente válido usa sus valores iniciales y la revisión de ausencia, sin
+crearlo. La vista no expone bytes, rutas ni mensajes libres.
 
-Cada acción cambia un solo campo del documento fijo correspondiente, conserva
-campos desconocidos (también anidados) y escribe con `files::Mode::Observed`.
-La comparación bajo bloqueo evita la carrera entre lectura y escritura. Un
-conflicto devuelve `calendarConflict {current}` cerrado, sin rutas ni mensajes.
-Documentos dañados, demasiado grandes, enlaces y versiones futuras se protegen;
-la lectura no siembra archivos. Solo una acción explícita puede crear su fichero
-privado ausente. La respuesta de éxito se prepara antes de escribir: una lectura
-posterior fallida no convierte un guardado ya realizado en un rechazo.
+`calendar.utcSet`, `calendar.notifyWeekSet` y `calendar.followSet` exigen
+`expectedRevision` de 64 hexadecimales y `AccessView.calendar`. Cada escritura
+valida únicamente su documento; un archivo protegido no bloquea los otros. Las
+respuestas conservan la última proyección de los documentos que no se tocan.
+CAS compara los bytes observados bajo el bloqueo de `files::Mode::Observed` y
+los conflictos devuelven `calendarConflict {current}` para revisión y reintento
+explícitos. No se reescribe ni cambia la revisión si el valor ya era el pedido;
+un no-op tampoco crea un documento ausente ni toma el cerrojo de escritura.
 
-Los avisos se leen completos para respetar la configuración GPUI existente;
-esta entrega solo modifica `notifyWeek`. El editor de franjas/tandas, los canales,
-ICS y el feed se entregan después. No hay cambios en IPC, services o derechos.
+La política de disco es la del GPUI congelado: Following exige `seriesIds` y
+rechaza campos desconocidos; Alerts, Band, Slot y Channels también los rechazan.
+Channels presente exige sus tres booleanos. Following/Alerts rechazan `version`,
+que no forma parte de esos esquemas. Prefs admite campos desconocidos y el Hub
+los conserva. Archivos incompatibles, enlaces y excesos de límite se protegen y
+se mantienen intactos. Al crear avisos se serializa `CalendarAlerts::default()`
+completo antes de aplicar `notifyWeek` (GPUI `calendar/alerts.rs:99-140`).
+
+Seguir una serie nueva exige un horario vigente cargado (oficial o respaldo),
+nunca `previous`. Su ausencia o caducidad devuelve el error cerrado
+`calendarScheduleUnavailable`. Quitar una serie retirada y los no-ops no exigen
+un catálogo vigente. El reloj se pasa explícitamente al cálculo y los tests no
+usan la fecha real.
+
+`State.base` recibe `Args.data`, cuyo valor normal es `Root::from_env().hub()`,
+el mismo origen que las opciones normales del GPUI (`hub/src/main.rs:117-126`
+y `hub/src/shell.rs:1574`). En QA ambos pueden recibir una raíz aislada explícita.
+Las escrituras preservan valores admitidos, no el orden de claves ni el formato:
+la configuración aislada de hub-host no activa `serde_json/preserve_order`; al
+reescribir un `Value` sus mapas se ordenan por clave. No se cambia esa feature.
+
+Wire provisional 19: el número definitivo lo asigna el orquestador al aprobar,
+seguido del único rebase/regeneración final. Esta entrega solo modifica UTC,
+seguimiento y `notifyWeek`; editor de avisos, ICS y feed van aparte. Lanzamiento
+diferido pendiente en #2089. Sin cambios en IPC, services, runtime o derechos.
 
 ## Studio (`studio`, v17)
 

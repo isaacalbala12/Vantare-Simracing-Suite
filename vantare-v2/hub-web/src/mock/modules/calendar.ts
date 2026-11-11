@@ -45,6 +45,7 @@ export function create(context: MockContext): MockHandler {
       channels: { ...calendarDefaultAlerts.channels },
     },
     alertsRevision: calendarEmptyRevision,
+    documents: { prefs: "ready", following: "ready", alerts: "ready" },
   };
   config.utc = value.utc;
   config.following = [...value.following];
@@ -88,6 +89,7 @@ export function create(context: MockContext): MockHandler {
       case "calendar.utcSet":
         if (request.expectedRevision !== config.prefsRevision)
           return conflict();
+        if (config.utc === request.utc) break;
         config.utc = request.utc;
         value.utc = request.utc;
         config.prefsRevision = next();
@@ -95,17 +97,36 @@ export function create(context: MockContext): MockHandler {
       case "calendar.notifyWeekSet":
         if (request.expectedRevision !== config.alertsRevision)
           return conflict();
+        if (config.alerts.notifyWeek === request.enabled) break;
         config.alerts.notifyWeek = request.enabled;
         config.alertsRevision = next();
         break;
       case "calendar.followSet": {
         if (request.expectedRevision !== config.followingRevision)
           return conflict();
-        const found = [value.official, value.fallback, value.previous].some(
-          (s) => s?.series.some((s) => s.id === request.seriesId),
-        );
-        if (request.followed && !found)
-          return { kind: "failure", id, error: { kind: "rejected" } };
+        if (config.following.includes(request.seriesId) === request.followed)
+          break;
+        if (request.followed) {
+          const now = Date.now(),
+            active = [value.official, value.fallback].filter(
+              (s) =>
+                s &&
+                Date.parse(s.validFrom) <= now &&
+                now < Date.parse(s.validUntil),
+            );
+          if (!active.length)
+            return {
+              kind: "failure",
+              id,
+              error: { kind: "calendarScheduleUnavailable" },
+            };
+          if (
+            !active.some((s) =>
+              s?.series.some((s) => s.id === request.seriesId),
+            )
+          )
+            return { kind: "failure", id, error: { kind: "rejected" } };
+        }
         const ids = config.following.filter((s) => s !== request.seriesId);
         if (request.followed) ids.push(request.seriesId);
         if (ids.length > calendarSeriesLimit)

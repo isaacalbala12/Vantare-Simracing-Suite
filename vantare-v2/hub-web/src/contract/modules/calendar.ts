@@ -1,10 +1,16 @@
-import { duration, list, number, strings, text } from "../calendar-common";
+import {
+  duration,
+  isCalendarRevision,
+  list,
+  number,
+  strings,
+  text,
+} from "../calendar-common";
 import { isCalendarConfig } from "../calendar-config-validation";
 import {
   calendarDateLimit,
   calendarListLimit,
   calendarMinuteLimit,
-  calendarRevisionLength,
   calendarSeriesLimit,
   calendarTimestampLimit,
   calendarWeekdays,
@@ -158,10 +164,6 @@ export function isCalendarView(v: unknown) {
     typeof v.invalidCache === "boolean"
   );
 }
-const revision = (v: unknown) =>
-  typeof v === "string" &&
-  v.length === calendarRevisionLength &&
-  /^[0-9a-f]+$/u.test(v);
 export function isRequest(v: Record<string, unknown>) {
   switch (v.method) {
     case "calendar.load":
@@ -172,13 +174,13 @@ export function isRequest(v: Record<string, unknown>) {
       return (
         exact(v, ["method", "utc", "expectedRevision"]) &&
         typeof v.utc === "boolean" &&
-        revision(v.expectedRevision)
+        isCalendarRevision(v.expectedRevision)
       );
     case "calendar.notifyWeekSet":
       return (
         exact(v, ["method", "enabled", "expectedRevision"]) &&
         typeof v.enabled === "boolean" &&
-        revision(v.expectedRevision)
+        isCalendarRevision(v.expectedRevision)
       );
     case "calendar.followSet":
       return (
@@ -186,7 +188,7 @@ export function isRequest(v: Record<string, unknown>) {
         text(v.seriesId) &&
         v.seriesId.trim().length > 0 &&
         typeof v.followed === "boolean" &&
-        revision(v.expectedRevision)
+        isCalendarRevision(v.expectedRevision)
       );
     default:
       return false;
@@ -208,7 +210,9 @@ export function isReply(v: Record<string, unknown>) {
   }
 }
 export const isError = (v: Record<string, unknown>) =>
-  v.kind === "calendarConflict" &&
-  exact(v, ["kind", "current"]) &&
-  isCalendarConfig(v.current);
+  v.kind === "calendarScheduleUnavailable"
+    ? exact(v, ["kind"])
+    : v.kind === "calendarConflict" &&
+      exact(v, ["kind", "current"]) &&
+      isCalendarConfig(v.current);
 export const isEvent = (_v: Record<string, unknown>) => false;

@@ -1,5 +1,8 @@
-//! Local preferences: merge only the chosen field and compare observed bytes atomically.
-use super::{SERIES_LIMIT, State, TEXT_LIMIT, TIMESTAMP_LIMIT, nonblank, text, unique};
+//! Local GPUI documents, isolated validation and observed-byte CAS writes.
+use super::{
+    Following, Prefs, SERIES_LIMIT, State, TEXT_LIMIT, TIMESTAMP_LIMIT, date_millis, nonblank,
+    text, unique,
+};
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -31,7 +34,7 @@ pub enum CalendarBandMode {
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CalendarBand {
     pub series_id: String,
     pub from: u16,
@@ -43,7 +46,7 @@ pub struct CalendarBand {
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CalendarSlot {
     pub series_id: String,
     #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
@@ -51,7 +54,7 @@ pub struct CalendarSlot {
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CalendarChannels {
     pub windows: bool,
     pub in_track: bool,
@@ -66,21 +69,33 @@ impl Default for CalendarChannels {
         }
     }
 }
+fn default_lead() -> u8 {
+    10
+}
+fn yes() -> bool {
+    true
+}
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CalendarAlerts {
+    #[serde(default = "default_lead")]
     pub lead_min: u8,
+    #[serde(default)]
     pub bands: Vec<CalendarBand>,
+    #[serde(default)]
     pub slots: Vec<CalendarSlot>,
+    #[serde(default)]
     pub channels: CalendarChannels,
+    #[serde(default)]
     pub auto_launch: bool,
+    #[serde(default = "yes")]
     pub notify_week: bool,
 }
 impl Default for CalendarAlerts {
     fn default() -> Self {
         Self {
-            lead_min: 10,
+            lead_min: default_lead(),
             bands: vec![],
             slots: vec![],
             channels: CalendarChannels::default(),
@@ -105,44 +120,38 @@ impl CalendarAlerts {
     }
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CalendarDocumentState {
+    Ready,
+    Protected,
+    #[default]
+    Unavailable,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CalendarDocumentStates {
+    pub prefs: CalendarDocumentState,
+    pub following: CalendarDocumentState,
+    pub alerts: CalendarDocumentState,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CalendarConfigView {
     pub utc: bool,
-    pub prefs_revision: String,
+    pub prefs_revision: Option<String>,
     pub following: Vec<String>,
-    pub following_revision: String,
+    pub following_revision: Option<String>,
     pub alerts: CalendarAlerts,
-    pub alerts_revision: String,
+    pub alerts_revision: Option<String>,
+    pub documents: CalendarDocumentStates,
 }
 fn revision(bytes: Option<&[u8]>) -> String {
     let mut input = vec![u8::from(bytes.is_some())];
     input.extend_from_slice(bytes.unwrap_or_default());
     vantare_services::content_hash(&input)
-}
-struct Document {
-    value: Value,
-    bytes: Option<Vec<u8>>,
-    revision: String,
-}
-impl Document {
-    fn parse(bytes: Option<Vec<u8>>) -> Result<Self, HostError> {
-        let value = bytes
-            .as_deref()
-            .map(serde_json::from_slice)
-            .transpose()
-            .map_err(|_| HostError::Protected)?
-            .unwrap_or_else(|| json!({}));
-        if !value.is_object() || value.get("version").is_some_and(|v| v.as_u64() != Some(1)) {
-            return Err(HostError::Protected);
-        }
-        let revision = revision(bytes.as_deref());
-        Ok(Self {
-            value,
-            bytes,
-            revision,
-        })
-    }
 }
 #[cfg(any(test, feature = "bindings"))]
 pub(crate) fn empty_revision() -> String {
@@ -154,6 +163,92 @@ pub fn revision_valid(value: &str) -> bool {
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
+enum Contents {
+    Prefs(bool),
+    Following(Vec<String>),
+    Alerts(CalendarAlerts),
+}
+struct Document {
+    value: Value,
+    bytes: Option<Vec<u8>>,
+    revision: String,
+    contents: Contents,
+}
+impl Document {
+    fn parse(name: &str, bytes: Option<Vec<u8>>) -> Result<Self, HostError> {
+        let value = match bytes.as_deref() {
+            Some(bytes) => serde_json::from_slice(bytes).map_err(|_| HostError::Protected)?,
+            None => match name {
+                "calendar-prefs.json" => json!({"utc": false}),
+                "calendar-following.json" => json!({"seriesIds": []}),
+                "calendar-alerts.json" => serde_json::to_value(CalendarAlerts::default())
+                    .map_err(|_| HostError::Rejected)?,
+                _ => return Err(HostError::Rejected),
+            },
+        };
+        if !value.is_object() {
+            return Err(HostError::Protected);
+        }
+        let contents = match name {
+            "calendar-prefs.json" => {
+                let prefs: Prefs =
+                    serde_json::from_value(value.clone()).map_err(|_| HostError::Protected)?;
+                Contents::Prefs(prefs.utc)
+            }
+            "calendar-following.json" => {
+                let following: Following =
+                    serde_json::from_value(value.clone()).map_err(|_| HostError::Protected)?;
+                if !unique(&following.series_ids, SERIES_LIMIT) {
+                    return Err(HostError::Protected);
+                }
+                Contents::Following(following.series_ids)
+            }
+            "calendar-alerts.json" => {
+                let alerts: CalendarAlerts =
+                    serde_json::from_value(value.clone()).map_err(|_| HostError::Protected)?;
+                if !alerts.valid() {
+                    return Err(HostError::Protected);
+                }
+                Contents::Alerts(alerts)
+            }
+            _ => return Err(HostError::Rejected),
+        };
+        Ok(Self {
+            revision: revision(bytes.as_deref()),
+            bytes,
+            value,
+            contents,
+        })
+    }
+    fn field(&self) -> Value {
+        match &self.contents {
+            Contents::Prefs(value) => json!(value),
+            Contents::Following(ids) => json!(ids),
+            Contents::Alerts(alerts) => json!(alerts.notify_week),
+        }
+    }
+}
+impl CalendarConfigView {
+    fn observe(&mut self, doc: &Document) {
+        match &doc.contents {
+            Contents::Prefs(utc) => {
+                self.utc = *utc;
+                self.prefs_revision = Some(doc.revision.clone());
+                self.documents.prefs = CalendarDocumentState::Ready;
+            }
+            Contents::Following(ids) => {
+                self.following.clone_from(ids);
+                self.following_revision = Some(doc.revision.clone());
+                self.documents.following = CalendarDocumentState::Ready;
+            }
+            Contents::Alerts(alerts) => {
+                self.alerts.clone_from(alerts);
+                self.alerts_revision = Some(doc.revision.clone());
+                self.documents.alerts = CalendarDocumentState::Ready;
+            }
+        }
+    }
+}
 impl State {
     fn document(&self, name: &str) -> Result<Document, HostError> {
         let path = self.base.join(name);
@@ -164,99 +259,73 @@ impl State {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(HostError::Io),
             _ => {}
         }
-        Document::parse(files::read_optional(&path, CONFIG_LIMIT).map_err(|error| {
+        let bytes = files::read_optional(&path, CONFIG_LIMIT).map_err(|error| {
             if error.kind() == files::Kind::InvalidInput {
                 HostError::Protected
             } else {
                 HostError::Io
             }
-        })?)
+        })?;
+        Document::parse(name, bytes)
     }
-    pub fn config(&self) -> Result<CalendarConfigView, HostError> {
-        let prefs = self.document("calendar-prefs.json")?;
-        let following = self.document("calendar-following.json")?;
-        let alerts = self.document("calendar-alerts.json")?;
-        let utc = prefs
-            .value
-            .get("utc")
-            .map_or(Some(false), Value::as_bool)
-            .ok_or(HostError::Protected)?;
-        let ids: Vec<String> = following
-            .value
-            .get("seriesIds")
-            .cloned()
-            .map(serde_json::from_value)
-            .transpose()
-            .map_err(|_| HostError::Protected)?
-            .unwrap_or_default();
-        let settings: CalendarAlerts =
-            serde_json::from_value(alerts.value).map_err(|_| HostError::Protected)?;
-        if !unique(&ids, SERIES_LIMIT) || !settings.valid() {
-            return Err(HostError::Protected);
+    pub fn config(&mut self) -> CalendarConfigView {
+        let mut view = CalendarConfigView::default();
+        for name in [
+            "calendar-prefs.json",
+            "calendar-following.json",
+            "calendar-alerts.json",
+        ] {
+            match self.document(name) {
+                Ok(document) => view.observe(&document),
+                Err(error) => {
+                    let state = if error == HostError::Protected {
+                        CalendarDocumentState::Protected
+                    } else {
+                        CalendarDocumentState::Unavailable
+                    };
+                    match name {
+                        "calendar-prefs.json" => view.documents.prefs = state,
+                        "calendar-following.json" => view.documents.following = state,
+                        _ => view.documents.alerts = state,
+                    }
+                }
+            }
         }
-        Ok(CalendarConfigView {
-            utc,
-            prefs_revision: prefs.revision,
-            following: ids,
-            following_revision: following.revision,
-            alerts: settings,
-            alerts_revision: alerts.revision,
-        })
+        self.config_view.clone_from(&view);
+        view
     }
-    fn conflict(&self) -> HostError {
-        self.config().map_or_else(
-            |e| e,
-            |current| HostError::CalendarConflict {
-                current: Box::new(current),
-            },
-        )
+    fn conflict(&mut self) -> HostError {
+        HostError::CalendarConflict {
+            current: Box::new(self.config()),
+        }
+    }
+    fn observed_document(&mut self, name: &str, expected: &str) -> Result<Document, HostError> {
+        if !revision_valid(expected) {
+            return Err(HostError::Rejected);
+        }
+        let doc = self.document(name)?;
+        if doc.revision != expected {
+            return Err(self.conflict());
+        }
+        Ok(doc)
     }
     fn save_config(
-        &self,
+        &mut self,
         name: &str,
         field: &str,
         value: Value,
         expected: &str,
     ) -> Result<CalendarConfigView, HostError> {
-        if !revision_valid(expected) {
-            return Err(HostError::Rejected);
-        }
-        let mut current = self.config()?;
-        let observed = match name {
-            "calendar-prefs.json" => &current.prefs_revision,
-            "calendar-following.json" => &current.following_revision,
-            "calendar-alerts.json" => &current.alerts_revision,
-            _ => return Err(HostError::Rejected),
-        };
-        if observed != expected {
-            return Err(self.conflict());
-        }
-        let mut doc = self.document(name)?;
-        if doc.revision != expected {
-            return Err(self.conflict());
+        let mut doc = self.observed_document(name, expected)?;
+        if doc.field() == value {
+            self.config_view.observe(&doc);
+            return Ok(self.config_view.clone());
         }
         doc.value[field] = value;
         let bytes = serde_json::to_vec_pretty(&doc.value).map_err(|_| HostError::Rejected)?;
-        let next_revision = revision(Some(&bytes));
-        // Prepare the exact reply before committing. A later read cannot turn a saved
-        // action into a reported failure; other documents retain their own revisions.
-        match name {
-            "calendar-prefs.json" => {
-                current.utc = doc.value["utc"].as_bool().ok_or(HostError::Rejected)?;
-                current.prefs_revision = next_revision;
-            }
-            "calendar-following.json" => {
-                current.following = serde_json::from_value(doc.value["seriesIds"].clone())
-                    .map_err(|_| HostError::Rejected)?;
-                current.following_revision = next_revision;
-            }
-            "calendar-alerts.json" => {
-                current.alerts =
-                    serde_json::from_value(doc.value.clone()).map_err(|_| HostError::Rejected)?;
-                current.alerts_revision = next_revision;
-            }
-            _ => return Err(HostError::Rejected),
-        }
+        let saved = Document::parse(name, Some(bytes.clone()))?;
+        let mut next = self.config_view.clone();
+        next.observe(&saved);
         std::fs::create_dir_all(&self.base).map_err(|_| HostError::Io)?;
         files::save(
             &self.base.join(name),
@@ -273,7 +342,8 @@ impl State {
             files::Kind::InvalidInput => HostError::Rejected,
             files::Kind::Local => HostError::Io,
         })?;
-        Ok(current)
+        self.config_view.clone_from(&next);
+        Ok(next)
     }
     pub fn utc_set(&mut self, utc: bool, expected: &str) -> Result<CalendarConfigView, HostError> {
         let result = self.save_config("calendar-prefs.json", "utc", json!(utc), expected)?;
@@ -281,7 +351,7 @@ impl State {
         Ok(result)
     }
     pub fn notify_week_set(
-        &self,
+        &mut self,
         enabled: bool,
         expected: &str,
     ) -> Result<CalendarConfigView, HostError> {
@@ -298,32 +368,57 @@ impl State {
         followed: bool,
         expected: &str,
     ) -> Result<CalendarConfigView, HostError> {
-        if !revision_valid(expected) || !nonblank(id) || id.len() > TEXT_LIMIT || !text(id) {
+        self.follow_set_at(
+            id,
+            followed,
+            expected,
+            chrono::Utc::now().timestamp_millis(),
+        )
+    }
+    fn follow_set_at(
+        &mut self,
+        id: &str,
+        followed: bool,
+        expected: &str,
+        now: i64,
+    ) -> Result<CalendarConfigView, HostError> {
+        if !nonblank(id) || id.len() > TEXT_LIMIT || !text(id) {
             return Err(HostError::Rejected);
         }
-        let config = self.config()?;
-        if config.following_revision != expected {
-            return Err(self.conflict());
+        let doc = self.observed_document("calendar-following.json", expected)?;
+        let Contents::Following(mut ids) = doc.contents else {
+            return Err(HostError::Rejected);
+        };
+        if ids.iter().any(|value| value == id) == followed {
+            let result =
+                self.save_config("calendar-following.json", "seriesIds", json!(ids), expected)?;
+            self.view.following.clone_from(&result.following);
+            return Ok(result);
         }
-        if followed
-            && !self
+        if followed {
+            let mut active = self
                 .view
                 .official
                 .iter()
                 .chain(&self.view.fallback)
-                .chain(&self.view.previous)
-                .flat_map(|s| &s.series)
-                .any(|s| s.id == id)
-        {
-            return Err(HostError::Rejected);
-        }
-        let mut ids = config.following;
-        ids.retain(|v| v != id);
-        if followed {
+                .filter(|s| {
+                    date_millis(&s.valid_from)
+                        .zip(date_millis(&s.valid_until))
+                        .is_some_and(|(from, until)| from <= now && now < until)
+                })
+                .peekable();
+            if active.peek().is_none() {
+                return Err(HostError::CalendarScheduleUnavailable);
+            }
+            if !active.any(|s| s.series.iter().any(|series| series.id == id)) {
+                return Err(HostError::Rejected);
+            }
+            if ids.len() == SERIES_LIMIT {
+                return Err(HostError::Rejected);
+            }
             ids.push(id.into());
-        }
-        if !unique(&ids, SERIES_LIMIT) {
-            return Err(HostError::Rejected);
+        } else {
+            ids.retain(|value| value != id);
         }
         let result =
             self.save_config("calendar-following.json", "seriesIds", json!(ids), expected)?;
@@ -331,7 +426,6 @@ impl State {
         Ok(result)
     }
 }
-
 #[cfg(test)]
 #[path = "config_tests.rs"]
 mod tests;

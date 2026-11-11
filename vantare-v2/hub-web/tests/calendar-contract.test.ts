@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import validationCorpus from "../fixtures/calendar-validation.json";
 import coreFixture from "../fixtures/core-offline.json";
 import {
+  isCalendarAlerts,
+  isCalendarConfig,
+} from "../src/contract/calendar-config-validation";
+import {
+  calendarAlertLeads,
   calendarMinuteLimit,
   calendarTextLimit,
 } from "../src/contract/generated/calendar";
@@ -16,6 +21,12 @@ import {
   isRequest,
 } from "../src/contract/modules/calendar";
 import { create } from "../src/mock/modules/calendar";
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-08T17:47:13Z"));
+});
+afterEach(() => vi.useRealTimers());
 
 const messages = corpus.host as unknown as HostToUi[];
 const load = messages.find(
@@ -202,6 +213,7 @@ it("mock writes use revisions and refuse the previous revision without changing 
   )
     throw new Error("missing config");
   const revision = loaded.result.value.prefsRevision;
+  if (!revision) throw new Error("prefs not ready");
   expect(
     host({
       kind: "request",
@@ -261,6 +273,7 @@ it("mock favorites obey the publication and CAS, including an explicit removal",
   const seriesId = populated.official?.series[0].id;
   if (!seriesId) throw new Error("missing public series");
   const expectedRevision = loaded.result.value.followingRevision;
+  if (!expectedRevision) throw new Error("following not ready");
   const add = host({
     kind: "request",
     id: 21,
@@ -289,6 +302,7 @@ it("mock favorites obey the publication and CAS, including an explicit removal",
     error: { kind: "calendarConflict", current: { following: [seriesId] } },
   });
   const revision = add.result.value.followingRevision;
+  if (!revision) throw new Error("following not ready");
   expect(
     host({
       kind: "request",
@@ -313,4 +327,129 @@ it("mock favorites obey the publication and CAS, including an explicit removal",
       },
     }),
   ).toMatchObject({ result: { value: { following: [] } } });
+});
+
+function configSample() {
+  const sample = messages.find(
+    (m) => m.kind === "response" && m.result.method === "calendar.configLoad",
+  );
+  if (
+    sample?.kind !== "response" ||
+    sample.result.method !== "calendar.configLoad"
+  )
+    throw new Error("missing config corpus");
+  return structuredClone(sample.result.value);
+}
+it("validates each document state and its nullable revision without accepting extra keys", () => {
+  const config = configSample();
+  expect(isCalendarConfig(config)).toBe(true);
+  expect(isCalendarConfig({ ...config, extra: true })).toBe(false);
+  expect(isCalendarConfig({ ...config, prefsRevision: null })).toBe(false);
+  expect(
+    isCalendarConfig({
+      ...config,
+      documents: { ...config.documents, prefs: "protected" },
+    }),
+  ).toBe(false);
+  expect(
+    isCalendarConfig({
+      ...config,
+      prefsRevision: null,
+      documents: { ...config.documents, prefs: "protected" },
+    }),
+  ).toBe(true);
+  expect(
+    isCalendarConfig({
+      ...config,
+      documents: { ...config.documents, prefs: "unknown" },
+    }),
+  ).toBe(false);
+  expect(
+    isCalendarConfig({
+      ...config,
+      documents: { ...config.documents, extra: "ready" },
+    }),
+  ).toBe(false);
+});
+it("rejects invalid alerts, unknown keys, incomplete channels and invalid band enums/ranges", () => {
+  const alerts = configSample().alerts;
+  for (const leadMin of calendarAlertLeads)
+    expect(isCalendarAlerts({ ...alerts, leadMin })).toBe(true);
+  const band = {
+    seriesId: "qa",
+    from: 1200,
+    to: 1380,
+    days: "all",
+    mode: "each",
+  };
+  for (const value of [
+    { ...alerts, extra: 1 },
+    { ...alerts, version: 1 },
+    { ...alerts, leadMin: 7 },
+    { ...alerts, channels: { windows: true, inTrack: true } },
+    { ...alerts, channels: { ...alerts.channels, extra: true } },
+    { ...alerts, bands: [{ ...band, from: 1380 }] },
+    { ...alerts, bands: [{ ...band, from: 1400 }] },
+    { ...alerts, bands: [{ ...band, days: "friday" }] },
+    { ...alerts, bands: [{ ...band, mode: "any" }] },
+    { ...alerts, bands: [{ ...band, extra: true }] },
+    { ...alerts, slots: [{ seriesId: "qa", at: 1, extra: true }] },
+  ])
+    expect(isCalendarAlerts(value)).toBe(false);
+});
+it("mock noops keep all revisions and distinguish absence of a current schedule", () => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  core.access.verified = true;
+  core.access.blocked = false;
+  core.access.calendar = true;
+  const host = create({
+    core,
+    sceneName: "calendar-test",
+    visual: null,
+    notes: [],
+    note: () => {},
+  });
+  const config = configSample();
+  const requests = [
+    {
+      method: "calendar.utcSet",
+      utc: false,
+      expectedRevision: config.prefsRevision,
+    },
+    {
+      method: "calendar.notifyWeekSet",
+      enabled: true,
+      expectedRevision: config.alertsRevision,
+    },
+    {
+      method: "calendar.followSet",
+      seriesId: "absent",
+      followed: false,
+      expectedRevision: config.followingRevision,
+    },
+  ];
+  for (const request of requests) {
+    if (!request.expectedRevision)
+      throw new Error("ready corpus revision required");
+    const response = host({
+      kind: "request",
+      id: 40,
+      request,
+    } as import("../src/contract/generated/contract").UiToHost);
+    expect(response).toMatchObject({ result: { value: config } });
+  }
+  if (!config.followingRevision)
+    throw new Error("ready corpus revision required");
+  expect(
+    host({
+      kind: "request",
+      id: 41,
+      request: {
+        method: "calendar.followSet",
+        seriesId: "qa",
+        followed: true,
+        expectedRevision: config.followingRevision,
+      },
+    }),
+  ).toMatchObject({ error: { kind: "calendarScheduleUnavailable" } });
 });

@@ -8,6 +8,8 @@ pub(crate) fn typescript() -> String {
     declare::<crate::calendar::CalendarSlot>(&mut text);
     declare::<crate::calendar::CalendarChannels>(&mut text);
     declare::<crate::calendar::CalendarAlerts>(&mut text);
+    declare::<crate::calendar::CalendarDocumentState>(&mut text);
+    declare::<crate::calendar::CalendarDocumentStates>(&mut text);
     declare::<crate::calendar::CalendarConfigView>(&mut text);
 
     declare::<crate::calendar::CalendarRecurrence>(&mut text);
@@ -98,18 +100,36 @@ pub(crate) fn typescript() -> String {
         "calendarDefaultAlerts",
         crate::calendar::CalendarAlerts::default()
     );
+    constants!(
+        &mut text,
+        "calendarDocumentStates",
+        [
+            crate::calendar::CalendarDocumentState::Ready,
+            crate::calendar::CalendarDocumentState::Protected,
+            crate::calendar::CalendarDocumentState::Unavailable
+        ]
+    );
     text
 }
 fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
     let config = crate::calendar::CalendarConfigView {
         utc: false,
-        prefs_revision: vantare_services::content_hash(&[0]),
+        prefs_revision: Some(vantare_services::content_hash(&[0])),
         following: vec![],
-        following_revision: vantare_services::content_hash(&[0]),
+        following_revision: Some(vantare_services::content_hash(&[0])),
         alerts: crate::calendar::CalendarAlerts::default(),
-        alerts_revision: vantare_services::content_hash(&[0]),
+        alerts_revision: Some(vantare_services::content_hash(&[0])),
+        documents: crate::calendar::CalendarDocumentStates {
+            prefs: crate::calendar::CalendarDocumentState::Ready,
+            following: crate::calendar::CalendarDocumentState::Ready,
+            alerts: crate::calendar::CalendarDocumentState::Ready,
+        },
     };
     let host = vec![
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::CalendarScheduleUnavailable,
+        },
         HostToUi::Failure {
             id: 1,
             error: HostError::CalendarConflict {
@@ -143,6 +163,15 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
                 ..Default::default()
             }),
         }),
+        sample_response(Reply::CalendarConfigLoad {
+            value: Box::new(crate::calendar::CalendarConfigView {
+                documents: crate::calendar::CalendarDocumentStates {
+                    prefs: crate::calendar::CalendarDocumentState::Protected,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+        }),
     ];
     let ui = vec![
         UiToHost::Request {
@@ -153,14 +182,14 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             id: 1,
             request: Request::CalendarUtcSet {
                 utc: true,
-                expected_revision: config.prefs_revision,
+                expected_revision: config.prefs_revision.expect("sample prefs revision"),
             },
         },
         UiToHost::Request {
             id: 1,
             request: Request::CalendarNotifyWeekSet {
                 enabled: false,
-                expected_revision: config.alerts_revision,
+                expected_revision: config.alerts_revision.expect("sample alerts revision"),
             },
         },
         UiToHost::Request {
@@ -168,7 +197,9 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             request: Request::CalendarFollowSet {
                 series_id: "qa".into(),
                 followed: true,
-                expected_revision: config.following_revision,
+                expected_revision: config
+                    .following_revision
+                    .expect("sample following revision"),
             },
         },
         UiToHost::Request {

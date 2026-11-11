@@ -440,9 +440,6 @@
 .v-studio-catalog .v-field {
   width: 100%;
 }
-.v-studio-catalog .v-search .v-field {
-  min-width: 0;
-}
 @media (min-width: 1600px) {
   .v-studio-topbar .v-studio-layout {
     width: 180px;
@@ -644,4 +641,7 @@
   .v-studio-overlay[data-recent="true"] {
     animation: none;
   }
+}
+.v-studio-catalog .v-search .v-field {
+  min-width: 0;
 }

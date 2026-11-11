@@ -7,13 +7,10 @@ import { civilDay } from "../../ui/calendarDate";
 import { alertAt, daily } from "./rows";
 import { starts } from "./schedule";
 
-export type CalendarDayEntry = {
-  series: CalendarSeries;
-  kind: "band" | "open" | "event";
-  starts: number[];
-  from?: number;
-  to?: number;
-};
+export type CalendarDayEntry = { series: CalendarSeries; starts: number[] } & (
+  | { kind: "band"; from: number; to: number }
+  | { kind: "open" | "event" }
+);
 // Uses civil midnights, including 23/25-hour days, and the publication's exclusive end.
 export function days(
   schedule: CalendarSchedule,

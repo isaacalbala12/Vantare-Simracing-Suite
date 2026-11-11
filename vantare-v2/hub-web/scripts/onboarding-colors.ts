@@ -55,6 +55,21 @@ for (const color of colors)
 css += '}\n[data-palette="vantare"][data-scheme="dark"] .v-onboarding {\n';
 for (const color of mapped.keys()) css += `  --ob-c-${color}: #${color};\n`;
 css += "}\n";
+// The art panel always takes the dark hero, also in a light Hub.
+const tokens = readFileSync(
+  new URL("../src/renderer/design/generated/tokens.css", import.meta.url),
+  "utf8",
+);
+let heroes = 0;
+for (const match of tokens.matchAll(
+  /\[data-palette="([a-z]+)"\]\[data-scheme="dark"\] \{([\s\S]*?)\n\}/g,
+)) {
+  const gradient = /--grad-hero: ([^;]+);/.exec(match[2])?.[1];
+  if (!gradient) throw new Error(`Missing dark hero for ${match[1]}`);
+  css += `[data-palette="${match[1]}"] .v-onboarding { --ob-art-gradient: ${gradient}; }\n`;
+  heroes++;
+}
+if (!heroes) throw new Error("Missing native dark hero tokens");
 const target = new URL(
   "../src/renderer/design/generated/onboarding.css",
   import.meta.url,

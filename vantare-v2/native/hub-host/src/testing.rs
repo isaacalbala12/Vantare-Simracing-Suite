@@ -17,7 +17,9 @@ pub const PREVIEW_ID_LENGTH: usize = 64;
 pub const UPDATED_AT_MAX_BYTES: usize = 128;
 pub const SCREENSHOT_JPEG_MAX: usize = (10 * 1024_usize).div_ceil(3) * 4;
 pub const SCREENSHOT_SIDE_MAX: u32 = 1920;
-pub const SCREENSHOT_BYTES_MAX: u32 = vantare_services::report::screenshots::MAX_BYTES as u32;
+// Services exposes MAX_BYTES only behind its network feature, disabled in hub-host.
+// Keep the bound local until it is exported by the IPC document contract.
+pub const SCREENSHOT_BYTES_MAX: u32 = 400 * 1024;
 pub const SCREENSHOT_COUNT_MAX: usize = 3;
 pub const REPORT_STATES: [&str; 6] = [
     "received",

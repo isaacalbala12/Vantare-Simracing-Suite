@@ -9,6 +9,7 @@ import { OnboardingFrame } from "../../ui/onboarding/Frame";
 import {
   IntroArt,
   IntroBody,
+  IntroLayoutNotice,
   type IntroStep,
   OnboardingViewport,
   type Simulators,
@@ -150,6 +151,9 @@ export function OnboardingIntroPreview({
           toggleSimulator={toggleSimulator}
           toggleStyle={toggleStyle}
         />
+        {step === 2 && query.data && !query.data.layoutReady && (
+          <IntroLayoutNotice />
+        )}
         {query.error && (
           <Button onClick={() => void query.refetch()}>{t.retry}</Button>
         )}

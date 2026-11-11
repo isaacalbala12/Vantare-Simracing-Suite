@@ -1,6 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PNG } from "pngjs";
@@ -14,6 +21,74 @@ function png(width = 2, height = 2) {
   return image;
 }
 describe("visual comparison", () => {
+  it("captures without metrics or a diff when a reference is explicitly invalid", () => {
+    const directory = mkdtempSync(join(tmpdir(), "invalid reference "));
+    try {
+      const refs = join(directory, "refs");
+      mkdirSync(join(refs, "light"), { recursive: true });
+      const bytes = PNG.sync.write(png(1440, 900));
+      writeFileSync(join(refs, "light", "onboarding-2.png"), bytes);
+      writeFileSync(
+        join(refs, "light", "onboarding-2.png.capture.json"),
+        JSON.stringify({ png: referenceReceiptHash(bytes) }),
+      );
+      writeFileSync(
+        join(refs, "light", "capture-batch.json"),
+        JSON.stringify([
+          {
+            scene: "onboarding-2",
+            size: [1440, 900],
+            appearance: "vantare-light",
+          },
+        ]),
+      );
+      const supplied = join(directory, "current.png");
+      writeFileSync(supplied, bytes);
+      const output = join(directory, "evidence");
+      execFileSync(
+        process.execPath,
+        [
+          "--experimental-strip-types",
+          "scripts/visual-diff.ts",
+          "--scene",
+          "onboarding-2",
+          "--theme",
+          "light",
+          "--references",
+          refs,
+          "--output",
+          output,
+          "--current",
+          supplied,
+          "--capture-only",
+          "--invalid-reference-reason",
+          "bank panel empty",
+        ],
+        { encoding: "utf8" },
+      );
+      const [report] = JSON.parse(
+        readFileSync(join(output, "report.json"), "utf8"),
+      );
+      expect(readFileSync(join(output, "report.md"), "utf8")).not.toContain(
+        "%",
+      );
+      expect(report.status).toBe("captured");
+      expect(report.referenceStatus).toBe("invalid");
+      expect(report).not.toHaveProperty("exactPercent");
+      expect(report).not.toHaveProperty("perceptualPercent");
+      expect(
+        existsSync(join(output, "light", "onboarding-2", "diff.png")),
+      ).toBe(false);
+      expect(
+        existsSync(join(output, "light", "onboarding-2", "reference.png")),
+      ).toBe(false);
+      expect(
+        readFileSync(join(output, "light", "onboarding-2", "current.png")),
+      ).toEqual(bytes);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
   it("bank CLI produces the native receipt for a path with spaces", () => {
     const directory = mkdtempSync(join(tmpdir(), "bank receipt "));
     try {

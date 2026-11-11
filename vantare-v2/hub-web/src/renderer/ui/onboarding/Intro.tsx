@@ -66,3 +66,11 @@ export function IntroArt({
     <KitArt kit={kitForStyles(styles)} />
   );
 }
+
+export function IntroLayoutNotice() {
+  return (
+    <p className="v-ob-layout-unavailable" role="status">
+      {t.layoutUnavailable}
+    </p>
+  );
+}

@@ -78,12 +78,16 @@ impl Client {
         self.request_before(command, std::time::Instant::now())
     }
     pub(crate) fn request_before(
-        &mut self, command: Command, accepted: std::time::Instant,
+        &mut self,
+        command: Command,
+        accepted: std::time::Instant,
     ) -> Result<Reply, HostError> {
         self.request_before_clock(command, accepted, std::time::Instant::now)
     }
     fn request_before_clock(
-        &mut self, command: Command, accepted: std::time::Instant,
+        &mut self,
+        command: Command,
+        accepted: std::time::Instant,
         now: impl Fn() -> std::time::Instant,
     ) -> Result<Reply, HostError> {
         if !crate::service_queue::can_start(accepted, now()) {
@@ -175,7 +179,8 @@ mod tests {
         };
         let accepted = std::time::Instant::now();
         assert!(matches!(
-            client.request_before_clock(Command::MailConsentGet, accepted, || accepted + std::time::Duration::from_secs(15)),
+            client.request_before_clock(Command::MailConsentGet, accepted, || accepted
+                + std::time::Duration::from_secs(15)),
             Err(HostError::Busy)
         ));
         assert_eq!(client.sequence, 0);

@@ -7,6 +7,7 @@ use ts_rs::TS;
 pub enum Request {
     #[serde(rename = "calendar.alertsSave")]
     CalendarAlertsSave {
+        #[serde(deserialize_with = "crate::calendar::config::deserialize_complete_alerts")]
         alerts: Box<crate::calendar::CalendarAlerts>,
         #[serde(rename = "expectedRevision")]
         expected_revision: String,

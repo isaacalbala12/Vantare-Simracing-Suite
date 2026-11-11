@@ -439,3 +439,7 @@ mod tests;
 
 #[path = "alerts_save.rs"]
 mod alerts_save;
+
+#[path = "alerts_input.rs"]
+mod alerts_input;
+pub(crate) use alerts_input::deserialize_complete_alerts;

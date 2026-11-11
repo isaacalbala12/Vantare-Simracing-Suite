@@ -346,7 +346,9 @@ o al inicio con Windows, por lo que su texto no afirma que fallase un lanzamient
 ### Escritura de avisos de Calendario (wire v23 provisional)
 
 `calendar.alertsSave { alerts, expectedRevision }` guarda el documento tipado de
-avisos con CAS local y devuelve `CalendarConfigView`. El anfitrión exige
+avisos con CAS local y devuelve `CalendarConfigView`. El wire exige todos sus
+campos (incluidos días/modo de cada banda y los tres canales); los defaults de
+compatibilidad solo se admiten al leer el documento antiguo del disco. El anfitrión exige
 `AccessView.calendar`, cuenta verificada y no bloqueada antes de acceder al disco.
 No hay rutas, argumentos de programas ni peticiones a servicios. La versión
 final se confirma al aprobar el PR.

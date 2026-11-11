@@ -388,8 +388,7 @@ fn alerts_save_keeps_noops_absent_and_uses_the_same_observed_cas() {
     let revision = initial.alerts_revision.unwrap();
     assert_eq!(state.alerts_save_at(&CalendarAlerts::default(), &revision, 0).unwrap().alerts_revision, Some(revision.clone()));
     assert!(!root.0.join("calendar-alerts.json").exists());
-    let mut alerts = CalendarAlerts::default();
-    alerts.channels.sound = true;
+    let mut alerts = CalendarAlerts { channels: CalendarChannels { sound: true, ..Default::default() }, ..Default::default() };
     let saved = state.alerts_save_at(&alerts, &revision, 0).unwrap();
     assert_eq!(saved.alerts, alerts);
     assert_eq!(serde_json::from_slice::<CalendarAlerts>(&root.bytes("calendar-alerts.json")).unwrap(), alerts);
@@ -405,8 +404,7 @@ fn alerts_save_isolates_protected_documents_and_never_enables_auto_launch() {
     root.seed("calendar-following.json", b"{}");
     let mut state = root.state();
     let revision = state.config().alerts_revision.unwrap();
-    let mut alerts = CalendarAlerts::default();
-    alerts.auto_launch = true;
+    let mut alerts = CalendarAlerts { auto_launch: true, ..Default::default() };
     assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
     assert!(!root.0.join("calendar-alerts.json").exists());
     alerts.auto_launch = false;
@@ -489,11 +487,9 @@ fn alerts_save_rejects_malformed_preferences_before_writing() {
     let root = Root::new();
     let mut state = root.state();
     let revision = state.config().alerts_revision.unwrap();
-    let mut alerts = CalendarAlerts::default();
-    alerts.lead_min = 2;
+    let mut alerts = CalendarAlerts { lead_min: 2, ..Default::default() };
     assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
-    alerts = CalendarAlerts::default();
-    alerts.bands = vec![CalendarBand { series_id: "qa".into(), from: 0, to: 60, days: CalendarDays::All, mode: CalendarBandMode::Each }; BANDS_LIMIT + 1];
+    alerts = CalendarAlerts { bands: vec![CalendarBand { series_id: "qa".into(), from: 0, to: 60, days: CalendarDays::All, mode: CalendarBandMode::Each }; BANDS_LIMIT + 1], ..Default::default() };
     assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
     alerts.bands.clear();
     alerts.slots = vec![CalendarSlot { series_id: "qa".into(), at: 0 }; SLOTS_LIMIT + 1];

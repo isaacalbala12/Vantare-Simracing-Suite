@@ -59,11 +59,15 @@ export function Gallery() {
     }
   }, [selected]);
   useLayoutEffect(() => {
-    if (state.added && state.added.revision === view?.revision)
-      grid.current
-        ?.querySelector<HTMLElement>(`[data-widget="${state.added.id}"]`)
+    const added = state.added;
+    if (added && added.revision === view?.revision)
+      Array.from(
+        grid.current?.querySelectorAll<HTMLElement>("[data-widget]") ?? [],
+      )
+        .find((node) => node.dataset.widget === added.id)
         ?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
   }, [state.added, view?.revision]);
+
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (document.querySelector('[role="dialog"],[role="alertdialog"]'))

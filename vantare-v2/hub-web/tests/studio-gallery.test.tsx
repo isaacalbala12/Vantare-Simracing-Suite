@@ -93,6 +93,47 @@ async function tabTo(
   expect(document.activeElement).toBe(element);
 }
 describe("Studio gallery", () => {
+  it("explains unavailable native actions with keyboard focus without activating them", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    const user = userEvent.setup();
+    const hint = screen.getByLabelText(t.editHelp);
+    await tabTo(user, hint);
+    expect((await screen.findByRole("tooltip")).textContent).toContain(
+      t.editHelp,
+    );
+    const before = requests.mock.calls.length;
+    await user.keyboard("{Enter} ");
+    expect(requests.mock.calls.length).toBe(before);
+    expect(
+      screen.getByRole("button", { name: t.edit }).hasAttribute("disabled"),
+    ).toBe(true);
+  });
+  it("moves vertically by the catalog's actual columns after resizing", async () => {
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: t.addShort }));
+    const grid = Array.from(
+      document.querySelectorAll<HTMLFieldSetElement>(".v-studio-catalog-grid"),
+    ).find(
+      (node) => node.querySelectorAll("[data-kind]:not(:disabled)").length >= 4,
+    );
+    if (!grid) throw new Error("Missing populated catalog group");
+    const buttons = Array.from(
+      grid.querySelectorAll<HTMLButtonElement>("[data-kind]:not(:disabled)"),
+    );
+    grid.style.gridTemplateColumns = "100px 100px 100px";
+    await tabTo(user, buttons[0]);
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(buttons[3]);
+    await user.keyboard("{ArrowUp}");
+    expect(document.activeElement).toBe(buttons[0]);
+    grid.style.gridTemplateColumns = "300px";
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(buttons[1]);
+  });
   it("toggles membership with a revision and offers no geometry controls", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();

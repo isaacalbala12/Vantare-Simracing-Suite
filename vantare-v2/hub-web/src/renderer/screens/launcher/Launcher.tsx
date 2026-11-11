@@ -6,9 +6,15 @@ import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
+import {
+  ProfileActionFeedback,
+  type ProfileCardAction,
+  RemoveProfileDialog,
+} from "../../ui/launcher/ProfileActions";
 import { LauncherProfiles } from "../../ui/launcher/Profiles";
 import { snapshot, useProfileEditorState } from "./editor-state";
 import { ProfileEditor } from "./ProfileEditor";
+import { useProfileAction } from "./profile-actions";
 import { profileFailure } from "./profile-errors";
 import {
   launcherKey,
@@ -31,6 +37,8 @@ function failureText(failure: unknown): string {
 }
 export function Launcher() {
   const { client } = useHost();
+  const action = useProfileAction();
+  const [removing, setRemoving] = useState<LauncherProfile>();
   const editor = useProfileEditorState();
   const query = useQueryClient();
   const { view, selected } = useLauncherSnapshot();
@@ -143,6 +151,38 @@ export function Launcher() {
       if (alive.current) setPending(false);
     }
   }
+  function profileAction(profile: LauncherProfile, kind: ProfileCardAction) {
+    if (!view || pending || action.pending) return;
+    if (kind === "remove") {
+      setRemoving(profile);
+      return;
+    }
+    const baseRevision = view.revision;
+    switch (kind) {
+      case "favorite":
+        void action.execute({
+          method: "launcher.profile.favorite",
+          id: profile.id,
+          favorite: !profile.favorite,
+          baseRevision,
+        });
+        break;
+      case "duplicate":
+        void action.execute({
+          method: "launcher.profile.duplicate",
+          id: profile.id,
+          baseRevision,
+        });
+        break;
+      case "trigger":
+        void action.execute({
+          method: "launcher.trigger",
+          id: view.lmuTrigger === profile.id ? null : profile.id,
+          baseRevision,
+        });
+        break;
+    }
+  }
   if (editor.value) return <ProfileEditor />;
   if (!view)
     return error ? (
@@ -159,18 +199,43 @@ export function Launcher() {
       <Skeleton label={text.loading} />
     );
   return (
-    <LauncherProfiles
-      view={view}
-      selected={selected}
-      pending={pending}
-      error={error}
-      accepted={accepted}
-      onSelect={setSelected}
-      onEdit={(id) => void openEditor(id)}
-      onNew={() => void openEditor(null)}
-      onApplications={() => editor.setTab("applications")}
-      onLaunch={(profile) => void launch(profile)}
-      onReload={() => void reload()}
-    />
+    <>
+      {action.failure && (
+        <ProfileActionFeedback
+          conflict={action.failure.revision !== undefined}
+          pending={action.pending}
+          onRetry={action.retry}
+          onDiscard={action.discard}
+        />
+      )}
+      <LauncherProfiles
+        view={view}
+        selected={selected}
+        pending={pending || action.pending}
+        error={error}
+        accepted={accepted}
+        onAction={profileAction}
+        onSelect={setSelected}
+        onEdit={(id) => void openEditor(id)}
+        onNew={() => void openEditor(null)}
+        onApplications={() => editor.setTab("applications")}
+        onLaunch={(profile) => void launch(profile)}
+        onReload={() => void reload()}
+      />
+      <RemoveProfileDialog
+        id={removing?.id}
+        pending={action.pending}
+        onCancel={() => setRemoving(undefined)}
+        onConfirm={() => {
+          if (!removing) return;
+          void action.execute({
+            method: "launcher.profile.delete",
+            id: removing.id,
+            baseRevision: view.revision,
+          });
+          setRemoving(undefined);
+        }}
+      />
+    </>
   );
 }

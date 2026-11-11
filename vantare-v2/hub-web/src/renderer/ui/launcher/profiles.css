@@ -459,3 +459,15 @@ button.v-launcher-app-tile {
   white-space: nowrap;
   padding: 4px 0;
 }
+
+.v-launcher-quick {
+  display: none;
+}
+@media (min-height: 1000px) {
+  .v-launcher-quick {
+    display: flex;
+    border-top: 1px solid var(--line-1);
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+}

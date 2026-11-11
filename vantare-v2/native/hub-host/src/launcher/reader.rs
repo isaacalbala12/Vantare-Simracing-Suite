@@ -200,6 +200,17 @@ mod tests {
     }
 
     #[test]
+    fn reload_invalidates_cached_availability_without_starting_a_parallel_worker() {
+        let mut reader = Reader::new(PathBuf::from("unused-launcher-fixture.json"));
+        let revision = "0".repeat(64);
+        reader.scanned_revision = Some(revision.clone());
+        assert!(reader.discovered(&revision).is_some());
+        reader.rescan();
+        assert!(reader.discovered(&revision).is_none());
+        assert!(reader.scan.is_none());
+        assert!(!reader.opened);
+    }
+    #[test]
     fn no_subscription_means_no_discovery_or_status_watch() {
         let mut reader = Reader::new(PathBuf::from("absent-launcher-fixture.json"));
         assert!(reader.changed(false, Instant::now()).is_none());

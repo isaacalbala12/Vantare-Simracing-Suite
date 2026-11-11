@@ -166,5 +166,8 @@ fn local_report_dispatch_denies_unverified_and_blocked_accounts_without_services
     }
 }
 
+#[cfg(windows)]
+#[path = "protocol/modules/launcher/read_tests.rs"]
+mod launcher_read_tests;
 #[path = "testing_deferred_tests.rs"]
 mod testing_deferred_tests;

@@ -14,6 +14,7 @@ export const launcherText = {
   addApp: "+ Añadir app",
   available: "Lista",
   unavailable: "No disponible",
+  nextOptions: "Opciones · próxima vez",
   advancedOptions: "Opciones avanzadas",
   alreadyRunning: "Si una app ya está abierta",
   firstDelay: "Esperar antes del primer paso",

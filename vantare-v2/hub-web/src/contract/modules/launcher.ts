@@ -5,11 +5,13 @@ import {
   isPickedApp,
 } from "../apps-validation";
 import { isLauncher, isLauncherLaunch } from "../launcher-validation";
+import { isProfileAction, isProfileActionMethod } from "../profile-actions";
 import { isProfileEditor, isProfileRequest } from "../profile-validation";
 import { exact } from "../validation-common";
 
 export { launcherMethods as methods } from "../generated/launcher";
 export function isRequest(value: Record<string, unknown>): boolean {
+  if (isProfileActionMethod(value.method)) return isProfileAction(value);
   if (
     typeof value.method === "string" &&
     (value.method.startsWith("launcher.app.") ||
@@ -29,6 +31,8 @@ export function isRequest(value: Record<string, unknown>): boolean {
         exact(value, ["method"]);
 }
 export function isReply(value: Record<string, unknown>): boolean {
+  if (isProfileActionMethod(value.method))
+    return exact(value, ["method", "value"]) && isLauncher(value.value);
   if (value.method === "launcher.catalog")
     return exact(value, ["method", "value"]) && isCatalog(value.value);
   if (value.method === "launcher.app.get")

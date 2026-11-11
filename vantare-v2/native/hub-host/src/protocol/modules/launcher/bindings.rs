@@ -13,6 +13,7 @@ use std::fmt::Write as _;
 
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<crate::launcher::actions::ProfileOption>(&mut text);
     declare::<ExecutableSelection>(&mut text);
     declare::<AppDraft>(&mut text);
     declare::<AppEditor>(&mut text);
@@ -55,10 +56,36 @@ pub(crate) fn corpus() -> serde_json::Value {
         id: 1,
         path: None,
     }));
+    host.extend(
+        profile_action_reply_samples()
+            .into_iter()
+            .map(|result| HostToUi::Response { id: 1, result }),
+    );
+    ui.extend(
+        profile_action_request_samples()
+            .into_iter()
+            .map(|request| UiToHost::Request { id: 1, request }),
+    );
+    let Reply::LauncherProfileGet { value } = profile_keys_sample() else {
+        unreachable!("keyed editor sample");
+    };
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::LauncherProfileSave {
+            draft: value.draft,
+            base_revision: value.revision,
+        },
+    });
     serde_json::json!({"host":host,"ui":ui})
 }
 
 fn append_launcher_constants(text: &mut String) {
+    writeln!(
+        text,
+        "export const launcherFirstDelays = {} as const;",
+        serde_json::to_string(&crate::launcher::actions::FIRST_STEP_DELAYS).expect("first delays")
+    )
+    .expect("constants");
     text.push_str("export const launcherLimits = ");
     text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
     text.push_str(" as const;\n");
@@ -288,6 +315,53 @@ fn launcher_ui_samples() -> Vec<UiToHost> {
         UiToHost::Request {
             id: 1,
             request: Request::LauncherFavorite {},
+        },
+    ]
+}
+
+fn profile_action_reply_samples() -> [Reply; 5] {
+    [
+        Reply::LauncherProfileDelete {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherProfileDuplicate {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherProfileFavorite {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherProfileOption {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherTrigger {
+            value: LauncherView::default(),
+        },
+    ]
+}
+
+fn profile_action_request_samples() -> [Request; 5] {
+    [
+        Request::LauncherProfileDelete {
+            id: "qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherProfileDuplicate {
+            id: "qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherProfileFavorite {
+            id: "qa".into(),
+            favorite: true,
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherProfileOption {
+            id: "qa".into(),
+            patch: crate::launcher::actions::ProfileOption::Retries(2),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherTrigger {
+            id: None,
+            base_revision: "0".repeat(64),
         },
     ]
 }

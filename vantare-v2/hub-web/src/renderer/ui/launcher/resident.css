@@ -53,7 +53,8 @@
   flex-direction: column;
   gap: 12px;
   padding: 18px 20px;
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 22px;
   font-weight: 500;
 }
 .v-launcher-resident-body p {

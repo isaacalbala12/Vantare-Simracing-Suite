@@ -1,0 +1,106 @@
+{
+  "dates": [
+    {
+      "value": "2026-11-09T00:00:00Z",
+      "valid": true
+    },
+    {
+      "value": "2026-11-09T00:00:00.1Z",
+      "valid": true
+    },
+    {
+      "value": "2026-11-09T00:00:00.123Z",
+      "valid": true
+    },
+    {
+      "value": "2026-11-09T00:00:00+01:30",
+      "valid": true
+    },
+    {
+      "value": "9999-12-31T23:59:59.999Z",
+      "valid": true
+    },
+    {
+      "value": "1970-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "value": "2024-02-29T12:00:00Z",
+      "valid": true
+    },
+    {
+      "value": "2026-11-09t00:00:00Z",
+      "valid": false
+    },
+    {
+      "value": "2026-11-09T00:00:00z",
+      "valid": false
+    },
+    {
+      "value": "2016-12-31T23:59:60Z",
+      "valid": false
+    },
+    {
+      "value": "2026-02-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "value": "2100-02-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "value": "2026-11-09T24:00:00Z",
+      "valid": false
+    },
+    {
+      "value": "2026-11-09T00:00:00.1234Z",
+      "valid": false
+    },
+    {
+      "value": "2026-11-09T00:00:00+24:00",
+      "valid": false
+    },
+    {
+      "value": "1969-12-31T23:59:59Z",
+      "valid": false
+    },
+    {
+      "value": "2026-11-09T00:00:00",
+      "valid": false
+    }
+  ],
+  "identities": [
+    {
+      "value": "qa",
+      "valid": true
+    },
+    {
+      "value": " qa ",
+      "valid": true
+    },
+    {
+      "value": "\ufeff",
+      "valid": false
+    },
+    {
+      "value": " \u00a0\ufeff ",
+      "valid": false
+    },
+    {
+      "value": "qa\ufeff",
+      "valid": true
+    },
+    {
+      "value": "\u200b",
+      "valid": true
+    },
+    {
+      "value": "bad\n",
+      "valid": false
+    },
+    {
+      "value": "",
+      "valid": false
+    }
+  ]
+}

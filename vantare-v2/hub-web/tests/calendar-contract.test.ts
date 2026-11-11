@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import validationCorpus from "../fixtures/calendar-validation.json";
 import coreFixture from "../fixtures/core-offline.json";
 import {
   calendarMinuteLimit,
@@ -7,6 +8,7 @@ import {
 import type { CoreStatus } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus/calendar.json";
 import {
+  isCalendarDate,
   isCalendarSchedule,
   isCalendarView,
   isReply,
@@ -86,4 +88,36 @@ it("local double checks capability and connection before answering", () => {
   });
   core.access.calendar = false;
   expect(host(refresh)).toMatchObject({ error: { kind: "denied" } });
+});
+
+it("matches the shared strict date and Unicode identity corpus", () => {
+  for (const row of validationCorpus.dates)
+    expect(isCalendarDate(row.value), row.value).toBe(row.valid);
+  for (const row of validationCorpus.identities)
+    expect(
+      isCalendarView({
+        ...corpus.host[0].result.value,
+        following: [row.value],
+      }),
+      JSON.stringify(row.value),
+    ).toBe(row.valid);
+});
+it("mock can return a populated schedule while preserving permission checks", () => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  const host = create({
+    core,
+    sceneName: "calendar-data",
+    visual: null,
+    notes: [],
+    note: () => {},
+  });
+  expect(
+    host({ kind: "request", id: 1, request: { method: "calendar.load" } }),
+  ).toMatchObject({
+    result: { value: { official: { series: expect.any(Array) } } },
+  });
+  core.access.calendar = false;
+  expect(
+    host({ kind: "request", id: 2, request: { method: "calendar.load" } }),
+  ).toMatchObject({ error: { kind: "denied" } });
 });

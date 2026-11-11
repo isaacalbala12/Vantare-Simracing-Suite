@@ -91,3 +91,29 @@ fn calendar_completion_checks_permission_family_and_request_identity() {
         Err(HostError::Denied)
     );
 }
+
+#[test]
+fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.core.available = true;
+    let mut first = Pipe::new(Vec::new());
+    session
+        .request(&mut first, 41, &Request::CalendarRefresh {})
+        .unwrap();
+    assert!(first.get_ref().is_empty());
+    let mut duplicate = Pipe::new(Vec::new());
+    session
+        .request(&mut duplicate, 42, &Request::CalendarRefresh {})
+        .unwrap();
+    assert_eq!(
+        response(&mut duplicate),
+        HostToUi::Failure {
+            id: 42,
+            error: HostError::Busy
+        }
+    );
+    assert_eq!(session.core.requests, 1);
+}

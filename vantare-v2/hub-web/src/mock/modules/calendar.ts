@@ -1,5 +1,7 @@
+import alertsReference from "../../../fixtures/calendar-alerts-reference.json";
 import fixture from "../../../fixtures/calendar-demo.json";
 import {
+  type CalendarAlerts,
   type CalendarConfigView,
   type CalendarView,
   calendarDefaultAlerts,
@@ -35,7 +37,10 @@ export function create(context: MockContext): MockHandler {
     context.core.access.calendar = true;
     context.core.access.blocked = false;
   }
-  if (context.sceneName === "calendar-reference" || context.sceneName === "calendar-live-reference") {
+  if (
+    context.sceneName === "calendar-reference" ||
+    context.sceneName === "calendar-live-reference"
+  ) {
     context.core.access.verified = true;
     context.core.access.blocked = false;
     context.core.access.calendar = true;
@@ -56,6 +61,8 @@ export function create(context: MockContext): MockHandler {
     },
     alertsRevision: calendarEmptyRevision,
   };
+  if (context.sceneName === "calendar-live-reference")
+    config.alerts = structuredClone(alertsReference) as CalendarAlerts;
   config.utc = value.utc;
   config.following = [...value.following];
   let counter = 1;

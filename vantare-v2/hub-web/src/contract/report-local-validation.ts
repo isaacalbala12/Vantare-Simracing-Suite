@@ -9,7 +9,8 @@ import { exact, oneOf, record } from "./validation-common";
 export function isLocalReport(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["core", "binaries", "report"]) &&
+    exact(value, ["core", "binaries", "report", "preparedHash"]) &&
+    isReportPreviewId(value.preparedHash) &&
     oneOf(value.core, ["connected", "incompatible", "unavailable"]) &&
     typeof value.report === "string" &&
     new TextEncoder().encode(value.report).length <= reportExportLimit &&

@@ -45,6 +45,7 @@ pub struct LocalReportView {
     pub core: LinkState,
     pub binaries: Vec<BinaryView>,
     pub report: String,
+    pub prepared_hash: String,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -116,60 +117,278 @@ pub fn prepare(
     Ok(LocalReportView {
         core: observed.core.photos,
         binaries,
+        prepared_hash: vantare_services::content_hash(report.as_bytes()),
         report,
     })
 }
 
-#[cfg(windows)]
-pub fn collect_binaries() -> Vec<BinaryView> {
-    let image = std::env::current_exe().ok();
-    let root = image.as_deref().and_then(std::path::Path::parent);
-    BINARIES
-        .into_iter()
-        .map(|name| {
-            let (state, sha256) = root.map_or((BinaryState::Unavailable, None), |root| {
-                let path = root.join(name);
-                match std::fs::symlink_metadata(&path) {
-                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                        (BinaryState::Missing, None)
-                    }
-                    Ok(info)
-                        if info.is_file()
-                            && !info.file_type().is_symlink()
-                            && info.len() <= 128 * 1024 * 1024 =>
-                    {
-                        match vantare_installer::engine::hash_file(&path) {
-                            Ok(hash) => (BinaryState::Present, Some(hash)),
-                            Err(_) => (BinaryState::Unreadable, None),
-                        }
-                    }
-                    _ => (BinaryState::Unreadable, None),
-                }
-            });
-            BinaryView {
-                name: name.into(),
-                state,
-                sha256,
-            }
-        })
-        .collect()
+#[derive(Default)]
+pub(crate) struct State {
+    #[cfg(any(windows, test))]
+    root: Option<std::path::PathBuf>,
+    #[cfg(any(windows, test))]
+    binaries: std::collections::BTreeMap<&'static str, CachedBinary>,
 }
-
-#[cfg(not(windows))]
-pub fn collect_binaries() -> Vec<BinaryView> {
-    BINARIES
-        .into_iter()
-        .map(|name| BinaryView {
-            name: name.into(),
-            state: BinaryState::Unavailable,
-            sha256: None,
+#[cfg(any(windows, test))]
+struct CachedBinary {
+    size: u64,
+    modified: std::time::SystemTime,
+    view: BinaryView,
+}
+impl State {
+    #[cfg(windows)]
+    pub(crate) fn collect_binaries(&mut self) -> Vec<BinaryView> {
+        let image = std::env::current_exe().ok();
+        self.collect_at(image.as_deref().and_then(std::path::Path::parent), |path| {
+            vantare_installer::engine::hash_file(path).map_err(|_| ())
         })
-        .collect()
+    }
+    #[cfg(not(windows))]
+    pub(crate) fn collect_binaries(&mut self) -> Vec<BinaryView> {
+        BINARIES
+            .into_iter()
+            .map(|name| BinaryView {
+                name: name.into(),
+                state: BinaryState::Unavailable,
+                sha256: None,
+            })
+            .collect()
+    }
+    #[cfg(any(windows, test))]
+    fn collect_at(
+        &mut self,
+        root: Option<&std::path::Path>,
+        mut hash: impl FnMut(&std::path::Path) -> Result<String, ()>,
+    ) -> Vec<BinaryView> {
+        if self.root.as_deref() != root {
+            self.binaries.clear();
+            self.root = root.map(std::path::Path::to_path_buf);
+        }
+        BINARIES
+            .into_iter()
+            .map(|name| {
+                let mut view = BinaryView {
+                    name: name.into(),
+                    state: BinaryState::Unavailable,
+                    sha256: None,
+                };
+                let Some(root) = root else {
+                    return view;
+                };
+                let path = root.join(name);
+                let info = match std::fs::symlink_metadata(&path) {
+                    Ok(info) => info,
+                    Err(error) => {
+                        self.binaries.remove(name);
+                        view.state = if error.kind() == std::io::ErrorKind::NotFound {
+                            BinaryState::Missing
+                        } else {
+                            BinaryState::Unreadable
+                        };
+                        return view;
+                    }
+                };
+                view.state = BinaryState::Unreadable;
+                if !info.is_file()
+                    || info.file_type().is_symlink()
+                    || info.len() > 128 * 1024 * 1024
+                {
+                    self.binaries.remove(name);
+                    return view;
+                }
+                let Ok(modified) = info.modified() else {
+                    self.binaries.remove(name);
+                    return view;
+                };
+                if let Some(cached) = self.binaries.get(name)
+                    && cached.size == info.len()
+                    && cached.modified == modified
+                {
+                    return cached.view.clone();
+                }
+                self.binaries.remove(name);
+                if let Ok(digest) = hash(&path) {
+                    view.state = BinaryState::Present;
+                    view.sha256 = Some(digest);
+                    self.binaries.insert(
+                        name,
+                        CachedBinary {
+                            size: info.len(),
+                            modified,
+                            view: view.clone(),
+                        },
+                    );
+                }
+                view
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct Root(std::path::PathBuf);
+    impl Root {
+        fn new() -> Self {
+            let root = std::env::temp_dir().join(format!(
+                "vantare-report-local-{}",
+                vantare_services::random_id().expect("QA id")
+            ));
+            std::fs::create_dir(&root).expect("exclusive QA directory");
+            Self(root)
+        }
+    }
+    impl Drop for Root {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).expect("remove owned QA directory");
+        }
+    }
+    fn hash(path: &std::path::Path) -> Result<String, ()> {
+        #[cfg(windows)]
+        {
+            vantare_installer::engine::hash_file(path).map_err(|_| ())
+        }
+        #[cfg(not(windows))]
+        {
+            std::fs::read(path)
+                .map(|bytes| vantare_services::content_hash(&bytes))
+                .map_err(|_| ())
+        }
+    }
+    #[test]
+    fn exactly_nine_fixed_names_and_no_reads_for_missing_links_or_oversized_files() {
+        let root = Root::new();
+        let mut state = State::default();
+        let unavailable = state.collect_at(None, |_| panic!("no directory to read"));
+        assert_eq!(
+            unavailable
+                .iter()
+                .map(|entry| entry.name.as_str())
+                .collect::<Vec<_>>(),
+            BINARIES
+        );
+        assert!(
+            unavailable
+                .iter()
+                .all(|entry| entry.state == BinaryState::Unavailable)
+        );
+        let missing = state.collect_at(Some(&root.0), |_| panic!("missing files must not be read"));
+        assert!(
+            missing
+                .iter()
+                .all(|entry| entry.state == BinaryState::Missing)
+        );
+        std::fs::create_dir(root.0.join(BINARIES[0])).unwrap();
+        std::fs::File::create(root.0.join(BINARIES[1]))
+            .unwrap()
+            .set_len(128 * 1024 * 1024 + 1)
+            .unwrap();
+        std::fs::write(root.0.join("private.bin"), b"private QA fixture").unwrap();
+        #[cfg(windows)]
+        let linked = std::os::windows::fs::symlink_file(
+            root.0.join("private.bin"),
+            root.0.join(BINARIES[2]),
+        );
+        #[cfg(not(windows))]
+        let linked =
+            std::os::unix::fs::symlink(root.0.join("private.bin"), root.0.join(BINARIES[2]));
+        if linked.is_err() {
+            eprintln!("QA symlink case omitted: privilege unavailable");
+        }
+        let entries = state.collect_at(Some(&root.0), |_| {
+            panic!("non-files, links and oversized files must not be read")
+        });
+        assert_eq!(entries.len(), 9);
+        assert_eq!(entries[0].state, BinaryState::Unreadable);
+        assert_eq!(entries[1].state, BinaryState::Unreadable);
+        if linked.is_ok() {
+            assert_eq!(entries[2].state, BinaryState::Unreadable);
+        }
+    }
+    #[test]
+    fn binary_hashes_are_cached_by_name_size_and_modified_time() {
+        let root = Root::new();
+        let path = root.0.join(BINARIES[0]);
+        std::fs::write(&path, b"a").unwrap();
+        let mut state = State::default();
+        let mut calls = 0;
+        let mut collect = |state: &mut State| {
+            state.collect_at(Some(&root.0), |path| {
+                calls += 1;
+                hash(path)
+            })
+        };
+        let first = collect(&mut state);
+        assert_eq!(first[0].state, BinaryState::Present);
+        assert_eq!(
+            first[0].sha256.as_deref(),
+            Some(vantare_services::content_hash(b"a").as_str())
+        );
+        assert_eq!(collect(&mut state), first);
+        std::fs::write(&path, b"bb").unwrap();
+        assert_ne!(collect(&mut state)[0].sha256, first[0].sha256);
+        std::fs::write(&path, b"cc").unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(
+                std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(100),
+            ))
+            .unwrap();
+        assert_eq!(
+            collect(&mut state)[0].sha256.as_deref(),
+            Some(vantare_services::content_hash(b"cc").as_str())
+        );
+        assert_eq!(calls, 3);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn locked_binary_is_unreadable_and_is_retried_after_unlock() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = Root::new();
+        let path = root.0.join(BINARIES[0]);
+        std::fs::write(&path, b"QA").unwrap();
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path)
+            .unwrap();
+        let mut state = State::default();
+        assert_eq!(
+            state.collect_at(Some(&root.0), hash)[0].state,
+            BinaryState::Unreadable
+        );
+        drop(lock);
+        assert_eq!(
+            state.collect_at(Some(&root.0), hash)[0].state,
+            BinaryState::Present
+        );
+    }
+    #[test]
+    fn export_accepts_exactly_64_kib_and_rejects_the_next_byte() {
+        let fields = ReportFields {
+            module: "hub".into(),
+            ..Default::default()
+        };
+        let mut observed = crate::diagnostics::Observed::default()
+            .view(&crate::protocol::CoreStatus::default(), false);
+        observed.version.clear();
+        let base = prepare(&fields, &observed, vec![]).unwrap().report.len();
+        observed.version = "x".repeat(EXPORT_LIMIT - base);
+        let exact = prepare(&fields, &observed, vec![]).unwrap();
+        assert_eq!(exact.report.len(), EXPORT_LIMIT);
+        assert_eq!(
+            exact.prepared_hash,
+            vantare_services::content_hash(exact.report.as_bytes())
+        );
+        observed.version.push('x');
+        assert!(matches!(
+            prepare(&fields, &observed, vec![]),
+            Err(HostError::Rejected)
+        ));
+    }
     #[test]
     fn export_rejects_invalid_fields_instead_of_silently_changing_them() {
         for fields in [

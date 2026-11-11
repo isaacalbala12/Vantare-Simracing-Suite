@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { link, open, unlink } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join } from "node:path";
 import {
@@ -9,7 +9,7 @@ import {
 } from "../contract/generated/contract";
 
 // Called only with a path returned by main's own native dialog. Never an IPC argument.
-export async function saveReport(path: string, report: string) {
+export async function saveReport(path: string, report: string, publish = link) {
   if (
     !isAbsolute(path) ||
     path.startsWith("\\\\") ||
@@ -28,7 +28,16 @@ export async function saveReport(path: string, report: string) {
     await file.sync();
     await file.close();
     // Exclusive publication: an existing destination, including a symlink, wins.
-    await link(temporary, path);
+    try {
+      await publish(temporary, path);
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST") throw error;
+      // exFAT/FAT32 and some cloud providers cannot create hard links.
+      // O_EXCL still refuses any existing destination, including a symlink.
+      const destination = await open(path, "wx");
+      try { await destination.writeFile(report, "utf8"); await destination.sync(); }
+      finally { await destination.close(); }
+    }
   } finally {
     await file.close().catch(() => {});
     await unlink(temporary).catch(() => {});
@@ -41,42 +50,50 @@ export function reportExportSession(
   save = saveReport,
 ) {
   let expected: number | undefined;
-  let prepared: string | undefined;
+  let prepared: { report: string; hash: string } | undefined;
   let alive = true;
   let busy = false;
   return {
     expect(id: number) {
+      if (!alive || busy) return false;
       expected = id;
       prepared = undefined;
+      return true;
     },
-    observe(message: HostToUi) {
+    observe(message: HostToUi): HostToUi {
       if (
         (message.kind !== "failure" && message.kind !== "response") ||
         message.id !== expected
       )
-        return;
+        return message;
       expected = undefined;
       if (
         message.kind === "response" &&
         message.result.method === "report.localPrepare"
-      )
-        prepared = message.result.value.report;
+      ) {
+        const report = message.result.value.report;
+        const hash = createHash("sha256").update(report, "utf8").digest("hex");
+        prepared = { report, hash };
+        return { ...message, result: { ...message.result, value: { ...message.result.value, preparedHash: hash } } };
+      }
+      return message;
     },
     close() {
       alive = false;
       prepared = undefined;
       expected = undefined;
     },
-    async export(): Promise<Outcome> {
+    async export(preparedHash: string): Promise<Outcome> {
       if (busy) return { error: { kind: "busy" } };
-      if (!alive || prepared === undefined)
+      if (!alive || prepared === undefined || prepared.hash !== preparedHash)
         return { error: { kind: "rejected" } };
       const snapshot = prepared;
+      prepared = undefined;
       busy = true;
       try {
         const path = await pick();
         if (!alive || path === undefined) return { status: "cancelled" };
-        await save(path, snapshot);
+        await save(path, snapshot.report);
         return { status: "saved" };
       } catch (error) {
         if (

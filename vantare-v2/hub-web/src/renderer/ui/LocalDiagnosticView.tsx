@@ -28,7 +28,7 @@ export function LocalDiagnosticView({
         <Button disabled={!allowed || busy} onClick={() => void prepare()}>
           {busy ? text.preparing : text.prepare}
         </Button>
-        <Button disabled={!allowed || busy} onClick={() => void exportReport()}>
+        <Button disabled={!allowed || busy || !view} onClick={() => void exportReport()}>
           {text.export}
         </Button>
       </div>

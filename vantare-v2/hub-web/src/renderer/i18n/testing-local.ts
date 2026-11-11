@@ -14,7 +14,7 @@ export const localDiagnosticText = {
   saved:
     "JSON local exportado. Puedes adjuntarlo a mano; no se ha enviado nada.",
   failed: "No se pudo preparar o exportar el diagnóstico local",
-  conflict: "El archivo ya existe. Elige otro destino para conservarlo.",
+  conflict: "El archivo ya existe. Prepara de nuevo y elige otro nombre para conservarlo.",
   core: "Núcleo",
   links: {
     connected: "Conectado",

@@ -228,7 +228,7 @@ async function start() {
     });
     const unsubscribe = host.listen((message) => {
       if (pickExecutable.receive(message)) return;
-      reportExport.observe(message);
+      message = reportExport.observe(message);
       if (
         message.kind === "response" &&
         message.result.method === "diagnostics.copy" &&
@@ -297,13 +297,17 @@ async function start() {
       if (
         data.kind === "request" &&
         data.request.method === "report.localPrepare"
-      )
-        reportExport.expect(data.id);
+      ) {
+        if (!reportExport.expect(data.id)) {
+          port1.postMessage({ kind: "failure", id: data.id, error: { kind: "busy" } });
+          return;
+        }
+      }
       if (
         data.kind === "request" &&
         data.request.method === "report.localExport"
       ) {
-        void reportExport.export().then((outcome) => {
+        void reportExport.export(data.request.preparedHash).then((outcome) => {
           if (!portAlive) return;
           port1.postMessage(
             "error" in outcome

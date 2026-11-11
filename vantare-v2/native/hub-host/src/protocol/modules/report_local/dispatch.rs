@@ -17,13 +17,13 @@ pub(super) fn dispatch(
                     &session
                         .diagnostic
                         .view(&session.current, session.settings.view().protected),
-                    crate::report_local::collect_binaries(),
+                    session.report_local_state.collect_binaries(),
                 )
                 .map(|value| Reply::ReportLocalPrepare { value })
             }
         }
         // Only Electron main may open a native save dialog; never forward this to services.
-        Request::ReportLocalExport {} => Err(HostError::Unsupported),
+        Request::ReportLocalExport { .. } => Err(HostError::Unsupported),
         _ => return Err(io::ErrorKind::InvalidInput.into()),
     };
     session.respond(

@@ -11,7 +11,10 @@ pub enum Request {
         fields: crate::testing::ReportFields,
     },
     #[serde(rename = "report.localExport")]
-    ReportLocalExport {},
+    ReportLocalExport {
+        #[serde(rename = "preparedHash")]
+        prepared_hash: String,
+    },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -176,12 +176,13 @@ function useReportsState() {
     }, reportAutosaveMs);
     return () => clearTimeout(timer);
   }, [loaded, dirty, busy, error, available, fields]);
+  useEffect(() => client?.onCloseSettled(() => { closePermit.current = undefined; }), [client]);
   useEffect(() => {
     if (!client) return;
     return client.addCloseGuard(async (reason) => {
-      if (reason === "live" || reason === "controlEof") return true;
       const permitted = closePermit.current;
       closePermit.current = undefined;
+      if (reason === "live" || reason === "controlEof") return true;
       await inflight.current?.catch(() => {});
       if (
         permitted?.epoch === generation.current &&

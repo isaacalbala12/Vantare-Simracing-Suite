@@ -22,7 +22,9 @@ pub(crate) fn corpus() -> serde_json::Value {
                 ..Default::default()
             },
         },
-        Request::ReportLocalExport {},
+        Request::ReportLocalExport {
+            prepared_hash: "a".repeat(64),
+        },
     ]
     .into_iter()
     .map(|request| UiToHost::Request { id: 1, request })

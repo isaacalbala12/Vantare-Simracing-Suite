@@ -255,7 +255,7 @@ export function OnboardingFrame(p: FrameProps) {
           tabIndex={p.step === 7 || !p.canContinue ? -1 : 0}
           aria-busy={p.pending}
           aria-keyshortcuts="Enter"
-          data-muted={p.step >= 3 && p.step <= 5 ? true : undefined}
+          data-muted={p.step >= 3 && p.step <= 6 ? true : undefined}
           aria-label={primary}
           disabled={!p.canContinue || p.pending || p.loading}
           onClick={p.next}

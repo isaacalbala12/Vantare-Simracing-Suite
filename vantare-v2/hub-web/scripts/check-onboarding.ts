@@ -72,12 +72,12 @@ export async function checkOnboarding(
   await page.getByRole("button", { name: "Empezar", exact: true }).click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
-  assert.equal(
-    await page
-      .getByRole("button", { name: "Continuar con Discord", exact: true })
-      .count(),
-    0,
-  );
+  for (const name of [
+    "Continuar con Discord",
+    "Continuar con Google",
+    "Continuar con email",
+  ])
+    await page.getByRole("button", { name, exact: true }).waitFor();
   await page.getByRole("button", { name: "Ahora no", exact: true }).click();
   await page.getByRole("radio", { name: "Ahorro", exact: true }).click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();

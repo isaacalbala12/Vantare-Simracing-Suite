@@ -1311,3 +1311,28 @@ textarea.v-input {
   color: var(--switch-thumb-on);
   background: var(--window-close-hover);
 }
+
+/* Frameless chrome must remain draggable, including its static section title. */
+.v-titlebar,
+.v-titlebar .v-section-title {
+  -webkit-app-region: drag;
+}
+.v-titlebar button,
+.v-titlebar a,
+.v-titlebar input,
+.v-titlebar select,
+.v-titlebar textarea,
+.v-titlebar [role="tab"],
+.v-titlebar [contenteditable],
+.v-titlebar-actions,
+.v-window-controls {
+  -webkit-app-region: no-drag;
+}
+.v-host-issue {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.v-host-issue .v-titlebar {
+  padding-right: 0;
+}

@@ -21,10 +21,16 @@ const executable = resolve(
 );
 await mkdir(data, { recursive: true });
 await mkdir(evidence, { recursive: true });
+const errorMode = process.argv.includes("--error");
+const light = process.argv.includes("--light");
 const env: NodeJS.ProcessEnv = {
   ...process.env,
   VANTARE_HUB_HOST: "mock",
-  VANTARE_HUB_SCENE: "ajustes-error",
+  VANTARE_HUB_SCENE: errorMode
+    ? light
+      ? "componentes-incompatibles-light"
+      : "componentes-incompatibles"
+    : "ajustes-error",
   VANTARE_HUB_DATA_DIR: data,
 };
 delete env.ELECTRON_RUN_AS_NODE;
@@ -46,7 +52,7 @@ child.stderr.on("data", (chunk) => {
   log += chunk.toString();
 });
 let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
-const state = () =>
+const state = (action = "state", x = 0, y = 0) =>
   JSON.parse(
     execFileSync(
       "pwsh",
@@ -58,10 +64,16 @@ const state = () =>
         String(child.pid),
         "-Executable",
         executable,
+        "-Action",
+        action,
+        "-X",
+        String(x),
+        "-Y",
+        String(y),
       ],
       { windowsHide: true, encoding: "utf8" },
     ),
-  ) as { minimized: boolean; maximized: boolean };
+  ) as { minimized: boolean; maximized: boolean; left: number; top: number };
 try {
   let endpoint = "";
   await until(
@@ -93,6 +105,53 @@ try {
     { windowsHide: true },
   );
   const snapshots = [state()];
+  const caption = await page.locator(".v-section-title").boundingBox();
+  assert.ok(caption);
+  const titlePoint = [
+    Math.round(caption.x + caption.width / 2),
+    Math.round(caption.y + caption.height / 2),
+  ] as const;
+  state("drag", ...titlePoint);
+  const dragged = state();
+  assert.ok(
+    dragged.left !== snapshots[0].left || dragged.top !== snapshots[0].top,
+    "real caption dragging moves the HWND",
+  );
+  state("doubleClick", ...titlePoint);
+  await until(
+    () => state().maximized,
+    10000,
+    "native title double click maximizes",
+  );
+  state("doubleClick", ...titlePoint);
+  await until(
+    () => !state().maximized,
+    10000,
+    "native title double click restores",
+  );
+  if (errorMode) {
+    await page.getByRole("alert").waitFor();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    execFileSync(
+      "pwsh",
+      [
+        "-NoProfile",
+        "-File",
+        resolve("scripts/visual-diff/capture.ps1"),
+        "-ProcessId",
+        String(child.pid),
+        "-Executable",
+        executable,
+        "-Prepare",
+        "-Output",
+        join(evidence, "error.png"),
+      ],
+      { windowsHide: true },
+    );
+  }
+
   // DOM clicks address only this isolated window; no desktop activation or input.
   await page
     .getByRole("button", { name: "Maximizar", exact: true })
@@ -106,25 +165,27 @@ try {
   await page.getByRole("button", { name: "Maximizar", exact: true }).waitFor();
   snapshots.push(state());
   assert.equal(snapshots.at(-1)?.maximized, false);
-  await page
-    .getByRole("switch", { name: "Empezar minimizado", exact: true })
-    .evaluate((button) => (button as HTMLElement).click());
-  const discard = page.getByRole("button", {
-    name: "Descartar cambio pendiente",
-    exact: true,
-  });
-  await discard.waitFor();
-  await page
-    .getByRole("button", { name: "Cerrar ventana", exact: true })
-    .evaluate((button) => (button as HTMLButtonElement).click());
-  await until(
-    () => log.includes("HUB_QA_CLOSE_BLOCKED"),
-    10000,
-    "failed save vetoes custom close",
-  );
-  assert.equal(child.exitCode, null);
-  await discard.evaluate((button) => (button as HTMLButtonElement).click());
-  await discard.waitFor({ state: "detached" });
+  if (!errorMode) {
+    await page
+      .getByRole("switch", { name: "Empezar minimizado", exact: true })
+      .evaluate((button) => (button as HTMLElement).click());
+    const discard = page.getByRole("button", {
+      name: "Descartar cambio pendiente",
+      exact: true,
+    });
+    await discard.waitFor();
+    await page
+      .getByRole("button", { name: "Cerrar ventana", exact: true })
+      .evaluate((button) => (button as HTMLButtonElement).click());
+    await until(
+      () => log.includes("HUB_QA_CLOSE_BLOCKED"),
+      10000,
+      "failed save vetoes custom close",
+    );
+    assert.equal(child.exitCode, null);
+    await discard.evaluate((button) => (button as HTMLButtonElement).click());
+    await discard.waitFor({ state: "detached" });
+  }
   await page
     .getByRole("button", { name: "Minimizar", exact: true })
     .evaluate((button) => (button as HTMLButtonElement).click());
@@ -153,8 +214,12 @@ try {
         pid: child.pid,
         data,
         snapshots,
-        closeVeto: true,
-        closedAfterDiscard: true,
+        captionDrag: true,
+        captionDoubleClick: true,
+        errorMode,
+        theme: light ? "light" : "dark",
+        closeVeto: !errorMode,
+        closedAfterDiscard: !errorMode,
         exitCode: child.exitCode,
       },
       null,

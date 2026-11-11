@@ -107,7 +107,6 @@ async function start() {
     show: false,
     backgroundColor: colors["bg-window"],
     title: "Vantare · Hub",
-    titleBarStyle: "hidden",
     frame: false,
     webPreferences: webPreferences(
       join(import.meta.dirname, "../preload/index.cjs"),
@@ -238,14 +237,18 @@ async function start() {
       if (message.kind === "failure") copies.delete(message.id);
       port1.postMessage(message);
     });
-    const controls = bindWindowControls(currentWindow, (message) => {
-      if (!portAlive) return;
-      try {
-        port1.postMessage(message);
-      } catch {
-        dispose();
-      }
-    });
+    const controls = bindWindowControls(
+      currentWindow,
+      (message) => {
+        if (!portAlive) return;
+        try {
+          port1.postMessage(message);
+        } catch {
+          dispose();
+        }
+      },
+      compatible,
+    );
     function dispose() {
       if (!portAlive) return;
       portAlive = false;
@@ -258,7 +261,7 @@ async function start() {
     disconnect = dispose;
     port1.once("close", dispose);
     port1.on("message", ({ data }: { data: unknown }) => {
-      if (!compatible || !isRendererMessage(data) || !bounded(data)) return;
+      if (!isRendererMessage(data) || !bounded(data)) return;
       if (
         QA_DRIVER &&
         data.kind === "request" &&
@@ -266,6 +269,7 @@ async function start() {
       )
         console.error("HUB_QA_CLOSE_REQUESTED");
       if (controls.dispatch(data)) return;
+      if (!compatible) return;
       if (
         data.kind === "request" &&
         data.request.method === "launcher.app.pick"

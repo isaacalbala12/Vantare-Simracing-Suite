@@ -10,6 +10,7 @@ function target() {
   let maximized = false;
   const events = new EventEmitter();
   return Object.assign(events, {
+    destroy: vi.fn(),
     isDestroyed: vi.fn(() => false),
     isMaximized: () => maximized,
     minimize: vi.fn(),
@@ -133,6 +134,33 @@ describe("closed main-process window actions", () => {
       id: 3,
       result: { method: "window.minimize", accepted: false },
     });
+    bridge.dispose();
+  });
+  it("keeps only three local actions available with an incompatible host", () => {
+    const window = target();
+    const post = vi.fn();
+    const bridge = bindWindowControls(window, post, false);
+    for (const message of [
+      { kind: "subscribe", topic: "windowState" },
+      { kind: "subscribe", topic: "core" },
+      { kind: "closeAnswer", allow: true },
+      { kind: "request", id: 1, request: { method: "core.get" } },
+      { kind: "request", id: 2, request: { method: "privacy.policy" } },
+    ] as const)
+      expect(bridge.dispatch(message)).toBe(true);
+    expect(post).not.toHaveBeenCalled();
+    for (const method of [
+      "window.minimize",
+      "window.toggleMaximize",
+      "window.close",
+    ] as const)
+      expect(
+        bridge.dispatch({ kind: "request", id: 3, request: { method } }),
+      ).toBe(true);
+    expect(window.minimize).toHaveBeenCalledOnce();
+    expect(window.maximize).toHaveBeenCalledOnce();
+    expect(window.destroy).toHaveBeenCalledOnce();
+    expect(post).toHaveBeenCalledTimes(2);
     bridge.dispose();
   });
   it("returns an explicit error on a native failure", () => {

@@ -1,4 +1,5 @@
 export const windowText = {
+  title: "Vantare",
   minimize: "Minimizar",
   maximize: "Maximizar",
   restore: "Restaurar",

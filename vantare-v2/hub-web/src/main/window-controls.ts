@@ -3,7 +3,12 @@ import type { HostToUi, UiToHost } from "../contract/generated/contract";
 
 type WindowTarget = Pick<
   BrowserWindow,
-  "isDestroyed" | "minimize" | "isMaximized" | "maximize" | "unmaximize"
+  | "destroy"
+  | "isDestroyed"
+  | "minimize"
+  | "isMaximized"
+  | "maximize"
+  | "unmaximize"
 > & {
   on(event: "maximize" | "unmaximize", listener: () => void): unknown;
   removeListener(
@@ -16,6 +21,7 @@ type WindowTarget = Pick<
 export function bindWindowControls(
   window: WindowTarget,
   post: (message: HostToUi) => void,
+  compatible = true,
 ) {
   let subscribed = false;
   let disposed = false;
@@ -31,6 +37,20 @@ export function bindWindowControls(
   return {
     dispatch(message: UiToHost): boolean {
       if (disposed) return false;
+      // A mismatched host never receives UI operations, subscriptions or close answers.
+      // Only these three local window actions remain available to escape the error.
+      if (!compatible) {
+        if (message.kind !== "request") return true;
+        if (message.request.method === "window.close") {
+          if (!window.isDestroyed()) window.destroy();
+          return true;
+        }
+        if (
+          message.request.method !== "window.minimize" &&
+          message.request.method !== "window.toggleMaximize"
+        )
+          return true;
+      }
       if (
         (message.kind === "subscribe" || message.kind === "unsubscribe") &&
         message.topic === "windowState"

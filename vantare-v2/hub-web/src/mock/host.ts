@@ -12,7 +12,13 @@ export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   return name === "componentes-incompatibles"
     ? { ...hello, version: HOST_PROTOCOL_VERSION + 1 }
-    : hello;
+    : name === "componentes-incompatibles-light"
+      ? {
+          ...hello,
+          version: HOST_PROTOCOL_VERSION + 1,
+          theme: { ...hello.theme, scheme: "light" },
+        }
+      : hello;
 }
 export function createMockHost(
   sceneName = "ajustes-base",

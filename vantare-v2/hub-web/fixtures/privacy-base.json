@@ -6,5 +6,6 @@
   "revision": "0000000000000000000000000000000000000000000000000000000000000000",
   "protected": false,
   "cleanupPending": false,
-  "cleanupBusy": false
+  "cleanupBusy": false,
+  "reportingConfigured": false
 }

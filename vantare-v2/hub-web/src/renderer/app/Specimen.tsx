@@ -52,7 +52,10 @@ export function Specimen() {
   if (onboardingOpen)
     return (
       <SettingsProvider>
-        <OnboardingIntroPreview onLeave={() => setOnboardingOpen(false)} />
+        <OnboardingIntroPreview
+          extended
+          onLeave={() => setOnboardingOpen(false)}
+        />
       </SettingsProvider>
     );
   const options = [

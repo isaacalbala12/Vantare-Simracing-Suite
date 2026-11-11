@@ -45,7 +45,10 @@ export function Applications() {
   const [selected, setSelected] = useState<PickedApp | null>(null);
   const [removal, setRemoval] = useState<CatalogApp | null>(null);
   const [pending, setPending] = useState(false);
-  const [argumentReset, setArgumentReset] = useState<string>();
+  const [argumentReset, setArgumentReset] = useState<{
+    revision: string;
+    source: AppEditor;
+  }>();
   const [error, setError] = useState<string>();
   const retry = useRef<{ request: Mutation; revision: string } | undefined>(
     undefined,
@@ -197,9 +200,13 @@ export function Applications() {
       if (alive.current) setPending(false);
     }
   }
-  function save(revision = editor?.revision, confirmed = false) {
-    if (!editor || !revision) return;
-    const draft = editor.draft;
+  function save(
+    revision = editor?.revision,
+    confirmed = false,
+    source = editor,
+  ) {
+    if (!source || !revision) return;
+    const draft = source.draft;
     if (!isAppDraft(draft)) {
       setError(text.failed);
       return;
@@ -210,13 +217,13 @@ export function Applications() {
     }
     if (
       !confirmed &&
-      editor.hasCustomArguments &&
-      (selected !== null || (editor.hasExecutable && draft.useDiscovery))
+      source.hasCustomArguments &&
+      (selected !== null || (source.hasExecutable && draft.useDiscovery))
     ) {
-      setArgumentReset(revision);
+      setArgumentReset({ revision, source });
       return;
     }
-    void mutate({
+    return mutate({
       method: "launcher.app.save",
       draft,
       pickToken: selected?.token ?? null,
@@ -251,9 +258,48 @@ export function Applications() {
       void load().catch(() => setError(text.failed));
     }
   };
+  async function retryEditor() {
+    if (!client || !editor || busy.current) return;
+    busy.current = true;
+    setPending(true);
+    try {
+      const reply = await client.request({
+        method: "launcher.app.get",
+        id: editor.draft.id,
+      });
+      if (!alive.current || reply.method !== "launcher.app.get") return;
+      const base: unknown = original.current
+        ? JSON.parse(original.current)
+        : null;
+      if (!isAppDraft(base))
+        throw new Error("Missing original application draft");
+      const draft = { ...reply.value.draft };
+      if (editor.draft.name !== base.name) draft.name = editor.draft.name;
+      if (editor.draft.favorite !== base.favorite)
+        draft.favorite = editor.draft.favorite;
+      if (editor.draft.useDiscovery !== base.useDiscovery)
+        draft.useDiscovery = editor.draft.useDiscovery;
+      const source = { ...reply.value, draft };
+      original.current = JSON.stringify(reply.value.draft);
+      setEditor(source);
+      setError(undefined);
+      busy.current = false;
+      setPending(false);
+      // Fresh metadata and its revision define the warning, including overrides
+      // another process may have added since the failed save.
+      if (selected !== null || JSON.stringify(draft) !== original.current)
+        await save(source.revision, false, source);
+      else retry.current = undefined;
+    } catch {
+      if (alive.current) setError(text.failed);
+    } finally {
+      busy.current = false;
+      if (alive.current) setPending(false);
+    }
+  }
   const again = () => {
     const value = retry.current;
-    if (editor) save(value?.revision ?? editor.revision);
+    if (editor) void retryEditor();
     else if (value)
       void mutate({ ...value.request, baseRevision: value.revision });
     else void load().catch(() => setError(text.failed));
@@ -328,11 +374,12 @@ export function Applications() {
       )}
       <ApplicationArgumentReset
         open={argumentReset !== undefined}
+        profiles={argumentReset?.source.customProfiles ?? 0}
         onCancel={() => setArgumentReset(undefined)}
         onConfirm={() => {
-          const revision = argumentReset;
+          const confirmed = argumentReset;
           setArgumentReset(undefined);
-          if (revision) save(revision, true);
+          if (confirmed) save(confirmed.revision, true, confirmed.source);
         }}
       />
       <ApplicationRemoval

@@ -53,6 +53,9 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
   const customized = new Set(
     scene === "launcher-aplicaciones-args" ? ["obs"] : [],
   );
+  const customProfiles = new Map<string, number>(
+    scene === "launcher-aplicaciones-args" ? [["obs", 1]] : [],
+  );
   let selectionTarget: string | null | undefined;
   let serial = 0;
   let conflictOnce = scene.endsWith("-conflicto");
@@ -147,6 +150,8 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
                 hasExecutable: draft.id?.startsWith("custom:") ?? false,
                 hasCustomArguments:
                   draft.id !== null && customized.has(draft.id),
+                customProfiles:
+                  draft.id === null ? 0 : (customProfiles.get(draft.id) ?? 0),
               },
             },
           }
@@ -160,6 +165,10 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       return;
     if (conflictOnce && request.method === "launcher.app.save") {
       conflictOnce = false;
+      if (scene === "launcher-aplicaciones-args-conflicto") {
+        customized.add("obs");
+        customProfiles.set("obs", 2);
+      }
       bump();
     }
     if (request.baseRevision !== view.revision)
@@ -211,7 +220,10 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       )
         return fail("denied");
       const appId = draft.id ?? `custom:qa-${++serial}`;
-      if (request.pickToken !== null) customized.delete(appId);
+      if (request.pickToken !== null) {
+        customized.delete(appId);
+        customProfiles.delete(appId);
+      }
       drafts.set(appId, { ...structuredClone(draft), id: appId });
       if (existing) {
         existing.name = draft.name;

@@ -64,6 +64,36 @@ function mount(scene = "launcher-aplicaciones") {
 }
 
 describe("application catalog", () => {
+  it("rereads after conflict before warning about newly added private profile options", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("launcher-aplicaciones-args-conflicto");
+    fireEvent.click(
+      await screen.findByRole("button", { name: text.edit("OBS Studio") }),
+    );
+    await screen.findByText(text.defaultArguments);
+    fireEvent.click(screen.getByRole("button", { name: text.pick }));
+    await screen.findByText("Aplicación QA");
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByText(text.conflict);
+    fireEvent.click(screen.getByRole("button", { name: text.retry }));
+    await screen.findByRole("alertdialog", { name: text.argumentResetTitle });
+    expect(screen.getByText(text.argumentResetMessage(2))).toBeTruthy();
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.app.save",
+      ),
+    ).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: text.confirmArgumentReset }),
+    );
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.app.save",
+      ),
+    ).toHaveLength(2);
+  });
+
   it("warns before replacing an app executable discards its saved arguments", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-args");
@@ -75,6 +105,7 @@ describe("application catalog", () => {
     await screen.findByText("Aplicación QA");
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("alertdialog", { name: text.argumentResetTitle });
+    expect(screen.getByText(text.argumentResetMessage(1))).toBeTruthy();
     expect(
       requests.mock.calls.filter(
         ([request]) => request.method === "launcher.app.pick",

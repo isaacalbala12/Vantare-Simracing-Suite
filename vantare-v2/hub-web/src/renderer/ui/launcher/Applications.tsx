@@ -345,10 +345,12 @@ export function ApplicationRemoval({
 
 export function ApplicationArgumentReset({
   open,
+  profiles,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
+  profiles: number;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -364,7 +366,7 @@ export function ApplicationArgumentReset({
         <AlertDialog.Popup className="v-dialog">
           <AlertDialog.Title>{text.argumentResetTitle}</AlertDialog.Title>
           <AlertDialog.Description>
-            {text.argumentResetMessage}
+            {text.argumentResetMessage(profiles)}
           </AlertDialog.Description>
           <div className="v-launcher-actions">
             <Button onClick={onCancel}>{text.cancel}</Button>

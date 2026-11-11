@@ -15,7 +15,7 @@ import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
-import { Select } from "../../ui/Forms";
+import { Segmented } from "../../ui/Forms";
 import { Tooltip } from "../../ui/Layers";
 import { RemoveWidget } from "./RemoveWidget";
 import {
@@ -35,6 +35,44 @@ export function Gallery() {
   const [catalogFocus, setCatalogFocus] = useState(0);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
   const [columns, setColumns] = useState(3);
+  const activeFilter = (view?.instances.length ?? 0) >= 9 ? filter : "all";
+  const instances = (view?.instances ?? []).filter(
+    (item) =>
+      activeFilter === "all" || item.visible === (activeFilter === "visible"),
+  );
+
+  const focusAfter = useRef<{ id: string; index: number } | undefined>(
+    undefined,
+  );
+  useLayoutEffect(() => {
+    const target = focusAfter.current;
+    if (!target || instances.some((item) => item.id === target.id)) return;
+    const buttons =
+      grid.current?.querySelectorAll<HTMLButtonElement>("[data-widget]");
+    const next = buttons?.[Math.min(target.index, buttons.length - 1)];
+    (
+      next ??
+      document.querySelector<HTMLButtonElement>(
+        '.v-studio-gallery-heading button[aria-pressed="true"]',
+      )
+    )?.focus();
+    focusAfter.current = undefined;
+  }, [instances]);
+  const toggleVisibility = (id: string, visible: boolean, index: number) => {
+    if (!view) return;
+    if (activeFilter !== "all") focusAfter.current = { id, index };
+    void state
+      .execute({
+        method: "studio.visibility",
+        id,
+        visible,
+        baseRevision: view.revision,
+      })
+      .then((value) => {
+        if (!value) focusAfter.current = undefined;
+      });
+  };
+
   useLayoutEffect(() => {
     const node = grid.current;
     if (!view || !node) return;
@@ -126,11 +164,6 @@ export function Gallery() {
     );
   const disabled =
     pending || view.state !== "ready" || view.plan === "unverified";
-  const activeFilter = view.instances.length >= 9 ? filter : "all";
-  const instances = view.instances.filter(
-    (item) =>
-      activeFilter === "all" || item.visible === (activeFilter === "visible"),
-  );
   const suggestions = view.catalog
     .filter(
       (widget) =>
@@ -239,7 +272,8 @@ export function Gallery() {
             )}
             <small>{t.placementHint}</small>
             {view.instances.length >= 9 && (
-              <Select
+              <Segmented
+                disabled={pending}
                 label={t.filterLabel}
                 value={filter}
                 options={Object.entries(t.filters).map(([value, label]) => ({
@@ -268,7 +302,21 @@ export function Gallery() {
               {activeFilter === "hidden" ? t.noHidden : t.noVisible}
             </p>
           )}
-          <section className="v-studio-grid" ref={grid} aria-label={t.title}>
+          <section
+            style={
+              view.state === "ready" &&
+              view.plan !== "unverified" &&
+              view.instances.length < 6 &&
+              suggestions.length > 0
+                ? {
+                    gridTemplateRows: `repeat(${Math.max(1, Math.ceil((instances.length + 1) / columns))}, 208px) 20px 208px`,
+                  }
+                : undefined
+            }
+            className="v-studio-grid"
+            ref={grid}
+            aria-label={t.title}
+          >
             {instances.map((item, index) => {
               const active = selected === item.id;
               const name = widgetName(item, view);
@@ -315,12 +363,7 @@ export function Gallery() {
                       if (event.key === " ") {
                         event.preventDefault();
                         if (!disabled && !item.locked)
-                          void state.execute({
-                            method: "studio.visibility",
-                            id: item.id,
-                            visible: !item.visible,
-                            baseRevision: view.revision,
-                          });
+                          toggleVisibility(item.id, !item.visible, index);
                       }
                       const buttons = Array.from(
                         grid.current?.querySelectorAll<HTMLButtonElement>(
@@ -382,12 +425,7 @@ export function Gallery() {
                       size="sm"
                       disabled={disabled || item.locked}
                       onClick={() =>
-                        void state.execute({
-                          method: "studio.visibility",
-                          id: item.id,
-                          visible: !item.visible,
-                          baseRevision: view.revision,
-                        })
+                        toggleVisibility(item.id, !item.visible, index)
                       }
                     >
                       <VisibilityIcon visible={item.visible} />
@@ -419,40 +457,40 @@ export function Gallery() {
                 </Button>
               </Tooltip>
             )}
+            {view.state === "ready" &&
+              view.plan !== "unverified" &&
+              view.instances.length < 6 &&
+              suggestions.length > 0 && (
+                <section className="v-studio-suggestions" aria-label={t.kit}>
+                  <h3>{t.kit}</h3>
+                  <div
+                    style={{
+                      gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {suggestions.map((widget) => (
+                      <button
+                        type="button"
+                        key={widget.kind}
+                        disabled={disabled}
+                        aria-label={t.suggestedAdd(widget.name)}
+                        onClick={() =>
+                          void state.execute({
+                            method: "studio.add",
+                            kind: widget.kind,
+                            baseRevision: view.revision,
+                          })
+                        }
+                      >
+                        <WidgetPreview kind={widget.kind} />
+                        <strong>{widget.name}</strong>
+                        <small>{t.suggestionHelp}</small>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
           </section>
-          {view.state === "ready" &&
-            view.plan !== "unverified" &&
-            view.instances.length < 6 &&
-            suggestions.length > 0 && (
-              <section className="v-studio-suggestions" aria-label={t.kit}>
-                <h3>{t.kit}</h3>
-                <div
-                  style={{
-                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                  }}
-                >
-                  {suggestions.map((widget) => (
-                    <button
-                      type="button"
-                      key={widget.kind}
-                      disabled={disabled}
-                      aria-label={t.suggestedAdd(widget.name)}
-                      onClick={() =>
-                        void state.execute({
-                          method: "studio.add",
-                          kind: widget.kind,
-                          baseRevision: view.revision,
-                        })
-                      }
-                    >
-                      <WidgetPreview kind={widget.kind} />
-                      <strong>{widget.name}</strong>
-                      <small>{t.suggestionHelp}</small>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
           <footer className="v-studio-footer">
             <span>{t.tryWith}</span>
             {t.scenes.map((scene) => (

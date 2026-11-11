@@ -1,6 +1,7 @@
 # Banco GPUI compartido (QA)
 
-El ejecutable compilado está en `D:/VantareServer/qa/referencia-gpui-bin/vantare.exe`.
+El inventario fijo es `D:/VantareServer/qa/referencia-gpui-bin/bank.json`; apunta al
+ejecutable compilado `versions/6accf3628/vantare.exe` dentro de ese banco.
 `bank.json` fija SHA256, commit de origen y perfil Release. El script comprueba
 ese hash antes de abrirlo. Sus replies son locales; no usa cuentas ni servicios reales.
 El banco incluye los recursos públicos y una plantilla QA propia.
@@ -24,9 +25,11 @@ La plantilla y el ejecutable son inmutables para B, C y D. Si falta una escena,
 pedir su incorporación al responsable del banco. No sustituir referencias
 existentes sin revisar los datos y el permiso de acceso de la nueva captura.
 
-Validado con `ajustes-aplicacion` oscuro: PNG real, 1440×900, ventana sin foco,
-SHA del banco `9463f44a518139469ebfa68471dd7411c5c013e3d5231f81c56830a4530db116`.
-Evidencia: `D:/VantareServer/evidence/hub-web/bank-reusable-test/`.
+Validado en las siete escenas siguientes, en oscuro y claro, 1440×900 y sin foco.
+SHA del banco: `8e42ad931cacd7e7c67a813365674a0f8735c7bf2d453b8c77c0882b506ed4bd`.
+Las 14 imágenes y recibos están en `D:/VantareServer/evidence/hub-web/referencia-gpui/`;
+el informe con hashes y entradas, en `D:/VantareServer/evidence/hub-web/bank-followup/reference-report.json`.
+Las versiones anteriores se conservan como evidencia; no se distribuye este binario.
 
 Escenas adicionales del banco QA (sin ampliar el catálogo del Hub productivo):
 `strategy-proximamente` muestra la página real «Próximamente», sin forzar el viejo

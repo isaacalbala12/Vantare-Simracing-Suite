@@ -62,7 +62,7 @@
   font-weight: 600;
   letter-spacing: calc(1.5 * var(--ob-unit));
 }
-.v-ob-duration > span {
+.v-ob-duration > span:first-child {
   width: calc(14 * var(--ob-unit));
   height: calc(14 * var(--ob-unit));
 }
@@ -443,6 +443,7 @@
   padding: calc(18 * var(--ob-unit));
 }
 .v-ob-style > .v-button-label {
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -760,4 +761,8 @@
 }
 .v-ob-art-caption .v-tracked-caps-letters {
   gap: calc(1.08 * var(--ob-unit));
+}
+
+.v-ob-duration .v-tracked-caps-letters {
+  gap: calc(1.5 * var(--ob-unit));
 }

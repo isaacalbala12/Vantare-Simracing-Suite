@@ -3,6 +3,7 @@ import {
   onboardingChoicesText as c,
   onboardingText as t,
 } from "../../i18n/onboarding";
+import { TrackedCaps } from "../TrackedCaps";
 import { Helmet } from "./Helmet";
 export function WelcomeArt({ reducedMotion }: { reducedMotion: boolean }) {
   return (
@@ -11,7 +12,9 @@ export function WelcomeArt({ reducedMotion }: { reducedMotion: boolean }) {
         {t.helmet.toUpperCase()}
       </span>
       <Helmet placement="welcome" width={330} reducedMotion={reducedMotion} />
-      <span className="v-ob-art-caption">{t.assistantCaption}</span>
+      <span className="v-ob-art-caption">
+        <TrackedCaps>{t.assistantCaption}</TrackedCaps>
+      </span>
     </div>
   );
 }

@@ -178,10 +178,10 @@
 }
 .v-ob-progress > div {
   display: flex;
-  gap: calc(6 * var(--ob-unit));
+  gap: round(nearest, calc(6 * var(--ob-unit)), 1px);
 }
 .v-ob-progress span {
-  width: calc(46 * var(--ob-unit));
+  width: round(nearest, calc(46 * var(--ob-unit)), 1px);
   height: calc(5 * var(--ob-unit));
   border-radius: calc(5 * var(--ob-unit));
   background: var(--ob-c-221d1f);
@@ -750,4 +750,14 @@
 .v-onboarding
   .v-ob-style[aria-pressed="true"]:is(:hover, :active):not(:disabled) {
   background: var(--ob-c-190d0e);
+}
+
+[data-scheme="light"] .v-ob-bubble {
+  box-shadow: none;
+}
+.v-ob-assistant-label .v-tracked-caps-letters {
+  gap: calc(1.7 * var(--ob-unit));
+}
+.v-ob-art-caption .v-tracked-caps-letters {
+  gap: calc(1.08 * var(--ob-unit));
 }

@@ -53,6 +53,7 @@ export function Specimen() {
     return (
       <SettingsProvider>
         <OnboardingAccountIntro
+          full
           extended
           onLeave={() => setOnboardingOpen(false)}
         />

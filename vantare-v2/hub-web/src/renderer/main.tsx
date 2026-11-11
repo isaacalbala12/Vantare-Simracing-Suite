@@ -12,6 +12,7 @@ import { SettingsProvider } from "./app/SettingsState";
 import { Shell } from "./app/Shell";
 import { UiProvider } from "./app/UiState";
 import { es, specimen } from "./i18n/es";
+import { OnboardingGate } from "./screens/onboarding/OnboardingGate";
 import { ReportsProvider } from "./screens/testing/ReportsState";
 import { Callout, Skeleton } from "./ui/Data";
 import { ToastProvider, ToastViewport, TooltipProvider } from "./ui/Layers";
@@ -41,19 +42,16 @@ function Content() {
         <ToastViewport closeLabel={specimen.close} />
       </ContentStack>
     );
+  const hub = (
+    <AccountProvider><PilotProvider><ReportsProvider><AccountGate><Shell /></AccountGate></ReportsProvider></PilotProvider></AccountProvider>
+  );
   return (
     <SettingsProvider>
-      <PrivacyGate>
-        <AccountProvider>
-          <PilotProvider>
-            <ReportsProvider>
-              <AccountGate>
-                <Shell />
-              </AccountGate>
-            </ReportsProvider>
-          </PilotProvider>
-        </AccountProvider>
-      </PrivacyGate>
+      <OnboardingGate>
+        {(privateSession) =>
+          privateSession ? hub : <PrivacyGate>{hub}</PrivacyGate>
+        }
+      </OnboardingGate>
     </SettingsProvider>
   );
 }

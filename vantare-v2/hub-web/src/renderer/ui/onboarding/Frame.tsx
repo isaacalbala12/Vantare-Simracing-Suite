@@ -28,6 +28,7 @@ export interface FrameProps {
   loading?: boolean;
   error?: string;
   signed?: boolean;
+  lead?: string;
   usage?: boolean;
   reducedMotion: boolean;
   back: () => void;
@@ -206,7 +207,8 @@ export function OnboardingFrame(p: FrameProps) {
                 />
                 <h1>{t.titles[p.step]}</h1>
                 <p className="v-ob-lead">
-                  {p.step === 6 && p.usage ? t.usageOn : t.leads[p.step]}
+                  {p.lead ??
+                    (p.step === 6 && p.usage ? t.usageOn : t.leads[p.step])}
                 </p>
                 {p.children}
                 {p.error && (

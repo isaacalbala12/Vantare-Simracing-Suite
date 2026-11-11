@@ -30,6 +30,15 @@ export function create(context: MockContext): MockHandler {
     privacy.crashesDecided = sceneName === "privacidad-uso";
     privacy.usageDecided = false;
   }
+  if (
+    ["onboarding-6", "onboarding-7", "onboarding-sin-diseno"].includes(
+      sceneName,
+    )
+  ) {
+    privacy.crashesDecided = false;
+    privacy.usageDecided = false;
+    if (context.visual) privacy.reportingConfigured = true;
+  }
   if (sceneName === "privacidad-protegida") privacy.protected = true;
   if (sceneName === "privacidad-puerta-protegida") privacy.protected = true;
   if (sceneName === "privacidad-limpieza-ocupada") {

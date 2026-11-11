@@ -7,7 +7,6 @@ export type CalendarSchedule = { version: number, timezone: string, validFrom: s
 export type CalendarView = { official: CalendarSchedule | null, fallback: CalendarSchedule | null, previous: CalendarSchedule | null, following: Array<string>, utc: boolean, checked: number, updated: number, invalidCache: boolean, };
 export const calendarDocumentLimit = 65536 as const;
 export const calendarSeriesLimit = 256 as const;
-export const calendarStartsLimit = 10000 as const;
 export const calendarDateLimit = 40 as const;
 export const calendarTextLimit = 300 as const;
 export const calendarListLimit = 64 as const;

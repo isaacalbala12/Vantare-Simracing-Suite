@@ -360,13 +360,14 @@ impl State {
         match self.read(name) {
             Read::Missing => None,
             Read::Invalid => prior,
-            Read::Bytes(bytes) => match CalendarSchedule::parse(&bytes) {
-                Ok(next) => newest(prior, Some(next)),
-                Err(_) => {
+            Read::Bytes(bytes) => {
+                if let Ok(next) = CalendarSchedule::parse(&bytes) {
+                    newest(prior, Some(next))
+                } else {
                     self.view.invalid_cache = true;
                     prior
                 }
-            },
+            }
         }
     }
     fn project(&mut self) -> CalendarView {

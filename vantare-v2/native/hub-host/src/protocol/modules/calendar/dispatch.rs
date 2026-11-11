@@ -35,10 +35,6 @@ pub(super) fn dispatch(
         _ => Err(io::ErrorKind::InvalidInput.into()),
     }
 }
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "Signature required by generated per-module dispatch"
-)]
 pub(super) fn complete(
     session: &mut Session,
     remote: Option<(u32, RemoteKind)>,

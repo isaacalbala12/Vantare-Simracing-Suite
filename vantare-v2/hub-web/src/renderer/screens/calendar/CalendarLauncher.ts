@@ -1,11 +1,40 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { HostError } from "../../../contract/generated/contract";
+import type {
+  HostError,
+  LauncherProfile,
+} from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { calendarText as text } from "../../i18n/calendar";
 import { useToastManager } from "../../ui/Layers";
 import { launcherKey, useLauncherSnapshot } from "../launcher/state";
+
+// UTF-8 lexical order in Rust agrees with Unicode scalar order, not UTF-16.
+function compareNames(a: string, b: string) {
+  let i = 0,
+    j = 0;
+  while (i < a.length && j < b.length) {
+    const x = a.codePointAt(i) ?? 0,
+      y = b.codePointAt(j) ?? 0;
+    if (x !== y) return x - y;
+    i += x > 0xffff ? 2 : 1;
+    j += y > 0xffff ? 2 : 1;
+  }
+  return a.length - i - (b.length - j);
+}
+export function defaultCalendarProfile(profiles: readonly LauncherProfile[]) {
+  return profiles.reduce<LauncherProfile | undefined>(
+    (selected, profile) =>
+      !selected ||
+      (profile.favorite && !selected.favorite) ||
+      (profile.favorite === selected.favorite &&
+        compareNames(profile.name, selected.name) < 0)
+        ? profile
+        : selected,
+    undefined,
+  );
+}
 
 // Immediate launch only. Deferred launch remains unavailable (issue 2089).
 export function useCalendarLauncher(allowed: boolean) {
@@ -64,13 +93,7 @@ export function useCalendarLauncher(allowed: boolean) {
     };
   }, [allowed, client, cache]);
   // Same selection as frozen launcher/view.rs::default_profile: favorites, then name.
-  const profile = view?.profiles
-    .slice()
-    .sort(
-      (a, b) =>
-        Number(b.favorite) - Number(a.favorite) ||
-        (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
-    )[0];
+  const profile = defaultCalendarProfile(view?.profiles ?? []);
   const canLaunch = !!(
     allowed &&
     ready &&

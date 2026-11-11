@@ -470,3 +470,7 @@
   width: 12px;
   height: 12px;
 }
+/* Issue 2089: keep the frozen appearance while the deferred action is unavailable. */
+.v-calendar-hero-actions .v-button.v-calendar-launch-pending:disabled {
+  opacity: 1;
+}

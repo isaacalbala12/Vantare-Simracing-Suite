@@ -45,7 +45,6 @@ export function CalendarLiveView({
   onFollow,
   onDetail,
   onLaunch,
-  onArm,
 }: {
   schedule: CalendarSchedule;
   alerts: CalendarAlerts;
@@ -57,7 +56,6 @@ export function CalendarLiveView({
   onFollow: (id: string, on: boolean) => void;
   onDetail: (id: string, at?: number) => void;
   onLaunch: () => void;
-  onArm: (at: number) => void;
 }) {
   const [query, setQuery] = useState(""),
     [tier, setTier] = useState("all"),
@@ -216,9 +214,11 @@ export function CalendarLiveView({
                 {text.detail}
               </Button>
               <Button
-                onClick={() => onArm(hero.at - 3 * 60_000)}
-                disabled={!profile}
+                className="v-calendar-launch-pending"
+                title={text.launchPending}
+                disabled
               >
+                <Icon name="clock" />
                 {text.launchAt(clock(hero.at - 3 * 60_000, utc))}
               </Button>
             </div>

@@ -72,7 +72,6 @@ it("filters live sessions and routes favorite changes without mutating the publi
       onFollow={follow}
       onDetail={detail}
       onLaunch={() => {}}
-      onArm={() => {}}
     />,
   );
   fireEvent.change(screen.getByRole("searchbox"), {
@@ -89,4 +88,35 @@ it("filters live sessions and routes favorite changes without mutating the publi
     target: { value: "no-matching-calendar-series" },
   });
   expect(screen.getByText(text.noResults)).toBeTruthy();
+});
+
+it("keeps scheduled launch visible but inactive while immediate launch remains explicit", () => {
+  const launch = vi.fn();
+  render(
+    <CalendarLiveView
+      schedule={fixture}
+      alerts={{
+        leadMin: 10,
+        bands: [],
+        slots: [],
+        channels: { windows: true, inTrack: true, sound: false },
+        autoLaunch: false,
+        notifyWeek: true,
+      }}
+      following={[fixture.series[0].id]}
+      utc
+      now={Date.parse(fixture.validFrom)}
+      limit={10000}
+      profile="QA"
+      onFollow={() => {}}
+      onDetail={() => {}}
+      onLaunch={launch}
+    />,
+  );
+  const scheduled = screen.getByRole("button", { name: /Lanzar a las/u });
+  expect(scheduled.hasAttribute("disabled")).toBe(true);
+  fireEvent.click(scheduled);
+  expect(launch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: /Lanzar «QA»/u }));
+  expect(launch).toHaveBeenCalledOnce();
 });

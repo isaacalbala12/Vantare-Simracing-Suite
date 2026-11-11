@@ -18,13 +18,13 @@ import {
 } from "../ui/Frame";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
+import { SaveWarnings } from "../ui/SaveWarnings";
 import {
   ActionGroup,
   ContentStack,
   InfoList,
   ShellLayout,
 } from "../ui/ShellLayout";
-import { SaveWarnings } from "../ui/SaveWarnings";
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
@@ -365,17 +365,19 @@ function ShellContent() {
       }
     >
       <ContentStack>
-      {ui.section !== "settings" && <SaveWarnings onSettings={()=>ui.navigate("settings")} />}
-      <RegisteredScreen
-        section={ui.section}
-        loading={t("settings.loading")}
-        fallback={
-          <ContentStack>
-            <PageHeader title={title} />
-            <Callout title={t("shell.soon")} />
-          </ContentStack>
-        }
-      />
+        {ui.section !== "settings" && (
+          <SaveWarnings onSettings={() => ui.navigate("settings")} />
+        )}
+        <RegisteredScreen
+          section={ui.section}
+          loading={t("settings.loading")}
+          fallback={
+            <ContentStack>
+              <PageHeader title={title} />
+              <Callout title={t("shell.soon")} />
+            </ContentStack>
+          }
+        />
       </ContentStack>
     </ShellLayout>
   );

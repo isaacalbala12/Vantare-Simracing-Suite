@@ -9,6 +9,7 @@ import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { SearchInput } from "../../ui/Forms";
 import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
+import { PilotRail } from "../../ui/PilotProfile";
 import { PrivacyRail } from "../../ui/PrivacyPresentation";
 import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
@@ -179,7 +180,9 @@ export function Settings() {
         activeTab={selected}
         onTabChange={setTab}
         rail={
-          selected === "general" ? (
+          selected === "account" ? (
+            <PilotRail />
+          ) : selected === "general" ? (
             <GeneralRail onUpdates={() => setTab("updates")} />
           ) : selected === "appearance" ? (
             <AppearanceRail />
@@ -215,22 +218,23 @@ export function Settings() {
         }
       />
       <StatusAnnouncement>{`${t("settings.results")}: ${visible.length}`}</StatusAnnouncement>
-      {(pilot.dirty || pilot.error || pilot.closeVeto) && selected !== "account" && (
-        <Callout
-          tone={pilot.error ? "err" : "warn"}
-          title={t(pilot.error ? "pilot.failed" : "pilot.unsaved")}
-          actions={
-            <Button
-              onClick={() => {
-                setSearch("");
-                setTab("account");
-              }}
-            >
-              {t("settings.account")}
-            </Button>
-          }
-        />
-      )}
+      {(pilot.dirty || pilot.error || pilot.closeVeto) &&
+        selected !== "account" && (
+          <Callout
+            tone={pilot.error ? "err" : "warn"}
+            title={t(pilot.error ? "pilot.failed" : "pilot.unsaved")}
+            actions={
+              <Button
+                onClick={() => {
+                  setSearch("");
+                  setTab("account");
+                }}
+              >
+                {t("settings.account")}
+              </Button>
+            }
+          />
+        )}
       {failure && (
         <Callout
           tone="err"

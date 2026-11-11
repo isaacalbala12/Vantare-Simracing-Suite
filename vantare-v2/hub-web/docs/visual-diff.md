@@ -35,6 +35,7 @@ como **sin comparación** cuando no hay referencia GPUI de ese estado; no se le
 atribuye un porcentaje ni se reutiliza una referencia contraída como si lo fuera.
 Este flag no admite `--current`, porque necesita una instancia real. Como en el
 resto de capturas, adquirir antes el cerrojo global y no compilar simultáneamente.
+
 ## Referencia declarada no válida
 
 Si el orquestador descarta una referencia, `--capture-only --invalid-reference-reason "motivo"` admite una única escena y tema. Conserva `current.png` y un informe `captured/referenceStatus:invalid`, sin copia de referencia, diferencias ni porcentajes. Sigue comprobando los recibos del banco y las dimensiones 1440×900; no convierte la referencia en válida. Requiere el mismo cerrojo global para capturas reales. `--current` permite probar este modo con una imagen ya tomada sin abrir Electron.

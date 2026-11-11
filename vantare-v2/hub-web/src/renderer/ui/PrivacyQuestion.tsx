@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useRef } from "react";
+import { type KeyboardEvent, useRef, useState } from "react";
 import { privacyGateText as text } from "../i18n/privacy-gate.es";
 import { Button } from "./Button";
 import { Checkbox } from "./Forms";
@@ -22,68 +22,94 @@ export function PrivacyQuestion({
   onPolicy: () => void;
 }) {
   const reject = useRef<HTMLButtonElement>(null);
-  const container = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  function cycleFocus(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") return;
+    // GPUI cycles these explicit targets while keeping window controls accessible.
+    const targets = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>("[data-privacy-focus]"),
+    ).filter((node) => !node.hasAttribute("disabled"));
+    const current = targets.indexOf(document.activeElement as HTMLElement);
+    const next =
+      current < 0
+        ? event.shiftKey
+          ? targets.length - 1
+          : 0
+        : (current + (event.shiftKey ? -1 : 1) + targets.length) %
+          targets.length;
+    targets[next]?.focus();
+    event.preventDefault();
+  }
   return (
-    <div ref={container} className="v-privacy-question-anchor">
+    <div ref={setContainer} className="v-privacy-question-anchor">
       <Dialog.Root
         open
-        modal="trap-focus"
+        modal={false}
         disablePointerDismissal
         onOpenChange={(_open, event) => event.cancel()}
       >
-        <Dialog.Portal
-          container={container}
-          className="v-privacy-question-portal"
-        >
-          <Dialog.Popup
-            className="v-privacy-question"
-            initialFocus={reject}
-            aria-label={usage ? text.usageLabel : text.crashesLabel}
+        {container && (
+          <Dialog.Portal
+            container={container}
+            className="v-privacy-question-portal"
           >
-            <Dialog.Title className="v-privacy-question-title">
-              <TrackedCaps>{text.title}</TrackedCaps>
-            </Dialog.Title>
-            <div className="v-privacy-question-body">
-              <h2>{usage ? text.usageQuestion : text.crashesQuestion}</h2>
-              <Dialog.Description>
-                {usage ? text.usageDescription : text.crashesDescription}
-              </Dialog.Description>
-              <p>{text.optional}</p>
-              {error && <p role="alert">{error}</p>}
-              <div className="v-privacy-question-actions">
-                <Button
-                  ref={reject}
-                  aria-busy={pending || undefined}
-                  onClick={() => {
-                    if (!pending) onDecide(false);
-                  }}
-                >
-                  {text.reject}
-                </Button>
-                <Button
-                  aria-busy={pending || undefined}
-                  onClick={() => {
-                    if (!pending) onDecide(usage ? checked : true);
-                  }}
-                >
-                  {usage ? text.continue : text.accept}
-                </Button>
-              </div>
-              <div className="v-privacy-question-policy">
-                <Button onClick={onPolicy}>{text.policy}</Button>
-              </div>
-              {usage && (
-                <div className="v-privacy-question-check">
-                  <Checkbox
-                    label={text.usage}
-                    checked={checked}
-                    onCheckedChange={onChecked}
-                  />
+            <Dialog.Popup
+              className="v-privacy-question"
+              initialFocus={reject}
+              aria-labelledby={undefined}
+              aria-label={usage ? text.usageLabel : text.crashesLabel}
+              onKeyDownCapture={cycleFocus}
+            >
+              <Dialog.Title className="v-privacy-question-title">
+                <TrackedCaps>{text.title}</TrackedCaps>
+              </Dialog.Title>
+              <div className="v-privacy-question-body">
+                <h2>{usage ? text.usageQuestion : text.crashesQuestion}</h2>
+                <Dialog.Description>
+                  {usage ? text.usageDescription : text.crashesDescription}
+                </Dialog.Description>
+                <p>{text.optional}</p>
+                {error && <p role="alert">{error}</p>}
+                <div className="v-privacy-question-actions">
+                  <Button
+                    ref={reject}
+                    data-privacy-focus=""
+                    aria-busy={pending || undefined}
+                    onClick={() => {
+                      if (!pending) onDecide(false);
+                    }}
+                  >
+                    {text.reject}
+                  </Button>
+                  <Button
+                    data-privacy-focus=""
+                    aria-busy={pending || undefined}
+                    onClick={() => {
+                      if (!pending) onDecide(usage ? checked : true);
+                    }}
+                  >
+                    {usage ? text.continue : text.accept}
+                  </Button>
                 </div>
-              )}
-            </div>
-          </Dialog.Popup>
-        </Dialog.Portal>
+                <div className="v-privacy-question-policy">
+                  <Button data-privacy-focus="" onClick={onPolicy}>
+                    {text.policy}
+                  </Button>
+                </div>
+                {usage && (
+                  <div className="v-privacy-question-check">
+                    <Checkbox
+                      data-privacy-focus=""
+                      label={text.usage}
+                      checked={checked}
+                      onCheckedChange={onChecked}
+                    />
+                  </div>
+                )}
+              </div>
+            </Dialog.Popup>
+          </Dialog.Portal>
+        )}
       </Dialog.Root>
     </div>
   );

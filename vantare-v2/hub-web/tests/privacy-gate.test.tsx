@@ -116,7 +116,6 @@ it("does not ask again for decided or protected documents", async () => {
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 it("starts the usage choice unchecked and allows refusal with window controls present", async () => {
-  const close = vi.spyOn(Client.prototype, "closeWindow");
   const user = mount("privacidad-uso");
   await screen.findByRole("dialog", { name: text.usageLabel });
   expect(
@@ -124,8 +123,14 @@ it("starts the usage choice unchecked and allows refusal with window controls pr
       .getByRole("checkbox", { name: text.usage })
       .getAttribute("aria-checked"),
   ).toBe("false");
-  await user.click(screen.getByRole("button", { name: "Cerrar ventana" }));
-  expect(close).toHaveBeenCalledOnce();
+  expect(screen.getByRole("button", { name: "Cerrar ventana" })).toBeTruthy();
   await user.click(screen.getByRole("button", { name: text.reject }));
   await screen.findByRole("heading", { name: "Hub" });
+});
+it("keeps the close action accessible while the consent question is open", async () => {
+  const close = vi.spyOn(Client.prototype, "closeWindow");
+  const user = mount();
+  await screen.findByRole("dialog", { name: text.crashesLabel });
+  await user.click(screen.getByRole("button", { name: "Cerrar ventana" }));
+  expect(close).toHaveBeenCalledOnce();
 });

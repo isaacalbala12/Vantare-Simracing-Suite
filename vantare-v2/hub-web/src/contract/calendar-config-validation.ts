@@ -18,7 +18,7 @@ import {
 } from "./generated/calendar";
 import { exact, oneOf, record } from "./validation-common";
 
-export function isCalendarAlerts(v: unknown) {
+export function isCalendarAlerts(v: unknown, writing = true) {
   return (
     record(v) &&
     exact(v, [
@@ -43,8 +43,8 @@ export function isCalendarAlerts(v: unknown) {
       (b) =>
         record(b) &&
         exact(b, ["seriesId", "from", "to", "days", "mode"]) &&
-        text(b.seriesId) &&
-        b.seriesId.trim().length > 0 &&
+        typeof b.seriesId === "string" &&
+        (!writing || (text(b.seriesId) && b.seriesId.trim().length > 0)) &&
         number(b.from, calendarDayMinutes) &&
         number(b.to, calendarDayMinutes) &&
         b.from < b.to &&
@@ -57,10 +57,25 @@ export function isCalendarAlerts(v: unknown) {
       (s) =>
         record(s) &&
         exact(s, ["seriesId", "at"]) &&
-        text(s.seriesId) &&
-        s.seriesId.trim().length > 0 &&
-        number(s.at, calendarTimestampLimit),
-    )
+        typeof s.seriesId === "string" &&
+        (!writing || (text(s.seriesId) && s.seriesId.trim().length > 0)) &&
+        (writing
+          ? number(s.at, calendarTimestampLimit)
+          : typeof s.at === "number" &&
+            Number.isInteger(s.at) &&
+            Math.abs(s.at) <= 2 ** 63),
+    ) &&
+    (!writing ||
+      (new Set(v.bands.map((b) => (b as { seriesId: string }).seriesId))
+        .size === v.bands.length &&
+        new Set(
+          v.slots.map((s) =>
+            JSON.stringify([
+              (s as { seriesId: string }).seriesId,
+              (s as { at: number }).at,
+            ]),
+          ),
+        ).size === v.slots.length))
   );
 }
 export function isCalendarConfig(v: unknown) {
@@ -91,6 +106,6 @@ export function isCalendarConfig(v: unknown) {
     (v.documents.alerts === "ready"
       ? isCalendarRevision(v.alertsRevision)
       : v.alertsRevision === null) &&
-    isCalendarAlerts(v.alerts)
+    isCalendarAlerts(v.alerts, false)
   );
 }

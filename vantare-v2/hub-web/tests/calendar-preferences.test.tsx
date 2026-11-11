@@ -158,3 +158,47 @@ it("protects a damaged document without blocking another document, then reloads 
   expect(hook.result.current.canUtc).toBe(true);
   expect(hook.result.current.failure).toBeUndefined();
 });
+
+it("retries a band conflict over the winner without replacing its other preferences", async () => {
+  const initial = structuredClone(config);
+  initial.alerts.bands = [
+    { seriesId: "qa", from: 1200, to: 1380, days: "all", mode: "each" },
+  ];
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.configLoad",
+    value: initial,
+  });
+  const hook = renderHook(() => useCalendarPreferences(true));
+  await act(async () => {});
+  const winner = structuredClone(initial);
+  winner.alertsRevision = "d".repeat(64);
+  winner.alerts.bands[0].to = 1410;
+  winner.alerts.channels.sound = true;
+  host.client.request.mockRejectedValueOnce(
+    new HostFailure({ kind: "calendarConflict", current: winner }),
+  );
+  await act(async () => {
+    await hook.result.current.band("qa", {
+      ...initial.alerts.bands[0],
+      from: 1230,
+    });
+  });
+  expect(hook.result.current.failure).toBe("calendarConflict");
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+  const saved = structuredClone(winner);
+  saved.alerts.bands[0].from = 1230;
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.alertsSave",
+    value: saved,
+  });
+  await act(async () => {
+    await hook.result.current.retry();
+  });
+  expect(host.client.request).toHaveBeenLastCalledWith({
+    method: "calendar.alertsSave",
+    alerts: saved.alerts,
+    expectedRevision: winner.alertsRevision,
+  });
+  expect(hook.result.current.config?.alerts.channels.sound).toBe(true);
+  expect(hook.result.current.failure).toBeUndefined();
+});

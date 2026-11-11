@@ -867,6 +867,50 @@
           "utc": false
         }
       }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.alertsSave",
+        "value": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [
+              {
+                "days": "all",
+                "from": 1200,
+                "mode": "each",
+                "seriesId": "beginner-lmgt3-fixed",
+                "to": 1380
+              }
+            ],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": [
+              {
+                "at": 1791489600,
+                "seriesId": "weekly-wec-weekly"
+              }
+            ]
+          },
+          "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "documents": {
+            "alerts": "ready",
+            "following": "ready",
+            "prefs": "ready"
+          },
+          "following": [],
+          "followingRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "prefsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "utc": false
+        }
+      }
     }
   ],
   "ui": [
@@ -924,6 +968,39 @@
       "kind": "request",
       "request": {
         "method": "calendar.refresh"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "alerts": {
+          "autoLaunch": false,
+          "bands": [
+            {
+              "days": "all",
+              "from": 1200,
+              "mode": "each",
+              "seriesId": "beginner-lmgt3-fixed",
+              "to": 1380
+            }
+          ],
+          "channels": {
+            "inTrack": true,
+            "sound": false,
+            "windows": true
+          },
+          "leadMin": 10,
+          "notifyWeek": true,
+          "slots": [
+            {
+              "at": 1791489600,
+              "seriesId": "weekly-wec-weekly"
+            }
+          ]
+        },
+        "expectedRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+        "method": "calendar.alertsSave"
       }
     }
   ]

@@ -6,7 +6,10 @@ import {
   strings,
   text,
 } from "../calendar-common";
-import { isCalendarConfig } from "../calendar-config-validation";
+import {
+  isCalendarAlerts,
+  isCalendarConfig,
+} from "../calendar-config-validation";
 import { isCalendarHistory } from "../calendar-history-validation";
 import {
   calendarDateLimit,
@@ -167,6 +170,12 @@ export function isCalendarView(v: unknown) {
 }
 export function isRequest(v: Record<string, unknown>) {
   switch (v.method) {
+    case "calendar.alertsSave":
+      return (
+        exact(v, ["method", "alerts", "expectedRevision"]) &&
+        isCalendarAlerts(v.alerts) &&
+        isCalendarRevision(v.expectedRevision)
+      );
     case "calendar.load":
     case "calendar.refresh":
     case "calendar.configLoad":
@@ -204,6 +213,7 @@ export function isReply(v: Record<string, unknown>) {
     case "calendar.load":
     case "calendar.refresh":
       return isCalendarView(v.value);
+    case "calendar.alertsSave":
     case "calendar.configLoad":
     case "calendar.utcSet":
     case "calendar.notifyWeekSet":

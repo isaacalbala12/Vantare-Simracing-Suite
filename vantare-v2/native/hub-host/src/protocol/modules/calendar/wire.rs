@@ -5,6 +5,13 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "calendar.alertsSave")]
+    CalendarAlertsSave {
+        #[serde(deserialize_with = "crate::calendar::config::deserialize_complete_alerts")]
+        alerts: Box<crate::calendar::CalendarAlerts>,
+        #[serde(rename = "expectedRevision")]
+        expected_revision: String,
+    },
     #[serde(rename = "calendar.historyLoad")]
     CalendarHistoryLoad {},
     #[serde(rename = "calendar.configLoad")]
@@ -38,6 +45,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "calendar.alertsSave")]
+    CalendarAlertsSave {
+        value: Box<crate::calendar::CalendarConfigView>,
+    },
     #[serde(rename = "calendar.historyLoad")]
     CalendarHistoryLoad {
         value: Box<crate::calendar::CalendarHistoryView>,

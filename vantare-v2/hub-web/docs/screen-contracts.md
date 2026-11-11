@@ -342,3 +342,47 @@ Un estado de versión futura, inválido o caducado se ve como desconectado. Los
 errores de registro se muestran en cada atajo; no se convierten en un error
 general del residente. Un error general también puede corresponder al documento
 o al inicio con Windows, por lo que su texto no afirma que fallase un lanzamiento.
+
+## Escritura de avisos de Calendario (wire v24)
+
+`calendar.alertsSave { alerts, expectedRevision }` guarda el documento tipado de
+avisos con CAS local y devuelve `CalendarConfigView`. El wire exige todos sus
+campos (incluidos días/modo de cada banda y los tres canales); los defaults de
+compatibilidad solo se admiten al leer el documento antiguo del disco. El anfitrión exige
+`AccessView.calendar`, cuenta verificada y no bloqueada antes de acceder al disco.
+No hay rutas, argumentos de programas ni peticiones a servicios. La versión v24 sigue al buzón del residente (v23).
+
+La revisión de 64 hex minúsculas identifica los bytes observados, incluido el
+caso de documento ausente. Sin cambios, conserva la revisión y no escribe ni
+adquiere el cerrojo. Un documento ausente parte del `CalendarAlerts::default()`
+completo del GPUI; los documentos que el GPUI rechaza quedan protegidos.
+Un documento ajeno protegido no bloquea esta escritura.
+
+Bandas nuevas o modificadas: solo series diarias del horario vigente, oficial o
+respaldo. Tandas nuevas: instante UTC exacto de una salida publicada y no pasada.
+No se usa `previous` ni se inventan salidas. Los avisos antiguos pueden
+conservarse o eliminarse sin horario; cambiar canales o antelación no exige red.
+El error cerrado `calendarScheduleUnavailable` explica que falta un horario
+vigente; `calendarConflict` devuelve el ganador y `busy` permite reintentar.
+
+No habilita lanzamiento automático: se puede conservar un `autoLaunch` antiguo
+sin activarlo en el anfitrión, o apagarlo. Pasar de falso a verdadero se rechaza.
+El lanzamiento diferido sigue pendiente en #2089; no se cambian IPC, runtime,
+rights ni supervisor. El feed de sesión y la exportación ICS van en PR propios.
+
+### Avisos: compatibilidad de lectura y diferencias conocidas
+
+La lectura de `calendar-alerts.json` mantiene la misma estrictez que
+`native/hub/src/calendar/alerts.rs::Alerts::parse`: límites de colección,
+antelación y franjas válidas. Conserva documentos antiguos con duplicados,
+identificadores vacíos, extensos o con controles y fechas fuera de rango.
+Estas restricciones adicionales y la unicidad se aplican solo a `alertsSave`.
+Cada escritura admite una banda por serie y una tanda por `(seriesId, at)`;
+una tanda nueva solo puede pertenecer a una serie no diaria.
+
+Diferencia conocida (P3-4): editar una banda existente sin horario vigente
+requiere descargarlo y devuelve `calendarScheduleUnavailable`; GPUI permite
+esa edición. La decisión de ampliar esa compatibilidad queda pendiente de Isaac.
+Diferencia conocida (P3-6): la respuesta de guardado actualiza el documento de
+avisos dentro de la vista de preferencias ya observada; los otros documentos
+pueden conservar su lectura anterior hasta el siguiente `configLoad`.

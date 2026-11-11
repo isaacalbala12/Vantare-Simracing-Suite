@@ -18,6 +18,23 @@ fn calendar_permission_prevents_reads_and_remote_requests() {
             error: HostError::Denied
         }
     );
+    let mut pipe = Pipe::new(Vec::new());
+    s.request(
+        &mut pipe,
+        5,
+        &Request::CalendarAlertsSave {
+            alerts: Box::default(),
+            expected_revision: "a".repeat(64),
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 5,
+            error: HostError::Denied
+        }
+    );
     assert_eq!(s.core.requests, 0);
 }
 #[test]

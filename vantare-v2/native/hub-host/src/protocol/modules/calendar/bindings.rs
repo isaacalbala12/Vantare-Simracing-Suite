@@ -256,6 +256,34 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
 }
 
 pub(crate) fn corpus() -> serde_json::Value {
-    let (host, ui) = samples();
+    let (mut host, mut ui) = samples();
+    let mut config = sample_config();
+    config.alerts = sample_alerts();
+    host.push(sample_response(Reply::CalendarAlertsSave {
+        value: Box::new(config.clone()),
+    }));
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::CalendarAlertsSave {
+            alerts: Box::new(config.alerts),
+            expected_revision: config.alerts_revision.expect("sample alerts revision"),
+        },
+    });
     serde_json::json!({"host":host,"ui":ui})
+}
+
+fn sample_alerts() -> crate::calendar::CalendarAlerts {
+    let mut alerts = crate::calendar::CalendarAlerts::default();
+    alerts.bands.push(crate::calendar::CalendarBand {
+        series_id: "beginner-lmgt3-fixed".into(),
+        from: 1200,
+        to: 1380,
+        days: crate::calendar::CalendarDays::All,
+        mode: crate::calendar::CalendarBandMode::Each,
+    });
+    alerts.slots.push(crate::calendar::CalendarSlot {
+        series_id: "weekly-wec-weekly".into(),
+        at: 1_791_489_600,
+    });
+    alerts
 }

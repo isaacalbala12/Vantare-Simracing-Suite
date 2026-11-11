@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "../assets/icons/Icon";
+import { RailBlock } from "./Frame";
 import "./testing-layout.css";
 
 export function TestingLayout({
@@ -78,12 +79,8 @@ export function TestingRailSection({
   children: ReactNode;
 }) {
   return (
-    <section className="v-testing-rail-section">
-      <h3>
-        <Icon name={icon} />
-        {title}
-      </h3>
+    <RailBlock title={title} icon={icon}>
       {children}
-    </section>
+    </RailBlock>
   );
 }

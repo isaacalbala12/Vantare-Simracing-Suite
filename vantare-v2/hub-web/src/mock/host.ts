@@ -29,7 +29,7 @@ export function createMockHost(
 ) {
   const requestedScene = sceneName;
   const visual =
-    /^visual-(dark|light):(privacidad-pendiente|privacidad-uso|inicio-(?:base|referencia|vacio|cargando|error|lanzando|sin-diseno)|ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|testing-reference|testing-tester-reference|testing-tester-questionnaires-reference|testing-tester-community-reference)$/.exec(
+    /^visual-(dark|light):(privacidad-pendiente|privacidad-uso|inicio-(?:base|referencia|vacio|cargando|error|lanzando|sin-diseno)|ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|launcher-decision|launcher-shortcuts|launcher-offline|testing-reference|testing-tester-reference|testing-tester-questionnaires-reference|testing-tester-community-reference)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;

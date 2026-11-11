@@ -68,7 +68,13 @@ pub fn read(path: &Path) -> ShortcutsView {
             ..ShortcutsView::default()
         };
     };
-    let status = launcher::read_status(path);
+    project(&document, launcher::read_status(path).as_ref())
+}
+
+pub(crate) fn project(
+    document: &vantare_launcher::Document,
+    status: Option<&launcher::Status>,
+) -> ShortcutsView {
     let mut profiles = document
         .profiles
         .iter()
@@ -77,7 +83,7 @@ pub fn read(path: &Path) -> ShortcutsView {
             id: profile.id.clone(),
             name: profile.name.clone(),
             hotkey: profile.hotkey.clone(),
-            state: state(profile, status.as_ref()),
+            state: state(profile, status),
         })
         .collect::<Vec<_>>();
     profiles.sort_by(|a, b| a.name.cmp(&b.name));

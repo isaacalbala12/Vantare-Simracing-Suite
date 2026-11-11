@@ -491,3 +491,5 @@ pub mod editor;
 pub mod apps;
 
 pub mod actions;
+
+pub mod resident;

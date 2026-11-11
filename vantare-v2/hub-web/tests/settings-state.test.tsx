@@ -355,6 +355,16 @@ describe("Rendimiento y atajos over the simulated host", () => {
     await loaded(hook);
     await screen.findByText("Ctrl Alt F8");
     expect(
+      screen.getByRole("heading", { name: "01 Globales con el juego" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "02 En el Hub" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "03 En Studio" })).toBeTruthy();
+    expect(screen.getByText("Buscar en Vantare")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: t("settings.reload") }),
+    ).toBeNull();
+    expect(screen.queryByText(t("general.zoom"))).toBeNull();
+    expect(
       request.mock.calls.some(([value]) => value.method === "shortcuts.get"),
     ).toBe(true);
     expect(
@@ -362,6 +372,19 @@ describe("Rendimiento y atajos over the simulated host", () => {
         ([value]) => value.method === "launcher.favorite",
       ),
     ).toBe(false);
+  });
+});
+
+describe("shortcut reference state", () => {
+  it("shows the native empty profile row only in visual QA", async () => {
+    const hook = mount("visual-dark:ajustes-con-diseno", <Shortcuts />);
+    await loaded(hook);
+    await screen.findByText("Atajos de perfiles");
+    expect(screen.getByText(t("shortcuts.empty"))).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: t("shortcuts.edit") }),
+    ).toHaveLength(1);
+    expect(screen.queryByText("Ctrl Alt F8")).toBeNull();
   });
 });
 

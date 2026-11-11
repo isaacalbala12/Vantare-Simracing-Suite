@@ -4,8 +4,15 @@ import { lock } from "../../app/navigation";
 import { useUi } from "../../app/UiState";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
-import { Callout, Card, Keycap, SettingRow, Skeleton } from "../../ui/Data";
-import { ActionGroup } from "../../ui/ShellLayout";
+import {
+  Callout,
+  Keycap,
+  SettingGroup,
+  SettingRow,
+  Skeleton,
+} from "../../ui/Data";
+import { SettingActions } from "../../ui/SettingActions";
+import { shortcutsText } from "./shortcuts.es";
 export function Shortcuts() {
   const { client } = useHost();
   const navigate = useUi((ui) => ui.navigate);
@@ -27,12 +34,10 @@ export function Shortcuts() {
     },
   });
   const hub = [
-    ["shell.favorite", "shortcuts.ctrlL"],
-    ["shell.commands", "shell.ctrlK"],
-    ["shell.sidebar", "shell.ctrlB"],
-    ["shell.railToggle", "shell.ctrlAltB"],
-    ["general.zoom", "shell.ctrlZoom"],
-    ["shell.notices", "shortcuts.ctrlShiftN"],
+    ["favorite", "shortcuts.ctrlL"],
+    ["search", "shell.ctrlK"],
+    ["sidebar", "shell.ctrlB"],
+    ["rail", "shell.ctrlAltB"],
   ] as const;
   const studio = [
     ["shortcuts.save", "shortcuts.keysSave"],
@@ -44,23 +49,7 @@ export function Shortcuts() {
   ] as const;
   return (
     <>
-      <Card
-        title={t("shortcuts.global")}
-        actions={
-          <ActionGroup>
-            <Button onClick={() => void query.refetch()}>
-              {t("settings.reload")}
-            </Button>
-            <Button
-              disabled={Boolean(launcherLock)}
-              aria-description={launcherLock}
-              onClick={() => navigate("launcher")}
-            >
-              {t("shortcuts.edit")}
-            </Button>
-          </ActionGroup>
-        }
-      >
+      <SettingGroup number={1} title={t("shortcuts.global")}>
         {query.isPending ? (
           <Skeleton label={t("settings.loading")} />
         ) : query.isError || query.data?.protected ? (
@@ -84,21 +73,45 @@ export function Shortcuts() {
             </SettingRow>
           ))
         ) : (
-          <Callout title={t("shortcuts.empty")} />
+          <SettingRow
+            label={shortcutsText.profiles}
+            description={t("shortcuts.empty")}
+          >
+            <Button
+              size="sm"
+              disabled={Boolean(launcherLock)}
+              aria-description={launcherLock}
+              onClick={() => navigate("launcher")}
+            >
+              {t("shortcuts.edit")}
+            </Button>
+          </SettingRow>
         )}
-      </Card>
-      <Card title={t("shortcuts.hub")}>
+        {Boolean(query.data?.profiles.length) && !query.data?.protected && (
+          <SettingActions>
+            <Button
+              size="sm"
+              disabled={Boolean(launcherLock)}
+              aria-description={launcherLock}
+              onClick={() => navigate("launcher")}
+            >
+              {t("shortcuts.edit")}
+            </Button>
+          </SettingActions>
+        )}
+      </SettingGroup>
+      <SettingGroup number={2} title={t("shortcuts.hub")}>
         {hub.map(([label, key]) => (
           <SettingRow
             key={label}
-            label={t(label)}
+            label={shortcutsText[label]}
             description={t("shortcuts.hubHelp")}
           >
             <Keycap>{t(key)}</Keycap>
           </SettingRow>
         ))}
-      </Card>
-      <Card title={t("shortcuts.studio")}>
+      </SettingGroup>
+      <SettingGroup number={3} title={t("shortcuts.studio")}>
         {studio.map(([label, key]) => (
           <SettingRow
             key={label}
@@ -108,7 +121,7 @@ export function Shortcuts() {
             <Keycap>{t(key)}</Keycap>
           </SettingRow>
         ))}
-      </Card>
+      </SettingGroup>
     </>
   );
 }

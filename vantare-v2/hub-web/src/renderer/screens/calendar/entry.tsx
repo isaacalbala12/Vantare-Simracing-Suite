@@ -1,5 +1,9 @@
 import { useState } from "react";
 import {
+  calendarAlertLeads,
+  calendarBandModes,
+  calendarDayMinutes,
+  calendarDays,
   calendarDefaultAlerts,
   calendarSeriesLimit,
   calendarStartsLimit,
@@ -9,15 +13,18 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
 import { CalendarDayView } from "../../ui/CalendarDayView";
+import { CalendarBandControls } from "../../ui/CalendarBandControls";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarLiveView } from "../../ui/CalendarLiveView";
 import { CalendarMineView } from "../../ui/CalendarMineView";
 import { CalendarMonthView } from "../../ui/CalendarMonthView";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
+import { CalendarSeriesView } from "../../ui/CalendarSeriesView";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
 import { CalendarWeekView } from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
+import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarPreferences } from "./CalendarPreferences";
 import { useCalendarQARuns } from "./CalendarQARuns";
@@ -35,6 +42,7 @@ function nextPublication(now: number) {
 export default function CalendarEntry() {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
+  const [selectedSerie, setSelectedSerie] = useState<string>();
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
@@ -55,6 +63,10 @@ export default function CalendarEntry() {
     slots: [],
     channels: { ...calendarDefaultAlerts.channels },
   };
+  const history = useCalendarHistory(
+    state.allowed && !!selectedSerie,
+    schedule?.validFrom ?? "",
+  );
   const health: CalendarHealth = !state.loaded
     ? "loading"
     : schedule
@@ -104,9 +116,14 @@ export default function CalendarEntry() {
           },
         ]}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          setSelectedSerie(undefined);
+          setActiveTab(tab);
+        }}
         rail={
-          state.allowed && view ? (
+          selectedSerie && state.allowed && view ? (
+            false
+          ) : state.allowed && view ? (
             <CalendarRail
               view={view}
               schedule={schedule ?? previous}
@@ -124,6 +141,72 @@ export default function CalendarEntry() {
       <SectionPanel activeTab={activeTab}>
         {!state.allowed ? (
           <p role="status">{text.noAccess}</p>
+        ) : selectedSerie && schedule && view ? (
+          <CalendarSeriesView
+            schedule={schedule}
+            seriesId={selectedSerie}
+            alerts={alerts}
+            utc={view.utc}
+            now={state.now}
+            limit={calendarStartsLimit}
+            favorite={view.following.includes(selectedSerie)}
+            profile={launcher.profile?.name}
+            updated={view.updated}
+            runs={runs}
+            rotation={(history.view?.weeks ?? []).flatMap((week) =>
+              week.tracks
+                .filter((track) => track.seriesId === selectedSerie)
+                .map((track) => ({
+                  from: week.from * 1000,
+                  track: track.track,
+                })),
+            )}
+            backLabel={
+              activeTab === "events"
+                ? text.eventsTab(
+                    schedule.series.filter(
+                      (series) => series.recurrence.kind !== "interval",
+                    ).length,
+                  )
+                : activeTab === "calendar"
+                  ? text.calendar
+                  : text.upcoming
+            }
+            onBack={() => setSelectedSerie(undefined)}
+            onSeries={setSelectedSerie}
+            canFollow={preferences.canFollow}
+            canLaunch={launcher.canLaunch}
+            onFollow={(followed) =>
+              void preferences.follow(selectedSerie, followed)
+            }
+            onLaunch={() => void launcher.launch()}
+            alertControls={
+              <CalendarBandControls
+                seriesId={selectedSerie}
+                band={alerts.bands.find(
+                  (band) => band.seriesId === selectedSerie,
+                )}
+                defaultBand={{
+                  seriesId: selectedSerie,
+                  from: 1200,
+                  to: 1380,
+                  days: "all",
+                  mode: "each",
+                }}
+                every={
+                  schedule.series.find((series) => series.id === selectedSerie)
+                    ?.recurrence.intervalMinutes ?? 15
+                }
+                lead={alerts.leadMin}
+                leads={calendarAlertLeads}
+                days={calendarDays}
+                modes={calendarBandModes}
+                stepMinutes={15}
+                dayMinutes={calendarDayMinutes}
+                busy
+              />
+            }
+          />
         ) : (
           <CalendarFrame
             subtitle={subtitle}
@@ -188,6 +271,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
+                onSerie={setSelectedSerie}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -231,6 +315,7 @@ export default function CalendarEntry() {
               <CalendarWeekView
                 onSpan={setCalendarSpan}
                 spans={["day", "week", "month"]}
+                onSerie={setSelectedSerie}
                 view={{ ...view, official: schedule ?? view.official }}
                 alerts={alerts}
                 now={state.now}
@@ -242,6 +327,7 @@ export default function CalendarEntry() {
               />
             ) : schedule && view ? (
               <CalendarLiveView
+                onSerie={setSelectedSerie}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}

@@ -48,6 +48,7 @@ export function CalendarLiveView({
   canLaunch = true,
   canFollow = true,
   onFollow,
+  onSerie,
   onDetail,
   onLaunch,
 }: {
@@ -61,6 +62,7 @@ export function CalendarLiveView({
   canLaunch?: boolean;
   canFollow?: boolean;
   onFollow: (id: string, on: boolean) => void;
+  onSerie?: (id: string) => void;
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
 }) {
@@ -129,8 +131,8 @@ export function CalendarLiveView({
         <button
           type="button"
           className="v-calendar-live-series"
-          disabled={!onDetail}
-          onClick={() => onDetail?.(s.id, row.next)}
+          disabled={!onSerie}
+          onClick={() => onSerie?.(s.id)}
         >
           <strong>{s.name}</strong>
           <span>

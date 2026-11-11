@@ -31,6 +31,7 @@ export function CalendarWeekView({
   canFollow = true,
   onFull,
   onFollow,
+  onSerie,
   onDetail,
 }: {
   view: CalendarView;
@@ -42,6 +43,7 @@ export function CalendarWeekView({
   canFollow?: boolean;
   onFull?: () => void;
   onFollow: (id: string, followed: boolean) => void;
+  onSerie?: (id: string) => void;
   onDetail?: (id: string, at?: number) => void;
 }) {
   const [full, setFull] = useState(false);
@@ -83,11 +85,7 @@ export function CalendarWeekView({
       >
         <Icon name={view.following.includes(s.id) ? "star" : "star-line"} />
       </Button>
-      <button
-        type="button"
-        disabled={!onDetail}
-        onClick={() => onDetail?.(s.id)}
-      >
+      <button type="button" disabled={!onSerie} onClick={() => onSerie?.(s.id)}>
         <strong>{s.name}</strong>
         <p>
           <b data-tier={s.tier}>

@@ -1,4 +1,7 @@
-import type { CalendarView } from "../contract/generated/calendar";
+import type {
+  CalendarHistoryView,
+  CalendarView,
+} from "../contract/generated/calendar";
 import type { HostToUi } from "../contract/generated/contract";
 import corpus from "../contract/generated/corpus/calendar.json";
 
@@ -46,4 +49,42 @@ export function calendarReference(): CalendarView {
   value.checked = value.updated = Date.parse("2026-10-08T06:02:00Z") / 1000;
   value.utc = false;
   return value;
+}
+
+// Frozen calendar/capture.rs:159-170; public scenes only, never production data.
+export function calendarHistoryReference(): CalendarHistoryView {
+  return {
+    invalidCache: false,
+    weeks: [
+      {
+        from: Date.parse("2026-09-22T00:00:00Z") / 1000,
+        until: Date.parse("2026-09-29T00:00:00Z") / 1000,
+        seenAt: Date.parse("2026-09-22T08:00:00Z") / 1000,
+        tracks: [
+          {
+            seriesId: "beginner-lmgt3-fixed",
+            name: "LMGT3 Fixed",
+            track: "Imola",
+          },
+        ],
+      },
+      {
+        from: Date.parse("2026-09-29T00:00:00Z") / 1000,
+        until: Date.parse("2026-10-06T00:00:00Z") / 1000,
+        seenAt: Date.parse("2026-09-29T08:00:00Z") / 1000,
+        tracks: [
+          {
+            seriesId: "beginner-lmgt3-fixed",
+            name: "LMGT3 Fixed",
+            track: "Spa-Francorchamps",
+          },
+          {
+            seriesId: "weekly-wec-weekly",
+            name: "WEC Weekly",
+            track: "Spa-Francorchamps",
+          },
+        ],
+      },
+    ],
+  };
 }

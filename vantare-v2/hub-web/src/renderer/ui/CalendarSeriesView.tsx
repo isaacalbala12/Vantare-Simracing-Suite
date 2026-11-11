@@ -32,6 +32,8 @@ import {
 } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
 import { Select } from "./Forms";
+import "../design/generated/calendar-tokens.css";
+import "./calendar-layout.css";
 import "./calendar-series.css";
 
 const hours = Array.from({ length: 24 }, (_, hour) => hour);
@@ -131,7 +133,7 @@ export function CalendarSeriesView({
     { from: until, track: text.unpublished, current: false },
   ];
   return (
-    <div className="v-calendar-serie">
+    <div className="v-calendar v-calendar-serie">
       <header className="v-calendar-serie-header">
         <Button
           className="v-calendar-serie-back"

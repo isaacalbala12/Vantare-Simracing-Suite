@@ -4,6 +4,7 @@ import status from "../fixtures/core-offline.json";
 import privacy from "../fixtures/privacy-base.json";
 import settings from "../fixtures/settings-base.json";
 import {
+  demoNameMax,
   maxWidgetOverrides,
   pilotLimits,
 } from "../src/contract/generated/contract";
@@ -298,4 +299,17 @@ it("requires an explicit boolean for the observed reporting configuration", () =
   for (const value of [null, 1, "true", undefined])
     expect(isPrivacy({ ...privacy, reportingConfigured: value })).toBe(false);
   expect(isPrivacy({ ...privacy, apiKey: "forbidden" })).toBe(false);
+});
+
+it("allows a bounded QA-only display name without disclosing identity in production", () => {
+  expect(
+    isHostMessage({ ...scene, demo: true, demoName: "Isaac Albalá" }),
+  ).toBe(true);
+  for (const value of [
+    { ...scene, demo: false, demoName: "identity" },
+    { ...scene, demo: true, demoName: 1 },
+    { ...scene, demo: true, demoName: "x".repeat(demoNameMax + 1) },
+  ])
+    expect(isHostMessage(value)).toBe(false);
+  expect(isHostMessage({ ...scene, demo: false, demoName: null })).toBe(true);
 });

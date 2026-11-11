@@ -330,3 +330,43 @@
     grid-template-columns: minmax(0, 1fr) 168px;
   }
 }
+
+.v-pilot-field .v-input {
+  width: 100%;
+  background: var(--surface-2);
+}
+.v-pilot-caption .v-tracked-caps {
+  text-transform: none;
+}
+.v-pilot-simulator {
+  font-size: 12.5px;
+  font-weight: 600;
+  gap: 6px;
+}
+.v-pilot-simulator-check {
+  display: contents;
+}
+.v-pilot-simulator-check [data-state="unchecked"] {
+  display: none;
+}
+.v-pilot-simulator-check svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent-bright);
+}
+.v-pilot-simulators > p {
+  margin-bottom: 12px;
+}
+.v-pilot-preview-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.v-pilot-preview-sims > span {
+  background: var(--surface-3);
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 4px 8px;
+}

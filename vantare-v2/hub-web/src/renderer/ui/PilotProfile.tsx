@@ -90,10 +90,11 @@ function PilotField({
   return (
     <Field.Root className="v-pilot-field">
       <div className="v-pilot-caption">
-        <Field.Label>
-          <TrackedCaps>{label}</TrackedCaps>
-        </Field.Label>
-        <span>{`${Array.from(value.trim()).length}/${limit}`}</span>
+        <Field.Label>{label}</Field.Label>
+        {(limit === pilotEditorLimits.name ||
+          limit === pilotEditorLimits.description) && (
+          <span>{`${Array.from(value.trim()).length}/${limit}`}</span>
+        )}
       </div>
       <Field.Control
         className="v-input"
@@ -205,7 +206,7 @@ export function PilotSimulators({
               ]);
             }}
           >
-            <span className="v-pilot-simulator-box">
+            <span className="v-pilot-simulator-check">
               <Checkbox.Indicator>
                 <Icon name="check" />
               </Checkbox.Indicator>
@@ -237,11 +238,13 @@ export function PilotPreview({ fields }: { fields: PilotFields }) {
       <div className="v-pilot-preview-avatar">
         <PilotAvatar fields={fields} large />
       </div>
-      <h3 data-empty={!fields.publicName.trim() || undefined}>
-        {fields.publicName.trim() || text.namePlaceholder}
-      </h3>
-      <div className="v-pilot-preview-country">
-        <TrackedCaps>{country ?? text.countryPlaceholder}</TrackedCaps>
+      <div className="v-pilot-preview-identity">
+        <h3 data-empty={!fields.publicName.trim() || undefined}>
+          {fields.publicName.trim() || text.namePlaceholder}
+        </h3>
+        <div className="v-pilot-preview-country">
+          <TrackedCaps>{country ?? text.countryPlaceholder}</TrackedCaps>
+        </div>
       </div>
       <p data-empty={!fields.description.trim() || undefined}>
         {fields.description.trim() || text.descriptionPlaceholder}

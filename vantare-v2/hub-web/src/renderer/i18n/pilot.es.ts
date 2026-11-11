@@ -7,7 +7,7 @@ export const pilotText = {
     "JPEG o PNG de hasta 5 MB. Se recorta en círculo y se guarda a 256 px.",
   changePhoto: "Cambiar foto",
   preview: "Así te ves",
-  onlyYou: "Sólo tú",
+  onlyYou: "Solo tú",
   namePlaceholder: "Tu nombre público",
   countryPlaceholder: "País sin indicar",
   descriptionPlaceholder: "Cuenta en una frase cómo corres.",

@@ -1,6 +1,7 @@
         remotes: std::collections::BTreeMap::new(),
         deferred: None,
-        abandoned_deferred: None,
+        abandoned_deferred: std::collections::BTreeSet::new(),
+        accepted: std::collections::BTreeMap::new(),
         subscriptions: std::collections::BTreeSet::new(),
         exit_code: 0,
         launcher: args.launcher.clone(),

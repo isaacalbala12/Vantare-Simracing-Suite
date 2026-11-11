@@ -99,8 +99,7 @@ impl Session {
                     &self.current.access,
                     &crate::testing::ReportFields::from(&fields),
                 )?;
-                self.request_remote(id, RemoteKind::Testing(operation), command)?;
-                self.deferred = Some((id, std::time::Instant::now()));
+                self.continue_import(id, RemoteKind::Testing(operation), command)?;
                 Ok(None)
             }
         }

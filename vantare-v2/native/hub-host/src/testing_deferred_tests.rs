@@ -18,6 +18,7 @@ fn empty() -> CoreReply {
 fn begin(session: &mut Session, pipe: &mut Pipe) {
     session.current.services = protocol::LinkState::Connected;
     session.current.access.verified = true;
+    session.accepted.insert(7, Instant::now());
     session.testing_state.begin(Operation::Load);
     session
         .remotes
@@ -164,7 +165,8 @@ fn import_dispatch_busy_and_unavailable_never_archive_unseen_sources() {
         let mut session = fixture.session();
         session.core.busy = busy;
         session.current.access.verified = true;
-        session.testing_state.begin(Operation::Load);
+        session.accepted.insert(7, Instant::now());
+    session.testing_state.begin(Operation::Load);
         session
             .remotes
             .insert(7, RemoteKind::Testing(Operation::Load));
@@ -276,6 +278,7 @@ fn revoked_access_prevents_the_import_save_before_core_dispatch() {
     let path = legacy(&fixture);
     let mut session = fixture.session();
     session.core.available = true;
+    session.accepted.insert(7, Instant::now());
     session.testing_state.begin(Operation::Load);
     session
         .remotes
@@ -341,9 +344,9 @@ fn cancelling_an_import_preserves_another_screens_correlation() {
         ),
         Ok(Some(Reply::MailGet { .. }))
     ));
-    assert_eq!(session.abandoned_deferred, Some(7));
+    assert!(session.abandoned_deferred.contains(&7));
     assert_eq!(session.service_reply(7, Ok(empty())), Ok(None));
-    assert!(session.abandoned_deferred.is_none());
+    assert!(session.abandoned_deferred.is_empty());
 }
 #[test]
 fn a_deferred_reply_requires_its_exact_id_and_testing_owner() {
@@ -360,4 +363,28 @@ fn a_deferred_reply_requires_its_exact_id_and_testing_owner() {
             Err(HostError::Rejected)
         );
     }
+}
+
+#[test]
+fn abandoned_ids_are_reserved_before_core_dispatch_and_multiple_cancellations_answer_once() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.core.available = true;
+    let mut pipe = Pipe::new(Vec::new());
+    for id in [7, 8] {
+        session.deferred = Some((id, Instant::now()));
+        session.remotes.insert(id, RemoteKind::Testing(Operation::Load));
+        session.cancel_deferred(&mut pipe).unwrap();
+    }
+    assert_eq!(session.abandoned_deferred.len(), 2);
+    let bytes = pipe.get_ref().len();
+    for id in [7, 8] {
+        assert_eq!(session.request_remote(id, RemoteKind::MailGet, vantare_ipc::services_protocol::Command::MailConsentGet), Err(HostError::Busy));
+        let reply = session.service_reply(id, Ok(empty()));
+        session.respond_service(&mut pipe, id, reply).unwrap();
+    }
+    assert_eq!(session.core.requests, 0);
+    assert_eq!(pipe.get_ref().len(), bytes);
+    assert!(session.abandoned_deferred.is_empty());
+    assert_eq!(session.service_reply(99, Ok(empty())), Ok(None));
 }

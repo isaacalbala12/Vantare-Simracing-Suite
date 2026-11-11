@@ -41,11 +41,29 @@ impl Session {
         kind: RemoteKind,
         command: vantare_ipc::services_protocol::Command,
     ) -> Result<(), HostError> {
-        if self.abandoned_deferred == Some(id) || self.remotes.contains_key(&id) {
+        self.request_remote_at(id, kind, command, Instant::now())
+    }
+    pub(super) fn request_remote_at(
+        &mut self, id: u32, kind: RemoteKind,
+        command: vantare_ipc::services_protocol::Command, now: Instant,
+    ) -> Result<(), HostError> {
+        if self.abandoned_deferred.contains(&id) || self.remotes.contains_key(&id)
+            || self.accepted.contains_key(&id) || self.remotes.values().any(|pending| *pending == kind) {
             return Err(HostError::Busy);
         }
-        self.core.request(id, command)?;
+        self.core.request_at(id, command, now)?;
         self.remotes.insert(id, kind);
+        self.accepted.insert(id, now);
+        Ok(())
+    }
+    pub(super) fn continue_import(
+        &mut self, id: u32, kind: RemoteKind,
+        command: vantare_ipc::services_protocol::Command,
+    ) -> Result<(), HostError> {
+        let accepted = *self.accepted.get(&id).ok_or(HostError::Rejected)?;
+        self.core.request_continuation(id, command, accepted)?;
+        self.remotes.insert(id, kind);
+        self.deferred = Some((id, accepted));
         Ok(())
     }
 
@@ -67,6 +85,7 @@ impl Session {
         {
             self.deferred = None;
         }
+        if !matches!(&result, Ok(None)) { self.accepted.remove(&id); }
         result
     }
     pub(super) fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
@@ -100,7 +119,8 @@ impl Session {
         if let Some((id, _)) = self.deferred.take() {
             self.remotes.remove(&id);
             self.core.cancel_queued(id);
-            self.abandoned_deferred = Some(id);
+            self.abandoned_deferred.insert(id);
+            self.accepted.remove(&id);
             self.respond_service(pipe, id, Err(HostError::CoreUnavailable))?;
         }
         Ok(())

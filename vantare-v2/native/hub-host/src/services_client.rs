@@ -10,7 +10,7 @@ use vantare_ipc::{
 };
 
 // The transport guard is a product contract, not a test scheduling deadline.
-const RESPONSE_IO_TIMEOUT: Duration = Duration::from_secs(30);
+use crate::service_queue::RESPONSE_IO_TIMEOUT;
 
 pub struct Client {
     pipe: Pipe,
@@ -75,6 +75,12 @@ impl Client {
         })
     }
     pub fn request(&mut self, command: Command) -> Result<Reply, HostError> {
+        self.request_before(command, std::time::Instant::now())
+    }
+    pub(crate) fn request_before(&mut self, command: Command, accepted: std::time::Instant) -> Result<Reply, HostError> {
+        if !crate::service_queue::can_start(accepted, std::time::Instant::now()) {
+            return Err(HostError::Busy);
+        }
         // Probe only a local, idempotent operation before dispatching effects.
         // A lost response to the actual command is never replayed blindly.
         let probe = self.request_once(Command::Probe);
@@ -92,6 +98,11 @@ impl Client {
             Err(error) => return Err(error.host_error()),
             Ok(reply) if matches!(command, Command::Probe) => return Ok(reply),
             Ok(_) => {}
+        }
+        // The queue/channel/Probe can all consume the remaining renderer budget.
+        // Recheck immediately before the effect; a late Probe must not start it.
+        if !crate::service_queue::can_start(accepted, std::time::Instant::now()) {
+            return Err(HostError::Busy);
         }
         self.request_once(command).map_err(RequestError::host_error)
     }

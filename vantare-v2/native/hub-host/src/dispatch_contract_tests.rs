@@ -26,6 +26,12 @@ impl Core {
     fn cancel_queued(&mut self, id: u32) {
         self.cancelled.push(id);
     }
+    fn request_at(&mut self, id: u32, command: vantare_ipc::services_protocol::Command, _now: Instant) -> Result<(), HostError> {
+        self.request(id, command)
+    }
+    fn request_continuation(&mut self, id: u32, command: vantare_ipc::services_protocol::Command, _accepted: Instant) -> Result<(), HostError> {
+        self.request(id, command)
+    }
     fn request(
         &mut self,
         _id: u32,

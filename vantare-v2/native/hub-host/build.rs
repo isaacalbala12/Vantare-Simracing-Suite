@@ -243,13 +243,13 @@ fn write_session(
     let base =
         fs::read_to_string(root.join("src/ui_process/init.inc")).expect("session initialization");
     registry.push_str(&template.replace("@FIELDS@", &fields));
-    writeln!(registry, "enum RemoteKind{{{remote}}}").expect("String write");
+    writeln!(registry, "#[derive(Clone,Copy,PartialEq,Eq)] enum RemoteKind{{{remote}}}").expect("String write");
     writeln!(registry,"type ScreenHandler=(fn(&Request)->bool,fn(&mut Session,&mut Pipe,u32,&Request)->io::Result<()>);\nconst SCREEN_HANDLERS:&[ScreenHandler]=&[{handlers}];").expect("String write");
     writeln!(registry,"type ScreenTick=fn(&mut Session,&mut Pipe)->io::Result<()>;\nconst SCREEN_TICKS:&[ScreenTick]=&[{ticks}];").expect("String write");
     writeln!(registry,"type TopicHandler=(fn(Topic)->bool,fn(&mut Session,&mut Pipe,Topic)->io::Result<()>);\nconst SCREEN_SUBSCRIPTIONS:&[TopicHandler]=&[{subscriptions}];").expect("String write");
     writeln!(registry,"impl Session{{fn new(args:&Args,core:Core,settings:Settings,confirmation:Option<ready::Ready>,privacy:crate::privacy::State)->Self{{Self{{{base}\n{init}}}}}").expect("String write");
     registry.push_str("fn request(&mut self,pipe:&mut Pipe,id:u32,request:&Request)->io::Result<()>{let (_,handler)=SCREEN_HANDLERS.iter().find(|(accept,_)|accept(request)).ok_or(io::ErrorKind::InvalidInput)?;handler(self,pipe,id,request)}\n");
-    writeln!(registry,"fn service_reply(&mut self,id:u32,result:Result<vantare_ipc::services_protocol::Reply,HostError>)->Result<Option<Reply>,HostError>{{if self.abandoned_deferred==Some(id){{self.abandoned_deferred=None;self.remotes.remove(&id);return Ok(None);}}let remote=self.remotes.remove(&id).map(|kind|(id,kind));let reply=match remote{{Some((expected,kind))=>match kind{{{completes}}},None=>result.and(Err(HostError::Denied))}};self.validate_service_completion(id,reply)}}}}").expect("String write");
+    writeln!(registry,"fn service_reply(&mut self,id:u32,result:Result<vantare_ipc::services_protocol::Reply,HostError>)->Result<Option<Reply>,HostError>{{if self.abandoned_deferred.remove(&id){{self.remotes.remove(&id);self.accepted.remove(&id);return Ok(None);}}let remote=self.remotes.remove(&id).map(|kind|(id,kind));let reply=match remote{{Some((expected,kind))=>match kind{{{completes}}},None=>return Ok(None)}};self.validate_service_completion(id,reply)}}}}").expect("String write");
     fs::write(output.join("session.rs"), registry).expect("write session aggregation");
     fs::write(output.join("models.rs"), models).expect("write model aggregation");
     write_dispatch_tests(output, modules, sources);

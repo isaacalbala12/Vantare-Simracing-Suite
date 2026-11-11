@@ -214,6 +214,12 @@ export function CalendarWeekView({
                           {slots.map((slot) => (
                             <i
                               key={slot}
+                              data-gone={slot < now || undefined}
+                              data-highlight={
+                                slot === next ||
+                                alertAt(schedule, s, slot, alerts, limit) ||
+                                undefined
+                              }
                               style={{
                                 left: `${(100 * (slot - at)) / (until - at)}%`,
                               }}
@@ -292,7 +298,7 @@ export function CalendarWeekView({
                           width: `${Math.max(0, Math.min(100, (100 * (now - dates[0])) / (end - dates[0])))}%`,
                         }}
                       />
-                      {next !== undefined && (
+                      {next !== undefined && view.following.includes(s.id) && (
                         <b
                           style={{
                             left: `${(100 * (next - dates[0])) / (end - dates[0])}%`,
@@ -316,10 +322,27 @@ export function CalendarWeekView({
             )}
           </div>
           <footer>
-            <span>{text.nextDeparture}</span>
-            <span>{text.alert}</span>
-            <span>{text.band}</span>
-            <span>{text.now}</span>
+            <span>
+              <b className="v-calendar-week-legend-time">
+                {text.legendDeparture}
+              </b>
+              {text.nextDeparture}
+            </span>
+            <span>
+              <b className="v-calendar-week-legend-time">
+                <Icon name="bell-fill" />
+                {text.legendAlert}
+              </b>
+              {text.alert}
+            </span>
+            <span>
+              <i className="v-calendar-week-legend-band" />
+              {text.band}
+            </span>
+            <span>
+              <i className="v-calendar-week-legend-now" />
+              {text.now}
+            </span>
             <p>{text.hint}</p>
           </footer>
         </>

@@ -1,4 +1,6 @@
 export const calendarWeekText = {
+  legendDeparture: "20:00",
+  legendAlert: "22:00",
   previous: "Semana anterior",
   next: "Semana siguiente",
   today: "Hoy",

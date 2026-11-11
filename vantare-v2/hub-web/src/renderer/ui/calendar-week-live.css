@@ -27,6 +27,7 @@
   min-width: 92px;
   margin: 0;
   font-size: 12px;
+  line-height: 16px;
   color: var(--text-caption);
 }
 .v-calendar-week-live-days {
@@ -253,7 +254,9 @@
   border-radius: 3px;
   background: color-mix(in srgb, var(--accent) 32%, transparent);
 }
-.v-calendar-week-live :disabled {
+.v-calendar-week-live-identity > button:disabled,
+.v-calendar-week-live-daily > button:disabled,
+.v-calendar-week-live-event-day > button:disabled {
   opacity: 1;
 }
 
@@ -286,4 +289,66 @@
   > .v-button {
   color: var(--accent);
   background: var(--accent-tint);
+}
+
+.v-calendar-week-live > header .v-segmented {
+  height: 34px;
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: var(--surface-1);
+}
+.v-calendar-week-live > header .v-segment {
+  height: 26px;
+  min-height: 26px;
+  padding-inline: 10px;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.v-calendar-week-live [data-favorite] .v-calendar-event-track i {
+  background: var(--accent);
+  opacity: 1;
+}
+.v-calendar-week-live [data-favorite] .v-calendar-event-track i[data-gone] {
+  opacity: 0.35;
+}
+.v-calendar-week-live .v-calendar-event-track i[data-highlight] {
+  width: 9px;
+  height: 9px;
+  top: -1px;
+  border: 2px solid var(--text-1);
+}
+.v-calendar-week-live > footer > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-calendar-week-legend-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding-inline: 7px;
+  border-radius: 4px;
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  font: 700 11px / 22px var(--font-mono);
+}
+.v-calendar-week-live .v-calendar-week-legend-time svg {
+  width: 10px;
+  height: 10px;
+}
+.v-calendar-week-legend-band {
+  display: block;
+  width: 22px;
+  height: 12px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.v-calendar-week-legend-now {
+  display: block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent);
 }

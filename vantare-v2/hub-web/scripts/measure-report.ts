@@ -212,6 +212,16 @@ ${rows.join("\n")}
 | Peers de IPC de QA, excluidos de la memoria del Hub | ${size(provenance.peerBytes)} |
 | Generación QA completa sellada, sin datos mutables | ${size(provenance.totalGenerationBytes)} |
 
+## Objetivos del diseño
+
+| Objetivo | Resultado de esta primera tanda |
+|---|---|
+| Ventana visible ≤ 900 ms frío / ≤ 600 ms caliente | No se certifica: caché del sistema sin controlar y N=5; arriba se publica la latencia observada. |
+| Working set total ≤ 250 MB en Ajustes | ${statistics["electron.settings.workingSetMiB"].median * 1024 * 1024 <= 250_000_000 ? "Cumple en esta tanda" : "No cumple"}: mediana ${format(statistics["electron.settings.workingSetMiB"].median, 1)} MiB. |
+| Heap JS ≤ 60 MB | No medido en este primer A/B; no confundir con la memoria privada del proceso. |
+| Cero procesos de Electron al entrar en pista | Fuera de esta tanda de solo lectura; sí se verifican diez cierres con cero descendientes. |
+| Windows 10 real | Pendiente de máquina o VM; este servidor es Windows 11. |
+
 ## Serie completa anterior
 
 La serie anterior también tiene cinco pares completos de arranque y memoria. Su sonda .NET de CPU no superó la comprobación de carga; se conserva esta serie aparte y no se combina con la repetición PerfProc. Incluye el arranque de Electron de 7814,7 ms. Celdas: mediana (mínimo–máximo).
@@ -227,6 +237,7 @@ ${earlierRows.join("\n")}
 - Reposo: tres segundos de asentamiento y cinco segundos de espera entre instantáneas PerfProc por pantalla; el intervalo real de sus timestamps se conserva por PID y se usa en el cálculo. Siempre Ajustes y después Inicio en el mismo proceso. CPU expresada respecto a un núcleo; dividir por ${provenance.logicalCpus} para porcentaje de toda la máquina. Se contrastó PerfProc con process.cpuUsage de Node en una carga controlada (cpu-counter-native-sanity.json). La sonda .NET daba cero durante esa carga y no se usa. Un cero de la nueva sonda es solo la observación de ese intervalo. Memoria privada es PrivateMemorySize64 (comprometida); working set suma residentes y puede contar páginas compartidas más de una vez. MiB = 2^20 bytes.
 - El candidato QA conserva validación de inventario antes de lanzar. Su recorrido inicial cuesta mediana ${format(statistics["integrity.walkMs"].median, 1)} ms; verificación, segundo recorrido y hashes ${format(statistics["integrity.verifyMs"].median, 1)} ms; total ${format(statistics["integrity.totalMs"].median, 1)} ms (${format(statistics["integrity.totalMs"].min, 1)}–${format(statistics["integrity.totalMs"].max, 1)}). Incluye los pequeños peers QA sellados junto al anfitrión; no es una optimización del instalador.
 - Hub nuevo: CDP de QA activado para comprobar interacción. GPUI: ventana normal --qa-measure con VANTARE_CAPTURE_POLICY=ipc, sin escena visual congelada ni demo. Los peers del anfitrión son procesos externos y se excluyen; en el banco GPUI los replies locales viven dentro del proceso. Es una limitación del banco, documentada para interpretar memoria y CPU.
+- Las capturas de Inicio no tienen carga visual idéntica: GPUI muestra «Prepara tu overlay» sin vista previa y Electron muestra el layout local de dos widgets con SVG. Se entregó el mismo fichero de layout de fixture, pero el banco y la pantalla nueva no lo representan igual en modo normal. La comparación de memoria/CPU de Inicio es orientativa para esos estados reales y no aísla el coste del framework.
 - Se revisan las capturas de ambas pantallas para evitar medir una puerta protegida. Diez cierres controlados, cero descendientes supervivientes en todos. Esto comprueba el cierre de la medición; no se atribuye a una prueba de entrada en pista.
 - Cinco intentos previos incompletos se descartaron: uno por política no verificada, dos por la sonda UIAutomation, uno por entrega de entradas y otro por un bloqueo al renombrar el perfil. Cada ejecución usa ahora una ruta nueva sin mover cachés. Sus muestras y diagnósticos se conservan en invalid-*/. UIAutomation se sustituyó por interacción y pintura verificables. La cuarta serie completa se publica arriba sin CPU y se conserva en invalid-cpu-trial-4/; la tabla principal pertenece solo a la repetición completa con PerfProc.
 

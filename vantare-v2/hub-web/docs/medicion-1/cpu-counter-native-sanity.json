@@ -1,0 +1,17 @@
+{
+  "before": {
+    "IDProcess": 7012,
+    "PercentProcessorTime": 0,
+    "Timestamp_Sys100NS": 134389057950810358
+  },
+  "nodeUsage": {
+    "user": 62000,
+    "system": 0
+  },
+  "after": {
+    "IDProcess": 7012,
+    "PercentProcessorTime": 625000,
+    "Timestamp_Sys100NS": 134389057971841232
+  },
+  "source": "CIM PerfProc raw + Node process.cpuUsage"
+}

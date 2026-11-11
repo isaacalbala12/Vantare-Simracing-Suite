@@ -1,0 +1,27 @@
+{
+  "source": "3c7c90a5bb3d09d30baf7a68da72573ab8cff39a",
+  "uiProductSource": "9401501ea38f2e8fe65584511f27844c7efd157a",
+  "qa": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c",
+  "generation": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\generations\\d9044dff2c4db874687078424f1588f1",
+  "payloadBytes": 331668788,
+  "peerBytes": 2698401,
+  "totalGenerationBytes": 334373620,
+  "gpuiBank": {
+    "binary": "versions/12ff03f49/vantare.exe",
+    "sha256": "41ef53c062b63c74a4527d525390d5a2e7966605477ea92d06a21309ffd2f9a9",
+    "bytes": 40556032,
+    "source_commit": "12ff03f49697ee9bff773f2c10529f14ef99f284",
+    "source_dirty": false,
+    "profile": "Release",
+    "features": ["parity-capture"],
+    "example": "native/hub/examples/ui-quality.rs",
+    "qa_only": true,
+    "public_resources": 97
+  },
+  "os": "10.0.22631",
+  "logicalCpus": 8,
+  "totalMemory": 17128898560,
+  "freeMemory": 6400946176,
+  "cache": "natural; no purge, no cold-start claim",
+  "method": "five alternating A/B process launches; Settings then Home in each process"
+}

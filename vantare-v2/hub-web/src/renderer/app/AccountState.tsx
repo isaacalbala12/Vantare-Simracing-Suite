@@ -37,6 +37,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const active = useRef(true);
   const running = useRef(0);
   const sequence = useRef(0);
+  const intents = useRef(new Set<string>());
   const act = useCallback(
     async (request: AccountRequest) => {
       const priority =
@@ -45,11 +46,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         (request.method === "account.email" &&
           request.action.action === "cancel");
       if (!client) return;
+      const key =
+        request.method === "account.email"
+          ? `${request.method}:${request.action.action}`
+          : request.method;
+      if (intents.current.has(key)) return;
       if (running.current && !priority) {
         setError(text.busy);
         return;
       }
       const current = ++sequence.current;
+      intents.current.add(key);
       running.current++;
       setPending(true);
       setError(undefined);
@@ -68,9 +75,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           setError(
             failure instanceof HostFailure && failure.detail.kind === "busy"
               ? text.busy
-              : text.failed,
+              : request.method === "account.logout"
+                ? text.logoutFailed
+                : text.failed,
           );
       } finally {
+        intents.current.delete(key);
         running.current--;
         if (active.current) setPending(running.current > 0);
       }
@@ -81,6 +91,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     active.current = true;
     if (!client) return;
     let current = true;
+    const initialSequence = sequence.current;
     const unlisten = client.listen((message) => {
       if (
         current &&
@@ -93,7 +104,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     void client
       .request({ method: "account.get" })
       .then((reply) => {
-        if (!current) return;
+        if (!current || sequence.current !== initialSequence) return;
         if (reply.method !== "account.get")
           throw new HostFailure({ kind: "denied" });
         setValue(reply.value);

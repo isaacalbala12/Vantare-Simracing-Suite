@@ -169,3 +169,10 @@
   align-items: center;
   gap: 8px;
 }
+
+.v-access .v-button--neutral:not(.v-access-link) {
+  font: 500 14px / 23px var(--font-sans);
+}
+.v-access .v-button--primary {
+  font: 600 15px / 25px var(--font-sans);
+}

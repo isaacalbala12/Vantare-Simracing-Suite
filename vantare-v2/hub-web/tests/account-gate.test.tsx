@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Reply, Request } from "../src/contract/generated/contract";
 import { AccountGate } from "../src/renderer/app/AccountGate";
-import { AccountProvider } from "../src/renderer/app/AccountState";
+import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { accessText as text } from "../src/renderer/i18n/access.es";
@@ -24,11 +24,26 @@ function intercept(handle: (request: Intent) => Promise<Reply> | undefined) {
     return handle(request) ?? original.call(this, request);
   });
 }
+function SessionActions() {
+  const state = useAccount();
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void state.act({ method: "account.logout" })}
+      >
+        {text.retryLogout}
+      </button>
+      {state.error && <p role="status">{state.error}</p>}
+    </>
+  );
+}
 function Content() {
   return useHost().hello ? (
     <AccountProvider>
       <AccountGate>
         <h1>Hub</h1>
+        <SessionActions />
       </AccountGate>
     </AccountProvider>
   ) : null;
@@ -205,4 +220,49 @@ it("clears a rejected code and never starts browser login for an email error", a
       ([r]) => r.method === "account.retry" || r.method === "account.begin",
     ),
   ).toHaveLength(0);
+});
+
+it("describes a transport failure during logout as unconfirmed rather than not executed", async () => {
+  intercept((request) =>
+    request.method === "account.logout"
+      ? Promise.reject(new HostFailure({ kind: "coreUnavailable" }))
+      : undefined,
+  );
+  const user = mount("ajustes-base");
+  await user.click(
+    await screen.findByRole("button", { name: text.retryLogout }),
+  );
+  await screen.findByRole("status");
+  expect(screen.getByRole("status").textContent).toBe(text.logoutFailed);
+});
+it("does not duplicate cancellation on a rapid double click", async () => {
+  let rejectBegin: ((reason: unknown) => void) | undefined;
+  let rejectCancel: ((reason: unknown) => void) | undefined;
+  const calls = intercept((request) => {
+    if (request.method !== "account.email") return undefined;
+    if (request.action.action === "begin")
+      return new Promise<Reply>((_resolve, reject) => {
+        rejectBegin = reject;
+      });
+    if (request.action.action === "cancel")
+      return new Promise<Reply>((_resolve, reject) => {
+        rejectCancel = reject;
+      });
+    return undefined;
+  });
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  await user.type(screen.getByLabelText(text.emailLabel), "qa@example.invalid");
+  await user.click(screen.getByRole("button", { name: text.submit.continue }));
+  await screen.findByRole("button", { name: text.submit.waiting });
+  await user.dblClick(screen.getByRole("button", { name: text.back }));
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "cancel",
+    ),
+  ).toHaveLength(1);
+  await act(async () => {
+    rejectCancel?.(new HostFailure({ kind: "coreUnavailable" }));
+    rejectBegin?.(new HostFailure({ kind: "denied" }));
+  });
 });

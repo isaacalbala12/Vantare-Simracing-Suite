@@ -120,6 +120,9 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
             $process.StandardInput.Close()
             if(-not $process.WaitForExit(10000)){throw 'Controlled close deadline'}
             @{phase='closed';app=$application.name;iteration=$iteration;stderr=$stderr.GetAwaiter().GetResult();survivors=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Compress | Write-Output
-        } finally { if(-not $process.HasExited){$process.Kill($true);$process.WaitForExit()};$process.Dispose() }
+        } catch {
+            if($window -and -not $process.HasExited) { Save-Window $window (Join-Path $configuration.evidence "$($application.name)-unavailable-$iteration.png") }
+            throw
+        } finally { if(-not $process.HasExited){$process.Kill($true);$process.WaitForExit()};[IO.File]::WriteAllText((Join-Path $configuration.evidence "$($application.name)-$iteration.stderr.log"),$stderr.GetAwaiter().GetResult());$process.Dispose() }
     }
 }

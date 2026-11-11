@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  readFile,
+  rename,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { cpus, freemem, release, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -272,6 +279,33 @@ async function main() {
         JSON.stringify(samples, null, 2),
       );
       if (event.phase === "before") {
+        const profile = event.app === "gpui" ? gpui : hub;
+        const archived = `${profile}-previous-${event.iteration}`;
+        assert.ok(
+          resolve(profile).startsWith(`${resolve(qa)}\\`) &&
+            resolve(archived).startsWith(`${resolve(qa)}\\`),
+        );
+        await rename(profile, archived);
+        await mkdir(profile, { recursive: true });
+        await writeFile(
+          join(profile, "appearance.json"),
+          JSON.stringify(appearance),
+        );
+        if (event.app === "gpui") {
+          await cp(
+            join(bank, "template/replies.json"),
+            join(profile, "replies.json"),
+          );
+          await cp(
+            join(bank, "template/layout.json"),
+            join(profile, "layout.json"),
+          );
+          await mkdir(join(profile, "Vantare/native"), { recursive: true });
+          await writeFile(
+            join(profile, "Vantare/native/privacy.json"),
+            JSON.stringify(privacy),
+          );
+        }
         if (event.app === "electron") {
           for (const file of [
             join(hub, "hub-ui-qa.log"),

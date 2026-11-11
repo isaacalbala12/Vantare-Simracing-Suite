@@ -30,8 +30,8 @@
     },
     {
       "error": {
-        "expected": 9,
-        "found": 10,
+        "expected": 10,
+        "found": 11,
         "kind": "incompatible"
       },
       "id": 1,
@@ -60,6 +60,7 @@
     },
     {
       "demo": false,
+      "demoName": null,
       "kind": "hello",
       "theme": {
         "palette": "vantare",
@@ -68,7 +69,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 9,
+      "version": 10,
       "window": {
         "height": 900,
         "minimized": false,
@@ -240,7 +241,7 @@
     },
     {
       "kind": "hello",
-      "version": 9
+      "version": 10
     },
     {
       "kind": "ready"

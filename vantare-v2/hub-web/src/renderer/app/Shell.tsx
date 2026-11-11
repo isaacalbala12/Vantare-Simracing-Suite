@@ -18,6 +18,7 @@ import {
 } from "../ui/Frame";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
+import { SaveWarnings } from "../ui/SaveWarnings";
 import {
   ActionGroup,
   ContentStack,
@@ -41,18 +42,8 @@ export function Shell() {
 }
 function ShellContent() {
   const host = useHost();
-  const { data: pilotName = "" } = useQuery({
-    queryKey: ["demo-pilot-name"],
-    enabled: !!host.client && host.hello?.demo === true,
-    queryFn: async () => {
-      const reply = await host.client?.request({ method: "pilot.load" });
-      if (reply?.method !== "pilot.load")
-        throw new Error("Demo identity unavailable");
-      return reply.value.fields.publicName;
-    },
-  });
-  // No account identity is exposed yet: production stays anonymous until Access.
-  const profileName = host.hello?.demo ? pilotName : "";
+  // QA identity is separate from the editable pilot draft. Production remains anonymous until Access.
+  const profileName = host.hello?.demo ? (host.hello.demoName ?? "") : "";
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);
@@ -373,38 +364,21 @@ function ShellContent() {
         )
       }
     >
-      <RegisteredScreen
-        section={ui.section}
-        loading={t("settings.loading")}
-        fallback={
-          <ContentStack>
-            {settings.error && (
-              <Callout
-                tone="err"
-                title={t("settings.failed")}
-                actions={
-                  <ActionGroup>
-                    <Button busy={settings.pending} onClick={settings.retry}>
-                      {t("settings.retry")}
-                    </Button>
-                    <Button
-                      disabled={settings.pending}
-                      variant="ghost"
-                      onClick={settings.discard}
-                    >
-                      {t("settings.discard")}
-                    </Button>
-                  </ActionGroup>
-                }
-              >
-                {t("settings.failedHelp")}
-              </Callout>
-            )}
-            <PageHeader title={title} />
-            <Callout title={t("shell.soon")} />
-          </ContentStack>
-        }
-      />
+      <ContentStack>
+        {ui.section !== "settings" && (
+          <SaveWarnings onSettings={() => ui.navigate("settings")} />
+        )}
+        <RegisteredScreen
+          section={ui.section}
+          loading={t("settings.loading")}
+          fallback={
+            <ContentStack>
+              <PageHeader title={title} />
+              <Callout title={t("shell.soon")} />
+            </ContentStack>
+          }
+        />
+      </ContentStack>
     </ShellLayout>
   );
 }

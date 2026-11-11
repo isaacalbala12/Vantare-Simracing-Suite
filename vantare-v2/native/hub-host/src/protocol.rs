@@ -7,7 +7,8 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 include!(concat!(env!("OUT_DIR"), "/wire.rs"));
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
+pub const DEMO_NAME_LIMIT: usize = 128;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +81,8 @@ pub enum HostToUi {
         theme: ThemeBoot,
         window: WindowBoot,
         demo: bool,
+        #[serde(rename = "demoName")]
+        demo_name: Option<String>,
     },
     Response {
         id: u32,
@@ -145,6 +148,7 @@ pub fn hello(settings: &SettingsView) -> std::io::Result<HostToUi> {
             minimized: settings.general.minimized && (!interactive || background),
         },
         demo: false,
+        demo_name: None,
     })
 }
 #[cfg(test)]

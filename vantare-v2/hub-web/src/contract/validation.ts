@@ -1,6 +1,6 @@
 import { isPickedExecutable } from "./apps-validation";
 import type { HostToUi, UiToHost } from "./generated/contract";
-import { palettes, schemes, topics } from "./generated/contract";
+import { demoNameMax, palettes, schemes, topics } from "./generated/contract";
 import { validators } from "./generated/validators";
 import { isZoom } from "./settings-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
@@ -43,9 +43,20 @@ export function isHostMessage(value: unknown): value is HostToUi {
   switch (value.kind) {
     case "hello":
       return (
-        exact(value, ["kind", "version", "theme", "window", "demo"]) &&
+        exact(value, [
+          "kind",
+          "version",
+          "theme",
+          "window",
+          "demo",
+          "demoName",
+        ]) &&
         integer(value.version) &&
         typeof value.demo === "boolean" &&
+        (value.demoName === null ||
+          (value.demo === true &&
+            typeof value.demoName === "string" &&
+            value.demoName.length <= demoNameMax)) &&
         record(value.theme) &&
         exact(value.theme, [
           "palette",

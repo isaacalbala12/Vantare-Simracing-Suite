@@ -1,7 +1,8 @@
 {
   "kind": "hello",
-  "version": 9,
+  "version": 10,
   "demo": true,
+  "demoName": null,
   "theme": {
     "window": "#161314",
     "sidebar": "#1b1718",

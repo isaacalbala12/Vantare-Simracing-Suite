@@ -1,5 +1,6 @@
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
+import demoIdentity from "../../fixtures/demo-identity.json";
 import {
   type CoreStatus,
   HOST_PROTOCOL_VERSION,
@@ -10,6 +11,8 @@ import { isUiMessage } from "../contract/validation";
 import type { MockContext } from "./context";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
+  if (name?.startsWith("visual-"))
+    return { ...hello, demoName: demoIdentity.name };
   return name === "componentes-incompatibles"
     ? { ...hello, version: HOST_PROTOCOL_VERSION + 1 }
     : name === "componentes-incompatibles-light"
@@ -24,6 +27,7 @@ export function createMockHost(
   sceneName = "ajustes-base",
   emit: (message: HostToUi) => void = () => {},
 ) {
+  const requestedScene = sceneName;
   const visual =
     /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|testing-reference|testing-tester-reference|testing-tester-questionnaires-reference)$/.exec(
       sceneName,
@@ -57,7 +61,7 @@ export function createMockHost(
     if (!isUiMessage(value)) return null;
     if (value.kind === "hello")
       return value.version === HOST_PROTOCOL_VERSION
-        ? helloForScene(sceneName)
+        ? helloForScene(requestedScene)
         : null;
     for (const handler of handlers) {
       const result = handler(value);

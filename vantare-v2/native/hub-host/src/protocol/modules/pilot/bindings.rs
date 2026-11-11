@@ -6,6 +6,21 @@ pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<crate::pilot::PilotFields>(&mut text);
     declare::<crate::pilot::PilotView>(&mut text);
+    constants!(
+        &mut text,
+        "pilotSimulatorOptions",
+        crate::pilot::presentation::SIMULATORS
+    );
+    constants!(
+        &mut text,
+        "pilotCountryOptions",
+        crate::pilot::presentation::COUNTRIES
+    );
+    constants!(
+        &mut text,
+        "pilotEditorLimits",
+        serde_json::json!({"name":crate::pilot::presentation::NAME_MAX,"description":crate::pilot::presentation::DESCRIPTION_MAX,"favorite":crate::pilot::presentation::FAVORITE_MAX,"cropMinSide":crate::pilot::presentation::CROP_MIN_SIDE})
+    );
     constants!(&mut text, "pilotRevisionMax", u64::MAX.to_string());
     constants!(&mut text, "pilotCountries", crate::pilot::countries());
     constants!(

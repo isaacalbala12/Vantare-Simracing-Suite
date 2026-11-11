@@ -10,6 +10,7 @@ export interface VisualScene {
   prepare(page: Page): Promise<void>;
 }
 const settingsTabs: Record<string, string> = {
+  "ajustes-cuenta": "Cuenta",
   "ajustes-aplicacion": "General",
   "ajustes-apariencia": "Apariencia",
   "ajustes-rendimiento": "Rendimiento en pista",

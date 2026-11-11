@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMockHost } from "../src/mock/host";
+import { createMockHost, helloForScene } from "../src/mock/host";
 import { initials } from "../src/renderer/ui/initials";
 
 describe("native avatar initials", () => {
@@ -13,7 +13,7 @@ describe("native avatar initials", () => {
   ])("formats %j as %s", (name, expected) => {
     expect(initials(name)).toBe(expected);
   });
-  it("reads the visual name through the existing pilot projection", () => {
+  it("keeps the visual identity separate from an empty editable pilot profile", () => {
     const reply = createMockHost("visual-dark:ajustes-con-diseno")({
       kind: "request",
       id: 1,
@@ -23,12 +23,16 @@ describe("native avatar initials", () => {
       kind: "response",
       result: {
         method: "pilot.load",
-        value: { fields: { publicName: "Isaac Albalá" } },
+        value: { fields: { publicName: "" } },
       },
     });
     if (reply?.kind !== "response" || reply.result.method !== "pilot.load")
       throw new Error("Missing QA pilot");
-    expect(initials(reply.result.value.fields.publicName)).toBe("IA");
+    expect(initials(reply.result.value.fields.publicName)).toBe("·");
+    const demo = helloForScene("visual-dark:ajustes-con-diseno");
+    expect(demo.demo).toBe(true);
+    expect(initials(demo.demoName ?? "")).toBe("IA");
+    expect(helloForScene("ajustes-base").demoName).toBeNull();
   });
   it("grants visual-bank capabilities only to the visual mock scene", () => {
     const request = { kind: "request", id: 1, request: { method: "core.get" } };

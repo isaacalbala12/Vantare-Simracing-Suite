@@ -15,7 +15,10 @@ import {
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/calendar.json";
 import { starts } from "../../renderer/screens/calendar/schedule";
-import {calendarHistoryReference,calendarReference} from "../calendar-reference";
+import {
+  calendarHistoryReference,
+  calendarReference,
+} from "../calendar-reference";
 import type { MockContext, MockHandler } from "../context";
 
 function alertValue(alerts: CalendarAlerts) {

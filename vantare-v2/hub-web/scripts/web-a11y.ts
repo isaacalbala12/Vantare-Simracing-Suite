@@ -13,19 +13,14 @@ async function focused(locator: Locator) {
   );
 }
 
-import { preview } from "vite";
 import tokens from "../design/tokens.json";
+import { webQaPreview } from "./web-qa";
 
 const evidence = resolve(
   process.env.VANTARE_HUB_EVIDENCE ?? "test-results/web",
 );
 await mkdir(evidence, { recursive: true });
-const server = await preview({
-  configFile: false,
-  root: resolve("src/renderer"),
-  build: { outDir: resolve("out/renderer") },
-  preview: { host: "127.0.0.1", port: 0 },
-});
+const server = await webQaPreview();
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({

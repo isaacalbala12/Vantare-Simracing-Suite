@@ -3,19 +3,14 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
-import { preview } from "vite";
 import { notificationScenes } from "./visual-diff/notifications.ts";
+import { webQaPreview } from "./web-qa";
 
 const evidence = resolve(
   process.env.VANTARE_HUB_EVIDENCE ?? "test-results/notifications",
 );
 await mkdir(evidence, { recursive: true });
-const server = await preview({
-  configFile: false,
-  root: resolve("src/renderer"),
-  build: { outDir: resolve("out-qa/renderer") },
-  preview: { host: "127.0.0.1", port: 0 },
-});
+const server = await webQaPreview();
 const browser = await chromium.launch({
   executablePath: process.env.VANTARE_HUB_BROWSER,
 });

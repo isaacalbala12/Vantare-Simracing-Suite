@@ -3,20 +3,15 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
-import { preview } from "vite";
 import { t } from "../src/renderer/i18n/es.ts";
 import { until } from "./wait-for.ts";
+import { webQaPreview } from "./web-qa";
 
 const evidence = resolve(
   process.env.VANTARE_HUB_EVIDENCE ?? "test-results/privacy",
 );
 await mkdir(evidence, { recursive: true });
-const server = await preview({
-  configFile: false,
-  root: resolve("src/renderer"),
-  build: { outDir: resolve("out/renderer") },
-  preview: { host: "127.0.0.1", port: 0 },
-});
+const server = await webQaPreview();
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({

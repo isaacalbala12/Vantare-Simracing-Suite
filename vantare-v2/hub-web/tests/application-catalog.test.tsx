@@ -99,9 +99,11 @@ describe("application catalog", () => {
         ([request]) => request.method === "launcher.app.save",
       ),
     ).toHaveLength(1);
-    fireEvent.click(
-      screen.getByRole("button", { name: text.edit("OBS Studio") }),
-    );
+    const editAgain = screen.getByRole("button", {
+      name: text.edit("OBS Studio"),
+    });
+    await waitFor(() => expect(editAgain.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(editAgain);
     await screen.findByText(text.defaultArguments);
     expect(screen.queryByText(text.customArguments)).toBeNull();
   });

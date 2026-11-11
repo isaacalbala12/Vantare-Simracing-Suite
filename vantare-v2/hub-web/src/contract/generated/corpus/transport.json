@@ -30,8 +30,8 @@
     },
     {
       "error": {
-        "expected": 18,
-        "found": 19,
+        "expected": 19,
+        "found": 20,
         "kind": "incompatible"
       },
       "id": 1,
@@ -69,7 +69,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 18,
+      "version": 19,
       "window": {
         "height": 900,
         "minimized": false,
@@ -241,7 +241,7 @@
     },
     {
       "kind": "hello",
-      "version": 18
+      "version": 19
     },
     {
       "kind": "ready"

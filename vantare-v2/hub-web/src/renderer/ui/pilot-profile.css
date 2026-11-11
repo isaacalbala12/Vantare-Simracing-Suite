@@ -450,3 +450,11 @@
 .v-pilot-photo-actions .v-button[aria-disabled="true"] {
   opacity: var(--disabled-opacity);
 }
+
+.v-pilot-preview {
+  padding-top: 23px;
+  padding-bottom: 23px;
+}
+.v-pilot-preview-avatar {
+  margin-bottom: 2px;
+}

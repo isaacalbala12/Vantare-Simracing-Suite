@@ -308,14 +308,14 @@ async function capture(
     let cleanupFailed = false;
     const stopTree = () => {
       if (child.pid && child.exitCode === null) {
-        forcedKill = true;
         try {
           execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
             windowsHide: true,
             stdio: "ignore",
           });
+          forcedKill = true;
         } catch {
-          child.kill();
+          forcedKill = child.kill() || forcedKill;
         }
       }
     };
@@ -330,6 +330,8 @@ async function capture(
         await closing.send("Browser.close").catch(() => {});
       }
       await browser?.close();
+      if (child.exitCode === null)
+        await new Promise<void>((accept) => child.once("exit", () => accept()));
     } finally {
       clearTimeout(deadline);
       if (child.exitCode === null) {

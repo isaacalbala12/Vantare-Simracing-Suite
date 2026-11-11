@@ -83,3 +83,7 @@
 .v-pilot-crop-spacer {
   flex: 1;
 }
+
+.v-pilot-crop-actions {
+  min-height: 171px;
+}

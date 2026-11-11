@@ -54,12 +54,18 @@ export const pilotScenes: Record<string, VisualScene> = {
         mimeType: "image/png",
         buffer: Buffer.from(png, "base64"),
       });
-      await page
-        .getByRole("button", {
-          name: "Recorte de la foto: arrastra para mover, rueda para acercar",
-          exact: true,
-        })
-        .waitFor();
+      if (process.env.VANTARE_HUB_VISUAL_BASELINE === "centered-photo") {
+        await page
+          .getByRole("img", { name: "Piloto QA", exact: true })
+          .first()
+          .waitFor();
+      } else
+        await page
+          .getByRole("button", {
+            name: "Recorte de la foto: arrastra para mover, rueda para acercar",
+            exact: true,
+          })
+          .waitFor();
       await page.getByRole("tabpanel").evaluate((node) => {
         const scroller = node.closest(".v-shell-main");
         if (scroller) scroller.scrollTop = 0;

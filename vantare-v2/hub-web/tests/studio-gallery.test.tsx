@@ -341,16 +341,10 @@ describe("Studio gallery", () => {
     mount("studio-muchos");
     await screen.findByRole("button", { name: "Standings 1" });
     const user = userEvent.setup();
-    await user.click(screen.getByRole("combobox", { name: t.filterLabel }));
-    await user.click(
-      await screen.findByRole("option", { name: t.filters.hidden }),
-    );
+    await user.click(screen.getByRole("button", { name: t.filters.hidden }));
     expect(await screen.findByText(t.noHidden)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Standings 1" })).toBeNull();
-    await user.click(screen.getByRole("combobox", { name: t.filterLabel }));
-    await user.click(
-      await screen.findByRole("option", { name: t.filters.all }),
-    );
+    await user.click(screen.getByRole("button", { name: t.filters.all }));
     expect(
       await screen.findByRole("button", { name: "Standings 1" }),
     ).toBeTruthy();
@@ -372,6 +366,24 @@ describe("Studio gallery", () => {
     ).toBe("false");
     expect(document.activeElement).toBe(
       await screen.findByRole("searchbox", { name: t.search }),
+    );
+  });
+  it("keeps focus in the filtered gallery after a card leaves it", async () => {
+    mount("studio-muchos");
+    const first = await screen.findByRole("button", { name: "Standings 1" });
+    fireEvent.keyDown(first, { key: " " });
+    await waitFor(() =>
+      expect(first.closest("article")?.getAttribute("data-hidden")).toBe(
+        "true",
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: t.filters.hidden }));
+    const show = screen.getByRole("button", { name: t.showWidget });
+    show.focus();
+    fireEvent.click(show);
+    await screen.findByText(t.noHidden);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: t.filters.hidden }),
     );
   });
 });

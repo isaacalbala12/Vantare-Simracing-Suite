@@ -580,9 +580,9 @@
   color: var(--text-3);
   font-size: 12px;
 }
-.v-studio-gallery-heading > .v-field {
+.v-studio-gallery-heading > .v-segmented {
   margin-left: auto;
-  width: 140px;
+  flex: none;
 }
 .v-studio-suggestions {
   padding: 8px 0 16px;
@@ -651,4 +651,17 @@
   :is(.v-studio-obs-button, .v-studio-edit-button) {
   border: 1px solid var(--line-2);
   background: var(--surface-1);
+}
+
+.v-studio-suggestions {
+  display: contents;
+}
+.v-studio-suggestions > h3 {
+  grid-column: 1 / -1;
+  height: 20px;
+  margin: 0;
+  align-self: center;
+}
+.v-studio-suggestions > div {
+  display: contents;
 }

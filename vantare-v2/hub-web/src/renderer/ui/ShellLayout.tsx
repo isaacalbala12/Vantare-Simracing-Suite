@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { SectionChromeProvider } from "../app/SectionChrome";
+import {
+  SectionChromeProvider,
+  SectionRailVisibility,
+} from "../app/SectionChrome";
 export function ShellLayout({
   header,
   sidebar,
@@ -25,7 +28,7 @@ export function ShellLayout({
               <main className="v-shell-main">{children}</main>
               <div className="v-shell-toast-anchor">{toasts}</div>
             </div>
-            {rail}
+            <SectionRailVisibility>{rail}</SectionRailVisibility>
           </div>
         </div>
       </div>

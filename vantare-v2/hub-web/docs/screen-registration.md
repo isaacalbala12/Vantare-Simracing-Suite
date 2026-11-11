@@ -30,3 +30,15 @@ Firma: `SectionChrome({ title?: string, tabs?: readonly {id:string; etiqueta:str
 Los portales conservan los contextos de la pantalla: sus datos, handlers y borradores siguen en el mismo árbol React aunque se dibujen en cabecera o barra derecha. Al salir se retiran título, pestañas y rail propios. Sin rail se usa el contexto predeterminado del marco. Cada pantalla mantiene su i18n en `screens/<id>/es.ts` o `i18n/<id>.es.ts`; no añade todas sus claves al fichero global. Las extensiones Rust van en módulos/bloques propios por pantalla bajo `protocol/` y sus bindings se regeneran desde Rust; este PR no cambia el protocolo.
 
 Estructura: raíl izquierdo a todo el alto, columna principal con cabecera 52 y cuerpo con contenido y rail derecho 320–400. Izquierda contraída a 76 por debajo de 1500 mientras no haya una elección manual. Solo desplaza el contenido; no hay barras nativas. Los toasts están limitados a la columna de contenido. Ajustes integra ya sus pestañas en cabecera, con buscador y título de pestaña; los cuerpos y el detalle de componentes siguen en los PR siguientes de 00-paridad-visual.md. Los controles nativos de ventana se reemplazan en el PR del contrato autorizado de minimizar/maximizar/cierre. No se declara paridad global terminada.
+
+## Vistas sin carril derecho
+
+`<SectionChrome rail={false} />` solicita que el marco no pinte el `ContextRail`
+y que la columna de contenido ocupe todo el ancho disponible. La petición solo
+vive mientras esa vista esté montada: al cambiarla o salir se restaura el carril.
+No cambia la preferencia guardada de «panel derecho contraído» del usuario.
+
+El valor predeterminado, `undefined` o `null`, conserva el contexto habitual;
+un nodo React sustituye el contenido del carril como antes. Ajustes, Launcher,
+Testing Center e Inicio no cambian. Una página de serie puede usar `rail={false}`
+y volver a pasar su nodo de contexto al regresar a Próximas.

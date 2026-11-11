@@ -60,7 +60,11 @@ describe("application catalog contract", () => {
   });
   it("preserves a picked selection after conflict and consumes it after a successful explicit retry", () => {
     const host = createMockHost("launcher-aplicaciones");
-    const selected = send(host, "launcher.app.pick", { id: null });
+    const ack = send(host, "launcher.app.pick", { id: null });
+    expect(ack).toMatchObject({kind:"response",result:{method:"launcher.app.pick",value:null}});
+    expect(host({kind:"pickedExecutable",id:2,path:"D:/qa/chosen.exe"})).toMatchObject({kind:"failure",error:{kind:"denied"}});
+    const selected = host({kind:"pickedExecutable",id:1,path:"D:/qa/chosen.exe"});
+    expect(host({kind:"pickedExecutable",id:1,path:"D:/qa/chosen.exe"})).toMatchObject({kind:"failure",error:{kind:"denied"}});
     if (
       selected?.kind !== "response" ||
       selected.result.method !== "launcher.app.pick" ||

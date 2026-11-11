@@ -22,12 +22,20 @@ import {
 } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
+vi.mock("../src/mock/host", async (original) => {
+  const actual = await original<typeof import("../src/mock/host")>();
+  return {...actual, createMockHost: (...args: Parameters<typeof actual.createMockHost>) => {
+    const host = actual.createMockHost(...args);
+    return (value: unknown) => {
+      const reply = host(value);
+      if (reply?.kind === "response" && reply.result.method === "launcher.app.pick" && reply.result.value === null)
+        return host({kind:"pickedExecutable",id:reply.id,path:"D:/inert-qa/Aplicación QA.exe"});
+      return reply;
+    };
+  }};
+});
 beforeEach(() =>
-  vi.stubGlobal("matchMedia", () => ({
-    matches: false,
-    addEventListener() {},
-    removeEventListener() {},
-  })),
+  vi.stubGlobal("matchMedia", () => ({matches:false,addEventListener(){},removeEventListener(){}})),
 );
 afterEach(() => {
   cleanup();
@@ -72,7 +80,7 @@ describe("application catalog", () => {
     );
     await screen.findByText(text.defaultArguments);
     fireEvent.click(screen.getByRole("button", { name: text.pick }));
-    await screen.findByText("Aplicación QA");
+    await screen.findByText("Aplicación QA.exe");
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByText(text.conflict);
     fireEvent.click(screen.getByRole("button", { name: text.retry }));
@@ -102,7 +110,7 @@ describe("application catalog", () => {
     );
     await screen.findByText(text.customArguments);
     fireEvent.click(screen.getByRole("button", { name: text.pick }));
-    await screen.findByText("Aplicación QA");
+    await screen.findByText("Aplicación QA.exe");
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("alertdialog", { name: text.argumentResetTitle });
     expect(screen.getByText(text.argumentResetMessage(1))).toBeTruthy();
@@ -164,7 +172,7 @@ describe("application catalog", () => {
     fireEvent.click(within(form).getByRole("button", { name: text.save }));
     await screen.findByText(text.missing);
     fireEvent.click(within(form).getByRole("button", { name: text.pick }));
-    await screen.findByText("Aplicación QA");
+    await screen.findByText("Aplicación QA.exe");
     expect(screen.getByText(text.defaultArguments)).toBeTruthy();
     expect(
       within(form).queryByRole("textbox", { name: /Argumentos/ }),

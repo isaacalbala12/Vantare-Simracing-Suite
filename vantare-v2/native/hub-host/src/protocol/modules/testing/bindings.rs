@@ -205,6 +205,7 @@ fn append_testing_id_constants(text: &mut String) {
                 crate::testing::LegacyMigration::None,
                 crate::testing::LegacyMigration::Imported,
                 crate::testing::LegacyMigration::ImportedTrimmed,
+                crate::testing::LegacyMigration::Archived,
                 crate::testing::LegacyMigration::Preserved
             ]),
         ),

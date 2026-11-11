@@ -143,3 +143,112 @@ fn session_testing_roundtrips_remove_prepare_and_send_and_ignores_late_ids() {
     );
     assert!(local.incoming.try_recv().is_err());
 }
+
+#[test]
+fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
+    let root = Root::new();
+    let path = root.path.join("testing-center/editor-draft.json");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, br#"{"version":1,"fields":{"module":"hub","actionText":"old","expectedText":"","observedText":"","contextText":""}}"#).unwrap();
+    let mut session = restart_session(&root.path, "testing-local-unused");
+    let local = session.core.isolate_services(true);
+    session.current.access.verified = true;
+    session.current.services = crate::protocol::LinkState::Connected;
+    let (mut pipe, mut peer) = pipes();
+    session
+        .testing_request(&mut pipe, 7, &Request::DraftLoad {})
+        .unwrap();
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (7, services::Command::DraftLoad)
+    ));
+    local
+        .outgoing
+        .send((
+            7,
+            Ok(services::Reply::Draft {
+                draft: None,
+                message: String::new(),
+            }),
+        ))
+        .unwrap();
+    let (id, result) = session.core.reply().unwrap();
+    assert_eq!(session.service_reply(id, result), Ok(None));
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (7, services::Command::DraftSave { .. })
+    ));
+    session.cancel_deferred(&mut pipe).unwrap();
+    assert!(matches!(
+        next(&mut peer),
+        HostToUi::Failure {
+            id: 7,
+            error: HostError::CoreUnavailable
+        }
+    ));
+    let fields = crate::testing::ReportFields {
+        module: "hub".into(),
+        action_text: "new".into(),
+        ..Default::default()
+    };
+    session
+        .testing_request(
+            &mut pipe,
+            7,
+            &Request::DraftSave {
+                fields: fields.clone(),
+            },
+        )
+        .unwrap();
+    assert!(matches!(
+        next(&mut peer),
+        HostToUi::Failure {
+            id: 7,
+            error: HostError::Busy
+        }
+    ));
+    local
+        .outgoing
+        .send((7, Ok(services::Reply::Closed)))
+        .unwrap();
+    let (id, result) = session.core.reply().unwrap();
+    assert_eq!(session.service_reply(id, result), Ok(None));
+    session
+        .testing_request(
+            &mut pipe,
+            7,
+            &Request::DraftSave {
+                fields: fields.clone(),
+            },
+        )
+        .unwrap();
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (7, services::Command::DraftSave { .. })
+    ));
+    local
+        .outgoing
+        .send((
+            7,
+            Ok(services::Reply::Draft {
+                draft: Some(report_document::Draft {
+                    schema_version: 1,
+                    idempotency_key: "qa-only".into(),
+                    fields: fields.core(),
+                    screenshots: vec![],
+                }),
+                message: String::new(),
+            }),
+        ))
+        .unwrap();
+    let (id, result) = session.core.reply().unwrap();
+    let result = session.service_reply(id, result);
+    session.respond_service(&mut pipe, id, result).unwrap();
+    assert!(
+        matches!(next(&mut peer), HostToUi::Response { id: 7, result: crate::protocol::Reply::DraftSave { value } } if value.fields == fields)
+    );
+    assert!(
+        path.exists(),
+        "failed import never surfaced the legacy source"
+    );
+}

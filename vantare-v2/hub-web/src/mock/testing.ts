@@ -26,6 +26,7 @@ export function createTestingMock(scene: string, core: CoreStatus) {
     message: "",
   });
   let draft = empty();
+  if (scene === "testing-legacy-archived") draft.legacy = "archived";
   if (scene === "testing-legacy-imported") draft.legacy = "imported";
   if (scene === "testing-legacy-trimmed") draft.legacy = "importedTrimmed";
   if (scene === "testing-legacy-preserved") draft.legacy = "preserved";

@@ -69,6 +69,7 @@ async function mount(scene = "testing-reports") {
 }
 describe("protected report draft behavior", () => {
   it.each([
+    ["testing-legacy-archived", "archived"],
     ["testing-legacy-imported", "imported"],
     ["testing-legacy-trimmed", "importedTrimmed"],
     ["testing-legacy-preserved", "preserved"],

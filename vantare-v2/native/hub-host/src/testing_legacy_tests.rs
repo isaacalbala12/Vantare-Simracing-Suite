@@ -389,7 +389,15 @@ fn symbolic_source_is_never_followed() {
     fs::write(&target, b"private untouched").unwrap();
     let path = root.path.join("testing-center/editor-draft.json");
     fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::os::windows::fs::symlink_file(&target, &path).expect("QA symlink privilege");
+    if let Err(error) = std::os::windows::fs::symlink_file(&target, &path) {
+        if error.raw_os_error() == Some(1314)
+            || error.kind() == std::io::ErrorKind::PermissionDenied
+        {
+            eprintln!("SKIP: QA symlink requires developer mode or symlink privilege");
+            return;
+        }
+        panic!("QA symlink failed: {error}");
+    }
     let mut state = State::new(&root.path);
     state.begin(Operation::Load);
     state.complete(Operation::Load, reply(None)).unwrap();
@@ -443,4 +451,6 @@ fn failed_archiving_is_not_retried_by_autosave_or_discard_until_load() {
         .complete(Operation::Load, reply(Some(fields("protected"))))
         .unwrap();
     assert!(!path.exists() && archive.exists());
+    assert!(state.warning.is_none());
+    assert_eq!(state.legacy, LegacyMigration::Archived);
 }

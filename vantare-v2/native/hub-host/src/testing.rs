@@ -167,6 +167,7 @@ pub enum LegacyMigration {
     None,
     Imported,
     ImportedTrimmed,
+    Archived,
     Preserved,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

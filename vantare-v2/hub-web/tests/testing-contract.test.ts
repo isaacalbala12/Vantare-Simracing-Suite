@@ -197,7 +197,7 @@ describe("Testing Center closed wire and local persistence double", () => {
   it("accepts only the closed migration states and never an extra migration warning", () => {
     const host = createMockHost("testing-reports");
     const saved = host(request("draft.save", { fields }));
-    for (const legacy of ["none", "imported", "importedTrimmed", "preserved"]) {
+    for (const legacy of ["none", "imported", "importedTrimmed", "archived", "preserved"]) {
       expect(
         isHostMessage({
           ...saved,

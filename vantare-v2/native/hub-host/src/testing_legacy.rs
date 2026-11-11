@@ -309,6 +309,9 @@ impl State {
                 match self.archive() {
                     Ok(()) => {
                         self.archive_retry = ArchiveRetry::Allowed;
+                        if matches!(self.warning, Some(Failure::Changed | Failure::Archive)) {
+                            self.warning = None;
+                        }
                         self.legacy = if imported {
                             if self.sources[self.selected].trimmed {
                                 LegacyMigration::ImportedTrimmed
@@ -316,7 +319,7 @@ impl State {
                                 LegacyMigration::Imported
                             }
                         } else {
-                            LegacyMigration::Preserved
+                            LegacyMigration::Archived
                         };
                         self.sources.clear();
                         message

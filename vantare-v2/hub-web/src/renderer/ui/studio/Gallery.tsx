@@ -61,7 +61,11 @@ export function Gallery() {
         }
       />
     ) : (
-      <Skeleton label={t.loading} />
+      <div className="v-studio-loading">
+        {["one", "two", "three", "four"].map((key) => (
+          <Skeleton key={key} label={t.loading} />
+        ))}
+      </div>
     );
   const disabled =
     pending || view.state !== "ready" || view.plan === "unverified";
@@ -249,6 +253,7 @@ export function Gallery() {
                     <span
                       style={{
                         aspectRatio: `${item.size.width}/${item.size.height}`,
+                        width: `min(100%, ${(164 * item.size.width) / item.size.height}px)`,
                       }}
                     >
                       <WidgetThumb kind={item.kind} />

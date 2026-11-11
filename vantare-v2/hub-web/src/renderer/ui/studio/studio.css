@@ -164,6 +164,8 @@
   color: var(--text-3);
 }
 .v-studio-preview {
+  min-width: 0;
+  overflow: hidden;
   height: 180px;
   display: grid;
   place-items: center;
@@ -424,7 +426,8 @@
 
 .v-studio-preview > span {
   display: block;
-  height: 100%;
+  height: auto;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -436,4 +439,16 @@
 
 .v-studio-catalog-widget[aria-disabled="true"] {
   opacity: 0.55;
+}
+
+.v-studio-loading {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.v-studio-loading .v-skeleton {
+  height: 228px;
+}
+.v-studio-rail h2 .v-studio-widget-icon {
+  background: var(--accent);
 }

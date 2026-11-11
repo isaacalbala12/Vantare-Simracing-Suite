@@ -127,3 +127,9 @@ it("keeps a verified but blocked session out of Studio", async () => {
   await screen.findByText("normal Hub");
   expect(fake.navigate).toHaveBeenCalledWith("home");
 });
+
+vi.mock("../src/renderer/screens/onboarding/AccountIntro", async () => ({
+  OnboardingAccountIntro: (
+    await import("../src/renderer/screens/onboarding/IntroPreview")
+  ).OnboardingIntroPreview,
+}));

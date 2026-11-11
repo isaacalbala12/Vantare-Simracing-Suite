@@ -10,7 +10,7 @@ import { onboardingText as text } from "../../i18n/onboarding";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { GateFrame } from "../../ui/GateFrame";
-import { OnboardingIntroPreview } from "./IntroPreview";
+import { OnboardingAccountIntro } from "./AccountIntro";
 export function OnboardingGate({
   children,
 }: {
@@ -63,7 +63,7 @@ export function OnboardingGate({
       </GateFrame>
     );
   return (
-    <OnboardingIntroPreview
+    <OnboardingAccountIntro
       full
       extended
       studioReason={lock("studio", core.access)}

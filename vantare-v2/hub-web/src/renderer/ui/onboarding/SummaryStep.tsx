@@ -1,6 +1,6 @@
 import {
   onboardingWidgets,
-  type WidgetKind,
+  type OnboardingWidgetKind as WidgetKind,
 } from "../../../contract/generated/onboarding";
 import type { PerformanceLevel } from "../../../contract/generated/settings";
 import { t } from "../../i18n/es";

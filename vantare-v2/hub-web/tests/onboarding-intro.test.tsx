@@ -125,6 +125,8 @@ function mount(extended = false, full = false) {
         <QueryClientProvider client={query}>
           <OnboardingIntroPreview
             extended={extended}
+            full={full}
+            onComplete={complete}
             account={value}
             onLeave={leave}
           />

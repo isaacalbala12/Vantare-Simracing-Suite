@@ -5,7 +5,7 @@ import type {
   PerformanceLevel,
   PrivacyView,
   SettingsView,
-  WidgetKind,
+  OnboardingWidgetKind as WidgetKind,
 } from "../../../contract/generated/contract";
 import { settingsKey, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";

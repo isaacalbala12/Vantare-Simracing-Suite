@@ -23,9 +23,8 @@ export function Gallery() {
       if (document.querySelector('[role="dialog"],[role="alertdialog"]'))
         return;
       if (
-        (event.target as HTMLElement)?.matches(
-          "input,textarea,[contenteditable=true]",
-        )
+        event.target instanceof Element &&
+        event.target.matches("input,textarea,[contenteditable=true]")
       )
         return;
       if (event.key === "Escape") {

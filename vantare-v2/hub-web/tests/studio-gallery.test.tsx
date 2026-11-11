@@ -146,8 +146,12 @@ describe("Studio gallery", () => {
     fireEvent.click(screen.getByRole("button", { name: t.addShort }));
     const search = await screen.findByRole("searchbox", { name: t.search });
     fireEvent.change(search, { target: { value: "clasificacion" } });
+    expect(
+      screen.getByRole("button", { name: "Añadir Standings" }),
+    ).toBeTruthy();
+    fireEvent.change(search, { target: { value: "telemetria de entrada" } });
     const widget = screen.getByRole("button", {
-      name: "Añadir Standings",
+      name: "Añadir Telemetría de entrada",
     });
     expect(widget.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(widget);

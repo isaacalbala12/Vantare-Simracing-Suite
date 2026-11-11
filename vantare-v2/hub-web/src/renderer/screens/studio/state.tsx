@@ -27,9 +27,9 @@ function useStateValue() {
     opened = useRef(false);
   const update = useCallback((value: StudioView) => {
     setView(value);
-    if (!opened.current && value.instances.length) {
+    if (!opened.current) {
       opened.current = true;
-      setSelected(value.instances[0].id);
+      if (value.instances.length) setSelected(value.instances[0].id);
     }
   }, []);
   const execute = useCallback(

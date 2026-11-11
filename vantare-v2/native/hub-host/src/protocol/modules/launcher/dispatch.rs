@@ -14,7 +14,10 @@ impl Session {
                         result: Reply::LauncherFavorite { accepted },
                     },
                     Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
-                        id, error: HostError::LauncherConflict { current: self.launcher_reader.view() },
+                        id,
+                        error: HostError::LauncherConflict {
+                            current: self.launcher_reader.view(),
+                        },
                     },
                     Err(error) => HostToUi::Failure { id, error },
                 };
@@ -51,7 +54,10 @@ impl Session {
                         result: Reply::LauncherLaunch { accepted },
                     },
                     Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
-                        id, error: HostError::LauncherConflict { current: self.launcher_reader.view() },
+                        id,
+                        error: HostError::LauncherConflict {
+                            current: self.launcher_reader.view(),
+                        },
                     },
                     Err(error) => HostToUi::Failure { id, error },
                 };
@@ -121,7 +127,10 @@ impl Session {
                         }
                     }
                     Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
-                        id, error: HostError::LauncherConflict { current: self.launcher_reader.view() },
+                        id,
+                        error: HostError::LauncherConflict {
+                            current: self.launcher_reader.view(),
+                        },
                     },
                     Err(error) => HostToUi::Failure { id, error },
                 };
@@ -142,7 +151,10 @@ impl Session {
                         },
                     },
                     Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
-                        id, error: HostError::LauncherConflict { current: self.launcher_reader.view() },
+                        id,
+                        error: HostError::LauncherConflict {
+                            current: self.launcher_reader.view(),
+                        },
                     },
                     Err(error) => HostToUi::Failure { id, error },
                 };

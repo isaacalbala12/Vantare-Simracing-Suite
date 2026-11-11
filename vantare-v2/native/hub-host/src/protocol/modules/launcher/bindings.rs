@@ -28,7 +28,10 @@ pub(crate) fn typescript() -> String {
 }
 pub(crate) fn corpus() -> serde_json::Value {
     let host: Vec<HostToUi> = vec![
-        HostToUi::Response { id: 1, result: profile_keys_sample() },
+        HostToUi::Response {
+            id: 1,
+            result: profile_keys_sample(),
+        },
         HostToUi::Response {
             id: 1,
             result: Reply::LauncherProfileGet {
@@ -166,6 +169,9 @@ fn profile_keys_sample() -> Reply {
         step.key = Some(format!("{:064x}", index + 1));
     }
     Reply::LauncherProfileGet {
-        value: ProfileEditorView { revision: "0".repeat(64), draft },
+        value: ProfileEditorView {
+            revision: "0".repeat(64),
+            draft,
+        },
     }
 }

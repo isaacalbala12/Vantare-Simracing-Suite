@@ -216,8 +216,7 @@ y ocupación conservan `coreUnavailable` y `busy`. No hay método genérico, URL
 ruta ni JSON abierto del renderer. Se proyectan los campos públicos conocidos y
 se exportan desde Rust los límites y días admitidos para los validadores TS.
 
-Añadir ambos métodos sube el protocolo de 13 a 14 (se ajustará a la siguiente
-versión libre al rebasar). `chrono` es dependencia directa con las mismas opciones
+Añadir ambos métodos usa el protocolo v16, reservado tras Inicio (v15). `chrono` es dependencia directa con las mismas opciones
 que Services y reutiliza `chrono 0.4.45` del lock; no se añade paquete nuevo.
 No se modifica IPC/Services, runtime, derechos, supervisor ni el GPUI congelado.
 Las vistas, favoritos/avisos, ICS y publicación de `session-alerts-feed.json` se

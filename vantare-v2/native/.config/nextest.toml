@@ -1,4 +1,7 @@
 [profile.default]
+# #2093: CI 2026-11-11: máximo legítimo 182,400 s; 600 s deja margen > x3.
+# Un test colgado termina con nombre y TIMEOUT antes del límite del job.
+slow-timeout = { period = "60s", terminate-after = 10 }
 archive.include = [
     { path = "debug/lifecycle", relative-to = "target", on-missing = "ignore" },
     { path = "debug/ci-lifecycle", relative-to = "target", on-missing = "ignore" },
@@ -14,6 +17,8 @@ test-threads = 4
 default-filter = 'not binary(lifecycle) & not (package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle)))'
 
 [profile.telemetria]
+# Mantiene el aviso previo sin corte para los corpus de telemetría.
+slow-timeout = "60s"
 default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle) | binary(launch_coverage))'
 
 # Perfil de CI: UNA invocación con todo lo que hoy corren los dos pasos de nextest

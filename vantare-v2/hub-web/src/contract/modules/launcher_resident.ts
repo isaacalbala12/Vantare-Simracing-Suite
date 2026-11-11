@@ -18,6 +18,7 @@ function question(value: unknown): boolean {
     typeof value.id === "string" &&
     value.id.length <= residentIdLimit &&
     new RegExp(residentIdPattern).test(value.id) &&
+    BigInt(value.id).toString() === value.id &&
     BigInt(value.id) <= BigInt(residentIdMaximum) &&
     oneOf(value.kind, residentQuestionKinds) &&
     Array.isArray(value.actions) &&

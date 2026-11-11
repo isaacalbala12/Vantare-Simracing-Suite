@@ -25,7 +25,7 @@ interface AccountState {
   value?: AccountView;
   pending: boolean;
   error?: string;
-  act: (request: AccountRequest) => Promise<void>;
+  act: (request: AccountRequest, onSent?: () => void) => Promise<void>;
   reload: () => void;
 }
 const Context = createContext<AccountState | undefined>(undefined);
@@ -44,8 +44,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const sequence = useRef(0);
   const intents = useRef(new Set<string>());
   const act = useCallback(
-    async (request: AccountRequest) => {
+    async (request: AccountRequest, onSent?: () => void) => {
       const method = request.method;
+      const secretKind =
+        request.method !== "account.email"
+          ? undefined
+          : request.action.action === "verify"
+            ? "code"
+            : request.action.action === "reset" ||
+                (request.action.action === "begin" &&
+                  request.action.password.length > 0)
+              ? "password"
+              : undefined;
+      let sent = false;
       const priority =
         request.method === "account.cancel" ||
         request.method === "account.logout" ||
@@ -81,7 +92,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       try {
         let response: Promise<Reply>;
         try {
-          response = client.request(request);
+          response = client.request(request, () => {
+            sent = true;
+            discardAccountSecrets(request);
+            onSent?.();
+          });
         } finally {
           discardAccountSecrets(request);
         }
@@ -98,7 +113,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         if (active.current && sequence.current === current)
           setError(
             failure instanceof HostFailure && failure.detail.kind === "busy"
-              ? text.busy
+              ? sent && secretKind
+                ? secretKind === "password"
+                  ? text.reenterPassword
+                  : text.reenterCode
+                : text.busy
               : method === "account.logout"
                 ? text.logoutFailed
                 : text.failed,
@@ -134,7 +153,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setValue(reply.value);
       })
       .catch(() => {
-        if (current) setError(text.failed);
+        if (current && sequence.current === initialSequence)
+          setError(text.failed);
       });
     return () => {
       current = false;

@@ -194,6 +194,7 @@ export class Client {
   }
   request(
     request: Exclude<Request, { method: "window.close" }>,
+    onSent?: () => void,
   ): Promise<Reply> {
     if (this.closing) return Promise.reject(new HostFailure({ kind: "busy" }));
     const id = ++this.sequence;
@@ -209,6 +210,7 @@ export class Client {
             }, deadline);
       this.pending.set(id, { resolve, reject, timer });
       this.send({ kind: "request", id, request });
+      onSent?.();
     });
   }
   closeWindow() {

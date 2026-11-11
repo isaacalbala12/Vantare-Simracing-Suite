@@ -1,16 +1,19 @@
 import { OTPField } from "@base-ui/react/otp-field";
 import { useId } from "react";
 import { accountLimits } from "../../contract/generated/account";
+import { accessText as text } from "../i18n/access.es";
 export function OtpField({
   label,
   value,
   onChange,
   disabled = false,
+  readOnly = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  readOnly?: boolean;
 }) {
   const id = useId();
   const slots = Array.from({ length: accountLimits.code }, (_, position) => ({
@@ -19,7 +22,7 @@ export function OtpField({
   }));
   return (
     <div className="v-field v-access-otp-field">
-      <label id={id} htmlFor={`${id}-input`}>
+      <label id={id} htmlFor={slots[0]?.id}>
         {label}
       </label>
       <OTPField.Root
@@ -31,6 +34,9 @@ export function OtpField({
         validationType="numeric"
         autoSubmit={false}
         disabled={disabled}
+        readOnly={readOnly}
+        aria-disabled={readOnly || disabled || undefined}
+        role="group"
         autoComplete="one-time-code"
         aria-labelledby={id}
       >
@@ -42,9 +48,16 @@ export function OtpField({
         {slots.map(({ id: slotId, position: index }) => (
           <OTPField.Input
             key={slotId}
+            id={slotId}
             className="v-access-otp-slot"
             data-access-secret=""
-            aria-label={index ? `${label} ${index + 1}` : label}
+            render={(props) => (
+              <input
+                {...props}
+                aria-labelledby={undefined}
+                aria-label={text.codeDigit(index + 1, accountLimits.code)}
+              />
+            )}
             data-access-initial={index === 0 ? "" : undefined}
             onCopy={(event) => event.preventDefault()}
             onCut={(event) => event.preventDefault()}

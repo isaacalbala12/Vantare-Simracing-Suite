@@ -21,6 +21,10 @@ export const accessText = {
   copy: "Copiar enlace",
   copied: "Enlace copiado. Pégalo en tu navegador para continuar.",
   busy: "Inténtalo de nuevo.",
+  reenterPassword: "Vuelve a escribir tu contraseña e inténtalo de nuevo.",
+  reenterCode: "Vuelve a escribir el código e inténtalo de nuevo.",
+  codeDigit: (position: number, total: number) =>
+    `Dígito ${position} de ${total}`,
   failed: "No se pudo completar el acceso. Inténtalo de nuevo.",
   waiting: "Esperando respuesta",
   emailLabel: "Email",

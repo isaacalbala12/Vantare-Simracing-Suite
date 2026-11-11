@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
+import { accountLimits } from "../src/contract/generated/account.ts";
 import { accessText as text } from "../src/renderer/i18n/access.es.ts";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
 import { accessScenes } from "./visual-diff/access.ts";
@@ -69,7 +70,10 @@ export async function checkAccessGate(
     .getByRole("button", { name: text.submit.continue, exact: true })
     .click();
   await page
-    .getByRole("textbox", { name: text.code, exact: true })
+    .getByRole("textbox", {
+      name: text.codeDigit(1, accountLimits.code),
+      exact: true,
+    })
     .pressSequentially("123456");
   await page
     .getByRole("button", { name: text.submit.verify, exact: true })

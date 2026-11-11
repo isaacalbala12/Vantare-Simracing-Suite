@@ -1,8 +1,17 @@
+import { accountLimits } from "../src/contract/generated/account";
 // @vitest-environment jsdom
 
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Reply, Request } from "../src/contract/generated/contract";
@@ -21,8 +30,14 @@ function intercept(handle: (request: Intent) => Promise<Reply> | undefined) {
   return vi.spyOn(Client.prototype, "request").mockImplementation(function (
     this: Client,
     request: Intent,
+    onSent?: () => void,
   ) {
-    return handle(request) ?? original.call(this, request);
+    const result = handle(request);
+    if (result) {
+      onSent?.();
+      return result;
+    }
+    return original.call(this, request, onSent);
   });
 }
 function SessionActions() {
@@ -70,7 +85,25 @@ function mount(scene = "acceso-base") {
   );
   return userEvent.setup();
 }
+const nativeDialogMethods = ["showModal", "close"] as const;
+const nativeDialogDescriptors = nativeDialogMethods.map((name) =>
+  Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, name),
+);
 beforeEach(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+    configurable: true,
+    writable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = true;
+    },
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", {
+    configurable: true,
+    writable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = false;
+    },
+  });
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener() {},
@@ -81,6 +114,12 @@ afterEach(() => {
   cleanup();
   for (const cache of caches.splice(0)) cache.clear();
   vi.restoreAllMocks();
+  nativeDialogMethods.forEach((name, index) => {
+    const original = nativeDialogDescriptors[index];
+    if (original)
+      Object.defineProperty(HTMLDialogElement.prototype, name, original);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, name);
+  });
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
@@ -146,7 +185,7 @@ it("does not submit a complete six-digit code until the user confirms", async ()
   });
   const user = mount("email-codigo");
   const first = await screen.findByRole("textbox", {
-    name: text.code,
+    name: text.codeDigit(1, accountLimits.code),
   });
   await user.type(first, "123456");
   expect(
@@ -209,14 +248,19 @@ it("clears a rejected code and never starts browser login for an email error", a
   );
   const user = mount("email-codigo");
   await user.type(
-    await screen.findByRole("textbox", { name: text.code }),
+    await screen.findByRole("textbox", {
+      name: text.codeDigit(1, accountLimits.code),
+    }),
     "123456",
   );
   await user.click(screen.getByRole("button", { name: text.submit.verify }));
   await screen.findByText(text.busy);
   expect(
-    (screen.getByRole("textbox", { name: text.code }) as HTMLInputElement)
-      .value,
+    (
+      screen.getByRole("textbox", {
+        name: text.codeDigit(1, accountLimits.code),
+      }) as HTMLInputElement
+    ).value,
   ).toBe("");
   await user.click(screen.getByRole("button", { name: text.retry }));
   await waitFor(() => expect(screen.queryByText(text.busy)).toBeNull());
@@ -272,27 +316,29 @@ it("does not duplicate cancellation on a rapid double click", async () => {
   });
 });
 
-it("rejects incomplete credentials locally without leaving an unanswered RPC", async () => {
+it("keeps an incomplete code and disables verification without sending", async () => {
   const calls = intercept(() => undefined);
   const user = mount("email-codigo");
-  await user.click(
-    await screen.findByRole("button", { name: text.submit.verify }),
-  );
-  await screen.findByText(text.failed);
+  const first = await screen.findByRole("textbox", {
+    name: text.codeDigit(1, accountLimits.code),
+  });
+  await user.type(first, "123");
+  const button = screen.getByRole("button", { name: text.submit.verify });
+  expect(button).toHaveProperty("disabled", true);
+  fireEvent.submit(first.closest("form")!);
   expect(
     calls.mock.calls.filter(
       ([r]) => r.method === "account.email" && r.action.action === "verify",
     ),
   ).toHaveLength(0);
+  const group = screen.getByRole("group", { name: text.code });
   expect(
-    (
-      screen.getByRole("button", {
-        name: text.submit.verify,
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(false);
+    within(group)
+      .getAllByRole("textbox")
+      .map((node) => (node as HTMLInputElement).value)
+      .join(""),
+  ).toBe("123");
 });
-
 it("keeps window controls reachable by keyboard from the access gate", async () => {
   const user = mount();
   const first = await screen.findByRole("button", { name: text.google });
@@ -321,7 +367,9 @@ it("clears the submitted code even in the object retained by the request observe
   const calls = intercept(() => undefined);
   const user = mount("email-codigo");
   await user.type(
-    await screen.findByRole("textbox", { name: text.code }),
+    await screen.findByRole("textbox", {
+      name: text.codeDigit(1, accountLimits.code),
+    }),
     "123456",
   );
   await user.click(screen.getByRole("button", { name: text.submit.verify }));

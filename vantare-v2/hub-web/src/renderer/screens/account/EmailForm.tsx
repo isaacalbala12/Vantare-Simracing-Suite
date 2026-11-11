@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -26,14 +27,19 @@ import { Input } from "../../ui/Forms";
 import { OtpField } from "../../ui/OtpField";
 import { useSecretInput } from "../../ui/useSecretInput";
 export function EmailForm({ value }: { value: EmailView }) {
-  const { pending, act } = useAccount();
+  const { pending, act, error } = useAccount();
   const root = useRef<HTMLFormElement>(null);
   const focused = useRef("");
+  const wasPending = useRef(false);
   const secretStage = useRef("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useSecretInput();
   const [code, setCode] = useSecretInput();
   const [signOutOthers, setSignOutOthers] = useState(false);
+  const clearSecrets = useCallback(() => {
+    setPassword("");
+    setCode("");
+  }, [setPassword, setCode]);
   useLayoutEffect(() => {
     const form = root.current;
     return () => {
@@ -71,17 +77,29 @@ export function EmailForm({ value }: { value: EmailView }) {
     }
   }, [value.stage, value.mode, value.restarted, setPassword, setCode]);
   useEffect(() => {
-    const key = `${value.mode}:${value.stage}`;
-    if (!pending && key !== focused.current) {
-      focused.current = key;
-      root.current
-        ?.querySelector<HTMLElement>("[data-access-initial]")
-        ?.focus();
+    const key = `${value.mode}:${value.stage}:${value.message}:${error ?? ""}`;
+    if (pending) {
+      wasPending.current = true;
+      return;
     }
-  }, [value.mode, value.stage, pending]);
+    if (wasPending.current || key !== focused.current) {
+      focused.current = key;
+      wasPending.current = false;
+      const selector =
+        error === text.reenterPassword
+          ? "input[type=password]"
+          : "[data-access-initial]";
+      root.current?.querySelector<HTMLElement>(selector)?.focus();
+    }
+  }, [value.mode, value.stage, value.message, pending, error]);
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (pending || cooling) return;
+    if (
+      pending ||
+      cooling ||
+      (value.stage === "code" && code.length !== accountLimits.code)
+    )
+      return;
     let action: EmailIntent;
     switch (value.stage) {
       case "form":
@@ -99,9 +117,7 @@ export function EmailForm({ value }: { value: EmailView }) {
       default:
         return;
     }
-    setPassword("");
-    setCode("");
-    void act({ method: "account.email", action });
+    void act({ method: "account.email", action }, clearSecrets);
   }
   return (
     <AccessForm
@@ -124,7 +140,8 @@ export function EmailForm({ value }: { value: EmailView }) {
             maxLength={accountLimits.email}
             value={email}
             onChange={(event) => setEmail(event.currentTarget.value)}
-            disabled={pending}
+            readOnly={pending}
+            aria-disabled={pending || undefined}
           />
           {passwordMode && (
             <Input
@@ -144,7 +161,8 @@ export function EmailForm({ value }: { value: EmailView }) {
               onChange={(event) => setPassword(event.currentTarget.value)}
               onCopy={(event) => event.preventDefault()}
               onCut={(event) => event.preventDefault()}
-              disabled={pending}
+              readOnly={pending}
+              aria-disabled={pending || undefined}
             />
           )}
         </>
@@ -155,7 +173,7 @@ export function EmailForm({ value }: { value: EmailView }) {
             label={text.code}
             value={code}
             onChange={setCode}
-            disabled={pending}
+            readOnly={pending}
           />
           <Button
             type="button"
@@ -187,7 +205,8 @@ export function EmailForm({ value }: { value: EmailView }) {
             onChange={(event) => setPassword(event.currentTarget.value)}
             onCopy={(event) => event.preventDefault()}
             onCut={(event) => event.preventDefault()}
-            disabled={pending}
+            readOnly={pending}
+            aria-disabled={pending || undefined}
           />
           <Button
             type="button"
@@ -224,7 +243,11 @@ export function EmailForm({ value }: { value: EmailView }) {
           data-access-initial={value.stage === "consent" ? "" : undefined}
           variant="primary"
           kind="submit"
-          disabled={pending || cooling}
+          disabled={
+            pending ||
+            cooling ||
+            (value.stage === "code" && code.length !== accountLimits.code)
+          }
           aria-describedby={pending ? "access-waiting" : undefined}
         >
           {label}

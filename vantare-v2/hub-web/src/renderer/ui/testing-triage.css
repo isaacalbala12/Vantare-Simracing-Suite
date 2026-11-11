@@ -26,17 +26,22 @@
   font-weight: 600;
 }
 .v-testing-triage .v-checkbox {
-  flex-shrink: 0;
+  flex: 0 0 18px;
+}
+.v-testing-triage .v-checkbox[data-checked] {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: var(--text-on-accent);
 }
 .v-testing-triage-consent {
   min-width: 0;
   overflow: hidden;
 }
-.v-testing-triage-consent .v-choice > span {
+.v-testing-triage .v-testing-triage-consent .v-choice > span:not(.v-checkbox) {
   white-space: nowrap;
   overflow: hidden;
 }
-.v-testing-triage .v-choice > span {
+.v-testing-triage .v-choice > span:not(.v-checkbox) {
   flex: 1;
   min-width: 0;
   white-space: normal;

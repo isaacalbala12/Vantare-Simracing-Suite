@@ -11,7 +11,10 @@ import type {
   AccountRequest,
   AccountView,
 } from "../../contract/generated/account";
-import { isAccount } from "../../contract/modules/account";
+import {
+  isAccount,
+  isRequest as isAccountRequest,
+} from "../../contract/modules/account";
 import { HostFailure } from "../bridge/client";
 import { accessText as text } from "../i18n/access.es";
 import { useHost } from "./Host";
@@ -46,6 +49,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         (request.method === "account.email" &&
           request.action.action === "cancel");
       if (!client) return;
+      if (!isAccountRequest(request)) {
+        setError(text.failed);
+        return;
+      }
       const key =
         request.method === "account.email"
           ? `${request.method}:${request.action.action}`

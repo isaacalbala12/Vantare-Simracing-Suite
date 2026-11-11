@@ -266,3 +266,24 @@ it("does not duplicate cancellation on a rapid double click", async () => {
     rejectBegin?.(new HostFailure({ kind: "denied" }));
   });
 });
+
+it("rejects incomplete credentials locally without leaving an unanswered RPC", async () => {
+  const calls = intercept(() => undefined);
+  const user = mount("email-codigo");
+  await user.click(
+    await screen.findByRole("button", { name: text.submit.verify }),
+  );
+  await screen.findByText(text.failed);
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "verify",
+    ),
+  ).toHaveLength(0);
+  expect(
+    (
+      screen.getByRole("button", {
+        name: text.submit.verify,
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(false);
+});

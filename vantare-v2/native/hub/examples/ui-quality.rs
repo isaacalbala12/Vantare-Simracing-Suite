@@ -252,14 +252,34 @@ fn capture_state(name: &str) -> Result<CaptureState, String> {
     }
 }
 
+fn validate_measure(args: &[String], root: &std::path::Path, measure: bool) -> Result<(), String> {
+    if measure {
+        if args.iter().any(|arg| matches!(arg.as_str(), "--demo" | "--qa-testing")) {
+            return Err("--qa-measure no admite demo ni captura de tester".into());
+        }
+        // Normal mode reads shared privacy and initializes the local recorder.
+        // Refuse any fallback to the installed user's OS/data directories.
+        let expected = root.canonicalize().map_err(|error| error.to_string())?;
+        for variable in ["VANTARE_NATIVE_DATA_ROOT", "LOCALAPPDATA"] {
+            let path = std::env::var_os(variable).ok_or_else(|| format!("falta {variable} QA"))?;
+            if PathBuf::from(path).canonicalize().map_err(|error| error.to_string())? != expected {
+                return Err(format!("{variable} debe apuntar al root QA explícito"));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
+    let measure = args.iter().any(|arg| arg == "--qa-measure");
     let root = PathBuf::from(argument(&args, "--qa-root").ok_or("falta root QA explícito")?);
     if !root.is_absolute() || !root.join("replies.json").is_file() {
         return Err(
             "el root QA necesita replies.json de contrato; no se usan defaults personales".into(),
         );
     }
+    validate_measure(&args, &root, measure)?;
     // Client comprueba la imagen del peer contra el supervisor junto al Hub.
     if std::env::current_exe()
         .map_err(|error| error.to_string())?
@@ -300,6 +320,17 @@ fn main() -> Result<(), String> {
             serde_json::from_slice::<AppearanceSettings>(&bytes).map_err(|error| error.to_string())
         })
         .transpose()?;
+    if measure && let Some(appearance) = appearance {
+        // Seed the existing legacy input, not a hand-written private settings
+        // document. Never overwrite a previous measurement's settings.
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(root.join("appearance.json"))
+            .map_err(|error| format!("apariencia QA nueva: {error}"))?;
+        file.write_all(&serde_json::to_vec(&appearance).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+    }
     let catalog = match argument(&args, "--qa-catalog").as_deref() {
         None | Some("free") => control::CatalogAccess::Free,
         Some("launch") => control::CatalogAccess::LaunchV1,
@@ -336,7 +367,7 @@ fn main() -> Result<(), String> {
         } else {
             None
         },
-        capture: Some(state),
+        capture: (!measure).then_some(state),
         capture_output: None,
         capture_appearance: appearance,
         capture_size: Some(size),
@@ -374,6 +405,15 @@ fn main() -> Result<(), String> {
 mod capture_tests {
     use super::*;
     use vantare_hub::Section;
+    #[test]
+    fn normal_qa_mode_rejects_capture_bypasses_before_opening_any_window() {
+        let root = std::path::Path::new("unused");
+        assert!(validate_measure(&[], root, false).is_ok());
+        for forbidden in ["--demo", "--qa-testing"] {
+            assert!(validate_measure(&[forbidden.into()], root, true).is_err());
+        }
+        assert!(validate_measure(&[], root, true).is_err());
+    }
     #[test]
     fn aliases_show_the_production_page_without_old_strategy_or_notification_popup() {
         let strategy = capture_state("strategy-proximamente").expect("QA Strategy");

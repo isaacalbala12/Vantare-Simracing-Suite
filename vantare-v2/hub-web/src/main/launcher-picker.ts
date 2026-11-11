@@ -1,9 +1,12 @@
+import {accountLimits} from "../contract/generated/account";
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import {
   launcherPickCooldownMs,
   launcherPickLifetimeSeconds,
 } from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
+
+export function nextPickerRequestId(current:number){return current>=accountLimits.backgroundId-1?0x80000000:current+1;}
 
 /** The host must acknowledge a pending request before main opens a dialog. */
 export function executablePicker(
@@ -75,8 +78,8 @@ export function executablePicker(
           reply({ kind: "failure", id, error: { kind: "busy" } });
         return;
       }
-      const internalId = internalSequence++;
-      if (internalSequence > 0xffffffff) internalSequence = 0x80000000;
+      const internalId = internalSequence;
+      internalSequence=nextPickerRequestId(internalSequence);
       pending = {
         id: internalId,
         rendererId: id,

@@ -36,11 +36,12 @@ impl Session {
         id: u32,
         operation: Operation,
         kind: ResponseKind,
-        command: &Command,
+        command: Command,
     ) -> Result<(), HostError> {
         self.account.can_start(operation)?;
-        self.request_remote(id, RemoteKind::Account(operation, kind), command.clone())?;
-        self.account.accepted(operation, command);
+        let observation = crate::account::RequestObservation::from(&command);
+        self.request_remote(id, RemoteKind::Account(operation, kind), command)?;
+        self.account.accepted_observation(operation, observation);
         if matches!(operation, Operation::Begin | Operation::Logout) {
             self.pilot = None;
         }
@@ -69,6 +70,7 @@ impl Session {
                 page: crate::account::PortalPage::Profile,
             } => {
                 self.account.can_start(Operation::Profile)?;
+                self.account.reserve_browser(now, false)?;
                 crate::account::platform::open_portal()?;
                 return Ok(Some(reply(ResponseKind::Portal, self.account_view())));
             }
@@ -88,17 +90,19 @@ impl Session {
                     id,
                     Operation::Cancel,
                     ResponseKind::Email,
-                    &Command::AccountCancel,
+                    Command::AccountCancel,
                 )?;
                 self.account.hide_email();
                 return Ok(None);
             }
             Request::AccountEmail { action } => {
                 let command = self.account.email_command(action, now)?;
-                self.account_enqueue(id, Operation::Email, ResponseKind::Email, &command)?;
+                self.account_enqueue(id, Operation::Email, ResponseKind::Email, command)?;
                 return Ok(None);
             }
             Request::AccountPurchase { product } => {
+                self.account.can_start(Operation::Purchase)?;
+                self.account.reserve_browser(now, true)?;
                 let product = match product {
                     crate::account::Product::ProMonthly => {
                         vantare_ipc::services_protocol::BillingProduct::ProMonthly
@@ -114,7 +118,7 @@ impl Session {
                     id,
                     Operation::Purchase,
                     ResponseKind::Purchase,
-                    &Command::Purchase { product },
+                    Command::Purchase { product },
                 )?;
                 return Ok(None);
             }
@@ -142,7 +146,7 @@ impl Session {
             id,
             operation,
             kind,
-            &crate::account::State::command(operation),
+            crate::account::State::command(operation),
         )?;
         Ok(None)
     }

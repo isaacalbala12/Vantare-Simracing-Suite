@@ -12,6 +12,7 @@ pub fn clean(value: &str) -> String {
         .collect()
 }
 pub fn name(value: &str) -> String {
+    let value = value.replace("://", " ");
     value
         .chars()
         .filter(|c| !c.is_control())

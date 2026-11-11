@@ -42,6 +42,33 @@ pub(super) fn follow_up(
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum RequestObservation {
+    Begin,
+    Cancel,
+    Logout,
+    EmailStart,
+    EmailCancel,
+    EmailOther,
+    Other,
+}
+impl From<&Command> for RequestObservation {
+    fn from(command: &Command) -> Self {
+        match command {
+            Command::AccountBegin => Self::Begin,
+            Command::AccountCancel => Self::Cancel,
+            Command::Logout => Self::Logout,
+            Command::AccountEmail {
+                action: EmailAction::Begin { .. } | EmailAction::Finish {},
+            } => Self::EmailStart,
+            Command::AccountEmail {
+                action: EmailAction::Cancel {},
+            } => Self::EmailCancel,
+            Command::AccountEmail { .. } => Self::EmailOther,
+            _ => Self::Other,
+        }
+    }
+}
 impl State {
     pub(super) fn from_build() -> Self {
         Self {
@@ -64,43 +91,45 @@ impl State {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn requested(&mut self, command: &Command) {
-        if matches!(
-            command,
-            Command::AccountBegin
-                | Command::AccountCancel
-                | Command::Logout
-                | Command::AccountEmail { .. }
-        ) {
+        self.requested_observation(RequestObservation::from(command));
+    }
+    pub(super) fn requested_observation(&mut self, observation: RequestObservation) {
+        use RequestObservation::{
+            Begin, Cancel, EmailCancel, EmailOther, EmailStart, Logout, Other,
+        };
+        if !matches!(observation, Other) {
             self.error = None;
             self.manual = ManualLink::default();
         }
-        if let Command::AccountEmail { action } = command {
-            self.error = None;
+        if matches!(observation, EmailStart | EmailCancel | EmailOther) {
             self.login_requested = false;
-            if matches!(action, EmailAction::Begin { .. } | EmailAction::Finish {}) {
+        }
+        match observation {
+            EmailStart => {
                 self.policy = None;
                 self.transition = Transition::Login;
-            } else if matches!(action, EmailAction::Cancel {}) {
-                self.transition = Transition::Idle;
             }
-        }
-        if matches!(command, Command::Logout | Command::AccountBegin) {
-            if matches!(command, Command::Logout) {
-                self.invalidate();
-            } else {
-                self.policy = None;
+            EmailCancel => self.transition = Transition::Idle,
+            Begin | Logout => {
+                if matches!(observation, Logout) {
+                    self.invalidate();
+                } else {
+                    self.policy = None;
+                }
+                self.transition = if matches!(observation, Begin) {
+                    Transition::Login
+                } else {
+                    Transition::Logout
+                };
+                self.login_requested = true;
             }
-            self.transition = if matches!(command, Command::AccountBegin) {
-                Transition::Login
-            } else {
-                Transition::Logout
-            };
-            self.login_requested = true;
-        }
-        if matches!(command, Command::AccountCancel) {
-            self.transition = Transition::Cancel;
-            self.login_requested = false;
+            Cancel => {
+                self.transition = Transition::Cancel;
+                self.login_requested = false;
+            }
+            EmailOther | Other => {}
         }
     }
 

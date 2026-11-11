@@ -11,7 +11,9 @@ use crate::protocol::{AccessView, HostError};
 pub use email::{
     CODE_LENGTH, EMAIL_MAX, PASSWORD_MAX, PURCHASE_WAIT_SECONDS, RETRY_AFTER_MAX_SECONDS,
 };
+pub(crate) use reducer::RequestObservation;
 use reducer::{State as Reducer, Transition};
+pub(crate) use safety::name as safe_name;
 pub use safety::{NAME_MAX, PHOTO_BASE64_MAX, TEXT_MAX, clean};
 use std::{
     collections::BTreeSet,
@@ -60,6 +62,9 @@ pub struct State {
     purchase_until: Option<Instant>,
     purchase_message: Option<String>,
     logout_uncertain: bool,
+    browser_after: Option<Instant>,
+    abandoned: BTreeSet<(Operation, bool)>,
+    email_retry_at: Option<Instant>,
 }
 impl Default for State {
     fn default() -> Self {
@@ -84,6 +89,9 @@ impl State {
             purchase_until: None,
             purchase_message: None,
             logout_uncertain: false,
+            browser_after: None,
+            abandoned: BTreeSet::new(),
+            email_retry_at: None,
         }
     }
     pub fn view(&self, access: &AccessView, now: Instant, wall: u64) -> AccountView {
@@ -263,7 +271,19 @@ impl State {
         Ok(())
     }
     pub fn accepted(&mut self, op: Operation, command: &Command) {
-        self.reducer.requested(command);
+        self.accepted_observation(op, RequestObservation::from(command));
+    }
+    pub(crate) fn accepted_observation(&mut self, op: Operation, observation: RequestObservation) {
+        if matches!(op, Operation::Cancel | Operation::Logout) {
+            self.abandoned
+                .extend(self.pending.iter().copied().map(|old| (old, false)));
+        }
+        if matches!(op, Operation::Begin | Operation::Cancel | Operation::Logout)
+            && let Some(old) = self.background
+        {
+            self.abandoned.insert((old, true));
+        }
+        self.reducer.requested_observation(observation);
         self.pending.insert(op);
         self.notice = None;
         if matches!(op, Operation::Begin | Operation::Logout) {
@@ -280,7 +300,14 @@ impl State {
     }
     pub fn open_email(&mut self, mode: EmailMode, now: Instant) -> Result<(), HostError> {
         self.can_start(Operation::Email)?;
-        self.form = Some(email::Form::new(mode, now));
+        if self.reducer.session_known() {
+            return Err(HostError::Denied);
+        }
+        let mut form = email::Form::new(mode, now);
+        if let Some(retry_at) = self.email_retry_at {
+            form.retry_at = retry_at.max(now);
+        }
+        self.form = Some(form);
         Ok(())
     }
     pub fn email_command(&self, intent: &EmailIntent, now: Instant) -> Result<Command, HostError> {
@@ -325,6 +352,15 @@ impl State {
             Operation::Status
         }
     }
+    pub fn reserve_browser(&mut self, now: Instant, purchase: bool) -> Result<(), HostError> {
+        if self.browser_after.is_some_and(|after| now < after)
+            || (purchase && self.purchase_until.is_some_and(|until| now < until))
+        {
+            return Err(HostError::Busy);
+        }
+        self.browser_after = Some(now + Duration::from_secs(5));
+        Ok(())
+    }
     pub fn stop_purchase(&mut self, message: &str) {
         self.purchase_until = None;
         self.purchase_message = Some(message.into());
@@ -340,12 +376,12 @@ impl State {
         }
     }
     pub fn failed(&mut self, op: Operation, error: &HostError, background: bool, now: Instant) {
-        let current = self.accepts_completion(op);
+        let current = self.accepts_completion(op, background);
         self.retire(op, background);
         if !current {
             return;
         }
-        if background && *error == HostError::Busy {
+        if background && matches!(error, HostError::Busy | HostError::Denied) {
             return;
         }
         let message = if *error == HostError::Busy {
@@ -368,13 +404,17 @@ impl State {
             self.due = now;
         }
     }
-    fn accepts_completion(&self, op: Operation) -> bool {
+    fn accepts_completion(&self, op: Operation, background: bool) -> bool {
+        if self.abandoned.contains(&(op, background)) {
+            return false;
+        }
         if self.pending.contains(&Operation::Logout) {
             return op == Operation::Logout;
         }
         !self.pending.contains(&Operation::Cancel) || op == Operation::Cancel
     }
     fn retire(&mut self, op: Operation, background: bool) {
+        self.abandoned.remove(&(op, background));
         if background {
             self.background = None;
         } else {
@@ -388,7 +428,7 @@ impl State {
         background: bool,
         now: Instant,
     ) -> Result<(), HostError> {
-        if !self.accepts_completion(op) {
+        if !self.accepts_completion(op, background) {
             self.retire(op, background);
             return Err(HostError::Denied);
         }
@@ -429,6 +469,11 @@ impl State {
                 ..
             } if accepted => {
                 self.need_poll = *session == Session::Pending;
+                if *session == Session::SignedIn
+                    || (*session == Session::SignedOut && op == Operation::Logout)
+                {
+                    self.form = None;
+                }
                 if *session == Session::SignedOut {
                     self.name.clear();
                     self.photo = None;
@@ -437,7 +482,7 @@ impl State {
                 if matches!(session, Session::SignedIn | Session::NeedsSignIn)
                     && let Some(profile) = profile
                 {
-                    self.name = safety::name(&profile.name);
+                    self.name = safe_name(&profile.name);
                     self.photo = safety::photo(profile.image_jpeg.as_deref());
                 }
                 self.notice = (!message.is_empty()).then(|| message.clone());
@@ -456,6 +501,7 @@ impl State {
                         error.is_some(),
                         now,
                     );
+                    self.email_retry_at = Some(form.retry_at);
                 }
                 self.need_poll = *stage == vantare_ipc::services_protocol::EmailStage::Authorizing;
             }
@@ -525,7 +571,7 @@ fn sanitize_reply(reply: &CoreReply) -> CoreReply {
             *message = clean(message);
             *error = error.as_deref().map(clean);
             if let Some(profile) = profile {
-                profile.name = safety::name(&profile.name);
+                profile.name = safe_name(&profile.name);
                 profile.image_url = None;
             }
         }
@@ -559,3 +605,6 @@ pub enum ResponseKind {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod review_tests;

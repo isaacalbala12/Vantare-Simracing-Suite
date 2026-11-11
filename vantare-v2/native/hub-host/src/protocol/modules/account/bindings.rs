@@ -21,7 +21,7 @@ pub(crate) fn typescript() -> String {
     constants!(
         &mut text,
         "accountLimits",
-        serde_json::json!({"email":EMAIL_MAX,"password":PASSWORD_MAX,"code":CODE_LENGTH,"retryAfterSeconds":RETRY_AFTER_MAX_SECONDS,"purchaseWaitSeconds":PURCHASE_WAIT_SECONDS,"text":TEXT_MAX,"name":NAME_MAX,"photoBase64":PHOTO_BASE64_MAX})
+        serde_json::json!({"email":EMAIL_MAX,"password":PASSWORD_MAX,"code":CODE_LENGTH,"retryAfterSeconds":RETRY_AFTER_MAX_SECONDS,"purchaseWaitSeconds":PURCHASE_WAIT_SECONDS,"text":TEXT_MAX,"name":NAME_MAX,"photoBase64":PHOTO_BASE64_MAX,"backgroundId":BACKGROUND_ID})
     );
     constants!(
         &mut text,
@@ -146,6 +146,7 @@ pub(crate) fn corpus() -> serde_json::Value {
     host.push(HostToUi::Event {
         event: crate::protocol::Event::Account { value },
     });
+    host.push(sanitized_name_sample());
     host.push(HostToUi::Failure {
         id: 1,
         error: crate::protocol::HostError::AccountInvalid,
@@ -206,4 +207,10 @@ fn request_samples() -> Vec<Request> {
             action: EmailIntent::Cancel {},
         },
     ]
+}
+
+fn sanitized_name_sample() -> HostToUi {
+    let mut value = sample();
+    value.name = crate::account::safe_name("Pilot://qa");
+    sample_response(Reply::AccountGet { value })
 }

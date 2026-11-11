@@ -11,11 +11,15 @@ pub fn portal() -> Option<String> {
         option_env!("VANTARE_CLERK_ACCOUNT_PORTAL_URL"),
     )
 }
-fn allowed(raw: &str, hosts: &[&str]) -> bool {
-    if raw.len() > 16 * 1024 || !raw.starts_with("https://") || raw.chars().any(char::is_control) {
+pub(super) fn allowed(raw: &str, hosts: &[&str]) -> bool {
+    if raw.len() > 16 * 1024
+        || !raw.starts_with("https://")
+        || raw.chars().any(char::is_control)
+        || raw.contains('#')
+    {
         return false;
     }
-    let Ok(url) = vantare_services::config::remote_url(raw) else {
+    let Ok(url) = vantare_services::config::remote_url(raw.split('?').next().unwrap_or(raw)) else {
         return false;
     };
     url.scheme() == "https"
@@ -27,6 +31,8 @@ fn allowed(raw: &str, hosts: &[&str]) -> bool {
 pub fn checkout_allowed(raw: &str) -> bool {
     // Exact authorities from services/billing.rs::checkout_url.
     allowed(raw, &["polar.sh", "sandbox.polar.sh"])
+        && vantare_services::config::remote_url(raw.split('?').next().unwrap_or(raw))
+            .is_ok_and(|url| url.path().starts_with("/checkout/"))
 }
 fn open_when_allowed(
     raw: &str,
@@ -46,10 +52,15 @@ fn open_when_allowed(
     open(raw)
 }
 fn browser(raw: &str) -> Result<(), HostError> {
-    let url = vantare_services::config::remote_url(raw).map_err(|_| HostError::Denied)?;
+    let base = vantare_services::config::remote_url(raw.split('?').next().unwrap_or(raw))
+        .map_err(|_| HostError::Denied)?;
+    let url = base.join(raw).map_err(|_| HostError::Denied)?;
     vantare_services::browser::open(&url).map_err(|_| HostError::Io)
 }
 pub fn open_checkout(raw: &str) -> Result<(), HostError> {
+    if !checkout_allowed(raw) {
+        return Err(HostError::Denied);
+    }
     open_when_allowed(raw, &["polar.sh", "sandbox.polar.sh"], browser)
 }
 pub fn open_portal() -> Result<(), HostError> {
@@ -70,6 +81,7 @@ mod tests {
         for value in [
             "https://polar.sh/checkout/one",
             "https://sandbox.polar.sh/checkout/one",
+            "https://polar.sh/checkout/one?checkout_id=qa&redirect=true",
         ] {
             assert!(checkout_allowed(value));
         }
@@ -85,6 +97,8 @@ mod tests {
             "https://user:password@polar.sh/one",
             "https://polar.sh:8443/one",
             "https://evil.invalid/one",
+            "https://polar.sh/user?checkout_id=qa",
+            "https://polar.sh/checkout/../user?checkout_id=qa",
             "https://polar.sh/\n",
         ] {
             assert!(!checkout_allowed(value));

@@ -5,7 +5,8 @@ pub(super) fn tick(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
     }
     let now = Instant::now();
     session.account.observe_policy(session.core.policy(), now);
-    if session.closing.is_none()
+    if !session.current.live
+        && session.closing.is_none()
         && session.current.services == crate::protocol::LinkState::Connected
         && let Some(operation) = session.account.next_background(now)
         && !session.remotes.contains_key(&crate::account::BACKGROUND_ID)

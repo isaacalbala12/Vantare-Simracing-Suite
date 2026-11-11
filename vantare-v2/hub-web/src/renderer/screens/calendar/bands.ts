@@ -17,7 +17,7 @@ export function shiftBand(
       ...band,
       to:
         band.to >= dayMinutes
-          ? band.from + step
+          ? Math.min(dayMinutes, band.from + step)
           : Math.min(dayMinutes, band.to + step),
     };
   return {

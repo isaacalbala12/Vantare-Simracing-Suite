@@ -18,6 +18,7 @@ import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
+import { CalendarAlertsDialog } from "../../ui/CalendarAlertsDialog";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
 import { CalendarDayView } from "../../ui/CalendarDayView";
 import { CalendarDetail } from "../../ui/CalendarDetail";
@@ -53,6 +54,7 @@ function nextPublication(now: number) {
 }
 
 export default function CalendarEntry() {
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
@@ -125,6 +127,7 @@ export default function CalendarEntry() {
     launcher = useCalendarLauncher(state.allowed);
   useEffect(() => {
     if (!state.allowed) {
+      setAlertsOpen(false);
       setSelectedSerie(undefined);
       setDetail(undefined);
       liveFilters.current = {
@@ -226,6 +229,7 @@ export default function CalendarEntry() {
               alerts={alerts}
               limit={calendarStartsLimit}
               nextPublication={nextPublication(state.now)}
+              onAlerts={() => setAlertsOpen(true)}
               onUtc={(utc) => void preferences.utc(utc)}
               utcDisabled={!preferences.canUtc}
             />
@@ -326,7 +330,7 @@ export default function CalendarEntry() {
           />
         ) : (
           <CalendarFrame
-            subtitle={subtitle}
+            onAlerts={() => setAlertsOpen(true)}            subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
             onRefresh={() => void state.refresh()}
@@ -389,6 +393,20 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
+                onToggleSlot={
+                  preferences.canAlerts
+                    ? (id, at) =>
+                        void preferences.alert({
+                          kind: "slot",
+                          id,
+                          at: Math.trunc(at / 1000),
+                          enabled: !alerts.slots.some(
+                            (slot) =>
+                              slot.seriesId === id && slot.at * 1000 === at,
+                          ),
+                        })
+                    : undefined
+                }
                 onDetail={openDetail}
                 onSerie={openSerie}
                 schedule={schedule}
@@ -516,6 +534,38 @@ export default function CalendarEntry() {
               <p role="alert">{text.launchFailed}</p>
             ) : preferences.failure ? (
               <p role="alert">{text.preferencesFailed}</p>
+            ) : undefined
+          }
+        />
+      )}
+      {alertsOpen && state.allowed && (
+        <CalendarAlertsDialog
+          schedule={schedule}
+          alerts={alerts}
+          following={view?.following ?? []}
+          now={state.now}
+          utc={view?.utc ?? false}
+          limit={calendarStartsLimit}
+          profile={launcher.profile?.name}
+          canEdit={preferences.canAlerts}
+          busy={preferences.busy}
+          onChange={(change) => void preferences.alert(change)}
+          onClose={() => setAlertsOpen(false)}
+          failure={
+            preferences.failure ? (
+              <div role="alert">
+                <p>
+                  {preferences.failure === "calendarScheduleUnavailable"
+                    ? text.scheduleRequired
+                    : text.preferencesFailed}
+                </p>
+                <Button onClick={() => void preferences.retry()}>
+                  {text.retry}
+                </Button>
+                <Button onClick={preferences.discard}>
+                  {text.discardChange}
+                </Button>
+              </div>
             ) : undefined
           }
         />

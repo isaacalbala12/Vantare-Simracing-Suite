@@ -72,7 +72,7 @@ export function CalendarBandControls({
         <span>{text.from}</span>
         <Button
           className="v-calendar-band-time"
-          aria-label={text.start}
+          aria-label={text.startAt(hhmm(shown.from))}
           disabled={busy || !onBand}
           onClick={() =>
             onBand?.(shiftBand(shown, false, stepMinutes, dayMinutes))
@@ -83,7 +83,7 @@ export function CalendarBandControls({
         <span>{text.to}</span>
         <Button
           className="v-calendar-band-time"
-          aria-label={text.end}
+          aria-label={text.endAt(hhmm(shown.to))}
           disabled={busy || !onBand}
           onClick={() =>
             onBand?.(shiftBand(shown, true, stepMinutes, dayMinutes))
@@ -93,7 +93,7 @@ export function CalendarBandControls({
         </Button>
         <Segmented
           disabled={busy || !onBand}
-          label={text.toggle}
+          label={text.daysLabel}
           value={shown.days}
           onChange={(value) => {
             const day = days.find((day) => day === value);

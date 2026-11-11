@@ -1,0 +1,2 @@
+/* Exact constants from frozen calendar/ui/avisos.rs and chrome.rs::windows_toast. */
+:root {--calendar-alerts-backdrop:#0000008c;--calendar-alerts-preview:linear-gradient(135deg,#1d3557,#3a2140);--calendar-toast-bg:#2b2b2b;--calendar-toast-button:#3a3a3a;--calendar-toast-line:#ffffff14;--calendar-toast-caption:#cfcfcf;--calendar-toast-text:#d6d6d6;--calendar-toast-badge:#3a1a20;--calendar-toast-badge-text:#ff8a91;--calendar-toast-white:#ffffff;--calendar-toast-accent:#c42b36;--calendar-toast-logo:#e14a54;--calendar-toast-shadow:#00000073;}

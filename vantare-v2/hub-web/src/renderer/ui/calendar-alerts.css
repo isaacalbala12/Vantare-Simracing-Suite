@@ -1,0 +1,352 @@
+.v-calendar-alerts-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--calendar-alerts-backdrop);
+}
+.v-calendar.v-calendar-alerts {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 860px;
+  max-width: 96vw;
+  height: auto;
+  max-height: 94vh;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: 14px;
+  background: var(--surface-1);
+  color: var(--text-1);
+  outline: none;
+}
+.v-calendar-alerts > header {
+  display: flex;
+  align-items: flex-start;
+  flex: none;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-alerts :where(header) > div {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-alerts > header h2 {
+  margin: 0;
+  font: 600 26px / 31px var(--font-display);
+}
+.v-calendar-alerts :where(header) p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-alerts :where(header) .v-button {
+  height: 28px;
+  min-height: 28px;
+  width: 28px;
+  padding: 5px;
+}
+.v-calendar-alerts :where(header) svg {
+  width: 14px;
+  height: 14px;
+}
+.v-calendar-alerts-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 22px;
+}
+.v-calendar-alerts-columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 26px;
+}
+.v-calendar-alerts-columns > section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+.v-calendar-alerts-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.v-calendar-alerts-caption h3 {
+  margin: 0;
+  font: 600 10.5px / 14px var(--font-display);
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+.v-calendar-alerts-caption > span {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+}
+.v-calendar-alerts-columns > section > .v-segmented {
+  align-self: flex-start;
+  margin-bottom: 16px;
+}
+.v-calendar-alerts-channel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.v-calendar-alerts-channel[data-enabled] {
+  background: var(--accent-tint);
+  border-color: var(--hero-ring);
+}
+.v-calendar-alerts-channel[data-disabled] {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+.v-calendar-alerts-channel .v-checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border-radius: 4px;
+}
+.v-calendar-alerts-channel strong {
+  display: block;
+  font: 600 13px / 17px var(--font-sans);
+}
+.v-calendar-alerts-channel p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-alerts-auto {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+}
+.v-calendar-alerts-auto .v-switch-field {
+  flex: none;
+  padding: 2px 0 0;
+}
+.v-calendar-alerts-auto strong {
+  font: 600 13px / 17px var(--font-sans);
+}
+.v-calendar-alerts-auto p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-alerts-help {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--text-caption);
+}
+.v-calendar-alerts-help b {
+  font-weight: 700;
+  color: var(--text-2);
+}
+.v-calendar-alerts-help p {
+  margin: 2px 0 0;
+}
+.v-calendar-alerts-preview {
+  flex: none;
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 4px;
+  background: var(--calendar-alerts-preview);
+}
+.v-calendar-alerts-toast {
+  width: 100%;
+  max-width: 364px;
+  border: 1px solid var(--calendar-toast-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--calendar-toast-bg);
+  color: var(--calendar-toast-white);
+  box-shadow: 0 18px 40px var(--calendar-toast-shadow);
+}
+.v-calendar-alerts-toast > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--calendar-toast-caption);
+}
+.v-calendar-alerts-toast :where(header) svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--calendar-toast-logo);
+}
+:where(.v-calendar-alerts-toast > header) span:last-child {
+  margin-left: auto;
+}
+.v-calendar-alerts-toast-body {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px 12px;
+}
+.v-calendar-alerts-toast-body > b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--calendar-toast-badge);
+  color: var(--calendar-toast-badge-text);
+  font: 700 13px / 17px var(--font-mono);
+}
+.v-calendar-alerts-toast-body > div {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-alerts-toast-body strong {
+  display: block;
+  margin-bottom: 3px;
+  font: 600 14px / 19px var(--font-sans);
+}
+.v-calendar-alerts-toast-body p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 19px;
+  color: var(--calendar-toast-text);
+}
+.v-calendar-alerts-toast > footer {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+.v-calendar-alerts-toast :where(footer) span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border-radius: 4px;
+  background: var(--calendar-toast-button);
+  font-size: 12.5px;
+  line-height: 17px;
+  white-space: nowrap;
+}
+:where(.v-calendar-alerts-toast > footer) span:first-child {
+  background: var(--calendar-toast-accent);
+}
+.v-calendar-alerts-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-alerts-band > .v-calendar-alerts-item {
+  border: 0;
+}
+.v-calendar-alerts-band {
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-alerts-item > i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.v-calendar-alerts-band .v-calendar-alerts-item > i {
+  background: var(--warn);
+}
+.v-calendar-alerts-item > div {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-alerts-item strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 13px / 17px var(--font-sans);
+}
+.v-calendar-alerts-item p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+.v-calendar-alerts-item .v-button {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.v-calendar-alerts-item .v-button--ghost {
+  width: 28px;
+  padding: 6px;
+}
+.v-calendar-alerts-item .v-button svg {
+  width: 14px;
+  height: 14px;
+}
+.v-calendar-alerts-band-editor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 0 10px 17px;
+}
+.v-calendar-alerts-band-editor .v-button {
+  min-height: 28px;
+  height: 28px;
+  font-size: 11.5px;
+  padding: 0 8px;
+}
+.v-calendar-alerts-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.v-calendar-alerts-add > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.v-calendar-alerts-add .v-button {
+  font-size: 12px;
+}
+.v-calendar-alerts-empty {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-alerts > footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--line-1);
+}
+.v-calendar-alerts > footer .v-button {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 14px;
+}

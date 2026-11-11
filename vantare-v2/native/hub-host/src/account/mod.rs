@@ -96,7 +96,8 @@ impl State {
     }
     pub fn view(&self, access: &AccessView, now: Instant, wall: u64) -> AccountView {
         let verified = access.verified && !access.blocked;
-        let gate = if self.form.is_some() {
+        let form = self.form.as_ref().filter(|_| !self.reducer.signed_in());
+        let gate = if form.is_some() {
             Gate::Email
         } else if !self.reducer.required() {
             Gate::None
@@ -157,10 +158,10 @@ impl State {
             verified,
             blocked: access.blocked,
             modules,
-            email: self.form.as_ref().map(|f| f.view(now)),
+            email: form.map(|f| f.view(now)),
             copy_link: CopyLinkView {
                 available: self.can_copy(),
-                copied: self.reducer.manual.copied,
+                copied: self.can_copy() && self.reducer.manual.copied,
             },
             error: self.reducer.error.as_deref().map(clean),
             notice: self.notice.clone(),
@@ -240,7 +241,8 @@ impl State {
         self.reducer.logout_requested() || self.pending.contains(&Operation::Logout)
     }
     pub fn can_copy(&self) -> bool {
-        self.reducer.manual.available
+        clipboard::configured()
+            && self.reducer.manual.available
             && self.reducer.login_requested
             && !self.canceling()
             && !self.logging_out()
@@ -311,6 +313,9 @@ impl State {
         Ok(())
     }
     pub fn email_command(&self, intent: &EmailIntent, now: Instant) -> Result<Command, HostError> {
+        if self.reducer.signed_in() {
+            return Err(HostError::Denied);
+        }
         self.can_start(Operation::Email)?;
         let action = self
             .form
@@ -533,6 +538,10 @@ impl State {
         let next = self.reducer.next_command(&sanitized, &mut None);
         self.need_poll |= matches!(next, Some(Command::AccountPoll));
         self.reducer.finish_reply();
+        if self.reducer.signed_in() {
+            self.form = None;
+            self.email_retry_at = None;
+        }
         if self.need_poll {
             self.due = now + Duration::from_millis(LOGIN_POLL_MS);
         }

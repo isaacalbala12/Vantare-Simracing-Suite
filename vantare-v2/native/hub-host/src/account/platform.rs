@@ -11,45 +11,51 @@ pub fn portal() -> Option<String> {
         option_env!("VANTARE_CLERK_ACCOUNT_PORTAL_URL"),
     )
 }
-pub(super) fn allowed(raw: &str, hosts: &[&str]) -> bool {
+pub(super) fn normalized(raw: &str, hosts: &[&str]) -> Option<String> {
     if raw.len() > 16 * 1024
-        || !raw.starts_with("https://")
+        || !raw
+            .get(..8)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("https://"))
         || raw.chars().any(char::is_control)
-        || raw.contains('#')
+        || raw.contains(['#', '\\'])
     {
-        return false;
+        return None;
     }
-    let Ok(url) = vantare_services::config::remote_url(raw.split('?').next().unwrap_or(raw)) else {
-        return false;
-    };
-    url.scheme() == "https"
+    let base = vantare_services::config::remote_url(raw.split('?').next()?).ok()?;
+    let url = base.join(raw).ok()?;
+    (url.scheme() == "https"
         && url.username().is_empty()
         && url.password().is_none()
         && url.port().is_none()
-        && url.host_str().is_some_and(|host| hosts.contains(&host))
+        && url.as_str().len() <= 16 * 1024
+        && url.host_str().is_some_and(|host| hosts.contains(&host)))
+    .then(|| url.as_str().to_owned())
+}
+#[cfg(test)]
+fn allowed(raw: &str, hosts: &[&str]) -> bool {
+    normalized(raw, hosts).is_some()
 }
 pub fn checkout_allowed(raw: &str) -> bool {
     // Exact authorities from services/billing.rs::checkout_url.
-    allowed(raw, &["polar.sh", "sandbox.polar.sh"])
-        && vantare_services::config::remote_url(raw.split('?').next().unwrap_or(raw))
+    normalized(raw, &["polar.sh", "sandbox.polar.sh"]).is_some_and(|value| {
+        vantare_services::config::remote_url(value.split('?').next().unwrap_or(&value))
             .is_ok_and(|url| url.path().starts_with("/checkout/"))
+    })
 }
 fn open_when_allowed(
     raw: &str,
     hosts: &[&str],
     open: impl FnOnce(&str) -> Result<(), HostError>,
 ) -> Result<(), HostError> {
-    if !allowed(raw, hosts) {
-        return Err(HostError::Denied);
-    }
+    let normalized = normalized(raw, hosts).ok_or(HostError::Denied)?;
     // Hub-host QA is deliberately independent from services/qa-e2e (which enables HTTP).
     #[cfg(feature = "qa-e2e")]
     {
-        let _ = open;
+        let _ = (open, normalized);
         Ok(())
     }
     #[cfg(not(feature = "qa-e2e"))]
-    open(raw)
+    open(&normalized)
 }
 fn browser(raw: &str) -> Result<(), HostError> {
     let base = vantare_services::config::remote_url(raw.split('?').next().unwrap_or(raw))
@@ -102,6 +108,24 @@ mod tests {
             "https://polar.sh/\n",
         ] {
             assert!(!checkout_allowed(value));
+        }
+    }
+    #[test]
+    fn browser_destinations_are_canonical_and_reject_backslashes_fragments_and_host_lookalikes() {
+        assert_eq!(
+            normalized("HTTPS://POLAR.SH:443/checkout/qa?state=qa", &["polar.sh"]).as_deref(),
+            Some("https://polar.sh/checkout/qa?state=qa")
+        );
+        assert!(checkout_allowed(
+            "HTTPS://POLAR.SH:443/checkout/qa?state=qa"
+        ));
+        for raw in [
+            r"https://polar.sh\@evil.invalid/checkout/qa",
+            "https://polar.sh/checkout/qa#fragment",
+            "https://polar.sh./checkout/qa",
+            "https://pоlar.sh/checkout/qa",
+        ] {
+            assert!(!checkout_allowed(raw));
         }
     }
     #[test]

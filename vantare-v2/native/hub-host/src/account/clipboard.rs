@@ -1,28 +1,50 @@
 //! Only the authenticated build issuer reaches the private Win32 clipboard owner.
 use crate::protocol::HostError;
+fn normalized(value: &str, issuer: &str) -> Option<String> {
+    let issuer = vantare_services::config::remote_url(issuer).ok()?;
+    super::platform::normalized(value, &[issuer.host_str()?])
+}
+#[cfg(test)]
 fn allowed(value: &str, issuer: &str) -> bool {
-    let Ok(issuer) = vantare_services::config::remote_url(issuer) else {
-        return false;
-    };
-    issuer
-        .host_str()
-        .is_some_and(|host| super::platform::allowed(value, &[host]))
+    normalized(value, issuer).is_some()
+}
+fn issuer_available(issuer: Option<&str>) -> bool {
+    issuer.is_some_and(|issuer| {
+        vantare_services::config::remote_url(issuer).is_ok_and(|url| url.host_str().is_some())
+    })
+}
+pub fn configured() -> bool {
+    issuer_available(option_env!("VANTARE_CLERK_ISSUER"))
+}
+#[cfg(any(test, all(windows, not(feature = "qa-e2e"))))]
+fn open_with_retry(
+    mut open: impl FnMut() -> bool,
+    mut wait: impl FnMut(std::time::Duration),
+) -> bool {
+    if open() {
+        return true;
+    }
+    for millis in [10, 20, 30] {
+        wait(std::time::Duration::from_millis(millis));
+        if open() {
+            return true;
+        }
+    }
+    false
 }
 fn copy_for_issuer(
     value: &str,
     issuer: &str,
     write: impl FnOnce(&str) -> Result<(), HostError>,
 ) -> Result<(), HostError> {
-    if !allowed(value, issuer) {
-        return Err(HostError::Denied);
-    }
+    let normalized = normalized(value, issuer).ok_or(HostError::Denied)?;
     #[cfg(feature = "qa-e2e")]
     {
-        let _ = write;
+        let _ = (write, normalized);
         Ok(())
     }
     #[cfg(not(feature = "qa-e2e"))]
-    write(value)
+    write(&normalized)
 }
 pub fn copy(value: &str) -> Result<(), HostError> {
     let issuer = option_env!("VANTARE_CLERK_ISSUER").ok_or(HostError::Denied)?;
@@ -75,7 +97,8 @@ fn copy_platform(value: &str) -> Result<(), HostError> {
             std::ptr::null_mut(),
             std::ptr::null(),
         ));
-        if owner.0.is_null() || OpenClipboard(owner.0) == 0 {
+        if owner.0.is_null() || !open_with_retry(|| OpenClipboard(owner.0) != 0, std::thread::sleep)
+        {
             return Err(HostError::Io);
         }
         let _clipboard = Clipboard;
@@ -186,6 +209,58 @@ mod tests {
         ] {
             assert!(!allowed(value, "https://issuer.invalid"));
         }
+    }
+    #[test]
+    fn copied_payload_is_the_canonical_url_and_ambiguous_authorities_are_denied() {
+        assert_eq!(
+            normalized(
+                "HTTPS://ISSUER.INVALID:443/a/../oauth/authorize?state=qa&code_challenge=qa",
+                "https://issuer.invalid"
+            )
+            .as_deref(),
+            Some("https://issuer.invalid/oauth/authorize?state=qa&code_challenge=qa")
+        );
+        for value in [
+            r"https://issuer.invalid\@evil.invalid/a",
+            r"https://issuer.invalid/a?state=\qa",
+            "https://issuer.invalid/a#fragment",
+            "https://issuer.invalid./a",
+            "https://іssuer.invalid/a",
+            "https://xn--issuer-9jg.invalid/a",
+        ] {
+            assert!(normalized(value, "https://issuer.invalid").is_none());
+        }
+    }
+    #[test]
+    fn a_build_without_an_issuer_cannot_enable_clipboard_links() {
+        assert!(!issuer_available(None));
+        assert!(!issuer_available(Some("file:///issuer")));
+        assert!(issuer_available(Some("https://issuer.invalid")));
+    }
+    #[test]
+    fn clipboard_contention_retries_are_short_bounded_and_injected() {
+        let mut attempts = 0;
+        let mut waits = Vec::new();
+        assert!(!open_with_retry(
+            || {
+                attempts += 1;
+                false
+            },
+            |delay| waits.push(delay)
+        ));
+        assert_eq!(attempts, 4);
+        assert_eq!(waits, [10, 20, 30].map(std::time::Duration::from_millis));
+        attempts = 0;
+        waits.clear();
+        assert!(open_with_retry(
+            || {
+                attempts += 1;
+                attempts == 2
+            },
+            |delay| waits.push(delay)
+        ));
+        assert_eq!(attempts, 2);
+        assert_eq!(waits, [std::time::Duration::from_millis(10)]);
     }
     #[cfg(feature = "qa-e2e")]
     #[test]

@@ -246,3 +246,56 @@ fn the_authorizing_poll_closes_email_only_after_confirmed_sign_in() {
     assert!(state.form.is_none());
     assert_eq!(state.view(&AccessView::default(), now, 0).gate, Gate::None);
 }
+
+#[test]
+fn a_background_license_status_closes_email_and_blocks_further_email_commands() {
+    let now = Instant::now();
+    let mut state = state(Session::SignedOut);
+    state.open_email(EmailMode::SignInCode, now).unwrap();
+    state.background_accepted(Operation::LicenseStatus, now);
+    state
+        .complete(
+            Operation::LicenseStatus,
+            &CoreReply::LicenseStatus {
+                policy: control::Policy::default(),
+                session: Some(Session::SignedIn),
+                notice: None,
+            },
+            true,
+            now,
+        )
+        .unwrap();
+    assert!(state.form.is_none());
+    let view = state.view(&AccessView::default(), now, 0);
+    assert_eq!(view.gate, Gate::None);
+    assert!(view.email.is_none());
+    assert!(matches!(
+        state.email_command(&EmailIntent::Finish {}, now),
+        Err(HostError::Denied)
+    ));
+}
+#[test]
+fn a_signed_in_view_never_projects_a_stale_email_form() {
+    let now = Instant::now();
+    let mut state = state(Session::SignedOut);
+    state.open_email(EmailMode::SignInCode, now).unwrap();
+    state.reducer.fixture_session(Session::SignedIn);
+    let view = state.view(&AccessView::default(), now, 0);
+    assert_eq!(view.gate, Gate::None);
+    assert!(view.email.is_none());
+    assert!(matches!(
+        state.email_command(&EmailIntent::Finish {}, now),
+        Err(HostError::Denied)
+    ));
+}
+#[test]
+fn clipboard_availability_follows_the_build_capability() {
+    let now = Instant::now();
+    let mut state = state(Session::Pending);
+    state.reducer.manual.available = true;
+    state.reducer.manual.copied = true;
+    state.reducer.login_requested = true;
+    let view = state.view(&AccessView::default(), now, 0);
+    assert_eq!(view.copy_link.available, clipboard::configured());
+    assert_eq!(view.copy_link.copied, clipboard::configured());
+}

@@ -13,6 +13,7 @@ import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarLiveView } from "../../ui/CalendarLiveView";
 import { CalendarMineView } from "../../ui/CalendarMineView";
+import { CalendarMonthView } from "../../ui/CalendarMonthView";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
 import { CalendarWeekView } from "../../ui/CalendarWeekView";
@@ -206,6 +207,7 @@ export default function CalendarEntry() {
               view &&
               calendarSpan === "day" ? (
               <CalendarDayView
+                spans={["day", "week", "month"]}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -214,10 +216,21 @@ export default function CalendarEntry() {
                 limit={calendarStartsLimit}
                 onSpan={setCalendarSpan}
               />
+            ) : activeTab === "calendar" && view && calendarSpan === "month" ? (
+              <CalendarMonthView
+                spans={["day", "week", "month"]}
+                expired={health === "expired"}
+                view={{ ...view, official: schedule ?? view.official }}
+                alerts={alerts}
+                now={state.now}
+                limit={calendarStartsLimit}
+                runs={runs}
+                onSpan={setCalendarSpan}
+              />
             ) : activeTab === "calendar" && view ? (
               <CalendarWeekView
                 onSpan={setCalendarSpan}
-                spans={["day", "week"]}
+                spans={["day", "week", "month"]}
                 view={{ ...view, official: schedule ?? view.official }}
                 alerts={alerts}
                 now={state.now}

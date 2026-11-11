@@ -1,0 +1,317 @@
+.v-calendar-month {
+  --month-stripe: color-mix(in srgb, var(--line-1) 60%, transparent);
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+.v-calendar-month > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 12px 16px;
+}
+.v-calendar-month > header h2 {
+  margin: 0;
+  min-width: 170px;
+  text-align: center;
+  font: 500 19px / 24px var(--font-display);
+}
+.v-calendar-month > header p {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-caption);
+}
+.v-calendar-month-days {
+  display: grid;
+  grid-template-columns: 132px repeat(7, minmax(0, 1fr));
+  height: 30px;
+  flex: none;
+  border-block: 1px solid var(--line-1);
+}
+.v-calendar-month-days > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 400 10.5px / 14px var(--font-display);
+  letter-spacing: 2px;
+  color: var(--text-caption);
+}
+.v-calendar-month-grid {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.v-calendar-month-week {
+  position: relative;
+  display: flex;
+  flex-basis: 0;
+  min-height: 60px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-month-meta {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 132px;
+  padding: 10px 12px;
+  gap: 5px;
+}
+.v-calendar-month-meta[data-state="now"] {
+  border-left: 2px solid var(--accent);
+  background: var(--accent-tint);
+}
+.v-calendar-month-meta strong {
+  font: 500 15px / 20px var(--font-display);
+}
+
+.v-calendar-month-meta b {
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--surface-3);
+  border-radius: 16px;
+}
+.v-calendar-month > footer b {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  line-height: 14px;
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+.v-calendar-month-meta[data-state="now"] b {
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+.v-calendar-month-meta small {
+  color: var(--text-caption);
+  font-size: 11px;
+  line-height: 15px;
+}
+.v-calendar-month-day {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 0;
+  border-left: 1px solid var(--line-1);
+}
+.v-calendar-month-day[data-missing] {
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 6px,
+    var(--month-stripe) 6px,
+    var(--month-stripe) 12px
+  );
+}
+.v-calendar-month-day[data-today] {
+  border: 2px solid var(--accent);
+  background: var(--accent-tint);
+}
+.v-calendar-month-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+.v-calendar-month-date strong {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+  font: 500 17px / 20px var(--font-display);
+}
+.v-calendar-month-date strong[data-outside] {
+  color: var(--text-caption);
+}
+.v-calendar-month-date small {
+  font: 400 10.5px / 14px var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.v-calendar-month-date span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  font: 600 10.5px / 14px var(--font-mono);
+}
+.v-calendar-month-date span[data-ran] {
+  background: color-mix(in srgb, var(--ok) 13%, transparent);
+  color: var(--ok);
+}
+.v-calendar-month-date svg {
+  width: 10px;
+  height: 10px;
+}
+.v-calendar-month-density {
+  display: flex;
+  height: 14px;
+  gap: 1px;
+  align-items: flex-end;
+  padding: 0 8px;
+  margin-top: auto;
+  flex: none;
+}
+.v-calendar-month-density[data-past] {
+  opacity: 0.55;
+}
+.v-calendar-month-density i {
+  flex: 1;
+  min-width: 1px;
+  background: var(--text-caption);
+  opacity: 0.4;
+}
+.v-calendar-month-density i[data-event] {
+  background: var(--accent);
+  opacity: 0.8;
+}
+.v-calendar-month-count {
+  margin: 0;
+  padding: 0 8px;
+  font: 400 10.5px / 14px var(--font-mono);
+  color: var(--text-caption);
+}
+.v-calendar-month-event {
+  position: absolute;
+  z-index: 1;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--hero-ring);
+  border-radius: 4px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.v-calendar-month-event[data-special] {
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+.v-calendar-month-event[data-past] {
+  opacity: 0.55;
+}
+.v-calendar-month > footer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 9px 14px;
+  flex: none;
+  min-height: 40px;
+  border-top: 1px solid var(--line-1);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.v-calendar-month-full-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--canvas);
+}
+.v-calendar-month-full {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  padding: 12px;
+  outline: none;
+}
+.v-calendar-month-event:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.v-calendar-month-event[data-past]:disabled {
+  opacity: 0.55;
+}
+
+.v-calendar-month-meta[data-state="waiting"] b {
+  color: var(--warn);
+  background: var(--warn-tint);
+}
+
+.v-calendar-month > header > .v-button {
+  min-height: 30px;
+  height: 30px;
+}
+.v-calendar-month > header > .v-button:first-child,
+.v-calendar-month > header > .v-button:nth-child(3) {
+  width: 32px;
+  padding: 0;
+}
+.v-calendar-month > header .v-segmented {
+  height: 34px;
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: var(--surface-1);
+  width: 176px;
+  flex: none;
+}
+.v-calendar-month > header .v-segment {
+  height: 26px;
+  min-height: 26px;
+  padding-inline: 10px;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.v-calendar-month > footer > span {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  white-space: nowrap;
+}
+
+.v-calendar-month > footer b[data-weekly] {
+  color: var(--accent);
+  border: 1px solid var(--hero-ring);
+  background: var(--accent-tint);
+}
+.v-calendar-month > footer b[data-special],
+.v-calendar-month > footer b[data-alert] {
+  color: var(--text-on-accent);
+  background: var(--accent-fill);
+}
+.v-calendar-month > footer b[data-ran] {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 13%, transparent);
+}
+.v-calendar-month > footer svg {
+  width: 10px;
+  height: 10px;
+}
+.v-calendar-month-legend-density {
+  width: 22px;
+  height: 12px;
+  border-left: 7px solid var(--surface-3);
+  border-right: 7px solid var(--surface-3);
+  background: var(--accent);
+}
+
+[data-scheme="light"] .v-calendar-month {
+  --month-stripe: color-mix(in srgb, var(--line-1) 50%, transparent);
+}

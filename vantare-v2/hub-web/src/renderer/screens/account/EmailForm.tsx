@@ -113,7 +113,6 @@ export function EmailForm({ value }: { value: EmailView }) {
             <Input
               label={text.password}
               aria-label={text.password}
-              placeholder={text.password}
               type="password"
               autoComplete={
                 value.mode === "signInPassword"
@@ -159,7 +158,6 @@ export function EmailForm({ value }: { value: EmailView }) {
           <Input
             label={text.newPassword}
             aria-label={text.newPassword}
-            placeholder={text.newPassword}
             data-access-initial=""
             type="password"
             autoComplete="new-password"

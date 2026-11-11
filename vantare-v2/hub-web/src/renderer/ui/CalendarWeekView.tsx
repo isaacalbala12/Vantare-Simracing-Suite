@@ -220,7 +220,10 @@ export function CalendarWeekView({
                         key={at}
                         data-today={at === today || undefined}
                       >
-                        <div className="v-calendar-event-track">
+                        <div
+                          className="v-calendar-event-track"
+                          hidden={slots.length === 0}
+                        >
                           {slots.map((slot) => (
                             <i
                               key={slot}
@@ -286,6 +289,14 @@ export function CalendarWeekView({
                     key={s.id}
                   >
                     {identity(s)}
+                    <div
+                      className="v-calendar-week-daily-days"
+                      aria-hidden="true"
+                    >
+                      {dates.map((at) => (
+                        <span key={at} data-today={at === today || undefined} />
+                      ))}
+                    </div>
                     <button
                       type="button"
                       style={{

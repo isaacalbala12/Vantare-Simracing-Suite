@@ -163,6 +163,7 @@
   color: var(--text-caption);
 }
 .v-calendar-week-live-daily {
+  position: relative;
   display: flex;
   height: 47px;
   border-bottom: 1px solid var(--line-1);
@@ -418,4 +419,21 @@
   content: "★" / "";
   margin-right: 6px;
   color: var(--accent);
+}
+
+.v-calendar-week-daily-days {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 240px;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  pointer-events: none;
+}
+.v-calendar-week-daily-days > span {
+  border-left: 1px solid var(--line-1);
+}
+.v-calendar-week-daily-days > span[data-today] {
+  background: var(--accent-tint);
 }

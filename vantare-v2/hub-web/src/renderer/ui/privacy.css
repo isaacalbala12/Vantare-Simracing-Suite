@@ -17,11 +17,15 @@
 }
 .v-privacy-send-note {
   margin: 0;
-  padding: 12px 18px;
+  padding: 13px 17px;
   min-height: 46px;
-  border: 1px solid color-mix(in srgb, var(--warn) 18%, transparent);
-  border-radius: 16px;
-  background: var(--surface-1);
+  border: 1px solid color-mix(in srgb, var(--warn) 12.941176%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--warn) 5.882353%, transparent),
+    color-mix(in srgb, var(--accent-bright) 1.960784%, transparent)
+  );
   color: var(--text-3);
   font: 400 12px / 18px var(--font-sans);
 }
@@ -35,7 +39,7 @@
   background: transparent;
   box-shadow: none;
   color: var(--text-1);
-  font: 600 14px / 21px var(--font-sans);
+  font: 500 14px / 21px var(--font-sans);
 }
 .v-privacy-mail {
   display: flex;
@@ -55,7 +59,7 @@
   border-radius: 8px;
   background: transparent;
   box-shadow: none;
-  font: 600 14px / 21px var(--font-sans);
+  font: 500 14px / 21px var(--font-sans);
   color: var(--text-1);
 }
 .v-context:has(.v-privacy-rail) .v-rail-block-body p {
@@ -63,4 +67,8 @@
 }
 .v-privacy-rail .v-rail-block:last-child {
   border-bottom: 0;
+}
+
+.v-privacy .v-button[aria-busy="true"] .v-button-label {
+  opacity: 1;
 }

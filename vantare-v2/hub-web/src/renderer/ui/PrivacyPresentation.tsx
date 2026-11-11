@@ -87,7 +87,7 @@ export function PrivacyRail() {
       <RailBlock title={text.what} icon="v-shield">
         <p>{text.whatHelp}</p>
       </RailBlock>
-      <RailBlock title={text.never} icon="lock">
+      <RailBlock title={text.never} icon="v-lock">
         <p>{text.neverHelp}</p>
       </RailBlock>
     </div>

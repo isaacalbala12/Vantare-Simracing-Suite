@@ -62,7 +62,7 @@ fn busy_requires_manual_retry_and_cancel_logout_reserve_their_own_intent() {
         Err(HostError::Busy)
     ));
     state.failed(Operation::Begin, &HostError::Busy, false, now);
-    assert!(state.view(&AccessView::default(), now, 0).error.unwrap().contains("Inténtalo de nuevo"));
+    assert!(state.view(&AccessView::default(), now, 0).error.unwrap().contains("IntÃ©ntalo de nuevo"));
     state.accepted(Operation::Begin, &Command::AccountBegin);
     assert!(state.can_start(Operation::Cancel).is_ok());
     state.accepted(Operation::Cancel, &Command::AccountCancel);

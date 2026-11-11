@@ -41,9 +41,13 @@
   clip-path: inset(50%);
 }
 .v-testing-questionnaires textarea {
+  width: 100%;
   min-height: 83px;
   height: 83px;
   resize: none;
+}
+.v-testing-questionnaires .v-testing-fine-print {
+  white-space: pre-wrap;
 }
 .v-testing-questionnaires > section > .v-button--primary {
   align-self: flex-start;

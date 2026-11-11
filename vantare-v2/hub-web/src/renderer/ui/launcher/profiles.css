@@ -445,5 +445,6 @@
 .v-launcher-rail .v-launcher-options .v-select-trigger[aria-disabled="true"] {
   opacity: 1;
   color: var(--text-1);
-  background: var(--surface-1);
+  background: var(--surface-2);
+  border-color: var(--line-2);
 }

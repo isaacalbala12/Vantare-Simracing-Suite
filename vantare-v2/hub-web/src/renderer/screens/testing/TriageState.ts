@@ -101,8 +101,10 @@ export function useTriageState({
         expected === revision.current &&
         current.current.allowed &&
         current.current.available
-      )
+      ) {
         setPreview(value);
+        setConsent(false);
+      }
     } finally {
       if (epoch === generation.current) {
         running.current = false;

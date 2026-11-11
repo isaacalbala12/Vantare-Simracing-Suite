@@ -12,8 +12,15 @@ transfieren al núcleo. Este recibe esos campos vacíos, como en el GPUI.
 El anfitrión valida y proyecta la previsualización con lista cerrada de claves y
 límites; no reenvía mensajes libres del servicio. La pantalla invalida la revisión
 y el consentimiento al cambiar datos, selección, sesión o conexión, y serializa
-las peticiones mediante la cola de Testing. Se conserva la versión del wire de
-nightly. El módulo no declara respuestas diferidas.
+las peticiones mediante la cola de Testing. Añadir estos métodos sube el wire de
+9 a 10. El módulo no declara respuestas diferidas.
+
+La vista muestra el contenido del informe, no la petición HTTP completa: el núcleo
+lo envía dentro de un sobre fijo con versión, consentimiento e identificador
+(idempotencia). No se modifica ese sobre desde el renderer. Tras recibir la vista
+previa, se limpia el consentimiento y hay que volver a marcarlo antes de enviar;
+es una mejora de seguridad respecto al GPUI. Una preparación abandonada puede
+vivir en el núcleo hasta 30 minutos, aunque la pantalla ya la haya invalidado.
 
 ## Testing Center: diagnóstico local (`report_local`)
 

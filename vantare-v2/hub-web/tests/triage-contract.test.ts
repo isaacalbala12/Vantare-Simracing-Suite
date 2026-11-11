@@ -179,3 +179,14 @@ it("consumes a prepared mock id once and keeps the contribution visible on a lat
     },
   });
 });
+
+it("rejects repeated consent items in a core preview", () => {
+  const source = corpus.host[0];
+  if (source.kind !== "response" || source.result.method !== "triage.prepare")
+    throw new Error("missing preview");
+  const message = structuredClone(source);
+  const payload = JSON.parse(message.result.value.payload);
+  payload.p_context.consent.items = ["system", "system"];
+  message.result.value.payload = JSON.stringify(payload);
+  expect(isHostMessage(message)).toBe(false);
+});

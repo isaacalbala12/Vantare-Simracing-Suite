@@ -74,6 +74,7 @@ export function TriageEditorView({
         </Button>
         {preview && (
           <>
+            <TestingFinePrint>{text.envelopeHelp}</TestingFinePrint>
             <section aria-label={text.preview}>
               <pre className="v-testing-triage-preview">{preview.payload}</pre>
             </section>

@@ -257,3 +257,72 @@ fn embedded_payload_has_stable_key_order_with_preserve_order_enabled() {
         }
     }
 }
+
+fn app_log(content: String) -> document::Attachment {
+    document::Attachment {
+        kind: "app_log".into(),
+        sha256: vantare_services::content_hash(content.as_bytes()),
+        content,
+    }
+}
+fn rejects(change: impl FnOnce(&mut document::Preview)) {
+    let mut preview = fixture();
+    change(&mut preview);
+    assert!(matches!(view(&preview), Err(HostError::Rejected)));
+}
+#[test]
+fn rejects_attachment_with_wrong_hash() {
+    rejects(|preview| {
+        let mut log = app_log("[]".into());
+        log.sha256 = "0".repeat(64);
+        preview.packet.attachments.push(log);
+    });
+}
+#[test]
+fn rejects_more_than_one_attachment() {
+    rejects(|preview| {
+        preview.packet.attachments = vec![app_log("[]".into()), app_log("[]".into())]
+    });
+}
+#[test]
+fn rejects_unknown_attachment_kind() {
+    rejects(|preview| {
+        let mut log = app_log("[]".into());
+        log.kind = "screenshot".into();
+        preview.packet.attachments.push(log);
+    });
+}
+#[test]
+fn rejects_attachment_over_content_limit_even_with_valid_hash() {
+    rejects(|preview| {
+        preview
+            .packet
+            .attachments
+            .push(app_log(format!("[{}]", " ".repeat(PREVIEW_LIMIT - 1))))
+    });
+}
+#[test]
+fn rejects_channel_mismatch_in_context() {
+    rejects(|preview| preview.packet.context["app_channel"] = "testers".into());
+}
+#[test]
+fn rejects_unknown_consent_version() {
+    rejects(|preview| preview.packet.context["consent"]["version"] = "triage-v3".into());
+}
+#[test]
+fn rejects_unknown_consent_item() {
+    rejects(|preview| preview.packet.context["consent"]["items"] = json!(["private_path"]));
+}
+#[test]
+fn rejects_duplicate_consent_items() {
+    rejects(|preview| preview.packet.context["consent"]["items"] = json!(["system", "system"]));
+}
+#[test]
+fn rejects_total_payload_over_limit_with_individually_valid_attachment() {
+    rejects(|preview| {
+        let content = format!("[{}]", " ".repeat(PREVIEW_LIMIT - 2));
+        assert_eq!(content.len(), PREVIEW_LIMIT);
+        assert_eq!(serde_json::from_str::<Value>(&content).unwrap(), json!([]));
+        preview.packet.attachments.push(app_log(content));
+    });
+}

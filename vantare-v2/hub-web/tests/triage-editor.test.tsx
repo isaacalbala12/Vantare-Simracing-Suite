@@ -71,6 +71,7 @@ it("sends only the reviewed structured selection and opaque id, never local pros
   fireEvent.click(screen.getByRole("checkbox", { name: text.consent }));
   fireEvent.click(screen.getByRole("button", { name: text.prepare }));
   const preview = await screen.findByRole("region", { name: text.preview });
+  expect(screen.getByText(text.envelopeHelp)).toBeTruthy();
   expect(preview.textContent).not.toMatch(
     /PRIVATE_LOCAL_TITLE|PRIVATE_LOCAL_BODY/,
   );
@@ -86,6 +87,8 @@ it("sends only the reviewed structured selection and opaque id, never local pros
     ],
   ]);
   const send = screen.getByRole("button", { name: text.send });
+  expect(send.hasAttribute("disabled")).toBe(true);
+  fireEvent.click(screen.getByRole("checkbox", { name: text.consent }));
   fireEvent.click(send);
   fireEvent.click(send);
   await waitFor(() =>

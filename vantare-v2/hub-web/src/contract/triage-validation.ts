@@ -1,4 +1,8 @@
-import { triageItems, triagePreviewLimit } from "./generated/triage";
+import {
+  triageConsentKeys,
+  triageItems,
+  triagePreviewLimit,
+} from "./generated/triage";
 import { isReportPreviewId, isTestingId } from "./testing-validation";
 import { exact, oneOf, record } from "./validation-common";
 
@@ -196,14 +200,10 @@ function context(value: unknown, channel: string) {
     record(value.consent) &&
     exact(value.consent, ["version", "items", "accepted_at"]) &&
     value.consent.version === "triage-v2" &&
-    array(value.consent.items, triageItems.length, (value) =>
-      oneOf(value, [
-        "system",
-        "telemetry_summary",
-        "app_log",
-        "telemetry_fragment",
-        "posthog_session",
-      ]),
+    Array.isArray(value.consent.items) &&
+    new Set(value.consent.items).size === value.consent.items.length &&
+    array(value.consent.items, triageConsentKeys.length, (value) =>
+      oneOf(value, triageConsentKeys),
     ) &&
     timestamp(value.consent.accepted_at)
   );

@@ -133,8 +133,8 @@ export function Reports({
         <LocalDiagnostic />
       ) : view === "list" ? (
         <ReportsPanel />
-) : view === "local" && state.access.tester ? (
-          <TriageEditor />
+      ) : view === "local" && state.access.tester ? (
+        <TriageEditor />
       ) : view === "local" ? (
         <>
           <TestingCard title={text.helpTitle}>

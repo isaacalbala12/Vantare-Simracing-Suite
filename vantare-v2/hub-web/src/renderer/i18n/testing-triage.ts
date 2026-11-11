@@ -14,6 +14,8 @@ export const testingTriageText = {
     "Un asistente de IA externo (DeepSeek vía OpenCode) preclasifica el informe con estos datos; la decisión la toma una persona. Los adjuntos y el resumen se retienen hasta 90 días desde la decisión.",
   prepare: "Ver lo que se envía",
   send: "Enviar este informe",
-  preview: "Contenido exacto del informe",
+  preview: "Contenido del informe",
+  envelopeHelp:
+    "Se envía dentro de un sobre fijo con versión, consentimiento e identificador.",
   waiting: "Acepta el consentimiento e inicia sesión",
 } as const;

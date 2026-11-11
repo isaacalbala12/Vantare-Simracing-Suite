@@ -9,6 +9,12 @@ pub(crate) fn typescript() -> String {
     declare::<crate::triage::TriagePreview>(&mut text);
     for (name, value) in [
         (
+            "triageConsentKeys",
+            serde_json::json!(
+                vantare_ipc::services_protocol::triage_document::Item::ALL.map(|item| item.key())
+            ),
+        ),
+        (
             "triageItems",
             serde_json::json!(crate::triage::TriageItem::ALL),
         ),

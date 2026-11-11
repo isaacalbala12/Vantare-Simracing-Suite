@@ -325,6 +325,11 @@ fn context(value: &Value, channel: &str) -> bool {
                     .any(|item| item.key() == key)
             })
         })
+        && value["consent"]["items"].as_array().is_some_and(|items| {
+            let unique: std::collections::BTreeSet<_> =
+                items.iter().filter_map(Value::as_str).collect();
+            unique.len() == items.len()
+        })
         && timestamp(&value["consent"]["accepted_at"])
 }
 pub fn view(value: &document::Preview) -> Result<TriagePreview, HostError> {

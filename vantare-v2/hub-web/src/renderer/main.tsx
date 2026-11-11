@@ -2,6 +2,8 @@ import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { AccountGate } from "./app/AccountGate";
+import { AccountProvider } from "./app/AccountState";
 import { HostProvider, useHost } from "./app/Host";
 import { HostIssue } from "./app/HostIssue";
 import { PilotProvider } from "./app/PilotState";
@@ -42,11 +44,15 @@ function Content() {
   return (
     <SettingsProvider>
       <PrivacyGate>
-        <PilotProvider>
-          <ReportsProvider>
-            <Shell />
-          </ReportsProvider>
-        </PilotProvider>
+        <AccountProvider>
+          <PilotProvider>
+            <ReportsProvider>
+              <AccountGate>
+                <Shell />
+              </AccountGate>
+            </ReportsProvider>
+          </PilotProvider>
+        </AccountProvider>
       </PrivacyGate>
     </SettingsProvider>
   );

@@ -87,3 +87,54 @@ fn a_missing_preference_is_created_only_after_an_explicit_action() {
     );
     assert!(root.0.join("calendar-prefs.json").exists());
 }
+
+#[test]
+fn following_requires_a_known_series_but_can_remove_a_retired_one() {
+    let root = Root::new();
+    let path = root.0.join("calendar-following.json");
+    std::fs::write(
+        &path,
+        br#"{"seriesIds":["retired"],"future":{"keep":true}}"#,
+    )
+    .unwrap();
+    let mut state = State::new(root.0.clone());
+    let before = std::fs::read(&path).unwrap();
+    let revision = state.config().unwrap().following_revision;
+    assert_eq!(
+        state.follow_set("absent", true, &revision),
+        Err(HostError::Rejected)
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let removed = state.follow_set("retired", false, &revision).unwrap();
+    assert!(removed.following.is_empty());
+    let schedule = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../hub/reference/fixtures/calendar-lmu-2026-10-06.json"
+    ));
+    let view = state.refreshed(Some(schedule.into()), None).unwrap();
+    let id = view.official.unwrap().series[0].id.clone();
+    let saved = state
+        .follow_set(&id, true, &removed.following_revision)
+        .unwrap();
+    assert_eq!(saved.following, vec![id.clone()]);
+    assert!(matches!(
+        state.follow_set(&id, false, &removed.following_revision),
+        Err(HostError::CalendarConflict { .. })
+    ));
+    let document: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    assert_eq!(document["future"], json!({"keep":true}));
+    assert_eq!(document["seriesIds"], json!([id]));
+}
+#[test]
+fn invalid_follow_identity_cannot_create_a_document() {
+    let root = Root::new();
+    let mut state = State::new(root.0.clone());
+    let revision = state.config().unwrap().following_revision;
+    for id in ["", "\u{feff}", "bad\n"] {
+        assert_eq!(
+            state.follow_set(id, true, &revision),
+            Err(HostError::Rejected)
+        );
+    }
+    assert!(!root.0.join("calendar-following.json").exists());
+}

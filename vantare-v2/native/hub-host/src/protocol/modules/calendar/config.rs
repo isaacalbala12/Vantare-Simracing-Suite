@@ -144,6 +144,7 @@ impl Document {
         })
     }
 }
+#[cfg(any(test, feature = "bindings"))]
 pub(crate) fn empty_revision() -> String {
     revision(None)
 }
@@ -178,8 +179,7 @@ impl State {
         let utc = prefs
             .value
             .get("utc")
-            .map(Value::as_bool)
-            .unwrap_or(Some(false))
+            .map_or(Some(false), Value::as_bool)
             .ok_or(HostError::Protected)?;
         let ids: Vec<String> = following
             .value
@@ -327,7 +327,7 @@ impl State {
         }
         let result =
             self.save_config("calendar-following.json", "seriesIds", json!(ids), expected)?;
-        self.view.following = result.following.clone();
+        self.view.following.clone_from(&result.following);
         Ok(result)
     }
 }

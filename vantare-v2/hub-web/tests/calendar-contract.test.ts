@@ -8,27 +8,39 @@ import {
 import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus/calendar.json";
 import {
-  isError,
   isCalendarDate,
   isCalendarSchedule,
   isCalendarView,
+  isError,
   isReply,
   isRequest,
 } from "../src/contract/modules/calendar";
 import { create } from "../src/mock/modules/calendar";
 
 const messages = corpus.host as unknown as HostToUi[];
-const load = messages.find(m => m.kind === "response" && m.result.method === "calendar.load");
-const refresh = messages.find(m => m.kind === "response" && m.result.method === "calendar.refresh");
-if (load?.kind !== "response" || load.result.method !== "calendar.load" || refresh?.kind !== "response" || refresh.result.method !== "calendar.refresh") throw new Error("missing Calendar corpus views");
-const empty = load.result.value, populated = refresh.result.value;
+const load = messages.find(
+  (m) => m.kind === "response" && m.result.method === "calendar.load",
+);
+const refresh = messages.find(
+  (m) => m.kind === "response" && m.result.method === "calendar.refresh",
+);
+if (
+  load?.kind !== "response" ||
+  load.result.method !== "calendar.load" ||
+  refresh?.kind !== "response" ||
+  refresh.result.method !== "calendar.refresh"
+)
+  throw new Error("missing Calendar corpus views");
+const empty = load.result.value,
+  populated = refresh.result.value;
 
 describe("calendar closed contract", () => {
   it("accepts every Rust reply and rejects unknown renderer arguments", () => {
     for (const sample of messages) {
- if(sample.kind === "response") expect(isReply(sample.result)).toBe(true);
- else if(sample.kind === "failure") expect(isError(sample.error)).toBe(true);
- }
+      if (sample.kind === "response") expect(isReply(sample.result)).toBe(true);
+      else if (sample.kind === "failure")
+        expect(isError(sample.error)).toBe(true);
+    }
     expect(isRequest({ method: "calendar.load", path: "C:/private" })).toBe(
       false,
     );
@@ -226,4 +238,79 @@ it("mock writes use revisions and refuse the previous revision without changing 
       },
     }),
   ).toMatchObject({ error: { kind: "denied" } });
+});
+it("mock favorites obey the publication and CAS, including an explicit removal", () => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  const host = create({
+    core,
+    sceneName: "calendar-data",
+    visual: null,
+    notes: [],
+    note: () => {},
+  });
+  const loaded = host({
+    kind: "request",
+    id: 20,
+    request: { method: "calendar.configLoad" },
+  });
+  if (
+    loaded?.kind !== "response" ||
+    loaded.result.method !== "calendar.configLoad"
+  )
+    throw new Error("missing config");
+  const seriesId = populated.official?.series[0].id;
+  if (!seriesId) throw new Error("missing public series");
+  const expectedRevision = loaded.result.value.followingRevision;
+  const add = host({
+    kind: "request",
+    id: 21,
+    request: {
+      method: "calendar.followSet",
+      seriesId,
+      followed: true,
+      expectedRevision,
+    },
+  });
+  if (add?.kind !== "response" || add.result.method !== "calendar.followSet")
+    throw new Error("missing saved favorite");
+  expect(add.result.value.following).toContain(seriesId);
+  expect(
+    host({
+      kind: "request",
+      id: 22,
+      request: {
+        method: "calendar.followSet",
+        seriesId,
+        followed: false,
+        expectedRevision,
+      },
+    }),
+  ).toMatchObject({
+    error: { kind: "calendarConflict", current: { following: [seriesId] } },
+  });
+  const revision = add.result.value.followingRevision;
+  expect(
+    host({
+      kind: "request",
+      id: 23,
+      request: {
+        method: "calendar.followSet",
+        seriesId: "absent",
+        followed: true,
+        expectedRevision: revision,
+      },
+    }),
+  ).toMatchObject({ error: { kind: "rejected" } });
+  expect(
+    host({
+      kind: "request",
+      id: 24,
+      request: {
+        method: "calendar.followSet",
+        seriesId,
+        followed: false,
+        expectedRevision: revision,
+      },
+    }),
+  ).toMatchObject({ result: { value: { following: [] } } });
 });

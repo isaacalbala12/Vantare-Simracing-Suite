@@ -12,8 +12,9 @@
   overflow: hidden;
   padding-bottom: 14px;
 }
-.v-shortcut-groups .v-setting-group-title {
-  line-height: 14px;
+.v-shortcut-groups .v-setting-group-title,
+.v-shortcut-groups .v-setting-group-title > span:first-child {
+  line-height: 15px;
 }
 .v-shortcut-rail .v-rail-block {
   border-bottom: 0;

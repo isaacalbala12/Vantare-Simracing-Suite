@@ -12,12 +12,20 @@ export function WidgetThumb({
   kind: WidgetKind;
   icon?: boolean;
 }) {
-  return (
+  const source =
+    thumbnails[`../../assets/widgets/${icon ? "w-" : ""}${kind}.svg`];
+  return icon ? (
+    <span
+      aria-hidden="true"
+      className="v-studio-widget-icon"
+      style={{ maskImage: `url("${source}")` }}
+    />
+  ) : (
     <img
       alt=""
       aria-hidden="true"
-      src={thumbnails[`../../assets/widgets/${icon ? "w-" : ""}${kind}.svg`]}
-      className={icon ? "v-studio-widget-icon" : "v-studio-widget-thumb"}
+      src={source}
+      className="v-studio-widget-thumb"
     />
   );
 }

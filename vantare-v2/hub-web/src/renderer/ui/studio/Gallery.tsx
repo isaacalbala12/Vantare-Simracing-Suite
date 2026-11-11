@@ -9,11 +9,11 @@ import { Tooltip } from "../../ui/Layers";
 import { VisibilityIcon, WidgetThumb } from "./Widgets";
 export function Gallery() {
   const state = useStudio(),
-    grid = useRef<HTMLDivElement>(null),
+    grid = useRef<HTMLElement>(null),
     focusInspector = useRef(false);
   const { view, selected, pending } = state;
   useLayoutEffect(() => {
-    if (focusInspector.current) {
+    if (selected && focusInspector.current) {
       document.querySelector<HTMLElement>("[data-studio-inspector]")?.focus();
       focusInspector.current = false;
     }
@@ -97,10 +97,15 @@ export function Gallery() {
                 : ""}
         </span>
         <Tooltip label={t.obsHelp}>
-          <Button disabled>{t.obs}</Button>
+          <Button className="v-studio-obs-button" disabled>
+            {t.obs}
+          </Button>
         </Tooltip>
         <Tooltip label={t.editHelp}>
-          <Button disabled={!studioEditOnScreen}>
+          <Button
+            className="v-studio-edit-button"
+            disabled={!studioEditOnScreen}
+          >
             <Icon name="v-studio" />
             {t.edit}
           </Button>
@@ -139,19 +144,13 @@ export function Gallery() {
       ) : null}
       <div className="v-studio-gallery-panel">
         {!view.instances.length && view.state === "ready" && <p>{t.empty}</p>}
-        <div
-          className="v-studio-grid"
-          ref={grid}
-          role="grid"
-          aria-label={t.title}
-        >
+        <section className="v-studio-grid" ref={grid} aria-label={t.title}>
           {view.instances.map((item, index) => {
             const info = view.catalog.find((w) => w.kind === item.kind);
             const active = selected === item.id;
             const name = info?.name ?? item.kind;
             return (
               <article
-                role="gridcell"
                 key={item.id}
                 className="v-studio-overlay"
                 data-selected={active}
@@ -171,6 +170,12 @@ export function Gallery() {
                   aria-label={name}
                   aria-pressed={active}
                   onClick={() => {
+                    if (active) {
+                      document
+                        .querySelector<HTMLElement>("[data-studio-inspector]")
+                        ?.focus();
+                      return;
+                    }
                     focusInspector.current = true;
                     state.setSelected(item.id);
                   }}
@@ -192,7 +197,9 @@ export function Gallery() {
                     );
                     const columns = Math.max(
                       1,
-                      Math.floor((grid.current?.clientWidth ?? 280) / 280),
+                      Math.floor(
+                        ((grid.current?.clientWidth ?? 280) + 8) / 288,
+                      ),
                     );
                     const step =
                       event.key === "ArrowRight"
@@ -274,7 +281,7 @@ export function Gallery() {
             <Icon name="plus" />
             {t.add}
           </Button>
-        </div>
+        </section>
         <footer className="v-studio-footer">
           <span>{t.tryWith}</span>
           {t.scenes.map((scene) => (

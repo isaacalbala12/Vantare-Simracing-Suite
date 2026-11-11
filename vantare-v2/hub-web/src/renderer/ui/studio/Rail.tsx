@@ -276,9 +276,8 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
           group.items.length > 0 && (
             <section key={group.title}>
               <h3>{group.title}</h3>
-              <div
+              <fieldset
                 className="v-studio-catalog-grid"
-                role="group"
                 aria-label={group.title}
               >
                 {group.items.map((widget, index) => (
@@ -306,7 +305,7 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                       onKeyDown={(event) => {
                         const buttons = Array.from(
                           event.currentTarget
-                            .closest("[role=group]")
+                            .closest("fieldset")
                             ?.querySelectorAll<HTMLButtonElement>(
                               "[data-kind]",
                             ) ?? [],
@@ -349,7 +348,7 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                     </button>
                   </Tooltip>
                 ))}
-              </div>
+              </fieldset>
             </section>
           ),
       )}

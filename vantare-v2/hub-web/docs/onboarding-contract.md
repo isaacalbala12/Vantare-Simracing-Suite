@@ -1,7 +1,8 @@
 # Onboarding · contrato local (VANTA-138 / #1995)
 
-Preparación 7a: no añade login ni promueve el protocolo. v21 es provisional y
-se exportará una sola vez tras confirmar el turno con el orquestador.
+Entrega 7a: no añade login. Usa v18 provisional sobre nightly v17 para ejecutar
+la CI completa, según el cambio de orden del orquestador. Tras la review se
+confirmará el número definitivo y se hará un único rebase y regeneración final.
 
 El módulo `onboarding` posee get, finish, skipPrivate y prices. Get proyecta
 simuladores encontrados por el Reader del Launcher, equipo local, nivel recomendado,

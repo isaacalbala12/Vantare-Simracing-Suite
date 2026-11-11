@@ -1,7 +1,7 @@
 use crate::protocol::bindings::{constants, declare, sample_response};
 use crate::protocol::{HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
-    let mut text = String::from("import type { PerformanceLevel } from './settings';\n");
+    let mut text = String::new();
     declare::<crate::onboarding::WidgetKind>(&mut text);
     declare::<crate::onboarding::Equipment>(&mut text);
     declare::<crate::onboarding::OnboardingView>(&mut text);
@@ -9,6 +9,11 @@ pub(crate) fn typescript() -> String {
         &mut text,
         "onboardingCpuLimit",
         crate::onboarding::CPU_LIMIT
+    );
+    constants!(
+        &mut text,
+        "onboardingEquipmentCountMax",
+        crate::onboarding::EQUIPMENT_COUNT_MAX
     );
     constants!(
         &mut text,

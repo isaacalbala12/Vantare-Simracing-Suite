@@ -370,7 +370,6 @@ sin activarlo en el anfitrión, o apagarlo. Pasar de falso a verdadero se rechaz
 El lanzamiento diferido sigue pendiente en #2089; no se cambian IPC, runtime,
 rights ni supervisor. El feed de sesión y la exportación ICS van en PR propios.
 
-
 ### Avisos: compatibilidad de lectura y diferencias conocidas
 
 La lectura de `calendar-alerts.json` mantiene la misma estrictez que

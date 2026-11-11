@@ -577,3 +577,44 @@ pub fn picked_executable(
     };
     crate::frame::write(pipe, &result)
 }
+
+#[cfg(test)]
+mod dialog_wire_tests {
+    use super::*;
+    use crate::protocol::{HostToUi, Reply};
+    fn deliver(picker: &mut Picker, selection: &ExecutableSelection) -> HostToUi {
+        let mut pipe = Vec::new();
+        picked_executable(picker, &mut pipe, selection).unwrap();
+        crate::frame::Reader::default()
+            .next(&mut std::io::Cursor::new(pipe))
+            .unwrap()
+            .unwrap()
+    }
+    #[test]
+    fn trusted_result_handler_requires_an_outstanding_request_and_consumes_it() {
+        let mut picker = Picker::default();
+        let selection = ExecutableSelection { id: 7, path: None };
+        let denied = HostToUi::Failure {
+            id: 7,
+            error: HostError::Denied,
+        };
+        assert_eq!(deliver(&mut picker, &selection), denied);
+        picker.request_dialog(7, Instant::now()).unwrap();
+        assert_eq!(
+            deliver(&mut picker, &ExecutableSelection { id: 8, path: None }),
+            HostToUi::Failure {
+                id: 8,
+                error: HostError::Denied
+            }
+        );
+        assert_eq!(
+            deliver(&mut picker, &selection),
+            HostToUi::Response {
+                id: 7,
+                result: Reply::LauncherAppPick { value: None }
+            }
+        );
+        assert_eq!(deliver(&mut picker, &selection), denied);
+        assert!(picker.pending.is_none());
+    }
+}

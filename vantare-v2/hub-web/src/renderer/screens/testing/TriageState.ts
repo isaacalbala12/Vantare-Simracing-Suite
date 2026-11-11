@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type TriageItem,
   type TriagePreview,
@@ -31,16 +31,19 @@ export function useTriageState({
   const generation = useRef(0);
   const running = useRef(false);
   const identity = useRef(session);
+  const previousAllowed = useRef(allowed);
   const current = useRef({ allowed, available });
   current.current = { allowed, available };
-  function invalidate() {
+  const invalidate = useCallback(() => {
     revision.current++;
     setPreview(undefined);
     setConsent(false);
-  }
+  }, []);
   useEffect(() => {
-    if (identity.current === session && allowed) return;
+    if (identity.current === session && previousAllowed.current === allowed)
+      return;
     identity.current = session;
+    previousAllowed.current = allowed;
     generation.current++;
     running.current = false;
     setPending(false);
@@ -48,10 +51,10 @@ export function useTriageState({
     setBody("");
     setItems([...triageItems]);
     invalidate();
-  }, [session, allowed]);
+  }, [session, allowed, invalidate]);
   useEffect(() => {
     if (!available) invalidate();
-  }, [available]);
+  }, [available, invalidate]);
   function editTitle(value: string) {
     const next = Array.from(value).slice(0, triageLocalTitleMaxChars).join("");
     if (next !== title) {

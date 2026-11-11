@@ -20,8 +20,21 @@
   resize: none;
 }
 .v-testing-triage .v-choice {
-  align-items: flex-start;
-  font-weight: 400;
+  align-items: center;
+  min-height: 22px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.v-testing-triage .v-checkbox {
+  flex-shrink: 0;
+}
+.v-testing-triage-consent {
+  min-width: 0;
+  overflow: hidden;
+}
+.v-testing-triage-consent .v-choice > span {
+  white-space: nowrap;
+  overflow: hidden;
 }
 .v-testing-triage .v-choice > span {
   flex: 1;

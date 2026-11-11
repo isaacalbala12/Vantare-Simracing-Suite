@@ -41,13 +41,11 @@ export function TriageEditorView({
       <TestingCard title={text.title}>
         <Input
           label={text.localTitle}
-          placeholder={text.localTitle}
           value={title}
           onChange={(event) => onTitle(event.currentTarget.value)}
         />
         <Textarea
           label={text.localBody}
-          placeholder={text.localBody}
           value={body}
           onChange={(event) => onBody(event.currentTarget.value)}
         />
@@ -60,11 +58,13 @@ export function TriageEditorView({
           />
         ))}
         <TestingFinePrint>{text.help}</TestingFinePrint>
-        <Checkbox
-          label={text.consent}
-          checked={consent}
-          onCheckedChange={onConsent}
-        />
+        <div className="v-testing-triage-consent" title={text.consent}>
+          <Checkbox
+            label={text.consent}
+            checked={consent}
+            onCheckedChange={onConsent}
+          />
+        </div>
         <Button
           disabled={blocked || !consent}
           onClick={onPrepare}
@@ -74,9 +74,9 @@ export function TriageEditorView({
         </Button>
         {preview && (
           <>
-            <pre className="v-testing-triage-preview" aria-label={text.preview}>
-              {preview.payload}
-            </pre>
+            <section aria-label={text.preview}>
+              <pre className="v-testing-triage-preview">{preview.payload}</pre>
+            </section>
             <Button
               variant="primary"
               disabled={blocked || !consent}

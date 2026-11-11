@@ -18,6 +18,7 @@ import {
   ApplicationCatalog,
   ApplicationFields,
   ApplicationRemoval,
+  ApplicationArgumentReset,
 } from "../../ui/launcher/Applications";
 import { useProfileEditorState } from "./editor-state";
 import { launcherKey, useLauncherSnapshot } from "./state";
@@ -44,6 +45,7 @@ export function Applications() {
   const [selected, setSelected] = useState<PickedApp | null>(null);
   const [removal, setRemoval] = useState<CatalogApp | null>(null);
   const [pending, setPending] = useState(false);
+  const [argumentReset, setArgumentReset] = useState<string>();
   const [error, setError] = useState<string>();
   const retry = useRef<{ request: Mutation; revision: string } | undefined>(
     undefined,
@@ -169,7 +171,7 @@ export function Applications() {
     busy.current = true;
     setPending(true);
     try {
-      const result = await client.request({ method: "launcher.app.pick" });
+      const result = await client.request({ method: "launcher.app.pick", id: editor.draft.id });
       if (
         alive.current &&
         result.method === "launcher.app.pick" &&
@@ -192,7 +194,7 @@ export function Applications() {
       if (alive.current) setPending(false);
     }
   }
-  function save(revision = editor?.revision) {
+  function save(revision = editor?.revision, confirmed = false) {
     if (!editor || !revision) return;
     const draft = editor.draft;
     if (!isAppDraft(draft)) {
@@ -201,6 +203,10 @@ export function Applications() {
     }
     if (!draft.id && !selected) {
       setError(text.missing);
+      return;
+    }
+    if (!confirmed && editor.hasCustomArguments && (selected !== null || (editor.hasExecutable && draft.useDiscovery))) {
+      setArgumentReset(revision);
       return;
     }
     void mutate({
@@ -313,6 +319,7 @@ export function Applications() {
           onDiscard={discard}
         />
       )}
+      <ApplicationArgumentReset open={argumentReset !== undefined} onCancel={() => setArgumentReset(undefined)} onConfirm={() => {const revision = argumentReset;setArgumentReset(undefined);if(revision) save(revision, true);}} />
       <ApplicationRemoval
         app={removal}
         pending={pending}

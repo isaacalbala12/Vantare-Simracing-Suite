@@ -50,6 +50,8 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       },
     ]),
   );
+  const customized = new Set(scene === "launcher-aplicaciones-args" ? ["obs"] : []);
+  let selectionTarget: string | null | undefined;
   let serial = 0;
   let conflictOnce = scene.endsWith("-conflicto");
   let selection: { token: string; name: string } | null = null;
@@ -113,12 +115,14 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
         id,
         result: { method: request.method, value: structuredClone(view) },
       };
-    if (request.method === "launcher.app.pick")
+    if (request.method === "launcher.app.pick") {
+      selectionTarget = request.id;
       return {
         kind: "response",
         id,
         result: { method: request.method, value: picked("Aplicación QA") },
       };
+    }
     if (request.method === "launcher.app.get") {
       const draft =
         request.id === null
@@ -139,7 +143,7 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
                 revision: view.revision,
                 draft: structuredClone(draft),
                 hasExecutable: draft.id?.startsWith("custom:") ?? false,
-                hasCustomArguments: false,
+                hasCustomArguments: draft.id !== null && customized.has(draft.id),
               },
             },
           }
@@ -181,7 +185,7 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       const draft = request.draft;
       if (
         !draft.name.trim() ||
-        (request.pickToken !== null && request.pickToken !== selection?.token)
+        (request.pickToken !== null && (request.pickToken !== selection?.token || selectionTarget !== draft.id))
       )
         return fail("denied");
       const existing =
@@ -202,6 +206,7 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
       )
         return fail("denied");
       const appId = draft.id ?? `custom:qa-${++serial}`;
+      if (request.pickToken !== null) customized.delete(appId);
       drafts.set(appId, { ...structuredClone(draft), id: appId });
       if (existing) {
         existing.name = draft.name;

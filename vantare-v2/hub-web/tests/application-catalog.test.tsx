@@ -1,3 +1,4 @@
+import { Client } from "../src/renderer/bridge/client";
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -30,6 +31,7 @@ beforeEach(() =>
 );
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   caches.forEach((cache) => {
     cache.clear();
   });
@@ -62,6 +64,30 @@ function mount(scene = "launcher-aplicaciones") {
 }
 
 describe("application catalog", () => {
+  it("warns before replacing an app executable discards its saved arguments", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("launcher-aplicaciones-args");
+    fireEvent.click(await screen.findByRole("button", {name:text.edit("OBS Studio")}));
+    await screen.findByText(text.customArguments);
+    fireEvent.click(screen.getByRole("button", {name:text.pick}));
+    await screen.findByText("Aplicación QA");
+    fireEvent.click(screen.getByRole("button", {name:text.save}));
+    await screen.findByRole("alertdialog", {name:text.argumentResetTitle});
+    expect(requests.mock.calls.filter(([request]) => request.method === "launcher.app.pick")).toEqual([[{method:"launcher.app.pick", id:"obs"}]]);
+    expect(requests.mock.calls.filter(([request]) => request.method === "launcher.app.save")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", {name:text.cancel}));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByText(text.customArguments)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name:text.save}));
+    await screen.findByRole("alertdialog", {name:text.argumentResetTitle});
+    fireEvent.click(screen.getByRole("button", {name:text.confirmArgumentReset}));
+    await screen.findByRole("button", {name:text.edit("OBS Studio")});
+    expect(requests.mock.calls.filter(([request]) => request.method === "launcher.app.save")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", {name:text.edit("OBS Studio")}));
+    await screen.findByText(text.defaultArguments);
+    expect(screen.queryByText(text.customArguments)).toBeNull();
+  });
+
   it("filters names and categories without exposing executable paths", async () => {
     mount();
     await screen.findByRole("button", { name: "Editar Vantare Overlay" });

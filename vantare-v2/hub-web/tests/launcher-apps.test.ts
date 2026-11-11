@@ -60,7 +60,7 @@ describe("application catalog contract", () => {
   });
   it("preserves a picked selection after conflict and consumes it after a successful explicit retry", () => {
     const host = createMockHost("launcher-aplicaciones");
-    const selected = send(host, "launcher.app.pick");
+    const selected = send(host, "launcher.app.pick", {id:null});
     if (
       selected?.kind !== "response" ||
       selected.result.method !== "launcher.app.pick" ||

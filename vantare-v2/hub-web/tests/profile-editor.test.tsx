@@ -105,7 +105,7 @@ describe("profile editor", () => {
     mount();
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Creador de Contenido" });
-    expect(screen.queryByRole("tab", { name: "Aplicaciones" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Aplicaciones" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "Cambio con flechas" } });

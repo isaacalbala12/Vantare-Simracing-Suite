@@ -193,3 +193,9 @@
   width: 19.2px;
   height: 19.2px;
 }
+
+.v-launcher-app-search > .v-field { min-width: 0; }
+.v-launcher-app-search .v-input { width: 100%; height: 39px; min-height: 39px; padding: 0 13px; border-color: var(--line-2); background: var(--surface-2); color: var(--text-2); font-size: 13.5px; }
+.v-launcher-app-search .v-input::placeholder { color: var(--text-3); }
+.v-launcher-app-search .v-launcher-actions > .v-tooltip-trigger .v-button { min-width: 180px; }
+.v-launcher-app-search .v-launcher-actions > .v-button { min-width: 94px; }

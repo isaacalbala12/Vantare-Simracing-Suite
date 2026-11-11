@@ -176,3 +176,21 @@
 .v-diagnostic-log-filters .v-segment[data-pressed] {
   background: var(--surface-elevated);
 }
+
+/* GPUI paints card shadows below the whole grid, so later rows do not dim earlier faces. */
+.v-diagnostic-health-grid {
+  isolation: isolate;
+}
+.v-diagnostic-health-item {
+  position: relative;
+  box-shadow: inset 0 1px 0 var(--neo-light);
+}
+.v-diagnostic-health-item::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: var(--shadow-neo);
+  z-index: -1;
+  pointer-events: none;
+}

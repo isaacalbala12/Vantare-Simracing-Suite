@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory)][string]$Binary
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'capture-lock.ps1')
 $lock = 'D:\VantareServer\qa\captura.lock'
 $nonce = [guid]::NewGuid().ToString('N')
 $env:VANTARE_HUB_UI_BINARY = [IO.Path]::GetFullPath($Binary)
@@ -16,13 +17,8 @@ $env:TEMP = 'D:/VantareServer/qa/isa-1995-visual/tmp'
 $env:TMP = $env:TEMP
 foreach ($scene in $Scenes) {
     if ($scene -notmatch '^[a-z0-9-]+$') { throw 'Invalid scene' }
-    $owned = $false
-    while (-not $owned) {
-        & cmd.exe /d /c 'mkdir D:\VantareServer\qa\captura.lock 2>nul'
-        if ($LASTEXITCODE -eq 0) { $owned = $true; break }
-        Write-Output "$(Get-Date -Format o) waiting for global capture lock"
-        Start-Sleep -Seconds 60
-    }
+    $lease=Enter-HubCaptureTurn $scene
+    $nonce=$lease.nonce
     try {
         @{pid=$PID;nonce=$nonce;started=(Get-Date -Format o);scene=$scene} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $lock 'owner.json')
         $destination = Join-Path $Output $scene

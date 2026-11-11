@@ -69,6 +69,8 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
+$calendarSpec = if ($Scene -eq 'calendario-eventos-contraida') { 'state=ok;view=eventos' } else { $null }
+if ($calendarSpec) { $start.Environment['VANTARE_CAPTURE_CALENDAR'] = $calendarSpec }
 $nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } elseif ($Scene -in @('roadmap-tablero','roadmap-temporada')) { 'roadmap-base' } elseif ($Scene -eq 'ajustes-cuenta') { 'ajustes-perfil' } elseif ($Scene -eq 'calendario-eventos-contraida') { 'calendario-base' } else { $Scene }
 foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
 if ($gate) {

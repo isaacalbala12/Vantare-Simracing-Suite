@@ -5,12 +5,7 @@
     "priority": "P2 visual",
     "scene": "ajustes-aplicacion",
     "expanded": false,
-    "rect": [
-      1194,
-      0,
-      100,
-      52
-    ],
+    "rect": [1194, 0, 100, 52],
     "description": "El botón del panel derecho usa i-panel; el GPUI usa v-side. La silueta es distinta en todas las pantallas con marco.",
     "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\ajustes-aplicacion-collapsed.png",
     "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\ajustes-aplicacion\\dark\\ajustes-aplicacion\\sidebar-collapsed.png",
@@ -25,12 +20,7 @@
     "priority": "P2 visual",
     "scene": "ajustes-aplicacion",
     "expanded": true,
-    "rect": [
-      900,
-      0,
-      200,
-      52
-    ],
+    "rect": [900, 0, 200, 52],
     "description": "Con la barra expandida, la última pestaña asoma cortada junto a las acciones; el GPUI la oculta completa. Revisar reparto de anchura y recorte de la barra superior.",
     "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\ajustes-aplicacion-expanded.png",
     "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\ajustes-aplicacion\\dark\\ajustes-aplicacion\\sidebar-expanded.png",
@@ -45,12 +35,7 @@
     "priority": "P2 visual",
     "scene": "roadmap-base",
     "expanded": false,
-    "rect": [
-      100,
-      350,
-      996,
-      530
-    ],
+    "rect": [100, 350, 996, 530],
     "description": "Las tres columnas vacías de Circuito se compactan a unas filas; en GPUI ocupan el espacio vertical hasta el pie del contenido.",
     "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\roadmap-base-collapsed.png",
     "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\roadmap-base\\dark\\roadmap-base\\sidebar-collapsed.png",
@@ -65,12 +50,7 @@
     "priority": "diferencia conocida",
     "scene": "inicio-base",
     "expanded": false,
-    "rect": [
-      116,
-      428,
-      455,
-      230
-    ],
+    "rect": [116, 428, 455, 230],
     "description": "La vista previa de overlays usa SVG estáticos y tiene una composición distinta al layout real del GPUI. Esta diferencia fue autorizada; se conserva sin disfrazarla como paridad.",
     "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\inicio-base-collapsed.png",
     "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\inicio-base\\dark\\inicio-base\\sidebar-collapsed.png",
@@ -85,12 +65,7 @@
     "priority": "P2 visual",
     "scene": "testing-center-cuestionarios",
     "expanded": false,
-    "rect": [
-      100,
-      279,
-      996,
-      603
-    ],
+    "rect": [100, 279, 996, 603],
     "description": "La lista del cuestionario pierde la altura libre del GPUI y adelanta el formulario de respuesta aproximadamente 200 px. También cambia el texto de estado del doble QA.",
     "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\testing-center-cuestionarios-collapsed.png",
     "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\testing-center-cuestionarios\\dark\\testing-center-cuestionarios\\sidebar-collapsed.png",
@@ -105,12 +80,7 @@
     "priority": "desviación deliberada",
     "scene": "cuenta-base",
     "expanded": false,
-    "rect": [
-      1136,
-      370,
-      288,
-      115
-    ],
+    "rect": [1136, 370, 288, 115],
     "description": "Restablecer dispositivo queda inactivo en la escena demo del Hub nuevo. La guarda de sesión y la confirmación fueron aprobadas expresamente; no se retiran para reducir la diferencia numérica.",
     "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\cuenta-base-collapsed.png",
     "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\cuenta-base\\dark\\cuenta-base\\sidebar-collapsed.png",

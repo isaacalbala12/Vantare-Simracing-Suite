@@ -1,17 +1,14 @@
 param([Parameter(Mandatory)][string[]]$Scenes,[Parameter(Mandatory)][string]$Output)
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'capture-lock.ps1')
 $lock='D:\VantareServer\qa\captura.lock'
 $nonce=[guid]::NewGuid().ToString('N')
 $env:VANTARE_HUB_QA_ROOT='D:/VantareServer/qa/isa-1995-barrido-paridad'
 $env:TEMP='D:/VantareServer/qa/isa-1995-visual/tmp'; $env:TMP=$env:TEMP
 foreach ($scene in $Scenes) { foreach ($theme in @('dark','light')) {
     if ($scene -notmatch '^[a-z0-9-]+$') { throw 'Invalid scene' }
-    while ($true) {
-        & cmd.exe /d /c 'mkdir D:\VantareServer\qa\captura.lock 2>nul'
-        if ($LASTEXITCODE -eq 0) { break }
-        Write-Output "$(Get-Date -Format o) waiting for global capture lock"
-        Start-Sleep -Seconds 60
-    }
+    $lease=Enter-HubCaptureTurn $scene
+    $nonce=$lease.nonce
     try {
         @{pid=$PID;nonce=$nonce;started=(Get-Date -Format o);scene=$scene;theme=$theme} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $lock 'owner.json')
         $directory=Join-Path $Output $theme

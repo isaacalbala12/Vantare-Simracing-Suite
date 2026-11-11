@@ -11,10 +11,12 @@ import type {
   AccountRequest,
   AccountView,
 } from "../../contract/generated/account";
+import type { Reply } from "../../contract/generated/contract";
 import {
   isAccount,
   isRequest as isAccountRequest,
 } from "../../contract/modules/account";
+import { discardAccountSecrets } from "../bridge/account-secrets";
 import { HostFailure } from "../bridge/client";
 import { accessText as text } from "../i18n/access.es";
 import { useHost } from "./Host";
@@ -43,13 +45,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const intents = useRef(new Set<string>());
   const act = useCallback(
     async (request: AccountRequest) => {
+      const method = request.method;
       const priority =
         request.method === "account.cancel" ||
         request.method === "account.logout" ||
         (request.method === "account.email" &&
           request.action.action === "cancel");
-      if (!client) return;
+      if (!client) {
+        discardAccountSecrets(request);
+        return;
+      }
       if (!isAccountRequest(request)) {
+        discardAccountSecrets(request);
         setError(text.failed);
         return;
       }
@@ -57,8 +64,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         request.method === "account.email"
           ? `${request.method}:${request.action.action}`
           : request.method;
-      if (intents.current.has(key)) return;
+      if (intents.current.has(key)) {
+        discardAccountSecrets(request);
+        return;
+      }
       if (running.current && !priority) {
+        discardAccountSecrets(request);
         setError(text.busy);
         return;
       }
@@ -68,9 +79,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setPending(true);
       setError(undefined);
       try {
-        const reply = await client.request(request);
+        let response: Promise<Reply>;
+        try {
+          response = client.request(request);
+        } finally {
+          discardAccountSecrets(request);
+        }
+        const reply = await response;
         if (
-          reply.method !== request.method ||
+          reply.method !== method ||
           !("value" in reply) ||
           !isAccount(reply.value)
         )
@@ -82,7 +99,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           setError(
             failure instanceof HostFailure && failure.detail.kind === "busy"
               ? text.busy
-              : request.method === "account.logout"
+              : method === "account.logout"
                 ? text.logoutFailed
                 : text.failed,
           );

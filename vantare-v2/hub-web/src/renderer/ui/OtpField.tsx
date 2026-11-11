@@ -43,6 +43,7 @@ export function OtpField({
           <OTPField.Input
             key={slotId}
             className="v-access-otp-slot"
+            data-access-secret=""
             aria-label={index ? `${label} ${index + 1}` : label}
             data-access-initial={index === 0 ? "" : undefined}
             onCopy={(event) => event.preventDefault()}

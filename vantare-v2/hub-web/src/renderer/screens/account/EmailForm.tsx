@@ -1,4 +1,10 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   accountLimits,
   accountOptions,
@@ -18,15 +24,26 @@ import {
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Forms";
 import { OtpField } from "../../ui/OtpField";
+import { useSecretInput } from "../../ui/useSecretInput";
 export function EmailForm({ value }: { value: EmailView }) {
   const { pending, act } = useAccount();
   const root = useRef<HTMLFormElement>(null);
   const focused = useRef("");
   const secretStage = useRef("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [password, setPassword] = useSecretInput();
+  const [code, setCode] = useSecretInput();
   const [signOutOthers, setSignOutOthers] = useState(false);
+  useLayoutEffect(() => {
+    const form = root.current;
+    return () => {
+      form
+        ?.querySelectorAll<HTMLInputElement>("[data-access-secret]")
+        .forEach((input) => {
+          input.value = "";
+        });
+    };
+  }, []);
   const passwordMode =
     value.mode === "signInPassword" || value.mode === "signUpPassword";
   const cooling = value.stage === "form" && value.retryAfterSeconds > 0;
@@ -52,7 +69,7 @@ export function EmailForm({ value }: { value: EmailView }) {
       setPassword("");
       setCode("");
     }
-  }, [value.stage, value.mode, value.restarted]);
+  }, [value.stage, value.mode, value.restarted, setPassword, setCode]);
   useEffect(() => {
     const key = `${value.mode}:${value.stage}`;
     if (!pending && key !== focused.current) {
@@ -113,6 +130,7 @@ export function EmailForm({ value }: { value: EmailView }) {
             <Input
               label={text.password}
               aria-label={text.password}
+              data-access-secret=""
               type="password"
               autoComplete={
                 value.mode === "signInPassword"
@@ -159,6 +177,7 @@ export function EmailForm({ value }: { value: EmailView }) {
             label={text.newPassword}
             aria-label={text.newPassword}
             data-access-initial=""
+            data-access-secret=""
             type="password"
             autoComplete="new-password"
             spellCheck={false}

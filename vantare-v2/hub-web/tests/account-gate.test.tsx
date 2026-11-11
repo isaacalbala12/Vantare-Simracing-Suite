@@ -139,7 +139,11 @@ it("only submits email on explicit submit and clears the password before returni
   expect((password as HTMLInputElement).value).toBe("");
 });
 it("does not submit a complete six-digit code until the user confirms", async () => {
-  const calls = intercept(() => undefined);
+  const snapshots: Intent[] = [];
+  const calls = intercept((request) => {
+    snapshots.push(structuredClone(request));
+    return undefined;
+  });
   const user = mount("email-codigo");
   const first = await screen.findByRole("textbox", {
     name: text.code,
@@ -152,9 +156,9 @@ it("does not submit a complete six-digit code until the user confirms", async ()
   ).toHaveLength(0);
   await user.click(screen.getByRole("button", { name: text.submit.verify }));
   await screen.findByText(text.consent);
-  const sent = calls.mock.calls
-    .map(([r]) => r)
-    .find((r) => r.method === "account.email" && r.action.action === "verify");
+  const sent = snapshots.find(
+    (r) => r.method === "account.email" && r.action.action === "verify",
+  );
   expect(sent).toEqual({
     method: "account.email",
     action: { action: "verify", code: "123456" },
@@ -311,4 +315,38 @@ it("does not interpret Escape in the email form as cancel or submit", async () =
       ([r]) => r.method === "account.email" && r.action.action !== "open",
     ),
   ).toHaveLength(0);
+});
+
+it("clears the submitted code even in the object retained by the request observer", async () => {
+  const calls = intercept(() => undefined);
+  const user = mount("email-codigo");
+  await user.type(
+    await screen.findByRole("textbox", { name: text.code }),
+    "123456",
+  );
+  await user.click(screen.getByRole("button", { name: text.submit.verify }));
+  await screen.findByText(text.consent);
+  const sent = calls.mock.calls
+    .map(([request]) => request)
+    .find(
+      (request) =>
+        request.method === "account.email" &&
+        request.action.action === "verify",
+    );
+  expect(sent).toEqual({
+    method: "account.email",
+    action: { action: "verify", code: "" },
+  });
+});
+it("wipes detached password inputs when the form is unmounted", async () => {
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  await user.click(
+    screen.getByRole("button", { name: text.modes.signInPassword }),
+  );
+  const input = screen.getByLabelText(text.password) as HTMLInputElement;
+  await user.type(input, "example");
+  expect(input.value).toBe("example");
+  cleanup();
+  expect(input.value).toBe("");
 });

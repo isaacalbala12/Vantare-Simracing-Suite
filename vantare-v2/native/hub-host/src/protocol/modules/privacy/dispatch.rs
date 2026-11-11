@@ -60,7 +60,9 @@ impl Session {
             self.onboarding.private.record_error(result.as_ref().err());
         }
         if matches!(request, Request::PrivacyGet {}) {
-            self.onboarding.private.refresh(&self.privacy.view(), self.privacy.private_active());
+            self.onboarding
+                .private
+                .refresh(&self.privacy.view(), self.privacy.private_active());
         }
         self.respond(
             pipe,

@@ -35,7 +35,7 @@ export function isOnboarding(v: unknown): boolean {
     v.simulators.every((x) => typeof x === "boolean") &&
     oneOf(v.recommendedLevel, performanceLevels) &&
     revision(v.settingsRevision) &&
-    (v.layoutRevision === null || revision(v.layoutRevision)) &&
+    (v.layoutReady ? revision(v.layoutRevision) : v.layoutRevision === null) &&
     record(v.equipment) &&
     exact(v.equipment, ["cpu", "cores", "ramGb"]) &&
     (v.equipment.cpu === null ||
@@ -90,5 +90,7 @@ export function isReply(v: Record<string, unknown>): boolean {
         typeof v.accepted === "boolean";
 }
 export const isError = (v: Record<string, unknown>): boolean =>
-  v.kind === "onboardingConflict" && exact(v, ["kind"]);
+  v.kind === "onboardingConflict" &&
+  exact(v, ["kind", "current"]) &&
+  isOnboarding(v.current);
 export const isEvent = (_v: Record<string, unknown>): boolean => false;

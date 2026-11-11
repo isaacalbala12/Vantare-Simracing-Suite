@@ -12,7 +12,7 @@
             "ramGb": null
           },
           "layoutReady": false,
-          "layoutRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "layoutRevision": null,
           "pending": true,
           "privateSession": false,
           "recommendedLevel": "balanced",
@@ -37,7 +37,7 @@
             "ramGb": null
           },
           "layoutReady": false,
-          "layoutRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "layoutRevision": null,
           "pending": true,
           "privateSession": false,
           "recommendedLevel": "balanced",
@@ -68,6 +68,24 @@
     },
     {
       "error": {
+        "current": {
+          "equipment": {
+            "cores": null,
+            "cpu": null,
+            "ramGb": null
+          },
+          "layoutReady": false,
+          "layoutRevision": null,
+          "pending": true,
+          "privateSession": false,
+          "recommendedLevel": "balanced",
+          "scanning": false,
+          "settingsRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "simulators": [
+            true,
+            false
+          ]
+        },
         "kind": "onboardingConflict"
       },
       "id": 1,

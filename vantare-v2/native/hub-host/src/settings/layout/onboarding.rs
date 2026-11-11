@@ -1,5 +1,6 @@
 //! Edits the existing raw-field document with CAS; never seeds a missing layout.
 use super::{Document, Fields, LIMIT};
+use crate::onboarding::FinishError;
 use crate::{onboarding::WidgetKind, protocol::HostError, settings::track::PerformanceLevel};
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -20,83 +21,108 @@ fn raw(value: impl serde::Serialize) -> Box<RawValue> {
 fn open(path: &Path) -> Result<Document, HostError> {
     Document::open(path).map_err(|()| HostError::Protected)
 }
-pub(crate) fn state(path: &Path) -> Result<(bool, Option<String>), HostError> {
-    let Ok(document) = open(path) else { return Ok((false, None)); };
-    if document.observed.is_some() && validate_instances(&document).is_err() { return Ok((false, None)); }
-    Ok(match document.observed {
+pub(crate) fn state(path: &Path) -> (bool, Option<String>) {
+    if std::fs::metadata(path).is_ok_and(|meta| meta.len() > LIMIT) {
+        return (false, None);
+    }
+    let Ok(document) = open(path) else {
+        return (false, None);
+    };
+    if document.observed.is_some() && validate_instances(&document).is_err() {
+        return (false, None);
+    }
+    match document.observed {
         Some(bytes) => (true, Some(vantare_services::content_hash(&bytes))),
         None => (false, None),
-    })
+    }
 }
 fn validate_instances(document: &Document) -> Result<(), HostError> {
     let items: Vec<Fields> = parse(&document.fields, "instances")?;
-    if items.len() > INSTANCE_LIMIT { return Err(HostError::Protected); }
+    if items.len() > INSTANCE_LIMIT {
+        return Err(HostError::Protected);
+    }
     let mut ids = BTreeSet::new();
     for item in items {
         let id: String = parse(&item, "id")?;
-        if id.trim().is_empty() || id.len() > 128 || !ids.insert(id) { return Err(HostError::Protected); }
+        if id.trim().is_empty() || id.len() > 128 || !ids.insert(id) {
+            return Err(HostError::Protected);
+        }
         for key in ["x", "y"] {
             let coordinate: f64 = parse(&item, key)?;
-            if !coordinate.is_finite() { return Err(HostError::Protected); }
+            if !coordinate.is_finite() {
+                return Err(HostError::Protected);
+            }
         }
         let kind: Kind = parse(&item, "settings")?;
-        if crate::widget_defaults::get(&kind.kind).is_none() { return Err(HostError::Protected); }
+        if crate::widget_defaults::get(&kind.kind).is_none() {
+            return Err(HostError::Protected);
+        }
     }
     Ok(())
 }
-fn unchanged_unusable(path: &Path) -> Result<bool, HostError> {
+fn unchanged_unusable(path: &Path) -> Result<bool, FinishError> {
     let base = path.with_extension("json");
     if let Some(parent) = base.parent() {
         std::fs::create_dir_all(parent).map_err(|_| HostError::Io)?;
     }
     let mut name = base.as_os_str().to_os_string();
     name.push(".lock");
-    let lock = std::fs::OpenOptions::new().write(true).create(true).truncate(false)
-        .open(std::path::PathBuf::from(name)).map_err(|_| HostError::Io)?;
+    let lock = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(std::path::PathBuf::from(name))
+        .map_err(|_| HostError::Io)?;
     lock.try_lock().map_err(|error| match error {
         std::fs::TryLockError::WouldBlock => HostError::Busy,
         std::fs::TryLockError::Error(_) => HostError::Io,
     })?;
-    if state(path)?.0 { Err(HostError::OnboardingConflict {}) } else { Ok(false) }
+    if state(path).0 {
+        Err(FinishError::Conflict)
+    } else {
+        Ok(false)
+    }
 }
 pub(crate) fn apply(
     path: &Path,
     kit: &[WidgetKind],
     level: PerformanceLevel,
     revision: Option<&str>,
-) -> Result<bool, HostError> {
+) -> Result<bool, FinishError> {
     if !crate::onboarding::valid_kit(kit) {
-        return Err(HostError::Denied);
+        return Err(HostError::Denied.into());
     }
-    let Some(revision) = revision else { return unchanged_unusable(path); };
-    let mut document = open(path).map_err(|_| HostError::OnboardingConflict {})?;
+    let Some(revision) = revision else {
+        return unchanged_unusable(path);
+    };
+    let mut document = open(path).map_err(|_| FinishError::Conflict)?;
     if vantare_services::content_hash(document.observed.as_deref().unwrap_or_default()) != revision
     {
-        return Err(HostError::OnboardingConflict {});
+        return Err(FinishError::Conflict);
     }
     if document.observed.is_none() {
         return Ok(false);
     }
     let mut items: Vec<Fields> = parse(&document.fields, "instances")?;
     if items.len() > INSTANCE_LIMIT {
-        return Err(HostError::Protected);
+        return Err(HostError::Protected.into());
     }
     let mut ids = BTreeSet::new();
     let mut kinds = BTreeSet::new();
     for item in &mut items {
         let id: String = parse(item, "id")?;
         if id.trim().is_empty() || id.len() > 128 || !ids.insert(id) {
-            return Err(HostError::Protected);
+            return Err(HostError::Protected.into());
         }
         for key in ["x", "y"] {
             let coordinate: f64 = parse(item, key)?;
             if !coordinate.is_finite() {
-                return Err(HostError::Protected);
+                return Err(HostError::Protected.into());
             }
         }
         let kind: Kind = parse(item, "settings")?;
         if crate::widget_defaults::get(&kind.kind).is_none() {
-            return Err(HostError::Protected);
+            return Err(HostError::Protected.into());
         }
         item.0.insert(
             "visible".into(),
@@ -109,7 +135,7 @@ pub(crate) fn apply(
             continue;
         }
         if items.len() >= INSTANCE_LIMIT {
-            return Err(HostError::Protected);
+            return Err(HostError::Protected.into());
         }
         let id = (1..=INSTANCE_LIMIT)
             .map(|n| format!("widget-{n}"))
@@ -140,24 +166,23 @@ pub(crate) fn apply(
             backup: true,
             limit: LIMIT,
             sibling_base: Some(path.with_extension("json")),
-            ..Default::default()
         },
     )
     .map_err(|error| file_error(&error))?;
     Ok(true)
 }
-fn file_error(error: &files::Error) -> HostError {
+fn file_error(error: &files::Error) -> FinishError {
     if error.kind().is_conflict() {
-        HostError::OnboardingConflict {}
+        FinishError::Conflict
     } else if error.kind() == files::Kind::Busy {
-        HostError::Busy
+        HostError::Busy.into()
     } else if matches!(
         error,
         files::Error::InvalidInput(_) | files::Error::Unsupported(_)
     ) {
-        HostError::Protected
+        HostError::Protected.into()
     } else {
-        HostError::Io
+        HostError::Io.into()
     }
 }
 #[cfg(test)]
@@ -166,16 +191,39 @@ mod tests {
     use crate::test_support::Root;
     #[test]
     fn unusable_designs_have_no_revision_are_not_rewritten_and_conflict_when_repaired() {
-        for bytes in [None, Some(b"broken".to_vec()), Some(br#"{"version":999,"instances":[]}"#.to_vec()), Some(vec![b' '; LIMIT as usize + 1])] {
+        for bytes in [
+            None,
+            Some(b"broken".to_vec()),
+            Some(br#"{"version":999,"instances":[]}"#.to_vec()),
+            Some(vec![b' '; usize::try_from(LIMIT).unwrap() + 1]),
+        ] {
             let root = Root::new();
             let path = root.path.join("layout.json");
-            if let Some(bytes) = &bytes { std::fs::write(&path, bytes).unwrap(); }
-            assert_eq!(state(&path).unwrap(), (false, None));
-            assert!(!apply(&path, &[WidgetKind::Delta], PerformanceLevel::Balanced, None).unwrap());
+            if let Some(bytes) = &bytes {
+                std::fs::write(&path, bytes).unwrap();
+            }
+            assert_eq!(state(&path), (false, None));
+            assert!(
+                !apply(
+                    &path,
+                    &[WidgetKind::Delta],
+                    PerformanceLevel::Balanced,
+                    None
+                )
+                .unwrap()
+            );
             assert_eq!(std::fs::read(&path).ok(), bytes);
             std::fs::write(&path, br#"{"version":2,"instances":[]}"#).unwrap();
-            assert!(matches!(apply(&path, &[WidgetKind::Delta], PerformanceLevel::Balanced, None), Err(HostError::OnboardingConflict {})));
-            assert!(state(&path).unwrap().0);
+            assert!(matches!(
+                apply(
+                    &path,
+                    &[WidgetKind::Delta],
+                    PerformanceLevel::Balanced,
+                    None
+                ),
+                Err(FinishError::Conflict)
+            ));
+            assert!(state(&path).0);
         }
     }
     #[test]
@@ -185,14 +233,38 @@ mod tests {
         let initial = br#"{"version":2,"instances":[]}"#;
         std::fs::write(&path, initial).unwrap();
         for kit in [vec![], vec![WidgetKind::Delta, WidgetKind::Delta]] {
-            assert!(matches!(apply(&path, &kit, PerformanceLevel::Balanced, state(&path).unwrap().1.as_deref()), Err(HostError::Denied)));
+            assert!(matches!(
+                apply(
+                    &path,
+                    &kit,
+                    PerformanceLevel::Balanced,
+                    state(&path).1.as_deref()
+                ),
+                Err(FinishError::Failure(HostError::Denied))
+            ));
         }
         let kit = &[WidgetKind::FuelStrategy];
         assert!(!kit[0].free());
-        apply(&path, kit, PerformanceLevel::Balanced, state(&path).unwrap().1.as_deref()).unwrap();
-        assert_eq!(std::fs::read(path.with_extension("json.bak")).unwrap(), initial);
-        apply(&path, kit, PerformanceLevel::Balanced, state(&path).unwrap().1.as_deref()).unwrap();
-        let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        apply(
+            &path,
+            kit,
+            PerformanceLevel::Balanced,
+            state(&path).1.as_deref(),
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read(path.with_extension("json.bak")).unwrap(),
+            initial
+        );
+        apply(
+            &path,
+            kit,
+            PerformanceLevel::Balanced,
+            state(&path).1.as_deref(),
+        )
+        .unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(saved["instances"].as_array().unwrap().len(), 1);
         assert_eq!(saved["instances"][0]["settings"]["kind"], "fuel-strategy");
     }
@@ -200,7 +272,7 @@ mod tests {
     fn missing_layout_is_not_seeded_and_stale_absence_conflicts() {
         let root = Root::new();
         let path = root.path.join("layout.json");
-        let (_, revision) = state(&path).unwrap();
+        let (_, revision) = state(&path);
         assert!(
             !apply(
                 &path,
@@ -219,7 +291,7 @@ mod tests {
                 PerformanceLevel::Economy,
                 revision.as_deref()
             ),
-            Err(HostError::OnboardingConflict {})
+            Err(FinishError::Conflict)
         ));
     }
     #[test]
@@ -227,7 +299,7 @@ mod tests {
         let root = Root::new();
         let path = root.path.join("layout.json");
         std::fs::write(&path, r#"{"version":2,"future":{"x":7},"instances":[{"id":"widget-1","x":5,"y":6,"visible":true,"keep":9,"settings":{"kind":"radar"}}]}"#).unwrap();
-        let (_, revision) = state(&path).unwrap();
+        let (_, revision) = state(&path);
         assert!(
             apply(
                 &path,

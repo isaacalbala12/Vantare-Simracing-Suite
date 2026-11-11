@@ -1,48 +1,23 @@
-# Onboarding · contrato local (VANTA-138 / #1995)
+# Onboarding · contrato del bloque 7a
 
-Entrega 7a: no añade login. Usa v18 provisional sobre nightly v17 para ejecutar
-la CI completa, según el cambio de orden del orquestador. Tras la review se
-confirmará el número definitivo y se hará un único rebase y regeneración final.
+VANTA-138 / #1995. El módulo `onboarding` aporta lectura del equipo y simuladores, finalización local, escape privado y apertura de precios. Login pertenece a Acceso; no hay un método de login alternativo.
 
-El módulo `onboarding` posee get, finish, skipPrivate y prices. Get proyecta
-simuladores encontrados por el Reader del Launcher, equipo local, nivel recomendado,
-revisiones opacas y existencia del layout. CPU y RAM exacta no viajan a servicios;
-la respuesta solo incluye el nombre acotado, núcleos y GiB redondeados para mostrar.
-Un dato ausente no cuenta como hardware insuficiente.
+`layoutReady: false` implica `layoutRevision: null`: diseño ausente, protegido, de versión futura o mayor de 1 MiB. No se resume ni se carga el fichero grande. `finish` exige también `null`, toma el cerrojo del documento y vuelve a comprobar su inutilizabilidad; si ya es válido responde `onboardingConflict` con la vista fresca. En el caso no utilizable completa solamente la marca del asistente: no siembra, reescribe ni pone en cuarentena el diseño. El bloque visual debe explicar que el kit/nivel no se aplicaron y ofrecer prepararlo desde Inicio.
 
-Finish recibe el kit cerrado y sin duplicados, nivel, show, `baseRevision` de
-hub-settings y `layoutRevision` del layout leído. Las dos revisiones se revalidan.
-Primero guarda el kit y el nivel, luego la presentación si hay layout, y solo al
-final marca onboarding_completed. Un layout ausente no se crea ni genera una
-solicitud de presentación. Una repetición tras completar es Denied. Un conflicto
-obliga a releer get antes de reintentar; no se vuelve a enviar automáticamente.
-Se preservan los campos desconocidos del documento existente. Los ajustes de una
-instancia nueva proceden de widget_defaults::get; no hay otra tabla de defaults.
+Con diseño válido se comprueba su revisión CAS, se conservan campos desconocidos y ajustes existentes, se guarda una copia `.bak` y se añade cada tipo del kit una sola vez. Después se solicita presentación y finalmente se guarda la marca en ajustes. Un fallo parcial conserva lo publicado, no completa la marca y exige releer antes de reintentar. `show.json` usa el límite de 1 MiB de `ui::Presentation`.
 
-La finalización exige que ambos permisos estén decididos, sin protección/limpieza
-pendiente ni un último guardado de consentimiento fallido. SkipPrivate solo se
-acepta tras ese fallo y mientras el asistente esté pendiente. No escribe archivos:
-marca la salida durante esta sesión y aplica ambos permisos apagados en memoria.
-Las lecturas posteriores conservan esa decisión; al guardar un permiso nuevo no
-se reactiva el otro desde un consentimiento antiguo del disco. Al reiniciar, se
-vuelve a ofrecer el asistente porque su marca persistente sigue sin completar.
+El escape privado es de sesión y solo se habilita tras `privacy.update` con `io`, `protected` o `busy`. Conflicto de revisión y limpieza fallida después de un guardado durable no lo habilitan. Un estado de consentimiento coherente releído retira el fallo anterior. El escape rechaza un documento protegido o cualquier permiso activo en disco: no presenta una revocación ficticia. Si otra instancia activa un permiso se retira la máscara privada y se expone el estado efectivo.
 
-`OnboardingView.privateSession` y pending permiten al dueño de la puerta de Acceso
-componer el orden onboarding → privacidad → acceso. La interfaz y los métodos de
-login pertenecen al worker A; 7a no los duplica ni intercepta su flujo.
+Una actualización desde sesión privada persiste también `crashes=false, crashes_decided=true` y `usage=false, usage_decided=true` para la decisión no editada: no revive permisos antiguos. Los consumidores de diagnósticos siguen leyendo `privacy.json` del disco (`services/src/diagnostics/recorder.rs` y `sender.rs`); no consumen la proyección de este asistente.
 
-Mail.set añade source cerrado (onboarding/settings) y mantiene la cola existente
-Session::request_remote. El proceso principal abre exclusivamente la URL de precios
-exportada desde Rust; el renderer nunca envía una URL ni una ruta de guardado.
+`privacy.policy` y `onboarding.prices` comparten una guarda en el proceso principal: una apertura en vuelo y al menos dos segundos entre intentos. Solo se abren las constantes de Rust, con HTTPS y host exacto `vantare.app`; no llegan URLs del renderer ni cambian CSP, preload o `security.ts`.
 
-Las referencias de los ocho pasos (1440×900, dark/light) se obtuvieron del banco
-GPUI ya compilado, sin tocar su binario ni su plantilla. Están en la evidencia de
-isa-1995-b-onboarding-datos/references y conservan los recibos nativos y del banco.
-Las pantallas visuales se entregan después en 7b (0–2) y 7c (3–7), reutilizando las
-piezas existentes de Apariencia, Privacidad y Cuenta. Las mejoras de §g no entran.
+Los kits Pro conservan el comportamiento de GPUI sin guarda de licencia en el asistente; #2096 sigue la verificación del bloqueo efectivo del overlay sin derecho. No se cambia el núcleo en este bloque.
 
-La fixture `native/hub-host/data/onboarding-presentation.json` está ligada al API
-real de `vantare_ui::layout::Presentation::show` mediante un exportador y un test
-sin App ni ventana en `native/ui`. El anfitrión compara sus bytes con esa misma
-fixture; cubre ausencia del contador y dos incrementos. El test de UI vuelve a generar los bytes y exige que coincidan con el archivo
-versionado; el anfitrión consume esa misma fixture sin depender del renderer.
+La GPU está omitida conforme a §c.4 de `07-onboarding.md`, pero el código GPUI `shell/onboarding/view.rs` sí muestra `Equipment::labels()[1]`. Es una contradicción del diseño señalada al orquestador; no se añade una detección nueva sin resolverla.
+
+El número v18 sigue siendo provisional para CI sobre nightly v17. El definitivo se confirmará tras la review antes de un único rebase y regeneración final. `OnboardingView.privateSession` y `pending` permiten al dueño de Acceso ordenar onboarding → privacidad → acceso: salir en privado no equivale a completar ajustes y se vuelve a ofrecer el asistente al reiniciar.
+
+El equipo local no se envía a servicios: CPU acotada y sin controles, núcleos y GiB redondeados. Rust conserva los bytes exactos de RAM para recomendar Ahorro con menos de 8 GiB o cuatro núcleos o menos; un dato ausente no inventa insuficiencia. El descubrimiento reutiliza el Reader de Launcher. `mail.set` conserva el origen cerrado onboarding/settings y la cola `Session::request_remote`.
+
+La fixture `native/hub-host/data/onboarding-presentation.json` sigue ligada al API real de `vantare_ui::layout::Presentation::show` mediante exportador y test de UI sin App ni ventana; el anfitrión compara los mismos bytes sin depender de UI. Las referencias de los ocho pasos permanecen en la evidencia de `isa-1995-b-onboarding-datos/references`, con sus recibos. 7b entrega marco y pasos 0–2; 7c reutilizará Apariencia, Privacidad y Cuenta para 3–7. No se incorporan mejoras de §g.

@@ -1,6 +1,6 @@
 use super::{HostError, Pipe, Reply, Request, Session, io};
 impl Session {
-    fn onboarding_view(&mut self) -> Result<crate::onboarding::OnboardingView, HostError> {
+    fn onboarding_view(&mut self) -> crate::onboarding::OnboardingView {
         let settings = self.settings.refresh();
         let launcher = self.launcher_reader.view();
         let found = self.launcher_reader.discovered(&launcher.revision);
@@ -23,12 +23,12 @@ pub(super) fn dispatch(
     request: &Request,
 ) -> io::Result<()> {
     let privacy = session.privacy.refresh();
-    session.onboarding.private.refresh(&privacy, session.privacy.private_active());
+    session
+        .onboarding
+        .private
+        .refresh(&privacy, session.privacy.private_active());
     if matches!(request, Request::OnboardingFinish { .. })
-        && !session
-            .onboarding
-            .private
-            .can_finish(&privacy)
+        && !session.onboarding.private.can_finish(&privacy)
     {
         return session.respond(
             pipe,
@@ -38,9 +38,9 @@ pub(super) fn dispatch(
         );
     }
     let result = match request {
-        Request::OnboardingGet {} => session
-            .onboarding_view()
-            .map(|value| Reply::OnboardingGet { value }),
+        Request::OnboardingGet {} => Ok(Reply::OnboardingGet {
+            value: session.onboarding_view(),
+        }),
         Request::OnboardingFinish {
             kit,
             level,
@@ -60,7 +60,13 @@ pub(super) fn dispatch(
                 session
                     .settings
                     .finish_onboarding(&session.onboarding.layout, &choice)
-                    .and_then(|()| session.onboarding_view())
+                    .map_err(|error| match error {
+                        crate::onboarding::FinishError::Conflict => HostError::OnboardingConflict {
+                            current: Box::new(session.onboarding_view()),
+                        },
+                        crate::onboarding::FinishError::Failure(error) => error,
+                    })
+                    .map(|()| session.onboarding_view())
                     .map(|value| Reply::OnboardingFinish { value })
             }
             #[cfg(not(windows))]

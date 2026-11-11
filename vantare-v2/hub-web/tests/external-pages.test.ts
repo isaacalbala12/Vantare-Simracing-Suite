@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { externalPages } from "../src/main/external-pages";
+import { externalPages, publicDocumentUrl } from "../src/main/external-pages";
 
 it("shares one in-flight operation and a two-second clock across public documents", async () => {
   let time = 0;
@@ -36,4 +36,20 @@ it("releases the shared gate after a failed external open without bypassing cade
   time = 2000;
   expect(await page("onboarding.prices")).toBe(false);
   expect(open).toHaveBeenCalledTimes(2);
+});
+
+it("checks HTTPS and the exact host before allowing an external document", () => {
+  expect(publicDocumentUrl("https://vantare.app/#precios")).toBe(true);
+  expect(publicDocumentUrl("https://vantare.app/privacidad")).toBe(true);
+  for (const url of [
+    "http://vantare.app/",
+    "https://www.vantare.app/",
+    "https://vantare.app.evil.test/",
+    "https://vantare.app@evil.test/",
+    "https://evil@vantare.app/",
+    "https://vantare.app:8080/",
+    "file:///etc/passwd",
+    "garbage",
+  ])
+    expect(publicDocumentUrl(url)).toBe(false);
 });

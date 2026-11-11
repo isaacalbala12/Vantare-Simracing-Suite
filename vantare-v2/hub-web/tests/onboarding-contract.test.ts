@@ -290,3 +290,20 @@ it("rejects equipment counts that cannot be represented by the native u32 fields
       ).toBe(false);
   }
 });
+
+it("uses null for missing layouts and includes the fresh view in a layout conflict", () => {
+  const host = createMockHost("onboarding-sin-diseno");
+  const loaded = host({
+    kind: "request",
+    id: 1,
+    request: { method: "onboarding.get" },
+  });
+  if (loaded?.kind !== "response" || loaded.result.method !== "onboarding.get")
+    throw new Error("missing view");
+  expect(loaded.result.value.layoutReady).toBe(false);
+  expect(loaded.result.value.layoutRevision).toBeNull();
+  expect(isOnboarding(loaded.result.value)).toBe(true);
+  expect(
+    isOnboarding({ ...loaded.result.value, layoutRevision: "a".repeat(64) }),
+  ).toBe(false);
+});

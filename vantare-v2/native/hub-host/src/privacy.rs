@@ -139,7 +139,13 @@ impl State {
             });
         match read {
             Ok((value, bytes)) => {
-                if value.crashes || value.usage {
+                if value.crashes
+                    || value.usage
+                    || bytes
+                        .as_deref()
+                        .and_then(|bytes| serde_json::from_slice::<Privacy>(bytes).ok())
+                        .is_some_and(|raw| raw.crashes || raw.usage)
+                {
                     self.private_session = false;
                 }
                 self.value = if self.private_session {
@@ -166,7 +172,15 @@ impl State {
     }
     pub fn enter_private(&mut self) -> Result<(), HostError> {
         self.reload();
-        if self.protected || self.value.crashes || self.value.usage {
+        if self.protected
+            || self.value.crashes
+            || self.value.usage
+            || self
+                .observed
+                .as_deref()
+                .and_then(|bytes| serde_json::from_slice::<Privacy>(bytes).ok())
+                .is_some_and(|raw| raw.crashes || raw.usage)
+        {
             return Err(HostError::Denied);
         }
         self.value = private_value(self.value);
@@ -510,8 +524,12 @@ mod onboarding_private_tests {
             .unwrap();
         let path = root.path.join(PRIVACY_FILE);
         assert!(matches!(state.enter_private(), Err(HostError::Denied)));
-        state.update(PrivacyPatch::Crashes(false), &state.view().revision).unwrap();
-        state.update(PrivacyPatch::Usage(false), &state.view().revision).unwrap();
+        state
+            .update(PrivacyPatch::Crashes(false), &state.view().revision)
+            .unwrap();
+        state
+            .update(PrivacyPatch::Usage(false), &state.view().revision)
+            .unwrap();
         let before = std::fs::read(&path).unwrap();
         let revision = state.view().revision;
         state.enter_private().unwrap();
@@ -532,7 +550,16 @@ mod onboarding_private_tests {
         let path = root.path.join(PRIVACY_FILE);
         let mut state = State::isolated(&root.path);
         state.enter_private().unwrap();
-        std::fs::write(&path, serde_json::to_vec(&Privacy { crashes: true, crashes_decided: true, ..Privacy::default() }).unwrap()).unwrap();
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&Privacy {
+                crashes: true,
+                crashes_decided: true,
+                ..Privacy::default()
+            })
+            .unwrap(),
+        )
+        .unwrap();
         assert!(state.refresh().crashes);
         assert!(!state.private_active());
         assert!(matches!(state.enter_private(), Err(HostError::Denied)));
@@ -540,5 +567,4 @@ mod onboarding_private_tests {
         assert!(matches!(state.enter_private(), Err(HostError::Denied)));
         assert!(!state.private_active());
     }
-
 }

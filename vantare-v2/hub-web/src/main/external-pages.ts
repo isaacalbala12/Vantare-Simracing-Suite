@@ -15,15 +15,7 @@ export function externalPages(
   ): Promise<boolean> => {
     const target =
       method === "privacy.policy" ? privacyPolicyUrl : onboardingPricesUrl;
-    const url = new URL(target);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "vantare.app" ||
-      url.port ||
-      url.username ||
-      url.password
-    )
-      return false;
+    if (!publicDocumentUrl(target)) return false;
     const time = now();
     if (pending || (last !== undefined && time - last < 2000)) return false;
     pending = true;
@@ -37,4 +29,19 @@ export function externalPages(
       pending = false;
     }
   };
+}
+
+export function publicDocumentUrl(target: string): boolean {
+  try {
+    const url = new URL(target);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "vantare.app" &&
+      !url.port &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
 }

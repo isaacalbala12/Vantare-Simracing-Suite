@@ -1,12 +1,11 @@
 //! Read-only projection of the frozen calendar documents. No network or writes.
 use crate::protocol::{AccessView, HostError};
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, path::PathBuf};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 pub const DOCUMENT_LIMIT: usize = 64 * 1024;
-pub const STARTS_LIMIT: usize = 10_000;
 pub const SERIES_LIMIT: usize = 256;
 pub const DATE_LIMIT: usize = 40;
 pub const TEXT_LIMIT: usize = 300;
@@ -14,6 +13,7 @@ pub const LIST_LIMIT: usize = 64;
 pub const MINUTE_LIMIT: u32 = 10_080;
 pub const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 pub const TIMESTAMP_LIMIT: i64 = 253_402_300_799;
+const CACHE_LIMIT: u64 = 256 * 1024;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -124,12 +124,69 @@ pub struct CalendarRecurrence {
 pub fn allowed(access: &AccessView) -> bool {
     access.verified && !access.blocked && access.calendar
 }
+fn nonblank(value: &str) -> bool {
+    !value
+        .trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
+        .is_empty()
+}
+fn date_millis(value: &str) -> Option<i64> {
+    let b = value.as_bytes();
+    let digits = |part: &[u8]| part.iter().all(u8::is_ascii_digit);
+    if b.len() < 20
+        || b.len() > DATE_LIMIT
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || b[10] != b'T'
+        || b[13] != b':'
+        || b[16] != b':'
+        || ![
+            &b[..4],
+            &b[5..7],
+            &b[8..10],
+            &b[11..13],
+            &b[14..16],
+            &b[17..19],
+        ]
+        .into_iter()
+        .all(digits)
+    {
+        return None;
+    }
+    let number = |part: &[u8]| part.iter().fold(0u16, |n, d| n * 10 + u16::from(d - b'0'));
+    if number(&b[11..13]) > 23 || number(&b[14..16]) > 59 || number(&b[17..19]) > 59 {
+        return None;
+    }
+    let mut zone = 19;
+    if b[zone] == b'.' {
+        zone += 1;
+        let start = zone;
+        while b.get(zone).is_some_and(u8::is_ascii_digit) {
+            zone += 1;
+        }
+        if !(1..=3).contains(&(zone - start)) {
+            return None;
+        }
+    }
+    match b.get(zone) {
+        Some(b'Z') if zone + 1 == b.len() => {}
+        Some(b'+' | b'-')
+            if zone + 6 == b.len()
+                && b[zone + 3] == b':'
+                && digits(&b[zone + 1..zone + 3])
+                && digits(&b[zone + 4..])
+                && number(&b[zone + 1..zone + 3]) <= 23
+                && number(&b[zone + 4..]) <= 59 => {}
+        _ => return None,
+    }
+    let millis = DateTime::parse_from_rfc3339(value).ok()?.timestamp_millis();
+    (millis >= 0 && millis / 1000 <= TIMESTAMP_LIMIT).then_some(millis)
+}
 fn text(value: &str) -> bool {
     value.len() <= TEXT_LIMIT && !value.chars().any(char::is_control)
 }
 fn unique(values: &[String], max: usize) -> bool {
     values.len() <= max
-        && values.iter().all(|v| text(v) && !v.trim().is_empty())
+        && values.iter().all(|v| text(v) && nonblank(v))
         && values.iter().collect::<HashSet<_>>().len() == values.len()
 }
 impl CalendarSchedule {
@@ -142,17 +199,11 @@ impl CalendarSchedule {
         Ok(schedule)
     }
     pub fn validate(&self) -> Result<(), HostError> {
-        let date = |s: &str| {
-            s.len() <= DATE_LIMIT
-                && DateTime::parse_from_rfc3339(s)
-                    .is_ok_and(|d| (0..=TIMESTAMP_LIMIT).contains(&d.timestamp()))
-        };
         let invalid = self.version != 1
             || self.timezone != "UTC"
-            || !date(&self.valid_from)
-            || !date(&self.valid_until)
-            || DateTime::parse_from_rfc3339(&self.valid_from).ok()
-                >= DateTime::parse_from_rfc3339(&self.valid_until).ok()
+            || date_millis(&self.valid_from).is_none()
+            || date_millis(&self.valid_until).is_none()
+            || date_millis(&self.valid_from) >= date_millis(&self.valid_until)
             || self.series.is_empty()
             || self.series.len() > SERIES_LIMIT
             || self
@@ -209,8 +260,8 @@ impl CalendarSeries {
                 _ => false,
             };
         texts.iter().all(|s| text(s))
-            && !self.id.trim().is_empty()
-            && !self.name.trim().is_empty()
+            && nonblank(&self.id)
+            && nonblank(&self.name)
             && self.notes.len() <= LIST_LIMIT
             && self.notes.iter().all(|s| text(s))
             && self.classes.len() <= LIST_LIMIT
@@ -251,67 +302,109 @@ struct Stamps {
     updated: i64,
 }
 
+#[derive(Default)]
+struct Publications {
+    official: Option<CalendarSchedule>,
+    fallback: Option<CalendarSchedule>,
+    previous: Option<CalendarSchedule>,
+}
+enum Read {
+    Missing,
+    Invalid,
+    Bytes(Vec<u8>),
+}
+fn newest(a: Option<CalendarSchedule>, b: Option<CalendarSchedule>) -> Option<CalendarSchedule> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(if date_millis(&a.valid_from) > date_millis(&b.valid_from) {
+            a
+        } else {
+            b
+        }),
+        (a, b) => a.or(b),
+    }
+}
 pub struct State {
     base: PathBuf,
     view: CalendarView,
+    disk: Publications,
+    memory: Publications,
 }
 impl State {
     pub fn new(base: PathBuf) -> Self {
         Self {
             base,
             view: CalendarView::default(),
+            disk: Publications::default(),
+            memory: Publications::default(),
         }
     }
-    fn read(&mut self, name: &str) -> Option<Vec<u8>> {
+    fn read(&mut self, name: &str) -> Read {
         let path = self.base.join(name);
         match std::fs::symlink_metadata(&path) {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Read::Missing,
             Ok(m) if m.is_file() && !m.file_type().is_symlink() => {
-                if let Ok(v) = vantare_ipc::files::read(&path, DOCUMENT_LIMIT as u64) {
-                    Some(v)
-                } else {
-                    self.view.invalid_cache = true;
-                    None
+                if let Ok(bytes) = vantare_ipc::files::read(&path, CACHE_LIMIT) {
+                    return Read::Bytes(bytes);
                 }
             }
-            _ => {
-                self.view.invalid_cache = true;
-                None
-            }
+            _ => {}
         }
+        self.view.invalid_cache = true;
+        Read::Invalid
+    }
+    fn read_publication(
+        &mut self,
+        name: &str,
+        prior: Option<CalendarSchedule>,
+    ) -> Option<CalendarSchedule> {
+        match self.read(name) {
+            Read::Missing => None,
+            Read::Invalid => prior,
+            Read::Bytes(bytes) => match CalendarSchedule::parse(&bytes) {
+                Ok(next) => newest(prior, Some(next)),
+                Err(_) => {
+                    self.view.invalid_cache = true;
+                    prior
+                }
+            },
+        }
+    }
+    fn project(&mut self) -> CalendarView {
+        self.view.official = newest(self.disk.official.clone(), self.memory.official.clone());
+        self.view.fallback = newest(self.disk.fallback.clone(), self.memory.fallback.clone());
+        self.view.previous = newest(self.disk.previous.clone(), self.memory.previous.clone());
+        self.view.clone()
     }
     pub fn load(&mut self) -> CalendarView {
         self.view.invalid_cache = false;
-        for (name, which) in [
-            ("official-schedule.json", 0),
-            ("fallback-schedule.json", 1),
-            ("official-schedule-previous.json", 2),
-        ] {
-            if let Some(bytes) = self.read(name) {
-                match CalendarSchedule::parse(&bytes) {
-                    Ok(s) => match which {
-                        0 => self.view.official = Some(s),
-                        1 => self.view.fallback = Some(s),
-                        _ => self.view.previous = Some(s),
-                    },
-                    Err(_) => self.view.invalid_cache = true,
-                }
-            }
-        }
-        if let Some(bytes) = self.read("calendar-following.json") {
-            match serde_json::from_slice::<Following>(&bytes) {
+        let prior = self.disk.official.take();
+        self.disk.official = self.read_publication("official-schedule.json", prior);
+        let prior = self.disk.fallback.take();
+        self.disk.fallback = self.read_publication("fallback-schedule.json", prior);
+        let prior = self.disk.previous.take();
+        self.disk.previous = self.read_publication("official-schedule-previous.json", prior);
+        match self.read("calendar-following.json") {
+            Read::Missing => self.view.following.clear(),
+            Read::Bytes(bytes) => match serde_json::from_slice::<Following>(&bytes) {
                 Ok(f) if unique(&f.series_ids, SERIES_LIMIT) => self.view.following = f.series_ids,
                 _ => self.view.invalid_cache = true,
-            }
+            },
+            Read::Invalid => {}
         }
-        if let Some(bytes) = self.read("calendar-prefs.json") {
-            match serde_json::from_slice::<Prefs>(&bytes) {
+        match self.read("calendar-prefs.json") {
+            Read::Missing => self.view.utc = false,
+            Read::Bytes(bytes) => match serde_json::from_slice::<Prefs>(&bytes) {
                 Ok(p) => self.view.utc = p.utc,
                 _ => self.view.invalid_cache = true,
-            }
+            },
+            Read::Invalid => {}
         }
-        if let Some(bytes) = self.read("calendar-stamps.json") {
-            match serde_json::from_slice::<Stamps>(&bytes) {
+        match self.read("calendar-stamps.json") {
+            Read::Missing => {
+                self.view.checked = 0;
+                self.view.updated = 0;
+            }
+            Read::Bytes(bytes) => match serde_json::from_slice::<Stamps>(&bytes) {
                 Ok(s)
                     if (0..=TIMESTAMP_LIMIT).contains(&s.checked)
                         && (0..=TIMESTAMP_LIMIT).contains(&s.updated) =>
@@ -320,125 +413,45 @@ impl State {
                     self.view.updated = s.updated;
                 }
                 _ => self.view.invalid_cache = true,
-            }
+            },
+            Read::Invalid => {}
         }
-        self.view.clone()
+        self.project()
     }
     pub fn refreshed(
         &mut self,
         official: Option<String>,
         fallback: Option<String>,
     ) -> Result<CalendarView, HostError> {
-        // Validate the complete reply before replacing either protected snapshot.
         let official = official
             .map(|s| CalendarSchedule::parse(s.as_bytes()))
             .transpose()?;
         let fallback = fallback
             .map(|s| CalendarSchedule::parse(s.as_bytes()))
             .transpose()?;
-        if let Some(s) = official {
-            let timestamp = |v: &str| DateTime::parse_from_rfc3339(v).map_or(0, |d| d.timestamp());
+        if let Some(next) = official {
             if self
                 .view
                 .official
                 .as_ref()
-                .is_none_or(|old| timestamp(&s.valid_from) >= timestamp(&old.valid_from))
+                .is_none_or(|old| date_millis(&next.valid_from) >= date_millis(&old.valid_from))
             {
                 if let Some(old) = self
                     .view
                     .official
                     .as_ref()
-                    .filter(|old| timestamp(&old.valid_from) < timestamp(&s.valid_from))
+                    .filter(|old| date_millis(&next.valid_from) > date_millis(&old.valid_from))
                 {
-                    self.view.previous = Some(old.clone());
+                    self.memory.previous = newest(self.view.previous.clone(), Some(old.clone()));
                 }
-                self.view.official = Some(s);
+                self.memory.official = Some(next);
             }
         }
-        if let Some(s) = fallback {
-            self.view.fallback = Some(s);
-        }
-        self.view.checked = Utc::now().timestamp();
-        Ok(self.view.clone())
+        self.memory.fallback = newest(self.memory.fallback.take(), fallback);
+        Ok(self.project())
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    fn document() -> Vec<u8> {
-        serde_json::to_vec(&serde_json::json!({"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]})).expect("fixture")
-    }
-    #[test]
-    fn validates_schedule_and_rejects_invalid_untrusted_fields() {
-        assert!(CalendarSchedule::parse(&document()).is_ok());
-        for (key, value) in [
-            ("timezone", serde_json::json!("Europe/Madrid")),
-            ("version", serde_json::json!(2)),
-            ("validUntil", serde_json::json!("2026-11-01T00:00:00Z")),
-            ("validFrom", serde_json::json!("invalid")),
-        ] {
-            let mut v: serde_json::Value = serde_json::from_slice(&document()).unwrap();
-            v[key] = value;
-            assert_eq!(
-                CalendarSchedule::parse(&serde_json::to_vec(&v).unwrap()).unwrap_err(),
-                HostError::Rejected
-            );
-        }
-        for (key, value) in [
-            ("name", serde_json::json!("x".repeat(TEXT_LIMIT + 1))),
-            ("id", serde_json::json!("bad\n")),
-            ("raceDurationMin", serde_json::json!(MINUTE_LIMIT + 1)),
-            (
-                "recurrence",
-                serde_json::json!({"kind":"weekly-slots","days":["Mon"],"timesUTC":["25:00"]}),
-            ),
-        ] {
-            let mut v: serde_json::Value = serde_json::from_slice(&document()).unwrap();
-            v["series"][0][key] = value;
-            assert!(CalendarSchedule::parse(&serde_json::to_vec(&v).unwrap()).is_err());
-        }
-        assert!(CalendarSchedule::parse(&vec![b' '; DOCUMENT_LIMIT + 1]).is_err());
-    }
-    #[test]
-    fn malformed_refresh_preserves_both_protected_snapshots() {
-        let mut state = State::new(PathBuf::new());
-        let input = String::from_utf8(document()).unwrap();
-        let before = state.refreshed(Some(input.clone()), None).unwrap();
-        assert!(state.refreshed(Some(input), Some("bad".into())).is_err());
-        assert_eq!(state.view, before);
-    }
-    #[test]
-    fn calendar_capability_is_required_independently_of_tester() {
-        let mut access = AccessView::default();
-        assert!(!allowed(&access));
-        access.verified = true;
-        access.tester = true;
-        assert!(!allowed(&access));
-        access.calendar = true;
-        assert!(allowed(&access));
-        access.blocked = true;
-        assert!(!allowed(&access));
-    }
-    #[test]
-    fn cache_load_keeps_original_bytes_and_reports_corruption_without_writes() {
-        let base = std::env::temp_dir().join(format!(
-            "vantare-calendar-read-{}",
-            vantare_services::random_id().expect("QA id")
-        ));
-        std::fs::create_dir(&base).unwrap();
-        let path = base.join("official-schedule.json");
-        let original = document();
-        std::fs::write(&path, &original).unwrap();
-        let mut state = State::new(base.clone());
-        assert!(state.load().official.is_some());
-        assert_eq!(std::fs::read(&path).unwrap(), original);
-        std::fs::write(&path, b"corrupt").unwrap();
-        let view = state.load();
-        assert!(view.invalid_cache);
-        assert!(view.official.is_some());
-        assert_eq!(std::fs::read(&path).unwrap(), b"corrupt");
-        assert_eq!(std::fs::read_dir(&base).unwrap().count(), 1);
-        std::fs::remove_dir_all(base).unwrap();
-    }
-}
+#[path = "model_tests.rs"]
+mod tests;

@@ -30,15 +30,27 @@ const strings = (v: unknown, max: number): v is string[] =>
   v.every((s) => typeof s === "string" && s.trim().length > 0) &&
   new Set(v).size === v.length;
 const duration = (v: unknown) => v === null || number(v, calendarMinuteLimit);
-const date = (v: unknown): v is string =>
-  typeof v === "string" &&
-  v.length <= calendarDateLimit &&
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(
-    v,
-  ) &&
-  Number.isFinite(Date.parse(v)) &&
-  Date.parse(v) >= 0 &&
-  Date.parse(v) <= calendarTimestampLimit * 1000;
+export function isCalendarDate(v: unknown): v is string {
+  if (typeof v !== "string" || v.length > calendarDateLimit) return false;
+  const parts =
+    /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u.exec(
+      v,
+    );
+  if (!parts) return false;
+  const millis = Date.parse(v),
+    year = Number(parts[1]),
+    month = Number(parts[2]),
+    day = Number(parts[3]);
+  const checked = new Date(Date.UTC(year, month - 1, day));
+  return (
+    Number.isFinite(millis) &&
+    millis >= 0 &&
+    Math.floor(millis / 1000) <= calendarTimestampLimit &&
+    checked.getUTCFullYear() === year &&
+    checked.getUTCMonth() === month - 1 &&
+    checked.getUTCDate() === day
+  );
+}
 function recurrence(v: unknown) {
   if (
     !record(v) ||
@@ -131,8 +143,8 @@ export function isCalendarSchedule(v: unknown) {
     exact(v, ["version", "timezone", "validFrom", "validUntil", "series"]) &&
     v.version === 1 &&
     v.timezone === "UTC" &&
-    date(v.validFrom) &&
-    date(v.validUntil) &&
+    isCalendarDate(v.validFrom) &&
+    isCalendarDate(v.validUntil) &&
     Date.parse(v.validUntil) > Date.parse(v.validFrom) &&
     list(v.series, calendarSeriesLimit, series) &&
     v.series.length > 0 &&

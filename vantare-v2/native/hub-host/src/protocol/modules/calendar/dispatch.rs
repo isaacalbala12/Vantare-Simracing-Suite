@@ -24,14 +24,12 @@ pub(super) fn dispatch(
                 },
             },
         ),
-        Request::CalendarRefresh {} => match session
-            .core
-            .request(id, vantare_ipc::services_protocol::Command::CalendarRefresh)
-        {
-            Ok(()) => {
-                session.remote = Some((id, RemoteKind::CalendarRefresh));
-                Ok(())
-            }
+        Request::CalendarRefresh {} => match session.request_remote(
+            id,
+            RemoteKind::CalendarRefresh,
+            vantare_ipc::services_protocol::Command::CalendarRefresh,
+        ) {
+            Ok(()) => Ok(()),
             Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
         },
         _ => Err(io::ErrorKind::InvalidInput.into()),

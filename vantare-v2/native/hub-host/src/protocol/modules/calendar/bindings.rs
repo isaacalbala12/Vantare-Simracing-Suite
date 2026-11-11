@@ -19,11 +19,6 @@ pub(crate) fn typescript() -> String {
         "calendarSeriesLimit",
         crate::calendar::SERIES_LIMIT
     );
-    constants!(
-        &mut text,
-        "calendarStartsLimit",
-        crate::calendar::STARTS_LIMIT
-    );
     constants!(&mut text, "calendarDateLimit", crate::calendar::DATE_LIMIT);
     constants!(&mut text, "calendarTextLimit", crate::calendar::TEXT_LIMIT);
     constants!(&mut text, "calendarListLimit", crate::calendar::LIST_LIMIT);

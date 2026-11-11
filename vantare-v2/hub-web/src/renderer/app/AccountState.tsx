@@ -29,6 +29,9 @@ interface AccountState {
   reload: () => void;
 }
 const Context = createContext<AccountState | undefined>(undefined);
+export function useOptionalAccount() {
+  return useContext(Context);
+}
 export function useAccount() {
   const value = useContext(Context);
   if (!value) throw new Error("Missing AccountProvider");

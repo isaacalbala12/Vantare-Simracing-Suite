@@ -1,3 +1,4 @@
+import demoIdentity from "../../../fixtures/demo-identity.json";
 import type { AccountView } from "../../contract/generated/account";
 import { accountMethods } from "../../contract/generated/account";
 import corpus from "../../contract/generated/corpus/account.json";
@@ -25,6 +26,28 @@ export function create(context: MockContext): MockHandler {
     verified: !gateScene && context.core.access.verified,
     blocked: context.core.access.blocked,
   };
+  if (
+    context.sceneName === "cuenta-base" ||
+    context.sceneName === "cuenta-sesion"
+  ) {
+    current = {
+      ...current,
+      name: demoIdentity.name,
+      session: "signedIn",
+      gate: "none",
+      verified: true,
+      blocked: false,
+      plan: { kind: "verified" },
+      channel: "development",
+      modules: current.modules.map((module) => ({
+        ...module,
+        status:
+          module.id === "strategy" || module.id === "engineer"
+            ? "soon"
+            : "included",
+      })) as AccountView["modules"],
+    };
+  }
   if (context.sceneName.startsWith("email-")) {
     const scene = context.sceneName;
     current = {

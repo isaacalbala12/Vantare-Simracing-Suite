@@ -11,6 +11,7 @@ import { isUiMessage } from "../contract/validation";
 import type { MockContext } from "./context";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
+  if (name === "cuenta-sesion") return { ...hello, demo: false };
   if (name?.startsWith("visual-"))
     return { ...hello, demoName: demoIdentity.name };
   return name === "componentes-incompatibles"
@@ -29,7 +30,7 @@ export function createMockHost(
 ) {
   const requestedScene = sceneName;
   const visual =
-    /^visual-(dark|light):(acceso-base|email-(?:formulario|codigo|crear-contrasena|consentimiento|autorizando|reiniciado|ocupado|espera)|privacidad-pendiente|privacidad-uso|inicio-(?:base|referencia|vacio|cargando|error|lanzando|sin-diseno)|ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|testing-reference|testing-tester-reference|testing-tester-questionnaires-reference|testing-tester-community-reference|calendar-reference|calendar-live-reference)$/.exec(
+    /^visual-(dark|light):(cuenta-base|acceso-base|email-(?:formulario|codigo|crear-contrasena|consentimiento|autorizando|reiniciado|ocupado|espera)|privacidad-pendiente|privacidad-uso|inicio-(?:base|referencia|vacio|cargando|error|lanzando|sin-diseno)|ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|testing-reference|testing-tester-reference|testing-tester-questionnaires-reference|testing-tester-community-reference|calendar-reference|calendar-live-reference)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;

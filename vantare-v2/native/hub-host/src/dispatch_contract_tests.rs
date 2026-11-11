@@ -211,7 +211,8 @@ mod architecture;
 #[cfg(windows)]
 impl Core {
     fn catalog(&self) -> Option<vantare_ipc::control::CatalogAccess> {
-        self.available.then_some(vantare_ipc::control::CatalogAccess::Pro)
+        self.available
+            .then_some(vantare_ipc::control::CatalogAccess::Pro)
     }
 }
 

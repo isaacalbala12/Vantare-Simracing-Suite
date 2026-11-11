@@ -36,6 +36,16 @@ export function create(context: MockContext): MockHandler {
       plan: { kind: "unverified" },
     };
   }
+  // First-run exit checks must still meet Access's existing modal boundary.
+  if (
+    [
+      "onboarding-7",
+      "onboarding-error-privacidad",
+      "onboarding-privacidad-protegida",
+    ].includes(context.sceneName)
+  ) {
+    current.gate = "choose";
+  }
   if (
     context.sceneName === "cuenta-base" ||
     context.sceneName === "cuenta-sesion" ||

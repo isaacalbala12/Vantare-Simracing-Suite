@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
+import { accessText } from "../src/renderer/i18n/access.es.ts";
 import { until } from "./wait-for.ts";
 
 declare global {
@@ -108,4 +109,61 @@ export async function checkOnboarding(
   );
   assert.equal(state.finishes, 1);
   assert.equal(state.completions, 1);
+  await accountBoundary(page);
+}
+
+async function accountBoundary(page: Page) {
+  const gate = page.getByRole("dialog", {
+    name: accessText.title,
+    exact: true,
+  });
+  await gate.waitFor();
+  assert.equal(
+    await gate.evaluate(
+      (node) =>
+        node instanceof HTMLDialogElement &&
+        node.open &&
+        node.matches(":modal"),
+    ),
+    true,
+    "Access must keep the Hub behind its native modal",
+  );
+  await gate
+    .getByRole("button", { name: accessText.google, exact: true })
+    .waitFor();
+}
+export async function checkOnboardingGuardedExit(
+  page: Page,
+  base: string,
+  evidence: string,
+  mode: "private" | "protected",
+) {
+  const scene =
+    mode === "private"
+      ? "onboarding-error-privacidad"
+      : "onboarding-privacidad-protegida";
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(`${base}?escena=${scene}`);
+  await page.getByRole("button", { name: "Empezar", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Saltar", exact: true }).click();
+  if (mode === "private") {
+    await page.getByRole("button", { name: "Terminar", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Entrar sin guardar", exact: true })
+      .click();
+  } else {
+    await page
+      .getByRole("button", { name: "Continuar sin enviar datos", exact: true })
+      .click();
+  }
+  await page.locator(".v-onboarding").waitFor({ state: "detached" });
+  await accountBoundary(page);
+  await writeFile(
+    resolve(evidence, `onboarding-${mode}-gate.json`),
+    JSON.stringify(
+      { exit: mode, accessModal: true, credentialsSubmitted: false },
+      null,
+      2,
+    ),
+  );
 }

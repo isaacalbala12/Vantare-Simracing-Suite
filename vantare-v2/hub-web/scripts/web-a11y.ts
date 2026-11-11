@@ -6,7 +6,10 @@ import { chromium, type Locator } from "playwright-core";
 import { checkAccessGate } from "./check-access-gate.ts";
 import { checkAccount } from "./check-account.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
-import { checkOnboarding } from "./check-onboarding.ts";
+import {
+  checkOnboarding,
+  checkOnboardingGuardedExit,
+} from "./check-onboarding.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { until } from "./wait-for";
 
@@ -149,6 +152,13 @@ try {
   await checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccount(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkOnboarding(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  for (const mode of ["private", "protected"] as const)
+    await checkOnboardingGuardedExit(
+      page,
+      server.resolvedUrls?.local[0] ?? "",
+      evidence,
+      mode,
+    );
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({

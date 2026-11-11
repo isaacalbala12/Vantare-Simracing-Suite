@@ -95,7 +95,30 @@ function mount(extended = false, full = false) {
       />
     </QueryClientProvider>,
   );
-  return { leave, complete, query, ...view };
+  return {
+    leave,
+    complete,
+    query,
+    ...view,
+    account(value: {
+      signedIn: boolean;
+      checking: boolean;
+      blocked: boolean;
+      failed?: boolean;
+    }) {
+      view.rerender(
+        <QueryClientProvider client={query}>
+          <OnboardingIntroPreview
+            extended={extended}
+            full={full}
+            onComplete={complete}
+            account={value}
+            onLeave={leave}
+          />
+        </QueryClientProvider>,
+      );
+    },
+  };
 }
 it("preserves the user's simulator choice during discovery and removes its subscription", async () => {
   const reply = initial();
@@ -393,4 +416,31 @@ it("rechecks protected privacy before leaving and keeps the wizard when the file
       ].includes(request.method),
     ),
   ).toHaveLength(0);
+});
+
+it("updates the assistant voice when Account changes while the step stays open", async () => {
+  fake.request.mockResolvedValue(initial());
+  const view = mount(true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(start);
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  view.account({ signedIn: true, checking: false, blocked: false });
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
+    "Sesión iniciada. Tu configuración se guarda en este PC.",
+  );
+  view.account({ signedIn: true, checking: true, blocked: true });
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
+    "Acceso bloqueado",
+  );
+  view.account({
+    signedIn: false,
+    checking: false,
+    blocked: false,
+    failed: true,
+  });
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
+    "No se pudo cargar la cuenta.",
+  );
 });

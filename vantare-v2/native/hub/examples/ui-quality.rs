@@ -254,7 +254,10 @@ fn capture_state(name: &str) -> Result<CaptureState, String> {
 
 fn validate_measure(args: &[String], root: &std::path::Path, measure: bool) -> Result<(), String> {
     if measure {
-        if args.iter().any(|arg| matches!(arg.as_str(), "--demo" | "--qa-testing")) {
+        if args
+            .iter()
+            .any(|arg| matches!(arg.as_str(), "--demo" | "--qa-testing"))
+        {
             return Err("--qa-measure no admite demo ni captura de tester".into());
         }
         // Normal mode reads shared privacy and initializes the local recorder.
@@ -262,7 +265,11 @@ fn validate_measure(args: &[String], root: &std::path::Path, measure: bool) -> R
         let expected = root.canonicalize().map_err(|error| error.to_string())?;
         for variable in ["VANTARE_NATIVE_DATA_ROOT", "LOCALAPPDATA"] {
             let path = std::env::var_os(variable).ok_or_else(|| format!("falta {variable} QA"))?;
-            if PathBuf::from(path).canonicalize().map_err(|error| error.to_string())? != expected {
+            if PathBuf::from(path)
+                .canonicalize()
+                .map_err(|error| error.to_string())?
+                != expected
+            {
                 return Err(format!("{variable} debe apuntar al root QA explícito"));
             }
         }

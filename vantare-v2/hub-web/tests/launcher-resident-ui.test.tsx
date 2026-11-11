@@ -7,11 +7,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ResidentView } from "../src/contract/generated/contract";
 import { residentActionLabels } from "../src/contract/generated/launcher_resident";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { ResidentInbox } from "../src/renderer/ui/launcher/ResidentInbox";
+import { WindowButtons } from "../src/renderer/ui/WindowButtons";
 
 const view: ResidentView = {
   protected: false,
@@ -39,6 +40,54 @@ function mount(value: ResidentView) {
   );
 }
 describe("resident decisions are read-only", () => {
+  it("keeps window controls reachable while the automatic drawer is open", async () => {
+    const minimize = vi.fn(),
+      maximize = vi.fn(),
+      close = vi.fn();
+    render(
+      <CSPProvider disableStyleElements>
+        <TooltipProvider>
+          <WindowButtons
+            maximized={false}
+            disabled={false}
+            labels={{
+              minimize: "Minimizar",
+              maximize: "Maximizar",
+              restore: "Restaurar",
+              close: "Cerrar ventana",
+            }}
+            minimize={minimize}
+            maximize={maximize}
+            close={close}
+          />
+          <ResidentInbox view={view} />
+        </TooltipProvider>
+      </CSPProvider>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.getAttribute("aria-modal")).not.toBe("true");
+    const action = screen.getByRole("button", {
+      name: residentActionLabels.trust,
+    });
+    const note = document.getElementById(
+      action.getAttribute("aria-describedby") ?? "",
+    );
+    expect(note?.textContent).toBe(
+      "Responder desde el Hub estará disponible próximamente.",
+    );
+    for (const [label, handler] of [
+      ["Minimizar", minimize],
+      ["Maximizar", maximize],
+      ["Cerrar ventana", close],
+    ] as const) {
+      const button = screen.getByRole("button", { name: label });
+      expect(button.closest('[inert], [aria-hidden="true"]')).toBeNull();
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      fireEvent.click(button);
+      expect(handler).toHaveBeenCalledOnce();
+    }
+  });
   it("shows the native actions disabled and Escape only closes the local drawer", async () => {
     const mounted = mount(view);
     expect(

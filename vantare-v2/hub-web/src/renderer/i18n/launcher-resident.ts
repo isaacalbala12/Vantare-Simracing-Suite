@@ -8,8 +8,7 @@ export const residentText = {
   closeSymbol: "×",
   pending: "Hay una decisión de lanzamiento pendiente.",
   open: "Ver decisión",
-  readOnly:
-    "Responder a decisiones desde el Hub estará disponible próximamente.",
+  readOnly: "Responder desde el Hub estará disponible próximamente.",
   failed: "El residente ha informado de un error.",
   question: {
     authorization:

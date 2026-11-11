@@ -236,3 +236,62 @@ impl Core {
 mod onboarding_dispatch_tests;
 #[path = "protocol/modules/studio/dispatch_tests.rs"]
 mod studio_tests;
+
+#[test]
+fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let mut pipe = Pipe::new(Vec::new());
+    launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
+    assert_eq!(session.launcher_resident_state.io_counts(), (0, 0));
+    assert!(pipe.get_ref().is_empty());
+    session.current.live = true;
+    launcher_resident::subscribe(&mut session, &mut pipe, Topic::LauncherResident).unwrap();
+    session
+        .request(&mut pipe, 41, &Request::LauncherResidentGet {})
+        .unwrap();
+    assert_eq!(session.launcher_resident_state.io_counts(), (0, 0));
+    pipe.set_position(0);
+    assert_eq!(
+        frame::Reader::default().next(&mut pipe).unwrap().unwrap(),
+        HostToUi::Response {
+            id: 41,
+            result: Reply::LauncherResidentGet {
+                value: crate::launcher_resident::ResidentView::default()
+            }
+        }
+    );
+    pipe = Pipe::new(Vec::new());
+    session.current.live = false;
+    session.subscriptions.insert(Topic::LauncherResident);
+    launcher_resident::subscribe(&mut session, &mut pipe, Topic::LauncherResident).unwrap();
+    pipe.set_position(0);
+    assert!(matches!(
+        frame::Reader::default().next(&mut pipe).unwrap().unwrap(),
+        HostToUi::Event {
+            event: Event::LauncherResident { .. }
+        }
+    ));
+    pipe = Pipe::new(Vec::new());
+    launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
+    assert!(
+        pipe.get_ref().is_empty(),
+        "initial subscription event is not duplicated"
+    );
+    let counts = session.launcher_resident_state.io_counts();
+    session.current.live = true;
+    launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
+    assert_eq!(session.launcher_resident_state.io_counts(), counts);
+    session.current.live = false;
+    launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
+    assert!(
+        !pipe.get_ref().is_empty(),
+        "resume after live emits immediately"
+    );
+    pipe = Pipe::new(Vec::new());
+    session.subscriptions.remove(&Topic::LauncherResident);
+    let counts = session.launcher_resident_state.io_counts();
+    launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
+    assert_eq!(session.launcher_resident_state.io_counts(), counts);
+    assert!(pipe.get_ref().is_empty());
+}

@@ -55,7 +55,10 @@ pub enum Reply {
     #[serde(rename = "studio.visibility")]
     StudioVisibility { value: crate::studio::StudioView },
     #[serde(rename = "studio.add")]
-    StudioAdd { value: crate::studio::StudioView },
+    StudioAdd {
+        value: crate::studio::StudioView,
+        added: String,
+    },
     #[serde(rename = "studio.remove")]
     StudioRemove { value: crate::studio::StudioView },
     #[serde(rename = "studio.instance")]

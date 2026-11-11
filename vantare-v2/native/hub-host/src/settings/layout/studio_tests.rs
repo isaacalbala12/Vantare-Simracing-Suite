@@ -265,3 +265,302 @@ fn showing_and_hiding_share_the_native_presentation_lock() {
     drop(lock);
     assert!(state.track(true, Some(CatalogAccess::Pro)).unwrap().showing);
 }
+
+fn layout(path: &Path) -> serde_json::Value {
+    serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+}
+fn replace_layout(path: &Path, value: &serde_json::Value) {
+    std::fs::write(path, serde_json::to_vec(value).unwrap()).unwrap();
+}
+#[test]
+fn removing_and_readding_a_reused_identity_does_not_inherit_frequency() {
+    let (_root, path, _) = fixture();
+    let bytes = std::fs::read_to_string(&path).unwrap();
+    let bytes = bytes.replacen(
+        "{",
+        r#"{"performance":{"widgets":{"z":10,"widget-1":4,"a":5},"level":"balanced"},"#,
+        1,
+    );
+    // Use the real enum spelling and valid supported frequencies.
+    let mut value: serde_json::Value = serde_json::from_str(&bytes).unwrap();
+    value["performance"]["level"] =
+        serde_json::json!(crate::settings::track::PerformanceLevel::default());
+    replace_layout(&path, &value);
+    // Preserve an intentionally non-alphabetical order in the nested map.
+    let text = std::fs::read_to_string(&path).unwrap().replace(
+        r#""widgets":{"a":5,"widget-1":4,"z":10}"#,
+        r#""widgets":{"z":10,"widget-1":4,"a":5}"#,
+    );
+    std::fs::write(&path, text).unwrap();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    let removed = state
+        .edit(Edit::Remove("widget-1".into()), &before.revision, access)
+        .unwrap();
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(raw.contains(r#""widgets":{"z":10,"a":5}"#));
+    let (added, id) = state
+        .add(WidgetKind::Delta, &removed.revision, access)
+        .unwrap();
+    assert_eq!(id, "widget-1");
+    assert_eq!(added.instances[0].id, id);
+    assert!(layout(&path)["performance"]["widgets"].get(&id).is_none());
+}
+#[test]
+fn companions_are_hidden_and_follow_visibility_and_removal_without_being_fabricated() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    let parent =
+        serde_json::json!({"id":"alerts","x":1,"y":1,"settings":{"kind":"session-alerts"}});
+    let mini = serde_json::json!({"id":"alerts-mini","x":2,"y":2,"visible":true,"settings":{"kind":"session-alerts","companionFor":"alerts"}});
+    value["instances"] = serde_json::json!([parent, mini]);
+    replace_layout(&path, &value);
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let initial = state.view(access);
+    assert_eq!(initial.instances.len(), 1);
+    assert_eq!(initial.instances[0].id, "alerts");
+    let hidden = state
+        .edit(
+            Edit::Visibility("alerts".into(), false),
+            &initial.revision,
+            access,
+        )
+        .unwrap();
+    assert!(
+        layout(&path)["instances"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|v| v["visible"] == false)
+    );
+    assert_eq!(
+        state.edit(Edit::Remove("alerts-mini".into()), &hidden.revision, access),
+        Err(HostError::Denied)
+    );
+    let removed = state
+        .edit(Edit::Remove("alerts".into()), &hidden.revision, access)
+        .unwrap();
+    assert!(removed.instances.is_empty());
+    assert!(layout(&path)["instances"].as_array().unwrap().is_empty());
+    let (added, id) = state
+        .add(WidgetKind::SessionAlerts, &removed.revision, access)
+        .unwrap();
+    assert_eq!(added.instances.len(), 1);
+    assert_eq!(added.instances[0].id, id);
+    assert_eq!(layout(&path)["instances"].as_array().unwrap().len(), 1);
+}
+#[test]
+fn hide_needs_no_rights_or_valid_layout_and_any_request_content_counts_as_showing() {
+    let (_root, path, _) = fixture();
+    let show = path.with_extension("show.json");
+    for bytes in [b"".as_slice(), b"invalid counter".as_slice()] {
+        std::fs::write(&show, bytes).unwrap();
+        std::fs::write(&path, b"invalid layout").unwrap();
+        let mut state = State::new(path.clone());
+        assert!(state.view(None).showing);
+        assert!(!state.track(false, None).unwrap().showing);
+        assert!(!show.exists());
+        assert_eq!(std::fs::read(&path).unwrap(), b"invalid layout");
+        assert_eq!(state.track(true, None), Err(HostError::Denied));
+    }
+}
+#[test]
+fn polling_is_subscription_scoped_and_never_duplicates_the_initial_event() {
+    use std::time::{Duration, Instant};
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let now = Instant::now();
+    let first = state.changed(true, now, access).unwrap();
+    assert!(state.changed(true, now, access).is_none());
+    let mut bytes = std::fs::read(&path).unwrap();
+    bytes.push(b' ');
+    std::fs::write(&path, &bytes).unwrap();
+    assert!(
+        state
+            .changed(true, now + Duration::from_millis(499), access)
+            .is_none()
+    );
+    assert_ne!(
+        state
+            .changed(true, now + Duration::from_millis(500), access)
+            .unwrap()
+            .revision,
+        first.revision
+    );
+    assert!(
+        state
+            .changed(true, now + Duration::from_millis(1000), access)
+            .is_none()
+    );
+    let revision = state.revision.clone();
+    bytes.push(b' ');
+    std::fs::write(&path, bytes).unwrap();
+    assert!(
+        state
+            .changed(false, now + Duration::from_millis(1500), access)
+            .is_none()
+    );
+    assert_eq!(state.revision, revision);
+    let observed = state.observed(now + Duration::from_millis(1501), access);
+    assert!(
+        state
+            .changed(true, now + Duration::from_millis(2001), access)
+            .is_none()
+    );
+    assert_eq!(state.view(access), observed);
+}
+#[test]
+fn history_keeps_exactly_fifty_reversible_steps() {
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let mut view = state.view(access);
+    for n in 0..60 {
+        view = state
+            .edit(
+                Edit::Visibility("widget-1".into(), n % 2 != 0),
+                &view.revision,
+                access,
+            )
+            .unwrap();
+    }
+    for _ in 0..HISTORY_LIMIT {
+        view = state.edit(Edit::Undo, &view.revision, access).unwrap();
+    }
+    assert!(!view.can_undo);
+    assert_eq!(
+        state.edit(Edit::Undo, &view.revision, access),
+        Err(HostError::Denied)
+    );
+}
+#[test]
+fn instance_limit_unknown_removal_and_outside_catalog_add_have_no_effects() {
+    let (_small_root, small_path, _) = fixture();
+    let mut small = State::new(small_path);
+    let revision = small.view(Some(CatalogAccess::Pro)).revision;
+    assert_eq!(
+        small.add(
+            WidgetKind::CarDamageNumbers,
+            &revision,
+            Some(CatalogAccess::Pro)
+        ),
+        Err(HostError::Denied)
+    );
+
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    let template = value["instances"][0].clone();
+    value["instances"] = serde_json::json!(
+        (0..INSTANCE_LIMIT)
+            .map(|n| {
+                let mut item = template.clone();
+                item["id"] = serde_json::json!(format!("widget-{n}"));
+                item
+            })
+            .collect::<Vec<_>>()
+    );
+    replace_layout(&path, &value);
+    let bytes = std::fs::read(&path).unwrap();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    for edit in [
+        Edit::Add(WidgetKind::Delta),
+        Edit::Remove("missing".into()),
+        Edit::Add(WidgetKind::CarDamageNumbers),
+    ] {
+        assert_eq!(
+            state.edit(edit, &view.revision, access),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+}
+#[test]
+fn a_full_canvas_uses_the_native_fallback_and_invalid_canvas_does_not_write() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    value["canvasResolution"] = serde_json::json!({"width":64,"height":64});
+    replace_layout(&path, &value);
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    state
+        .add(WidgetKind::Delta, &view.revision, access)
+        .unwrap();
+    let saved = layout(&path);
+    assert_eq!(saved["instances"][1]["x"], 0.0);
+    assert_eq!(saved["instances"][1]["y"], 14.0);
+    for canvas in [
+        serde_json::json!({"width":0,"height":1080}),
+        serde_json::json!({"width":1920,"height":40000}),
+        serde_json::json!({"width":"bad","height":1080}),
+    ] {
+        let mut invalid = saved.clone();
+        invalid["canvasResolution"] = canvas;
+        replace_layout(&path, &invalid);
+        let bytes = std::fs::read(&path).unwrap();
+        let view = state.view(access);
+        assert_eq!(
+            state.add(WidgetKind::Delta, &view.revision, access),
+            Err(HostError::Protected)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+}
+#[test]
+fn undo_cannot_restore_a_removed_pro_without_the_current_right() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    value["instances"][0]["settings"]["kind"] = serde_json::json!("radar");
+    replace_layout(&path, &value);
+    let mut state = State::new(path.clone());
+    let pro = Some(CatalogAccess::Pro);
+    let view = state.view(pro);
+    let removed = state
+        .edit(Edit::Remove("widget-1".into()), &view.revision, pro)
+        .unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    assert_eq!(
+        state.edit(Edit::Undo, &removed.revision, Some(CatalogAccess::Free)),
+        Err(HostError::Denied)
+    );
+    assert_eq!(std::fs::read(path).unwrap(), bytes);
+}
+#[test]
+fn off_track_is_saved_in_native_spelling_and_projection_clamps_without_rewriting() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    value["instances"][0]["opacity"] = serde_json::json!(2.5);
+    value["instances"][0]["geometry"]["size"] = serde_json::json!({"width":40000,"height":50000});
+    replace_layout(&path, &value);
+    let before = std::fs::read(&path).unwrap();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    assert_eq!(view.state, StudioState::Ready);
+    assert_eq!(view.instances[0].opacity, 100);
+    assert_eq!(
+        view.instances[0].size,
+        OverlaySize {
+            width: 3840,
+            height: 2160
+        }
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let changed = state
+        .edit(
+            Edit::Instance(
+                "widget-1".into(),
+                InstancePatch::OffTrack(OffTrack::AlwaysVisible),
+            ),
+            &view.revision,
+            access,
+        )
+        .unwrap();
+    assert_eq!(changed.instances[0].off_track, OffTrack::AlwaysVisible);
+    assert_eq!(layout(&path)["instances"][0]["offTrack"], "always_visible");
+}

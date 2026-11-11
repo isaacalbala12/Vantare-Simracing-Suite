@@ -80,7 +80,47 @@ pub(crate) fn typescript() -> String {
         serde_json::to_string(&categories).expect("categories")
     )
     .expect("categories");
+    metadata(&mut text);
     text
+}
+fn metadata(text: &mut String) {
+    for (name, value) in [
+        (
+            "studioStates",
+            serde_json::to_string(&[
+                StudioState::Missing,
+                StudioState::Protected,
+                StudioState::Ready,
+            ])
+            .expect("states"),
+        ),
+        (
+            "studioPlans",
+            serde_json::to_string(&[
+                StudioPlan::Unverified,
+                StudioPlan::Free,
+                StudioPlan::Launch,
+                StudioPlan::Pro,
+                StudioPlan::Founders,
+            ])
+            .expect("plans"),
+        ),
+        (
+            "studioOffTracks",
+            serde_json::to_string(&[OffTrack::Inherit, OffTrack::AlwaysVisible, OffTrack::Hide])
+                .expect("off track"),
+        ),
+        (
+            "studioAddKinds",
+            serde_json::to_string(WidgetKind::CATALOG).expect("add kinds"),
+        ),
+        (
+            "studioRevisionPattern",
+            serde_json::to_string(REVISION_PATTERN).expect("revision"),
+        ),
+    ] {
+        writeln!(text, "export const {name} = {value} as const;").expect("metadata");
+    }
 }
 pub(crate) fn corpus() -> serde_json::Value {
     let revision = "0".repeat(64);
@@ -125,6 +165,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
         Reply::StudioAdd {
             value: value.clone(),
+            added: "widget-1".into(),
         },
         Reply::StudioRemove {
             value: value.clone(),

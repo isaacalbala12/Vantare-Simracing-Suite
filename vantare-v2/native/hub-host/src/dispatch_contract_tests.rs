@@ -214,3 +214,6 @@ impl Core {
         self.available.then_some(vantare_ipc::control::CatalogAccess::Pro)
     }
 }
+
+#[path = "protocol/modules/studio/dispatch_tests.rs"]
+mod studio_tests;

@@ -28,6 +28,8 @@ fn put<T: Serialize>(fields: &mut Fields, key: &str, value: &T) -> Result<(), Ho
     );
     Ok(())
 }
+#[path = "studio_fields.rs"]
+mod ordered;
 struct Open {
     document: Document,
     instances: Vec<Fields>,
@@ -48,6 +50,7 @@ impl Open {
         let mut ids = HashSet::new();
         for fields in &instances {
             let item = instance(fields, None)?;
+            companion(fields)?;
             if !ids.insert(item.id) {
                 return Err(HostError::Protected);
             }
@@ -74,6 +77,7 @@ impl Open {
         self.instances
             .iter_mut()
             .find(|f| read::<String>(f, "id").as_deref() == Ok(id))
+            .filter(|f| companion(f).is_ok_and(|id| id.is_none()))
             .ok_or(HostError::Denied)
     }
 }
@@ -93,13 +97,15 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     let settings: Fields = read(fields, "settings")?;
     let kind: WidgetKind = read(&settings, "kind")?;
     let opacity: f64 = optional(fields, "opacity", 1.0)?;
-    if !opacity.is_finite() || !(0.0..=1.0).contains(&opacity) {
-        return Err(HostError::Protected);
-    }
+    let opacity = if opacity.is_finite() {
+        opacity.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
     let geometry: Fields = optional(fields, "geometry", Fields::default())?;
     let size: Option<Fields> = optional(&geometry, "size", None)?;
     let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
-    let (width, height) = size.as_ref().map_or(
+    let (mut width, mut height) = size.as_ref().map_or(
         Ok((
             f64::from(defaults.size.width),
             f64::from(defaults.size.height),
@@ -108,9 +114,13 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     )?;
     if ![width, height]
         .iter()
-        .all(|v| v.is_finite() && (1.0..=f64::from(SIZE_LIMIT)).contains(v))
+        .all(|v| v.is_finite() && *v > 0.0 && *v <= f64::from(f32::MAX))
     {
         return Err(HostError::Protected);
+    }
+    if size.is_some() {
+        width = width.clamp(crate::studio::GEOMETRY_MIN.0, crate::studio::GEOMETRY_MAX.0);
+        height = height.clamp(crate::studio::GEOMETRY_MIN.1, crate::studio::GEOMETRY_MAX.1);
     }
     let stored: String = optional(fields, "offTrack", "inherit".into())?;
     let off_track = match stored.as_str() {
@@ -191,7 +201,7 @@ fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
 pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioView {
     let opened = Open::read(&state.path);
     let Ok(opened) = opened else {
-        return State::unavailable(
+        let mut unavailable = State::unavailable(
             if state.path.try_exists().unwrap_or(true) {
                 StudioState::Protected
             } else {
@@ -199,6 +209,8 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
             },
             access,
         );
+        unavailable.showing = showing(&state.path);
+        return unavailable;
     };
     let revision = opened.revision();
     if state
@@ -215,6 +227,7 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
         instances: opened
             .instances
             .iter()
+            .filter(|f| companion(f).expect("validated companion").is_none())
             .map(|f| instance(f, access).expect("validated instance"))
             .collect(),
         showing: showing(&state.path),
@@ -229,6 +242,14 @@ pub(crate) fn edit(
     revision: &str,
     access: Option<CatalogAccess>,
 ) -> Result<StudioView, HostError> {
+    edit_result(state, edit, revision, access).map(|(value, _)| value)
+}
+pub(crate) fn edit_result(
+    state: &mut State,
+    edit: Edit,
+    revision: &str,
+    access: Option<CatalogAccess>,
+) -> Result<(StudioView, Option<String>), HostError> {
     let mut opened = Open::read(&state.path)?;
     if opened.revision() != revision {
         return Err(HostError::StudioConflict {
@@ -254,14 +275,19 @@ pub(crate) fn edit(
         .expect("existing layout")
         .to_vec();
     let after = apply(&mut opened, state, &edit, access)?;
+    let adding = matches!(edit, Edit::Add(_));
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
     let restored: Vec<Fields> = read(&root, "instances")?;
+    let mut added = None;
     for fields in &restored {
         let item = instance(fields, access)?;
         let existed = known
             .iter()
             .any(|(id, kind)| *id == item.id && *kind == item.kind);
+        if adding && !existed && companion(fields)?.is_none() {
+            added = Some(item.id.clone());
+        }
         if !existed && item.locked {
             return Err(HostError::Denied);
         }
@@ -304,7 +330,11 @@ pub(crate) fn edit(
     }
     state.revision = Some(vantare_services::content_hash(&after));
     drop(edit);
-    Ok(view(state, access))
+    Ok((view(state, access), added))
+}
+fn companion(fields: &Fields) -> Result<Option<String>, HostError> {
+    let settings: Fields = read(fields, "settings")?;
+    optional(&settings, "companionFor", None)
 }
 fn apply(
     opened: &mut Open,
@@ -316,19 +346,17 @@ fn apply(
         Edit::Undo => state.undo.last().cloned().ok_or(HostError::Denied)?,
         Edit::Redo => state.redo.last().cloned().ok_or(HostError::Denied)?,
         Edit::Visibility(id, visible) => {
-            put(opened.find(id)?, "visible", visible)?;
-            opened.bytes()?
-        }
-        Edit::Remove(id) => {
-            let length = opened.instances.len();
-            opened
-                .instances
-                .retain(|f| read::<String>(f, "id").as_deref() != Ok(id.as_str()));
-            if opened.instances.len() == length {
-                return Err(HostError::Denied);
+            opened.find(id)?;
+            for fields in &mut opened.instances {
+                if read::<String>(fields, "id")? == *id
+                    || companion(fields)?.as_deref() == Some(id.as_str())
+                {
+                    put(fields, "visible", visible)?;
+                }
             }
             opened.bytes()?
         }
+        Edit::Remove(id) => remove(opened, id)?,
         Edit::Instance(id, patch) => {
             let fields = opened.find(id)?;
             match patch {
@@ -365,20 +393,28 @@ fn showing(path: &Path) -> bool {
     files::read_optional(&path.with_extension("show.json"), LIMIT)
         .ok()
         .flatten()
-        .is_some_and(|b| serde_json::from_slice::<u64>(&b).is_ok())
+        .is_some()
 }
 pub(crate) fn track(
     state: &mut State,
     show: bool,
     access: Option<CatalogAccess>,
 ) -> Result<StudioView, HostError> {
-    Open::read(&state.path)?;
+    if !vantare_launcher::is_local_path(&state.path) {
+        return Err(HostError::Denied);
+    }
+    if show {
+        if access.is_none() {
+            return Err(HostError::Denied);
+        }
+        Open::read(&state.path)?;
+    }
     if show && showing(&state.path) {
         return Ok(view(state, access));
     }
     let path = state.path.with_extension("show.json");
-    let before = files::read_optional(&path, LIMIT).map_err(|_| HostError::Protected)?;
     if show {
+        let before = files::read_optional(&path, LIMIT).map_err(|_| HostError::Protected)?;
         let current = before
             .as_deref()
             .map_or(Ok(0_u64), serde_json::from_slice)
@@ -408,7 +444,11 @@ pub(crate) fn track(
             .truncate(false)
             .open(path.with_extension("json.lock"))
             .map_err(|_| HostError::Io)?;
-        lock.try_lock().map_err(|_| HostError::Busy)?;
+        match lock.try_lock() {
+            Ok(()) => {}
+            Err(std::fs::TryLockError::WouldBlock) => return Err(HostError::Busy),
+            Err(std::fs::TryLockError::Error(_)) => return Err(HostError::Io),
+        }
         for stale in [path, state.path.with_extension("show.json.bak")] {
             match std::fs::remove_file(stale) {
                 Ok(()) => {}
@@ -460,5 +500,21 @@ fn add(
     put(&mut fields, "opacity", &1.0)?;
     fields.0.insert("settings".into(), defaults.settings);
     opened.instances.push(fields);
+    opened.bytes()
+}
+
+fn remove(opened: &mut Open, id: &str) -> Result<Vec<u8>, HostError> {
+    opened.find(id)?;
+    let mut removed = Vec::new();
+    for fields in &opened.instances {
+        let own: String = read(fields, "id")?;
+        if own == id || companion(fields)?.as_deref() == Some(id) {
+            removed.push(own);
+        }
+    }
+    opened.instances.retain(|fields| {
+        !removed.contains(&read::<String>(fields, "id").expect("validated identity"))
+    });
+    ordered::remove_rates(&mut opened.document.fields, &removed)?;
     opened.bytes()
 }

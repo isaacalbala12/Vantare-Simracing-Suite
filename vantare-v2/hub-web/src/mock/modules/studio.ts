@@ -89,7 +89,7 @@ export function create(context: MockContext): MockHandler {
       id,
       error: { kind },
     });
-    if (request.method !== "studio.get" && view.state !== "ready")
+    if (request.method !== "studio.get" && !(request.method === "studio.track" && !request.show) && view.state !== "ready")
       return fail("protected");
     if (
       "baseRevision" in request &&
@@ -104,6 +104,7 @@ export function create(context: MockContext): MockHandler {
       };
     }
     const before = structuredClone(view.instances);
+    let added: string | null = null;
     switch (request.method) {
       case "studio.get":
         break;
@@ -133,8 +134,9 @@ export function create(context: MockContext): MockHandler {
           return fail("denied");
         let n = 1;
         while (view.instances.some((w) => w.id === `widget-${n}`)) n++;
+        added = `widget-${n}`;
         view.instances.push({
-          id: `widget-${n}`,
+          id: added,
           kind: request.kind,
           visible: true,
           locked: false,
@@ -187,6 +189,7 @@ export function create(context: MockContext): MockHandler {
       redo.length = 0;
       bump();
     }
+    if(request.method === "studio.add") { if(!added) return fail("denied"); return {kind:"response",id,result:{method:"studio.add",value:structuredClone(view),added}}; }
     return {
       kind: "response",
       id,

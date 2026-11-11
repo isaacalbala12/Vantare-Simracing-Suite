@@ -1,5 +1,9 @@
 export const actionText = {
   duplicate: "Duplicar",
+  duplicateTitle: "Duplicar perfil",
+  duplicateMessage: (name: string) => `¿Duplicar el perfil ${name}?`,
+  reconfirm:
+    "Para repetir esta acción, vuelve a abrirla y confírmala de nuevo.",
   remove: "Eliminar",
   favorite: "Marcar como favorito",
   unfavorite: "Quitar de favoritos",

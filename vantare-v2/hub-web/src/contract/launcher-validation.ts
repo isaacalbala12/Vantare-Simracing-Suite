@@ -96,7 +96,6 @@ export function isLauncher(value: unknown): boolean {
         "failure",
         "startup",
         "closeOnExit",
-        "retryFailed",
       ]) ||
       !oneOf(profile.options.alreadyRunning, ["ask", "reuse", "restart"]) ||
       !oneOf(profile.options.failure, ["ask", "stop", "continue"]) ||
@@ -104,8 +103,7 @@ export function isLauncher(value: unknown): boolean {
       !integer(profile.options.retries) ||
       profile.options.retries > 3 ||
       typeof profile.options.startup !== "boolean" ||
-      typeof profile.options.closeOnExit !== "boolean" ||
-      typeof profile.options.retryFailed !== "boolean"
+      typeof profile.options.closeOnExit !== "boolean"
     )
       return false;
     profiles.add(profile.id);

@@ -39,6 +39,7 @@ export function Launcher() {
   const { client } = useHost();
   const action = useProfileAction();
   const [removing, setRemoving] = useState<LauncherProfile>();
+  const [duplicating, setDuplicating] = useState<LauncherProfile>();
   const editor = useProfileEditorState();
   const query = useQueryClient();
   const { view, selected } = useLauncherSnapshot();
@@ -168,11 +169,7 @@ export function Launcher() {
         });
         break;
       case "duplicate":
-        void action.execute({
-          method: "launcher.profile.duplicate",
-          id: profile.id,
-          baseRevision,
-        });
+        setDuplicating(profile);
         break;
       case "trigger":
         void action.execute({
@@ -204,6 +201,7 @@ export function Launcher() {
         <ProfileActionFeedback
           conflict={action.failure.revision !== undefined}
           pending={action.pending}
+          canRetry={action.canRetry}
           onRetry={action.retry}
           onDiscard={action.discard}
         />
@@ -223,17 +221,26 @@ export function Launcher() {
         onReload={() => void reload()}
       />
       <RemoveProfileDialog
-        id={removing?.id}
+        name={(removing ?? duplicating)?.name}
+        duplicate={duplicating !== undefined}
         pending={action.pending}
-        onCancel={() => setRemoving(undefined)}
+        onCancel={() => {
+          setRemoving(undefined);
+          setDuplicating(undefined);
+        }}
         onConfirm={() => {
-          if (!removing) return;
+          const profile = removing ?? duplicating;
+          if (!profile) return;
+          const method = removing
+            ? "launcher.profile.delete"
+            : "launcher.profile.duplicate";
+          setRemoving(undefined);
+          setDuplicating(undefined);
           void action.execute({
-            method: "launcher.profile.delete",
-            id: removing.id,
+            method,
+            id: profile.id,
             baseRevision: view.revision,
           });
-          setRemoving(undefined);
         }}
       />
     </>

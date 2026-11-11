@@ -3,6 +3,11 @@ import type {
   LauncherProfile,
   LauncherView,
 } from "../../../contract/generated/contract";
+import {
+  launcherLimits,
+  profileCopySuffix,
+  profileLimits,
+} from "../../../contract/generated/contract";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../Button";
@@ -209,6 +214,11 @@ export function LauncherProfiles({
                 <ProfileCardActions
                   key={item.id}
                   profile={item}
+                  canDuplicate={
+                    view.profiles.length < launcherLimits.profiles &&
+                    new TextEncoder().encode(item.name + profileCopySuffix)
+                      .length <= profileLimits.name
+                  }
                   triggered={view.lmuTrigger === item.id}
                   disabled={pending || view.protected || view.running}
                   onAction={(action) => onAction(item, action)}

@@ -12,12 +12,14 @@ export function ProfileCardActions({
   profile,
   triggered,
   disabled,
+  canDuplicate,
   onAction,
 }: {
   children: ReactElement;
   profile: LauncherProfile;
   triggered: boolean;
   disabled: boolean;
+  canDuplicate: boolean;
   onAction: (action: ProfileCardAction) => void;
 }) {
   const items: { id: ProfileCardAction; label: string }[] = [
@@ -39,7 +41,9 @@ export function ProfileCardActions({
               <ContextMenu.Item
                 key={item.id}
                 className="v-option"
-                disabled={disabled}
+                disabled={
+                  disabled || (item.id === "duplicate" && !canDuplicate)
+                }
                 onClick={() => onAction(item.id)}
               >
                 {item.label}
@@ -52,19 +56,21 @@ export function ProfileCardActions({
   );
 }
 export function RemoveProfileDialog({
-  id,
+  name,
+  duplicate = false,
   pending,
   onCancel,
   onConfirm,
 }: {
-  id?: string;
+  name?: string;
+  duplicate?: boolean;
   pending: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   return (
     <Dialog.Root
-      open={id !== undefined}
+      open={name !== undefined}
       onOpenChange={(open) => {
         if (!open && !pending) onCancel();
       }}
@@ -72,16 +78,24 @@ export function RemoveProfileDialog({
       <Dialog.Portal>
         <Dialog.Backdrop className="v-backdrop" />
         <Dialog.Popup className="v-launcher-removal">
-          <Dialog.Title>{text.removeTitle}</Dialog.Title>
+          <Dialog.Title>
+            {duplicate ? text.duplicateTitle : text.removeTitle}
+          </Dialog.Title>
           <Dialog.Description>
-            {text.removeMessage(id ?? "")}
+            {duplicate
+              ? text.duplicateMessage(name ?? "")
+              : text.removeMessage(name ?? "")}
           </Dialog.Description>
           <div className="v-launcher-actions">
             <Button disabled={pending} onClick={onCancel}>
               {text.cancel}
             </Button>
-            <Button variant="danger" busy={pending} onClick={onConfirm}>
-              {text.remove}
+            <Button
+              variant={duplicate ? "primary" : "danger"}
+              busy={pending}
+              onClick={onConfirm}
+            >
+              {duplicate ? text.duplicate : text.remove}
             </Button>
           </div>
         </Dialog.Popup>
@@ -92,11 +106,13 @@ export function RemoveProfileDialog({
 
 export function ProfileActionFeedback({
   conflict,
+  canRetry,
   pending,
   onRetry,
   onDiscard,
 }: {
   conflict: boolean;
+  canRetry: boolean;
   pending: boolean;
   onRetry: () => void;
   onDiscard: () => void;
@@ -107,9 +123,13 @@ export function ProfileActionFeedback({
       title={conflict ? text.conflict : text.failed}
       actions={
         <>
-          <Button disabled={pending} onClick={onRetry}>
-            {text.retry}
-          </Button>
+          {canRetry ? (
+            <Button disabled={pending} onClick={onRetry}>
+              {text.retry}
+            </Button>
+          ) : (
+            <span>{text.reconfirm}</span>
+          )}
           <Button disabled={pending} onClick={onDiscard}>
             {text.discard}
           </Button>

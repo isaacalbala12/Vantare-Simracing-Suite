@@ -4,6 +4,11 @@ import type {
   ProfileDraft,
   Request,
 } from "../contract/generated/contract";
+import {
+  launcherLimits,
+  profileCopySuffix,
+  profileLimits,
+} from "../contract/generated/contract";
 import { isProfileActionMethod } from "../contract/profile-actions";
 export function profileActionReply(
   id: number,
@@ -12,6 +17,7 @@ export function profileActionReply(
   drafts: Map<string, ProfileDraft>,
 ): HostToUi | undefined {
   if (!isProfileActionMethod(request.method)) return;
+  if (view.running) return { kind: "failure", id, error: { kind: "busy" } };
   if (!("baseRevision" in request) || request.baseRevision !== view.revision)
     return {
       kind: "failure",
@@ -39,9 +45,15 @@ export function profileActionReply(
       );
       if (view.lmuTrigger === request.id) view.lmuTrigger = null;
     } else if (request.method === "launcher.profile.duplicate") {
+      if (
+        view.profiles.length >= launcherLimits.profiles ||
+        new TextEncoder().encode(draft.name + profileCopySuffix).length >
+          profileLimits.name
+      )
+        return { kind: "failure", id, error: { kind: "denied" } };
       const copied = structuredClone(draft);
       copied.id = `profile-${crypto.randomUUID()}`;
-      copied.name += " (copia)";
+      copied.name += profileCopySuffix;
       copied.favorite = false;
       copied.hotkey = "";
       copied.startup = false;
@@ -73,8 +85,6 @@ export function profileActionReply(
           break;
         case "retries":
           draft.policy.retries = summary.options.retries = patch.value;
-          draft.policy.retry = "failed";
-          summary.options.retryFailed = true;
           break;
         case "startup":
           if (patch.value) {
@@ -86,10 +96,6 @@ export function profileActionReply(
         case "closeOnExit":
           draft.policy.exit = patch.value ? "closeStarted" : "leave";
           summary.options.closeOnExit = patch.value;
-          break;
-        case "retryFailed":
-          draft.policy.retry = patch.value ? "failed" : "ask";
-          summary.options.retryFailed = patch.value;
           break;
       }
     }

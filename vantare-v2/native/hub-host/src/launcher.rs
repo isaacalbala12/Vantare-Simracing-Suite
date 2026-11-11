@@ -41,7 +41,6 @@ pub struct LauncherOptions {
     pub failure: String,
     pub startup: bool,
     pub close_on_exit: bool,
-    pub retry_failed: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -144,7 +143,6 @@ fn project(
                         .into(),
                         startup: profile.launch_on_windows_startup,
                         close_on_exit: policy.exit == vantare_launcher::policy::Close::Started,
-                        retry_failed: policy.retry == vantare_launcher::policy::Retry::Failed,
                     }
                 },
                 launchable: !scanning

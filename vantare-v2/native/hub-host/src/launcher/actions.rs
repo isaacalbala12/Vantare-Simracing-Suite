@@ -7,6 +7,7 @@ use std::path::Path;
 use ts_rs::TS;
 use vantare_launcher::{Profile, policy};
 
+pub const COPY_SUFFIX: &str = " (copia)";
 pub const FIRST_STEP_DELAYS: [u32; 6] = [0, 5, 10, 20, 30, 60];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,7 +25,6 @@ pub enum ProfileOption {
     Failure(editor::ProfileFailure),
     Startup(bool),
     CloseOnExit(bool),
-    RetryFailed(bool),
 }
 fn valid_id(id: &str) -> Result<(), HostError> {
     if id.is_empty() || id.len() > ID_LIMIT || id.contains('\0') {
@@ -44,14 +44,31 @@ fn profile<'a>(
         .find(|profile| profile.id == id)
         .ok_or(HostError::Denied)
 }
+fn edit(
+    path: &Path,
+    revision: &str,
+    change: impl FnOnce(&mut vantare_launcher::Document) -> Result<(), HostError>,
+) -> Result<(), HostError> {
+    // Same fresh status and best-effort guarantee as launch-v1; #2028 owns atomic resident CAS.
+    if vantare_ipc::launcher::read_status(path).is_some_and(|status| status.running) {
+        return Err(HostError::Busy);
+    }
+    apps::edit(path, revision, change)
+}
 pub fn remove(path: &Path, id: &str, revision: &str) -> Result<(), HostError> {
     valid_id(id)?;
-    apps::edit(path, revision, |document| {
+    edit(path, revision, |document| {
         document.remove_profile(id).map_err(|_| HostError::Denied)
     })
 }
 pub fn duplicate(path: &Path, id: &str, revision: &str) -> Result<(), HostError> {
-    apps::edit(path, revision, |document| {
+    edit(path, revision, |document| {
+        let source = profile(document, id)?;
+        if document.profiles.len() >= super::PROFILE_LIMIT
+            || source.name.len() + COPY_SUFFIX.len() > editor::NAME_MAX
+        {
+            return Err(HostError::Denied);
+        }
         let id_new = format!(
             "profile-{}",
             vantare_services::random_id().map_err(|_| HostError::Io)?
@@ -61,7 +78,7 @@ pub fn duplicate(path: &Path, id: &str, revision: &str) -> Result<(), HostError>
     })
 }
 pub fn favorite(path: &Path, id: &str, favorite: bool, revision: &str) -> Result<(), HostError> {
-    apps::edit(path, revision, |document| {
+    edit(path, revision, |document| {
         let mut saved = profile(document, id)?.clone();
         saved.favorite = favorite;
         document.save_profile(saved).map_err(|_| HostError::Denied)
@@ -73,7 +90,7 @@ pub fn option(
     option: ProfileOption,
     revision: &str,
 ) -> Result<(), HostError> {
-    apps::edit(path, revision, |document| {
+    edit(path, revision, |document| {
         let mut saved = profile(document, id)?.clone();
         let mut current = saved.effective_policy();
         match option {
@@ -84,10 +101,14 @@ pub fn option(
                     editor::ProfileRunning::Restart => policy::Running::Restart,
                 }
             }
-            ProfileOption::FirstStepDelay(value) => current.first_step_delay = value,
+            ProfileOption::FirstStepDelay(value)
+                if FIRST_STEP_DELAYS.contains(&value) || value == current.first_step_delay =>
+            {
+                current.first_step_delay = value
+            }
+            ProfileOption::FirstStepDelay(_) => return Err(HostError::Denied),
             ProfileOption::Retries(value) if value <= editor::RETRIES_MAX => {
                 current.max_retries = value;
-                current.retry = policy::Retry::Failed;
             }
             ProfileOption::Retries(_) => return Err(HostError::Denied),
             ProfileOption::Failure(value) => {
@@ -105,20 +126,13 @@ pub fn option(
                     policy::Close::Leave
                 }
             }
-            ProfileOption::RetryFailed(value) => {
-                current.retry = if value {
-                    policy::Retry::Failed
-                } else {
-                    policy::Retry::Ask
-                }
-            }
         }
         saved.set_policy(current);
         document.save_profile(saved).map_err(|_| HostError::Denied)
     })
 }
 pub fn trigger(path: &Path, id: Option<&str>, revision: &str) -> Result<(), HostError> {
-    apps::edit(path, revision, |document| {
+    edit(path, revision, |document| {
         if let Some(id) = id {
             profile(document, id)?;
         }
@@ -170,7 +184,7 @@ mod tests {
         assert_eq!(after.profiles[0].effective_policy().max_retries, 3);
         assert_eq!(
             after.profiles[0].effective_policy().retry,
-            policy::Retry::Failed
+            before.profiles[0].effective_policy().retry
         );
         assert_eq!(
             serde_json::to_value(&after.profiles[1..]).expect("QA fixture"),
@@ -287,5 +301,136 @@ mod tests {
                 .count(),
             1
         );
+    }
+    #[test]
+    fn retries_preserve_both_ask_and_all_modes() {
+        for retry in [policy::Retry::Ask, policy::Retry::All] {
+            let (_root, path, bytes, _revision) = fixture();
+            let mut document = Document::from_bytes(&bytes).unwrap();
+            let mut policy = document.profiles[0].effective_policy();
+            policy.retry = retry;
+            document.profiles[0].set_policy(policy);
+            let bytes = serde_json::to_vec(&document).unwrap();
+            std::fs::write(&path, &bytes).unwrap();
+            option(
+                &path,
+                &document.profiles[0].id,
+                ProfileOption::Retries(3),
+                &vantare_services::content_hash(&bytes),
+            )
+            .unwrap();
+            let after = Document::from_bytes(&std::fs::read(path).unwrap()).unwrap();
+            assert_eq!(after.profiles[0].effective_policy().retry, retry);
+        }
+    }
+    #[test]
+    fn first_delay_accepts_native_choices_or_the_unchanged_custom_value() {
+        let (_root, path, bytes, _revision) = fixture();
+        let mut document = Document::from_bytes(&bytes).unwrap();
+        let id = document.profiles[0].id.clone();
+        let mut policy = document.profiles[0].effective_policy();
+        policy.first_step_delay = 17;
+        document.profiles[0].set_policy(policy);
+        let bytes = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let revision = vantare_services::content_hash(&bytes);
+        assert_eq!(
+            option(&path, &id, ProfileOption::FirstStepDelay(18), &revision),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        option(&path, &id, ProfileOption::FirstStepDelay(17), &revision).unwrap();
+        for delay in FIRST_STEP_DELAYS {
+            let revision = vantare_services::content_hash(&std::fs::read(&path).unwrap());
+            option(&path, &id, ProfileOption::FirstStepDelay(delay), &revision).unwrap();
+        }
+    }
+    #[test]
+    fn every_new_write_is_busy_while_the_resident_is_running() {
+        let (_root, path, bytes, revision) = fixture();
+        let document = Document::from_bytes(&bytes).unwrap();
+        let id = &document.profiles[0].id;
+        let status = vantare_ipc::launcher::Status {
+            version: vantare_ipc::launcher::VERSION,
+            updated_ms: vantare_ipc::launcher::now_ms(),
+            running: true,
+            ..Default::default()
+        };
+        std::fs::write(
+            vantare_ipc::launcher::status_path(&path),
+            serde_json::to_vec(&status).unwrap(),
+        )
+        .unwrap();
+        for result in [
+            remove(&path, id, &revision),
+            duplicate(&path, id, &revision),
+            favorite(&path, id, false, &revision),
+            option(&path, id, ProfileOption::Retries(3), &revision),
+            trigger(&path, None, &revision),
+        ] {
+            assert_eq!(result, Err(HostError::Busy));
+        }
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+    #[test]
+    fn duplicate_refuses_the_profile_limit_and_overflowing_copy_name() {
+        for full in [false, true] {
+            let (_root, path, bytes, _revision) = fixture();
+            let mut document = Document::from_bytes(&bytes).unwrap();
+            let id = document.profiles[0].id.clone();
+            if full {
+                while document.profiles.len() < super::super::PROFILE_LIMIT {
+                    let mut copy = document.profiles[0].clone();
+                    copy.id = format!("qa-{}", document.profiles.len());
+                    document.profiles.push(copy);
+                }
+            } else {
+                document.profiles[0].name = "a".repeat(editor::NAME_MAX);
+            }
+            let bytes = serde_json::to_vec(&document).unwrap();
+            Document::from_bytes(&bytes).unwrap();
+            std::fs::write(&path, &bytes).unwrap();
+            assert_eq!(
+                duplicate(&path, &id, &vantare_services::content_hash(&bytes)),
+                Err(HostError::Denied)
+            );
+            assert_eq!(std::fs::read(path).unwrap(), bytes);
+        }
+    }
+    #[test]
+    fn removing_startup_and_last_profile_and_clearing_trigger_are_valid() {
+        let (_root, path, bytes, _revision) = fixture();
+        let mut document = Document::from_bytes(&bytes).unwrap();
+        document.profiles.truncate(1);
+        document.profiles[0].launch_on_windows_startup = true;
+        document.lmu_trigger_profile = Some(document.profiles[0].id.clone());
+        let bytes = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        trigger(&path, None, &vantare_services::content_hash(&bytes)).unwrap();
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(
+            Document::from_bytes(&bytes)
+                .unwrap()
+                .lmu_trigger_profile
+                .is_none()
+        );
+        assert_eq!(
+            trigger(
+                &path,
+                Some("unknown"),
+                &vantare_services::content_hash(&bytes)
+            ),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        remove(
+            &path,
+            &document.profiles[0].id,
+            &vantare_services::content_hash(&bytes),
+        )
+        .unwrap();
+        let after = Document::from_bytes(&std::fs::read(path).unwrap()).unwrap();
+        assert!(after.profiles.is_empty());
+        assert!(after.lmu_trigger_profile.is_none());
     }
 }

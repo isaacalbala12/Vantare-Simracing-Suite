@@ -1,5 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { Request } from "../../../contract/generated/contract";
 import {
   isProfileActionMethod,
@@ -12,7 +19,7 @@ export type ProfileActionRequest = Extract<
   Request,
   { method: (typeof profileActionMethods)[number] }
 >;
-export function useProfileAction() {
+function useActionState() {
   const { client } = useHost();
   const cache = useQueryClient();
   const busy = useRef(false);
@@ -58,9 +65,10 @@ export function useProfileAction() {
   return {
     pending,
     failure,
+    canRetry: failure !== undefined && retryable(failure.request.method),
     execute,
     retry: () => {
-      if (failure)
+      if (failure && retryable(failure.request.method))
         void execute({
           ...failure.request,
           baseRevision: failure.revision ?? failure.request.baseRevision,
@@ -68,4 +76,24 @@ export function useProfileAction() {
     },
     discard: () => setFailure(undefined),
   };
+}
+
+function retryable(method: ProfileActionRequest["method"]) {
+  return (
+    method === "launcher.profile.favorite" ||
+    method === "launcher.profile.option" ||
+    method === "launcher.trigger"
+  );
+}
+const Context = createContext<ReturnType<typeof useActionState> | undefined>(
+  undefined,
+);
+export function ProfileActionProvider({ children }: { children: ReactNode }) {
+  const value = useActionState();
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+export function useProfileAction() {
+  const value = useContext(Context);
+  if (!value) throw Error("Profile actions require their shared provider");
+  return value;
 }

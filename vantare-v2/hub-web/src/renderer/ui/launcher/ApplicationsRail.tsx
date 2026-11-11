@@ -31,9 +31,7 @@ function patch(
         : undefined;
     case "firstStepDelay": {
       const value = Number(raw);
-      return Number.isInteger(value) &&
-        value >= 0 &&
-        value <= profileLimits.delay
+      return launcherFirstDelays.some((delay) => delay === value)
         ? { option: field, value }
         : undefined;
     }
@@ -178,6 +176,7 @@ export function LauncherApplicationsRail({
                   value={option.value}
                   disabled={!onOption || pending || view.protected}
                   onChange={(raw) => {
+                    if (raw === option.value) return;
                     const value = patch(option.field, raw);
                     if (value && profile) onOption?.(profile.id, value);
                   }}

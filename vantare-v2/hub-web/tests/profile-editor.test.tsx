@@ -399,7 +399,9 @@ describe("profile editor", () => {
       name: actionText.removeTitle,
     });
     expect(
-      within(dialog).getByText(actionText.removeMessage("creator")),
+      within(dialog).getByText(
+        actionText.removeMessage("Creador de Contenido"),
+      ),
     ).toBeTruthy();
     fireEvent.click(
       within(dialog).getByRole("button", { name: actionText.cancel }),
@@ -447,6 +449,14 @@ describe("profile editor", () => {
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.duplicate }),
     );
+    const duplicateDialog = await screen.findByRole("dialog", {
+      name: actionText.duplicateTitle,
+    });
+    fireEvent.click(
+      within(duplicateDialog).getByRole("button", {
+        name: actionText.duplicate,
+      }),
+    );
     await screen.findByRole("button", { name: "Creador de Contenido (copia)" });
     fireEvent.contextMenu(creator);
     fireEvent.click(
@@ -483,4 +493,69 @@ describe("profile editor", () => {
     await user.click(screen.getByRole("option", { name: "20 s" }));
     await waitFor(() => expect(delay.textContent).toContain("20 s"));
   });
+  it.each(["remove", "duplicate"] as const)(
+    "requires a new confirmation after a %s conflict",
+    async (kind) => {
+      const requests = vi.spyOn(Client.prototype, "request");
+      mount("launcher-actions-conflicto");
+      const name = "Creador de Contenido";
+      const creator = await screen.findByRole("button", { name });
+      fireEvent.contextMenu(creator);
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      const title =
+        kind === "remove" ? actionText.removeTitle : actionText.duplicateTitle;
+      let dialog = await screen.findByRole("dialog", { name: title });
+      fireEvent.click(
+        within(dialog).getByRole("button", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      await screen.findByText(actionText.conflict);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: actionText.retry }),
+      ).toBeNull();
+      expect(screen.getByText(actionText.reconfirm)).toBeTruthy();
+      const method =
+        kind === "remove"
+          ? "launcher.profile.delete"
+          : "launcher.profile.duplicate";
+      expect(
+        requests.mock.calls.filter(([r]) => r.method === method),
+      ).toHaveLength(1);
+      expect(
+        screen.queryByRole("button", { name: `${name} (copia)` }),
+      ).toBeNull();
+      fireEvent.contextMenu(screen.getByRole("button", { name }));
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      dialog = await screen.findByRole("dialog", { name: title });
+      expect(
+        requests.mock.calls.filter(([r]) => r.method === method),
+      ).toHaveLength(1);
+      fireEvent.click(
+        within(dialog).getByRole("button", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          requests.mock.calls.filter(([r]) => r.method === method),
+        ).toHaveLength(2),
+      );
+      if (kind === "duplicate")
+        await screen.findByRole("button", { name: `${name} (copia)` });
+      else
+        await waitFor(() =>
+          expect(screen.queryByRole("button", { name })).toBeNull(),
+        );
+    },
+  );
 });

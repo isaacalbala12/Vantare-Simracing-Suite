@@ -19,6 +19,7 @@ import type { Client } from "../../bridge/client";
 import { profileText as text } from "../../i18n/profile-editor";
 import { useToastManager } from "../../ui/Layers";
 import { DiscardProfileDialog } from "../../ui/launcher/ProfileEditor";
+import { ProfileActionProvider } from "./profile-actions";
 export interface EditorSnapshot extends ProfileEditorView {
   original: ProfileDraft;
   pending: boolean;
@@ -138,7 +139,7 @@ export function ProfileEditorProvider({ children }: { children: ReactNode }) {
         setCreateApplication,
       }}
     >
-      {children}
+      <ProfileActionProvider>{children}</ProfileActionProvider>
       <DiscardProfileDialog
         open={confirmClose}
         onCancel={() => {

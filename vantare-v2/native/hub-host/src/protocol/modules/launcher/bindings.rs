@@ -82,6 +82,12 @@ pub(crate) fn corpus() -> serde_json::Value {
 fn append_launcher_constants(text: &mut String) {
     writeln!(
         text,
+        "export const profileCopySuffix = {} as const;",
+        serde_json::to_string(crate::launcher::actions::COPY_SUFFIX).expect("copy suffix")
+    )
+    .expect("constants");
+    writeln!(
+        text,
         "export const launcherFirstDelays = {} as const;",
         serde_json::to_string(&crate::launcher::actions::FIRST_STEP_DELAYS).expect("first delays")
     )

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isUiMessage } from "../src/contract/validation";
+import { createMockHost } from "../src/mock/host";
 
 const revision = "0".repeat(64);
 const accepts = (request: unknown) =>
@@ -45,5 +46,43 @@ describe("closed profile actions", () => {
     expect(
       accepts({ method: "launcher.trigger", id: null, baseRevision: revision }),
     ).toBe(true);
+  });
+  it("denies an unknown trigger identity without modifying the view", () => {
+    const host = createMockHost("launcher-base");
+    const get = () =>
+      host({ kind: "request", id: 1, request: { method: "launcher.get" } });
+    const before = get();
+    if (before?.kind !== "response" || before.result.method !== "launcher.get")
+      throw Error("launcher response");
+    expect(
+      host({
+        kind: "request",
+        id: 2,
+        request: {
+          method: "launcher.trigger",
+          id: "unknown",
+          baseRevision: before.result.value.revision,
+        },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+    expect(get()).toEqual(before);
+  });
+  it("accepts only native quick-delay choices and no longer exposes retry mode", () => {
+    const base = {
+      method: "launcher.profile.option",
+      id: "creator",
+      baseRevision: revision,
+    };
+    for (const value of [0, 5, 10, 20, 30, 60])
+      expect(
+        accepts({ ...base, patch: { option: "firstStepDelay", value } }),
+      ).toBe(true);
+    for (const value of [17, 18, 999])
+      expect(
+        accepts({ ...base, patch: { option: "firstStepDelay", value } }),
+      ).toBe(false);
+    expect(
+      accepts({ ...base, patch: { option: "retryFailed", value: true } }),
+    ).toBe(false);
   });
 });

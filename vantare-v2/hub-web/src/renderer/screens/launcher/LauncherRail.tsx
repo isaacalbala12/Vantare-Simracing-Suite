@@ -25,10 +25,11 @@ export function LauncherRail() {
   if (!view) return null;
   return (
     <>
-      {action.failure && (
+      {action.failure && editor.tab === "applications" && (
         <ProfileActionFeedback
           conflict={action.failure.revision !== undefined}
           pending={action.pending}
+          canRetry={action.canRetry}
           onRetry={action.retry}
           onDiscard={action.discard}
         />

@@ -55,8 +55,7 @@
         "retries": 2,
         "failure": "continue",
         "startup": false,
-        "closeOnExit": false,
-        "retryFailed": false
+        "closeOnExit": false
       }
     },
     {
@@ -72,8 +71,7 @@
         "retries": 2,
         "failure": "continue",
         "startup": false,
-        "closeOnExit": false,
-        "retryFailed": false
+        "closeOnExit": false
       }
     }
   ],

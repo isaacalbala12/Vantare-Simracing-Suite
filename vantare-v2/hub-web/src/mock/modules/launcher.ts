@@ -59,7 +59,6 @@ export function create(context: MockContext): MockHandler {
           firstStepDelay: profile.options.firstStepDelay,
           retries: profile.options.retries,
           exit: profile.options.closeOnExit ? "closeStarted" : "leave",
-          retry: profile.options.retryFailed ? "failed" : "ask",
         },
         steps: profile.apps.map((appId, index) => ({
           key: null,
@@ -212,7 +211,6 @@ export function create(context: MockContext): MockHandler {
             failure: request.draft.policy.failure,
             startup: request.draft.startup,
             closeOnExit: request.draft.policy.exit === "closeStarted",
-            retryFailed: request.draft.policy.retry === "failed",
           },
         };
         const existing = launcher.profiles.findIndex(

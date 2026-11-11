@@ -157,3 +157,34 @@ it("accepts the hostile profile name sanitized by Rust in the shared corpus", ()
   expect(sample).toBeDefined();
   expect(isHostMessage(sample)).toBe(true);
 });
+
+it("does not let a signed-out mock bypass access with account.back", () => {
+  const host = createMockHost("acceso-base");
+  expect(host(envelope({ method: "account.back" }))).toMatchObject({
+    kind: "failure",
+    error: { kind: "denied" },
+  });
+  const reply = host(envelope({ method: "account.get" }));
+  expect(reply).toMatchObject({
+    kind: "response",
+    result: {
+      method: "account.get",
+      value: { gate: "choose", session: "signedOut" },
+    },
+  });
+});
+it("lets a known mock session return only from its manual chooser", () => {
+  const host = createMockHost("visual-dark:ajustes-con-diseno");
+  expect(host(envelope({ method: "account.back" }))).toMatchObject({
+    kind: "failure",
+    error: { kind: "denied" },
+  });
+  host(envelope({ method: "account.choose" }));
+  expect(host(envelope({ method: "account.back" }))).toMatchObject({
+    kind: "response",
+    result: {
+      method: "account.back",
+      value: { gate: "none", session: "signedIn" },
+    },
+  });
+});

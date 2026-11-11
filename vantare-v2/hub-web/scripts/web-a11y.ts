@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Locator } from "playwright-core";
 import { checkAccessGate } from "./check-access-gate.ts";
+import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { until } from "./wait-for";
 
@@ -65,6 +66,7 @@ try {
     .getByRole("button", { name: "Abrir diálogo", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
+  await checkNativeAccessLayer(page);
   await dialog.getByRole("combobox", { name: "Esquema del diálogo" }).click();
   const light = page.getByRole("option", { name: "Claro", exact: true });
   await light.click(); // Playwright checks that the option receives the pointer above the modal.

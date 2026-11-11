@@ -24,9 +24,9 @@ export function OtpField({
   }));
   return (
     <div className="v-field v-access-otp-field">
-      <label id={id} htmlFor={slots[0]?.id}>
+      <span id={id} className="v-access-otp-label">
         {label}
-      </label>
+      </span>
       <OTPField.Root
         ref={fieldRef}
         id={`${id}-input`}

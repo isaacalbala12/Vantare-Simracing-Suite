@@ -131,6 +131,13 @@ export function create(context: MockContext): MockHandler {
         current = { ...current, gate: "choose" };
         break;
       case "account.back":
+        if (
+          (current.session !== "signedIn" &&
+            current.session !== "needsSignIn") ||
+          (current.gate !== "choose" &&
+            !(current.gate === "logoutFailed" && current.canReturnAfterLogout))
+        )
+          return fail(id, "denied");
         current = { ...current, gate: "none", email: null };
         break;
       case "account.logout":

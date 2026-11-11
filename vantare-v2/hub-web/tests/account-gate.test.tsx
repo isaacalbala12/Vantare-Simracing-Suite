@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { accountLimits } from "../src/contract/generated/account";
+import { isUiMessage } from "../src/contract/validation";
+import * as mockHost from "../src/mock/host";
 // @vitest-environment jsdom
 
 import { CSPProvider } from "@base-ui/react/csp-provider";
@@ -54,17 +57,37 @@ function SessionActions() {
     </>
   );
 }
-function Content() {
+function LocalDraft() {
+  const [body, setBody] = useState("");
+  const account = useAccount();
+  return (
+    <>
+      <input
+        aria-label="Borrador local"
+        value={body}
+        onChange={(event) => setBody(event.currentTarget.value)}
+      />
+      <button
+        type="button"
+        onClick={() => void account.act({ method: "account.choose" })}
+      >
+        Exigir acceso
+      </button>
+    </>
+  );
+}
+function Content({ draft = false }: { draft?: boolean }) {
   return useHost().hello ? (
     <AccountProvider>
       <AccountGate>
         <h1>Hub</h1>
         <SessionActions />
+        {draft && <LocalDraft />}
       </AccountGate>
     </AccountProvider>
   ) : null;
 }
-function mount(scene = "acceso-base") {
+function mount(scene = "acceso-base", draft = false) {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   const cache = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -76,7 +99,7 @@ function mount(scene = "acceso-base") {
         <CSPProvider disableStyleElements>
           <TooltipProvider>
             <ToastProvider>
-              <Content />
+              <Content draft={draft} />
             </ToastProvider>
           </TooltipProvider>
         </CSPProvider>
@@ -325,7 +348,9 @@ it("keeps an incomplete code and disables verification without sending", async (
   await user.type(first, "123");
   const button = screen.getByRole("button", { name: text.submit.verify });
   expect(button).toHaveProperty("disabled", true);
-  fireEvent.submit(first.closest("form")!);
+  const form = first.closest("form");
+  if (!form) throw new Error("QA form unavailable");
+  fireEvent.submit(form);
   expect(
     calls.mock.calls.filter(
       ([r]) => r.method === "account.email" && r.action.action === "verify",
@@ -447,4 +472,255 @@ it("discards a password before the pending RPC replies and never caches it", asy
   await act(async () => {
     rejectPending?.(new HostFailure({ kind: "busy" }));
   });
+});
+
+function captureConnection() {
+  let connected: Client | undefined;
+  const connect = Client.connect;
+  vi.spyOn(Client, "connect").mockImplementation(async () => {
+    connected = await connect();
+    return connected;
+  });
+  return () => {
+    if (!connected) throw new Error("QA client not ready");
+    return connected;
+  };
+}
+async function passwordForm() {
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  await user.click(
+    screen.getByRole("button", { name: text.modes.signInPassword }),
+  );
+  return {
+    user,
+    password: screen.getByLabelText(text.password) as HTMLInputElement,
+    email: screen.getByLabelText(text.emailLabel) as HTMLInputElement,
+  };
+}
+it("keeps the password when local validation prevents the request leaving", async () => {
+  const calls = intercept(() => undefined);
+  const { user, password } = await passwordForm();
+  const marker = crypto.randomUUID();
+  await user.type(password, marker);
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByText(text.failed);
+  expect(password.value).toBe(marker);
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "begin",
+    ),
+  ).toHaveLength(0);
+});
+it("keeps typed credentials when a closing client rejects before postMessage", async () => {
+  const connection = captureConnection();
+  const sends = vi.spyOn(Client.prototype, "send");
+  const { user, password, email } = await passwordForm();
+  await user.type(email, "qa@example.invalid");
+  const marker = crypto.randomUUID();
+  await user.type(password, marker);
+  act(() => connection().close());
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByText(text.busy);
+  expect(password.value).toBe(marker);
+  expect(email.value).toBe("qa@example.invalid");
+  expect(
+    sends.mock.calls.filter(
+      ([value]) =>
+        value.kind === "request" &&
+        value.request.method === "account.email" &&
+        value.request.action.action === "begin",
+    ),
+  ).toHaveLength(0);
+});
+it("clears a sent password on host Busy, preserves email and returns focus to the password", async () => {
+  intercept((request) =>
+    request.method === "account.email" && request.action.action === "begin"
+      ? Promise.reject(new HostFailure({ kind: "busy" }))
+      : undefined,
+  );
+  const { user, password, email } = await passwordForm();
+  await user.type(email, "qa@example.invalid");
+  await user.type(password, crypto.randomUUID());
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByText(text.reenterPassword);
+  expect(password.value).toBe("");
+  expect(email.value).toBe("qa@example.invalid");
+  await waitFor(() => expect(document.activeElement).toBe(password));
+  expect(password.readOnly).toBe(false);
+});
+it("delivers the real password through MessagePort before clearing it and leaves no browser storage", async () => {
+  const create = mockHost.createMockHost;
+  let received: string | undefined;
+  vi.spyOn(mockHost, "createMockHost").mockImplementation((...args) => {
+    const answer = create(...args);
+    return (value) => {
+      if (
+        isUiMessage(value) &&
+        value.kind === "request" &&
+        value.request.method === "account.email" &&
+        value.request.action.action === "begin"
+      )
+        received = value.request.action.password;
+      return answer(value);
+    };
+  });
+  localStorage.clear();
+  sessionStorage.clear();
+  const { user, password, email } = await passwordForm();
+  const marker = `qa-wire-${crypto.randomUUID()}`;
+  await user.type(email, "qa@example.invalid");
+  await user.type(password, marker);
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByText(text.consent);
+  expect(received).toBe(marker);
+  received = "";
+  expect(password.value).toBe("");
+  expect(localStorage.length).toBe(0);
+  expect(sessionStorage.length).toBe(0);
+});
+it.each(["password", "code"] as const)(
+  "expiry clears %s including detached input nodes",
+  async (kind) => {
+    const connection = captureConnection();
+    const listeners = new Set<Parameters<Client["listen"]>[0]>();
+    const listen = Client.prototype.listen;
+    vi.spyOn(Client.prototype, "listen").mockImplementation(function (
+      this: Client,
+      receive,
+    ) {
+      listeners.add(receive);
+      const dispose = listen.call(this, receive);
+      return () => {
+        listeners.delete(receive);
+        return dispose();
+      };
+    });
+    const user = mount(
+      kind === "password" ? "email-crear-contrasena" : "email-codigo",
+    );
+    const input =
+      kind === "password"
+        ? await screen.findByLabelText(text.password)
+        : await screen.findByRole("textbox", {
+            name: text.codeDigit(1, accountLimits.code),
+          });
+    await user.type(input, kind === "password" ? crypto.randomUUID() : "123");
+    const nodes =
+      kind === "password"
+        ? [input]
+        : within(screen.getByRole("group", { name: text.code })).getAllByRole(
+            "textbox",
+          );
+    const reply = await connection().request({ method: "account.get" });
+    if (reply.method !== "account.get" || !reply.value.email)
+      throw new Error("QA email state unavailable");
+    const value = structuredClone(reply.value);
+    value.email = {
+      ...reply.value.email,
+      stage: "form",
+      restarted: true,
+      message: "El acceso se reinició.",
+    };
+    await act(async () => {
+      for (const receive of listeners)
+        receive({ kind: "event", event: { topic: "account", value } });
+    });
+    for (const node of nodes) expect(node).toHaveProperty("value", "");
+  },
+);
+it("ignores a late response after unmount without leaving credential fields or cached mutations", async () => {
+  const connection = captureConnection();
+  let resolveLate: ((reply: Reply) => void) | undefined;
+  intercept((request) =>
+    request.method === "account.email" && request.action.action === "begin"
+      ? new Promise<Reply>((resolve) => {
+          resolveLate = resolve;
+        })
+      : undefined,
+  );
+  const { user, password, email } = await passwordForm();
+  await user.type(email, "qa@example.invalid");
+  await user.type(password, crypto.randomUUID());
+  const snapshot = await connection().request({ method: "account.get" });
+  if (snapshot.method !== "account.get")
+    throw new Error("QA account unavailable");
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByRole("button", { name: text.submit.waiting });
+  cleanup();
+  await act(async () =>
+    resolveLate?.({
+      method: "account.email",
+      value: {
+        ...snapshot.value,
+        gate: "none",
+        session: "signedIn",
+        email: null,
+      },
+    }),
+  );
+  expect(password.value).toBe("");
+  expect(document.querySelector("[data-access-secret]")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Hub" })).toBeNull();
+  for (const cache of caches)
+    expect(cache.getMutationCache().getAll()).toHaveLength(0);
+});
+it("retains local drafts under an inert Hub while access is shown again", async () => {
+  const user = mount("visual-dark:ajustes-con-diseno", true);
+  const draft = await screen.findByRole("textbox", { name: "Borrador local" });
+  await user.type(draft, "QA: informe sin guardar");
+  await user.click(screen.getByRole("button", { name: "Exigir acceso" }));
+  await screen.findByRole("dialog", { name: text.title });
+  expect(draft.closest("[inert]")).not.toBeNull();
+  expect(draft.closest('[aria-hidden="true"]')).not.toBeNull();
+  const shortcut = vi.fn();
+  window.addEventListener("keydown", shortcut);
+  try {
+    await user.keyboard("{Control>}l{/Control}");
+    expect(shortcut).not.toHaveBeenCalled();
+  } finally {
+    window.removeEventListener("keydown", shortcut);
+  }
+  await user.click(screen.getByRole("button", { name: text.back }));
+  expect(await screen.findByRole("textbox", { name: "Borrador local" })).toBe(
+    draft,
+  );
+  expect(draft).toHaveProperty("value", "QA: informe sin guardar");
+});
+
+it("keeps typed secrets when an existing send blocks another form submission", async () => {
+  let holdMode = false;
+  let rejectMode: ((reason: unknown) => void) | undefined;
+  const calls = intercept((request) =>
+    holdMode &&
+    request.method === "account.email" &&
+    request.action.action === "open"
+      ? new Promise<Reply>((_resolve, reject) => {
+          rejectMode = reject;
+        })
+      : undefined,
+  );
+  const { user, password, email } = await passwordForm();
+  await user.type(email, "qa@example.invalid");
+  const marker = crypto.randomUUID();
+  await user.type(password, marker);
+  holdMode = true;
+  await user.click(screen.getByRole("button", { name: text.modes.signInCode }));
+  await screen.findByRole("button", { name: text.submit.waiting });
+  expect(password.readOnly).toBe(true);
+  const form = password.closest("form");
+  if (!form) throw new Error("QA form unavailable");
+  fireEvent.submit(form);
+  expect(password.value).toBe(marker);
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "begin",
+    ),
+  ).toHaveLength(0);
+  await act(async () => rejectMode?.(new HostFailure({ kind: "busy" })));
+  await screen.findByText(text.busy);
+  expect(password.value).toBe(marker);
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByText(text.consent);
+  expect(password.value).toBe("");
 });

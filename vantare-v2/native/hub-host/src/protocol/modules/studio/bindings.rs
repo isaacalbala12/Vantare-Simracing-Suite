@@ -15,7 +15,7 @@ pub(crate) fn typescript() -> String {
     declare::<StudioView>(&mut text);
     declare::<InstancePatch>(&mut text);
     writeln!(text,"export const studioLimits = {{instances:{},history:{},opacityMin:{},opacityMax:{},id:256}} as const;",INSTANCE_LIMIT,HISTORY_LIMIT,OPACITY_MIN,OPACITY_MAX).expect("limits");
-    text.push_str("export const studioAddAvailable = false as const;\nexport const studioEditOnScreen = false as const;\n");
+    text.push_str("export const studioAddAvailable = true as const;\nexport const studioEditOnScreen = false as const;\n");
     writeln!(
         text,
         "export const studioCatalog = {} as const;",
@@ -28,7 +28,28 @@ pub(crate) fn typescript() -> String {
         .expect("catalog")
     )
     .expect("catalog");
-    writeln!(text,"export const studioKinds = {} as const;",serde_json::to_string(WidgetKind::ALL).expect("kinds")).expect("kinds");
+    writeln!(
+        text,
+        "export const studioKinds = {} as const;",
+        serde_json::to_string(WidgetKind::ALL).expect("kinds")
+    )
+    .expect("kinds");
+    let sizes: std::collections::BTreeMap<_, _> = WidgetKind::ALL
+        .iter()
+        .map(|kind| {
+            let value = crate::widget_defaults::get(kind.id()).expect("generated defaults");
+            (
+                kind.id(),
+                serde_json::json!({"width":value.size.width,"height":value.size.height}),
+            )
+        })
+        .collect();
+    writeln!(
+        text,
+        "export const studioSizes = {} as const;",
+        serde_json::to_string(&sizes).expect("sizes")
+    )
+    .expect("sizes");
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {

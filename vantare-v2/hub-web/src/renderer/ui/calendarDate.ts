@@ -19,11 +19,14 @@ export function datePart(
     [part]: part === "day" ? "numeric" : "short",
     ...(utc ? { timeZone: "UTC" } : {}),
   }).format(at);
-  return value.replace(/\.$/u, "");
+  return value.replace(/\.$/u, "").replace(/^sept$/u, "sep");
 }
 export function weekTitle(at: number, utc: boolean) {
   const last = civilDay(at, 6, utc);
-  return `${datePart(at, "day", utc)}–${datePart(last, "day", utc)} ${datePart(last, "month", utc)}`;
+  const firstMonth = datePart(at, "month", utc),
+    lastMonth = datePart(last, "month", utc);
+  const first = `${datePart(at, "day", utc)}${firstMonth === lastMonth ? "" : ` ${firstMonth}`}`;
+  return `${first}–${datePart(last, "day", utc)} ${lastMonth}`;
 }
 export function clock(at: number, utc: boolean) {
   return new Intl.DateTimeFormat("es", {

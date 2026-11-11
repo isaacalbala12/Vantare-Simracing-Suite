@@ -270,4 +270,16 @@ describe("Studio gallery", () => {
       ).toBe(true),
     );
   });
+  it("can withdraw overlays even when the layout is protected and rights expired", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-protegido-mostrando");
+    const hide = await screen.findByRole("button", { name: t.hide });
+    expect(hide.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(hide);
+    const show = await screen.findByRole("button", { name: t.show });
+    expect(show.hasAttribute("disabled")).toBe(true);
+    expect(
+      requests.mock.calls.find(([r]) => r.method === "studio.track")?.[0],
+    ).toEqual({ method: "studio.track", show: false });
+  });
 });

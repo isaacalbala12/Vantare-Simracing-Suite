@@ -373,7 +373,7 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
           title={t.added}
           actions={
             <Button
-              disabled={state.pending}
+              disabled={state.pending || !view.canUndo}
               onClick={() =>
                 void state.execute({
                   method: "studio.undo",

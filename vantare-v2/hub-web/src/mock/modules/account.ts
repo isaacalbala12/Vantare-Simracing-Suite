@@ -20,10 +20,43 @@ export function create(context: MockContext): MockHandler {
   current = {
     ...current,
     gate: gateScene ? "choose" : "none",
-    session: context.core.access.verified ? "signedIn" : "signedOut",
-    verified: context.core.access.verified,
+    session:
+      !gateScene && context.core.access.verified ? "signedIn" : "signedOut",
+    verified: !gateScene && context.core.access.verified,
     blocked: context.core.access.blocked,
   };
+  if (context.sceneName.startsWith("email-")) {
+    const scene = context.sceneName;
+    current = {
+      ...current,
+      gate: "email",
+      email: {
+        mode:
+          scene === "email-crear-contrasena" ? "signUpPassword" : "signInCode",
+        stage:
+          scene === "email-codigo"
+            ? "code"
+            : scene === "email-consentimiento"
+              ? "consent"
+              : scene === "email-autorizando"
+                ? "authorizing"
+                : "form",
+        restarted: scene === "email-reiniciado",
+        retryAfterSeconds: 0,
+        message:
+          scene === "email-reiniciado"
+            ? "El código ha caducado o el acceso se reinició. Pide otro código para continuar."
+            : scene === "email-crear-contrasena"
+              ? "Esta contraseña apareció en una filtración. Elige una contraseña diferente."
+              : scene === "email-ocupado"
+                ? "Operación en curso"
+                : scene === "email-autorizando"
+                  ? "Esperando la confirmación de Clerk. Puedes volver para cancelar."
+                  : "Ejemplo visual local. Sin conexión con Clerk.",
+      },
+    };
+  }
+  let waiting: number | undefined;
   const fail = (
     id: number,
     kind: "busy" | "accountInvalid" | "coreUnavailable" | "denied",
@@ -49,6 +82,28 @@ export function create(context: MockContext): MockHandler {
       context.sceneName === "acceso-sin-servicios"
     )
       return fail(id, "coreUnavailable");
+    const cancel =
+      request.method === "account.cancel" ||
+      (request.method === "account.email" &&
+        request.action.action === "cancel");
+    if (cancel && waiting !== undefined) {
+      context.emit?.(fail(waiting, "denied"));
+      waiting = undefined;
+      current = { ...current, working: false };
+    }
+    if (
+      context.sceneName === "email-espera" &&
+      request.method === "account.email" &&
+      request.action.action === "begin"
+    ) {
+      waiting = id;
+      current = { ...current, working: true };
+      context.emit?.({
+        kind: "event",
+        event: { topic: "account", value: structuredClone(current) },
+      });
+      return null;
+    }
     switch (request.method) {
       case "account.begin":
         current = {

@@ -1,0 +1,156 @@
+// @vitest-environment jsdom
+
+import { CSPProvider } from "@base-ui/react/csp-provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { Reply, Request } from "../src/contract/generated/contract";
+import { AccountGate } from "../src/renderer/app/AccountGate";
+import { AccountProvider } from "../src/renderer/app/AccountState";
+import { HostProvider, useHost } from "../src/renderer/app/Host";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
+import { accessText as text } from "../src/renderer/i18n/access.es";
+import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
+
+const caches: QueryClient[] = [];
+const original = Client.prototype.request;
+type Intent = Exclude<Request, { method: "window.close" }>;
+function intercept(handle: (request: Intent) => Promise<Reply> | undefined) {
+  return vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request: Intent,
+  ) {
+    return handle(request) ?? original.call(this, request);
+  });
+}
+function Content() {
+  return useHost().hello ? (
+    <AccountProvider>
+      <AccountGate>
+        <h1>Hub</h1>
+      </AccountGate>
+    </AccountProvider>
+  ) : null;
+}
+function mount(scene = "acceso-base") {
+  window.history.replaceState(null, "", `/?escena=${scene}`);
+  const cache = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  caches.push(cache);
+  render(
+    <QueryClientProvider client={cache}>
+      <HostProvider>
+        <CSPProvider disableStyleElements>
+          <TooltipProvider>
+            <ToastProvider>
+              <Content />
+            </ToastProvider>
+          </TooltipProvider>
+        </CSPProvider>
+      </HostProvider>
+    </QueryClientProvider>,
+  );
+  return userEvent.setup();
+}
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+});
+afterEach(() => {
+  cleanup();
+  for (const cache of caches.splice(0)) cache.clear();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/");
+});
+it("requires an explicit intent and keeps Escape from bypassing the signed-out gate", async () => {
+  const calls = intercept(() => undefined);
+  const user = mount();
+  await screen.findByRole("button", { name: text.google });
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("heading", { name: "Hub" })).toBeNull();
+  expect(
+    calls.mock.calls.filter(([r]) => r.method === "account.begin"),
+  ).toHaveLength(0);
+  await user.click(screen.getByRole("button", { name: text.google }));
+  await screen.findByText(text.waitingBrowser);
+  expect(
+    calls.mock.calls.filter(([r]) => r.method === "account.begin"),
+  ).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: text.cancel }));
+  await screen.findByRole("button", { name: text.google });
+});
+it("never automatically retries Busy and offers a manual retry", async () => {
+  let attempts = 0;
+  intercept((r) => {
+    if (r.method === "account.begin") {
+      attempts++;
+      return Promise.reject(new HostFailure({ kind: "busy" }));
+    }
+    return undefined;
+  });
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.google }));
+  await screen.findByText(text.busy);
+  expect(attempts).toBe(1);
+  await user.click(screen.getByRole("button", { name: text.retry }));
+  await waitFor(() => expect(screen.queryByText(text.busy)).toBeNull());
+});
+it("only submits email on explicit submit and clears the password before returning", async () => {
+  const calls = intercept(() => undefined);
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  await user.click(
+    screen.getByRole("button", { name: text.modes.signInPassword }),
+  );
+  await user.type(screen.getByLabelText(text.emailLabel), "qa@example.invalid");
+  const password = screen.getByLabelText(text.password);
+  await user.type(password, "example");
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "begin",
+    ),
+  ).toHaveLength(0);
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByText(text.consent);
+  await user.click(screen.getByRole("button", { name: text.back }));
+  await screen.findByRole("button", { name: text.google });
+  expect((password as HTMLInputElement).value).toBe("");
+});
+it("does not submit a complete six-digit code until the user confirms", async () => {
+  const calls = intercept(() => undefined);
+  const user = mount("email-codigo");
+  const first = await screen.findByRole("textbox", {
+    name: text.code,
+  });
+  await user.type(first, "123456");
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "verify",
+    ),
+  ).toHaveLength(0);
+  await user.click(screen.getByRole("button", { name: text.submit.verify }));
+  await screen.findByText(text.consent);
+  const sent = calls.mock.calls
+    .map(([r]) => r)
+    .find((r) => r.method === "account.email" && r.action.action === "verify");
+  expect(sent).toEqual({
+    method: "account.email",
+    action: { action: "verify", code: "123456" },
+  });
+});
+it("surfaces a failed initial read without a dead end", async () => {
+  intercept((r) =>
+    r.method === "account.get"
+      ? Promise.reject(new HostFailure({ kind: "coreUnavailable" }))
+      : undefined,
+  );
+  mount();
+  await screen.findByText(text.failed);
+  expect(screen.getByRole("button", { name: text.retry })).toBeTruthy();
+});

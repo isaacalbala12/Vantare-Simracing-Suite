@@ -260,7 +260,7 @@ Las escrituras preservan valores admitidos, no el orden de claves ni el formato:
 la configuración aislada de hub-host no activa `serde_json/preserve_order`; al
 reescribir un `Value` sus mapas se ordenan por clave. No se cambia esa feature.
 
-Wire provisional 19: el número definitivo lo asigna el orquestador al aprobar,
-seguido del único rebase/regeneración final. Esta entrega solo modifica UTC,
+Wire 18 tras aprobar el delta y rebasar una sola vez sobre nightly ca106aee5
+(v17), tomando la versión siguiente que tenía esa base en ese momento. Esta entrega solo modifica UTC,
 seguimiento y `notifyWeek`; editor de avisos, ICS y feed van aparte. Lanzamiento
 diferido pendiente en #2089. Sin cambios en IPC, services, runtime o derechos.

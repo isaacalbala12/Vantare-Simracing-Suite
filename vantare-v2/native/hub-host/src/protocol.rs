@@ -7,7 +7,7 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 include!(concat!(env!("OUT_DIR"), "/wire.rs"));
-pub const VERSION: u32 = 17;
+pub const VERSION: u32 = 18;
 pub const DEMO_NAME_LIMIT: usize = 128;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

@@ -456,6 +456,7 @@ function ShellContent() {
                 </Button>
                 <Button
                   variant="ghost"
+                  className="v-account-link"
                   aria-label={accountText.title}
                   aria-current={ui.section === "account" ? "page" : undefined}
                   onClick={() => navigate("account")}

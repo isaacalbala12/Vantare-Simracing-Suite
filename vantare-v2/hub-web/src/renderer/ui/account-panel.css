@@ -35,6 +35,7 @@
   height: 64px;
   font-size: 26px;
   font-weight: 750;
+  background: linear-gradient(160deg, var(--surface-2), var(--bg-base));
 }
 .v-account-identity {
   display: flex;
@@ -49,6 +50,7 @@
   font-size: 32px;
   font-weight: 600;
   line-height: 36px;
+  transform: translateY(-2px);
 }
 .v-account-identity > p {
   font-size: 12.5px;
@@ -98,7 +100,7 @@
 .v-account-card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
   padding: 20px;
   border: 1px solid var(--line-1);
@@ -110,11 +112,11 @@
 }
 .v-account-card h2 {
   margin: 0;
-  font: 600 16px / 24px var(--font-sans);
+  font: 600 16px / 28px var(--font-sans);
 }
 .v-account-card > p {
   font-size: 13px;
-  line-height: 19.5px;
+  line-height: 20.5px;
   color: var(--text-2);
 }
 .v-account-overview {
@@ -134,7 +136,7 @@
 .v-account-founders {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 9px;
 }
 .v-account-founders > strong {
   font-size: 14px;
@@ -150,6 +152,7 @@
   color: var(--text-3);
 }
 .v-account-founders > div {
+  margin-top: -2px;
   display: flex;
   gap: 6px;
 }
@@ -164,8 +167,8 @@
   color: var(--text-2);
 }
 .v-account-card-title > .v-icon {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 .v-account-module {
   display: flex;
@@ -281,7 +284,12 @@
 .v-account-rail i.is-active {
   background: var(--ok);
 }
+.v-account-rail .v-rail-block:first-child .v-account-meta {
+  height: 11px;
+}
 .v-account-device {
+  width: 100%;
+  min-height: 65px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -359,4 +367,17 @@
     font-size: 26px;
     line-height: 30px;
   }
+}
+
+.v-account-page .v-button--sm,
+.v-account-rail .v-button--sm {
+  font: 600 12px / 18px var(--font-sans);
+  border-color: var(--line-1);
+  background: transparent;
+  color: var(--text-2);
+}
+.v-sidebar--collapsed .v-sidebar-footer .v-account-link[aria-current="page"] {
+  background: var(--bg-sidebar);
+  border-color: var(--line-2);
+  border-radius: 10px;
 }

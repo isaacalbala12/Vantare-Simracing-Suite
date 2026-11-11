@@ -84,7 +84,8 @@ function useReportsState() {
   const askCloseWithoutSave = useCallback(() => {
     if (JSON.stringify(state.current.fields) !== state.current.saved)
       setCloseConfirmation(true);
-  }, []);
+    else client?.closeWindow();
+  }, [client]);
   function request(request: Exclude<Request, { method: "window.close" }>) {
     const epoch = generation.current;
     const signal = cancellation.current.signal;

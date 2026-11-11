@@ -563,3 +563,26 @@ it("does not override another section's veto or retain permission for a later cl
     "Último texto todavía sin guardar",
   );
 });
+
+it("closes normally if a veto notice is clicked after the draft was saved", async () => {
+  const hook = await mount();
+  act(() =>
+    hook.result.current.edit({ actionText: "Guardado después del aviso" }),
+  );
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  await act(async () => {
+    await hook.result.current.save();
+  });
+  const sent = vi.spyOn(hook.connection, "send");
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  await waitFor(() =>
+    expect(
+      sent.mock.calls.some(
+        ([message]) => message.kind === "closeAnswer" && message.allow,
+      ),
+    ).toBe(true),
+  );
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});

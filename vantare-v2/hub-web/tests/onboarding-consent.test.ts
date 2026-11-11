@@ -111,3 +111,20 @@ it("keeps the durable choice from cleanup failures and never offers escape for c
     }),
   ).toBe(false);
 });
+
+it("does not arm private exit on a read failure before any write", async () => {
+  const writeFailure = vi.fn();
+  const request = vi
+    .fn<(request: Request) => Promise<Reply>>()
+    .mockRejectedValue(new HostFailure({ kind: "io" }));
+  await expect(
+    saveConsents(
+      { request },
+      { crashes: false, usage: false },
+      vi.fn(),
+      writeFailure,
+    ),
+  ).rejects.toBeInstanceOf(HostFailure);
+  expect(writeFailure).not.toHaveBeenCalled();
+  expect(request.mock.calls).toEqual([[{ method: "privacy.get" }]]);
+});

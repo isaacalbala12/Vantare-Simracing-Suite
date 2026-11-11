@@ -47,3 +47,37 @@ export const onboardingText = {
   helmet: "Vanta",
   assistantCaption: "VANTA · ASISTENTE DE CONFIGURACIÓN",
 };
+
+export const onboardingChoicesText = {
+  simulators: [
+    { id: 0, abbr: "LMU", name: "Le Mans Ultimate" },
+    { id: 1, abbr: "ACC", name: "Assetto Corsa Competizione" },
+  ],
+  styles: [
+    {
+      id: 0,
+      name: "Carreras online",
+      description: "Servidores públicos y ránking",
+    },
+    {
+      id: 1,
+      name: "Ligas",
+      description: "Campeonatos con tus rivales de siempre",
+    },
+    {
+      id: 2,
+      name: "Resistencia",
+      description: "Carreras largas, relevos y combustible",
+    },
+    { id: 3, name: "Streaming", description: "Emites en Twitch o YouTube" },
+  ],
+  found: "ENCONTRADO",
+  missing: "NO ENCONTRADO",
+  library: "En tu biblioteca",
+  installLater: "Márcalo si lo vas a instalar",
+  check: "✓",
+  radarLmu: "Le Mans Ultimate",
+  radarAcc: "ACC",
+  added: "AÑADIDO",
+  computer: "TU PC",
+} as const;

@@ -1,0 +1,93 @@
+use super::*;
+fn response(pipe: &mut Pipe) -> HostToUi {
+    pipe.set_position(0);
+    frame::Reader::default().next(pipe).unwrap().unwrap()
+}
+#[test]
+fn calendar_permission_prevents_reads_and_remote_requests() {
+    let fixture = Fixture::new();
+    let mut s = fixture.session();
+    let mut pipe = Pipe::new(Vec::new());
+    s.current.access.verified = true;
+    s.current.access.tester = true;
+    s.request(&mut pipe, 4, &Request::CalendarLoad {}).unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 4,
+            error: HostError::Denied
+        }
+    );
+    assert_eq!(s.core.requests, 0);
+}
+#[test]
+fn calendar_load_is_read_only_and_refresh_distinguishes_busy_and_transport() {
+    let fixture = Fixture::new();
+    let mut s = fixture.session();
+    s.current.access.verified = true;
+    s.current.access.calendar = true;
+    let mut pipe = Pipe::new(Vec::new());
+    s.request(&mut pipe, 5, &Request::CalendarLoad {}).unwrap();
+    assert!(matches!(
+        response(&mut pipe),
+        HostToUi::Response {
+            id: 5,
+            result: Reply::CalendarLoad { .. }
+        }
+    ));
+    assert!(!fixture.0.join("hub/official-schedule.json").exists());
+    for (busy, error) in [(false, HostError::CoreUnavailable), (true, HostError::Busy)] {
+        s.core.busy = busy;
+        let mut pipe = Pipe::new(Vec::new());
+        s.request(&mut pipe, 6, &Request::CalendarRefresh {})
+            .unwrap();
+        assert_eq!(response(&mut pipe), HostToUi::Failure { id: 6, error });
+    }
+}
+
+#[test]
+fn calendar_completion_checks_permission_family_and_request_identity() {
+    let fixture = Fixture::new();
+    let mut s = fixture.session();
+    s.current.access.verified = true;
+    s.current.access.calendar = true;
+    let reply = || {
+        Ok(vantare_ipc::services_protocol::Reply::Calendar {
+            schedule: None,
+            fallback: None,
+        })
+    };
+    assert!(matches!(
+        super::calendar::complete(&mut s, Some((7, RemoteKind::CalendarRefresh)), 7, reply()),
+        Ok(Reply::CalendarRefresh { .. })
+    ));
+    assert_eq!(
+        super::calendar::complete(&mut s, Some((7, RemoteKind::CalendarRefresh)), 8, reply()),
+        Err(HostError::Rejected)
+    );
+    assert_eq!(
+        super::calendar::complete(
+            &mut s,
+            Some((7, RemoteKind::CalendarRefresh)),
+            7,
+            Ok(vantare_ipc::services_protocol::Reply::Error {
+                message: "private service detail".into()
+            })
+        ),
+        Err(HostError::Rejected)
+    );
+    assert_eq!(
+        super::calendar::complete(
+            &mut s,
+            Some((7, RemoteKind::CalendarRefresh)),
+            7,
+            Err(HostError::CoreUnavailable)
+        ),
+        Err(HostError::CoreUnavailable)
+    );
+    s.current.access.calendar = false;
+    assert_eq!(
+        super::calendar::complete(&mut s, Some((7, RemoteKind::CalendarRefresh)), 7, reply()),
+        Err(HostError::Denied)
+    );
+}

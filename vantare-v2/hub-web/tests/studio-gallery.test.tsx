@@ -639,6 +639,9 @@ describe("Studio gallery", () => {
         ([request]) => request.method === "studio.instance",
       ),
     ).toHaveLength(1);
+    await user.tab();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(slider);
     if (!settle) throw new Error("Missing pending request");
     const finish = settle;
     await act(async () => {

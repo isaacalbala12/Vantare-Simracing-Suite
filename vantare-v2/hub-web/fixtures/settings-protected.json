@@ -29,6 +29,7 @@
   "track": {
     "level": "balanced",
     "customized": false,
+    "customWidgets": 0,
     "hideOffTrack": false,
     "protected": false,
     "exists": false

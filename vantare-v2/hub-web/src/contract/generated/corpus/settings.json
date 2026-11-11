@@ -31,6 +31,7 @@
             "supported": false
           },
           "track": {
+            "customWidgets": 0,
             "customized": false,
             "exists": false,
             "hideOffTrack": false,
@@ -74,6 +75,7 @@
             "supported": false
           },
           "track": {
+            "customWidgets": 0,
             "customized": false,
             "exists": false,
             "hideOffTrack": false,
@@ -117,6 +119,7 @@
             "supported": false
           },
           "track": {
+            "customWidgets": 0,
             "customized": false,
             "exists": false,
             "hideOffTrack": false,
@@ -160,6 +163,7 @@
             "supported": false
           },
           "track": {
+            "customWidgets": 0,
             "customized": false,
             "exists": false,
             "hideOffTrack": false,
@@ -200,6 +204,7 @@
             "supported": false
           },
           "track": {
+            "customWidgets": 0,
             "customized": false,
             "exists": false,
             "hideOffTrack": false,

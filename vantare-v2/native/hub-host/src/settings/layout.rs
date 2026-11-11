@@ -137,13 +137,14 @@ impl Document {
             .get("level")
             .and_then(|v| serde_json::from_str(v.get()).ok())
             .unwrap_or_default();
-        let customized = performance.0.get("widgets").is_some_and(|v| {
-            serde_json::from_str::<BTreeMap<String, u16>>(v.get()).is_ok_and(|v| !v.is_empty())
+        let custom_widgets = performance.0.get("widgets").map_or(0, |v| {
+            serde_json::from_str::<BTreeMap<String, u16>>(v.get()).map_or(0, |v| v.len())
         });
         TrackView {
             exists: self.observed.is_some(),
             level,
-            customized,
+            customized: custom_widgets > 0,
+            custom_widgets,
             hide_off_track: self.hide().expect("validated visibility"),
             protected: false,
         }

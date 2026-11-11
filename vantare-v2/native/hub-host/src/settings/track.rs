@@ -33,6 +33,7 @@ pub struct TrackView {
     pub exists: bool,
     pub level: PerformanceLevel,
     pub customized: bool,
+    pub custom_widgets: usize,
     pub hide_off_track: bool,
     pub protected: bool,
 }

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import scene from "../fixtures/ajustes-base.json";
 import status from "../fixtures/core-offline.json";
 import settings from "../fixtures/settings-base.json";
-import { pilotLimits } from "../src/contract/generated/contract";
+import {
+  maxWidgetOverrides,
+  pilotLimits,
+} from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
 import { isSettings } from "../src/contract/settings-validation";
 import {
@@ -245,5 +248,44 @@ describe("pilot closed boundary", () => {
       { ...fields, photo: "http://example.test/photo" },
     ])
       expect(isUiMessage(request(invalid))).toBe(false);
+  });
+});
+
+describe("track customization projection", () => {
+  it("validates the bounded count and its customized flag together", () => {
+    for (const count of [0, 1, maxWidgetOverrides]) {
+      expect(
+        isSettings({
+          ...settings,
+          track: {
+            ...settings.track,
+            customWidgets: count,
+            customized: count > 0,
+          },
+        }),
+      ).toBe(true);
+    }
+    for (const count of [-1, 0.5, maxWidgetOverrides + 1, "1", null]) {
+      expect(
+        isSettings({
+          ...settings,
+          track: { ...settings.track, customWidgets: count },
+        }),
+      ).toBe(false);
+    }
+    expect(
+      isSettings({
+        ...settings,
+        track: { ...settings.track, customWidgets: 1, customized: false },
+      }),
+    ).toBe(false);
+    expect(
+      isSettings({
+        ...settings,
+        track: { ...settings.track, customWidgets: 0, customized: true },
+      }),
+    ).toBe(false);
+    const { customWidgets: _count, ...track } = settings.track;
+    expect(isSettings({ ...settings, track })).toBe(false);
   });
 });

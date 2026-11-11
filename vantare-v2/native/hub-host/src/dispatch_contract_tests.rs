@@ -253,7 +253,10 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
     assert_eq!(session.launcher_resident_state.io_counts(), (0, 0));
     pipe.set_position(0);
     assert_eq!(
-        frame::Reader::default().next(&mut pipe).unwrap().unwrap(),
+        frame::Reader::default()
+            .next::<HostToUi>(&mut pipe)
+            .unwrap()
+            .unwrap(),
         HostToUi::Response {
             id: 41,
             result: Reply::LauncherResidentGet {
@@ -267,7 +270,10 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
     launcher_resident::subscribe(&mut session, &mut pipe, Topic::LauncherResident).unwrap();
     pipe.set_position(0);
     assert!(matches!(
-        frame::Reader::default().next(&mut pipe).unwrap().unwrap(),
+        frame::Reader::default()
+            .next::<HostToUi>(&mut pipe)
+            .unwrap()
+            .unwrap(),
         HostToUi::Event {
             event: Event::LauncherResident { .. }
         }

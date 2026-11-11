@@ -41,7 +41,7 @@ impl Cache {
                 Ok(None) => {}
                 Ok(Some(bytes)) => match Document::from_bytes(&bytes) {
                     Ok(document) => {
-                        self.profiles = crate::shortcuts::project(&document, None).profiles
+                        self.profiles = crate::shortcuts::project(&document, None).profiles;
                     }
                     Err(_) => self.protected = true,
                 },

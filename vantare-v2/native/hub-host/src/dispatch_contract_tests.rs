@@ -168,3 +168,6 @@ fn local_report_dispatch_denies_unverified_and_blocked_accounts_without_services
 
 #[path = "testing_deferred_tests.rs"]
 mod testing_deferred_tests;
+
+#[path = "protocol/modules/calendar/dispatch_tests.rs"]
+mod calendar_dispatch_tests;

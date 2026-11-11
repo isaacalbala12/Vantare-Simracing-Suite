@@ -1,0 +1,671 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.load",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.refresh",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": {
+            "series": [
+              {
+                "assists": "High assists allowed",
+                "classes": [
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 31,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "beginner-lmgt3-fixed",
+                "licenseLabel": "Bronze SR",
+                "name": "LMGT3 Fixed",
+                "notes": [],
+                "raceDurationMin": 20,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 15,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 20,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "fixed",
+                "source": "",
+                "splits": 20,
+                "startOffsetMinute": 0,
+                "tier": "beginner",
+                "track": "Sebring (WEC)",
+                "tyreWarmers": true,
+                "tyres": 8,
+                "veLimit": null,
+                "vehicleClass": "LMGT3 Class"
+              },
+              {
+                "assists": "High assists allowed",
+                "classes": [
+                  {
+                    "name": "LMP3"
+                  }
+                ],
+                "eventDurationMin": 31,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "beginner-lmp3-fixed",
+                "licenseLabel": "Bronze SR",
+                "name": "LMP3 Fixed",
+                "notes": [],
+                "raceDurationMin": 20,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 15,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 20,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "fixed",
+                "source": "",
+                "splits": 20,
+                "startOffsetMinute": 0,
+                "tier": "beginner",
+                "track": "Spa-Francorchamps (WEC)",
+                "tyreWarmers": true,
+                "tyres": 8,
+                "veLimit": null,
+                "vehicleClass": "LMP3 Class"
+              },
+              {
+                "assists": "High assists allowed",
+                "classes": [
+                  {
+                    "name": "McLaren 720S LMGT3"
+                  }
+                ],
+                "eventDurationMin": 26,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "beginner-logitech-mclaren-g-challenge-q1",
+                "licenseLabel": "Bronze SR",
+                "name": "Logitech McLaren G Challenge - Q1",
+                "notes": [],
+                "raceDurationMin": 15,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 15,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 15,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "fixed",
+                "source": "",
+                "splits": 20,
+                "startOffsetMinute": 0,
+                "tier": "beginner",
+                "track": "Portimao (WEC)",
+                "tyreWarmers": true,
+                "tyres": 8,
+                "veLimit": null,
+                "vehicleClass": "McLaren 720S LMGT3"
+              },
+              {
+                "assists": "Low assists allowed",
+                "classes": [
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 41,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "intermediate-lmgt3-sprint",
+                "licenseLabel": "Silver SR",
+                "name": "LMGT3 Sprint Cup",
+                "notes": [],
+                "raceDurationMin": 30,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 20,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 30,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "intermediate",
+                "track": "Interlagos (WEC)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": null,
+                "vehicleClass": "LMGT3 Class"
+              },
+              {
+                "assists": "Low assists allowed",
+                "classes": [
+                  {
+                    "name": "LMP2"
+                  },
+                  {
+                    "name": "LMP3"
+                  }
+                ],
+                "eventDurationMin": 41,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "intermediate-prototype-fixed",
+                "licenseLabel": "Silver SR",
+                "name": "Prototype Fixed",
+                "notes": [],
+                "raceDurationMin": 30,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 20,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 30,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "fixed",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "intermediate",
+                "track": "Silverstone (National)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": null,
+                "vehicleClass": "LMP2 (ELMS) & LMP3 Classes"
+              },
+              {
+                "assists": "Low assists allowed",
+                "classes": [
+                  {
+                    "name": "LMP2"
+                  },
+                  {
+                    "name": "LMP3"
+                  },
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 41,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "intermediate-elms-sprint",
+                "licenseLabel": "Silver SR",
+                "name": "ELMS Sprint Trophy",
+                "notes": [],
+                "raceDurationMin": 30,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 20,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 30,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "intermediate",
+                "track": "Qatar (Short)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": null,
+                "vehicleClass": "LMP2 (ELMS) LMP3 & LMGT3 Classes"
+              },
+              {
+                "assists": "No assists allowed",
+                "classes": [
+                  {
+                    "name": "Hypercar"
+                  },
+                  {
+                    "name": "LMP2"
+                  },
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 51,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "advanced-one-stint-sprint",
+                "licenseLabel": "Gold SR",
+                "name": "One Stint Sprint",
+                "notes": [],
+                "raceDurationMin": 40,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 30,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 3,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 8,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 40,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "advanced",
+                "track": "Le Mans (WEC)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": null,
+                "vehicleClass": "Hypercar LMP2 (WEC) & LMGT3 Classes"
+              },
+              {
+                "assists": "No assists allowed",
+                "classes": [
+                  {
+                    "name": "LMP2"
+                  },
+                  {
+                    "name": "LMP3"
+                  },
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 75,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "advanced-elms-super-60",
+                "licenseLabel": "Gold SR",
+                "name": "ELMS Super 60",
+                "notes": [],
+                "raceDurationMin": 60,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 30,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 5,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 10,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 60,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "advanced",
+                "track": "Imola (ELMS)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": 70,
+                "vehicleClass": "LMP2 (ELMS) (70L fuel tank) LMP3 (70L fuel tank ) & LMGT3 (70% VE/NRG) Classes"
+              },
+              {
+                "assists": "No assists allowed",
+                "classes": [
+                  {
+                    "name": "Hypercar"
+                  },
+                  {
+                    "name": "LMP2"
+                  },
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 75,
+                "eventKind": "daily",
+                "format": "solo",
+                "id": "advanced-wec-xperience",
+                "licenseLabel": "Gold SR",
+                "name": "WEC-Xperience",
+                "notes": [],
+                "raceDurationMin": 60,
+                "recurrence": {
+                  "days": [],
+                  "intervalMinutes": 30,
+                  "kind": "interval",
+                  "timesUTC": []
+                },
+                "safetyRating": "",
+                "sessions": [
+                  {
+                    "durationMin": 5,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 10,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 60,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "advanced",
+                "track": "Road Atlanta (RC)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": 70,
+                "vehicleClass": "Hypercar LMP2 (WEC) & LMGT3 classes"
+              },
+              {
+                "assists": "",
+                "classes": [
+                  {
+                    "name": "Hypercar"
+                  },
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 115,
+                "eventKind": "weekly",
+                "format": "solo",
+                "id": "weekly-wec-weekly",
+                "licenseLabel": "",
+                "name": "WEC Weekly",
+                "notes": [],
+                "raceDurationMin": 100,
+                "recurrence": {
+                  "days": [
+                    "Tue",
+                    "Wed",
+                    "Thu"
+                  ],
+                  "intervalMinutes": 0,
+                  "kind": "weekly-slots",
+                  "timesUTC": [
+                    "02:00",
+                    "06:00",
+                    "09:00",
+                    "12:00",
+                    "15:00",
+                    "18:00",
+                    "20:00",
+                    "23:00"
+                  ]
+                },
+                "safetyRating": "SR S2",
+                "sessions": [
+                  {
+                    "durationMin": 5,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 10,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 100,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 38,
+                "startOffsetMinute": 0,
+                "tier": "weekly",
+                "track": "Sebring (WEC)",
+                "tyreWarmers": false,
+                "tyres": 10,
+                "veLimit": null,
+                "vehicleClass": "Hypercar & LMGT3 Classes"
+              },
+              {
+                "assists": "",
+                "classes": [
+                  {
+                    "name": "Hypercar"
+                  },
+                  {
+                    "name": "LMP2"
+                  },
+                  {
+                    "name": "LMGT3"
+                  }
+                ],
+                "eventDurationMin": 615,
+                "eventKind": "special",
+                "format": "team",
+                "id": "weekly-10-hours-of-road-atlanta",
+                "licenseLabel": "",
+                "name": "10 Hours of Road Atlanta",
+                "notes": [
+                  "If you are taking part in any races this week, add the following to your launch options: +tracerudp=3"
+                ],
+                "raceDurationMin": 600,
+                "recurrence": {
+                  "days": [
+                    "Fri",
+                    "Sat",
+                    "Sun"
+                  ],
+                  "intervalMinutes": 0,
+                  "kind": "weekly-slots",
+                  "timesUTC": [
+                    "02:00",
+                    "09:00",
+                    "15:00",
+                    "21:00"
+                  ]
+                },
+                "safetyRating": "Player SR B2",
+                "sessions": [
+                  {
+                    "durationMin": 5,
+                    "estimated": true,
+                    "name": "practice"
+                  },
+                  {
+                    "durationMin": 10,
+                    "estimated": true,
+                    "name": "qualifying"
+                  },
+                  {
+                    "durationMin": 600,
+                    "estimated": false,
+                    "name": "race"
+                  }
+                ],
+                "setup": "open",
+                "source": "",
+                "splits": 54,
+                "startOffsetMinute": 0,
+                "tier": "weekly",
+                "track": "Road Atlanta (RC)",
+                "tyreWarmers": false,
+                "tyres": 32,
+                "veLimit": null,
+                "vehicleClass": "Hypercar LMP2 (WEC) & LMGT3 classes"
+              }
+            ],
+            "timezone": "UTC",
+            "validFrom": "2026-10-06T00:00:00Z",
+            "validUntil": "2026-10-13T00:00:00Z",
+            "version": 1
+          },
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "calendar.load"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "calendar.refresh"
+      }
+    }
+  ]
+}

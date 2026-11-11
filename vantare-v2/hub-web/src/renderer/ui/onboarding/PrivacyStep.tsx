@@ -67,20 +67,21 @@ export function PrivacyStep({
   onUsage: (value: boolean) => void;
   onPolicy: () => void;
 }) {
+  if (protectedFile)
+    return (
+      <div className="v-ob-consent" role="status">
+        <p>{onboardingSummaryText.privacyProtected}</p>
+        <Button
+          className="v-ob-button v-ob-button--primary"
+          disabled={pending}
+          onClick={onContinueProtected}
+        >
+          {privacyGateText.skip}
+        </Button>
+      </div>
+    );
   return (
     <div className="v-ob-consent">
-      {protectedFile && (
-        <div role="status">
-          <p>{onboardingSummaryText.privacyProtected}</p>
-          <Button
-            className="v-ob-button v-ob-button--primary"
-            disabled={pending}
-            onClick={onContinueProtected}
-          >
-            {privacyGateText.skip}
-          </Button>
-        </div>
-      )}
       <ConsentCard
         label={text.crashes}
         hint={text.crashesHint}

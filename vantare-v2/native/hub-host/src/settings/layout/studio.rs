@@ -83,6 +83,13 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     if id.is_empty() || id.len() > ID_LIMIT || id.contains('\0') {
         return Err(HostError::Protected);
     }
+    // Required native coordinates are validated, but never projected or edited.
+    for axis in ["x", "y"] {
+        let value: f64 = read(fields, axis)?;
+        if !value.is_finite() || value.abs() > f64::from(f32::MAX) {
+            return Err(HostError::Protected);
+        }
+    }
     let settings: Fields = read(fields, "settings")?;
     let kind: WidgetKind = read(&settings, "kind")?;
     let opacity: f64 = optional(fields, "opacity", 1.0)?;

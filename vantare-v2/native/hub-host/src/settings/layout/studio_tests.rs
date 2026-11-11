@@ -42,6 +42,9 @@ fn malformed_missing_future_and_duplicate_layouts_are_protected_without_writes()
         None,
         Some(b"{".as_slice()),
         Some(br#"{"version":999,"instances":[]}"#.as_slice()),
+        Some(br#"{"version":1,"instances":[{"id":"x","settings":{"kind":"standings"}}]}"#.as_slice()),
+        Some(br#"{"version":1,"instances":[{"id":"x","x":"bad","y":0,"settings":{"kind":"standings"}}]}"#.as_slice()),
+        Some(br#"{"version":1,"instances":[{"id":"x","x":1e100,"y":0,"settings":{"kind":"standings"}}]}"#.as_slice()),
         Some(br#"{"version":1,"version":1,"instances":[]}"#.as_slice()),
     ] {
         let root = crate::test_support::Root::new();

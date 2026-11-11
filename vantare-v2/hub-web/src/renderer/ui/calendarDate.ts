@@ -71,3 +71,12 @@ export function dayHours(at: number, utc: boolean) {
   }
   return hours;
 }
+
+export function hourColumns(at: number, utc: boolean) {
+  const columns = Array.from(
+    { length: 24 },
+    () => [] as ReturnType<typeof dayHours>,
+  );
+  for (const hour of dayHours(at, utc)) columns[hour.hour].push(hour);
+  return columns;
+}

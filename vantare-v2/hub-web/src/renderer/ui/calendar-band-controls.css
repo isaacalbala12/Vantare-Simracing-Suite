@@ -1,0 +1,74 @@
+.v-calendar-band-box {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+.v-calendar-band-box[data-enabled] {
+  border-color: var(--hero-ring);
+  background: var(--accent-tint);
+}
+.v-calendar-band-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-calendar-band-title > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--accent-bright);
+}
+.v-calendar-band-title > div {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-band-title strong {
+  display: block;
+  font: 600 13px / 17px var(--font-sans);
+}
+.v-calendar-band-title p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-band-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.v-calendar-band-row > span {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.v-calendar-band-row .v-segmented {
+  padding: 2px;
+  gap: 0;
+  border-radius: 8px;
+}
+.v-calendar-band-row .v-segmented button {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.v-calendar-band-row .v-button.v-calendar-band-time {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  background: var(--surface-1);
+  font: 600 12.5px / 16px var(--font-mono);
+}
+
+.v-calendar-band-title > .v-switch-field {
+  flex: none;
+  display: flex;
+  align-items: center;
+}

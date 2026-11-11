@@ -624,3 +624,32 @@
   background: var(--grad-button);
   color: var(--text-on-accent);
 }
+
+.v-calendar-favorites-filter,
+.v-calendar-tier-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.v-calendar-favorites-filter svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+/* Frozen GPUI calendar/ui/proximas.rs:26-32, tier_dot_color. */
+.v-calendar-tier-filter i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+  background: var(--accent);
+}
+.v-calendar-tier-filter i[data-tier="beginner"] {
+  background: var(--calendar-filter-beginner);
+}
+.v-calendar-tier-filter i[data-tier="intermediate"] {
+  background: var(--calendar-filter-intermediate);
+}
+.v-calendar-tier-filter i[data-tier="advanced"] {
+  background: var(--calendar-filter-advanced);
+}

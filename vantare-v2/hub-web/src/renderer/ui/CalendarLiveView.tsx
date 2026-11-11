@@ -9,14 +9,14 @@ import { calendarText as text } from "../i18n/calendar";
 import {
   alertAt,
   board,
-  daily,
   nextRace,
   raceMinutes,
 } from "../screens/calendar/rows";
 import { Button, IconButton } from "./Button";
-import { clock } from "./calendarDate";
+import { CalendarFilters } from "./CalendarFilters";
+import { civilDay, clock, datePart } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
-import { SearchInput, Segmented, Select } from "./Forms";
+import { SearchInput, Select } from "./Forms";
 import "./calendar-live.css";
 
 function classLabel(value: string) {
@@ -90,6 +90,26 @@ export function CalendarLiveView({
     const s = row.series,
       hasAlert =
         row.next !== undefined && alertAt(schedule, s, row.next, alerts, limit);
+    const visibleStarts = row.starts.filter(
+      (at) =>
+        at - (now - 10 * 60_000) > 5.5 * 60_000 &&
+        now + 90 * 60_000 - at > 5.5 * 60_000,
+    );
+    const future = visibleStarts.some((at) => at >= now);
+    const nextDay =
+      row.next === undefined
+        ? ""
+        : civilDay(row.next, 0, utc) === civilDay(now, 0, utc)
+          ? text.today
+          : civilDay(row.next, 0, utc) === civilDay(now, 1, utc)
+            ? text.tomorrow
+            : `${datePart(row.next, "weekday", utc)} ${datePart(row.next, "day", utc)}`;
+    const tag =
+      s.eventKind === "special"
+        ? text.weekendSlots
+        : s.eventKind === "weekly"
+          ? text.weekdaySlots
+          : "";
     return (
       <div
         className="v-calendar-live-row"
@@ -153,48 +173,45 @@ export function CalendarLiveView({
         </div>
         <div className="v-calendar-live-line">
           <i className="v-calendar-now" />
-          {row.starts
-            .filter(
-              (at) =>
-                at - (now - 10 * 60_000) > 5.5 * 60_000 &&
-                now + 90 * 60_000 - at > 5.5 * 60_000,
-            )
-            .map((at) => (
-              <button
-                type="button"
-                key={at}
-                className="v-calendar-time"
-                data-next={row.next === at || undefined}
-                data-gone={at < now || undefined}
-                data-alert={
-                  (alerts.bands.some((band) => band.seriesId === s.id)
-                    ? (row.next === at &&
-                        alertAt(schedule, s, at, alerts, limit)) ||
-                      alerts.slots.some(
-                        (slot) =>
-                          slot.seriesId === s.id && slot.at * 1000 === at,
-                      )
-                    : alertAt(schedule, s, at, alerts, limit)) || undefined
-                }
-                style={{
-                  left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
-                }}
-                disabled={!onDetail}
-                onClick={() => onDetail?.(s.id, at)}
-              >
-                {clock(at, utc)}
-              </button>
-            ))}
-          {!row.starts.length && !daily(s) && (
+          {visibleStarts.map((at) => (
+            <button
+              type="button"
+              key={at}
+              className="v-calendar-time"
+              data-next={row.next === at || undefined}
+              data-gone={at < now || undefined}
+              data-alert={
+                (alerts.bands.some((band) => band.seriesId === s.id)
+                  ? (row.next === at &&
+                      alertAt(schedule, s, at, alerts, limit)) ||
+                    alerts.slots.some(
+                      (slot) => slot.seriesId === s.id && slot.at * 1000 === at,
+                    )
+                  : alertAt(schedule, s, at, alerts, limit)) || undefined
+              }
+              style={{
+                left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
+              }}
+              disabled={!onDetail}
+              onClick={() => onDetail?.(s.id, at)}
+            >
+              {clock(at, utc)}
+            </button>
+          ))}
+          {!future && row.next !== undefined && (
             <button
               type="button"
               className="v-calendar-event-range"
               disabled={!onDetail}
               onClick={() => onDetail?.(s.id)}
             >
-              {s.track.split(" (")[0]}
-              {text.separator}
-              {text.weekendSlots}
+              {nextDay} {clock(row.next, utc)}
+              {tag && (
+                <>
+                  {text.separator}
+                  {tag}
+                </>
+              )}
               <Icon name="down" />
             </button>
           )}
@@ -317,31 +334,19 @@ export function CalendarLiveView({
         <div className="v-calendar-live-tools">
           <div className="v-calendar-board-caption">
             <strong>{text.departures}</strong>
-            <span>{text.slotsNext90}</span>
+            <span>
+              {text.slotsNext90}
+              {text.separator}
+              {utc ? text.utc : zoneLabel(now, true)}
+            </span>
           </div>
-          <Segmented
-            label={text.favorites}
-            value={only}
-            onChange={setOnly}
-            options={[
-              { value: "all", label: `${text.all} ${schedule.series.length}` },
-              {
-                value: "favorites",
-                label: `${text.favorites} ${following.length}`,
-              },
-            ]}
-          />
-          <Segmented
-            label={text.tiers.weekly}
-            value={tier}
-            onChange={setTier}
-            options={[
-              { value: "all", label: text.allTiers },
-              ...Object.entries(text.tiers).map(([value, label]) => ({
-                value,
-                label,
-              })),
-            ]}
+          <CalendarFilters
+            only={only}
+            tier={tier}
+            total={schedule.series.length}
+            following={following.length}
+            onOnly={setOnly}
+            onTier={setTier}
           />
           <Select
             label={text.classFilter}

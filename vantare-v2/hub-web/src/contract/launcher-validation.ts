@@ -27,6 +27,7 @@ export function isLauncher(value: unknown): boolean {
       "resident",
       "running",
       "scanning",
+      "lmuTrigger",
       "profiles",
       "apps",
     ]) ||
@@ -42,6 +43,7 @@ export function isLauncher(value: unknown): boolean {
       (value.protected && value.revision === "") ||
       /^[0-9a-f]{64}$/.test(value.revision)
     ) ||
+    !(value.lmuTrigger === null || id(value.lmuTrigger)) ||
     !Array.isArray(value.apps) ||
     value.apps.length > launcherLimits.apps ||
     !Array.isArray(value.profiles) ||
@@ -93,16 +95,21 @@ export function isLauncher(value: unknown): boolean {
         "retries",
         "failure",
         "startup",
+        "closeOnExit",
       ]) ||
       !oneOf(profile.options.alreadyRunning, ["ask", "reuse", "restart"]) ||
       !oneOf(profile.options.failure, ["ask", "stop", "continue"]) ||
       !integer(profile.options.firstStepDelay) ||
       !integer(profile.options.retries) ||
       profile.options.retries > 3 ||
-      typeof profile.options.startup !== "boolean"
+      typeof profile.options.startup !== "boolean" ||
+      typeof profile.options.closeOnExit !== "boolean"
     )
       return false;
     profiles.add(profile.id);
   }
-  return true;
+  return (
+    value.lmuTrigger === null ||
+    (typeof value.lmuTrigger === "string" && profiles.has(value.lmuTrigger))
+  );
 }

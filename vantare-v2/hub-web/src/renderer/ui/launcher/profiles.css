@@ -405,7 +405,7 @@
 .v-launcher-options .v-select-trigger svg {
   width: 14px;
   height: 14px;
-  transform: rotate(90deg);
+  transform: none;
 }
 .v-context:has(.v-launcher-rail, .v-profile-rail) > .v-tooltip-trigger {
   display: none;
@@ -458,4 +458,27 @@ button.v-launcher-app-tile {
   font-size: 13px;
   white-space: nowrap;
   padding: 4px 0;
+}
+
+.v-launcher-quick {
+  display: none;
+}
+@media (min-height: 1000px) {
+  .v-launcher-quick {
+    display: flex;
+    border-top: 1px solid var(--line-1);
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+}
+
+.v-launcher-options .v-select-trigger {
+  padding: 0 8px;
+  gap: 4px;
+}
+.v-launcher-options .v-select-trigger > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

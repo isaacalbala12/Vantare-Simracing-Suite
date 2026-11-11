@@ -640,7 +640,7 @@ pub fn remove(path: &Path, id: &str, revision: &str) -> Result<(), HostError> {
         document.remove_app(id).map_err(|_| HostError::Denied)
     })
 }
-fn edit(
+pub(super) fn edit(
     path: &Path,
     revision: &str,
     change: impl FnOnce(&mut Document) -> Result<(), HostError>,

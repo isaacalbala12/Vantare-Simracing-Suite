@@ -9,6 +9,11 @@ impl Session {
             | Request::LauncherAppSave { .. }
             | Request::LauncherAppRemove { .. }
             | Request::LauncherAppFavorite { .. } => self.application_request(pipe, id, request),
+            Request::LauncherProfileDelete { .. }
+            | Request::LauncherProfileDuplicate { .. }
+            | Request::LauncherProfileFavorite { .. }
+            | Request::LauncherProfileOption { .. }
+            | Request::LauncherTrigger { .. } => self.profile_action_request(pipe, id, request),
             Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
                 self.profile_request(pipe, id, request)
             }
@@ -333,5 +338,61 @@ impl Session {
             }
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
+    }
+}
+
+impl Session {
+    fn profile_action_request(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        request: &Request,
+    ) -> io::Result<()> {
+        use crate::launcher::actions;
+        let result = match request {
+            Request::LauncherProfileDelete { id, base_revision } => {
+                actions::remove(&self.launcher, id, base_revision)
+            }
+            Request::LauncherProfileDuplicate { id, base_revision } => {
+                actions::duplicate(&self.launcher, id, base_revision)
+            }
+            Request::LauncherProfileFavorite {
+                id,
+                favorite,
+                base_revision,
+            } => actions::favorite(&self.launcher, id, *favorite, base_revision),
+            Request::LauncherProfileOption {
+                id,
+                patch,
+                base_revision,
+            } => actions::option(&self.launcher, id, *patch, base_revision),
+            Request::LauncherTrigger { id, base_revision } => {
+                actions::trigger(&self.launcher, id.as_deref(), base_revision)
+            }
+            _ => return Err(io::ErrorKind::InvalidInput.into()),
+        }
+        .map(|()| {
+            let value = self.launcher_reader.view();
+            match request {
+                Request::LauncherProfileDelete { .. } => Reply::LauncherProfileDelete { value },
+                Request::LauncherProfileDuplicate { .. } => {
+                    Reply::LauncherProfileDuplicate { value }
+                }
+                Request::LauncherProfileFavorite { .. } => Reply::LauncherProfileFavorite { value },
+                Request::LauncherProfileOption { .. } => Reply::LauncherProfileOption { value },
+                _ => Reply::LauncherTrigger { value },
+            }
+        });
+        let message = match result {
+            Ok(result) => HostToUi::Response { id, result },
+            Err(HostError::LauncherConflict { .. }) => HostToUi::Failure {
+                id,
+                error: HostError::LauncherConflict {
+                    current: self.launcher_reader.view(),
+                },
+            },
+            Err(error) => HostToUi::Failure { id, error },
+        };
+        frame::write(pipe, &message)
     }
 }

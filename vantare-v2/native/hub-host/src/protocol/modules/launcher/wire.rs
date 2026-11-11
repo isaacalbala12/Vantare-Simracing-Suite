@@ -35,6 +35,38 @@ pub enum Request {
         #[serde(rename = "baseRevision")]
         base_revision: String,
     },
+    #[serde(rename = "launcher.profile.delete")]
+    LauncherProfileDelete {
+        id: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.profile.duplicate")]
+    LauncherProfileDuplicate {
+        id: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.profile.favorite")]
+    LauncherProfileFavorite {
+        id: String,
+        favorite: bool,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.profile.option")]
+    LauncherProfileOption {
+        id: String,
+        patch: crate::launcher::actions::ProfileOption,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "launcher.trigger")]
+    LauncherTrigger {
+        id: Option<String>,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet { id: Option<String> },
     #[serde(rename = "launcher.profile.save")]
@@ -84,6 +116,26 @@ pub enum Reply {
     },
     #[serde(rename = "launcher.app.favorite")]
     LauncherAppFavorite {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.profile.delete")]
+    LauncherProfileDelete {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.profile.duplicate")]
+    LauncherProfileDuplicate {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.profile.favorite")]
+    LauncherProfileFavorite {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.profile.option")]
+    LauncherProfileOption {
+        value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.trigger")]
+    LauncherTrigger {
         value: crate::launcher::LauncherView,
     },
     #[serde(rename = "launcher.profile.get")]

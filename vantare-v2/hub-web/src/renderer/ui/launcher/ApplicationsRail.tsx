@@ -1,23 +1,77 @@
-import type { LauncherView } from "../../../contract/generated/contract";
+import type {
+  LauncherView,
+  ProfileOption,
+} from "../../../contract/generated/contract";
+import {
+  launcherFirstDelays,
+  profileFailures,
+  profileLimits,
+  profileRunning,
+} from "../../../contract/generated/contract";
+import { oneOf } from "../../../contract/validation-common";
 import { Icon } from "../../assets/icons/Icon";
 import { launcherText as text } from "../../i18n/launcher";
+import { actionText } from "../../i18n/launcher-actions";
 import { Button } from "../Button";
-import { Select } from "../Forms";
+import { Select, Switch } from "../Forms";
 import { AppMark } from "./Profiles";
+
+function patch(
+  field: ProfileOption["option"],
+  raw: string,
+): ProfileOption | undefined {
+  switch (field) {
+    case "alreadyRunning":
+      return oneOf(raw, profileRunning)
+        ? { option: field, value: raw }
+        : undefined;
+    case "failure":
+      return oneOf(raw, profileFailures)
+        ? { option: field, value: raw }
+        : undefined;
+    case "firstStepDelay": {
+      const value = Number(raw);
+      return launcherFirstDelays.some((delay) => delay === value)
+        ? { option: field, value }
+        : undefined;
+    }
+    case "retries": {
+      const value = Number(raw);
+      return Number.isInteger(value) &&
+        value >= 0 &&
+        value <= profileLimits.retries
+        ? { option: field, value }
+        : undefined;
+    }
+    case "startup":
+      return raw === "true" || raw === "false"
+        ? { option: field, value: raw === "true" }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
 export function LauncherApplicationsRail({
   view,
   selected,
   onApplications,
+  onOption,
+  pending = false,
 }: {
   view: LauncherView;
   selected?: string;
   onApplications?: (create?: boolean) => void;
+  onOption?: (id: string, value: ProfileOption) => void;
+  pending?: boolean;
 }) {
   const profile =
     view.profiles.find((item) => item.id === selected) ??
     view.profiles.find((item) => item.favorite) ??
     view.profiles[0];
   const options = profile?.options;
+  const delays: number[] = [...launcherFirstDelays];
+  if (options && !delays.includes(options.firstStepDelay))
+    delays.push(options.firstStepDelay);
   return (
     <div className="v-launcher-rail">
       <section>
@@ -39,9 +93,7 @@ export function LauncherApplicationsRail({
             <div key={app.id} className="v-launcher-app-tile">
               <AppMark app={app} small />
               <strong>{app.name}</strong>
-              <small data-available={app.available}>
-                {app.available ? text.available : text.unavailable}
-              </small>
+              <small>{app.available ? text.available : text.unavailable}</small>
             </div>
           ))}
           <button
@@ -59,12 +111,13 @@ export function LauncherApplicationsRail({
           <header>
             <h2>
               <Icon name="v-sliders" />
-              {text.advancedOptions}
+              {view.running ? text.nextOptions : text.advancedOptions}
             </h2>
           </header>
           <div className="v-launcher-options">
             {[
               {
+                field: "alreadyRunning" as const,
                 label: text.alreadyRunning,
                 value: options.alreadyRunning,
                 choices: [
@@ -74,26 +127,28 @@ export function LauncherApplicationsRail({
                 ],
               },
               {
+                field: "firstStepDelay" as const,
                 label: text.firstDelay,
                 value: String(options.firstStepDelay),
-                choices: [
-                  {
-                    value: String(options.firstStepDelay),
-                    label: text.seconds(options.firstStepDelay),
-                  },
-                ],
+                choices: delays.map((value) => ({
+                  value: String(value),
+                  label: text.seconds(value),
+                })),
               },
               {
+                field: "retries" as const,
                 label: text.retries,
                 value: String(options.retries),
-                choices: [
-                  {
-                    value: String(options.retries),
-                    label: String(options.retries),
-                  },
-                ],
+                choices: Array.from(
+                  { length: profileLimits.retries + 1 },
+                  (_, value) => ({
+                    value: String(value),
+                    label: String(value),
+                  }),
+                ),
               },
               {
+                field: "failure" as const,
                 label: text.failure,
                 value: options.failure,
                 choices: [
@@ -103,6 +158,7 @@ export function LauncherApplicationsRail({
                 ],
               },
               {
+                field: "startup" as const,
                 label: text.startup,
                 value: String(options.startup),
                 choices: [
@@ -118,11 +174,28 @@ export function LauncherApplicationsRail({
                   hideLabel
                   options={option.choices}
                   value={option.value}
-                  disabled
-                  onChange={() => {}}
+                  disabled={
+                    !onOption || pending || view.protected || view.running
+                  }
+                  onChange={(raw) => {
+                    if (raw === option.value) return;
+                    const value = patch(option.field, raw);
+                    if (value && profile) onOption?.(profile.id, value);
+                  }}
                 />
               </div>
             ))}
+          </div>
+          <div className="v-launcher-quick">
+            <Switch
+              label={actionText.closeOnExit}
+              checked={options.closeOnExit}
+              disabled={!onOption || pending || view.protected || view.running}
+              onCheckedChange={(value) =>
+                profile &&
+                onOption?.(profile.id, { option: "closeOnExit", value })
+              }
+            />
           </div>
         </section>
       )}

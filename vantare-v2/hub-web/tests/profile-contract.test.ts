@@ -187,3 +187,17 @@ it("includes and validates a Rust profile.get corpus sample with issued keys", (
     );
   expect(keyed).toBeDefined();
 });
+
+it("includes a Rust profile.save UI sample with a non-null issued-shaped key", () => {
+  const samples: unknown[] = corpus.ui;
+  expect(
+    samples
+      .filter(isUiMessage)
+      .find(
+        (message) =>
+          message.kind === "request" &&
+          message.request.method === "launcher.profile.save" &&
+          message.request.draft.steps.some((step) => step.key !== null),
+      ),
+  ).toBeDefined();
+});

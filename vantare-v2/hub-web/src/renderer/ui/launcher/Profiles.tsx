@@ -3,12 +3,18 @@ import type {
   LauncherProfile,
   LauncherView,
 } from "../../../contract/generated/contract";
+import {
+  launcherLimits,
+  profileCopySuffix,
+  profileLimits,
+} from "../../../contract/generated/contract";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
 import { circuit } from "./generated/circuit";
+import { type ProfileCardAction, ProfileCardActions } from "./ProfileActions";
 import "./profiles.css";
 
 const glyphs: Record<string, IconName> = {
@@ -65,6 +71,7 @@ export function LauncherProfiles({
   onEdit,
   onNew,
   onApplications,
+  onAction,
 }: {
   view: LauncherView;
   selected?: string;
@@ -74,6 +81,7 @@ export function LauncherProfiles({
   onEdit?: (id: string) => void;
   onNew?: () => void;
   onApplications?: () => void;
+  onAction: (profile: LauncherProfile, action: ProfileCardAction) => void;
   onSelect: (id: string) => void;
   onLaunch: (profile: LauncherProfile) => void;
   onReload: () => void;
@@ -203,45 +211,57 @@ export function LauncherProfiles({
             <h2>{text.yourProfiles}</h2>
             <div className="v-launcher-profile-grid">
               {view.profiles.map((item) => (
-                <button
-                  type="button"
-                  className="v-launcher-profile"
+                <ProfileCardActions
                   key={item.id}
-                  aria-label={item.name}
-                  aria-pressed={item.id === profile.id}
-                  disabled={pending || view.running}
-                  onClick={() => onSelect(item.id)}
-                  onDoubleClick={() => {
-                    if (!view.protected) onEdit?.(item.id);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && onEdit && !view.protected) {
-                      event.preventDefault();
-                      onEdit(item.id);
-                    }
-                  }}
+                  profile={item}
+                  canDuplicate={
+                    view.profiles.length < launcherLimits.profiles &&
+                    new TextEncoder().encode(item.name + profileCopySuffix)
+                      .length <= profileLimits.name
+                  }
+                  triggered={view.lmuTrigger === item.id}
+                  disabled={pending || view.protected || view.running}
+                  onAction={(action) => onAction(item, action)}
                 >
-                  <div
-                    className={`v-launcher-cover${item.favorite ? " v-launcher-cover--favorite" : ""}`}
+                  <button
+                    type="button"
+                    className="v-launcher-profile"
+                    aria-label={item.name}
+                    aria-pressed={item.id === profile.id}
+                    disabled={pending || view.running}
+                    onClick={() => onSelect(item.id)}
+                    onDoubleClick={() => {
+                      if (!view.protected) onEdit?.(item.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && onEdit && !view.protected) {
+                        event.preventDefault();
+                        onEdit(item.id);
+                      }
+                    }}
                   >
-                    <Circuit />
-                    {item.favorite && (
-                      <span className="v-launcher-favorite">
-                        {text.favorite}
-                      </span>
-                    )}
-                    <div className="v-launcher-chips">
-                      {apps(item).map((app, index) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Stateless badge for each occurrence of an app.
-                        <AppMark app={app} small key={`${index}-${app.id}`} />
-                      ))}
+                    <div
+                      className={`v-launcher-cover${item.favorite ? " v-launcher-cover--favorite" : ""}`}
+                    >
+                      <Circuit />
+                      {item.favorite && (
+                        <span className="v-launcher-favorite">
+                          {text.favorite}
+                        </span>
+                      )}
+                      <div className="v-launcher-chips">
+                        {apps(item).map((app, index) => (
+                          // biome-ignore lint/suspicious/noArrayIndexKey: Stateless badge for each occurrence of an app.
+                          <AppMark app={app} small key={`${index}-${app.id}`} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <strong>{item.name}</strong>
-                  <small>
-                    {text.appCount(item.apps.length, item.favorite)}
-                  </small>
-                </button>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {text.appCount(item.apps.length, item.favorite)}
+                    </small>
+                  </button>
+                </ProfileCardActions>
               ))}
               <button
                 type="button"

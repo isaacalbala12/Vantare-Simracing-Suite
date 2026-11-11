@@ -54,7 +54,8 @@
         "firstStepDelay": 0,
         "retries": 2,
         "failure": "continue",
-        "startup": false
+        "startup": false,
+        "closeOnExit": false
       }
     },
     {
@@ -69,9 +70,11 @@
         "firstStepDelay": 0,
         "retries": 2,
         "failure": "continue",
-        "startup": false
+        "startup": false,
+        "closeOnExit": false
       }
     }
   ],
-  "scanning": false
+  "scanning": false,
+  "lmuTrigger": null
 }

@@ -6,9 +6,15 @@ import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
+import {
+  ProfileActionFeedback,
+  type ProfileCardAction,
+  RemoveProfileDialog,
+} from "../../ui/launcher/ProfileActions";
 import { LauncherProfiles } from "../../ui/launcher/Profiles";
 import { snapshot, useProfileEditorState } from "./editor-state";
 import { ProfileEditor } from "./ProfileEditor";
+import { useProfileAction } from "./profile-actions";
 import { profileFailure } from "./profile-errors";
 import {
   launcherKey,
@@ -31,6 +37,9 @@ function failureText(failure: unknown): string {
 }
 export function Launcher() {
   const { client } = useHost();
+  const action = useProfileAction();
+  const [removing, setRemoving] = useState<LauncherProfile>();
+  const [duplicating, setDuplicating] = useState<LauncherProfile>();
   const editor = useProfileEditorState();
   const query = useQueryClient();
   const { view, selected } = useLauncherSnapshot();
@@ -143,6 +152,34 @@ export function Launcher() {
       if (alive.current) setPending(false);
     }
   }
+  function profileAction(profile: LauncherProfile, kind: ProfileCardAction) {
+    if (!view || pending || action.pending) return;
+    if (kind === "remove") {
+      setRemoving(profile);
+      return;
+    }
+    const baseRevision = view.revision;
+    switch (kind) {
+      case "favorite":
+        void action.execute({
+          method: "launcher.profile.favorite",
+          id: profile.id,
+          favorite: !profile.favorite,
+          baseRevision,
+        });
+        break;
+      case "duplicate":
+        setDuplicating(profile);
+        break;
+      case "trigger":
+        void action.execute({
+          method: "launcher.trigger",
+          id: view.lmuTrigger === profile.id ? null : profile.id,
+          baseRevision,
+        });
+        break;
+    }
+  }
   if (editor.value) return <ProfileEditor />;
   if (!view)
     return error ? (
@@ -159,18 +196,53 @@ export function Launcher() {
       <Skeleton label={text.loading} />
     );
   return (
-    <LauncherProfiles
-      view={view}
-      selected={selected}
-      pending={pending}
-      error={error}
-      accepted={accepted}
-      onSelect={setSelected}
-      onEdit={(id) => void openEditor(id)}
-      onNew={() => void openEditor(null)}
-      onApplications={() => editor.setTab("applications")}
-      onLaunch={(profile) => void launch(profile)}
-      onReload={() => void reload()}
-    />
+    <>
+      {action.failure && (
+        <ProfileActionFeedback
+          conflict={action.failure.revision !== undefined}
+          pending={action.pending}
+          canRetry={action.canRetry}
+          onRetry={action.retry}
+          onDiscard={action.discard}
+        />
+      )}
+      <LauncherProfiles
+        view={view}
+        selected={selected}
+        pending={pending || action.pending}
+        error={error}
+        accepted={accepted}
+        onAction={profileAction}
+        onSelect={setSelected}
+        onEdit={(id) => void openEditor(id)}
+        onNew={() => void openEditor(null)}
+        onApplications={() => editor.setTab("applications")}
+        onLaunch={(profile) => void launch(profile)}
+        onReload={() => void reload()}
+      />
+      <RemoveProfileDialog
+        name={(removing ?? duplicating)?.name}
+        duplicate={duplicating !== undefined}
+        pending={action.pending}
+        onCancel={() => {
+          setRemoving(undefined);
+          setDuplicating(undefined);
+        }}
+        onConfirm={() => {
+          const profile = removing ?? duplicating;
+          if (!profile) return;
+          const method = removing
+            ? "launcher.profile.delete"
+            : "launcher.profile.duplicate";
+          setRemoving(undefined);
+          setDuplicating(undefined);
+          void action.execute({
+            method,
+            id: profile.id,
+            baseRevision: view.revision,
+          });
+        }}
+      />
+    </>
   );
 }

@@ -12,7 +12,16 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { profileLimits } from "../src/contract/generated/contract";
 import { HostProvider } from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
@@ -21,6 +30,7 @@ import {
 } from "../src/renderer/app/SectionChrome";
 import { Client } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
+import { actionText } from "../src/renderer/i18n/launcher-actions";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
 import LauncherEntry from "../src/renderer/screens/launcher/entry";
 import {
@@ -30,6 +40,10 @@ import {
 } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
+// Module loading on the cold HDD is fixture setup, not part of editor behavior.
+beforeAll(async () => {
+  await import("../src/mock/host");
+});
 beforeEach(() =>
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -369,5 +383,260 @@ describe("profile editor", () => {
       screen.getByRole("button", { name: text.confirmArgumentLoss }),
     );
     await screen.findByRole("button", { name: "Borrador tras conflicto" });
+  });
+  it("marks another favorite from the list without clearing the existing favorite", async () => {
+    mount();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    const pro = screen.getByRole("button", { name: "Pro" });
+    fireEvent.contextMenu(pro);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.favorite }),
+    );
+    await waitFor(() =>
+      expect(within(pro).getByText(launcherText.favorite)).toBeTruthy(),
+    );
+    expect(within(creator).getByText(launcherText.favorite)).toBeTruthy();
+  });
+  it("confirms profile deletion and cancellation has no effect", async () => {
+    mount();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.remove }),
+    );
+    let dialog = await screen.findByRole("dialog", {
+      name: actionText.removeTitle,
+    });
+    expect(
+      within(dialog).getByText(
+        actionText.removeMessage("Creador de Contenido"),
+      ),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: actionText.cancel }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(creator).toBeTruthy();
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.remove }),
+    );
+    dialog = await screen.findByRole("dialog", {
+      name: actionText.removeTitle,
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: actionText.remove }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", {
+          name: "Creador de Contenido",
+        }),
+      ).toBeNull(),
+    );
+  });
+  it("keeps an action after conflict and only saves on explicit retry", async () => {
+    mount("launcher-actions-conflicto");
+    const pro = await screen.findByRole("button", { name: "Pro" });
+    fireEvent.contextMenu(pro);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.favorite }),
+    );
+    await screen.findByText(actionText.conflict);
+    expect(within(pro).queryByText(launcherText.favorite)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: actionText.retry }));
+    await waitFor(() =>
+      expect(within(pro).getByText(launcherText.favorite)).toBeTruthy(),
+    );
+  });
+  it("duplicates from a saved profile and toggles its LMU trigger", async () => {
+    mount();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.duplicate }),
+    );
+    const duplicateDialog = await screen.findByRole("dialog", {
+      name: actionText.duplicateTitle,
+    });
+    fireEvent.click(
+      within(duplicateDialog).getByRole("button", {
+        name: actionText.duplicate,
+      }),
+    );
+    await screen.findByRole("button", { name: "Creador de Contenido (copia)" });
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.trigger }),
+    );
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.triggered }),
+    );
+    fireEvent.contextMenu(creator);
+    await screen.findByRole("menuitem", { name: actionText.trigger });
+  });
+  it("saves rail preferences and retains a custom first-step delay", async () => {
+    mount("launcher-options-custom");
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    const delay = screen.getByRole("combobox", {
+      name: launcherText.firstDelay,
+    });
+    expect(delay.textContent).toContain("17 s");
+    await user.click(
+      screen.getByRole("combobox", { name: launcherText.retries }),
+    );
+    await user.click(await screen.findByRole("option", { name: "3" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: launcherText.retries })
+          .textContent,
+      ).toContain("3"),
+    );
+    expect(delay.textContent).toContain("17 s");
+    await user.click(delay);
+    await screen.findByRole("option", { name: "17 s" });
+    await user.click(screen.getByRole("option", { name: "20 s" }));
+    await waitFor(() => expect(delay.textContent).toContain("20 s"));
+  });
+  it.each(["remove", "duplicate"] as const)(
+    "requires a new confirmation after a %s conflict",
+    async (kind) => {
+      const requests = vi.spyOn(Client.prototype, "request");
+      mount("launcher-actions-conflicto");
+      const name = "Creador de Contenido";
+      const creator = await screen.findByRole("button", { name });
+      fireEvent.contextMenu(creator);
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      const title =
+        kind === "remove" ? actionText.removeTitle : actionText.duplicateTitle;
+      let dialog = await screen.findByRole("dialog", { name: title });
+      fireEvent.click(
+        within(dialog).getByRole("button", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      await screen.findByText(actionText.conflict);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: actionText.retry }),
+      ).toBeNull();
+      expect(screen.getByText(actionText.reconfirm)).toBeTruthy();
+      const method =
+        kind === "remove"
+          ? "launcher.profile.delete"
+          : "launcher.profile.duplicate";
+      expect(
+        requests.mock.calls.filter(([r]) => r.method === method),
+      ).toHaveLength(1);
+      expect(
+        screen.queryByRole("button", { name: `${name} (copia)` }),
+      ).toBeNull();
+      fireEvent.contextMenu(screen.getByRole("button", { name }));
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      dialog = await screen.findByRole("dialog", { name: title });
+      expect(
+        requests.mock.calls.filter(([r]) => r.method === method),
+      ).toHaveLength(1);
+      fireEvent.click(
+        within(dialog).getByRole("button", {
+          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          requests.mock.calls.filter(([r]) => r.method === method),
+        ).toHaveLength(2),
+      );
+      if (kind === "duplicate")
+        await screen.findByRole("button", { name: `${name} (copia)` });
+      else
+        await waitFor(() =>
+          expect(screen.queryByRole("button", { name })).toBeNull(),
+        );
+    },
+  );
+  it.each(["launcher-actions-limit", "launcher-actions-long-name"])(
+    "disables duplicate when its native bounds cannot be met (%s)",
+    async (scene) => {
+      mount(scene);
+      const name = scene.endsWith("long-name")
+        ? "a".repeat(profileLimits.name)
+        : "Creador de Contenido";
+      fireEvent.contextMenu(await screen.findByRole("button", { name }));
+      const item = await screen.findByRole("menuitem", {
+        name: actionText.duplicate,
+      });
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+    },
+  );
+  it("shares the rail's in-flight action lock with profile-card actions", async () => {
+    const request = Client.prototype.request;
+    let release = () => {};
+    const calls = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(function (this: Client, value) {
+        const result = request.call(this, value);
+        if (value.method !== "launcher.profile.option") return result;
+        return new Promise<import("../src/contract/generated/contract").Reply>(
+          (resolve) => {
+            release = () => void result.then(resolve);
+          },
+        );
+      });
+    mount();
+    const user = userEvent.setup();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    await user.click(
+      screen.getByRole("combobox", { name: launcherText.retries }),
+    );
+    await user.click(await screen.findByRole("option", { name: "3" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: launcherText.retries })
+          .getAttribute("aria-disabled"),
+      ).toBe("true"),
+    );
+    fireEvent.contextMenu(creator);
+    const favorite = await screen.findByRole("menuitem", {
+      name: actionText.unfavorite,
+    });
+    expect(favorite.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(favorite);
+    expect(
+      calls.mock.calls.filter(([v]) => v.method === "launcher.profile.option"),
+    ).toHaveLength(1);
+    expect(
+      calls.mock.calls.filter(
+        ([v]) => v.method === "launcher.profile.favorite",
+      ),
+    ).toHaveLength(0);
+    await user.keyboard("{Escape}");
+    release();
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: launcherText.retries })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
   });
 });

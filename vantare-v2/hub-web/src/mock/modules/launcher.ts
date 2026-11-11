@@ -5,8 +5,13 @@ import type {
   ProfileDraft,
   UiToHost,
 } from "../../contract/generated/contract";
+import {
+  launcherLimits,
+  profileLimits,
+} from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 import { createLauncherAppsMock } from "../launcher-apps";
+import { profileActionReply } from "../profile-actions";
 export function create(context: MockContext): MockHandler {
   const { sceneName, core } = context;
   if (sceneName.startsWith("launcher-")) {
@@ -38,7 +43,19 @@ export function create(context: MockContext): MockHandler {
     launcher.resident = false;
   }
 
+  if (sceneName === "launcher-actions-limit")
+    while (launcher.profiles.length < launcherLimits.profiles) {
+      const profile = structuredClone(launcher.profiles[0]);
+      profile.id = `qa-${launcher.profiles.length}`;
+      profile.name = `QA ${launcher.profiles.length}`;
+      profile.favorite = false;
+      launcher.profiles.push(profile);
+    }
+  if (sceneName === "launcher-actions-long-name")
+    launcher.profiles[0].name = "a".repeat(profileLimits.name);
   const appReply = createLauncherAppsMock(launcher, sceneName);
+  if (sceneName === "launcher-options-custom")
+    launcher.profiles[0].options.firstStepDelay = 17;
   const drafts = new Map<string, ProfileDraft>(
     launcher.profiles.map((profile) => [
       profile.id,
@@ -48,6 +65,15 @@ export function create(context: MockContext): MockHandler {
         name: profile.name,
         description: profile.description,
         favorite: profile.favorite,
+        startup: profile.options.startup,
+        policy: {
+          ...editorFixture.draft.policy,
+          alreadyRunning: profile.options.alreadyRunning,
+          failure: profile.options.failure,
+          firstStepDelay: profile.options.firstStepDelay,
+          retries: profile.options.retries,
+          exit: profile.options.closeOnExit ? "closeStarted" : "leave",
+        },
         steps: profile.apps.map((appId, index) => ({
           key: null,
           appId,
@@ -76,6 +102,15 @@ export function create(context: MockContext): MockHandler {
       };
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
+    if (
+      sceneName === "launcher-actions-conflicto" &&
+      request.method.startsWith("launcher.profile.") &&
+      request.method !== "launcher.profile.get" &&
+      launcher.revision === "0".repeat(64)
+    )
+      launcher.revision = "1".repeat(64);
+    const profileAction = profileActionReply(id, request, launcher, drafts);
+    if (profileAction) return profileAction;
     switch (request.method) {
       case "launcher.profile.get": {
         profileRead = undefined;
@@ -189,6 +224,7 @@ export function create(context: MockContext): MockHandler {
             retries: request.draft.policy.retries,
             failure: request.draft.policy.failure,
             startup: request.draft.startup,
+            closeOnExit: request.draft.policy.exit === "closeStarted",
           },
         };
         const existing = launcher.profiles.findIndex(

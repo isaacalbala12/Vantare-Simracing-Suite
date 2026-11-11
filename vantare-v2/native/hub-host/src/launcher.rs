@@ -40,6 +40,7 @@ pub struct LauncherOptions {
     pub retries: u8,
     pub failure: String,
     pub startup: bool,
+    pub close_on_exit: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -52,6 +53,7 @@ pub struct LauncherView {
     pub resident: bool,
     pub running: bool,
     pub scanning: bool,
+    pub lmu_trigger: Option<String>,
     pub profiles: Vec<LauncherProfile>,
     pub apps: Vec<LauncherApp>,
 }
@@ -65,6 +67,7 @@ impl Default for LauncherView {
             resident: false,
             running: false,
             scanning: false,
+            lmu_trigger: None,
             profiles: vec![],
             apps: vec![],
         }
@@ -96,6 +99,7 @@ fn project(
         resident: status.is_some(),
         running,
         scanning,
+        lmu_trigger: document.lmu_trigger_profile.clone(),
         apps: document
             .apps
             .iter()
@@ -138,6 +142,7 @@ fn project(
                         }
                         .into(),
                         startup: profile.launch_on_windows_startup,
+                        close_on_exit: policy.exit == vantare_launcher::policy::Close::Started,
                     }
                 },
                 launchable: !scanning
@@ -485,3 +490,6 @@ pub mod editor;
 
 #[path = "launcher/apps.rs"]
 pub mod apps;
+
+#[path = "launcher/actions.rs"]
+pub mod actions;

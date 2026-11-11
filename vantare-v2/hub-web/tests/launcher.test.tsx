@@ -21,6 +21,7 @@ function mount(view: LauncherView = structuredClone(fixture)) {
           view={view}
           pending={false}
           accepted={false}
+          onAction={vi.fn()}
           onSelect={onSelect}
           onLaunch={onLaunch}
           onReload={vi.fn()}

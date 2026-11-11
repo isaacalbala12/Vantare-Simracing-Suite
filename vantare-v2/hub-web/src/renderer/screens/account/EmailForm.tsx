@@ -238,9 +238,11 @@ export function EmailForm({ value }: { value: EmailView }) {
       <AccessButton
         type="button"
         kind="back"
-        onClick={() =>
-          void act({ method: "account.email", action: { action: "cancel" } })
-        }
+        onClick={() => {
+          setPassword("");
+          setCode("");
+          void act({ method: "account.email", action: { action: "cancel" } });
+        }}
       >
         {text.back}
       </AccessButton>

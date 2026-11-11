@@ -28,7 +28,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
       <div
         className="v-access"
         role="dialog"
-        aria-modal="true"
+        aria-modal={false}
         aria-label={text.title}
         ref={content}
         onKeyDown={(event) => {

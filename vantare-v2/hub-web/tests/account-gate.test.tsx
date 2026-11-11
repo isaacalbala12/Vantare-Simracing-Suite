@@ -11,6 +11,7 @@ import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { accessText as text } from "../src/renderer/i18n/access.es";
+import { windowText } from "../src/renderer/i18n/window.es";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
@@ -286,4 +287,28 @@ it("rejects incomplete credentials locally without leaving an unanswered RPC", a
       }) as HTMLButtonElement
     ).disabled,
   ).toBe(false);
+});
+
+it("keeps window controls reachable by keyboard from the access gate", async () => {
+  const user = mount();
+  const first = await screen.findByRole("button", { name: text.google });
+  await waitFor(() => expect(document.activeElement).toBe(first));
+  await user.tab({ shift: true });
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: windowText.close }),
+  );
+});
+it("does not interpret Escape in the email form as cancel or submit", async () => {
+  const calls = intercept(() => undefined);
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  const field = screen.getByLabelText(text.emailLabel);
+  await user.type(field, "qa@example.invalid");
+  await user.keyboard("{Escape}");
+  expect(screen.getByLabelText(text.emailLabel)).toBe(field);
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action !== "open",
+    ),
+  ).toHaveLength(0);
 });

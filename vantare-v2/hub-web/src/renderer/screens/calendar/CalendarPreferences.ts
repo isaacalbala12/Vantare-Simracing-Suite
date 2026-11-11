@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CalendarConfigView } from "../../../contract/generated/calendar";
+import type {
+  CalendarBand,
+  CalendarConfigView,
+} from "../../../contract/generated/calendar";
 import type { HostError, Request } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
+import {
+  applyAlertChange,
+  bandChange,
+  type CalendarAlertChange,
+} from "./AlertChange";
 
 type Intent =
   | { kind: "utc"; value: boolean }
   | { kind: "notifyWeek"; value: boolean }
+  | { kind: "alerts"; change: CalendarAlertChange }
   | { kind: "follow"; id: string; value: boolean };
 export function useCalendarPreferences(allowed: boolean) {
   const { client } = useHost();
@@ -30,13 +39,13 @@ export function useCalendarPreferences(allowed: boolean) {
         const document =
           action.kind === "utc"
             ? "prefs"
-            : action.kind === "notifyWeek"
+            : action.kind === "notifyWeek" || action.kind === "alerts"
               ? "alerts"
               : "following";
         const revision =
           action.kind === "utc"
             ? snapshot.prefsRevision
-            : action.kind === "notifyWeek"
+            : action.kind === "notifyWeek" || action.kind === "alerts"
               ? snapshot.alertsRevision
               : snapshot.followingRevision;
         if (snapshot.documents[document] !== "ready" || revision === null) {
@@ -60,6 +69,12 @@ export function useCalendarPreferences(allowed: boolean) {
             enabled: action.value,
             expectedRevision: revision,
           };
+        else if (action.kind === "alerts")
+          request = {
+            method: "calendar.alertsSave",
+            alerts: applyAlertChange(snapshot.alerts, action.change),
+            expectedRevision: revision,
+          };
         else
           request = {
             method: "calendar.followSet",
@@ -80,6 +95,7 @@ export function useCalendarPreferences(allowed: boolean) {
           (reply.method !== "calendar.configLoad" &&
             reply.method !== "calendar.utcSet" &&
             reply.method !== "calendar.notifyWeekSet" &&
+            reply.method !== "calendar.alertsSave" &&
             reply.method !== "calendar.followSet")
         )
           throw new HostFailure({ kind: "rejected" });
@@ -126,6 +142,11 @@ export function useCalendarPreferences(allowed: boolean) {
       !busy &&
       config?.documents.prefs === "ready" &&
       config.prefsRevision !== null,
+    canAlerts:
+      allowed &&
+      !busy &&
+      config?.documents.alerts === "ready" &&
+      config.alertsRevision !== null,
     canNotifyWeek:
       allowed &&
       !busy &&
@@ -141,6 +162,14 @@ export function useCalendarPreferences(allowed: boolean) {
     notifyWeek: (value: boolean) => apply({ kind: "notifyWeek", value }),
     follow: (id: string, value: boolean) =>
       apply({ kind: "follow", id, value }),
+    alert: (change: CalendarAlertChange) => apply({ kind: "alerts", change }),
+    band: async (id: string, value: CalendarBand | undefined) => {
+      if (current.current)
+        await apply({
+          kind: "alerts",
+          change: bandChange(current.current.alerts, id, value),
+        });
+    },
     retry: () => apply(intent.current),
     discard: () => {
       intent.current = undefined;

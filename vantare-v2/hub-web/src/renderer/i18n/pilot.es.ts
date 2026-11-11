@@ -1,4 +1,13 @@
 export const pilotText = {
+  cropLabel: "Recorte de la foto: arrastra para mover, rueda para acercar",
+  cropTitle: "Ajusta el recorte",
+  cropHelp:
+    "Arrastra para centrar tu cara. Lo que queda dentro del círculo es tu foto.",
+  zoomOut: "Alejar",
+  zoomIn: "Acercar",
+  cropCancel: "Cancelar",
+  cropApply: "Usar esta foto",
+
   photoGroup: "Foto",
   detailsGroup: "Datos del piloto",
   simulatorsGroup: "Simuladores",

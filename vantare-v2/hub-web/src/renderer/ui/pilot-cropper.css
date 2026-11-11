@@ -1,0 +1,89 @@
+.v-pilot-cropper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.v-pilot-crop-stage {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex: none;
+  overflow: hidden;
+  border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.v-pilot-crop-stage:active {
+  cursor: grabbing;
+}
+.v-pilot-crop-stage:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.v-pilot-crop-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.v-pilot-crop-square {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid var(--crop-square);
+}
+.v-pilot-crop-square > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--crop-circle);
+}
+.v-pilot-crop-actions {
+  display: flex;
+  flex: 1;
+  min-width: 180px;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-pilot-crop-actions > strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.v-pilot-crop-actions > p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 18px;
+}
+.v-pilot-crop-actions > div {
+  display: flex;
+  gap: 8px;
+}
+.v-pilot-crop-actions > .v-pilot-crop-confirm {
+  margin-top: auto;
+}
+.v-pilot-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.v-pilot-crop-veil {
+  position: absolute;
+  pointer-events: none;
+  background: var(--crop-veil);
+}
+.v-pilot-crop-actions {
+  line-height: 21px;
+}
+.v-pilot-crop-spacer {
+  flex: 1;
+}
+
+.v-pilot-crop-actions {
+  min-height: 171px;
+}

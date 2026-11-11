@@ -58,6 +58,11 @@
   --window-close-hover: #e81123;
   --orb-ring: #ffffff24;
   --hero-stripe: #ffffff12;
+  --crop-veil: #0000008c;
+  --crop-square: #ffffff66;
+  --crop-circle: #ffffffe6;
+  --flag-edge: #0000002e;
+  --pilot-chip-bg: #ffffff09;
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 260ms;

@@ -7,6 +7,7 @@ import {
   pilotEditorLimits,
   pilotSimulatorOptions,
 } from "../../contract/generated/contract";
+import { pilotFlags } from "../assets/generated/pilot-flags";
 import { Icon } from "../assets/icons/Icon";
 import { t } from "../i18n/es";
 import { pilotText as text } from "../i18n/pilot.es";
@@ -32,7 +33,7 @@ export function PilotLayout({
   );
 }
 export function PilotCard({ children }: { children: ReactNode }) {
-  return <div className="v-pilot-card">{children}</div>;
+  return <div className="v-pilot-card v-pilot-photo-card">{children}</div>;
 }
 export function PilotAvatar({
   fields,
@@ -240,6 +241,18 @@ export function PilotPreview({ fields }: { fields: PilotFields }) {
       </div>
       <div className="v-pilot-preview-avatar">
         <PilotAvatar fields={fields} large />
+        {fields.country && (
+          <span className="v-pilot-flag-plate">
+            {pilotFlags[fields.country] ? (
+              <img
+                alt={country ?? fields.country}
+                src={`data:image/svg+xml,${encodeURIComponent(pilotFlags[fields.country])}`}
+              />
+            ) : (
+              <span>{fields.country}</span>
+            )}
+          </span>
+        )}
       </div>
       <div className="v-pilot-preview-identity">
         <h3 data-empty={!fields.publicName.trim() || undefined}>
@@ -254,7 +267,11 @@ export function PilotPreview({ fields }: { fields: PilotFields }) {
       </p>
       <div className="v-pilot-preview-sims">
         {sims.length ? (
-          sims.map((sim) => <span key={sim.id}>{sim.label}</span>)
+          sims.map((sim) => (
+            <span key={sim.id} data-accent="true">
+              {sim.label}
+            </span>
+          ))
         ) : (
           <span>{text.noSimulators}</span>
         )}

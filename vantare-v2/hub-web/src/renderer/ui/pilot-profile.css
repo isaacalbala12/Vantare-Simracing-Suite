@@ -410,3 +410,51 @@
 .v-pilot-savebar .v-button--neutral {
   font-weight: 600;
 }
+
+.v-pilot-preview-avatar {
+  position: relative;
+  overflow: visible;
+}
+.v-pilot-flag-plate {
+  position: absolute;
+  right: -4px;
+  bottom: 6px;
+  padding: 2px;
+  border-radius: 5px;
+  background: var(--surface-1);
+}
+.v-pilot-flag-plate > img,
+.v-pilot-flag-plate > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 18px;
+  overflow: hidden;
+  border: 1px solid var(--flag-edge);
+  border-radius: 3px;
+}
+.v-pilot-flag-plate > span {
+  background: var(--surface-3);
+  font: 400 9px / 9px var(--font-mono);
+  color: var(--text-1);
+}
+
+.v-pilot-preview-sims > span {
+  background: var(--pilot-chip-bg);
+  color: var(--text-2);
+}
+.v-pilot-preview-sims > span[data-accent] {
+  color: var(--accent-bright);
+}
+.v-pilot-photo-actions .v-button[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+}
+
+.v-pilot-preview {
+  padding-top: 23px;
+  padding-bottom: 23px;
+}
+.v-pilot-preview-avatar {
+  margin-bottom: 2px;
+}

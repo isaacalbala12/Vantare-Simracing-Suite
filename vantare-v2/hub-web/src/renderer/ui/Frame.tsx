@@ -1,3 +1,4 @@
+import "./sidebar-expanded.css";
 import { Combobox } from "@base-ui/react/combobox";
 import { type ReactNode, useRef, useState } from "react";
 import {
@@ -6,6 +7,7 @@ import {
   SectionTitle,
 } from "../app/SectionChrome";
 import { Icon, type IconName } from "../assets/icons/Icon";
+import { shellText } from "../i18n/shell.es";
 import { Button, IconButton } from "./Button";
 import { Dialog } from "./Layers";
 import { TrackedCaps } from "./TrackedCaps";
@@ -53,13 +55,17 @@ export function Sidebar({
   collapsed,
   onSelect,
   footer,
+  toggle,
+  profiles,
 }: {
   label: string;
-  groups: { label: string; items: NavItem[] }[];
+  groups: { label: string; badge?: string; items: NavItem[] }[];
   active: string;
   collapsed: boolean;
   onSelect: (id: string) => void;
   footer: ReactNode;
+  toggle?: { label: string; run: () => void };
+  profiles?: ReactNode;
 }) {
   const nav = useRef<HTMLElement>(null);
   const ids = groups.flatMap((group) => group.items.map((item) => item.id));
@@ -99,12 +105,37 @@ export function Sidebar({
       ref={nav}
       onKeyDown={navigate}
     >
-      <div className="v-sidebar-brand" aria-hidden="true">
-        <Icon name="mark" />
+      <div className="v-sidebar-brand">
+        {collapsed ? (
+          <Icon name="mark" />
+        ) : (
+          <>
+            <IconButton
+              label={toggle?.label ?? label}
+              variant="ghost"
+              onClick={toggle?.run}
+              aria-expanded
+            >
+              <Icon name="v-side" />
+            </IconButton>
+            <span
+              className="v-sidebar-wordmark"
+              aria-label={shellText.brand}
+              role="img"
+            />
+          </>
+        )}
       </div>
       {groups.map((group) => (
         <div className="v-nav-group" key={group.label}>
-          {!collapsed && <div className="v-caption">{group.label}</div>}
+          {!collapsed && group.label && (
+            <div className="v-nav-heading">
+              <TrackedCaps>{group.label}</TrackedCaps>
+              {group.badge && (
+                <span className="v-nav-tester">{group.badge}</span>
+              )}
+            </div>
+          )}
           {group.items.map((item) => (
             <Button
               key={item.id}
@@ -128,13 +159,14 @@ export function Sidebar({
                   </span>
                 )}
               </span>
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="v-nav-name">{item.label}</span>}
               {!collapsed && item.badge}
               {!collapsed && item.locked && <Icon name="v-lock" />}
             </Button>
           ))}
         </div>
       ))}
+      {!collapsed && profiles}
       <div className="v-sidebar-footer">{footer}</div>
     </nav>
   );

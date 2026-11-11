@@ -1,14 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { defaultZoom } from "../../contract/generated/contract";
+import {
+  defaultZoom,
+  type LauncherView,
+  type Palette,
+  palettes,
+} from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
-import { t } from "../i18n/es";
+import { paletteNames, t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
 import { NotificationsPopover } from "../screens/notifications/NotificationsPopover";
 import { NotificationsProvider } from "../screens/notifications/NotificationsState";
 import { Button, IconButton } from "../ui/Button";
 import { Avatar, Badge, Callout } from "../ui/Data";
+import { Select } from "../ui/Forms";
 import {
   CommandPalette,
   ContextRail,
@@ -25,6 +31,7 @@ import {
   InfoList,
   ShellLayout,
 } from "../ui/ShellLayout";
+import { TrackedCaps } from "../ui/TrackedCaps";
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
@@ -42,6 +49,7 @@ export function Shell() {
 }
 function ShellContent() {
   const host = useHost();
+  const query = useQueryClient();
   // QA identity is separate from the editable pilot draft. Production remains anonymous until Access.
   const profileName = host.hello?.demo ? (host.hello.demoName ?? "") : "";
   const toast = useToastManager();
@@ -58,6 +66,23 @@ function ShellContent() {
     enabled: false,
   });
   const ui = useUi((state) => state);
+  // Read the existing launcher snapshot for the expanded frame. The screen owns
+  // its subscription; this reader never unsubscribes it or writes a profile.
+  const { data: launcher } = useQuery<LauncherView>({
+    queryKey: ["launcher"],
+    enabled:
+      !!host.client &&
+      !ui.sidebarCollapsed &&
+      ui.section !== "launcher" &&
+      !core.live,
+    queryFn: async () => {
+      if (!host.client) throw new Error("Host unavailable");
+      const reply = await host.client.request({ method: "launcher.get" });
+      if (reply.method !== "launcher.get")
+        throw new Error("Unexpected launcher reply");
+      return reply.value;
+    },
+  });
   const isUpcoming = (section: Section) =>
     section === "strategy" || section === "engineer";
   const items = navigation(core.access).map((item) =>
@@ -65,11 +90,28 @@ function ShellContent() {
       ? {
           ...item,
           locked: undefined,
-          label: upcoming[item.id as "strategy" | "engineer"].title,
+          label:
+            item.id === "strategy"
+              ? shellText.strategyName
+              : shellText.engineerName,
           lockBadge: true,
-          badge: <Badge tone="locked">{upcoming.soon}</Badge>,
+          badge: (
+            <span className="v-nav-soon">
+              <Icon name="v-lock" />
+              {upcoming.soon}
+            </span>
+          ),
         }
-      : item,
+      : item.id === "studio"
+        ? { ...item, label: shellText.studioName }
+        : item.id === "launcher"
+          ? {
+              ...item,
+              badge: launcher?.profiles.length ? (
+                <span className="v-nav-count">{launcher.profiles.length}</span>
+              ) : undefined,
+            }
+          : item,
   );
   function navigate(section: Section) {
     if (
@@ -184,13 +226,14 @@ function ShellContent() {
     items.find((item) => item.id === ui.section)?.label ?? t("settings.title");
   const groups = [
     {
-      label: t("shell.main"),
+      label: "",
       items: items.filter((item) =>
         ["home", "launcher", "studio", "roadmap", "testing"].includes(item.id),
       ),
     },
     {
       label: t("shell.testers"),
+      badge: core.access.tester ? shellText.testerBadge : undefined,
       items: items.filter((item) => item.id === "calendar"),
     },
     {
@@ -295,46 +338,153 @@ function ShellContent() {
           groups={groups}
           active={ui.section}
           collapsed={ui.sidebarCollapsed}
+          toggle={{ label: shellText.sidebarCollapse, run: ui.toggleSidebar }}
+          profiles={
+            launcher?.profiles.length ? (
+              <section
+                className="v-sidebar-profiles"
+                aria-label={shellText.profiles}
+              >
+                <div className="v-nav-heading">
+                  <TrackedCaps>{shellText.profiles}</TrackedCaps>
+                  <span>{launcher.profiles.length}</span>
+                </div>
+                <div className="v-sidebar-profile-list">
+                  {launcher.profiles.map((profile) => (
+                    <Button
+                      variant="ghost"
+                      className="v-sidebar-profile"
+                      key={profile.id}
+                      aria-label={shellText.openProfile(profile.name)}
+                      onClick={() => {
+                        query.setQueryData(
+                          ["launcher", "selection"],
+                          profile.id,
+                        );
+                        navigate("launcher");
+                      }}
+                    >
+                      <span className="v-sidebar-profile-dot" />
+                      <span className="v-sidebar-profile-copy">
+                        <span>{profile.name}</span>
+                        <small>{profile.apps.join(" → ")}</small>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </section>
+            ) : undefined
+          }
           onSelect={(id) => {
             if (isSection(id)) navigate(id);
           }}
           footer={
-            <ContentStack>
-              <ActionGroup>
-                <IconButton
-                  label={t("shell.sidebar")}
+            ui.sidebarCollapsed ? (
+              <ContentStack>
+                <ActionGroup>
+                  <IconButton
+                    label={t("shell.sidebar")}
+                    onClick={ui.toggleSidebar}
+                    aria-expanded={!ui.sidebarCollapsed}
+                  >
+                    <Icon name="i-panel" />
+                  </IconButton>
+                  <IconButton
+                    label={t("shell.toggleTheme")}
+                    className="v-theme-toggle"
+                    onClick={toggleTheme}
+                    disabled={editBlocked}
+                  >
+                    <Icon name="v-palette" />
+                  </IconButton>
+                </ActionGroup>
+                <Button
+                  variant="ghost"
+                  aria-current={ui.section === "settings" ? "page" : undefined}
+                  aria-label={t("settings.title")}
+                  onClick={() => navigate("settings")}
+                >
+                  <Icon name="i-ajustes" />
+                  {!ui.sidebarCollapsed && t("settings.title")}
+                </Button>
+                <ActionGroup>
+                  <Avatar
+                    label={profileName || t("shell.anonymous")}
+                    initials={initials(profileName)}
+                  />
+                  {!ui.sidebarCollapsed &&
+                    (profileName || t("shell.anonymous"))}
+                  <Badge>{t("shell.beta")}</Badge>
+                </ActionGroup>
+              </ContentStack>
+            ) : (
+              <div className="v-sidebar-expanded-footer">
+                <Button
+                  variant="ghost"
+                  className="v-sidebar-footer-row"
+                  aria-expanded
                   onClick={ui.toggleSidebar}
-                  aria-expanded={!ui.sidebarCollapsed}
                 >
-                  <Icon name="i-panel" />
-                </IconButton>
-                <IconButton
-                  label={t("shell.toggleTheme")}
-                  className="v-theme-toggle"
-                  onClick={toggleTheme}
-                  disabled={editBlocked}
-                >
+                  <Icon name="v-side" />
+                  <span className="v-nav-name">
+                    {shellText.sidebarCollapse}
+                  </span>
+                  <kbd>{t("shell.ctrlB")}</kbd>
+                </Button>
+                <div className="v-sidebar-palette">
                   <Icon name="v-palette" />
-                </IconButton>
-              </ActionGroup>
-              <Button
-                variant="ghost"
-                aria-current={ui.section === "settings" ? "page" : undefined}
-                aria-label={t("settings.title")}
-                onClick={() => navigate("settings")}
-              >
-                <Icon name="i-ajustes" />
-                {!ui.sidebarCollapsed && t("settings.title")}
-              </Button>
-              <ActionGroup>
-                <Avatar
-                  label={profileName || t("shell.anonymous")}
-                  initials={initials(profileName)}
-                />
-                {!ui.sidebarCollapsed && (profileName || t("shell.anonymous"))}
-                <Badge>{t("shell.beta")}</Badge>
-              </ActionGroup>
-            </ContentStack>
+                  <Select
+                    hideLabel
+                    label={t("appearance.themes")}
+                    value={settings.view?.appearance.palette ?? "vantare"}
+                    options={palettes.map((value) => ({
+                      value,
+                      label: paletteNames[value],
+                    }))}
+                    disabled={editBlocked}
+                    pending={settings.pending}
+                    onChange={(value) => {
+                      if (palettes.includes(value as Palette))
+                        settings.update({
+                          field: "palette",
+                          value: value as Palette,
+                        });
+                    }}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  className="v-sidebar-footer-row"
+                  aria-label={t("settings.title")}
+                  aria-current={ui.section === "settings" ? "page" : undefined}
+                  onClick={() => navigate("settings")}
+                >
+                  <Icon name="v-sliders" />
+                  <span>{t("settings.title")}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="v-sidebar-account"
+                  aria-label={profileName || t("shell.anonymous")}
+                  onClick={() => navigate("account")}
+                >
+                  <Avatar
+                    label={profileName || t("shell.anonymous")}
+                    initials={initials(profileName)}
+                  />
+                  <span className="v-sidebar-account-copy">
+                    <span>{profileName || t("shell.anonymous")}</span>
+                    <small>
+                      <b>{t("shell.beta")}</b>
+                      {core.access.tester
+                        ? shellText.testerAccess
+                        : shellText.freeBeta}
+                    </small>
+                  </span>
+                  <Icon name="right" />
+                </Button>
+              </div>
+            )
           }
         />
       }

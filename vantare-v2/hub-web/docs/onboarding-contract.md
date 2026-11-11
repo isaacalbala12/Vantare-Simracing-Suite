@@ -16,7 +16,7 @@ Los kits Pro conservan el comportamiento de GPUI sin guarda de licencia en el as
 
 La decisión del orquestador es seguir la paridad del GPUI: el equipo incluye también la GPU; prevalece sobre la omisión de §c.4 de `07-onboarding.md`.
 
-El contrato base de Onboarding es v21. La adición de GPU usa v23 provisional por asignación del orquestador; el definitivo se confirma al aprobar este PR. `OnboardingView.privateSession` y `pending` permiten al dueño de Acceso ordenar onboarding → privacidad → acceso: salir en privado no equivale a completar ajustes y se vuelve a ofrecer el asistente al reiniciar.
+El contrato base de Onboarding es v21. La adición de GPU usa v25 por asignación del orquestador (v24 reservado a avisos del Calendario). `OnboardingView.privateSession` y `pending` permiten al dueño de Acceso ordenar onboarding → privacidad → acceso: salir en privado no equivale a completar ajustes y se vuelve a ofrecer el asistente al reiniciar.
 
 El equipo local no se envía a servicios: CPU acotada y sin controles, núcleos y GiB redondeados. Rust conserva los bytes exactos de RAM para recomendar Ahorro con menos de 8 GiB o cuatro núcleos o menos; un dato ausente no inventa insuficiencia. El descubrimiento reutiliza el Reader de Launcher. `mail.set` conserva el origen cerrado onboarding/settings y la cola `Session::request_remote`.
 

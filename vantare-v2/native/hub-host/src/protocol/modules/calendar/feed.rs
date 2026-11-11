@@ -17,6 +17,9 @@ pub(super) enum FeedError {
     Limit,
     Protected,
     Io,
+    Busy,
+    Conflict,
+    TooLarge,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Stamp {
@@ -100,6 +103,14 @@ pub(super) fn build(
     feed.events.sort_by_key(|event| event.starts_at_ms);
     Ok(feed)
 }
+fn file_error(error: &files::Error) -> FeedError {
+    match error {
+        files::Error::Busy => FeedError::Busy,
+        files::Error::Conflict { .. } => FeedError::Conflict,
+        files::Error::TooLarge { .. } | files::Error::ReadTooLarge { .. } => FeedError::TooLarge,
+        _ => FeedError::Io,
+    }
+}
 pub(super) fn publish(layout: &Path, feed: &Feed) -> Result<bool, FeedError> {
     let path = vantare_ipc::session_alerts::calendar_path(layout);
     match std::fs::symlink_metadata(&path) {
@@ -109,7 +120,16 @@ pub(super) fn publish(layout: &Path, feed: &Feed) -> Result<bool, FeedError> {
         Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(FeedError::Io),
         _ => {}
     }
-    let old = files::read_optional(&path, FEED_LIMIT).map_err(|_| FeedError::Io)?;
+    let old = files::read_optional(&path, FEED_LIMIT).map_err(|error| file_error(&error))?;
+    let previous = old
+        .as_deref()
+        .and_then(|bytes| serde_json::from_slice::<Feed>(bytes).ok());
+    if feed.events.is_empty()
+        && (old.as_ref().is_none_or(Vec::is_empty)
+            || previous.as_ref().is_some_and(|feed| feed.events.is_empty()))
+    {
+        return Ok(false);
+    }
     if old
         .as_deref()
         .and_then(|bytes| serde_json::from_slice::<Feed>(bytes).ok())
@@ -137,7 +157,7 @@ pub(super) fn publish(layout: &Path, feed: &Feed) -> Result<bool, FeedError> {
             ..Default::default()
         },
     )
-    .map_err(|_| FeedError::Io)?;
+    .map_err(|error| file_error(&error))?;
     Ok(true)
 }
 impl State {
@@ -172,21 +192,39 @@ impl State {
         let safe = enabled && self.config_view.documents.alerts == CalendarDocumentState::Ready;
         let result = build(&self.view, &self.config_view.alerts, now, safe, in_track)
             .and_then(|feed| publish(&layout, &feed));
-        if let Err(error) = result {
-            // A malformed source or expansion must not leave a previous agenda active.
-            if let Ok(empty) = build(&self.view, &self.config_view.alerts, now, false, in_track) {
+        self.feed.record(result, || {
+            if let Ok(empty) = build(
+                &self.view,
+                &self.config_view.alerts,
+                now.max(0),
+                false,
+                in_track,
+            ) {
                 let _ = publish(&layout, &empty);
             }
-            if self.feed.last_error != Some(error) {
-                eprintln!("calendar feed: {error:?}");
-            }
-            self.feed.last_error = Some(error);
-        } else {
-            self.feed.last_error = None;
-        }
+        });
     }
 }
 
 #[cfg(test)]
 #[path = "feed_tests.rs"]
 mod tests;
+
+impl Publisher {
+    fn record(&mut self, result: Result<bool, FeedError>, clear_source: impl FnOnce()) {
+        if let Err(error) = result {
+            if matches!(
+                error,
+                FeedError::Clock | FeedError::Agenda | FeedError::Limit
+            ) {
+                clear_source();
+            }
+            if self.last_error != Some(error) {
+                eprintln!("calendar feed: {error:?}");
+            }
+            self.last_error = Some(error);
+        } else if self.last_error.take().is_some() {
+            eprintln!("calendar feed: recovered");
+        }
+    }
+}

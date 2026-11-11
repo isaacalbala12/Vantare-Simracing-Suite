@@ -93,6 +93,15 @@ pub(super) fn cause(
     at: i64,
     alerts: &CalendarAlerts,
 ) -> Result<Option<Cause>, AgendaError> {
+    cause_in(schedule, series, at, alerts, &Local)
+}
+pub(super) fn cause_in<Z: TimeZone>(
+    schedule: &CalendarSchedule,
+    series: &CalendarSeries,
+    at: i64,
+    alerts: &CalendarAlerts,
+    zone: &Z,
+) -> Result<Option<Cause>, AgendaError> {
     if !daily(series) {
         return Ok(alerts
             .slots
@@ -103,7 +112,7 @@ pub(super) fn cause(
     let Some(band) = alerts.bands.iter().find(|band| band.series_id == series.id) else {
         return Ok(None);
     };
-    let local = Local
+    let local = zone
         .timestamp_millis_opt(at)
         .single()
         .ok_or(AgendaError::Invalid)?;
@@ -118,25 +127,30 @@ pub(super) fn cause(
     }
     if band.mode == CalendarBandMode::First {
         // Frozen alerts.rs adds elapsed minutes to local midnight, including DST days.
-        let midnight = Local
-            .from_local_datetime(
-                &local
-                    .date_naive()
-                    .and_hms_opt(0, 0, 0)
-                    .ok_or(AgendaError::Invalid)?,
-            )
+        let midnight = local
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .ok_or(AgendaError::Invalid)?;
+        let midnight = zone
+            .from_local_datetime(&midnight)
             .earliest()
-            .ok_or(AgendaError::Invalid)?
-            .timestamp_millis();
+            .or_else(|| {
+                zone.from_local_datetime(&(midnight + chrono::Duration::hours(1)))
+                    .earliest()
+            })
+            .map_or_else(
+                || midnight.and_utc().timestamp_millis(),
+                |at| at.timestamp_millis(),
+            );
         let from = midnight + i64::from(band.from) * MINUTE;
         if starts(
             schedule,
             series,
             from,
             from + i64::from(band.to - band.from) * MINUTE,
-        )?
-        .first()
-        .copied()
+        )
+        .ok()
+        .and_then(|values| values.first().copied())
             != Some(at)
         {
             return Ok(None);
@@ -180,3 +194,7 @@ pub(super) fn current(view: &super::CalendarView, now: i64) -> Option<CalendarSc
     }
     Some(result)
 }
+
+#[cfg(test)]
+#[path = "agenda_tests.rs"]
+mod tests;

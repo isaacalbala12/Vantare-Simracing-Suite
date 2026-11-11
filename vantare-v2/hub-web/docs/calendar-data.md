@@ -46,12 +46,25 @@ Las franjas usan la hora local y la aritmética de cambio de hora del GPUI.
 
 Los metadatos evitan analizar los documentos cada tick. Se revisan una vez por
 segundo; una transición de derechos o entrada en pista se atiende inmediatamente.
-Sin cambios se escribe un heartbeat cada 5 segundos, para el TTL existente de
+Sin cambios y con eventos se escribe un heartbeat cada 5 segundos, para el TTL existente de
 10 segundos del consumidor. Hay un máximo de 256 avisos y 64 KiB; escritura CAS
 con los bytes observados, sin seguir un destino simbólico ni modificar
-preferencias. Los errores se registran como categorías cerradas y se reintentan.
+preferencias. No crea ni renueva un feed vacío si ya está vacío o no existe.
+Los fallos de la fuente vacían la agenda; Busy, Conflict, Io, Protected y TooLarge
+al publicar conservan al otro escritor y dejan actuar el TTL. Se registran la
+categoría cerrada del fallo y su recuperación.
 
 No hay hilos, métodos ni temas nuevos. Al cerrarse el anfitrión cesa el heartbeat
 y el consumidor aplica su TTL, igual que al cerrarse el GPUI. Esto no introduce
 un residente ni promete avisos con el Hub cerrado. Los avisos de Windows, ICS y
 el mantenimiento del historial de publicaciones son entregas independientes.
+
+La equivalencia se comprueba con `calendar-agenda-gpui.json`, generado por
+`cargo run -p vantare-hub-host --example calendar-gpui-oracle` dentro de la cola.
+El ejemplo ejecuta los módulos puros congelados del GPUI (modelo, avisos y reloj),
+sin depender del crate GPUI, compilar su interfaz ni modificar sus fuentes.
+Incluye hashes de esos tres módulos, el corpus compartido, la publicación de
+octubre, franjas First/Each, tandas semanales y desfases sobre un intervalo de
+37 minutos. La zona observada al generar queda como offset inyectado en cada
+caso; los saltos de medianoche y la hora repetida se cubren además con zona
+sintética inyectada, sin cambiar la zona global del servidor.

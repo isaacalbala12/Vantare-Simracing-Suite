@@ -256,7 +256,7 @@ fn publishing_never_overwrites_an_oversized_or_non_file_destination() {
     let path = root.0.join("session-alerts-feed.json");
     std::fs::write(&path, vec![b'x'; 65_537]).unwrap();
     let feed = build(&view(), &alerts(), now(), true, false).unwrap();
-    assert_eq!(publish(&root.layout(), &feed), Err(FeedError::Io));
+    assert_eq!(publish(&root.layout(), &feed), Err(FeedError::TooLarge));
     assert_eq!(std::fs::metadata(&path).unwrap().len(), 65_537);
     std::fs::remove_file(&path).unwrap();
     std::fs::create_dir(&path).unwrap();
@@ -286,7 +286,7 @@ fn a_busy_writer_preserves_the_old_feed_and_can_retry_without_waiting() {
         .unwrap();
     lock.try_lock().unwrap();
     feed.events.clear();
-    assert_eq!(publish(&root.layout(), &feed), Err(FeedError::Io));
+    assert_eq!(publish(&root.layout(), &feed), Err(FeedError::Busy));
     assert_eq!(root.saved(), original);
     drop(lock);
     assert!(publish(&root.layout(), &feed).unwrap());
@@ -316,4 +316,134 @@ fn a_symbolic_feed_destination_never_changes_its_target() {
         Err(FeedError::Protected)
     );
     assert_eq!(std::fs::read(&target).unwrap(), b"keep");
+}
+
+#[test]
+fn empty_feed_is_never_created_or_heartbeated_without_events() {
+    let root = Root::new();
+    let mut feed = build(&view(), &alerts(), now(), false, false).unwrap();
+    assert!(!publish(&root.layout(), &feed).unwrap());
+    assert!(!root.0.join("session-alerts-feed.json").exists());
+    let mut active = build(&view(), &alerts(), now(), true, false).unwrap();
+    publish(&root.layout(), &active).unwrap();
+    feed.updated_at_ms += 1;
+    assert!(publish(&root.layout(), &feed).unwrap());
+    let bytes = std::fs::read(root.0.join("session-alerts-feed.json")).unwrap();
+    feed.updated_at_ms += 60_000;
+    assert!(!publish(&root.layout(), &feed).unwrap());
+    assert_eq!(
+        std::fs::read(root.0.join("session-alerts-feed.json")).unwrap(),
+        bytes
+    );
+    active.updated_at_ms = feed.updated_at_ms;
+    assert!(publish(&root.layout(), &active).unwrap());
+}
+#[test]
+fn write_failures_do_not_issue_a_second_empty_publication_and_recovery_clears_diagnostic() {
+    let mut state = super::Publisher::default();
+    for error in [
+        FeedError::Io,
+        FeedError::Protected,
+        FeedError::Busy,
+        FeedError::Conflict,
+        FeedError::TooLarge,
+    ] {
+        let mut clears = 0;
+        state.record(Err(error), || clears += 1);
+        assert_eq!(clears, 0);
+        assert_eq!(state.last_error, Some(error));
+        state.record(Ok(false), || panic!("recovery must not clear"));
+        assert_eq!(state.last_error, None);
+    }
+    for error in [FeedError::Clock, FeedError::Agenda, FeedError::Limit] {
+        let mut clears = 0;
+        state.record(Err(error), || clears += 1);
+        assert_eq!(clears, 1);
+    }
+}
+#[test]
+fn tick_limits_one_second_and_heartbeats_only_at_five_seconds() {
+    let root = Root::new();
+    std::fs::write(
+        root.0.join("official-schedule.json"),
+        serde_json::to_vec(&schedule()).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        root.0.join("calendar-alerts.json"),
+        serde_json::to_vec(&alerts()).unwrap(),
+    )
+    .unwrap();
+    let mut state = State::new(root.0.clone()).with_layout(root.layout());
+    let tick = Instant::now();
+    let baseline = now() + 120_000;
+    state.tick_feed(baseline, tick, true, false);
+    let initial = root.saved();
+    for elapsed in [100, 999, 1000, 4999] {
+        state.tick_feed(
+            baseline + elapsed,
+            tick + Duration::from_millis(u64::try_from(elapsed).unwrap()),
+            true,
+            false,
+        );
+        assert_eq!(root.saved(), initial);
+    }
+    state.tick_feed(baseline + 5000, tick + Duration::from_secs(5), true, false);
+    // The call at 4999 ms consumed the one-second check; the next eligible tick is 5999.
+    assert_eq!(root.saved(), initial);
+    state.tick_feed(
+        baseline + 5999,
+        tick + Duration::from_millis(5999),
+        true,
+        false,
+    );
+    assert_eq!(root.saved().updated_at_ms, millis(baseline + 5999));
+}
+#[test]
+fn source_agenda_and_limit_errors_clear_old_events_and_can_recover() {
+    for error in [FeedError::Clock, FeedError::Agenda, FeedError::Limit] {
+        let root = Root::new();
+        std::fs::write(
+            root.0.join("official-schedule.json"),
+            serde_json::to_vec(&schedule()).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            root.0.join("calendar-alerts.json"),
+            serde_json::to_vec(&alerts()).unwrap(),
+        )
+        .unwrap();
+        let mut state = State::new(root.0.clone()).with_layout(root.layout());
+        let tick = Instant::now();
+        state.tick_feed(now(), tick, true, false);
+        assert!(!root.saved().events.is_empty());
+        if error == FeedError::Agenda {
+            state.view.official.as_mut().unwrap().series[0]
+                .recurrence
+                .kind = "invalid".into();
+        } else if error == FeedError::Limit {
+            let source = state.view.official.as_mut().unwrap();
+            source.series[0].recurrence.interval_minutes = 1;
+            for index in 1..5 {
+                let mut series = source.series[0].clone();
+                series.id = format!("extra-{index}");
+                let mut band = state.config_view.alerts.bands[0].clone();
+                band.series_id.clone_from(&series.id);
+                state.config_view.alerts.bands.push(band);
+                source.series.push(series);
+            }
+        }
+        let when = if error == FeedError::Clock {
+            -1
+        } else {
+            now() + 1000
+        };
+        state.tick_feed(when, tick + Duration::from_secs(1), true, false);
+        assert!(root.saved().events.is_empty());
+        assert_eq!(state.feed.last_error, Some(error));
+        state.view.official = Some(schedule());
+        state.tick_feed(now() + 2000, tick + Duration::from_secs(2), true, false);
+        assert!(!root.saved().events.is_empty());
+        assert_eq!(state.feed.last_error, None);
+    }
 }

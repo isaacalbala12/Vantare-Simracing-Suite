@@ -23,10 +23,6 @@ struct Core {
     busy: bool,
 }
 impl Core {
-    #[cfg(windows)]
-    fn catalog(&self) -> Option<vantare_ipc::control::CatalogAccess> {
-        self.available.then_some(vantare_ipc::control::CatalogAccess::Pro)
-    }
     fn cancel_queued(&mut self, id: u32) {
         self.cancelled.push(id);
     }
@@ -211,3 +207,10 @@ mod calendar_dispatch_tests;
 // The existing portable-dispatch Linux gate runs these all-target checks too.
 #[path = "../tests/architecture.rs"]
 mod architecture;
+
+#[cfg(windows)]
+impl Core {
+    fn catalog(&self) -> Option<vantare_ipc::control::CatalogAccess> {
+        self.available.then_some(vantare_ipc::control::CatalogAccess::Pro)
+    }
+}

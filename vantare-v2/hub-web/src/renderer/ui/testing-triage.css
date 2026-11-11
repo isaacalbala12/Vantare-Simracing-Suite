@@ -1,0 +1,65 @@
+.v-testing-triage .v-field {
+  gap: 0;
+}
+.v-testing-triage .v-field label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.v-testing-triage .v-input {
+  width: 100%;
+}
+.v-testing-triage input {
+  height: 40px;
+}
+.v-testing-triage textarea {
+  height: 96px;
+  min-height: 96px;
+  resize: none;
+}
+.v-testing-triage .v-choice {
+  align-items: center;
+  min-height: 22px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.v-testing-triage .v-checkbox {
+  flex: 0 0 18px;
+}
+.v-testing-triage .v-checkbox[data-checked] {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: var(--text-on-accent);
+}
+.v-testing-triage-consent {
+  min-width: 0;
+  overflow: hidden;
+}
+.v-testing-triage .v-choice > span:not(.v-checkbox) {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+}
+.v-testing-triage .v-testing-triage-consent .v-choice > span:not(.v-checkbox) {
+  white-space: nowrap;
+  overflow: hidden;
+}
+.v-testing-triage .v-testing-fine-print {
+  line-height: 18px;
+}
+.v-testing-triage > section > .v-button {
+  align-self: stretch;
+}
+.v-testing-triage-preview {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+}

@@ -1,5 +1,27 @@
 # Contrato por pantalla · VANTA-138
 
+## Testing Center: Triage (`triage`)
+
+El módulo registra únicamente `triage.prepare { selection, consent }` y
+`triage.send { previewId, consent }`. Ambos exigen cuenta verificada, no bloqueada
+y derechos de tester en el anfitrión. La selección usa un enum cerrado y no admite
+duplicados; el identificador preparado tiene exactamente 64 dígitos hexadecimales.
+El título y la descripción del editor son locales: no forman parte del wire ni se
+transfieren al núcleo. Este recibe esos campos vacíos, como en el GPUI.
+
+El anfitrión valida y proyecta la previsualización con lista cerrada de claves y
+límites; no reenvía mensajes libres del servicio. La pantalla invalida la revisión
+y el consentimiento al cambiar datos, selección, sesión o conexión, y serializa
+las peticiones mediante la cola de Testing. Añadir estos métodos sube el wire de
+10 a 11. El módulo no declara respuestas diferidas.
+
+La vista muestra el contenido del informe, no la petición HTTP completa: el núcleo
+lo envía dentro de un sobre fijo con versión, consentimiento e identificador
+(idempotencia). No se modifica ese sobre desde el renderer. Tras recibir la vista
+previa, se limpia el consentimiento y hay que volver a marcarlo antes de enviar;
+es una mejora de seguridad respecto al GPUI. Una preparación abandonada puede
+vivir en el núcleo hasta 30 minutos, aunque la pantalla ya la haya invalidado.
+
 ## Testing Center: diagnóstico local (`report_local`)
 
 El módulo posee `report.localPrepare { fields }` y

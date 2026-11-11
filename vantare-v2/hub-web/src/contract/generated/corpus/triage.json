@@ -1,0 +1,54 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "triage.prepare",
+        "value": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "payload": "{\n  \"p_attachments\": [],\n  \"p_body\": \"[contenido retirado por privacidad]\",\n  \"p_channel\": \"nightly\",\n  \"p_context\": {\n    \"app_channel\": \"nightly\",\n    \"app_version\": \"0.0.0\",\n    \"consent\": {\n      \"accepted_at\": \"2026-11-11T12:00:00Z\",\n      \"items\": [],\n      \"version\": \"triage-v2\"\n    },\n    \"game\": \"none\",\n    \"game_version\": null,\n    \"posthog_session_id\": null,\n    \"system\": {},\n    \"telemetry_summary\": null\n  },\n  \"p_id\": \"15350000-0000-0000-0000-000000000001\",\n  \"p_title\": \"[contenido retirado por privacidad]\"\n}"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "triage.send",
+        "value": {
+          "questionnaires": [],
+          "reports": []
+        }
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "method": "triage.prepare",
+        "selection": {
+          "items": [
+            "system",
+            "session",
+            "app_log",
+            "telemetry_fragment",
+            "posthog_session"
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "consent": true,
+        "method": "triage.send",
+        "previewId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ]
+}

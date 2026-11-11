@@ -17,6 +17,7 @@ import {
 import { testingText as text } from "./es";
 import { LocalDiagnostic } from "./LocalDiagnostic";
 import { useReports } from "./ReportsState";
+import { TriageEditor } from "./TriageEditor";
 
 export type ReportsView = "local" | "compose" | "list" | "diagnostic";
 
@@ -132,6 +133,8 @@ export function Reports({
         <LocalDiagnostic />
       ) : view === "list" ? (
         <ReportsPanel />
+      ) : view === "local" && state.access.tester ? (
+        <TriageEditor />
       ) : view === "local" ? (
         <>
           <TestingCard title={text.helpTitle}>

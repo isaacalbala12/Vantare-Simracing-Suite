@@ -127,13 +127,7 @@ mod tests {
         let directory =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/protocol/modules");
         let mut command = std::process::Command::new("rustfmt");
-        command.args([
-            "--edition",
-            "2024",
-            "--check",
-            "--config",
-            "skip_children=true",
-        ]);
+        command.args(["--edition", "2024", "--check"]);
         for entry in std::fs::read_dir(directory).expect("modules") {
             let path = entry.expect("module").path();
             for file in ["wire.rs", "dispatch.rs", "bindings.rs", "tick.rs"] {

@@ -151,5 +151,5 @@ it("retries Busy through the Testing queue without losing the reviewed selection
     selection: { items: triageItems.filter((item) => item !== "system") },
     consent: true,
   });
-  expect(hook.result.current.busy).toBe(false);
+  await waitFor(() => expect(hook.result.current.busy).toBe(false));
 });

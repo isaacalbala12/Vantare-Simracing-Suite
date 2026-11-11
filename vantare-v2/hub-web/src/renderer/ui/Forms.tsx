@@ -11,6 +11,7 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { type ReactNode, useId } from "react";
 import { Icon } from "../assets/icons/Icon";
 import { Button } from "./Button";
+import "./appearance-controls.css";
 export interface Option {
   value: string;
   label: string;
@@ -121,13 +122,13 @@ export function Select({
           className="v-input v-select-trigger"
         >
           <BaseSelect.Value />
-          <BaseSelect.Icon>
-            <Icon name="i-chevron" />
+          <BaseSelect.Icon className="v-select-icon">
+            <Icon name="down" />
           </BaseSelect.Icon>
         </BaseSelect.Trigger>
         <BaseSelect.Portal>
           <BaseSelect.Positioner className="v-positioner" sideOffset={6}>
-            <BaseSelect.Popup className="v-popup">
+            <BaseSelect.Popup className="v-popup v-select-popup">
               <BaseSelect.List>
                 {options.map((option) => (
                   <BaseSelect.Item
@@ -193,7 +194,9 @@ export function Slider({
   onValueCommitted,
   disabled = false,
   hideLabel = false,
+  variant = "default",
 }: {
+  variant?: "default" | "appearance";
   hideLabel?: boolean;
   label: string;
   pending?: boolean;
@@ -206,7 +209,7 @@ export function Slider({
 }) {
   return (
     <BaseSlider.Root
-      className="v-slider"
+      className={`v-slider${variant === "appearance" ? " v-slider--appearance" : ""}`}
       value={value}
       min={min}
       max={max}
@@ -223,7 +226,11 @@ export function Slider({
       <BaseSlider.Label className={hideLabel ? "v-sr-only" : undefined}>
         {label}
       </BaseSlider.Label>
-      <BaseSlider.Value />
+      <BaseSlider.Value className="v-slider-value">
+        {variant === "appearance"
+          ? (_formatted, values) => `${values[0]}%`
+          : undefined}
+      </BaseSlider.Value>
       <BaseSlider.Control className="v-slider-control">
         <BaseSlider.Track className="v-slider-track">
           <BaseSlider.Indicator className="v-slider-indicator" />

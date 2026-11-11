@@ -9,6 +9,7 @@ import { upcomingScenes } from "./upcoming.ts";
 export interface VisualScene {
   mock: string;
   prepare(page: Page): Promise<void>;
+  cleanup?(page: Page): Promise<void>;
 }
 const settingsTabs: Record<string, string> = {
   "ajustes-cuenta": "Cuenta",

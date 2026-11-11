@@ -439,3 +439,14 @@
   font: 400 9px / 9px var(--font-mono);
   color: var(--text-1);
 }
+
+.v-pilot-preview-sims > span {
+  background: var(--pilot-chip-bg);
+  color: var(--text-2);
+}
+.v-pilot-preview-sims > span[data-accent] {
+  color: var(--accent-bright);
+}
+.v-pilot-photo-actions .v-button[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+}

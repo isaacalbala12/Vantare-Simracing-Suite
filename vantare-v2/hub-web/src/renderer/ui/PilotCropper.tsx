@@ -126,6 +126,37 @@ export function PilotCropper({
       >
         <canvas ref={canvas} width={width} height={height} />
         <span
+          className="v-pilot-crop-veil"
+          style={{ left: 0, top: 0, width, height: crop.y * height }}
+        />
+        <span
+          className="v-pilot-crop-veil"
+          style={{
+            left: 0,
+            top: crop.y * height + side,
+            width,
+            height: Math.max(0, height - crop.y * height - side),
+          }}
+        />
+        <span
+          className="v-pilot-crop-veil"
+          style={{
+            left: 0,
+            top: crop.y * height,
+            width: crop.x * width,
+            height: side,
+          }}
+        />
+        <span
+          className="v-pilot-crop-veil"
+          style={{
+            left: crop.x * width + side,
+            top: crop.y * height,
+            width: Math.max(0, width - crop.x * width - side),
+            height: side,
+          }}
+        />
+        <span
           className="v-pilot-crop-square"
           style={{
             left: crop.x * width,
@@ -156,6 +187,7 @@ export function PilotCropper({
             {text.zoomIn}
           </Button>
         </div>
+        <span className="v-pilot-crop-spacer" aria-hidden="true" />
         <div className="v-pilot-crop-confirm">
           <Button size="sm" disabled={pending} onClick={onCancel}>
             {text.cropCancel}

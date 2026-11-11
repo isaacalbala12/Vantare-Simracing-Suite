@@ -267,7 +267,11 @@ export function PilotPreview({ fields }: { fields: PilotFields }) {
       </p>
       <div className="v-pilot-preview-sims">
         {sims.length ? (
-          sims.map((sim) => <span key={sim.id}>{sim.label}</span>)
+          sims.map((sim) => (
+            <span key={sim.id} data-accent="true">
+              {sim.label}
+            </span>
+          ))
         ) : (
           <span>{text.noSimulators}</span>
         )}

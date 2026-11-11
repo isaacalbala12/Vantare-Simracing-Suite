@@ -3,7 +3,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { chromium } from "playwright-core";
+import { chromium, type Page } from "playwright-core";
 import { auditFontSources } from "./visual-diff/fonts.ts";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
@@ -183,6 +183,7 @@ async function capture(
     stderr += chunk.toString();
   });
   let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
+  let cleanupPage: Page | undefined;
   try {
     await writeFile(
       join(destination, "instance.json"),
@@ -213,6 +214,7 @@ async function capture(
     browser = await chromium.connectOverCDP(endpoint);
     const context = browser.contexts()[0];
     const page = context.pages()[0] ?? (await context.waitForEvent("page"));
+    cleanupPage = page;
     await page.getByRole("tab", { name: "General", exact: true }).waitFor();
     const session = await context.newCDPSession(page);
     const preparedWindow = execFileSync(
@@ -300,18 +302,52 @@ async function capture(
     );
     return await readFile(join(destination, "current.png"));
   } finally {
-    if (browser && child.exitCode === null) {
-      const closing = await browser.newBrowserCDPSession();
-      await closing.send("Browser.close").catch(() => {}); // Expected CDP disconnect on close.
-    }
-    await browser?.close();
-    if (child.pid && child.exitCode === null) {
-      const stopped = new Promise<void>((accept) =>
-        child.once("exit", () => accept()),
+    // A dirty native close guard can veto Browser.close. Bound QA teardown and
+    // kill only this spawned process tree if scene cleanup cannot release it.
+    let forcedKill = false;
+    let cleanupFailed = false;
+    const stopTree = () => {
+      if (child.pid && child.exitCode === null) {
+        forcedKill = true;
+        try {
+          execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+            windowsHide: true,
+            stdio: "ignore",
+          });
+        } catch {
+          child.kill();
+        }
+      }
+    };
+    const deadline = setTimeout(stopTree, 3000);
+    try {
+      if (cleanupPage && !cleanupPage.isClosed())
+        await adapter.cleanup?.(cleanupPage).catch(() => {
+          cleanupFailed = true;
+        });
+      if (browser && child.exitCode === null) {
+        const closing = await browser.newBrowserCDPSession();
+        await closing.send("Browser.close").catch(() => {});
+      }
+      await browser?.close();
+    } finally {
+      clearTimeout(deadline);
+      if (child.exitCode === null) {
+        const stopped = new Promise<void>((accept) =>
+          child.once("exit", () => accept()),
+        );
+        stopTree();
+        await stopped;
+      }
+      await writeFile(
+        join(destination, "teardown.json"),
+        JSON.stringify(
+          { forcedKill, cleanupFailed, exitCode: child.exitCode },
+          null,
+          2,
+        ),
       );
-      child.kill();
-      await stopped;
+      await writeFile(join(destination, "stderr.log"), stderr);
     }
-    await writeFile(join(destination, "stderr.log"), stderr);
   }
 }

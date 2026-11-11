@@ -34,7 +34,6 @@
   position: absolute;
   pointer-events: none;
   border: 1px solid var(--crop-square);
-  box-shadow: 0 0 0 4096px var(--crop-veil);
 }
 .v-pilot-crop-square > span {
   display: block;
@@ -71,4 +70,16 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.v-pilot-crop-veil {
+  position: absolute;
+  pointer-events: none;
+  background: var(--crop-veil);
+}
+.v-pilot-crop-actions {
+  line-height: 21px;
+}
+.v-pilot-crop-spacer {
+  flex: 1;
 }

@@ -4,6 +4,19 @@ import type { VisualScene } from "./scenes.ts";
 export const pilotScenes: Record<string, VisualScene> = {
   "ajustes-perfil-recorte": {
     mock: "ajustes-con-diseno",
+    async cleanup(page) {
+      const cancel = page.getByRole("button", {
+        name: "Cancelar",
+        exact: true,
+      });
+      if (await cancel.count()) await cancel.click();
+      const discard = page.getByRole("button", {
+        name: "Descartar",
+        exact: true,
+      });
+      if ((await discard.count()) && (await discard.isEnabled()))
+        await discard.click();
+    },
     async prepare(page) {
       await page.getByRole("tab", { name: "Cuenta", exact: true }).click();
       await page

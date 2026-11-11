@@ -1,6 +1,19 @@
 import type { VisualScene } from "./scenes.ts";
 
 export const testingScenes: Record<string, VisualScene> = {
+  "testing-center-resumen": {
+    mock: "testing-tester-reference",
+    async prepare(page) {
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Testing Center", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "Tu experiencia cuenta", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 850);
+    },
+  },
   "testing-center-diagnostico": {
     mock: "testing-tester-reference",
     async prepare(page) {

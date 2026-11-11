@@ -4,6 +4,7 @@ import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
 import { DiscardReportDialog } from "../../ui/DiscardReportDialog";
 import { Checkbox, Input, Select, Textarea } from "../../ui/Forms";
+import { SessionReportReceipts } from "../../ui/SessionReportReceipts";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
   TestingCard,
@@ -277,6 +278,19 @@ export function ReportsPanel() {
   return (
     <TestingCard title={text.listTitle}>
       <TestingFinePrint>{text.listHelp}</TestingFinePrint>
+      <p>{text.reloadHelp}</p>
+      {state.error && (
+        <Callout
+          tone="err"
+          title={
+            state.failure === "coreUnavailable"
+              ? text.offline
+              : state.failure === "denied"
+                ? text.denied
+                : text.failed
+          }
+        />
+      )}
       <Button disabled={blocked} onClick={() => run(state.refresh)}>
         {text.reload}
       </Button>
@@ -335,6 +349,14 @@ export function ReportsPanel() {
           <strong>{text.empty}</strong>
           <p>{text.emptyHelp}</p>
         </ContentStack>
+      )}
+      {state.sessionReceipts.length > 0 && (
+        <SessionReportReceipts
+          receipts={state.sessionReceipts}
+          reports={state.participation.reports}
+          blocked={blocked}
+          onRefresh={() => run(state.refresh)}
+        />
       )}
     </TestingCard>
   );

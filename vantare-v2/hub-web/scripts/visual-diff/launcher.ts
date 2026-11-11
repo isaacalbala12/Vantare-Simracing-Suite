@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const launcherScenes: Record<string, VisualScene> = {
   "launcher-base": {
@@ -96,9 +97,9 @@ launcherScenes["launcher-decision"] = {
       exact: true,
     });
     await target.click();
-    assert.equal(
-      await target.getAttribute("aria-pressed"),
-      "true",
+    await until(
+      async () => (await target.getAttribute("aria-pressed")) === "true",
+      5000,
       "Underlying Launcher must still receive clicks",
     );
     if (originalName)

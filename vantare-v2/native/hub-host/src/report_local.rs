@@ -155,6 +155,18 @@ pub fn collect_binaries() -> Vec<BinaryView> {
         .collect()
 }
 
+#[cfg(not(windows))]
+pub fn collect_binaries() -> Vec<BinaryView> {
+    BINARIES
+        .into_iter()
+        .map(|name| BinaryView {
+            name: name.into(),
+            state: BinaryState::Unavailable,
+            sha256: None,
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

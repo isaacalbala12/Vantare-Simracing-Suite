@@ -1,36 +1,10 @@
 /* GPUI shell/sidebar.rs and orbit/kit.rs. Collapsed rules remain in ui.css. */
-.v-sidebar:not(.v-sidebar--collapsed) {
-  padding: 0 12px 12px;
-  gap: 0;
-  min-height: 0;
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-sidebar-brand {
-  justify-content: flex-start;
-  gap: 10px;
-  padding-inline: 8px;
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-sidebar-brand .v-button {
-  width: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--text-3);
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-sidebar-brand svg {
-  width: 16px;
-  height: 16px;
-}
 .v-sidebar-wordmark {
   width: 106.66px;
   height: 14px;
   flex: none;
   background: var(--text-1);
   mask: url("../assets/brand/wordmark.svg") center / contain no-repeat;
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group {
-  gap: 2px;
-  flex: none;
 }
 .v-nav-heading {
   display: flex;
@@ -44,11 +18,6 @@
   font-size: 11px;
   line-height: 16px;
 }
-.v-nav-heading .v-tracked-caps {
-  text-transform: uppercase;
-  font-family: var(--font-display);
-  font-weight: 600;
-}
 .v-nav-tester {
   padding: 0 6px;
   border-radius: var(--radius-xs);
@@ -57,25 +26,6 @@
   font-size: 10px;
   line-height: 16px;
   font-weight: 600;
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group .v-button,
-.v-sidebar-expanded-footer .v-sidebar-footer-row {
-  height: 40px;
-  min-height: 40px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--text-2);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-  justify-content: flex-start;
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group .v-button-label,
-.v-sidebar-expanded-footer .v-button-label {
-  width: 100%;
-  min-width: 0;
-  gap: 10px;
 }
 .v-nav-name {
   flex: 1;
@@ -89,20 +39,6 @@
   color: var(--text-3);
   font-size: 12px;
 }
-.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group [aria-current="page"] {
-  color: var(--text-1);
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-nav-symbol {
-  width: 22px;
-  color: var(--text-3);
-}
-.v-sidebar:not(.v-sidebar--collapsed) .v-nav-symbol > svg {
-  width: 21px;
-  height: 21px;
-}
-.v-sidebar:not(.v-sidebar--collapsed) [aria-current="page"] .v-nav-symbol {
-  color: var(--accent-bright);
-}
 .v-nav-soon {
   display: flex;
   align-items: center;
@@ -114,10 +50,6 @@
   font-size: 11px;
   line-height: 18px;
   color: var(--text-3);
-}
-.v-nav-soon svg {
-  width: 11px;
-  height: 11px;
 }
 .v-sidebar-profiles {
   flex: 1;
@@ -132,20 +64,6 @@
   flex-direction: column;
   gap: 2px;
 }
-.v-sidebar-profile.v-button {
-  flex: none;
-  height: 42px;
-  min-height: 42px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  justify-content: flex-start;
-}
-.v-sidebar-profile .v-button-label {
-  width: 100%;
-  min-width: 0;
-  gap: 10px;
-}
 .v-sidebar-profile-dot {
   width: 7px;
   height: 7px;
@@ -159,6 +77,31 @@
   min-width: 0;
   text-align: left;
 }
+.v-sidebar-profile-copy > * {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.v-sidebar-expanded-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.v-sidebar-palette {
+  position: relative;
+  height: 40px;
+}
+.v-sidebar-account-copy {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.v-nav-soon svg {
+  width: 11px;
+  height: 11px;
+}
 .v-sidebar-profile-copy > span {
   font-size: 14px;
   line-height: 18px;
@@ -171,21 +114,6 @@
   color: var(--text-3);
   font-weight: 400;
 }
-.v-sidebar-profile-copy > * {
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-.v-sidebar-expanded-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.v-sidebar-expanded-footer .v-sidebar-footer-row > .v-button-label > svg {
-  width: 22px;
-  height: 21px;
-  color: var(--text-3);
-}
 .v-sidebar-footer-row kbd {
   font-size: 11px;
   line-height: 16px;
@@ -196,10 +124,6 @@
   border: 1px solid var(--line-2);
   border-radius: 3px;
 }
-.v-sidebar-palette {
-  position: relative;
-  height: 40px;
-}
 .v-sidebar-palette > svg {
   position: absolute;
   left: 10px;
@@ -209,29 +133,6 @@
   color: var(--accent-bright);
   pointer-events: none;
   z-index: 1;
-}
-.v-sidebar-palette .v-select-trigger {
-  height: 40px;
-  min-height: 40px;
-  padding-left: 42px;
-  background: transparent;
-  border-color: var(--line-1);
-  font-size: 14px;
-  font-weight: 400;
-}
-.v-sidebar-account.v-button {
-  margin-top: 4px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-}
-.v-sidebar-account-copy {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  flex: 1;
-  min-width: 0;
 }
 .v-sidebar-account-copy > span {
   white-space: nowrap;
@@ -260,12 +161,125 @@
   font-weight: 700;
   line-height: 15px;
 }
+.v-sidebar:not(.v-sidebar--collapsed) {
+  padding: 0 12px 12px;
+  gap: 0;
+  min-height: 0;
+}
+.v-nav-heading .v-tracked-caps {
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+.v-sidebar-expanded-footer .v-sidebar-footer-row {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  justify-content: flex-start;
+}
+.v-sidebar-expanded-footer .v-button-label {
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+.v-sidebar-profile.v-button {
+  flex: none;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  justify-content: flex-start;
+}
+.v-sidebar-profile .v-button-label {
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+.v-sidebar-palette .v-select-trigger {
+  height: 40px;
+  min-height: 40px;
+  padding-left: 42px;
+  background: transparent;
+  border-color: var(--line-1);
+  font-size: 14px;
+  font-weight: 400;
+}
+.v-sidebar-account.v-button {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+}
 .v-sidebar-account .v-button-label > svg {
   width: 16px;
   height: 16px;
   color: var(--text-3);
 }
-
+.v-sidebar:not(.v-sidebar--collapsed) .v-sidebar-brand {
+  justify-content: flex-start;
+  gap: 10px;
+  padding-inline: 8px;
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group {
+  gap: 2px;
+  flex: none;
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-symbol {
+  width: 22px;
+  color: var(--text-3);
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-sidebar-brand svg {
+  width: 16px;
+  height: 16px;
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-symbol > svg {
+  width: 21px;
+  height: 21px;
+}
+.v-sidebar-expanded-footer .v-sidebar-footer-row > .v-button-label > svg {
+  width: 22px;
+  height: 21px;
+  color: var(--text-3);
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-sidebar-brand .v-button {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-3);
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group .v-button {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  justify-content: flex-start;
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group .v-button-label {
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+.v-sidebar:not(.v-sidebar--collapsed) .v-nav-group [aria-current="page"] {
+  color: var(--text-1);
+}
+.v-sidebar:not(.v-sidebar--collapsed) [aria-current="page"] .v-nav-symbol {
+  color: var(--accent-bright);
+}
 .v-sidebar:not(.v-sidebar--collapsed) .v-nav-group + .v-nav-group {
   margin-top: 2px;
 }

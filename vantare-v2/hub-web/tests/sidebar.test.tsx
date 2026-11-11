@@ -55,7 +55,7 @@ it("keeps keyboard navigation and collapse available with expanded groups", () =
   expect(document.activeElement).toBe(
     screen.getByRole("button", { name: "Calendario" }),
   );
-  fireEvent.click(document.activeElement!);
+  fireEvent.click(screen.getByRole("button", { name: "Calendario" }));
   expect(select).toHaveBeenCalledWith("calendar");
   fireEvent.click(screen.getByRole("button", { name: "Contraer barra" }));
   expect(collapse).toHaveBeenCalledOnce();

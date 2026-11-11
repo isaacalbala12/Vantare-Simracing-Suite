@@ -18,7 +18,7 @@
 .v-access-logo {
   width: 48px;
   height: 48px;
-  color: var(--accent);
+  color: var(--accent-bright);
 }
 .v-access-logo svg {
   width: 48px;
@@ -26,11 +26,11 @@
 }
 .v-access-heading h1 {
   margin: 8px 0 0;
-  font: 600 20px / 1.618034 var(--font-sans);
+  font: 600 20px / 33px var(--font-sans);
 }
 .v-access-heading p {
   margin: 0;
-  font: 400 14px / 1.618034 var(--font-sans);
+  font: 400 14px / 23px var(--font-sans);
   color: var(--text-2);
 }
 .v-access-body {
@@ -55,7 +55,7 @@
   align-items: center;
   gap: 12px;
   color: var(--text-3);
-  font: 400 10px / 1.618034 var(--font-sans);
+  font: 400 10px / 17px var(--font-sans);
 }
 .v-access-separator i {
   height: 1px;
@@ -66,10 +66,10 @@
   min-height: 0;
   padding: 0;
   align-self: center;
-  font: 400 12px / 1.618034 var(--font-sans);
+  font: 400 12px / 20px var(--font-sans);
   color: var(--text-2);
   background: transparent;
-  border-color: transparent;
+  border: 0;
 }
 .v-access .v-access-recover {
   color: var(--text-3);
@@ -77,18 +77,18 @@
 .v-access-browser-note {
   margin: 0;
   text-align: center;
-  font: 400 10px / 1.618034 var(--font-sans);
+  font: 400 10px / 17px var(--font-sans);
   color: var(--text-3);
 }
 .v-access-status {
   margin: 0;
-  font: 400 14px / 1.618034 var(--font-sans);
+  font: 400 14px / 23px var(--font-sans);
   color: var(--text-2);
 }
 .v-access footer {
   margin-top: 24px;
   text-align: center;
-  font: 600 10px / 1.618034 var(--font-sans);
+  font: 600 10px / 17px var(--font-sans);
   color: var(--text-caption);
 }
 .v-access-form {
@@ -98,13 +98,13 @@
 }
 .v-access-form h2 {
   margin: 0;
-  font: 600 14px / 1.618034 var(--font-sans);
+  font: 600 14px / 23px var(--font-sans);
 }
 .v-access-form .v-field {
   gap: 6px;
 }
 .v-access-form .v-field > label {
-  font: 500 12px / 1.618034 var(--font-sans);
+  font: 500 12px / 20px var(--font-sans);
   color: var(--text-2);
 }
 .v-access .v-access-submit {
@@ -121,17 +121,17 @@
 .v-access-consent {
   margin: 0;
   color: var(--text-2);
-  font: 400 12px / 1.618034 var(--font-sans);
+  font: 400 12px / 20px var(--font-sans);
 }
 .v-access-authorizing {
   margin: 0;
   color: var(--text-2);
-  font: 500 12px / 1.618034 var(--font-sans);
+  font: 500 12px / 20px var(--font-sans);
 }
 .v-access-copy p {
   margin: 0;
   color: var(--text-2);
-  font: 400 12px / 1.618034 var(--font-sans);
+  font: 400 12px / 20px var(--font-sans);
 }
 .v-access-otp {
   position: relative;

@@ -2,7 +2,7 @@
 
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Reply, Request } from "../src/contract/generated/contract";
@@ -153,4 +153,56 @@ it("surfaces a failed initial read without a dead end", async () => {
   mount();
   await screen.findByText(text.failed);
   expect(screen.getByRole("button", { name: text.retry })).toBeTruthy();
+});
+
+it("cancels an active email request and ignores its later failure", async () => {
+  let rejectLate: ((reason: unknown) => void) | undefined;
+  const calls = intercept((request) =>
+    request.method === "account.email" && request.action.action === "begin"
+      ? new Promise<Reply>((_resolve, reject) => {
+          rejectLate = reject;
+        })
+      : undefined,
+  );
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  await user.type(screen.getByLabelText(text.emailLabel), "qa@example.invalid");
+  await user.click(screen.getByRole("button", { name: text.submit.continue }));
+  await screen.findByRole("button", { name: text.submit.waiting });
+  await user.click(screen.getByRole("button", { name: text.back }));
+  await screen.findByRole("button", { name: text.google });
+  await act(async () => {
+    rejectLate?.(new HostFailure({ kind: "denied" }));
+  });
+  expect(screen.queryByText(text.failed)).toBeNull();
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.email" && r.action.action === "cancel",
+    ),
+  ).toHaveLength(1);
+});
+it("clears a rejected code and never starts browser login for an email error", async () => {
+  const calls = intercept((request) =>
+    request.method === "account.email" && request.action.action === "verify"
+      ? Promise.reject(new HostFailure({ kind: "busy" }))
+      : undefined,
+  );
+  const user = mount("email-codigo");
+  await user.type(
+    await screen.findByRole("textbox", { name: text.code }),
+    "123456",
+  );
+  await user.click(screen.getByRole("button", { name: text.submit.verify }));
+  await screen.findByText(text.busy);
+  expect(
+    (screen.getByRole("textbox", { name: text.code }) as HTMLInputElement)
+      .value,
+  ).toBe("");
+  await user.click(screen.getByRole("button", { name: text.retry }));
+  await waitFor(() => expect(screen.queryByText(text.busy)).toBeNull());
+  expect(
+    calls.mock.calls.filter(
+      ([r]) => r.method === "account.retry" || r.method === "account.begin",
+    ),
+  ).toHaveLength(0);
 });

@@ -147,7 +147,9 @@ export function AccountGate({ children }: { children: ReactNode }) {
               <Button
                 disabled={pending}
                 onClick={() =>
-                  value ? void act({ method: "account.retry" }) : reload()
+                  value && gate !== "email"
+                    ? void act({ method: "account.retry" })
+                    : reload()
                 }
               >
                 {gate === "logoutFailed" ? text.retryLogout : text.retry}

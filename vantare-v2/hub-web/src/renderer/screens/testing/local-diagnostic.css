@@ -6,9 +6,9 @@
 }
 .v-testing-diagnostic-note {
   padding: 14px 18px;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-bright) 18%, transparent);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 6%, transparent);
   color: var(--text-2);
   font-size: 12.5px;
   line-height: 20px;

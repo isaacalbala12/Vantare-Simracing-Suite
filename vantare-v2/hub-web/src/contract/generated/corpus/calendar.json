@@ -36,15 +36,7 @@
         "current": {
           "alerts": {
             "autoLaunch": false,
-            "bands": [
-              {
-                "days": "all",
-                "from": 1200,
-                "mode": "each",
-                "seriesId": "beginner-lmgt3-fixed",
-                "to": 1380
-              }
-            ],
+            "bands": [],
             "channels": {
               "inTrack": true,
               "sound": false,
@@ -52,12 +44,7 @@
             },
             "leadMin": 10,
             "notifyWeek": true,
-            "slots": [
-              {
-                "at": 1791489600,
-                "seriesId": "weekly-wec-weekly"
-              }
-            ]
+            "slots": []
           },
           "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
           "documents": {
@@ -83,15 +70,7 @@
         "value": {
           "alerts": {
             "autoLaunch": false,
-            "bands": [
-              {
-                "days": "all",
-                "from": 1200,
-                "mode": "each",
-                "seriesId": "beginner-lmgt3-fixed",
-                "to": 1380
-              }
-            ],
+            "bands": [],
             "channels": {
               "inTrack": true,
               "sound": false,
@@ -99,12 +78,7 @@
             },
             "leadMin": 10,
             "notifyWeek": true,
-            "slots": [
-              {
-                "at": 1791489600,
-                "seriesId": "weekly-wec-weekly"
-              }
-            ]
+            "slots": []
           },
           "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
           "documents": {
@@ -127,15 +101,7 @@
         "value": {
           "alerts": {
             "autoLaunch": false,
-            "bands": [
-              {
-                "days": "all",
-                "from": 1200,
-                "mode": "each",
-                "seriesId": "beginner-lmgt3-fixed",
-                "to": 1380
-              }
-            ],
+            "bands": [],
             "channels": {
               "inTrack": true,
               "sound": false,
@@ -143,12 +109,7 @@
             },
             "leadMin": 10,
             "notifyWeek": true,
-            "slots": [
-              {
-                "at": 1791489600,
-                "seriesId": "weekly-wec-weekly"
-              }
-            ]
+            "slots": []
           },
           "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
           "documents": {
@@ -171,15 +132,7 @@
         "value": {
           "alerts": {
             "autoLaunch": false,
-            "bands": [
-              {
-                "days": "all",
-                "from": 1200,
-                "mode": "each",
-                "seriesId": "beginner-lmgt3-fixed",
-                "to": 1380
-              }
-            ],
+            "bands": [],
             "channels": {
               "inTrack": true,
               "sound": false,
@@ -187,12 +140,7 @@
             },
             "leadMin": 10,
             "notifyWeek": true,
-            "slots": [
-              {
-                "at": 1791489600,
-                "seriesId": "weekly-wec-weekly"
-              }
-            ]
+            "slots": []
           },
           "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
           "documents": {
@@ -215,15 +163,7 @@
         "value": {
           "alerts": {
             "autoLaunch": false,
-            "bands": [
-              {
-                "days": "all",
-                "from": 1200,
-                "mode": "each",
-                "seriesId": "beginner-lmgt3-fixed",
-                "to": 1380
-              }
-            ],
+            "bands": [],
             "channels": {
               "inTrack": true,
               "sound": false,
@@ -231,12 +171,7 @@
             },
             "leadMin": 10,
             "notifyWeek": true,
-            "slots": [
-              {
-                "at": 1791489600,
-                "seriesId": "weekly-wec-weekly"
-              }
-            ]
+            "slots": []
           },
           "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
           "documents": {

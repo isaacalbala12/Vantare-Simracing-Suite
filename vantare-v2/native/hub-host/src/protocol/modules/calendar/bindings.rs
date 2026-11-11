@@ -150,7 +150,7 @@ fn sample_config() -> crate::calendar::CalendarConfigView {
         prefs_revision: Some(vantare_services::content_hash(&[0])),
         following: vec![],
         following_revision: Some(vantare_services::content_hash(&[0])),
-        alerts: sample_alerts(),
+        alerts: crate::calendar::CalendarAlerts::default(),
         alerts_revision: Some(vantare_services::content_hash(&[0])),
         documents: crate::calendar::CalendarDocumentStates {
             prefs: crate::calendar::CalendarDocumentState::Ready,
@@ -257,7 +257,8 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
 
 pub(crate) fn corpus() -> serde_json::Value {
     let (mut host, mut ui) = samples();
-    let config = sample_config();
+    let mut config = sample_config();
+    config.alerts = sample_alerts();
     host.push(sample_response(Reply::CalendarAlertsSave {
         value: Box::new(config.clone()),
     }));

@@ -16,7 +16,7 @@ export function create(context: MockContext): MockHandler {
     maximized = !maximized;
     const value = maximized;
     queueMicrotask(() =>
-      context.emit({
+      context.emit?.({
         kind: "event",
         event: { topic: "windowState", maximized: value },
       }),

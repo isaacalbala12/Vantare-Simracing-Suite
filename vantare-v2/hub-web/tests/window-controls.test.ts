@@ -4,6 +4,7 @@ import type { HostToUi } from "../src/contract/generated/contract";
 import { isHostMessage } from "../src/contract/validation";
 import { isRendererMessage } from "../src/main/security";
 import { bindWindowControls } from "../src/main/window-controls";
+import { createMockHost } from "../src/mock/host";
 
 function target() {
   let maximized = false;
@@ -169,4 +170,30 @@ describe("closed main-process window actions", () => {
         ).toBe(false);
     },
   );
+});
+
+it("keeps mock window state per session and emits its typed change", async () => {
+  const events: HostToUi[] = [];
+  const first = createMockHost("ajustes-base", (event) => events.push(event));
+  const second = createMockHost();
+  expect(
+    first({
+      kind: "request",
+      id: 31,
+      request: { method: "window.toggleMaximize" },
+    }),
+  ).toEqual({
+    kind: "response",
+    id: 31,
+    result: { method: "window.toggleMaximize", accepted: true },
+  });
+  await Promise.resolve();
+  expect(events).toEqual([
+    { kind: "event", event: { topic: "windowState", maximized: true } },
+  ]);
+  expect(first({ kind: "subscribe", topic: "windowState" })).toEqual(events[0]);
+  expect(second({ kind: "subscribe", topic: "windowState" })).toEqual({
+    kind: "event",
+    event: { topic: "windowState", maximized: false },
+  });
 });

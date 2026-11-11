@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
+import { shellText } from "../src/renderer/i18n/shell.es.ts";
 import { until } from "./wait-for.ts";
 
 const evidence = process.env.VANTARE_HUB_EVIDENCE ?? resolve("test-results");
@@ -110,13 +111,13 @@ try {
   });
   await window
     .getByRole("status")
-    .filter({ hasText: "Núcleo simulado" })
+    .filter({ hasText: shellText.waitingSimulator })
     .waitFor();
   for (let reload = 0; reload < 2; reload++) {
     await window.reload();
     await window
       .getByRole("status")
-      .filter({ hasText: "Núcleo simulado" })
+      .filter({ hasText: shellText.waitingSimulator })
       .waitFor();
   }
   if (process.env.VANTARE_HUB_TEST_SCENE === "specimen") {

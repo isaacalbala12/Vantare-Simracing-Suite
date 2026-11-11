@@ -889,7 +889,7 @@ textarea.v-input {
   flex: none;
   gap: 14px;
   padding-left: 28px;
-  padding-right: 150px;
+  padding-right: 0;
   border-bottom: 1px solid var(--line-sidebar);
   background: transparent;
 }
@@ -1280,4 +1280,59 @@ textarea.v-input {
   color: var(--text-2);
   background: linear-gradient(135deg, var(--surface-3), var(--surface-2));
   box-shadow: 0 0 0 1px var(--line-2);
+}
+
+.v-window-controls {
+  display: flex;
+  flex: none;
+  align-self: flex-start;
+  height: 36px;
+  -webkit-app-region: no-drag;
+}
+.v-window-button {
+  width: 46px;
+  min-width: 46px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--text-3);
+  background: transparent;
+}
+.v-window-controls .v-window-button svg {
+  width: 14px;
+  height: 14px;
+}
+.v-window-button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.v-window-button--close:hover:not(:disabled) {
+  color: var(--switch-thumb-on);
+  background: var(--window-close-hover);
+}
+
+/* Frameless chrome must remain draggable, including its static section title. */
+.v-titlebar,
+.v-titlebar .v-section-title {
+  -webkit-app-region: drag;
+}
+.v-titlebar button,
+.v-titlebar a,
+.v-titlebar input,
+.v-titlebar select,
+.v-titlebar textarea,
+.v-titlebar [role="tab"],
+.v-titlebar [contenteditable],
+.v-titlebar-actions,
+.v-window-controls {
+  -webkit-app-region: no-drag;
+}
+.v-host-issue {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.v-host-issue .v-titlebar {
+  padding-right: 0;
 }

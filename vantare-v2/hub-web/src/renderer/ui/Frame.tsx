@@ -13,10 +13,12 @@ export function TitleBar({
   title,
   status,
   actions,
+  controls,
 }: {
   title: string;
   status: string;
   actions?: ReactNode;
+  controls?: ReactNode;
 }) {
   return (
     <header className="v-titlebar">
@@ -25,11 +27,14 @@ export function TitleBar({
       </span>
       <SectionTabsSlot />
       <div className="v-titlebar-actions">
-        <span role="status" className="v-simulator-pill">
-          {status}
-        </span>
+        {status && (
+          <span role="status" className="v-simulator-pill">
+            {status}
+          </span>
+        )}
         {actions}
       </div>
+      {controls}
     </header>
   );
 }

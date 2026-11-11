@@ -12,9 +12,18 @@ export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   return name === "componentes-incompatibles"
     ? { ...hello, version: HOST_PROTOCOL_VERSION + 1 }
-    : hello;
+    : name === "componentes-incompatibles-light"
+      ? {
+          ...hello,
+          version: HOST_PROTOCOL_VERSION + 1,
+          theme: { ...hello.theme, scheme: "light" },
+        }
+      : hello;
 }
-export function createMockHost(sceneName = "ajustes-base") {
+export function createMockHost(
+  sceneName = "ajustes-base",
+  emit: (message: HostToUi) => void = () => {},
+) {
   const visual =
     /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app)$/.exec(
       sceneName,
@@ -24,6 +33,7 @@ export function createMockHost(sceneName = "ajustes-base") {
 
   const notes: MockContext["notes"] = [];
   const context: MockContext = {
+    emit,
     sceneName,
     visual,
     core,

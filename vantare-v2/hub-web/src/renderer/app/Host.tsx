@@ -43,11 +43,6 @@ export function HostProvider({ children }: { children: ReactNode }) {
         disposers.push(
           connection.listen((message) => {
             if (message.kind === "hello") {
-              if (message.version !== HOST_PROTOCOL_VERSION) {
-                connection.close();
-                setHost({ issue: es.incompatible });
-                return;
-              }
               document.documentElement.dataset.palette = message.theme.palette;
               document.documentElement.dataset.scheme =
                 message.theme.scheme === "system"
@@ -55,13 +50,21 @@ export function HostProvider({ children }: { children: ReactNode }) {
                     ? "dark"
                     : "light"
                   : message.theme.scheme;
+              if (message.version !== HOST_PROTOCOL_VERSION) {
+                setHost({ client: connection, issue: es.incompatible });
+                return;
+              }
               setHost({ client: connection, hello: message });
               disposers.push(connection.subscribe("core"));
             }
             if (message.kind === "event" && message.event.topic === "core")
               query.setQueryData(coreKey, message.event.value);
             if (message.kind === "failure" && message.id === 0)
-              setHost({ issue: es.unavailable });
+              setHost((previous) => ({
+                ...previous,
+                client,
+                issue: es.unavailable,
+              }));
           }),
         );
         connection.start();
@@ -70,7 +73,11 @@ export function HostProvider({ children }: { children: ReactNode }) {
         if (active) {
           document.documentElement.dataset.palette = "vantare";
           document.documentElement.dataset.scheme = "dark";
-          setHost({ issue: es.unavailable });
+          setHost((previous) => ({
+            ...previous,
+            client,
+            issue: es.unavailable,
+          }));
         }
       });
     return () => {

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { HostProvider, useHost } from "./app/Host";
+import { HostIssue } from "./app/HostIssue";
 import { PilotProvider } from "./app/PilotState";
 import { SettingsProvider } from "./app/SettingsState";
 import { Shell } from "./app/Shell";
@@ -24,7 +25,7 @@ declare global {
 }
 function Content() {
   const host = useHost();
-  if (host.issue) return <Callout title={host.issue} tone="err" />;
+  if (host.issue) return <HostIssue issue={host.issue} />;
   if (!host.hello) return null;
   if (new URLSearchParams(location.search).get("escena") === "specimen")
     return (

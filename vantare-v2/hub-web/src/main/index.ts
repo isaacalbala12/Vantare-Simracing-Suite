@@ -39,6 +39,7 @@ import {
   requireDataDirectory,
   webPreferences,
 } from "./security";
+import { bindWindowControls } from "./window-controls";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -106,18 +107,14 @@ async function start() {
     show: false,
     backgroundColor: colors["bg-window"],
     title: "Vantare · Hub",
-    titleBarStyle: "hidden",
-    titleBarOverlay: {
-      color: colors["bg-sidebar"],
-      symbolColor: colors["text-1"],
-      height: 52,
-    },
+    frame: false,
     webPreferences: webPreferences(
       join(import.meta.dirname, "../preload/index.cjs"),
       !app.isPackaged,
     ),
   });
-  const contents = window.webContents;
+  const currentWindow = window;
+  const contents = currentWindow.webContents;
   let settings: SettingsView | undefined;
   const repaint = () => {
     if (window)
@@ -240,15 +237,39 @@ async function start() {
       if (message.kind === "failure") copies.delete(message.id);
       port1.postMessage(message);
     });
-    disconnect = () => {
+    const controls = bindWindowControls(
+      currentWindow,
+      (message) => {
+        if (!portAlive) return;
+        try {
+          port1.postMessage(message);
+        } catch {
+          dispose();
+        }
+      },
+      compatible,
+    );
+    function dispose() {
+      if (!portAlive) return;
+      portAlive = false;
+      controls.dispose();
       unsubscribe();
       pickExecutable.cancel();
       port1.close();
       copies.clear();
-      portAlive = false;
-    };
+    }
+    disconnect = dispose;
+    port1.once("close", dispose);
     port1.on("message", ({ data }: { data: unknown }) => {
-      if (!compatible || !isRendererMessage(data) || !bounded(data)) return;
+      if (!isRendererMessage(data) || !bounded(data)) return;
+      if (
+        QA_DRIVER &&
+        data.kind === "request" &&
+        data.request.method === "window.close"
+      )
+        console.error("HUB_QA_CLOSE_REQUESTED");
+      if (controls.dispatch(data)) return;
+      if (!compatible) return;
       if (
         data.kind === "request" &&
         data.request.method === "launcher.app.pick"
@@ -296,6 +317,8 @@ async function start() {
         copies.add(data.id);
       if (QA_DRIVER && data.kind === "closeAnswer" && !data.allow)
         console.error("HUB_QA_CLOSE_BLOCKED");
+      if (QA_DRIVER && data.kind === "closeAnswer" && data.allow)
+        console.error("HUB_QA_CLOSE_ALLOWED");
       if (data.kind === "closeAnswer" && data.allow)
         host.send(data, () => window?.destroy());
       else host.send(data);

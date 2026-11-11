@@ -21,11 +21,6 @@ export function paintWindow(
     nativeTheme.themeSource = theme.scheme;
   const colors = resolveTheme(theme);
   window.setBackgroundColor(colors["bg-window"]);
-  window.setTitleBarOverlay({
-    color: colors["bg-sidebar"],
-    symbolColor: colors["text-1"],
-    height: 52,
-  });
   window.webContents.setZoomFactor(zoom / 100);
 }
 export function testNotification(view?: SettingsView): boolean {

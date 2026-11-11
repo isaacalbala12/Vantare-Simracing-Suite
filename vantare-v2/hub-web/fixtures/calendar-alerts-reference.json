@@ -1,0 +1,29 @@
+{
+  "leadMin": 10,
+  "bands": [
+    {
+      "seriesId": "beginner-lmgt3-fixed",
+      "from": 1200,
+      "to": 1380,
+      "days": "all",
+      "mode": "each"
+    }
+  ],
+  "slots": [
+    {
+      "seriesId": "weekly-wec-weekly",
+      "at": 1791489600
+    },
+    {
+      "seriesId": "weekly-10-hours-of-road-atlanta",
+      "at": 1791622800
+    }
+  ],
+  "channels": {
+    "windows": true,
+    "inTrack": true,
+    "sound": false
+  },
+  "autoLaunch": false,
+  "notifyWeek": true
+}

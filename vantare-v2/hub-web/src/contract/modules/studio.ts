@@ -39,12 +39,12 @@ function instance(v: unknown) {
     showIn(v.showIn) &&
     oneOf(v.offTrack, ["inherit", "alwaysVisible", "hide"] as const) &&
     record(v.size) &&
-      exact(v.size, ["width", "height"]) &&
-      integer(v.size.width) &&
-      integer(v.size.height) &&
-      v.size.width > 0 &&
-      v.size.height > 0 &&
-      v.size.width <= studioLimits.size &&
+    exact(v.size, ["width", "height"]) &&
+    integer(v.size.width) &&
+    integer(v.size.height) &&
+    v.size.width > 0 &&
+    v.size.height > 0 &&
+    v.size.width <= studioLimits.size &&
     v.size.height <= studioLimits.size
   );
 }

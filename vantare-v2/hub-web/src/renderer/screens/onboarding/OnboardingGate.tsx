@@ -1,5 +1,5 @@
 import { skipToken, useQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { CoreStatus } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { lock } from "../../app/navigation";
@@ -18,6 +18,7 @@ export function OnboardingGate({
 }) {
   const { client } = useHost();
   const navigate = useUi((state) => state.navigate);
+  const [required, setRequired] = useState<boolean>();
   const [passed, setPassed] = useState<{ privateSession: boolean }>();
   const { data: core = offline } = useQuery<CoreStatus>({
     queryKey: coreKey,
@@ -34,12 +35,15 @@ export function OnboardingGate({
       return reply.value;
     },
   });
-  // Once resolved, subsequent invalidations cannot unmount the user's Hub drafts.
+  // Decide once. finish's fresh cache publication must not unmount the wizard
+  // before its save/refresh and explicit completion callback have settled.
+  useEffect(() => {
+    if (required !== undefined || !query.data) return;
+    setRequired(query.data.pending);
+    if (!query.data.pending)
+      setPassed({ privateSession: query.data.privateSession });
+  }, [required, query.data]);
   if (passed) return children(passed.privateSession);
-  if (query.data && !query.data.pending) {
-    setPassed({ privateSession: query.data.privateSession });
-    return children(query.data.privateSession);
-  }
   if (!query.data)
     return (
       <GateFrame controls={<WindowControls />}>
@@ -50,6 +54,12 @@ export function OnboardingGate({
         ) : (
           <Skeleton label={text.loading} />
         )}
+      </GateFrame>
+    );
+  if (required === undefined)
+    return (
+      <GateFrame controls={<WindowControls />}>
+        <Skeleton label={text.loading} />
       </GateFrame>
     );
   return (

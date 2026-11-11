@@ -91,7 +91,7 @@ export function create(context: MockContext): MockHandler {
               contextText: "",
             },
             legacy: "none",
-    exists: false,
+            exists: false,
             screenshots: [],
           };
         return {

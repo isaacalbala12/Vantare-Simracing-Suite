@@ -10,7 +10,7 @@ export const studioScenes: Record<string, VisualScene> = {
         })
         .click();
       await page
-        .getByRole("heading", { name: "Standings", exact: true })
+        .getByRole("heading", { name: /^Standings(?: 1)?$/, exact: true })
         .waitFor();
       const sidebar = page.locator(".v-sidebar");
       if (

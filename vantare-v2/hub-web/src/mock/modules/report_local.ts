@@ -1,5 +1,11 @@
+import { reportBinaryNames } from "../../contract/generated/report_local";
 import type { MockContext, MockHandler } from "../context";
 export function create({ core }: MockContext): MockHandler {
+  const binaries = reportBinaryNames.map((name) => ({
+    name,
+    state: "unavailable" as const,
+    sha256: null,
+  }));
   return (value) => {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
@@ -14,7 +20,7 @@ export function create({ core }: MockContext): MockHandler {
             method: request.method,
             value: {
               core: core.photos,
-              binaries: [],
+              binaries,
               report: JSON.stringify({
                 schemaVersion: 1,
                 module: request.fields.module,
@@ -25,7 +31,7 @@ export function create({ core }: MockContext): MockHandler {
                   request.fields.contextText,
                 ].map((text) => text.length > 0),
                 privateText: "omitted_for_privacy",
-                diagnostic: { core: core.photos },
+                diagnostic: { core: core.photos, binaries },
               }),
             },
           },

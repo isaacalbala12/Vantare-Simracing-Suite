@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Reply } from "../src/contract/generated/contract";
+import { reportBinaryNames } from "../src/contract/generated/report_local";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
 import { localDiagnosticText as text } from "../src/renderer/i18n/testing-local";
@@ -82,6 +83,8 @@ describe("local diagnostic review and main-only export", () => {
     await waitFor(() =>
       expect(screen.getByRole("status").textContent).toBe(text.prepared),
     );
+    for (const name of reportBinaryNames)
+      expect(screen.getByText(name)).toBeDefined();
     const preview = document.querySelector("pre")?.textContent ?? "";
     expect(JSON.parse(preview)).toMatchObject({
       privateText: "omitted_for_privacy",

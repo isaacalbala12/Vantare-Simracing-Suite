@@ -43,7 +43,10 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
     .waitFor();
   await page.getByRole("button", { name: "EN", exact: true }).click();
   await page
-    .getByText("Founders · €50 · founder price", { exact: true })
+    .getByRole("button", {
+      name: "Founders · €50 · founder price",
+      exact: true,
+    })
     .waitFor();
   await page.getByRole("button", { name: text.logout, exact: true }).click();
   await page

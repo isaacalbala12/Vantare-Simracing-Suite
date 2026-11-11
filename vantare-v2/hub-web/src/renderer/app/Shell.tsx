@@ -474,7 +474,7 @@ function ShellContent() {
                   variant="ghost"
                   className="v-sidebar-account"
                   aria-label={profileName || t("shell.anonymous")}
-                  onClick={() => navigate("account")}
+                  onClick={() => ui.navigate("account")}
                 >
                   <Avatar
                     label={profileName || t("shell.anonymous")}

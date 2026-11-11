@@ -3,8 +3,8 @@ import {
   densities,
   glassOpacityRange,
   interfaceFonts,
-  monoFonts,
   maxWidgetOverrides,
+  monoFonts,
   palettes,
   performanceLevels,
   type SettingsPatch,
@@ -98,8 +98,9 @@ export function isSettings(value: unknown): value is SettingsView {
       "protected",
     ]) &&
     oneOf(value.track.level, performanceLevels) &&
+    integer(value.track.customWidgets) &&
     range(value.track.customWidgets, 0, maxWidgetOverrides) &&
-    value.track.customized === (value.track.customWidgets > 0) &&
+    value.track.customized === value.track.customWidgets > 0 &&
     [
       value.track.exists,
       value.track.customized,

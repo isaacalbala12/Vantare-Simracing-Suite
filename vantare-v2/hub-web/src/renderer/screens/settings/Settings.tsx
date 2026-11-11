@@ -13,6 +13,7 @@ import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import { AppearanceRail } from "./AppearanceRail";
 import { GeneralRail } from "./GeneralRail";
+import { PerformanceRail } from "./PerformanceRail";
 import { ShortcutsRail } from "./ShortcutsRail";
 
 const Account = lazy(() =>
@@ -179,6 +180,8 @@ export function Settings() {
             <GeneralRail onUpdates={() => setTab("updates")} />
           ) : selected === "appearance" ? (
             <AppearanceRail />
+          ) : selected === "performance" ? (
+            <PerformanceRail />
           ) : selected === "shortcuts" ? (
             <ShortcutsRail />
           ) : undefined

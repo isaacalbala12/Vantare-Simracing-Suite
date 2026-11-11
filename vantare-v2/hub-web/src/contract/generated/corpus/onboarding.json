@@ -1,0 +1,114 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "onboarding.get",
+        "value": {
+          "equipment": {
+            "cores": null,
+            "cpu": null,
+            "ramGb": null
+          },
+          "layoutReady": false,
+          "layoutRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "pending": true,
+          "privateSession": false,
+          "recommendedLevel": "balanced",
+          "scanning": false,
+          "settingsRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "simulators": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "onboarding.finish",
+        "value": {
+          "equipment": {
+            "cores": null,
+            "cpu": null,
+            "ramGb": null
+          },
+          "layoutReady": false,
+          "layoutRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "pending": true,
+          "privateSession": false,
+          "recommendedLevel": "balanced",
+          "scanning": false,
+          "settingsRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "simulators": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "onboarding.skipPrivate"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "onboarding.prices"
+      }
+    },
+    {
+      "error": {
+        "kind": "onboardingConflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "onboarding.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "kit": [
+          "delta"
+        ],
+        "layoutRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "level": "balanced",
+        "method": "onboarding.finish",
+        "show": false
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "onboarding.skipPrivate"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "onboarding.prices"
+      }
+    }
+  ]
+}

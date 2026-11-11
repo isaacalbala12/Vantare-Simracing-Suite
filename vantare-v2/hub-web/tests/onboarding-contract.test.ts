@@ -1,6 +1,9 @@
 import { expect, it } from "vitest";
 import corpus from "../src/contract/generated/corpus/onboarding.json";
-import { onboardingCpuLimit } from "../src/contract/generated/onboarding";
+import {
+  onboardingCpuLimit,
+  onboardingEquipmentCountMax,
+} from "../src/contract/generated/onboarding";
 import { isOnboarding } from "../src/contract/modules/onboarding";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
@@ -253,4 +256,30 @@ it("keeps a failed consent write blocking completion even after reading decided 
     })?.kind,
   ).toBe("response");
   expect(host({ kind: "request", id: 9, request })?.kind).toBe("response");
+});
+
+it("rejects equipment counts that cannot be represented by the native u32 fields", () => {
+  const loaded = createMockHost("onboarding-4")({
+    kind: "request",
+    id: 1,
+    request: { method: "onboarding.get" },
+  });
+  if (loaded?.kind !== "response" || loaded.result.method !== "onboarding.get")
+    throw new Error("missing onboarding");
+  const view = loaded.result.value;
+  for (const field of ["cores", "ramGb"] as const) {
+    expect(
+      isOnboarding({
+        ...view,
+        equipment: { ...view.equipment, [field]: onboardingEquipmentCountMax },
+      }),
+    ).toBe(true);
+    for (const value of [0, -1, 0.5, onboardingEquipmentCountMax + 1])
+      expect(
+        isOnboarding({
+          ...view,
+          equipment: { ...view.equipment, [field]: value },
+        }),
+      ).toBe(false);
+  }
 });

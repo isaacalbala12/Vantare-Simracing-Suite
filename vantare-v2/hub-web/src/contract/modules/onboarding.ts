@@ -1,5 +1,6 @@
 import {
   onboardingCpuLimit,
+  onboardingEquipmentCountMax,
   onboardingKitLimit,
   onboardingRevisionPattern,
   onboardingWidgetKinds,
@@ -42,9 +43,13 @@ export function isOnboarding(v: unknown): boolean {
         Array.from(v.equipment.cpu).length <= onboardingCpuLimit &&
         !/\p{Cc}/u.test(v.equipment.cpu))) &&
     (v.equipment.cores === null ||
-      (integer(v.equipment.cores) && v.equipment.cores > 0)) &&
+      (integer(v.equipment.cores) &&
+        v.equipment.cores > 0 &&
+        v.equipment.cores <= onboardingEquipmentCountMax)) &&
     (v.equipment.ramGb === null ||
-      (integer(v.equipment.ramGb) && v.equipment.ramGb > 0))
+      (integer(v.equipment.ramGb) &&
+        v.equipment.ramGb > 0 &&
+        v.equipment.ramGb <= onboardingEquipmentCountMax))
   );
 }
 export function isRequest(v: Record<string, unknown>): boolean {

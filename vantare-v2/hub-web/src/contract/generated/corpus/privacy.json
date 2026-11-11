@@ -152,7 +152,8 @@
       "kind": "request",
       "request": {
         "consent": false,
-        "method": "mail.set"
+        "method": "mail.set",
+        "source": "settings"
       }
     }
   ]

@@ -12,6 +12,7 @@ mod presentation;
 pub const PRICES_URL: &str = "https://vantare.app/#precios";
 pub const KIT_LIMIT: usize = 10;
 pub const CPU_LIMIT: usize = 128;
+pub const EQUIPMENT_COUNT_MAX: u32 = u32::MAX;
 pub const REVISION_PATTERN: &str = "^[0-9a-f]{64}$";
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

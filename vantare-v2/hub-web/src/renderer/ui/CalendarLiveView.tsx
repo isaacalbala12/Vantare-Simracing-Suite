@@ -181,23 +181,16 @@ export function CalendarLiveView({
               {text.separator}
               {hero.series.vehicleClass}
             </p>
-            <p>
-              {text.race}
-              {text.separator}
-              {text.minutes(raceMinutes(hero.series))}
-            </p>
+            <p>{text.raceDuration(raceMinutes(hero.series))}</p>
             <div className="v-calendar-after">
               {text.after}
-              {hero.after
-                .filter((r) => r.series.id !== hero.series.id)
-                .slice(0, 3)
-                .map((r) => (
-                  <span key={`${r.series.id}:${r.time}`}>
-                    {clock(r.time, utc)}
-                    {text.separator}
-                    {r.series.name}
-                  </span>
-                ))}
+              {hero.after.slice(0, 3).map((r) => (
+                <span key={`${r.series.id}:${r.time}`}>
+                  {clock(r.time, utc)}
+                  {text.separator}
+                  {r.series.name}
+                </span>
+              ))}
             </div>
           </div>
           <div className="v-calendar-hero-time">
@@ -211,6 +204,7 @@ export function CalendarLiveView({
             <Button variant="primary" onClick={onLaunch} disabled={!profile}>
               <Icon name="play" />
               {text.launch(profile ?? "LMU")}
+              <kbd>{text.launchShortcut}</kbd>
             </Button>
             <div>
               <Button onClick={() => onDetail(hero.series.id, hero.at)}>
@@ -287,8 +281,9 @@ export function CalendarLiveView({
           />
           <SearchInput
             label={text.search}
+            clearLabel={text.clearSearch}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={setQuery}
           />
         </div>
         <div className="v-calendar-live-head">

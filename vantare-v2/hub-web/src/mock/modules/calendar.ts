@@ -1,6 +1,7 @@
 import fixture from "../../../fixtures/calendar-demo.json";
 import type { CalendarView } from "../../contract/generated/calendar";
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
+import { calendarReference } from "../calendar-reference";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const value: CalendarView = {
@@ -13,11 +14,16 @@ export function create(context: MockContext): MockHandler {
     updated: 0,
     invalidCache: false,
   };
-  if (context.sceneName === "calendar-reference") {
+  if (
+    context.sceneName === "calendar-reference" ||
+    context.sceneName === "calendar-live-reference"
+  ) {
     context.core.access.verified = true;
     context.core.access.blocked = false;
     context.core.access.calendar = true;
-    value.official = structuredClone(fixture);
+    if (context.sceneName === "calendar-live-reference")
+      Object.assign(value, calendarReference());
+    else value.official = structuredClone(fixture);
   }
   return (message: UiToHost): HostToUi | undefined => {
     if (

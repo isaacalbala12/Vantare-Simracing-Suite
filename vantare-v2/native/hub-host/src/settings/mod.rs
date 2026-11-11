@@ -3,6 +3,8 @@ pub mod track;
 use track::{PerformanceLevel, TrackView};
 #[cfg(windows)]
 pub(crate) mod layout;
+#[cfg(windows)]
+pub(crate) use layout::studio;
 pub mod model;
 mod store;
 use crate::args::Args;

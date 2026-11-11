@@ -104,7 +104,17 @@ fn symlink_choice_is_saved_canonical_or_reports_missing_privilege() {
     }
     let now = Instant::now();
     let mut picker = Picker::default();
+    let non_executable = root.path.join("private.txt");
+    let invalid_alias = root.path.join("invalid.exe");
+    std::fs::write(&non_executable, b"inert non executable").unwrap();
+    std::os::windows::fs::symlink_file(&non_executable, &invalid_alias).unwrap();
+    assert_eq!(
+        picker.selected(invalid_alias.to_str(), None, now),
+        Err(HostError::Denied)
+    );
+    assert!(picker.pending.is_none());
     let selected = picker.selected(alias.to_str(), None, now).unwrap().unwrap();
+    assert_eq!(selected.name, "alias");
     let saved = save_new_selection(
         &mut picker,
         &root.path.join("launcher.json"),
@@ -125,6 +135,12 @@ fn selection_is_bound_to_its_app_and_replacement_clears_old_arguments() {
     std::fs::write(&exe, b"inert QA fixture").unwrap();
     let mut document = Document::fresh_install();
     document.apps[0].args = vec!["private-old-argument".into()];
+    document.profiles[0].steps[0].app_id = document.apps[0].id.clone();
+    document.profiles[0].steps[0].args_override = Some(vec!["private-first-profile".into()]);
+    document.profiles[1].steps[0].app_id = document.apps[0].id.clone();
+    document.profiles[1].steps[0].args_override = Some(vec!["private-second-profile".into()]);
+    document.profiles[0].steps[1].app_id = document.apps[1].id.clone();
+    document.profiles[0].steps[1].args_override = Some(vec!["private-other-app".into()]);
     let bytes = serde_json::to_vec(&document).unwrap();
     std::fs::write(&path, &bytes).unwrap();
     let now = Instant::now();
@@ -154,7 +170,16 @@ fn selection_is_bound_to_its_app_and_replacement_clears_old_arguments() {
         Err(HostError::Denied)
     );
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
-    let target = get(&path, Some(&document.apps[0].id)).unwrap().draft;
+    let editor = get(&path, Some(&document.apps[0].id)).unwrap();
+    assert!(editor.has_custom_arguments);
+    assert_eq!(editor.custom_profiles, 2);
+    assert!(!serde_json::to_string(&editor).unwrap().contains("private-"));
+    let target = editor.draft;
+    assert!(matches!(
+        picker.save(&path, &target, Some(&selected.token), &"0".repeat(64), now),
+        Err(HostError::LauncherConflict { .. })
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
     picker
         .save(&path, &target, Some(&selected.token), &revision, now)
         .unwrap();
@@ -165,4 +190,51 @@ fn selection_is_bound_to_its_app_and_replacement_clears_old_arguments() {
     );
     assert!(saved.apps[0].args.is_empty());
     assert_eq!(saved.apps[1], document.apps[1]);
+    assert!(
+        saved
+            .profiles
+            .iter()
+            .flat_map(|profile| &profile.steps)
+            .filter(|step| step.app_id == document.apps[0].id)
+            .all(|step| step.args_override.is_none())
+    );
+    assert_eq!(saved.profiles[0].steps[1], document.profiles[0].steps[1]);
+    let editor = get(&path, Some(&document.apps[0].id)).unwrap();
+    assert!(!editor.has_custom_arguments);
+    assert_eq!(editor.custom_profiles, 0);
+}
+
+#[test]
+fn discovery_reset_clears_only_the_app_and_its_profile_overrides_in_one_cas() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("launcher.json");
+    let exe = root.path.join("old.exe");
+    std::fs::write(&exe, b"inert QA fixture").unwrap();
+    let mut document = Document::fresh_install();
+    document.apps[0].executable = Some(exe);
+    document.profiles[0].steps[0].app_id = document.apps[0].id.clone();
+    document.profiles[0].steps[0].args_override = Some(vec!["private-step".into()]);
+    document.profiles[0].steps[1].app_id = document.apps[1].id.clone();
+    document.profiles[0].steps[1].args_override = Some(vec!["keep-other-app".into()]);
+    let bytes = serde_json::to_vec(&document).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let mut editor = get(&path, Some(&document.apps[0].id)).unwrap();
+    assert!(document.apps[0].args.is_empty());
+    assert!(editor.has_custom_arguments);
+    assert_eq!(editor.custom_profiles, 1);
+    editor.draft.use_discovery = true;
+    let now = Instant::now();
+    let mut picker = Picker::default();
+    assert!(matches!(
+        picker.save(&path, &editor.draft, None, &"0".repeat(64), now),
+        Err(HostError::LauncherConflict { .. })
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    picker
+        .save(&path, &editor.draft, None, &editor.revision, now)
+        .unwrap();
+    let saved = Document::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
+    assert!(saved.apps[0].executable.is_none());
+    assert!(saved.profiles[0].steps[0].args_override.is_none());
+    assert_eq!(saved.profiles[0].steps[1], document.profiles[0].steps[1]);
 }

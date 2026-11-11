@@ -43,6 +43,7 @@ pub struct AppEditor {
     pub draft: AppDraft,
     pub has_executable: bool,
     pub has_custom_arguments: bool,
+    pub custom_profiles: usize,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -92,7 +93,13 @@ fn canonical_executable(path: &Path) -> Result<PathBuf, HostError> {
         return Err(HostError::Denied);
     }
     let canonical = std::fs::canonicalize(path).map_err(|_| HostError::Denied)?;
-    if !vantare_launcher::is_local_path(&canonical) || !canonical.is_file() {
+    if !vantare_launcher::is_local_path(&canonical)
+        || !canonical.is_file()
+        || !canonical
+            .extension()
+            .and_then(|value| value.to_str())
+            .is_some_and(|value| value.eq_ignore_ascii_case("exe"))
+    {
         return Err(HostError::Denied);
     }
     #[cfg(windows)]
@@ -159,8 +166,9 @@ impl Picker {
         if path.len() > PICK_PATH_MAX || path.contains('\0') {
             return Err(HostError::Denied);
         }
-        let path = canonical_executable(Path::new(path))?;
-        let name = path
+        let chosen = Path::new(path);
+        let path = canonical_executable(chosen)?;
+        let name = chosen
             .file_stem()
             .and_then(|name| name.to_str())
             .filter(|name| !name.is_empty() && name.len() <= editor::NAME_MAX)
@@ -234,6 +242,8 @@ impl Picker {
                 .iter_mut()
                 .find(|app| app.id == id)
                 .ok_or(HostError::Denied)?;
+            let reset_arguments =
+                selected.is_some() || (draft.use_discovery && app.executable.is_some());
             app.name.clone_from(&draft.name);
             app.favorite = draft.favorite;
             if draft.use_discovery {
@@ -245,6 +255,15 @@ impl Picker {
             if let Some(selected) = &selected {
                 app.executable = Some(selected.clone());
                 app.args.clear();
+            }
+            if reset_arguments {
+                for profile in &mut document.profiles {
+                    for step in &mut profile.steps {
+                        if step.app_id == id {
+                            step.args_override = None;
+                        }
+                    }
+                }
             }
             Ok(())
         })?;
@@ -520,13 +539,27 @@ pub fn get(path: &Path, id: Option<&str>) -> Result<AppEditor, HostError> {
             )
         }
     };
+    let custom_profiles = id.map_or(0, |id| {
+        document
+            .profiles
+            .iter()
+            .filter(|profile| {
+                profile
+                    .steps
+                    .iter()
+                    .any(|step| step.app_id == id && step.args_override.is_some())
+            })
+            .count()
+    });
     let value = AppEditor {
         revision: vantare_services::content_hash(&bytes),
         draft,
         has_executable,
         has_custom_arguments: id
             .and_then(|id| document.apps.iter().find(|app| app.id == id))
-            .is_some_and(|app| !app.args.is_empty()),
+            .is_some_and(|app| !app.args.is_empty())
+            || custom_profiles > 0,
+        custom_profiles,
     };
     let response = crate::protocol::HostToUi::Response {
         id: u32::MAX,

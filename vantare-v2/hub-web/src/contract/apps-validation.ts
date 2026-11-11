@@ -32,11 +32,14 @@ export function isAppEditor(value: unknown): boolean {
       "draft",
       "hasExecutable",
       "hasCustomArguments",
+      "customProfiles",
     ]) &&
     revision(value.revision) &&
     isAppDraft(value.draft) &&
     typeof value.hasExecutable === "boolean" &&
-    typeof value.hasCustomArguments === "boolean"
+    typeof value.hasCustomArguments === "boolean" &&
+    integer(value.customProfiles) &&
+    value.customProfiles <= launcherLimits.profiles
   );
 }
 export function isPickedApp(value: unknown): boolean {

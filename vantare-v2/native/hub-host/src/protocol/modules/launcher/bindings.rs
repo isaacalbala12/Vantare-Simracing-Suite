@@ -138,6 +138,7 @@ fn application_reply_samples() -> [Reply; 7] {
                 },
                 has_executable: false,
                 has_custom_arguments: false,
+                custom_profiles: 0,
             },
         },
         Reply::LauncherAppPick {

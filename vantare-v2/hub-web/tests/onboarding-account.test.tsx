@@ -127,3 +127,24 @@ it("explains a failed account read and recovers from the existing account topic"
     expect(screen.getByRole("status").textContent).toBe("Acceso verificado"),
   );
 });
+
+it("keeps the onboarding reference guest separate from simulated core access", () => {
+  const host = createMockHost("onboarding-3");
+  const reply = host({
+    kind: "request",
+    id: 1,
+    request: { method: "account.get" },
+  });
+  expect(reply).toMatchObject({
+    kind: "response",
+    result: {
+      method: "account.get",
+      value: {
+        session: "signedOut",
+        gate: "none",
+        verified: false,
+        plan: { kind: "unverified" },
+      },
+    },
+  });
+});

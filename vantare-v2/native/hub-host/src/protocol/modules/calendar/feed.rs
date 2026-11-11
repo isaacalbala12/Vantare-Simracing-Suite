@@ -64,3 +64,7 @@ impl State {
   } else {self.feed.last_error=None;}
  }
 }
+
+#[cfg(test)]
+#[path = "feed_tests.rs"]
+mod tests;

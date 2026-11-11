@@ -15,6 +15,8 @@ export const calendarAlertsText = {
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
   soundHint: "Solo fuera del simulador.",
+  autoLegacyHint:
+    "El lanzamiento automático no está disponible aquí; puedes desactivarlo.",
   autoHint:
     "3 min antes de la salida, si el simulador está cerrado. Apagado por defecto.",
   daily: "Series diarias:",
@@ -24,7 +26,7 @@ export const calendarAlertsText = {
   eventsHelp: "tanda a tanda.",
   save: "Guardar",
   test: "Probar aviso",
-  testPending: "La prueba estará disponible al integrar los avisos de Windows.",
+  testPending: "La prueba de notificación aún no está disponible.",
   edit: "Editar",
   endEdit: "Cerrar",
   removeBand: "Quitar franja",

@@ -95,3 +95,45 @@ it("keeps channels when clearing alerts and only allows switching auto launch of
     15,
   );
 });
+
+it("replaces legacy duplicate bands only for the explicitly edited series", () => {
+  const current = {
+    ...defaults(),
+    bands: [
+      {
+        seriesId: "daily",
+        from: 1200,
+        to: 1380,
+        days: "all" as const,
+        mode: "each" as const,
+      },
+      {
+        seriesId: "daily",
+        from: 1260,
+        to: 1410,
+        days: "weekdays" as const,
+        mode: "first" as const,
+      },
+      {
+        seriesId: "other",
+        from: 900,
+        to: 1000,
+        days: "all" as const,
+        mode: "each" as const,
+      },
+    ],
+  };
+  const result = applyAlertChange(current, {
+    kind: "band",
+    id: "daily",
+    enabled: true,
+    patch: { from: 1230 },
+  });
+  expect(result.bands.filter((b) => b.seriesId === "daily")).toEqual([
+    { ...current.bands[0], from: 1230 },
+  ]);
+  expect(result.bands.find((b) => b.seriesId === "other")).toEqual(
+    current.bands[2],
+  );
+  expect(current.bands).toHaveLength(3);
+});

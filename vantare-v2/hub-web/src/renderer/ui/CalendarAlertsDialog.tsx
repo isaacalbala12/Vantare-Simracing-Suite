@@ -126,8 +126,14 @@ export function CalendarAlertsDialog(p: Props) {
                       }}
                     />
                     <div>
-                      <strong>{text.auto(p.profile ?? text.defaultProfile)}</strong>
-                      <p>{text.autoHint}</p>
+                      <strong>
+                        {text.auto(p.profile ?? text.defaultProfile)}
+                      </strong>
+                      <p>
+                        {p.alerts.autoLaunch
+                          ? text.autoLegacyHint
+                          : text.autoHint}
+                      </p>
                     </div>
                   </div>
                 </Tooltip>
@@ -247,7 +253,11 @@ export function CalendarAlertsDialog(p: Props) {
           <footer>
             <Tooltip label={text.testPending}>
               <span>
-                <Button disabled={!p.onTest} onClick={p.onTest}>
+                <Button
+                  disabled={!p.onTest}
+                  onClick={p.onTest}
+                  aria-description={!p.onTest ? text.testPending : undefined}
+                >
                   {text.test}
                 </Button>
               </span>

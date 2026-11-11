@@ -60,13 +60,13 @@ export function applyAlertChange(
         next.bands = next.bands.filter((band) => band.seriesId !== change.id);
         break;
       }
-      const index = next.bands.findIndex((band) => band.seriesId === change.id);
       const before =
         next.bands.find((band) => band.seriesId === change.id) ??
         defaultBand(change.id);
       const band = { ...before, ...change.patch, seriesId: change.id };
-      if (index < 0) next.bands.push(band);
-      else next.bands[index] = band;
+      // GPUI set_band removes all legacy duplicates for this identity.
+      next.bands = next.bands.filter((item) => item.seriesId !== change.id);
+      next.bands.push(band);
       break;
     }
     case "slot": {

@@ -15,6 +15,7 @@ import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/Intro
 
 const fake = vi.hoisted(() => ({
   request: vi.fn(),
+  update: vi.fn(),
   listeners: new Set<(message: HostToUi) => void>(),
   unsubscribe: vi.fn(),
 }));
@@ -30,9 +31,14 @@ vi.mock("../src/renderer/app/Host", () => ({
     },
   }),
 }));
-vi.mock("../src/renderer/app/SettingsState", () => ({
-  useSettings: () => ({ view: { appearance: { reducedMotion: true } } }),
-}));
+vi.mock("../src/renderer/app/SettingsState", async () => {
+  const { default: settings } = await import("../fixtures/settings-base.json");
+  const view = {
+    ...settings,
+    appearance: { ...settings.appearance, reducedMotion: true },
+  };
+  return { useSettings: () => ({ view, pending: false, update: fake.update }) };
+});
 vi.mock("../src/renderer/app/WindowControls", () => ({
   WindowControls: () => null,
 }));
@@ -48,6 +54,7 @@ function initial() {
 }
 beforeEach(() => {
   fake.request.mockReset();
+  fake.update.mockReset();
   fake.unsubscribe.mockClear();
   fake.listeners.clear();
   vi.stubGlobal("matchMedia", () => ({
@@ -67,14 +74,14 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-function mount() {
+function mount(extended = false) {
   const leave = vi.fn();
   const query = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
   const view = render(
     <QueryClientProvider client={query}>
-      <OnboardingIntroPreview onLeave={leave} />
+      <OnboardingIntroPreview onLeave={leave} extended={extended} />
     </QueryClientProvider>,
   );
   return { leave, query, ...view };
@@ -148,6 +155,35 @@ it("retries a failed read and explains that an unavailable layout will not recei
   );
   fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
   expect(leave).toHaveBeenCalledWith(3);
+  expect(
+    fake.request.mock.calls.every(
+      ([request]) => request.method === "onboarding.get",
+    ),
+  ).toBe(true);
+});
+
+it("continues through account status, native levels and the reused appearance controls without login", async () => {
+  fake.request.mockResolvedValue(initial());
+  const { leave } = mount(true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(start);
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  expect(
+    screen.queryByRole("button", { name: "Continuar con Discord" }),
+  ).toBeNull();
+  expect(screen.getByRole("status").textContent).toContain(
+    "Puedes continuar sin cuenta",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  fireEvent.click(screen.getByRole("radio", { name: "Ahorro" }));
+  expect(screen.getByRole("heading", { name: "Ahorro" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Claro" }));
+  expect(fake.update).toHaveBeenCalledWith({ field: "scheme", value: "light" });
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  expect(leave).toHaveBeenCalledWith(6);
   expect(
     fake.request.mock.calls.every(
       ([request]) => request.method === "onboarding.get",

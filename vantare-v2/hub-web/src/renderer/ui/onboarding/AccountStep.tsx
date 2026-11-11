@@ -1,12 +1,14 @@
+import { accountText } from "../../i18n/account.es";
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import "./account-step.css";
-/** UI observations only. A's future adapter maps AccountView.gate/session here;
- * no unmerged wire types, credentials, URLs or login actions cross this boundary. */
+/** UI observations only; credentials, URLs and login actions stay in Access. */
 export interface OnboardingAccountStatus {
   signedIn: boolean;
   checking: boolean;
   blocked: boolean;
   planLabel?: string;
+  accessLabel?: string;
+  failed?: boolean;
 }
 export const signedOutAccount: OnboardingAccountStatus = {
   signedIn: false,
@@ -18,15 +20,18 @@ export function AccountStep({
 }: {
   value?: OnboardingAccountStatus;
 }) {
-  const message = value.checking
-    ? text.accountChecking
-    : value.blocked
-      ? text.accountBlocked
-      : value.signedIn
-        ? value.planLabel
-          ? text.accountPlan(value.planLabel)
-          : text.accountUnconfirmed
-        : text.accountUnavailable;
+  const message = value.blocked
+    ? text.accountBlocked
+    : value.failed
+      ? accountText.failed
+      : value.checking
+        ? text.accountChecking
+        : value.signedIn
+          ? (value.accessLabel ??
+            (value.planLabel
+              ? text.accountPlan(value.planLabel)
+              : text.accountUnconfirmed))
+          : text.accountUnavailable;
   return (
     <div className="v-ob-account" data-guest={!value.signedIn}>
       <p role="status">{message}</p>

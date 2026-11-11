@@ -69,7 +69,7 @@ export function AppearanceRail() {
           }
           profile={profile?.name}
           applications={profile?.apps.length}
-          live={core.photos === "connected"}
+          live={core.live}
         />
       </RailBlock>
     </>

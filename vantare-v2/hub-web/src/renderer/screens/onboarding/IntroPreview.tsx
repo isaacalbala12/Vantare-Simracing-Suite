@@ -80,6 +80,16 @@ export function OnboardingIntroPreview({
   const [pricesPending, setPricesPending] = useState(false);
   const [pricesError, setPricesError] = useState(false);
   const pricesLock = useRef(false);
+  const pricesEpoch = useRef(0);
+  const active = useRef(true);
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (automatic && query.data) setLevel(query.data.recommendedLevel);
   }, [automatic, query.data]);
@@ -109,10 +119,11 @@ export function OnboardingIntroPreview({
     !query.error &&
     canAdvance(step, simulators, styles) &&
     !settings.pending &&
-    !(step === 5 && settings.error);
+    !(step === 5 && (!settings.view || settings.error));
   function move(action: "next" | "back" | "skip") {
     const result = onboardingMotion(action, step, allowed);
     if (result.kind !== "page") return;
+    pricesEpoch.current++;
     if ((!extended && result.step === 3) || result.step === 6) {
       onLeave(result.step === 6 ? 6 : 3);
       return;
@@ -164,17 +175,28 @@ export function OnboardingIntroPreview({
   async function prices() {
     if (!client || pricesLock.current) return;
     pricesLock.current = true;
+    const epoch = pricesEpoch.current;
     setPricesPending(true);
     setPricesError(false);
     try {
       const reply = await client.request({ method: "onboarding.prices" });
-      if (reply.method !== "onboarding.prices" || !reply.accepted)
+      if (
+        active.current &&
+        pricesEpoch.current === epoch &&
+        stepRef.current === 3 &&
+        (reply.method !== "onboarding.prices" || !reply.accepted)
+      )
         setPricesError(true);
     } catch {
-      setPricesError(true);
+      if (
+        active.current &&
+        pricesEpoch.current === epoch &&
+        stepRef.current === 3
+      )
+        setPricesError(true);
     } finally {
       pricesLock.current = false;
-      setPricesPending(false);
+      if (active.current) setPricesPending(false);
     }
   }
   const introStep = step === 0 || step === 1 || step === 2 ? step : undefined;
@@ -285,7 +307,11 @@ export function OnboardingIntroPreview({
         {query.error && (
           <Button onClick={() => void query.refetch()}>{t.retry}</Button>
         )}
-        {settings.error && <Button onClick={settings.retry}>{t.retry}</Button>}
+        {step === 5 && !settings.view ? (
+          <Button onClick={settings.reload}>{t.retry}</Button>
+        ) : settings.error ? (
+          <Button onClick={settings.retry}>{t.retry}</Button>
+        ) : null}
       </OnboardingFrame>
     </OnboardingViewport>
   );

@@ -50,7 +50,10 @@ export function PlansArt({
             </div>
             <div className="v-ob-plan-price">
               <strong>{card.price}</strong>
-              <s>{card.normal}</s>
+              <s>
+                <span className="v-sr-only">{text.normalPrice}</span>
+                {card.normal}
+              </s>
             </div>
             {card.features.map((feature) => (
               <p key={feature}>
@@ -59,6 +62,7 @@ export function PlansArt({
             ))}
             <Button
               className="v-ob-plan-select"
+              aria-description={text.externalPage}
               disabled={pending}
               onClick={onPrices}
             >
@@ -69,6 +73,7 @@ export function PlansArt({
       </div>
       <Button
         className="v-ob-launch-plan"
+        aria-description={text.externalPage}
         disabled={pending}
         onClick={onPrices}
       >

@@ -12,17 +12,20 @@ it("shares one in-flight operation and a two-second clock across public document
   );
   const page = externalPages(open, () => time);
   const first = page("onboarding.prices");
+  await Promise.resolve();
   expect(open).toHaveBeenCalledWith("https://vantare.app/#precios");
   time = 5000;
   expect(await page("privacy.policy")).toBe(false);
   finish();
   expect(await first).toBe(true);
   const second = page("privacy.policy");
+  await Promise.resolve();
   finish();
   expect(await second).toBe(true);
   expect(await page("onboarding.prices")).toBe(false);
   time += 2000;
   const third = page("onboarding.prices");
+  await Promise.resolve();
   finish();
   expect(await third).toBe(true);
 });
@@ -52,4 +55,24 @@ it("checks HTTPS and the exact host before allowing an external document", () =>
     "garbage",
   ])
     expect(publicDocumentUrl(url)).toBe(false);
+});
+
+it("acknowledges the same document without another open, including concurrent ports", async () => {
+  let finish!: () => void;
+  const open = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const page = externalPages(open, () => 0);
+  const first = page("onboarding.prices");
+  const duplicate = page("onboarding.prices");
+  await Promise.resolve();
+  expect(open).toHaveBeenCalledOnce();
+  finish();
+  expect(await first).toBe(true);
+  expect(await duplicate).toBe(true);
+  expect(await page("onboarding.prices")).toBe(true);
+  expect(open).toHaveBeenCalledOnce();
 });

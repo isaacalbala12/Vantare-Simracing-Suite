@@ -766,3 +766,22 @@
 .v-ob-duration .v-tracked-caps-letters {
   gap: calc(1.5 * var(--ob-unit));
 }
+
+/* GPUI's hero shadow also shades these footer fills. Keep the action enabled. */
+.v-ob-next[data-muted] {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.v-ob-next[data-muted]::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  right: 0;
+  bottom: calc(100% + 50 * var(--ob-unit));
+  width: calc(100vw - 768 * var(--ob-unit));
+  height: calc(100vh - 220 * var(--ob-unit));
+  border-radius: calc(22 * var(--ob-unit));
+  box-shadow: 0 calc(40 * var(--ob-unit)) calc(200 * var(--ob-unit))
+    color-mix(in srgb, var(--ob-raw-280008) 45%, transparent);
+}

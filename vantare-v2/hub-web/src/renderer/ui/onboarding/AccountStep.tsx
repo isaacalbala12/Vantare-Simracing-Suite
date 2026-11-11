@@ -34,7 +34,7 @@ export function AccountStep({
           : text.accountUnavailable;
   return (
     <div className="v-ob-account" data-guest={!value.signedIn}>
-      <p role="status">{message}</p>
+      <p>{message}</p>
       <p className="v-ob-account-note">{text.accountLocal}</p>
     </div>
   );

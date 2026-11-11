@@ -74,7 +74,7 @@
   width: calc(24 * var(--ob-unit));
   height: calc(9 * var(--ob-unit));
   border-radius: calc(3 * var(--ob-unit));
-  background: var(--accent-fill);
+  background: var(--accent);
 }
 .v-ob-look .v-palette-preview-check {
   position: absolute;

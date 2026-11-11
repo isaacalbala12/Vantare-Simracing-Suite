@@ -16,6 +16,10 @@ import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/Intro
 const fake = vi.hoisted(() => ({
   request: vi.fn(),
   update: vi.fn(),
+  reload: vi.fn(),
+  settings: undefined as
+    | undefined
+    | { view?: unknown; pending?: boolean; error?: string },
   listeners: new Set<(message: HostToUi) => void>(),
   unsubscribe: vi.fn(),
 }));
@@ -37,7 +41,16 @@ vi.mock("../src/renderer/app/SettingsState", async () => {
     ...settings,
     appearance: { ...settings.appearance, reducedMotion: true },
   };
-  return { useSettings: () => ({ view, pending: false, update: fake.update }) };
+  return {
+    useSettings: () => ({
+      view,
+      pending: false,
+      ...fake.settings,
+      update: fake.update,
+      reload: fake.reload,
+      retry: fake.reload,
+    }),
+  };
 });
 vi.mock("../src/renderer/app/WindowControls", () => ({
   WindowControls: () => null,
@@ -54,6 +67,8 @@ function initial() {
 }
 beforeEach(() => {
   fake.request.mockReset();
+  fake.reload.mockReset();
+  fake.settings = undefined;
   fake.update.mockReset();
   fake.unsubscribe.mockClear();
   fake.listeners.clear();
@@ -193,7 +208,7 @@ it("continues through account status, native levels and the reused appearance co
   expect(
     screen.queryByRole("button", { name: "Continuar con Discord" }),
   ).toBeNull();
-  expect(screen.getByRole("status").textContent).toContain(
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toContain(
     "Puedes continuar sin cuenta",
   );
   fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
@@ -236,4 +251,107 @@ it("updates the assistant voice when Account changes while the step stays open",
   expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
     "No se pudo cargar la cuenta.",
   );
+});
+
+async function accountPage() {
+  const view = mount(true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(start);
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  return view;
+}
+it("keeps Appearance blocked on a missing settings view and offers a reload", async () => {
+  fake.settings = { view: undefined };
+  fake.request.mockResolvedValue(initial());
+  const { leave } = await accountPage();
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  const next = screen.getByRole("button", { name: "Continuar" });
+  expect(next.hasAttribute("disabled")).toBe(true);
+  fireEvent.click(next);
+  expect(leave).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Volver a intentar" }));
+  expect(fake.reload).toHaveBeenCalledOnce();
+});
+it.each([true, false])(
+  "handles the prices acknowledgement accepted=%s",
+  async (accepted) => {
+    fake.request.mockImplementation(async (request) =>
+      request.method === "onboarding.get"
+        ? initial()
+        : { method: "onboarding.prices", accepted },
+    );
+    await accountPage();
+    fireEvent.click(screen.getByRole("button", { name: "Elegir Pro" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Elegir Pro" })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    expect(
+      !!screen.queryByText(
+        "No se han podido abrir los precios. Vuelve a intentarlo.",
+      ),
+    ).toBe(!accepted);
+  },
+);
+it("serializes prices clicks, disables all plan actions and resets errors when leaving", async () => {
+  let reject!: (error: Error) => void;
+  fake.request.mockImplementation((request) =>
+    request.method === "onboarding.get"
+      ? Promise.resolve(initial())
+      : new Promise((_, fail) => {
+          reject = fail;
+        }),
+  );
+  await accountPage();
+  const pro = screen.getByRole("button", { name: "Elegir Pro" });
+  act(() => {
+    pro.click();
+    pro.click();
+  });
+  expect(
+    fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
+  ).toHaveLength(1);
+  for (const name of ["Elegir Pro", "Elegir Pro Plus", /LAUNCH EDITION/])
+    expect(screen.getByRole("button", { name }).hasAttribute("disabled")).toBe(
+      true,
+    );
+  await act(async () => reject(new Error("offline")));
+  expect(screen.getByRole("alert").textContent).toContain(
+    "No se han podido abrir los precios",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  fireEvent.click(screen.getByRole("button", { name: "← Atrás" }));
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+it("ignores a late prices error after leaving and reentering Account", async () => {
+  let finish!: (reply: unknown) => void;
+  fake.request.mockImplementation((request) =>
+    request.method === "onboarding.get"
+      ? Promise.resolve(initial())
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
+  );
+  const view = await accountPage();
+  fireEvent.click(screen.getByRole("button", { name: "Elegir Pro" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  fireEvent.click(screen.getByRole("button", { name: "← Atrás" }));
+  await act(async () =>
+    finish({ method: "onboarding.prices", accepted: false }),
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Elegir Pro" }));
+  view.unmount();
+  await act(async () =>
+    finish({ method: "onboarding.prices", accepted: false }),
+  );
+  expect(
+    fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
+  ).toHaveLength(2);
 });

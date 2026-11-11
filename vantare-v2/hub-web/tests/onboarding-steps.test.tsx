@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import settings from "../fixtures/settings-base.json";
@@ -128,12 +129,41 @@ it("reuses appearance selectors and immediately reflects palette and scheme prop
 });
 it("keeps account status behind props without adding a login action", () => {
   const view = render(<AccountStep />);
-  expect(screen.getByRole("status").textContent).toContain(
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toContain(
     "Puedes continuar sin cuenta",
   );
   expect(screen.queryByRole("button")).toBeNull();
   view.rerender(
     <AccountStep value={{ signedIn: true, checking: false, blocked: true }} />,
   );
-  expect(screen.getByRole("status").textContent).toBe("Acceso bloqueado");
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
+    "Acceso bloqueado",
+  );
+});
+
+it("supports Tab and arrows from Automatic through the manual cadence group", async () => {
+  render(<PerformanceExample />);
+  const user = userEvent.setup();
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: /Automático/ }),
+  );
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole("radio", { name: "Máximo" }),
+  );
+  await user.keyboard("{ArrowRight}");
+  expect(
+    screen.getByRole("radio", { name: "Alto" }).getAttribute("aria-checked"),
+  ).toBe("true");
+  await user.tab({ shift: true });
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: /Automático/ }),
+  );
+  await user.keyboard("{Enter}");
+  expect(
+    screen
+      .getAllByRole("radio")
+      .some((r) => r.getAttribute("aria-checked") === "true"),
+  ).toBe(false);
 });

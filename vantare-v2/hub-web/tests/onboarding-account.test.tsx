@@ -80,10 +80,12 @@ it("uses Access's initial read, follows its topic and releases it on leaving the
     verified: true,
     plan: { kind: "verified" },
   });
-  expect(screen.getByRole("status").textContent).toBe("Acceso verificado");
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
+    "Acceso verificado",
+  );
   expect(screen.queryByText(/Tu plan: Pro/)).toBeNull();
   update({ ...account(), session: "signedIn", verified: false });
-  expect(screen.getByRole("status").textContent).toBe(
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
     "Cuenta conectada · plan sin confirmar",
   );
   update({
@@ -94,7 +96,9 @@ it("uses Access's initial read, follows its topic and releases it on leaving the
     working: true,
     plan: { kind: "founders" },
   });
-  expect(screen.getByRole("status").textContent).toBe("Acceso bloqueado");
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
+    "Acceso bloqueado",
+  );
   view.unmount();
   expect(fake.unsubscribe).toHaveBeenCalledOnce();
   expect(fake.listeners.size).toBe(0);
@@ -107,9 +111,11 @@ it("shows checking until the initial response and never invents a signed-in acco
     }),
   );
   mount();
-  expect(screen.getByRole("status").textContent).toBe("Comprobando cuenta…");
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
+    "Comprobando cuenta…",
+  );
   await act(async () => release({ method: "account.get", value: account() }));
-  expect(screen.getByRole("status").textContent).toBe(
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
     "Puedes continuar sin cuenta.",
   );
 });
@@ -124,7 +130,9 @@ it("explains a failed account read and recovers from the existing account topic"
     plan: { kind: "founders" },
   });
   await waitFor(() =>
-    expect(screen.getByRole("status").textContent).toBe("Acceso verificado"),
+    expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
+      "Acceso verificado",
+    ),
   );
 });
 

@@ -367,7 +367,15 @@ function ShellContent() {
                       <span className="v-sidebar-profile-dot" />
                       <span className="v-sidebar-profile-copy">
                         <span>{profile.name}</span>
-                        <small>{profile.apps.join(" → ")}</small>
+                        <small>
+                          {profile.apps
+                            .map(
+                              (id) =>
+                                launcher.apps.find((app) => app.id === id)
+                                  ?.name ?? id,
+                            )
+                            .join(" → ")}
+                        </small>
                       </span>
                     </Button>
                   ))}

@@ -116,7 +116,21 @@ export default function CalendarEntry() {
                 </Button>
               </div>
             )}
-            {view?.invalidCache && <p role="status">{text.corrupted}</p>}
+            {(view?.invalidCache ||
+              (preferences.config &&
+                Object.values(preferences.config.documents).some(
+                  (status) => status !== "ready",
+                ))) && (
+              <div role="status">
+                <p>{text.corrupted}</p>
+                <Button
+                  onClick={() => void preferences.reload()}
+                  disabled={preferences.busy}
+                >
+                  {text.retry}
+                </Button>
+              </div>
+            )}
             {preferences.failure && (
               <div role="alert">
                 <p>

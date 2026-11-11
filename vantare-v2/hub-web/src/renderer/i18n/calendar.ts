@@ -21,6 +21,7 @@ export const calendarText = {
   raceAt: "Carrera a las",
   race: "Carrera",
   raceDuration: (minutes: number) => `Carrera ${durationText(minutes)}`,
+  launchDefault: "Lanzar perfil",
   launchShortcut: "Ctrl L",
   launchPending: "Lanzamiento programado no disponible",
   launchSent: "Solicitud enviada al Launcher.",

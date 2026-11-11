@@ -19,6 +19,9 @@ import { zoneLabel } from "./calendarZone";
 import { SearchInput, Segmented, Select } from "./Forms";
 import "./calendar-live.css";
 
+function classLabel(value: string) {
+  return (value.includes("McLaren") ? "LMGT3" : value).replace(" Class", "");
+}
 function Tier({ series }: { series: CalendarSeries }) {
   return (
     <span className="v-calendar-tier" data-tier={series.tier}>
@@ -117,19 +120,26 @@ export function CalendarLiveView({
           </span>
         </button>
         <div className="v-calendar-live-classes">
-          {s.classes.length > 2
-            ? `${s.classes.length} ${text.classes.toLowerCase()}`
-            : (s.classes.length
-                ? s.classes.map((c) => c.name)
-                : [s.vehicleClass]
-              ).map((c) => (
-                <span
-                  key={c}
-                  data-class={c.replace(" Class", "").toLowerCase()}
-                >
-                  {c.replace(" Class", "")}
-                </span>
+          {s.classes.length > 2 ? (
+            <span className="v-calendar-multi-class">
+              {s.classes.slice(0, 3).map((item) => (
+                <i
+                  key={item.name}
+                  data-class={classLabel(item.name).toLowerCase()}
+                />
               ))}
+              {s.classes.length} {text.classes.toLowerCase()}
+            </span>
+          ) : (
+            (s.classes.length
+              ? s.classes.map((c) => c.name)
+              : [s.vehicleClass]
+            ).map((c) => (
+              <span key={c} data-class={classLabel(c).toLowerCase()}>
+                {classLabel(c)}
+              </span>
+            ))
+          )}
         </div>
         <div className="v-calendar-live-next">
           <strong>{row.next === undefined ? "—" : clock(row.next, utc)}</strong>
@@ -143,22 +153,38 @@ export function CalendarLiveView({
         </div>
         <div className="v-calendar-live-line">
           <i className="v-calendar-now" />
-          {row.starts.map((at) => (
-            <button
-              type="button"
-              key={at}
-              className="v-calendar-time"
-              data-next={row.next === at || undefined}
-              data-alert={alertAt(schedule, s, at, alerts, limit) || undefined}
-              style={{
-                left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
-              }}
-              disabled={!onDetail}
-              onClick={() => onDetail?.(s.id, at)}
-            >
-              {clock(at, utc)}
-            </button>
-          ))}
+          {row.starts
+            .filter(
+              (at) =>
+                at - (now - 10 * 60_000) > 5.5 * 60_000 &&
+                now + 90 * 60_000 - at > 5.5 * 60_000,
+            )
+            .map((at) => (
+              <button
+                type="button"
+                key={at}
+                className="v-calendar-time"
+                data-next={row.next === at || undefined}
+                data-gone={at < now || undefined}
+                data-alert={
+                  (alerts.bands.some((band) => band.seriesId === s.id)
+                    ? (row.next === at &&
+                        alertAt(schedule, s, at, alerts, limit)) ||
+                      alerts.slots.some(
+                        (slot) =>
+                          slot.seriesId === s.id && slot.at * 1000 === at,
+                      )
+                    : alertAt(schedule, s, at, alerts, limit)) || undefined
+                }
+                style={{
+                  left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
+                }}
+                disabled={!onDetail}
+                onClick={() => onDetail?.(s.id, at)}
+              >
+                {clock(at, utc)}
+              </button>
+            ))}
           {!row.starts.length && !daily(s) && (
             <button
               type="button"
@@ -204,7 +230,7 @@ export function CalendarLiveView({
                   .replace(" Class", "")
                   .toLowerCase()}
               >
-                {hero.series.vehicleClass.replace(" Class", "")}
+                {classLabel(hero.series.vehicleClass)}
               </span>
             </p>
             <p>{text.raceDuration(raceMinutes(hero.series))}</p>
@@ -212,6 +238,7 @@ export function CalendarLiveView({
               {text.after}
               {hero.after.slice(0, 3).map((r) => (
                 <span key={`${r.series.id}:${r.time}`}>
+                  <Icon name="star" />
                   {clock(r.time, utc)}
                   {text.separator}
                   {r.series.name}
@@ -235,7 +262,12 @@ export function CalendarLiveView({
               disabled={!profile || !canLaunch}
             >
               <Icon name="play" />
-              {text.launch(profile ?? "LMU")}
+              {profile
+                ? text.launch(
+                    Array.from(profile).slice(0, 18).join("") +
+                      (Array.from(profile).length > 18 ? "…" : ""),
+                  )
+                : text.launchDefault}
               <kbd>{text.launchShortcut}</kbd>
             </Button>
             <div>

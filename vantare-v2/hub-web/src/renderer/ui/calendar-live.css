@@ -147,7 +147,8 @@
   flex: none;
   flex-direction: column;
   gap: 8px;
-  min-width: 212px;
+  min-width: 266px;
+  width: 266px;
 }
 .v-calendar-hero-actions .v-button {
   min-height: 34px;
@@ -171,7 +172,7 @@
 }
 .v-calendar-hero-actions > div {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .v-calendar-hero-actions > div > .v-button {
   flex: 1;
@@ -285,10 +286,10 @@
 .v-calendar-live-head,
 .v-calendar-live-row {
   display: grid;
-  grid-template-columns: 42px minmax(250px, 1fr) 104px 92px minmax(240px, 1fr);
+  grid-template-columns: 28px minmax(250px, 1fr) 104px 92px minmax(240px, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
+  gap: 12px;
+  padding: 0 16px;
 }
 .v-calendar-live-head {
   flex: none;
@@ -557,4 +558,69 @@
 
 .v-calendar-hero-class[data-class="gte"]::before {
   background: var(--calendar-class-gte);
+}
+
+.v-calendar-live-classes .v-calendar-multi-class::before {
+  display: none;
+}
+.v-calendar-multi-class i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.v-calendar-after span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.v-calendar-after svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+.v-calendar-multi-class i[data-class="hypercar"] {
+  background: var(--calendar-class-hypercar);
+}
+
+.v-calendar-multi-class i[data-class="lmp2"] {
+  background: var(--calendar-class-lmp2);
+}
+
+.v-calendar-multi-class i[data-class="lmp3"] {
+  background: var(--calendar-class-lmp3);
+}
+
+.v-calendar-multi-class i[data-class="lmgt3"] {
+  background: var(--calendar-class-lmgt3);
+}
+
+.v-calendar-multi-class i[data-class="gte"] {
+  background: var(--calendar-class-gte);
+}
+
+.v-calendar-after span {
+  height: 24px;
+  padding-block: 0;
+}
+.v-calendar-hero-actions > div > .v-button:first-child {
+  flex: none;
+  width: 90px;
+}
+.v-calendar-time {
+  width: 46px;
+  height: 22px;
+  padding: 0;
+}
+.v-calendar-time[data-alert] {
+  width: 58px;
+}
+.v-calendar-time[data-gone] {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+.v-calendar-live-row[data-favorite] .v-calendar-time[data-next] {
+  background: var(--grad-button);
+  color: var(--text-on-accent);
 }

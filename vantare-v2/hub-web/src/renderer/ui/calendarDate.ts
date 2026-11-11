@@ -36,3 +36,18 @@ export function clock(at: number, utc: boolean) {
 export function elapsedDays(from: number, until: number) {
   return Math.max(0, Math.floor((until - from) / day));
 }
+
+export function dayHours(at: number, utc: boolean) {
+  const from = civilDay(at, 0, utc),
+    until = civilDay(at, 1, utc);
+  const hours: { from: number; until: number; hour: number }[] = [];
+  for (let cursor = from; cursor < until; cursor += 3600000) {
+    const date = new Date(cursor);
+    hours.push({
+      from: cursor,
+      until: Math.min(cursor + 3600000, until),
+      hour: utc ? date.getUTCHours() : date.getHours(),
+    });
+  }
+  return hours;
+}

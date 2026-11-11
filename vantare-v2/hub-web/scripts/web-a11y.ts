@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Locator } from "playwright-core";
 import { checkAccessGate } from "./check-access-gate.ts";
+import { checkAccessStates } from "./check-access-states.ts";
 import { checkAccount } from "./check-account.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
@@ -147,6 +148,7 @@ try {
   await checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccount(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkAccessStates(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({

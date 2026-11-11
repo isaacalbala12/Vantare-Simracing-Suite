@@ -5,6 +5,7 @@ import corpus from "../../contract/generated/corpus/account.json";
 import { isAccount } from "../../contract/modules/account";
 import { oneOf, record } from "../../contract/validation-common";
 import type { MockContext, MockHandler } from "../context";
+import { accountScene } from "./account-scenes";
 export function create(context: MockContext): MockHandler {
   const sample = corpus.host.find((v) => v.kind === "response");
   if (
@@ -52,6 +53,7 @@ export function create(context: MockContext): MockHandler {
       })) as AccountView["modules"],
     };
   }
+  current = accountScene(context.sceneName, current);
   if (context.sceneName.startsWith("email-")) {
     const scene = context.sceneName;
     current = {
@@ -154,6 +156,13 @@ export function create(context: MockContext): MockHandler {
         if (!current.copyLink.available) return fail(id, "denied");
         current = { ...current, copyLink: { available: true, copied: true } };
         break;
+      case "account.retry":
+        current = {
+          ...current,
+          error: null,
+          gate: current.gate === "logoutFailed" ? "none" : "choose",
+        };
+        break;
       case "account.choose":
         current = { ...current, gate: "choose" };
         break;
@@ -223,7 +232,17 @@ export function create(context: MockContext): MockHandler {
         } else if (action.action === "reset" && email.stage === "newPassword") {
           current = { ...current, email: { ...email, stage: "consent" } };
         } else if (action.action === "finish" && email.stage === "consent") {
-          current = { ...current, email: { ...email, stage: "authorizing" } };
+          current =
+            context.sceneName === "acceso-correo-completo"
+              ? {
+                  ...current,
+                  gate: "none",
+                  session: "signedIn",
+                  email: null,
+                  name: "Piloto QA",
+                  error: null,
+                }
+              : { ...current, email: { ...email, stage: "authorizing" } };
         } else if (action.action !== "resend" || email.stage !== "code") {
           return fail(id, "accountInvalid");
         }

@@ -24,7 +24,9 @@ if ($gate) {
         $scripted[$method]['signed_in'] = $false
         $scripted[$method]['profile'] = $null
         $scripted[$method]['pending'] = $false
+        $scripted[$method]['message'] = 'Sesión cerrada en este dispositivo'
     }
+    $scripted['Status']['message'] = 'servicio disponible'
     $scripted | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $replies -Encoding utf8
     $privacyRoot = Join-Path $run 'Vantare/native'
     [void][IO.Directory]::CreateDirectory($privacyRoot)
@@ -77,17 +79,17 @@ if ($testing) {
 $process = [Diagnostics.Process]::Start($start)
 try {
     # Wait for the GUI message loop, then the declared offscreen capture HWND.
-    if (-not $process.WaitForInputIdle(15000)) { throw 'El banco no ha creado su bucle de ventana en 15 s.' }
-    if ($testing) {
+    if (-not $process.WaitForInputIdle(330000)) { throw "El banco no ha creado su bucle tras esperar el turno de captura: $run" }
+    if ($testing -or $gate) {
         $ready = [Diagnostics.Stopwatch]::StartNew()
         do {
             if ($process.HasExited) { throw 'El banco terminó antes de recibir la política QA' }
             $rightsLog = Join-Path $run 'rights-requests.jsonl'
             $requestsLog = Join-Path $run 'requests.jsonl'
-            $rightsReady = (Test-Path -LiteralPath $rightsLog) -and (Get-Item -LiteralPath $rightsLog).Length -gt 0
+            $rightsReady = -not $testing -or ((Test-Path -LiteralPath $rightsLog) -and (Get-Item -LiteralPath $rightsLog).Length -gt 0)
             $accountReady = (Test-Path -LiteralPath $requestsLog) -and (Select-String -LiteralPath $requestsLog -SimpleMatch '"command":"AccountPoll"' -Quiet)
             if ($rightsReady -and $accountReady) { break }
-            if ($ready.Elapsed.TotalSeconds -ge 15) { throw "El banco no recibió la política/cuenta QA en 15 s: $run" }
+            if ($ready.Elapsed.TotalSeconds -ge 15) { throw "El banco no recibió la política/cuenta QA de $Scene en 15 s: $run" }
             Start-Sleep -Milliseconds 50
         } while ($true)
     }
@@ -102,7 +104,7 @@ try {
     } while ($true)
     $repliesHash = (Get-FileHash -LiteralPath $replies -Algorithm SHA256).Hash.ToLowerInvariant()
     $pngHash = (Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()
-    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
+    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;qa_measure=$gate;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
     $inputs = [ordered]@{scene=$Scene;appearance="vantare-$Theme";size=@(1440,900);zoom=100;bank=$inventory.sha256;replies=$repliesHash} | ConvertTo-Json -Compress
     $inputHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($inputs))).ToLowerInvariant()
     $receiptHash = & node --experimental-strip-types (Join-Path $PSScriptRoot 'reference-receipt.ts') $Output

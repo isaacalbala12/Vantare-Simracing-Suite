@@ -179,6 +179,7 @@ impl Drop for Reader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
     #[test]
     fn explicit_scans_are_rate_limited_without_waiting_or_starting_workers() {
         let root = crate::test_support::Root::new();

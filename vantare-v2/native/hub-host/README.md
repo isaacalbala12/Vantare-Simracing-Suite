@@ -87,10 +87,13 @@ sus respuestas. Las respuestas sin dueño se descartan sin volver a contestar.
 AccountPoll no es siempre rápido: sin callback, accept no bloqueante devuelve
 enseguida; con callback, la lectura tiene plazo absoluto de 3 s y se ejecutan
 secuencialmente token (HTTP 8 s), userinfo (8 s) y foto opcional (2 s): hasta 21 s
-más trabajo/almacenamiento local. La primera inicialización sin metadata guardada
-puede además descubrir OAuth (HTTP 8 s). Son límites del código, no una medición
-contra proveedores reales. Cancel debe contemplar esa espera y luego reconciliar
-el estado; no se reduce el timeout del núcleo desde el Hub.
+más trabajo/almacenamiento local. Con autorización por email pendiente, un canje
+satisfactorio puede hacer token (8 s), userinfo (8 s), foto opcional (2 s) y cierre
+FAPI de mejor esfuerzo (8 s): hasta 26 s de HTTP más trabajo local. Sin canje debido
+al intervalo, el poll devuelve enseguida. Por separado, la primera inicialización
+sin metadata guardada puede descubrir OAuth (HTTP 8 s). Son límites del código,
+no una medición contra proveedores reales. Cancel debe contemplar esa espera y
+luego reconciliar el estado; no se reduce el timeout del núcleo desde el Hub.
 
 ## Comprobaciones locales
 

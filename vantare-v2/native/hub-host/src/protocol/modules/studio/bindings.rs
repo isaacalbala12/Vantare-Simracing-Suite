@@ -15,7 +15,7 @@ pub(crate) fn typescript() -> String {
     declare::<StudioView>(&mut text);
     declare::<InstancePatch>(&mut text);
     writeln!(text,"export const studioLimits = {{instances:{},history:{},opacityMin:{},opacityMax:{},id:256}} as const;",INSTANCE_LIMIT,HISTORY_LIMIT,OPACITY_MIN,OPACITY_MAX).expect("limits");
-    text.push_str("export const studioEditOnScreen = false as const;\n");
+    text.push_str("export const studioAddAvailable = false as const;\nexport const studioEditOnScreen = false as const;\n");
     writeln!(
         text,
         "export const studioCatalog = {} as const;",

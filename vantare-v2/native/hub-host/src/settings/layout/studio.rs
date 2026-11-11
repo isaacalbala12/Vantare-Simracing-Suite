@@ -119,59 +119,11 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
             },
         )?,
         off_track,
-        size: OverlaySize {
+        size: size.map(|_| OverlaySize {
             width: width.round() as u32,
             height: height.round() as u32,
-        },
+        }),
     })
-}
-fn free_spot(opened: &Open) -> Result<(f64, f64), HostError> {
-    let canvas: Option<Fields> = optional(&opened.document.fields, "canvasResolution", None)?;
-    let (width, height) = canvas.as_ref().map_or(Ok((1920.0, 1080.0)), |f| {
-        Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?))
-    })?;
-    if ![width, height]
-        .iter()
-        .all(|v| v.is_finite() && (64.0..=32768.0).contains(v))
-    {
-        return Err(HostError::Protected);
-    }
-    let taken: Vec<_> = opened
-        .instances
-        .iter()
-        .map(|f| {
-            let item = instance(f, None)?;
-            Ok::<_, HostError>((
-                read::<f64>(f, "x")?,
-                read::<f64>(f, "y")?,
-                f64::from(item.size.width),
-                f64::from(item.size.height),
-            ))
-        })
-        .collect::<Result<_, _>>()?;
-    let margin = width * 0.02;
-    let step = width * 0.01;
-    let gap = 12.0;
-    let mut y = margin;
-    while y + 160.0 <= height - margin {
-        let mut x = margin;
-        while x + 320.0 <= width - margin {
-            if !taken.iter().any(|r| {
-                x < r.0 + r.2 + gap
-                    && x + 320.0 + gap > r.0
-                    && y < r.1 + r.3 + gap
-                    && y + 160.0 + gap > r.1
-            }) {
-                return Ok((x, y));
-            }
-            x += step;
-        }
-        y += step;
-    }
-    Ok((
-        (width - 320.0).max(0.0) / 2.0,
-        (height - 160.0).max(0.0) / 2.0,
-    ))
 }
 fn save(path: &Path, before: &[u8], after: &[u8]) -> Result<(), HostError> {
     files::save(
@@ -290,28 +242,12 @@ pub(crate) fn edit(
             opened.bytes()?
         }
         Edit::Add(kind) => {
-            if !kind.info(access).allowed
-                || !WidgetKind::ALL.contains(&kind)
-                || opened.instances.len() >= INSTANCE_LIMIT
-            {
+            if !kind.info(access).allowed {
                 return Err(HostError::Denied);
             }
-            let id = (1..=INSTANCE_LIMIT + 1)
-                .map(|n| format!("widget-{n}"))
-                .find(|id| {
-                    !opened
-                        .instances
-                        .iter()
-                        .any(|f| read::<String>(f, "id").as_deref() == Ok(id.as_str()))
-                })
-                .ok_or(HostError::Denied)?;
-            // All frozen widget Settings use serde(default). An absent field is the native default;
-            // existing opaque settings are never copied or normalized by the host.
-            let settings = serde_json::json!({"kind":kind});
-            let (x, y) = free_spot(&opened)?;
-            let fields:Fields=serde_json::from_str(&serde_json::json!({"id":id,"x":x,"y":y,"visible":true,"opacity":1.0,"settings":settings}).to_string()).map_err(|_|HostError::Io)?;
-            opened.instances.push(fields);
-            opened.bytes()?
+            // Pending the native widget-defaults artifact from screen 07.
+            // Never substitute invented geometry or a renderer-authored settings object.
+            return Err(HostError::Protected);
         }
     };
     save(&state.path, &before, &after)?;
@@ -391,3 +327,7 @@ pub(crate) fn track(
     }
     Ok(view(state, access))
 }
+
+#[cfg(test)]
+#[path = "studio_tests.rs"]
+mod tests;

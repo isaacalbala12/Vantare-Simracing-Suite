@@ -40,7 +40,9 @@ beforeEach(() =>
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  caches.forEach((c) => { c.clear(); });
+  caches.forEach((c) => {
+    c.clear();
+  });
   caches.length = 0;
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");

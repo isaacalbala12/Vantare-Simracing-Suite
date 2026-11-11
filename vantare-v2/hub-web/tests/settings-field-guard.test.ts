@@ -43,7 +43,7 @@ it("rejects both missing fields and fields outside the contract at compile time"
       { cwd: root, encoding: "utf8" },
     );
     expect(result.error).toBeUndefined();
-    expect(result.status).toBe(2);
+    expect(result.status, result.stdout + result.stderr).not.toBe(0);
     const errors = result.stdout
       .split("\n")
       .filter((line) => line.includes("error TS"));

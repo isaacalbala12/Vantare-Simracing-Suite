@@ -1,10 +1,7 @@
-import {
-  type CalendarSchedule,
-  type CalendarSeries,
-  type CalendarView,
-  calendarSeriesLimit,
-  calendarStartsLimit,
-  calendarWeekdays,
+import type {
+  CalendarSchedule,
+  CalendarSeries,
+  CalendarView,
 } from "../../../contract/generated/calendar";
 
 const minute = 60_000;
@@ -16,6 +13,7 @@ export function starts(
   series: CalendarSeries,
   from: number,
   until: number,
+  limit: number,
 ): number[] {
   const lo = Math.max(from, Date.parse(schedule.validFrom));
   const hi = Math.min(until, Date.parse(schedule.validUntil));
@@ -24,8 +22,7 @@ export function starts(
   const out: number[] = [];
   const add = (at: number) => {
     if (at >= lo && at < hi) {
-      if (out.length === calendarStartsLimit)
-        throw new Error("calendar expansion limit");
+      if (out.length === limit) throw new Error("calendar expansion limit");
       out.push(at);
     }
   };
@@ -46,7 +43,10 @@ export function starts(
     const first = new Date(lo);
     first.setUTCHours(0, 0, 0, 0);
     for (let date = first.getTime(); date < hi; date += day) {
-      const weekday = calendarWeekdays[(new Date(date).getUTCDay() + 6) % 7];
+      const weekday = new Intl.DateTimeFormat("en", {
+        weekday: "short",
+        timeZone: "UTC",
+      }).format(date);
       if (!r.days.some((d) => d === weekday)) continue;
       for (const time of r.timesUTC) {
         const [h, m] = time.split(":").map(Number);
@@ -64,7 +64,7 @@ function current(schedule: CalendarSchedule | null, now: number) {
     : null;
 }
 const normalized = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/gu, "");
-export function publication(view: CalendarView, now: number) {
+export function publication(view: CalendarView, now: number, limit: number) {
   const official = current(view.official, now),
     fallback = current(view.fallback, now);
   let schedule = official ?? fallback;
@@ -76,7 +76,7 @@ export function publication(view: CalendarView, now: number) {
       .map((s) => ({ ...s, source: "racecontrol" }));
     schedule = {
       ...official,
-      series: [...official.series, ...extra].slice(0, calendarSeriesLimit),
+      series: [...official.series, ...extra].slice(0, limit),
     };
   }
   const previous =

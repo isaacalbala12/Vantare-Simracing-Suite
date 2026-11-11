@@ -239,11 +239,14 @@
   top: 8px;
   left: 8px;
   height: 22px;
-  border-radius: var(--radius-pill);
-  background: var(--accent-tint);
+  background: var(--line-1);
   color: var(--accent-bright);
   font-size: 10px;
-  padding: 2px 8px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
 }
 .v-launcher-profile--new {
   align-items: center;
@@ -332,7 +335,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 12px;
   min-height: 30px;
 }
@@ -362,4 +365,88 @@
     var(--launcher-profile-tools),
     var(--bg-window)
   );
+}
+
+/* Launcher faces follow GPUI even while an unavailable action is disabled. */
+.v-launcher-page .v-button--neutral,
+.v-profile-editor .v-button--neutral,
+.v-launcher-rail .v-button--neutral {
+  background: transparent;
+  color: var(--text-1);
+  border-color: var(--line-2);
+}
+.v-launcher-page .v-button--neutral:disabled,
+.v-profile-editor .v-button--neutral:disabled,
+.v-launcher-rail .v-button--ghost:disabled,
+.v-launcher-app-tile:disabled,
+.v-launcher-profile--new:disabled {
+  opacity: 1;
+  color: var(--text-1);
+}
+.v-launcher-profile--new {
+  border-color: var(--line-2);
+  color: var(--text-1);
+  font-weight: 500;
+}
+.v-launcher-options > div > span {
+  font-weight: 400;
+  color: var(--text-2);
+}
+.v-launcher-options .v-field {
+  min-width: 0;
+  width: 120px;
+}
+.v-launcher-options .v-select-trigger {
+  min-width: 0;
+  width: 120px;
+  max-width: 100%;
+  font-weight: 400;
+}
+.v-launcher-options .v-select-trigger svg {
+  width: 14px;
+  height: 14px;
+  transform: rotate(90deg);
+}
+.v-context:has(.v-launcher-rail, .v-profile-rail) > .v-tooltip-trigger {
+  display: none;
+}
+.v-launcher-hero .v-launcher-launch {
+  border: 0;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+}
+.v-launcher-launch .v-button-label {
+  gap: 10px;
+}
+.v-launcher-hero .v-launcher-launch svg {
+  width: 12px;
+  height: 12px;
+}
+.v-launcher-launch kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid
+    color-mix(in srgb, var(--text-on-accent) 28%, transparent);
+  font: 400 12px var(--font-mono);
+  color: var(--text-2);
+}
+/* GPUI keeps readable text and borders for pending native-only controls. */
+.v-launcher-rail .v-launcher-options > div > span {
+  font-weight: 400;
+  color: var(--text-2);
+}
+.v-launcher-rail .v-launcher-options .v-select-trigger:disabled,
+.v-launcher-rail .v-launcher-options .v-select-trigger[aria-disabled="true"] {
+  opacity: 1;
+  color: var(--text-1);
+  background: var(--surface-2);
+  border-color: var(--line-2);
 }

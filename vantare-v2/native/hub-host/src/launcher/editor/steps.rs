@@ -11,6 +11,8 @@ pub struct StepKeys {
 }
 impl StepKeys {
     pub fn open(&mut self, path: &Path, id: Option<&str>) -> Result<ProfileEditorView, HostError> {
+        // Any new read replaces the preceding capabilities, including a failed read.
+        *self = Self::default();
         let mut view = super::get(path, id)?;
         let next = Self::issue(&mut view)?;
         let view = super::checked(view)?;
@@ -34,6 +36,9 @@ impl StepKeys {
         self.profile.as_deref() == profile && self.revision == revision
     }
 }
+// Caller invariant: editor::save verified matches(draft.id, observed_revision)
+// before apply/preserve. This private helper only resolves that read's indices;
+// it never authenticates a renderer-provided key without the host registry.
 pub(super) fn preserve(
     profile: &Profile,
     draft: &ProfileDraft,

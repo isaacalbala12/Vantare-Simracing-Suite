@@ -7,13 +7,31 @@ import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { LauncherProfiles } from "../../ui/launcher/Profiles";
+import { snapshot, useProfileEditorState } from "./editor-state";
+import { ProfileEditor } from "./ProfileEditor";
+import { profileFailure } from "./profile-errors";
 import {
   launcherKey,
   launcherSelectionKey,
   useLauncherSnapshot,
 } from "./state";
+
+function failureText(failure: unknown): string {
+  if (failure instanceof HostFailure) {
+    switch (failure.detail.kind) {
+      case "busy":
+        return text.busy;
+      case "coreUnavailable":
+        return text.coreUnavailable;
+      case "denied":
+        return text.denied;
+    }
+  }
+  return text.failed;
+}
 export function Launcher() {
   const { client } = useHost();
+  const editor = useProfileEditorState();
   const query = useQueryClient();
   const { view, selected } = useLauncherSnapshot();
   const setView = useCallback(
@@ -28,6 +46,13 @@ export function Launcher() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [accepted, setAccepted] = useState(false);
+  // The acknowledgment is transient, not a synthesized resident state. A chain
+  // may finish between two 500 ms status samples without producing a transition.
+  useEffect(() => {
+    if (!accepted) return;
+    const timer = window.setTimeout(() => setAccepted(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [accepted]);
   const busy = useRef(false);
   const alive = useRef(true);
   useEffect(() => {
@@ -47,8 +72,8 @@ export function Launcher() {
         setAccepted(false);
         setError(undefined);
       }
-    } catch {
-      if (alive.current) setError(text.failed);
+    } catch (failure) {
+      if (alive.current) setError(failureText(failure));
     } finally {
       busy.current = false;
       if (alive.current) setPending(false);
@@ -71,6 +96,24 @@ export function Launcher() {
       off();
     };
   }, [client, setView]);
+  async function openEditor(id: string | null) {
+    if (!client || busy.current || view?.protected) return;
+    busy.current = true;
+    setPending(true);
+    try {
+      const reply = await client.request({
+        method: "launcher.profile.get",
+        id,
+      });
+      if (alive.current && reply.method === "launcher.profile.get")
+        editor.set(snapshot(reply.value, id === null));
+    } catch (failure) {
+      if (alive.current) setError(profileFailure(failure, true));
+    } finally {
+      busy.current = false;
+      if (alive.current) setPending(false);
+    }
+  }
   async function launch(profile: LauncherProfile) {
     if (!client || !view || busy.current || !profile.launchable) return;
     busy.current = true;
@@ -94,12 +137,13 @@ export function Launcher() {
       ) {
         setView(failure.detail.current);
         setError(text.changed);
-      } else setError(text.failed);
+      } else setError(failureText(failure));
     } finally {
       busy.current = false;
       if (alive.current) setPending(false);
     }
   }
+  if (editor.value) return <ProfileEditor />;
   if (!view)
     return error ? (
       <Callout
@@ -122,6 +166,8 @@ export function Launcher() {
       error={error}
       accepted={accepted}
       onSelect={setSelected}
+      onEdit={(id) => void openEditor(id)}
+      onNew={() => void openEditor(null)}
       onLaunch={(profile) => void launch(profile)}
       onReload={() => void reload()}
     />

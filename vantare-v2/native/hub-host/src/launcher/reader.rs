@@ -115,6 +115,10 @@ impl Reader {
             self.scan.is_some(),
         )
     }
+    pub fn rescan(&mut self) {
+        // An explicit reload refreshes availability without launching a second worker.
+        self.scanned_revision = None;
+    }
     pub fn discovered(&self, revision: &str) -> Option<&Discovery> {
         (self.scan.is_none() && self.scanned_revision.as_deref() == Some(revision))
             .then_some(&self.found)

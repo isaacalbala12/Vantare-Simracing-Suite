@@ -1,6 +1,7 @@
 export const launcherText = {
   title: "Launcher",
   profilesTab: "Perfiles",
+  profileTab: "Perfil",
   runningHeading: "● Lanzando…",
   scanning: "Espera a que termine la detección de aplicaciones.",
   cancel: "Cancelar",
@@ -50,6 +51,11 @@ export const launcherText = {
   running: "Lanzamiento en curso",
   queued:
     "Solicitud enviada al residente. El lanzamiento todavía no ha terminado.",
+  busy: "El residente está ocupado. Vuelve a intentarlo en unos segundos.",
+  coreUnavailable:
+    "El residente no está disponible. Abre Vantare y vuelve a intentarlo.",
+  denied:
+    "No se puede lanzar este perfil con el estado actual. Vuelve a cargar y revísalo.",
   failed:
     "No se pudo enviar la solicitud. Revisa el Launcher y vuelve a intentarlo.",
   changed: "El perfil ha cambiado. Revísalo antes de volver a lanzarlo.",

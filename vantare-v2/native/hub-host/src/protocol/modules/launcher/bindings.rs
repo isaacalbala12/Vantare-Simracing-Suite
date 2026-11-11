@@ -30,6 +30,10 @@ pub(crate) fn corpus() -> serde_json::Value {
     let host: Vec<HostToUi> = vec![
         HostToUi::Response {
             id: 1,
+            result: profile_keys_sample(),
+        },
+        HostToUi::Response {
+            id: 1,
             result: Reply::LauncherProfileGet {
                 value: ProfileEditorView {
                     revision: "0".repeat(64),
@@ -155,5 +159,19 @@ fn append_profile_constants(text: &mut String) {
             serde_json::to_string(&canonical(value)).expect("constants JSON")
         )
         .expect("String write");
+    }
+}
+
+fn profile_keys_sample() -> Reply {
+    let document = vantare_launcher::Document::fresh_install();
+    let mut draft = crate::launcher::editor::draft(&document.profiles[0]);
+    for (index, step) in draft.steps.iter_mut().enumerate() {
+        step.key = Some(format!("{:064x}", index + 1));
+    }
+    Reply::LauncherProfileGet {
+        value: ProfileEditorView {
+            revision: "0".repeat(64),
+            draft,
+        },
     }
 }

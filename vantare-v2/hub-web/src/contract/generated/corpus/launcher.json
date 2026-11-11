@@ -11,6 +11,55 @@
             "description": "",
             "favorite": false,
             "hotkey": "",
+            "id": "creator",
+            "name": "Creator",
+            "notes": "",
+            "policy": {
+              "alreadyRunning": "ask",
+              "cancel": "ask",
+              "exit": "ask",
+              "failure": "ask",
+              "firstStepDelay": 0,
+              "retries": 0,
+              "retry": "ask"
+            },
+            "startup": false,
+            "steps": [
+              {
+                "appId": "lmu",
+                "delaySeconds": 0,
+                "hasCustomArguments": false,
+                "key": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "appId": "obs",
+                "delaySeconds": 2,
+                "hasCustomArguments": false,
+                "key": "0000000000000000000000000000000000000000000000000000000000000002"
+              },
+              {
+                "appId": "spotify",
+                "delaySeconds": 2,
+                "hasCustomArguments": false,
+                "key": "0000000000000000000000000000000000000000000000000000000000000003"
+              }
+            ]
+          },
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.profile.get",
+        "value": {
+          "draft": {
+            "advanced": false,
+            "description": "",
+            "favorite": false,
+            "hotkey": "",
             "id": null,
             "name": "Nuevo perfil",
             "notes": "",

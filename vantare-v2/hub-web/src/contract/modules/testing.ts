@@ -82,8 +82,8 @@ export function isReply(value: Record<string, unknown>): boolean {
       return false;
   }
 }
-export function isError(_value: Record<string, unknown>): boolean {
-  return false;
+export function isError(value: Record<string, unknown>): boolean {
+  return value.kind === "evidencePending" && exact(value, ["kind"]);
 }
 export function isEvent(_value: Record<string, unknown>): boolean {
   return false;

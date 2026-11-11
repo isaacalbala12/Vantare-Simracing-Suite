@@ -25,7 +25,7 @@ export function createMockHost(
   emit: (message: HostToUi) => void = () => {},
 ) {
   const visual =
-    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app)$/.exec(
+    /^visual-(dark|light):(ajustes-con-diseno|proximamente-base|roadmap-base|notificaciones-base|launcher-base|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|testing-reference)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;

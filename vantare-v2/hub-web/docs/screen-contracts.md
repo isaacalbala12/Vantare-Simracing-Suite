@@ -141,3 +141,7 @@ que la segunda operación se acepte. El receptor envía la respuesta final o el
 error; una desconexión, el plazo del protocolo o un cierre responde
 `CoreUnavailable` antes de retirar la petición. Las respuestas tardías de esa
 petición cancelada se descartan. No se introducen variantes en el wire v6.
+
+`ReportDraftView` gana el campo `legacy` sin subir la versión del wire (v6).
+Distingue `archived` (se archivó el antiguo y ganó el borrador protegido) de
+`preserved` (el origen sigue conservado por un fallo o por no poder importarlo).

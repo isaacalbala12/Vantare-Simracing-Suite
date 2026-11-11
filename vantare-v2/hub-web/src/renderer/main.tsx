@@ -9,6 +9,7 @@ import { SettingsProvider } from "./app/SettingsState";
 import { Shell } from "./app/Shell";
 import { UiProvider } from "./app/UiState";
 import { es, specimen } from "./i18n/es";
+import { ReportsProvider } from "./screens/testing/ReportsState";
 import { Callout, Skeleton } from "./ui/Data";
 import { ToastProvider, ToastViewport, TooltipProvider } from "./ui/Layers";
 import { ContentStack } from "./ui/ShellLayout";
@@ -40,7 +41,9 @@ function Content() {
   return (
     <SettingsProvider>
       <PilotProvider>
-        <Shell />
+        <ReportsProvider>
+          <Shell />
+        </ReportsProvider>
       </PilotProvider>
     </SettingsProvider>
   );

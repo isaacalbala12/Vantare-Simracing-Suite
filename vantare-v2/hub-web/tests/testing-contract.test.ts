@@ -19,6 +19,76 @@ const request = (method: string, extra = {}) => ({
   request: { method, ...extra },
 });
 describe("Testing Center closed wire and local persistence double", () => {
+  it("requires the current preview and consent, clears once, and refuses a repeated send", () => {
+    const host = createMockHost("testing-reports");
+    host(request("draft.save", { fields }));
+    expect(
+      host(
+        request("report.send", { previewId: "a".repeat(64), consent: true }),
+      ),
+    ).toMatchObject({ kind: "failure" });
+    const prepared = host(request("report.prepare"));
+    expect(prepared).toMatchObject({ result: { method: "report.prepare" } });
+    if (
+      prepared?.kind !== "response" ||
+      prepared.result.method !== "report.prepare"
+    )
+      throw new Error("missing preview");
+    const oldId = prepared.result.value.id;
+    const current = host(request("report.prepare"));
+    if (
+      current?.kind !== "response" ||
+      current.result.method !== "report.prepare"
+    )
+      throw new Error("missing current preview");
+    const previewId = current.result.value.id;
+    expect(previewId).not.toBe(oldId);
+    expect(
+      host(request("report.send", { previewId: oldId, consent: true })),
+    ).toMatchObject({ error: { kind: "rejected" } });
+    expect(
+      host(request("report.send", { previewId, consent: false })),
+    ).toMatchObject({ kind: "failure" });
+    expect(
+      host(
+        request("report.send", { previewId: "c".repeat(64), consent: true }),
+      ),
+    ).toMatchObject({ kind: "failure" });
+    expect(
+      host(request("report.send", { previewId, consent: true })),
+    ).toMatchObject({
+      result: { method: "report.send", value: { draftState: "cleared" } },
+    });
+    expect(
+      host(request("report.send", { previewId, consent: true })),
+    ).toMatchObject({ kind: "failure" });
+    expect(host(request("draft.load"))).toMatchObject({
+      result: { value: { exists: false } },
+    });
+  });
+  it("enforces tester participation rights and rejects captures before dispatch", () => {
+    const user = createMockHost("testing-reports");
+    const tester = createMockHost("testing-tester-reports");
+    expect(user(request("testing.refresh"))).toMatchObject({
+      error: { kind: "denied" },
+    });
+    expect(tester(request("testing.refresh"))).toMatchObject({
+      result: { value: { questionnaires: [{ score: null }] } },
+    });
+    const id = "15350000-0000-0000-0000-000000000001";
+    expect(
+      tester(request("testing.contribute", { id, consent: true })),
+    ).toMatchObject({ error: { kind: "denied" } });
+    expect(tester(request("testing.answer", { id, score: 5 }))).toMatchObject({
+      result: { value: { questionnaires: [{ score: 5 }] } },
+    });
+    expect(user(request("report.capture", { fields }))).toMatchObject({
+      error: { kind: "evidencePending" },
+    });
+    expect(
+      createMockHost("testing-offline")(request("report.capture", { fields })),
+    ).toMatchObject({ error: { kind: "coreUnavailable" } });
+  });
   it("bounds identifiers and timestamps before sending services frames", () => {
     const id = "15350000-0000-0000-0000-000000000001";
     const previewId = "a".repeat(testingIdLimits.previewId);
@@ -94,14 +164,20 @@ describe("Testing Center closed wire and local persistence double", () => {
     ).toBe(false);
   });
   it("roundtrips a draft, preserves it across refresh, and discards it explicitly", () => {
-    const host = createMockHost("testing-reports");
+    const host = createMockHost("testing-tester-reports");
     const save = host(request("draft.save", { fields }));
     expect(save).toEqual({
       kind: "response",
       id: 42,
       result: {
         method: "draft.save",
-        value: { fields, exists: true, screenshots: [], legacy: "none" },
+        value: {
+          fields,
+          exists: true,
+          screenshots: [],
+          message: "",
+          legacy: "none",
+        },
       },
     });
     expect(isHostMessage(save)).toBe(true);
@@ -109,7 +185,7 @@ describe("Testing Center closed wire and local persistence double", () => {
       result: { method: "testing.refresh" },
     });
     expect(host(request("draft.load"))).toMatchObject({
-      result: { value: { fields, exists: true, screenshots: [] } },
+      result: { value: { fields, exists: true, screenshots: [], message: "" } },
     });
     expect(host(request("draft.discard"))).toMatchObject({
       result: { value: { exists: false } },
@@ -118,16 +194,28 @@ describe("Testing Center closed wire and local persistence double", () => {
       result: { value: { exists: false } },
     });
   });
-  it("accepts only the closed migration states and never a free warning", () => {
+  it("accepts only the closed migration states and never an extra migration warning", () => {
     const host = createMockHost("testing-reports");
     const saved = host(request("draft.save", { fields }));
-    for (const legacy of ["none", "imported", "importedTrimmed", "preserved"]) {
+    for (const legacy of [
+      "none",
+      "imported",
+      "importedTrimmed",
+      "archived",
+      "preserved",
+    ]) {
       expect(
         isHostMessage({
           ...saved,
           result: {
             method: "draft.load",
-            value: { fields, exists: true, screenshots: [], legacy },
+            value: {
+              fields,
+              exists: true,
+              screenshots: [],
+              message: "",
+              legacy,
+            },
           },
         }),
       ).toBe(true);
@@ -138,7 +226,13 @@ describe("Testing Center closed wire and local persistence double", () => {
           ...saved,
           result: {
             method: "draft.load",
-            value: { fields, exists: true, screenshots: [], legacy },
+            value: {
+              fields,
+              exists: true,
+              screenshots: [],
+              message: "",
+              legacy,
+            },
           },
         }),
       ).toBe(false);
@@ -153,7 +247,8 @@ describe("Testing Center closed wire and local persistence double", () => {
             exists: true,
             screenshots: [],
             legacy: "preserved",
-            message: "private",
+            message: "",
+            legacyMessage: "private",
           },
         },
       }),
@@ -165,6 +260,7 @@ describe("Testing Center closed wire and local persistence double", () => {
       fields: stored,
       exists: true,
       screenshots: [],
+      message: "",
       legacy: "none",
     };
     expect(
@@ -230,6 +326,7 @@ describe("Testing Center closed wire and local persistence double", () => {
           fields,
           exists: true,
           screenshots: [],
+          message: "",
           idempotencyKey: "forbidden",
         },
       },
@@ -260,4 +357,27 @@ describe("Testing Center closed wire and local persistence double", () => {
       }),
     ).toBe(false);
   });
+});
+
+it("rejects a preview containing screenshots while capture is unavailable", () => {
+  const value = {
+    id: "a".repeat(64),
+    digest: "b".repeat(64),
+    fields,
+    appVersion: "QA",
+    osVersion: "Windows",
+    channel: "nightly",
+    retry: false,
+    screenshots: [] as unknown[],
+  };
+  const message = () => ({
+    kind: "response",
+    id: 42,
+    result: { method: "report.prepare", value },
+  });
+  expect(isHostMessage(message())).toBe(true);
+  value.screenshots = [
+    { id: "c".repeat(64), jpeg: "/9j/", width: 1, height: 1, byteSize: 3 },
+  ];
+  expect(isHostMessage(message())).toBe(false);
 });

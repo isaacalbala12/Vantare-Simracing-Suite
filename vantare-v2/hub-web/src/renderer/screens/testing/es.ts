@@ -1,0 +1,91 @@
+export const testingText = {
+  legacy: {
+    archived:
+      "Se archivó el borrador antiguo y se conservó el borrador actual del núcleo.",
+    imported:
+      "Se recuperó el borrador antiguo. Se conserva una copia original.",
+    importedTrimmed:
+      "Se recuperó el borrador antiguo y se limpió o recortó el texto. Se conserva una copia original.",
+    preserved: "El borrador antiguo se ha conservado.",
+  },
+  sectionTitle: "Testing Center",
+  summary: "Resumen",
+  questionnaires: "Cuestionarios",
+  community: "Comunidad",
+  triage: "Triage",
+  title: "Informes",
+  description:
+    "Cuéntanos qué falla o qué mejorarías. Cada informe llega al equipo de Vantare.",
+  diagnostic: "Diagnóstico local",
+  newReport: "Nuevo informe",
+  myReports: "Ver mis informes",
+  listTitle: "Mis informes",
+  credit: "Quiero aparecer en los agradecimientos",
+  creditHelp:
+    "Opcional y revocable. Las notas podrán acreditar tu informe con un identificador de colaborador, sin nombre ni email. Retirarlo no cambia notas ya publicadas.",
+  understood: "Entendido",
+  fixedNotice: "Tu informe está arreglado. Gracias por avisar.",
+  acceptedNotice: "Tu informe ha sido aceptado. Gracias por avisar.",
+  withScreenshots: "Informe con capturas",
+  failed: "No se pudo completar la operación. Se conserva tu borrador.",
+  autosaveFailed: "No se pudo autoguardar; el texto sigue en el editor",
+  offline: "Sin conexión con el núcleo. El texto sigue en el editor.",
+  denied:
+    "Tu cuenta no tiene acceso a esta operación. El borrador se conserva.",
+  evidencePending:
+    "Las capturas todavía no están disponibles. El borrador se conserva.",
+  cleanupPending: "Borrador pendiente de limpiar",
+  preserved: "Borrador posterior conservado",
+  retry: "Reintentar",
+  closeUnsaved:
+    "Hay cambios sin guardar. Guarda o descarta el borrador antes de cerrar o reiniciar.",
+  reviewAgain: "Revisa de nuevo la operación antes de continuar.",
+  discard: "Descartar borrador",
+  reload: "Recargar",
+  reloadHelp: "Recarga para consultar cuestionarios y contribuciones",
+  helpTitle: "Ayúdanos a mejorar Vantare",
+  localTitle: "Título local · no se envía",
+  localBody: "Notas locales · no se envían",
+  localConsent:
+    "Consiento enviar los campos estructurados al equipo de Vantare",
+  localHelp:
+    "El título y las notas son locales y no se envían. Se envían el canal, el identificador del informe y el consentimiento, ligados a tu cuenta por el servidor. Máximo 5 informes al día y 20 en 7 días. El crédito es opcional y se decide en Mis informes.",
+  send: "Enviar informe",
+  compose: "Nuevo informe",
+  module: "Módulo",
+  action: "Título · qué hiciste",
+  observed: "Texto · qué ocurrió o qué propones",
+  expected: "Qué esperabas",
+  context: "Contexto adicional · opcional",
+  save: "Guardar borrador",
+  prepare: "Previsualizar envío",
+  preview: "Revisa el contenido antes de enviar",
+  consent: "He revisado y acepto enviar este contenido al equipo de Vantare",
+  retryPrepare: "Revisar el último intento",
+  received: "Informe recibido",
+  listHelp:
+    "Últimos 20 informes de tu cuenta, entre canales. Los recibos antiguos se muestran aparte.",
+  empty: "Aún no hay informes cargados",
+  emptyHelp: "Inicia sesión y recarga para consultar tus informes.",
+  unknownState: "Estado no disponible",
+  fixedIn: "Arreglado en",
+  yourReports: "Tus informes",
+  loadedReports: "informes cargados",
+  acceptedReports: "aceptados",
+  fixedReports: "arreglados",
+  channelUnavailable: "Canal no disponible",
+  conversation: "Conversación",
+  conversationHelp:
+    "Respuestas, informes parecidos y apoyo a otros informes · Próximamente",
+  goodReport: "Un buen informe",
+  goodReportHelp:
+    "Cuenta qué hiciste, qué esperabas y qué ocurrió. Añade una captura si ayuda y revisa los datos personales.",
+  states: {
+    received: "Recibido",
+    reviewing: "En revisión",
+    accepted: "Aceptado",
+    fixed: "Arreglado",
+    declined: "No aceptado",
+    spam: "No aceptado",
+  },
+} as const;

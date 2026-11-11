@@ -1,0 +1,187 @@
+.v-testing {
+  --testing-shadow: hsl(from var(--bg-window) h s 0% / 35%);
+  --testing-disabled: calc(var(--disabled-opacity) * 100%);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 12px;
+}
+.v-testing-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.v-testing-heading h1 {
+  margin: 0;
+  font-family: Rajdhani, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 32px;
+}
+.v-testing-heading p {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-3);
+}
+.v-testing-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+}
+.v-testing-toolbar h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 27px;
+  font-weight: 600;
+}
+.v-testing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--grad-neo);
+  box-shadow:
+    inset 0 1px var(--neo-light),
+    0 12px 28px var(--testing-shadow);
+}
+.v-testing-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: Rajdhani, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.v-testing-card h2 svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+.v-testing-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 21px;
+  color: var(--text-2);
+}
+.v-testing .v-testing-fine-print {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 19px;
+}
+.v-testing-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-testing-notes .v-field {
+  margin: 0;
+  gap: 0;
+}
+.v-testing-notes .v-field label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.v-testing-notes input {
+  height: 40px;
+  width: 100%;
+}
+.v-testing-notes textarea {
+  width: 100%;
+  height: 82px;
+  min-height: 82px;
+  resize: none;
+}
+.v-testing textarea {
+  scrollbar-width: none;
+}
+.v-testing .v-input {
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-1);
+  border: 1px solid var(--line-2);
+  box-shadow: inset 0 1px 2px var(--testing-shadow);
+}
+.v-testing .v-button {
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--text-1);
+  border-color: var(--line-3);
+  border-radius: 8px;
+}
+.v-testing .v-button--primary {
+  background: var(--text-1);
+  border-color: var(--text-1);
+  color: var(--text-on-primary);
+}
+.v-testing .v-button--primary:disabled {
+  /* GPUI applies opacity to the fill and glyphs separately. */
+  opacity: 1;
+  background: color-mix(
+    in srgb,
+    var(--text-1) var(--testing-disabled),
+    transparent
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--text-1) var(--testing-disabled),
+    transparent
+  );
+  color: color-mix(
+    in srgb,
+    var(--text-on-primary) var(--testing-disabled),
+    transparent
+  );
+}
+.v-testing-card > .v-button {
+  min-height: 34px;
+  font-size: 12px;
+  border-radius: var(--radius-pill);
+}
+.v-testing .v-button--sm {
+  min-height: 34px;
+  font-size: 12px;
+  border-radius: var(--radius-pill);
+}
+.v-testing-card > .v-button:disabled {
+  background: transparent;
+  color: var(--text-3);
+  opacity: var(--disabled-opacity);
+}
+.v-testing .v-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border-color: var(--line-2);
+}
+.v-testing .v-choice {
+  min-height: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.v-testing-rail > .v-rail-block:last-child {
+  border-bottom: 0;
+}
+
+.v-testing-rail p {
+  color: var(--text-3);
+  line-height: 21px;
+}

@@ -17,6 +17,7 @@ fn empty() -> CoreReply {
 }
 fn begin(session: &mut Session, pipe: &mut Pipe) {
     session.current.services = protocol::LinkState::Connected;
+    session.current.access.verified = true;
     session.testing_state.begin(Operation::Load);
     session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
     let result = session.service_reply(7, Ok(empty()));
@@ -160,6 +161,7 @@ fn import_dispatch_busy_and_unavailable_never_archive_unseen_sources() {
         let path = legacy(&fixture);
         let mut session = fixture.session();
         session.core.busy = busy;
+        session.current.access.verified = true;
         session.testing_state.begin(Operation::Load);
         session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
         let result = session.service_reply(7, Ok(empty()));
@@ -219,4 +221,55 @@ fn a_closed_pipe_during_cleanup_keeps_the_restart_exit_code() {
     });
     assert_eq!(result, 10);
     assert!(cancelled);
+}
+
+#[test]
+fn busy_during_a_deferred_import_preserves_the_original_request() {
+    let fixture = Fixture::new();
+    legacy(&fixture);
+    let mut session = fixture.session();
+    session.core.available = true;
+    let mut pipe = Pipe::new(Vec::new());
+    begin(&mut session, &mut pipe);
+    session.core.busy = true;
+    session
+        .request(&mut pipe, 8, &Request::DraftDiscard {})
+        .unwrap();
+    assert!(matches!(
+        receive(&mut pipe),
+        HostToUi::Failure {
+            id: 8,
+            error: HostError::Busy
+        }
+    ));
+    assert!(matches!(
+        session.remote,
+        Some((7, RemoteKind::Testing(Operation::Load)))
+    ));
+    assert_eq!(session.deferred.map(|(id, _)| id), Some(7));
+    let result = session.service_reply(7, Err(HostError::CoreUnavailable));
+    let mut final_pipe = Pipe::new(Vec::new());
+    session.respond_service(&mut final_pipe, 7, result).unwrap();
+    assert!(matches!(
+        receive(&mut final_pipe),
+        HostToUi::Failure {
+            id: 7,
+            error: HostError::CoreUnavailable
+        }
+    ));
+}
+#[test]
+fn revoked_access_prevents_the_import_save_before_core_dispatch() {
+    let fixture = Fixture::new();
+    let path = legacy(&fixture);
+    let mut session = fixture.session();
+    session.core.available = true;
+    session.testing_state.begin(Operation::Load);
+    session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
+    assert_eq!(
+        session.service_reply(7, Ok(empty())),
+        Err(HostError::Denied)
+    );
+    assert_eq!(session.core.requests, 0);
+    assert!(path.exists() && !path.with_extension("json.imported").exists());
 }

@@ -62,7 +62,7 @@ pub(super) fn complete(
             session.complete_testing(id, operation, reply)
         }
         (_, Err(error)) => Err(error),
-        _ => Err(HostError::Rejected),
+        _ => Err(HostError::Denied),
     }
 }
 impl Session {
@@ -84,6 +84,13 @@ impl Session {
                 Ok(Some(result))
             }
             crate::testing::legacy::Next::Import(command) => {
+                let vantare_ipc::services_protocol::Command::DraftSave { fields } = command else {
+                    return Err(HostError::Rejected);
+                };
+                let command = crate::testing::draft_save(
+                    &self.current.access,
+                    &crate::testing::ReportFields::from(&fields),
+                )?;
                 self.core.request(id, command)?;
                 self.remote = Some((id, RemoteKind::Testing(operation)));
                 self.deferred = Some((id, std::time::Instant::now()));

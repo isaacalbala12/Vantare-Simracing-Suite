@@ -81,7 +81,7 @@ impl Core {
         self.dispatch_waiting();
         Ok(())
     }
-    /// Polling uses a separate waiting slot; manual actions always use request().
+    /// Polling uses a separate waiting slot; manual actions always use `request()`.
     pub fn request_background(
         &mut self,
         id: u32,

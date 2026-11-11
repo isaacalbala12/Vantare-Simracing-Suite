@@ -12,6 +12,7 @@ pub(crate) struct Queue {
     waiting: [Option<Request>; PRIORITIES],
     failures: VecDeque<(u32, HostError)>,
 }
+#[derive(Clone, Copy)]
 enum Origin {
     User,
     Background,

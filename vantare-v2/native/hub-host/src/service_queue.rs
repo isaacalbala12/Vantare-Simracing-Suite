@@ -116,6 +116,9 @@ impl Queue {
         while let Some(request) = self.waiting.iter_mut().find_map(Option::take) {
             if !can_start(request.accepted, now) {
                 self.failures.push_back((request.id, HostError::Busy));
+                if matches!(request.command, Command::Logout | Command::AccountCancel) {
+                    self.invalidate_waiting();
+                }
                 continue;
             }
             let barrier = matches!(request.command, Command::Logout | Command::AccountCancel);
@@ -274,6 +277,19 @@ mod tests {
         assert!(queue.start_next_at(now + Duration::from_secs(15)).is_none());
         assert_eq!(queue.failure(), Some((2, HostError::Busy)));
         assert!(!queue.finish(2));
+    }
+    #[test]
+    fn an_expired_logout_also_discards_intents_accepted_while_it_was_waiting() {
+        let now = Instant::now();
+        let mut queue = Queue::default();
+        queue.submit_at(1, Command::Probe, now).unwrap();
+        assert!(queue.start_next_at(now).is_some());
+        queue.submit_at(2, Command::Logout, now).unwrap();
+        queue.submit_at(3, Command::PilotLoad, now + Duration::from_secs(10)).unwrap();
+        assert!(queue.finish(1));
+        assert!(queue.start_next_at(now + Duration::from_secs(16)).is_none());
+        assert_eq!(queue.failure(), Some((2, HostError::Busy)));
+        assert_eq!(queue.failure(), Some((3, HostError::Denied)));
     }
     #[test]
     fn a_continuation_has_a_reserved_slot_and_keeps_the_original_acceptance_time() {

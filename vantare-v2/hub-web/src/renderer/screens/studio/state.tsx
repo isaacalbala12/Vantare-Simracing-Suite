@@ -22,12 +22,20 @@ function useStateValue() {
       name: string;
       revision: string;
     }>(),
+    [notice, setNotice] = useState<{
+      kind: "added" | "removed";
+      name: string;
+      revision: string;
+    }>(),
     [removing, setRemoving] = useState<string | null>(null),
     [pending, setPending] = useState(false),
     [failure, setFailure] = useState<{
       message: string;
       request: StudioRequest;
     }>();
+  const focusAfter = useRef<{ id: string; index: number } | undefined>(
+    undefined,
+  );
   const busy = useRef(false),
     alive = useRef(true),
     opened = useRef(false);
@@ -60,12 +68,18 @@ function useStateValue() {
               response.value.catalog.find(
                 (widget) => widget.kind === item?.kind,
               )?.name ?? item?.kind;
-            if (name)
+            if (name) {
+              setNotice({
+                kind: "added",
+                name,
+                revision: response.value.revision,
+              });
               setAdded({
                 id: response.added,
                 name,
                 revision: response.value.revision,
               });
+            }
           }
           return response.value as StudioView;
         }
@@ -133,6 +147,9 @@ function useStateValue() {
     removing,
     setRemoving,
     added,
+    notice,
+    setNotice,
+    focusAfter,
     pending,
     failure,
     execute,

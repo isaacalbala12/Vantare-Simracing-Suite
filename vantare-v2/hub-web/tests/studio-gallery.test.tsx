@@ -3,6 +3,7 @@
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -22,7 +23,7 @@ import {
 } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
@@ -82,6 +83,14 @@ function mount(scene = "studio-base") {
       </HostProvider>
     </QueryClientProvider>,
   );
+}
+async function tabTo(
+  user: ReturnType<typeof userEvent.setup>,
+  element: HTMLElement,
+) {
+  for (let index = 0; index < 80 && document.activeElement !== element; index++)
+    await user.tab();
+  expect(document.activeElement).toBe(element);
 }
 describe("Studio gallery", () => {
   it("toggles membership with a revision and offers no geometry controls", async () => {
@@ -385,5 +394,259 @@ describe("Studio gallery", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: t.filters.hidden }),
     );
+  });
+  it("puts a filtered card in the real Tab order when selection is outside the filter", async () => {
+    mount("studio-muchos");
+    const user = userEvent.setup();
+    const delta = await screen.findByRole("button", { name: "Delta 1" });
+    const article = delta.closest("article");
+    if (!article) throw new Error("Missing card");
+    await user.click(
+      within(article).getByRole("button", { name: t.hideWidget }),
+    );
+    await waitFor(() =>
+      expect(article.getAttribute("data-hidden")).toBe("true"),
+    );
+    await user.click(screen.getByRole("button", { name: t.filters.hidden }));
+    await user.tab();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Delta 1" }),
+    );
+  });
+  it("removes the selected widget, focuses its neighbor and offers Undo", async () => {
+    mount();
+    const user = userEvent.setup();
+    await screen.findByRole("button", { name: "Standings" });
+    await user.click(screen.getByRole("button", { name: t.remove }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: t.remove,
+      }),
+    );
+    await screen.findByText(t.removedName("Standings"));
+    expect(screen.queryByRole("button", { name: "Standings" })).toBeNull();
+    expect(screen.getByRole("searchbox", { name: t.search })).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Delta" }),
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: t.undo }));
+    expect(
+      await screen.findByRole("button", { name: "Standings" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(t.removedName("Standings"))).toBeNull();
+  });
+  it("removes an unselected card without losing the current inspector", async () => {
+    mount();
+    const user = userEvent.setup();
+    const first = await screen.findByRole("button", { name: "Standings" });
+    await tabTo(user, first);
+    await user.keyboard("{ArrowRight}{Delete}");
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(t.removeNamed("Delta"))).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: t.remove }));
+    await screen.findByText(t.removedName("Delta"));
+    expect(screen.queryByRole("button", { name: "Delta" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Standings" })).toBeTruthy();
+    expect(screen.queryByRole("searchbox", { name: t.search })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Relative" }),
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: t.undo }));
+    expect(await screen.findByRole("button", { name: "Delta" })).toBeTruthy();
+  });
+  it.each(["card", "inspector"])(
+    "returns focus to the %s when deletion is cancelled",
+    async (origin) => {
+      mount();
+      const user = userEvent.setup();
+      const card = await screen.findByRole("button", { name: "Standings" });
+      const source =
+        origin === "card"
+          ? card
+          : screen.getByRole("button", { name: t.remove });
+      if (origin === "card") {
+        await tabTo(user, card);
+        await user.keyboard("{Delete}");
+      } else await user.click(source);
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: t.cancel }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() => expect(document.activeElement).toBe(source));
+    },
+  );
+  it("focuses the catalog after removing the final widget", async () => {
+    mount("studio-pocos");
+    const user = userEvent.setup();
+    const first = await screen.findByRole("button", { name: "Standings" });
+    await tabTo(user, first);
+    for (const name of ["Standings", "Delta"]) {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name }));
+      await user.keyboard("{Delete}");
+      await user.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: t.remove,
+        }),
+      );
+      await screen.findByText(t.removedName(name));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+    await screen.findByText(t.empty);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("searchbox", { name: t.search }),
+      ),
+    );
+  });
+  it("shows the suggested addition notice and Undo while the inspector stays open", async () => {
+    mount("studio-pocos");
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Standings" });
+    const suggestion = within(
+      screen.getByRole("region", { name: t.kit }),
+    ).getAllByRole("button")[0];
+    const name = suggestion.querySelector("strong")?.textContent;
+    if (!name) throw new Error("Missing suggestion name");
+    await user.click(suggestion);
+    await screen.findByText(t.addedName(name));
+    expect(screen.getByRole("heading", { name: "Standings" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: t.undo }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name })).toBeNull(),
+    );
+  });
+  it("resets the filter to All when the count drops below nine", async () => {
+    mount("studio-nueve");
+    const user = userEvent.setup();
+    await screen.findByRole("button", { name: "Standings 1" });
+    await user.click(screen.getByRole("button", { name: t.filters.visible }));
+    await user.click(screen.getByRole("button", { name: t.remove }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: t.remove,
+      }),
+    );
+    await screen.findByText(t.removedName("Standings 1"));
+    expect(screen.queryByRole("group", { name: t.filterLabel })).toBeNull();
+    await user.click(screen.getByRole("button", { name: t.undo }));
+    const filter = await screen.findByRole("group", { name: t.filterLabel });
+    expect(
+      within(filter)
+        .getByRole("button", { name: t.filters.all })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+  it("rolls opacity back after failure and keeps the saved value after discard", async () => {
+    mount();
+    const user = userEvent.setup();
+    const slider = await screen.findByRole("slider", { name: t.opacity });
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(function (
+      this: Client,
+      request,
+      onSent,
+    ) {
+      if (
+        request.method === "studio.instance" &&
+        request.patch.field === "opacity"
+      )
+        return Promise.reject(new HostFailure({ kind: "busy" }));
+      return original.call(this, request, onSent);
+    });
+    await tabTo(user, slider);
+    await user.keyboard("{ArrowLeft}");
+    expect(
+      within(await screen.findByRole("alert")).getByText(t.busy),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(slider.getAttribute("aria-valuenow")).toBe("100"),
+    );
+    expect(document.activeElement).toBe(slider);
+    await user.click(screen.getByRole("button", { name: t.discard }));
+    expect(slider.getAttribute("aria-valuenow")).toBe("100");
+  });
+  it("uses the fresh saved opacity when a conflicting edit is discarded", async () => {
+    mount();
+    const user = userEvent.setup();
+    const slider = await screen.findByRole("slider", { name: t.opacity });
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(async function (
+      this: Client,
+      request,
+      onSent,
+    ) {
+      if (
+        request.method === "studio.instance" &&
+        request.patch.field === "opacity"
+      ) {
+        const fresh = await original.call(this, { method: "studio.get" });
+        if (fresh.method !== "studio.get")
+          throw new Error("Missing Studio view");
+        fresh.value.instances[0].opacity = 80;
+        throw new HostFailure({
+          kind: "studioConflict",
+          current: fresh.value,
+        });
+      }
+      return original.call(this, request, onSent);
+    });
+    await tabTo(user, slider);
+    await user.keyboard("{ArrowLeft}");
+    expect(
+      within(await screen.findByRole("alert")).getByText(t.conflict),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(slider.getAttribute("aria-valuenow")).toBe("80"),
+    );
+    await user.click(screen.getByRole("button", { name: t.discard }));
+    expect(slider.getAttribute("aria-valuenow")).toBe("80");
+  });
+  it("keeps the focused slider enabled and blocks more writes while pending", async () => {
+    mount();
+    const user = userEvent.setup();
+    const slider = await screen.findByRole("slider", { name: t.opacity });
+    const original = Client.prototype.request;
+    let settle: (() => Promise<void>) | undefined;
+    const requests = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(function (this: Client, request, onSent) {
+        if (
+          request.method === "studio.instance" &&
+          request.patch.field === "opacity"
+        )
+          return new Promise((resolve, reject) => {
+            settle = async () => {
+              try {
+                resolve(await original.call(this, request, onSent));
+              } catch (error) {
+                reject(error);
+              }
+            };
+          });
+        return original.call(this, request, onSent);
+      });
+    await tabTo(user, slider);
+    await user.keyboard("{ArrowLeft}");
+    expect(settle).toBeTypeOf("function");
+    expect(slider.hasAttribute("disabled")).toBe(false);
+    expect(document.activeElement).toBe(slider);
+    await user.keyboard("{ArrowLeft}");
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "studio.instance",
+      ),
+    ).toHaveLength(1);
+    if (!settle) throw new Error("Missing pending request");
+    const finish = settle;
+    await act(async () => {
+      await finish();
+    });
+    await waitFor(() =>
+      expect(slider.getAttribute("aria-valuenow")).toBe("99"),
+    );
+    expect(document.activeElement).toBe(slider);
   });
 });

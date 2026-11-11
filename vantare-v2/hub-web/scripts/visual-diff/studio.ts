@@ -185,3 +185,31 @@ for (const count of [4, 30]) {
     };
   }
 }
+
+studioScenes["studio-eliminado"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    const card = page.getByRole("button", { name: "Delta", exact: true });
+    await card.focus();
+    await page.keyboard.press("Delete");
+    const dialog = page.getByRole("dialog", {
+      name: "Eliminar widget",
+      exact: true,
+    });
+    await dialog
+      .getByRole("button", { name: "Eliminar widget", exact: true })
+      .click();
+    await dialog.waitFor({ state: "hidden" });
+    await page.getByText("Delta eliminado", { exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Standings", exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Deshacer", exact: true })
+        .isEnabled(),
+      true,
+    );
+  },
+};

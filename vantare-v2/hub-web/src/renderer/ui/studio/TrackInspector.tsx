@@ -10,36 +10,39 @@ export function TrackInspector({ item }: { item: OverlayInstance }) {
   const state = useStudio(),
     [opacity, setOpacity] = useState(item.opacity);
   const view = state.view;
-  useEffect(() => setOpacity(item.opacity), [item.opacity]);
+  useEffect(() => {
+    if (!state.pending) setOpacity(item.opacity);
+  }, [item.opacity, state.pending]);
   if (!view) return null;
   const disabled =
-    state.pending ||
-    view.state !== "ready" ||
-    view.plan === "unverified" ||
-    item.locked;
+    view.state !== "ready" || view.plan === "unverified" || item.locked;
   const patch = (
     value: import("../../../contract/generated/contract").InstancePatch,
-  ) =>
+  ) => {
+    if (state.pending) return;
     void state.execute({
       method: "studio.instance",
       id: item.id,
       patch: value,
       baseRevision: view.revision,
     });
+  };
   return (
     <div className="v-studio-inspector-fields">
       <Switch
         label={t.visible}
         checked={item.visible}
         disabled={disabled}
-        onCheckedChange={(visible) =>
+        pending={state.pending}
+        onCheckedChange={(visible) => {
+          if (state.pending) return;
           void state.execute({
             method: "studio.visibility",
             id: item.id,
             visible,
             baseRevision: view.revision,
-          })
-        }
+          });
+        }}
       />
       <Slider
         label={t.opacity}
@@ -47,6 +50,7 @@ export function TrackInspector({ item }: { item: OverlayInstance }) {
         min={studioLimits.opacityMin}
         max={studioLimits.opacityMax}
         disabled={disabled}
+        pending={state.pending}
         onChange={setOpacity}
         onValueCommitted={(value) => patch({ field: "opacity", value })}
       />
@@ -64,6 +68,7 @@ export function TrackInspector({ item }: { item: OverlayInstance }) {
             label={label}
             checked={item.showIn[key]}
             disabled={disabled}
+            pending={state.pending}
             onCheckedChange={(value) =>
               patch({
                 field: "showIn",
@@ -75,6 +80,7 @@ export function TrackInspector({ item }: { item: OverlayInstance }) {
       </fieldset>
       <Select
         label={t.offTrack}
+        pending={state.pending}
         value={item.offTrack}
         disabled={disabled}
         options={[
@@ -94,7 +100,10 @@ export function TrackInspector({ item }: { item: OverlayInstance }) {
       <Button
         disabled={disabled}
         variant="danger"
-        onClick={() => state.setRemoving(item.id)}
+        aria-disabled={state.pending || disabled}
+        onClick={() => {
+          if (!state.pending) state.setRemoving(item.id);
+        }}
       >
         {t.remove}
       </Button>

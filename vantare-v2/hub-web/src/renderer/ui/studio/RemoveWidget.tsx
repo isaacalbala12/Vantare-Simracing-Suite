@@ -1,4 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { useEffect, useRef } from "react";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
@@ -7,9 +8,14 @@ export function RemoveWidget() {
   const state = useStudio(),
     view = state.view;
   const item = view?.instances.find((item) => item.id === state.removing);
-  if (!view || !item) return null;
+  const completed = useRef(false);
+  useEffect(() => {
+    if (state.removing) completed.current = false;
+  }, [state.removing]);
   const disabled =
     state.pending ||
+    !view ||
+    !item ||
     view.state !== "ready" ||
     view.plan === "unverified" ||
     item.locked;
@@ -17,17 +23,21 @@ export function RemoveWidget() {
     <Dialog.Root
       open={!!item}
       onOpenChange={(open) => {
-        if (!state.pending) state.setRemoving(open ? state.removing : null);
+        if (!open && !state.pending) state.setRemoving(null);
       }}
     >
       <Dialog.Portal>
         <Dialog.Backdrop className="v-backdrop" />
-        <Dialog.Popup className="v-studio-remove">
+        <Dialog.Popup
+          className="v-studio-remove"
+          finalFocus={() => !completed.current}
+        >
           <Dialog.Title>{t.removeTitle}</Dialog.Title>
           <Dialog.Description>
-            {t.removeNamed(widgetName(item, view))}
+            {item && view
+              ? t.removeNamed(widgetName(item, view))
+              : t.removeHelp}
           </Dialog.Description>
-          {state.failure && <p role="alert">{state.failure.message}</p>}
           <div>
             <Button
               disabled={state.pending}
@@ -40,7 +50,20 @@ export function RemoveWidget() {
               busy={state.pending}
               disabled={disabled}
               onClick={() => {
-                state.setRemoving(null);
+                if (!item || !view || disabled) return;
+                const name = widgetName(item, view);
+                const cards = Array.from(
+                  document.querySelectorAll<HTMLElement>(
+                    ".v-studio-grid [data-widget]",
+                  ),
+                );
+                state.focusAfter.current = {
+                  id: item.id,
+                  index: Math.max(
+                    0,
+                    cards.findIndex((card) => card.dataset.widget === item.id),
+                  ),
+                };
                 void state
                   .execute({
                     method: "studio.remove",
@@ -48,7 +71,18 @@ export function RemoveWidget() {
                     baseRevision: view.revision,
                   })
                   .then((value) => {
-                    if (value) state.setSelected(null);
+                    completed.current = !!value;
+                    if (value) {
+                      state.setSelected((current) =>
+                        current === item.id ? null : current,
+                      );
+                      state.setNotice({
+                        kind: "removed",
+                        name,
+                        revision: value.revision,
+                      });
+                    } else state.focusAfter.current = undefined;
+                    state.setRemoving(null);
                   });
               }}
             >

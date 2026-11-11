@@ -32,6 +32,8 @@ export const studioText = {
   lockedWidget: "Este widget está incluido en Pro.",
   verifyWidget: "Verifica tu acceso para editar este widget.",
   inspector: "Inspector de widgets",
+  inspectorTabs: "Ajustes del widget",
+  removedName: (name: string) => `${name} eliminado`,
   soonTooltip: "Disponible próximamente",
 
   empty: "Añade tu primer widget",

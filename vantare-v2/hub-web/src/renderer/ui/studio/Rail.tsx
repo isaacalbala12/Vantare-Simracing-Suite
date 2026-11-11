@@ -86,7 +86,10 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                   />
                 )}
                 <Tabs.Root value="track">
-                  <Tabs.List className="v-studio-tabs" aria-label={t.title}>
+                  <Tabs.List
+                    className="v-studio-tabs"
+                    aria-label={t.inspectorTabs}
+                  >
                     <Tooltip label={t.soonTooltip}>
                       <Tabs.Tab value="content" disabled>
                         {t.content}
@@ -292,24 +295,6 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
       ) : null}
       {view.catalog.some((w) => !w.allowed) && (
         <Button onClick={onPlans}>{t.plans}</Button>
-      )}
-      {state.added?.revision === view.revision && (
-        <Callout
-          title={t.addedName(state.added.name)}
-          actions={
-            <Button
-              disabled={state.pending || !view.canUndo}
-              onClick={() =>
-                void state.execute({
-                  method: "studio.undo",
-                  baseRevision: view.revision,
-                })
-              }
-            >
-              {t.undo}
-            </Button>
-          }
-        />
       )}
     </div>
   );

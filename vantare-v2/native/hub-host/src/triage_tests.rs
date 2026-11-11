@@ -1,6 +1,28 @@
 use super::*;
 use serde_json::json;
 
+#[test]
+fn timestamps_cannot_carry_arbitrary_private_text_or_invalid_dates() {
+    for text in [
+        "2026-11-11T12:00:00Z",
+        "2026-11-11T12:00:00.123456789+02:00",
+        "2024-02-29T23:59:60Z",
+    ] {
+        assert!(timestamp(&json!(text)));
+    }
+    for text in [
+        "private@example.com",
+        "2026-02-29T12:00:00Z",
+        "2026-11-31T12:00:00Z",
+        "2026-11-11T25:00:00Z",
+        "+123-11-11T12:00:00Z",
+        "2026-11-11T12:00:00++1:00",
+        "2026-11-11T12:00:00Z private",
+    ] {
+        assert!(!timestamp(&json!(text)));
+    }
+}
+
 fn access() -> AccessView {
     AccessView {
         verified: true,

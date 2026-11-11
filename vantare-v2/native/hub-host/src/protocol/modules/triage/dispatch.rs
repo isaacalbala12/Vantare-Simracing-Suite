@@ -27,10 +27,10 @@ pub(super) fn complete(
     remote: Option<(u32, RemoteKind)>,
     id: u32,
     result: Result<vantare_ipc::services_protocol::Reply, HostError>,
-) -> Result<Option<Reply>, HostError> {
+) -> Result<Reply, HostError> {
     match (remote, result) {
         (Some((expected, RemoteKind::Triage(operation))), Ok(reply)) if expected == id => {
-            crate::triage::complete(operation, reply).map(Some)
+            crate::triage::complete(operation, reply)
         }
         (_, Err(error)) => Err(error),
         _ => Err(HostError::Denied),

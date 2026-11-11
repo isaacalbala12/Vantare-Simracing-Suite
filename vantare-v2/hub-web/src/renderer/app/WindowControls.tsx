@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { windowText } from "../i18n/shell.es";
+import { windowText } from "../i18n/window.es";
 import { useToastManager } from "../ui/Layers";
 import { WindowButtons } from "../ui/WindowButtons";
 import { useHost } from "./Host";

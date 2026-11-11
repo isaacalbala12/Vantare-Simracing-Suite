@@ -10,7 +10,7 @@ export function WelcomeArt({ reducedMotion }: { reducedMotion: boolean }) {
       <span className="v-ob-watermark" aria-hidden="true">
         {t.helmet.toUpperCase()}
       </span>
-      <Helmet width={330} reducedMotion={reducedMotion} />
+      <Helmet placement="welcome" width={330} reducedMotion={reducedMotion} />
       <span className="v-ob-art-caption">{t.assistantCaption}</span>
     </div>
   );

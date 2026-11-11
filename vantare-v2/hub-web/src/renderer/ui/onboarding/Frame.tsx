@@ -13,9 +13,12 @@ import { Skeleton } from "../Data";
 import { Helmet } from "./Helmet";
 import "./onboarding.css";
 export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type AssistantEmotion = "neutral" | "happy" | "surprised";
 export interface FrameProps {
   step: OnboardingStep;
   message: string;
+  messageRevision?: number;
+  emotion?: AssistantEmotion;
   children: ReactNode;
   art: ReactNode;
   windowControls?: ReactNode;
@@ -35,10 +38,12 @@ function Assistant({
   message,
   step,
   reducedMotion,
+  emotion,
 }: {
   message: string;
   step: OnboardingStep;
   reducedMotion: boolean;
+  emotion?: AssistantEmotion;
 }) {
   const chars = Array.from(message);
   const [length, setLength] = useState(reducedMotion ? chars.length : 0);
@@ -63,6 +68,8 @@ function Assistant({
       {step > 0 && (
         <Helmet
           width={132}
+          happy={emotion === "happy"}
+          surprised={emotion === "surprised"}
           reducedMotion={reducedMotion}
           className="v-ob-small-helmet"
         />
@@ -190,6 +197,8 @@ export function OnboardingFrame(p: FrameProps) {
             ) : (
               <>
                 <Assistant
+                  key={`${p.step}:${p.messageRevision ?? 0}`}
+                  emotion={p.emotion}
                   message={p.message}
                   step={p.step}
                   reducedMotion={p.reducedMotion}

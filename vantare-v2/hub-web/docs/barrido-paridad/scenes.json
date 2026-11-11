@@ -250,5 +250,17 @@
     "section": "Puertas",
     "scene": "email-espera",
     "frameless": true
+  },
+  {
+    "owner": "B",
+    "section": "Roadmap",
+    "scene": "roadmap-tablero",
+    "frameless": false
+  },
+  {
+    "owner": "B",
+    "section": "Roadmap",
+    "scene": "roadmap-temporada",
+    "frameless": false
   }
 ]

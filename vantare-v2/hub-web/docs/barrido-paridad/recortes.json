@@ -1,0 +1,122 @@
+[
+  {
+    "id": "M01",
+    "owner": "marco compartido",
+    "priority": "P2 visual",
+    "scene": "ajustes-aplicacion",
+    "expanded": false,
+    "rect": [
+      1194,
+      0,
+      100,
+      52
+    ],
+    "description": "El botón del panel derecho usa i-panel; el GPUI usa v-side. La silueta es distinta en todas las pantallas con marco.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\ajustes-aplicacion-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\ajustes-aplicacion\\dark\\ajustes-aplicacion\\sidebar-collapsed.png",
+    "sha256": [
+      "aebc1003f8e6afcad94021ce3df1c2f4c0b33109ee62de0ddf7a76305976c859",
+      "68b93d558ca46c626cf8211e3d1c545e11ee6f15e5529e166005bc54c06f1fe5"
+    ]
+  },
+  {
+    "id": "M02",
+    "owner": "marco compartido",
+    "priority": "P2 visual",
+    "scene": "ajustes-aplicacion",
+    "expanded": true,
+    "rect": [
+      900,
+      0,
+      200,
+      52
+    ],
+    "description": "Con la barra expandida, la última pestaña asoma cortada junto a las acciones; el GPUI la oculta completa. Revisar reparto de anchura y recorte de la barra superior.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\ajustes-aplicacion-expanded.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\ajustes-aplicacion\\dark\\ajustes-aplicacion\\sidebar-expanded.png",
+    "sha256": [
+      "eb13f594d737c9ba481c243f489248662b9b2be6b1955e1bd053c36fbc070cc4",
+      "a9aed587ec26ea521962bae9e8aedb7c6ab75c79fc5c761a8284e6b13f27e620"
+    ]
+  },
+  {
+    "id": "B01",
+    "owner": "pantalla de B · Roadmap",
+    "priority": "P2 visual",
+    "scene": "roadmap-base",
+    "expanded": false,
+    "rect": [
+      100,
+      350,
+      996,
+      530
+    ],
+    "description": "Las tres columnas vacías de Circuito se compactan a unas filas; en GPUI ocupan el espacio vertical hasta el pie del contenido.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\roadmap-base-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\roadmap-base\\dark\\roadmap-base\\sidebar-collapsed.png",
+    "sha256": [
+      "ce214ba89d13cd023fb7ab997b76cb401cbd4dac2f378484dc30a326dc9b38d3",
+      "0fb7203a37d42b08c6bf0a659805a25735e628902e7d0296f5b59d54362ad058"
+    ]
+  },
+  {
+    "id": "B02",
+    "owner": "pantalla de B · Inicio",
+    "priority": "diferencia conocida",
+    "scene": "inicio-base",
+    "expanded": false,
+    "rect": [
+      116,
+      428,
+      455,
+      230
+    ],
+    "description": "La vista previa de overlays usa SVG estáticos y tiene una composición distinta al layout real del GPUI. Esta diferencia fue autorizada; se conserva sin disfrazarla como paridad.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\inicio-base-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\inicio-base\\dark\\inicio-base\\sidebar-collapsed.png",
+    "sha256": [
+      "2c1255a3a215b9f9ff2510159a937ef0ff43efd8c39aa738782122e3ed8e5ef8",
+      "4bd3951f4a159fba071d87150fdec0037efd08aa8a9c145f9410d1c51dd6edd0"
+    ]
+  },
+  {
+    "id": "D01",
+    "owner": "pantalla de D · Testing Center",
+    "priority": "P2 visual",
+    "scene": "testing-center-cuestionarios",
+    "expanded": false,
+    "rect": [
+      100,
+      279,
+      996,
+      603
+    ],
+    "description": "La lista del cuestionario pierde la altura libre del GPUI y adelanta el formulario de respuesta aproximadamente 200 px. También cambia el texto de estado del doble QA.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\testing-center-cuestionarios-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\testing-center-cuestionarios\\dark\\testing-center-cuestionarios\\sidebar-collapsed.png",
+    "sha256": [
+      "6eaa13babc00c1e4788b3b8b76dd1dd7c14f1003577a60b7cb6743cf07719ede",
+      "3a9c41659143682e1624e40a8fbe6dcbc1fd5ebdf9207e73897dbf07bcbaf298"
+    ]
+  },
+  {
+    "id": "A01",
+    "owner": "pantalla de A · Cuenta",
+    "priority": "desviación deliberada",
+    "scene": "cuenta-base",
+    "expanded": false,
+    "rect": [
+      1136,
+      370,
+      288,
+      115
+    ],
+    "description": "Restablecer dispositivo queda inactivo en la escena demo del Hub nuevo. La guarda de sesión y la confirmación fueron aprobadas expresamente; no se retiran para reducir la diferencia numérica.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\cuenta-base-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\cuenta-base\\dark\\cuenta-base\\sidebar-collapsed.png",
+    "sha256": [
+      "6074c592b1688765090e75213029fe99799489adc347b4f90657937532523ac8",
+      "50c27304d389faa16e4079890a7186f6cf0433027aee3a72dfec90d18f0879d4"
+    ]
+  }
+]

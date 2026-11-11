@@ -69,7 +69,7 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
-$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } else { $Scene }
+$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } elseif ($Scene -in @('roadmap-tablero','roadmap-temporada')) { 'roadmap-base' } elseif ($Scene -eq 'ajustes-cuenta') { 'ajustes-perfil' } elseif ($Scene -eq 'calendario-eventos-contraida') { 'calendario-base' } else { $Scene }
 foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
 if ($gate) {
     $start.ArgumentList.Add('--qa-measure')
@@ -110,6 +110,11 @@ try {
         $window = $prepared | ConvertFrom-Json
         if ($window.foreground -or -not $window.visible) { throw "Ventana QA sin aislamiento: $prepared" }
         $prepared | Set-Content -LiteralPath "$Output.window.json" -Encoding utf8
+    }
+    if ($Scene -in @('roadmap-tablero','roadmap-temporada')) {
+        $tabX = if ($Scene -eq 'roadmap-tablero') { 296 } else { 373 }
+        & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'gpui-sidebar.ps1') -ProcessId $process.Id -Executable $binary -ClientX $tabX -ClientY 25 | Set-Content -LiteralPath "$Output.tab-input.json" -Encoding utf8
+        if ($LASTEXITCODE) { throw 'No se pudo elegir la pestaña de Roadmap' }
     }
     $helper = Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-window.ps1'
     $deadline = [Diagnostics.Stopwatch]::StartNew()

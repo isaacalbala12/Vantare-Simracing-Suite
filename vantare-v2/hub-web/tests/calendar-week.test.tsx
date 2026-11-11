@@ -107,3 +107,31 @@ it("keeps previous publications read-only and labels weeks crossing a month", ()
     screen.queryByRole("button", { name: text.favorite("LMGT3 Fixed") }),
   ).toBeNull();
 });
+
+it("marks the upcoming daily departure with its band bell", () => {
+  const view = calendarReference();
+  view.utc = true;
+  const { container } = render(
+    <CalendarWeekView
+      view={view}
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      limit={10000}
+      onFollow={() => {}}
+      alerts={{
+        ...alerts,
+        bands: [
+          {
+            seriesId: "beginner-lmgt3-fixed",
+            from: 0,
+            to: 1440,
+            days: "all",
+            mode: "each",
+          },
+        ],
+      }}
+    />,
+  );
+  const marker = container.querySelector(".v-calendar-week-live-daily b");
+  expect(marker?.textContent).toContain("18:00");
+  expect(marker?.querySelector("svg")).not.toBeNull();
+});

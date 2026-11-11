@@ -437,3 +437,23 @@
 .v-calendar-week-live .v-calendar-week-daily-days > span[data-today] {
   background: var(--accent-tint);
 }
+
+.v-calendar-week-live {
+  container-type: inline-size;
+}
+@container (min-width: 900px) {
+  .v-calendar-week-live > header h2 {
+    max-width: none;
+    white-space: nowrap;
+  }
+  .v-calendar-week-live-caption {
+    flex: 1;
+    width: auto;
+    white-space: nowrap;
+  }
+}
+.v-calendar-week-live-daily > button > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}

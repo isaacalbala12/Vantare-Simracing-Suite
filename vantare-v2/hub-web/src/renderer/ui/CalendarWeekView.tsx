@@ -338,6 +338,9 @@ export function CalendarWeekView({
                             left: `${(100 * (next - rangeFrom)) / rangeMs}%`,
                           }}
                         >
+                          {alertAt(schedule, s, next, alerts, limit) && (
+                            <Icon name="bell-fill" />
+                          )}
                           {clock(next, view.utc)}
                         </b>
                       )}

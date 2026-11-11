@@ -81,6 +81,41 @@ export function calendarTokens(source: string, filters: string) {
         .map(([token, value]) => `  --${token}: ${value};`)
         .join("\n")}\n}`,
     );
+    const tierSource = source
+      .split("pub(super) fn tier(")[1]
+      ?.split("fn tier_label")[0];
+    if (!tierSource) throw new Error("Calendar tiers missing");
+    const tierValues = [
+      ["beginner", "((0, _)"],
+      ["intermediate", "((1, _)"],
+      ["advanced", "(_,"],
+      ["event", "((_, true)"],
+    ].flatMap(([tier, prefix]) => {
+      const line = tierSource
+        .split("\n")
+        .find(
+          (line) =>
+            line.trimStart().startsWith(prefix) &&
+            line.includes(`, ${scheme === "light"}) =>`),
+        );
+      const match = line?.match(
+        /=> \(0x([A-Fa-f0-9_]+), (?:tint|rgb)\(0x([A-Fa-f0-9_]+)(?:, ([0-9.]+))?\)/,
+      );
+      if (!match) throw new Error(`Calendar tier missing: ${scheme}/${tier}`);
+      const alpha =
+        match[3] === undefined
+          ? ""
+          : Math.round(Number(match[3]) * 255)
+              .toString(16)
+              .padStart(2, "0");
+      return [
+        `  --calendar-tier-${tier}: ${color(match[1])};`,
+        `  --calendar-tier-${tier}-bg: ${color(match[2])}${alpha};`,
+      ];
+    });
+    css.push(
+      `[data-scheme="${scheme}"] :is(.v-calendar, .v-calendar-rail) {\n${tierValues.join("\n")}\n}`,
+    );
     const classValues = Object.entries(classes).map(([name, token]) => {
       const line = source
         .split("\n")

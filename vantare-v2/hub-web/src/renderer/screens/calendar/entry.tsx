@@ -8,6 +8,7 @@ import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
+import { CalendarDayView } from "../../ui/CalendarDayView";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarLiveView } from "../../ui/CalendarLiveView";
@@ -32,6 +33,7 @@ function nextPublication(now: number) {
 
 export default function CalendarEntry() {
   const [activeTab, setActiveTab] = useState("upcoming");
+  const [calendarSpan, setCalendarSpan] = useState("week");
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
@@ -199,8 +201,23 @@ export default function CalendarEntry() {
                 }
                 onLaunch={() => void launcher.launch()}
               />
+            ) : activeTab === "calendar" &&
+              schedule &&
+              view &&
+              calendarSpan === "day" ? (
+              <CalendarDayView
+                schedule={schedule}
+                alerts={alerts}
+                following={view.following}
+                now={state.now}
+                utc={view.utc}
+                limit={calendarStartsLimit}
+                onSpan={setCalendarSpan}
+              />
             ) : activeTab === "calendar" && view ? (
               <CalendarWeekView
+                onSpan={setCalendarSpan}
+                spans={["day", "week"]}
                 view={{ ...view, official: schedule ?? view.official }}
                 alerts={alerts}
                 now={state.now}

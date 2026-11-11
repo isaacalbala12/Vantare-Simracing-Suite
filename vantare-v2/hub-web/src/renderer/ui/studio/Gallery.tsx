@@ -1,8 +1,15 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   studioEditOnScreen,
   studioLimits,
 } from "../../../contract/generated/studio";
+import { useUi } from "../../app/UiState";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
@@ -23,6 +30,8 @@ export function Gallery() {
     grid = useRef<HTMLElement>(null),
     focusInspector = useRef(false);
   const { view, selected, pending } = state;
+  const railCollapsed = useUi((state) => state.railCollapsed);
+  const toggleRail = useUi((state) => state.toggleRail);
   const [catalogFocus, setCatalogFocus] = useState(0);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
   const [columns, setColumns] = useState(3);
@@ -42,10 +51,11 @@ export function Gallery() {
     observer.observe(node);
     return () => observer.disconnect();
   }, [view]);
-  const openCatalog = () => {
+  const openCatalog = useCallback(() => {
+    if (railCollapsed) toggleRail();
     state.setSelected(null);
     setCatalogFocus((value) => value + 1);
-  };
+  }, [railCollapsed, toggleRail, state.setSelected]);
   useLayoutEffect(() => {
     if (catalogFocus && selected === null)
       document
@@ -78,8 +88,7 @@ export function Gallery() {
       )
         return;
       if (event.key === "Escape") {
-        state.setSelected(null);
-        setCatalogFocus((value) => value + 1);
+        openCatalog();
       }
       if (
         (event.ctrlKey || event.metaKey) &&
@@ -96,7 +105,7 @@ export function Gallery() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [state, view]);
+  }, [openCatalog, state, view]);
   if (!view)
     return state.failure ? (
       <Callout

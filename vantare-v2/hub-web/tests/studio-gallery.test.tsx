@@ -21,6 +21,7 @@ import {
   vi,
 } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
+import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { Client } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
@@ -49,6 +50,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
+function RailProbe() {
+  const collapsed = useUi((state) => state.railCollapsed),
+    toggle = useUi((state) => state.toggleRail);
+  return (
+    <button type="button" aria-pressed={collapsed} onClick={toggle}>
+      QA toggle rail
+    </button>
+  );
+}
 function mount(scene = "studio-base") {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   const cache = new QueryClient({
@@ -60,10 +70,13 @@ function mount(scene = "studio-base") {
       <HostProvider>
         <CSPProvider disableStyleElements>
           <TooltipProvider>
-            <StudioProvider>
-              <Gallery />
-              <StudioRail />
-            </StudioProvider>
+            <UiProvider>
+              <RailProbe />
+              <StudioProvider>
+                <Gallery />
+                <StudioRail />
+              </StudioProvider>
+            </UiProvider>
           </TooltipProvider>
         </CSPProvider>
       </HostProvider>
@@ -343,6 +356,22 @@ describe("Studio gallery", () => {
     ).toBeTruthy();
     expect(requests.mock.calls.every(([r]) => r.method === "studio.get")).toBe(
       true,
+    );
+  });
+  it("reopens the collapsed rail before focusing the add catalog", async () => {
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("button", { name: "QA toggle rail" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(`^${t.add}`) }),
+    );
+    expect(
+      screen
+        .getByRole("button", { name: "QA toggle rail" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+    expect(document.activeElement).toBe(
+      await screen.findByRole("searchbox", { name: t.search }),
     );
   });
 });

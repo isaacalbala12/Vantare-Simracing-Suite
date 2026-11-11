@@ -50,6 +50,7 @@ import { ShellLayout } from "../src/renderer/ui/ShellLayout";
 
 type Guard = Parameters<Client["setCloseGuard"]>[0];
 const caches: QueryClient[] = [];
+const connections = new Set<Client>();
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -57,7 +58,16 @@ beforeEach(() => {
     removeEventListener() {},
   }));
 });
-afterEach(() => {
+afterEach(async () => {
+  // Settle close-triggered mutation errors while their toast provider still
+  // exists, so no notification timer can be created after provider disposal.
+  await act(async () => {
+    for (const client of connections) client.close();
+  });
+  await waitFor(() => {
+    for (const cache of caches) expect(cache.isMutating()).toBe(0);
+  });
+  connections.clear();
   cleanup();
   for (const cache of caches) cache.clear();
   caches.length = 0;
@@ -79,6 +89,7 @@ function mount(scene = "ajustes-base", content?: ReactNode) {
     value,
   ) {
     guard = value;
+    connections.add(this);
     setGuard.call(this, value);
   });
   const hook = renderHook(useSettings, {
@@ -679,7 +690,11 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
     for (const [value] of request.mock.calls.filter(
       ([value]) => value.method === "mail.set",
     ))
-      expect(value).toEqual({ method: "mail.set", consent: true });
+      expect(value).toEqual({
+        method: "mail.set",
+        consent: true,
+        source: "settings",
+      });
   });
   it("shows a refused privacy policy action inline", async () => {
     const hook = mount("ajustes-base", <Privacy />);

@@ -40,6 +40,7 @@ pub enum PrivacyPatch {
 pub struct MailView {
     pub consent: bool,
 }
+#[allow(clippy::struct_excessive_bools)] // Disk protection/cleanup and an independent session-only privacy decision.
 pub struct State {
     root: Result<PathBuf, HostError>,
     value: Privacy,
@@ -47,6 +48,7 @@ pub struct State {
     protected: bool,
     cleanup_pending: bool,
     cleanup_busy: bool,
+    private_session: bool,
 }
 fn adopt(data: &Path, shared: &Path) -> Result<(), HostError> {
     if data == shared {
@@ -119,6 +121,7 @@ impl State {
             protected: false,
             cleanup_pending: false,
             cleanup_busy: false,
+            private_session: false,
         };
         state.reload();
         state
@@ -136,7 +139,20 @@ impl State {
             });
         match read {
             Ok((value, bytes)) => {
-                self.value = value;
+                if value.crashes
+                    || value.usage
+                    || bytes
+                        .as_deref()
+                        .and_then(|bytes| serde_json::from_slice::<Privacy>(bytes).ok())
+                        .is_some_and(|raw| raw.crashes || raw.usage)
+                {
+                    self.private_session = false;
+                }
+                self.value = if self.private_session {
+                    private_value(value)
+                } else {
+                    value
+                };
                 self.observed = bytes;
                 self.protected = false;
                 let cleanup = value.discard_disabled(root);
@@ -147,18 +163,39 @@ impl State {
         }
     }
     fn protect(&mut self) {
+        self.private_session = false;
         self.value = Privacy::default();
         self.observed = None;
         self.protected = true;
         self.cleanup_pending = false;
         self.cleanup_busy = false;
     }
+    pub fn enter_private(&mut self) -> Result<(), HostError> {
+        self.reload();
+        if self.protected
+            || self.value.crashes
+            || self.value.usage
+            || self
+                .observed
+                .as_deref()
+                .and_then(|bytes| serde_json::from_slice::<Privacy>(bytes).ok())
+                .is_some_and(|raw| raw.crashes || raw.usage)
+        {
+            return Err(HostError::Denied);
+        }
+        self.value = private_value(self.value);
+        self.private_session = true;
+        Ok(())
+    }
+    pub fn private_active(&self) -> bool {
+        self.private_session
+    }
     pub fn view(&self) -> PrivacyView {
         PrivacyView {
-            crashes: self.value.crashes,
-            usage: self.value.usage,
-            crashes_decided: self.value.crashes_decided,
-            usage_decided: self.value.usage_decided,
+            crashes: !self.private_session && self.value.crashes,
+            usage: !self.private_session && self.value.usage,
+            crashes_decided: self.private_session || self.value.crashes_decided,
+            usage_decided: self.private_session || self.value.usage_decided,
             revision: vantare_services::content_hash(self.observed.as_deref().unwrap_or_default()),
             protected: self.protected,
             cleanup_pending: self.cleanup_pending,
@@ -214,6 +251,7 @@ impl State {
         });
         match result {
             Ok(value) => {
+                self.private_session = false;
                 self.value = value;
                 self.observed = saved;
                 self.cleanup_pending = false;
@@ -223,6 +261,7 @@ impl State {
             Err(ConsentSaveError::Busy) => Err(HostError::Busy),
             Err(ConsentSaveError::Failed(_)) => {
                 if let Some(bytes) = saved {
+                    self.private_session = false;
                     self.value = serde_json::from_slice(&bytes).map_err(|_| HostError::Io)?;
                     self.observed = Some(bytes);
                     self.cleanup_pending = true;
@@ -416,5 +455,135 @@ mod reporting_tests {
         let view = serde_json::to_value(state.view()).expect("view");
         assert!(view["reportingConfigured"].is_boolean());
         assert!(view.as_object().expect("view object").keys().all(|key| !key.to_ascii_lowercase().contains("key")));
+    }
+}
+
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MailOrigin {
+    Onboarding,
+    Settings,
+}
+impl MailOrigin {
+    pub const ALL: [Self; 2] = [Self::Onboarding, Self::Settings];
+    pub fn command(self, consent: bool) -> vantare_ipc::services_protocol::Command {
+        use vantare_ipc::services_protocol::{Command, MailSource};
+        Command::MailConsentSet {
+            consent,
+            source: match self {
+                Self::Onboarding => MailSource::Onboarding,
+                Self::Settings => MailSource::Settings,
+            },
+        }
+    }
+}
+#[cfg(test)]
+mod mail_source_tests {
+    use super::*;
+    #[test]
+    fn only_closed_origins_reach_the_existing_service_command() {
+        use vantare_ipc::services_protocol::{Command, MailSource};
+        assert!(matches!(
+            MailOrigin::Onboarding.command(true),
+            Command::MailConsentSet {
+                consent: true,
+                source: MailSource::Onboarding
+            }
+        ));
+        assert!(matches!(
+            MailOrigin::Settings.command(false),
+            Command::MailConsentSet {
+                consent: false,
+                source: MailSource::Settings
+            }
+        ));
+        assert!(serde_json::from_str::<MailOrigin>("\"arbitrary\"").is_err());
+    }
+}
+
+fn private_value(mut value: Privacy) -> Privacy {
+    value.crashes = false;
+    value.usage = false;
+    value.crashes_decided = true;
+    value.usage_decided = true;
+    value
+}
+#[cfg(all(test, windows))]
+mod onboarding_private_tests {
+    use super::*;
+    #[test]
+    fn update_from_private_session_persists_both_decisions_and_keeps_the_other_off() {
+        for (patch, crashes, usage) in [
+            (PrivacyPatch::Usage(true), false, true),
+            (PrivacyPatch::Crashes(true), true, false),
+        ] {
+            let root = crate::test_support::Root::new();
+            let mut state = State::isolated(&root.path);
+            assert!(!state.view().crashes_decided && !state.view().usage_decided);
+            state.enter_private().unwrap();
+            state.update(patch, &state.view().revision).unwrap();
+            let saved: Privacy =
+                serde_json::from_slice(&std::fs::read(root.path.join(PRIVACY_FILE)).unwrap())
+                    .unwrap();
+            assert_eq!((saved.crashes, saved.usage), (crashes, usage));
+            assert!(saved.crashes_decided && saved.usage_decided);
+        }
+    }
+
+    #[test]
+    fn onboarding_private_exit_preserves_disk_and_never_revives_an_old_permission() {
+        let root = crate::test_support::Root::new();
+        let mut state = State::isolated(&root.path);
+        state
+            .update(PrivacyPatch::Crashes(true), &state.view().revision)
+            .unwrap();
+        state
+            .update(PrivacyPatch::Usage(true), &state.view().revision)
+            .unwrap();
+        let path = root.path.join(PRIVACY_FILE);
+        assert!(matches!(state.enter_private(), Err(HostError::Denied)));
+        state
+            .update(PrivacyPatch::Crashes(false), &state.view().revision)
+            .unwrap();
+        state
+            .update(PrivacyPatch::Usage(false), &state.view().revision)
+            .unwrap();
+        let before = std::fs::read(&path).unwrap();
+        let revision = state.view().revision;
+        state.enter_private().unwrap();
+        let view = state.refresh();
+        assert!(!view.crashes && !view.usage && view.crashes_decided && view.usage_decided);
+        assert_eq!(view.revision, revision);
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        let updated = state
+            .update(PrivacyPatch::Usage(true), &view.revision)
+            .unwrap();
+        assert!(updated.usage);
+        assert!(!updated.crashes);
+        assert!(!Privacy::load(&root.path).unwrap().crashes);
+    }
+    #[test]
+    fn private_escape_denies_protected_disk_and_exposes_external_opt_in() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join(PRIVACY_FILE);
+        let mut state = State::isolated(&root.path);
+        state.enter_private().unwrap();
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&Privacy {
+                crashes: true,
+                crashes_decided: true,
+                ..Privacy::default()
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(state.refresh().crashes);
+        assert!(!state.private_active());
+        assert!(matches!(state.enter_private(), Err(HostError::Denied)));
+        std::fs::write(&path, b"broken").unwrap();
+        assert!(matches!(state.enter_private(), Err(HostError::Denied)));
+        assert!(!state.private_active());
     }
 }

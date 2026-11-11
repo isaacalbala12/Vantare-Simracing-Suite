@@ -115,7 +115,11 @@ export function Privacy() {
   });
   const changeMail = useMutation({
     mutationFn: async (consent: boolean) => {
-      const reply = await client?.request({ method: "mail.set", consent });
+      const reply = await client?.request({
+        method: "mail.set",
+        consent,
+        source: "settings",
+      });
       if (reply?.method !== "mail.set") throw new HostFailure({ kind: "io" });
       return reply.value;
     },

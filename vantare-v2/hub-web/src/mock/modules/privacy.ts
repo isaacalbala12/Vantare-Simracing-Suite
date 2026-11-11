@@ -18,6 +18,7 @@ export function create(context: MockContext): MockHandler {
   if (
     [
       "privacidad-pendiente",
+      "onboarding-error-privacidad",
       "privacidad-uso",
       "privacidad-error",
       "privacidad-puerta-conflicto",
@@ -38,6 +39,21 @@ export function create(context: MockContext): MockHandler {
   return (value: UiToHost): HostToUi | null | undefined => {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
+    if (context.onboarding)
+      context.onboarding.privacyEnabled = privacy.crashes || privacy.usage;
+    if (context.onboarding?.privateConsent)
+      privacy = {
+        ...privacy,
+        crashes: false,
+        usage: false,
+        crashesDecided: true,
+        usageDecided: true,
+      };
+    if (
+      request.method === "privacy.update" &&
+      sceneName === "onboarding-error-privacidad"
+    )
+      return { kind: "failure", id, error: { kind: "io" } };
     switch (request.method) {
       case "privacy.policy":
         return {
@@ -89,6 +105,8 @@ export function create(context: MockContext): MockHandler {
           usageDecided: privacy.usageDecided || request.patch.field === "usage",
           revision: (++privacyRevision).toString(16).padStart(64, "0"),
         };
+        if (context.onboarding)
+          context.onboarding.privacyEnabled = privacy.crashes || privacy.usage;
         privacy.cleanupBusy = false;
         privacy.cleanupPending = sceneName === "privacidad-limpieza-error";
         if (privacy.cleanupPending)

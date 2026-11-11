@@ -8,6 +8,15 @@ import type {
 } from "../contract/generated/contract";
 export interface MockContext {
   testingData?: TestingView;
+  onboarding?: {
+    completed: boolean;
+    settingsRevision: string;
+    privacyFailed: boolean;
+    privateSession: boolean;
+    privateConsent: boolean;
+    privacyReady: boolean;
+    privacyEnabled: boolean;
+  };
   readonly emit?: (message: HostToUi) => void;
   readonly sceneName: string;
   readonly visual: RegExpExecArray | null;

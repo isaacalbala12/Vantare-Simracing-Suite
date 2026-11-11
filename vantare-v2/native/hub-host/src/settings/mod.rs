@@ -1,4 +1,6 @@
 mod appearance;
+#[cfg(windows)]
+mod onboarding;
 pub mod track;
 use track::{PerformanceLevel, TrackView};
 #[cfg(windows)]

@@ -2,9 +2,11 @@
 export type PrivacyView = { crashes: boolean, usage: boolean, crashesDecided: boolean, usageDecided: boolean, revision: string, protected: boolean, cleanupPending: boolean, cleanupBusy: boolean, reportingConfigured: boolean, };
 export type PrivacyPatch = { "field": "crashes", "value": boolean } | { "field": "usage", "value": boolean };
 export type MailView = { consent: boolean, };
+export type MailOrigin = "onboarding" | "settings";
+export const privacyMailSources = ["onboarding","settings"] as const;
 export const privacyPolicyUrl = "https://vantare.app/privacidad" as const;
 export const privacyFields = ["crashes","usage"] as const;
-export type PrivacyRequest = { "method": "privacy.policy", } | { "method": "privacy.get", } | { "method": "privacy.update", patch: PrivacyPatch, baseRevision: string, } | { "method": "mail.get", } | { "method": "mail.set", consent: boolean, };
+export type PrivacyRequest = { "method": "privacy.policy", } | { "method": "privacy.get", } | { "method": "privacy.update", patch: PrivacyPatch, baseRevision: string, } | { "method": "mail.get", } | { "method": "mail.set", consent: boolean, source: MailOrigin, };
 export type PrivacyReply = { "method": "privacy.policy", accepted: boolean, } | { "method": "privacy.get", value: PrivacyView, } | { "method": "privacy.update", value: PrivacyView, } | { "method": "mail.get", value: MailView, } | { "method": "mail.set", value: MailView, };
 export type PrivacyHostError = { "kind": "privacyConflict", current: PrivacyView, } | { "kind": "privacyCleanup", current: PrivacyView, };
 export const privacyMethods = ["mail.get","mail.set","privacy.get","privacy.policy","privacy.update"] as const;

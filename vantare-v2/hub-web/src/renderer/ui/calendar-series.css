@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: 14px;
   min-width: 0;
+  overflow: hidden auto;
+  scrollbar-width: none;
 }
 .v-calendar-serie-header {
   display: flex;

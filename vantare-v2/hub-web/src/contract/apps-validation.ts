@@ -48,7 +48,9 @@ export function isPickedApp(value: unknown): boolean {
     (record(value) &&
       exact(value, ["token", "name", "fileName"]) &&
       revision(value.token) &&
-      text(value.name, profileLimits.name) && text(value.fileName, profileLimits.name + 4) && !/[\\/:]/.test(value.fileName))
+      text(value.name, profileLimits.name) &&
+      text(value.fileName, profileLimits.name + 4) &&
+      !/[\\/:]/.test(value.fileName))
   );
 }
 export function isCatalog(value: unknown): boolean {

@@ -1,5 +1,8 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
-import { launcherPickLifetimeSeconds, launcherPickCooldownMs } from "../contract/generated/contract";
+import {
+  launcherPickCooldownMs,
+  launcherPickLifetimeSeconds,
+} from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
 
 /** The host must acknowledge a pending request before main opens a dialog. */
@@ -94,7 +97,8 @@ export function executablePicker(
         return "id" in message && message.id >= 0x80000000;
       if (message.kind === "failure") {
         pending = undefined;
-        if (current.connected()) current.reply({ ...message, id: current.rendererId });
+        if (current.connected())
+          current.reply({ ...message, id: current.rendererId });
         return true;
       }
       if (
@@ -104,7 +108,8 @@ export function executablePicker(
         return false;
       if (current.phase === "result") {
         pending = undefined;
-        if (current.connected()) current.reply({ ...message, id: current.rendererId });
+        if (current.connected())
+          current.reply({ ...message, id: current.rendererId });
         return true;
       }
       if (current.phase !== "ack") return true;

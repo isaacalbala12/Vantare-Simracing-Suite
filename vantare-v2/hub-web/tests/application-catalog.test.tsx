@@ -24,18 +24,33 @@ import {
 const caches: QueryClient[] = [];
 vi.mock("../src/mock/host", async (original) => {
   const actual = await original<typeof import("../src/mock/host")>();
-  return {...actual, createMockHost: (...args: Parameters<typeof actual.createMockHost>) => {
-    const host = actual.createMockHost(...args);
-    return (value: unknown) => {
-      const reply = host(value);
-      if (reply?.kind === "response" && reply.result.method === "launcher.app.pick" && reply.result.value === null)
-        return host({kind:"pickedExecutable",id:reply.id,path:"D:/inert-qa/Aplicación QA.exe"});
-      return reply;
-    };
-  }};
+  return {
+    ...actual,
+    createMockHost: (...args: Parameters<typeof actual.createMockHost>) => {
+      const host = actual.createMockHost(...args);
+      return (value: unknown) => {
+        const reply = host(value);
+        if (
+          reply?.kind === "response" &&
+          reply.result.method === "launcher.app.pick" &&
+          reply.result.value === null
+        )
+          return host({
+            kind: "pickedExecutable",
+            id: reply.id,
+            path: "D:/inert-qa/Aplicación QA.exe",
+          });
+        return reply;
+      };
+    },
+  };
 });
 beforeEach(() =>
-  vi.stubGlobal("matchMedia", () => ({matches:false,addEventListener(){},removeEventListener(){}})),
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  })),
 );
 afterEach(() => {
   cleanup();

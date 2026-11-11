@@ -35,7 +35,9 @@
 }
 .v-testing-triage-consent {
   min-width: 0;
-  overflow: hidden;
+}
+.v-testing-triage-consent .v-choice {
+  align-items: flex-start;
 }
 .v-testing-triage .v-choice > span:not(.v-checkbox) {
   flex: 1;
@@ -43,8 +45,8 @@
   white-space: normal;
 }
 .v-testing-triage .v-testing-triage-consent .v-choice > span:not(.v-checkbox) {
-  white-space: nowrap;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .v-testing-triage .v-testing-fine-print {
   line-height: 18px;

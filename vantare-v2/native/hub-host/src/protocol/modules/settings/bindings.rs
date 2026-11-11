@@ -21,6 +21,11 @@ pub(crate) fn typescript() -> String {
         "performanceLevels",
         crate::settings::track::PerformanceLevel::ALL
     );
+    constants!(
+        &mut text,
+        "maxWidgetOverrides",
+        crate::settings::track::MAX_WIDGET_OVERRIDES
+    );
     constants!(&mut text, "widgetHz", crate::settings::track::WIDGET_HZ);
     constants!(&mut text, "tableHz", crate::settings::track::TABLE_HZ);
     constants!(&mut text, "palettes", crate::settings::model::Palette::ALL);

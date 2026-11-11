@@ -257,6 +257,7 @@ fn track_conflict_retries_only_intent_and_preserves_widget_overrides() {
     let saved = settings.retry().expect("retry");
     assert_eq!(saved.track.level, track::PerformanceLevel::Economy);
     assert!(saved.track.customized);
+    assert_eq!(saved.track.custom_widgets, 1);
     let raw = fs::read_to_string(&path).expect("saved");
     assert!(raw.contains("1.0000000000000000001"));
     let document: serde_json::Value = serde_json::from_str(&raw).expect("JSON");

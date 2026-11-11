@@ -39,7 +39,9 @@ export default function TestingEntry() {
           active === "summary" ? (
             <TestingSummaryRail count={railCount} receipts={railCount} />
           ) : active === "questionnaires" ? (
-            <TestingQuestionnairesRail count={participation.questionnaires.length} />
+            <TestingQuestionnairesRail
+              count={participation.questionnaires.length}
+            />
           ) : (
             <TestingRail />
           )

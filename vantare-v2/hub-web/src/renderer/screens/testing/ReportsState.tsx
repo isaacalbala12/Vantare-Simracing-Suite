@@ -71,7 +71,6 @@ function useReportsState() {
     score: number;
     note: string;
   }>({ score: 3, note: "" });
-  const [participationLoaded, setParticipationLoaded] = useState(false);
   const answering = useRef(false);
   const failedRequest = useRef<
     Exclude<Request, { method: "window.close" }> | undefined
@@ -470,7 +469,6 @@ function useReportsState() {
     save,
     refresh,
     answerDraft,
-    participationLoaded,
     setAnswerDraft,
     selectQuestionnaire,
     answer,

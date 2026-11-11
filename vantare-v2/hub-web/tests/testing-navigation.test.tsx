@@ -13,6 +13,7 @@ import {
   SectionChromeProvider,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
+import { testingQuestionnairesText } from "../src/renderer/i18n/testing-questionnaires";
 import TestingEntry from "../src/renderer/screens/testing/entry";
 import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
 import { ToastProvider } from "../src/renderer/ui/Layers";
@@ -101,4 +102,47 @@ it("acknowledges a successful refresh even when there are no reports", async () 
   fireEvent.click(screen.getByRole("button", { name: /^Recargar$/ }));
   await screen.findByText("Datos confirmados por el servicio");
   expect(screen.getByText("Aún no hay informes cargados")).toBeTruthy();
+});
+
+it("preserves questionnaire edits across Summary and the shared diagnostic overlay", async () => {
+  window.history.replaceState(null, "", "/?escena=testing-tester-reports");
+  await mount();
+  fireEvent.click(screen.getByRole("tab", { name: "Cuestionarios" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Recargar$/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Cuestionario local de QA/ }),
+  );
+  fireEvent.change(
+    screen.getByRole("textbox", { name: testingQuestionnairesText.note }),
+    { target: { value: "Nota privada entre pestañas" } },
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Resumen" }));
+  expect(
+    screen.getByRole("heading", { name: "Tu experiencia cuenta" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: "Cuestionarios" }));
+  expect(
+    (
+      screen.getByRole("textbox", {
+        name: testingQuestionnairesText.note,
+      }) as HTMLTextAreaElement
+    ).value,
+  ).toBe("Nota privada entre pestañas");
+  fireEvent.click(screen.getByRole("button", { name: "Diagnóstico local" }));
+  expect(
+    screen.getByRole("heading", { name: "Informe de diagnóstico" }),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("tab", { name: "Cuestionarios" })
+      .getAttribute("aria-selected"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Diagnóstico local" }));
+  expect(
+    (
+      screen.getByRole("textbox", {
+        name: testingQuestionnairesText.note,
+      }) as HTMLTextAreaElement
+    ).value,
+  ).toBe("Nota privada entre pestañas");
 });

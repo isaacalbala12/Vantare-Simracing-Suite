@@ -106,7 +106,9 @@
   position: relative;
   overflow: hidden;
   border-radius: calc(22 * var(--ob-unit));
-  background: var(--ob-c-d80000);
+  background: var(--ob-art-gradient);
+  box-shadow: 0 calc(40 * var(--ob-unit)) calc(100 * var(--ob-unit))
+    color-mix(in srgb, var(--ob-raw-280008) 45%, transparent);
 }
 .v-ob-footer {
   height: calc(96 * var(--ob-unit));
@@ -612,4 +614,16 @@
   height: calc(13 * var(--ob-unit));
   border-radius: 50%;
   background: var(--ob-raw-ffffff);
+}
+
+.v-onboarding > .v-window-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.v-ob-header {
+  -webkit-app-region: drag;
+}
+.v-ob-header button {
+  -webkit-app-region: no-drag;
 }

@@ -96,3 +96,12 @@
   --ob-c-ff6b6b: #ff6b6b;
   --ob-c-190d0e: #190d0e;
 }
+[data-palette="vantare"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #5c1720 0%, #1e1517 100%); }
+[data-palette="classic"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #8a0000 0%, #2a0c13 62%); }
+[data-palette="deepseek"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #1c2c53 0%, #1a1a1c 62%); }
+[data-palette="rose"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #51253b 0%, #22141f 62%); }
+[data-palette="grove"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #2e4838 0%, #13231b 62%); }
+[data-palette="ocean"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #28424e 0%, #0c1d2a 62%); }
+[data-palette="ember"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #503925 0%, #231813 62%); }
+[data-palette="iris"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #35294d 0%, #171224 62%); }
+[data-palette="mono"] .v-onboarding { --ob-art-gradient: linear-gradient(118deg, #454545 0%, #1b1b1b 62%); }

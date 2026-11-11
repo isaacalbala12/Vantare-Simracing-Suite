@@ -234,6 +234,24 @@ fn serve(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), Str
     Ok(())
 }
 
+// Aliases belong only to this QA bank; the frozen production scene catalog stays unchanged.
+fn capture_state(name: &str) -> Result<CaptureState, String> {
+    match name {
+        "strategy-proximamente" => {
+            let mut state = CaptureState::parse("engineer-base")?;
+            state.section = vantare_hub::Section::Strategy;
+            Ok(state)
+        }
+        "notificaciones-completa" => {
+            let mut state = CaptureState::parse("notificaciones-panel")?;
+            state.section = vantare_hub::Section::Notifications;
+            state.notifications_open = false;
+            Ok(state)
+        }
+        _ => CaptureState::parse(name),
+    }
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
     let root = PathBuf::from(argument(&args, "--qa-root").ok_or("falta root QA explícito")?);
@@ -254,7 +272,7 @@ fn main() -> Result<(), String> {
         );
     }
     let mut state =
-        CaptureState::parse(&argument(&args, "--capture").unwrap_or_else(|| "studio-base".into()))?;
+        capture_state(&argument(&args, "--capture").unwrap_or_else(|| "studio-base".into()))?;
     // Testing's capture-only tab selector deliberately checks the owning PID.
     // Keep that layout inside this explicit QA bank; normal data roots are unchanged.
     let data_dir = if args.iter().any(|arg| arg == "--qa-testing") {
@@ -350,4 +368,20 @@ fn main() -> Result<(), String> {
         .and(server_result)
         .and(telemetry_result)
         .and(rights_result)
+}
+
+#[cfg(test)]
+mod capture_tests {
+    use super::*;
+    use vantare_hub::Section;
+    #[test]
+    fn aliases_show_the_production_page_without_old_strategy_or_notification_popup() {
+        let strategy = capture_state("strategy-proximamente").expect("QA Strategy");
+        assert_eq!(strategy.section, Section::Strategy);
+        assert!(strategy.strategy_page.is_none());
+        let notifications = capture_state("notificaciones-completa").expect("QA notifications");
+        assert_eq!(notifications.section, Section::Notifications);
+        assert!(!notifications.notifications_open);
+        assert!(capture_state("unknown-qa-scene").is_err());
+    }
 }

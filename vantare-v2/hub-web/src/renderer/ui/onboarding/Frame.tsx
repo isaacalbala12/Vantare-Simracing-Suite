@@ -7,10 +7,10 @@ import {
   useState,
 } from "react";
 import { Icon } from "../../assets/icons/Icon";
-import helmet from "../../assets/onboarding/helmet.svg?url";
 import { onboardingText as t } from "../../i18n/onboarding";
 import { Button } from "../Button";
 import { Skeleton } from "../Data";
+import { Helmet } from "./Helmet";
 import "./onboarding.css";
 export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export interface FrameProps {
@@ -61,7 +61,11 @@ function Assistant({
   return (
     <div className={`v-ob-radio ${step === 0 ? "v-ob-radio--welcome" : ""}`}>
       {step > 0 && (
-        <img className="v-ob-small-helmet" src={helmet} alt={t.helmet} />
+        <Helmet
+          width={132}
+          reducedMotion={reducedMotion}
+          className="v-ob-small-helmet"
+        />
       )}
       <div className={`v-ob-bubble ${writing ? "v-ob-bubble--writing" : ""}`}>
         <div className="v-ob-assistant-label">
@@ -244,6 +248,8 @@ export function OnboardingFrame(p: FrameProps) {
           aria-hidden={p.step === 7}
           tabIndex={p.step === 7 || !p.canContinue ? -1 : 0}
           aria-busy={p.pending}
+          aria-keyshortcuts="Enter"
+          aria-label={primary}
           disabled={!p.canContinue || p.pending || p.loading}
           onClick={p.next}
         >

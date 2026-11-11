@@ -7,6 +7,7 @@ use vantare_ipc::{files, launcher as mailbox};
 use vantare_launcher::Document;
 
 pub const DECISION_ID_MAX: usize = 20;
+pub const DECISION_ID_PATTERN: &str = "^(0|[1-9][0-9]*)$";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "kebab-case")]
@@ -98,6 +99,7 @@ pub struct ResidentQuestion {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[allow(clippy::struct_excessive_bools)] // Independent document, freshness, execution and error observations.
 pub struct ResidentView {
     pub protected: bool,
     pub online: bool,
@@ -220,4 +222,5 @@ impl State {
 }
 
 #[cfg(test)]
+#[path = "tests.rs"]
 mod tests;

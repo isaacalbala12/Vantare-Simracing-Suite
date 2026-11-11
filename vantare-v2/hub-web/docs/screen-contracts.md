@@ -287,7 +287,7 @@ Live no lee el diseño. Deshacer/rehacer vuelve a comprobar los derechos al
 restaurar un widget Pro. Posición/tamaño se editan sobre los overlays, no en el Hub;
 la entrada a ese modo está inactiva hasta #2025.
 
-### Historial local de Calendario (wire provisional 21)
+### Historial local de Calendario (wire v22)
 
 `calendar.historyLoad` ofrece las ocho últimas publicaciones de
 `calendar-history.json`, solo para `AccessView.calendar`, cuenta verificada y no
@@ -303,5 +303,5 @@ segundos Unix, hasta ocho semanas y 256 series por semana, texto con los límite
 comunes, sin duplicados. La lectura máxima es 64 KiB y no devuelve una proyección
 parcial. Las semanas se ordenan por inicio. El consumidor podrá calcular la
 rotación y mediana de publicación del GPUI; no se inventa historial de carreras.
-Versión definitiva pendiente de aprobación; sin nuevos paquetes ni cambios en
+Wire v22 aprobado; sin nuevos paquetes ni cambios en
 IPC, services, runtime, derechos o supervisor.

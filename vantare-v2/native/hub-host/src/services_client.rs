@@ -1,7 +1,7 @@
 //! Copied from frozen Hub services/client.rs, base 62dde8da4; same Probe/no-replay contract.
 //! El Hub conecta con vantare; jamás arranca ni posee el proceso de servicios.
 use crate::protocol::HostError;
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc};
 use vantare_ipc::services_protocol as protocol;
 use vantare_ipc::services_protocol::{Command, Reply, Request, Response, SupervisorHello};
 use vantare_ipc::{
@@ -152,7 +152,15 @@ mod tests {
     use super::*;
     #[test]
     fn an_expired_channel_request_does_not_even_send_probe() {
-        let (_name, stop, _listener, pipe) = crate::test_support::endpoint();
+        let name = format!("vantare-expired-{}", vantare_services::random_id().unwrap());
+        let stop = Arc::new(Event::new().unwrap());
+        let mut listener = vantare_ipc::transport::Listener::new(
+            &name,
+            Arc::clone(&stop),
+            std::time::Duration::from_secs(5),
+        )
+        .unwrap();
+        let pipe = listener.instance().unwrap();
         let mut client = Client {
             pipe,
             stop,
@@ -161,8 +169,11 @@ mod tests {
             binary: "unused".into(),
             photo_pipe: String::new(),
         };
-        let accepted = std::time::Instant::now() - Duration::from_secs(45);
-        assert!(matches!(client.request_before(Command::MailConsentGet, accepted), Err(HostError::Busy)));
+        let accepted = std::time::Instant::now() - std::time::Duration::from_secs(45);
+        assert!(matches!(
+            client.request_before(Command::MailConsentGet, accepted),
+            Err(HostError::Busy)
+        ));
         assert_eq!(client.sequence, 0);
     }
     #[test]

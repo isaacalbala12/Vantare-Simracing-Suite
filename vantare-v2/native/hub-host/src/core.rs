@@ -138,26 +138,26 @@ impl Core {
         self.dispatch_waiting_at(Instant::now());
     }
     fn dispatch_waiting_at(&mut self, now: Instant) {
-        while let Some((id, command, accepted)) = self.queue.start_next_at(now) {
-            if !self.service_ok.load(Ordering::Acquire) {
+        let Some((id, command, accepted)) = self.queue.start_next_at(now) else {
+            return;
+        };
+        if !self.service_ok.load(Ordering::Acquire) {
+            self.queue
+                .fail_active(id, crate::protocol::HostError::CoreUnavailable);
+            self.queue.fail_all();
+            return;
+        }
+        // Exactly one send attempt. Full must not drag any other waiter along.
+        match self.requests.try_send((id, command, accepted)) {
+            Ok(()) => {}
+            Err(std::sync::mpsc::TrySendError::Full(_)) => {
+                self.queue.fail_active(id, crate::protocol::HostError::Busy);
+            }
+            Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                self.service_ok.store(false, Ordering::Release);
                 self.queue
                     .fail_active(id, crate::protocol::HostError::CoreUnavailable);
                 self.queue.fail_all();
-                break;
-            }
-            match self.requests.try_send((id, command, accepted)) {
-                Ok(()) => break,
-                Err(std::sync::mpsc::TrySendError::Full(_)) => {
-                    self.queue.fail_active(id, crate::protocol::HostError::Busy);
-                    break;
-                }
-                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
-                    self.service_ok.store(false, Ordering::Release);
-                    self.queue
-                        .fail_active(id, crate::protocol::HostError::CoreUnavailable);
-                    self.queue.fail_all();
-                    break;
-                }
             }
         }
     }

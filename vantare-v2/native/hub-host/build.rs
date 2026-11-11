@@ -250,18 +250,18 @@ fn write_session(
 
 fn remote_patterns(operations: &str) -> Vec<String> {
     variant_names(operations)
-            .into_iter()
-            .map(|variant| {
-                let suffix = if operations.contains(&format!("{variant}(")) {
-                    "(..)"
-                } else if operations.contains(&format!("{variant} {{")) {
-                    "{..}"
-                } else {
-                    ""
-                };
-                format!("RemoteKind::{variant}{suffix}")
-            })
-            .collect()
+        .into_iter()
+        .map(|variant| {
+            let suffix = if operations.contains(&format!("{variant}(")) {
+                "(..)"
+            } else if operations.contains(&format!("{variant} {{")) {
+                "{..}"
+            } else {
+                ""
+            };
+            format!("RemoteKind::{variant}{suffix}")
+        })
+        .collect()
 }
 
 fn module_prefix(id: &str) -> String {

@@ -19,12 +19,15 @@ const samples = JSON.parse(
   privateBytes?: number;
   workingSetBytes?: number;
   cpuOneCorePercent?: number;
+  cpuSource?: string;
   survivors?: number[];
   stderr?: string;
 }[];
 const provenance = JSON.parse(
   await readFile(join(evidence, "provenance.json"), "utf8"),
 );
+const environment = JSON.parse(await readFile(join(evidence,"environment.json"),"utf8").catch(()=>"{}"));
+assert.ok(samples.filter(sample=>sample.phase==="idle").every(sample=>sample.cpuSource==="CIM PerfProc raw"),"CPU source was not validated PerfProc");
 const closed = samples.filter((sample) => sample.phase === "closed");
 assert.equal(closed.length, 10, "Incomplete paired run");
 assert.ok(closed.every((sample) => sample.survivors?.length === 0));
@@ -60,7 +63,7 @@ function row(
           sample.app === app &&
           (!section || sample.section === section),
       )
-      .map((sample) => Number(sample[field]) / divisor);
+      .map((sample) => { const value=sample[field]; assert.ok(typeof value==="number" && Number.isFinite(value)); return value / divisor; });
     const result = fiveSampleStats(values);
     statistics[`${app}.${key}`] = result;
     cells.push(
@@ -137,9 +140,23 @@ for (const key of ["walk", "verify", "total"] as const)
   );
 const size = (bytes: number) =>
   `${format(bytes / (1024 * 1024), 2)} MiB (${bytes} bytes)`;
+const previous=JSON.parse(await readFile(join(evidence,"invalid-cpu-trial-4/samples.json"),"utf8")) as typeof samples;
+const earlierRows=[];
+for(const [label,phase,field,section,divisor] of [
+  ["Ventana visible (ms)","visible","visibleMs",null,1],
+  ["Interacción verificada (ms)","idle","verifiedMs","settings",1],
+  ["Working set de Ajustes (MiB)","idle","workingSetBytes","settings",1024*1024],
+  ["Working set de Inicio (MiB)","idle","workingSetBytes","home",1024*1024],
+] as const) {
+  const cells=["gpui","electron"].map(app=>{
+    const values=previous.filter(sample=>sample.app===app && sample.phase===phase && (!section || sample.section===section)).map(sample=>{const value=sample[field];assert.ok(typeof value==="number");return value/divisor;});
+    const result=fiveSampleStats(values);return `${format(result.median,1)} (${format(result.min,1)}–${format(result.max,1)})`;
+  });
+  earlierRows.push(`| ${label} | ${cells.join(" | ")} |`);
+}
 const report = `# Primera medición A/B del Hub en este servidor
 
-Cinco pares alternados A/B: GPUI → Electron, Electron → GPUI, repetido hasta completar cinco arranques válidos de cada uno. Mismo servidor, Windows ${provenance.os}, ${provenance.logicalCpus} procesadores lógicos y ${format(provenance.totalMemory / 1024 ** 3, 1)} GiB de RAM. **Servidor compartido y ruidoso; no es un banco aislado ni una prueba de Windows 10.** No hubo compilaciones propias ni procesamiento pesado de imágenes durante las muestras. Cerrojo global tomado durante la tanda.
+Cinco pares alternados A/B: GPUI → Electron, Electron → GPUI, repetido hasta completar cinco arranques válidos de cada uno. Mismo servidor, ${environment.Caption ?? "Windows"} (kernel ${provenance.os}), ${provenance.logicalCpus} procesadores lógicos y ${format(provenance.totalMemory / 1024 ** 3, 1)} GiB de RAM. **Servidor compartido y ruidoso; no es un banco aislado ni una prueba de Windows 10.** No hubo compilaciones propias ni procesamiento pesado de imágenes durante las muestras. Cerrojo global tomado durante la tanda.
 
 UI de QA construida una sola vez desde nightly \`${provenance.uiProductSource}\`; anfitrión Release con puente real y peers locales de lectura. GPUI es el banco Release ya compilado (${provenance.gpuiBank.source_commit}). No hay cuentas ni servicios reales, instalador o supervisor productivo, ni sustitución del Hub distribuido.
 
@@ -158,15 +175,23 @@ ${rows.join("\n")}
 | Peers de IPC de QA, excluidos de la memoria del Hub | ${size(provenance.peerBytes)} |
 | Generación QA completa sellada, sin datos mutables | ${size(provenance.totalGenerationBytes)} |
 
+## Serie completa anterior
+
+La serie anterior también tiene cinco pares completos de arranque y memoria. Su sonda .NET de CPU no superó la comprobación de carga; se conserva esta serie aparte y no se combina con la repetición PerfProc. Incluye el arranque de Electron de 7814,7 ms. Celdas: mediana (mínimo–máximo).
+
+| Métrica | Hub GPUI | Anfitrión Rust + Electron |
+|---|---:|---:|
+${earlierRows.join("\n")}
+
 ## Método y límites
 
 - Reloj monotónico desde antes de Process.Start. Ventana visible: IsWindowVisible sobre un HWND del árbol propio. WM_NULL: SendMessageTimeout al mismo HWND. Interacción: ida y vuelta real Apariencia → General; GPUI mediante entradas Win32 y lectura de subrayado/pintura, Electron mediante Playwright y foco de un control. Es un límite superior instrumentado, con sondas distintas; se conservan las tres latencias para no confundirlas.
 - Perfiles QA nuevos, con los mismos ajustes y un layout de fixture, antes de cada arranque. Privacidad decidida en no enviar. Caché del sistema natural y previamente calentada por la preparación y pruebas descartadas: **no se mide arranque en frío**. No se extrapola este N=5 a los objetivos frío/caliente del diseño.
-- Reposo: tres segundos de asentamiento y cinco segundos de observación de CPU por pantalla. Siempre Ajustes y después Inicio en el mismo proceso. CPU expresada respecto a un núcleo; dividir por ${provenance.logicalCpus} para porcentaje de toda la máquina. Memoria privada es PrivateMemorySize64 (comprometida); working set suma residentes y puede contar páginas compartidas más de una vez. MiB = 2^20 bytes.
+- Reposo: tres segundos de asentamiento y cinco segundos de espera entre instantáneas PerfProc por pantalla; el intervalo real de sus timestamps se conserva por PID y se usa en el cálculo. Siempre Ajustes y después Inicio en el mismo proceso. CPU expresada respecto a un núcleo; dividir por ${provenance.logicalCpus} para porcentaje de toda la máquina. Se contrastó PerfProc con process.cpuUsage de Node en una carga controlada (cpu-counter-native-sanity.json). La sonda .NET daba cero durante esa carga y no se usa. Un cero de la nueva sonda es solo la observación de ese intervalo. Memoria privada es PrivateMemorySize64 (comprometida); working set suma residentes y puede contar páginas compartidas más de una vez. MiB = 2^20 bytes.
 - El candidato QA conserva validación de inventario antes de lanzar. Su recorrido inicial cuesta mediana ${format(statistics["integrity.walkMs"].median, 1)} ms; verificación, segundo recorrido y hashes ${format(statistics["integrity.verifyMs"].median, 1)} ms; total ${format(statistics["integrity.totalMs"].median, 1)} ms (${format(statistics["integrity.totalMs"].min, 1)}–${format(statistics["integrity.totalMs"].max, 1)}). Incluye los pequeños peers QA sellados junto al anfitrión; no es una optimización del instalador.
 - Hub nuevo: CDP de QA activado para comprobar interacción. GPUI: ventana normal --qa-measure con VANTARE_CAPTURE_POLICY=ipc, sin escena visual congelada ni demo. Los peers del anfitrión son procesos externos y se excluyen; en el banco GPUI los replies locales viven dentro del proceso. Es una limitación del banco, documentada para interpretar memoria y CPU.
 - Se revisan las capturas de ambas pantallas para evitar medir una puerta protegida. Diez cierres controlados, cero descendientes supervivientes en todos. Esto comprueba el cierre de la medición; no se atribuye a una prueba de entrada en pista.
-- Tres tandas previas se descartaron completas: una por política no verificada y dos por la sonda UIAutomation. Sus muestras y diagnósticos se conservan en invalid-*/ y no se mezclan con este agregado. UIAutomation se sustituyó por interacción y pintura verificables.
+- Tres intentos previos incompletos se descartaron: uno por política no verificada y dos por la sonda UIAutomation. Sus muestras y diagnósticos se conservan en invalid-*/. UIAutomation se sustituyó por interacción y pintura verificables. La cuarta serie completa se publica arriba sin CPU y se conserva en invalid-cpu-trial-4/; la tabla principal pertenece solo a la repetición completa con PerfProc.
 
 ## Evidencia y reproducción
 

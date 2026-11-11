@@ -19,6 +19,8 @@ public static class FirstHubMeasure {
  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
  [DllImport("user32.dll")] static extern bool EnumWindows(Visitor visitor,IntPtr data);
  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
+ [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+ [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint pid);
  [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr window,out Rect rect);
  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window,out Rect rect);
@@ -43,7 +45,8 @@ public static class FirstHubMeasure {
  public static bool Responsive(long handle) { UIntPtr result;return SendMessageTimeoutW(new IntPtr(handle),0,UIntPtr.Zero,IntPtr.Zero,2,1000,out result)!=IntPtr.Zero; }
  public static void Resize(long handle) {var window=new IntPtr(handle);Rect outer,client;if(!GetWindowRect(window,out outer)||!GetClientRect(window,out client)||!SetWindowPos(window,IntPtr.Zero,0,0,1440+outer.right-outer.left-client.right,900+outer.bottom-outer.top-client.bottom,2|4|16))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}
  public static void Home(long handle) {var window=new IntPtr(handle);var point=new IntPtr((73<<16)|38);foreach(uint message in new uint[]{0x200,0x201,0x202})if(!PostMessageW(window,message,new UIntPtr(message==0x201 ? 1u:0u),point))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}
- public static void Tab(long handle,int x) {var window=new IntPtr(handle);var point=new IntPtr((25<<16)|x);foreach(uint message in new uint[]{0x200,0x201,0x202})if(!PostMessageW(window,message,new UIntPtr(message==0x201 ? 1u:0u),point))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}
+ public static bool Activate(long handle) {var window=new IntPtr(handle);SetForegroundWindow(window);return GetForegroundWindow()==window;}
+ public static void Tab(long handle,int x) {var window=new IntPtr(handle);var point=new IntPtr((25<<16)|x);foreach(uint message in new uint[]{0x200,0x201,0x202}){UIntPtr result;if(SendMessageTimeoutW(window,message,new UIntPtr(message==0x201 ? 1u:0u),point,2,1000,out result)==IntPtr.Zero)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}}
  public static int[] Size(long handle) {Rect rect;if(!GetClientRect(new IntPtr(handle),out rect))throw new InvalidOperationException("Client bounds");return new int[]{rect.right,rect.bottom};}
 }
 '@
@@ -71,7 +74,7 @@ function Wait-NativeTab([long]$Handle,[int]$UnderlineX,[bool]$General) {
                 $painted=[Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$surface+2) -ge 32 -and [Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$surface+1) -ge 26
             }
             if($red -gt 140 -and $green -lt 70 -and $blue -lt 70 -and $painted){return}
-            if($deadline.Elapsed.TotalSeconds -gt 15){throw 'GPUI tab/readiness paint unavailable; sample rejected'}
+            if($deadline.Elapsed.TotalSeconds -gt 15){throw "GPUI readiness unavailable at x=$UnderlineX rgb=$red,$green,$blue surface=$painted; sample rejected"}
             Start-Sleep -Milliseconds 5
         } while($true)
     } finally { $buffer.Dispose() }
@@ -111,8 +114,10 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
             [FirstHubMeasure]::Resize($window)
             if(-not [FirstHubMeasure]::Responsive($window)){throw 'Window did not answer WM_NULL'}
             $responsiveMs=$clock.Elapsed.TotalMilliseconds
+            $foreground=[FirstHubMeasure]::Activate($window)
             $controlProof='Playwright: Apariencia to General, heading and focus verified'
             if($application.name -eq 'gpui') {
+                [FirstHubMeasure]::Tab($window,280)
                 Wait-NativeTab $window 280 $true
                 [FirstHubMeasure]::Tab($window,370)
                 Wait-NativeTab $window 370 $false
@@ -120,7 +125,7 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
                 Wait-NativeTab $window 280 $true
                 $controlProof='Win32: Apariencia to General; active underline and General card painted'
             }
-            @{phase='visible';app=$application.name;iteration=$iteration;pid=$process.Id;window=$window;visibleMs=$visibleMs;responsiveMs=$responsiveMs;controlProof=$controlProof} | ConvertTo-Json -Compress | Write-Output
+            @{phase='visible';app=$application.name;iteration=$iteration;pid=$process.Id;window=$window;visibleMs=$visibleMs;responsiveMs=$responsiveMs;controlProof=$controlProof;foreground=$foreground} | ConvertTo-Json -Compress | Write-Output
             if([Console]::ReadLine() -ne 'ready'){throw 'Missing renderer ready acknowledgement'}
             $verifiedMs=$clock.Elapsed.TotalMilliseconds
             foreach($section in @('settings','home')) {

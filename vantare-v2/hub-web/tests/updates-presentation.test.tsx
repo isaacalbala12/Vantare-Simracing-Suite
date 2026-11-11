@@ -66,3 +66,10 @@ it("deduplicates identical notes while keeping distinct entries with the same ti
   expect(screen.getAllByText(/Primera/)).toHaveLength(1);
   expect(screen.getByText(/Segunda/)).toBeTruthy();
 });
+
+it("only appends demo invitation hints in the demo presentation", () => {
+  const view = render(<UpdateChannels view={base} />);
+  expect(screen.queryByText(/Requiere invitación/)).toBeNull();
+  view.rerender(<UpdateChannels view={base} demo />);
+  expect(screen.getAllByText(/Requiere invitación/)).toHaveLength(2);
+});

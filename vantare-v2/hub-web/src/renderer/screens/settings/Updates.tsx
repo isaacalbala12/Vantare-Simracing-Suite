@@ -13,7 +13,7 @@ import {
 } from "../../ui/UpdatesPresentation";
 
 export function Updates() {
-  const { client } = useHost();
+  const { client, hello } = useHost();
   const cache = useQueryClient();
   const [restartVeto, setRestartVeto] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -127,7 +127,7 @@ export function Updates() {
           </SettingRow>
         </Card>
       )}
-      <UpdateChannels view={view} />
+      <UpdateChannels view={view} demo={hello?.demo === true} />
       <ReleaseNews view={view} />
     </UpdatesLayout>
   );

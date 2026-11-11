@@ -38,7 +38,13 @@ export function UpdateHero({ view }: { view: UpdatesView }) {
     </section>
   );
 }
-export function UpdateChannels({ view }: { view: UpdatesView }) {
+export function UpdateChannels({
+  view,
+  demo = false,
+}: {
+  view: UpdatesView;
+  demo?: boolean;
+}) {
   if (view.channel === "beta")
     return (
       <section className="v-update-beta" aria-label={t("updates.beta")}>
@@ -66,7 +72,10 @@ export function UpdateChannels({ view }: { view: UpdatesView }) {
                 {t(active ? "updates.selected" : "updates.notSelected")}
               </span>
             </div>
-            <p>{t(`updates.channelHelp.${channel}`)}</p>
+            <p>
+              {text.channelHelp[channel]}
+              {demo && channel !== "master" ? text.invitation : ""}
+            </p>
           </div>
         );
       })}
@@ -98,7 +107,7 @@ export function ReleaseNews({ view }: { view: UpdatesView }) {
               {note.summary}
             </p>
             <span
-              className={`v-update-pill${note.kind === "Arreglo" ? " v-update-pill--success" : ""}`}
+              className={`v-update-pill${note.kind === "Arreglo" ? " v-update-pill--success" : note.kind === "Nuevo" ? " v-update-pill--accent" : ""}`}
             >
               {note.kind}
             </span>

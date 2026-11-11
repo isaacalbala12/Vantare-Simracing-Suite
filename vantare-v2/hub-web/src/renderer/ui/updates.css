@@ -171,3 +171,9 @@
 .v-context:has(.v-update-rail) .v-rail-block-body p {
   line-height: 19px;
 }
+
+.v-update-pill--accent {
+  border-color: transparent;
+  color: var(--accent-bright);
+  background: var(--accent-tint);
+}

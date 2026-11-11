@@ -1,4 +1,10 @@
 export const updatesText = {
+  invitation: " Requiere invitación.",
+  channelHelp: {
+    master: "Versiones probadas para todo el mundo.",
+    testers: "Candidatas a Estable con el Testing Center activo.",
+    nightly: "Cada cambio publicado. Puede romperse.",
+  },
   noteSeparator: " — ",
   invalid: "No se pudo comprobar la instalación.",
   state: "Versión instalada en este equipo.",

@@ -277,6 +277,13 @@ fn validate_measure(args: &[String], root: &std::path::Path, measure: bool) -> R
     Ok(())
 }
 
+fn measure_appearance(settings: AppearanceSettings) -> Result<Vec<u8>, String> {
+    let mut value = serde_json::to_value(settings).map_err(|error| error.to_string())?;
+    // Match StoredAppearance: unversioned "vantare" is the legacy Classic palette.
+    value["paletteVersion"] = serde_json::json!(1);
+    serde_json::to_vec(&value).map_err(|error| error.to_string())
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
     let measure = args.iter().any(|arg| arg == "--qa-measure");
@@ -338,7 +345,7 @@ fn main() -> Result<(), String> {
             .create_new(true)
             .open(root.join("appearance.json"))
             .map_err(|error| format!("apariencia QA nueva: {error}"))?;
-        file.write_all(&serde_json::to_vec(&appearance).map_err(|error| error.to_string())?)
+        file.write_all(&measure_appearance(appearance)?)
             .map_err(|error| error.to_string())?;
     }
     let catalog = match argument(&args, "--qa-catalog").as_deref() {
@@ -415,6 +422,15 @@ fn main() -> Result<(), String> {
 mod capture_tests {
     use super::*;
     use vantare_hub::Section;
+    #[test]
+    fn normal_qa_appearance_is_versioned_without_legacy_palette_remapping() {
+        let settings = AppearanceSettings::default();
+        let value: serde_json::Value =
+            serde_json::from_slice(&measure_appearance(settings).unwrap()).unwrap();
+        assert_eq!(value["paletteVersion"], 1);
+        let decoded: AppearanceSettings = serde_json::from_value(value).unwrap();
+        assert_eq!(decoded, settings);
+    }
     #[test]
     fn normal_qa_mode_rejects_capture_bypasses_before_opening_any_window() {
         let root = std::path::Path::new("unused");

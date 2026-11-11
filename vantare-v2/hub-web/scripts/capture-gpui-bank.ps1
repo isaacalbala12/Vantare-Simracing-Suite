@@ -20,6 +20,8 @@ $run = Join-Path ([IO.Path]::GetFullPath($QaRoot)) ('gpui-' + [Guid]::NewGuid().
 Copy-Item -Path (Join-Path $bankRoot 'template/*') -Destination $run -Recurse
 $testing = $Scene.StartsWith('testing-center-', [StringComparison]::Ordinal)
 $gate = $Scene -in @('privacidad-pendiente','privacidad-uso','acceso-base')
+$emailScenes = @{'email-formulario'='form';'email-codigo'='code';'email-crear-contrasena'='password';'email-consentimiento'='consent';'email-autorizando'='pending';'email-reiniciado'='expired';'email-ocupado'='queue';'email-espera'='waiting'}
+$emailScene = $emailScenes[$Scene]
 $replies = Join-Path $run 'replies.json'
 if ($gate) {
     $scripted = Get-Content -LiteralPath $replies -Raw | ConvertFrom-Json -AsHashtable
@@ -66,7 +68,7 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
-$nativeScene = if ($gate) { 'ajustes-privacidad' } else { $Scene }
+$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } else { $Scene }
 foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
 if ($gate) {
     $start.ArgumentList.Add('--qa-measure')
@@ -74,6 +76,7 @@ if ($gate) {
 } else {
     $start.ArgumentList.Add('--demo')
 }
+if ($emailScene) { $start.Environment['VANTARE_CAPTURE_EMAIL'] = $emailScene }
 if ($testing) {
     $start.ArgumentList.Add('--qa-testing')
     # The existing frozen QA hook validates the rights peer against this bank,
@@ -98,6 +101,8 @@ try {
         } while ($true)
     }
     if ($gate) {
+        $stored = Get-Content -LiteralPath (Join-Path $run 'hub-settings.json') -Raw | ConvertFrom-Json
+        if ($stored.appearance.palette -ne 'vantare' -or $stored.appearance.scheme -ne $Theme -or $stored.zoom -ne 100) { throw "Apariencia QA no coincide con el recibo: $run" }
         # Normal QA gates use the real shell; prepare only their verified HWND.
         $prepared = & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'visual-diff/capture.ps1') -ProcessId $process.Id -Executable $binary -Prepare -Offscreen
         if ($LASTEXITCODE) { throw "No se pudo preparar la ventana QA: $run" }
@@ -116,7 +121,7 @@ try {
     } while ($true)
     $repliesHash = (Get-FileHash -LiteralPath $replies -Algorithm SHA256).Hash.ToLowerInvariant()
     $pngHash = (Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()
-    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;qa_measure=$gate;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
+    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;qa_measure=$gate;qa_email=$emailScene;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
     $inputs = [ordered]@{scene=$Scene;appearance="vantare-$Theme";size=@(1440,900);zoom=100;bank=$inventory.sha256;replies=$repliesHash} | ConvertTo-Json -Compress
     $inputHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($inputs))).ToLowerInvariant()
     $receiptHash = & node --experimental-strip-types (Join-Path $PSScriptRoot 'reference-receipt.ts') $Output

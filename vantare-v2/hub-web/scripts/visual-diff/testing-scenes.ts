@@ -14,6 +14,7 @@ export const testingScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Informe de diagnóstico", exact: true })
         .waitFor();
+      await page.mouse.move(600, 850);
     },
   },
   "testing-center-informe": {

@@ -343,15 +343,14 @@ errores de registro se muestran en cada atajo; no se convierten en un error
 general del residente. Un error general también puede corresponder al documento
 o al inicio con Windows, por lo que su texto no afirma que fallase un lanzamiento.
 
-### Escritura de avisos de Calendario (wire v23 provisional)
+## Escritura de avisos de Calendario (wire v24)
 
 `calendar.alertsSave { alerts, expectedRevision }` guarda el documento tipado de
 avisos con CAS local y devuelve `CalendarConfigView`. El wire exige todos sus
 campos (incluidos días/modo de cada banda y los tres canales); los defaults de
 compatibilidad solo se admiten al leer el documento antiguo del disco. El anfitrión exige
 `AccessView.calendar`, cuenta verificada y no bloqueada antes de acceder al disco.
-No hay rutas, argumentos de programas ni peticiones a servicios. La versión
-final se confirma al aprobar el PR.
+No hay rutas, argumentos de programas ni peticiones a servicios. La versión v24 sigue al buzón del residente (v23).
 
 La revisión de 64 hex minúsculas identifica los bytes observados, incluido el
 caso de documento ausente. Sin cambios, conserva la revisión y no escribe ni

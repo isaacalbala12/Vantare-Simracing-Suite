@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {
+  SimulatorChoices,
+  StyleChoices,
+} from "../src/renderer/ui/onboarding/Choices";
 import {
   type FrameProps,
   OnboardingFrame,
@@ -87,4 +92,65 @@ it("shows complete assistant text with reduced motion and hides the finished pri
     { key: "Enter" },
   );
   expect(p.next).not.toHaveBeenCalled();
+});
+
+function Harness() {
+  const [selected, setSelected] = useState<[boolean, boolean]>([true, false]);
+  return (
+    <SimulatorChoices
+      selected={selected}
+      found={[true, false]}
+      toggle={(id) =>
+        setSelected(
+          (previous) =>
+            previous.map((value, index) => (index === id ? !value : value)) as [
+              boolean,
+              boolean,
+            ],
+        )
+      }
+    />
+  );
+}
+
+it("lets the user select an undetected simulator without replacing the detected one", async () => {
+  render(<Harness />);
+  const lmu = screen.getByRole("button", { name: "Le Mans Ultimate" });
+  const acc = screen.getByRole("button", {
+    name: "Assetto Corsa Competizione",
+  });
+  expect(lmu.getAttribute("aria-pressed")).toBe("true");
+  expect(acc.getAttribute("aria-pressed")).toBe("false");
+  await userEvent.setup().click(acc);
+  expect(acc.getAttribute("aria-pressed")).toBe("true");
+  expect(lmu.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("NO ENCONTRADO")).toBeTruthy();
+});
+it("keeps independent style selections and blocks changes while saving", async () => {
+  const toggle = vi.fn();
+  const view = render(
+    <StyleChoices selected={[true, false, true, false]} toggle={toggle} />,
+  );
+  expect(
+    screen
+      .getByRole("button", { name: "Carreras online" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(
+    screen
+      .getByRole("button", { name: "Resistencia" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Streaming" }));
+  expect(toggle).toHaveBeenCalledExactlyOnceWith(3);
+  view.rerender(
+    <StyleChoices
+      selected={[true, false, true, false]}
+      disabled
+      toggle={toggle}
+    />,
+  );
+  await user.click(screen.getByRole("button", { name: "Ligas" }));
+  expect(toggle).toHaveBeenCalledTimes(1);
 });

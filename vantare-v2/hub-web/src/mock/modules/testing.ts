@@ -36,7 +36,10 @@ export function create(context: MockContext): MockHandler {
     // Reproduce GPUI's cached QA participation with the service subsequently offline.
     // The initial refresh still passes the same rights/connection checks as every request.
     if (
-      ["testing-tester-questionnaires-reference", "testing-tester-community-reference"].includes(sceneName) &&
+      [
+        "testing-tester-questionnaires-reference",
+        "testing-tester-community-reference",
+      ].includes(sceneName) &&
       result.kind === "response" &&
       result.result.method === "testing.refresh"
     ) {

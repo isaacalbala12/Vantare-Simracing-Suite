@@ -11,9 +11,14 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createMockHost } from "../src/mock/host";
 import { HostProvider } from "../src/renderer/app/Host";
+import {
+  SectionChromeProvider,
+  SectionTabsSlot,
+} from "../src/renderer/app/SectionChrome";
 import { testingCommunityText as text } from "../src/renderer/i18n/testing-community";
 import { testingTriageText as triageText } from "../src/renderer/i18n/testing-triage";
 import { TestingCommunity } from "../src/renderer/screens/testing/Community";
+import TestingEntry from "../src/renderer/screens/testing/entry";
 import { testingText } from "../src/renderer/screens/testing/es";
 import {
   ReportsProvider,
@@ -88,6 +93,12 @@ it("updates the community list after a local mock Triage send without retaining 
   fireEvent.click(screen.getByRole("checkbox", { name: triageText.consent }));
   fireEvent.click(screen.getByRole("button", { name: triageText.prepare }));
   await screen.findByRole("region", { name: triageText.preview });
+  expect(
+    screen
+      .getByRole("button", { name: triageText.send })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+  fireEvent.click(screen.getByRole("checkbox", { name: triageText.consent }));
   fireEvent.click(screen.getByRole("button", { name: triageText.send }));
   await screen.findByText("[contenido retirado por privacidad] · Recibida");
   expect(hook.result.current.participationLoaded).toBe(true);
@@ -143,4 +154,58 @@ it("normalizes the closed visual scene before checking tester rights", () => {
       },
     });
   }
+});
+
+it("shares the local editor across Community and Reports while keeping Diagnostics independent of the tab", async () => {
+  window.history.replaceState(null, "", "/?escena=testing-tester-community");
+  render(
+    <QueryClientProvider client={cache}>
+      <HostProvider>
+        <ToastProvider>
+          <ReportsProvider>
+            <SectionChromeProvider>
+              <SectionTabsSlot />
+              <TestingEntry />
+            </SectionChromeProvider>
+          </ReportsProvider>
+        </ToastProvider>
+      </HostProvider>
+    </QueryClientProvider>,
+  );
+  await screen.findByRole("tab", { name: "Comunidad" });
+  fireEvent.click(screen.getByRole("tab", { name: "Comunidad" }));
+  fireEvent.change(
+    screen.getByRole("textbox", { name: triageText.localBody }),
+    { target: { value: "Nota privada compartida" } },
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Informes" }));
+  expect(
+    (
+      screen.getByRole("textbox", {
+        name: triageText.localBody,
+      }) as HTMLTextAreaElement
+    ).value,
+  ).toBe("Nota privada compartida");
+  fireEvent.click(screen.getByRole("tab", { name: "Resumen" }));
+  expect(
+    screen.getByRole("heading", { name: "Tu experiencia cuenta" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: "Comunidad" }));
+  fireEvent.click(screen.getByRole("button", { name: "Diagnóstico local" }));
+  expect(
+    screen.getByRole("heading", { name: "Informe de diagnóstico" }),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("tab", { name: "Comunidad" })
+      .getAttribute("aria-selected"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Diagnóstico local" }));
+  expect(
+    (
+      screen.getByRole("textbox", {
+        name: triageText.localBody,
+      }) as HTMLTextAreaElement
+    ).value,
+  ).toBe("Nota privada compartida");
 });

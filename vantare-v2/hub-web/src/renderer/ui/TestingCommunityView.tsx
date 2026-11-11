@@ -2,11 +2,7 @@ import type { ReactNode } from "react";
 import type { TestingView } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { testingCommunityText as text } from "../i18n/testing-community";
-import {
-  TestingCard,
-  TestingRailLayout,
-  TestingRailSection,
-} from "./TestingLayout";
+import { TestingCard } from "./TestingLayout";
 import { TrackedCaps } from "./TrackedCaps";
 import "./testing-community.css";
 
@@ -39,27 +35,6 @@ export function TestingCommunityView({
           <p className="v-testing-community-empty">{text.empty}</p>
         )}
       </TestingCard>
-    </div>
-  );
-}
-export function TestingCommunityRail({ count }: { count: number }) {
-  // GPUI uses the loaded contribution count in both captions.
-  return (
-    <div className="v-testing-community-rail">
-      <TestingRailLayout>
-        <TestingRailSection title={text.participation} icon="pulse">
-          <div className="v-testing-community-counts">
-            <p>{`${count} ${text.count}`}</p>
-            <p>{`${count} ${text.receipts}`}</p>
-          </div>
-        </TestingRailSection>
-        <TestingRailSection title={text.badges}>
-          <p>{text.badgesHelp}</p>
-        </TestingRailSection>
-        <TestingRailSection title={text.week} icon="clock">
-          <p>{text.weekHelp}</p>
-        </TestingRailSection>
-      </TestingRailLayout>
     </div>
   );
 }

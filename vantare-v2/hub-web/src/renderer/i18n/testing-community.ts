@@ -3,13 +3,6 @@ export const testingCommunityText = {
   loaded: "Datos confirmados por el servicio",
   contributions: "Mis contribuciones",
   empty: "Sin contribuciones cargadas",
-  participation: "Tu participación",
-  count: "contribuciones cargadas (últimas 20)",
-  receipts: "recibos de informes en esta sesión",
-  badges: "Insignias",
-  badgesHelp: "La primera versión no asigna insignias ni niveles.",
-  week: "Esta semana",
-  weekHelp: "No hay estadísticas globales publicadas.",
   states: {
     received: "Recibida",
     reviewing: "En revisión",

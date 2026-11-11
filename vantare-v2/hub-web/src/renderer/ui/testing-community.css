@@ -24,19 +24,11 @@
   font-size: 14px;
   color: var(--text-3);
 }
-.v-testing-community-counts {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 .v-shell-main > [role="tabpanel"]:has(.v-testing-community),
 .v-testing:has(> .v-testing-community) {
   height: 100%;
 }
 @media (max-height: 819px) {
-  .v-testing-community-rail .v-rail-block:not(:first-child) {
-    display: none;
-  }
   .v-testing-community {
     gap: 10px;
   }

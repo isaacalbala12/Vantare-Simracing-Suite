@@ -46,7 +46,12 @@ export function createTestingMock(
       question: "¿Cómo funciona el Hub?",
       score: null,
     });
-  if (["testing-tester-questionnaires-reference", "testing-tester-community-reference"].includes(scene)) {
+  if (
+    [
+      "testing-tester-questionnaires-reference",
+      "testing-tester-community-reference",
+    ].includes(scene)
+  ) {
     participation.questionnaires = [
       {
         id: "15350000-0000-0000-0000-000000000001",

@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import {
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -62,6 +68,7 @@ export function CalendarSeriesView({
   runs = [],
   updated = 0,
   onBack,
+  onMissing = onBack,
   onSeries,
   canFollow = false,
   canLaunch = false,
@@ -85,6 +92,7 @@ export function CalendarSeriesView({
   runs?: readonly CalendarRun[];
   updated?: number;
   onBack: () => void;
+  onMissing?: () => void;
   onSeries: (id: string) => void;
   canFollow?: boolean;
   canLaunch?: boolean;
@@ -93,22 +101,48 @@ export function CalendarSeriesView({
   onDetail?: (id: string, at: number) => void;
   onSlot?: (id: string, at: number) => void;
 }) {
-  const series = schedule.series.find((s) => s.id === seriesId);
+  const series = useMemo(
+    () => schedule.series.find((s) => s.id === seriesId),
+    [schedule, seriesId],
+  );
+  const title = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    if (seriesId) title.current?.focus({ preventScroll: true });
+  }, [seriesId]);
+  const compact = useSyncExternalStore(
+    (notify) => {
+      window.addEventListener("resize", notify);
+      return () => window.removeEventListener("resize", notify);
+    },
+    () => window.innerWidth < 1400,
+  );
+  const from = Date.parse(schedule.validFrom),
+    until = Date.parse(schedule.validUntil),
+    today = civilDay(now, 0, utc);
+  const all = useMemo(
+    () => (series ? starts(schedule, series, from, until, limit) : []),
+    [schedule, series, from, until, limit],
+  );
+  const groups = useMemo(() => slotGroups(all, today, utc), [all, today, utc]);
+  const grid = useMemo(
+    () =>
+      weekDays(from, utc).map((day) => ({
+        day,
+        columns: hourColumns(day, utc),
+      })),
+    [from, utc],
+  );
   if (!series)
     return (
       <div className="v-calendar-serie-missing">
         <h2>{text.missing}</h2>
         <p>{text.missingHelp}</p>
-        <Button onClick={onBack}>{text.back}</Button>
+        <Button onClick={onMissing}>{text.back}</Button>
       </div>
     );
-  const from = Date.parse(schedule.validFrom),
-    until = Date.parse(schedule.validUntil),
-    isDaily = daily(series);
-  const upcoming = starts(schedule, series, now, until, limit),
-    all = starts(schedule, series, from, until, limit);
-  const groups = slotGroups(all, now, utc);
-  const first = upcoming[0] ?? all[0],
+  const isDaily = daily(series),
+    upcoming = all.filter((at) => at >= now);
+  const first = upcoming[0],
     band = alerts.bands.find((b) => b.seriesId === seriesId);
   const every = series.recurrence.intervalMinutes,
     minutes =
@@ -172,7 +206,9 @@ export function CalendarSeriesView({
                     : text.weekly}
             </span>
           </div>
-          <h2>{series.name}</h2>
+          <h2 ref={title} tabIndex={-1}>
+            {series.name}
+          </h2>
           <div>
             <strong>{series.track.split(" (")[0]}</strong>
             <span>{series.track.split(" (")[1]?.replace(/\)$/u, "")}</span>
@@ -203,7 +239,14 @@ export function CalendarSeriesView({
               { value: "", label: text.change },
               ...schedule.series.map((s) => ({ value: s.id, label: s.name })),
             ]}
-            onChange={onSeries}
+            onChange={(id) => {
+              if (
+                id &&
+                id !== seriesId &&
+                schedule.series.some((series) => series.id === id)
+              )
+                onSeries(id);
+            }}
           />
           <Button
             disabled={!canFollow || !onFollow}
@@ -232,13 +275,22 @@ export function CalendarSeriesView({
           {isDaily ? (
             <>
               <div className="v-calendar-serie-minutes">
-                <span>{text.minutes}</span>
+                <span>
+                  {minutes.length ? text.minutes : text.everyMinutes(every)}
+                </span>
                 {minutes.map((m) => (
                   <b key={m}>{`:${String(m).padStart(2, "0")}`}</b>
                 ))}
-                <span>{text.everyHour}</span>
+                {minutes.length > 0 && <span>{text.everyHour}</span>}
               </div>
-              <div className="v-calendar-serie-map">
+              <div
+                className="v-calendar-serie-map"
+                role="img"
+                aria-label={text.mapSummary(
+                  series.name,
+                  utc ? "UTC" : zoneLabel(now, true),
+                )}
+              >
                 <div className="v-calendar-serie-map-row">
                   <span />
                   {hours.map((hour) => (
@@ -247,7 +299,7 @@ export function CalendarSeriesView({
                     </small>
                   ))}
                 </div>
-                {weekDays(from, utc).map((day) => (
+                {grid.map(({ day, columns }) => (
                   <div
                     key={day}
                     className="v-calendar-serie-map-row"
@@ -263,7 +315,7 @@ export function CalendarSeriesView({
                         className="v-calendar-serie-map-hour"
                         key={`${day}-${hour}`}
                       >
-                        {hourColumns(day, utc)[hour].map((cell) => (
+                        {columns[hour].map((cell) => (
                           <div
                             key={cell.from}
                             className="v-calendar-serie-map-cell"
@@ -299,7 +351,7 @@ export function CalendarSeriesView({
               </div>
               <Heading title={text.next} />
               <div className="v-calendar-serie-chips">
-                {upcoming.slice(0, 12).map((at) => (
+                {upcoming.slice(0, compact ? 9 : 12).map((at) => (
                   <Departure
                     key={at}
                     next={at === first}

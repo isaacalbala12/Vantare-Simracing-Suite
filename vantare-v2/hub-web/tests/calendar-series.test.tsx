@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import { CalendarSeriesView } from "../src/renderer/ui/CalendarSeriesView";
@@ -9,10 +12,15 @@ if (!series) throw new Error("fixture must include a daily series");
 const seriesId = series.id;
 afterEach(cleanup);
 const from = Date.parse(fixture.validFrom);
-function view(id = seriesId, enabled = true) {
+function view(
+  id = seriesId,
+  enabled = true,
+  changes: Partial<ComponentProps<typeof CalendarSeriesView>> = {},
+) {
   const onBack = vi.fn(),
     onFollow = vi.fn(),
-    onDetail = vi.fn();
+    onDetail = vi.fn(),
+    onSeries = vi.fn();
   const result = render(
     <CalendarSeriesView
       schedule={fixture}
@@ -35,14 +43,15 @@ function view(id = seriesId, enabled = true) {
       backLabel="Próximas"
       alertControls={<span>Band controls</span>}
       onBack={onBack}
-      onSeries={() => {}}
+      onSeries={onSeries}
       onFollow={onFollow}
       onLaunch={() => {}}
       onDetail={enabled ? onDetail : undefined}
       onSlot={enabled ? () => {} : undefined}
+      {...changes}
     />,
   );
-  return { onBack, onFollow, onDetail, ...result };
+  return { onBack, onFollow, onDetail, onSeries, ...result };
 }
 it("keeps navigation, favorites and selected departures as explicit callbacks", () => {
   const v = view();
@@ -89,4 +98,78 @@ it("keeps unavailable actions disabled while departures remain readable informat
   if (departure) fireEvent.click(departure);
   expect(v.onFollow).not.toHaveBeenCalled();
   expect(v.onDetail).not.toHaveBeenCalled();
+});
+
+it.each([45, 90])(
+  "describes non-hour-dividing interval %i without empty minute labels",
+  (every) => {
+    const schedule = {
+      ...fixture,
+      series: [
+        {
+          ...series,
+          recurrence: { ...series.recurrence, intervalMinutes: every },
+        },
+      ],
+    };
+    view(seriesId, true, { schedule });
+    expect(
+      screen.getByText(`Sale cada ${every} min, todo el día.`),
+    ).toBeTruthy();
+    expect(screen.queryByText("Sale a los minutos")).toBeNull();
+  },
+);
+it("limits compact departures to nine and provides a focused title and map alternative", () => {
+  const old = window.innerWidth;
+  Object.defineProperty(window, "innerWidth", {
+    value: 1440,
+    writable: true,
+    configurable: true,
+  });
+  const v = view();
+  expect(
+    v.container.querySelectorAll(".v-calendar-serie-chips button"),
+  ).toHaveLength(12);
+  expect(document.activeElement).toBe(
+    screen.getByRole("heading", { name: series.name }),
+  );
+  expect(
+    screen.getByRole("img", { name: /salidas durante la semana publicada/u }),
+  ).toBeTruthy();
+  window.innerWidth = 1399;
+  fireEvent(window, new Event("resize"));
+  expect(
+    v.container.querySelectorAll(".v-calendar-serie-chips button"),
+  ).toHaveLength(9);
+  window.innerWidth = old;
+});
+it("keeps weekly departures grouped and never labels an old slot as next", () => {
+  const weekly = fixture.series.find(
+    (s) => s.recurrence.kind === "weekly-slots",
+  );
+  if (!weekly) throw new Error("weekly fixture missing");
+  const v = view(weekly.id, true, { now: Date.parse(fixture.validUntil) - 1 });
+  expect(
+    screen.getByRole("heading", { name: "Todas sus tandas" }),
+  ).toBeTruthy();
+  expect(
+    v.container.querySelectorAll(".v-calendar-serie-fixed-day").length,
+  ).toBeGreaterThan(0);
+  expect(
+    v.container.querySelector(".v-calendar-serie-fixed [data-next]"),
+  ).toBeNull();
+  expect(
+    v.container.querySelector(".v-calendar-serie-fixed button"),
+  ).toBeNull();
+});
+it("ignores the empty placeholder and the selected series in the real select", async () => {
+  const user = userEvent.setup(),
+    v = view();
+  for (const name of ["Cambiar serie", series.name]) {
+    const select = screen.getByRole("combobox", { name: "Cambiar serie" });
+    if (select.getAttribute("aria-expanded") !== "true")
+      await user.click(select);
+    await user.click(await screen.findByRole("option", { name }));
+  }
+  expect(v.onSeries).not.toHaveBeenCalled();
 });

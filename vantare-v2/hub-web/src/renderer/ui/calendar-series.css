@@ -485,3 +485,7 @@
 .v-calendar-serie-phases > div:nth-child(2) {
   min-width: 74px;
 }
+
+.v-calendar-serie-name h2:focus {
+  outline: none;
+}

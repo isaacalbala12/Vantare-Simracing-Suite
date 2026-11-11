@@ -96,7 +96,12 @@ export function CalendarWeekView({
       >
         <Icon name={view.following.includes(s.id) ? "star" : "star-line"} />
       </Button>
-      <button type="button" disabled={!onSerie} onClick={() => onSerie?.(s.id)}>
+      <button
+        type="button"
+        disabled={!onSerie}
+        data-calendar-series={s.id}
+        onClick={() => onSerie?.(s.id)}
+      >
         <strong>{s.name}</strong>
         <p>
           <b data-tier={s.tier}>

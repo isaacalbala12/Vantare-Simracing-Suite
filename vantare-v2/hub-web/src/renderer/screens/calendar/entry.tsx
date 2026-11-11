@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   calendarAlertLeads,
   calendarBandModes,
@@ -63,6 +69,36 @@ export default function CalendarEntry() {
     weekState.current = value;
   }, []);
   const [selectedSerie, setSelectedSerie] = useState<string>();
+  const origin = useRef<
+    { id: string; element: HTMLElement | null } | undefined
+  >(undefined);
+  const openSerie = (id: string) => {
+    if (!selectedSerie)
+      origin.current = {
+        id,
+        element:
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement.dataset.calendarSeries === id
+            ? document.activeElement
+            : null,
+      };
+    setSelectedSerie(id);
+  };
+  useLayoutEffect(() => {
+    if (selectedSerie || !origin.current) return;
+    const previous = origin.current;
+    origin.current = undefined;
+    const target = previous.element?.isConnected
+      ? previous.element
+      : [
+          ...document.querySelectorAll<HTMLElement>("[data-calendar-series]"),
+        ].find((node) => node.dataset.calendarSeries === previous.id);
+    (
+      target ??
+      document.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    )?.focus({ preventScroll: true });
+  }, [selectedSerie]);
+
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
@@ -184,7 +220,7 @@ export default function CalendarEntry() {
             limit={calendarStartsLimit}
             favorite={view.following.includes(selectedSerie)}
             profile={launcher.profile?.name}
-            updated={view.updated}
+            updated={Math.max(view.updated, view.checked)}
             runs={runs}
             rotation={(history.view?.weeks ?? []).flatMap((week) =>
               week.tracks
@@ -196,17 +232,17 @@ export default function CalendarEntry() {
             )}
             backLabel={
               activeTab === "events"
-                ? text.eventsTab(
-                    schedule.series.filter(
-                      (series) => series.recurrence.kind !== "interval",
-                    ).length,
-                  )
+                ? text.eventsTab(0)
                 : activeTab === "calendar"
                   ? text.calendar
                   : text.upcoming
             }
             onBack={() => setSelectedSerie(undefined)}
-            onSeries={setSelectedSerie}
+            onMissing={() => {
+              setActiveTab("upcoming");
+              setSelectedSerie(undefined);
+            }}
+            onSeries={openSerie}
             canFollow={preferences.canFollow}
             canLaunch={launcher.canLaunch}
             onFollow={(followed) =>
@@ -326,7 +362,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
-                onSerie={setSelectedSerie}
+                onSerie={openSerie}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -372,7 +408,7 @@ export default function CalendarEntry() {
                 onViewStateChange={rememberWeek}
                 onSpan={setCalendarSpan}
                 spans={["day", "week", "month"]}
-                onSerie={setSelectedSerie}
+                onSerie={openSerie}
                 view={{ ...view, official: schedule ?? view.official }}
                 alerts={alerts}
                 now={state.now}
@@ -386,7 +422,7 @@ export default function CalendarEntry() {
               <CalendarLiveView
                 initialFilters={liveFilters.current}
                 onFiltersChange={rememberLive}
-                onSerie={setSelectedSerie}
+                onSerie={openSerie}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}

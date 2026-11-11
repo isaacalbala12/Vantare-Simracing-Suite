@@ -148,6 +148,7 @@ export function CalendarLiveView({
           type="button"
           className="v-calendar-live-series"
           disabled={!onSerie}
+          data-calendar-series={s.id}
           onClick={() => onSerie?.(s.id)}
         >
           <strong>{s.name}</strong>

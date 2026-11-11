@@ -27,6 +27,16 @@ export function create(context: MockContext): MockHandler {
     verified: !gateScene && context.core.access.verified,
     blocked: context.core.access.blocked,
   };
+  // The frozen onboarding bank shows a guest; core QA access stays independent.
+  if (context.sceneName.startsWith("onboarding-")) {
+    current = {
+      ...current,
+      gate: "none",
+      session: "signedOut",
+      verified: false,
+      plan: { kind: "unverified" },
+    };
+  }
   if (
     context.sceneName === "cuenta-base" ||
     context.sceneName === "cuenta-sesion" ||

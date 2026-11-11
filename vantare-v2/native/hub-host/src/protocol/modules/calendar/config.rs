@@ -322,6 +322,13 @@ impl State {
             return Ok(self.config_view.clone());
         }
         doc.value[field] = value;
+        self.write_config_document(name, doc)
+    }
+    fn write_config_document(
+        &mut self,
+        name: &str,
+        doc: Document,
+    ) -> Result<CalendarConfigView, HostError> {
         let bytes = serde_json::to_vec_pretty(&doc.value).map_err(|_| HostError::Rejected)?;
         let saved = Document::parse(name, Some(bytes.clone()))?;
         let mut next = self.config_view.clone();
@@ -429,3 +436,6 @@ impl State {
 #[cfg(test)]
 #[path = "config_tests.rs"]
 mod tests;
+
+#[path = "alerts_save.rs"]
+mod alerts_save;

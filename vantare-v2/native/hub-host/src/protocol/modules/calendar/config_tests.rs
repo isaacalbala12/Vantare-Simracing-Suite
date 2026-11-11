@@ -379,3 +379,91 @@ fn symlink_documents_are_protected_and_the_target_is_untouched() {
     );
     assert_eq!(std::fs::read(target).unwrap(), br#"{"utc":false}"#);
 }
+
+#[test]
+fn alerts_save_keeps_noops_absent_and_uses_the_same_observed_cas() {
+    let root = Root::new();
+    let mut state = root.state();
+    let initial = state.config();
+    let revision = initial.alerts_revision.unwrap();
+    assert_eq!(state.alerts_save_at(&CalendarAlerts::default(), &revision, 0).unwrap().alerts_revision, Some(revision.clone()));
+    assert!(!root.0.join("calendar-alerts.json").exists());
+    let mut alerts = CalendarAlerts::default();
+    alerts.channels.sound = true;
+    let saved = state.alerts_save_at(&alerts, &revision, 0).unwrap();
+    assert_eq!(saved.alerts, alerts);
+    assert_eq!(serde_json::from_slice::<CalendarAlerts>(&root.bytes("calendar-alerts.json")).unwrap(), alerts);
+    let bytes = root.bytes("calendar-alerts.json");
+    alerts.lead_min = 15;
+    assert!(matches!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::CalendarConflict { .. })));
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+}
+#[test]
+fn alerts_save_isolates_protected_documents_and_never_enables_auto_launch() {
+    let root = Root::new();
+    root.seed("calendar-prefs.json", b"broken");
+    root.seed("calendar-following.json", b"{}");
+    let mut state = root.state();
+    let revision = state.config().alerts_revision.unwrap();
+    let mut alerts = CalendarAlerts::default();
+    alerts.auto_launch = true;
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
+    assert!(!root.0.join("calendar-alerts.json").exists());
+    alerts.auto_launch = false;
+    alerts.lead_min = 15;
+    state.alerts_save_at(&alerts, &revision, 0).unwrap();
+    assert_eq!(root.bytes("calendar-prefs.json"), b"broken");
+    assert_eq!(root.bytes("calendar-following.json"), b"{}");
+    root.seed("calendar-alerts.json", br#"{"autoLaunch":true}"#);
+    let config = state.config();
+    let revision = config.alerts_revision.unwrap();
+    alerts = config.alerts;
+    alerts.notify_week = false;
+    state.alerts_save_at(&alerts, &revision, 0).unwrap();
+    let revision = state.config().alerts_revision.unwrap();
+    alerts.auto_launch = false;
+    assert!(!state.alerts_save_at(&alerts, &revision, 0).unwrap().alerts.auto_launch);
+    root.seed("calendar-alerts.json", br#"{"version":1}"#);
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Protected));
+}
+#[test]
+fn alerts_save_requires_published_series_and_an_exact_future_departure() {
+    let root = Root::new();
+    let mut state = root.state();
+    let revision = state.config().alerts_revision.unwrap();
+    let mut alerts = CalendarAlerts::default();
+    alerts.bands.push(CalendarBand { series_id: "missing".into(), from: 1200, to: 1380, days: CalendarDays::All, mode: CalendarBandMode::Each });
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::CalendarScheduleUnavailable));
+    let (id, now) = publication(&mut state);
+    assert_eq!(state.alerts_save_at(&alerts, &revision, now), Err(HostError::Rejected));
+    alerts.bands[0].series_id.clone_from(&id);
+    let saved = state.alerts_save_at(&alerts, &revision, now).unwrap();
+    let revision = saved.alerts_revision.unwrap();
+    let at = (now / 1000 / 900 + 1) * 900;
+    alerts.slots.push(CalendarSlot { series_id: id, at });
+    let saved = state.alerts_save_at(&alerts, &revision, now).unwrap();
+    let revision = saved.alerts_revision.unwrap();
+    alerts.slots[0].at += 1;
+    assert_eq!(state.alerts_save_at(&alerts, &revision, now), Err(HostError::Rejected));
+    alerts.slots[0].at = now / 1000 - 1;
+    assert_eq!(state.alerts_save_at(&alerts, &revision, now), Err(HostError::Rejected));
+    state.view.official = None;
+    state.view.fallback = None;
+    alerts.bands.clear();
+    alerts.slots.clear();
+    state.alerts_save_at(&alerts, &revision, now).unwrap();
+}
+#[test]
+fn alerts_save_reports_busy_and_does_not_lock_a_noop() {
+    let root = Root::new();
+    let mut state = root.state();
+    let revision = state.config().alerts_revision.unwrap();
+    let lock = OpenOptions::new().write(true).create(true).truncate(false).open(root.0.join("calendar-alerts.json.lock")).unwrap();
+    lock.try_lock().unwrap();
+    let mut alerts = CalendarAlerts::default();
+    state.alerts_save_at(&alerts, &revision, 0).unwrap();
+    alerts.lead_min = 15;
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Busy));
+    assert!(!root.0.join("calendar-alerts.json").exists());
+    drop(lock);
+}

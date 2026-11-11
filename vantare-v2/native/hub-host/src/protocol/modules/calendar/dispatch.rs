@@ -4,6 +4,9 @@ fn local(
     request: &Request,
 ) -> Option<Result<Reply, HostError>> {
     match request {
+        Request::CalendarAlertsSave { alerts, expected_revision } => Some(
+            state.alerts_save(alerts, expected_revision).map(|value| Reply::CalendarAlertsSave { value: Box::new(value) })
+        ),
         Request::CalendarHistoryLoad {} => Some(Ok(Reply::CalendarHistoryLoad {
             value: Box::new(state.history()),
         })),

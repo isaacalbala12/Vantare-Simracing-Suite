@@ -256,6 +256,15 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
 }
 
 pub(crate) fn corpus() -> serde_json::Value {
-    let (host, ui) = samples();
+    let (mut host, mut ui) = samples();
+    let config = sample_config();
+    host.push(sample_response(Reply::CalendarAlertsSave { value: Box::new(config.clone()) }));
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::CalendarAlertsSave {
+            alerts: Box::new(config.alerts),
+            expected_revision: config.alerts_revision.expect("sample alerts revision"),
+        },
+    });
     serde_json::json!({"host":host,"ui":ui})
 }

@@ -4,6 +4,8 @@ mod agenda;
 mod feed;
 #[path = "history.rs"]
 mod history;
+#[path = "ics.rs"]
+pub mod ics;
 pub use history::{
     CalendarHistoryTrack, CalendarHistoryView, CalendarHistoryWeek, HISTORY_WEEKS_LIMIT,
 };

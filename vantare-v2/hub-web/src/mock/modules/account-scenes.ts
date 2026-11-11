@@ -36,7 +36,7 @@ export function accountScene(name: string, value: AccountView): AccountView {
         session: "signedIn",
         canReturnAfterLogout: true,
         error:
-          "No se pudo cerrar la sesión: el estado debe comprobarse de nuevo.",
+          "No se pudo confirmar el cierre: el estado debe comprobarse de nuevo.",
       };
     case "acceso-error":
       return {

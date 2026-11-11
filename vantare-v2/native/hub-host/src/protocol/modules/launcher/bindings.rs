@@ -1,3 +1,4 @@
+use crate::launcher::LauncherView;
 use crate::launcher::apps::{
     AppDraft, AppEditor, CatalogApp, CatalogView, ExecutableSelection, PickedApp,
 };

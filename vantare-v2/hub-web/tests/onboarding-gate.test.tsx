@@ -12,6 +12,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import coreFixture from "../fixtures/core-offline.json";
 import type { OnboardingView } from "../src/contract/generated/contract";
 import { OnboardingGate } from "../src/renderer/screens/onboarding/OnboardingGate";
 
@@ -66,13 +67,14 @@ beforeEach(() => {
   fake.navigate.mockClear();
 });
 afterEach(cleanup);
-function mount(value = view) {
+function mount(value = view, access = coreFixture.access) {
   fake.request.mockResolvedValue({ method: "onboarding.get", value });
   const cache = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: Infinity, staleTime: Infinity },
     },
   });
+  cache.setQueryData(["core"], { ...coreFixture, access });
   render(
     <QueryClientProvider client={cache}>
       <OnboardingGate>
@@ -107,4 +109,21 @@ it("latches an already completed onboarding instead of remounting on later inval
     expect(screen.queryByRole("button", { name: "Private" })).toBeNull(),
   );
   expect(screen.getByText("normal Hub")).toBeTruthy();
+});
+
+it("opens Studio only with verified, unblocked access", async () => {
+  mount(view, { ...coreFixture.access, verified: true, blocked: false });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Complete Studio" }),
+  );
+  await screen.findByText("normal Hub");
+  expect(fake.navigate).toHaveBeenCalledWith("studio");
+});
+it("keeps a verified but blocked session out of Studio", async () => {
+  mount(view, { ...coreFixture.access, verified: true, blocked: true });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Complete Studio" }),
+  );
+  await screen.findByText("normal Hub");
+  expect(fake.navigate).toHaveBeenCalledWith("home");
 });

@@ -185,10 +185,10 @@ impl Reader {
         let action = action.native();
         // Same dismissal rule as resident.rs: Cancel also dismisses Stop/Continue,
         // while closing decisions retain Leave/CloseStarted and dismiss as Leave.
-        if !current.actions.contains(&action)
-            && !(action == mailbox::Action::Cancel
-                && !current.actions.contains(&mailbox::Action::Leave))
-        {
+        let allowed = current.actions.contains(&action)
+            || (action == mailbox::Action::Cancel
+                && !current.actions.contains(&mailbox::Action::Leave));
+        if !allowed {
             return Err(HostError::Denied);
         }
         let bytes = serde_json::to_vec(&mailbox::Request::Answer {

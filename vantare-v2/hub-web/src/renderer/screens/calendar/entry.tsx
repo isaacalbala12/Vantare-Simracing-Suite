@@ -180,6 +180,28 @@ export default function CalendarEntry() {
               void preferences.follow(selectedSerie, followed)
             }
             onLaunch={() => void launcher.launch()}
+            notice={
+              <>
+                {(history.failure || history.view?.invalidCache) && (
+                  <div role="alert">
+                    <p>{text.corrupted}</p>
+                    <Button onClick={history.reload}>{text.retry}</Button>
+                  </div>
+                )}
+                {preferences.failure && (
+                  <div role="alert">
+                    <p>{text.preferencesFailed}</p>
+                    <Button onClick={() => void preferences.retry()}>
+                      {text.retry}
+                    </Button>
+                    <Button onClick={preferences.discard}>
+                      {text.discardChange}
+                    </Button>
+                  </div>
+                )}
+                {launcher.failure && <p role="alert">{text.launchFailed}</p>}
+              </>
+            }
             alertControls={
               <CalendarBandControls
                 seriesId={selectedSerie}

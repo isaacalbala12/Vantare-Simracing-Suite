@@ -57,6 +57,7 @@ export function CalendarSeriesView({
   profile,
   backLabel,
   alertControls,
+  notice,
   rotation = [],
   runs = [],
   updated = 0,
@@ -79,6 +80,7 @@ export function CalendarSeriesView({
   profile?: string;
   backLabel: string;
   alertControls: ReactNode;
+  notice?: ReactNode;
   rotation?: readonly { from: number; track: string }[];
   runs?: readonly CalendarRun[];
   updated?: number;
@@ -134,6 +136,7 @@ export function CalendarSeriesView({
   ];
   return (
     <div className="v-calendar v-calendar-serie">
+      {notice}
       <header className="v-calendar-serie-header">
         <Button
           className="v-calendar-serie-back"

@@ -84,14 +84,18 @@ export function PerformanceArt({
   level: PerformanceLevel;
 }) {
   const selected = performanceLevels.indexOf(level);
-  const angle = ((-162 + selected * 36) * Math.PI) / 180;
+  const segmentAngle = 180 / performanceLevels.length;
+  const angle =
+    ((-180 + segmentAngle / 2 + selected * segmentAngle) * Math.PI) / 180;
   return (
     <div className="v-ob-performance-art">
       <svg viewBox="0 0 560 330" className="v-ob-gauge" aria-hidden="true">
         {performanceLevels.map((kind, index) => {
           const points = Array.from({ length: 25 }, (_, p) => {
             const angle =
-              Math.PI + ((index + (p / 24) * 0.9 + 0.05) * Math.PI) / 5;
+              Math.PI +
+              ((index + (p / 24) * 0.9 + 0.05) * Math.PI) /
+                performanceLevels.length;
             return `${280 + 230 * Math.cos(angle)},${290 + 230 * Math.sin(angle)}`;
           }).join(" ");
           return (

@@ -5,7 +5,11 @@ pub(crate) fn typescript() -> String {
     declare::<crate::calendar::CalendarHistoryTrack>(&mut text);
     declare::<crate::calendar::CalendarHistoryWeek>(&mut text);
     declare::<crate::calendar::CalendarHistoryView>(&mut text);
-    constants!(&mut text, "calendarHistoryWeeksLimit", crate::calendar::HISTORY_WEEKS_LIMIT);
+    constants!(
+        &mut text,
+        "calendarHistoryWeeksLimit",
+        crate::calendar::HISTORY_WEEKS_LIMIT
+    );
     declare::<crate::calendar::CalendarDays>(&mut text);
     declare::<crate::calendar::CalendarBandMode>(&mut text);
     declare::<crate::calendar::CalendarBand>(&mut text);
@@ -138,7 +142,21 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
         },
     };
     let host = vec![
-        sample_response(Reply::CalendarHistoryLoad { value: Box::new(crate::calendar::CalendarHistoryView { weeks: vec![crate::calendar::CalendarHistoryWeek { from: 1791244800, until: 1791849600, seen_at: 1791187200, tracks: vec![crate::calendar::CalendarHistoryTrack { series_id: "weekly-wec-weekly".into(), name: "WEC Weekly".into(), track: "Sebring".into() }] }], invalid_cache: false }) }),
+        sample_response(Reply::CalendarHistoryLoad {
+            value: Box::new(crate::calendar::CalendarHistoryView {
+                weeks: vec![crate::calendar::CalendarHistoryWeek {
+                    from: 1791244800,
+                    until: 1791849600,
+                    seen_at: 1791187200,
+                    tracks: vec![crate::calendar::CalendarHistoryTrack {
+                        series_id: "weekly-wec-weekly".into(),
+                        name: "WEC Weekly".into(),
+                        track: "Sebring".into(),
+                    }],
+                }],
+                invalid_cache: false,
+            }),
+        }),
         HostToUi::Failure {
             id: 1,
             error: HostError::CalendarScheduleUnavailable,
@@ -187,7 +205,10 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
         }),
     ];
     let ui = vec![
-        UiToHost::Request { id: 1, request: Request::CalendarHistoryLoad {} },
+        UiToHost::Request {
+            id: 1,
+            request: Request::CalendarHistoryLoad {},
+        },
         UiToHost::Request {
             id: 1,
             request: Request::CalendarConfigLoad {},

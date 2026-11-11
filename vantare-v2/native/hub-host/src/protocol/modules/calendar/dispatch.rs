@@ -4,7 +4,9 @@ fn local(
     request: &Request,
 ) -> Option<Result<Reply, HostError>> {
     match request {
-        Request::CalendarHistoryLoad {} => Some(Ok(Reply::CalendarHistoryLoad { value: Box::new(state.history()) })),
+        Request::CalendarHistoryLoad {} => Some(Ok(Reply::CalendarHistoryLoad {
+            value: Box::new(state.history()),
+        })),
         Request::CalendarConfigLoad {} => Some(Ok(Reply::CalendarConfigLoad {
             value: Box::new(state.config()),
         })),

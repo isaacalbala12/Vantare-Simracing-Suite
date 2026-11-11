@@ -39,7 +39,9 @@ pub enum Request {
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
     #[serde(rename = "calendar.historyLoad")]
-    CalendarHistoryLoad { value: Box<crate::calendar::CalendarHistoryView> },
+    CalendarHistoryLoad {
+        value: Box<crate::calendar::CalendarHistoryView>,
+    },
     #[serde(rename = "calendar.configLoad")]
     CalendarConfigLoad {
         value: Box<crate::calendar::CalendarConfigView>,

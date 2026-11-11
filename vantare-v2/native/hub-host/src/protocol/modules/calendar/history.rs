@@ -55,7 +55,9 @@ fn parse(bytes: &[u8]) -> Option<CalendarHistoryView> {
     let mut dates = HashSet::new();
     for week in &history.weeks {
         let stamps = [week.from, week.until, week.seen_at];
-        if stamps.iter().any(|stamp| !(0..=TIMESTAMP_LIMIT).contains(stamp))
+        if stamps
+            .iter()
+            .any(|stamp| !(0..=TIMESTAMP_LIMIT).contains(stamp))
             || week.until <= week.from
             || !dates.insert(week.from)
             || week.tracks.len() > SERIES_LIMIT

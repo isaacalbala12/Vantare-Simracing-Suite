@@ -1,6 +1,8 @@
 #[path = "history.rs"]
 mod history;
-pub use history::{CalendarHistoryTrack, CalendarHistoryWeek, CalendarHistoryView, HISTORY_WEEKS_LIMIT};
+pub use history::{
+    CalendarHistoryTrack, CalendarHistoryView, CalendarHistoryWeek, HISTORY_WEEKS_LIMIT,
+};
 #[path = "config.rs"]
 pub mod config;
 pub use config::{

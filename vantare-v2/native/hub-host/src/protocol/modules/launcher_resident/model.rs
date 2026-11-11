@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Instant};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
-use vantare_ipc::{files, launcher as mailbox};
-use vantare_launcher::Document;
+use vantare_ipc::launcher as mailbox;
+#[path = "document_cache.rs"]
+mod document_cache;
 
 pub const DECISION_ID_MAX: usize = 20;
 pub const DECISION_ID_PATTERN: &str = "^(0|[1-9][0-9]*)$";
@@ -149,6 +150,9 @@ pub struct State {
     path: PathBuf,
     last: Option<Instant>,
     observed: Option<ResidentView>,
+    document: document_cache::Cache,
+    #[cfg(test)]
+    status_reads: usize,
 }
 impl State {
     pub fn new(path: PathBuf) -> Self {
@@ -156,14 +160,21 @@ impl State {
             path,
             last: None,
             observed: None,
+            document: document_cache::Cache::default(),
+            #[cfg(test)]
+            status_reads: 0,
         }
     }
-    pub fn view(&self) -> ResidentView {
+    pub fn view(&mut self) -> ResidentView {
         if self.path.is_absolute() && !vantare_launcher::is_local_path(&self.path) {
             return ResidentView {
                 protected: true,
                 ..Default::default()
             };
+        }
+        #[cfg(test)]
+        {
+            self.status_reads += 1;
         }
         let status = mailbox::read_status(&self.path);
         let mut view = ResidentView {
@@ -176,29 +187,21 @@ impl State {
                 .and_then(question),
             ..Default::default()
         };
-        match files::read_optional(&self.path, files::MAX_DOCUMENT) {
-            Ok(None) => {}
-            Ok(Some(bytes)) => match Document::from_bytes(&bytes) {
-                Ok(document) => {
-                    view.registrations =
-                        crate::shortcuts::project(&document, status.as_ref()).profiles;
-                }
-                Err(_) => view.protected = true,
-            },
-            Err(_) => view.protected = true,
+        let (protected, mut registrations) = self.document.read(&self.path);
+        for registration in &mut registrations {
+            registration.state = crate::shortcuts::registration_state(
+                &registration.id,
+                &registration.hotkey,
+                status.as_ref(),
+            );
         }
-        // A large saved hotkey/name must never close the host frame/session.
-        let envelope = crate::protocol::HostToUi::Response {
-            id: u32::MAX,
-            result: crate::protocol::Reply::LauncherResidentGet {
-                value: view.clone(),
-            },
-        };
-        if !serde_json::to_vec(&envelope).is_ok_and(|bytes| bytes.len() <= crate::frame::LIMIT) {
-            view.protected = true;
-            view.registrations.clear();
-        }
+        view.protected = protected;
+        view.registrations = registrations;
         view
+    }
+    #[cfg(test)]
+    pub(crate) fn io_counts(&self) -> (usize, usize) {
+        (self.status_reads, self.document.reads)
     }
     pub fn observed(&mut self, now: Instant) -> ResidentView {
         let view = self.view();

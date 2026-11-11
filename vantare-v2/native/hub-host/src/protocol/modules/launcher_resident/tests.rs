@@ -1,4 +1,5 @@
 use super::*;
+use vantare_launcher::Document;
 fn status() -> mailbox::Status {
     mailbox::Status {
         version: mailbox::VERSION,
@@ -47,7 +48,7 @@ fn malformed_decision_actions_are_not_projected() {
 fn reads_missing_invalid_and_future_documents_without_creating_or_changing_them() {
     let root = crate::test_support::Root::new();
     let path = root.path.join("launcher.json");
-    let state = State::new(path.clone());
+    let mut state = State::new(path.clone());
     assert!(!state.view().protected);
     assert!(!path.exists());
     for bytes in [b"{".as_slice(), br#"{"version":999}"#.as_slice()] {
@@ -150,4 +151,100 @@ fn question_kinds_follow_only_the_existing_action_set() {
             expected
         );
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn oversized_projection_is_protected_and_never_exceeds_the_frame() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("launcher.json");
+    let mut document = Document::fresh_install();
+    document.profiles[0].hotkey = "q".repeat(2 * 1024 * 1024);
+    let bytes = serde_json::to_vec(&document).unwrap();
+    Document::from_bytes(&bytes).expect("valid legacy document, outside editor limits");
+    std::fs::write(&path, &bytes).unwrap();
+    let mut state = State::new(path.clone());
+    let value = state.view();
+    assert!(value.protected && value.registrations.is_empty());
+    let envelope = crate::protocol::HostToUi::Response {
+        id: u32::MAX,
+        result: crate::protocol::Reply::LauncherResidentGet { value },
+    };
+    assert!(serde_json::to_vec(&envelope).unwrap().len() < crate::frame::LIMIT);
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+}
+#[cfg(windows)]
+#[test]
+fn unc_and_device_paths_are_rejected_before_reading() {
+    for path in [
+        r"\\server\share\launcher.json",
+        r"\\?\UNC\server\share\launcher.json",
+        r"\\.\pipe\launcher.json",
+    ] {
+        let mut state = State::new(path.into());
+        assert!(state.view().protected);
+        assert_eq!(state.io_counts(), (0, 0));
+    }
+}
+#[cfg(windows)]
+#[test]
+fn unknown_future_oversized_and_future_dated_statuses_are_offline() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("launcher.json");
+    let mut document = Document::fresh_install();
+    document.profiles[0].hotkey = "ctrl+1".into();
+    std::fs::write(&path, serde_json::to_vec(&document).unwrap()).unwrap();
+    let mut unknown = serde_json::to_value(status()).unwrap();
+    unknown["decision"]["actions"] = serde_json::json!(["execute"]);
+    let mut future = status();
+    future.version += 1;
+    let mut dated = status();
+    dated.updated_ms = u64::MAX;
+    let mut huge = status();
+    huge.progress = "x".repeat(128 * 1024);
+    let mut state = State::new(path.clone());
+    for bytes in [
+        serde_json::to_vec(&unknown).unwrap(),
+        serde_json::to_vec(&future).unwrap(),
+        serde_json::to_vec(&dated).unwrap(),
+        serde_json::to_vec(&huge).unwrap(),
+    ] {
+        std::fs::write(mailbox::status_path(&path), bytes).unwrap();
+        let value = state.view();
+        assert!(!value.online && !value.running && !value.error && value.decision.is_none());
+        assert_eq!(
+            value.registrations[0].state,
+            crate::shortcuts::RegistrationState::Unconfirmed
+        );
+    }
+    assert_eq!(state.io_counts(), (4, 1));
+}
+#[cfg(windows)]
+#[test]
+fn document_projection_is_reused_until_timestamp_or_length_changes() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("launcher.json");
+    let mut document = Document::fresh_install();
+    document.profiles[0].hotkey = "ctrl+1".into();
+    std::fs::write(&path, serde_json::to_vec(&document).unwrap()).unwrap();
+    let mut state = State::new(path.clone());
+    let first = state.view();
+    let date = std::fs::metadata(&path).unwrap().modified().unwrap();
+    document.profiles[0].name = "Changed".into(); // same byte length as Creator
+    std::fs::write(&path, serde_json::to_vec(&document).unwrap()).unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_times(std::fs::FileTimes::new().set_modified(date))
+        .unwrap();
+    assert_eq!(state.view().registrations, first.registrations);
+    assert_eq!(state.io_counts(), (2, 1));
+    document.profiles[0].name = "New name with a different length".into();
+    std::fs::write(&path, serde_json::to_vec(&document).unwrap()).unwrap();
+    assert_eq!(
+        state.view().registrations[0].name,
+        document.profiles[0].name
+    );
+    assert_eq!(state.io_counts(), (3, 2));
 }

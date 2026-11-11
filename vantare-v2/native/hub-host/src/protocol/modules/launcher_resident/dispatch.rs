@@ -13,7 +13,11 @@ pub(super) fn dispatch(
         &HostToUi::Response {
             id,
             result: Reply::LauncherResidentGet {
-                value: session.launcher_resident_state.view(),
+                value: if session.current.live {
+                    crate::launcher_resident::ResidentView::default()
+                } else {
+                    session.launcher_resident_state.view()
+                },
             },
         },
     )

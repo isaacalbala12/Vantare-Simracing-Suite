@@ -35,13 +35,21 @@ fn state(
     profile: &vantare_launcher::Profile,
     status: Option<&launcher::Status>,
 ) -> RegistrationState {
+    registration_state(&profile.id, &profile.hotkey, status)
+}
+
+pub(crate) fn registration_state(
+    id: &str,
+    hotkey: &str,
+    status: Option<&launcher::Status>,
+) -> RegistrationState {
     let registration = status
         .filter(|status| launcher::is_fresh(status))
         .and_then(|status| {
             status
                 .profiles
                 .iter()
-                .find(|item| item.profile == profile.id && item.hotkey == profile.hotkey)
+                .find(|item| item.profile == id && item.hotkey == hotkey)
         });
     match registration {
         None => RegistrationState::Unconfirmed,

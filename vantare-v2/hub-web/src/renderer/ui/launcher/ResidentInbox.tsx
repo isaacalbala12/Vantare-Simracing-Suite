@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { ResidentView } from "../../../contract/generated/contract";
 import { residentText as t } from "../../i18n/launcher-resident";
 import { Button } from "../Button";
@@ -7,6 +7,7 @@ import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
 import "./resident.css";
 export function ResidentInbox({ view }: { view?: ResidentView }) {
+  const explanation = useId();
   const [dismissed, setDismissed] = useState<string>();
   const decision = view?.decision;
   useEffect(() => {
@@ -27,6 +28,7 @@ export function ResidentInbox({ view }: { view?: ResidentView }) {
         />
       )}
       <Dialog.Root
+        modal={false}
         open={open}
         onOpenChange={(value) => {
           if (!value) setDismissed(decision.id);
@@ -43,10 +45,13 @@ export function ResidentInbox({ view }: { view?: ResidentView }) {
               <Dialog.Description>
                 {t.question[decision.kind]}
               </Dialog.Description>
+              <p id={explanation}>{t.readOnly}</p>
               {decision.actions.map((action) => (
                 <Tooltip key={action.id} label={t.readOnly}>
                   <span>
-                    <Button disabled>{action.label}</Button>
+                    <Button disabled aria-describedby={explanation}>
+                      {action.label}
+                    </Button>
                   </span>
                 </Tooltip>
               ))}

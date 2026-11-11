@@ -1,12 +1,13 @@
 .v-launcher-resident-scrim {
   position: fixed;
-  inset: 0;
+  inset: var(--topbar-h) 0 0;
+  pointer-events: none;
   z-index: var(--z-modal);
   background: color-mix(in srgb, var(--surface-1) 60%, transparent);
 }
 .v-launcher-resident-drawer {
   position: fixed;
-  inset: 0 0 0 auto;
+  inset: var(--topbar-h) 0 0 auto;
   width: min(480px, 100vw);
   z-index: var(--z-modal);
   display: flex;

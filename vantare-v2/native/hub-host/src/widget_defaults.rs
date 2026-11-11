@@ -1,7 +1,7 @@
 //! Build-time snapshot of native UI defaults. No GPUI or filesystem access.
 use serde::Deserialize;
 use serde_json::value::RawValue;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::OnceLock};
 const SOURCE: &str = include_str!("../data/widget-defaults.json");
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -22,11 +22,14 @@ struct Document {
     widgets: BTreeMap<String, WidgetDefault>,
 }
 pub fn get(kind: &str) -> Option<WidgetDefault> {
-    let mut document: Document = serde_json::from_str(SOURCE).ok()?;
-    if document.version != 1 {
-        return None;
-    }
-    let widget = document.widgets.remove(kind)?;
+    static DOCUMENT: OnceLock<Option<Document>> = OnceLock::new();
+    let document = DOCUMENT
+        .get_or_init(|| {
+            let document: Document = serde_json::from_str(SOURCE).ok()?;
+            (document.version == 1).then_some(document)
+        })
+        .as_ref()?;
+    let widget = document.widgets.get(kind)?.clone();
     (widget.size.width.is_finite()
         && widget.size.height.is_finite()
         && widget.size.width > 0.0

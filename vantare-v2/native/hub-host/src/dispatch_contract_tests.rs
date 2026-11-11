@@ -207,3 +207,14 @@ mod calendar_dispatch_tests;
 // The existing portable-dispatch Linux gate runs these all-target checks too.
 #[path = "../tests/architecture.rs"]
 mod architecture;
+
+#[cfg(windows)]
+impl Core {
+    fn catalog(&self) -> Option<vantare_ipc::control::CatalogAccess> {
+        self.available
+            .then_some(vantare_ipc::control::CatalogAccess::Pro)
+    }
+}
+
+#[path = "protocol/modules/studio/dispatch_tests.rs"]
+mod studio_tests;

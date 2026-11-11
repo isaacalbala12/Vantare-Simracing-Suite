@@ -251,6 +251,21 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-ficha-desplegada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-r6-proximas"].prepare(page);
+      await page
+        .getByRole("button", { name: "Ficha", exact: true })
+        .first()
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-ficha-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {

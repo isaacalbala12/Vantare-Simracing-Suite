@@ -452,3 +452,40 @@
 .v-studio-rail h2 .v-studio-widget-icon {
   background: var(--accent);
 }
+
+.v-studio-catalog .v-search {
+  position: relative;
+}
+.v-studio-catalog .v-search .v-field {
+  min-width: 0;
+}
+.v-studio-catalog .v-search input {
+  width: 100%;
+  padding-right: 36px;
+}
+.v-studio-catalog input::-webkit-search-cancel-button {
+  display: none;
+}
+.v-studio-catalog .v-search > .v-button {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+}
+.v-studio-catalog .v-search > .v-button svg {
+  display: none;
+}
+.v-studio-catalog .v-search > .v-button::before,
+.v-studio-catalog .v-search > .v-button::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 1.5px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+.v-studio-catalog .v-search > .v-button::after {
+  transform: rotate(-45deg);
+}

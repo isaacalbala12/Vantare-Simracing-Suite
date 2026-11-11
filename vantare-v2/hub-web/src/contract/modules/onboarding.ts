@@ -35,11 +35,12 @@ export function isOnboarding(v: unknown): boolean {
     v.simulators.every((x) => typeof x === "boolean") &&
     oneOf(v.recommendedLevel, performanceLevels) &&
     revision(v.settingsRevision) &&
-    revision(v.layoutRevision) &&
+    (v.layoutRevision === null || revision(v.layoutRevision)) &&
     record(v.equipment) &&
     exact(v.equipment, ["cpu", "cores", "ramGb"]) &&
     (v.equipment.cpu === null ||
       (typeof v.equipment.cpu === "string" &&
+        v.equipment.cpu.trim().length > 0 &&
         Array.from(v.equipment.cpu).length <= onboardingCpuLimit &&
         !/\p{Cc}/u.test(v.equipment.cpu))) &&
     (v.equipment.cores === null ||
@@ -71,7 +72,7 @@ export function isRequest(v: Record<string, unknown>): boolean {
       oneOf(v.level, performanceLevels) &&
       typeof v.show === "boolean" &&
       revision(v.baseRevision) &&
-      revision(v.layoutRevision)
+      (v.layoutRevision === null || revision(v.layoutRevision))
     );
   return (
     (v.method === "onboarding.get" ||

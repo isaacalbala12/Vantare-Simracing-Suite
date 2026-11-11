@@ -38,6 +38,8 @@ export function create(context: MockContext): MockHandler {
   return (value: UiToHost): HostToUi | null | undefined => {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
+    if (context.onboarding)
+      context.onboarding.privacyEnabled = privacy.crashes || privacy.usage;
     if (context.onboarding?.privateConsent)
       privacy = {
         ...privacy,
@@ -102,6 +104,8 @@ export function create(context: MockContext): MockHandler {
           usageDecided: privacy.usageDecided || request.patch.field === "usage",
           revision: (++privacyRevision).toString(16).padStart(64, "0"),
         };
+        if (context.onboarding)
+          context.onboarding.privacyEnabled = privacy.crashes || privacy.usage;
         privacy.cleanupBusy = false;
         privacy.cleanupPending = sceneName === "privacidad-limpieza-error";
         if (privacy.cleanupPending)

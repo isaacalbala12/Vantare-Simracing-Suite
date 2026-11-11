@@ -234,3 +234,5 @@ impl Core {
 
 #[path = "protocol/modules/studio/dispatch_tests.rs"]
 mod studio_tests;
+#[path = "protocol/modules/onboarding/dispatch_tests.rs"]
+mod onboarding_dispatch_tests;

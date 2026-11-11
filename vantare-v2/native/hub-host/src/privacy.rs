@@ -139,6 +139,9 @@ impl State {
             });
         match read {
             Ok((value, bytes)) => {
+                if value.crashes || value.usage {
+                    self.private_session = false;
+                }
                 self.value = if self.private_session {
                     private_value(value)
                 } else {
@@ -154,15 +157,24 @@ impl State {
         }
     }
     fn protect(&mut self) {
+        self.private_session = false;
         self.value = Privacy::default();
         self.observed = None;
         self.protected = true;
         self.cleanup_pending = false;
         self.cleanup_busy = false;
     }
-    pub fn enter_private(&mut self) {
+    pub fn enter_private(&mut self) -> Result<(), HostError> {
+        self.reload();
+        if self.protected || self.value.crashes || self.value.usage {
+            return Err(HostError::Denied);
+        }
         self.value = private_value(self.value);
         self.private_session = true;
+        Ok(())
+    }
+    pub fn private_active(&self) -> bool {
+        self.private_session
     }
     pub fn view(&self) -> PrivacyView {
         PrivacyView {
@@ -235,6 +247,7 @@ impl State {
             Err(ConsentSaveError::Busy) => Err(HostError::Busy),
             Err(ConsentSaveError::Failed(_)) => {
                 if let Some(bytes) = saved {
+                    self.private_session = false;
                     self.value = serde_json::from_slice(&bytes).map_err(|_| HostError::Io)?;
                     self.observed = Some(bytes);
                     self.cleanup_pending = true;
@@ -424,18 +437,10 @@ mod reporting_tests {
     #[test]
     fn configuration_projection_uses_the_service_build_without_exposing_its_key() {
         let state = State::at(Err(HostError::Io));
-        assert_eq!(
-            state.view().reporting_configured,
-            vantare_services::diagnostics::configured()
-        );
+        assert_eq!(state.view().reporting_configured, vantare_services::diagnostics::configured());
         let view = serde_json::to_value(state.view()).expect("view");
         assert!(view["reportingConfigured"].is_boolean());
-        assert!(
-            view.as_object()
-                .expect("view object")
-                .keys()
-                .all(|key| !key.to_ascii_lowercase().contains("key"))
-        );
+        assert!(view.as_object().expect("view object").keys().all(|key| !key.to_ascii_lowercase().contains("key")));
     }
 }
 
@@ -504,9 +509,12 @@ mod onboarding_private_tests {
             .update(PrivacyPatch::Usage(true), &state.view().revision)
             .unwrap();
         let path = root.path.join(PRIVACY_FILE);
+        assert!(matches!(state.enter_private(), Err(HostError::Denied)));
+        state.update(PrivacyPatch::Crashes(false), &state.view().revision).unwrap();
+        state.update(PrivacyPatch::Usage(false), &state.view().revision).unwrap();
         let before = std::fs::read(&path).unwrap();
         let revision = state.view().revision;
-        state.enter_private();
+        state.enter_private().unwrap();
         let view = state.refresh();
         assert!(!view.crashes && !view.usage && view.crashes_decided && view.usage_decided);
         assert_eq!(view.revision, revision);
@@ -518,4 +526,19 @@ mod onboarding_private_tests {
         assert!(!updated.crashes);
         assert!(!Privacy::load(&root.path).unwrap().crashes);
     }
+    #[test]
+    fn private_escape_denies_protected_disk_and_exposes_external_opt_in() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join(PRIVACY_FILE);
+        let mut state = State::isolated(&root.path);
+        state.enter_private().unwrap();
+        std::fs::write(&path, serde_json::to_vec(&Privacy { crashes: true, crashes_decided: true, ..Privacy::default() }).unwrap()).unwrap();
+        assert!(state.refresh().crashes);
+        assert!(!state.private_active());
+        assert!(matches!(state.enter_private(), Err(HostError::Denied)));
+        std::fs::write(&path, b"broken").unwrap();
+        assert!(matches!(state.enter_private(), Err(HostError::Denied)));
+        assert!(!state.private_active());
+    }
+
 }

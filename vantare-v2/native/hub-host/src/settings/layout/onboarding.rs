@@ -20,23 +20,56 @@ fn raw(value: impl serde::Serialize) -> Box<RawValue> {
 fn open(path: &Path) -> Result<Document, HostError> {
     Document::open(path).map_err(|()| HostError::Protected)
 }
-pub(crate) fn state(path: &Path) -> Result<(bool, String), HostError> {
-    let document = open(path)?;
-    Ok((
-        document.observed.is_some(),
-        vantare_services::content_hash(document.observed.as_deref().unwrap_or_default()),
-    ))
+pub(crate) fn state(path: &Path) -> Result<(bool, Option<String>), HostError> {
+    let Ok(document) = open(path) else { return Ok((false, None)); };
+    if document.observed.is_some() && validate_instances(&document).is_err() { return Ok((false, None)); }
+    Ok(match document.observed {
+        Some(bytes) => (true, Some(vantare_services::content_hash(&bytes))),
+        None => (false, None),
+    })
+}
+fn validate_instances(document: &Document) -> Result<(), HostError> {
+    let items: Vec<Fields> = parse(&document.fields, "instances")?;
+    if items.len() > INSTANCE_LIMIT { return Err(HostError::Protected); }
+    let mut ids = BTreeSet::new();
+    for item in items {
+        let id: String = parse(&item, "id")?;
+        if id.trim().is_empty() || id.len() > 128 || !ids.insert(id) { return Err(HostError::Protected); }
+        for key in ["x", "y"] {
+            let coordinate: f64 = parse(&item, key)?;
+            if !coordinate.is_finite() { return Err(HostError::Protected); }
+        }
+        let kind: Kind = parse(&item, "settings")?;
+        if crate::widget_defaults::get(&kind.kind).is_none() { return Err(HostError::Protected); }
+    }
+    Ok(())
+}
+fn unchanged_unusable(path: &Path) -> Result<bool, HostError> {
+    let base = path.with_extension("json");
+    if let Some(parent) = base.parent() {
+        std::fs::create_dir_all(parent).map_err(|_| HostError::Io)?;
+    }
+    let mut name = base.as_os_str().to_os_string();
+    name.push(".lock");
+    let lock = std::fs::OpenOptions::new().write(true).create(true).truncate(false)
+        .open(std::path::PathBuf::from(name)).map_err(|_| HostError::Io)?;
+    lock.try_lock().map_err(|error| match error {
+        std::fs::TryLockError::WouldBlock => HostError::Busy,
+        std::fs::TryLockError::Error(_) => HostError::Io,
+    })?;
+    if state(path)?.0 { Err(HostError::OnboardingConflict {}) } else { Ok(false) }
 }
 pub(crate) fn apply(
     path: &Path,
     kit: &[WidgetKind],
     level: PerformanceLevel,
-    revision: &str,
+    revision: Option<&str>,
 ) -> Result<bool, HostError> {
     if !crate::onboarding::valid_kit(kit) {
         return Err(HostError::Denied);
     }
-    let mut document = open(path)?;
+    let Some(revision) = revision else { return unchanged_unusable(path); };
+    let mut document = open(path).map_err(|_| HostError::OnboardingConflict {})?;
     if vantare_services::content_hash(document.observed.as_deref().unwrap_or_default()) != revision
     {
         return Err(HostError::OnboardingConflict {});
@@ -104,6 +137,7 @@ pub(crate) fn apply(
         &bytes,
         files::Mode::Observed(document.observed.as_deref()),
         &files::Options {
+            backup: true,
             limit: LIMIT,
             sibling_base: Some(path.with_extension("json")),
             ..Default::default()
@@ -131,6 +165,38 @@ mod tests {
     use super::*;
     use crate::test_support::Root;
     #[test]
+    fn unusable_designs_have_no_revision_are_not_rewritten_and_conflict_when_repaired() {
+        for bytes in [None, Some(b"broken".to_vec()), Some(br#"{"version":999,"instances":[]}"#.to_vec()), Some(vec![b' '; LIMIT as usize + 1])] {
+            let root = Root::new();
+            let path = root.path.join("layout.json");
+            if let Some(bytes) = &bytes { std::fs::write(&path, bytes).unwrap(); }
+            assert_eq!(state(&path).unwrap(), (false, None));
+            assert!(!apply(&path, &[WidgetKind::Delta], PerformanceLevel::Balanced, None).unwrap());
+            assert_eq!(std::fs::read(&path).ok(), bytes);
+            std::fs::write(&path, br#"{"version":2,"instances":[]}"#).unwrap();
+            assert!(matches!(apply(&path, &[WidgetKind::Delta], PerformanceLevel::Balanced, None), Err(HostError::OnboardingConflict {})));
+            assert!(state(&path).unwrap().0);
+        }
+    }
+    #[test]
+    fn pro_kits_match_gpui_without_an_entitlement_guard_and_keep_a_backup() {
+        let root = Root::new();
+        let path = root.path.join("layout.json");
+        let initial = br#"{"version":2,"instances":[]}"#;
+        std::fs::write(&path, initial).unwrap();
+        for kit in [vec![], vec![WidgetKind::Delta, WidgetKind::Delta]] {
+            assert!(matches!(apply(&path, &kit, PerformanceLevel::Balanced, state(&path).unwrap().1.as_deref()), Err(HostError::Denied)));
+        }
+        let kit = &[WidgetKind::FuelStrategy];
+        assert!(!kit[0].free());
+        apply(&path, kit, PerformanceLevel::Balanced, state(&path).unwrap().1.as_deref()).unwrap();
+        assert_eq!(std::fs::read(path.with_extension("json.bak")).unwrap(), initial);
+        apply(&path, kit, PerformanceLevel::Balanced, state(&path).unwrap().1.as_deref()).unwrap();
+        let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved["instances"].as_array().unwrap().len(), 1);
+        assert_eq!(saved["instances"][0]["settings"]["kind"], "fuel-strategy");
+    }
+    #[test]
     fn missing_layout_is_not_seeded_and_stale_absence_conflicts() {
         let root = Root::new();
         let path = root.path.join("layout.json");
@@ -140,7 +206,7 @@ mod tests {
                 &path,
                 &[WidgetKind::Delta],
                 PerformanceLevel::Economy,
-                &revision
+                revision.as_deref()
             )
             .unwrap()
         );
@@ -151,7 +217,7 @@ mod tests {
                 &path,
                 &[WidgetKind::Delta],
                 PerformanceLevel::Economy,
-                &revision
+                revision.as_deref()
             ),
             Err(HostError::OnboardingConflict {})
         ));
@@ -167,7 +233,7 @@ mod tests {
                 &path,
                 &[WidgetKind::Delta],
                 PerformanceLevel::Economy,
-                &revision
+                revision.as_deref()
             )
             .unwrap()
         );

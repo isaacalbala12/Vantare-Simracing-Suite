@@ -15,7 +15,7 @@ pub enum Request {
         #[serde(rename = "baseRevision")]
         base_revision: String,
         #[serde(rename = "layoutRevision")]
-        layout_revision: String,
+        layout_revision: Option<String>,
     },
     #[serde(rename = "onboarding.skipPrivate")]
     OnboardingSkipPrivate {},

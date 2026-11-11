@@ -47,7 +47,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         equipment: crate::onboarding::Equipment::default(),
         recommended_level: crate::settings::track::PerformanceLevel::Balanced,
         layout_ready: false,
-        layout_revision: "0".repeat(64),
+        layout_revision: None,
         settings_revision: "0".repeat(64),
         private_session: false,
     };
@@ -70,7 +70,7 @@ pub(crate) fn corpus() -> serde_json::Value {
             level: crate::settings::track::PerformanceLevel::Balanced,
             show: false,
             base_revision: "0".repeat(64),
-            layout_revision: "0".repeat(64),
+            layout_revision: Some("0".repeat(64)),
         },
         Request::OnboardingSkipPrivate {},
         Request::OnboardingPrices {},

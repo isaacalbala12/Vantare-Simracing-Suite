@@ -57,7 +57,10 @@ impl Session {
             _ => Err(HostError::Unsupported),
         };
         if matches!(request, Request::PrivacyUpdate { .. }) {
-            self.onboarding.private.record(result.is_err());
+            self.onboarding.private.record_error(result.as_ref().err());
+        }
+        if matches!(request, Request::PrivacyGet {}) {
+            self.onboarding.private.refresh(&self.privacy.view(), self.privacy.private_active());
         }
         self.respond(
             pipe,

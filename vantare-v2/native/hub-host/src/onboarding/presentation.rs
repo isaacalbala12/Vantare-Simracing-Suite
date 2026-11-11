@@ -4,7 +4,7 @@ use std::path::Path;
 use vantare_ipc::files;
 pub(super) fn show(layout: &Path) -> Result<(), HostError> {
     let path = layout.with_extension("show.json");
-    let observed = files::read_optional(&path, 1024).map_err(|_| HostError::Io)?;
+    let observed = files::read_optional(&path, 1024 * 1024).map_err(|_| HostError::Io)?;
     let current = observed
         .as_deref()
         .map_or(Ok(0_u64), serde_json::from_slice)
@@ -15,7 +15,7 @@ pub(super) fn show(layout: &Path) -> Result<(), HostError> {
         &serde_json::to_vec(&next).expect("u64 counter"),
         files::Mode::Observed(observed.as_deref()),
         &files::Options {
-            limit: 1024,
+            limit: 1024 * 1024,
             sibling_base: Some(path.with_extension("json")),
             ..Default::default()
         },
@@ -53,6 +53,18 @@ mod tests {
             show(&layout).unwrap();
             assert_eq!(std::fs::read(path).unwrap(), case.next.as_bytes());
         }
+    }
+    #[test]
+    fn malformed_presentation_is_preserved_and_native_limit_accepts_padding() {
+        let root = crate::test_support::Root::new();
+        let layout = root.path.join("layout.json");
+        let path = layout.with_extension("show.json");
+        std::fs::write(&path, b"broken").unwrap();
+        assert!(matches!(show(&layout), Err(HostError::Protected)));
+        assert_eq!(std::fs::read(&path).unwrap(), b"broken");
+        std::fs::write(&path, format!("{}1", " ".repeat(2048))).unwrap();
+        show(&layout).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"2");
     }
     #[test]
     fn counter_uses_compact_json_and_overflow_preserves_bytes() {

@@ -44,6 +44,5 @@ piezas existentes de Apariencia, Privacidad y Cuenta. Las mejoras de §g no entr
 La fixture `native/hub-host/data/onboarding-presentation.json` está ligada al API
 real de `vantare_ui::layout::Presentation::show` mediante un exportador y un test
 sin App ni ventana en `native/ui`. El anfitrión compara sus bytes con esa misma
-fixture; cubre ausencia del contador y dos incrementos. Esta prueba nueva queda
-pendiente de ejecución en la próxima pasada Rust agrupada; no se afirma que ya
-se haya ejecutado el exportador de UI en el servidor.
+fixture; cubre ausencia del contador y dos incrementos. El test de UI vuelve a generar los bytes y exige que coincidan con el archivo
+versionado; el anfitrión consume esa misma fixture sin depender del renderer.

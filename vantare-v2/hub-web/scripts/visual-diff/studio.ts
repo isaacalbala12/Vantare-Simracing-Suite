@@ -12,12 +12,13 @@ export const studioScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Standings", exact: true })
         .waitFor();
-      const toggle = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
-      if ((await toggle.getAttribute("aria-expanded")) === "true")
-        await toggle.click();
+      const sidebar = page.locator(".v-sidebar");
+      if (
+        !(await sidebar.evaluate((node) =>
+          node.classList.contains("v-sidebar--collapsed"),
+        ))
+      )
+        await page.keyboard.press("Control+b");
     },
   },
 };
@@ -63,3 +64,32 @@ studioScenes["studio-en-pista"] = {
     await page.getByRole("switch", { name: "Visible", exact: true }).waitFor();
   },
 };
+
+// The 10b gallery matrix reuses the same closed mock data, without new wire methods.
+for (const count of [4, 30]) {
+  for (const collapsed of [false, true]) {
+    studioScenes[
+      `studio-galeria-${count}-${collapsed ? "cerrado" : "abierto"}`
+    ] = {
+      mock: count === 4 ? "studio-base" : "studio-muchos",
+      async prepare(page) {
+        await studioScenes["studio-base"].prepare(page);
+        const toggle = page.getByRole("button", {
+          name: "Contraer o ampliar información",
+          exact: true,
+        });
+        if ((await toggle.getAttribute("aria-expanded")) !== String(!collapsed))
+          await toggle.click();
+        const cards = page.locator(".v-studio-card");
+        await cards.first().waitFor();
+        if ((await cards.count()) !== count)
+          throw new Error("Studio QA instance count differs");
+        if (
+          collapsed &&
+          (await page.getByRole("complementary", { name: "Inspector" }).count())
+        )
+          throw new Error("Collapsed Studio inspector is still mounted");
+      },
+    };
+  }
+}

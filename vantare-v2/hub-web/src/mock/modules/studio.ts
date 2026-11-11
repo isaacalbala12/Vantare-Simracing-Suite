@@ -34,6 +34,18 @@ export function create(context: MockContext): MockHandler {
     showIn: { practice: true, qualifying: true, race: true },
     offTrack: "inherit",
   })) as OverlayInstance[];
+  if (sceneName === "studio-muchos") {
+    const originals = structuredClone(instances);
+    instances.splice(
+      0,
+      instances.length,
+      ...Array.from({ length: 30 }, (_, index) => ({
+        ...structuredClone(originals[index % originals.length]),
+        id: `widget-${index + 1}`,
+      })),
+    );
+  }
+  if (sceneName === "studio-pocos") instances.splice(2);
   const view: StudioView = {
     state:
       sceneName === "studio-missing"

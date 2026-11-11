@@ -13,7 +13,9 @@ export default function StudioEntry() {
       <SectionChrome
         title={t.title}
         rail={
-          railCollapsed ? null : (
+          railCollapsed ? (
+            false
+          ) : (
             <StudioRail onPlans={() => navigate("account")} />
           )
         }

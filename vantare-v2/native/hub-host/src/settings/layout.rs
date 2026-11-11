@@ -272,3 +272,5 @@ impl Layout {
 
 #[path="layout/studio.rs"]
 pub(crate) mod studio;
+#[path = "layout/onboarding.rs"]
+pub(crate) mod onboarding;

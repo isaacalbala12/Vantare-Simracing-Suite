@@ -1,11 +1,14 @@
+import { privacyMailSources } from "../generated/privacy";
 import { isPrivacy, isPrivacyPatch } from "../privacy-validation";
-import { exact, record } from "../validation-common";
+import { exact, oneOf, record } from "../validation-common";
 
 export { privacyMethods as methods } from "../generated/privacy";
 export function isRequest(value: Record<string, unknown>): boolean {
   if (value.method === "mail.set")
     return (
-      exact(value, ["method", "consent"]) && typeof value.consent === "boolean"
+      exact(value, ["method", "consent", "source"]) &&
+      typeof value.consent === "boolean" &&
+      oneOf(value.source, privacyMailSources)
     );
   return value.method === "privacy.update"
     ? exact(value, ["method", "patch", "baseRevision"]) &&

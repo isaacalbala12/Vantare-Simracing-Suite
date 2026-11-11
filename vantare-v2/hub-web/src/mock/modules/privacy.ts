@@ -38,6 +38,19 @@ export function create(context: MockContext): MockHandler {
   return (value: UiToHost): HostToUi | null | undefined => {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
+    if (context.onboarding?.privateConsent)
+      privacy = {
+        ...privacy,
+        crashes: false,
+        usage: false,
+        crashesDecided: true,
+        usageDecided: true,
+      };
+    if (
+      request.method === "privacy.update" &&
+      sceneName === "onboarding-error-privacidad"
+    )
+      return { kind: "failure", id, error: { kind: "io" } };
     switch (request.method) {
       case "privacy.policy":
         return {

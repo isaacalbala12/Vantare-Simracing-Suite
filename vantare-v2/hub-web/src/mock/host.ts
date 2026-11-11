@@ -65,7 +65,34 @@ export function createMockHost(
         : null;
     for (const handler of handlers) {
       const result = handler(value);
-      if (result !== undefined) return result;
+      if (result !== undefined) {
+        if (
+          context.onboarding &&
+          value.kind === "request" &&
+          value.request.method === "privacy.update"
+        ) {
+          context.onboarding.privacyFailed = result?.kind === "failure";
+          if (result?.kind === "failure")
+            context.onboarding.privacyReady = false;
+          if (result?.kind === "response")
+            context.onboarding.privateConsent = false;
+        }
+        if (
+          context.onboarding &&
+          result?.kind === "response" &&
+          (result.result.method === "privacy.get" ||
+            result.result.method === "privacy.update")
+        ) {
+          const consent = result.result.value;
+          context.onboarding.privacyReady =
+            consent.crashesDecided &&
+            consent.usageDecided &&
+            !consent.protected &&
+            !consent.cleanupPending &&
+            !consent.cleanupBusy;
+        }
+        return result;
+      }
     }
     return value.kind === "request"
       ? { kind: "failure", id: value.id, error: { kind: "unsupported" } }

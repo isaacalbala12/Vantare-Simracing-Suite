@@ -40,6 +40,7 @@ pub enum PrivacyPatch {
 pub struct MailView {
     pub consent: bool,
 }
+#[allow(clippy::struct_excessive_bools)] // Disk protection/cleanup and an independent session-only privacy decision.
 pub struct State {
     root: Result<PathBuf, HostError>,
     value: Privacy,
@@ -47,6 +48,7 @@ pub struct State {
     protected: bool,
     cleanup_pending: bool,
     cleanup_busy: bool,
+    private_session: bool,
 }
 fn adopt(data: &Path, shared: &Path) -> Result<(), HostError> {
     if data == shared {
@@ -119,6 +121,7 @@ impl State {
             protected: false,
             cleanup_pending: false,
             cleanup_busy: false,
+            private_session: false,
         };
         state.reload();
         state
@@ -136,7 +139,11 @@ impl State {
             });
         match read {
             Ok((value, bytes)) => {
-                self.value = value;
+                self.value = if self.private_session {
+                    private_value(value)
+                } else {
+                    value
+                };
                 self.observed = bytes;
                 self.protected = false;
                 let cleanup = value.discard_disabled(root);
@@ -153,12 +160,16 @@ impl State {
         self.cleanup_pending = false;
         self.cleanup_busy = false;
     }
+    pub fn enter_private(&mut self) {
+        self.value = private_value(self.value);
+        self.private_session = true;
+    }
     pub fn view(&self) -> PrivacyView {
         PrivacyView {
-            crashes: self.value.crashes,
-            usage: self.value.usage,
-            crashes_decided: self.value.crashes_decided,
-            usage_decided: self.value.usage_decided,
+            crashes: !self.private_session && self.value.crashes,
+            usage: !self.private_session && self.value.usage,
+            crashes_decided: self.private_session || self.value.crashes_decided,
+            usage_decided: self.private_session || self.value.usage_decided,
             revision: vantare_services::content_hash(self.observed.as_deref().unwrap_or_default()),
             protected: self.protected,
             cleanup_pending: self.cleanup_pending,
@@ -214,6 +225,7 @@ impl State {
         });
         match result {
             Ok(value) => {
+                self.private_session = false;
                 self.value = value;
                 self.observed = saved;
                 self.cleanup_pending = false;
@@ -412,9 +424,98 @@ mod reporting_tests {
     #[test]
     fn configuration_projection_uses_the_service_build_without_exposing_its_key() {
         let state = State::at(Err(HostError::Io));
-        assert_eq!(state.view().reporting_configured, vantare_services::diagnostics::configured());
+        assert_eq!(
+            state.view().reporting_configured,
+            vantare_services::diagnostics::configured()
+        );
         let view = serde_json::to_value(state.view()).expect("view");
         assert!(view["reportingConfigured"].is_boolean());
-        assert!(view.as_object().expect("view object").keys().all(|key| !key.to_ascii_lowercase().contains("key")));
+        assert!(
+            view.as_object()
+                .expect("view object")
+                .keys()
+                .all(|key| !key.to_ascii_lowercase().contains("key"))
+        );
+    }
+}
+
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MailOrigin {
+    Onboarding,
+    Settings,
+}
+impl MailOrigin {
+    pub const ALL: [Self; 2] = [Self::Onboarding, Self::Settings];
+    pub fn command(self, consent: bool) -> vantare_ipc::services_protocol::Command {
+        use vantare_ipc::services_protocol::{Command, MailSource};
+        Command::MailConsentSet {
+            consent,
+            source: match self {
+                Self::Onboarding => MailSource::Onboarding,
+                Self::Settings => MailSource::Settings,
+            },
+        }
+    }
+}
+#[cfg(test)]
+mod mail_source_tests {
+    use super::*;
+    #[test]
+    fn only_closed_origins_reach_the_existing_service_command() {
+        use vantare_ipc::services_protocol::{Command, MailSource};
+        assert!(matches!(
+            MailOrigin::Onboarding.command(true),
+            Command::MailConsentSet {
+                consent: true,
+                source: MailSource::Onboarding
+            }
+        ));
+        assert!(matches!(
+            MailOrigin::Settings.command(false),
+            Command::MailConsentSet {
+                consent: false,
+                source: MailSource::Settings
+            }
+        ));
+        assert!(serde_json::from_str::<MailOrigin>("\"arbitrary\"").is_err());
+    }
+}
+
+fn private_value(mut value: Privacy) -> Privacy {
+    value.crashes = false;
+    value.usage = false;
+    value.crashes_decided = true;
+    value.usage_decided = true;
+    value
+}
+#[cfg(all(test, windows))]
+mod onboarding_private_tests {
+    use super::*;
+    #[test]
+    fn onboarding_private_exit_preserves_disk_and_never_revives_an_old_permission() {
+        let root = crate::test_support::Root::new();
+        let mut state = State::isolated(&root.path);
+        state
+            .update(PrivacyPatch::Crashes(true), &state.view().revision)
+            .unwrap();
+        state
+            .update(PrivacyPatch::Usage(true), &state.view().revision)
+            .unwrap();
+        let path = root.path.join(PRIVACY_FILE);
+        let before = std::fs::read(&path).unwrap();
+        let revision = state.view().revision;
+        state.enter_private();
+        let view = state.refresh();
+        assert!(!view.crashes && !view.usage && view.crashes_decided && view.usage_decided);
+        assert_eq!(view.revision, revision);
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        let updated = state
+            .update(PrivacyPatch::Usage(true), &view.revision)
+            .unwrap();
+        assert!(updated.usage);
+        assert!(!updated.crashes);
+        assert!(!Privacy::load(&root.path).unwrap().crashes);
     }
 }

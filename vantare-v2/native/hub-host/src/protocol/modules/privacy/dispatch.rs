@@ -21,16 +21,10 @@ impl Session {
         id: u32,
         request: &Request,
     ) -> io::Result<()> {
-        use vantare_ipc::services_protocol::{Command, MailSource};
+        use vantare_ipc::services_protocol::Command;
         let (kind, command) = match request {
             Request::MailGet {} => (RemoteKind::MailGet, Command::MailConsentGet),
-            Request::MailSet { consent } => (
-                RemoteKind::MailSet,
-                Command::MailConsentSet {
-                    consent: *consent,
-                    source: MailSource::Settings,
-                },
-            ),
+            Request::MailSet { consent, source } => (RemoteKind::MailSet, source.command(*consent)),
             _ => return Err(io::ErrorKind::InvalidInput.into()),
         };
         match self.request_remote(id, kind, command) {
@@ -62,6 +56,9 @@ impl Session {
                 .map(|value| Reply::PrivacyUpdate { value }),
             _ => Err(HostError::Unsupported),
         };
+        if matches!(request, Request::PrivacyUpdate { .. }) {
+            self.onboarding.private.record(result.is_err());
+        }
         self.respond(
             pipe,
             id,

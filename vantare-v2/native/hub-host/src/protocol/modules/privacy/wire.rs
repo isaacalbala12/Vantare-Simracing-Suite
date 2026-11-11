@@ -20,7 +20,10 @@ pub enum Request {
     #[serde(rename = "mail.get")]
     MailGet {},
     #[serde(rename = "mail.set")]
-    MailSet { consent: bool },
+    MailSet {
+        consent: bool,
+        source: crate::privacy::MailOrigin,
+    },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

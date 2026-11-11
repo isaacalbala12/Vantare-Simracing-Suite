@@ -37,7 +37,16 @@ describe("read-only resident mailbox", () => {
   });
   it("preserves all u64 ids and rejects malformed decisions and private extra fields", () => {
     expect(isResident(view)).toBe(true);
-    for (const id of ["01", "-1", "18446744073709551616", "1e3", 1])
+    for (const id of [
+      "01",
+      "-1",
+      "18446744073709551616",
+      "1e3",
+      "1\n",
+      "1\r\n",
+      "1 ",
+      1,
+    ])
       expect(isResident({ ...view, decision: { ...view.decision, id } })).toBe(
         false,
       );

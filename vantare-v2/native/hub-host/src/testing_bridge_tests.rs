@@ -226,21 +226,7 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
         local.incoming.try_recv().unwrap(),
         (7, services::Command::DraftSave { .. })
     ));
-    local
-        .outgoing
-        .send((
-            7,
-            Ok(services::Reply::Draft {
-                draft: Some(report_document::Draft {
-                    schema_version: 1,
-                    idempotency_key: "qa-only".into(),
-                    fields: fields.core(),
-                    screenshots: vec![],
-                }),
-                message: String::new(),
-            }),
-        ))
-        .unwrap();
+    local.outgoing.send((7, Ok(saved_draft(&fields)))).unwrap();
     let (id, result) = session.core.reply().unwrap();
     let result = session.service_reply(id, result);
     session.respond_service(&mut pipe, id, result).unwrap();
@@ -251,4 +237,16 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
         path.exists(),
         "failed import never surfaced the legacy source"
     );
+}
+
+fn saved_draft(fields: &crate::testing::ReportFields) -> services::Reply {
+    services::Reply::Draft {
+        draft: Some(report_document::Draft {
+            schema_version: 1,
+            idempotency_key: "qa-only".into(),
+            fields: fields.core(),
+            screenshots: vec![],
+        }),
+        message: String::new(),
+    }
 }

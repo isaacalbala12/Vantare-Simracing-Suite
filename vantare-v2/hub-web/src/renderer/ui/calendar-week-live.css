@@ -431,9 +431,9 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
   pointer-events: none;
 }
-.v-calendar-week-daily-days > span {
+.v-calendar-week-live .v-calendar-week-daily-days > span {
   border-left: 1px solid var(--line-1);
 }
-.v-calendar-week-daily-days > span[data-today] {
+.v-calendar-week-live .v-calendar-week-daily-days > span[data-today] {
   background: var(--accent-tint);
 }

@@ -151,5 +151,7 @@ it("keeps existing-user QA scenes accessible without changing permission values"
 it("applies the saved appearance before showing a first-run gate", async () => {
   mount("visual-light:privacidad-pendiente");
   await screen.findByRole("dialog", { name: text.crashesLabel });
-  await waitFor(() => expect(document.documentElement.dataset.scheme).toBe("light"));
+  await waitFor(() =>
+    expect(document.documentElement.dataset.scheme).toBe("light"),
+  );
 });

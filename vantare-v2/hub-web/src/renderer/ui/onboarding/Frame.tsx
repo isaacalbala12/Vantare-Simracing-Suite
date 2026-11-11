@@ -10,6 +10,7 @@ import { Icon } from "../../assets/icons/Icon";
 import { onboardingText as t } from "../../i18n/onboarding";
 import { Button } from "../Button";
 import { Skeleton } from "../Data";
+import { TrackedCaps } from "../TrackedCaps";
 import { Helmet } from "./Helmet";
 import "./onboarding.css";
 export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -77,7 +78,7 @@ function Assistant({
       <div className={`v-ob-bubble ${writing ? "v-ob-bubble--writing" : ""}`}>
         <div className="v-ob-assistant-label">
           <span aria-hidden="true" />
-          {t.assistant}
+          <TrackedCaps>{t.assistant}</TrackedCaps>
         </div>
         <p aria-live="polite">
           {chars.slice(0, reducedMotion ? chars.length : length).join("")}

@@ -43,6 +43,18 @@ export function createTestingMock(scene: string, core: CoreStatus) {
       question: "¿Cómo funciona el Hub?",
       score: null,
     });
+  if (scene === "testing-tester-questionnaires-reference") {
+    participation.questionnaires = [
+      {
+        id: "15350000-0000-0000-0000-000000000001",
+        version: "0.0.974",
+        title: "QA · experiencia del Hub",
+        question:
+          "¿Cómo ha sido tu experiencia al configurar y lanzar los overlays?",
+        score: null,
+      },
+    ];
+  }
   return (id: number, request: Request): HostToUi => {
     if (!core.access.verified || core.access.blocked)
       return { kind: "failure", id, error: { kind: "denied" } };

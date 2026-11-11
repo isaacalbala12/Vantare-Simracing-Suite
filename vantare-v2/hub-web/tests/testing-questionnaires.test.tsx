@@ -120,3 +120,26 @@ it("keeps a selected local note but disables saving and reload when the core dis
   fireEvent.click(screen.getByRole("button", { name: text.save }));
   expect(calls).not.toHaveBeenCalled();
 });
+it("reproduces cached reference data after disconnecting, without accepting another refresh offline", async () => {
+  window.history.replaceState(
+    null,
+    "",
+    "/?escena=testing-tester-questionnaires-reference",
+  );
+  await mount();
+  fireEvent.click(screen.getByRole("button", { name: "Recargar" }));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: /0.0.974.*QA.*experiencia del Hub/,
+    }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: text.save }).hasAttribute("disabled"),
+    ).toBe(true),
+  );
+  expect(cache.getQueryData<CoreStatus>(coreKey)?.services).toBe("unavailable");
+  expect(
+    screen.getByRole("button", { name: "Recargar" }).hasAttribute("disabled"),
+  ).toBe(true);
+});

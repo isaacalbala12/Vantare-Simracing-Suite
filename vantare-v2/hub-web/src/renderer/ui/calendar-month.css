@@ -236,3 +236,8 @@
 .v-calendar-month-event[data-past]:disabled {
   opacity: 0.55;
 }
+
+.v-calendar-month-meta[data-state="waiting"] b {
+  color: var(--warn);
+  background: var(--warn-tint);
+}

@@ -17,6 +17,8 @@ export function CalendarMonthView({
   now,
   limit,
   runs,
+  expired = false,
+  spans = ["week", "month"],
   onSpan,
   onFull,
   onDetail,
@@ -26,6 +28,8 @@ export function CalendarMonthView({
   now: number;
   limit: number;
   runs?: readonly { at: number }[];
+  expired?: boolean;
+  spans?: readonly string[];
   onSpan: (span: string) => void;
   onFull?: () => void;
   onDetail?: (id: string) => void;
@@ -34,8 +38,17 @@ export function CalendarMonthView({
   const [offset, setOffset] = useState(0),
     minute = Math.floor(now / 60000);
   const model = useMemo(
-    () => monthWeeks(view, minute * 60000, offset, view.utc, alerts, limit),
-    [view, minute, offset, alerts, limit],
+    () =>
+      monthWeeks(
+        view,
+        minute * 60000,
+        offset,
+        view.utc,
+        alerts,
+        limit,
+        expired,
+      ),
+    [view, minute, offset, alerts, limit, expired],
   );
   const first = new Date(model.first),
     today = civilDay(now, 0, view.utc);
@@ -75,7 +88,7 @@ export function CalendarMonthView({
           value="month"
           onChange={onSpan}
           options={[
-            { value: "day", label: text.day },
+            { value: "day", label: text.day, disabled: !spans.includes("day") },
             { value: "week", label: text.week },
             { value: "month", label: text.month },
           ]}
@@ -99,7 +112,7 @@ export function CalendarMonthView({
               <b>{text.states[week.state as keyof typeof text.states]}</b>
               {week.state === "past" ? (
                 <small>{text.cache}</small>
-              ) : week.state === "unpublished" ? (
+              ) : week.state === "unpublished" || week.state === "waiting" ? (
                 <small>{text.publishes}</small>
               ) : null}
             </div>

@@ -13,6 +13,7 @@ export function monthWeeks(
   utc: boolean,
   alerts: CalendarAlerts,
   limit: number,
+  expired = false,
 ) {
   const date = new Date(now),
     year = utc ? date.getUTCFullYear() : date.getFullYear(),
@@ -39,7 +40,9 @@ export function monthWeeks(
           ? schedule
             ? "past"
             : "unsaved"
-          : "unpublished";
+          : !schedule && expired && start === current + 7 * 86400000
+            ? "waiting"
+            : "unpublished";
     const days = weekDays(start, utc);
     const facts = schedule
       ? days.map((at) =>

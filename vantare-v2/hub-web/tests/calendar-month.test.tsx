@@ -123,3 +123,21 @@ it("preserves the chosen month through full screen and return", async () => {
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(screen.getByRole("heading", { name: "Noviembre 2026" })).toBeTruthy();
 });
+
+it("keeps the expired publication's next week waiting, without manufacturing data", () => {
+  const view = calendarReference();
+  view.official = null;
+  view.fallback = null;
+  const model = monthWeeks(
+    view,
+    Date.parse("2026-10-08T17:47:13Z"),
+    0,
+    true,
+    alerts,
+    10000,
+    true,
+  );
+  expect(model.weeks[1].state).toBe("now");
+  expect(model.weeks[2].state).toBe("waiting");
+  expect(model.weeks[2].facts).toBeUndefined();
+});

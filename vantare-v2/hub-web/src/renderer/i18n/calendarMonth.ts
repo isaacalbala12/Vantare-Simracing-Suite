@@ -26,6 +26,7 @@ export const calendarMonthText = {
   states: {
     past: "Pasada",
     now: "Esta semana",
+    waiting: "Esperando",
     unsaved: "Sin guardar",
     unpublished: "Sin publicar",
   },

@@ -13,6 +13,7 @@ export function create(context: MockContext): MockHandler {
     privateSession: false,
     privateConsent: false,
     privacyReady: false,
+    privacyEnabled: false,
   };
   context.onboarding = state;
   const view: OnboardingView = {
@@ -22,7 +23,8 @@ export function create(context: MockContext): MockHandler {
     equipment: { cpu: "Intel Core i5", cores: 6, ramGb: 16 },
     recommendedLevel: "balanced",
     layoutReady: context.sceneName !== "onboarding-sin-diseno",
-    layoutRevision: "a".repeat(64),
+    layoutRevision:
+      context.sceneName === "onboarding-sin-diseno" ? null : "a".repeat(64),
     settingsRevision: state.settingsRevision,
     privateSession: false,
   };
@@ -63,7 +65,7 @@ export function create(context: MockContext): MockHandler {
           result: { method: request.method, value: current() },
         };
       case "onboarding.skipPrivate":
-        if (state.completed || !state.privacyFailed)
+        if (state.completed || !state.privacyFailed || state.privacyEnabled)
           return { kind: "failure", id, error: { kind: "denied" } };
         state.privacyFailed = false;
         state.privateSession = true;

@@ -180,7 +180,7 @@ it("counts CPU Unicode characters exactly as Rust and rejects control characters
       }),
     ).toBe(false);
 });
-it("keeps a failed consent write blocking completion even after reading decided permissions", () => {
+it("does not arm escape on revision conflict and accepts freshly read decided permissions", () => {
   const host = createMockHost("onboarding-7");
   const initial = host({
     kind: "request",
@@ -243,7 +243,14 @@ it("keeps a failed consent write blocking completion even after reading decided 
     baseRevision: loaded.result.value.settingsRevision,
     layoutRevision: loaded.result.value.layoutRevision,
   };
-  expect(host({ kind: "request", id: 7, request })?.kind).toBe("failure");
+  expect(
+    host({
+      kind: "request",
+      id: 70,
+      request: { method: "onboarding.skipPrivate" },
+    })?.kind,
+  ).toBe("failure");
+  expect(host({ kind: "request", id: 7, request })?.kind).toBe("response");
   expect(
     host({
       kind: "request",
@@ -255,7 +262,7 @@ it("keeps a failed consent write blocking completion even after reading decided 
       },
     })?.kind,
   ).toBe("response");
-  expect(host({ kind: "request", id: 9, request })?.kind).toBe("response");
+  expect(host({ kind: "request", id: 9, request })?.kind).toBe("failure");
 });
 
 it("rejects equipment counts that cannot be represented by the native u32 fields", () => {

@@ -136,7 +136,7 @@ pub struct OnboardingView {
     pub equipment: Equipment,
     pub recommended_level: PerformanceLevel,
     pub layout_ready: bool,
-    pub layout_revision: String,
+    pub layout_revision: Option<String>,
     pub settings_revision: String,
     pub private_session: bool,
 }
@@ -149,6 +149,19 @@ pub struct PrivateExit {
 impl PrivateExit {
     pub fn record(&mut self, failed: bool) {
         self.failed = failed;
+    }
+    pub fn record_error(&mut self, error: Option<&crate::protocol::HostError>) {
+        use crate::protocol::HostError;
+        self.record(matches!(error, Some(HostError::Io | HostError::Protected | HostError::Busy)));
+    }
+    pub fn refresh(&mut self, value: &crate::privacy::PrivacyView, active: bool) {
+        self.active = active;
+        if consent_ready(value) {
+            self.failed = false;
+        }
+    }
+    pub fn can_skip(&self, pending: bool) -> bool {
+        pending && self.failed
     }
     pub fn skip(&mut self, pending: bool) -> bool {
         if !pending || !self.failed {
@@ -176,7 +189,7 @@ pub struct Finish {
     pub level: PerformanceLevel,
     pub show: bool,
     pub base_revision: String,
-    pub layout_revision: String,
+    pub layout_revision: Option<String>,
 }
 
 pub struct State {
@@ -202,15 +215,7 @@ impl State {
         let (layout_ready, layout_revision) =
             crate::settings::Settings::onboarding_layout(&self.layout)?;
         #[cfg(not(windows))]
-        let (layout_ready, layout_revision) = {
-            let bytes =
-                vantare_ipc::files::read_optional(&self.layout, vantare_ipc::files::MAX_DOCUMENT)
-                    .map_err(|_| crate::protocol::HostError::Io)?;
-            (
-                bytes.is_some(),
-                vantare_services::content_hash(bytes.as_deref().unwrap_or_default()),
-            )
-        };
+        let (layout_ready, layout_revision) = (false, None);
         Ok(OnboardingView {
             pending: !settings.general.onboarding_completed && !self.private.active(),
             simulators,
@@ -235,6 +240,31 @@ pub fn consent_ready(value: &crate::privacy::PrivacyView) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn only_unpersisted_write_failures_allow_escape_and_refresh_unblocks_finish() {
+        use crate::protocol::HostError;
+        let mut exit = PrivateExit::default();
+        for error in [HostError::Io, HostError::Protected, HostError::Busy] {
+            exit.record_error(Some(&error));
+            assert!(exit.can_skip(true));
+            assert!(!exit.can_skip(false));
+        }
+        let mut value = crate::privacy::State::isolated(&crate::test_support::Root::new().path).view();
+        for error in [HostError::Denied, HostError::PrivacyConflict { current: value.clone() }, HostError::PrivacyCleanup { current: value.clone() }] {
+            exit.record_error(Some(&error));
+            assert!(!exit.can_skip(true));
+        }
+        value.crashes_decided = true;
+        value.usage_decided = true;
+        exit.record_error(Some(&HostError::Io));
+        exit.refresh(&value, false);
+        assert!(exit.can_finish(&value));
+    }
+    #[test]
+    fn prices_url_is_the_exact_public_https_document() {
+        assert_eq!(PRICES_URL, "https://vantare.app/#precios");
+    }
     #[test]
     fn finishing_requires_both_consents_confirmed_without_pending_cleanup() {
         let mut value = crate::privacy::PrivacyView {

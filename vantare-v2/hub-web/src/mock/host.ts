@@ -71,7 +71,9 @@ export function createMockHost(
           value.kind === "request" &&
           value.request.method === "privacy.update"
         ) {
-          context.onboarding.privacyFailed = result?.kind === "failure";
+          context.onboarding.privacyFailed =
+            result?.kind === "failure" &&
+            ["io", "protected", "busy"].includes(result.error.kind);
           if (result?.kind === "failure")
             context.onboarding.privacyReady = false;
           if (result?.kind === "response")
@@ -90,6 +92,8 @@ export function createMockHost(
             !consent.protected &&
             !consent.cleanupPending &&
             !consent.cleanupBusy;
+          if (context.onboarding.privacyReady)
+            context.onboarding.privacyFailed = false;
         }
         return result;
       }

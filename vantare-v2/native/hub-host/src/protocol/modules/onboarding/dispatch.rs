@@ -22,11 +22,13 @@ pub(super) fn dispatch(
     id: u32,
     request: &Request,
 ) -> io::Result<()> {
+    let privacy = session.privacy.refresh();
+    session.onboarding.private.refresh(&privacy, session.privacy.private_active());
     if matches!(request, Request::OnboardingFinish { .. })
         && !session
             .onboarding
             .private
-            .can_finish(&session.privacy.refresh())
+            .can_finish(&privacy)
     {
         return session.respond(
             pipe,
@@ -69,9 +71,11 @@ pub(super) fn dispatch(
         }
         Request::OnboardingSkipPrivate {} => {
             let pending = !session.settings.refresh().general.onboarding_completed;
-            if session.onboarding.private.skip(pending) {
-                session.privacy.enter_private();
-                Ok(Reply::OnboardingSkipPrivate { accepted: true })
+            if session.onboarding.private.can_skip(pending) {
+                session.privacy.enter_private().map(|()| {
+                    session.onboarding.private.skip(pending);
+                    Reply::OnboardingSkipPrivate { accepted: true }
+                })
             } else {
                 Err(HostError::Denied)
             }

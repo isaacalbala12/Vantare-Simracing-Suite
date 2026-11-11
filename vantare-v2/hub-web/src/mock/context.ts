@@ -15,6 +15,7 @@ export interface MockContext {
     privateSession: boolean;
     privateConsent: boolean;
     privacyReady: boolean;
+    privacyEnabled: boolean;
   };
   readonly emit?: (message: HostToUi) => void;
   readonly sceneName: string;

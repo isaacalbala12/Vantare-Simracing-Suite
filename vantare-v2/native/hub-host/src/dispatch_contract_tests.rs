@@ -207,3 +207,6 @@ mod calendar_dispatch_tests;
 // The existing portable-dispatch Linux gate runs these all-target checks too.
 #[path = "../tests/architecture.rs"]
 mod architecture;
+
+#[path = "protocol/modules/onboarding/dispatch_tests.rs"]
+mod onboarding_dispatch_tests;

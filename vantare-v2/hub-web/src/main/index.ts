@@ -19,14 +19,13 @@ import {
 import type { SettingsView } from "../contract/generated/contract";
 import {
   HOST_PROTOCOL_VERSION,
-  onboardingPricesUrl,
-  privacyPolicyUrl,
   reportExportName,
 } from "../contract/generated/contract";
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
+import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
 import { reportExportSession } from "./report-export";
@@ -43,6 +42,8 @@ import {
   webPreferences,
 } from "./security";
 import { bindWindowControls } from "./window-controls";
+
+const openPublicPage = externalPages((url) => shell.openExternal(url));
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -335,24 +336,14 @@ async function start() {
           data.request.method === "onboarding.prices")
       ) {
         const method = data.request.method;
-        void shell
-          .openExternal(
-            method === "privacy.policy"
-              ? privacyPolicyUrl
-              : onboardingPricesUrl,
-          )
-          .then(
-            () => true,
-            () => false,
-          )
-          .then((accepted) => {
-            if (portAlive)
-              port1.postMessage({
-                kind: "response",
-                id: data.id,
-                result: { method, accepted },
-              });
-          });
+        void openPublicPage(method).then((accepted) => {
+          if (portAlive)
+            port1.postMessage({
+              kind: "response",
+              id: data.id,
+              result: { method, accepted },
+            });
+        });
         return;
       }
       if (

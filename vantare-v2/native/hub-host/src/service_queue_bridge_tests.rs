@@ -230,11 +230,32 @@ fn an_identical_operation_is_busy_while_active_even_with_a_free_waiting_slot() {
     let root = Root::new();
     let mut session = restart_session(&root.path, "queue-local-unused");
     let local = session.core.isolate_services(true);
-    session.request_remote(1, RemoteKind::MailSet, ServiceCommand::MailConsentSet { consent: true, source: vantare_ipc::services_protocol::MailSource::Settings }).unwrap();
+    session
+        .request_remote(
+            1,
+            RemoteKind::MailSet,
+            ServiceCommand::MailConsentSet {
+                consent: true,
+                source: vantare_ipc::services_protocol::MailSource::Settings,
+            },
+        )
+        .unwrap();
     assert!(local.incoming.try_recv().is_ok());
-    assert_eq!(session.request_remote(2, RemoteKind::MailSet, ServiceCommand::MailConsentSet { consent: false, source: vantare_ipc::services_protocol::MailSource::Settings }), Err(HostError::Busy));
+    assert_eq!(
+        session.request_remote(
+            2,
+            RemoteKind::MailSet,
+            ServiceCommand::MailConsentSet {
+                consent: false,
+                source: vantare_ipc::services_protocol::MailSource::Settings
+            }
+        ),
+        Err(HostError::Busy)
+    );
     assert!(local.incoming.try_recv().is_err());
-    session.request_remote(3, RemoteKind::PilotLoad, ServiceCommand::PilotLoad).unwrap();
+    session
+        .request_remote(3, RemoteKind::PilotLoad, ServiceCommand::PilotLoad)
+        .unwrap();
     assert!(session.remotes.contains_key(&3));
 }
 #[test]
@@ -243,12 +264,35 @@ fn an_expired_core_waiter_is_never_sent_and_its_owner_receives_busy() {
     let mut session = restart_session(&root.path, "queue-local-unused");
     let local = session.core.isolate_services(true);
     let now = Instant::now();
-    session.core.request_at(1, ServiceCommand::Probe, now).unwrap();
+    session
+        .core
+        .request_at(1, ServiceCommand::Probe, now)
+        .unwrap();
     assert!(local.incoming.try_recv().is_ok());
-    session.request_remote_at(2, RemoteKind::MailSet, ServiceCommand::MailConsentSet { consent: true, source: vantare_ipc::services_protocol::MailSource::Settings }, now).unwrap();
+    session
+        .request_remote_at(
+            2,
+            RemoteKind::MailSet,
+            ServiceCommand::MailConsentSet {
+                consent: true,
+                source: vantare_ipc::services_protocol::MailSource::Settings,
+            },
+            now,
+        )
+        .unwrap();
     local.outgoing.send((1, Ok(ServiceReply::Closed))).unwrap();
-    assert_eq!(session.core.reply_at(now + Duration::from_secs(15)).unwrap().0, 1);
-    let (id, result) = session.core.reply_at(now + Duration::from_secs(15)).unwrap();
+    assert_eq!(
+        session
+            .core
+            .reply_at(now + Duration::from_secs(15))
+            .unwrap()
+            .0,
+        1
+    );
+    let (id, result) = session
+        .core
+        .reply_at(now + Duration::from_secs(15))
+        .unwrap();
     assert_eq!(id, 2);
     assert_eq!(session.service_reply(id, result), Err(HostError::Busy));
     assert!(local.incoming.try_recv().is_err());
@@ -261,21 +305,41 @@ fn logout_and_authority_changes_deny_waiting_effects_but_never_discard_logout() 
     let local = session.core.isolate_services(true);
     session.core.request(1, ServiceCommand::Probe).unwrap();
     assert!(local.incoming.try_recv().is_ok());
-    session.request_remote(2, RemoteKind::MailSet, ServiceCommand::MailConsentSet { consent: true, source: vantare_ipc::services_protocol::MailSource::Settings }).unwrap();
-    session.core.observe_authority(1, 1, protocol::AccessView::default());
-    session.core.observe_authority(1, 2, protocol::AccessView::default());
+    session
+        .request_remote(
+            2,
+            RemoteKind::MailSet,
+            ServiceCommand::MailConsentSet {
+                consent: true,
+                source: vantare_ipc::services_protocol::MailSource::Settings,
+            },
+        )
+        .unwrap();
+    session
+        .core
+        .observe_authority(1, 1, protocol::AccessView::default());
+    session
+        .core
+        .observe_authority(1, 2, protocol::AccessView::default());
     let (id, result) = session.core.reply().unwrap();
     assert_eq!(id, 2);
     assert_eq!(session.service_reply(id, result), Err(HostError::Denied));
-    session.request_remote(3, RemoteKind::PilotLoad, ServiceCommand::PilotLoad).unwrap();
+    session
+        .request_remote(3, RemoteKind::PilotLoad, ServiceCommand::PilotLoad)
+        .unwrap();
     session.core.request(4, ServiceCommand::Logout).unwrap();
     let (id, result) = session.core.reply().unwrap();
     assert_eq!(id, 3);
     assert_eq!(session.service_reply(id, result), Err(HostError::Denied));
-    session.core.observe_authority(2, 1, protocol::AccessView::default());
+    session
+        .core
+        .observe_authority(2, 1, protocol::AccessView::default());
     local.outgoing.send((1, Ok(ServiceReply::Closed))).unwrap();
     assert_eq!(session.core.reply().unwrap().0, 1);
-    assert!(matches!(local.incoming.try_recv().unwrap(), (4, ServiceCommand::Logout)));
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (4, ServiceCommand::Logout)
+    ));
     assert!(local.incoming.try_recv().is_err());
 }
 #[test]
@@ -291,20 +355,52 @@ fn cancelling_a_real_core_import_waiter_prevents_its_save_and_preserves_the_lega
     let (name, stop, _listener, mut pipe) = endpoint();
     let _peer = connect(&name, stop, Duration::from_secs(5)).unwrap();
     pipe.accept().unwrap();
-    session.testing_request(&mut pipe, 7, &Request::DraftLoad {}).unwrap();
-    assert!(matches!(local.incoming.try_recv().unwrap(), (7, ServiceCommand::DraftLoad)));
-    session.request_remote(9, RemoteKind::MailGet, ServiceCommand::MailConsentGet).unwrap();
-    local.outgoing.send((7, Ok(ServiceReply::Draft { draft: None, message: String::new() }))).unwrap();
+    session
+        .testing_request(&mut pipe, 7, &Request::DraftLoad {})
+        .unwrap();
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (7, ServiceCommand::DraftLoad)
+    ));
+    session
+        .request_remote(9, RemoteKind::MailGet, ServiceCommand::MailConsentGet)
+        .unwrap();
+    local
+        .outgoing
+        .send((
+            7,
+            Ok(ServiceReply::Draft {
+                draft: None,
+                message: String::new(),
+            }),
+        ))
+        .unwrap();
     let (id, result) = session.core.reply().unwrap();
     assert_eq!(session.service_reply(id, result), Ok(None));
-    assert!(matches!(local.incoming.try_recv().unwrap(), (9, ServiceCommand::MailConsentGet)));
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (9, ServiceCommand::MailConsentGet)
+    ));
     session.cancel_deferred(&mut pipe).unwrap();
     let (id, result) = session.core.reply().unwrap();
     assert_eq!(id, 7);
     assert_eq!(session.service_reply(id, result), Ok(None));
-    local.outgoing.send((9, Ok(ServiceReply::MailConsent { consent: false, locale: None, revision: 1 }))).unwrap();
+    local
+        .outgoing
+        .send((
+            9,
+            Ok(ServiceReply::MailConsent {
+                consent: false,
+                locale: None,
+                revision: 1,
+            }),
+        ))
+        .unwrap();
     let (id, result) = session.core.reply().unwrap();
-    assert!(matches!(session.service_reply(id, result), Ok(Some(Reply::MailGet { .. }))));
+    assert!(matches!(
+        session.service_reply(id, result),
+        Ok(Some(Reply::MailGet { .. }))
+    ));
     assert!(local.incoming.try_recv().is_err());
     assert!(path.exists() && !path.with_extension("json.imported").exists());
     assert!(session.abandoned_deferred.is_empty());

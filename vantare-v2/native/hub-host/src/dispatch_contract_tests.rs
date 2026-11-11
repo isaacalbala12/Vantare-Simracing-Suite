@@ -26,10 +26,20 @@ impl Core {
     fn cancel_queued(&mut self, id: u32) {
         self.cancelled.push(id);
     }
-    fn request_at(&mut self, id: u32, command: vantare_ipc::services_protocol::Command, _now: Instant) -> Result<(), HostError> {
+    fn request_at(
+        &mut self,
+        id: u32,
+        command: vantare_ipc::services_protocol::Command,
+        _now: Instant,
+    ) -> Result<(), HostError> {
         self.request(id, command)
     }
-    fn request_continuation(&mut self, id: u32, command: vantare_ipc::services_protocol::Command, _accepted: Instant) -> Result<(), HostError> {
+    fn request_continuation(
+        &mut self,
+        id: u32,
+        command: vantare_ipc::services_protocol::Command,
+        _accepted: Instant,
+    ) -> Result<(), HostError> {
         self.request(id, command)
     }
     fn request(
@@ -138,6 +148,11 @@ fn generated_session_has_no_implicit_lifecycle_or_external_services() {
     assert!(!SCREEN_TICKS.is_empty() && !SCREEN_SUBSCRIPTIONS.is_empty());
     assert_eq!(
         session.service_reply(1, Err(HostError::CoreUnavailable)),
+        Ok(None)
+    );
+    session.remotes.insert(2, RemoteKind::MailGet);
+    assert_eq!(
+        session.service_reply(2, Err(HostError::CoreUnavailable)),
         Err(HostError::CoreUnavailable)
     );
 }

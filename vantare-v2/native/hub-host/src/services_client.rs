@@ -77,7 +77,11 @@ impl Client {
     pub fn request(&mut self, command: Command) -> Result<Reply, HostError> {
         self.request_before(command, std::time::Instant::now())
     }
-    pub(crate) fn request_before(&mut self, command: Command, accepted: std::time::Instant) -> Result<Reply, HostError> {
+    pub(crate) fn request_before(
+        &mut self,
+        command: Command,
+        accepted: std::time::Instant,
+    ) -> Result<Reply, HostError> {
         if !crate::service_queue::can_start(accepted, std::time::Instant::now()) {
             return Err(HostError::Busy);
         }

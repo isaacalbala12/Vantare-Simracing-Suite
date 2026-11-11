@@ -166,7 +166,7 @@ fn import_dispatch_busy_and_unavailable_never_archive_unseen_sources() {
         session.core.busy = busy;
         session.current.access.verified = true;
         session.accepted.insert(7, Instant::now());
-    session.testing_state.begin(Operation::Load);
+        session.testing_state.begin(Operation::Load);
         session
             .remotes
             .insert(7, RemoteKind::Testing(Operation::Load));
@@ -373,13 +373,22 @@ fn abandoned_ids_are_reserved_before_core_dispatch_and_multiple_cancellations_an
     let mut pipe = Pipe::new(Vec::new());
     for id in [7, 8] {
         session.deferred = Some((id, Instant::now()));
-        session.remotes.insert(id, RemoteKind::Testing(Operation::Load));
+        session
+            .remotes
+            .insert(id, RemoteKind::Testing(Operation::Load));
         session.cancel_deferred(&mut pipe).unwrap();
     }
     assert_eq!(session.abandoned_deferred.len(), 2);
     let bytes = pipe.get_ref().len();
     for id in [7, 8] {
-        assert_eq!(session.request_remote(id, RemoteKind::MailGet, vantare_ipc::services_protocol::Command::MailConsentGet), Err(HostError::Busy));
+        assert_eq!(
+            session.request_remote(
+                id,
+                RemoteKind::MailGet,
+                vantare_ipc::services_protocol::Command::MailConsentGet
+            ),
+            Err(HostError::Busy)
+        );
         let reply = session.service_reply(id, Ok(empty()));
         session.respond_service(&mut pipe, id, reply).unwrap();
     }

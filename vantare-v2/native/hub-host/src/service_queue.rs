@@ -1,12 +1,19 @@
 //! One active effect; bounded waiting slots, no replay and no command logging.
 use crate::protocol::HostError;
-use std::{collections::VecDeque, time::{Duration, Instant}};
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
 use vantare_ipc::services_protocol::Command;
 pub(crate) const RESPONSE_IO_TIMEOUT: Duration = Duration::from_secs(30);
 const PRIORITIES: usize = 5;
 const MAX_PENDING: usize = PRIORITIES + 1;
 type Request = (u32, Command, Instant);
-struct Waiting { id: u32, command: Command, accepted: Instant }
+struct Waiting {
+    id: u32,
+    command: Command,
+    accepted: Instant,
+}
 #[derive(Default)]
 pub(crate) struct Queue {
     active: Option<(u32, bool)>,
@@ -14,16 +21,25 @@ pub(crate) struct Queue {
     failures: VecDeque<(u32, HostError)>,
 }
 #[derive(Clone, Copy)]
-enum Origin { User, Background, Continuation }
+enum Origin {
+    User,
+    Background,
+    Continuation,
+}
 pub(crate) fn can_start(accepted: Instant, now: Instant) -> bool {
-    let wait_budget = Duration::from_millis(u64::from(crate::protocol::REQUEST_TIMEOUT_MS)).saturating_sub(RESPONSE_IO_TIMEOUT);
+    let wait_budget = Duration::from_millis(u64::from(crate::protocol::REQUEST_TIMEOUT_MS))
+        .saturating_sub(RESPONSE_IO_TIMEOUT);
     now.saturating_duration_since(accepted) < wait_budget
 }
 fn priority(command: &Command, origin: Origin) -> usize {
     match command {
         Command::Logout => 0,
         Command::AccountCancel => 1,
-        _ => match origin { Origin::Continuation => 2, Origin::User => 3, Origin::Background => 4 },
+        _ => match origin {
+            Origin::Continuation => 2,
+            Origin::User => 3,
+            Origin::Background => 4,
+        },
     }
 }
 impl Queue {
@@ -32,29 +48,55 @@ impl Queue {
     }
     fn contains(&self, id: u32) -> bool {
         self.active.is_some_and(|(active, _)| active == id)
-            || self.waiting.iter().flatten().any(|request| request.id == id)
+            || self
+                .waiting
+                .iter()
+                .flatten()
+                .any(|request| request.id == id)
             || self.failures.iter().any(|(pending, _)| *pending == id)
     }
     #[cfg(test)]
     pub(crate) fn submit(&mut self, id: u32, command: Command) -> Result<(), HostError> {
         self.submit_at(id, command, Instant::now())
     }
-    pub(crate) fn submit_at(&mut self, id: u32, command: Command, accepted: Instant) -> Result<(), HostError> {
+    pub(crate) fn submit_at(
+        &mut self,
+        id: u32,
+        command: Command,
+        accepted: Instant,
+    ) -> Result<(), HostError> {
         self.enqueue(id, command, Origin::User, accepted)
     }
     pub(crate) fn submit_background(&mut self, id: u32, command: Command) -> Result<(), HostError> {
         self.enqueue(id, command, Origin::Background, Instant::now())
     }
-    pub(crate) fn submit_continuation(&mut self, id: u32, command: Command, accepted: Instant) -> Result<(), HostError> {
+    pub(crate) fn submit_continuation(
+        &mut self,
+        id: u32,
+        command: Command,
+        accepted: Instant,
+    ) -> Result<(), HostError> {
         self.enqueue(id, command, Origin::Continuation, accepted)
     }
-    fn enqueue(&mut self, id: u32, command: Command, origin: Origin, accepted: Instant) -> Result<(), HostError> {
+    fn enqueue(
+        &mut self,
+        id: u32,
+        command: Command,
+        origin: Origin,
+        accepted: Instant,
+    ) -> Result<(), HostError> {
         let slot = priority(&command, origin);
         if self.len() >= MAX_PENDING || self.contains(id) || self.waiting[slot].is_some() {
             return Err(HostError::Busy);
         }
-        if matches!(command, Command::Logout | Command::AccountCancel) { self.invalidate_waiting(); }
-        self.waiting[slot] = Some(Waiting { id, command, accepted });
+        if matches!(command, Command::Logout | Command::AccountCancel) {
+            self.invalidate_waiting();
+        }
+        self.waiting[slot] = Some(Waiting {
+            id,
+            command,
+            accepted,
+        });
         Ok(())
     }
     pub(crate) fn invalidate_waiting(&mut self) {
@@ -64,9 +106,13 @@ impl Queue {
         }
     }
     #[cfg(test)]
-    pub(crate) fn start_next(&mut self) -> Option<Request> { self.start_next_at(Instant::now()) }
+    pub(crate) fn start_next(&mut self) -> Option<Request> {
+        self.start_next_at(Instant::now())
+    }
     pub(crate) fn start_next_at(&mut self, now: Instant) -> Option<Request> {
-        if self.active.is_some() { return None; }
+        if self.active.is_some() {
+            return None;
+        }
         while let Some(request) = self.waiting.iter_mut().find_map(Option::take) {
             if !can_start(request.accepted, now) {
                 self.failures.push_back((request.id, HostError::Busy));
@@ -79,28 +125,49 @@ impl Queue {
         None
     }
     pub(crate) fn finish(&mut self, id: u32) -> bool {
-        let Some((active, barrier)) = self.active else { return false; };
-        if active != id { return false; }
+        let Some((active, barrier)) = self.active else {
+            return false;
+        };
+        if active != id {
+            return false;
+        }
         self.active = None;
         // Also reject intents accepted while the account operation was active,
         // including an uncertain transport failure after an executed Logout.
-        if barrier { self.invalidate_waiting(); }
+        if barrier {
+            self.invalidate_waiting();
+        }
         true
     }
     pub(crate) fn fail_active(&mut self, id: u32, error: HostError) {
-        if self.finish(id) { self.failures.push_back((id, error)); }
+        if self.finish(id) {
+            self.failures.push_back((id, error));
+        }
     }
     pub(crate) fn cancel_waiting(&mut self, id: u32) -> bool {
-        let Some(slot) = self.waiting.iter_mut().find(|slot| slot.as_ref().is_some_and(|request| request.id == id)) else { return false; };
+        let Some(slot) = self
+            .waiting
+            .iter_mut()
+            .find(|slot| slot.as_ref().is_some_and(|request| request.id == id))
+        else {
+            return false;
+        };
         *slot = None;
         self.failures.push_back((id, HostError::CoreUnavailable));
         true
     }
     pub(crate) fn fail_all(&mut self) {
-        if let Some((id, _)) = self.active.take() { self.failures.push_back((id, HostError::CoreUnavailable)); }
-        for request in self.waiting.iter_mut().filter_map(Option::take) { self.failures.push_back((request.id, HostError::CoreUnavailable)); }
+        if let Some((id, _)) = self.active.take() {
+            self.failures.push_back((id, HostError::CoreUnavailable));
+        }
+        for request in self.waiting.iter_mut().filter_map(Option::take) {
+            self.failures
+                .push_back((request.id, HostError::CoreUnavailable));
+        }
     }
-    pub(crate) fn failure(&mut self) -> Option<(u32, HostError)> { self.failures.pop_front() }
+    pub(crate) fn failure(&mut self) -> Option<(u32, HostError)> {
+        self.failures.pop_front()
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -138,7 +205,10 @@ mod tests {
             Err(HostError::Busy)
         );
         assert!(queue.finish(1));
-        assert!(matches!(queue.start_next(), Some((2, Command::PilotLoad, _))));
+        assert!(matches!(
+            queue.start_next(),
+            Some((2, Command::PilotLoad, _))
+        ));
     }
     #[test]
     fn duplicate_ids_and_foreign_completions_cannot_release_an_effect() {
@@ -212,9 +282,16 @@ mod tests {
         queue.submit_at(1, Command::Probe, now).unwrap();
         assert!(queue.start_next_at(now).is_some());
         queue.submit_at(2, Command::MailConsentGet, now).unwrap();
-        queue.submit_continuation(3, Command::PilotLoad, now).unwrap();
+        queue
+            .submit_continuation(3, Command::PilotLoad, now)
+            .unwrap();
         assert!(queue.finish(1));
-        assert_eq!(queue.start_next_at(now + Duration::from_secs(14)).map(|(id, _, _)| id), Some(3));
+        assert_eq!(
+            queue
+                .start_next_at(now + Duration::from_secs(14))
+                .map(|(id, _, _)| id),
+            Some(3)
+        );
         assert!(queue.finish(3));
         assert!(queue.start_next_at(now + Duration::from_secs(15)).is_none());
         assert_eq!(queue.failure(), Some((2, HostError::Busy)));

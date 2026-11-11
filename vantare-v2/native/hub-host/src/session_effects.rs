@@ -44,11 +44,17 @@ impl Session {
         self.request_remote_at(id, kind, command, Instant::now())
     }
     pub(super) fn request_remote_at(
-        &mut self, id: u32, kind: RemoteKind,
-        command: vantare_ipc::services_protocol::Command, now: Instant,
+        &mut self,
+        id: u32,
+        kind: RemoteKind,
+        command: vantare_ipc::services_protocol::Command,
+        now: Instant,
     ) -> Result<(), HostError> {
-        if self.abandoned_deferred.contains(&id) || self.remotes.contains_key(&id)
-            || self.accepted.contains_key(&id) || self.remotes.values().any(|pending| *pending == kind) {
+        if self.abandoned_deferred.contains(&id)
+            || self.remotes.contains_key(&id)
+            || self.accepted.contains_key(&id)
+            || self.remotes.values().any(|pending| *pending == kind)
+        {
             return Err(HostError::Busy);
         }
         self.core.request_at(id, command, now)?;
@@ -57,7 +63,9 @@ impl Session {
         Ok(())
     }
     pub(super) fn continue_import(
-        &mut self, id: u32, kind: RemoteKind,
+        &mut self,
+        id: u32,
+        kind: RemoteKind,
         command: vantare_ipc::services_protocol::Command,
     ) -> Result<(), HostError> {
         let accepted = *self.accepted.get(&id).ok_or(HostError::Rejected)?;
@@ -85,7 +93,9 @@ impl Session {
         {
             self.deferred = None;
         }
-        if !matches!(&result, Ok(None)) { self.accepted.remove(&id); }
+        if !matches!(&result, Ok(None)) {
+            self.accepted.remove(&id);
+        }
         result
     }
     pub(super) fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {

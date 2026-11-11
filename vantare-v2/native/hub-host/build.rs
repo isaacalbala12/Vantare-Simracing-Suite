@@ -243,7 +243,11 @@ fn write_session(
     let base =
         fs::read_to_string(root.join("src/ui_process/init.inc")).expect("session initialization");
     registry.push_str(&template.replace("@FIELDS@", &fields));
-    writeln!(registry, "#[derive(Clone,Copy,PartialEq,Eq)] enum RemoteKind{{{remote}}}").expect("String write");
+    writeln!(
+        registry,
+        "#[derive(Clone,Copy,PartialEq,Eq)] enum RemoteKind{{{remote}}}"
+    )
+    .expect("String write");
     writeln!(registry,"type ScreenHandler=(fn(&Request)->bool,fn(&mut Session,&mut Pipe,u32,&Request)->io::Result<()>);\nconst SCREEN_HANDLERS:&[ScreenHandler]=&[{handlers}];").expect("String write");
     writeln!(registry,"type ScreenTick=fn(&mut Session,&mut Pipe)->io::Result<()>;\nconst SCREEN_TICKS:&[ScreenTick]=&[{ticks}];").expect("String write");
     writeln!(registry,"type TopicHandler=(fn(Topic)->bool,fn(&mut Session,&mut Pipe,Topic)->io::Result<()>);\nconst SCREEN_SUBSCRIPTIONS:&[TopicHandler]=&[{subscriptions}];").expect("String write");

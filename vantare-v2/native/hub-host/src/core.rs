@@ -21,8 +21,12 @@ type ServiceReply = (
 pub(crate) struct TestIncoming(std::sync::mpsc::Receiver<ServiceRequest>);
 #[cfg(test)]
 impl TestIncoming {
-    pub(crate) fn try_recv(&self) -> Result<(u32, vantare_ipc::services_protocol::Command), std::sync::mpsc::TryRecvError> {
-        self.0.try_recv().map(|(id, command, _accepted)| (id, command))
+    pub(crate) fn try_recv(
+        &self,
+    ) -> Result<(u32, vantare_ipc::services_protocol::Command), std::sync::mpsc::TryRecvError> {
+        self.0
+            .try_recv()
+            .map(|(id, command, _accepted)| (id, command))
     }
 }
 #[cfg(test)]
@@ -168,8 +172,12 @@ impl Core {
         loop {
             match self.replies.try_recv() {
                 Ok(value) if self.queue.finish(value.0) => {
-                    if let Ok(vantare_ipc::services_protocol::Reply::Account { session, .. }) = &value.1 {
-                        if self.account_session != Some(*session) { self.queue.invalidate_waiting(); }
+                    if let Ok(vantare_ipc::services_protocol::Reply::Account { session, .. }) =
+                        &value.1
+                    {
+                        if self.account_session != Some(*session) {
+                            self.queue.invalidate_waiting();
+                        }
                         self.account_session = Some(*session);
                     }
                     self.dispatch_waiting_at(now);
@@ -196,7 +204,10 @@ impl Core {
         self.requests = requests;
         self.replies = replies;
         self.service_ok.store(connected, Ordering::Release);
-        TestServices { incoming: TestIncoming(incoming), outgoing }
+        TestServices {
+            incoming: TestIncoming(incoming),
+            outgoing,
+        }
     }
     pub fn status(&mut self) -> CoreStatus {
         let activity = self.photos.activity();
@@ -240,7 +251,11 @@ impl Core {
     }
     pub(crate) fn observe_authority(&mut self, epoch: u64, revision: u64, access: AccessView) {
         let next = (epoch, revision, access);
-        if self.authority.as_ref().is_some_and(|previous| previous != &next) {
+        if self
+            .authority
+            .as_ref()
+            .is_some_and(|previous| previous != &next)
+        {
             self.queue.invalidate_waiting();
         }
         self.authority = Some(next);

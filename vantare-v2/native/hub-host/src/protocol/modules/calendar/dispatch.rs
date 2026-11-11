@@ -4,11 +4,9 @@ fn local(
     request: &Request,
 ) -> Option<Result<Reply, HostError>> {
     match request {
-        Request::CalendarConfigLoad {} => {
-            Some(state.config().map(|value| Reply::CalendarConfigLoad {
-                value: Box::new(value),
-            }))
-        }
+        Request::CalendarConfigLoad {} => Some(Ok(Reply::CalendarConfigLoad {
+            value: Box::new(state.config()),
+        })),
         Request::CalendarUtcSet {
             utc,
             expected_revision,

@@ -1,21 +1,23 @@
-import { list, number, strings, text } from "./calendar-common";
+import {
+  isCalendarRevision,
+  list,
+  number,
+  strings,
+  text,
+} from "./calendar-common";
 import {
   calendarAlertLeads,
   calendarBandModes,
   calendarBandsLimit,
   calendarDayMinutes,
   calendarDays,
-  calendarRevisionLength,
+  calendarDocumentStates,
   calendarSeriesLimit,
   calendarSlotsLimit,
   calendarTimestampLimit,
 } from "./generated/calendar";
 import { exact, oneOf, record } from "./validation-common";
 
-const revision = (v: unknown) =>
-  typeof v === "string" &&
-  v.length === calendarRevisionLength &&
-  /^[0-9a-f]+$/u.test(v);
 export function isCalendarAlerts(v: unknown) {
   return (
     record(v) &&
@@ -71,12 +73,24 @@ export function isCalendarConfig(v: unknown) {
       "followingRevision",
       "alerts",
       "alertsRevision",
+      "documents",
     ]) &&
     typeof v.utc === "boolean" &&
-    revision(v.prefsRevision) &&
+    record(v.documents) &&
+    exact(v.documents, ["prefs", "following", "alerts"]) &&
+    [v.documents.prefs, v.documents.following, v.documents.alerts].every(
+      (state) => oneOf(state, calendarDocumentStates),
+    ) &&
+    (v.documents.prefs === "ready"
+      ? isCalendarRevision(v.prefsRevision)
+      : v.prefsRevision === null) &&
     strings(v.following, calendarSeriesLimit) &&
-    revision(v.followingRevision) &&
-    revision(v.alertsRevision) &&
+    (v.documents.following === "ready"
+      ? isCalendarRevision(v.followingRevision)
+      : v.followingRevision === null) &&
+    (v.documents.alerts === "ready"
+      ? isCalendarRevision(v.alertsRevision)
+      : v.alertsRevision === null) &&
     isCalendarAlerts(v.alerts)
   );
 }

@@ -65,6 +65,8 @@ pub enum Reply {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum HostError {
+    #[serde(rename = "calendarScheduleUnavailable")]
+    CalendarScheduleUnavailable,
     #[serde(rename = "calendarConflict")]
     CalendarConflict {
         current: Box<crate::calendar::CalendarConfigView>,

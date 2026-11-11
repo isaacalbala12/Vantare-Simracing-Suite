@@ -1,4 +1,8 @@
-import { calendarMinuteLimit, calendarTextLimit } from "./generated/calendar";
+import {
+  calendarMinuteLimit,
+  calendarRevisionLength,
+  calendarTextLimit,
+} from "./generated/calendar";
 export const text = (v: unknown): v is string =>
   typeof v === "string" &&
   new TextEncoder().encode(v).length <= calendarTextLimit &&
@@ -19,3 +23,8 @@ export const strings = (v: unknown, max: number): v is string[] =>
   new Set(v).size === v.length;
 export const duration = (v: unknown) =>
   v === null || number(v, calendarMinuteLimit);
+
+export const isCalendarRevision = (v: unknown): v is string =>
+  typeof v === "string" &&
+  v.length === calendarRevisionLength &&
+  /^[0-9a-f]+$/u.test(v);

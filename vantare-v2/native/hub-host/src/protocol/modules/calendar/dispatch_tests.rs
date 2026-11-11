@@ -163,7 +163,7 @@ fn calendar_preference_dispatch_enforces_rights_and_cas_without_services() {
     else {
         panic!("config response")
     };
-    let revision = value.prefs_revision;
+    let revision = value.prefs_revision.expect("ready prefs revision");
     let mut pipe = Pipe::new(Vec::new());
     session
         .request(
@@ -191,6 +191,45 @@ fn calendar_preference_dispatch_enforces_rights_and_cas_without_services() {
         .unwrap();
     assert!(
         matches!(response(&mut pipe),HostToUi::Failure {error:HostError::CalendarConflict {current},..} if current.utc)
+    );
+    assert_eq!(session.core.requests, 0);
+}
+
+#[test]
+fn calendar_follow_reports_the_missing_current_schedule_without_calling_services() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 20, &Request::CalendarConfigLoad {})
+        .unwrap();
+    let HostToUi::Response {
+        result: Reply::CalendarConfigLoad { value },
+        ..
+    } = response(&mut pipe)
+    else {
+        panic!("config")
+    };
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            21,
+            &Request::CalendarFollowSet {
+                series_id: "qa".into(),
+                followed: true,
+                expected_revision: value.following_revision.unwrap(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 21,
+            error: HostError::CalendarScheduleUnavailable
+        }
     );
     assert_eq!(session.core.requests, 0);
 }

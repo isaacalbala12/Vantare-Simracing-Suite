@@ -89,9 +89,15 @@ launcherScenes["launcher-decision"] = {
     const alternative = page
       .locator('.v-launcher-profile[aria-pressed="false"]')
       .first();
-    await alternative.click();
+    const alternativeName = await alternative.getAttribute("aria-label");
+    assert.ok(alternativeName);
+    const target = page.getByRole("button", {
+      name: alternativeName,
+      exact: true,
+    });
+    await target.click();
     assert.equal(
-      await alternative.getAttribute("aria-pressed"),
+      await target.getAttribute("aria-pressed"),
       "true",
       "Underlying Launcher must still receive clicks",
     );
@@ -107,6 +113,7 @@ launcherScenes["launcher-decision"] = {
       await page
         .getByRole("button", { name: "Ver decisión", exact: true })
         .click();
+    assert.equal(await page.locator(".v-window-controls button").count(), 3);
     const reachable = await page
       .locator(".v-window-controls button")
       .evaluateAll((nodes) =>

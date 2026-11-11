@@ -1,5 +1,35 @@
+import assert from "node:assert/strict";
 import type { VisualScene } from "./scenes.ts";
 export const notificationScenes: Record<string, VisualScene> = {
+  "notificaciones-completa": {
+    mock: "notificaciones-base",
+    async prepare(page) {
+      const target = new URL(page.url());
+      target.searchParams.set("escena", "notificaciones-cinco");
+      await page.goto(target.href);
+      await page
+        .getByRole("button", { name: "Notificaciones", exact: true })
+        .click();
+      await page
+        .getByRole("button", {
+          name: "Ver todas las notificaciones",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByText("Actualización de prueba lista", { exact: true })
+        .waitFor();
+      await page
+        .getByText("El perfil de prueba falló", { exact: true })
+        .waitFor();
+      const full = page.locator(".v-notifications--full");
+      assert.equal(await full.locator("article.v-notification").count(), 5);
+      assert.equal(
+        await full.locator('article[data-unread="true"]').count(),
+        3,
+      );
+    },
+  },
   "notificaciones-completa-vacio": {
     mock: "notificaciones-base",
     async prepare(page) {

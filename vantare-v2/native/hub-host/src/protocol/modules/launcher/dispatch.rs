@@ -1,4 +1,4 @@
-use super::{Event, HostToUi, Pipe, Reply, Request, Session, frame, io};
+use super::{Event, HostError, HostToUi, Pipe, Reply, Request, Session, frame, io};
 impl Session {
     fn launcher_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {

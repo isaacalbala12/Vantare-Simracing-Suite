@@ -12,7 +12,15 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { profileLimits } from "../src/contract/generated/contract";
 import { HostProvider } from "../src/renderer/app/Host";
 import {
@@ -32,6 +40,10 @@ import {
 } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
+// Module loading on the cold HDD is fixture setup, not part of editor behavior.
+beforeAll(async () => {
+  await import("../src/mock/host");
+});
 beforeEach(() =>
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -617,6 +629,7 @@ describe("profile editor", () => {
         ([v]) => v.method === "launcher.profile.favorite",
       ),
     ).toHaveLength(0);
+    await user.keyboard("{Escape}");
     release();
     await waitFor(() =>
       expect(

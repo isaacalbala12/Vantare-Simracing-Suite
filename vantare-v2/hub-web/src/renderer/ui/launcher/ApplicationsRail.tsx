@@ -174,7 +174,9 @@ export function LauncherApplicationsRail({
                   hideLabel
                   options={option.choices}
                   value={option.value}
-                  disabled={!onOption || pending || view.protected}
+                  disabled={
+                    !onOption || pending || view.protected || view.running
+                  }
                   onChange={(raw) => {
                     if (raw === option.value) return;
                     const value = patch(option.field, raw);
@@ -188,7 +190,7 @@ export function LauncherApplicationsRail({
             <Switch
               label={actionText.closeOnExit}
               checked={options.closeOnExit}
-              disabled={!onOption || pending || view.protected}
+              disabled={!onOption || pending || view.protected || view.running}
               onCheckedChange={(value) =>
                 profile &&
                 onOption?.(profile.id, { option: "closeOnExit", value })

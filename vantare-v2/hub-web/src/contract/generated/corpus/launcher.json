@@ -160,7 +160,6 @@
                 "failure": "continue",
                 "firstStepDelay": 0,
                 "retries": 2,
-                "retryFailed": false,
                 "startup": false
               }
             },
@@ -182,7 +181,6 @@
                 "failure": "continue",
                 "firstStepDelay": 0,
                 "retries": 2,
-                "retryFailed": false,
                 "startup": false
               }
             }

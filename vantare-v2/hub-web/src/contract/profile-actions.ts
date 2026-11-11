@@ -63,7 +63,7 @@ export function isProfileAction(value: Record<string, unknown>): boolean {
     case "failure":
       return oneOf(patch.value, profileFailures);
     case "firstStepDelay":
-      return oneOf(patch.value, launcherFirstDelays);
+      return launcherFirstDelays.some((value) => value === patch.value);
     case "retries":
       return integer(patch.value) && patch.value <= profileLimits.retries;
     case "startup":

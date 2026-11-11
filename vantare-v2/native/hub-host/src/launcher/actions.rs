@@ -104,7 +104,7 @@ pub fn option(
             ProfileOption::FirstStepDelay(value)
                 if FIRST_STEP_DELAYS.contains(&value) || value == current.first_step_delay =>
             {
-                current.first_step_delay = value
+                current.first_step_delay = value;
             }
             ProfileOption::Retries(value) if value <= editor::RETRIES_MAX => {
                 current.max_retries = value;

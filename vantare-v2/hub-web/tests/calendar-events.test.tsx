@@ -83,7 +83,7 @@ it("routes favorite, slot and launch actions without changing the public schedul
   );
   expect(launch).toHaveBeenCalledOnce();
   expect(JSON.stringify(schedule)).toBe(snapshot);
-  expect(screen.getByText(text.udpRequired)).toBeTruthy();
+  expect(screen.getByText(text.udpManual)).toBeTruthy();
 });
 it("does not fabricate an event when the publication contains only daily series", () => {
   const source = calendarReference().official;

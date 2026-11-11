@@ -97,7 +97,7 @@ export function CalendarEventsView({
               <i aria-hidden="true">
                 {special ? text.specialMark : text.wecMark}
               </i>
-              <div className="v-calendar-event-range">
+              <div className="v-calendar-event-date-range">
                 <b>
                   {special ? calendarText.specialty : calendarText.tiers.weekly}
                 </b>
@@ -105,6 +105,10 @@ export function CalendarEventsView({
                   <span>{`${datePart(first, "weekday", utc)} ${datePart(first, "day", utc)}${text.arrow}${datePart(last, "weekday", utc)} ${datePart(last, "day", utc)} ${datePart(last, "month", utc)}`}</span>
                 )}
               </div>
+              <div
+                className="v-calendar-event-poster-spacer"
+                aria-hidden="true"
+              />
               <h2>
                 <button
                   className="v-calendar-event-title"
@@ -214,9 +218,19 @@ export function CalendarEventsView({
               {series.notes.some((note) => note.includes("tracerudp")) && (
                 <div className="v-calendar-event-udp">
                   <Icon name="warn" />
-                  <p>{text.udpRequired}</p>
+                  <div>
+                    <p>
+                      <strong>{text.udpTitle}</strong>{" "}
+                      <code>{text.udpOption}</code>
+                    </p>
+                    <p>{text.udpManual}</p>
+                  </div>
                 </div>
               )}
+              <div
+                className="v-calendar-event-detail-spacer"
+                aria-hidden="true"
+              />
               <footer>
                 <Button
                   variant="primary"

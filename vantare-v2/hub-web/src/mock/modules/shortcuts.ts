@@ -15,8 +15,9 @@ export function create(context: MockContext): MockHandler {
           id,
           result: {
             method: "shortcuts.get",
-            value:
-              shortcuts as import("../../contract/generated/contract").ShortcutsView,
+            value: context.visual
+              ? { profiles: [], protected: false }
+              : (shortcuts as import("../../contract/generated/contract").ShortcutsView),
           },
         };
 

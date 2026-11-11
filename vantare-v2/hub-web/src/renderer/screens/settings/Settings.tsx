@@ -8,8 +8,10 @@ import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { SearchInput } from "../../ui/Forms";
 import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
+import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import { GeneralRail } from "./GeneralRail";
+import { ShortcutsRail } from "./ShortcutsRail";
 
 const Account = lazy(() =>
   import("./Account").then((module) => ({ default: module.Account })),
@@ -90,9 +92,9 @@ export function Settings() {
       label: t("settings.shortcuts"),
       content: (
         <Suspense fallback={loading}>
-          <ContentStack>
+          <ShortcutGroups>
             <Shortcuts />
-          </ContentStack>
+          </ShortcutGroups>
         </Suspense>
       ),
     },
@@ -173,6 +175,8 @@ export function Settings() {
         rail={
           selected === "general" ? (
             <GeneralRail onUpdates={() => setTab("updates")} />
+          ) : selected === "shortcuts" ? (
+            <ShortcutsRail />
           ) : undefined
         }
       />

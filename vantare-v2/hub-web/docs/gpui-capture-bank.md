@@ -1,7 +1,7 @@
 # Banco GPUI compartido (QA)
 
 El inventario fijo es `D:/VantareServer/qa/referencia-gpui-bin/bank.json`; apunta al
-ejecutable compilado `versions/6accf3628/vantare.exe` dentro de ese banco.
+ejecutable compilado `versions/1d8614ed4/vantare.exe` dentro de ese banco.
 `bank.json` fija SHA256, commit de origen y perfil Release. El script comprueba
 ese hash antes de abrirlo. Sus replies son locales; no usa cuentas ni servicios reales.
 El banco incluye los recursos públicos y una plantilla QA propia.
@@ -26,7 +26,7 @@ pedir su incorporación al responsable del banco. No sustituir referencias
 existentes sin revisar los datos y el permiso de acceso de la nueva captura.
 
 Validado en las siete escenas siguientes, en oscuro y claro, 1440×900 y sin foco.
-SHA del banco: `8e42ad931cacd7e7c67a813365674a0f8735c7bf2d453b8c77c0882b506ed4bd`.
+SHA del banco anterior usado para esas 14 referencias: `8e42ad931cacd7e7c67a813365674a0f8735c7bf2d453b8c77c0882b506ed4bd`.
 Las 14 imágenes y recibos están en `D:/VantareServer/evidence/hub-web/referencia-gpui/`;
 el informe con hashes y entradas, en `D:/VantareServer/evidence/hub-web/bank-followup/reference-report.json`.
 Las versiones anteriores se conservan como evidencia; no se distribuye este binario.
@@ -53,3 +53,27 @@ commit, SHA de replies y PNG y la raíz QA. Para repetir exactamente los datos s
 conserva esa raíz; los replies originales de la plantilla compartida no se modifican.
 El alias de Notificaciones conserva el reloj de su escena QA de panel, pero abre
 la sección completa. Cada captura acaba su proceso antes de comenzar otra.
+
+## Puertas reales de privacidad y acceso
+
+El banco actual, fuente `1d8614ed4`, SHA-256
+`d88d5e5a55c24ca1705e953012774dc29e4f49a475f3e03216dba455f77a2564`,
+añade el flag autorizado `--qa-measure` al ejemplo QA. Este modo conserva las
+puertas reales y rechaza `--demo` y `--qa-testing`; exige que tanto
+`VANTARE_NATIVE_DATA_ROOT` como `LOCALAPPDATA` sean la raíz QA explícita.
+No cambia el Hub distribuido. Toma el mismo mutex de captura antes de abrir GPUI.
+
+El script selecciona ese modo para `privacidad-pendiente`, `privacidad-uso` y
+`acceso-base`. Crea decisiones locales con todos los permisos denegados, espera
+la respuesta local de cuenta y prepara únicamente el HWND del ejecutable QA
+verificado fuera de los monitores, a 1440×900 y sin activarlo. El helper existente
+comprueba DPI 96 y ausencia de foco antes de PrintWindow; `.window.json` conserva
+el resultado de la preparación. No se maneja el escritorio ni se abre el navegador.
+La opción nueva `-Offscreen` de `scripts/visual-diff/capture.ps1` solo sirve con
+`-Prepare`; las llamadas existentes conservan su comportamiento.
+
+Las seis referencias dark/light están en `referencia-gpui/{dark,light}` con sus
+recibos. Informe: `D:/VantareServer/evidence/hub-web/acceso-referencias/reference-report.json`.
+Dos tests del ejemplo y build Release pasan en Windows; cada captura cerró su PID
+antes de la siguiente. El Clippy del crate GPUI congelado conserva sus errores
+previos (17 hallazgos en código fuera del ejemplo); no se modifica ni se silencia.

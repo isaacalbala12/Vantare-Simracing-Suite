@@ -5,6 +5,7 @@ import type {
 export const residentText = {
   title: "Decisión de lanzamiento",
   close: "Cerrar",
+  closeSymbol: "×",
   pending: "Hay una decisión de lanzamiento pendiente.",
   open: "Ver decisión",
   readOnly:

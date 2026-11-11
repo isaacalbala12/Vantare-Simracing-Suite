@@ -1,0 +1,76 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.resident.get",
+        "value": {
+          "decision": {
+            "actions": [
+              {
+                "id": "trust",
+                "label": "Confiar y lanzar"
+              },
+              {
+                "id": "cancel",
+                "label": "Cancelar"
+              }
+            ],
+            "id": "18446744073709551615",
+            "kind": "authorization"
+          },
+          "error": false,
+          "online": true,
+          "protected": false,
+          "registrations": [],
+          "running": true
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "launcherResident",
+        "value": {
+          "decision": {
+            "actions": [
+              {
+                "id": "trust",
+                "label": "Confiar y lanzar"
+              },
+              {
+                "id": "cancel",
+                "label": "Cancelar"
+              }
+            ],
+            "id": "18446744073709551615",
+            "kind": "authorization"
+          },
+          "error": false,
+          "online": true,
+          "protected": false,
+          "registrations": [],
+          "running": true
+        }
+      },
+      "kind": "event"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.get"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "launcherResident"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "launcherResident"
+    }
+  ]
+}

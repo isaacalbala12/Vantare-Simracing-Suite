@@ -1,10 +1,11 @@
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { launcherText as text } from "../../i18n/launcher";
+import { ResidentInbox } from "../../ui/launcher/ResidentInbox";
 import { Applications } from "./Applications";
 import { ProfileEditorProvider, useProfileEditorState } from "./editor-state";
 import { Launcher } from "./Launcher";
 import { LauncherRail } from "./LauncherRail";
-import { ResidentInbox, useResident } from "./resident";
+import { useResident } from "./resident";
 export default function LauncherEntry() {
   return (
     <ProfileEditorProvider>

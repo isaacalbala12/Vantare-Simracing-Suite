@@ -305,7 +305,8 @@ parcial. Las semanas se ordenan por inicio. El consumidor podrá calcular la
 rotación y mediana de publicación del GPUI; no se inventa historial de carreras.
 Wire v22 aprobado; sin nuevos paquetes ni cambios en
 IPC, services, runtime, derechos o supervisor.
-## Launcher: buzón y registro (`launcher_resident`, v21 reservada)
+## Launcher: buzón y registro (`launcher_resident`, versión provisional)
+
 
 `launcher.resident.get {}` y el tema `launcherResident` leen los formatos ya
 publicados por el residente. No crean launcher.json ni escriben en el buzón:

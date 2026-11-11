@@ -127,6 +127,14 @@
   color: var(--warn);
   background: var(--warn-tint);
 }
+.v-calendar-week-live-identity b[data-tier="intermediate"] {
+  color: var(--text-3);
+  background: var(--surface-3);
+}
+.v-calendar-week-live-identity b[data-tier="advanced"] {
+  color: var(--warn);
+  background: var(--warn-tint);
+}
 .v-calendar-week-live-event-day {
   padding: 8px;
   border-left: 1px solid var(--line-1);

@@ -43,17 +43,38 @@ public static class FirstHubMeasure {
  public static bool Responsive(long handle) { UIntPtr result;return SendMessageTimeoutW(new IntPtr(handle),0,UIntPtr.Zero,IntPtr.Zero,2,1000,out result)!=IntPtr.Zero; }
  public static void Resize(long handle) {var window=new IntPtr(handle);Rect outer,client;if(!GetWindowRect(window,out outer)||!GetClientRect(window,out client)||!SetWindowPos(window,IntPtr.Zero,0,0,1440+outer.right-outer.left-client.right,900+outer.bottom-outer.top-client.bottom,2|4|16))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}
  public static void Home(long handle) {var window=new IntPtr(handle);var point=new IntPtr((73<<16)|38);foreach(uint message in new uint[]{0x200,0x201,0x202})if(!PostMessageW(window,message,new UIntPtr(message==0x201 ? 1u:0u),point))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}
+ public static void Tab(long handle,int x) {var window=new IntPtr(handle);var point=new IntPtr((25<<16)|x);foreach(uint message in new uint[]{0x200,0x201,0x202})if(!PostMessageW(window,message,new UIntPtr(message==0x201 ? 1u:0u),point))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());}
  public static int[] Size(long handle) {Rect rect;if(!GetClientRect(new IntPtr(handle),out rect))throw new InvalidOperationException("Client bounds");return new int[]{rect.right,rect.bottom};}
 }
 '@
 [FirstHubMeasure]::Dpi()
-Add-Type -AssemblyName UIAutomationClient
-Add-Type -AssemblyName UIAutomationTypes
 . (Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-bitmap.ps1')
 function Save-Window([long]$Handle,[string]$Path) {
     $size=[FirstHubMeasure]::Size($Handle)
     $bitmap=[HubCaptureBitmap]::new($size[0],$size[1])
     try { if(-not $bitmap.Capture([IntPtr]$Handle)){throw 'Measurement screenshot failed'}; Save-HubCaptureBitmap $bitmap $Path } finally { $bitmap.Dispose() }
+}
+function Wait-NativeTab([long]$Handle,[int]$UnderlineX,[bool]$General) {
+    $buffer=[HubCaptureBitmap]::new(1440,900)
+    $deadline=[Diagnostics.Stopwatch]::StartNew()
+    try {
+        do {
+            if(-not $buffer.Capture([IntPtr]$Handle)){throw 'Readiness capture failed'}
+            $buffer.Flush()
+            $offset=(50*1440+$UnderlineX)*4
+            $blue=[Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$offset)
+            $green=[Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$offset+1)
+            $red=[Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$offset+2)
+            $painted=$true
+            if($General){
+                $surface=(195*1440+108)*4
+                $painted=[Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$surface+2) -ge 32 -and [Runtime.InteropServices.Marshal]::ReadByte($buffer.Bits,$surface+1) -ge 26
+            }
+            if($red -gt 140 -and $green -lt 70 -and $blue -lt 70 -and $painted){return}
+            if($deadline.Elapsed.TotalSeconds -gt 15){throw 'GPUI tab/readiness paint unavailable; sample rejected'}
+            Start-Sleep -Milliseconds 5
+        } while($true)
+    } finally { $buffer.Dispose() }
 }
 for($iteration=0;$iteration -lt 5;$iteration++) {
     $applications=@($configuration.apps)
@@ -82,18 +103,14 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
             [FirstHubMeasure]::Resize($window)
             if(-not [FirstHubMeasure]::Responsive($window)){throw 'Window did not answer WM_NULL'}
             $responsiveMs=$clock.Elapsed.TotalMilliseconds
-            $controlProof='renderer focus verified by Playwright'
+            $controlProof='Playwright: Apariencia to General, heading and focus verified'
             if($application.name -eq 'gpui') {
-                $root=[System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$window)
-                $condition=[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Empezar minimizado')
-                $controlDeadline=[Diagnostics.Stopwatch]::StartNew()
-                do {
-                    $control=$root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
-                    if($control -and $control.Current.IsEnabled){break}
-                    if($controlDeadline.Elapsed.TotalSeconds -gt 15){throw 'GPUI General control unavailable: this is not a comparable measurement'}
-                    Start-Sleep -Milliseconds 10
-                } while($true)
-                $controlProof='UIAutomation: enabled Empezar minimizado in the measured HWND'
+                Wait-NativeTab $window 280 $true
+                [FirstHubMeasure]::Tab($window,370)
+                Wait-NativeTab $window 370 $false
+                [FirstHubMeasure]::Tab($window,280)
+                Wait-NativeTab $window 280 $true
+                $controlProof='Win32: Apariencia to General; active underline and General card painted'
             }
             @{phase='visible';app=$application.name;iteration=$iteration;pid=$process.Id;window=$window;visibleMs=$visibleMs;responsiveMs=$responsiveMs;controlProof=$controlProof} | ConvertTo-Json -Compress | Write-Output
             if([Console]::ReadLine() -ne 'ready'){throw 'Missing renderer ready acknowledgement'}

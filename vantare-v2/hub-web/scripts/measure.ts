@@ -341,6 +341,16 @@ async function main() {
             .getByRole("heading", { name: "General", exact: true })
             .waitFor({ timeout: 15000 });
           await page
+            .getByRole("tab", { name: "Apariencia", exact: true })
+            .click();
+          await page
+            .getByRole("heading", { name: "Apariencia", exact: true })
+            .waitFor();
+          await page.getByRole("tab", { name: "General", exact: true }).click();
+          await page
+            .getByRole("heading", { name: "General", exact: true })
+            .waitFor();
+          await page
             .getByRole("switch", { name: "Empezar minimizado", exact: true })
             .focus();
           assert.equal(

@@ -9,7 +9,9 @@ import { TestingRail } from "./TestingRail";
 import { useTestingTabs } from "./TestingTabs";
 
 export default function TestingEntry() {
-  const { access, participation, sessionReceipts } = useReports();
+  const { access, participation } = useReports();
+  // GPUI's rail uses its loaded-contribution count for both captions.
+  const railCount = participation.reports.length;
   const { tabs, active, change } = useTestingTabs(access);
   const [reportView, setReportView] = useState<ReportsView>("local");
   function showReports(view: ReportsView) {
@@ -29,10 +31,7 @@ export default function TestingEntry() {
         onTabChange={onTabChange}
         rail={
           active === "summary" ? (
-            <TestingSummaryRail
-              count={participation.reports.length}
-              receipts={sessionReceipts.length}
-            />
+            <TestingSummaryRail count={railCount} receipts={railCount} />
           ) : (
             <TestingRail />
           )
@@ -43,7 +42,7 @@ export default function TestingEntry() {
           <Reports key={reportView} initialView={reportView} />
         ) : active === "summary" ? (
           <TestingSummary
-            onNewReport={() => showReports("compose")}
+            onNewReport={() => showReports("local")}
             onDiagnostic={() => showReports("diagnostic")}
           />
         ) : null}

@@ -8,11 +8,29 @@ import { Button } from "./Button";
 import { TestingCard, TestingFinePrint } from "./TestingLayout";
 
 export function receiptTime(value: string, now: Date) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return text.missingDate;
-  const dayNumber = (day: Date) =>
-    Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) / 86400000;
-  const age = dayNumber(now) - dayNumber(date);
+  const stamp =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.exec(
+      value,
+    );
+  const parsed = new Date(value);
+  if (!stamp || !Number.isFinite(parsed.getTime())) return text.missingDate;
+  const [, year, month, dayOfMonth, hour, minute] = stamp.map(Number);
+  const daysInMonth = new Date(Date.UTC(year + 400, month, 0)).getUTCDate();
+  if (
+    month < 1 ||
+    month > 12 ||
+    dayOfMonth < 1 ||
+    dayOfMonth > daysInMonth ||
+    hour > 23 ||
+    minute > 59
+  )
+    return text.missingDate;
+  // GPUI uses the session's current fixed offset, including for older receipts.
+  const offset = now.getTimezoneOffset() * 60_000;
+  const date = new Date(parsed.getTime() - offset);
+  const current = new Date(now.getTime() - offset);
+  const dayNumber = (day: Date) => Math.floor(day.getTime() / 86400000);
+  const age = dayNumber(current) - dayNumber(date);
   const pad = (value: number) => String(value).padStart(2, "0");
   const day =
     age === 0
@@ -20,9 +38,9 @@ export function receiptTime(value: string, now: Date) {
       : age === 1
         ? text.yesterday
         : age >= 2 && age <= 6
-          ? text.weekdays[date.getDay()]
-          : `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
-  return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+          ? text.weekdays[date.getUTCDay()]
+          : `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}/${String(date.getUTCFullYear()).padStart(4, "0")}`;
+  return `${day} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }
 
 export function SessionReportReceipts({

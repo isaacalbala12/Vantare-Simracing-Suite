@@ -11,7 +11,10 @@ import {
   TestingSummaryView,
 } from "../src/renderer/ui/TestingSummaryView";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 it("opens the new report action and displays real account/session counts without global statistics", () => {
   const open = vi.fn();
   render(
@@ -79,4 +82,11 @@ it("formats receipt dates using the GPUI day labels and an explicit missing date
     "30/10/2026 08:09",
   );
   expect(receiptTime("invalid", now)).toBe(text.missingDate);
+  expect(receiptTime("2026-02-31T12:00:00Z", now)).toBe(text.missingDate);
+  expect(receiptTime("2026-11-11T24:00:00Z", now)).toBe(text.missingDate);
+});
+it("uses the GPUI session's current fixed offset for older receipts", () => {
+  const now = new Date("2026-07-11T12:00:00Z");
+  vi.spyOn(now, "getTimezoneOffset").mockReturnValue(-120);
+  expect(receiptTime("2026-01-11T12:05:00Z", now)).toBe("11/01/2026 14:05");
 });

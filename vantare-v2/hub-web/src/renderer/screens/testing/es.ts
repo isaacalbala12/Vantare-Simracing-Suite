@@ -1,6 +1,7 @@
 export const testingText = {
   legacy: {
-    archived: "Se archivó el borrador antiguo y se conservó el borrador actual del núcleo.",
+    archived:
+      "Se archivó el borrador antiguo y se conservó el borrador actual del núcleo.",
     imported:
       "Se recuperó el borrador antiguo. Se conserva una copia original.",
     importedTrimmed:

@@ -43,7 +43,7 @@ export function Reports() {
   const blocked = !state.available || state.busy;
   return (
     <TestingLayout
-      title={text.title}
+      title={state.access.tester ? text.sectionTitle : text.title}
       description={text.description}
       tools={
         <Button

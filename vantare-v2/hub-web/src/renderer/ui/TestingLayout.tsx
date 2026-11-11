@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "../assets/icons/Icon";
 import { RailBlock } from "./Frame";
+import { TrackedCaps } from "./TrackedCaps";
 import "./testing-layout.css";
 
 export function TestingLayout({
@@ -56,7 +57,7 @@ export function TestingCard({
       {title && (
         <h2>
           <Icon name="v-testing" />
-          {title}
+          <TrackedCaps>{title}</TrackedCaps>
         </h2>
       )}
       {children}

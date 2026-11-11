@@ -40,3 +40,11 @@ export function AccessWaiting({ children }: { children: ReactNode }) {
     </span>
   );
 }
+
+export function AccessCallout({ children }: { children: ReactNode }) {
+  return (
+    <p className="v-access-callout" role="status">
+      {children}
+    </p>
+  );
+}

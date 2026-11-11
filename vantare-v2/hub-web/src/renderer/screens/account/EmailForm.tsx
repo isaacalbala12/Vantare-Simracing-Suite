@@ -9,13 +9,13 @@ import { useAccount } from "../../app/AccountState";
 import { accessText as text } from "../../i18n/access.es";
 import {
   AccessButton,
+  AccessCallout,
   AccessForm,
   AccessMessage,
   AccessModes,
   AccessWaiting,
 } from "../../ui/AccessForm";
 import { Button } from "../../ui/Button";
-import { Callout } from "../../ui/Data";
 import { Input } from "../../ui/Forms";
 import { OtpField } from "../../ui/OtpField";
 export function EmailForm({ value }: { value: EmailView }) {
@@ -186,7 +186,7 @@ export function EmailForm({ value }: { value: EmailView }) {
       {value.stage === "consent" && (
         <AccessMessage kind="consent">{text.consent}</AccessMessage>
       )}
-      {value.message && <Callout title={value.message} />}
+      {value.message && <AccessCallout>{value.message}</AccessCallout>}
       {value.stage === "authorizing" && (
         <AccessMessage kind="authorizing">{text.authorizing}</AccessMessage>
       )}

@@ -176,3 +176,16 @@
 .v-access .v-button--primary {
   font: 600 15px / 25px var(--font-sans);
 }
+
+.v-access-form .v-input {
+  width: 100%;
+}
+.v-access-callout {
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent-bright) 18%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 6%, transparent);
+  color: var(--text-2);
+  font: 400 12.5px / 21px var(--font-sans);
+}

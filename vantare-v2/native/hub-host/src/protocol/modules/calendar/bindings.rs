@@ -144,8 +144,8 @@ fn history_sample() -> HostToUi {
         }),
     })
 }
-fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
-    let config = crate::calendar::CalendarConfigView {
+fn sample_config() -> crate::calendar::CalendarConfigView {
+    crate::calendar::CalendarConfigView {
         utc: false,
         prefs_revision: Some(vantare_services::content_hash(&[0])),
         following: vec![],
@@ -157,7 +157,10 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             following: crate::calendar::CalendarDocumentState::Ready,
             alerts: crate::calendar::CalendarDocumentState::Ready,
         },
-    };
+    }
+}
+fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
+    let config = sample_config();
     let host = vec![
         history_sample(),
         HostToUi::Failure {

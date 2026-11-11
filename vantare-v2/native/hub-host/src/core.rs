@@ -64,15 +64,6 @@ impl Core {
             last_photo: None,
         })
     }
-    #[cfg(test)]
-    pub(crate) fn unavailable_for_test(&mut self, busy: bool) {
-        self.stop.set();
-        if let Some(worker) = self.worker.take() {
-            worker.join().expect("test service stop");
-        }
-        self.service_ok.store(false, Ordering::Release);
-        self.pending = busy.then_some(99);
-    }
     pub fn request(
         &mut self,
         id: u32,

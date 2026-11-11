@@ -427,15 +427,15 @@ it("mock noops keep all revisions and distinguish absence of a current schedule"
       followed: false,
       expectedRevision: config.followingRevision,
     },
-  ];
+  ] as const;
   for (const request of requests) {
     if (!request.expectedRevision)
       throw new Error("ready corpus revision required");
     const response = host({
       kind: "request",
       id: 40,
-      request,
-    } as import("../src/contract/generated/contract").UiToHost);
+      request: { ...request, expectedRevision: request.expectedRevision },
+    });
     expect(response).toMatchObject({ result: { value: config } });
   }
   if (!config.followingRevision)

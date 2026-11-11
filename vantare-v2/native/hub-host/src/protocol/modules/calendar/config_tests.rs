@@ -3,9 +3,8 @@ use std::{fs::OpenOptions, path::PathBuf};
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
-        let base = std::env::var_os("VANTARE_HUB_QA_ROOT")
-            .map(PathBuf::from)
-            .unwrap_or_else(std::env::temp_dir);
+        let base =
+            std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(std::env::temp_dir, PathBuf::from);
         std::fs::create_dir_all(&base).unwrap();
         let path = base.join(format!(
             "calendar-cas-{}",

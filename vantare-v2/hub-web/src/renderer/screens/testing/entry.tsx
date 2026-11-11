@@ -13,14 +13,18 @@ export default function TestingEntry() {
   // GPUI's rail uses its loaded-contribution count for both captions.
   const railCount = participation.reports.length;
   const { tabs, active, change } = useTestingTabs(access);
-  const [reportView, setReportView] = useState<ReportsView>("local");
-  function showReports(view: ReportsView) {
+  const [reportView, setReportView] =
+    useState<Exclude<ReportsView, "diagnostic">>("local");
+  const [diagnosticOpen, setDiagnosticOpen] = useState(false);
+  function showReports(view: Exclude<ReportsView, "diagnostic">) {
+    setDiagnosticOpen(false);
     setReportView(view);
     change("reports");
   }
-  function onTabChange(tab: string) {
-    setReportView("local");
-    change(tab);
+  function changeReportView(view: ReportsView) {
+    if (view === "diagnostic") setDiagnosticOpen(true);
+    else if (diagnosticOpen) setDiagnosticOpen(false);
+    else setReportView(view);
   }
   return (
     <>
@@ -28,7 +32,7 @@ export default function TestingEntry() {
         title={text.sectionTitle}
         tabs={tabs}
         activeTab={active}
-        onTabChange={onTabChange}
+        onTabChange={change}
         rail={
           active === "summary" ? (
             <TestingSummaryRail count={railCount} receipts={railCount} />
@@ -38,12 +42,15 @@ export default function TestingEntry() {
         }
       />
       <SectionPanel activeTab={active}>
-        {active === "reports" ? (
-          <Reports key={reportView} initialView={reportView} />
+        {diagnosticOpen || active === "reports" ? (
+          <Reports
+            view={diagnosticOpen ? "diagnostic" : reportView}
+            onViewChange={changeReportView}
+          />
         ) : active === "summary" ? (
           <TestingSummary
             onNewReport={() => showReports("local")}
-            onDiagnostic={() => showReports("diagnostic")}
+            onDiagnostic={() => setDiagnosticOpen(true)}
           />
         ) : null}
       </SectionPanel>

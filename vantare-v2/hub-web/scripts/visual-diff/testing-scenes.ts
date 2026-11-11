@@ -21,6 +21,7 @@ export const testingScenes: Record<string, VisualScene> = {
         .getByRole("navigation", { name: "Navegación principal" })
         .getByRole("button", { name: "Testing Center", exact: true })
         .click();
+      await page.getByRole("tab", { name: "Informes", exact: true }).click();
       await page
         .getByRole("button", { name: "Diagnóstico local", exact: true })
         .click();

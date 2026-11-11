@@ -20,13 +20,16 @@ import { useReports } from "./ReportsState";
 export type ReportsView = "local" | "compose" | "list" | "diagnostic";
 
 export function Reports({
-  initialView = "local",
+  view: selectedView,
+  onViewChange,
 }: {
-  initialView?: ReportsView;
-}) {
+  view?: ReportsView;
+  onViewChange?: (view: ReportsView) => void;
+} = {}) {
   const state = useReports();
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [view, setView] = useState<ReportsView>(initialView);
+  const [internalView, setInternalView] = useState<ReportsView>("local");
+  const view = selectedView ?? internalView;
   const { available, loaded, load } = state;
   const loadCurrent = useRef(load);
   loadCurrent.current = load;
@@ -42,7 +45,8 @@ export function Reports({
   }, [available, loaded]);
   function choose(value: typeof view) {
     state.setConsent(false);
-    setView(value);
+    setInternalView(value);
+    onViewChange?.(value);
   }
   const run = (action: () => Promise<void>) => {
     void action().catch(() => {});

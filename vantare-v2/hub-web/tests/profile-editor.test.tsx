@@ -31,6 +31,7 @@ import {
 import { Client } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { actionText } from "../src/renderer/i18n/launcher-actions";
+import { residentText } from "../src/renderer/i18n/launcher-resident";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
 import LauncherEntry from "../src/renderer/screens/launcher/entry";
 import {
@@ -99,6 +100,20 @@ function mount(scene = "launcher-editor-ready") {
   );
 }
 describe("profile editor", () => {
+  it("uses only the resident registration matching the current profile and hotkey", async () => {
+    mount("launcher-shortcuts");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByText(residentText.registration.registered);
+    const hotkey = screen.getByRole("textbox", { name: text.hotkey });
+    fireEvent.change(hotkey, { target: { value: "ctrl+shift+3" } });
+    expect(screen.queryByText(residentText.registration.registered)).toBeNull();
+    expect(
+      screen.getByText(residentText.registration.unconfirmed),
+    ).toBeTruthy();
+    fireEvent.change(hotkey, { target: { value: "ctrl+shift+1" } });
+    expect(screen.getByText(residentText.registration.registered)).toBeTruthy();
+  });
   it("retains freshly read custom arguments when only the profile name was edited", async () => {
     mount("launcher-editor-custom-conflicto");
     await screen.findByRole("heading", { name: "Creador de Contenido" });
@@ -209,26 +224,38 @@ describe("profile editor", () => {
   it("expires an acknowledgment when no running transition is observed", async () => {
     mount();
     await screen.findByRole("heading", { name: "Creador de Contenido" });
-    const nativeTimeout = globalThis.setTimeout.bind(globalThis);
-    let expire: (() => void) | undefined;
-    vi.spyOn(window, "setTimeout").mockImplementation(
-      (handler, delay, ...args) => {
-        if (delay === 1500 && typeof handler === "function") {
-          expire = handler as () => void;
-          return nativeTimeout(handler, delay, ...args);
-        }
-        return nativeTimeout(handler, delay, ...args);
-      },
-    );
-    fireEvent.click(screen.getByRole("button", { name: /Lanzar/ }));
-    await screen.findByText(launcherText.queued);
-    expect(expire).toBeTypeOf("function");
-    act(() => expire?.());
-    expect(screen.queryByText(launcherText.queued)).toBeNull();
-    expect(
-      screen.getByRole("button", { name: /Lanzar/ }).hasAttribute("disabled"),
-    ).toBe(false);
-    vi.restoreAllMocks();
+    const request = Client.prototype.request;
+    let response: ReturnType<Client["request"]> | undefined;
+    vi.spyOn(Client.prototype, "request").mockImplementation(function (
+      this: Client,
+      value,
+    ) {
+      const result = request.call(this, value);
+      if (value.method === "launcher.launch") response = result;
+      return result;
+    });
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Lanzar/ }));
+        expect(response).toBeDefined();
+        await response;
+      });
+      expect(screen.getByText(launcherText.queued)).toBeTruthy();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1499);
+      });
+      expect(screen.getByText(launcherText.queued)).toBeTruthy();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.queryByText(launcherText.queued)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: /Lanzar/ }).hasAttribute("disabled"),
+      ).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("creates a profile using the native default and exposes advanced notes without editable arguments", async () => {
     mount();

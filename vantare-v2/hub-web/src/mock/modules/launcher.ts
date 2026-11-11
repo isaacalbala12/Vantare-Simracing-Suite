@@ -90,6 +90,15 @@ export function create(context: MockContext): MockHandler {
       } as ProfileDraft,
     ]),
   );
+  if (sceneName === "launcher-shortcuts") {
+    for (const [id, hotkey] of [
+      ["creator", "ctrl+shift+1"],
+      ["pro", "ctrl+shift+2"],
+    ]) {
+      const draft = drafts.get(id);
+      if (draft) draft.hotkey = hotkey;
+    }
+  }
   let profileSerial = 0;
   let keySerial = 0;
   let profileRead: { profile: string | null; revision: string } | undefined;

@@ -1,10 +1,16 @@
+import type { ResidentView } from "../../../contract/generated/contract";
+import { residentText } from "../../i18n/launcher-resident";
 import { LauncherApplicationsRail } from "../../ui/launcher/ApplicationsRail";
 import { ProfileActionFeedback } from "../../ui/launcher/ProfileActions";
 import { ProfileEditorRailFields } from "../../ui/launcher/ProfileEditor";
 import { useProfileEditorState } from "./editor-state";
 import { useProfileAction } from "./profile-actions";
 import { useLauncherSnapshot } from "./state";
-export function LauncherRail() {
+export function LauncherRail({
+  residentStatus,
+}: {
+  residentStatus?: ResidentView;
+}) {
   const { view, selected } = useLauncherSnapshot();
   const editor = useProfileEditorState();
   const action = useProfileAction();
@@ -15,7 +21,18 @@ export function LauncherRail() {
         draft={draft.draft}
         apps={view?.apps ?? []}
         pending={draft.pending}
-        resident={view?.resident ?? false}
+        resident={residentStatus?.online ?? view?.resident ?? false}
+        registration={
+          draft.draft.hotkey
+            ? residentText.registration[
+                residentStatus?.registrations.find(
+                  (item) =>
+                    item.id === draft.draft.id &&
+                    item.hotkey === draft.draft.hotkey,
+                )?.state ?? "unconfirmed"
+              ]
+            : undefined
+        }
         onChange={editor.update}
         onPolicy={(patch) =>
           editor.update({ policy: { ...draft.draft.policy, ...patch } })

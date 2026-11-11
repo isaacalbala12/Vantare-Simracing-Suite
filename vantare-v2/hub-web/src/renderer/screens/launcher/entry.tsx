@@ -1,9 +1,11 @@
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { launcherText as text } from "../../i18n/launcher";
+import { ResidentInbox } from "../../ui/launcher/ResidentInbox";
 import { Applications } from "./Applications";
 import { ProfileEditorProvider, useProfileEditorState } from "./editor-state";
 import { Launcher } from "./Launcher";
 import { LauncherRail } from "./LauncherRail";
+import { useResident } from "./resident";
 export default function LauncherEntry() {
   return (
     <ProfileEditorProvider>
@@ -13,6 +15,7 @@ export default function LauncherEntry() {
 }
 function LauncherContent() {
   const editor = useProfileEditorState();
+  const resident = useResident();
   const activeTab = editor.value ? "profile" : editor.tab;
   return (
     <>
@@ -31,7 +34,7 @@ function LauncherContent() {
         onTabChange={(id) => {
           if (id === "profiles" || id === "applications") editor.navigate(id);
         }}
-        rail={<LauncherRail />}
+        rail={<LauncherRail residentStatus={resident} />}
       />
       <SectionPanel activeTab={activeTab}>
         {editor.tab === "applications" && !editor.value ? (
@@ -40,6 +43,7 @@ function LauncherContent() {
           <Launcher />
         )}
       </SectionPanel>
+      <ResidentInbox view={resident} />
     </>
   );
 }

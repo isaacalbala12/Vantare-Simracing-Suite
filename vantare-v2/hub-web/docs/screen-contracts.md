@@ -305,3 +305,40 @@ parcial. Las semanas se ordenan por inicio. El consumidor podrá calcular la
 rotación y mediana de publicación del GPUI; no se inventa historial de carreras.
 Wire v22 aprobado; sin nuevos paquetes ni cambios en
 IPC, services, runtime, derechos o supervisor.
+
+## Launcher: buzón y registro (`launcher_resident`, v23)
+
+`launcher.resident.get {}` y el tema `launcherResident` leen los formatos ya
+publicados por el residente. No crean launcher.json ni escriben en el buzón:
+no existe método de respuesta. Esc y cerrar el cajón solo cierran su vista local;
+la decisión continúa pendiente y puede volver a consultarse. Sus acciones se
+muestran inactivas con ese motivo, conforme al alcance de solo lectura.
+
+Solo se proyectan frescura, ejecución, presencia de error, identidad decimal
+exacta de la decisión, su tipo cerrado, acciones/etiquetas nativas y estados de
+registro de atajos. Los mensajes, progreso libre, rutas, argumentos y PIDs no
+llegan al renderer. Los atajos reutilizan la proyección de Ajustes: solo se
+confirman si coinciden perfil y combinación en un estado fresco (menos de 3 s).
+El sondeo es de 500 ms, solo suscrito y fuera de Live; subscribe registra la
+primera vista para no repetirla. No se crean hilos ni se piden servicios.
+
+No se muestra un contador n/total: Status contiene progress como texto libre y
+el residente copia progress.message (resident.rs:426), sin publicar ese par de
+campos. Los textos del cajón son cerrados por tipo de decisión para no reenviar
+rutas que pueda contener el mensaje nativo. Es una diferencia conocida con GPUI.
+
+El GPUI abre el cajón al recibir una decisión (`launcher/view.rs:178`). Se conserva
+la apertura automática, pero no es modal: no bloquea edición ni controles de
+ventana, y empieza por debajo de `--topbar-h`. La limitación de respuesta se
+muestra como texto visible y descripción accesible, además del tooltip.
+El sondeo lee solo el estado del residente; la proyección de launcher.json se
+cachea por fecha de modificación y tamaño. Se conserva el parser validado del
+crate (incluida su comprobación de duplicados), solo al cambiar esos metadatos.
+La lectura sigue enlaces igual que launcher::open; no añade una política de
+resolución de enlaces. La comprobación de tamaño del marco se hace al cachear,
+con los metadatos de buzón de mayor tamaño posible. En Live, get devuelve una
+vista vacía/desconectada sin leer disco, y no se emiten eventos.
+Un estado de versión futura, inválido o caducado se ve como desconectado. Los
+errores de registro se muestran en cada atajo; no se convierten en un error
+general del residente. Un error general también puede corresponder al documento
+o al inicio con Windows, por lo que su texto no afirma que fallase un lanzamiento.

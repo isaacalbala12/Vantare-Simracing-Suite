@@ -250,10 +250,20 @@ mod tests {
     fn favorite_action_keeps_other_favorites_and_startup_stays_exclusive() {
         let (_root, path, bytes, revision) = fixture();
         let document = Document::from_bytes(&bytes).expect("document");
-        favorite(&path, &document.profiles[1].id, true, &revision).expect("favorite");
+        favorite(&path, &document.profiles[0].id, true, &revision).expect("first favorite");
+        let revision = vantare_services::content_hash(&std::fs::read(&path).expect("first saved"));
+        favorite(&path, &document.profiles[1].id, true, &revision).expect("second favorite");
         let bytes = std::fs::read(&path).expect("saved");
         let after = Document::from_bytes(&bytes).expect("saved document");
         assert!(after.profiles.iter().all(|profile| profile.favorite));
+        option(
+            &path,
+            &document.profiles[0].id,
+            ProfileOption::Startup(true),
+            &vantare_services::content_hash(&bytes),
+        )
+        .expect("first startup");
+        let bytes = std::fs::read(&path).expect("first startup saved");
         option(
             &path,
             &document.profiles[1].id,

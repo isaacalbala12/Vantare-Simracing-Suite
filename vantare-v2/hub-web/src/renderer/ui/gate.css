@@ -101,3 +101,22 @@
 .v-privacy-question-policy .v-button {
   width: 100%;
 }
+
+/* Frozen orbit::Checkbox: CHECK_SIZE 18, FIELD_PAD 13, BODY 13.5/650. */
+.v-privacy-question-check .v-choice {
+  min-height: 0;
+  gap: 13px;
+  font: 650 13.5px / 1.618034 var(--font-sans);
+}
+.v-privacy-question-check .v-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border-color: var(--line-3);
+  background: color-mix(in srgb, var(--text-1) 3%, transparent);
+}
+.v-privacy-question-check .v-checkbox[data-checked] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-1);
+}

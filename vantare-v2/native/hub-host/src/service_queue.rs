@@ -6,6 +6,7 @@ use std::{
 };
 use vantare_ipc::services_protocol::Command;
 pub(crate) const RESPONSE_IO_TIMEOUT: Duration = Duration::from_secs(30);
+const WAIT_BUDGET: Duration = Duration::from_secs(12);
 const PRIORITIES: usize = 5;
 const MAX_PENDING: usize = PRIORITIES + 1;
 type Request = (u32, Command, Instant);
@@ -27,9 +28,7 @@ enum Origin {
     Continuation,
 }
 pub(crate) fn can_start(accepted: Instant, now: Instant) -> bool {
-    let wait_budget = Duration::from_millis(u64::from(crate::protocol::REQUEST_TIMEOUT_MS))
-        .saturating_sub(RESPONSE_IO_TIMEOUT);
-    now.saturating_duration_since(accepted) < wait_budget
+    now.saturating_duration_since(accepted) < WAIT_BUDGET
 }
 fn priority(command: &Command, origin: Origin) -> usize {
     match command {
@@ -175,6 +174,19 @@ impl Queue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn waiting_budget_leaves_three_seconds_beyond_the_io_timeout() {
+        let accepted = Instant::now();
+        assert!(can_start(
+            accepted,
+            accepted + Duration::from_millis(11_999)
+        ));
+        assert!(!can_start(accepted, accepted + Duration::from_secs(12)));
+        assert!(
+            WAIT_BUDGET + RESPONSE_IO_TIMEOUT + Duration::from_secs(3)
+                <= Duration::from_millis(u64::from(crate::protocol::REQUEST_TIMEOUT_MS))
+        );
+    }
     fn start(queue: &mut Queue, id: u32, command: Command) {
         queue.submit(id, command).unwrap();
         assert_eq!(queue.start_next().map(|(id, _, _)| id), Some(id));
@@ -306,7 +318,7 @@ mod tests {
         assert!(queue.finish(1));
         assert_eq!(
             queue
-                .start_next_at(now + Duration::from_secs(14))
+                .start_next_at(now + Duration::from_secs(11))
                 .map(|(id, _, _)| id),
             Some(3)
         );

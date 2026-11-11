@@ -127,7 +127,7 @@ impl Session {
     }
     pub(super) fn cancel_deferred(&mut self, pipe: &mut Pipe) -> io::Result<()> {
         if let Some((id, _)) = self.deferred.take() {
-            self.remotes.remove(&id);
+            // Keep the operation reserved until its abandoned response is retired.
             self.core.cancel_queued(id);
             self.abandoned_deferred.insert(id);
             self.accepted.remove(&id);

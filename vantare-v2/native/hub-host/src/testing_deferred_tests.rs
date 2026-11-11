@@ -331,7 +331,7 @@ fn cancelling_an_import_preserves_another_screens_correlation() {
     let mut pipe = Pipe::new(Vec::new());
     session.cancel_deferred(&mut pipe).unwrap();
     assert_eq!(session.core.cancelled, vec![7]);
-    assert!(!session.remotes.contains_key(&7));
+    assert!(session.remotes.contains_key(&7));
     assert!(session.remotes.contains_key(&9));
     assert!(matches!(
         session.service_reply(
@@ -345,8 +345,30 @@ fn cancelling_an_import_preserves_another_screens_correlation() {
         Ok(Some(Reply::MailGet { .. }))
     ));
     assert!(session.abandoned_deferred.contains(&7));
+    session.current.access.verified = true;
+    session.core.available = true;
+    let mut retry = Pipe::new(Vec::new());
+    session
+        .testing_request(&mut retry, 10, &Request::DraftLoad {})
+        .unwrap();
+    assert!(matches!(
+        receive(&mut retry),
+        HostToUi::Failure {
+            id: 10,
+            error: HostError::Busy
+        }
+    ));
+    assert_eq!(session.core.requests, 0);
     assert_eq!(session.service_reply(7, Ok(empty())), Ok(None));
     assert!(session.abandoned_deferred.is_empty());
+    session.core.available = true;
+    session
+        .request_remote(
+            10,
+            RemoteKind::Testing(Operation::Load),
+            vantare_ipc::services_protocol::Command::DraftLoad,
+        )
+        .unwrap();
 }
 #[test]
 fn a_deferred_reply_requires_its_exact_id_and_testing_owner() {

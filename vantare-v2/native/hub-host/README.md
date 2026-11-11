@@ -65,7 +65,7 @@ importación, intención del usuario y fondo. Como máximo hay seis comandos viv
 los fallos pendientes de notificar no ocupan esos huecos ni bloquean Logout.
 Aceptar Logout/Cancel rechaza con Denied todas las esperas salvo Logout, y repite
 la invalidación al acabar esa operación, incluso con respuesta incierta. Cambiar
-la sesión observada o la época/revisión/derechos del Feed también invalida esperas.
+la sesión observada o los derechos efectivos del Feed también invalida esperas; una revisión inocua conserva las intenciones pendientes.
 
 `Session::request_remote(id, kind, command)` correlaciona por ID y rechaza un
 RemoteKind idéntico aún pendiente, activo o en espera. `Core::request` es intención
@@ -74,15 +74,15 @@ Status o refresco manual. No se cambia la autoridad del Feed ni se añade sondeo
 
 El instante de aceptación se conserva, con reloj inyectado en los tests. Antes
 de iniciar una espera se exige que queden los 30 s de margen del plazo del renderer
-(45 s): a los 15 s se rechaza con Busy SIN enviar. El worker vuelve a comprobarlo
+(45 s): a los 12 s se rechaza con Busy SIN enviar, reservando 3 s de seguridad. El worker vuelve a comprobarlo
 tras esperar en su canal y tras Probe/reconexión, inmediatamente antes del efecto.
-No se vuelve a interpretar una espera vencida como petición nueva.
+No se vuelve a interpretar una espera vencida como petición nueva. Busy puede indicar hueco ocupado, operación/ID duplicado o plazo vencido: Acceso ofrece «inténtalo de nuevo», sin reintento automático. No cambia HostError.
 
 Testing Center conserva una sola transacción de borrador y su instante original.
 DraftSave tiene un hueco interno para continuar aunque otra intención espere;
 solo responde y archiva tras su ACK. Cancelar elimina el guardado aún en espera,
 conserva otros propietarios y reserva TODOS los IDs abandonados hasta retirar
-sus respuestas. Las respuestas sin dueño se descartan sin volver a contestar.
+sus respuestas, incluido el RemoteKind de Testing para impedir otro guardado. Las respuestas sin dueño se descartan sin volver a contestar.
 
 AccountPoll no es siempre rápido: sin callback, accept no bloqueante devuelve
 enseguida; con callback, la lectura tiene plazo absoluto de 3 s y se ejecutan

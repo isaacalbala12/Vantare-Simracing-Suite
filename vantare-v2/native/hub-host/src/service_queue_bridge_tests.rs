@@ -393,10 +393,11 @@ fn logout_and_authority_changes_deny_waiting_effects_but_never_discard_logout() 
         .unwrap();
     session
         .core
-        .observe_authority(1, 1, protocol::AccessView::default());
-    session
-        .core
-        .observe_authority(1, 2, protocol::AccessView::default());
+        .observe_authority(protocol::AccessView::default());
+    session.core.observe_authority(protocol::AccessView {
+        verified: true,
+        ..Default::default()
+    });
     let (id, result) = session.core.reply().unwrap();
     assert_eq!(id, 2);
     assert_eq!(session.service_reply(id, result), Err(HostError::Denied));
@@ -409,7 +410,7 @@ fn logout_and_authority_changes_deny_waiting_effects_but_never_discard_logout() 
     assert_eq!(session.service_reply(id, result), Err(HostError::Denied));
     session
         .core
-        .observe_authority(2, 1, protocol::AccessView::default());
+        .observe_authority(protocol::AccessView::default());
     local.outgoing.send((1, Ok(ServiceReply::Closed))).unwrap();
     assert_eq!(session.core.reply().unwrap().0, 1);
     assert!(matches!(
@@ -480,4 +481,26 @@ fn cancelling_a_real_core_import_waiter_prevents_its_save_and_preserves_the_lega
     assert!(local.incoming.try_recv().is_err());
     assert!(path.exists() && !path.with_extension("json.imported").exists());
     assert!(session.abandoned_deferred.is_empty());
+}
+
+#[test]
+fn unchanged_rights_preserve_waiting_effects_across_feed_refreshes() {
+    let root = Root::new();
+    let mut session = restart_session(&root.path, "queue-local-unused");
+    let local = session.core.isolate_services(true);
+    let access = protocol::AccessView {
+        verified: true,
+        ..Default::default()
+    };
+    session.core.observe_authority(access.clone());
+    session.core.request(1, ServiceCommand::Probe).unwrap();
+    assert_eq!(local.incoming.try_recv().unwrap().0, 1);
+    session
+        .request_remote(2, RemoteKind::PilotLoad, ServiceCommand::PilotLoad)
+        .unwrap();
+    session.core.observe_authority(access);
+    assert!(session.core.reply().is_none());
+    deliver(&local, 1, ServiceReply::Closed);
+    assert_eq!(session.core.reply().unwrap().0, 1);
+    assert_eq!(local.incoming.try_recv().unwrap().0, 2);
 }

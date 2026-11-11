@@ -186,6 +186,68 @@ mod tests {
         assert_eq!(client.sequence, 0);
     }
     #[test]
+    fn a_probe_that_consumes_the_budget_never_sends_the_effect() {
+        use std::{
+            cell::Cell,
+            time::{Duration, Instant},
+        };
+        let name = format!(
+            "vantare-late-probe-{}",
+            vantare_services::random_id().unwrap()
+        );
+        let stop = Arc::new(Event::new().unwrap());
+        let mut listener =
+            vantare_ipc::transport::Listener::new(&name, Arc::clone(&stop), Duration::from_secs(5))
+                .unwrap();
+        let mut server = listener.instance().unwrap();
+        let peer = std::thread::spawn(move || {
+            server.accept().unwrap();
+            let request: Request = protocol::read(&mut server).unwrap();
+            assert!(matches!(request.command, Command::Probe));
+            protocol::write(
+                &mut server,
+                &Response {
+                    version: protocol::VERSION,
+                    sequence: request.sequence,
+                    reply: Reply::Closed,
+                },
+            )
+            .unwrap();
+            // EOF after the answered Probe proves no second command was sent.
+            assert!(protocol::read::<Request>(&mut server).is_err());
+        });
+        let pipe =
+            vantare_ipc::transport::connect(&name, Arc::clone(&stop), Duration::from_secs(5))
+                .unwrap();
+        let mut client = Client {
+            pipe,
+            stop,
+            nonce: String::new(),
+            sequence: 0,
+            binary: "unused".into(),
+            photo_pipe: String::new(),
+        };
+        let accepted = Instant::now();
+        let calls = Cell::new(0);
+        assert!(matches!(
+            client.request_before_clock(Command::MailConsentGet, accepted, || {
+                let call = calls.get();
+                calls.set(call + 1);
+                accepted
+                    + if call == 0 {
+                        Duration::ZERO
+                    } else {
+                        Duration::from_secs(15)
+                    }
+            }),
+            Err(HostError::Busy)
+        ));
+        assert_eq!(calls.get(), 2);
+        assert_eq!(client.sequence, 1);
+        drop(client);
+        peer.join().unwrap();
+    }
+    #[test]
     fn transport_protocol_and_generation_failures_stay_distinct() {
         assert_eq!(
             RequestError::Transport(std::io::ErrorKind::BrokenPipe).host_error(),

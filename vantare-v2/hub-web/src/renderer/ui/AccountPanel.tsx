@@ -289,7 +289,9 @@ export function AccountPanel({
           <>
             <AccountNotice>{newsError}</AccountNotice>
             {onNewsReload && (
-              <Button onClick={onNewsReload}>{text.reload}</Button>
+              <Button busy={newsLoading} onClick={onNewsReload}>
+                {newsLoading ? text.newsLoading : text.reload}
+              </Button>
             )}
           </>
         ) : newsLoading ? (

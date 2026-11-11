@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   type PilotFields,
   pilotEditorLimits,
@@ -11,6 +11,7 @@ import { t } from "../../i18n/es";
 import { pilotText as text } from "../../i18n/pilot.es";
 import { Button } from "../../ui/Button";
 import { Callout, SettingGroup, Skeleton } from "../../ui/Data";
+import { PilotCropper } from "../../ui/PilotCropper";
 import {
   PilotAccountLink,
   PilotCard,
@@ -22,14 +23,12 @@ import {
   PilotSimulators,
 } from "../../ui/PilotProfile";
 import { ActionGroup } from "../../ui/ShellLayout";
-import { cropPilotPhoto } from "./pilot-photo";
 
 export function Account() {
   const state = usePilot();
   const navigate = useUi((state) => state.navigate);
   const { client } = useHost();
-  const [photoError, setPhotoError] = useState(false);
-  const [photoBusy, setPhotoBusy] = useState(false);
+  const { photo, photoBusy, photoError } = state;
   const photoInput = useRef<HTMLInputElement>(null);
   const attempted = useRef(false);
   useEffect(() => {
@@ -72,9 +71,10 @@ export function Account() {
           <PilotPhoto fields={draft}>
             <Button
               size="sm"
-              aria-disabled={state.busy || photoBusy || undefined}
+              aria-disabled={state.busy || photoBusy || !!photo || undefined}
               onClick={() => {
-                if (!state.busy && !photoBusy) photoInput.current?.click();
+                if (!state.busy && !photoBusy && !photo)
+                  photoInput.current?.click();
               }}
             >
               {draft.photo ? text.changePhoto : t("pilot.choosePhoto")}
@@ -89,28 +89,32 @@ export function Account() {
               onChange={async (event) => {
                 const file = event.currentTarget.files?.[0];
                 event.currentTarget.value = "";
-                if (!file || state.busy || photoBusy) return;
-                setPhotoBusy(true);
-                setPhotoError(false);
-                try {
-                  edit("photo", await cropPilotPhoto(file));
-                } catch {
-                  setPhotoError(true);
-                } finally {
-                  setPhotoBusy(false);
-                }
+                if (!file || state.busy || photoBusy || photo) return;
+                await state.choosePhoto(file);
               }}
             />
             {draft.photo && (
               <Button
                 size="sm"
-                aria-disabled={state.busy || undefined}
-                onClick={() => edit("photo", null)}
+                aria-disabled={state.busy || !!photo || undefined}
+                onClick={() => {
+                  if (!photo) edit("photo", null);
+                }}
               >
                 {t("pilot.removePhoto")}
               </Button>
             )}
           </PilotPhoto>
+          {photo && (
+            <PilotCropper
+              image={photo.image}
+              crop={photo.crop}
+              pending={state.busy}
+              onChange={state.cropPhoto}
+              onCancel={state.cancelPhoto}
+              onApply={state.applyPhoto}
+            />
+          )}
         </PilotCard>
       </SettingGroup>
       {photoError && <Callout tone="err" title={t("pilot.photoFailed")} />}
@@ -167,7 +171,7 @@ export function Account() {
           size="sm"
           variant="primary"
           busy={state.busy}
-          disabled={!state.dirty || !valid || photoBusy}
+          disabled={!state.dirty || !valid || photoBusy || !!photo}
           onClick={() => void state.save()}
         >
           {t("pilot.save")}

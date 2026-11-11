@@ -32,7 +32,7 @@ export function PilotLayout({
   );
 }
 export function PilotCard({ children }: { children: ReactNode }) {
-  return <div className="v-pilot-card">{children}</div>;
+  return <div className="v-pilot-card v-pilot-photo-card">{children}</div>;
 }
 export function PilotAvatar({
   fields,

@@ -247,7 +247,7 @@
   border: 0;
 }
 .v-account-rail dt {
-  width: 111px;
+  width: 112px;
   flex: none;
   font-size: 12.5px;
   font-weight: 500;
@@ -284,7 +284,10 @@
   padding: 10px 12px;
   border: 1px solid var(--line-1);
   border-radius: 12px;
-  background: var(--hover);
+  /* account.rs: legacy_rgba(0xffff_ff04): theme ink at alpha 4/255. */
+  background: color-mix(in srgb, var(--text-1) 1.568627%, transparent);
+  /* The device body uses a 10px gap; its outer meta group uses 8px. */
+  margin-bottom: 2px;
 }
 .v-account-device.is-verified {
   border-color: color-mix(in srgb, var(--ok) 20%, transparent);

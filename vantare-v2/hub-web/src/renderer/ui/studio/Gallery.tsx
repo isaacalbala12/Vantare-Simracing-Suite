@@ -127,9 +127,13 @@ export function Gallery() {
           title={state.failure.message}
           actions={
             <>
-              <Button disabled={pending} onClick={state.retry}>
-                {t.retry}
-              </Button>
+              {state.canRetry ? (
+                <Button disabled={pending} onClick={state.retry}>
+                  {t.retry}
+                </Button>
+              ) : (
+                <span>{t.reconfirm}</span>
+              )}
               <Button disabled={pending} onClick={state.discard}>
                 {t.discard}
               </Button>

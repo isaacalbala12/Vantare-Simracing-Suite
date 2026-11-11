@@ -92,7 +92,13 @@ function useStateValue() {
     };
   }, [client, execute, update]);
   const retry = () => {
-    if (!failure) return;
+    if (
+      !failure ||
+      !["studio.visibility", "studio.instance", "studio.track"].includes(
+        failure.request.method,
+      )
+    )
+      return;
     void execute(
       "baseRevision" in failure.request && view
         ? { ...failure.request, baseRevision: view.revision }
@@ -107,6 +113,11 @@ function useStateValue() {
     failure,
     execute,
     retry,
+    canRetry:
+      failure !== undefined &&
+      ["studio.visibility", "studio.instance", "studio.track"].includes(
+        failure.request.method,
+      ),
     discard: () => setFailure(undefined),
   };
 }

@@ -34,6 +34,8 @@ export const studioText = {
   offline: "No se puede comunicar con el núcleo.",
   conflict:
     "El diseño ha cambiado en otro proceso. Revisa el estado antes de reintentar.",
+  reconfirm:
+    "Revisa el diseño y vuelve a solicitar esta acción para repetirla.",
   retry: "Reintentar guardado",
   discard: "Descartar",
   reload: "Volver a cargar",

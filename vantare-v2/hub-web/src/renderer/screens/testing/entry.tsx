@@ -11,7 +11,7 @@ export default function TestingEntry() {
   return (
     <>
       <SectionChrome
-        title={access.tester ? text.sectionTitle : text.title}
+        title={text.sectionTitle}
         tabs={tabs}
         activeTab={active}
         onTabChange={change}

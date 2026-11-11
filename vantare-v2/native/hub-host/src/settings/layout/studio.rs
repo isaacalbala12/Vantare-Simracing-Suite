@@ -381,7 +381,7 @@ pub(crate) fn track(
             &files::Options {
                 limit: LIMIT,
                 backup: false,
-                sibling_base: Some(state.path.clone()),
+                sibling_base: Some(path.with_extension("json")),
             },
         )
         .map_err(|e| {

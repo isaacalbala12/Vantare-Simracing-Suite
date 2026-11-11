@@ -81,7 +81,7 @@ it("uses closed purchase identifiers and can stop checking a local checkout", as
   const calls = vi.spyOn(Client.prototype, "request");
   const user = mount();
   await user.click(await screen.findByRole("button", { name: text.monthly }));
-  expect(calls).toHaveBeenCalledWith({
+  expect(calls.mock.calls.map(([request]) => request)).toContainEqual({
     method: "account.purchase",
     product: "proMonthly",
   });
@@ -101,13 +101,17 @@ it("shows the authoritative signed-out state after logout", async () => {
   const user = mount();
   await user.click(await screen.findByRole("button", { name: text.logout }));
   await screen.findByRole("heading", { name: text.signedOut });
-  expect(calls).toHaveBeenCalledWith({ method: "account.logout" });
+  expect(calls.mock.calls.map(([request]) => request)).toContainEqual({
+    method: "account.logout",
+  });
   expect(screen.getByRole("button", { name: text.monthly })).toHaveProperty(
     "disabled",
     true,
   );
   await user.click(screen.getByRole("button", { name: text.login }));
-  expect(calls).toHaveBeenCalledWith({ method: "account.choose" });
+  expect(calls.mock.calls.map(([request]) => request)).toContainEqual({
+    method: "account.choose",
+  });
 });
 it("keeps a failed action visible without retrying automatically", async () => {
   const original = Client.prototype.request;
@@ -116,10 +120,11 @@ it("keeps a failed action visible without retrying automatically", async () => {
     .mockImplementation(function (
       this: Client,
       request: Exclude<Request, { method: "window.close" }>,
+      onSent?: () => void,
     ) {
       return request.method === "account.check"
         ? Promise.reject(new HostFailure({ kind: "busy" }))
-        : original.call(this, request);
+        : original.call(this, request, onSent);
     });
   const user = mount();
   await user.click(await screen.findByRole("button", { name: text.check }));
@@ -144,12 +149,13 @@ it("does not submit a second intent while an action is pending", async () => {
     .mockImplementation(function (
       this: Client,
       request: Exclude<Request, { method: "window.close" }>,
+      onSent?: () => void,
     ) {
       return request.method === "account.deviceReset"
         ? new Promise((_resolve, fail) => {
             reject = fail;
           })
-        : original.call(this, request);
+        : original.call(this, request, onSent);
     });
   const user = mount();
   await user.click(await screen.findByRole("button", { name: text.reset }));

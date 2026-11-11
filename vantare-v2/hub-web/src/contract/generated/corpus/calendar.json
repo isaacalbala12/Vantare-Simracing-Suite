@@ -1,6 +1,168 @@
 {
   "host": [
     {
+      "error": {
+        "kind": "calendarScheduleUnavailable"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "current": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": []
+          },
+          "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "documents": {
+            "alerts": "ready",
+            "following": "ready",
+            "prefs": "ready"
+          },
+          "following": [],
+          "followingRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "prefsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "utc": false
+        },
+        "kind": "calendarConflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.configLoad",
+        "value": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": []
+          },
+          "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "documents": {
+            "alerts": "ready",
+            "following": "ready",
+            "prefs": "ready"
+          },
+          "following": [],
+          "followingRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "prefsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "utc": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.utcSet",
+        "value": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": []
+          },
+          "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "documents": {
+            "alerts": "ready",
+            "following": "ready",
+            "prefs": "ready"
+          },
+          "following": [],
+          "followingRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "prefsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "utc": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.notifyWeekSet",
+        "value": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": []
+          },
+          "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "documents": {
+            "alerts": "ready",
+            "following": "ready",
+            "prefs": "ready"
+          },
+          "following": [],
+          "followingRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "prefsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "utc": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.followSet",
+        "value": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": []
+          },
+          "alertsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "documents": {
+            "alerts": "ready",
+            "following": "ready",
+            "prefs": "ready"
+          },
+          "following": [],
+          "followingRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "prefsRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "utc": false
+        }
+      }
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {
@@ -650,9 +812,75 @@
           "utc": false
         }
       }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.configLoad",
+        "value": {
+          "alerts": {
+            "autoLaunch": false,
+            "bands": [],
+            "channels": {
+              "inTrack": true,
+              "sound": false,
+              "windows": true
+            },
+            "leadMin": 10,
+            "notifyWeek": true,
+            "slots": []
+          },
+          "alertsRevision": null,
+          "documents": {
+            "alerts": "unavailable",
+            "following": "unavailable",
+            "prefs": "protected"
+          },
+          "following": [],
+          "followingRevision": null,
+          "prefsRevision": null,
+          "utc": false
+        }
+      }
     }
   ],
   "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "calendar.configLoad"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "expectedRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+        "method": "calendar.utcSet",
+        "utc": true
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "enabled": false,
+        "expectedRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+        "method": "calendar.notifyWeekSet"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "expectedRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+        "followed": true,
+        "method": "calendar.followSet",
+        "seriesId": "qa"
+      }
+    },
     {
       "id": 1,
       "kind": "request",

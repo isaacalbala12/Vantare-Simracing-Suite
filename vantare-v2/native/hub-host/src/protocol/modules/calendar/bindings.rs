@@ -1,7 +1,17 @@
 use crate::protocol::bindings::{constants, declare, sample_response};
-use crate::protocol::{Reply, Request, UiToHost};
+use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<crate::calendar::CalendarDays>(&mut text);
+    declare::<crate::calendar::CalendarBandMode>(&mut text);
+    declare::<crate::calendar::CalendarBand>(&mut text);
+    declare::<crate::calendar::CalendarSlot>(&mut text);
+    declare::<crate::calendar::CalendarChannels>(&mut text);
+    declare::<crate::calendar::CalendarAlerts>(&mut text);
+    declare::<crate::calendar::CalendarDocumentState>(&mut text);
+    declare::<crate::calendar::CalendarDocumentStates>(&mut text);
+    declare::<crate::calendar::CalendarConfigView>(&mut text);
+
     declare::<crate::calendar::CalendarRecurrence>(&mut text);
     declare::<crate::calendar::CalendarPhase>(&mut text);
     declare::<crate::calendar::CalendarClass>(&mut text);
@@ -33,10 +43,114 @@ pub(crate) fn typescript() -> String {
         crate::calendar::TIMESTAMP_LIMIT
     );
     constants!(&mut text, "calendarWeekdays", crate::calendar::WEEKDAYS);
+    config_constants(&mut text);
     text
 }
-pub(crate) fn corpus() -> serde_json::Value {
+fn config_constants(text: &mut String) {
+    constants!(
+        text,
+        "calendarRevisionLength",
+        crate::calendar::config::REVISION_LENGTH
+    );
+    constants!(
+        text,
+        "calendarConfigLimit",
+        crate::calendar::config::CONFIG_LIMIT
+    );
+    constants!(
+        text,
+        "calendarAlertLeads",
+        crate::calendar::config::ALERT_LEADS
+    );
+    constants!(
+        text,
+        "calendarBandsLimit",
+        crate::calendar::config::BANDS_LIMIT
+    );
+    constants!(
+        text,
+        "calendarDayMinutes",
+        crate::calendar::config::DAY_MINUTES
+    );
+    constants!(
+        text,
+        "calendarSlotsLimit",
+        crate::calendar::config::SLOTS_LIMIT
+    );
+    constants!(
+        text,
+        "calendarDays",
+        [
+            crate::calendar::CalendarDays::All,
+            crate::calendar::CalendarDays::Weekdays,
+            crate::calendar::CalendarDays::Weekend
+        ]
+    );
+    constants!(
+        text,
+        "calendarBandModes",
+        [
+            crate::calendar::CalendarBandMode::Each,
+            crate::calendar::CalendarBandMode::First
+        ]
+    );
+    constants!(
+        text,
+        "calendarEmptyRevision",
+        crate::calendar::config::empty_revision()
+    );
+    constants!(
+        text,
+        "calendarDefaultAlerts",
+        crate::calendar::CalendarAlerts::default()
+    );
+    constants!(
+        text,
+        "calendarDocumentStates",
+        [
+            crate::calendar::CalendarDocumentState::Ready,
+            crate::calendar::CalendarDocumentState::Protected,
+            crate::calendar::CalendarDocumentState::Unavailable
+        ]
+    );
+}
+fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
+    let config = crate::calendar::CalendarConfigView {
+        utc: false,
+        prefs_revision: Some(vantare_services::content_hash(&[0])),
+        following: vec![],
+        following_revision: Some(vantare_services::content_hash(&[0])),
+        alerts: crate::calendar::CalendarAlerts::default(),
+        alerts_revision: Some(vantare_services::content_hash(&[0])),
+        documents: crate::calendar::CalendarDocumentStates {
+            prefs: crate::calendar::CalendarDocumentState::Ready,
+            following: crate::calendar::CalendarDocumentState::Ready,
+            alerts: crate::calendar::CalendarDocumentState::Ready,
+        },
+    };
     let host = vec![
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::CalendarScheduleUnavailable,
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: HostError::CalendarConflict {
+                current: Box::new(config.clone()),
+            },
+        },
+        sample_response(Reply::CalendarConfigLoad {
+            value: Box::new(config.clone()),
+        }),
+        sample_response(Reply::CalendarUtcSet {
+            value: Box::new(config.clone()),
+        }),
+        sample_response(Reply::CalendarNotifyWeekSet {
+            value: Box::new(config.clone()),
+        }),
+        sample_response(Reply::CalendarFollowSet {
+            value: Box::new(config.clone()),
+        }),
         sample_response(Reply::CalendarLoad {
             value: Box::default(),
         }),
@@ -52,8 +166,45 @@ pub(crate) fn corpus() -> serde_json::Value {
                 ..Default::default()
             }),
         }),
+        sample_response(Reply::CalendarConfigLoad {
+            value: Box::new(crate::calendar::CalendarConfigView {
+                documents: crate::calendar::CalendarDocumentStates {
+                    prefs: crate::calendar::CalendarDocumentState::Protected,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+        }),
     ];
     let ui = vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::CalendarConfigLoad {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::CalendarUtcSet {
+                utc: true,
+                expected_revision: config.prefs_revision.expect("sample prefs revision"),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::CalendarNotifyWeekSet {
+                enabled: false,
+                expected_revision: config.alerts_revision.expect("sample alerts revision"),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::CalendarFollowSet {
+                series_id: "qa".into(),
+                followed: true,
+                expected_revision: config
+                    .following_revision
+                    .expect("sample following revision"),
+            },
+        },
         UiToHost::Request {
             id: 1,
             request: Request::CalendarLoad {},
@@ -63,5 +214,10 @@ pub(crate) fn corpus() -> serde_json::Value {
             request: Request::CalendarRefresh {},
         },
     ];
+    (host, ui)
+}
+
+pub(crate) fn corpus() -> serde_json::Value {
+    let (host, ui) = samples();
     serde_json::json!({"host":host,"ui":ui})
 }

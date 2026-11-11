@@ -117,3 +117,119 @@ fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
     );
     assert_eq!(session.core.requests, 1);
 }
+
+#[test]
+fn calendar_preference_dispatch_enforces_rights_and_cas_without_services() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    let requests = [
+        Request::CalendarConfigLoad {},
+        Request::CalendarUtcSet {
+            utc: true,
+            expected_revision: "a".repeat(64),
+        },
+        Request::CalendarNotifyWeekSet {
+            enabled: false,
+            expected_revision: "a".repeat(64),
+        },
+        Request::CalendarFollowSet {
+            series_id: "qa".into(),
+            followed: true,
+            expected_revision: "a".repeat(64),
+        },
+    ];
+    for request in requests {
+        let mut pipe = Pipe::new(Vec::new());
+        session.request(&mut pipe, 9, &request).unwrap();
+        assert_eq!(
+            response(&mut pipe),
+            HostToUi::Failure {
+                id: 9,
+                error: HostError::Denied
+            }
+        );
+    }
+    session.current.access.calendar = true;
+    session.core.busy = true;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 10, &Request::CalendarConfigLoad {})
+        .unwrap();
+    let HostToUi::Response {
+        result: Reply::CalendarConfigLoad { value },
+        ..
+    } = response(&mut pipe)
+    else {
+        panic!("config response")
+    };
+    let revision = value.prefs_revision.expect("ready prefs revision");
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            11,
+            &Request::CalendarUtcSet {
+                utc: true,
+                expected_revision: revision.clone(),
+            },
+        )
+        .unwrap();
+    assert!(
+        matches!(response(&mut pipe),HostToUi::Response {result:Reply::CalendarUtcSet {value},..} if value.utc)
+    );
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            12,
+            &Request::CalendarUtcSet {
+                utc: false,
+                expected_revision: revision,
+            },
+        )
+        .unwrap();
+    assert!(
+        matches!(response(&mut pipe),HostToUi::Failure {error:HostError::CalendarConflict {current},..} if current.utc)
+    );
+    assert_eq!(session.core.requests, 0);
+}
+
+#[test]
+fn calendar_follow_reports_the_missing_current_schedule_without_calling_services() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 20, &Request::CalendarConfigLoad {})
+        .unwrap();
+    let HostToUi::Response {
+        result: Reply::CalendarConfigLoad { value },
+        ..
+    } = response(&mut pipe)
+    else {
+        panic!("config")
+    };
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            21,
+            &Request::CalendarFollowSet {
+                series_id: "qa".into(),
+                followed: true,
+                expected_revision: value.following_revision.unwrap(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 21,
+            error: HostError::CalendarScheduleUnavailable
+        }
+    );
+    assert_eq!(session.core.requests, 0);
+}

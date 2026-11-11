@@ -1,4 +1,10 @@
-//! Read-only projection of the frozen calendar documents. No network or writes.
+#[path = "config.rs"]
+pub mod config;
+pub use config::{
+    CalendarAlerts, CalendarBand, CalendarBandMode, CalendarChannels, CalendarConfigView,
+    CalendarDays, CalendarDocumentState, CalendarDocumentStates, CalendarSlot,
+};
+// Calendar publication projection and local preferences.
 use crate::protocol::{AccessView, HostError};
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
@@ -284,12 +290,12 @@ impl CalendarSeries {
             && recurrence
     }
 }
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Following {
     series_ids: Vec<String>,
 }
-#[derive(Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 struct Prefs {
     #[serde(default)]
     utc: bool,
@@ -328,6 +334,7 @@ pub struct State {
     view: CalendarView,
     disk: Publications,
     memory: Publications,
+    config_view: CalendarConfigView,
 }
 impl State {
     pub fn new(base: PathBuf) -> Self {
@@ -336,6 +343,7 @@ impl State {
             view: CalendarView::default(),
             disk: Publications::default(),
             memory: Publications::default(),
+            config_view: CalendarConfigView::default(),
         }
     }
     fn read(&mut self, name: &str) -> Read {
@@ -385,20 +393,25 @@ impl State {
         let prior = self.disk.previous.take();
         self.disk.previous = self.read_publication("official-schedule-previous.json", prior);
         match self.read("calendar-following.json") {
-            Read::Missing => self.view.following.clear(),
+            Read::Missing | Read::Invalid => self.view.following.clear(),
             Read::Bytes(bytes) => match serde_json::from_slice::<Following>(&bytes) {
                 Ok(f) if unique(&f.series_ids, SERIES_LIMIT) => self.view.following = f.series_ids,
-                _ => self.view.invalid_cache = true,
+                _ => {
+                    self.view.following.clear();
+                    self.view.invalid_cache = true;
+                }
             },
-            Read::Invalid => {}
         }
         match self.read("calendar-prefs.json") {
-            Read::Missing => self.view.utc = false,
-            Read::Bytes(bytes) => match serde_json::from_slice::<Prefs>(&bytes) {
-                Ok(p) => self.view.utc = p.utc,
-                _ => self.view.invalid_cache = true,
-            },
-            Read::Invalid => {}
+            Read::Missing | Read::Invalid => self.view.utc = false,
+            Read::Bytes(bytes) => {
+                if let Ok(p) = serde_json::from_slice::<Prefs>(&bytes) {
+                    self.view.utc = p.utc;
+                } else {
+                    self.view.utc = false;
+                    self.view.invalid_cache = true;
+                }
+            }
         }
         match self.read("calendar-stamps.json") {
             Read::Missing => {

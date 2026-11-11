@@ -1,4 +1,46 @@
 use super::{HostError, HostToUi, Pipe, RemoteKind, Reply, Request, Session, frame, io};
+fn local(
+    state: &mut crate::calendar::State,
+    request: &Request,
+) -> Option<Result<Reply, HostError>> {
+    match request {
+        Request::CalendarConfigLoad {} => Some(Ok(Reply::CalendarConfigLoad {
+            value: Box::new(state.config()),
+        })),
+        Request::CalendarUtcSet {
+            utc,
+            expected_revision,
+        } => Some(
+            state
+                .utc_set(*utc, expected_revision)
+                .map(|value| Reply::CalendarUtcSet {
+                    value: Box::new(value),
+                }),
+        ),
+        Request::CalendarNotifyWeekSet {
+            enabled,
+            expected_revision,
+        } => Some(
+            state
+                .notify_week_set(*enabled, expected_revision)
+                .map(|value| Reply::CalendarNotifyWeekSet {
+                    value: Box::new(value),
+                }),
+        ),
+        Request::CalendarFollowSet {
+            series_id,
+            followed,
+            expected_revision,
+        } => Some(
+            state
+                .follow_set(series_id, *followed, expected_revision)
+                .map(|value| Reply::CalendarFollowSet {
+                    value: Box::new(value),
+                }),
+        ),
+        _ => None,
+    }
+}
 pub(super) fn dispatch(
     session: &mut Session,
     pipe: &mut Pipe,
@@ -11,6 +53,16 @@ pub(super) fn dispatch(
             &HostToUi::Failure {
                 id,
                 error: HostError::Denied,
+            },
+        );
+    }
+    let local = local(&mut session.calendar_state, request);
+    if let Some(result) = local {
+        return frame::write(
+            pipe,
+            &match result {
+                Ok(result) => HostToUi::Response { id, result },
+                Err(error) => HostToUi::Failure { id, error },
             },
         );
     }

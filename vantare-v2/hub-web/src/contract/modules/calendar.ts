@@ -1,9 +1,17 @@
 import {
+  duration,
+  isCalendarRevision,
+  list,
+  number,
+  strings,
+  text,
+} from "../calendar-common";
+import { isCalendarConfig } from "../calendar-config-validation";
+import {
   calendarDateLimit,
   calendarListLimit,
   calendarMinuteLimit,
   calendarSeriesLimit,
-  calendarTextLimit,
   calendarTimestampLimit,
   calendarWeekdays,
 } from "../generated/calendar";
@@ -11,25 +19,6 @@ import { exact, record } from "../validation-common";
 
 export { calendarMethods as methods } from "../generated/calendar";
 
-const text = (v: unknown): v is string =>
-  typeof v === "string" &&
-  new TextEncoder().encode(v).length <= calendarTextLimit &&
-  Array.from(v).every((c) => {
-    const n = c.codePointAt(0) ?? 0;
-    return n >= 32 && (n < 127 || n > 159);
-  });
-const number = (v: unknown, max: number): v is number =>
-  typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max;
-const list = (
-  v: unknown,
-  max: number,
-  test: (item: unknown) => boolean,
-): v is unknown[] => Array.isArray(v) && v.length <= max && v.every(test);
-const strings = (v: unknown, max: number): v is string[] =>
-  list(v, max, text) &&
-  v.every((s) => typeof s === "string" && s.trim().length > 0) &&
-  new Set(v).size === v.length;
-const duration = (v: unknown) => v === null || number(v, calendarMinuteLimit);
 export function isCalendarDate(v: unknown): v is string {
   if (typeof v !== "string" || v.length > calendarDateLimit) return false;
   const parts =
@@ -175,8 +164,55 @@ export function isCalendarView(v: unknown) {
     typeof v.invalidCache === "boolean"
   );
 }
-export const isRequest = (v: Record<string, unknown>) => exact(v, ["method"]);
-export const isReply = (v: Record<string, unknown>) =>
-  exact(v, ["method", "value"]) && isCalendarView(v.value);
-export const isError = (_v: Record<string, unknown>) => false;
+export function isRequest(v: Record<string, unknown>) {
+  switch (v.method) {
+    case "calendar.load":
+    case "calendar.refresh":
+    case "calendar.configLoad":
+      return exact(v, ["method"]);
+    case "calendar.utcSet":
+      return (
+        exact(v, ["method", "utc", "expectedRevision"]) &&
+        typeof v.utc === "boolean" &&
+        isCalendarRevision(v.expectedRevision)
+      );
+    case "calendar.notifyWeekSet":
+      return (
+        exact(v, ["method", "enabled", "expectedRevision"]) &&
+        typeof v.enabled === "boolean" &&
+        isCalendarRevision(v.expectedRevision)
+      );
+    case "calendar.followSet":
+      return (
+        exact(v, ["method", "seriesId", "followed", "expectedRevision"]) &&
+        text(v.seriesId) &&
+        v.seriesId.trim().length > 0 &&
+        typeof v.followed === "boolean" &&
+        isCalendarRevision(v.expectedRevision)
+      );
+    default:
+      return false;
+  }
+}
+export function isReply(v: Record<string, unknown>) {
+  if (!exact(v, ["method", "value"])) return false;
+  switch (v.method) {
+    case "calendar.load":
+    case "calendar.refresh":
+      return isCalendarView(v.value);
+    case "calendar.configLoad":
+    case "calendar.utcSet":
+    case "calendar.notifyWeekSet":
+    case "calendar.followSet":
+      return isCalendarConfig(v.value);
+    default:
+      return false;
+  }
+}
+export const isError = (v: Record<string, unknown>) =>
+  v.kind === "calendarScheduleUnavailable"
+    ? exact(v, ["kind"])
+    : v.kind === "calendarConflict" &&
+      exact(v, ["kind", "current"]) &&
+      isCalendarConfig(v.current);
 export const isEvent = (_v: Record<string, unknown>) => false;

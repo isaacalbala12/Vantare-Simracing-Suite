@@ -56,3 +56,18 @@ export function weekLongTitle(start: number) {
     last = days[6];
   return `${datePart(start, "weekday", true)} ${datePart(start, "day", true)} – ${datePart(last, "weekday", true)} ${datePart(last, "day", true)} ${datePart(last, "month", true)}`;
 }
+
+export function dayHours(at: number, utc: boolean) {
+  const from = civilDay(at, 0, utc),
+    until = civilDay(at, 1, utc);
+  const hours: { from: number; until: number; hour: number }[] = [];
+  for (let cursor = from; cursor < until; cursor += 3600000) {
+    const date = new Date(cursor);
+    hours.push({
+      from: cursor,
+      until: Math.min(cursor + 3600000, until),
+      hour: utc ? date.getUTCHours() : date.getHours(),
+    });
+  }
+  return hours;
+}

@@ -9,6 +9,7 @@ import { Callout, Skeleton } from "../../ui/Data";
 import { LauncherProfiles } from "../../ui/launcher/Profiles";
 import { snapshot, useProfileEditorState } from "./editor-state";
 import { ProfileEditor } from "./ProfileEditor";
+import { profileFailure } from "./profile-errors";
 import {
   launcherKey,
   launcherSelectionKey,
@@ -96,7 +97,7 @@ export function Launcher() {
     };
   }, [client, setView]);
   async function openEditor(id: string | null) {
-    if (!client || busy.current) return;
+    if (!client || busy.current || view?.protected) return;
     busy.current = true;
     setPending(true);
     try {
@@ -107,7 +108,7 @@ export function Launcher() {
       if (alive.current && reply.method === "launcher.profile.get")
         editor.set(snapshot(reply.value, id === null));
     } catch (failure) {
-      if (alive.current) setError(failureText(failure));
+      if (alive.current) setError(profileFailure(failure, true));
     } finally {
       busy.current = false;
       if (alive.current) setPending(false);

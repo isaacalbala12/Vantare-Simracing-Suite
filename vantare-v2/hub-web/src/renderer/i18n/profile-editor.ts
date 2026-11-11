@@ -1,3 +1,4 @@
+import { profileLimits } from "../../contract/generated/contract";
 export const profileText = {
   title: "Editar perfil",
   help: "Los cambios se aplican al guardar.",
@@ -24,7 +25,14 @@ export const profileText = {
   defaultArguments: "Argumentos de la aplicación",
   argumentLossTitle: "Descartar argumentos personalizados",
   argumentLoss: (count: number) =>
-    `Se descartarán los argumentos personalizados de ${count} pasos al guardar porque has cambiado su aplicación o los has quitado.`,
+    `Se descartarán los argumentos personalizados de ${count === 1 ? "1 paso" : `${count} pasos`} al guardar porque has cambiado su aplicación o los has quitado.`,
+  argumentLossRevision: (count: number) =>
+    `El perfil cambió en otro proceso. No se puede verificar la identidad de ${count === 1 ? "1 paso con argumentos personalizados" : `${count} pasos con argumentos personalizados`}; al guardar tu lista se descartarán esos argumentos.`,
+  discardTitle: "Descartar cambios del perfil",
+  discardMessage: "Tienes cambios sin guardar. ¿Quieres descartarlos?",
+  keepEditing: "Seguir editando",
+  confirmDiscard: "Descartar cambios",
+  refreshed: "Perfil actualizado sin sobrescribir cambios ajenos",
   confirmArgumentLoss: "Guardar y descartar argumentos",
   up: "↑ Subir",
   down: "↓ Bajar",
@@ -41,7 +49,7 @@ export const profileText = {
   exitPolicy: "Al salir",
   retryPolicy: "Reintentar",
   retries: "Reintentos por paso",
-  retriesHelp: "De 0 a 3",
+  retriesHelp: `De 0 a ${profileLimits.retries}`,
   firstDelay: "Esperar antes del primer paso (s)",
   ask: "Preguntar",
   stop: "Parar",
@@ -59,12 +67,17 @@ export const profileText = {
   conflict: "El perfil ha cambiado en otro proceso. Tu borrador se conserva.",
   retry: "Reintentar guardado",
   discard: "Descartar",
+  protected: "El documento está protegido. Vuelve a cargarlo antes de editar.",
+  busy: "Launcher está ocupado. Tu borrador se conserva; vuelve a intentarlo.",
+  coreUnavailable: "El núcleo no está disponible. Tu borrador se conserva.",
+  openFailed:
+    "No se pudo abrir el perfil. Vuelve a cargarlo e inténtalo de nuevo.",
   failed:
     "No se pudo guardar el perfil. Revisa sus datos y vuelve a intentarlo.",
   emptySteps: "Pasos: añade al menos una aplicación",
   missing: "Pasos: selecciona una aplicación disponible",
-  invalidName: "Nombre: indica entre 1 y 256 caracteres sin NUL",
-  limit: "Pasos: el perfil admite como máximo 128 pasos",
-  unsaved: "Guarda o cancela el perfil antes de cerrar la ventana.",
+  invalidName: `Nombre: indica entre 1 y ${profileLimits.name} bytes sin NUL`,
+  limit: `Pasos: el perfil admite como máximo ${profileLimits.steps} pasos`,
+  unsaved: "Guarda o cancela el perfil antes de cerrar o reiniciar la ventana.",
   step: (index: number) => `PASO ${index + 1}`,
 } as const;

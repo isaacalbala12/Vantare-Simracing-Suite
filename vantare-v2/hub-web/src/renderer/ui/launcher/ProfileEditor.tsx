@@ -438,10 +438,12 @@ export function ProfileEditorRailFields({
 
 export function ArgumentLossDialog({
   count,
+  changedRevision = false,
   onCancel,
   onConfirm,
 }: {
   count: number;
+  changedRevision?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -459,12 +461,49 @@ export function ArgumentLossDialog({
             {text.argumentLossTitle}
           </BaseAlertDialog.Title>
           <BaseAlertDialog.Description>
-            {text.argumentLoss(count)}
+            {changedRevision
+              ? text.argumentLossRevision(count)
+              : text.argumentLoss(count)}
           </BaseAlertDialog.Description>
           <div className="v-launcher-actions">
             <Button onClick={onCancel}>{text.cancel}</Button>
             <Button variant="danger" onClick={onConfirm}>
               {text.confirmArgumentLoss}
+            </Button>
+          </div>
+        </BaseAlertDialog.Popup>
+      </BaseAlertDialog.Portal>
+    </BaseAlertDialog.Root>
+  );
+}
+
+export function DiscardProfileDialog({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <BaseAlertDialog.Root
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) onCancel();
+      }}
+    >
+      <BaseAlertDialog.Portal>
+        <BaseAlertDialog.Backdrop className="v-backdrop" />
+        <BaseAlertDialog.Popup className="v-dialog">
+          <BaseAlertDialog.Title>{text.discardTitle}</BaseAlertDialog.Title>
+          <BaseAlertDialog.Description>
+            {text.discardMessage}
+          </BaseAlertDialog.Description>
+          <div className="v-launcher-actions">
+            <Button onClick={onCancel}>{text.keepEditing}</Button>
+            <Button variant="danger" onClick={onConfirm}>
+              {text.confirmDiscard}
             </Button>
           </div>
         </BaseAlertDialog.Popup>

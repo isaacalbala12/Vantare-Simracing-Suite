@@ -12,9 +12,12 @@ import {
 } from "../../ui/launcher/ProfileEditor";
 import {
   type EditorSnapshot,
+  isDirty,
   snapshot,
   useProfileEditorState,
 } from "./editor-state";
+import { mergeDraft } from "./merge-draft";
+import { profileFailure } from "./profile-errors";
 import { launcherKey, useLauncherSnapshot } from "./state";
 
 function argumentLoss(value: EditorSnapshot): number {
@@ -33,10 +36,10 @@ export function ProfileEditor() {
   const { client } = useHost();
   const query = useQueryClient();
   const { view } = useLauncherSnapshot();
-  const { value, set, update } = useProfileEditorState();
+  const { value, set, update, close } = useProfileEditorState();
   const toast = useToastManager();
   const [error, setError] = useState<string>();
-  const readInvalid = useRef(false);
+  const readInvalid = useRef(value?.restored ?? false);
   const [confirmation, setConfirmation] = useState<{
     revision: string;
     source: EditorSnapshot;
@@ -46,6 +49,7 @@ export function ProfileEditor() {
   const actions = useRef({ save: () => {}, cancel: () => {} });
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (event.key === "Escape" && !busy.current) {
         event.preventDefault();
         actions.current.cancel();
@@ -68,21 +72,6 @@ export function ProfileEditor() {
       alive.current = false;
     };
   }, []);
-  const dirty =
-    value !== null &&
-    JSON.stringify(value.draft) !== JSON.stringify(value.original);
-  useEffect(() => {
-    if (!client) return;
-    return client.addCloseGuard((reason) => {
-      if (reason !== "window") {
-        set(null);
-        return true;
-      }
-      if (!dirty) return true;
-      toast.add({ title: text.unsaved, type: "warn" });
-      return false;
-    });
-  }, [client, dirty, set, toast]);
   if (!value || !view) return null;
   const current = value;
   function move(index: number, direction: -1 | 1) {
@@ -188,7 +177,7 @@ export function ProfileEditor() {
       ) {
         query.setQueryData(launcherKey, failure.detail.current);
         setError(text.conflict);
-      } else setError(text.failed);
+      } else setError(profileFailure(failure));
     } finally {
       busy.current = false;
     }
@@ -211,10 +200,10 @@ export function ProfileEditor() {
         setError(undefined);
         readInvalid.current = false;
       }
-    } catch {
+    } catch (failure) {
       if (alive.current) {
         set({ ...current, pending: false });
-        setError(text.failed);
+        setError(profileFailure(failure));
       }
     } finally {
       busy.current = false;
@@ -244,38 +233,17 @@ export function ProfileEditor() {
         });
       }
       if (!alive.current || reply.method !== "launcher.profile.get") return;
-      const fresh = snapshot(reply.value, current.isNew);
-      const steps = current.draft.steps.map((step) => {
-        const index = current.original.steps.findIndex(
-          (original) => original.key !== null && original.key === step.key,
-        );
-        // Across revisions there is no persistent step identity in launcher.json.
-        // Do not silently attach private arguments by index after an external edit.
-        const candidate =
-          fresh.revision === current.revision
-            ? fresh.draft.steps[index]
-            : undefined;
-        return {
-          ...step,
-          key: candidate?.appId === step.appId ? candidate.key : null,
-          hasCustomArguments:
-            candidate?.appId === step.appId && candidate.hasCustomArguments,
-        };
-      });
-      const source = {
-        ...fresh,
-        draft: { ...current.draft, id: fresh.draft.id, steps },
-        stepKeys: current.stepKeys,
-      };
+      const source = mergeDraft(current, reply.value);
       set(source);
       readInvalid.current = false;
       setError(undefined);
       busy.current = false;
-      await save(source.revision, false, source);
-    } catch {
+      if (isDirty(source)) await save(source.revision, false, source);
+      else toast.add({ title: text.refreshed });
+    } catch (failure) {
       if (alive.current) {
         set({ ...current, pending: false });
-        setError(text.failed);
+        setError(profileFailure(failure));
       }
     } finally {
       busy.current = false;
@@ -285,7 +253,7 @@ export function ProfileEditor() {
     save: () => void save(),
     cancel: () => {
       if (confirmation) setConfirmation(undefined);
-      else set(null);
+      else close();
     },
   };
   return (
@@ -310,12 +278,13 @@ export function ProfileEditor() {
         }
         onAdd={add}
         onSave={() => void save()}
-        onCancel={() => set(null)}
+        onCancel={close}
         onRetry={() => void retry()}
         onDiscard={() => void discard()}
       />
       <ArgumentLossDialog
         count={confirmation ? argumentLoss(confirmation.source) : 0}
+        changedRevision={confirmation?.source.argumentLossFromRevision ?? false}
         onCancel={() => setConfirmation(undefined)}
         onConfirm={() => {
           if (confirmation) {

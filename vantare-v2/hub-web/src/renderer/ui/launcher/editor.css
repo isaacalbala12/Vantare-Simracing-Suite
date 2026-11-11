@@ -220,6 +220,8 @@
   font-weight: 400;
 }
 .v-profile-editor > .v-launcher-heading .v-button--primary {
+  width: 104px;
+  padding: 0 12px;
   background: var(--grad-button);
   color: var(--text-on-accent);
   border: 0;

@@ -11,13 +11,18 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
+import {
+  SectionChromeProvider,
+  SectionRailSlot,
+  SectionTabsSlot,
+} from "../src/renderer/app/SectionChrome";
+import { Client } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
-import { ProfileEditorProvider } from "../src/renderer/screens/launcher/editor-state";
-import { Launcher } from "../src/renderer/screens/launcher/Launcher";
-import { LauncherRail } from "../src/renderer/screens/launcher/LauncherRail";
+import LauncherEntry from "../src/renderer/screens/launcher/entry";
 import {
   ToastProvider,
   ToastViewport,
@@ -43,6 +48,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
+function ScreenNavigation() {
+  const [visible, setVisible] = useState(true);
+  return (
+    <>
+      <button type="button" onClick={() => setVisible(!visible)}>
+        Otra sección
+      </button>
+      <SectionChromeProvider>
+        <SectionTabsSlot />
+        <SectionRailSlot fallback={null} />
+        {visible && <LauncherEntry />}
+      </SectionChromeProvider>
+    </>
+  );
+}
 function mount(scene = "launcher-editor-ready") {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   const cache = new QueryClient({
@@ -55,10 +75,7 @@ function mount(scene = "launcher-editor-ready") {
         <CSPProvider disableStyleElements>
           <ToastProvider>
             <TooltipProvider>
-              <ProfileEditorProvider>
-                <Launcher />
-                <LauncherRail />
-              </ProfileEditorProvider>
+              <ScreenNavigation />
               <ToastViewport closeLabel={text.cancel} />
             </TooltipProvider>
           </ToastProvider>
@@ -68,6 +85,113 @@ function mount(scene = "launcher-editor-ready") {
   );
 }
 describe("profile editor", () => {
+  it("retains freshly read custom arguments when only the profile name was edited", async () => {
+    mount("launcher-editor-custom-conflicto");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    const name = await screen.findByRole("textbox", { name: text.name });
+    fireEvent.change(name, { target: { value: "Solo cambia el nombre" } });
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByText(text.conflict);
+    fireEvent.click(screen.getByRole("button", { name: text.retry }));
+    await screen.findByRole("button", { name: "Solo cambia el nombre" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("textbox", { name: text.name });
+    fireEvent.click(screen.getByRole("button", { name: text.mode }));
+    expect(screen.getAllByText(text.customArguments).length).toBeGreaterThan(0);
+  });
+  it("confirms tab changes including arrow activation, keeps on cancel and restores edit focus on discard", async () => {
+    mount();
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    expect(screen.queryByRole("tab", { name: "Aplicaciones" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    const name = await screen.findByRole("textbox", { name: text.name });
+    fireEvent.change(name, { target: { value: "Cambio con flechas" } });
+    act(() => screen.getByRole("tab", { name: /^Perfil$/ }).focus());
+    await user.keyboard("{ArrowLeft}");
+    await screen.findByRole("alertdialog", { name: text.discardTitle });
+    fireEvent.click(screen.getByRole("button", { name: text.keepEditing }));
+    expect(
+      (screen.getByRole("textbox", { name: text.name }) as HTMLInputElement)
+        .value,
+    ).toBe("Cambio con flechas");
+    fireEvent.click(screen.getByRole("tab", { name: /^Perfiles$/ }));
+    await screen.findByRole("alertdialog", { name: text.discardTitle });
+    fireEvent.click(screen.getByRole("button", { name: text.confirmDiscard }));
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Editar perfil" }),
+    );
+  });
+  it("vetoes window close and restart without discarding, and permits Live", async () => {
+    const registrations = vi.spyOn(Client.prototype, "addCloseGuard");
+    mount();
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    const name = await screen.findByRole("textbox", { name: text.name });
+    fireEvent.change(name, { target: { value: "No descartar al vetar" } });
+    const guard = registrations.mock.calls.at(-1)?.[0];
+    if (!guard) throw new Error("missing close guard");
+    await act(async () => {
+      expect(await guard("window")).toBe(false);
+      expect(await guard("restart")).toBe(false);
+      expect(await guard("live")).toBe(true);
+    });
+    expect(
+      (screen.getByRole("textbox", { name: text.name }) as HTMLInputElement)
+        .value,
+    ).toBe("No descartar al vetar");
+    fireEvent.click(screen.getByRole("button", { name: "Otra sección" }));
+    await act(async () => {
+      expect(await guard("restart")).toBe(false);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Otra sección" }));
+    expect(
+      (
+        (await screen.findByRole("textbox", {
+          name: text.name,
+        })) as HTMLInputElement
+      ).value,
+    ).toBe("No descartar al vetar");
+  });
+  it("does not save again after conflict when there are no local edits to apply", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("launcher-conflicto");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("textbox", { name: text.name });
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByText(text.conflict);
+    fireEvent.click(screen.getByRole("button", { name: text.retry }));
+    await screen.findByText(text.refreshed);
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.profile.save",
+      ),
+    ).toHaveLength(1);
+    expect(screen.getByRole("textbox", { name: text.name })).toBeTruthy();
+  });
+  it("preserves a dirty draft while its screen is unmounted", async () => {
+    mount();
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    const name = await screen.findByRole("textbox", { name: text.name });
+    fireEvent.change(name, { target: { value: "Borrador entre secciones" } });
+    fireEvent.click(screen.getByRole("button", { name: "Otra sección" }));
+    expect(screen.queryByRole("textbox", { name: text.name })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Otra sección" }));
+    expect(
+      (
+        (await screen.findByRole("textbox", {
+          name: text.name,
+        })) as HTMLInputElement
+      ).value,
+    ).toBe("Borrador entre secciones");
+    fireEvent.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("button", { name: "Borrador entre secciones" });
+  });
   it("expires an acknowledgment when no running transition is observed", async () => {
     mount();
     await screen.findByRole("heading", { name: "Creador de Contenido" });
@@ -127,7 +251,7 @@ describe("profile editor", () => {
       name: "Cambio conservado",
     });
   });
-  it("shows argument status without an editor and Escape discards other changes", async () => {
+  it("shows argument status and asks before Escape discards changes", async () => {
     mount();
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Creador de Contenido" });
@@ -140,6 +264,15 @@ describe("profile editor", () => {
     expect(screen.queryByRole("textbox", { name: /Argumentos/ })).toBeNull();
     fireEvent.change(name, { target: { value: "Cambio sin guardar" } });
     await user.keyboard("{Escape}");
+    await screen.findByRole("alertdialog", { name: text.discardTitle });
+    fireEvent.click(screen.getByRole("button", { name: text.keepEditing }));
+    expect(
+      (screen.getByRole("textbox", { name: text.name }) as HTMLInputElement)
+        .value,
+    ).toBe("Cambio sin guardar");
+    await user.keyboard("{Escape}");
+    await screen.findByRole("alertdialog", { name: text.discardTitle });
+    fireEvent.click(screen.getByRole("button", { name: text.confirmDiscard }));
     await waitFor(() =>
       expect(screen.queryByRole("textbox", { name: text.name })).toBeNull(),
     );
@@ -211,6 +344,10 @@ describe("profile editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "Borrador tras conflicto" } });
+    fireEvent.change(
+      screen.getAllByRole("spinbutton", { name: text.stepDelay })[0],
+      { target: { value: "3" } },
+    );
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByText(text.conflict);
     // The ordinary Save action must also reread, not reuse the expired key.

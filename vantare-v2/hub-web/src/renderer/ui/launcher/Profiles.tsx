@@ -92,7 +92,7 @@ export function LauncherProfiles({
           <h1>{text.title}</h1>
           <p>{text.description}</p>
         </div>
-        <Button disabled={!onNew || pending} onClick={onNew}>
+        <Button disabled={!onNew || pending || view.protected} onClick={onNew}>
           {text.newProfile}
         </Button>
       </header>
@@ -165,7 +165,8 @@ export function LauncherProfiles({
                 </span>
               </Tooltip>
               <Button
-                disabled={!onEdit || pending || view.running}
+                data-launcher-edit
+                disabled={!onEdit || pending || view.running || view.protected}
                 onClick={() => onEdit?.(profile.id)}
               >
                 {text.edit}
@@ -202,9 +203,11 @@ export function LauncherProfiles({
                   aria-pressed={item.id === profile.id}
                   disabled={pending || view.running}
                   onClick={() => onSelect(item.id)}
-                  onDoubleClick={() => onEdit?.(item.id)}
+                  onDoubleClick={() => {
+                    if (!view.protected) onEdit?.(item.id);
+                  }}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" && onEdit) {
+                    if (event.key === "Enter" && onEdit && !view.protected) {
                       event.preventDefault();
                       onEdit(item.id);
                     }
@@ -236,7 +239,7 @@ export function LauncherProfiles({
                 type="button"
                 className="v-launcher-profile v-launcher-profile--new"
                 onClick={onNew}
-                disabled={!onNew || pending}
+                disabled={!onNew || pending || view.protected}
               >
                 {text.newProfile}
               </button>

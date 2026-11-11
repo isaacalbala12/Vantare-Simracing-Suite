@@ -19,7 +19,7 @@ function LauncherContent() {
         title={text.title}
         tabs={[
           { id: "profiles", etiqueta: text.profilesTab, visible: true },
-          { id: "applications", etiqueta: text.applications, visible: true },
+          { id: "applications", etiqueta: text.applications, visible: false },
           {
             id: "profile",
             etiqueta: text.profileTab,
@@ -28,7 +28,7 @@ function LauncherContent() {
         ]}
         activeTab={activeTab}
         onTabChange={(id) => {
-          if (id === "profiles" && !editor.value?.pending) editor.set(null);
+          if (id === "profiles" && !editor.value?.pending) editor.close();
         }}
         rail={<LauncherRail />}
       />

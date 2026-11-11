@@ -1,28 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { releaseChannels } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Pill, SettingRow, Skeleton } from "../../ui/Data";
-import { useToastManager } from "../../ui/Layers";
+import { StatusAnnouncement } from "../../ui/Frame";
+import {
+  ReleaseNews,
+  UpdateChannels,
+  UpdateHero,
+  UpdatesLayout,
+} from "../../ui/UpdatesPresentation";
 
-function channelLabel(raw: string) {
-  const channel = releaseChannels.find(
-    (value) => value === (raw === "beta" ? "testers" : raw),
-  );
-  return channel
-    ? t(`updates.channel.${channel}`)
-    : t(
-        raw === "development"
-          ? "updates.channel.development"
-          : "updates.channel.unknown",
-      );
-}
 export function Updates() {
   const { client } = useHost();
   const cache = useQueryClient();
-  const toast = useToastManager();
+  const [restartVeto, setRestartVeto] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const vetoed = useRef(false);
   useEffect(
@@ -31,9 +24,9 @@ export function Updates() {
         if (reason !== "restart") return;
         vetoed.current = true;
         setRestarting(false);
-        toast.add({ title: t("updates.restartVeto"), type: "warn" });
+        setRestartVeto(true);
       }),
-    [client, toast],
+    [client],
   );
   useEffect(() => {
     if (!client) return;
@@ -60,6 +53,7 @@ export function Updates() {
   const restart = useMutation({
     onMutate: () => {
       vetoed.current = false;
+      setRestartVeto(false);
     },
     onSuccess: () => {
       if (!vetoed.current) setRestarting(true);
@@ -86,12 +80,9 @@ export function Updates() {
       </Callout>
     );
   const view = query.data;
-  // The embedded feed may repeat a note; full content identifies a visible entry.
-  const notes = [
-    ...new Map(view.news.map((note) => [JSON.stringify(note), note] as const)),
-  ];
   return (
-    <>
+    <UpdatesLayout>
+      {restartVeto && <Callout tone="warn" title={t("updates.restartVeto")} />}
       {view.installation === "invalid" && (
         <Callout tone="warn" title={t("updates.invalid")}>
           {t("updates.invalidHelp")}
@@ -107,27 +98,11 @@ export function Updates() {
           {view.registrationWarning}
         </Callout>
       )}
-      <Card
-        variant="hero"
-        title={t("updates.installed")}
-        actions={
-          <Button onClick={() => void query.refetch()}>
-            {t("settings.reload")}
-          </Button>
-        }
-      >
-        {view.installation === "development" && (
-          <Pill>{t("updates.development")}</Pill>
-        )}
-        <SettingRow label={t("updates.version")}>
-          <Pill>{view.version}</Pill>
-        </SettingRow>
-        <SettingRow label={t("updates.channel")}>
-          <Pill>{channelLabel(view.channel)}</Pill>
-        </SettingRow>
-        {view.previous && <Callout title={t("updates.previous")} />}
-      </Card>
-      {view.beta && (
+      {view.installation === "development" && (
+        <StatusAnnouncement>{t("updates.development")}</StatusAnnouncement>
+      )}
+      <UpdateHero view={view} />
+      {view.beta && view.beta.state !== "current" && (
         <Card title={t("updates.beta")}>
           <Callout
             title={
@@ -152,43 +127,8 @@ export function Updates() {
           </SettingRow>
         </Card>
       )}
-      <Card title={t("updates.channels")}>
-        {releaseChannels.map((channel) => (
-          <SettingRow
-            key={channel}
-            label={t(`updates.channel.${channel}`)}
-            description={t(`updates.channelHelp.${channel}`)}
-          >
-            <Pill>
-              {t(
-                view.channel === channel ||
-                  (view.channel === "beta" && channel === "testers")
-                  ? "updates.selected"
-                  : "updates.notSelected",
-              )}
-            </Pill>
-          </SettingRow>
-        ))}
-        <Callout
-          title={
-            view.channel === "beta"
-              ? t("updates.betaHelp")
-              : t("updates.channelsHelp")
-          }
-        />
-      </Card>
-      <Card title={t("updates.notes")}>
-        {notes.length ? (
-          notes.map(([key, note]) => (
-            <SettingRow key={key} label={note.title} description={note.summary}>
-              <Pill>{note.kind}</Pill>
-              <Pill>{note.tag}</Pill>
-            </SettingRow>
-          ))
-        ) : (
-          <Callout title={t("updates.noNotes")} />
-        )}
-      </Card>
-    </>
+      <UpdateChannels view={view} />
+      <ReleaseNews view={view} />
+    </UpdatesLayout>
   );
 }

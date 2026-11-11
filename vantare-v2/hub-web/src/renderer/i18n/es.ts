@@ -158,7 +158,7 @@ export const settingsText = {
   "updates.channelHelp.testers":
     "Candidatas a Estable con el Testing Center activo. Requiere invitación.",
   "updates.channelHelp.nightly":
-    "Cambios publicados para probar. Puede haber fallos. Requiere invitación.",
+    "Cada cambio publicado. Puede romperse. Requiere invitación.",
   "updates.selected": "Canal instalado",
   "updates.notSelected": "No seleccionado",
   "settings.privacy": "Privacidad",

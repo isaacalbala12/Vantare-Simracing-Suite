@@ -11,6 +11,7 @@ import { SearchInput } from "../../ui/Forms";
 import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
 import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
+import { UpdatesRailContent } from "../../ui/UpdatesRailContent";
 import { AppearanceRail } from "./AppearanceRail";
 import { GeneralRail } from "./GeneralRail";
 import { PerformanceRail } from "./PerformanceRail";
@@ -182,6 +183,8 @@ export function Settings() {
             <AppearanceRail />
           ) : selected === "performance" ? (
             <PerformanceRail />
+          ) : selected === "updates" ? (
+            <UpdatesRailContent />
           ) : selected === "shortcuts" ? (
             <ShortcutsRail />
           ) : undefined

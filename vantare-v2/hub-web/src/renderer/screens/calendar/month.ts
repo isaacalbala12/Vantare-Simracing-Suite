@@ -4,6 +4,7 @@ import type {
   CalendarView,
 } from "../../../contract/generated/calendar";
 import { civilDay, weekDays } from "../../ui/calendarDate";
+import { raceDay } from "./events";
 import { alertAt, daily } from "./rows";
 import { starts } from "./schedule";
 export function monthWeeks(
@@ -106,10 +107,15 @@ function dayFacts(
     count = 0;
   schedule.series.forEach((series, index) => {
     const slots = starts(schedule, series, day, until, limit);
-    if (slots.length && !daily(series)) events.push(index);
+    if (
+      !daily(series) &&
+      starts(schedule, series, day, until + 4 * 3600000, limit).some(
+        (at) => raceDay(at, utc) === day,
+      )
+    )
+      events.push(index);
     for (const at of slots) {
-      const date = new Date(at),
-        hour = utc ? date.getUTCHours() : date.getHours();
+      const hour = Math.min(23, Math.floor((at - day) / 3600000));
       perHour[hour]++;
       eventHours[hour] ||= !daily(series);
       total++;

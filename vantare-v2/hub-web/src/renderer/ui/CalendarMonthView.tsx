@@ -209,11 +209,32 @@ export function CalendarMonthView({
         ))}
       </div>
       <footer>
-        <span>{text.weekly}</span>
-        <span>{text.special}</span>
-        <span>{text.density}</span>
-        <span>{text.ran}</span>
-        <span>{text.alerts}</span>
+        <span>
+          <b data-weekly>{text.legendWeekly}</b>
+          {text.weekly}
+        </span>
+        <span>
+          <b data-special>{text.legendSpecial}</b>
+          {text.special}
+        </span>
+        <span>
+          <i className="v-calendar-month-legend-density" />
+          {text.density}
+        </span>
+        <span>
+          <b data-ran>
+            <Icon name="check" />
+            {text.legendRuns}
+          </b>
+          {text.ran}
+        </span>
+        <span>
+          <b data-alert>
+            <Icon name="bell-fill" />
+            {text.legendAlerts}
+          </b>
+          {text.alerts}
+        </span>
       </footer>
     </section>
   );

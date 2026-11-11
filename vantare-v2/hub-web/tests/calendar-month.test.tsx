@@ -141,3 +141,34 @@ it("keeps the expired publication's next week waiting, without manufacturing dat
   expect(model.weeks[2].state).toBe("waiting");
   expect(model.weeks[2].facts).toBeUndefined();
 });
+
+it("groups a Friday small-hours event on Thursday while keeping Friday density", () => {
+  const view = calendarReference();
+  if (!view.official) throw new Error("missing publication");
+  const event = view.official.series.find(
+    (series) => series.recurrence.kind !== "interval",
+  );
+  if (!event) throw new Error("missing event");
+  view.official.series = [
+    {
+      ...event,
+      recurrence: {
+        kind: "weekly-slots",
+        days: ["Fri"],
+        timesUTC: ["01:00"],
+        intervalMinutes: 0,
+      },
+    },
+  ];
+  const week = monthWeeks(
+    view,
+    Date.parse("2026-10-08T17:47:13Z"),
+    0,
+    true,
+    alerts,
+    1000,
+  ).weeks[1];
+  expect(week.bars).toEqual([{ series: 0, from: 2, to: 2, lane: 0 }]);
+  expect(week.facts?.[2].total).toBe(0);
+  expect(week.facts?.[3].total).toBe(1);
+});

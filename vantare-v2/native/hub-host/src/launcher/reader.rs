@@ -56,6 +56,7 @@ impl Scan {
 pub struct Reader {
     path: PathBuf,
     opened: bool,
+    resident: super::resident::Reader,
     found: Discovery,
     scanned_revision: Option<String>,
     scan: Option<Scan>,
@@ -67,6 +68,7 @@ impl Reader {
         Self {
             path,
             opened: false,
+            resident: super::resident::Reader::default(),
             found: Discovery::default(),
             scanned_revision: None,
             scan: None,
@@ -113,7 +115,16 @@ impl Reader {
             &self.found,
             mailbox::read_status(&self.path).as_ref(),
             self.scan.is_some(),
+            &self.resident,
         )
+    }
+    pub fn answer(
+        &mut self,
+        core: &crate::protocol::CoreStatus,
+        decision: &str,
+        action: super::resident::LauncherAnswerAction,
+    ) -> Result<bool, HostError> {
+        self.resident.answer(&self.path, core, decision, action)
     }
     pub fn rescan(&mut self) {
         // An explicit reload refreshes availability without launching a second worker.

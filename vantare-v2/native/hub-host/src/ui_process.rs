@@ -599,6 +599,19 @@ impl Session {
     }
     fn launcher_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::LauncherAnswer { decision, action } => {
+                let message = match self
+                    .launcher_reader
+                    .answer(&self.current, decision, *action)
+                {
+                    Ok(accepted) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherAnswer { accepted },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
             Request::LauncherLaunch {
                 profile,
                 base_revision,
@@ -784,6 +797,17 @@ impl Session {
         };
         frame::write(pipe, &message)
     }
+    fn shortcut_snapshot(&self, pipe: &mut Pipe, id: u32) -> io::Result<()> {
+        frame::write(
+            pipe,
+            &HostToUi::Response {
+                id,
+                result: Reply::ShortcutsGet {
+                    value: crate::shortcuts::read(&self.launcher),
+                },
+            },
+        )
+    }
     fn request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
             Request::TestingAnswer { .. }
@@ -836,15 +860,7 @@ impl Session {
                 self.restart_update_when(pipe, id, crate::updates::Reader::can_restart)
             }
 
-            Request::ShortcutsGet {} => frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::ShortcutsGet {
-                        value: crate::shortcuts::read(&self.launcher),
-                    },
-                },
-            ),
+            Request::ShortcutsGet {} => self.shortcut_snapshot(pipe, id),
             Request::CoreGet {} => frame::write(
                 pipe,
                 &HostToUi::Response {
@@ -870,7 +886,9 @@ impl Session {
                 self.profile_request(pipe, id, request)
             }
             Request::LauncherGet {} => self.launcher_snapshot(pipe, id),
-            Request::LauncherLaunch { .. } => self.launcher_request(pipe, id, request),
+            Request::LauncherLaunch { .. } | Request::LauncherAnswer { .. } => {
+                self.launcher_request(pipe, id, request)
+            }
             Request::LauncherFavorite {} => self.launch_favorite(pipe, id),
             Request::SettingsGet {}
             | Request::SettingsDiscard {}

@@ -58,6 +58,7 @@ pub const METHODS: &[&str] = &[
     "launcher.profile.get",
     "launcher.profile.save",
     "launcher.launch",
+    "launcher.answer",
     "notifications.test",
 ];
 pub const TOPICS: &[&str] = &["core", "simStatus", "updates", "launcher"];
@@ -246,6 +247,11 @@ pub enum Request {
     },
     #[serde(rename = "launcher.get")]
     LauncherGet {},
+    #[serde(rename = "launcher.answer")]
+    LauncherAnswer {
+        decision: String,
+        action: crate::launcher::resident::LauncherAnswerAction,
+    },
     #[serde(rename = "launcher.launch")]
     LauncherLaunch {
         profile: String,
@@ -419,6 +425,8 @@ pub enum Reply {
     LauncherGet {
         value: crate::launcher::LauncherView,
     },
+    #[serde(rename = "launcher.answer")]
+    LauncherAnswer { accepted: bool },
     #[serde(rename = "launcher.launch")]
     LauncherLaunch { accepted: bool },
     #[serde(rename = "pilot.load")]

@@ -52,6 +52,7 @@ pub struct LauncherView {
     pub protected: bool,
     pub revision: String,
     pub resident: bool,
+    pub resident_state: resident::ResidentView,
     pub running: bool,
     pub scanning: bool,
     pub lmu_trigger: Option<String>,
@@ -66,6 +67,7 @@ impl Default for LauncherView {
             protected: false,
             revision: vantare_services::content_hash(&[]),
             resident: false,
+            resident_state: resident::ResidentView::default(),
             running: false,
             scanning: false,
             lmu_trigger: None,
@@ -91,13 +93,17 @@ fn project(
     found: &Discovery,
     status: Option<&mailbox::Status>,
     scanning: bool,
+    resident: &resident::Reader,
 ) -> LauncherView {
-    let running = status.is_some_and(|status| status.running);
+    let resident_state = resident.view(document, status);
+    let running = resident_state.running;
+    let online = resident_state.online;
     let view = LauncherView {
         exists: true,
         protected: false,
         revision: vantare_services::content_hash(bytes),
-        resident: status.is_some(),
+        resident: online,
+        resident_state,
         running,
         scanning,
         lmu_trigger: document.lmu_trigger_profile.clone(),
@@ -149,7 +155,7 @@ fn project(
                 },
                 launchable: !scanning
                     && !running
-                    && status.is_some()
+                    && online
                     && !profile.steps.is_empty()
                     && profile.missing_steps(found).is_empty(),
             })
@@ -193,6 +199,7 @@ pub fn read(path: &Path) -> LauncherView {
             &Discovery::default(),
             mailbox::read_status(path).as_ref(),
             false,
+            &resident::Reader::default(),
         ),
         Ok(None) => LauncherView {
             revision: vantare_services::content_hash(&[]),
@@ -287,7 +294,14 @@ mod tests {
         });
         let input = serde_json::to_string(&document).unwrap();
         assert!(input.contains("Users") && input.contains("--qa-private-argument"));
-        let view = project(b"revision", &document, &Discovery::default(), None, false);
+        let view = project(
+            b"revision",
+            &document,
+            &Discovery::default(),
+            None,
+            false,
+            &resident::Reader::default(),
+        );
         assert_eq!(view.profiles.len(), 2);
         assert!(view.profiles.iter().all(|profile| !profile.launchable));
         let json = serde_json::to_string(&view).unwrap();
@@ -332,7 +346,14 @@ mod tests {
                 item
             })
             .collect();
-        let view = project(b"large", &document, &Discovery::default(), None, false);
+        let view = project(
+            b"large",
+            &document,
+            &Discovery::default(),
+            None,
+            false,
+            &resident::Reader::default(),
+        );
         assert!(view.protected);
         assert!(view.profiles.is_empty() && view.apps.is_empty());
         assert_eq!(document.profiles.len(), PROFILE_LIMIT);

@@ -11,7 +11,7 @@ pub const DECISION_ID_MAX: usize = 20;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "kebab-case")]
-pub enum AnswerAction {
+pub enum LauncherAnswerAction {
     Trust,
     Reuse,
     Restart,
@@ -21,7 +21,7 @@ pub enum AnswerAction {
     Leave,
     CloseStarted,
 }
-impl AnswerAction {
+impl LauncherAnswerAction {
     pub const ALL: [Self; 8] = [
         Self::Trust,
         Self::Reuse,
@@ -32,6 +32,9 @@ impl AnswerAction {
         Self::Leave,
         Self::CloseStarted,
     ];
+    pub fn label(self) -> &'static str {
+        self.native().label()
+    }
     fn native(self) -> mailbox::Action {
         match self {
             Self::Trust => mailbox::Action::Trust,
@@ -60,29 +63,39 @@ impl AnswerAction {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]
-pub enum QuestionKind {
+pub enum ResidentQuestionKind {
     Authorization,
     AlreadyRunning,
     Failure,
     Closing,
     Generic,
 }
+impl ResidentQuestionKind {
+    pub const ALL: [Self; 5] = [
+        Self::Authorization,
+        Self::AlreadyRunning,
+        Self::Failure,
+        Self::Closing,
+        Self::Generic,
+    ];
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct AnswerChoice {
-    pub id: AnswerAction,
+pub struct ResidentChoice {
+    pub id: LauncherAnswerAction,
     pub label: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Question {
+pub struct ResidentQuestion {
     // Decimal string preserves all u64 values through JavaScript, without precision loss.
     pub id: String,
-    pub kind: QuestionKind,
-    pub actions: Vec<AnswerChoice>,
-    pub dismiss: AnswerAction,
+    pub kind: ResidentQuestionKind,
+    pub actions: Vec<ResidentChoice>,
+    pub dismiss: LauncherAnswerAction,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -91,11 +104,11 @@ pub struct ResidentView {
     pub online: bool,
     pub running: bool,
     pub error: bool,
-    pub decision: Option<Question>,
+    pub decision: Option<ResidentQuestion>,
     pub registrations: Vec<crate::shortcuts::ProfileShortcut>,
 }
-fn question(decision: &mailbox::Decision) -> Option<Question> {
-    if decision.actions.is_empty() || decision.actions.len() > AnswerAction::ALL.len() {
+fn question(decision: &mailbox::Decision) -> Option<ResidentQuestion> {
+    if decision.actions.is_empty() || decision.actions.len() > LauncherAnswerAction::ALL.len() {
         return None;
     }
     let mut seen = Vec::new();
@@ -107,31 +120,31 @@ fn question(decision: &mailbox::Decision) -> Option<Question> {
     }
     let has = |action| decision.actions.contains(&action);
     let kind = if has(mailbox::Action::Trust) {
-        QuestionKind::Authorization
+        ResidentQuestionKind::Authorization
     } else if has(mailbox::Action::Reuse) || has(mailbox::Action::Restart) {
-        QuestionKind::AlreadyRunning
+        ResidentQuestionKind::AlreadyRunning
     } else if has(mailbox::Action::Stop) || has(mailbox::Action::Continue) {
-        QuestionKind::Failure
+        ResidentQuestionKind::Failure
     } else if has(mailbox::Action::Leave) || has(mailbox::Action::CloseStarted) {
-        QuestionKind::Closing
+        ResidentQuestionKind::Closing
     } else {
-        QuestionKind::Generic
+        ResidentQuestionKind::Generic
     };
-    Some(Question {
+    Some(ResidentQuestion {
         id: decision.id.to_string(),
         kind,
         actions: decision
             .actions
             .iter()
-            .map(|action| AnswerChoice {
-                id: AnswerAction::from_native(*action),
+            .map(|action| ResidentChoice {
+                id: LauncherAnswerAction::from_native(*action),
                 label: action.label().into(),
             })
             .collect(),
         dismiss: if has(mailbox::Action::Leave) {
-            AnswerAction::Leave
+            LauncherAnswerAction::Leave
         } else {
-            AnswerAction::Cancel
+            LauncherAnswerAction::Cancel
         },
     })
 }
@@ -158,7 +171,7 @@ impl Reader {
         path: &Path,
         core: &CoreStatus,
         decision: &str,
-        action: AnswerAction,
+        action: LauncherAnswerAction,
     ) -> Result<bool, HostError> {
         if core.rights != LinkState::Connected
             || !core.access.verified
@@ -235,13 +248,13 @@ mod tests {
     #[test]
     fn action_ids_and_labels_match_the_existing_native_mailbox() {
         assert_eq!(
-            AnswerAction::ALL.map(AnswerAction::native),
+            LauncherAnswerAction::ALL.map(LauncherAnswerAction::native),
             mailbox::Action::ALL
         );
         for action in mailbox::Action::ALL {
-            assert_eq!(AnswerAction::from_native(action).native(), action);
+            assert_eq!(LauncherAnswerAction::from_native(action).native(), action);
             assert_eq!(
-                serde_json::to_string(&AnswerAction::from_native(action)).expect("wire"),
+                serde_json::to_string(&LauncherAnswerAction::from_native(action)).expect("wire"),
                 serde_json::to_string(&action).expect("native wire")
             );
         }
@@ -256,7 +269,7 @@ mod tests {
         let view = Reader::default().view(&document, Some(&status));
         let decision = view.decision.as_ref().expect("decision");
         assert_eq!(decision.id, u64::MAX.to_string());
-        assert_eq!(decision.kind, QuestionKind::Authorization);
+        assert_eq!(decision.kind, ResidentQuestionKind::Authorization);
         assert_eq!(decision.actions[0].label, mailbox::Action::Trust.label());
         let json = serde_json::to_string(&view).expect("view");
         for forbidden in [
@@ -284,7 +297,7 @@ mod tests {
         );
         assert_eq!(
             fresh.decision.expect("decision").dismiss,
-            AnswerAction::Cancel
+            LauncherAnswerAction::Cancel
         );
         status.decision.as_mut().expect("decision").actions =
             vec![mailbox::Action::Leave, mailbox::Action::CloseStarted];
@@ -294,7 +307,7 @@ mod tests {
                 .decision
                 .expect("closing")
                 .dismiss,
-            AnswerAction::Leave
+            LauncherAnswerAction::Leave
         );
         status.updated_ms = 0;
         let stale = reader.view(&document, Some(&status));
@@ -336,12 +349,12 @@ mod tests {
         );
         for id in ["8", "09", "-9", "9\0", "18446744073709551616"] {
             assert_eq!(
-                reader.answer(&path, &core(), id, AnswerAction::Stop),
+                reader.answer(&path, &core(), id, LauncherAnswerAction::Stop),
                 Err(HostError::Denied)
             );
         }
         assert_eq!(
-            reader.answer(&path, &core(), "9", AnswerAction::Restart),
+            reader.answer(&path, &core(), "9", LauncherAnswerAction::Restart),
             Err(HostError::Denied)
         );
         assert!(!mailbox::request_path(&path).exists());
@@ -367,7 +380,12 @@ mod tests {
         );
         publish(&path, &current);
         assert_eq!(
-            reader.answer(&path, &core(), &u64::MAX.to_string(), AnswerAction::Cancel),
+            reader.answer(
+                &path,
+                &core(),
+                &u64::MAX.to_string(),
+                LauncherAnswerAction::Cancel
+            ),
             Ok(true)
         );
         let bytes = std::fs::read(mailbox::request_path(&path)).expect("mailbox");
@@ -389,7 +407,7 @@ mod tests {
                 &path,
                 &core(),
                 &u64::MAX.to_string(),
-                AnswerAction::Continue
+                LauncherAnswerAction::Continue
             ),
             Err(HostError::Denied)
         );
@@ -410,12 +428,12 @@ mod tests {
         );
         publish(&path, &current);
         assert_eq!(
-            reader.answer(&path, &core(), "9", AnswerAction::Cancel),
+            reader.answer(&path, &core(), "9", LauncherAnswerAction::Cancel),
             Err(HostError::Denied)
         );
         std::fs::write(mailbox::request_path(&path), b"existing QA request").expect("occupied");
         assert_eq!(
-            reader.answer(&path, &core(), "9", AnswerAction::Leave),
+            reader.answer(&path, &core(), "9", LauncherAnswerAction::Leave),
             Err(HostError::Busy)
         );
         assert_eq!(
@@ -430,7 +448,7 @@ mod tests {
         );
         std::fs::remove_file(mailbox::request_path(&path)).expect("QA resident consumes request");
         assert_eq!(
-            reader.answer(&path, &core(), "9", AnswerAction::Leave),
+            reader.answer(&path, &core(), "9", LauncherAnswerAction::Leave),
             Ok(true)
         );
     }
@@ -442,7 +460,7 @@ mod tests {
                 Path::new("missing"),
                 &CoreStatus::default(),
                 "9",
-                AnswerAction::Cancel
+                LauncherAnswerAction::Cancel
             ),
             Err(HostError::Denied)
         );

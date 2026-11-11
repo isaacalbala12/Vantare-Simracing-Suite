@@ -87,5 +87,12 @@
     }
   ],
   "scanning": false,
-  "lmuTrigger": null
+  "lmuTrigger": null,
+  "residentState": {
+    "online": true,
+    "running": false,
+    "error": false,
+    "decision": null,
+    "registrations": []
+  }
 }

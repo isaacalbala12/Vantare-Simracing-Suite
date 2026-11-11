@@ -12,6 +12,7 @@ import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import { AppearancePreview } from "../AppearancePreview";
 import { Segmented } from "../Forms";
 import { PalettePicker } from "../PalettePicker";
+import { TrackedCaps } from "../TrackedCaps";
 import "./appearance-step.css";
 export function useResolvedScheme(appearance: AppearanceSettings) {
   const [system, setSystem] = useState<"dark" | "light">(() =>
@@ -114,7 +115,9 @@ export function AppearanceArt({
       >
         <strong>{text.home}</strong>
         <div className="v-ob-look-race">
-          <small>{text.race}</small>
+          <small>
+            <TrackedCaps>{text.race}</TrackedCaps>
+          </small>
           <div>
             <strong>{text.raceName}</strong>
             <b>{text.openOverlay}</b>
@@ -138,7 +141,7 @@ export function AppearanceArt({
         </div>
       </AppearancePreview>
       <span className="v-ob-art-caption">
-        {text.previewCaption(palette, text[scheme])}
+        <TrackedCaps>{text.previewCaption(palette, text[scheme])}</TrackedCaps>
       </span>
     </div>
   );

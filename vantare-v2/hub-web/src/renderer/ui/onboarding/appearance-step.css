@@ -74,7 +74,7 @@
   width: calc(24 * var(--ob-unit));
   height: calc(9 * var(--ob-unit));
   border-radius: calc(3 * var(--ob-unit));
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 .v-ob-look .v-palette-preview-check {
   position: absolute;
@@ -143,14 +143,15 @@
 }
 .v-ob-look-race strong {
   font-family: var(--font-display);
-  font-size: calc(28 * var(--ob-unit));
+  font-size: calc(30 * var(--ob-unit));
+  line-height: calc(30 * var(--ob-unit));
   font-weight: 600;
 }
 .v-ob-look-race b {
-  padding: calc(10 * var(--ob-unit)) calc(12 * var(--ob-unit));
+  padding: calc(7 * var(--ob-unit)) calc(12 * var(--ob-unit));
   border-radius: calc(6 * var(--ob-unit));
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--grad-button);
+  color: var(--ob-raw-ffffff);
   font-size: calc(11.5 * var(--ob-unit));
 }
 .v-ob-look-stats {
@@ -170,6 +171,7 @@
 .v-ob-look-stats > div > span {
   font-size: calc(10.5 * var(--ob-unit));
   color: var(--text-3);
+  font-weight: 500;
 }
 .v-ob-look-stats strong {
   display: flex;
@@ -205,9 +207,10 @@
 .v-ob-look-art .v-appearance-preview {
   width: calc(520 * var(--ob-unit));
   height: calc(330 * var(--ob-unit));
-  border: 1px solid var(--line-1);
+  border: 1px solid var(--line-2);
   border-radius: calc(14 * var(--ob-unit));
-  background: var(--surface-1);
+  background: var(--grad-window);
+  box-shadow: none;
   overflow: hidden;
 }
 .v-ob-look-art .v-appearance-preview-palette {
@@ -244,9 +247,9 @@
 }
 .v-ob-look-art .v-appearance-preview-nav > div[data-active] {
   font-weight: 600;
-  background: var(--active);
+  background: var(--grad-nav-active);
   color: var(--text-1);
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--nav-ring);
 }
 .v-ob-look-art .v-appearance-preview-main {
   align-items: stretch;
@@ -259,5 +262,13 @@
   color: var(--text-1);
 }
 .v-ob-look-art .v-appearance-preview-main > strong {
-  font-size: calc(14 * var(--ob-unit));
+  font-size: calc(15 * var(--ob-unit));
+  line-height: calc(22.5 * var(--ob-unit));
+}
+
+.v-ob-look-race .v-tracked-caps-letters {
+  gap: calc(1.4 * var(--ob-unit));
+}
+.v-ob-art-caption .v-tracked-caps-letters {
+  gap: calc(1.08 * var(--ob-unit));
 }

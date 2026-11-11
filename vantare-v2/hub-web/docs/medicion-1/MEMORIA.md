@@ -12,7 +12,7 @@ La mediana validada de cinco pares sigue siendo **390,56 MiB de suma de working 
 
 Una ejecución suplementaria del MISMO candidato QA del A/B (UI 9401501ea, anfitrión Release y hashes de binaries.json), con puente Rust real y los mismos peers locales de lectura. Perfil nuevo en D:, Ajustes → Inicio, tres segundos de asentamiento y cinco segundos de CPU por pantalla. Ventana real 1440×900; cerrojo global y ninguna compilación propia simultánea. Capturas en memory-profile/. No hubo cuentas reales, red del Hub, cambios al instalador ni al supervisor.
 
-Cada PID se clasifica por Win32_Process del árbol propio: nombre del anfitrión y --type de Electron; el subtipo utility se conserva sin volcar la línea de órdenes. Se contrasta con CDP SystemInfo.getProcessInfo. Solo se leen procesos del candidato. Las métricas Windows se toman antes de las consultas suplementarias de heap/DOM por CDP. La ejecución cerró con cero descendientes; no se incluye a los peers QA externos.
+Son lecturas consecutivas por PID en reposo, no una instantánea atómica. Cada PID se clasifica por Win32_Process del árbol propio: nombre del anfitrión y --type de Electron; el subtipo utility se conserva sin volcar la línea de órdenes. Se contrasta con CDP SystemInfo.getProcessInfo. Solo se leen procesos del candidato. Las métricas Windows se toman antes de las consultas suplementarias de heap/DOM por CDP. La ejecución cerró con cero descendientes; no se incluye a los peers QA externos.
 
 Es **una instantánea adicional por pantalla**, no una mediana por rol de los cinco pares originales, que no guardaban --type. No se asignan retrospectivamente roles a aquellos PID por su orden o por su memoria. El servidor es compartido y ruidoso. En esta repetición varía especialmente el compromiso privado de GPU (111 → 259 MiB); por eso no reemplaza las medianas anteriores ni prueba una fuga.
 
@@ -44,7 +44,7 @@ La suma de working sets cuenta también páginas compartidas en cada proceso. En
 | Ajustes  |              9.11 |                 14.07 |                  6.30 |      2142 |          998 |
 | Inicio   |              8.21 |                 10.82 |                  8.57 |      2669 |         1089 |
 
-Runtime.getHeapUsage y Memory.getDOMCounters son lecturas posteriores al reposo; no se forzó GC. Los heaps JS y del embedder no se suman a las columnas Windows: ya están contenidos en la memoria de su proceso. Los documentos extra de Inicio incluyen imágenes/documentos embebidos; un solo salto Ajustes → Inicio no permite diagnosticar retención ni fugas.
+Runtime.getHeapUsage y Memory.getDOMCounters son lecturas posteriores al reposo; no se forzó GC. Los heaps JS y del embedder no se suman a las columnas Windows: ya están contenidos en la memoria de su proceso. El contador de documentos pasa de 2 a 14; no se ha atribuido cada documento a un SVG o a otra fuente. Un solo salto Ajustes → Inicio no permite diagnosticar retención ni fugas.
 
 La GPU figura con composición, rasterización, WebGL, WebGPU y vídeo habilitados. Solo existe un proceso utility, network.mojom.NetworkService; su existencia no significa que el Hub haga peticiones HTTP, y no autoriza habilitarlas. No se recogieron credenciales ni líneas de órdenes completas.
 
@@ -77,7 +77,7 @@ La API de [aceleración y métricas de Electron](https://www.electronjs.org/docs
 
 Mediana de cinco pares: GPUI visible 343,88 ms, Hub nuevo 987,62 ms. Interacción comprobada con ida y vuelta Apariencia → General: 1.586,07 frente a 2.406,91 ms; son límites instrumentados con sondas distintas. La caché del sistema no se controla: no se certifica frío/caliente ni se usa esta tanda para declarar cumplido ≤900/≤600 ms.
 
-Inventario total: **375,67 ms** de mediana (354,51–413,54). Primer recorrido: 7,73 ms; verificación con segundo recorrido y hashes: 367,87 ms. Ese segundo bloque no es un cronómetro puro de SHA-256. Aproximadamente el 38 % del cociente de medianas visible/inventario corresponde al inventario; no se suman o restan medianas como prueba causal.
+Inventario total: **375,67 ms** de mediana (354,51–413,54). Primer recorrido: 7,73 ms; verificación con segundo recorrido y hashes: 367,87 ms. Ese segundo bloque no es un cronómetro puro de SHA-256. El cociente de medianas inventario/visible es aproximadamente el 38 %; no se suman o restan medianas como prueba causal.
 
 | Repetición Electron | Ventana visible ms | Inventario y hashes ms | Resto observado ms |
 | ------------------- | -----------------: | ---------------------: | -----------------: |

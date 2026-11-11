@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { PrivacyGate } from "../src/renderer/app/PrivacyGate";
+import { SettingsProvider } from "../src/renderer/app/SettingsState";
 import { Client } from "../src/renderer/bridge/client";
 import { privacyGateText as text } from "../src/renderer/i18n/privacy-gate.es";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
@@ -13,9 +14,11 @@ import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 const caches: QueryClient[] = [];
 function Content() {
   return useHost().hello ? (
-    <PrivacyGate>
-      <h1>Hub</h1>
-    </PrivacyGate>
+    <SettingsProvider>
+      <PrivacyGate>
+        <h1>Hub</h1>
+      </PrivacyGate>
+    </SettingsProvider>
   ) : null;
 }
 function mount(scene = "privacidad-pendiente") {
@@ -143,4 +146,10 @@ it("keeps existing-user QA scenes accessible without changing permission values"
   expect(
     request.mock.calls.some(([value]) => value.method === "privacy.update"),
   ).toBe(false);
+});
+
+it("applies the saved appearance before showing a first-run gate", async () => {
+  mount("visual-light:privacidad-pendiente");
+  await screen.findByRole("dialog", { name: text.crashesLabel });
+  await waitFor(() => expect(document.documentElement.dataset.scheme).toBe("light"));
 });

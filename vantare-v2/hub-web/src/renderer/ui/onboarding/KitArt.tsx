@@ -1,6 +1,6 @@
 import {
   onboardingWidgets,
-  type WidgetKind,
+  type OnboardingWidgetKind as WidgetKind,
 } from "../../../contract/generated/onboarding";
 import sizes from "../../assets/onboarding/previews.json";
 import { onboardingText as t } from "../../i18n/onboarding";

@@ -1,18 +1,31 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
-import { testingDiscardText as text } from "../i18n/testing-discard";
+import {
+  closeUnsavedReportText,
+  testingDiscardText,
+} from "../i18n/testing-discard";
 import { Button } from "./Button";
 import { ActionGroup } from "./ShellLayout";
 
-export function DiscardReportDialog({
-  open,
-  disabled,
-  onCancel,
-  onConfirm,
-}: {
+type Props = {
   open: boolean;
   disabled: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+};
+export function DiscardReportDialog(props: Props) {
+  return <ReportConfirmation {...props} text={testingDiscardText} />;
+}
+export function CloseUnsavedReportDialog(props: Props) {
+  return <ReportConfirmation {...props} text={closeUnsavedReportText} />;
+}
+function ReportConfirmation({
+  open,
+  disabled,
+  onCancel,
+  onConfirm,
+  text,
+}: Props & {
+  text: { title: string; description: string; cancel: string; confirm: string };
 }) {
   return (
     <AlertDialog.Root

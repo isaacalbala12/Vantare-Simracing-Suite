@@ -1,0 +1,57 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.localPrepare",
+        "value": {
+          "binaries": [],
+          "core": "unavailable",
+          "preparedHash": "9cea8d0d067c6258d9b78b7b7703360b02af7fca0e91d08e07cd599e3cc435da",
+          "report": "{\n  \"schemaVersion\": 1,\n  \"module\": \"hub\",\n  \"privateFieldsPresent\": [\n    false,\n    false,\n    false,\n    false\n  ],\n  \"privateText\": \"omitted_for_privacy\",\n  \"diagnostic\": {\n    \"schemaVersion\": 1,\n    \"channel\": \"development\",\n    \"version\": \"0.0.0\",\n    \"os\": \"windows\",\n    \"arch\": \"x86_64\",\n    \"core\": \"unavailable\",\n    \"sectionErrors\": [],\n    \"binaries\": [],\n    \"uninstrumentedSections\": [\n      \"studio\",\n      \"analysis\"\n    ]\n  }\n}"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.localExport",
+        "status": "saved"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "report.localExport",
+        "status": "cancelled"
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "fields": {
+          "actionText": "",
+          "contextText": "",
+          "expectedText": "",
+          "module": "hub",
+          "observedText": ""
+        },
+        "method": "report.localPrepare"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "report.localExport",
+        "preparedHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ]
+}

@@ -22,7 +22,9 @@ export function createHost(): HostLink {
     for (const receive of listeners) receive(value);
   };
   if (process.env.VANTARE_HUB_HOST === "mock" && mockAllowed(app.isPackaged)) {
-    const mockReply = createMockHost(process.env.VANTARE_HUB_SCENE);
+    const mockReply = createMockHost(process.env.VANTARE_HUB_SCENE, (message) =>
+      queueMicrotask(() => emit(message)),
+    );
     return {
       hello: Promise.resolve(helloForScene(process.env.VANTARE_HUB_SCENE)),
       send: (message, flushed) => {

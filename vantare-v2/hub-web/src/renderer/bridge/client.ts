@@ -7,8 +7,8 @@ import type {
   Topic,
   UiToHost,
 } from "../../contract/generated/contract";
-import { requestTimeoutMs } from "../../contract/generated/contract";
 import { bounded, isHostMessage } from "../../contract/validation";
+import { requestDeadline } from "./request-deadlines";
 
 declare const __VANTARE_RENDERER_MOCK__: boolean;
 export class HostFailure extends Error {
@@ -26,13 +26,16 @@ export class Client {
     (reason: CloseReason) => boolean | Promise<boolean>
   >();
   private vetoListeners = new Set<(reason: CloseReason) => void>();
+  private closeListeners = new Set<
+    (reason: CloseReason, allow: boolean) => void
+  >();
   private closeGuard?: (reason: CloseReason) => boolean | Promise<boolean>;
   private pending = new Map<
     number,
     {
       resolve: (reply: Reply) => void;
       reject: (error: HostFailure) => void;
-      timer: ReturnType<typeof setTimeout>;
+      timer: ReturnType<typeof setTimeout> | undefined;
     }
   >();
   private listeners = new Set<(message: HostToUi) => void>();
@@ -144,6 +147,12 @@ export class Client {
       this.vetoListeners.delete(receive);
     };
   }
+  onCloseSettled(receive: (reason: CloseReason, allow: boolean) => void) {
+    this.closeListeners.add(receive);
+    return () => {
+      this.closeListeners.delete(receive);
+    };
+  }
   setCloseGuard(guard: (reason: CloseReason) => boolean | Promise<boolean>) {
     this.closeGuard = guard;
   }
@@ -175,7 +184,11 @@ export class Client {
           this.closing = false;
           this.closeAnswered = false;
         }
-        this.send({ kind: "closeAnswer", allow });
+        try {
+          this.send({ kind: "closeAnswer", allow });
+        } finally {
+          for (const receive of this.closeListeners) receive(reason, allow);
+        }
         if (!allow) for (const receive of this.vetoListeners) receive(reason);
       });
   }
@@ -185,11 +198,15 @@ export class Client {
     if (this.closing) return Promise.reject(new HostFailure({ kind: "busy" }));
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        this.answerWhenIdle();
-        reject(new HostFailure({ kind: "coreUnavailable" }));
-      }, requestTimeoutMs);
+      const deadline = requestDeadline(request.method);
+      const timer =
+        deadline === undefined
+          ? undefined
+          : setTimeout(() => {
+              this.pending.delete(id);
+              this.answerWhenIdle();
+              reject(new HostFailure({ kind: "coreUnavailable" }));
+            }, deadline);
       this.pending.set(id, { resolve, reject, timer });
       this.send({ kind: "request", id, request });
     });
@@ -216,6 +233,7 @@ export class Client {
     this.listeners.clear();
     this.extraGuards.clear();
     this.vetoListeners.clear();
+    this.closeListeners.clear();
     this.port.close();
     this.cleanup();
   }

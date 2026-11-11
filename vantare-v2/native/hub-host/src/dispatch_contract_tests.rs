@@ -133,5 +133,38 @@ fn generated_session_has_no_implicit_lifecycle_or_external_services() {
 }
 include!(concat!(env!("OUT_DIR"), "/dispatch_case_tests.rs"));
 
+#[test]
+fn local_report_dispatch_denies_unverified_and_blocked_accounts_without_services() {
+    for (verified, blocked) in [(false, false), (true, true)] {
+        let fixture = Fixture::new();
+        let mut session = fixture.session();
+        session.current.access.verified = verified;
+        session.current.access.blocked = blocked;
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(
+                &mut pipe,
+                7,
+                &Request::ReportLocalPrepare {
+                    fields: crate::testing::ReportFields {
+                        module: "hub".into(),
+                        ..Default::default()
+                    },
+                },
+            )
+            .expect("closed dispatch");
+        pipe.set_position(0);
+        let reply: HostToUi = frame::Reader::default().next(&mut pipe).unwrap().unwrap();
+        assert_eq!(
+            reply,
+            HostToUi::Failure {
+                id: 7,
+                error: HostError::Denied
+            }
+        );
+        assert_eq!(session.core.requests, 0);
+    }
+}
+
 #[path = "testing_deferred_tests.rs"]
 mod testing_deferred_tests;

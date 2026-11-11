@@ -12,8 +12,8 @@ import {
   TestingNotes,
   TestingToolbar,
 } from "../../ui/TestingLayout";
-import { Diagnostics } from "../settings/Diagnostics";
 import { testingText as text } from "./es";
+import { LocalDiagnostic } from "./LocalDiagnostic";
 import { useReports } from "./ReportsState";
 
 export function Reports() {
@@ -82,7 +82,18 @@ export function Reports() {
         }}
       />
       {state.legacy !== "none" && <Callout title={text.legacy[state.legacy]} />}
-      {state.message && <Callout title={state.message} />}
+      {state.message && (
+        <Callout
+          title={state.message}
+          actions={
+            state.closeBlocked ? (
+              <Button onClick={state.askCloseWithoutSave}>
+                {text.closeWithoutSave}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
       {state.error && (
         <Callout
           tone="err"
@@ -108,7 +119,7 @@ export function Reports() {
         />
       )}
       {view === "diagnostic" ? (
-        <Diagnostics />
+        <LocalDiagnostic />
       ) : view === "list" ? (
         <TestingCard title={text.listTitle}>
           <TestingFinePrint>{text.listHelp}</TestingFinePrint>

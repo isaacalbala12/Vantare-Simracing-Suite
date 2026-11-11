@@ -3,9 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   cleanup,
+  fireEvent,
   renderHook,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -16,7 +18,8 @@ import {
   reportFieldLimits,
 } from "../src/contract/generated/contract";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
+import { closeUnsavedReportText as closeDialog } from "../src/renderer/i18n/testing-discard";
 import { testingText as text } from "../src/renderer/screens/testing/es";
 import {
   ReportsProvider,
@@ -448,4 +451,180 @@ it("waits for an already dispatched save before answering close through the port
     expect(await closing).toBe(true);
   });
   expect(hook.result.current.dirty).toBe(false);
+});
+
+async function failedCloseDraft() {
+  const hook = await mount();
+  act(() =>
+    hook.result.current.edit({ actionText: "Borrador protegido anterior" }),
+  );
+  await act(async () => {
+    await hook.result.current.save();
+  });
+  const original = hook.connection.request.bind(hook.connection);
+  const requests = vi
+    .spyOn(hook.connection, "request")
+    .mockImplementation((request) =>
+      request.method === "draft.save"
+        ? Promise.reject(new HostFailure({ kind: "coreUnavailable" }))
+        : original(request),
+    );
+  act(() =>
+    hook.result.current.edit({
+      actionText: "Último texto todavía sin guardar",
+    }),
+  );
+  for (let attempt = 0; attempt < 2; attempt++)
+    await act(async () => {
+      await expect(hook.result.current.save()).rejects.toMatchObject({
+        detail: { kind: "coreUnavailable" },
+      });
+    });
+  const previous = await original({ method: "draft.load" });
+  expect(previous).toMatchObject({
+    method: "draft.load",
+    value: { fields: { actionText: "Borrador protegido anterior" } },
+  });
+  const core = hook.cache.getQueryData<CoreStatus>(coreKey);
+  if (!core) throw new Error("missing core");
+  act(() =>
+    hook.cache.setQueryData(coreKey, { ...core, services: "unavailable" }),
+  );
+  let allowed = true;
+  await act(async () => {
+    allowed = await hook.close("window");
+  });
+  expect(allowed).toBe(false);
+  requests.mockClear();
+  return { hook, requests };
+}
+it("clears the unsaved-close permission even if an earlier guard throws before the report guard runs", async () => {
+  const { hook, requests } = await failedCloseDraft();
+  hook.connection.setCloseGuard(() => {
+    throw new Error("another section veto");
+  });
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  const popup = await screen.findByRole("alertdialog", {
+    name: closeDialog.title,
+  });
+  const vetoed = new Promise<void>((resolve) =>
+    hook.connection.onCloseVeto(() => resolve()),
+  );
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.confirm }),
+  );
+  await act(async () => {
+    await vetoed;
+  });
+  hook.connection.setCloseGuard(() => true);
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  expect(requests).not.toHaveBeenCalled();
+});
+it("clears a confirmed permission when control EOF bypasses the report close guard", async () => {
+  const { hook, requests } = await failedCloseDraft();
+  vi.spyOn(hook.connection, "closeWindow").mockImplementation(() => {});
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  const popup = await screen.findByRole("alertdialog", {
+    name: closeDialog.title,
+  });
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.confirm }),
+  );
+  await act(async () => {
+    expect(await hook.close("controlEof")).toBe(true);
+  });
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  expect(requests).not.toHaveBeenCalled();
+});
+it("offers a confirmed exit after persistent save failure without changing the protected draft", async () => {
+  const { hook, requests } = await failedCloseDraft();
+  const sent = vi.spyOn(hook.connection, "send");
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  let popup = await screen.findByRole("alertdialog", {
+    name: closeDialog.title,
+  });
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.cancel }),
+  );
+  expect(hook.result.current.fields.actionText).toBe(
+    "Último texto todavía sin guardar",
+  );
+  expect(hook.result.current.dirty).toBe(true);
+  expect(sent).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  popup = await screen.findByRole("alertdialog", { name: closeDialog.title });
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.confirm }),
+  );
+  await waitFor(() =>
+    expect(
+      sent.mock.calls.some(
+        ([message]) => message.kind === "closeAnswer" && message.allow,
+      ),
+    ).toBe(true),
+  );
+  expect(
+    sent.mock.calls.filter(([message]) => message.kind === "request"),
+  ).toEqual([
+    [{ kind: "request", id: 0, request: { method: "window.close" } }],
+  ]);
+  expect(requests).not.toHaveBeenCalled();
+  expect(hook.result.current.dirty).toBe(true);
+});
+it("does not override another section's veto or retain permission for a later close", async () => {
+  const { hook, requests } = await failedCloseDraft();
+  const release = hook.connection.addCloseGuard(() => false);
+  const sent = vi.spyOn(hook.connection, "send");
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  const popup = await screen.findByRole("alertdialog", {
+    name: closeDialog.title,
+  });
+  fireEvent.click(
+    within(popup).getByRole("button", { name: closeDialog.confirm }),
+  );
+  await waitFor(() =>
+    expect(
+      sent.mock.calls.some(
+        ([message]) => message.kind === "closeAnswer" && !message.allow,
+      ),
+    ).toBe(true),
+  );
+  release();
+  sent.mockRestore();
+  let allowed = true;
+  await act(async () => {
+    allowed = await hook.close("window");
+  });
+  expect(allowed).toBe(false);
+  expect(requests).not.toHaveBeenCalled();
+  expect(hook.result.current.fields.actionText).toBe(
+    "Último texto todavía sin guardar",
+  );
+});
+
+it("closes normally if a veto notice is clicked after the draft was saved", async () => {
+  const hook = await mount();
+  act(() =>
+    hook.result.current.edit({ actionText: "Guardado después del aviso" }),
+  );
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  await act(async () => {
+    await hook.result.current.save();
+  });
+  const sent = vi.spyOn(hook.connection, "send");
+  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  await waitFor(() =>
+    expect(
+      sent.mock.calls.some(
+        ([message]) => message.kind === "closeAnswer" && message.allow,
+      ),
+    ).toBe(true),
+  );
+  expect(screen.queryByRole("alertdialog")).toBeNull();
 });

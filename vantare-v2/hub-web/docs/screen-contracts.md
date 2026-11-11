@@ -1,5 +1,28 @@
 # Contrato por pantalla · VANTA-138
 
+## Testing Center: diagnóstico local (`report_local`)
+
+El módulo posee `report.localPrepare { fields }` y
+`report.localExport { preparedHash }`, sus DTO, bindings, corpus, validadores,
+mock y estado de sesión. `LocalReportView.preparedHash` es el SHA-256 del JSON
+UTF-8 exacto: el proceso principal lo calcula al recibir la preparación y la
+pantalla lo comprueba antes de habilitar Exportar. El proceso principal exige
+ese mismo hash y elige la ruta mediante su diálogo nativo. No admite rutas,
+texto ni opciones de tiempo del renderer.
+
+Cada preparación se consume al abrir el diálogo, incluso si se cancela o hay
+conflicto; otra exportación requiere preparar y revisar de nuevo. Mientras el
+diálogo está abierto, se rechaza otra preparación con `busy` sin cambiar su
+snapshot. Solo `report.localExport` está exento del timeout del Client: el
+diálogo depende del usuario. Los demás métodos conservan su plazo habitual y
+cerrar la conexión rechaza también esta petición pendiente.
+
+El estado nativo del módulo conserva los hashes de los nueve binarios fijos
+por nombre, tamaño y fecha de modificación. Un cambio invalida esa entrada;
+no se añaden hilos ni se modifica IPC/Services. El JSON tiene un máximo de
+64 KiB y no incluye texto privado. Se conserva la versión del wire de la base
+(v7 al introducir este módulo).
+
 Cada pantalla mantiene su contrato en
 `native/hub-host/src/protocol/modules/<id>/`. Los ids reservados `contract` y `validators` se rechazan. El identificador usa solo letras minúsculas y
 guiones bajos entre palabras (`testing`, `roadmap`, `studio`). El build descubre

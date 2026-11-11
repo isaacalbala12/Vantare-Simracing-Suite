@@ -93,7 +93,6 @@ fn calendar_completion_checks_permission_family_and_request_identity() {
 }
 
 #[test]
-<<<<<<< HEAD
 fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
@@ -117,7 +116,9 @@ fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
         }
     );
     assert_eq!(session.core.requests, 1);
-=======
+}
+
+#[test]
 fn calendar_preference_dispatch_enforces_rights_and_cas_without_services() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
@@ -192,5 +193,4 @@ fn calendar_preference_dispatch_enforces_rights_and_cas_without_services() {
         matches!(response(&mut pipe),HostToUi::Failure {error:HostError::CalendarConflict {current},..} if current.utc)
     );
     assert_eq!(session.core.requests, 0);
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
 }

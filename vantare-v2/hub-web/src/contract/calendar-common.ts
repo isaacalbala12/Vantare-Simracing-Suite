@@ -15,7 +15,7 @@ export const list = (
 ): v is unknown[] => Array.isArray(v) && v.length <= max && v.every(test);
 export const strings = (v: unknown, max: number): v is string[] =>
   list(v, max, text) &&
-  v.every((s) => typeof s === "string" && s.trim().length > 0) &&
+  v.every((s) => typeof s === "string" && s.replace(/\uFEFF/gu, "").trim().length > 0) &&
   new Set(v).size === v.length;
 export const duration = (v: unknown) =>
   v === null || number(v, calendarMinuteLimit);

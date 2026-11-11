@@ -228,7 +228,8 @@ Tras el contrato inicial de lectura, `calendar.configLoad` proyecta las revision
 independientes de preferencias, series seguidas y avisos. `calendar.utcSet`,
 `calendar.notifyWeekSet` y `calendar.followSet` exigen `expectedRevision` de 64
 hexadecimales y el mismo permiso `AccessView.calendar` del módulo. Se sube el
-wire de 14 a 15; se ajustará al integrar si nightly ha avanzado.
+wire de 18 a 19, reserva del orquestador; se publica tras #2078 y se rebasa
+sobre nightly una vez integrada v18.
 
 Cada acción cambia un solo campo del documento fijo correspondiente, conserva
 campos desconocidos (también anidados) y escribe con `files::Mode::Observed`.

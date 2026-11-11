@@ -7,11 +7,7 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 include!(concat!(env!("OUT_DIR"), "/wire.rs"));
-<<<<<<< HEAD
 pub const VERSION: u32 = 16;
-=======
-pub const VERSION: u32 = 15;
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
 pub const DEMO_NAME_LIMIT: usize = 128;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

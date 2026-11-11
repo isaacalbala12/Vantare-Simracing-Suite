@@ -1,10 +1,6 @@
 {
   "kind": "hello",
-<<<<<<< HEAD
   "version": 16,
-=======
-  "version": 15,
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
   "demo": true,
   "demoName": null,
   "theme": {

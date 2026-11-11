@@ -76,6 +76,14 @@ function Wait-NativeTab([long]$Handle,[int]$UnderlineX,[bool]$General) {
         } while($true)
     } finally { $buffer.Dispose() }
 }
+function Get-CpuSnapshot([int[]]$Family) {
+    $result=@{}
+    foreach($entry in (Get-CimInstance Win32_PerfRawData_PerfProc_Process -Property IDProcess,PercentProcessorTime,Timestamp_Sys100NS -ErrorAction Stop)) {
+        if($Family -contains [int]$entry.IDProcess){$result[[int]$entry.IDProcess]=$entry}
+    }
+    foreach($id in $Family){if(-not $result.ContainsKey($id)){throw "CPU counter missing for measured PID $id"}}
+    return $result
+}
 for($iteration=0;$iteration -lt 5;$iteration++) {
     $applications=@($configuration.apps)
     if($iteration % 2){[array]::Reverse($applications)}
@@ -123,15 +131,25 @@ for($iteration=0;$iteration -lt 5;$iteration++) {
                 }
                 Start-Sleep -Seconds 3 # Fixed idle settling interval, not a readiness condition.
                 $family=[FirstHubMeasure]::Family($process.Id)
-                $cpuBefore=@{};$metrics=@();$private=0L;$working=0L
-                foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$cpuBefore[$id]=$item.TotalProcessorTime.TotalMilliseconds;$private+=$item.PrivateMemorySize64;$working+=$item.WorkingSet64;$metrics+=@{pid=$id;name=$item.ProcessName;privateBytes=$item.PrivateMemorySize64;workingSetBytes=$item.WorkingSet64}}
-                $cpuClock=[Diagnostics.Stopwatch]::StartNew()
+                $metrics=@();$private=0L;$working=0L
+                foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$private+=$item.PrivateMemorySize64;$working+=$item.WorkingSet64;$metrics+=@{pid=$id;name=$item.ProcessName;privateBytes=$item.PrivateMemorySize64;workingSetBytes=$item.WorkingSet64}}
+                $cpuBefore=Get-CpuSnapshot $family
                 Start-Sleep -Seconds 5 # Defined idle CPU observation interval.
-                $cpu=0.0
-                foreach($id in $family){$cpu+=(Get-Process -Id $id -ErrorAction Stop).TotalProcessorTime.TotalMilliseconds-$cpuBefore[$id]}
-                $cpuMilliseconds=$cpuClock.Elapsed.TotalMilliseconds
+                $cpuAfter=Get-CpuSnapshot $family
+                $cpu=0.0;$cpuMilliseconds=0.0
+                foreach($metric in $metrics){
+                    $id=$metric.pid
+                    $ticks=[long]$cpuAfter[$id].PercentProcessorTime-[long]$cpuBefore[$id].PercentProcessorTime
+                    $interval=[long]$cpuAfter[$id].Timestamp_Sys100NS-[long]$cpuBefore[$id].Timestamp_Sys100NS
+                    if($ticks -lt 0 -or $interval -le 0){throw 'Invalid CPU counter interval'}
+                    $cpu+=100.0*$ticks/$interval
+                    $cpuMilliseconds=[Math]::Max($cpuMilliseconds,$interval/10000.0)
+                    $metric.cpuBefore100ns=[string]$cpuBefore[$id].PercentProcessorTime
+                    $metric.cpuAfter100ns=[string]$cpuAfter[$id].PercentProcessorTime
+                    $metric.cpuInterval100ns=[string]$interval
+                }
                 Save-Window $window (Join-Path $configuration.evidence "$($application.name)-$section-$iteration.png")
-                @{phase='idle';app=$application.name;iteration=$iteration;section=$section;verifiedMs=$verifiedMs;privateBytes=$private;workingSetBytes=$working;cpuOneCorePercent=100*$cpu/$cpuMilliseconds;cpuSampleMilliseconds=$cpuMilliseconds;processMetrics=$metrics;familyAfter=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Depth 5 -Compress | Write-Output
+                @{phase='idle';app=$application.name;iteration=$iteration;section=$section;verifiedMs=$verifiedMs;privateBytes=$private;workingSetBytes=$working;cpuOneCorePercent=$cpu;cpuSource='CIM PerfProc raw';cpuSampleMilliseconds=$cpuMilliseconds;processMetrics=$metrics;familyAfter=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Depth 5 -Compress | Write-Output
                 if([Console]::ReadLine() -ne 'next'){throw 'Missing sample acknowledgement'}
             }
             $process.StandardInput.Close()

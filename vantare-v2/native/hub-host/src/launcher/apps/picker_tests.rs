@@ -36,23 +36,29 @@ fn save_new_selection(
 #[test]
 fn junction_choice_is_saved_canonical_and_cannot_be_retargeted_afterwards() {
     let root = crate::test_support::Root::new();
-    let first = root.path.join("first");
-    let second = root.path.join("second");
-    let alias = root.path.join("alias");
+    let canonical_root = std::fs::canonicalize(&root.path).unwrap();
+    let root_text = canonical_root.to_str().unwrap();
+    // cmd's mklink builtin requires ordinary DOS paths, including backslashes.
+    let directory = PathBuf::from(root_text.strip_prefix(r"\\?\").unwrap_or(root_text));
+    let first = directory.join("first");
+    let second = directory.join("second");
+    let alias = directory.join("alias");
     std::fs::create_dir(&first).unwrap();
     std::fs::create_dir(&second).unwrap();
     std::fs::write(first.join("chosen.exe"), b"first inert fixture").unwrap();
     std::fs::write(second.join("chosen.exe"), b"second inert fixture").unwrap();
     let link = |target: &Path| {
+        let result = std::process::Command::new("cmd")
+            .args(["/D", "/C", "mklink", "/J"])
+            .arg(&alias)
+            .arg(target)
+            .output()
+            .unwrap();
         assert!(
-            std::process::Command::new("cmd")
-                .args(["/C", "mklink", "/J"])
-                .arg(&alias)
-                .arg(target)
-                .output()
-                .unwrap()
-                .status
-                .success()
+            result.status.success(),
+            "mklink: {} / {}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
         );
     };
     link(&first);

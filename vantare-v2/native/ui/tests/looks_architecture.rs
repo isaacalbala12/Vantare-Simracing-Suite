@@ -94,6 +94,10 @@ fn violations(source: &str) -> Vec<String> {
 }
 fn allowed(path: &Path, ui: &Path) -> bool {
     path == ui.join("look.rs")
+        || ui
+            .parent()
+            .and_then(Path::parent)
+            .is_some_and(|native| path.starts_with(native.join("domain/src/widget_settings")))
         || path == ui.join("pedals.rs")
         || ["standings", "relative", "delta", "fuel_strategy", "pedals"]
             .iter()
@@ -136,6 +140,14 @@ fn guard_rejects_indirect_style_predicates_and_whitespace_variants() {
     }
     assert!(violations("settings.appearance(); settings.editable_columns();").is_empty());
     let ui = Path::new("native/ui/src");
+    assert!(allowed(
+        Path::new("native/domain/src/widget_settings/delta.rs"),
+        ui
+    ));
+    assert!(!allowed(
+        Path::new("native/domain/src/widget_settings_extra/delta.rs"),
+        ui
+    ));
     assert!(allowed(Path::new("native/ui/src/standings/vantare.rs"), ui));
     assert!(!allowed(
         Path::new("native/domain/src/standings/plan.rs"),

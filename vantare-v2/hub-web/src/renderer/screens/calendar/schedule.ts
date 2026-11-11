@@ -21,8 +21,7 @@ export function starts(
   const r = series.recurrence;
   const out: number[] = [];
   const add = (at: number) => {
-    if (at >= lo && at < hi) {
-      if (out.length === limit) throw new Error("calendar expansion limit");
+    if (at >= lo && at < hi && out.length <= limit) {
       out.push(at);
     }
   };
@@ -35,14 +34,18 @@ export function starts(
         minute;
     for (
       let at = base + Math.ceil((lo - base) / every) * every;
-      at < hi;
+      at < hi && out.length <= limit;
       at += every
     )
       add(at);
   } else {
     const first = new Date(lo);
     first.setUTCHours(0, 0, 0, 0);
-    for (let date = first.getTime(); date < hi; date += day) {
+    for (
+      let date = first.getTime();
+      date < hi && out.length <= limit;
+      date += day
+    ) {
       const weekday = new Intl.DateTimeFormat("en", {
         weekday: "short",
         timeZone: "UTC",
@@ -54,7 +57,8 @@ export function starts(
       }
     }
   }
-  return [...new Set(out)].sort((a, b) => a - b);
+  // GPUI callers omit an expansion that exceeds the series cap instead of showing a partial agenda.
+  return out.length > limit ? [] : [...new Set(out)].sort((a, b) => a - b);
 }
 function current(schedule: CalendarSchedule | null, now: number) {
   return schedule &&

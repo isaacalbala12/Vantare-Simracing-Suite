@@ -21,12 +21,14 @@ export function useCalendar() {
   const [now, setNow] = useState(Date.now);
   const generation = useRef(0),
     pending = useRef(false),
-    access = useRef(allowed);
+    access = useRef(allowed),
+    lastAttempt = useRef(0);
   access.current = allowed;
   const read = useCallback(
     async (method: "calendar.load" | "calendar.refresh") => {
       if (!client || !access.current || pending.current) return;
       const sequence = generation.current;
+      if (method === "calendar.refresh") lastAttempt.current = Date.now();
       pending.current = true;
       setBusy(true);
       setFailure(undefined);
@@ -60,6 +62,7 @@ export function useCalendar() {
   useEffect(() => {
     generation.current++;
     pending.current = false;
+    lastAttempt.current = 0;
     setView(undefined);
     setLoaded(false);
     setFailure(undefined);
@@ -75,14 +78,15 @@ export function useCalendar() {
   useEffect(() => {
     if (!allowed) return;
     const clock = setInterval(() => setNow(Date.now()), 1000);
-    const poll = setInterval(() => {
-      if (connected) void read("calendar.refresh");
-    }, 15 * 60_000);
-    return () => {
-      clearInterval(clock);
-      clearInterval(poll);
-    };
-  }, [allowed, connected, read]);
+    return () => clearInterval(clock);
+  }, [allowed]);
+  useEffect(() => {
+    const date = new Date(now);
+    const interval =
+      (date.getUTCDay() === 1 && date.getUTCHours() < 12 ? 5 : 15) * 60_000;
+    if (allowed && connected && loaded && now - lastAttempt.current >= interval)
+      void read("calendar.refresh");
+  }, [allowed, connected, loaded, now, read]);
   return {
     view,
     allowed,

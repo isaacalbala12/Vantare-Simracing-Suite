@@ -15,6 +15,7 @@ import {
 } from "../screens/calendar/rows";
 import { Button } from "./Button";
 import { clock } from "./calendarDate";
+import { zoneLabel } from "./calendarZone";
 import { SearchInput, Segmented, Select } from "./Forms";
 import "./calendar-live.css";
 
@@ -29,7 +30,9 @@ function Tier({ series }: { series: CalendarSeries }) {
 }
 function countdown(at: number, now: number) {
   const seconds = Math.max(0, Math.floor((at - now) / 1000));
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  const hours = Math.floor(seconds / 3600),
+    minutes = Math.floor(seconds / 60) % 60;
+  return `${hours ? `${hours}:${String(minutes).padStart(2, "0")}` : minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 export function CalendarLiveView({
   schedule,
@@ -198,6 +201,8 @@ export function CalendarLiveView({
             <strong>{countdown(hero.at, now)}</strong>
             <p>
               {text.raceAt} <b>{clock(hero.raceAt, utc)}</b>
+              {text.separator}
+              {utc ? text.utc : zoneLabel(hero.at, true)}
             </p>
           </div>
           <div className="v-calendar-hero-actions">

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import type {
   CalendarSchedule,
@@ -9,7 +9,6 @@ import { days } from "../src/renderer/screens/calendar/days";
 import { board, nextRace } from "../src/renderer/screens/calendar/rows";
 import { publication, starts } from "../src/renderer/screens/calendar/schedule";
 
-afterEach(() => vi.unstubAllEnvs());
 const schedule: CalendarSchedule = fixture;
 describe("calendar UTC projection", () => {
   it("clamps intervals to the publication and excludes the right edge", () => {
@@ -125,7 +124,6 @@ it("orders favorites by the next departure and keeps other series out of the her
 });
 
 it("groups only followed series or alert bands, clamps today and omits uncovered bands", () => {
-  vi.stubEnv("TZ", "UTC");
   const now = Date.parse(schedule.validFrom) + 12 * 60 * 60_000;
   const sample = {
     ...schedule,
@@ -182,4 +180,11 @@ it("groups only followed series or alert bands, clamps today and omits uncovered
       100,
     ),
   ).toEqual([]);
+});
+
+it("omits over-limit expansions instead of rendering a partial agenda or throwing", () => {
+  const from = Date.parse(schedule.validFrom),
+    until = from + 3600000;
+  expect(starts(schedule, schedule.series[0], from, until, 3)).toEqual([]);
+  expect(starts(schedule, schedule.series[0], from, until, 4)).toHaveLength(4);
 });

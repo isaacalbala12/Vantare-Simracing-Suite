@@ -6,6 +6,7 @@ import { Icon, type IconName } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
 import { Button } from "./Button";
 import { elapsedDays, weekTitle } from "./calendarDate";
+import { zoneLabel } from "./calendarZone";
 import { Segmented } from "./Forms";
 import "./calendar-layout.css";
 export type CalendarHealth =
@@ -53,14 +54,7 @@ export function CalendarRail({
         health === "expired" ? schedule.validUntil : schedule.validFrom,
       )
     : now;
-  const localOffset = -new Date(now).getTimezoneOffset() / 60;
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const city = ["Europe/Paris", "Europe/Madrid", "Europe/Brussels"].includes(
-    zone,
-  )
-    ? text.madrid
-    : text.local;
-  const local = `${city} ${localOffset >= 0 ? "+" : ""}${localOffset}`;
+  const local = zoneLabel(now);
   return (
     <div className="v-calendar-rail">
       <section>

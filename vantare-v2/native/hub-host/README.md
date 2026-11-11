@@ -52,6 +52,49 @@ la intención pendiente y permite cerrar. En EOF el
 anfitrión aplica un límite de dos segundos para un renderer bloqueado. Una
 entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la ventana.
 
+## Cola de servicios
+
+Un efecto activo, sin preempción ni reenvío automático. Logout y Cancel esperan
+al activo; el transporte limita cada operación de E/S a 30 s. No se promete
+cancelación instantánea ni un límite global de 30 s para Probe + reconexión +
+comando. Un Logout con CoreUnavailable es INCIERTO: pudo ejecutarse y perderse
+su respuesta. Acceso debe releer la sesión real; nunca afirmar que no se cerró.
+
+Puede esperar una petición por nivel: Logout, Cancel, continuación interna de
+importación, intención del usuario y fondo. Como máximo hay seis comandos vivos;
+los fallos pendientes de notificar no ocupan esos huecos ni bloquean Logout.
+Aceptar Logout/Cancel rechaza con Denied todas las esperas salvo Logout, y repite
+la invalidación al acabar esa operación, incluso con respuesta incierta. Cambiar
+la sesión observada o la época/revisión/derechos del Feed también invalida esperas.
+
+`Session::request_remote(id, kind, command)` correlaciona por ID y rechaza un
+RemoteKind idéntico aún pendiente, activo o en espera. `Core::request` es intención
+del usuario; `request_background` es sondeo. El origen es explícito, también para
+Status o refresco manual. No se cambia la autoridad del Feed ni se añade sondeo.
+
+El instante de aceptación se conserva, con reloj inyectado en los tests. Antes
+de iniciar una espera se exige que queden los 30 s de margen del plazo del renderer
+(45 s): a los 15 s se rechaza con Busy SIN enviar. El worker vuelve a comprobarlo
+tras esperar en su canal y tras Probe/reconexión, inmediatamente antes del efecto.
+No se vuelve a interpretar una espera vencida como petición nueva.
+
+Testing Center conserva una sola transacción de borrador y su instante original.
+DraftSave tiene un hueco interno para continuar aunque otra intención espere;
+solo responde y archiva tras su ACK. Cancelar elimina el guardado aún en espera,
+conserva otros propietarios y reserva TODOS los IDs abandonados hasta retirar
+sus respuestas. Las respuestas sin dueño se descartan sin volver a contestar.
+
+AccountPoll no es siempre rápido: sin callback, accept no bloqueante devuelve
+enseguida; con callback, la lectura tiene plazo absoluto de 3 s y se ejecutan
+secuencialmente token (HTTP 8 s), userinfo (8 s) y foto opcional (2 s): hasta 21 s
+más trabajo/almacenamiento local. Con autorización por email pendiente, un canje
+satisfactorio puede hacer token (8 s), userinfo (8 s), foto opcional (2 s) y cierre
+FAPI de mejor esfuerzo (8 s): hasta 26 s de HTTP más trabajo local. Sin canje debido
+al intervalo, el poll devuelve enseguida. Por separado, la primera inicialización
+sin metadata guardada puede descubrir OAuth (HTTP 8 s). Son límites del código,
+no una medición contra proveedores reales. Cancel debe contemplar esa espera y
+luego reconciliar el estado; no se reduce el timeout del núcleo desde el Hub.
+
 ## Comprobaciones locales
 
 Desde `vantare-v2`, usando los slots persistentes en D: del README nativo:

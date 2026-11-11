@@ -54,7 +54,7 @@ pub struct TriagePreview {
     pub id: String,
     pub payload: String,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Operation {
     Prepare,
     Send,

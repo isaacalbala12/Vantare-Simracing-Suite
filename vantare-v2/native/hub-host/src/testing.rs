@@ -333,7 +333,7 @@ pub fn receipt(value: &report_document::Receipt, state: core::DraftState) -> Rep
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Operation {
     Refresh,
     Answer,

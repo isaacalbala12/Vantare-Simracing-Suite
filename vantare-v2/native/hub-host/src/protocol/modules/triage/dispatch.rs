@@ -8,8 +8,7 @@ pub(super) fn dispatch(
 ) -> io::Result<()> {
     let result =
         crate::triage::intent(request, &session.current.access).and_then(|(operation, command)| {
-            session.core.request(id, command)?;
-            session.remote = Some((id, RemoteKind::Triage(operation)));
+            session.request_remote(id, RemoteKind::Triage(operation), command)?;
             Ok(())
         });
     match result {

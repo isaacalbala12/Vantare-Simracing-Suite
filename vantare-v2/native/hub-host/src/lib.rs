@@ -10,6 +10,8 @@ mod integrity;
 pub mod protocol;
 #[cfg(windows)]
 pub mod ready;
+#[cfg(any(windows, test))]
+mod service_queue;
 #[cfg(windows)]
 pub mod ui_process;
 

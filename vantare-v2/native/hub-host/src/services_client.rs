@@ -1,7 +1,7 @@
 //! Copied from frozen Hub services/client.rs, base 62dde8da4; same Probe/no-replay contract.
 //! El Hub conecta con vantare; jamás arranca ni posee el proceso de servicios.
 use crate::protocol::HostError;
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc};
 use vantare_ipc::services_protocol as protocol;
 use vantare_ipc::services_protocol::{Command, Reply, Request, Response, SupervisorHello};
 use vantare_ipc::{
@@ -10,7 +10,7 @@ use vantare_ipc::{
 };
 
 // The transport guard is a product contract, not a test scheduling deadline.
-const RESPONSE_IO_TIMEOUT: Duration = Duration::from_secs(30);
+use crate::service_queue::RESPONSE_IO_TIMEOUT;
 
 pub struct Client {
     pipe: Pipe,
@@ -75,6 +75,24 @@ impl Client {
         })
     }
     pub fn request(&mut self, command: Command) -> Result<Reply, HostError> {
+        self.request_before(command, std::time::Instant::now())
+    }
+    pub(crate) fn request_before(
+        &mut self,
+        command: Command,
+        accepted: std::time::Instant,
+    ) -> Result<Reply, HostError> {
+        self.request_before_clock(command, accepted, std::time::Instant::now)
+    }
+    fn request_before_clock(
+        &mut self,
+        command: Command,
+        accepted: std::time::Instant,
+        now: impl Fn() -> std::time::Instant,
+    ) -> Result<Reply, HostError> {
+        if !crate::service_queue::can_start(accepted, now()) {
+            return Err(HostError::Busy);
+        }
         // Probe only a local, idempotent operation before dispatching effects.
         // A lost response to the actual command is never replayed blindly.
         let probe = self.request_once(Command::Probe);
@@ -92,6 +110,11 @@ impl Client {
             Err(error) => return Err(error.host_error()),
             Ok(reply) if matches!(command, Command::Probe) => return Ok(reply),
             Ok(_) => {}
+        }
+        // The queue/channel/Probe can all consume the remaining renderer budget.
+        // Recheck immediately before the effect; a late Probe must not start it.
+        if !crate::service_queue::can_start(accepted, now()) {
+            return Err(HostError::Busy);
         }
         self.request_once(command).map_err(RequestError::host_error)
     }
@@ -135,6 +158,33 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn an_expired_channel_request_does_not_even_send_probe() {
+        let name = format!("vantare-expired-{}", vantare_services::random_id().unwrap());
+        let stop = Arc::new(Event::new().unwrap());
+        let mut listener = vantare_ipc::transport::Listener::new(
+            &name,
+            Arc::clone(&stop),
+            std::time::Duration::from_secs(5),
+        )
+        .unwrap();
+        let pipe = listener.instance().unwrap();
+        let mut client = Client {
+            pipe,
+            stop,
+            nonce: String::new(),
+            sequence: 0,
+            binary: "unused".into(),
+            photo_pipe: String::new(),
+        };
+        let accepted = std::time::Instant::now();
+        assert!(matches!(
+            client.request_before_clock(Command::MailConsentGet, accepted, || accepted
+                + std::time::Duration::from_secs(15)),
+            Err(HostError::Busy)
+        ));
+        assert_eq!(client.sequence, 0);
+    }
     #[test]
     fn transport_protocol_and_generation_failures_stay_distinct() {
         assert_eq!(

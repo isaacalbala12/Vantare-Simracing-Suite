@@ -33,6 +33,12 @@ fn session_testing_request_distinguishes_rights_connection_and_busy() {
                 .request(99, services::Command::Probe)
                 .expect("first operation");
             assert!(services.incoming.try_recv().is_ok());
+            // One user intention may now wait behind the active effect.
+            // A second waiting intention must still be rejected, without writing.
+            session
+                .core
+                .request(100, services::Command::PilotLoad)
+                .expect("one queued intention");
         }
         let (mut pipe, mut peer) = pipes();
         session
@@ -45,7 +51,7 @@ fn session_testing_request_distinguishes_rights_connection_and_busy() {
                 error: expected
             }
         );
-        assert!(session.remote.is_none());
+        assert!(session.remotes.is_empty());
         assert!(services.incoming.try_recv().is_err());
     }
 }

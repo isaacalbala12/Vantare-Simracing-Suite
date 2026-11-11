@@ -731,3 +731,22 @@
   margin-top: calc(16px * var(--ob-s));
   max-width: calc(530px * var(--ob-s));
 }
+
+/* GPUI keeps the native fills on hover/press; shared neutral button states
+   must not replace the light primary fill and make its label unreadable. */
+.v-onboarding .v-ob-button:is(:hover, :active):not(:disabled),
+.v-onboarding .v-ob-simulator:is(:hover, :active):not(:disabled),
+.v-onboarding .v-ob-style:is(:hover, :active):not(:disabled) {
+  background: var(--ob-c-121011);
+}
+.v-onboarding .v-ob-button--primary:is(:hover, :active):not(:disabled) {
+  background: var(--ob-c-f3eeee);
+}
+.v-onboarding .v-ob-back:is(:hover, :active):not(:disabled),
+.v-onboarding .v-ob-skip:is(:hover, :active):not(:disabled) {
+  background: transparent;
+}
+.v-onboarding
+  .v-ob-style[aria-pressed="true"]:is(:hover, :active):not(:disabled) {
+  background: var(--ob-c-190d0e);
+}

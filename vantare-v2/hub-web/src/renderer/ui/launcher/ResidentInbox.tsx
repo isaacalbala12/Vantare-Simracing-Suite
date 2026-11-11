@@ -35,7 +35,6 @@ export function ResidentInbox({ view }: { view?: ResidentView }) {
         }}
       >
         <Dialog.Portal>
-          <Dialog.Backdrop className="v-launcher-resident-scrim" />
           <Dialog.Popup className="v-launcher-resident-drawer">
             <header>
               <Dialog.Title>{t.title}</Dialog.Title>

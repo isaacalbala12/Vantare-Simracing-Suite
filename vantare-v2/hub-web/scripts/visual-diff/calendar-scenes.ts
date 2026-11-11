@@ -4,6 +4,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "false")
+        await sidebar.click();
       await page
         .getByRole("navigation", { name: "Navegación principal" })
         .getByRole("button", { name: "Calendario", exact: true })

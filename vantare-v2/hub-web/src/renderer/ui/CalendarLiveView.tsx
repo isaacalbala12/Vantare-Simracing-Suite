@@ -13,7 +13,7 @@ import {
   nextRace,
   raceMinutes,
 } from "../screens/calendar/rows";
-import { Button } from "./Button";
+import { Button, IconButton } from "./Button";
 import { clock } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
 import { SearchInput, Segmented, Select } from "./Forms";
@@ -61,6 +61,7 @@ export function CalendarLiveView({
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
 }) {
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState(""),
     [tier, setTier] = useState("all"),
     [only, setOnly] = useState("all"),
@@ -194,8 +195,17 @@ export function CalendarLiveView({
             <h2>{hero.series.name}</h2>
             <p>
               <strong>{hero.series.track.split(" (")[0]}</strong>
-              {text.separator}
-              {hero.series.vehicleClass}
+              <span className="v-calendar-license">
+                {hero.series.licenseLabel}
+              </span>
+              <span
+                className="v-calendar-hero-class"
+                data-class={hero.series.vehicleClass
+                  .replace(" Class", "")
+                  .toLowerCase()}
+              >
+                {hero.series.vehicleClass.replace(" Class", "")}
+              </span>
             </p>
             <p>{text.raceDuration(raceMinutes(hero.series))}</p>
             <div className="v-calendar-after">
@@ -310,12 +320,21 @@ export function CalendarLiveView({
               ...classes.map((c) => ({ value: c, label: c })),
             ]}
           />
-          <SearchInput
+          <IconButton
             label={text.search}
-            clearLabel={text.clearSearch}
-            value={query}
-            onChange={setQuery}
-          />
+            variant="ghost"
+            onClick={() => setSearchOpen(!searchOpen)}
+          >
+            <Icon name="search" />
+          </IconButton>
+          {(searchOpen || query) && (
+            <SearchInput
+              label={text.search}
+              clearLabel={text.clearSearch}
+              value={query}
+              onChange={setQuery}
+            />
+          )}
         </div>
         <div className="v-calendar-live-head">
           <span />

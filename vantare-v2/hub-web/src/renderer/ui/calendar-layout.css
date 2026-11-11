@@ -562,3 +562,10 @@
 :is(.v-calendar, .v-calendar-rail) .v-button--neutral:hover:not(:disabled) {
   background: var(--surface-3);
 }
+
+.v-calendar-header {
+  min-height: 53px;
+}
+.v-calendar-rail section:first-child {
+  padding-top: 4px;
+}

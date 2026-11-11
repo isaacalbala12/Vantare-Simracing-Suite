@@ -249,6 +249,7 @@
   border: 1px solid var(--line-2);
 }
 .v-ob-look-art .v-appearance-preview-main {
+  align-items: stretch;
   flex: 1;
   min-width: 0;
   display: flex;

@@ -1,0 +1,79 @@
+/* Generated from native/hub/src/calendar/chrome.rs by scripts/calendar-tokens.ts. */
+
+[data-palette="vantare"][data-scheme="light"] :is(.v-calendar, .v-calendar-rail),
+[data-palette="classic"][data-scheme="light"] :is(.v-calendar, .v-calendar-rail) {
+  --surface-1: #ffffff;
+  --surface-2: #f8f5f5;
+  --surface-3: #efeaeb;
+  --surface-elevated: #e3dbdd;
+  --hover: #3c141e0d;
+  --active: #3c141e17;
+  --line-1: #3c192017;
+  --line-2: #3c192024;
+  --line-3: #3c192038;
+  --text-1: #1b1517;
+  --text-2: #3d3437;
+  --text-3: #5b5154;
+  --text-caption: #6a5f62;
+  --accent: #c42b36;
+  --accent-fill: #c42b36;
+  --accent-bright: #ae1f2b;
+  --accent-tint: #c42b3617;
+  --hero-ring: #c42b3659;
+  --selection: #c42b3659;
+  --button-pressed: #ae1f2b;
+  --ok: #15803d;
+  --warn: #b45309;
+  --error: #c42b36;
+  --grad-hero: linear-gradient(118deg, #fbe4e6 0%, #ffffff 100%);
+  --grad-button: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
+  --grad-button-hover: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
+  --on-accent: #ffffff;
+}
+
+[data-scheme="light"] :is(.v-calendar, .v-calendar-rail) {
+  --calendar-class-hypercar: #d2333e;
+  --calendar-class-lmp2: #2f6bd8;
+  --calendar-class-lmp3: #8b4fe0;
+  --calendar-class-lmgt3: #d9741a;
+  --calendar-class-gte: #b39400;
+}
+
+[data-palette="vantare"][data-scheme="dark"] :is(.v-calendar, .v-calendar-rail),
+[data-palette="classic"][data-scheme="dark"] :is(.v-calendar, .v-calendar-rail) {
+  --surface-1: #221d1f;
+  --surface-2: #2b2527;
+  --surface-3: #352e30;
+  --surface-elevated: #433a3d;
+  --hover: #ffffff0f;
+  --active: #ffffff1c;
+  --line-1: #ffffff0f;
+  --line-2: #ffffff1a;
+  --line-3: #ffffff29;
+  --text-1: #faf7f7;
+  --text-2: #d6cfd0;
+  --text-3: #b0a7a9;
+  --text-caption: #a39a9c;
+  --accent: #e14a54;
+  --accent-fill: #e14a54;
+  --accent-bright: #ff7a82;
+  --accent-tint: #e14a5424;
+  --hero-ring: #ff525c61;
+  --selection: #ff525c61;
+  --button-pressed: #b92a35;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --error: #f25a5a;
+  --grad-hero: linear-gradient(118deg, #5c1720 0%, #1e1517 100%);
+  --grad-button: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
+  --grad-button-hover: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
+  --on-accent: #ffffff;
+}
+
+[data-scheme="dark"] :is(.v-calendar, .v-calendar-rail) {
+  --calendar-class-hypercar: #e14a54;
+  --calendar-class-lmp2: #4f8ef7;
+  --calendar-class-lmp3: #b26bff;
+  --calendar-class-lmgt3: #f08a2c;
+  --calendar-class-gte: #d6b83a;
+}

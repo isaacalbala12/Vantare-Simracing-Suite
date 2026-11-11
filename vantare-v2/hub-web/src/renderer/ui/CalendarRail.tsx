@@ -8,6 +8,7 @@ import { Button } from "./Button";
 import { elapsedDays, weekTitle } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
 import { Segmented } from "./Forms";
+import "../design/generated/calendar-tokens.css";
 import "./calendar-layout.css";
 export type CalendarHealth =
   | "ok"

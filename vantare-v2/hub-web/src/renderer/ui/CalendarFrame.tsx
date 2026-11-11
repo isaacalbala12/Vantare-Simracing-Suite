@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
 import { Button, IconButton } from "./Button";
+import "../design/generated/calendar-tokens.css";
 import "./calendar-layout.css";
 export function CalendarFrame({
   subtitle,

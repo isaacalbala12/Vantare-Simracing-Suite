@@ -17,6 +17,7 @@ import { Button, IconButton } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { Segmented } from "../../ui/Forms";
 import { Tooltip } from "../../ui/Layers";
+import { ActionNotice } from "./ActionNotice";
 import { RemoveWidget } from "./RemoveWidget";
 import {
   VisibilityIcon,
@@ -41,23 +42,39 @@ export function Gallery() {
       activeFilter === "all" || item.visible === (activeFilter === "visible"),
   );
 
-  const focusAfter = useRef<{ id: string; index: number } | undefined>(
-    undefined,
-  );
-  useLayoutEffect(() => {
+  const focusAfter = state.focusAfter;
+  useEffect(() => {
+    if ((view?.instances.length ?? 0) < 9) setFilter("all");
+  }, [view?.instances.length]);
+  useEffect(() => {
     const target = focusAfter.current;
-    if (!target || instances.some((item) => item.id === target.id)) return;
+    if (
+      !target ||
+      state.removing ||
+      instances.some((item) => item.id === target.id)
+    )
+      return;
     const buttons =
       grid.current?.querySelectorAll<HTMLButtonElement>("[data-widget]");
     const next = buttons?.[Math.min(target.index, buttons.length - 1)];
-    (
-      next ??
-      document.querySelector<HTMLButtonElement>(
-        '.v-studio-gallery-heading button[aria-pressed="true"]',
-      )
-    )?.focus();
+    const fallback = document.querySelector<HTMLButtonElement>(
+      '.v-studio-gallery-heading button[aria-pressed="true"]',
+    );
+    if (next || fallback) (next ?? fallback)?.focus();
+    else {
+      if (railCollapsed) toggleRail();
+      state.setSelected(null);
+      setCatalogFocus((value) => value + 1);
+    }
     focusAfter.current = undefined;
-  }, [instances]);
+  }, [
+    focusAfter,
+    instances,
+    state.removing,
+    state.setSelected,
+    railCollapsed,
+    toggleRail,
+  ]);
   const toggleVisibility = (id: string, visible: boolean, index: number) => {
     if (!view) return;
     if (activeFilter !== "all") focusAfter.current = { id, index };
@@ -291,6 +308,7 @@ export function Gallery() {
               />
             )}
           </header>
+          <ActionNotice />
           {!view.instances.length && view.state === "ready" && (
             <div className="v-studio-empty">
               <strong>{t.empty}</strong>
@@ -338,8 +356,7 @@ export function Gallery() {
                     className="v-studio-overlay-select"
                     tabIndex={
                       active ||
-                      (!view.instances.some((i) => i.id === selected) &&
-                        index === 0)
+                      (!instances.some((i) => i.id === selected) && index === 0)
                         ? 0
                         : -1
                     }

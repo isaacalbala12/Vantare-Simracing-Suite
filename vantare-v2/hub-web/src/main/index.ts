@@ -220,6 +220,7 @@ async function start() {
     let portAlive = true;
     const copies = new Set<number>();
     const unsubscribe = host.listen((message) => {
+      if (pickExecutable.receive(message)) return;
       if (
         message.kind === "response" &&
         message.result.method === "diagnostics.copy" &&
@@ -241,6 +242,7 @@ async function start() {
     });
     disconnect = () => {
       unsubscribe();
+      pickExecutable.cancel();
       port1.close();
       copies.clear();
       portAlive = false;
@@ -251,7 +253,7 @@ async function start() {
         data.kind === "request" &&
         data.request.method === "launcher.app.pick"
       ) {
-        void pickExecutable(
+        pickExecutable.request(
           data.id,
           (message) => port1.postMessage(message),
           () => portAlive,

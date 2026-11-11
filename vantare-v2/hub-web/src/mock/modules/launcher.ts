@@ -74,8 +74,21 @@ export function create(context: MockContext): MockHandler {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
     switch (request.method) {
-      case "launcher.catalog": return {kind:"response", id, result:{method:request.method, value:structuredClone(catalogFixture)}};
-      case "launcher.scan": return {kind:"response", id, result:{method:request.method, value:structuredClone(launcher)}};
+      case "launcher.catalog":
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            value: structuredClone(catalogFixture),
+          },
+        };
+      case "launcher.scan":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(launcher) },
+        };
       case "launcher.profile.get": {
         profileRead = undefined;
         stepKeys.clear();

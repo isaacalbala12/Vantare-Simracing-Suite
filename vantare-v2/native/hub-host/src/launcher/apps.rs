@@ -74,6 +74,7 @@ struct Pick {
 #[derive(Default)]
 pub struct Picker {
     pending: Option<Pick>,
+    dialog: Option<(u32, Instant)>,
 }
 fn executable(path: &Path) -> bool {
     path.extension()
@@ -84,7 +85,32 @@ fn executable(path: &Path) -> bool {
             .is_ok_and(|resolved| vantare_launcher::is_local_path(&resolved))
 }
 impl Picker {
-    pub fn selected(
+    pub fn request_dialog(&mut self, id: u32, now: Instant) -> Result<(), HostError> {
+        if self.dialog.is_some_and(|(_, expires)| now < expires) {
+            return Err(HostError::Busy);
+        }
+        self.dialog = Some((id, now + Duration::from_secs(PICK_LIFETIME_SECONDS)));
+        Ok(())
+    }
+    pub fn complete_dialog(
+        &mut self,
+        selection: &ExecutableSelection,
+        now: Instant,
+    ) -> Result<Option<PickedApp>, HostError> {
+        let Some((id, expires)) = self.dialog else {
+            return Err(HostError::Denied);
+        };
+        if selection.id != id {
+            return Err(HostError::Denied);
+        }
+        self.dialog = None;
+        if now >= expires {
+            return Err(HostError::Denied);
+        }
+        self.selected(selection.path.as_deref(), now)
+    }
+
+    fn selected(
         &mut self,
         path: Option<&str>,
         now: Instant,
@@ -190,6 +216,54 @@ impl Picker {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+    #[test]
+    fn dialog_requires_host_request_matching_id_single_use_and_unexpired_deadline() {
+        let root = crate::test_support::Root::new();
+        let exe = root.path.join("chosen.exe");
+        std::fs::write(&exe, b"inert QA fixture").unwrap();
+        let now = Instant::now();
+        let mut picker = Picker::default();
+        let mut selection = ExecutableSelection {
+            id: 7,
+            path: Some(exe.to_str().unwrap().into()),
+        };
+        assert_eq!(
+            picker.complete_dialog(&selection, now),
+            Err(HostError::Denied)
+        );
+        assert!(picker.pending.is_none());
+        picker.request_dialog(7, now).unwrap();
+        assert_eq!(picker.request_dialog(8, now), Err(HostError::Busy));
+        selection.id = 8;
+        assert_eq!(
+            picker.complete_dialog(&selection, now),
+            Err(HostError::Denied)
+        );
+        assert!(picker.pending.is_none());
+        selection.id = 7;
+        let picked = picker.complete_dialog(&selection, now).unwrap().unwrap();
+        assert_eq!(
+            picker.complete_dialog(&selection, now),
+            Err(HostError::Denied)
+        );
+        assert_eq!(picker.pending.as_ref().unwrap().token, picked.token);
+        picker.request_dialog(9, now).unwrap();
+        selection.id = 9;
+        assert_eq!(
+            picker.complete_dialog(&selection, now + Duration::from_secs(PICK_LIFETIME_SECONDS)),
+            Err(HostError::Denied)
+        );
+        assert_eq!(picker.pending.as_ref().unwrap().token, picked.token);
+        picker.request_dialog(10, now).unwrap();
+        selection.id = 10;
+        selection.path = None;
+        assert_eq!(picker.complete_dialog(&selection, now), Ok(None));
+        assert_eq!(
+            picker.complete_dialog(&selection, now),
+            Err(HostError::Denied)
+        );
+        assert_eq!(picker.pending.as_ref().unwrap().token, picked.token);
+    }
     #[test]
     fn app_arguments_cannot_cross_the_contract_and_saved_arguments_are_preserved() {
         let root = crate::test_support::Root::new();

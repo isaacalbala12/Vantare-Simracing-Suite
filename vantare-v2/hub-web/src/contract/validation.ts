@@ -8,7 +8,8 @@ export const FRAME_LIMIT = 1024 * 1024;
 export function isUiMessage(value: unknown): value is UiToHost {
   if (!record(value)) return false;
   switch (value.kind) {
-    case "pickedExecutable": return isPickedExecutable(value);
+    case "pickedExecutable":
+      return isPickedExecutable(value);
     case "hello":
       return exact(value, ["kind", "version"]) && integer(value.version);
     case "ready":

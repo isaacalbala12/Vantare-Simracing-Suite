@@ -1,4 +1,6 @@
-use crate::launcher::apps::{AppDraft, AppEditor, CatalogApp, CatalogView, PickedApp, ExecutableSelection};
+use crate::launcher::apps::{
+    AppDraft, AppEditor, CatalogApp, CatalogView, ExecutableSelection, PickedApp,
+};
 use crate::launcher::editor::{
     ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
     ProfileRunning, ProfileStep,
@@ -128,9 +130,20 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
     ];
 
-    host.extend(application_reply_samples().into_iter().map(|result| HostToUi::Response { id: 1, result }));
-    ui.extend(application_request_samples().into_iter().map(|request| UiToHost::Request { id: 1, request }));
-    ui.push(UiToHost::PickedExecutable(ExecutableSelection { id: 1, path: None }));
+    host.extend(
+        application_reply_samples()
+            .into_iter()
+            .map(|result| HostToUi::Response { id: 1, result }),
+    );
+    ui.extend(
+        application_request_samples()
+            .into_iter()
+            .map(|request| UiToHost::Request { id: 1, request }),
+    );
+    ui.push(UiToHost::PickedExecutable(ExecutableSelection {
+        id: 1,
+        path: None,
+    }));
     serde_json::json!({"host":host,"ui":ui})
 }
 

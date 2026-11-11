@@ -2,7 +2,13 @@ use super::{Event, HostError, HostToUi, Pipe, Reply, Request, Session, frame, io
 impl Session {
     fn launcher_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
-            Request::LauncherCatalog {} | Request::LauncherScan {} | Request::LauncherAppGet { .. } | Request::LauncherAppPick {} | Request::LauncherAppSave { .. } | Request::LauncherAppRemove { .. } | Request::LauncherAppFavorite { .. } => self.application_request(pipe, id, request),
+            Request::LauncherCatalog {}
+            | Request::LauncherScan {}
+            | Request::LauncherAppGet { .. }
+            | Request::LauncherAppPick {}
+            | Request::LauncherAppSave { .. }
+            | Request::LauncherAppRemove { .. }
+            | Request::LauncherAppFavorite { .. } => self.application_request(pipe, id, request),
             Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
                 self.profile_request(pipe, id, request)
             }
@@ -223,13 +229,21 @@ impl Session {
                     Err(error) => HostToUi::Failure { id, error },
                 },
             ),
+            // Main consumes this null acknowledgement and opens its own dialog.
+            // The final result uses the same request id and is accepted only once.
             Request::LauncherAppPick {} => frame::write(
                 pipe,
-                &HostToUi::Failure {
-                    id,
-                    error: HostError::Denied,
+                &match self
+                    .app_picker
+                    .request_dialog(id, std::time::Instant::now())
+                {
+                    Ok(()) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherAppPick { value: None },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
                 },
-            ), // Main must replace this with its dialog result.
+            ),
             Request::LauncherAppSave { .. }
             | Request::LauncherAppRemove { .. }
             | Request::LauncherAppFavorite { .. } => {
@@ -321,7 +335,13 @@ impl Session {
         id: u32,
         path: Option<&str>,
     ) -> io::Result<()> {
-        let picked = self.app_picker.selected(path, std::time::Instant::now());
+        let picked = self.app_picker.complete_dialog(
+            &crate::launcher::apps::ExecutableSelection {
+                id,
+                path: path.map(str::to_owned),
+            },
+            std::time::Instant::now(),
+        );
         frame::write(
             pipe,
             &match picked {

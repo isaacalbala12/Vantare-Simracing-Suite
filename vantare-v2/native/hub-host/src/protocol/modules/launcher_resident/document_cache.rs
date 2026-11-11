@@ -5,9 +5,15 @@ use std::{path::Path, time::SystemTime};
 use vantare_ipc::files;
 use vantare_launcher::Document;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Stamp {
+    Missing,
+    Present(SystemTime, u64),
+}
+
 #[derive(Default)]
 pub(super) struct Cache {
-    stamp: Option<Option<(SystemTime, u64)>>,
+    stamp: Option<Stamp>,
     protected: bool,
     profiles: Vec<ProfileShortcut>,
     #[cfg(test)]
@@ -17,10 +23,10 @@ impl Cache {
     pub(super) fn read(&mut self, path: &Path) -> (bool, Vec<ProfileShortcut>) {
         let stamp = match std::fs::metadata(path) {
             Ok(metadata) => match metadata.modified() {
-                Ok(modified) => Some((modified, metadata.len())),
+                Ok(modified) => Stamp::Present(modified, metadata.len()),
                 Err(_) => return (true, Vec::new()),
             },
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Stamp::Missing,
             Err(_) => return (true, Vec::new()),
         };
         if self.stamp != Some(stamp) {

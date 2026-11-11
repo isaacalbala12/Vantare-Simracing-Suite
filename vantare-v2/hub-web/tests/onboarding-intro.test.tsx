@@ -84,7 +84,27 @@ function mount(extended = false) {
       <OnboardingIntroPreview onLeave={leave} extended={extended} />
     </QueryClientProvider>,
   );
-  return { leave, query, ...view };
+  return {
+    leave,
+    query,
+    ...view,
+    account(value: {
+      signedIn: boolean;
+      checking: boolean;
+      blocked: boolean;
+      failed?: boolean;
+    }) {
+      view.rerender(
+        <QueryClientProvider client={query}>
+          <OnboardingIntroPreview
+            extended={extended}
+            account={value}
+            onLeave={leave}
+          />
+        </QueryClientProvider>,
+      );
+    },
+  };
 }
 it("preserves the user's simulator choice during discovery and removes its subscription", async () => {
   const reply = initial();
@@ -189,4 +209,31 @@ it("continues through account status, native levels and the reused appearance co
       ([request]) => request.method === "onboarding.get",
     ),
   ).toBe(true);
+});
+
+it("updates the assistant voice when Account changes while the step stays open", async () => {
+  fake.request.mockResolvedValue(initial());
+  const view = mount(true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(start);
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  view.account({ signedIn: true, checking: false, blocked: false });
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
+    "Sesión iniciada. Tu configuración se guarda en este PC.",
+  );
+  view.account({ signedIn: true, checking: true, blocked: true });
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
+    "Acceso bloqueado",
+  );
+  view.account({
+    signedIn: false,
+    checking: false,
+    blocked: false,
+    failed: true,
+  });
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
+    "No se pudo cargar la cuenta.",
+  );
 });

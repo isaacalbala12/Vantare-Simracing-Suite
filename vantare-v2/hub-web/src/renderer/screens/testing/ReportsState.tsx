@@ -55,6 +55,7 @@ function useReportsState() {
   const [failure, setFailure] = useState<HostError["kind"]>();
   const [preview, setPreview] = useState<ReportPreviewView>();
   const [receipt, setReceipt] = useState<ReportReceiptView>();
+  const [sessionReceipts, setSessionReceipts] = useState<{ value: ReportReceiptView; title: string; module: string }[]>([]);
   const [participation, setParticipation] = useState<TestingView>({
     reports: [],
     questionnaires: [],
@@ -258,6 +259,7 @@ function useReportsState() {
     setReceipt(undefined);
     setConsent(false);
     setParticipation({ reports: [], questionnaires: [] });
+    setSessionReceipts([]);
     setLegacy("none");
     setMessage("");
     setError(false);
@@ -338,6 +340,7 @@ function useReportsState() {
     const epoch = generation.current;
     try {
       const sentFields = JSON.stringify(state.current.fields);
+      const { actionText: title, module } = state.current.fields;
       setConsent(false);
       const reply = await request({
         method: "report.send",
@@ -347,6 +350,7 @@ function useReportsState() {
       if (reply.method !== "report.send")
         throw new Error("unexpected report reply");
       setReceipt(reply.value);
+      setSessionReceipts(current => current.some(item => item.value.id === reply.value.id) ? current.map(item => item.value.id === reply.value.id ? { ...item, value: reply.value } : item) : [...current, { value: reply.value, title, module }]);
       setPreview(undefined);
       if (reply.value.draftState === "cleared") {
         if (JSON.stringify(state.current.fields) === sentFields)
@@ -423,6 +427,7 @@ function useReportsState() {
     send,
     preview,
     receipt,
+    sessionReceipts,
     consent,
     setConsent,
     participation,

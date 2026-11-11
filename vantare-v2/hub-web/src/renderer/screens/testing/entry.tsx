@@ -9,7 +9,7 @@ import { TestingRail } from "./TestingRail";
 import { useTestingTabs } from "./TestingTabs";
 
 export default function TestingEntry() {
-  const { access, participation, receipt } = useReports();
+  const { access, participation, sessionReceipts } = useReports();
   const { tabs, active, change } = useTestingTabs(access);
   const [reportView, setReportView] = useState<ReportsView>("local");
   function showReports(view: ReportsView) {
@@ -31,7 +31,7 @@ export default function TestingEntry() {
           active === "summary" ? (
             <TestingSummaryRail
               count={participation.reports.length}
-              receipts={receipt ? 1 : 0}
+              receipts={sessionReceipts.length}
             />
           ) : (
             <TestingRail />

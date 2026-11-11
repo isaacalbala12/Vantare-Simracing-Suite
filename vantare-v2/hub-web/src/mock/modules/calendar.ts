@@ -4,19 +4,38 @@ import {
   type CalendarAlerts,
   type CalendarConfigView,
   type CalendarHistoryView,
+  type CalendarSchedule,
   type CalendarView,
   calendarDefaultAlerts,
   calendarEmptyRevision,
   calendarRevisionLength,
   calendarSeriesLimit,
+  calendarStartsLimit,
 } from "../../contract/generated/calendar";
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/calendar.json";
-import {
-  calendarHistoryReference,
-  calendarReference,
-} from "../calendar-reference";
+import { starts } from "../../renderer/screens/calendar/schedule";
+import {calendarHistoryReference,calendarReference} from "../calendar-reference";
 import type { MockContext, MockHandler } from "../context";
+
+function alertValue(alerts: CalendarAlerts) {
+  return JSON.stringify([
+    alerts.leadMin,
+    alerts.autoLaunch,
+    alerts.notifyWeek,
+    alerts.channels.windows,
+    alerts.channels.inTrack,
+    alerts.channels.sound,
+    alerts.bands.map((band) => [
+      band.seriesId,
+      band.from,
+      band.to,
+      band.days,
+      band.mode,
+    ]),
+    alerts.slots.map((slot) => [slot.seriesId, slot.at]),
+  ]);
+}
 export function create(context: MockContext): MockHandler {
   const value: CalendarView = {
     official: null,
@@ -124,6 +143,81 @@ export function create(context: MockContext): MockHandler {
           id,
           result: { method: request.method, value: structuredClone(config) },
         };
+      case "calendar.alertsSave": {
+        if (request.expectedRevision !== config.alertsRevision)
+          return conflict();
+        const proposed = request.alerts,
+          old = config.alerts;
+        if (alertValue(proposed) === alertValue(old)) break;
+        if (proposed.autoLaunch && !old.autoLaunch)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        const now = Date.now();
+        const active = [value.official, value.fallback].filter(
+          (schedule): schedule is CalendarSchedule =>
+            !!schedule &&
+            Date.parse(schedule.validFrom) <= now &&
+            now < Date.parse(schedule.validUntil),
+        );
+        const bands = proposed.bands.filter(
+          (band) =>
+            !old.bands.some(
+              (previous) =>
+                previous.seriesId === band.seriesId &&
+                previous.from === band.from &&
+                previous.to === band.to &&
+                previous.days === band.days &&
+                previous.mode === band.mode,
+            ),
+        );
+        const slots = proposed.slots.filter(
+          (slot) =>
+            !old.slots.some(
+              (previous) =>
+                previous.seriesId === slot.seriesId && previous.at === slot.at,
+            ),
+        );
+        if (slots.some((slot) => slot.at * 1000 < now))
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        if ((bands.length || slots.length) && !active.length)
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "calendarScheduleUnavailable" },
+          };
+        if (
+          bands.some(
+            (band) =>
+              !active.some((schedule) =>
+                schedule.series.some(
+                  (series) =>
+                    series.id === band.seriesId &&
+                    series.recurrence.kind === "interval" &&
+                    !["weekly", "special"].includes(series.eventKind),
+                ),
+              ),
+          ) ||
+          slots.some(
+            (slot) =>
+              !active.some((schedule) =>
+                schedule.series.some(
+                  (series) =>
+                    series.id === slot.seriesId &&
+                    starts(
+                      schedule,
+                      series,
+                      slot.at * 1000,
+                      slot.at * 1000 + 1,
+                      calendarStartsLimit,
+                    ).length === 1,
+                ),
+              ),
+          )
+        )
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        config.alerts = structuredClone(proposed);
+        config.alertsRevision = next();
+        break;
+      }
       case "calendar.utcSet":
         if (request.expectedRevision !== config.prefsRevision)
           return conflict();

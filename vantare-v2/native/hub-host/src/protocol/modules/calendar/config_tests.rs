@@ -467,3 +467,36 @@ fn alerts_save_reports_busy_and_does_not_lock_a_noop() {
     assert!(!root.0.join("calendar-alerts.json").exists());
     drop(lock);
 }
+
+#[test]
+fn alerts_save_checks_weekly_days_times_and_publication_end() {
+    let root = Root::new();
+    let mut state = root.state();
+    let (_, now) = publication(&mut state);
+    let revision = state.config().alerts_revision.unwrap();
+    let valid = date_millis("2026-10-07T02:00:00Z").unwrap() / 1000;
+    let slot = CalendarSlot { series_id: "weekly-wec-weekly".into(), at: valid };
+    let mut alerts = CalendarAlerts::default();
+    for at in [valid + 60, date_millis("2026-10-09T02:00:00Z").unwrap() / 1000, date_millis("2026-10-13T02:00:00Z").unwrap() / 1000] {
+        alerts.slots = vec![CalendarSlot { at, ..slot.clone() }];
+        assert_eq!(state.alerts_save_at(&alerts, &revision, now), Err(HostError::Rejected));
+    }
+    alerts.slots = vec![slot];
+    state.alerts_save_at(&alerts, &revision, now).unwrap();
+}
+#[test]
+fn alerts_save_rejects_malformed_preferences_before_writing() {
+    let root = Root::new();
+    let mut state = root.state();
+    let revision = state.config().alerts_revision.unwrap();
+    let mut alerts = CalendarAlerts::default();
+    alerts.lead_min = 2;
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
+    alerts = CalendarAlerts::default();
+    alerts.bands = vec![CalendarBand { series_id: "qa".into(), from: 0, to: 60, days: CalendarDays::All, mode: CalendarBandMode::Each }; BANDS_LIMIT + 1];
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
+    alerts.bands.clear();
+    alerts.slots = vec![CalendarSlot { series_id: "qa".into(), at: 0 }; SLOTS_LIMIT + 1];
+    assert_eq!(state.alerts_save_at(&alerts, &revision, 0), Err(HostError::Rejected));
+    assert!(!root.0.join("calendar-alerts.json").exists());
+}

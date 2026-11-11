@@ -181,7 +181,7 @@ impl State {
             Ok(Some(bytes)) => match Document::from_bytes(&bytes) {
                 Ok(document) => {
                     view.registrations =
-                        crate::shortcuts::project(&document, status.as_ref()).profiles
+                        crate::shortcuts::project(&document, status.as_ref()).profiles;
                 }
                 Err(_) => view.protected = true,
             },

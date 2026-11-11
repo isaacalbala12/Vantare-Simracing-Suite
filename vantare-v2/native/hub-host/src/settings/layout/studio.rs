@@ -3,8 +3,8 @@ use super::{Document, Fields, LIMIT};
 use crate::{
     protocol::HostError,
     studio::{
-        Edit, HISTORY_LIMIT, INSTANCE_LIMIT, InstancePatch, OffTrack, OverlayInstance, OverlaySize,
-        ShowIn, State, StudioState, StudioView, WidgetKind,
+        Edit, HISTORY_LIMIT, ID_LIMIT, INSTANCE_LIMIT, InstancePatch, OffTrack, OverlayInstance,
+        OverlaySize, SIZE_LIMIT, ShowIn, State, StudioState, StudioView, WidgetKind,
     },
 };
 use serde::{Serialize, de::DeserializeOwned};
@@ -80,7 +80,7 @@ impl Open {
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Finite positive presentation sizes, bounded before casting.
 fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayInstance, HostError> {
     let id: String = read(fields, "id")?;
-    if id.is_empty() || id.len() > 256 || id.contains('\0') {
+    if id.is_empty() || id.len() > ID_LIMIT || id.contains('\0') {
         return Err(HostError::Protected);
     }
     let settings: Fields = read(fields, "settings")?;
@@ -101,7 +101,7 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     )?;
     if ![width, height]
         .iter()
-        .all(|v| v.is_finite() && (1.0..=32768.0).contains(v))
+        .all(|v| v.is_finite() && (1.0..=f64::from(SIZE_LIMIT)).contains(v))
     {
         return Err(HostError::Protected);
     }
@@ -140,7 +140,7 @@ fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
     })?;
     if ![width, height]
         .iter()
-        .all(|v| v.is_finite() && (64.0..=32768.0).contains(v))
+        .all(|v| v.is_finite() && (64.0..=f64::from(SIZE_LIMIT)).contains(v))
     {
         return Err(HostError::Protected);
     }
@@ -325,7 +325,10 @@ fn apply(
         Edit::Instance(id, patch) => {
             let fields = opened.find(id)?;
             match patch {
-                InstancePatch::Opacity(value) if (20..=100).contains(value) => {
+                InstancePatch::Opacity(value)
+                    if (crate::studio::OPACITY_MIN..=crate::studio::OPACITY_MAX)
+                        .contains(value) =>
+                {
                     put(fields, "opacity", &(f64::from(*value) / 100.0))?;
                 }
                 InstancePatch::Opacity(_) => return Err(HostError::Denied),

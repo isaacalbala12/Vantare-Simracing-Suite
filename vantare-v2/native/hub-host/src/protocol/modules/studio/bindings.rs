@@ -14,7 +14,7 @@ pub(crate) fn typescript() -> String {
     declare::<OverlayInstance>(&mut text);
     declare::<StudioView>(&mut text);
     declare::<InstancePatch>(&mut text);
-    writeln!(text,"export const studioLimits = {{instances:{INSTANCE_LIMIT},history:{HISTORY_LIMIT},opacityMin:{OPACITY_MIN},opacityMax:{OPACITY_MAX},id:256}} as const;").expect("limits");
+    writeln!(text,"export const studioLimits = {{instances:{INSTANCE_LIMIT},history:{HISTORY_LIMIT},opacityMin:{OPACITY_MIN},opacityMax:{OPACITY_MAX},id:{ID_LIMIT},size:{SIZE_LIMIT},label:{LABEL_LIMIT},about:{ABOUT_LIMIT}}} as const;").expect("limits");
     text.push_str("export const studioAddAvailable = true as const;\nexport const studioEditOnScreen = false as const;\n");
     writeln!(
         text,

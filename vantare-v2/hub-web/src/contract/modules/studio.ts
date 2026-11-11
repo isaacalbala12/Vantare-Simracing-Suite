@@ -44,8 +44,8 @@ function instance(v: unknown) {
       integer(v.size.height) &&
       v.size.width > 0 &&
       v.size.height > 0 &&
-      v.size.width <= 32768 &&
-    v.size.height <= 32768
+      v.size.width <= studioLimits.size &&
+    v.size.height <= studioLimits.size
   );
 }
 export function isStudio(v: unknown) {
@@ -81,11 +81,11 @@ export function isStudio(v: unknown) {
         ]) &&
         oneOf(w.kind, studioKinds) &&
         typeof w.name === "string" &&
-        w.name.length <= 256 &&
+        w.name.length <= studioLimits.label &&
         typeof w.category === "string" &&
-        w.category.length <= 256 &&
+        w.category.length <= studioLimits.label &&
         typeof w.about === "string" &&
-        w.about.length <= 512 &&
+        w.about.length <= studioLimits.about &&
         typeof w.allowed === "boolean" &&
         typeof w.suggested === "boolean",
     ) &&

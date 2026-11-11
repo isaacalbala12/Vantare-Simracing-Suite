@@ -27,24 +27,45 @@ export function useCalendarPreferences(allowed: boolean) {
       if (action && !snapshot) return;
       let request: Request = { method: "calendar.configLoad" };
       if (action && snapshot) {
+        const document =
+          action.kind === "utc"
+            ? "prefs"
+            : action.kind === "notifyWeek"
+              ? "alerts"
+              : "following";
+        const revision =
+          action.kind === "utc"
+            ? snapshot.prefsRevision
+            : action.kind === "notifyWeek"
+              ? snapshot.alertsRevision
+              : snapshot.followingRevision;
+        if (snapshot.documents[document] !== "ready" || revision === null) {
+          intent.current = action;
+          setFailure(
+            snapshot.documents[document] === "unavailable"
+              ? "coreUnavailable"
+              : "rejected",
+          );
+          return;
+        }
         if (action.kind === "utc")
           request = {
             method: "calendar.utcSet",
             utc: action.value,
-            expectedRevision: snapshot.prefsRevision,
+            expectedRevision: revision,
           };
         else if (action.kind === "notifyWeek")
           request = {
             method: "calendar.notifyWeekSet",
             enabled: action.value,
-            expectedRevision: snapshot.alertsRevision,
+            expectedRevision: revision,
           };
         else
           request = {
             method: "calendar.followSet",
             seriesId: action.id,
             followed: action.value,
-            expectedRevision: snapshot.followingRevision,
+            expectedRevision: revision,
           };
       }
       intent.current = action;
@@ -100,6 +121,22 @@ export function useCalendarPreferences(allowed: boolean) {
     config,
     busy,
     failure,
+    canUtc:
+      allowed &&
+      !busy &&
+      config?.documents.prefs === "ready" &&
+      config.prefsRevision !== null,
+    canNotifyWeek:
+      allowed &&
+      !busy &&
+      config?.documents.alerts === "ready" &&
+      config.alertsRevision !== null,
+    canFollow:
+      allowed &&
+      !busy &&
+      config?.documents.following === "ready" &&
+      config.followingRevision !== null,
+    reload: () => apply(),
     utc: (value: boolean) => apply({ kind: "utc", value }),
     notifyWeek: (value: boolean) => apply({ kind: "notifyWeek", value }),
     follow: (id: string, value: boolean) =>

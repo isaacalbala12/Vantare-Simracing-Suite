@@ -10,21 +10,23 @@ afterEach(() => {
   cleanup();
   host.client = { request: vi.fn() };
 });
-const config = {
-  utc: false,
-  prefsRevision: "a".repeat(64),
-  following: [],
-  followingRevision: "b".repeat(64),
-  alerts: {
-    leadMin: 10,
-    bands: [],
-    slots: [],
-    channels: { windows: true, inTrack: true, sound: false },
-    autoLaunch: false,
-    notifyWeek: true,
-  },
-  alertsRevision: "c".repeat(64),
-};
+const config: import("../src/contract/generated/calendar").CalendarConfigView =
+  {
+    documents: { prefs: "ready", following: "ready", alerts: "ready" },
+    utc: false,
+    prefsRevision: "a".repeat(64),
+    following: [],
+    followingRevision: "b".repeat(64),
+    alerts: {
+      leadMin: 10,
+      bands: [],
+      slots: [],
+      channels: { windows: true, inTrack: true, sound: false },
+      autoLaunch: false,
+      notifyWeek: true,
+    },
+    alertsRevision: "c".repeat(64),
+  };
 it("uses the observed revision and retries a conflict only after an explicit action", async () => {
   host.client.request.mockResolvedValueOnce({
     method: "calendar.configLoad",
@@ -113,4 +115,46 @@ it("locks duplicate writes while an acknowledged favorite change is pending", as
     await pending;
   });
   expect(hook.result.current.config?.following).toEqual(["series"]);
+});
+
+it("protects a damaged document without blocking another document, then reloads recovery", async () => {
+  const damaged = {
+    ...config,
+    prefsRevision: null,
+    documents: { ...config.documents, prefs: "protected" as const },
+  };
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.configLoad",
+    value: damaged,
+  });
+  const hook = renderHook(() => useCalendarPreferences(true));
+  await act(async () => {});
+  expect(hook.result.current.canUtc).toBe(false);
+  expect(hook.result.current.canNotifyWeek).toBe(true);
+  await act(async () => {
+    await hook.result.current.utc(true);
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+  expect(hook.result.current.failure).toBe("rejected");
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.notifyWeekSet",
+    value: { ...damaged, alerts: { ...damaged.alerts, notifyWeek: false } },
+  });
+  await act(async () => {
+    await hook.result.current.notifyWeek(false);
+  });
+  expect(host.client.request).toHaveBeenLastCalledWith({
+    method: "calendar.notifyWeekSet",
+    enabled: false,
+    expectedRevision: config.alertsRevision,
+  });
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.configLoad",
+    value: config,
+  });
+  await act(async () => {
+    await hook.result.current.reload();
+  });
+  expect(hook.result.current.canUtc).toBe(true);
+  expect(hook.result.current.failure).toBeUndefined();
 });

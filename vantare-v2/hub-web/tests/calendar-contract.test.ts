@@ -5,9 +5,10 @@ import {
   calendarMinuteLimit,
   calendarTextLimit,
 } from "../src/contract/generated/calendar";
-import type { CoreStatus } from "../src/contract/generated/contract";
+import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus/calendar.json";
 import {
+  isError,
   isCalendarDate,
   isCalendarSchedule,
   isCalendarView,
@@ -16,21 +17,30 @@ import {
 } from "../src/contract/modules/calendar";
 import { create } from "../src/mock/modules/calendar";
 
-describe("calendar closed read-only contract", () => {
+const messages = corpus.host as unknown as HostToUi[];
+const load = messages.find(m => m.kind === "response" && m.result.method === "calendar.load");
+const refresh = messages.find(m => m.kind === "response" && m.result.method === "calendar.refresh");
+if (load?.kind !== "response" || load.result.method !== "calendar.load" || refresh?.kind !== "response" || refresh.result.method !== "calendar.refresh") throw new Error("missing Calendar corpus views");
+const empty = load.result.value, populated = refresh.result.value;
+
+describe("calendar closed contract", () => {
   it("accepts every Rust reply and rejects unknown renderer arguments", () => {
-    for (const sample of corpus.host) expect(isReply(sample.result)).toBe(true);
+    for (const sample of messages) {
+ if(sample.kind === "response") expect(isReply(sample.result)).toBe(true);
+ else if(sample.kind === "failure") expect(isError(sample.error)).toBe(true);
+ }
     expect(isRequest({ method: "calendar.load", path: "C:/private" })).toBe(
       false,
     );
     expect(isRequest({ method: "calendar.load" })).toBe(true);
   });
   it("rejects unknown view keys and invalid timestamps", () => {
-    const value = corpus.host[0].result.value;
+    const value = empty;
     expect(isCalendarView({ ...value, token: "secret" })).toBe(false);
     expect(isCalendarView({ ...value, checked: -1 })).toBe(false);
   });
   it("rejects oversized text, duration, duplicated identity and invalid recurrence", () => {
-    const schedule = corpus.host[1].result.value.official;
+    const schedule = populated.official;
     expect(schedule).not.toBeNull();
     for (const change of [
       { name: "x".repeat(calendarTextLimit + 1) },
@@ -96,7 +106,7 @@ it("matches the shared strict date and Unicode identity corpus", () => {
   for (const row of validationCorpus.identities)
     expect(
       isCalendarView({
-        ...corpus.host[0].result.value,
+        ...empty,
         following: [row.value],
       }),
       JSON.stringify(row.value),

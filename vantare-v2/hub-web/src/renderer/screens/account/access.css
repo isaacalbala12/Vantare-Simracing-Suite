@@ -101,7 +101,7 @@
   font: 600 14px / 23px var(--font-sans);
 }
 .v-access-form .v-field {
-  gap: 6px;
+  gap: 12px;
 }
 .v-access-form .v-field > label {
   font: 500 12px / 20px var(--font-sans);
@@ -112,8 +112,8 @@
 }
 .v-access-modes {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
 }
 .v-access .v-access-mode {
   font-size: 12px;

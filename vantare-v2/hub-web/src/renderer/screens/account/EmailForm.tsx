@@ -173,7 +173,6 @@ export function EmailForm({ value }: { value: EmailView }) {
           />
           <Button
             type="button"
-            variant="ghost"
             aria-pressed={signOutOthers}
             disabled={pending}
             onClick={() => setSignOutOthers((current) => !current)}
@@ -186,10 +185,10 @@ export function EmailForm({ value }: { value: EmailView }) {
       {value.stage === "consent" && (
         <AccessMessage kind="consent">{text.consent}</AccessMessage>
       )}
+      {value.message && <Callout title={value.message} />}
       {value.stage === "authorizing" && (
         <AccessMessage kind="authorizing">{text.authorizing}</AccessMessage>
       )}
-      {value.message && <Callout title={value.message} />}
       {value.stage === "hostedRequired" && (
         <AccessButton
           data-access-initial=""

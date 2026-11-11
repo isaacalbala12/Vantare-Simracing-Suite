@@ -44,15 +44,15 @@ it("counts only this series inside the published week, with GPUI integer roundin
     mean: "—",
   });
 });
-function view(id = seriesId) {
+function view(id = seriesId, enabled = true) {
   const onBack = vi.fn(),
     onFollow = vi.fn(),
     onDetail = vi.fn();
   const result = render(
     <CalendarSeriesView
       schedule={fixture}
-      canFollow
-      canLaunch
+      canFollow={enabled}
+      canLaunch={enabled}
       seriesId={id}
       alerts={{
         leadMin: 10,
@@ -73,8 +73,8 @@ function view(id = seriesId) {
       onSeries={() => {}}
       onFollow={onFollow}
       onLaunch={() => {}}
-      onDetail={onDetail}
-      onSlot={() => {}}
+      onDetail={enabled ? onDetail : undefined}
+      onSlot={enabled ? () => {} : undefined}
     />,
   );
   return { onBack, onFollow, onDetail, ...result };
@@ -117,4 +117,22 @@ it("keeps a post-midnight departure with the previous race day until 03:00", () 
   );
   expect(groups.map((group) => group.label)).toEqual(["hoy", "mañana"]);
   expect(groups.map((group) => group.starts.length)).toEqual([2, 1]);
+});
+
+it("keeps unavailable launch, follow and departure actions disabled", () => {
+  const v = view(seriesId, false);
+  const favorite = screen.getByRole("button", { name: "Favorita" });
+  expect(favorite).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: /Lanzar.*QA/ })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  const departure = v.container.querySelector<HTMLButtonElement>(
+    ".v-calendar-serie-chips button",
+  );
+  expect(departure).toHaveProperty("disabled", true);
+  fireEvent.click(favorite);
+  if (departure) fireEvent.click(departure);
+  expect(v.onFollow).not.toHaveBeenCalled();
+  expect(v.onDetail).not.toHaveBeenCalled();
 });

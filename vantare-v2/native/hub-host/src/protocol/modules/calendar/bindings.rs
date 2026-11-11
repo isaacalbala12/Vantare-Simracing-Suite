@@ -43,38 +43,42 @@ pub(crate) fn typescript() -> String {
         crate::calendar::TIMESTAMP_LIMIT
     );
     constants!(&mut text, "calendarWeekdays", crate::calendar::WEEKDAYS);
+    config_constants(&mut text);
+    text
+}
+fn config_constants(text: &mut String) {
     constants!(
-        &mut text,
+        text,
         "calendarRevisionLength",
         crate::calendar::config::REVISION_LENGTH
     );
     constants!(
-        &mut text,
+        text,
         "calendarConfigLimit",
         crate::calendar::config::CONFIG_LIMIT
     );
     constants!(
-        &mut text,
+        text,
         "calendarAlertLeads",
         crate::calendar::config::ALERT_LEADS
     );
     constants!(
-        &mut text,
+        text,
         "calendarBandsLimit",
         crate::calendar::config::BANDS_LIMIT
     );
     constants!(
-        &mut text,
+        text,
         "calendarDayMinutes",
         crate::calendar::config::DAY_MINUTES
     );
     constants!(
-        &mut text,
+        text,
         "calendarSlotsLimit",
         crate::calendar::config::SLOTS_LIMIT
     );
     constants!(
-        &mut text,
+        text,
         "calendarDays",
         [
             crate::calendar::CalendarDays::All,
@@ -83,7 +87,7 @@ pub(crate) fn typescript() -> String {
         ]
     );
     constants!(
-        &mut text,
+        text,
         "calendarBandModes",
         [
             crate::calendar::CalendarBandMode::Each,
@@ -91,17 +95,17 @@ pub(crate) fn typescript() -> String {
         ]
     );
     constants!(
-        &mut text,
+        text,
         "calendarEmptyRevision",
         crate::calendar::config::empty_revision()
     );
     constants!(
-        &mut text,
+        text,
         "calendarDefaultAlerts",
         crate::calendar::CalendarAlerts::default()
     );
     constants!(
-        &mut text,
+        text,
         "calendarDocumentStates",
         [
             crate::calendar::CalendarDocumentState::Ready,
@@ -109,7 +113,6 @@ pub(crate) fn typescript() -> String {
             crate::calendar::CalendarDocumentState::Unavailable
         ]
     );
-    text
 }
 fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
     let config = crate::calendar::CalendarConfigView {

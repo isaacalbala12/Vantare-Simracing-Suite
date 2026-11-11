@@ -98,7 +98,7 @@ fn newly_created_documents_match_gpui_initial_content() {
 #[test]
 fn strict_following_matches_load_and_never_rewrites_protected_content() {
     for bytes in [
-        br#"{}"#.as_slice(),
+        b"{}".as_slice(),
         br#"{"seriesIds":[],"version":1}"#,
         br#"{"seriesIds":[],"future":1}"#,
         br#"{"seriesIds":["dup","dup"]}"#,
@@ -150,7 +150,7 @@ fn alerts_reject_unknown_fields_and_partial_channels_like_gpui() {
 fn protected_documents_do_not_block_writes_to_other_documents() {
     let root = Root::new();
     root.seed("calendar-alerts.json", b"corrupt");
-    root.seed("calendar-following.json", br#"{}"#);
+    root.seed("calendar-following.json", b"{}");
     let mut state = root.state();
     let config = state.config();
     assert_eq!(config.documents.alerts, CalendarDocumentState::Protected);
@@ -161,7 +161,7 @@ fn protected_documents_do_not_block_writes_to_other_documents() {
     assert!(saved.utc);
     assert_eq!(saved.documents.alerts, CalendarDocumentState::Protected);
     assert_eq!(root.bytes("calendar-alerts.json"), b"corrupt");
-    assert_eq!(root.bytes("calendar-following.json"), br#"{}"#);
+    assert_eq!(root.bytes("calendar-following.json"), b"{}");
     root.seed("calendar-prefs.json", b"invalid prefs");
     root.seed("calendar-alerts.json", br#"{"notifyWeek":true}"#);
     let config = state.config();

@@ -10,6 +10,11 @@ export const onboardingText = {
   later: "Ahora no",
   finish: "Terminar",
   ready: "LISTO",
+  yourWidgets: "TUS WIDGETS",
+  yourOverlay: "TU OVERLAY",
+  pro: "PRO",
+  widgetsSummary: (count: number, pro: number) =>
+    `${count} widgets${pro ? ` · ${pro} Pro` : ""}`,
   loading: "Cargando configuración",
   privateExit: "Entrar sin guardar",
   assistant: "VANTA · ASISTENTE",

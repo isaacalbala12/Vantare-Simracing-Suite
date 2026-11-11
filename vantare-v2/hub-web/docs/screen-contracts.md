@@ -386,3 +386,26 @@ esa edición. La decisión de ampliar esa compatibilidad queda pendiente de Isaa
 Diferencia conocida (P3-6): la respuesta de guardado actualiza el documento de
 avisos dentro de la vista de preferencias ya observada; los otros documentos
 pueden conservar su lectura anterior hasta el siguiente `configLoad`.
+
+## Calendario: descarga ICS (versión provisional 25)
+
+`calendar.icsPrepare { scope, alarm }` admite solo `favs`, `events` y `all`.
+El anfitrión expande el horario vigente (oficial y respaldo), nunca `previous`,
+y las series diarias solo entran en sus franjas de aviso. El reloj se inyecta en
+la preparación; el renderer no manda fechas, rutas ni contenido para guardar.
+La vista devuelve hasta cuatro salidas, el total, fin de publicación, calendario
+y `preparedHash`. Los límites y tipos salen del módulo Rust `calendar`.
+
+`calendar.icsExport { preparedHash }` solo lo atiende el proceso principal, con
+su diálogo nativo y extensión `.ics`. Main calcula SHA-256 de los bytes que
+muestra la vista, exige ese hash y consume la preparación en guardado, conflicto
+o cancelación. Mientras el diálogo está abierto no admite otra preparación.
+Su plazo está exento únicamente en la lista cerrada de métodos del cliente;
+no existe un parámetro de timeout controlado por el renderer. El anfitrión Rust
+rechaza la exportación directa con `unsupported`.
+
+El archivo nunca sobrescribe un destino existente y usa creación exclusiva
+si el sistema de archivos no admite enlaces duros. No publica suscripciones,
+URLs ni conexiones a Google, Apple o Microsoft. El límite de ICS es un cuarto
+del frame para que su JSON y la vista previa quepan en el protocolo.
+La versión definitiva se asigna al aprobar el PR.

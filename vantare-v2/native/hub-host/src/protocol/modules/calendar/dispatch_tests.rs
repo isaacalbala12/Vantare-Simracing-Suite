@@ -346,3 +346,48 @@ fn calendar_tick_uses_live_host_authority_and_clears_on_every_permission_loss() 
     }
     assert_eq!(session.core.requests, 0);
 }
+
+#[test]
+fn calendar_ics_is_denied_before_reading_and_export_paths_are_main_only() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    for request in [
+        Request::CalendarIcsPrepare {
+            scope: crate::calendar::CalendarIcsScope::All,
+            alarm: true,
+        },
+        Request::CalendarIcsExport {
+            prepared_hash: "a".repeat(64),
+        },
+    ] {
+        let mut pipe = Pipe::new(Vec::new());
+        session.request(&mut pipe, 41, &request).unwrap();
+        assert_eq!(
+            response(&mut pipe),
+            HostToUi::Failure {
+                id: 41,
+                error: HostError::Denied
+            }
+        );
+    }
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            42,
+            &Request::CalendarIcsExport {
+                prepared_hash: "a".repeat(64),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 42,
+            error: HostError::Unsupported
+        }
+    );
+    assert_eq!(session.core.requests, 0);
+}

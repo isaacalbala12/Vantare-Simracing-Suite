@@ -66,7 +66,10 @@ export function mockCalendarIcs(
     entry: CalendarIcsView["entries"][number];
     text: string;
   }> = [];
-  let bytes = 110;
+  const header =
+    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Vantare//Calendario LMU//ES\r\nCALSCALE:GREGORIAN\r\n";
+  const footer = "END:VCALENDAR\r\n";
+  let bytes = new TextEncoder().encode(header + footer).length;
   for (const series of schedule.series) {
     const isDaily = daily(series);
     if (
@@ -115,10 +118,7 @@ export function mockCalendarIcs(
     }
   }
   records.sort((a, b) => a.entry.start - b.entry.start);
-  const calendar =
-    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Vantare//Calendario LMU//ES\r\nCALSCALE:GREGORIAN\r\n" +
-    records.map((r) => r.text).join("") +
-    "END:VCALENDAR\r\n";
+  const calendar = header + records.map((r) => r.text).join("") + footer;
   return {
     calendar,
     preparedHash: "a".repeat(64),

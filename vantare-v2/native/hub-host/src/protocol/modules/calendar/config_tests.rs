@@ -693,3 +693,34 @@ fn alerts_write_rejects_duplicates_and_invalid_bands_but_read_preserves_gpui_doc
         Err(HostError::Rejected)
     );
 }
+
+#[test]
+fn ics_protected_documents_are_isolated_and_source_bytes_are_unchanged() {
+    use super::super::ics::CalendarIcsScope;
+    let root = Root::new();
+    let mut state = root.state();
+    let (_, now) = publication(&mut state);
+    root.seed("calendar-following.json", br#"{"unexpected":true}"#);
+    root.seed("calendar-alerts.json", br#"{"unexpected":true}"#);
+    assert_eq!(
+        state.ics_prepare(CalendarIcsScope::Favs, true, now),
+        Err(HostError::Protected)
+    );
+    assert!(
+        state
+            .ics_prepare(CalendarIcsScope::Events, false, now)
+            .is_ok()
+    );
+    assert_eq!(
+        state.ics_prepare(CalendarIcsScope::Events, true, now),
+        Err(HostError::Protected)
+    );
+    assert_eq!(
+        root.bytes("calendar-alerts.json"),
+        br#"{"unexpected":true}"#
+    );
+    assert_eq!(
+        root.bytes("calendar-following.json"),
+        br#"{"unexpected":true}"#
+    );
+}

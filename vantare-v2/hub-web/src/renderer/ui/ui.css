@@ -820,6 +820,10 @@ textarea.v-input:read-only {
 .v-section-tab:hover {
   color: var(--text-2);
 }
+.v-section-tab[data-clipped] {
+  opacity: 0;
+  pointer-events: none;
+}
 .v-section-tab[data-active] {
   color: var(--text-1);
 }
@@ -920,6 +924,10 @@ textarea.v-input:read-only {
 .v-sidebar--collapsed .v-sidebar-footer [aria-current="page"] {
   background: var(--grad-nav-active);
   color: var(--accent-bright);
+  box-shadow:
+    inset 0 1px 0 var(--nav-light),
+    0 0 0 1px var(--nav-ring),
+    var(--shadow-nav);
 }
 .v-sidebar--collapsed .v-sidebar-footer .v-actions {
   justify-content: center;

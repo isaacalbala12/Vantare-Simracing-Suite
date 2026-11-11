@@ -5,6 +5,7 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -93,6 +94,28 @@ export function SectionChrome({
     };
   }, [active, hidden, setActive, setHidden]);
   const visibleTabs = tabs?.filter((tab) => tab.visible) ?? [];
+  const tabList = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!targets.tabs || !tabs?.length) return;
+    const list = tabList.current;
+    if (!list || typeof IntersectionObserver === "undefined") return;
+    // Keep clipped tabs in the keyboard order; focusing one scrolls it fully into view.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          entry.target.toggleAttribute(
+            "data-clipped",
+            entry.intersectionRect.width + 0.25 <
+              entry.boundingClientRect.width,
+          );
+        }
+      },
+      { root: list, threshold: [0, 1] },
+    );
+    for (const tab of list.querySelectorAll('[role="tab"]'))
+      observer.observe(tab);
+    return () => observer.disconnect();
+  }, [targets.tabs, tabs]);
   return (
     <>
       {targets.tabs && visibleTabs.length
@@ -105,9 +128,17 @@ export function SectionChrome({
               className="v-section-tabs"
             >
               <Tabs.List
+                ref={tabList}
                 activateOnFocus
                 className="v-section-tab-list"
                 aria-label={title ?? shellText.sectionTabs}
+                onFocusCapture={(event) => {
+                  if (event.target instanceof HTMLElement)
+                    event.target.closest('[role="tab"]')?.scrollIntoView?.({
+                      block: "nearest",
+                      inline: "nearest",
+                    });
+                }}
               >
                 {visibleTabs.map((tab) => (
                   <Tabs.Tab

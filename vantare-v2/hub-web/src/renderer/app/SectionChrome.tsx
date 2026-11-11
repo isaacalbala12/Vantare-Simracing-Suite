@@ -98,23 +98,28 @@ export function SectionChrome({
   useLayoutEffect(() => {
     if (!targets.tabs || !tabs?.length) return;
     const list = tabList.current;
-    if (!list || typeof IntersectionObserver === "undefined") return;
+    if (!list || typeof ResizeObserver === "undefined") return;
     // Keep clipped tabs in the keyboard order; focusing one scrolls it fully into view.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          entry.target.toggleAttribute(
-            "data-clipped",
-            entry.intersectionRect.width + 0.25 <
-              entry.boundingClientRect.width,
-          );
-        }
-      },
-      { root: list, threshold: [0, 1] },
-    );
-    for (const tab of list.querySelectorAll('[role="tab"]'))
-      observer.observe(tab);
-    return () => observer.disconnect();
+    const observedTabs = list.querySelectorAll('[role="tab"]');
+    const update = () => {
+      const bounds = list.getBoundingClientRect();
+      for (const tab of observedTabs) {
+        const box = tab.getBoundingClientRect();
+        tab.toggleAttribute(
+          "data-clipped",
+          box.left < bounds.left - 0.25 || box.right > bounds.right + 0.25,
+        );
+      }
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(list);
+    for (const tab of observedTabs) observer.observe(tab);
+    list.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => {
+      observer.disconnect();
+      list.removeEventListener("scroll", update);
+    };
   }, [targets.tabs, tabs]);
   return (
     <>

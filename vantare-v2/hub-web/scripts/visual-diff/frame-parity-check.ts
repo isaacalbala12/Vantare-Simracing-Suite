@@ -33,7 +33,19 @@ export async function checkFrameParity(page: Page, expanded: boolean) {
     async () => last.evaluate((node) => getComputedStyle(node).opacity === "1"),
     5000,
     "keyboard reveals the last tab",
-  );
+  ).catch(async (error) => {
+    const bounds = await last.evaluate((node) => {
+      const list = node.parentElement!;
+      return {
+        tab: node.getBoundingClientRect().toJSON(),
+        list: list.getBoundingClientRect().toJSON(),
+        scroll: list.scrollLeft,
+        scrollWidth: list.scrollWidth,
+        clientWidth: list.clientWidth,
+      };
+    });
+    throw new Error(`${error}: ${JSON.stringify(bounds)}`);
+  });
   await page.keyboard.press("Home");
   await page
     .getByRole("tab", { name: "Cuenta", exact: true })

@@ -802,6 +802,8 @@ textarea.v-input:read-only {
   flex-wrap: nowrap;
   gap: 20px;
   overflow-x: auto;
+  /* Allow for fractional scrollWidth rounding when focusing the last tab. */
+  padding-inline-end: 1px;
 }
 .v-section-tab {
   position: relative;

@@ -1,0 +1,30 @@
+[
+  {
+    "theme": "dark",
+    "sidebar": "collapsed",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\ajustes-aplicacion-collapsed.png",
+    "before": 4.9820216049382715,
+    "after": 4.982484567901235
+  },
+  {
+    "theme": "dark",
+    "sidebar": "expanded",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\dark\\ajustes-aplicacion-expanded.png",
+    "before": 5.533024691358024,
+    "after": 5.527237654320988
+  },
+  {
+    "theme": "light",
+    "sidebar": "collapsed",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\light\\ajustes-aplicacion-collapsed.png",
+    "before": 4.412885802469136,
+    "after": 4.37037037037037
+  },
+  {
+    "theme": "light",
+    "sidebar": "expanded",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\light\\ajustes-aplicacion-expanded.png",
+    "before": 4.876157407407407,
+    "after": 4.870061728395061
+  }
+]

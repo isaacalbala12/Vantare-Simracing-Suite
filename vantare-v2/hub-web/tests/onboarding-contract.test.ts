@@ -108,6 +108,8 @@ it("allows private escape only after a failed consent write without completing s
   });
   if (privacy?.kind !== "response" || privacy.result.method !== "privacy.get")
     throw new Error("missing privacy");
+  expect(privacy.result.value.crashesDecided).toBe(false);
+  expect(privacy.result.value.usageDecided).toBe(false);
   expect(
     host({
       kind: "request",

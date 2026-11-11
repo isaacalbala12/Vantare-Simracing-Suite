@@ -18,6 +18,7 @@ export function create(context: MockContext): MockHandler {
   if (
     [
       "privacidad-pendiente",
+      "onboarding-error-privacidad",
       "privacidad-uso",
       "privacidad-error",
       "privacidad-puerta-conflicto",

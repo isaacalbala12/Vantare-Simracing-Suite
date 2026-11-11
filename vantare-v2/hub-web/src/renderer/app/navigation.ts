@@ -25,7 +25,8 @@ export function visible(section: Section, access: AccessView) {
   return true;
 }
 export function lock(section: Section, access: AccessView): string | undefined {
-  if (section === "settings" || section === "home") return undefined;
+  if (section === "settings" || section === "home" || section === "account")
+    return undefined;
   if (section === "strategy" || section === "engineer") return t("shell.soon");
   if (access.blocked) return t("shell.blocked");
   if (!access.verified) return t("shell.locked");

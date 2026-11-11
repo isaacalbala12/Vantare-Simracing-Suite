@@ -64,6 +64,8 @@
   --crop-circle: #ffffffe6;
   --flag-edge: #0000002e;
   --pilot-chip-bg: #ffffff09;
+  --shadow-account: 0 12px 56px #00000059;
+  --shadow-account-classic: 0 14px 64px #00000080;
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 260ms;

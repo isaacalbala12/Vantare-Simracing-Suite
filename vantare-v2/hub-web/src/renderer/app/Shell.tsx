@@ -8,6 +8,7 @@ import {
   palettes,
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
+import { accountText } from "../i18n/account.es";
 import { paletteNames, t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
@@ -260,7 +261,8 @@ function ShellContent() {
     ? shellText.simulatorConnected
     : shellText.waitingSimulator;
   const title =
-    items.find((item) => item.id === ui.section)?.label ?? t("settings.title");
+    items.find((item) => item.id === ui.section)?.label ??
+    (ui.section === "account" ? accountText.title : t("settings.title"));
   const groups = [
     {
       label: "",
@@ -452,7 +454,13 @@ function ShellContent() {
                   <Icon name="i-ajustes" />
                   {!ui.sidebarCollapsed && t("settings.title")}
                 </Button>
-                <ActionGroup>
+                <Button
+                  variant="ghost"
+                  className="v-account-link"
+                  aria-label={accountText.title}
+                  aria-current={ui.section === "account" ? "page" : undefined}
+                  onClick={() => navigate("account")}
+                >
                   <Avatar
                     label={profileName || t("shell.anonymous")}
                     initials={initials(profileName)}
@@ -461,7 +469,7 @@ function ShellContent() {
                   {!ui.sidebarCollapsed &&
                     (profileName || t("shell.anonymous"))}
                   <Badge>{t("shell.beta")}</Badge>
-                </ActionGroup>
+                </Button>
               </ContentStack>
             ) : (
               <div className="v-sidebar-expanded-footer">
@@ -511,8 +519,9 @@ function ShellContent() {
                 <Button
                   variant="ghost"
                   className="v-sidebar-account"
-                  aria-label={profileName || t("shell.anonymous")}
-                  onClick={() => ui.navigate("account")}
+                  aria-label={accountText.title}
+                  aria-current={ui.section === "account" ? "page" : undefined}
+                  onClick={() => navigate("account")}
                 >
                   <Avatar
                     label={profileName || t("shell.anonymous")}

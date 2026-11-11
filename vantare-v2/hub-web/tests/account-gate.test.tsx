@@ -227,6 +227,14 @@ it("does not submit a complete six-digit code until the user confirms", async ()
   });
 });
 it("surfaces a failed initial read without a dead end", async () => {
+  // No snapshot is available either: a valid account event correctly clears the error.
+  const subscribe = Client.prototype.subscribe;
+  vi.spyOn(Client.prototype, "subscribe").mockImplementation(function (
+    this: Client,
+    topic,
+  ) {
+    return topic === "account" ? () => {} : subscribe.call(this, topic);
+  });
   intercept((r) =>
     r.method === "account.get"
       ? Promise.reject(new HostFailure({ kind: "coreUnavailable" }))

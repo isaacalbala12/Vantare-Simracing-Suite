@@ -117,6 +117,9 @@ impl Core {
             crate::home::HomeSim::default()
         }
     }
+    pub fn policy(&self) -> control::Policy {
+        self.rights.policy()
+    }
     pub fn request(
         &mut self,
         id: u32,

@@ -4,6 +4,11 @@ import {
   launcherPickLifetimeSeconds,
 } from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
+import { HOST_BACKGROUND_ID } from "./transport-ids";
+
+export function nextPickerRequestId(current: number) {
+  return current >= HOST_BACKGROUND_ID - 1 ? 0x80000000 : current + 1;
+}
 
 /** The host must acknowledge a pending request before main opens a dialog. */
 export function executablePicker(
@@ -75,8 +80,8 @@ export function executablePicker(
           reply({ kind: "failure", id, error: { kind: "busy" } });
         return;
       }
-      const internalId = internalSequence++;
-      if (internalSequence > 0xffffffff) internalSequence = 0x80000000;
+      const internalId = internalSequence;
+      internalSequence = nextPickerRequestId(internalSequence);
       pending = {
         id: internalId,
         rendererId: id,

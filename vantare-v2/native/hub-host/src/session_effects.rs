@@ -50,7 +50,8 @@ impl Session {
         command: vantare_ipc::services_protocol::Command,
         now: Instant,
     ) -> Result<(), HostError> {
-        if self.abandoned_deferred.contains(&id)
+        if id == crate::account::BACKGROUND_ID
+            || self.abandoned_deferred.contains(&id)
             || self.remotes.contains_key(&id)
             || self.accepted.contains_key(&id)
             || self.remotes.values().any(|pending| *pending == kind)
@@ -109,6 +110,10 @@ impl Session {
         id: u32,
         result: Result<Option<Reply>, HostError>,
     ) -> io::Result<()> {
+        // The reserved background ID belongs to host-owned polling; only its Account event is public.
+        if id == crate::account::BACKGROUND_ID {
+            return Ok(());
+        }
         match result {
             Ok(None) => Ok(()),
             Ok(Some(reply)) => self.respond(

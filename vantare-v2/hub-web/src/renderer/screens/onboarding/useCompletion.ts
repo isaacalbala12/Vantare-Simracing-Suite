@@ -24,6 +24,7 @@ export function useCompletion(
   const [pending, setPending] = useState(false);
   const [saveFailure, setSaveFailure] = useState<unknown>();
   const [failure, setFailure] = useState<unknown>();
+  const finishing = useRef(false);
   const privacy = useQuery({
     queryKey: ["privacy"],
     enabled: active && !!client,
@@ -54,8 +55,9 @@ export function useCompletion(
         : undefined,
     [client, active],
   );
-  function run(task: () => Promise<void>) {
+  function run(task: () => Promise<void>, finish = false) {
     if (!client || inFlight.current) return;
+    finishing.current = finish;
     setPending(true);
     setFailure(undefined);
     setSaveFailure(undefined);
@@ -84,10 +86,10 @@ export function useCompletion(
     run(async () => {
       if (!client) return;
       // Read again after all earlier asynchronous settings writes have settled.
-      const settings = cache.getQueryData<SettingsView>(settingsKey);
-      if (!settings || settings.protected)
-        throw new HostFailure({ kind: "protected" });
       try {
+        const settings = cache.getQueryData<SettingsView>(settingsKey);
+        if (!settings || settings.protected)
+          throw new HostFailure({ kind: "protected" });
         const reply = await client.request({
           method: "onboarding.finish",
           ...input,
@@ -111,10 +113,13 @@ export function useCompletion(
           if (current?.method === "onboarding.get")
             cache.setQueryData<OnboardingView>(["onboarding"], current.value);
         }
-        await cache.invalidateQueries({ queryKey: settingsKey });
+        await Promise.all([
+          cache.invalidateQueries({ queryKey: settingsKey }),
+          cache.invalidateQueries({ queryKey: ["privacy"] }),
+        ]);
         throw error;
       }
-    });
+    }, true);
   }
   function enterPrivate() {
     run(async () => {
@@ -159,7 +164,15 @@ export function useCompletion(
       ? failure instanceof HostFailure &&
         failure.detail.kind === "onboardingConflict"
         ? text.conflict
-        : text.failed
+        : finishing.current &&
+            failure instanceof HostFailure &&
+            failure.detail.kind === "protected"
+          ? text.settingsProtected
+          : finishing.current &&
+              failure instanceof HostFailure &&
+              failure.detail.kind === "denied"
+            ? text.denied
+            : text.failed
       : privacy.error
         ? text.failed
         : undefined,

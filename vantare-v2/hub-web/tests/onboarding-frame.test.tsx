@@ -31,6 +31,10 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+function press(target: Element | Window, init: { key: string }) {
+  fireEvent.keyDown(target, init);
+  if (init.key === "Enter") fireEvent.keyUp(target, init);
+}
 function props(overrides: Partial<FrameProps> = {}): FrameProps {
   return {
     step: 0,
@@ -49,12 +53,12 @@ it("advances with Enter from the frame, ignores editable controls, and removes i
   const p = props({ children: <input aria-label="Nombre" /> });
   const view = render(<OnboardingFrame {...p} />);
   const frame = screen.getByRole("region", { name: "Configuración inicial" });
-  fireEvent.keyDown(frame, { key: "Enter" });
+  press(frame, { key: "Enter" });
   expect(p.next).toHaveBeenCalledTimes(1);
-  fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+  press(screen.getByRole("textbox"), { key: "Enter" });
   expect(p.next).toHaveBeenCalledTimes(1);
   view.unmount();
-  fireEvent.keyDown(window, { key: "Enter" });
+  press(window, { key: "Enter" });
   expect(p.next).toHaveBeenCalledTimes(1);
 });
 it("activates the focused primary button once with Enter", async () => {
@@ -70,7 +74,7 @@ it.each([{ pending: true }, { loading: true }, { canContinue: false }])(
     const p = props(state);
     render(<OnboardingFrame {...p} />);
     const frame = screen.getByRole("region", { name: "Configuración inicial" });
-    fireEvent.keyDown(frame, { key: "Enter" });
+    press(frame, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: "Empezar" }));
     expect(p.next).not.toHaveBeenCalled();
   },
@@ -79,13 +83,13 @@ it("allows Escape only after the first step and while no write is pending", () =
   const p = props();
   const view = render(<OnboardingFrame {...p} />);
   const frame = screen.getByRole("region", { name: "Configuración inicial" });
-  fireEvent.keyDown(frame, { key: "Escape" });
+  press(frame, { key: "Escape" });
   expect(p.back).not.toHaveBeenCalled();
   view.rerender(<OnboardingFrame {...p} step={1} />);
-  fireEvent.keyDown(frame, { key: "Escape" });
+  press(frame, { key: "Escape" });
   expect(p.back).toHaveBeenCalledTimes(1);
   view.rerender(<OnboardingFrame {...p} step={1} pending />);
-  fireEvent.keyDown(frame, { key: "Escape" });
+  press(frame, { key: "Escape" });
   expect(p.back).toHaveBeenCalledTimes(1);
 });
 it("keeps the summary primary hidden but forwards Enter to its explicit finish handler", () => {
@@ -93,10 +97,9 @@ it("keeps the summary primary hidden but forwards Enter to its explicit finish h
   render(<OnboardingFrame {...p} />);
   expect(screen.getByText("Todo preparado.")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /Continuar/ })).toBeNull();
-  fireEvent.keyDown(
-    screen.getByRole("region", { name: "Configuración inicial" }),
-    { key: "Enter" },
-  );
+  press(screen.getByRole("region", { name: "Configuración inicial" }), {
+    key: "Enter",
+  });
   expect(p.next).toHaveBeenCalledTimes(1);
 });
 
@@ -225,7 +228,7 @@ it("blocks the real first steps until the user selects a simulator and a style",
     (screen.getByRole("button", { name: "Continuar" }) as HTMLButtonElement)
       .disabled,
   ).toBe(true);
-  fireEvent.keyDown(screen.getByRole("region"), { key: "Enter" });
+  press(screen.getByRole("region"), { key: "Enter" });
   expect(screen.getByRole("heading", { name: "¿A QUÉ CORRES?" })).toBeTruthy();
   await user.click(
     screen.getByRole("button", { name: "Assetto Corsa Competizione" }),
@@ -246,6 +249,25 @@ it("skips to privacy and restores the previous step with Escape", async () => {
   await user.click(screen.getByRole("button", { name: "Saltar" }));
   expect(screen.getByRole("heading", { name: "TÚ DECIDES." })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Saltar" })).toBeNull();
-  fireEvent.keyDown(screen.getByRole("region"), { key: "Escape" });
+  press(screen.getByRole("region"), { key: "Escape" });
   expect(screen.getByRole("heading", { name: "A TU GUSTO." })).toBeTruthy();
+});
+
+it("requires a fresh Enter release on the same step and cancels native repeats", () => {
+  const p = props({ step: 5 });
+  const view = render(<OnboardingFrame {...p} />);
+  const frame = screen.getByRole("region");
+  fireEvent.keyDown(frame, { key: "Enter" });
+  expect(p.next).not.toHaveBeenCalled();
+  view.rerender(<OnboardingFrame {...p} step={6} />);
+  expect(
+    fireEvent.keyDown(screen.getByRole("button", { name: "Terminar" }), {
+      key: "Enter",
+      repeat: true,
+    }),
+  ).toBe(false);
+  fireEvent.keyUp(frame, { key: "Enter" });
+  expect(p.next).not.toHaveBeenCalled();
+  press(frame, { key: "Enter" });
+  expect(p.next).toHaveBeenCalledOnce();
 });

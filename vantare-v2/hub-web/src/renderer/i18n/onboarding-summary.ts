@@ -30,6 +30,10 @@ export const onboardingSummaryText = {
   failed: "No se ha podido guardar. Revisa el estado y vuelve a intentarlo.",
   conflict:
     "La configuración ha cambiado. Hemos leído el estado actual; revisa tus elecciones antes de continuar.",
+  settingsProtected:
+    "Los ajustes están protegidos. No se pueden guardar cambios; el archivo se conserva intacto.",
+  denied:
+    "No se puede terminar con los permisos actuales. Hemos actualizado la privacidad; revisa las decisiones y vuelve a intentarlo.",
   pending: "Guardando configuración…",
   privateFailed:
     "No se puede entrar sin guardar con el estado actual de privacidad.",

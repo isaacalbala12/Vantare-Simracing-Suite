@@ -7,7 +7,11 @@ import { until } from "./wait-for.ts";
 
 declare global {
   interface Window {
-    __onboardingWrites?: { finishes: number; completions: number };
+    __onboardingWrites?: {
+      finishes: number;
+      completions: number;
+      consents: number;
+    };
   }
 }
 export async function checkOnboarding(
@@ -17,6 +21,7 @@ export async function checkOnboarding(
 ) {
   await page.addInitScript(() => {
     const state = {
+      consents: 0,
       finishes: 0,
       completions: 0,
       lastCompleted: undefined as boolean | undefined,
@@ -48,6 +53,11 @@ export async function checkOnboarding(
       message,
       options?: Transferable[] | StructuredSerializeOptions,
     ) {
+      if (
+        message?.kind === "request" &&
+        message.request?.method === "privacy.update"
+      )
+        state.consents++;
       if (
         message?.kind === "request" &&
         message.request?.method === "onboarding.finish"
@@ -82,18 +92,47 @@ export async function checkOnboarding(
   await page.getByRole("radio", { name: "Ahorro", exact: true }).click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("button", { name: "Claro", exact: true }).click();
+  const frame = page.getByRole("region", {
+    name: "Configuración inicial",
+    exact: true,
+  });
+  await frame.focus();
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page
+    .getByRole("heading", { name: "A TU GUSTO.", exact: true })
+    .waitFor();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  const consent = page.getByRole("button", { name: "Terminar", exact: true });
+  await until(() => consent.isEnabled(), 5000, "consent available");
+  await consent.focus();
+  await page.keyboard.down("Enter");
+  assert.equal(
+    await page.evaluate(() => window.__onboardingWrites?.consents),
+    0,
+  );
+  await page.keyboard.up("Enter");
+
   assert.equal(
     await page.getByRole("button", { name: "Saltar", exact: true }).count(),
     0,
   );
-  await page.getByRole("button", { name: "Terminar", exact: true }).click();
+  // A fresh press may confirm consent; holding it cannot also finish the next step.
+  await consent.focus();
+  await page.keyboard.down("Enter");
   await page.getByText("4 widgets", { exact: true }).waitFor();
   const open = page.getByRole("button", {
     name: "Abrir mi overlay",
     exact: true,
   });
   await until(() => open.isEnabled(), 5000, "summary save available");
+  await open.focus();
+  await page.keyboard.down("Enter");
+  assert.equal(
+    await page.evaluate(() => window.__onboardingWrites?.finishes),
+    0,
+  );
+  await page.keyboard.up("Enter");
   await open.evaluate((button) => {
     if (!(button instanceof HTMLButtonElement))
       throw new Error("Expected button");

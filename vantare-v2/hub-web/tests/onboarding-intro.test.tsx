@@ -16,11 +16,14 @@ import type {
   Request,
 } from "../src/contract/generated/contract";
 import { createMockHost } from "../src/mock/host";
-import { HostFailure } from "../src/renderer/bridge/client";
+import { UiProvider } from "../src/renderer/app/UiState";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/IntroPreview";
+import { OnboardingGate } from "../src/renderer/screens/onboarding/OnboardingGate";
 
 const fake = vi.hoisted(() => ({
   request: vi.fn(),
+  guardClient: undefined as Client | undefined,
   update: vi.fn(),
   reload: vi.fn(),
   settings: undefined as
@@ -29,12 +32,15 @@ const fake = vi.hoisted(() => ({
   listeners: new Set<(message: HostToUi) => void>(),
   unsubscribe: vi.fn(),
 }));
-vi.mock("../src/renderer/app/Host", () => ({
+vi.mock("../src/renderer/app/Host", async () => ({
+  coreKey: ["core"],
+  offline: (await import("../fixtures/core-offline.json")).default,
   settingsKey: ["settings"],
   useHost: () => ({
     client: {
       request: fake.request,
-      addCloseGuard: () => () => {},
+      addCloseGuard: (guard: () => Promise<boolean>) =>
+        fake.guardClient?.addCloseGuard(guard) ?? (() => {}),
       listen: (listener: (message: HostToUi) => void) => {
         fake.listeners.add(listener);
         return () => fake.listeners.delete(listener);
@@ -74,6 +80,7 @@ function initial() {
   return loaded.result;
 }
 beforeEach(() => {
+  fake.guardClient = undefined;
   fake.request.mockReset();
   fake.reload.mockReset();
   fake.settings = undefined;
@@ -95,6 +102,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  fake.guardClient?.close();
+  window.history.replaceState(null, "", "/");
   vi.unstubAllGlobals();
 });
 function mount(extended = false, full = false) {
@@ -637,4 +646,189 @@ it("keeps first-run settings pending and errors from reaching consent or finish"
   expect(
     screen.getByRole("button", { name: "Continuar" }).hasAttribute("disabled"),
   ).toBe(false);
+});
+
+async function summaryPage() {
+  respond("onboarding-sin-diseno");
+  const view = mount(true, true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name: "Saltar" }));
+  const consent = await screen.findByRole("button", { name: "Terminar" });
+  await waitFor(() => expect(consent.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(consent);
+  const finish = await screen.findByRole("button", {
+    name: "Preparar desde Inicio",
+  });
+  await waitFor(() => expect(finish.hasAttribute("disabled")).toBe(false));
+  return { ...view, finish };
+}
+it("never writes consent or finishes from an Enter held across steps", async () => {
+  respond("onboarding-sin-diseno");
+  await accountPage(true);
+  fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  const frame = screen.getByRole("region", { name: "Configuración inicial" });
+  fireEvent.keyDown(frame, { key: "Enter" });
+  for (let i = 0; i < 3; i++)
+    fireEvent.keyDown(frame, { key: "Enter", repeat: true });
+  expect(screen.getByRole("heading", { name: "A TU GUSTO." })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  const consent = await screen.findByRole("button", { name: "Terminar" });
+  await waitFor(() => expect(consent.hasAttribute("disabled")).toBe(false));
+  fireEvent.keyDown(consent, { key: "Enter", repeat: true });
+  fireEvent.keyUp(frame, { key: "Enter" });
+  expect(
+    fake.request.mock.calls.filter(([r]) =>
+      ["privacy.update", "onboarding.finish"].includes(r.method),
+    ),
+  ).toHaveLength(0);
+  fireEvent.click(consent);
+  await screen.findByRole("button", { name: "Preparar desde Inicio" });
+  fireEvent.keyDown(frame, { key: "Enter", repeat: true });
+  fireEvent.keyUp(frame, { key: "Enter" });
+  expect(
+    fake.request.mock.calls.filter(([r]) => r.method === "onboarding.finish"),
+  ).toHaveLength(0);
+});
+it.each(["io", "denied", "onboardingConflict"] as const)(
+  "refreshes after finish %s and permits an explicit retry",
+  async (kind) => {
+    const view = await summaryPage();
+    const base = fake.request.getMockImplementation();
+    if (!base) throw new Error("mock backend missing");
+    let failed = false;
+    const current = { ...initial().value, settingsRevision: "d".repeat(64) };
+    fake.request.mockImplementation(async (request: Request) => {
+      if (request.method === "onboarding.finish" && !failed) {
+        failed = true;
+        throw new HostFailure(
+          kind === "onboardingConflict" ? { kind, current } : { kind },
+        );
+      }
+      return base(request);
+    });
+    const reads = fake.request.mock.calls.filter(
+      ([r]) => r.method === "privacy.get",
+    ).length;
+    fireEvent.click(view.finish);
+    const error = await screen.findByRole("alert");
+    await waitFor(() =>
+      expect(view.finish.hasAttribute("disabled")).toBe(false),
+    );
+    expect(view.complete).not.toHaveBeenCalled();
+    expect(
+      fake.request.mock.calls.filter(([r]) => r.method === "privacy.get")
+        .length,
+    ).toBeGreaterThan(reads);
+    if (kind === "denied")
+      expect(error.textContent).toContain("permisos actuales");
+    if (kind === "onboardingConflict") {
+      expect(error.textContent).toContain("configuración ha cambiado");
+      expect(view.query.getQueryData(["onboarding"])).toEqual(current);
+    }
+    fireEvent.click(view.finish);
+    await waitFor(() =>
+      expect(view.complete).toHaveBeenCalledWith(false, true),
+    );
+    expect(
+      fake.request.mock.calls.filter(([r]) => r.method === "onboarding.finish"),
+    ).toHaveLength(2);
+  },
+);
+it("explains protected settings and refreshes privacy without sending finish", async () => {
+  const view = await summaryPage();
+  view.query.setQueryData(["settings"], {
+    ...settingsFixture,
+    protected: true,
+  });
+  const reads = fake.request.mock.calls.filter(
+    ([r]) => r.method === "privacy.get",
+  ).length;
+  fireEvent.click(view.finish);
+  expect((await screen.findByRole("alert")).textContent).toContain(
+    "Los ajustes están protegidos",
+  );
+  await waitFor(() => expect(view.finish.hasAttribute("disabled")).toBe(false));
+  expect(
+    fake.request.mock.calls.filter(([r]) => r.method === "privacy.get").length,
+  ).toBeGreaterThan(reads);
+  expect(
+    fake.request.mock.calls.filter(([r]) => r.method === "onboarding.finish"),
+  ).toHaveLength(0);
+});
+it("matches GPUI summary_status: disabled usage is a dash, enabled crashes a check", async () => {
+  await summaryPage();
+  expect(
+    screen.getByText("Datos de uso").parentElement?.querySelector("span")
+      ?.textContent,
+  ).toBe("—");
+  expect(
+    screen.getByText("Informes de fallos").parentElement?.querySelector("span")
+      ?.textContent,
+  ).toBe("✓");
+});
+it("retries onboarding.get in the Gate with the real wizard and never exposes the Hub on failure", async () => {
+  respond("onboarding-sin-diseno");
+  fake.request.mockRejectedValueOnce(new HostFailure({ kind: "io" }));
+  const query = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  query.setQueryData(["settings"], settingsFixture);
+  render(
+    <QueryClientProvider client={query}>
+      <UiProvider>
+        <OnboardingGate>{() => <p>Hub reached</p>}</OnboardingGate>
+      </UiProvider>
+    </QueryClientProvider>,
+  );
+  const retry = await screen.findByRole("button", {
+    name: "Volver a intentar",
+  });
+  expect(screen.queryByText("Hub reached")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Empezar" })).toBeNull();
+  fireEvent.click(retry);
+  expect(await screen.findByRole("button", { name: "Empezar" })).toBeTruthy();
+  expect(screen.queryByText("Hub reached")).toBeNull();
+});
+it("the real Client addCloseGuard waits for the completion write before answering close", async () => {
+  const client = await Client.connect();
+  fake.guardClient = client;
+  client.start();
+  const view = await summaryPage();
+  const base = fake.request.getMockImplementation();
+  if (!base) throw new Error("mock backend missing");
+  let release!: () => void;
+  const writing = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fake.request.mockImplementation(async (request: Request) => {
+    if (request.method === "onboarding.finish") await writing;
+    return base(request);
+  });
+  fireEvent.click(view.finish);
+  let settled = false;
+  const answered = new Promise<void>((resolve) =>
+    client.onCloseSettled(() => {
+      settled = true;
+      resolve();
+    }),
+  );
+  const closing = new Promise<void>((resolve) =>
+    client.listen((message) => {
+      if (message.kind === "closeRequested") resolve();
+    }),
+  );
+  client.closeWindow();
+  await act(async () => {
+    await closing;
+  });
+  expect(settled).toBe(false);
+  expect(view.complete).not.toHaveBeenCalled();
+  await act(async () => {
+    release();
+    await answered;
+  });
+  expect(settled).toBe(true);
+  expect(view.complete).toHaveBeenCalledWith(false, true);
 });

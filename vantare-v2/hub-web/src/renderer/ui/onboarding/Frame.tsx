@@ -177,7 +177,7 @@ export function OnboardingFrame(p: FrameProps) {
           <span>
             <Icon name="clock" />
           </span>
-          {t.lessMinute}
+          <TrackedCaps>{t.lessMinute}</TrackedCaps>
         </div>
         <Button
           className={`v-ob-button v-ob-skip ${p.step >= 6 ? "v-ob-hidden" : ""}`}

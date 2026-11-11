@@ -1,7 +1,7 @@
-#[path = "feed.rs"]
-mod feed;
 #[path = "agenda.rs"]
 mod agenda;
+#[path = "feed.rs"]
+mod feed;
 #[path = "history.rs"]
 mod history;
 pub use history::{

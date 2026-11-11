@@ -275,3 +275,28 @@ fn history_dispatch_requires_calendar_rights_and_does_not_contact_services() {
     assert_eq!(session.core.requests, 0);
     assert!(!fixture.0.join("hub/calendar-history.json").exists());
 }
+
+#[test]
+fn calendar_tick_uses_live_host_authority_and_clears_on_every_permission_loss() {
+    let fixture = Fixture::new();
+    let data = fixture.0.join("hub");
+    std::fs::create_dir_all(&data).unwrap();
+    std::fs::write(data.join("official-schedule.json"),br#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#).unwrap();
+    std::fs::write(data.join("calendar-alerts.json"),br#"{"bands":[{"seriesId":"qa","from":0,"to":1440}]}"#).unwrap();
+    let now = chrono::DateTime::parse_from_rfc3339("2026-11-12T12:00:00Z").unwrap().timestamp_millis();
+    let mut session = fixture.session();
+    let valid = protocol::CoreStatus {rights:protocol::LinkState::Connected,access:protocol::AccessView {verified:true,calendar:true,..Default::default()},..Default::default()};
+    let path = fixture.0.join("session-alerts-feed.json");
+    let count = || serde_json::from_slice::<vantare_ipc::session_alerts::Feed>(&std::fs::read(&path).unwrap()).unwrap().events.len();
+    let mut clock = Instant::now();
+    for case in 0..5 {
+        session.current = valid.clone();
+        super::calendar::tick_at(&mut session, now, clock);
+        assert_eq!(count(),2,"calendar capability works independently of tester and services connectivity");
+        match case {0=>session.current.access.verified=false,1=>session.current.access.blocked=true,2=>session.current.access.calendar=false,3=>session.current.rights=protocol::LinkState::Unavailable,_=>session.current.rights=protocol::LinkState::Incompatible}
+        clock += Duration::from_millis(100);
+        super::calendar::tick_at(&mut session,now,clock);
+        assert_eq!(count(),0);
+    }
+    assert_eq!(session.core.requests,0);
+}

@@ -1,0 +1,835 @@
+{
+  "version": 1,
+  "widgets": {
+    "broadcast-tower": {
+      "settings": {
+        "driverCarousel": false,
+        "kind": "broadcast-tower",
+        "rowCount": 11,
+        "showSof": false,
+        "showWeather": false
+      },
+      "size": {
+        "height": 56.0,
+        "width": 1400.0
+      }
+    },
+    "car-damage-numbers": {
+      "settings": {
+        "format": "percent",
+        "kind": "car-damage-numbers",
+        "showTyres": true
+      },
+      "size": {
+        "height": 176.0,
+        "width": 164.0
+      }
+    },
+    "car-damage-visual": {
+      "settings": {
+        "kind": "car-damage-visual",
+        "showAero": true,
+        "showPercent": true,
+        "toggleKey": "",
+        "view": "car"
+      },
+      "size": {
+        "height": 272.0,
+        "width": 200.0
+      }
+    },
+    "delta": {
+      "settings": {
+        "accent": "red",
+        "contentVersion": 1,
+        "designSystem": "vantare",
+        "kind": "delta",
+        "reference": "best",
+        "showBar": true,
+        "showSectors": true,
+        "size": "pill",
+        "style": "neo",
+        "templateId": "instrument"
+      },
+      "size": {
+        "height": 36.0,
+        "width": 150.0
+      }
+    },
+    "delta-trace": {
+      "settings": {
+        "kind": "delta-trace",
+        "reference": "best",
+        "showSectors": true,
+        "showTrackMap": true,
+        "windowSeconds": 4.0
+      },
+      "size": {
+        "height": 192.0,
+        "width": 760.0
+      }
+    },
+    "fastest-lap": {
+      "settings": {
+        "durationSeconds": 6,
+        "kind": "fastest-lap",
+        "showClass": true,
+        "showDriver": true,
+        "showPersonal": true
+      },
+      "size": {
+        "height": 104.0,
+        "width": 480.0
+      }
+    },
+    "fuel-strategy": {
+      "settings": {
+        "accent": "red",
+        "contentVersion": 1,
+        "designSystem": "vantare",
+        "historyRows": 4,
+        "kind": "fuel-strategy",
+        "showProjection": true,
+        "size": "standard",
+        "source": "fuel",
+        "style": "neo",
+        "units": "liters"
+      },
+      "size": {
+        "height": 204.0,
+        "width": 300.0
+      }
+    },
+    "head-to-head": {
+      "settings": {
+        "kind": "head-to-head",
+        "showSectors": true,
+        "target": "ahead"
+      },
+      "size": {
+        "height": 72.0,
+        "width": 780.0
+      }
+    },
+    "input-telemetry": {
+      "settings": {
+        "historySeconds": 6,
+        "kind": "input-telemetry",
+        "showClutch": false
+      },
+      "size": {
+        "height": 84.0,
+        "width": 600.0
+      }
+    },
+    "multiclass-relative": {
+      "settings": {
+        "classMode": "all",
+        "kind": "multiclass-relative",
+        "rowCount": 7,
+        "showClassDivider": false
+      },
+      "size": {
+        "height": 245.0,
+        "width": 440.0
+      }
+    },
+    "pedals": {
+      "settings": {
+        "accent": "red",
+        "designSystem": "vantare",
+        "gap": 2.0,
+        "kind": "pedals",
+        "showBrakePeak": true,
+        "style": "neo",
+        "transparentBackground": false
+      },
+      "size": {
+        "height": 160.0,
+        "width": 96.0
+      }
+    },
+    "pedals-telemetry": {
+      "settings": {
+        "kind": "pedals-telemetry",
+        "showClutch": true,
+        "showPosition": true,
+        "steeringWheel": "generic"
+      },
+      "size": {
+        "height": 64.0,
+        "width": 380.0
+      }
+    },
+    "racing-flags": {
+      "settings": {
+        "contentVersion": 1,
+        "hideWhenGreen": false,
+        "kind": "racing-flags",
+        "showSectorFlags": true,
+        "textColor": "#ece6e7"
+      },
+      "size": {
+        "height": 88.0,
+        "width": 340.0
+      }
+    },
+    "radar": {
+      "settings": {
+        "kind": "radar",
+        "showPhrases": true
+      },
+      "size": {
+        "height": 220.0,
+        "width": 220.0
+      }
+    },
+    "relative": {
+      "settings": {
+        "accent": "red",
+        "classScope": "sameClass",
+        "columns": null,
+        "contentVersion": 1,
+        "designSystem": "vantare",
+        "footerSlots": [],
+        "includePlayer": true,
+        "kind": "relative",
+        "rangeAhead": 3,
+        "rangeBehind": 3,
+        "rowHeightMode": "compact",
+        "style": "neo"
+      },
+      "size": {
+        "height": 265.0,
+        "width": 420.0
+      }
+    },
+    "session-alerts": {
+      "settings": {
+        "calendar": true,
+        "companionFor": null,
+        "durationSeconds": 8,
+        "finished": true,
+        "kind": "session-alerts",
+        "mini": true,
+        "miniCalendar": true,
+        "miniFinal": true,
+        "miniLimit": 3,
+        "miniSession": true,
+        "miniSize": "m",
+        "miniStart": true,
+        "session": true,
+        "sound": true,
+        "soundZero": false,
+        "starts": true,
+        "style": "neo",
+        "thresholds": [
+          5,
+          1
+        ],
+        "volume": 70
+      },
+      "size": {
+        "height": 88.0,
+        "width": 480.0
+      }
+    },
+    "standings": {
+      "settings": {
+        "accent": "red",
+        "classScope": "player-class",
+        "classificationMode": "normal",
+        "columns": [
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "position",
+            "metricId": "position",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "driverNumber",
+            "metricId": "driverNumber",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "driverName",
+            "metricId": "driverName",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "md"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "gap",
+            "metricId": "gap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "interval",
+            "metricId": "interval",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "lastLap",
+            "metricId": "lastLap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "pit",
+            "metricId": "pit",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "positionsGained",
+            "metricId": "positionsGained",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "tireCompound",
+            "metricId": "tireCompound",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "vehicle",
+            "metricId": "vehicle",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "sectors",
+            "metricId": "sectors",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "bestLap",
+            "metricId": "bestLap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          }
+        ],
+        "contentVersion": 1,
+        "designSystem": "vantare",
+        "footerFirst": "track",
+        "footerSecond": "estimatedLaps",
+        "headerFirst": "none",
+        "headerSecond": "none",
+        "kind": "standings",
+        "playerWindow": false,
+        "practiceColumns": [
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "position",
+            "metricId": "position",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "driverNumber",
+            "metricId": "driverNumber",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "driverName",
+            "metricId": "driverName",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "md"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "bestLap",
+            "metricId": "bestLap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "gap",
+            "metricId": "gap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "lastLap",
+            "metricId": "lastLap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "sectors",
+            "metricId": "sectors",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "positionsGained",
+            "metricId": "positionsGained",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "vehicle",
+            "metricId": "vehicle",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "tireCompound",
+            "metricId": "tireCompound",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "pit",
+            "metricId": "pit",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "interval",
+            "metricId": "interval",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          }
+        ],
+        "qualifyingColumns": [
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "position",
+            "metricId": "position",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "driverNumber",
+            "metricId": "driverNumber",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "driverName",
+            "metricId": "driverName",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "md"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "bestLap",
+            "metricId": "bestLap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "gap",
+            "metricId": "gap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "lastLap",
+            "metricId": "lastLap",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": true,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "sectors",
+            "metricId": "sectors",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "positionsGained",
+            "metricId": "positionsGained",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "vehicle",
+            "metricId": "vehicle",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "tireCompound",
+            "metricId": "tireCompound",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "pit",
+            "metricId": "pit",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          },
+          {
+            "enabled": false,
+            "format": {
+              "decimals": null,
+              "display": null,
+              "maxChars": null,
+              "mode": ""
+            },
+            "id": "interval",
+            "metricId": "interval",
+            "style": {
+              "align": null
+            },
+            "widthPreset": "auto"
+          }
+        ],
+        "rowCount": 20,
+        "showBrand": false,
+        "showSessionFooter": true,
+        "showSessionHeader": true,
+        "style": "neo",
+        "templateId": "signature",
+        "windowAround": 4
+      },
+      "size": {
+        "height": 595.0,
+        "width": 654.0
+      }
+    },
+    "track-map": {
+      "settings": {
+        "kind": "track-map",
+        "showTrackLabel": true,
+        "transparent": false
+      },
+      "size": {
+        "height": 248.0,
+        "width": 320.0
+      }
+    },
+    "track-weather": {
+      "settings": {
+        "kind": "track-weather",
+        "showAmbient": true,
+        "showRain": true,
+        "showTrack": true,
+        "showWind": true,
+        "vertical": false
+      },
+      "size": {
+        "height": 210.0,
+        "width": 280.0
+      }
+    }
+  }
+}

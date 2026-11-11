@@ -28,3 +28,5 @@ mod dispatch_contract_tests;
 #[cfg(test)]
 #[path = "../build_support.rs"]
 mod wire_source_tests;
+
+pub mod widget_defaults;

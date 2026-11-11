@@ -7,11 +7,16 @@ import { StudioProvider } from "./state";
 import "../../ui/studio/studio.css";
 export default function StudioEntry() {
   const navigate = useUi((state) => state.navigate);
+  const railCollapsed = useUi((state) => state.railCollapsed);
   return (
     <StudioProvider>
       <SectionChrome
         title={t.title}
-        rail={<StudioRail onPlans={() => navigate("settings")} />}
+        rail={
+          railCollapsed ? null : (
+            <StudioRail onPlans={() => navigate("account")} />
+          )
+        }
       />
       <SectionPanel activeTab="studio">
         <Gallery />

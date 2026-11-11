@@ -3,7 +3,12 @@ export const studioScenes: Record<string, VisualScene> = {
   "studio-base": {
     mock: "studio-base",
     async prepare(page) {
-      await page.getByRole("button", { name: "Studio", exact: true }).click();
+      await page
+        .getByRole("button", {
+          name: /^(Studio|Overlays Studio)$/,
+          exact: true,
+        })
+        .click();
       await page
         .getByRole("heading", { name: "Standings", exact: true })
         .waitFor();
@@ -28,7 +33,12 @@ for (const scene of [
   studioScenes[scene] = {
     mock: scene,
     async prepare(page) {
-      await page.getByRole("button", { name: "Studio", exact: true }).click();
+      await page
+        .getByRole("button", {
+          name: /^(Studio|Overlays Studio)$/,
+          exact: true,
+        })
+        .click();
       await page
         .getByRole("heading", { name: "OVERLAYS STUDIO", exact: true })
         .waitFor();

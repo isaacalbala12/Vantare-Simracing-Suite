@@ -9,12 +9,31 @@ export const studioText = {
   saving: "Guardando…",
   obs: "Publicar en OBS",
   obsHelp: "Próximamente. Usa captura de ventana en OBS",
-  edit: "Editar en pantalla",
-  editHelp: "Disponible cuando los overlays admitan edición en pantalla",
+  edit: "Colocar en pantalla",
+  editHelp:
+    "Pronto podrás mover y cambiar el tamaño de los overlays sobre el juego.",
   show: "Mostrar en pista",
   hide: "Dejar de mostrar",
   add: "Añadir widget",
   addShort: "Añadir",
+  atLimit: (limit: number) => `Has llegado al máximo de ${limit} widgets.`,
+  addHelp: "Elige uno en el catálogo",
+  placementHint: "La posición y el tamaño se ajustan sobre el juego.",
+  showHelp: "Muestra los overlays visibles sobre el juego.",
+  emptyHelp:
+    "Elige overlays del catálogo. Después los colocarás sobre el juego.",
+  sessionNames: { practice: "práctica", qualifying: "qualy", race: "carrera" },
+  onlySessions: (sessions: string[]) => `Solo en ${sessions.join(" y ")}`,
+  noSessions: "Ninguna sesión",
+  counter: (total: number, visible: number) =>
+    `${total} ${total === 1 ? "overlay" : "overlays"} · ${visible} ${visible === 1 ? "visible" : "visibles"}`,
+  dimensions: (category: string, width: number, height: number) =>
+    `${category} · ${width} × ${height} px en pantalla`,
+  lockedWidget: "Este widget está incluido en Pro.",
+  verifyWidget: "Verifica tu acceso para editar este widget.",
+  inspector: "Inspector de widgets",
+  soonTooltip: "Disponible próximamente",
+
   empty: "Añade tu primer widget",
   visible: "Visible",
   hidden: "Oculto",

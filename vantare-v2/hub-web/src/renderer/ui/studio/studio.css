@@ -25,7 +25,7 @@
   opacity: 1;
 }
 .v-studio-topbar .v-studio-layout {
-  width: 140px;
+  width: 180px;
   justify-content: space-between;
   background: var(--surface-2);
   font-size: 13px;
@@ -68,7 +68,7 @@
 .v-studio-saved[data-failed="true"] {
   color: var(--err);
 }
-.v-studio-topbar > .v-button--primary {
+.v-studio-topbar .v-button--primary {
   height: 44px;
   min-width: 174px;
   flex: none;
@@ -95,8 +95,8 @@
 }
 .v-studio-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  grid-auto-rows: max-content;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-auto-rows: 208px;
   align-content: start;
   gap: 8px;
   overflow: auto;
@@ -105,7 +105,8 @@
 }
 .v-studio-overlay {
   position: relative;
-  border: 2px solid transparent;
+  border: 1px solid var(--line-2);
+  height: 208px;
   border-radius: var(--radius-md);
   overflow: hidden;
   min-width: 0;
@@ -166,11 +167,12 @@
 .v-studio-preview {
   min-width: 0;
   overflow: hidden;
-  height: 180px;
+  position: relative;
+  height: 156px;
   display: grid;
   place-items: center;
-  background: var(--surface-1);
-  padding: 8px;
+  background: var(--stage);
+  padding: 12px;
 }
 .v-studio-widget-thumb {
   width: 100%;
@@ -189,10 +191,11 @@
   border: 0;
 }
 .v-studio-add-card {
-  height: 228px;
-  background: transparent;
-  border: 1px solid var(--line-1);
-  color: var(--text-2);
+  height: 208px;
+  width: 100%;
+  background: var(--surface-2);
+  border: 0;
+  color: var(--text-1);
 }
 .v-studio-footer {
   display: flex;
@@ -227,7 +230,8 @@
 .v-studio-rail {
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - 84px);
+  height: calc(100dvh - 84px);
+  min-height: 0;
   gap: 16px;
 }
 .v-studio-rail > header {
@@ -280,11 +284,6 @@
   color: var(--text-1);
   border-bottom: 2px solid var(--accent);
 }
-.v-studio-soon {
-  font-size: 13px;
-  color: var(--text-3);
-  padding-top: 12px;
-}
 .v-studio-obs {
   margin-top: auto;
   border-top: 1px solid var(--line-1);
@@ -310,26 +309,6 @@
   color: var(--text-3);
   line-height: 20px;
 }
-.v-studio-inspector-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-top: 16px;
-}
-.v-studio-inspector-fields fieldset {
-  border: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.v-studio-inspector-fields legend {
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-.v-studio-inspector-fields .v-field {
-  width: 100%;
-}
 .v-studio-catalog {
   display: flex;
   flex-direction: column;
@@ -341,79 +320,6 @@
 }
 .v-studio-catalog .v-search label {
   display: none;
-}
-.v-studio-categories {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.v-studio-categories :where(.v-button) {
-  font-size: 11px;
-  min-height: 28px;
-  padding: 0 6px;
-  border: 0;
-}
-.v-studio-categories [aria-pressed="true"] {
-  background: var(--surface-3);
-  color: var(--text-1);
-}
-.v-studio-catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.v-studio-catalog-grid > .v-tooltip-trigger {
-  display: block;
-  min-width: 0;
-}
-.v-studio-catalog-widget {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  border: 1px solid var(--line-1);
-  border-radius: var(--radius-md);
-  background: var(--surface-2);
-  color: var(--text-1);
-  text-align: left;
-  cursor: pointer;
-}
-.v-studio-catalog-widget:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-.v-studio-catalog-widget img {
-  height: 72px;
-}
-.v-studio-catalog-widget strong {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-.v-studio-catalog-widget :where(strong) svg {
-  width: 12px;
-  height: 12px;
-  flex: none;
-}
-.v-studio-catalog-widget small {
-  font-size: 10px;
-  line-height: 14px;
-  color: var(--text-3);
-}
-.v-studio-remove {
-  background: var(--bg-window);
-  border: 1px solid var(--line-1);
-  border-radius: var(--radius-panel);
-  padding: 24px;
-  width: 400px;
-}
-.v-studio-remove > div {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 20px;
 }
 .v-context:has(.v-studio-rail) > .v-tooltip-trigger {
   display: none;
@@ -429,16 +335,6 @@
   height: auto;
   min-width: 0;
   max-width: 100%;
-}
-
-.v-studio-catalog-grid {
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.v-studio-catalog-widget[aria-disabled="true"] {
-  opacity: 0.55;
 }
 
 .v-studio-loading {
@@ -493,11 +389,184 @@
 .v-studio-footer .v-button:disabled {
   opacity: 1;
 }
-.v-studio .v-studio-obs-button {
+
+.v-studio {
+  container-type: inline-size;
+}
+.v-studio-gallery-heading {
+  height: 32px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-studio-gallery-heading > span {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.v-studio-gallery-heading > small {
+  color: var(--text-3);
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.v-studio-grid {
+  scrollbar-gutter: stable;
+}
+.v-studio-grid > .v-tooltip-trigger {
+  display: block;
+  min-width: 0;
+}
+.v-studio-thumb-frame {
+  display: block;
+  overflow: hidden;
+  position: relative;
+  max-width: 100%;
+}
+.v-studio-thumb-frame[data-cropped="true"] {
+  justify-self: start;
+  mask-image: linear-gradient(
+    90deg,
+    var(--text-1) calc(100% - 32px),
+    transparent
+  );
+}
+.v-studio-thumb-image {
+  display: block;
+  position: relative;
+}
+.v-studio-widget-thumb[data-fallback="true"] {
+  opacity: 0.6;
+}
+.v-studio-thumb-skeleton {
+  position: absolute;
+  inset: 0;
+}
+.v-studio-thumb-skeleton .v-skeleton {
+  width: 100%;
+  height: 100%;
+}
+.v-studio-preview[data-hidden="true"] .v-studio-thumb-frame {
+  filter: grayscale(0.6);
+}
+.v-studio-plan-badge {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+}
+.v-studio-overlay-select header > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.v-studio-overlay-select :is(strong, small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v-studio-add-card .v-button-label {
+  flex-direction: column;
+  gap: 8px;
+}
+.v-studio-add-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  display: grid;
+  place-items: center;
+}
+.v-studio-add-card strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.v-studio-add-card small {
+  font-size: 11px;
   color: var(--text-3);
 }
+.v-studio-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.v-studio-empty strong {
+  font-size: 15px;
+  color: var(--text-1);
+}
+.v-studio-topbar :is(.v-studio-obs-button, .v-studio-edit-button) {
+  font-size: 14px;
+  min-height: 36px;
+  height: 36px;
+  padding-inline: 16px;
+}
+.v-studio-obs-button .v-button-label > svg {
+  display: none;
+}
+[data-scheme="light"] .v-studio-thumb-image {
+  filter: drop-shadow(0 6px 14px var(--flag-edge));
+}
+@container (max-width: 950px) {
+  .v-studio-secondary-label {
+    display: none;
+  }
+  .v-studio-topbar :is(.v-studio-obs-button, .v-studio-edit-button) {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+  }
+  .v-studio-obs-button .v-button-label > svg {
+    display: block;
+  }
+}
+@container (max-width: 800px) {
+  .v-studio-topbar .v-studio-layout {
+    width: 140px;
+  }
+}
 
-.v-studio-inspector-fields .v-switch-field {
+.v-studio-rail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scrollbar-width: none;
+}
+.v-studio-inspector-preview > .v-studio-preview {
+  height: 168px;
+  border-radius: var(--radius-md);
+}
+.v-studio-description p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+.v-studio-description small {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.v-studio-track-summary {
+  padding-top: 16px;
+}
+.v-studio-track-summary .v-switch-field {
   width: 100%;
   justify-content: space-between;
+}
+.v-studio-basic-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v-studio-catalog-choice {
+  width: 100%;
+  justify-content: flex-start;
+  font-size: 12px;
+}
+.v-studio-tabs .v-tooltip-trigger {
+  display: inline-flex;
 }

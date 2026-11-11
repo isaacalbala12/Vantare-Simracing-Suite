@@ -108,11 +108,13 @@ it("refuses sending without a preview or renewed consent, then locks a double se
   expect(send).not.toHaveBeenCalled();
   act(() => hook.result.current.accept(true));
   let pending!: Promise<void>;
+  let duplicate!: Promise<void>;
   act(() => {
     pending = hook.result.current.sendReport();
+    duplicate = hook.result.current.sendReport();
   });
   await act(async () => {
-    await hook.result.current.sendReport();
+    await duplicate;
   });
   expect(send).toHaveBeenCalledOnce();
   expect(send).toHaveBeenCalledWith(preview.id);

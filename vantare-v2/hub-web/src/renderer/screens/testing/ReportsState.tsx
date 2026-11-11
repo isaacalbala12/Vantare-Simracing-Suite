@@ -469,6 +469,7 @@ function useReportsState() {
       if (reply.method !== "triage.send")
         throw new Error("unexpected triage reply");
       setParticipation(reply.value);
+      setParticipationLoaded(true);
     },
   });
   return {

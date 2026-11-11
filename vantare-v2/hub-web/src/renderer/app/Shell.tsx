@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { defaultZoom } from "../../contract/generated/contract";
-import { demoProfileName } from "../../mock/demo-profile";
 import { Icon } from "../assets/icons/Icon";
 import { t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
@@ -28,6 +27,7 @@ import {
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
+import { usePilotName } from "./PilotState";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
@@ -42,7 +42,9 @@ export function Shell() {
 }
 function ShellContent() {
   const host = useHost();
-  const profileName = host.hello?.demo ? demoProfileName : "";
+  const pilotName = usePilotName();
+  // No account identity is exposed yet: production stays anonymous until Access.
+  const profileName = host.hello?.demo ? pilotName : "";
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);

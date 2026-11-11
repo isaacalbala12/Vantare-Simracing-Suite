@@ -25,7 +25,10 @@ export default defineConfig({
   },
   renderer: {
     plugins: [tailwindcss()],
-    define: { "process.env.NODE_ENV": JSON.stringify("production") },
+    define: {
+      "process.env.NODE_ENV": JSON.stringify("production"),
+      __VANTARE_RENDERER_MOCK__: JSON.stringify(qa),
+    },
     root: "src/renderer",
     build: {
       outDir: resolve(output, "renderer"),

@@ -18,6 +18,7 @@ import { Callout, Skeleton } from "../../ui/Data";
 import { Segmented } from "../../ui/Forms";
 import { Tooltip } from "../../ui/Layers";
 import { ActionNotice } from "./ActionNotice";
+import { DisabledHint } from "./DisabledHint";
 import { RemoveWidget } from "./RemoveWidget";
 import {
   VisibilityIcon,
@@ -193,20 +194,20 @@ export function Gallery() {
     <div className="v-studio">
       <RemoveWidget />
       <div className="v-studio-topbar">
-        <Tooltip label={t.localHelp}>
+        <DisabledHint label={t.localHelp}>
           <Button className="v-studio-layout" disabled aria-label={t.layout}>
             {t.local}
             <Icon name="down" />
           </Button>
-        </Tooltip>
-        <Tooltip label={t.liveHelp}>
+        </DisabledHint>
+        <DisabledHint label={t.liveHelp}>
           <div className="v-studio-mode">
             <Button disabled data-active="true">
               {t.example}
             </Button>
             <Button disabled>{t.live}</Button>
           </div>
-        </Tooltip>
+        </DisabledHint>
         <span
           className="v-studio-saved"
           data-failed={!!state.failure}
@@ -220,13 +221,13 @@ export function Gallery() {
                 ? t.saved
                 : ""}
         </span>
-        <Tooltip label={t.obsHelp}>
+        <DisabledHint label={t.obsHelp}>
           <Button className="v-studio-obs-button" disabled>
             <Icon name="v-camera" />
             <span className="v-studio-secondary-label">{t.obs}</span>
           </Button>
-        </Tooltip>
-        <Tooltip label={t.editHelp}>
+        </DisabledHint>
+        <DisabledHint label={t.editHelp} disabled={!studioEditOnScreen}>
           <Button
             className="v-studio-edit-button"
             disabled={!studioEditOnScreen}
@@ -234,7 +235,7 @@ export function Gallery() {
             <Icon name="v-studio" />
             <span className="v-studio-secondary-label">{t.edit}</span>
           </Button>
-        </Tooltip>
+        </DisabledHint>
         <Tooltip label={t.showHelp}>
           <Button
             variant="primary"

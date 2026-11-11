@@ -293,7 +293,8 @@
   justify-content: flex-start;
   font-size: 12px;
 }
-.v-studio-topbar > .v-tooltip-trigger {
+.v-studio-topbar > .v-tooltip-trigger,
+.v-studio-topbar > .v-studio-disabled-hint {
   display: inline-flex;
   flex: none;
 }
@@ -687,4 +688,14 @@
   width: auto;
   border-color: var(--text-3);
   background: transparent;
+}
+.v-studio-disabled-hint {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.v-studio-catalog-grid > .v-studio-disabled-hint > button {
+  width: 100%;
 }

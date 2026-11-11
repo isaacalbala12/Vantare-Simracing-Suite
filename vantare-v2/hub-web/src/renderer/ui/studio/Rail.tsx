@@ -11,7 +11,7 @@ import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
 import { Callout, Skeleton } from "../Data";
 import { SearchInput } from "../Forms";
-import { Tooltip } from "../Layers";
+import { DisabledHint } from "./DisabledHint";
 import { TrackInspector } from "./TrackInspector";
 import { WidgetPreview, WidgetThumb, widgetName } from "./Widgets";
 
@@ -90,16 +90,16 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                     className="v-studio-tabs"
                     aria-label={t.inspectorTabs}
                   >
-                    <Tooltip label={t.soonTooltip}>
+                    <DisabledHint label={t.soonTooltip}>
                       <Tabs.Tab value="content" disabled>
                         {t.content}
                       </Tabs.Tab>
-                    </Tooltip>
-                    <Tooltip label={t.soonTooltip}>
+                    </DisabledHint>
+                    <DisabledHint label={t.soonTooltip}>
                       <Tabs.Tab value="appearance" disabled>
                         {t.appearance}
                       </Tabs.Tab>
-                    </Tooltip>
+                    </DisabledHint>
                     <Tabs.Tab value="track">{t.track}</Tabs.Tab>
                   </Tabs.List>
                   <Tabs.Panel value="track">
@@ -191,9 +191,16 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                 className="v-studio-catalog-grid"
                 aria-label={group.title}
               >
-                {group.items.map((widget, index) => (
-                  <Tooltip
+                {group.items.map((widget) => (
+                  <DisabledHint
                     key={widget.kind}
+                    disabled={
+                      state.pending ||
+                      !widget.allowed ||
+                      view.instances.length >= studioLimits.instances ||
+                      !studioAddAvailable ||
+                      view.state !== "ready"
+                    }
                     label={
                       view.instances.length >= studioLimits.instances
                         ? t.atLimit(studioLimits.instances)
@@ -218,12 +225,23 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                         view.state !== "ready"
                       }
                       onKeyDown={(event) => {
+                        const grid = event.currentTarget.closest(
+                          ".v-studio-catalog-grid",
+                        );
                         const buttons = Array.from(
-                          event.currentTarget
-                            .closest("fieldset")
-                            ?.querySelectorAll<HTMLButtonElement>(
-                              "[data-kind]",
-                            ) ?? [],
+                          grid?.querySelectorAll<HTMLButtonElement>(
+                            "[data-kind]:not(:disabled)",
+                          ) ?? [],
+                        );
+                        const index = buttons.indexOf(event.currentTarget);
+                        const columns = Math.max(
+                          1,
+                          grid
+                            ? getComputedStyle(grid)
+                                .gridTemplateColumns.split(/\s+/)
+                                .filter((value) => value && value !== "none")
+                                .length
+                            : 1,
                         );
                         const step =
                           event.key === "ArrowRight"
@@ -231,9 +249,9 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                             : event.key === "ArrowLeft"
                               ? -1
                               : event.key === "ArrowDown"
-                                ? 2
+                                ? columns
                                 : event.key === "ArrowUp"
-                                  ? -2
+                                  ? -columns
                                   : 0;
                         if (step) {
                           event.preventDefault();
@@ -274,7 +292,7 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                         </span>
                       )}
                     </button>
-                  </Tooltip>
+                  </DisabledHint>
                 ))}
               </fieldset>
             </section>

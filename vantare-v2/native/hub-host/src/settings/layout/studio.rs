@@ -182,28 +182,6 @@ fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
         (height - size.1).max(0.0) / 2.0,
     ))
 }
-fn save(path: &Path, before: &[u8], after: &[u8]) -> Result<(), HostError> {
-    files::save(
-        path,
-        after,
-        files::Mode::Observed(Some(before)),
-        &files::Options {
-            limit: LIMIT,
-            ..Default::default()
-        },
-    )
-    .map_err(|error| {
-        if error.kind().is_conflict() {
-            HostError::StudioConflict {
-                current: State::new(path.into()).view(None),
-            }
-        } else if error.kind() == files::Kind::Busy {
-            HostError::Busy
-        } else {
-            HostError::Io
-        }
-    })
-}
 pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioView {
     let opened = Open::read(&state.path);
     let Ok(opened) = opened else {
@@ -255,6 +233,14 @@ pub(crate) fn edit(
         state.undo.clear();
         state.redo.clear();
     }
+    let known: Vec<(String, WidgetKind)> = opened
+        .instances
+        .iter()
+        .map(|fields| {
+            let settings: Fields = read(fields, "settings")?;
+            Ok::<_, HostError>((read(fields, "id")?, read(&settings, "kind")?))
+        })
+        .collect::<Result<_, _>>()?;
     let before = opened
         .document
         .observed
@@ -338,15 +324,32 @@ pub(crate) fn edit(
     let restored: Vec<Fields> = read(&root, "instances")?;
     for fields in &restored {
         let item = instance(fields, access)?;
-        let existed = opened.instances.iter().any(|old| {
-            read::<String>(old, "id").as_deref() == Ok(item.id.as_str())
-                && instance(old, access).is_ok_and(|prior| prior.kind == item.kind)
-        });
+        let existed = known
+            .iter()
+            .any(|(id, kind)| *id == item.id && *kind == item.kind);
         if !existed && item.locked {
             return Err(HostError::Denied);
         }
     }
-    save(&state.path, &before, &after)?;
+    if let Err(error) = files::save(
+        &state.path,
+        &after,
+        files::Mode::Observed(Some(&before)),
+        &files::Options {
+            limit: LIMIT,
+            ..Default::default()
+        },
+    ) {
+        return Err(if error.kind().is_conflict() {
+            HostError::StudioConflict {
+                current: view(state, access),
+            }
+        } else if error.kind() == files::Kind::Busy {
+            HostError::Busy
+        } else {
+            HostError::Io
+        });
+    }
     match edit {
         Edit::Undo => {
             state.undo.pop();

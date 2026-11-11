@@ -221,6 +221,7 @@
     color-mix(in srgb, var(--ob-c-000000) 35%, transparent);
 }
 .v-ob-assistant-label {
+  line-height: calc(10 * var(--ob-unit));
   display: flex;
   align-items: center;
   gap: calc(8 * var(--ob-unit));

@@ -5,6 +5,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 import { pilotLimits } from "../src/contract/generated/contract.ts";
 import { t } from "../src/renderer/i18n/es.ts";
+import { pilotText } from "../src/renderer/i18n/pilot.es.ts";
 import { checkPhotoRejection } from "./check-photo-rejection.ts";
 import { until } from "./wait-for.ts";
 import { webQaPreview } from "./web-qa";
@@ -49,10 +50,22 @@ try {
     mimeType: "image/png",
     buffer: Buffer.from(png, "base64"),
   });
-  const image = page.getByRole("img", {
-    name: "Piloto del rediseño QA",
+  const cropper = page.getByRole("button", {
+    name: pilotText.cropLabel,
     exact: true,
   });
+  await cropper.focus();
+  await cropper.press("+");
+  await cropper.press("ArrowRight");
+  await page
+    .getByRole("button", { name: pilotText.cropApply, exact: true })
+    .click();
+  const image = page
+    .getByRole("img", {
+      name: "Piloto del rediseño QA",
+      exact: true,
+    })
+    .first();
   await image.waitFor();
   const source = await image.getAttribute("src");
   assert.ok(source);

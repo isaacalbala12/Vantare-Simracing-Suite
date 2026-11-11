@@ -1,6 +1,7 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -58,7 +59,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
-  function cancelPhoto() {
+  const cancelPhoto = useCallback(() => {
     photoGeneration.current++;
     photoLoading.current = false;
     photoResource.current?.close();
@@ -66,7 +67,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
     setPhoto(undefined);
     setPhotoBusy(false);
     setPhotoError(false);
-  }
+  }, []);
   async function choosePhoto(file: File) {
     if (saving.current || photoLoading.current || photoResource.current) return;
     const generation = ++photoGeneration.current;
@@ -136,7 +137,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       setCloseVeto(true);
       return false;
     });
-  }, [client]);
+  }, [client, cancelPhoto]);
   async function run(action: () => Promise<void>) {
     if (saving.current) return;
     saving.current = true;

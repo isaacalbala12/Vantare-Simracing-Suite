@@ -26,6 +26,19 @@ if ($testing) {
     $scripted['TestingRefresh']['data'] = Get-Content -LiteralPath (Join-Path $fixtures 'testing-participation.json') -Raw | ConvertFrom-Json -AsHashtable
     $scripted | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $replies -Encoding utf8
 }
+if ($Scene -in @('ajustes-perfil-foto', 'ajustes-perfil-recorte')) {
+    # A SignedIn transition clears the pilot projection after the frozen QA
+    # scene seeds it. Keep these explicit capture fixtures signed out so the
+    # in-memory crop/photo survives; no account or policy code is changed.
+    $scripted = Get-Content -LiteralPath $replies -Raw | ConvertFrom-Json -AsHashtable
+    foreach ($method in @('AccountPoll', 'AccountProfileRefresh')) {
+        $scripted[$method]['session'] = 'SignedOut'
+        $scripted[$method]['signed_in'] = $false
+        $scripted[$method]['profile'] = $null
+        $scripted[$method]['pending'] = $false
+    }
+    $scripted | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $replies -Encoding utf8
+}
 $env:VANTARE_NATIVE_DATA_ROOT = $run
 $env:LOCALAPPDATA = $run
 $start = [Diagnostics.ProcessStartInfo]::new($binary)

@@ -8,6 +8,9 @@
 }
 .v-pilot-crop-stage {
   position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
   flex: none;
   overflow: hidden;
   border-radius: 8px;

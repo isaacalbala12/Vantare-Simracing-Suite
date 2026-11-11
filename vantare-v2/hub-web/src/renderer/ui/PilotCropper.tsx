@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { pilotEditorLimits } from "../../contract/generated/contract";
 import { pilotText as text } from "../i18n/pilot.es";
 import {
-  cropExtent,
   moveCrop,
   type PhotoCrop,
   zoomCrop,
@@ -25,11 +24,12 @@ export function PilotCropper({
   onApply: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const stage = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
   const scale = Math.min(320 / image.width, 220 / image.height);
   const width = Math.round(image.width * scale),
     height = Math.round(image.height * scale);
-  const [ew, eh] = cropExtent(crop, image.width, image.height);
+  const side = crop.side * Math.min(width, height);
   useEffect(() => {
     const node = canvas.current;
     if (!node) return;
@@ -44,10 +44,30 @@ export function PilotCropper({
   const zoom = (factor: number) => {
     if (!pending) onChange(zoomCrop(crop, factor, image.width, image.height));
   };
+  useEffect(() => {
+    const node = stage.current;
+    if (!node) return;
+    const wheel = (event: WheelEvent) => {
+      if (pending || !event.deltaY) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onChange(
+        zoomCrop(
+          crop,
+          event.deltaY < 0 ? 1.1 : 1 / 1.1,
+          image.width,
+          image.height,
+        ),
+      );
+    };
+    node.addEventListener("wheel", wheel, { passive: false });
+    return () => node.removeEventListener("wheel", wheel);
+  }, [crop, image, pending, onChange]);
   return (
     <div className="v-pilot-cropper">
-      <div
-        role="application"
+      <button
+        ref={stage}
+        type="button"
         aria-label={text.cropLabel}
         tabIndex={0}
         className="v-pilot-crop-stage"
@@ -103,26 +123,20 @@ export function PilotCropper({
         onLostPointerCapture={() => {
           drag.current = undefined;
         }}
-        onWheel={(event) => {
-          if (pending || !event.deltaY) return;
-          event.preventDefault();
-          event.stopPropagation();
-          zoom(event.deltaY < 0 ? 1.1 : 1 / 1.1);
-        }}
       >
         <canvas ref={canvas} width={width} height={height} />
-        <div
+        <span
           className="v-pilot-crop-square"
           style={{
             left: crop.x * width,
             top: crop.y * height,
-            width: ew * width,
-            height: eh * height,
+            width: side,
+            height: side,
           }}
         >
           <span />
-        </div>
-      </div>
+        </span>
+      </button>
       <div className="v-pilot-crop-actions">
         <strong>{text.cropTitle}</strong>
         <p>{text.cropHelp}</p>

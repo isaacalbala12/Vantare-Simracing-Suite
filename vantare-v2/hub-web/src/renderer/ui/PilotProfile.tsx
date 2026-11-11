@@ -7,6 +7,7 @@ import {
   pilotEditorLimits,
   pilotSimulatorOptions,
 } from "../../contract/generated/contract";
+import { pilotFlags } from "../assets/generated/pilot-flags";
 import { Icon } from "../assets/icons/Icon";
 import { t } from "../i18n/es";
 import { pilotText as text } from "../i18n/pilot.es";
@@ -240,6 +241,18 @@ export function PilotPreview({ fields }: { fields: PilotFields }) {
       </div>
       <div className="v-pilot-preview-avatar">
         <PilotAvatar fields={fields} large />
+        {fields.country && (
+          <span className="v-pilot-flag-plate">
+            {pilotFlags[fields.country] ? (
+              <img
+                alt={country ?? fields.country}
+                src={`data:image/svg+xml,${encodeURIComponent(pilotFlags[fields.country])}`}
+              />
+            ) : (
+              <span>{fields.country}</span>
+            )}
+          </span>
+        )}
       </div>
       <div className="v-pilot-preview-identity">
         <h3 data-empty={!fields.publicName.trim() || undefined}>

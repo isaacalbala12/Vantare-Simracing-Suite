@@ -62,3 +62,21 @@
     flex-direction: column;
   }
 }
+
+.v-shell-main > [role="tabpanel"]:has(.v-testing-summary),
+.v-testing:has(> .v-testing-summary) {
+  height: 100%;
+}
+.v-testing-summary > .v-testing-card {
+  flex: 1;
+  min-height: 0;
+}
+.v-testing-summary > .v-testing-card > .v-content-stack {
+  padding: 34px 20px;
+  align-items: center;
+  text-align: center;
+}
+.v-testing-summary > .v-testing-card > .v-testing-fine-print {
+  font-size: 11px;
+  line-height: 16px;
+}

@@ -123,14 +123,14 @@ impl Plataforma {
             lectura.CopyFromBitmap(None, &bitmap, None)?;
             let mapa = lectura.Map(D2D1_MAP_OPTIONS_READ)?;
             let cantidad = usize::try_from(mapa.pitch)
-                .map_err(|_| Error::Entrada("Stride de captura"))?
-                .checked_mul(
-                    usize::try_from(alto_px).map_err(|_| Error::Entrada("Alto de captura"))?,
-                )
-                .ok_or(Error::Entrada("Captura demasiado grande"))?;
+                .ok()
+                .zip(usize::try_from(alto_px).ok())
+                .and_then(|(pitch, alto)| pitch.checked_mul(alto));
             // SAFETY: Map mantiene bits válidos para pitch*alto hasta Unmap.
-            let bytes = std::slice::from_raw_parts(mapa.bits, cantidad).to_vec();
+            let bytes = cantidad.map(|n| std::slice::from_raw_parts(mapa.bits, n).to_vec());
+            // Unmap siempre, también si el tamaño no era representable.
             lectura.Unmap()?;
+            let bytes = bytes.ok_or(Error::Entrada("Captura demasiado grande"))?;
             Ok(CapturaBgra {
                 ancho: ancho_px,
                 alto: alto_px,

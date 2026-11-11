@@ -1,0 +1,214 @@
+.v-calendar-ics-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--calendar-ics-backdrop);
+}
+.v-calendar.v-calendar-ics {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 820px;
+  max-width: 96vw;
+  height: auto;
+  max-height: 94vh;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: 14px;
+  background: var(--surface-1);
+  color: var(--text-1);
+  outline: none;
+}
+.v-calendar-ics > header {
+  display: flex;
+  align-items: flex-start;
+  flex: none;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-ics :where(header) > div {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-ics :where(header) h2 {
+  margin: 0;
+  font: 600 26px / 28px var(--font-display);
+}
+.v-calendar-ics :where(header) p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-ics :where(header) .v-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 5px;
+}
+.v-calendar-ics :where(header) svg {
+  width: 14px;
+  height: 14px;
+}
+.v-calendar-ics-body {
+  flex: 1;
+  min-height: 0;
+  padding: 22px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.v-calendar-ics-columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+}
+.v-calendar-ics-columns > section {
+  flex: 1;
+  min-width: 0;
+}
+.v-calendar-ics h3 {
+  margin: 0 0 8px;
+  font: 600 10.5px / 11px var(--font-display);
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.v-calendar-ics-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v-calendar-ics-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: transparent;
+}
+.v-calendar-ics-card[data-selected] {
+  border-color: var(--hero-ring);
+  background: var(--accent-tint);
+}
+.v-calendar-ics-card > span {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.v-calendar-ics-card strong {
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 600;
+}
+.v-calendar-ics-card :where(span) > span {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--text-3);
+}
+.v-calendar-ics-card > .v-radio,
+.v-calendar-ics-card > .v-checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+.v-calendar-ics-alarm {
+  margin-top: 12px;
+}
+.v-calendar-ics-subscription {
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+.v-calendar-ics-file-dot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+}
+.v-calendar-ics-file-dot::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.v-calendar-ics h3.v-calendar-ics-preview-title {
+  margin-top: 12px;
+}
+.v-calendar-ics-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-1);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+.v-calendar-ics-entry > span:first-child {
+  flex: none;
+  color: var(--text-3);
+}
+.v-calendar-ics-entry time {
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+.v-calendar-ics-entry > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v-calendar-ics > footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line-1);
+  background: var(--surface-2);
+}
+.v-calendar-ics :where(footer) > span {
+  flex: 1;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-caption);
+}
+.v-calendar-ics :where(footer) .v-button {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.v-calendar-ics :where(footer) .v-button--primary {
+  font-weight: 600;
+}
+.v-calendar-ics-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--err);
+}
+.v-calendar-ics-error > span {
+  flex: 1;
+}
+@media (max-width: 700px) {
+  .v-calendar-ics-columns {
+    flex-direction: column;
+  }
+  .v-calendar-ics-columns > section {
+    width: 100%;
+  }
+}

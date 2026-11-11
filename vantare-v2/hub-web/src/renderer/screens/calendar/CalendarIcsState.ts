@@ -19,6 +19,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
   const [status, setStatus] = useState<CalendarIcsStatus>();
+  const prepared = useRef<CalendarIcsView | undefined>(undefined);
   const epoch = useRef(0),
     exporting = useRef(false),
     authority = useRef(false);
@@ -26,6 +27,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   useEffect(() => {
     const generation = ++epoch.current;
     exporting.current = false;
+    prepared.current = undefined;
     setView(undefined);
     setFailure(undefined);
     setBusy(false);
@@ -43,6 +45,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
           setFailure("rejected");
           return;
         }
+        prepared.current = reply.value;
         setView(reply.value);
       })
       .catch((error: unknown) => {
@@ -64,17 +67,19 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     if (!open || !allowed || !client) setStatus(undefined);
   }, [open, allowed, client]);
   async function download() {
-    if (!client || !authority.current || !view || busy || exporting.current)
+    const snapshot = prepared.current;
+    if (!client || !authority.current || !snapshot || busy || exporting.current)
       return false;
     const generation = epoch.current;
     exporting.current = true;
+    prepared.current = undefined;
     setBusy(true);
     setFailure(undefined);
     setStatus(undefined);
     try {
       const reply = await client.request({
         method: "calendar.icsExport",
-        preparedHash: view.preparedHash,
+        preparedHash: snapshot.preparedHash,
       });
       if (generation !== epoch.current || !authority.current) return false;
       setView(undefined);
@@ -111,12 +116,16 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     download,
     setScope(value: CalendarIcsScope) {
       if (!exporting.current) {
+        prepared.current = undefined;
+        setView(undefined);
         setStatus(undefined);
         setOptions((current) => ({ ...current, scope: value }));
       }
     },
     setAlarm(value: boolean) {
       if (!exporting.current) {
+        prepared.current = undefined;
+        setView(undefined);
         setStatus(undefined);
         setOptions((current) => ({ ...current, alarm: value }));
       }

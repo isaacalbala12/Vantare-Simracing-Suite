@@ -60,6 +60,8 @@ export function CalendarSeriesView({
   updated = 0,
   onBack,
   onSeries,
+  canFollow = false,
+  canLaunch = false,
   onFollow,
   onLaunch,
   onDetail,
@@ -80,10 +82,12 @@ export function CalendarSeriesView({
   updated?: number;
   onBack: () => void;
   onSeries: (id: string) => void;
-  onFollow: (followed: boolean) => void;
-  onLaunch: () => void;
-  onDetail: (id: string, at: number) => void;
-  onSlot: (id: string, at: number) => void;
+  canFollow?: boolean;
+  canLaunch?: boolean;
+  onFollow?: (followed: boolean) => void;
+  onLaunch?: () => void;
+  onDetail?: (id: string, at: number) => void;
+  onSlot?: (id: string, at: number) => void;
 }) {
   const series = schedule.series.find((s) => s.id === seriesId);
   if (!series)
@@ -180,13 +184,18 @@ export function CalendarSeriesView({
             onChange={onSeries}
           />
           <Button
-            onClick={() => onFollow(!favorite)}
+            disabled={!canFollow || !onFollow}
+            onClick={() => onFollow?.(!favorite)}
             data-followed={favorite || undefined}
           >
             <Icon name="star" />
             {favorite ? text.followed : text.favorite}
           </Button>
-          <Button variant="primary" disabled={!profile} onClick={onLaunch}>
+          <Button
+            variant="primary"
+            disabled={!profile || !canLaunch || !onLaunch}
+            onClick={onLaunch}
+          >
             <Icon name="play" />
             {calendarText.launch(profile ?? "—")}
           </Button>
@@ -275,7 +284,8 @@ export function CalendarSeriesView({
                     data-alert={
                       alertAt(schedule, series, at, alerts, limit) || undefined
                     }
-                    onClick={() => onDetail(seriesId, at)}
+                    disabled={!onDetail}
+                    onClick={() => onDetail?.(seriesId, at)}
                   >
                     {alertAt(schedule, series, at, alerts, limit) && (
                       <Icon name="bell-fill" />
@@ -300,7 +310,8 @@ export function CalendarSeriesView({
                           undefined
                         }
                         data-next={at === first || undefined}
-                        onClick={() => onSlot(seriesId, at)}
+                        disabled={!onSlot}
+                        onClick={() => onSlot?.(seriesId, at)}
                       >
                         {clock(at, utc)}
                       </Button>

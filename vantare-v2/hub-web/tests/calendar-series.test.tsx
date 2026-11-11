@@ -17,6 +17,7 @@ const from = Date.parse(fixture.validFrom),
 it("counts only this series inside the published week, with GPUI integer rounding", () => {
   const run = {
     seriesId: series.id,
+    circuit: series.track,
     at: from,
     bestLap: "2:01.384",
     position: 4,
@@ -50,6 +51,8 @@ function view(id = seriesId) {
   const result = render(
     <CalendarSeriesView
       schedule={fixture}
+      canFollow
+      canLaunch
       seriesId={id}
       alerts={{
         leadMin: 10,

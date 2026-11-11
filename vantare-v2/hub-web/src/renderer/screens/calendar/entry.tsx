@@ -19,8 +19,8 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
-import { CalendarDetail } from "../../ui/CalendarDetail";
 import { CalendarDayView } from "../../ui/CalendarDayView";
+import { CalendarDetail } from "../../ui/CalendarDetail";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import {
@@ -70,8 +70,8 @@ export default function CalendarEntry() {
     weekState.current = value;
   }, []);
   const [selectedSerie, setSelectedSerie] = useState<string>();
-  const [detail, setDetail] = useState<{id:string;at?:number}>();
-  const openDetail = (id:string,at?:number) => setDetail({id,at});
+  const [detail, setDetail] = useState<{ id: string; at?: number }>();
+  const openDetail = (id: string, at?: number) => setDetail({ id, at });
   const origin = useRef<
     { id: string; element: HTMLElement | null } | undefined
   >(undefined);
@@ -216,7 +216,7 @@ export default function CalendarEntry() {
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
           <CalendarSeriesView
-                onDetail={openDetail}
+            onDetail={openDetail}
             schedule={schedule}
             seriesId={selectedSerie}
             alerts={alerts}
@@ -466,8 +466,37 @@ export default function CalendarEntry() {
           </CalendarFrame>
         )}
       </SectionPanel>
-      {detail && state.allowed && schedule && view && <CalendarDetail schedule={schedule} seriesId={detail.id} initialAt={detail.at} now={state.now} utc={view.utc} limit={calendarStartsLimit} alerts={alerts} following={view.following} runs={runs} profile={launcher.profile?.name} canLaunch={launcher.canLaunch} canFollow={preferences.canFollow} busy={preferences.busy} onClose={() => setDetail(undefined)} onSerie={(id) => {setDetail(undefined);openSerie(id);}} onFollow={(id, enabled) => void preferences.follow(id, enabled)} onLaunch={() => void launcher.launch()} failure={launcher.failure ? <p role="alert">{text.launchFailed}</p> : preferences.failure ? <p role="alert">{text.preferencesFailed}</p> : undefined}/>}
-
+      {detail && state.allowed && schedule && view && (
+        <CalendarDetail
+          schedule={schedule}
+          seriesId={detail.id}
+          initialAt={detail.at}
+          now={state.now}
+          utc={view.utc}
+          limit={calendarStartsLimit}
+          alerts={alerts}
+          following={view.following}
+          runs={runs}
+          profile={launcher.profile?.name}
+          canLaunch={launcher.canLaunch}
+          canFollow={preferences.canFollow}
+          busy={preferences.busy}
+          onClose={() => setDetail(undefined)}
+          onSerie={(id) => {
+            setDetail(undefined);
+            openSerie(id);
+          }}
+          onFollow={(id, enabled) => void preferences.follow(id, enabled)}
+          onLaunch={() => void launcher.launch()}
+          failure={
+            launcher.failure ? (
+              <p role="alert">{text.launchFailed}</p>
+            ) : preferences.failure ? (
+              <p role="alert">{text.preferencesFailed}</p>
+            ) : undefined
+          }
+        />
+      )}
     </>
   );
 }

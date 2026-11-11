@@ -7,6 +7,7 @@ import fixture from "../fixtures/calendar-demo.json";
 import type { CalendarView } from "../src/contract/generated/calendar";
 import CalendarEntry from "../src/renderer/screens/calendar/entry";
 import { clock } from "../src/renderer/ui/calendarDate";
+import { TooltipProvider } from "../src/renderer/ui/Layers";
 
 const model = vi.hoisted(() => ({
   view: undefined as CalendarView | undefined,
@@ -74,14 +75,25 @@ vi.mock("../src/renderer/ui/CalendarRail", () => ({
   CalendarRail: () => null,
 }));
 vi.mock("../src/renderer/ui/CalendarLiveView", () => ({
-  CalendarLiveView: ({ onSerie }: { onSerie: (id: string) => void }) => (
-    <button
-      type="button"
-      data-calendar-series={fixture.series[0].id}
-      onClick={() => onSerie(fixture.series[0].id)}
-    >
-      Open daily
-    </button>
+  CalendarLiveView: ({
+    onSerie,
+    onDetail,
+  }: {
+    onSerie: (id: string) => void;
+    onDetail?: (id: string) => void;
+  }) => (
+    <>
+      <button
+        type="button"
+        data-calendar-series={fixture.series[0].id}
+        onClick={() => onSerie(fixture.series[0].id)}
+      >
+        Open daily
+      </button>
+      <button type="button" onClick={() => onDetail?.(fixture.series[0].id)}>
+        Ficha
+      </button>
+    </>
   ),
 }));
 vi.mock("../src/renderer/ui/CalendarEventsView", () => ({
@@ -152,4 +164,19 @@ it("shows a history failure with an explicit retry inside the series page", () =
   expect(screen.getByRole("alert")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
   expect(model.reload).toHaveBeenCalledOnce();
+});
+
+it("navigates from the real drawer to its series and gives focus to the title", () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Ver serie" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.activeElement).toBe(
+    screen.getByRole("heading", { name: fixture.series[0].name }),
+  );
 });

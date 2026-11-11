@@ -68,6 +68,10 @@ export function CalendarDetail(props: Props) {
         <Dialog.Popup
           className="v-calendar v-calendar-detail"
           aria-describedby={undefined}
+          finalFocus={() =>
+            document.querySelector<HTMLElement>(".v-calendar-serie-name h2") ??
+            true
+          }
         >
           {series ? (
             <DetailBody

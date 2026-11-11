@@ -255,12 +255,25 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {name:"Contraer o ampliar navegación",exact:true});
-      if ((await sidebar.getAttribute("aria-expanded")) === "true") await sidebar.click();
-      await page.getByRole("navigation",{name:"Navegación principal"}).getByRole("button",{name:"Calendario",exact:true}).click();
-      await page.getByRole("button",{name:"Ficha",exact:true}).first().click();
-      await page.getByRole("dialog").getByRole("heading",{name:"LMGT3 Fixed",exact:true}).waitFor();
-      await page.mouse.move(600,890);
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Ficha", exact: true })
+        .first()
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 890);
     },
   },
 };

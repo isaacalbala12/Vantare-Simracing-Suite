@@ -105,3 +105,14 @@ it("closes on Escape through the real dialog", () => {
   });
   expect(props.onClose).toHaveBeenCalledOnce();
 });
+
+it("opens the series page with its identity instead of inventing a target", () => {
+  const onSerie = vi.fn();
+  render(
+    <TooltipProvider>
+      <CalendarDetail {...props} onSerie={onSerie} />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: text.series }));
+  expect(onSerie).toHaveBeenCalledWith(series.id);
+});

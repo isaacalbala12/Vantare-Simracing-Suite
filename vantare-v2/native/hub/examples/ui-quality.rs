@@ -289,9 +289,7 @@ fn main() -> Result<(), String> {
     validate_measure(&args, &root, measure)?;
     // Normal QA gates share the capture turn before opening any GPU window.
     // Capture mode takes this same lock inside shell::run_with_access.
-    let _measure_lock = measure
-        .then(vantare_ui::capture_window::lock)
-        .transpose()?;
+    let _measure_lock = measure.then(vantare_ui::capture_window::lock).transpose()?;
     // Client comprueba la imagen del peer contra el supervisor junto al Hub.
     if std::env::current_exe()
         .map_err(|error| error.to_string())?

@@ -72,14 +72,28 @@ describe("resident decisions are read-only", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
   it("removes stale decisions and displays only a closed error state", () => {
-    mount({
-      ...view,
-      online: false,
-      running: false,
-      error: false,
-      decision: null,
-    });
+    const mounted = mount({ ...view, error: true, decision: null });
+    expect(
+      screen.getByText("El residente ha informado de un error."),
+    ).toBeTruthy();
+    mounted.rerender(
+      <CSPProvider disableStyleElements>
+        <TooltipProvider>
+          <ResidentInbox
+            view={{
+              ...view,
+              online: false,
+              running: false,
+              error: false,
+              decision: null,
+            }}
+          />
+        </TooltipProvider>
+      </CSPProvider>,
+    );
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByText("El lanzamiento no se completó.")).toBeNull();
+    expect(
+      screen.queryByText("El residente ha informado de un error."),
+    ).toBeNull();
   });
 });

@@ -10,7 +10,7 @@ export const residentText = {
   open: "Ver decisión",
   readOnly:
     "Responder a decisiones desde el Hub estará disponible próximamente.",
-  failed: "El lanzamiento no se completó.",
+  failed: "El residente ha informado de un error.",
   question: {
     authorization:
       "El residente solicita tu autorización antes de lanzar una aplicación.",

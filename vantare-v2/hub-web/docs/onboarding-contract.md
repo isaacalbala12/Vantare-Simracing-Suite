@@ -22,7 +22,6 @@ El equipo local no se envía a servicios: CPU acotada y sin controles, núcleos 
 
 La fixture `native/hub-host/data/onboarding-presentation.json` sigue ligada al API real de `vantare_ui::layout::Presentation::show` mediante exportador y test de UI sin App ni ventana; el anfitrión compara los mismos bytes sin depender de UI. Las referencias de los ocho pasos permanecen en la evidencia de `isa-1995-b-onboarding-datos/references`, con sus recibos. 7b entrega marco y pasos 0–2; 7c reutilizará Apariencia, Privacidad y Cuenta para 3–7. No se incorporan mejoras de §g.
 
-
 GPU: el anfitrión porta la misma detección local del GPUI: CreateDXGIFactory1,
 EnumAdapters1 (hasta 32), GetDesc1 y primer adaptador no software con nombre no
 vacío. El búfer contiene 128 unidades UTF-16, termina en NUL y recorta los extremos.

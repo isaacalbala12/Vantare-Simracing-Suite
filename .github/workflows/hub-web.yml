@@ -29,7 +29,26 @@ jobs:
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run test
-      - run: bun x playwright-core install --with-deps chromium
+      - name: Install Chromium and system dependencies
+        run: |
+          set -o pipefail
+          install_log="$(mktemp)"
+          trap 'rm -f "$install_log"' EXIT
+          for attempt in 1 2 3; do
+            echo "Chromium system dependencies: attempt $attempt/3"
+            if timeout --kill-after=10s 180s bun x playwright-core install --with-deps chromium 2>&1 | tee "$install_log"; then
+              exit 0
+            fi
+            if ! grep -Eiq 'Temporary failure resolving|Could not resolve|Could not connect|Failed to connect|Connection timed out|Connection reset by peer|Network is unreachable|EAI_AGAIN|ENOTFOUND|ECONNRESET|ETIMEDOUT' "$install_log"; then
+              echo "::error::Chromium installation failed without a recognized network error."
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 5
+            fi
+          done
+          echo "::warning::System dependencies omitted after three network failures; installing Chromium only. Browser tests remain required."
+          bun x playwright-core install chromium
       - run: bun run build
       - run: bun scripts/web-a11y.ts
       - run: bun scripts/settings-web.ts

@@ -37,7 +37,7 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
               .match(/[0-9.]+/g)
               ?.slice(0, 3)
               .map(Number);
-            if (!channels || channels.length !== 3)
+            if (channels?.length !== 3)
               throw new Error(`Unsupported color ${color}`);
             const [r, g, b] = channels.map((channel) => {
               const x = channel / 255;

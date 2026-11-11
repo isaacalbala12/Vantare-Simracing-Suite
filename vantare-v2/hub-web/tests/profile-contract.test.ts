@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../fixtures/launcher-editor.json";
+import corpus from "../src/contract/generated/corpus.json";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 
@@ -172,4 +173,17 @@ it("requires a nullable key or exactly 64 lowercase hex characters in both direc
     expect(check({ ...step, key })).toEqual([false, false]);
   const { key: _key, ...missing } = step;
   expect(check(missing)).toEqual([false, false]);
+});
+
+it("includes and validates a Rust profile.get corpus sample with issued keys", () => {
+  const samples: unknown[] = corpus.host;
+  const keyed = samples
+    .filter(isHostMessage)
+    .find(
+      (message) =>
+        message.kind === "response" &&
+        message.result.method === "launcher.profile.get" &&
+        message.result.value.draft.steps.some((step) => step.key !== null),
+    );
+  expect(keyed).toBeDefined();
 });

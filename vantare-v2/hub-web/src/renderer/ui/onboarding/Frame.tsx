@@ -124,13 +124,7 @@ export function OnboardingFrame(p: FrameProps) {
         if (p.step > 0 && !p.pending) p.back();
         return;
       }
-      if (
-        event.key !== "Enter" ||
-        p.pending ||
-        p.loading ||
-        !p.canContinue ||
-        p.step === 7
-      )
+      if (event.key !== "Enter" || p.pending || p.loading || !p.canContinue)
         return;
       if (
         event.target instanceof Element &&

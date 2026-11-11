@@ -45,13 +45,13 @@ function Content() {
     <SettingsProvider>
       <PrivacyGate>
         <AccountProvider>
-          <AccountGate>
-            <PilotProvider>
-              <ReportsProvider>
+          <PilotProvider>
+            <ReportsProvider>
+              <AccountGate>
                 <Shell />
-              </ReportsProvider>
-            </PilotProvider>
-          </AccountGate>
+              </AccountGate>
+            </ReportsProvider>
+          </PilotProvider>
         </AccountProvider>
       </PrivacyGate>
     </SettingsProvider>

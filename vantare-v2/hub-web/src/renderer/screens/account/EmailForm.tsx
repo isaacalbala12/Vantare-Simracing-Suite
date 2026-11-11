@@ -89,6 +89,7 @@ export function EmailForm({ value }: { value: EmailView }) {
   return (
     <AccessForm
       formRef={root}
+      noValidate
       title={text.titles[value.mode]}
       onSubmit={submit}
     >

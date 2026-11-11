@@ -123,7 +123,7 @@ impl State {
             state,
             revision: "0".repeat(64),
             instances: vec![],
-            catalog: WidgetKind::ALL.iter().map(|k| k.info(access)).collect(),
+            catalog: WidgetKind::CATALOG.iter().map(|k| k.info(access)).collect(),
             showing: false,
             plan: plan(access),
             can_undo: false,

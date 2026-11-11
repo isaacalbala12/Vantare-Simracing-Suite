@@ -437,3 +437,13 @@
   font: 400 12px var(--font-mono);
   color: var(--text-2);
 }
+/* GPUI keeps readable text and borders for pending native-only controls. */
+.v-launcher-rail .v-launcher-options > div > span {
+  font-weight: 400;
+}
+.v-launcher-rail .v-launcher-options .v-select-trigger:disabled,
+.v-launcher-rail .v-launcher-options .v-select-trigger[aria-disabled="true"] {
+  opacity: 1;
+  color: var(--text-1);
+  background: var(--bg-input);
+}

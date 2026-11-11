@@ -1692,6 +1692,14 @@
         "method": "studio.track",
         "show": false
       }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "studio"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "studio"
     }
   ]
 }

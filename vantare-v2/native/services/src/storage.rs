@@ -442,6 +442,7 @@ mod tests {
         fs::remove_dir_all(root).expect("cleanup");
     }
 
+    #[cfg(feature = "network")]
     fn cache_present(store: &Store, name: &str, oauth: &crate::account::OAuth) -> Result<bool> {
         match name {
             "roadmap" => crate::roadmap::Roadmap::restore(store, 1_700_000_000_123)
@@ -456,6 +457,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn damaged_dpapi_caches_recover_once_and_rebuild_without_changing_the_session() {
         let (root, store) = crate::test_store("cache-rebuild");
@@ -548,6 +550,7 @@ mod tests {
         crate::cleanup_store(&root, "cache-rebuild", &[]);
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn damaged_draft_and_images_stay_together_for_assisted_recovery() {
         for damaged_name in ["report-draft", "report-images"] {
@@ -903,6 +906,7 @@ mod tests {
         fs::remove_dir_all(root).expect("cleanup QA");
     }
 
+    #[cfg(feature = "network")]
     #[test]
     fn restore_quarantines_invalid_json_but_preserves_documents_on_io_errors() {
         use std::os::windows::fs::OpenOptionsExt;

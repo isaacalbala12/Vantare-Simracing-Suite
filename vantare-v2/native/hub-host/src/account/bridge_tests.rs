@@ -61,17 +61,16 @@ fn email_cancel_during_an_active_request_is_prioritized_and_late_reply_cannot_re
         Some((3, Command::AccountCancel))
     ));
     assert!(session.account_view().email.is_none());
-    session
-        .service_reply(
-            2,
-            Ok(CoreReply::Email {
-                stage: vantare_ipc::services_protocol::EmailStage::Code,
-                retry_after_seconds: 30,
-                message: "late".into(),
-                error: None,
-            }),
-        )
-        .unwrap();
+    let late = session.service_reply(
+        2,
+        Ok(CoreReply::Email {
+            stage: vantare_ipc::services_protocol::EmailStage::Code,
+            retry_after_seconds: 30,
+            message: "late".into(),
+            error: None,
+        }),
+    );
+    assert!(matches!(late, Err(HostError::Denied)));
     assert!(session.account_view().email.is_none());
     assert_eq!(session.account_view().gate, crate::account::Gate::Canceling);
     session

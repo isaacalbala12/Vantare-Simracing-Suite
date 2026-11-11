@@ -61,6 +61,9 @@ fn busy_requires_manual_retry_and_cancel_logout_reserve_their_own_intent() {
         state.can_start(Operation::Begin),
         Err(HostError::Busy)
     ));
+    state.failed(Operation::Begin, &HostError::Busy, false, now);
+    assert!(state.view(&AccessView::default(), now, 0).error.unwrap().contains("Inténtalo de nuevo"));
+    state.accepted(Operation::Begin, &Command::AccountBegin);
     assert!(state.can_start(Operation::Cancel).is_ok());
     state.accepted(Operation::Cancel, &Command::AccountCancel);
     assert!(matches!(
@@ -69,13 +72,8 @@ fn busy_requires_manual_retry_and_cancel_logout_reserve_their_own_intent() {
     ));
     assert!(state.can_start(Operation::Logout).is_ok());
     state.failed(Operation::Begin, &HostError::Busy, false, now);
-    assert!(
-        state
-            .view(&AccessView::default(), now, 0)
-            .error
-            .unwrap()
-            .contains("IntÃ©ntalo de nuevo")
-    );
+    assert_eq!(state.view(&AccessView::default(), now, 0).gate, Gate::Canceling);
+    assert!(state.view(&AccessView::default(), now, 0).error.is_none());
     assert_ne!(state.next_background(now), Some(Operation::Begin));
 }
 #[test]

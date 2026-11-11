@@ -35,6 +35,7 @@ pub struct WidgetInfo {
     pub category: String,
     pub about: String,
     pub allowed: bool,
+    pub suggested: bool,
 }
 impl WidgetKind {
     pub fn id(self) -> &'static str {
@@ -225,6 +226,7 @@ impl WidgetKind {
             category: category.into(),
             about: about.into(),
             allowed: access.is_some_and(|a| a.allows_widget(id)),
+            suggested: matches!(self,Self::Standings|Self::Relative|Self::FuelStrategy|Self::RacingFlags|Self::Delta|Self::Pedals|Self::TrackMap|Self::HeadToHead),
         }
     }
 }

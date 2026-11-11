@@ -1,0 +1,1142 @@
+[
+  {
+    "app": "gpui",
+    "phase": "before",
+    "iteration": 0,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\gpui-run-0"
+  },
+  {
+    "pid": 2488,
+    "visibleMs": 583.9509,
+    "app": "gpui",
+    "window": 46596246,
+    "phase": "visible",
+    "responsiveMs": 594.6001,
+    "foreground": true,
+    "iteration": 0,
+    "controlProof": "Win32: Apariencia to General; active underline and General card painted"
+  },
+  {
+    "workingSetBytes": 99397632,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 2488,
+        "cpuBefore100ns": "468750",
+        "cpuAfter100ns": "468750",
+        "workingSetBytes": 99397632,
+        "name": "vantare",
+        "privateBytes": 114728960,
+        "cpuInterval100ns": "51118128"
+      }
+    ],
+    "cpuSampleMilliseconds": 5111.8128,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 114728960,
+    "verifiedMs": 1806.8774,
+    "familyAfter": [2488],
+    "iteration": 0
+  },
+  {
+    "app": "gpui",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 0
+  },
+  {
+    "workingSetBytes": 100372480,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 2488,
+        "cpuBefore100ns": "468750",
+        "cpuAfter100ns": "468750",
+        "workingSetBytes": 100372480,
+        "name": "vantare",
+        "privateBytes": 115982336,
+        "cpuInterval100ns": "51050725"
+      }
+    ],
+    "cpuSampleMilliseconds": 5105.0725,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 115982336,
+    "verifiedMs": 1806.8774,
+    "familyAfter": [2488],
+    "iteration": 0
+  },
+  {
+    "app": "gpui",
+    "stderr": "",
+    "phase": "closed",
+    "iteration": 0,
+    "survivors": []
+  },
+  {
+    "app": "electron",
+    "phase": "before",
+    "iteration": 0,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\generations\\d9044dff2c4db874687078424f1588f1\\data\\hub-run-0"
+  },
+  {
+    "pid": 9484,
+    "visibleMs": 7065.0449,
+    "app": "electron",
+    "window": 77661108,
+    "phase": "visible",
+    "responsiveMs": 7072.4521,
+    "foreground": true,
+    "iteration": 0,
+    "controlProof": "Playwright: Apariencia to General, heading and focus verified"
+  },
+  {
+    "workingSetBytes": 418512896,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 9484,
+        "cpuBefore100ns": "1562500",
+        "cpuAfter100ns": "1562500",
+        "workingSetBytes": 9158656,
+        "name": "vantare-hub",
+        "privateBytes": 1703936,
+        "cpuInterval100ns": "50931751"
+      },
+      {
+        "pid": 9652,
+        "cpuBefore100ns": "1250000",
+        "cpuAfter100ns": "1250000",
+        "workingSetBytes": 110034944,
+        "name": "vantare-hub-ui",
+        "privateBytes": 52346880,
+        "cpuInterval100ns": "50931751"
+      },
+      {
+        "pid": 7516,
+        "cpuBefore100ns": "1250000",
+        "cpuAfter100ns": "1250000",
+        "workingSetBytes": 134615040,
+        "name": "vantare-hub-ui",
+        "privateBytes": 287625216,
+        "cpuInterval100ns": "50931751"
+      },
+      {
+        "pid": 6032,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45395968,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11923456,
+        "cpuInterval100ns": "50931751"
+      },
+      {
+        "pid": 7524,
+        "cpuBefore100ns": "1093750",
+        "cpuAfter100ns": "1093750",
+        "workingSetBytes": 119308288,
+        "name": "vantare-hub-ui",
+        "privateBytes": 67137536,
+        "cpuInterval100ns": "50931751"
+      }
+    ],
+    "cpuSampleMilliseconds": 5093.1751,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 420737024,
+    "verifiedMs": 7903.3506,
+    "familyAfter": [6032, 7516, 7524, 9484, 9652],
+    "iteration": 0
+  },
+  {
+    "app": "electron",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 0
+  },
+  {
+    "workingSetBytes": 430784512,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 9484,
+        "cpuBefore100ns": "1562500",
+        "cpuAfter100ns": "1562500",
+        "workingSetBytes": 9306112,
+        "name": "vantare-hub",
+        "privateBytes": 1736704,
+        "cpuInterval100ns": "51008754"
+      },
+      {
+        "pid": 9652,
+        "cpuBefore100ns": "1250000",
+        "cpuAfter100ns": "1250000",
+        "workingSetBytes": 110579712,
+        "name": "vantare-hub-ui",
+        "privateBytes": 52436992,
+        "cpuInterval100ns": "51008754"
+      },
+      {
+        "pid": 7516,
+        "cpuBefore100ns": "1562500",
+        "cpuAfter100ns": "1562500",
+        "workingSetBytes": 141336576,
+        "name": "vantare-hub-ui",
+        "privateBytes": 266002432,
+        "cpuInterval100ns": "51008754"
+      },
+      {
+        "pid": 6032,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45486080,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11980800,
+        "cpuInterval100ns": "51008754"
+      },
+      {
+        "pid": 7524,
+        "cpuBefore100ns": "1406250",
+        "cpuAfter100ns": "1406250",
+        "workingSetBytes": 124076032,
+        "name": "vantare-hub-ui",
+        "privateBytes": 68837376,
+        "cpuInterval100ns": "51008754"
+      }
+    ],
+    "cpuSampleMilliseconds": 5100.8754,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 400994304,
+    "verifiedMs": 7903.3506,
+    "familyAfter": [6032, 7516, 7524, 9484, 9652],
+    "iteration": 0
+  },
+  {
+    "app": "electron",
+    "stderr": "HUB_QA_INTEGRITY first_walk_us=7861 verify_walk_and_hash_us=405680\n",
+    "phase": "closed",
+    "iteration": 0,
+    "survivors": []
+  },
+  {
+    "app": "electron",
+    "phase": "before",
+    "iteration": 1,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\generations\\d9044dff2c4db874687078424f1588f1\\data\\hub-run-1"
+  },
+  {
+    "pid": 10312,
+    "visibleMs": 968.8912,
+    "app": "electron",
+    "window": 78119838,
+    "phase": "visible",
+    "responsiveMs": 981.0861,
+    "foreground": true,
+    "iteration": 1,
+    "controlProof": "Playwright: Apariencia to General, heading and focus verified"
+  },
+  {
+    "workingSetBytes": 415588352,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 10312,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 9166848,
+        "name": "vantare-hub",
+        "privateBytes": 1720320,
+        "cpuInterval100ns": "51277005"
+      },
+      {
+        "pid": 10796,
+        "cpuBefore100ns": "1250000",
+        "cpuAfter100ns": "1250000",
+        "workingSetBytes": 108302336,
+        "name": "vantare-hub-ui",
+        "privateBytes": 51736576,
+        "cpuInterval100ns": "51277005"
+      },
+      {
+        "pid": 8608,
+        "cpuBefore100ns": "1406250",
+        "cpuAfter100ns": "1406250",
+        "workingSetBytes": 133361664,
+        "name": "vantare-hub-ui",
+        "privateBytes": 262283264,
+        "cpuInterval100ns": "51277005"
+      },
+      {
+        "pid": 10744,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45486080,
+        "name": "vantare-hub-ui",
+        "privateBytes": 12107776,
+        "cpuInterval100ns": "51277005"
+      },
+      {
+        "pid": 3096,
+        "cpuBefore100ns": "625000",
+        "cpuAfter100ns": "625000",
+        "workingSetBytes": 119271424,
+        "name": "vantare-hub-ui",
+        "privateBytes": 67772416,
+        "cpuInterval100ns": "51277005"
+      }
+    ],
+    "cpuSampleMilliseconds": 5127.7005,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 395620352,
+    "verifiedMs": 2442.6787,
+    "familyAfter": [3096, 8608, 10312, 10744, 10796],
+    "iteration": 1
+  },
+  {
+    "app": "electron",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 1
+  },
+  {
+    "workingSetBytes": 427249664,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 10312,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 9281536,
+        "name": "vantare-hub",
+        "privateBytes": 1740800,
+        "cpuInterval100ns": "50948055"
+      },
+      {
+        "pid": 10796,
+        "cpuBefore100ns": "1250000",
+        "cpuAfter100ns": "1250000",
+        "workingSetBytes": 108888064,
+        "name": "vantare-hub-ui",
+        "privateBytes": 52248576,
+        "cpuInterval100ns": "50948055"
+      },
+      {
+        "pid": 8608,
+        "cpuBefore100ns": "1875000",
+        "cpuAfter100ns": "1875000",
+        "workingSetBytes": 140484608,
+        "name": "vantare-hub-ui",
+        "privateBytes": 264110080,
+        "cpuInterval100ns": "50948055"
+      },
+      {
+        "pid": 10744,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45625344,
+        "name": "vantare-hub-ui",
+        "privateBytes": 12136448,
+        "cpuInterval100ns": "50948055"
+      },
+      {
+        "pid": 3096,
+        "cpuBefore100ns": "781250",
+        "cpuAfter100ns": "781250",
+        "workingSetBytes": 122970112,
+        "name": "vantare-hub-ui",
+        "privateBytes": 68890624,
+        "cpuInterval100ns": "50948055"
+      }
+    ],
+    "cpuSampleMilliseconds": 5094.8055,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 399126528,
+    "verifiedMs": 2442.6787,
+    "familyAfter": [3096, 8608, 10312, 10744, 10796],
+    "iteration": 1
+  },
+  {
+    "app": "electron",
+    "stderr": "HUB_QA_INTEGRITY first_walk_us=7541 verify_walk_and_hash_us=376325\n",
+    "phase": "closed",
+    "iteration": 1,
+    "survivors": []
+  },
+  {
+    "app": "gpui",
+    "phase": "before",
+    "iteration": 1,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\gpui-run-1"
+  },
+  {
+    "pid": 10324,
+    "visibleMs": 302.6197,
+    "app": "gpui",
+    "window": 69010422,
+    "phase": "visible",
+    "responsiveMs": 310.6407,
+    "foreground": true,
+    "iteration": 1,
+    "controlProof": "Win32: Apariencia to General; active underline and General card painted"
+  },
+  {
+    "workingSetBytes": 99409920,
+    "app": "gpui",
+    "cpuOneCorePercent": 0.30683238246714406,
+    "processMetrics": [
+      {
+        "pid": 10324,
+        "cpuBefore100ns": "312500",
+        "cpuAfter100ns": "468750",
+        "workingSetBytes": 99409920,
+        "name": "vantare",
+        "privateBytes": 114753536,
+        "cpuInterval100ns": "50923569"
+      }
+    ],
+    "cpuSampleMilliseconds": 5092.3569,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 114753536,
+    "verifiedMs": 1528.2849,
+    "familyAfter": [10324],
+    "iteration": 1
+  },
+  {
+    "app": "gpui",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 1
+  },
+  {
+    "workingSetBytes": 100311040,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 10324,
+        "cpuBefore100ns": "468750",
+        "cpuAfter100ns": "468750",
+        "workingSetBytes": 100311040,
+        "name": "vantare",
+        "privateBytes": 115777536,
+        "cpuInterval100ns": "50939753"
+      }
+    ],
+    "cpuSampleMilliseconds": 5093.9753,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 115777536,
+    "verifiedMs": 1528.2849,
+    "familyAfter": [10324],
+    "iteration": 1
+  },
+  {
+    "app": "gpui",
+    "stderr": "",
+    "phase": "closed",
+    "iteration": 1,
+    "survivors": []
+  },
+  {
+    "app": "gpui",
+    "phase": "before",
+    "iteration": 2,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\gpui-run-2"
+  },
+  {
+    "pid": 9448,
+    "visibleMs": 590.977,
+    "app": "gpui",
+    "window": 69075958,
+    "phase": "visible",
+    "responsiveMs": 599.288,
+    "foreground": true,
+    "iteration": 2,
+    "controlProof": "Win32: Apariencia to General; active underline and General card painted"
+  },
+  {
+    "workingSetBytes": 99287040,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 9448,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "0",
+        "workingSetBytes": 99287040,
+        "name": "vantare",
+        "privateBytes": 114515968,
+        "cpuInterval100ns": "50990246"
+      }
+    ],
+    "cpuSampleMilliseconds": 5099.0246,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 114515968,
+    "verifiedMs": 1807.3558,
+    "familyAfter": [9448],
+    "iteration": 2
+  },
+  {
+    "app": "gpui",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 2
+  },
+  {
+    "workingSetBytes": 100085760,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 9448,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "0",
+        "workingSetBytes": 100085760,
+        "name": "vantare",
+        "privateBytes": 115675136,
+        "cpuInterval100ns": "50937399"
+      }
+    ],
+    "cpuSampleMilliseconds": 5093.7399,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 115675136,
+    "verifiedMs": 1807.3558,
+    "familyAfter": [9448],
+    "iteration": 2
+  },
+  {
+    "app": "gpui",
+    "stderr": "",
+    "phase": "closed",
+    "iteration": 2,
+    "survivors": []
+  },
+  {
+    "app": "electron",
+    "phase": "before",
+    "iteration": 2,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\generations\\d9044dff2c4db874687078424f1588f1\\data\\hub-run-2"
+  },
+  {
+    "pid": 7076,
+    "visibleMs": 987.6239,
+    "app": "electron",
+    "window": 78185374,
+    "phase": "visible",
+    "responsiveMs": 997.9538,
+    "foreground": true,
+    "iteration": 2,
+    "controlProof": "Playwright: Apariencia to General, heading and focus verified"
+  },
+  {
+    "workingSetBytes": 408461312,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 7076,
+        "cpuBefore100ns": "312500",
+        "cpuAfter100ns": "312500",
+        "workingSetBytes": 9170944,
+        "name": "vantare-hub",
+        "privateBytes": 1728512,
+        "cpuInterval100ns": "50948204"
+      },
+      {
+        "pid": 9868,
+        "cpuBefore100ns": "1406250",
+        "cpuAfter100ns": "1406250",
+        "workingSetBytes": 107565056,
+        "name": "vantare-hub-ui",
+        "privateBytes": 50143232,
+        "cpuInterval100ns": "50948204"
+      },
+      {
+        "pid": 9384,
+        "cpuBefore100ns": "1562500",
+        "cpuAfter100ns": "1562500",
+        "workingSetBytes": 133054464,
+        "name": "vantare-hub-ui",
+        "privateBytes": 256724992,
+        "cpuInterval100ns": "50948204"
+      },
+      {
+        "pid": 4760,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "0",
+        "workingSetBytes": 45268992,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11776000,
+        "cpuInterval100ns": "50948204"
+      },
+      {
+        "pid": 6128,
+        "cpuBefore100ns": "312500",
+        "cpuAfter100ns": "312500",
+        "workingSetBytes": 113401856,
+        "name": "vantare-hub-ui",
+        "privateBytes": 61530112,
+        "cpuInterval100ns": "50948204"
+      }
+    ],
+    "cpuSampleMilliseconds": 5094.8204,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 381902848,
+    "verifiedMs": 2349.6142,
+    "familyAfter": [4760, 6128, 7076, 9384, 9868],
+    "iteration": 2
+  },
+  {
+    "app": "electron",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 2
+  },
+  {
+    "workingSetBytes": 422780928,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 7076,
+        "cpuBefore100ns": "312500",
+        "cpuAfter100ns": "312500",
+        "workingSetBytes": 9289728,
+        "name": "vantare-hub",
+        "privateBytes": 1753088,
+        "cpuInterval100ns": "50962399"
+      },
+      {
+        "pid": 9868,
+        "cpuBefore100ns": "1406250",
+        "cpuAfter100ns": "1406250",
+        "workingSetBytes": 108826624,
+        "name": "vantare-hub-ui",
+        "privateBytes": 51224576,
+        "cpuInterval100ns": "50962399"
+      },
+      {
+        "pid": 9384,
+        "cpuBefore100ns": "1562500",
+        "cpuAfter100ns": "1562500",
+        "workingSetBytes": 140668928,
+        "name": "vantare-hub-ui",
+        "privateBytes": 264495104,
+        "cpuInterval100ns": "50962399"
+      },
+      {
+        "pid": 4760,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "0",
+        "workingSetBytes": 45342720,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11800576,
+        "cpuInterval100ns": "50962399"
+      },
+      {
+        "pid": 6128,
+        "cpuBefore100ns": "625000",
+        "cpuAfter100ns": "625000",
+        "workingSetBytes": 118652928,
+        "name": "vantare-hub-ui",
+        "privateBytes": 64122880,
+        "cpuInterval100ns": "50962399"
+      }
+    ],
+    "cpuSampleMilliseconds": 5096.2399,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 393396224,
+    "verifiedMs": 2349.6142,
+    "familyAfter": [4760, 6128, 7076, 9384, 9868],
+    "iteration": 2
+  },
+  {
+    "app": "electron",
+    "stderr": "HUB_QA_INTEGRITY first_walk_us=7799 verify_walk_and_hash_us=367867\n",
+    "phase": "closed",
+    "iteration": 2,
+    "survivors": []
+  },
+  {
+    "app": "electron",
+    "phase": "before",
+    "iteration": 3,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\generations\\d9044dff2c4db874687078424f1588f1\\data\\hub-run-3"
+  },
+  {
+    "pid": 1432,
+    "visibleMs": 1086.6473,
+    "app": "electron",
+    "window": 3736574,
+    "phase": "visible",
+    "responsiveMs": 1109.541,
+    "foreground": true,
+    "iteration": 3,
+    "controlProof": "Playwright: Apariencia to General, heading and focus verified"
+  },
+  {
+    "workingSetBytes": 409530368,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 1432,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 9121792,
+        "name": "vantare-hub",
+        "privateBytes": 1675264,
+        "cpuInterval100ns": "50904540"
+      },
+      {
+        "pid": 7880,
+        "cpuBefore100ns": "937500",
+        "cpuAfter100ns": "937500",
+        "workingSetBytes": 107876352,
+        "name": "vantare-hub-ui",
+        "privateBytes": 50626560,
+        "cpuInterval100ns": "50904540"
+      },
+      {
+        "pid": 5188,
+        "cpuBefore100ns": "468750",
+        "cpuAfter100ns": "468750",
+        "workingSetBytes": 133238784,
+        "name": "vantare-hub-ui",
+        "privateBytes": 258994176,
+        "cpuInterval100ns": "50904540"
+      },
+      {
+        "pid": 11124,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45404160,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11960320,
+        "cpuInterval100ns": "50904540"
+      },
+      {
+        "pid": 3468,
+        "cpuBefore100ns": "1718750",
+        "cpuAfter100ns": "1718750",
+        "workingSetBytes": 113889280,
+        "name": "vantare-hub-ui",
+        "privateBytes": 60928000,
+        "cpuInterval100ns": "50904540"
+      }
+    ],
+    "cpuSampleMilliseconds": 5090.454,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 384184320,
+    "verifiedMs": 2406.9113,
+    "familyAfter": [1432, 3468, 5188, 7880, 11124],
+    "iteration": 3
+  },
+  {
+    "app": "electron",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 3
+  },
+  {
+    "workingSetBytes": 422703104,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 1432,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 9244672,
+        "name": "vantare-hub",
+        "privateBytes": 1703936,
+        "cpuInterval100ns": "50979264"
+      },
+      {
+        "pid": 7880,
+        "cpuBefore100ns": "937500",
+        "cpuAfter100ns": "937500",
+        "workingSetBytes": 108445696,
+        "name": "vantare-hub-ui",
+        "privateBytes": 50991104,
+        "cpuInterval100ns": "50979264"
+      },
+      {
+        "pid": 5188,
+        "cpuBefore100ns": "468750",
+        "cpuAfter100ns": "468750",
+        "workingSetBytes": 140324864,
+        "name": "vantare-hub-ui",
+        "privateBytes": 263335936,
+        "cpuInterval100ns": "50979264"
+      },
+      {
+        "pid": 11124,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45473792,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11980800,
+        "cpuInterval100ns": "50979264"
+      },
+      {
+        "pid": 3468,
+        "cpuBefore100ns": "1718750",
+        "cpuAfter100ns": "1718750",
+        "workingSetBytes": 119214080,
+        "name": "vantare-hub-ui",
+        "privateBytes": 63954944,
+        "cpuInterval100ns": "50979264"
+      }
+    ],
+    "cpuSampleMilliseconds": 5097.9264,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 391966720,
+    "verifiedMs": 2406.9113,
+    "familyAfter": [1432, 3468, 5188, 7880, 11124],
+    "iteration": 3
+  },
+  {
+    "app": "electron",
+    "stderr": "HUB_QA_INTEGRITY first_walk_us=7592 verify_walk_and_hash_us=346920\n",
+    "phase": "closed",
+    "iteration": 3,
+    "survivors": []
+  },
+  {
+    "app": "gpui",
+    "phase": "before",
+    "iteration": 3,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\gpui-run-3"
+  },
+  {
+    "pid": 11120,
+    "visibleMs": 343.8804,
+    "app": "gpui",
+    "window": 47251606,
+    "phase": "visible",
+    "responsiveMs": 363.9839,
+    "foreground": true,
+    "iteration": 3,
+    "controlProof": "Win32: Apariencia to General; active underline and General card painted"
+  },
+  {
+    "workingSetBytes": 99434496,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 11120,
+        "cpuBefore100ns": "625000",
+        "cpuAfter100ns": "625000",
+        "workingSetBytes": 99434496,
+        "name": "vantare",
+        "privateBytes": 114733056,
+        "cpuInterval100ns": "50966632"
+      }
+    ],
+    "cpuSampleMilliseconds": 5096.6632,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 114733056,
+    "verifiedMs": 1586.067,
+    "familyAfter": [11120],
+    "iteration": 3
+  },
+  {
+    "app": "gpui",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 3
+  },
+  {
+    "workingSetBytes": 100401152,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 11120,
+        "cpuBefore100ns": "625000",
+        "cpuAfter100ns": "625000",
+        "workingSetBytes": 100401152,
+        "name": "vantare",
+        "privateBytes": 115929088,
+        "cpuInterval100ns": "51122213"
+      }
+    ],
+    "cpuSampleMilliseconds": 5112.2213,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 115929088,
+    "verifiedMs": 1586.067,
+    "familyAfter": [11120],
+    "iteration": 3
+  },
+  {
+    "app": "gpui",
+    "stderr": "",
+    "phase": "closed",
+    "iteration": 3,
+    "survivors": []
+  },
+  {
+    "app": "gpui",
+    "phase": "before",
+    "iteration": 4,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\gpui-run-4"
+  },
+  {
+    "pid": 2152,
+    "visibleMs": 293.3704,
+    "app": "gpui",
+    "window": 11142094,
+    "phase": "visible",
+    "responsiveMs": 311.4691,
+    "foreground": true,
+    "iteration": 4,
+    "controlProof": "Win32: Apariencia to General; active underline and General card painted"
+  },
+  {
+    "workingSetBytes": 99295232,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 2152,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 99295232,
+        "name": "vantare",
+        "privateBytes": 114475008,
+        "cpuInterval100ns": "50976856"
+      }
+    ],
+    "cpuSampleMilliseconds": 5097.6856,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 114475008,
+    "verifiedMs": 1521.8412,
+    "familyAfter": [2152],
+    "iteration": 4
+  },
+  {
+    "app": "gpui",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 4
+  },
+  {
+    "workingSetBytes": 100462592,
+    "app": "gpui",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 2152,
+        "cpuBefore100ns": "312500",
+        "cpuAfter100ns": "312500",
+        "workingSetBytes": 100462592,
+        "name": "vantare",
+        "privateBytes": 115859456,
+        "cpuInterval100ns": "50912973"
+      }
+    ],
+    "cpuSampleMilliseconds": 5091.2973,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 115859456,
+    "verifiedMs": 1521.8412,
+    "familyAfter": [2152],
+    "iteration": 4
+  },
+  {
+    "app": "gpui",
+    "stderr": "",
+    "phase": "closed",
+    "iteration": 4,
+    "survivors": []
+  },
+  {
+    "app": "electron",
+    "phase": "before",
+    "iteration": 4,
+    "profile": "D:\\VantareServer\\qa\\isa-1995-measure-1\\paired-4b60bc7058e6445c\\generations\\d9044dff2c4db874687078424f1588f1\\data\\hub-run-4"
+  },
+  {
+    "pid": 8548,
+    "visibleMs": 812.3659,
+    "app": "electron",
+    "window": 40829880,
+    "phase": "visible",
+    "responsiveMs": 818.7611,
+    "foreground": true,
+    "iteration": 4,
+    "controlProof": "Playwright: Apariencia to General, heading and focus verified"
+  },
+  {
+    "workingSetBytes": 408088576,
+    "app": "electron",
+    "cpuOneCorePercent": 0.30615105173515833,
+    "processMetrics": [
+      {
+        "pid": 8548,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "0",
+        "workingSetBytes": 9146368,
+        "name": "vantare-hub",
+        "privateBytes": 1708032,
+        "cpuInterval100ns": "51036898"
+      },
+      {
+        "pid": 5544,
+        "cpuBefore100ns": "1093750",
+        "cpuAfter100ns": "1093750",
+        "workingSetBytes": 107638784,
+        "name": "vantare-hub-ui",
+        "privateBytes": 49852416,
+        "cpuInterval100ns": "51036898"
+      },
+      {
+        "pid": 8916,
+        "cpuBefore100ns": "1250000",
+        "cpuAfter100ns": "1250000",
+        "workingSetBytes": 132706304,
+        "name": "vantare-hub-ui",
+        "privateBytes": 256552960,
+        "cpuInterval100ns": "51036898"
+      },
+      {
+        "pid": 4760,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45297664,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11894784,
+        "cpuInterval100ns": "51036898"
+      },
+      {
+        "pid": 10940,
+        "cpuBefore100ns": "781250",
+        "cpuAfter100ns": "781250",
+        "workingSetBytes": 113299456,
+        "name": "vantare-hub-ui",
+        "privateBytes": 61431808,
+        "cpuInterval100ns": "51036898"
+      }
+    ],
+    "cpuSampleMilliseconds": 5103.6898,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "settings",
+    "privateBytes": 381440000,
+    "verifiedMs": 2233.4853,
+    "familyAfter": [4760, 5544, 8548, 8916, 10940],
+    "iteration": 4
+  },
+  {
+    "app": "electron",
+    "phase": "navigate",
+    "section": "home",
+    "iteration": 4
+  },
+  {
+    "workingSetBytes": 419885056,
+    "app": "electron",
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "pid": 8548,
+        "cpuBefore100ns": "0",
+        "cpuAfter100ns": "0",
+        "workingSetBytes": 9273344,
+        "name": "vantare-hub",
+        "privateBytes": 1740800,
+        "cpuInterval100ns": "51182446"
+      },
+      {
+        "pid": 5544,
+        "cpuBefore100ns": "1093750",
+        "cpuAfter100ns": "1093750",
+        "workingSetBytes": 106082304,
+        "name": "vantare-hub-ui",
+        "privateBytes": 48377856,
+        "cpuInterval100ns": "51182446"
+      },
+      {
+        "pid": 8916,
+        "cpuBefore100ns": "1718750",
+        "cpuAfter100ns": "1718750",
+        "workingSetBytes": 140496896,
+        "name": "vantare-hub-ui",
+        "privateBytes": 262029312,
+        "cpuInterval100ns": "51182446"
+      },
+      {
+        "pid": 4760,
+        "cpuBefore100ns": "156250",
+        "cpuAfter100ns": "156250",
+        "workingSetBytes": 45404160,
+        "name": "vantare-hub-ui",
+        "privateBytes": 11939840,
+        "cpuInterval100ns": "51182446"
+      },
+      {
+        "pid": 10940,
+        "cpuBefore100ns": "937500",
+        "cpuAfter100ns": "937500",
+        "workingSetBytes": 118628352,
+        "name": "vantare-hub-ui",
+        "privateBytes": 64442368,
+        "cpuInterval100ns": "51182446"
+      }
+    ],
+    "cpuSampleMilliseconds": 5118.2446,
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "section": "home",
+    "privateBytes": 388530176,
+    "verifiedMs": 2233.4853,
+    "familyAfter": [4760, 5544, 8548, 8916, 10940],
+    "iteration": 4
+  },
+  {
+    "app": "electron",
+    "stderr": "HUB_QA_INTEGRITY first_walk_us=7725 verify_walk_and_hash_us=349390\n",
+    "phase": "closed",
+    "iteration": 4,
+    "survivors": []
+  }
+]

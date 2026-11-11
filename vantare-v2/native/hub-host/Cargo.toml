@@ -41,5 +41,9 @@ ts-rs = "=12.0.1"
 name = "export-types"
 required-features = ["bindings"]
 
+[[example]]
+name = "measure-peer"
+required-features = ["qa-e2e"]
+
 [lints]
 workspace = true

@@ -1,0 +1,12 @@
+{
+  "before": 0.0,
+  "afterGet": 0.0,
+  "exe": "C:\\Program Files\\nodejs\\node.exe",
+  "after": 0.0,
+  "cpuDeltaMs": 0.0,
+  "wallMs": 509.1757,
+  "parentPid": 8020,
+  "done": "done",
+  "actualPid": 8020,
+  "beforeGet": 0.0
+}

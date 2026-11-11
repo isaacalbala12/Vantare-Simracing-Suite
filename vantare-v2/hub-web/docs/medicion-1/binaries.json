@@ -1,0 +1,12 @@
+[
+  {
+    "Algorithm": "SHA256",
+    "Hash": "3C0C9DC185A758FF9EEB34909C637DFACCFCF2C00D9FE276D9A8E5C09CA8DDC0",
+    "Path": "D:\\VantareServer\\qa\\isa-1995-measure-1\\artifacts\\vantare-hub.exe"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "7BEFB115C1E93668E1CF6755471E7495386A3371F434C87FFC7B1153DCFABC6C",
+    "Path": "D:\\VantareServer\\qa\\isa-1995-measure-1\\artifacts\\measure-peer.exe"
+  }
+]

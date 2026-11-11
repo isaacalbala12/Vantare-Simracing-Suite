@@ -1,0 +1,149 @@
+{
+  "gpui.visibleMs": {
+    "n": 5,
+    "median": 343.8804,
+    "min": 293.3704,
+    "max": 590.977,
+    "mad": 50.50999999999999
+  },
+  "electron.visibleMs": {
+    "n": 5,
+    "median": 987.6239,
+    "min": 812.3659,
+    "max": 7065.0449,
+    "mad": 99.02340000000004
+  },
+  "gpui.responsiveMs": {
+    "n": 5,
+    "median": 363.9839,
+    "min": 310.6407,
+    "max": 599.288,
+    "mad": 53.343200000000024
+  },
+  "electron.responsiveMs": {
+    "n": 5,
+    "median": 997.9538,
+    "min": 818.7611,
+    "max": 7072.4521,
+    "mad": 111.58719999999994
+  },
+  "gpui.interactiveMs": {
+    "n": 5,
+    "median": 1586.067,
+    "min": 1521.8412,
+    "max": 1807.3558,
+    "mad": 64.22579999999994
+  },
+  "electron.interactiveMs": {
+    "n": 5,
+    "median": 2406.9113,
+    "min": 2233.4853,
+    "max": 7903.3506,
+    "mad": 57.29710000000023
+  },
+  "gpui.settings.privateMiB": {
+    "n": 5,
+    "median": 109.4140625,
+    "min": 109.171875,
+    "max": 109.4375,
+    "mad": 0.0234375
+  },
+  "electron.settings.privateMiB": {
+    "n": 5,
+    "median": 366.38671875,
+    "min": 363.76953125,
+    "max": 401.24609375,
+    "mad": 2.6171875
+  },
+  "gpui.settings.workingSetMiB": {
+    "n": 5,
+    "median": 94.79296875,
+    "min": 94.6875,
+    "max": 94.828125,
+    "mad": 0.03515625
+  },
+  "electron.settings.workingSetMiB": {
+    "n": 5,
+    "median": 390.55859375,
+    "min": 389.18359375,
+    "max": 399.125,
+    "mad": 1.375
+  },
+  "gpui.settings.cpuOneCorePercent": {
+    "n": 5,
+    "median": 0,
+    "min": 0,
+    "max": 0.30683238246714406,
+    "mad": 0
+  },
+  "electron.settings.cpuOneCorePercent": {
+    "n": 5,
+    "median": 0,
+    "min": 0,
+    "max": 0.30615105173515833,
+    "mad": 0
+  },
+  "gpui.home.privateMiB": {
+    "n": 5,
+    "median": 110.4921875,
+    "min": 110.31640625,
+    "max": 110.609375,
+    "mad": 0.078125
+  },
+  "electron.home.privateMiB": {
+    "n": 5,
+    "median": 375.171875,
+    "min": 370.53125,
+    "max": 382.41796875,
+    "mad": 4.640625
+  },
+  "gpui.home.workingSetMiB": {
+    "n": 5,
+    "median": 95.72265625,
+    "min": 95.44921875,
+    "max": 95.80859375,
+    "mad": 0.05859375
+  },
+  "electron.home.workingSetMiB": {
+    "n": 5,
+    "median": 403.1953125,
+    "min": 400.43359375,
+    "max": 410.828125,
+    "mad": 2.76171875
+  },
+  "gpui.home.cpuOneCorePercent": {
+    "n": 5,
+    "median": 0,
+    "min": 0,
+    "max": 0,
+    "mad": 0
+  },
+  "electron.home.cpuOneCorePercent": {
+    "n": 5,
+    "median": 0,
+    "min": 0,
+    "max": 0,
+    "mad": 0
+  },
+  "integrity.walkMs": {
+    "n": 5,
+    "median": 7.725,
+    "min": 7.541,
+    "max": 7.861,
+    "mad": 0.133
+  },
+  "integrity.verifyMs": {
+    "n": 5,
+    "median": 367.867,
+    "min": 346.92,
+    "max": 405.68,
+    "mad": 18.477000000000032
+  },
+  "integrity.totalMs": {
+    "n": 5,
+    "median": 375.666,
+    "min": 354.512,
+    "max": 413.541,
+    "mad": 18.550999999999988
+  }
+}

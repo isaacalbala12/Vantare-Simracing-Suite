@@ -4,17 +4,20 @@ import {
   calendarSeriesLimit,
   calendarStartsLimit,
 } from "../../../contract/generated/calendar";
+import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarLiveView } from "../../ui/CalendarLiveView";
+import { CalendarMineView } from "../../ui/CalendarMineView";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
 import { CalendarWeekView } from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarPreferences } from "./CalendarPreferences";
+import { useCalendarQARuns } from "./CalendarQARuns";
 import { useCalendar } from "./CalendarState";
 import { publication } from "./schedule";
 
@@ -31,6 +34,8 @@ export default function CalendarEntry() {
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
+  const { hello } = useHost();
+  const runs = useCalendarQARuns(state.allowed && hello?.demo === true);
   const raw = state.view;
   const view = raw && {
     ...raw,
@@ -83,6 +88,7 @@ export default function CalendarEntry() {
         title={text.section}
         tabs={[
           { id: "upcoming", etiqueta: text.upcoming, visible: state.allowed },
+          { id: "mine", etiqueta: text.mine, visible: state.allowed },
           { id: "calendar", etiqueta: text.calendar, visible: state.allowed },
         ]}
         activeTab={activeTab}
@@ -154,6 +160,20 @@ export default function CalendarEntry() {
             {launcher.failure && <p role="alert">{text.launchFailed}</p>}
             {!state.loaded && !view ? (
               <p role="status">{text.loading}</p>
+            ) : activeTab === "mine" && schedule && view ? (
+              <CalendarMineView
+                schedule={schedule}
+                alerts={alerts}
+                following={view.following}
+                utc={view.utc}
+                now={state.now}
+                limit={calendarStartsLimit}
+                runs={runs}
+                canLaunch={launcher.canLaunch}
+                onUpcoming={() => setActiveTab("upcoming")}
+                onSeries={() => setActiveTab("calendar")}
+                onLaunch={() => void launcher.launch()}
+              />
             ) : activeTab === "calendar" && view ? (
               <CalendarWeekView
                 view={{ ...view, official: schedule ?? view.official }}

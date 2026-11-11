@@ -254,7 +254,7 @@ it("clears a rejected code and never starts browser login for an email error", a
     "123456",
   );
   await user.click(screen.getByRole("button", { name: text.submit.verify }));
-  await screen.findByText(text.busy);
+  await screen.findByText(text.reenterCode);
   expect(
     (
       screen.getByRole("textbox", {
@@ -263,7 +263,7 @@ it("clears a rejected code and never starts browser login for an email error", a
     ).value,
   ).toBe("");
   await user.click(screen.getByRole("button", { name: text.retry }));
-  await waitFor(() => expect(screen.queryByText(text.busy)).toBeNull());
+  await waitFor(() => expect(screen.queryByText(text.reenterCode)).toBeNull());
   expect(
     calls.mock.calls.filter(
       ([r]) => r.method === "account.retry" || r.method === "account.begin",

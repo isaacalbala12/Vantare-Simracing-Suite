@@ -1,5 +1,5 @@
 import { OTPField } from "@base-ui/react/otp-field";
-import { useId } from "react";
+import { type Ref, useId } from "react";
 import { accountLimits } from "../../contract/generated/account";
 import { accessText as text } from "../i18n/access.es";
 export function OtpField({
@@ -8,7 +8,9 @@ export function OtpField({
   onChange,
   disabled = false,
   readOnly = false,
+  fieldRef,
 }: {
+  fieldRef?: Ref<HTMLDivElement>;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -26,6 +28,7 @@ export function OtpField({
         {label}
       </label>
       <OTPField.Root
+        ref={fieldRef}
         id={`${id}-input`}
         className="v-input v-access-otp"
         length={accountLimits.code}

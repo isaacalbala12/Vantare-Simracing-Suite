@@ -33,8 +33,8 @@ export function EmailForm({ value }: { value: EmailView }) {
   const wasPending = useRef(false);
   const secretStage = useRef("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useSecretInput();
-  const [code, setCode] = useSecretInput();
+  const [password, setPassword, passwordRef] = useSecretInput();
+  const [code, setCode, codeRef] = useSecretInput();
   const [signOutOthers, setSignOutOthers] = useState(false);
   const clearSecrets = useCallback(() => {
     setPassword("");
@@ -149,6 +149,7 @@ export function EmailForm({ value }: { value: EmailView }) {
               aria-label={text.password}
               data-access-secret=""
               type="password"
+              ref={passwordRef}
               autoComplete={
                 value.mode === "signInPassword"
                   ? "current-password"
@@ -171,6 +172,7 @@ export function EmailForm({ value }: { value: EmailView }) {
         <>
           <OtpField
             label={text.code}
+            fieldRef={codeRef}
             value={code}
             onChange={setCode}
             readOnly={pending}
@@ -197,6 +199,7 @@ export function EmailForm({ value }: { value: EmailView }) {
             data-access-initial=""
             data-access-secret=""
             type="password"
+            ref={passwordRef}
             autoComplete="new-password"
             spellCheck={false}
             required

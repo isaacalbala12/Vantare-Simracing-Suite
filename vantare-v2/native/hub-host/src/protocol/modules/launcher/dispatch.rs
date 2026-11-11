@@ -329,28 +329,4 @@ impl Session {
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
-    pub(super) fn picked_executable(
-        &mut self,
-        pipe: &mut Pipe,
-        id: u32,
-        path: Option<&str>,
-    ) -> io::Result<()> {
-        let picked = self.app_picker.complete_dialog(
-            &crate::launcher::apps::ExecutableSelection {
-                id,
-                path: path.map(str::to_owned),
-            },
-            std::time::Instant::now(),
-        );
-        frame::write(
-            pipe,
-            &match picked {
-                Ok(value) => HostToUi::Response {
-                    id,
-                    result: Reply::LauncherAppPick { value },
-                },
-                Err(error) => HostToUi::Failure { id, error },
-            },
-        )
-    }
 }

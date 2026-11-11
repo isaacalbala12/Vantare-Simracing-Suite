@@ -241,19 +241,19 @@ mod tests {
         );
         assert!(picker.pending.is_none());
         selection.id = 7;
-        let picked = picker.complete_dialog(&selection, now).unwrap().unwrap();
+        let chosen = picker.complete_dialog(&selection, now).unwrap().unwrap();
         assert_eq!(
             picker.complete_dialog(&selection, now),
             Err(HostError::Denied)
         );
-        assert_eq!(picker.pending.as_ref().unwrap().token, picked.token);
+        assert_eq!(picker.pending.as_ref().unwrap().token, chosen.token);
         picker.request_dialog(9, now).unwrap();
         selection.id = 9;
         assert_eq!(
             picker.complete_dialog(&selection, now + Duration::from_secs(PICK_LIFETIME_SECONDS)),
             Err(HostError::Denied)
         );
-        assert_eq!(picker.pending.as_ref().unwrap().token, picked.token);
+        assert_eq!(picker.pending.as_ref().unwrap().token, chosen.token);
         picker.request_dialog(10, now).unwrap();
         selection.id = 10;
         selection.path = None;
@@ -262,7 +262,7 @@ mod tests {
             picker.complete_dialog(&selection, now),
             Err(HostError::Denied)
         );
-        assert_eq!(picker.pending.as_ref().unwrap().token, picked.token);
+        assert_eq!(picker.pending.as_ref().unwrap().token, chosen.token);
     }
     #[test]
     fn app_arguments_cannot_cross_the_contract_and_saved_arguments_are_preserved() {
@@ -557,4 +557,23 @@ fn edit(
             HostError::Io
         }
     })
+}
+
+/// Trusted main-process channel. The picker enforces request ownership before projection.
+pub fn picked_executable(
+    picker: &mut Picker,
+    pipe: &mut impl std::io::Write,
+    selection: &ExecutableSelection,
+) -> std::io::Result<()> {
+    let result = match picker.complete_dialog(selection, Instant::now()) {
+        Ok(value) => crate::protocol::HostToUi::Response {
+            id: selection.id,
+            result: crate::protocol::Reply::LauncherAppPick { value },
+        },
+        Err(error) => crate::protocol::HostToUi::Failure {
+            id: selection.id,
+            error,
+        },
+    };
+    crate::frame::write(pipe, &result)
 }

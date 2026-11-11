@@ -38,98 +38,8 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    let mut host: Vec<HostToUi> = vec![
-        HostToUi::Response {
-            id: 1,
-            result: profile_keys_sample(),
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherProfileGet {
-                value: ProfileEditorView {
-                    revision: "0".repeat(64),
-                    draft: crate::launcher::editor::new_draft(),
-                },
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherProfileSave {
-                value: crate::launcher::LauncherView::default(),
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherGet {
-                value: serde_json::from_str(include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../../hub-web/fixtures/launcher-base.json"
-                )))
-                .expect("launcher fixture"),
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherLaunch { accepted: true },
-        },
-        HostToUi::Failure {
-            id: 1,
-            error: crate::protocol::HostError::LauncherConflict {
-                current: crate::launcher::LauncherView::default(),
-            },
-        },
-        HostToUi::Event {
-            event: crate::protocol::Event::Launcher {
-                value: crate::launcher::LauncherView::default(),
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherFavorite { accepted: false },
-        },
-    ];
-    let mut ui: Vec<UiToHost> = vec![
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherProfileGet { id: None },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherProfileGet {
-                id: Some("creator".into()),
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherProfileSave {
-                draft: crate::launcher::editor::draft(
-                    &vantare_launcher::Document::fresh_install().profiles[0],
-                ),
-                base_revision: "0".repeat(64),
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherGet {},
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherLaunch {
-                profile: "creator".into(),
-                base_revision: "0".repeat(64),
-            },
-        },
-        UiToHost::Subscribe {
-            topic: crate::protocol::Topic::Launcher,
-        },
-        UiToHost::Unsubscribe {
-            topic: crate::protocol::Topic::Launcher,
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherFavorite {},
-        },
-    ];
+    let mut host = launcher_host_samples();
+    let mut ui = launcher_ui_samples();
 
     host.extend(
         application_reply_samples()
@@ -272,6 +182,104 @@ fn application_request_samples() -> [Request; 7] {
             id: "lmu".into(),
             favorite: true,
             base_revision: "0".repeat(64),
+        },
+    ]
+}
+
+fn launcher_host_samples() -> Vec<HostToUi> {
+    vec![
+        HostToUi::Response {
+            id: 1,
+            result: profile_keys_sample(),
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherProfileGet {
+                value: ProfileEditorView {
+                    revision: "0".repeat(64),
+                    draft: crate::launcher::editor::new_draft(),
+                },
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherProfileSave {
+                value: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherGet {
+                value: serde_json::from_str(include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../hub-web/fixtures/launcher-base.json"
+                )))
+                .expect("launcher fixture"),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherLaunch { accepted: true },
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: crate::protocol::HostError::LauncherConflict {
+                current: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Event {
+            event: crate::protocol::Event::Launcher {
+                value: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherFavorite { accepted: false },
+        },
+    ]
+}
+
+fn launcher_ui_samples() -> Vec<UiToHost> {
+    vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileGet { id: None },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileGet {
+                id: Some("creator".into()),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileSave {
+                draft: crate::launcher::editor::draft(
+                    &vantare_launcher::Document::fresh_install().profiles[0],
+                ),
+                base_revision: "0".repeat(64),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherGet {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherLaunch {
+                profile: "creator".into(),
+                base_revision: "0".repeat(64),
+            },
+        },
+        UiToHost::Subscribe {
+            topic: crate::protocol::Topic::Launcher,
+        },
+        UiToHost::Unsubscribe {
+            topic: crate::protocol::Topic::Launcher,
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherFavorite {},
         },
     ]
 }

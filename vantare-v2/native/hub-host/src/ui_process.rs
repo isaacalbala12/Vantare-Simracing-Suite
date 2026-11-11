@@ -305,7 +305,7 @@ impl Session {
                 }
             }
             UiToHost::PickedExecutable(selection) => {
-                self.picked_executable(pipe, selection.id, selection.path.as_deref())?;
+                crate::launcher::apps::picked_executable(&mut self.app_picker, pipe, selection)?;
             }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic } => {

@@ -30,6 +30,16 @@ export function createMockHost(
     );
   sceneName = visual?.[2] ?? sceneName;
   const core = structuredClone(coreScene) as CoreStatus;
+  // Match the local GPUI reference bank; never changes access from the real host.
+  if (visual)
+    core.access = {
+      verified: true,
+      blocked: false,
+      tester: true,
+      calendar: true,
+      engineer: true,
+      strategy: true,
+    };
 
   const notes: MockContext["notes"] = [];
   const context: MockContext = {

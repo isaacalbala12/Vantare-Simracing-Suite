@@ -1,5 +1,5 @@
 //! Local preferences: merge only the chosen field and compare observed bytes atomically.
-use super::{SERIES_LIMIT, State, TEXT_LIMIT, TIMESTAMP_LIMIT, text, unique};
+use super::{SERIES_LIMIT, State, TEXT_LIMIT, TIMESTAMP_LIMIT, nonblank, text, unique};
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -95,14 +95,11 @@ impl CalendarAlerts {
             && self.bands.len() <= BANDS_LIMIT
             && self.slots.len() <= SLOTS_LIMIT
             && self.bands.iter().all(|b| {
-                text(&b.series_id)
-                    && !b.series_id.trim().is_empty()
-                    && b.from < b.to
-                    && b.to <= DAY_MINUTES
+                text(&b.series_id) && nonblank(&b.series_id) && b.from < b.to && b.to <= DAY_MINUTES
             })
             && self.slots.iter().all(|s| {
                 text(&s.series_id)
-                    && !s.series_id.trim().is_empty()
+                    && nonblank(&s.series_id)
                     && (0..=TIMESTAMP_LIMIT).contains(&s.at)
             })
     }
@@ -301,7 +298,7 @@ impl State {
         followed: bool,
         expected: &str,
     ) -> Result<CalendarConfigView, HostError> {
-        if !revision_valid(expected) || id.trim().is_empty() || id.len() > TEXT_LIMIT || !text(id) {
+        if !revision_valid(expected) || !nonblank(id) || id.len() > TEXT_LIMIT || !text(id) {
             return Err(HostError::Rejected);
         }
         let config = self.config()?;

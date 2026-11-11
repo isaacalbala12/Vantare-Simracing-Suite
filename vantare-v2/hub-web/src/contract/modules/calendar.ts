@@ -93,9 +93,9 @@ function series(v: unknown) {
     ]) &&
     texts.every((k) => text(v[k])) &&
     typeof v.id === "string" &&
-    v.id.replace(/\uFEFF/gu, "").trim().length > 0 &&
+    v.id.trim().length > 0 &&
     typeof v.name === "string" &&
-    v.name.replace(/\uFEFF/gu, "").trim().length > 0 &&
+    v.name.trim().length > 0 &&
     durations.every((k) => duration(v[k])) &&
     typeof v.tyreWarmers === "boolean" &&
     typeof v.startOffsetMinute === "number" &&
@@ -184,7 +184,7 @@ export function isRequest(v: Record<string, unknown>) {
       return (
         exact(v, ["method", "seriesId", "followed", "expectedRevision"]) &&
         text(v.seriesId) &&
-        v.seriesId.replace(/\uFEFF/gu, "").trim().length > 0 &&
+        v.seriesId.trim().length > 0 &&
         typeof v.followed === "boolean" &&
         revision(v.expectedRevision)
       );

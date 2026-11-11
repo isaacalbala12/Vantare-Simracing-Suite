@@ -94,7 +94,7 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
         Reply::ReportSend {
             value: crate::testing::ReportReceiptView {
                 id: "15350000-0000-0000-0000-000000000001".into(),
-                state: "submitted".into(),
+                state: "received".into(),
                 created_at: "2026-11-10T12:00:00Z".into(),
                 draft_state: crate::testing::ReportDraftState::Cleared,
             },

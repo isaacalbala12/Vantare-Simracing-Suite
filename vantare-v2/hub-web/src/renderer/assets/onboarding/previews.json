@@ -1,0 +1,78 @@
+{
+  "broadcast-tower": [
+    1400.0,
+    56.0
+  ],
+  "car-damage-numbers": [
+    164.0,
+    176.0
+  ],
+  "car-damage-visual": [
+    200.0,
+    272.0
+  ],
+  "delta": [
+    150.0,
+    36.0
+  ],
+  "delta-trace": [
+    760.0,
+    192.0
+  ],
+  "fastest-lap": [
+    480.0,
+    104.0
+  ],
+  "fuel-strategy": [
+    300.0,
+    204.0
+  ],
+  "head-to-head": [
+    780.0,
+    72.0
+  ],
+  "input-telemetry": [
+    600.0,
+    84.0
+  ],
+  "multiclass-relative": [
+    440.0,
+    245.0
+  ],
+  "pedals": [
+    96.0,
+    160.0
+  ],
+  "pedals-telemetry": [
+    380.0,
+    64.0
+  ],
+  "racing-flags": [
+    340.0,
+    88.0
+  ],
+  "radar": [
+    220.0,
+    220.0
+  ],
+  "relative": [
+    420.0,
+    265.0
+  ],
+  "session-alerts": [
+    480.0,
+    88.0
+  ],
+  "standings": [
+    520.0,
+    283.0
+  ],
+  "track-map": [
+    320.0,
+    248.0
+  ],
+  "track-weather": [
+    280.0,
+    210.0
+  ]
+}

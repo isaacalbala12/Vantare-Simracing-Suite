@@ -73,7 +73,13 @@ const state = (action = "state", x = 0, y = 0) =>
       ],
       { windowsHide: true, encoding: "utf8" },
     ),
-  ) as { minimized: boolean; maximized: boolean; left: number; top: number };
+  ) as {
+    minimized: boolean;
+    maximized: boolean;
+    left: number;
+    top: number;
+    hit: number | null;
+  };
 try {
   let endpoint = "";
   await until(
@@ -112,6 +118,24 @@ try {
       Math.round(caption.x + caption.width / 2),
       Math.round(caption.y + caption.height / 2),
     ] as const;
+  }
+  for (const interactive of [
+    page.getByRole("button", { name: "Cerrar ventana", exact: true }),
+    ...(!errorMode
+      ? [page.getByRole("tab", { name: "General", exact: true })]
+      : []),
+  ]) {
+    const bounds = await interactive.boundingBox();
+    assert.ok(bounds);
+    assert.equal(
+      state(
+        "hitTest",
+        Math.round(bounds.x + bounds.width / 2),
+        Math.round(bounds.y + bounds.height / 2),
+      ).hit,
+      1,
+      "interactive chrome stays HTCLIENT, never caption dragging",
+    );
   }
   state("drag", ...(await titlePoint()));
   const dragged = state();
@@ -215,6 +239,8 @@ try {
         pid: child.pid,
         data,
         snapshots,
+        dragged,
+        interactiveHitTest: true,
         captionDrag: true,
         captionDoubleClick: true,
         errorMode,

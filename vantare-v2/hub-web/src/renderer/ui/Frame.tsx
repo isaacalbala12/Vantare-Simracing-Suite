@@ -27,9 +27,11 @@ export function TitleBar({
       </span>
       <SectionTabsSlot />
       <div className="v-titlebar-actions">
-        <span role="status" className="v-simulator-pill">
-          {status}
-        </span>
+        {status && (
+          <span role="status" className="v-simulator-pill">
+            {status}
+          </span>
+        )}
         {actions}
       </div>
       {controls}

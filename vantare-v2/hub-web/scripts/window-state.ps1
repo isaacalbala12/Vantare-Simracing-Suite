@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[ValidateSet("state","drag","doubleClick")][string]$Action="state",[int]$X=0,[int]$Y=0)
+param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[ValidateSet("state","drag","doubleClick","hitTest")][string]$Action="state",[int]$X=0,[int]$Y=0)
 $ErrorActionPreference='Stop'
 $process=Get-Process -Id $ProcessId
 if($process.Path -ne [IO.Path]::GetFullPath($Executable)){throw 'Unexpected QA process image'}
@@ -20,10 +20,15 @@ public static class QaWindowState {
  [DllImport("user32.dll")] static extern IntPtr SendMessageTimeoutW(IntPtr h,uint msg,IntPtr wp,IntPtr lp,uint flags,uint timeout,out IntPtr result);
  static bool Moving(uint thread) {var info=new GuiInfo();info.size=(uint)Marshal.SizeOf<GuiInfo>();return GetGUIThreadInfo(thread,ref info)&&(info.flags&2)!=0;}
  public static Rect Bounds(IntPtr h){Rect r;if(!GetWindowRect(h,out r))throw new Exception("GetWindowRect failed");return r;}
- public static void Input(IntPtr h,string action,int x,int y) {
+ public static int Hit(IntPtr h,int x,int y) {
   Point point=new Point{x=x,y=y};ClientToScreen(h,ref point);
   IntPtr hit;var packed=new IntPtr((point.y<<16)|(point.x&65535));
-  if(SendMessageTimeoutW(h,0x84,IntPtr.Zero,packed,2,5000,out hit)==IntPtr.Zero||hit.ToInt32()!=2)throw new Exception("Title point is not HTCAPTION: "+hit);
+  if(SendMessageTimeoutW(h,0x84,IntPtr.Zero,packed,2,5000,out hit)==IntPtr.Zero)throw new Exception("WM_NCHITTEST timed out");
+  return hit.ToInt32();
+ }
+ public static void Input(IntPtr h,string action,int x,int y) {
+  var hit=Hit(h,x,y);if(hit!=2)throw new Exception("Title point is not HTCAPTION: "+hit);
+  Point point=new Point{x=x,y=y};ClientToScreen(h,ref point);
   SetForegroundWindow(h);
   if(!System.Threading.SpinWait.SpinUntil(()=>GetForegroundWindow()==h,5000))throw new Exception("QA window could not receive real desktop input");
   Point previous;GetCursorPos(out previous);SetCursorPos(point.x,point.y);
@@ -65,6 +70,6 @@ public static class QaWindowState {
 }
 '@
 $window=[QaWindowState]::Find($ProcessId)
-if($Action -ne 'state'){[QaWindowState]::Input($window,$Action,$X,$Y)}
+if($Action -eq 'drag' -or $Action -eq 'doubleClick'){[QaWindowState]::Input($window,$Action,$X,$Y)}
 $rect=[QaWindowState]::Bounds($window)
-@{left=$rect.l;top=$rect.t;pid=$ProcessId;hwnd=$window.ToInt64();minimized=[QaWindowState]::IsIconic($window);maximized=[QaWindowState]::IsZoomed($window)}|ConvertTo-Json -Compress
+@{hit= $(if($Action -eq 'hitTest'){[QaWindowState]::Hit($window,$X,$Y)}else{$null});left=$rect.l;top=$rect.t;pid=$ProcessId;hwnd=$window.ToInt64();minimized=[QaWindowState]::IsIconic($window);maximized=[QaWindowState]::IsZoomed($window)}|ConvertTo-Json -Compress

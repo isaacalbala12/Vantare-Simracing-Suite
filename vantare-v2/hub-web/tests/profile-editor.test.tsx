@@ -31,6 +31,7 @@ import {
 import { Client } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { actionText } from "../src/renderer/i18n/launcher-actions";
+import { residentText } from "../src/renderer/i18n/launcher-resident";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
 import LauncherEntry from "../src/renderer/screens/launcher/entry";
 import {
@@ -99,6 +100,20 @@ function mount(scene = "launcher-editor-ready") {
   );
 }
 describe("profile editor", () => {
+  it("uses only the resident registration matching the current profile and hotkey", async () => {
+    mount("launcher-shortcuts");
+    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByText(residentText.registration.registered);
+    const hotkey = screen.getByRole("textbox", { name: text.hotkey });
+    fireEvent.change(hotkey, { target: { value: "ctrl+shift+3" } });
+    expect(screen.queryByText(residentText.registration.registered)).toBeNull();
+    expect(
+      screen.getByText(residentText.registration.unconfirmed),
+    ).toBeTruthy();
+    fireEvent.change(hotkey, { target: { value: "ctrl+shift+1" } });
+    expect(screen.getByText(residentText.registration.registered)).toBeTruthy();
+  });
   it("retains freshly read custom arguments when only the profile name was edited", async () => {
     mount("launcher-editor-custom-conflicto");
     await screen.findByRole("heading", { name: "Creador de Contenido" });

@@ -11,7 +11,7 @@ import { Icon } from "../assets/icons/Icon";
 import { t } from "../i18n/es";
 import { pilotText as text } from "../i18n/pilot.es";
 import { Button } from "./Button";
-import { Select } from "./Forms";
+import { type Option, Select } from "./Forms";
 import { RailBlock } from "./Frame";
 import { initials } from "./initials";
 import { TrackedCaps } from "./TrackedCaps";
@@ -77,6 +77,7 @@ function PilotField({
   value,
   limit,
   multiline = false,
+  showCount = false,
   pending,
   onChange,
 }: {
@@ -84,6 +85,7 @@ function PilotField({
   value: string;
   limit: number;
   multiline?: boolean;
+  showCount?: boolean;
   pending: boolean;
   onChange: (value: string) => void;
 }) {
@@ -91,8 +93,7 @@ function PilotField({
     <Field.Root className="v-pilot-field">
       <div className="v-pilot-caption">
         <Field.Label>{label}</Field.Label>
-        {(limit === pilotEditorLimits.name ||
-          limit === pilotEditorLimits.description) && (
+        {showCount && (
           <span>{`${Array.from(value.trim()).length}/${limit}`}</span>
         )}
       </div>
@@ -116,7 +117,7 @@ export function PilotDetails({
   pending: boolean;
   edit: <K extends keyof PilotFields>(field: K, value: PilotFields[K]) => void;
 }) {
-  const countries = pilotCountryOptions.map(([value, label]) => ({
+  const countries: Option[] = pilotCountryOptions.map(([value, label]) => ({
     value,
     label,
   }));
@@ -125,8 +126,8 @@ export function PilotDetails({
     !countries.some((item) => item.value === fields.country)
   )
     countries.push({
-      value: fields.country as (typeof countries)[number]["value"],
-      label: fields.country as (typeof countries)[number]["label"],
+      value: fields.country,
+      label: fields.country,
     });
   return (
     <div className="v-pilot-details">
@@ -135,6 +136,7 @@ export function PilotDetails({
           label={t("pilot.name")}
           value={fields.publicName}
           limit={pilotEditorLimits.name}
+          showCount
           pending={pending}
           onChange={(value) => edit("publicName", value)}
         />
@@ -150,6 +152,7 @@ export function PilotDetails({
         label={t("pilot.description")}
         value={fields.description}
         limit={pilotEditorLimits.description}
+        showCount
         multiline
         pending={pending}
         onChange={(value) => edit("description", value)}

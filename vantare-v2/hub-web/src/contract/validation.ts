@@ -43,10 +43,20 @@ export function isHostMessage(value: unknown): value is HostToUi {
   switch (value.kind) {
     case "hello":
       return (
-        exact(value, ["kind", "version", "theme", "window", "demo", "demoName"]) &&
+        exact(value, [
+          "kind",
+          "version",
+          "theme",
+          "window",
+          "demo",
+          "demoName",
+        ]) &&
         integer(value.version) &&
         typeof value.demo === "boolean" &&
-        (value.demoName === null || (value.demo === true && typeof value.demoName === "string" && value.demoName.length <= demoNameMax)) &&
+        (value.demoName === null ||
+          (value.demo === true &&
+            typeof value.demoName === "string" &&
+            value.demoName.length <= demoNameMax)) &&
         record(value.theme) &&
         exact(value.theme, [
           "palette",

@@ -370,3 +370,40 @@
   font-weight: 600;
   padding: 4px 8px;
 }
+
+.v-pilot-avatar {
+  font: 600 20.16px / 23px var(--font-display);
+}
+.v-pilot-avatar--large {
+  font-size: 37.44px;
+  line-height: 42px;
+}
+.v-pilot-preview h3 {
+  line-height: 27px;
+}
+.v-pilot-preview-country {
+  font: 600 11px / 11px var(--font-display);
+}
+.v-pilot-preview dt {
+  font: 600 10.5px / 11px var(--font-display);
+}
+.v-pilot-preview .v-tracked-caps-letters {
+  gap: 1.8px;
+}
+.v-pilot-preview dl > div {
+  align-items: flex-start;
+  min-height: 20px;
+}
+.v-pilot-preview-sims > span {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.v-pilot-photo-actions .v-button--sm,
+.v-pilot-savebar .v-button--neutral {
+  font-weight: 600;
+}

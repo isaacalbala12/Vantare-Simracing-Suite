@@ -1,6 +1,6 @@
-import demoIdentity from "../../fixtures/demo-identity.json";
 import scene from "../../fixtures/ajustes-base.json";
 import coreScene from "../../fixtures/core-offline.json";
+import demoIdentity from "../../fixtures/demo-identity.json";
 import {
   type CoreStatus,
   HOST_PROTOCOL_VERSION,
@@ -11,7 +11,8 @@ import { isUiMessage } from "../contract/validation";
 import type { MockContext } from "./context";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
-  if(name?.startsWith("visual-")) return {...hello,demoName:demoIdentity.name};
+  if (name?.startsWith("visual-"))
+    return { ...hello, demoName: demoIdentity.name };
   return name === "componentes-incompatibles"
     ? { ...hello, version: HOST_PROTOCOL_VERSION + 1 }
     : name === "componentes-incompatibles-light"

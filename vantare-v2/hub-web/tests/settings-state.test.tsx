@@ -349,12 +349,16 @@ describe("saving keeps keyboard controls focusable", () => {
 
 describe("visual QA avatar projection", () => {
   it("loads the demo name without requiring a visit to Account", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
     const hook = mount("visual-dark:ajustes-con-diseno", <Shell />);
     await loaded(hook);
     expect((await screen.findByLabelText("Isaac Albalá")).textContent).toBe(
       "IA",
     );
     expect(screen.getByRole("heading", { name: /^General$/ })).toBeTruthy();
+    expect(
+      request.mock.calls.some(([request]) => request.method === "pilot.load"),
+    ).toBe(false);
   });
 });
 

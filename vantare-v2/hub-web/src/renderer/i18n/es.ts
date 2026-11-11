@@ -120,7 +120,8 @@ export const settingsText = {
   "pilot.country": "País",
   "pilot.noCountry": "Sin indicar",
   "pilot.simulators": "Simuladores",
-  "pilot.simulatorsHelp": "Marca los que usas. Aparecerán en tu perfil en este orden.",
+  "pilot.simulatorsHelp":
+    "Marca los que usas. Aparecerán en tu perfil en este orden.",
   "pilot.car": "Coche favorito",
   "pilot.team": "Equipo favorito",
   "pilot.photo": "Foto de perfil",

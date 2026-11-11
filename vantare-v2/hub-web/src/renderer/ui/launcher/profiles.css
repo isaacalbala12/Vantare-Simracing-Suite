@@ -335,7 +335,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 12px;
   min-height: 30px;
 }
@@ -390,6 +390,7 @@
 }
 .v-launcher-options > div > span {
   font-weight: 400;
+  color: var(--text-2);
 }
 .v-launcher-options .v-field {
   min-width: 0;
@@ -440,6 +441,7 @@
 /* GPUI keeps readable text and borders for pending native-only controls. */
 .v-launcher-rail .v-launcher-options > div > span {
   font-weight: 400;
+  color: var(--text-2);
 }
 .v-launcher-rail .v-launcher-options .v-select-trigger:disabled,
 .v-launcher-rail .v-launcher-options .v-select-trigger[aria-disabled="true"] {

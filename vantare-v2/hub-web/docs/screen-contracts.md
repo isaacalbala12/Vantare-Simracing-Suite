@@ -286,3 +286,23 @@ La suscripción emite una vez y sondea cada 500 ms; al desuscribirse o entrar en
 Live no lee el diseño. Deshacer/rehacer vuelve a comprobar los derechos al
 restaurar un widget Pro. Posición/tamaño se editan sobre los overlays, no en el Hub;
 la entrada a ese modo está inactiva hasta #2025.
+
+
+### Historial local de Calendario (wire provisional 21)
+
+`calendar.historyLoad` ofrece las ocho últimas publicaciones de
+`calendar-history.json`, solo para `AccessView.calendar`, cuenta verificada y no
+bloqueada. Lee el mismo directorio de datos que GPUI. No crea, repara ni escribe
+el documento y no contacta al núcleo. Proyecta solo inicio/fin, sello de primera
+observación y serie/nombre/circuito; nunca rutas ni bytes libres.
+
+Se conserva la lectura de campos desconocidos que admite GPUI
+`calendar/history.rs:10-55`; esos campos no salen al renderer y el original no
+se modifica. Un documento ausente ofrece lista vacía, uno ilegible, enlazado,
+corrupto o fuera de límites ofrece lista vacía con `invalidCache`. Fechas en
+segundos Unix, hasta ocho semanas y 256 series por semana, texto con los límites
+comunes, sin duplicados. La lectura máxima es 64 KiB y no devuelve una proyección
+parcial. Las semanas se ordenan por inicio. El consumidor podrá calcular la
+rotación y mediana de publicación del GPUI; no se inventa historial de carreras.
+Versión definitiva pendiente de aprobación; sin nuevos paquetes ni cambios en
+IPC, services, runtime, derechos o supervisor.

@@ -3,6 +3,7 @@ import fixture from "../../../fixtures/calendar-demo.json";
 import {
   type CalendarAlerts,
   type CalendarConfigView,
+  type CalendarHistoryView,
   type CalendarView,
   calendarDefaultAlerts,
   calendarEmptyRevision,
@@ -24,7 +25,17 @@ export function create(context: MockContext): MockHandler {
     updated: 0,
     invalidCache: false,
   };
+  const history: CalendarHistoryView = { weeks: [], invalidCache: false };
   if (context.sceneName === "calendar-data") {
+    const historySample = (corpus.host as unknown as HostToUi[]).find(
+      (m) =>
+        m.kind === "response" && m.result.method === "calendar.historyLoad",
+    );
+    if (
+      historySample?.kind === "response" &&
+      historySample.result.method === "calendar.historyLoad"
+    )
+      Object.assign(history, structuredClone(historySample.result.value));
     const sample = (corpus.host as unknown as HostToUi[]).find(
       (m) => m.kind === "response" && m.result.method === "calendar.refresh",
     );
@@ -85,6 +96,12 @@ export function create(context: MockContext): MockHandler {
       error: { kind: "calendarConflict", current: structuredClone(config) },
     });
     switch (request.method) {
+      case "calendar.historyLoad":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(history) },
+        };
       case "calendar.load":
       case "calendar.refresh":
         if (

@@ -7,6 +7,7 @@ import {
   text,
 } from "../calendar-common";
 import { isCalendarConfig } from "../calendar-config-validation";
+import { isCalendarHistory } from "../calendar-history-validation";
 import {
   calendarDateLimit,
   calendarListLimit,
@@ -169,6 +170,7 @@ export function isRequest(v: Record<string, unknown>) {
     case "calendar.load":
     case "calendar.refresh":
     case "calendar.configLoad":
+    case "calendar.historyLoad":
       return exact(v, ["method"]);
     case "calendar.utcSet":
       return (
@@ -197,6 +199,8 @@ export function isRequest(v: Record<string, unknown>) {
 export function isReply(v: Record<string, unknown>) {
   if (!exact(v, ["method", "value"])) return false;
   switch (v.method) {
+    case "calendar.historyLoad":
+      return isCalendarHistory(v.value);
     case "calendar.load":
     case "calendar.refresh":
       return isCalendarView(v.value);

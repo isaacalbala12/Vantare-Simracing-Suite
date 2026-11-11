@@ -1,4 +1,8 @@
 export const appText = {
+  argumentResetTitle: "Descartar argumentos de la aplicación",
+  argumentResetMessage: (profiles: number) =>
+    `Al cambiar el programa se eliminarán las opciones personalizadas de esta aplicación y de ${profiles} ${profiles === 1 ? "perfil" : "perfiles"}. Puedes cancelar y conservarlas.`,
+  confirmArgumentReset: "Guardar y descartar argumentos",
   plus: "+",
   unsaved: "Guarda o descarta el borrador antes de cerrar la ventana.",
   method: (category: string, steam: boolean) =>

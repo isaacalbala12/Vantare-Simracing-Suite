@@ -168,6 +168,7 @@ export function Launcher() {
       onSelect={setSelected}
       onEdit={(id) => void openEditor(id)}
       onNew={() => void openEditor(null)}
+      onApplications={() => editor.setTab("applications")}
       onLaunch={(profile) => void launch(profile)}
       onReload={() => void reload()}
     />

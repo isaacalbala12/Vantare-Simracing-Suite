@@ -450,3 +450,12 @@
   background: var(--surface-2);
   border-color: var(--line-2);
 }
+
+.v-launcher-app-tile small[data-available="true"] {
+  color: var(--ok);
+}
+button.v-launcher-app-tile {
+  font-size: 13px;
+  white-space: nowrap;
+  padding: 4px 0;
+}

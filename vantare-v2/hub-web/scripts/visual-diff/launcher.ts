@@ -33,3 +33,18 @@ launcherScenes["launcher-nuevo-perfil"] = {
     );
   },
 };
+
+launcherScenes["launcher-aplicaciones"] = {
+  mock: "launcher-aplicaciones",
+  async prepare(page) {
+    await launcherScenes["launcher-base"].prepare(page);
+    await page.getByRole("tab", { name: "Aplicaciones", exact: true }).click();
+    await page
+      .getByRole("heading", { name: "Aplicaciones", exact: true })
+      .first()
+      .waitFor();
+    await page
+      .getByRole("button", { name: "Editar Vantare Overlay", exact: true })
+      .waitFor();
+  },
+};

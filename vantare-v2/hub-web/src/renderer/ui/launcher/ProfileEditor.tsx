@@ -495,7 +495,17 @@ export function DiscardProfileDialog({
     >
       <BaseAlertDialog.Portal>
         <BaseAlertDialog.Backdrop className="v-backdrop" />
-        <BaseAlertDialog.Popup className="v-dialog">
+        <BaseAlertDialog.Popup
+          className="v-dialog"
+          finalFocus={() =>
+            document.querySelector<HTMLElement>(".v-profile-editor .v-input") ??
+            document.querySelector<HTMLElement>("[data-launcher-edit]") ??
+            document.querySelector<HTMLElement>(
+              ".v-section-tab[aria-selected='true']",
+            ) ??
+            false
+          }
+        >
           <BaseAlertDialog.Title>{text.discardTitle}</BaseAlertDialog.Title>
           <BaseAlertDialog.Description>
             {text.discardMessage}

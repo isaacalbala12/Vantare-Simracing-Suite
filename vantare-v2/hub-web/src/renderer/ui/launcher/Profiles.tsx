@@ -18,6 +18,7 @@ const glyphs: Record<string, IconName> = {
   crewchief: "headset",
   discord: "v-chat",
   simhub: "v-sliders",
+  "custom:vantare": "mark",
 };
 export function AppMark({
   app,
@@ -63,6 +64,7 @@ export function LauncherProfiles({
   onReload,
   onEdit,
   onNew,
+  onApplications,
 }: {
   view: LauncherView;
   selected?: string;
@@ -71,6 +73,7 @@ export function LauncherProfiles({
   accepted: boolean;
   onEdit?: (id: string) => void;
   onNew?: () => void;
+  onApplications?: () => void;
   onSelect: (id: string) => void;
   onLaunch: (profile: LauncherProfile) => void;
   onReload: () => void;
@@ -123,7 +126,12 @@ export function LauncherProfiles({
                       ? text.running
                       : ""}
             </p>
-            <Button disabled>{text.applications}</Button>
+            <Button
+              disabled={!onApplications || pending}
+              onClick={onApplications}
+            >
+              {text.applications}
+            </Button>
           </div>
           <section className="v-launcher-hero" aria-label={profile.name}>
             <Circuit />

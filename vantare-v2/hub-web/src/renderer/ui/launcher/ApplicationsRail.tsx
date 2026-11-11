@@ -7,9 +7,11 @@ import { AppMark } from "./Profiles";
 export function LauncherApplicationsRail({
   view,
   selected,
+  onApplications,
 }: {
   view: LauncherView;
   selected?: string;
+  onApplications?: (create?: boolean) => void;
 }) {
   const profile =
     view.profiles.find((item) => item.id === selected) ??
@@ -24,7 +26,11 @@ export function LauncherApplicationsRail({
             <Icon name="gamepad" />
             {text.yourApps}
           </h2>
-          <Button variant="ghost" disabled>
+          <Button
+            variant="ghost"
+            disabled={!onApplications}
+            onClick={() => onApplications?.()}
+          >
             {text.allApps}
           </Button>
         </header>
@@ -33,10 +39,17 @@ export function LauncherApplicationsRail({
             <div key={app.id} className="v-launcher-app-tile">
               <AppMark app={app} small />
               <strong>{app.name}</strong>
-              <small>{app.available ? text.available : text.unavailable}</small>
+              <small data-available={app.available}>
+                {app.available ? text.available : text.unavailable}
+              </small>
             </div>
           ))}
-          <button type="button" disabled className="v-launcher-app-tile">
+          <button
+            type="button"
+            disabled={!onApplications}
+            onClick={() => onApplications?.(true)}
+            className="v-launcher-app-tile"
+          >
             {text.addApp}
           </button>
         </div>

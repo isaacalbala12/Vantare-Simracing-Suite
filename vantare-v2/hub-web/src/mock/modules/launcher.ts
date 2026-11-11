@@ -1,4 +1,3 @@
-import catalogFixture from "../../../fixtures/launcher-apps.json";
 import launcherFixture from "../../../fixtures/launcher-base.json";
 import editorFixture from "../../../fixtures/launcher-editor.json";
 import type {
@@ -7,6 +6,7 @@ import type {
   UiToHost,
 } from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
+import { createLauncherAppsMock } from "../launcher-apps";
 export function create(context: MockContext): MockHandler {
   const { sceneName, core } = context;
   if (sceneName.startsWith("launcher-")) {
@@ -38,6 +38,7 @@ export function create(context: MockContext): MockHandler {
     launcher.resident = false;
   }
 
+  const appReply = createLauncherAppsMock(launcher, sceneName);
   const drafts = new Map<string, ProfileDraft>(
     launcher.profiles.map((profile) => [
       profile.id,
@@ -66,6 +67,8 @@ export function create(context: MockContext): MockHandler {
   >();
   let reservedProfile: string | undefined;
   return (value: UiToHost): HostToUi | null | undefined => {
+    const application = appReply(value);
+    if (application !== undefined) return application;
     if (value.kind === "subscribe" && value.topic === "launcher")
       return {
         kind: "event",
@@ -74,21 +77,6 @@ export function create(context: MockContext): MockHandler {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
     switch (request.method) {
-      case "launcher.catalog":
-        return {
-          kind: "response",
-          id,
-          result: {
-            method: request.method,
-            value: structuredClone(catalogFixture),
-          },
-        };
-      case "launcher.scan":
-        return {
-          kind: "response",
-          id,
-          result: { method: request.method, value: structuredClone(launcher) },
-        };
       case "launcher.profile.get": {
         profileRead = undefined;
         stepKeys.clear();

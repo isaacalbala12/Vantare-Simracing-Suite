@@ -93,6 +93,7 @@ fn calendar_completion_checks_permission_family_and_request_identity() {
 }
 
 #[test]
+<<<<<<< HEAD
 fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
@@ -116,4 +117,80 @@ fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
         }
     );
     assert_eq!(session.core.requests, 1);
+=======
+fn calendar_preference_dispatch_enforces_rights_and_cas_without_services() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    let requests = [
+        Request::CalendarConfigLoad {},
+        Request::CalendarUtcSet {
+            utc: true,
+            expected_revision: "a".repeat(64),
+        },
+        Request::CalendarNotifyWeekSet {
+            enabled: false,
+            expected_revision: "a".repeat(64),
+        },
+        Request::CalendarFollowSet {
+            series_id: "qa".into(),
+            followed: true,
+            expected_revision: "a".repeat(64),
+        },
+    ];
+    for request in requests {
+        let mut pipe = Pipe::new(Vec::new());
+        session.request(&mut pipe, 9, &request).unwrap();
+        assert_eq!(
+            response(&mut pipe),
+            HostToUi::Failure {
+                id: 9,
+                error: HostError::Denied
+            }
+        );
+    }
+    session.current.access.calendar = true;
+    session.core.busy = true;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 10, &Request::CalendarConfigLoad {})
+        .unwrap();
+    let HostToUi::Response {
+        result: Reply::CalendarConfigLoad { value },
+        ..
+    } = response(&mut pipe)
+    else {
+        panic!("config response")
+    };
+    let revision = value.prefs_revision;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            11,
+            &Request::CalendarUtcSet {
+                utc: true,
+                expected_revision: revision.clone(),
+            },
+        )
+        .unwrap();
+    assert!(
+        matches!(response(&mut pipe),HostToUi::Response {result:Reply::CalendarUtcSet {value},..} if value.utc)
+    );
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            12,
+            &Request::CalendarUtcSet {
+                utc: false,
+                expected_revision: revision,
+            },
+        )
+        .unwrap();
+    assert!(
+        matches!(response(&mut pipe),HostToUi::Failure {error:HostError::CalendarConflict {current},..} if current.utc)
+    );
+    assert_eq!(session.core.requests, 0);
+>>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
 }

@@ -1,4 +1,11 @@
-import type { CalendarView } from "../../contract/generated/calendar";
+import {
+  type CalendarConfigView,
+  type CalendarView,
+  calendarDefaultAlerts,
+  calendarEmptyRevision,
+  calendarRevisionLength,
+  calendarSeriesLimit,
+} from "../../contract/generated/calendar";
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/calendar.json";
 import type { MockContext, MockHandler } from "../context";
@@ -13,6 +20,7 @@ export function create(context: MockContext): MockHandler {
     updated: 0,
     invalidCache: false,
   };
+<<<<<<< HEAD
   if (context.sceneName === "calendar-data") {
     const sample = (corpus.host as unknown as HostToUi[]).find(
       (m) => m.kind === "response" && m.result.method === "calendar.refresh",
@@ -26,30 +34,95 @@ export function create(context: MockContext): MockHandler {
     context.core.access.calendar = true;
     context.core.access.blocked = false;
   }
+=======
+  const config: CalendarConfigView = {
+    utc: false,
+    prefsRevision: calendarEmptyRevision,
+    following: [],
+    followingRevision: calendarEmptyRevision,
+    alerts: {
+      ...calendarDefaultAlerts,
+      bands: [...calendarDefaultAlerts.bands],
+      slots: [...calendarDefaultAlerts.slots],
+      channels: { ...calendarDefaultAlerts.channels },
+    },
+    alertsRevision: calendarEmptyRevision,
+  };
+  let counter = 1;
+  const next = () =>
+    String((counter++).toString(16)).padStart(calendarRevisionLength, "0");
+>>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
   return (message: UiToHost): HostToUi | undefined => {
     if (
       message.kind !== "request" ||
-      !["calendar.load", "calendar.refresh"].includes(message.request.method)
+      !message.request.method.startsWith("calendar.")
     )
       return undefined;
-    const { id, request } = message;
-    if (
-      request.method !== "calendar.load" &&
-      request.method !== "calendar.refresh"
-    )
-      return undefined;
-    const access = context.core.access;
+    const { id, request } = message,
+      access = context.core.access;
     if (!access.verified || access.blocked || !access.calendar)
       return { kind: "failure", id, error: { kind: "denied" } };
-    if (
-      request.method === "calendar.refresh" &&
-      context.core.services !== "connected"
-    )
-      return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+    const conflict = (): HostToUi => ({
+      kind: "failure",
+      id,
+      error: { kind: "calendarConflict", current: structuredClone(config) },
+    });
+    switch (request.method) {
+      case "calendar.load":
+      case "calendar.refresh":
+        if (
+          request.method === "calendar.refresh" &&
+          context.core.services !== "connected"
+        )
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(value) },
+        };
+      case "calendar.configLoad":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: structuredClone(config) },
+        };
+      case "calendar.utcSet":
+        if (request.expectedRevision !== config.prefsRevision)
+          return conflict();
+        config.utc = request.utc;
+        value.utc = request.utc;
+        config.prefsRevision = next();
+        break;
+      case "calendar.notifyWeekSet":
+        if (request.expectedRevision !== config.alertsRevision)
+          return conflict();
+        config.alerts.notifyWeek = request.enabled;
+        config.alertsRevision = next();
+        break;
+      case "calendar.followSet": {
+        if (request.expectedRevision !== config.followingRevision)
+          return conflict();
+        const found = [value.official, value.fallback, value.previous].some(
+          (s) => s?.series.some((s) => s.id === request.seriesId),
+        );
+        if (request.followed && !found)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        const ids = config.following.filter((s) => s !== request.seriesId);
+        if (request.followed) ids.push(request.seriesId);
+        if (ids.length > calendarSeriesLimit)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        config.following = ids;
+        value.following = [...ids];
+        config.followingRevision = next();
+        break;
+      }
+      default:
+        return undefined;
+    }
     return {
       kind: "response",
       id,
-      result: { method: request.method, value: structuredClone(value) },
+      result: { method: request.method, value: structuredClone(config) },
     };
   };
 }

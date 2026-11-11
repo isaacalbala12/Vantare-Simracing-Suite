@@ -222,6 +222,27 @@ No se modifica IPC/Services, runtime, derechos, supervisor ni el GPUI congelado.
 Las vistas, favoritos/avisos, ICS y publicación de `session-alerts-feed.json` se
 entregan por separado. El feed conserva el esquema IPC existente.
 
+### Calendario: preferencias con CAS
+
+Tras el contrato inicial de lectura, `calendar.configLoad` proyecta las revisiones
+independientes de preferencias, series seguidas y avisos. `calendar.utcSet`,
+`calendar.notifyWeekSet` y `calendar.followSet` exigen `expectedRevision` de 64
+hexadecimales y el mismo permiso `AccessView.calendar` del módulo. Se sube el
+wire de 14 a 15; se ajustará al integrar si nightly ha avanzado.
+
+Cada acción cambia un solo campo del documento fijo correspondiente, conserva
+campos desconocidos (también anidados) y escribe con `files::Mode::Observed`.
+La comparación bajo bloqueo evita la carrera entre lectura y escritura. Un
+conflicto devuelve `calendarConflict {current}` cerrado, sin rutas ni mensajes.
+Documentos dañados, demasiado grandes, enlaces y versiones futuras se protegen;
+la lectura no siembra archivos. Solo una acción explícita puede crear su fichero
+privado ausente. La respuesta de éxito se prepara antes de escribir: una lectura
+posterior fallida no convierte un guardado ya realizado en un rechazo.
+
+Los avisos se leen completos para respetar la configuración GPUI existente;
+esta entrega solo modifica `notifyWeek`. El editor de franjas/tandas, los canales,
+ICS y el feed se entregan después. No hay cambios en IPC, services o derechos.
+
 ## Studio (`studio`, v17)
 
 El módulo ofrece `studio.get`, tema `studio`, `visibility`, `add`, `remove`,

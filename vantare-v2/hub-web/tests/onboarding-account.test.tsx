@@ -156,3 +156,20 @@ it("keeps the onboarding reference guest separate from simulated core access", (
     },
   });
 });
+
+it.each([
+  { session: "pending", gate: "none" },
+  { session: "signedIn", gate: "checking" },
+] as const)(
+  "keeps an unresolved session or gate visible as checking (%j)",
+  async (state) => {
+    fake.request.mockResolvedValue({
+      method: "account.get",
+      value: { ...account(), ...state },
+    });
+    mount();
+    await waitFor(() => expect(fake.request).toHaveBeenCalled());
+    expect(screen.getByText("Comprobando cuenta…")).toBeTruthy();
+    expect(screen.queryByText("Acceso verificado")).toBeNull();
+  },
+);

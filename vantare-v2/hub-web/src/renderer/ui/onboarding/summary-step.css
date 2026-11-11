@@ -1,0 +1,49 @@
+.v-ob-summary {
+  display: flex;
+  flex-direction: column;
+  gap: calc(22 * var(--ob-unit));
+}
+.v-ob-summary dl {
+  width: calc(480 * var(--ob-unit));
+  max-width: 100%;
+  margin: 0;
+  border: 1px solid var(--ob-c-292325);
+  border-radius: calc(14 * var(--ob-unit));
+  overflow: hidden;
+}
+.v-ob-summary dl > div {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--ob-unit));
+  padding: calc(9 * var(--ob-unit)) calc(16 * var(--ob-unit));
+  border-bottom: 1px solid var(--ob-c-292325);
+}
+.v-ob-summary dt {
+  flex: 0 0 calc(135 * var(--ob-unit));
+  color: var(--text-3);
+  font-size: calc(14 * var(--ob-unit));
+}
+.v-ob-summary dd {
+  flex: 1;
+  margin: 0;
+  font-size: calc(14 * var(--ob-unit));
+  font-weight: 600;
+}
+.v-ob-summary dl span {
+  color: var(--text-3);
+  font-size: calc(16 * var(--ob-unit));
+  font-weight: 600;
+}
+.v-ob-summary dl span[data-confirmed="true"] {
+  color: var(--ok);
+}
+.v-ob-summary > p {
+  margin: 0;
+  font-size: calc(13 * var(--ob-unit));
+  color: var(--text-3);
+}
+.v-ob-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(12 * var(--ob-unit));
+}

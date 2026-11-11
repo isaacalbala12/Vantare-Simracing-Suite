@@ -28,6 +28,7 @@ export interface FrameProps {
   loading?: boolean;
   error?: string;
   signed?: boolean;
+  lead?: string;
   usage?: boolean;
   reducedMotion: boolean;
   back: () => void;
@@ -90,6 +91,7 @@ function Assistant({
 }
 export function OnboardingFrame(p: FrameProps) {
   const root = useRef<HTMLElement>(null);
+  const enterStep = useRef<OnboardingStep | null>(null);
   const [scale, setScale] = useState(() =>
     Math.max(0.5, Math.min(window.innerWidth / 1600, window.innerHeight / 900)),
   );
@@ -113,39 +115,72 @@ export function OnboardingFrame(p: FrameProps) {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    const handle = (event: KeyboardEvent) => {
+    const interactive = (event: KeyboardEvent) =>
+      event.target instanceof Element &&
+      !!event.target.closest(
+        "button,input,textarea,select,[contenteditable=true],[role=checkbox],[role=radio],[role=combobox]",
+      );
+    const ignored = (event: KeyboardEvent) =>
+      event.defaultPrevented ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      (event.target instanceof Element &&
+        !root.current?.contains(event.target));
+    // Cancel auto-repeat before native buttons can synthesize another click.
+    const repeat = (event: KeyboardEvent) => {
       if (
-        event.defaultPrevented ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey
-      )
-        return;
-      if (
-        event.target instanceof Element &&
-        !root.current?.contains(event.target)
-      )
-        return;
+        event.key === "Enter" &&
+        !ignored(event) &&
+        (event.repeat || enterStep.current !== null)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    const down = (event: KeyboardEvent) => {
+      if (ignored(event)) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        if (p.step > 0 && !p.pending) p.back();
+        if (!event.repeat && p.step > 0 && !p.pending) p.back();
         return;
       }
-      if (event.key !== "Enter" || p.pending || p.loading || !p.canContinue)
-        return;
+      if (event.key !== "Enter") return;
+      enterStep.current =
+        !p.pending && !p.loading && p.canContinue ? p.step : null;
+      if (!interactive(event)) event.preventDefault();
+    };
+    const up = (event: KeyboardEvent) => {
+      if (event.key !== "Enter") return;
+      const started = enterStep.current;
+      enterStep.current = null;
       if (
-        event.target instanceof Element &&
-        event.target.closest(
-          "button,input,textarea,select,[contenteditable=true],[role=checkbox],[role=radio],[role=combobox]",
-        )
+        ignored(event) ||
+        event.repeat ||
+        started !== p.step ||
+        interactive(event) ||
+        p.pending ||
+        p.loading ||
+        !p.canContinue
       )
         return;
       event.preventDefault();
       p.next();
     };
-    window.addEventListener("keydown", handle);
-    return () => window.removeEventListener("keydown", handle);
+    const blur = () => {
+      enterStep.current = null;
+    };
+    window.addEventListener("keydown", repeat, true);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", repeat, true);
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
   }, [p]);
   const primary =
     p.step === 0
@@ -206,7 +241,8 @@ export function OnboardingFrame(p: FrameProps) {
                 />
                 <h1>{t.titles[p.step]}</h1>
                 <p className="v-ob-lead">
-                  {p.step === 6 && p.usage ? t.usageOn : t.leads[p.step]}
+                  {p.lead ??
+                    (p.step === 6 && p.usage ? t.usageOn : t.leads[p.step])}
                 </p>
                 {p.children}
                 {p.error && (
@@ -253,7 +289,7 @@ export function OnboardingFrame(p: FrameProps) {
           tabIndex={p.step === 7 || !p.canContinue ? -1 : 0}
           aria-busy={p.pending}
           aria-keyshortcuts="Enter"
-          data-muted={p.step >= 3 && p.step <= 5 ? true : undefined}
+          data-muted={p.step >= 3 && p.step <= 6 ? true : undefined}
           aria-label={primary}
           disabled={!p.canContinue || p.pending || p.loading}
           onClick={p.next}

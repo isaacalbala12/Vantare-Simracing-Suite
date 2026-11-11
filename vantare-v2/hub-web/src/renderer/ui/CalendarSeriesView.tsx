@@ -300,20 +300,19 @@ export function CalendarSeriesView({
               <Heading title={text.next} />
               <div className="v-calendar-serie-chips">
                 {upcoming.slice(0, 12).map((at) => (
-                  <Button
+                  <Departure
                     key={at}
-                    data-next={at === first || undefined}
-                    data-alert={
-                      alertAt(schedule, series, at, alerts, limit) || undefined
+                    next={at === first}
+                    alert={alertAt(schedule, series, at, alerts, limit)}
+                    onClick={
+                      onDetail ? () => onDetail(seriesId, at) : undefined
                     }
-                    disabled={!onDetail}
-                    onClick={() => onDetail?.(seriesId, at)}
                   >
                     {alertAt(schedule, series, at, alerts, limit) && (
                       <Icon name="bell-fill" />
                     )}
                     {clock(at, utc)}
-                  </Button>
+                  </Departure>
                 ))}
               </div>
             </>
@@ -324,19 +323,19 @@ export function CalendarSeriesView({
                   <strong>{group.label}</strong>
                   <div>
                     {group.starts.map((at) => (
-                      <Button
+                      <Departure
                         key={at}
-                        data-past={at < now || undefined}
-                        data-alert={
-                          alertAt(schedule, series, at, alerts, limit) ||
-                          undefined
+                        past={at < now}
+                        alert={alertAt(schedule, series, at, alerts, limit)}
+                        next={at === first}
+                        onClick={
+                          onSlot && at >= now
+                            ? () => onSlot(seriesId, at)
+                            : undefined
                         }
-                        data-next={at === first || undefined}
-                        disabled={!onSlot}
-                        onClick={() => onSlot?.(seriesId, at)}
                       >
                         {clock(at, utc)}
-                      </Button>
+                      </Departure>
                     ))}
                   </div>
                 </div>
@@ -357,7 +356,14 @@ export function CalendarSeriesView({
             ].map((phase, i) => (
               <div
                 key={phase.name}
-                style={{ flexGrow: Math.max(1, phase.duration) }}
+                style={{
+                  flexGrow:
+                    i === 0
+                      ? Math.max(4, practice)
+                      : i === 2
+                        ? Math.min(60, race)
+                        : lead - practice,
+                }}
                 data-race={i === 2 || undefined}
               >
                 <b>{phase.name}</b>
@@ -465,5 +471,34 @@ export function CalendarSeriesView({
         </div>
       </div>
     </div>
+  );
+}
+
+function Departure({
+  children,
+  next,
+  alert,
+  past,
+  onClick,
+}: {
+  children: ReactNode;
+  next: boolean;
+  alert: boolean;
+  past?: boolean;
+  onClick?: () => void;
+}) {
+  const attrs = {
+    "data-next": next || undefined,
+    "data-alert": alert || undefined,
+    "data-past": past || undefined,
+  };
+  return onClick ? (
+    <Button {...attrs} onClick={onClick}>
+      {children}
+    </Button>
+  ) : (
+    <span className="v-calendar-serie-info" {...attrs}>
+      {children}
+    </span>
   );
 }

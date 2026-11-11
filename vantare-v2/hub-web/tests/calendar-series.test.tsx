@@ -70,7 +70,7 @@ it("offers a way back if a refreshed publication removes the selected series", (
   expect(v.onBack).toHaveBeenCalledOnce();
 });
 
-it("keeps unavailable launch, follow and departure actions disabled", () => {
+it("keeps unavailable actions disabled while departures remain readable information", () => {
   const v = view(seriesId, false);
   const favorite = screen.getByRole("button", { name: "Favorita" });
   expect(favorite).toHaveProperty("disabled", true);
@@ -78,10 +78,13 @@ it("keeps unavailable launch, follow and departure actions disabled", () => {
     "disabled",
     true,
   );
-  const departure = v.container.querySelector<HTMLButtonElement>(
-    ".v-calendar-serie-chips button",
+  const departure = v.container.querySelector<HTMLElement>(
+    ".v-calendar-serie-chips .v-calendar-serie-info",
   );
-  expect(departure).toHaveProperty("disabled", true);
+  expect(departure?.textContent).toMatch(/\d{2}:\d{2}/u);
+  expect(
+    v.container.querySelector(".v-calendar-serie-chips button"),
+  ).toBeNull();
   fireEvent.click(favorite);
   if (departure) fireEvent.click(departure);
   expect(v.onFollow).not.toHaveBeenCalled();

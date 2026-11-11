@@ -16,12 +16,16 @@ import { testingText as text } from "./es";
 import { LocalDiagnostic } from "./LocalDiagnostic";
 import { useReports } from "./ReportsState";
 
-export function Reports() {
+export type ReportsView = "local" | "compose" | "list" | "diagnostic";
+
+export function Reports({
+  initialView = "local",
+}: {
+  initialView?: ReportsView;
+}) {
   const state = useReports();
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [view, setView] = useState<"local" | "compose" | "list" | "diagnostic">(
-    "local",
-  );
+  const [view, setView] = useState<ReportsView>(initialView);
   const { available, loaded, load } = state;
   const loadCurrent = useRef(load);
   loadCurrent.current = load;
@@ -121,68 +125,7 @@ export function Reports() {
       {view === "diagnostic" ? (
         <LocalDiagnostic />
       ) : view === "list" ? (
-        <TestingCard title={text.listTitle}>
-          <TestingFinePrint>{text.listHelp}</TestingFinePrint>
-          <Button disabled={blocked} onClick={() => run(state.refresh)}>
-            {text.reload}
-          </Button>
-          {state.participation.reports.length ? (
-            state.participation.reports.map((report) => (
-              <TestingCard key={report.id} title={report.title}>
-                <TestingFinePrint>{report.id}</TestingFinePrint>
-                <p>
-                  {text.states[report.state as keyof typeof text.states] ??
-                    text.unknownState}
-                </p>
-                {report.fixedVersion && (
-                  <p>{`${text.fixedIn} ${report.fixedVersion}`}</p>
-                )}
-                {state.access.tester && (
-                  <>
-                    <Checkbox
-                      label={text.credit}
-                      checked={report.credit}
-                      disabled={blocked}
-                      onCheckedChange={(consent) =>
-                        run(() => state.credit(report.id, consent))
-                      }
-                    />
-                    <TestingFinePrint>{text.creditHelp}</TestingFinePrint>
-                  </>
-                )}
-                {report.notice && (
-                  <Callout
-                    title={
-                      report.state === "fixed"
-                        ? text.fixedNotice
-                        : text.acceptedNotice
-                    }
-                    actions={
-                      state.access.tester &&
-                      report.updatedAt && (
-                        <Button
-                          disabled={blocked}
-                          onClick={() =>
-                            run(() =>
-                              state.notice(report.id, report.updatedAt ?? ""),
-                            )
-                          }
-                        >
-                          {text.understood}
-                        </Button>
-                      )
-                    }
-                  />
-                )}
-              </TestingCard>
-            ))
-          ) : (
-            <ContentStack>
-              <strong>{text.empty}</strong>
-              <p>{text.emptyHelp}</p>
-            </ContentStack>
-          )}
-        </TestingCard>
+        <ReportsPanel />
       ) : view === "local" ? (
         <>
           <TestingCard title={text.helpTitle}>
@@ -322,5 +265,77 @@ export function Reports() {
         </Callout>
       )}
     </TestingLayout>
+  );
+}
+
+export function ReportsPanel() {
+  const state = useReports();
+  const blocked = !state.available || state.busy;
+  const run = (action: () => Promise<void>) => {
+    void action().catch(() => {});
+  };
+  return (
+    <TestingCard title={text.listTitle}>
+      <TestingFinePrint>{text.listHelp}</TestingFinePrint>
+      <Button disabled={blocked} onClick={() => run(state.refresh)}>
+        {text.reload}
+      </Button>
+      {state.participation.reports.length ? (
+        state.participation.reports.map((report) => (
+          <TestingCard key={report.id} title={report.title}>
+            <TestingFinePrint>{report.id}</TestingFinePrint>
+            <p>
+              {text.states[report.state as keyof typeof text.states] ??
+                text.unknownState}
+            </p>
+            {report.fixedVersion && (
+              <p>{`${text.fixedIn} ${report.fixedVersion}`}</p>
+            )}
+            {state.access.tester && (
+              <>
+                <Checkbox
+                  label={text.credit}
+                  checked={report.credit}
+                  disabled={blocked}
+                  onCheckedChange={(consent) =>
+                    run(() => state.credit(report.id, consent))
+                  }
+                />
+                <TestingFinePrint>{text.creditHelp}</TestingFinePrint>
+              </>
+            )}
+            {report.notice && (
+              <Callout
+                title={
+                  report.state === "fixed"
+                    ? text.fixedNotice
+                    : text.acceptedNotice
+                }
+                actions={
+                  state.access.tester &&
+                  report.updatedAt && (
+                    <Button
+                      disabled={blocked}
+                      onClick={() =>
+                        run(() =>
+                          state.notice(report.id, report.updatedAt ?? ""),
+                        )
+                      }
+                    >
+                      {text.understood}
+                    </Button>
+                  )
+                }
+              />
+            )}
+          </TestingCard>
+        ))
+      ) : (
+        <ContentStack>
+          <strong>{text.empty}</strong>
+          <p>{text.emptyHelp}</p>
+        </ContentStack>
+      )}
+    </TestingCard>
   );
 }

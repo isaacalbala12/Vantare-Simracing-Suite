@@ -429,23 +429,22 @@ impl State {
         let fallback = fallback
             .map(|s| CalendarSchedule::parse(s.as_bytes()))
             .transpose()?;
-        if let Some(next) = official {
-            if self
+        if let Some(next) = official
+            && self
                 .view
                 .official
                 .as_ref()
                 .is_none_or(|old| date_millis(&next.valid_from) >= date_millis(&old.valid_from))
+        {
+            if let Some(old) = self
+                .view
+                .official
+                .as_ref()
+                .filter(|old| date_millis(&next.valid_from) > date_millis(&old.valid_from))
             {
-                if let Some(old) = self
-                    .view
-                    .official
-                    .as_ref()
-                    .filter(|old| date_millis(&next.valid_from) > date_millis(&old.valid_from))
-                {
-                    self.memory.previous = newest(self.view.previous.clone(), Some(old.clone()));
-                }
-                self.memory.official = Some(next);
+                self.memory.previous = newest(self.view.previous.clone(), Some(old.clone()));
             }
+            self.memory.official = Some(next);
         }
         self.memory.fallback = newest(self.memory.fallback.take(), fallback);
         Ok(self.project())

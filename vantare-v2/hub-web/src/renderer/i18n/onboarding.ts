@@ -50,6 +50,25 @@ export const onboardingText = {
   welcome: "Soy Vanta. Te ayudo a configurar Vantare en menos de un minuto.",
   changeLater: "Puedes cambiarlo todo después en Ajustes.",
   helmet: "Vanta",
+  unavailable: "No se ha podido leer la configuración inicial.",
+  retry: "Volver a intentar",
+  say: [
+    "Soy Vanta. Te ayudo a configurar Vantare en menos de un minuto.",
+    "He detectado Le Mans Ultimate en tu PC.",
+    "Elige cómo corres y te propongo los widgets.",
+  ],
+  noSimulator: "Selecciona al menos un simulador.",
+  simulatorRemoved: "Simulador quitado.",
+  lmuAdded: "Le Mans Ultimate añadido.",
+  accAdded: "ACC añadido.",
+  noStyle: "Selecciona al menos un estilo.",
+  styleRemoved: "Widgets quitados.",
+  styleSay: [
+    "Para carreras online: Standings, Relative, Delta y Pedals. Todos incluidos en Gratis.",
+    "Para ligas añado el widget Duelo.",
+    "Para resistencia añado Combustible y Clima.",
+    "Para streaming añado Torre de TV, Mapa y Pedals.",
+  ],
   assistantCaption: "VANTA · ASISTENTE DE CONFIGURACIÓN",
 };
 

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { contrastRange } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { paletteNames, specimen as t } from "../i18n/es";
+import { onboardingText } from "../i18n/onboarding";
+import { OnboardingIntroPreview } from "../screens/onboarding/IntroPreview";
 import { Button, IconButton } from "../ui/Button";
 import {
   Avatar,
@@ -35,6 +37,7 @@ import {
   Popover,
   useToastManager,
 } from "../ui/Layers";
+import { SettingsProvider } from "./SettingsState";
 export function Specimen() {
   const [checked, setChecked] = useState(false);
   const [value, setValue] = useState(100);
@@ -45,6 +48,13 @@ export function Specimen() {
   const [palette, setPalette] = useState("vantare");
   const [commandsOpen, setCommandsOpen] = useState(false);
   const toast = useToastManager();
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  if (onboardingOpen)
+    return (
+      <SettingsProvider>
+        <OnboardingIntroPreview onLeave={() => setOnboardingOpen(false)} />
+      </SettingsProvider>
+    );
   const options = [
     { value: "dark", label: t.dark },
     { value: "light", label: t.light },
@@ -53,6 +63,11 @@ export function Specimen() {
   return (
     <div className="v-specimen">
       <PageHeader title={t.title} description={t.description} />
+      <Card title={onboardingText.setup}>
+        <Button onClick={() => setOnboardingOpen(true)}>
+          {onboardingText.setup}
+        </Button>
+      </Card>
       <Card title={t.theme}>
         <div className="v-specimen-row">
           <Select

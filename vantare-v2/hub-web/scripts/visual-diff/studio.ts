@@ -163,3 +163,25 @@ for (const mock of [
     },
   };
 }
+
+for (const count of [4, 30]) {
+  for (const collapsed of [false, true]) {
+    const base = `studio-galeria-${count}-${collapsed ? "cerrado" : "abierto"}`;
+    studioScenes[`${base}-sidebar`] = {
+      mock: count === 4 ? "studio-base" : "studio-muchos",
+      async prepare(page) {
+        await studioScenes[base].prepare(page);
+        await page.keyboard.press("Control+b");
+        await page
+          .locator(".v-sidebar--collapsed")
+          .waitFor({ state: "detached" });
+        assert.equal(
+          await page
+            .locator(".v-sidebar")
+            .evaluate((node) => node.getBoundingClientRect().width),
+          272,
+        );
+      },
+    };
+  }
+}

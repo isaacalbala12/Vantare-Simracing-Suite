@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import alerts from "../fixtures/calendar-alerts-reference.json";
 import type { CalendarAlerts } from "../src/contract/generated/calendar";
 import { calendarReference } from "../src/mock/calendar-reference";
+import { calendarText } from "../src/renderer/i18n/calendar";
 import { CalendarLiveView } from "../src/renderer/ui/CalendarLiveView";
 
 afterEach(cleanup);
@@ -27,6 +28,16 @@ it("keeps the profile visible while launch and protected favorite writes are dis
       onLaunch={launch}
     />,
   );
+  const deferred = screen.getByRole("button", { name: /Lanzar a las/ });
+  expect(deferred).toHaveProperty("disabled", true);
+  expect(
+    document.getElementById(deferred.getAttribute("aria-describedby") ?? "")
+      ?.textContent,
+  ).toBe(calendarText.launchPending);
+  expect(screen.getByText(/20:00 WEC Weekly/)).toBeTruthy();
+  const axis = document.querySelectorAll(".v-calendar-timeline-axis time");
+  expect(axis.length).toBe(7);
+  expect(axis[0].getAttribute("style")).toContain("left:");
   const launchButton = screen.getByRole("button", {
     name: /Lanzar «Carrera LMU»/,
   });

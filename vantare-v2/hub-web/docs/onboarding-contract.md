@@ -16,7 +16,7 @@ Los kits Pro conservan el comportamiento de GPUI sin guarda de licencia en el as
 
 La GPU está omitida conforme a §c.4 de `07-onboarding.md`, pero el código GPUI `shell/onboarding/view.rs` sí muestra `Equipment::labels()[1]`. Es una contradicción del diseño señalada al orquestador; no se añade una detección nueva sin resolverla.
 
-El número v18 sigue siendo provisional para CI sobre nightly v17. El definitivo se confirmará tras la review antes de un único rebase y regeneración final. `OnboardingView.privateSession` y `pending` permiten al dueño de Acceso ordenar onboarding → privacidad → acceso: salir en privado no equivale a completar ajustes y se vuelve a ofrecer el asistente al reiniciar.
+El número definitivo es v21, confirmado por el orquestador tras la segunda review de consentimiento, sobre nightly v20. `OnboardingView.privateSession` y `pending` permiten al dueño de Acceso ordenar onboarding → privacidad → acceso: salir en privado no equivale a completar ajustes y se vuelve a ofrecer el asistente al reiniciar.
 
 El equipo local no se envía a servicios: CPU acotada y sin controles, núcleos y GiB redondeados. Rust conserva los bytes exactos de RAM para recomendar Ahorro con menos de 8 GiB o cuatro núcleos o menos; un dato ausente no inventa insuficiencia. El descubrimiento reutiliza el Reader de Launcher. `mail.set` conserva el origen cerrado onboarding/settings y la cola `Session::request_remote`.
 

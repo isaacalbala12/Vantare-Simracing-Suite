@@ -22,6 +22,7 @@ pub const REVISION_PATTERN: &str = "^[0-9a-f]{64}$";
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(any(test, feature = "bindings"), ts(rename = "OnboardingWidgetKind"))]
 pub enum WidgetKind {
     Standings,
     Relative,

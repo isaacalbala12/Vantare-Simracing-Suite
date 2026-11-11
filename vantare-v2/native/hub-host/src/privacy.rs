@@ -513,6 +513,25 @@ fn private_value(mut value: Privacy) -> Privacy {
 mod onboarding_private_tests {
     use super::*;
     #[test]
+    fn update_from_private_session_persists_both_decisions_and_keeps_the_other_off() {
+        for (patch, crashes, usage) in [
+            (PrivacyPatch::Usage(true), false, true),
+            (PrivacyPatch::Crashes(true), true, false),
+        ] {
+            let root = crate::test_support::Root::new();
+            let mut state = State::isolated(&root.path);
+            assert!(!state.view().crashes_decided && !state.view().usage_decided);
+            state.enter_private().unwrap();
+            state.update(patch, &state.view().revision).unwrap();
+            let saved: Privacy =
+                serde_json::from_slice(&std::fs::read(root.path.join(PRIVACY_FILE)).unwrap())
+                    .unwrap();
+            assert_eq!((saved.crashes, saved.usage), (crashes, usage));
+            assert!(saved.crashes_decided && saved.usage_decided);
+        }
+    }
+
+    #[test]
     fn onboarding_private_exit_preserves_disk_and_never_revives_an_old_permission() {
         let root = crate::test_support::Root::new();
         let mut state = State::isolated(&root.path);

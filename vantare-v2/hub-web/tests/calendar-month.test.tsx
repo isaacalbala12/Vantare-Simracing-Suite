@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { calendarReference } from "../src/mock/calendar-reference";
 import { calendarMonthText as text } from "../src/renderer/i18n/calendarMonth";
@@ -97,4 +103,23 @@ it("routes a current event and month/view navigation", () => {
   expect(screen.getByRole("heading", { name: "Noviembre 2026" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: text.today }));
   expect(screen.getByRole("heading", { name: "Octubre 2026" })).toBeTruthy();
+});
+
+it("preserves the chosen month through full screen and return", async () => {
+  render(
+    <CalendarMonthView
+      view={calendarReference()}
+      alerts={alerts}
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      limit={10000}
+      onSpan={() => {}}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: text.next }));
+  fireEvent.click(screen.getByRole("button", { name: text.full }));
+  expect(screen.getByRole("dialog", { name: text.calendar })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Noviembre 2026" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: text.full }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByRole("heading", { name: "Noviembre 2026" })).toBeTruthy();
 });

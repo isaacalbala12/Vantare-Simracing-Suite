@@ -56,7 +56,11 @@ export function create(context: MockContext): MockHandler {
           request.baseRevision !== state.settingsRevision ||
           request.layoutRevision !== view.layoutRevision
         )
-          return { kind: "failure", id, error: { kind: "onboardingConflict" } };
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "onboardingConflict", current: current() },
+          };
         state.completed = true;
         state.settingsRevision = `${"f".repeat(63)}1`;
         return {

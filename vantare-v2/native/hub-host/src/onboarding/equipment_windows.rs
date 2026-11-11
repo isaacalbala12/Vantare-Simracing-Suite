@@ -128,12 +128,7 @@ pub(super) fn detect() -> Equipment {
         .then_some(memory.total_physical)
         .filter(|n| *n > 0);
     Equipment {
-        cpu: cpu_name().map(|name| {
-            name.chars()
-                .filter(|c| !c.is_control())
-                .take(crate::onboarding::CPU_LIMIT)
-                .collect()
-        }).filter(|name: &String| !name.trim().is_empty()),
+        cpu: cpu_name().and_then(|name| super::cpu_label(&name)),
         cores: cores(),
         ram_bytes,
         ram_gb: ram_bytes.and_then(|n| u32::try_from(n.div_ceil(1024 * 1024 * 1024)).ok()),

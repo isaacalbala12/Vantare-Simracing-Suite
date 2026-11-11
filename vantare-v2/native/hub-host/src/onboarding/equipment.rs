@@ -3,6 +3,15 @@ use super::{Equipment, PerformanceLevel};
 #[allow(unsafe_code)] // Read-only Windows SDK boundary copied from the frozen Hub.
 #[path = "equipment_windows.rs"]
 mod windows;
+#[cfg(any(windows, test))]
+fn cpu_label(name: &str) -> Option<String> {
+    let name: String = name
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(super::CPU_LIMIT)
+        .collect();
+    (!name.trim().is_empty()).then_some(name)
+}
 impl Equipment {
     pub fn detect() -> Self {
         #[cfg(windows)]
@@ -30,6 +39,20 @@ impl Equipment {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cpu_name_is_bounded_and_never_empty_after_sanitizing() {
+        for name in ["", " ", "\0\u{7f}"] {
+            assert_eq!(cpu_label(name), None);
+        }
+        assert_eq!(cpu_label("CPU\0"), Some("CPU".into()));
+        assert_eq!(
+            cpu_label(&"a".repeat(super::super::CPU_LIMIT + 1))
+                .unwrap()
+                .chars()
+                .count(),
+            super::super::CPU_LIMIT
+        );
+    }
     #[test]
     fn recommendation_uses_real_hardware_without_inventing_missing_values() {
         assert_eq!(

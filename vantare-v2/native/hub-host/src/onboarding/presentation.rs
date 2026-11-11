@@ -1,8 +1,8 @@
 //! Compact counter and CAS bytes match frozen UI `Presentation::show`.
-use crate::protocol::HostError;
+use crate::{onboarding::FinishError, protocol::HostError};
 use std::path::Path;
 use vantare_ipc::files;
-pub(super) fn show(layout: &Path) -> Result<(), HostError> {
+pub(super) fn show(layout: &Path) -> Result<(), FinishError> {
     let path = layout.with_extension("show.json");
     let observed = files::read_optional(&path, 1024 * 1024).map_err(|_| HostError::Io)?;
     let current = observed
@@ -22,11 +22,11 @@ pub(super) fn show(layout: &Path) -> Result<(), HostError> {
     )
     .map_err(|error| {
         if error.kind().is_conflict() {
-            HostError::OnboardingConflict {}
+            FinishError::Conflict
         } else if error.kind() == files::Kind::Busy {
-            HostError::Busy
+            HostError::Busy.into()
         } else {
-            HostError::Io
+            HostError::Io.into()
         }
     })
 }
@@ -60,7 +60,10 @@ mod tests {
         let layout = root.path.join("layout.json");
         let path = layout.with_extension("show.json");
         std::fs::write(&path, b"broken").unwrap();
-        assert!(matches!(show(&layout), Err(HostError::Protected)));
+        assert!(matches!(
+            show(&layout),
+            Err(FinishError::Failure(HostError::Protected))
+        ));
         assert_eq!(std::fs::read(&path).unwrap(), b"broken");
         std::fs::write(&path, format!("{}1", " ".repeat(2048))).unwrap();
         show(&layout).unwrap();
@@ -77,7 +80,10 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"2");
         let bytes = u64::MAX.to_string();
         std::fs::write(&path, &bytes).unwrap();
-        assert!(matches!(show(&layout), Err(HostError::Protected)));
+        assert!(matches!(
+            show(&layout),
+            Err(FinishError::Failure(HostError::Protected))
+        ));
         assert_eq!(std::fs::read(&path).unwrap(), bytes.as_bytes());
     }
 }

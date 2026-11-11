@@ -1,33 +1,34 @@
 //! Finalization writes completion only after layout and presentation succeed.
 use super::{SaveError, Settings};
+use crate::onboarding::FinishError;
 use crate::protocol::HostError;
 use std::path::Path;
 impl Settings {
-    pub(crate) fn onboarding_layout(path: &Path) -> Result<(bool, Option<String>), HostError> {
+    pub(crate) fn onboarding_layout(path: &Path) -> (bool, Option<String>) {
         super::layout::onboarding::state(path)
     }
     pub(crate) fn finish_onboarding(
         &mut self,
         path: &Path,
         choice: &crate::onboarding::Finish,
-    ) -> Result<(), HostError> {
+    ) -> Result<(), FinishError> {
         self.finish_onboarding_with(path, choice, crate::onboarding::show)
     }
     fn finish_onboarding_with(
         &mut self,
         path: &Path,
         choice: &crate::onboarding::Finish,
-        present: impl FnOnce(&Path) -> Result<(), HostError>,
-    ) -> Result<(), HostError> {
+        present: impl FnOnce(&Path) -> Result<(), FinishError>,
+    ) -> Result<(), FinishError> {
         let current = self.refresh();
         if current.protected {
-            return Err(HostError::Protected);
+            return Err(HostError::Protected.into());
         }
         if current.revision != choice.base_revision {
-            return Err(HostError::OnboardingConflict {});
+            return Err(FinishError::Conflict);
         }
         if current.general.onboarding_completed {
-            return Err(HostError::Denied);
+            return Err(HostError::Denied.into());
         }
         let layout_ready = super::layout::onboarding::apply(
             path,
@@ -44,11 +45,11 @@ impl Settings {
         self.saved(&result)
             .map(|_| ())
             .map_err(|error| match error {
-                SaveError::Conflict(_) => HostError::OnboardingConflict {},
-                SaveError::Protected => HostError::Protected,
-                SaveError::Busy => HostError::Busy,
-                SaveError::Unsupported => HostError::Unsupported,
-                SaveError::Io => HostError::Io,
+                SaveError::Conflict(_) => FinishError::Conflict,
+                SaveError::Protected => HostError::Protected.into(),
+                SaveError::Busy => HostError::Busy.into(),
+                SaveError::Unsupported => HostError::Unsupported.into(),
+                SaveError::Io => HostError::Io.into(),
             })
     }
 }
@@ -70,7 +71,7 @@ mod tests {
             engineer: root.path.join("engineer.json"),
         };
         let mut settings = Settings::load(&args);
-        let (_, layout_revision) = Settings::onboarding_layout(&path).unwrap();
+        let (_, layout_revision) = Settings::onboarding_layout(&path);
         let mut choice = crate::onboarding::Finish {
             kit: vec![WidgetKind::Delta],
             level: PerformanceLevel::Balanced,
@@ -85,7 +86,7 @@ mod tests {
         choice.base_revision = settings.view().revision;
         assert!(matches!(
             settings.finish_onboarding(&path, &choice),
-            Err(HostError::Denied)
+            Err(FinishError::Failure(HostError::Denied))
         ));
     }
     #[test]
@@ -102,7 +103,7 @@ mod tests {
         };
         let mut settings = Settings::load(&args);
         std::fs::write(&path, r#"{"version":1,"instances":[]}"#).unwrap();
-        let (_, layout_revision) = Settings::onboarding_layout(&path).unwrap();
+        let (_, layout_revision) = Settings::onboarding_layout(&path);
         let base = settings.view().revision;
         assert!(matches!(
             settings.finish_onboarding_with(
@@ -114,19 +115,24 @@ mod tests {
                     base_revision: base,
                     layout_revision
                 },
-                |_| Err(HostError::Io)
+                |_| Err(FinishError::Failure(HostError::Io))
             ),
-            Err(HostError::Io)
+            Err(FinishError::Failure(HostError::Io))
         ));
         assert!(!settings.view().general.onboarding_completed);
         assert!(!Settings::load(&args).view().general.onboarding_completed);
         let choice = crate::onboarding::Finish {
-            kit: vec![WidgetKind::Delta], level: PerformanceLevel::Balanced, show: true,
+            kit: vec![WidgetKind::Delta],
+            level: PerformanceLevel::Balanced,
+            show: true,
             base_revision: settings.view().revision,
-            layout_revision: Settings::onboarding_layout(&path).unwrap().1,
+            layout_revision: Settings::onboarding_layout(&path).1,
         };
-        settings.finish_onboarding_with(&path, &choice, |_| Ok(())).unwrap();
-        let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        settings
+            .finish_onboarding_with(&path, &choice, |_| Ok(()))
+            .unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(saved["instances"].as_array().unwrap().len(), 1);
         assert!(settings.view().general.onboarding_completed);
     }
@@ -134,26 +140,49 @@ mod tests {
     fn failed_settings_save_after_layout_keeps_completion_false_and_retry_does_not_duplicate() {
         let root = Root::new();
         let path = root.path.join("layout.json");
-        let args = crate::args::Args { controlled: false, pipe: "test".into(), data: root.path.clone(), layout: path.clone(), launcher: root.path.join("launcher.json"), engineer: root.path.join("engineer.json") };
+        let args = crate::args::Args {
+            controlled: false,
+            pipe: "test".into(),
+            data: root.path.clone(),
+            layout: path.clone(),
+            launcher: root.path.join("launcher.json"),
+            engineer: root.path.join("engineer.json"),
+        };
         let mut settings = Settings::load(&args);
         std::fs::write(&path, br#"{"version":2,"instances":[]}"#).unwrap();
-        let mut choice = crate::onboarding::Finish { kit: vec![WidgetKind::Delta], level: PerformanceLevel::Balanced, show: true, base_revision: settings.view().revision, layout_revision: Settings::onboarding_layout(&path).unwrap().1 };
+        let mut choice = crate::onboarding::Finish {
+            kit: vec![WidgetKind::Delta],
+            level: PerformanceLevel::Balanced,
+            show: true,
+            base_revision: settings.view().revision,
+            layout_revision: Settings::onboarding_layout(&path).1,
+        };
         let settings_path = root.path.join(super::super::store::FILE);
         let old = std::fs::read(&settings_path).ok();
-        assert!(settings.finish_onboarding_with(&path, &choice, |_| {
-            if settings_path.is_file() { std::fs::remove_file(&settings_path).unwrap(); }
-            std::fs::create_dir(&settings_path).unwrap();
-            Ok(())
-        }).is_err());
+        assert!(
+            settings
+                .finish_onboarding_with(&path, &choice, |_| {
+                    if settings_path.is_file() {
+                        std::fs::remove_file(&settings_path).unwrap();
+                    }
+                    std::fs::create_dir(&settings_path).unwrap();
+                    Ok(())
+                })
+                .is_err()
+        );
         std::fs::remove_dir(&settings_path).unwrap();
-        if let Some(old) = old { std::fs::write(&settings_path, old).unwrap(); }
+        if let Some(old) = old {
+            std::fs::write(&settings_path, old).unwrap();
+        }
         let mut settings = Settings::load(&args);
         assert!(!settings.view().general.onboarding_completed);
         choice.base_revision = settings.view().revision;
-        choice.layout_revision = Settings::onboarding_layout(&path).unwrap().1;
-        settings.finish_onboarding_with(&path, &choice, |_| Ok(())).unwrap();
-        let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        choice.layout_revision = Settings::onboarding_layout(&path).1;
+        settings
+            .finish_onboarding_with(&path, &choice, |_| Ok(()))
+            .unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(saved["instances"].as_array().unwrap().len(), 1);
     }
-
 }

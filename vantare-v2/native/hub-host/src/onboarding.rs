@@ -9,6 +9,11 @@ mod equipment;
 #[path = "onboarding/presentation.rs"]
 mod presentation;
 
+pub fn layout_revision<'de, D: serde::Deserializer<'de>>(
+    value: D,
+) -> Result<Option<String>, D::Error> {
+    Option::<String>::deserialize(value)
+}
 pub const PRICES_URL: &str = "https://vantare.app/#precios";
 pub const KIT_LIMIT: usize = 10;
 pub const CPU_LIMIT: usize = 128;
@@ -152,7 +157,10 @@ impl PrivateExit {
     }
     pub fn record_error(&mut self, error: Option<&crate::protocol::HostError>) {
         use crate::protocol::HostError;
-        self.record(matches!(error, Some(HostError::Io | HostError::Protected | HostError::Busy)));
+        self.record(matches!(
+            error,
+            Some(HostError::Io | HostError::Protected | HostError::Busy)
+        ));
     }
     pub fn refresh(&mut self, value: &crate::privacy::PrivacyView, active: bool) {
         self.active = active;
@@ -179,10 +187,23 @@ impl PrivateExit {
     }
 }
 #[cfg(windows)]
-pub(crate) fn show(path: &std::path::Path) -> Result<(), crate::protocol::HostError> {
+pub(crate) fn show(path: &std::path::Path) -> Result<(), FinishError> {
     presentation::show(path)
 }
 
+/// Conflicts acquire a fresh UI projection only at the dispatch boundary.
+#[cfg(windows)]
+#[derive(Debug)]
+pub(crate) enum FinishError {
+    Conflict,
+    Failure(crate::protocol::HostError),
+}
+#[cfg(windows)]
+impl From<crate::protocol::HostError> for FinishError {
+    fn from(value: crate::protocol::HostError) -> Self {
+        Self::Failure(value)
+    }
+}
 /// Internal finalization intent. Revisions are opaque hashes, never paths.
 pub struct Finish {
     pub kit: Vec<WidgetKind>,
@@ -210,13 +231,13 @@ impl State {
         settings: &crate::settings::SettingsView,
         simulators: [bool; 2],
         scanning: bool,
-    ) -> Result<OnboardingView, crate::protocol::HostError> {
+    ) -> OnboardingView {
         #[cfg(windows)]
         let (layout_ready, layout_revision) =
-            crate::settings::Settings::onboarding_layout(&self.layout)?;
+            crate::settings::Settings::onboarding_layout(&self.layout);
         #[cfg(not(windows))]
         let (layout_ready, layout_revision) = (false, None);
-        Ok(OnboardingView {
+        OnboardingView {
             pending: !settings.general.onboarding_completed && !self.private.active(),
             simulators,
             scanning,
@@ -226,7 +247,7 @@ impl State {
             layout_revision,
             settings_revision: settings.revision.clone(),
             private_session: self.private.active(),
-        })
+        }
     }
 }
 
@@ -250,8 +271,17 @@ mod tests {
             assert!(exit.can_skip(true));
             assert!(!exit.can_skip(false));
         }
-        let mut value = crate::privacy::State::isolated(&crate::test_support::Root::new().path).view();
-        for error in [HostError::Denied, HostError::PrivacyConflict { current: value.clone() }, HostError::PrivacyCleanup { current: value.clone() }] {
+        let mut value =
+            crate::privacy::State::isolated(&crate::test_support::Root::new().path).view();
+        for error in [
+            HostError::Denied,
+            HostError::PrivacyConflict {
+                current: value.clone(),
+            },
+            HostError::PrivacyCleanup {
+                current: value.clone(),
+            },
+        ] {
             exit.record_error(Some(&error));
             assert!(!exit.can_skip(true));
         }
@@ -260,6 +290,13 @@ mod tests {
         exit.record_error(Some(&HostError::Io));
         exit.refresh(&value, false);
         assert!(exit.can_finish(&value));
+    }
+    #[test]
+    fn nullable_layout_revision_is_required_in_finish_requests() {
+        let mut request = serde_json::json!({"method":"onboarding.finish","kit":["delta"],"level":"balanced","show":false,"baseRevision":"0".repeat(64),"layoutRevision":null});
+        assert!(serde_json::from_value::<crate::protocol::Request>(request.clone()).is_ok());
+        request.as_object_mut().unwrap().remove("layoutRevision");
+        assert!(serde_json::from_value::<crate::protocol::Request>(request).is_err());
     }
     #[test]
     fn prices_url_is_the_exact_public_https_document() {

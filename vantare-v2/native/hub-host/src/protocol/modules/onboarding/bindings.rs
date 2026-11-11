@@ -55,12 +55,16 @@ pub(crate) fn corpus() -> serde_json::Value {
         sample_response(Reply::OnboardingGet {
             value: value.clone(),
         }),
-        sample_response(Reply::OnboardingFinish { value }),
+        sample_response(Reply::OnboardingFinish {
+            value: value.clone(),
+        }),
         sample_response(Reply::OnboardingSkipPrivate { accepted: false }),
         sample_response(Reply::OnboardingPrices { accepted: false }),
         HostToUi::Failure {
             id: 1,
-            error: crate::protocol::HostError::OnboardingConflict {},
+            error: crate::protocol::HostError::OnboardingConflict {
+                current: Box::new(value),
+            },
         },
     ];
     let ui: Vec<UiToHost> = vec![

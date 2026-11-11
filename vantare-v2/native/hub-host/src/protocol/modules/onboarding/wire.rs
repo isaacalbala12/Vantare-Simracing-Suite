@@ -14,7 +14,10 @@ pub enum Request {
         show: bool,
         #[serde(rename = "baseRevision")]
         base_revision: String,
-        #[serde(rename = "layoutRevision")]
+        #[serde(
+            rename = "layoutRevision",
+            deserialize_with = "crate::onboarding::layout_revision"
+        )]
         layout_revision: Option<String>,
     },
     #[serde(rename = "onboarding.skipPrivate")]
@@ -43,7 +46,9 @@ pub enum Reply {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
-    OnboardingConflict {},
+    OnboardingConflict {
+        current: Box<crate::onboarding::OnboardingView>,
+    },
 }
 #[cfg(any(test, feature = "bindings"))]
 pub(crate) mod bindings;

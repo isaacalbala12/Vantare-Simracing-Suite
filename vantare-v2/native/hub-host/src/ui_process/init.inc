@@ -1,4 +1,6 @@
         remote: None,
+        deferred: None,
+        abandoned_deferred: None,
         subscriptions: std::collections::BTreeSet::new(),
         exit_code: 0,
         launcher: args.launcher.clone(),

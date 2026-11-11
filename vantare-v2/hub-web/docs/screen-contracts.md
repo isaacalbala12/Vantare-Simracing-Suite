@@ -129,3 +129,15 @@ las declaradas por Rust; mantener CAS y las comprobaciones de permisos existente
 La migración conserva el wire v6, sus límites, la autenticación y el guard de
 cierre. La apariencia no cambia. Se eliminan dos muestras duplicadas de un mismo
 evento `updates`; permanece la cobertura de todas sus variantes.
+
+### Respuestas diferidas
+
+Solo el módulo `testing` puede declarar `deferred.reply` (el build rechaza cualquier otro conjunto). Puede devolver `Result<Option<Reply>, HostError>`
+desde `complete`: `None` retiene la petición mientras llega la confirmación de
+una segunda operación del núcleo. Los módulos sin ese archivo conservan su
+firma y el generador envuelve su respuesta en `Some`, sin cambiar su wire.
+El módulo registra `(id, Instant)` en `session.deferred` únicamente después de
+que la segunda operación se acepte. El receptor envía la respuesta final o el
+error; una desconexión, el plazo del protocolo o un cierre responde
+`CoreUnavailable` antes de retirar la petición. Las respuestas tardías de esa
+petición cancelada se descartan. No se introducen variantes en el wire v6.

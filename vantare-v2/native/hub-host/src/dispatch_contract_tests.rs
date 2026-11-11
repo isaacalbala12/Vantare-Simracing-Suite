@@ -18,6 +18,8 @@ mod ready {
 #[derive(Default)]
 struct Core {
     requests: usize,
+    available: bool,
+    busy: bool,
 }
 impl Core {
     fn request(
@@ -26,7 +28,13 @@ impl Core {
         _command: vantare_ipc::services_protocol::Command,
     ) -> Result<(), HostError> {
         self.requests += 1;
-        Err(HostError::CoreUnavailable)
+        if self.busy {
+            Err(HostError::Busy)
+        } else if self.available {
+            Ok(())
+        } else {
+            Err(HostError::CoreUnavailable)
+        }
     }
 }
 include!(concat!(env!("OUT_DIR"), "/session.rs"));
@@ -124,3 +132,6 @@ fn generated_session_has_no_implicit_lifecycle_or_external_services() {
     );
 }
 include!(concat!(env!("OUT_DIR"), "/dispatch_case_tests.rs"));
+
+#[path = "testing_deferred_tests.rs"]
+mod testing_deferred_tests;

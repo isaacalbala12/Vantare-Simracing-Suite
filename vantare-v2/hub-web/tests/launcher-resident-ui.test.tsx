@@ -10,8 +10,8 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 import type { ResidentView } from "../src/contract/generated/contract";
 import { residentActionLabels } from "../src/contract/generated/launcher_resident";
-import { ResidentInbox } from "../src/renderer/screens/launcher/resident";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { ResidentInbox } from "../src/renderer/ui/launcher/ResidentInbox";
 
 const view: ResidentView = {
   protected: false,

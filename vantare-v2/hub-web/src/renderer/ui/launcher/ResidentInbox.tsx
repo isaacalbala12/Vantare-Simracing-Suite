@@ -1,48 +1,11 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useState } from "react";
 import type { ResidentView } from "../../../contract/generated/contract";
-import { useHost } from "../../app/Host";
 import { residentText as t } from "../../i18n/launcher-resident";
-import { Button } from "../../ui/Button";
-import { Callout } from "../../ui/Data";
-import { Tooltip } from "../../ui/Layers";
-import "../../ui/launcher/resident.css";
-export function useResident() {
-  const { client, issue } = useHost();
-  const [view, setView] = useState<ResidentView>();
-  useEffect(() => {
-    setView(undefined);
-    if (!client || issue) return;
-    let alive = true,
-      received = false;
-    const off = client.listen((message) => {
-      if (!alive) return;
-      if (
-        message.kind === "event" &&
-        message.event.topic === "launcherResident"
-      ) {
-        received = true;
-        setView(message.event.value);
-      }
-    });
-    const unsubscribe = client.subscribe("launcherResident");
-    void client
-      .request({ method: "launcher.resident.get" })
-      .then((reply) => {
-        if (alive && !received && reply.method === "launcher.resident.get")
-          setView(reply.value);
-      })
-      .catch(() => {
-        if (alive && !received) setView(undefined);
-      });
-    return () => {
-      alive = false;
-      off();
-      unsubscribe();
-    };
-  }, [client, issue]);
-  return view;
-}
+import { Button } from "../Button";
+import { Callout } from "../Data";
+import { Tooltip } from "../Layers";
+import "./resident.css";
 export function ResidentInbox({ view }: { view?: ResidentView }) {
   const [dismissed, setDismissed] = useState<string>();
   const decision = view?.decision;
@@ -74,7 +37,7 @@ export function ResidentInbox({ view }: { view?: ResidentView }) {
           <Dialog.Popup className="v-launcher-resident-drawer">
             <header>
               <Dialog.Title>{t.title}</Dialog.Title>
-              <Dialog.Close aria-label={t.close}>×</Dialog.Close>
+              <Dialog.Close aria-label={t.close}>{t.closeSymbol}</Dialog.Close>
             </header>
             <div className="v-launcher-resident-body">
               <Dialog.Description>

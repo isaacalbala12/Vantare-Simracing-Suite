@@ -244,7 +244,7 @@ La suscripción emite una vez y sondea cada 500 ms; al desuscribirse o entrar en
 Live no lee el diseño. Deshacer/rehacer vuelve a comprobar los derechos al
 restaurar un widget Pro. Posición/tamaño se editan sobre los overlays, no en el Hub;
 la entrada a ese modo está inactiva hasta #2025.
-## Launcher: buzón y registro (`launcher_resident`, v21 reservada)
+## Launcher: buzón y registro (`launcher_resident`, versión provisional)
 
 `launcher.resident.get {}` y el tema `launcherResident` leen los formatos ya
 publicados por el residente. No crean launcher.json ni escriben en el buzón:

@@ -61,7 +61,11 @@ impl Open {
         let mut root = Fields(self.document.fields.0.clone());
         let instances: Vec<_> = self.instances.iter().map(|fields| &fields.0).collect();
         put(&mut root, "instances", &instances)?;
-        serde_json::to_vec(&root.0).map_err(|_| HostError::Io)
+        let bytes = serde_json::to_vec(&root.0).map_err(|_| HostError::Io)?;
+        if bytes.len() > usize::try_from(LIMIT).expect("layout limit") {
+            return Err(HostError::Protected);
+        }
+        Ok(bytes)
     }
     fn revision(&self) -> String {
         vantare_services::content_hash(self.document.observed.as_deref().expect("existing layout"))

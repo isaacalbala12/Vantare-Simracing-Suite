@@ -226,7 +226,17 @@ impl WidgetKind {
             category: category.into(),
             about: about.into(),
             allowed: access.is_some_and(|a| a.allows_widget(id)),
-            suggested: matches!(self,Self::Standings|Self::Relative|Self::FuelStrategy|Self::RacingFlags|Self::Delta|Self::Pedals|Self::TrackMap|Self::HeadToHead),
+            suggested: matches!(
+                self,
+                Self::Standings
+                    | Self::Relative
+                    | Self::FuelStrategy
+                    | Self::RacingFlags
+                    | Self::Delta
+                    | Self::Pedals
+                    | Self::TrackMap
+                    | Self::HeadToHead
+            ),
         }
     }
 }

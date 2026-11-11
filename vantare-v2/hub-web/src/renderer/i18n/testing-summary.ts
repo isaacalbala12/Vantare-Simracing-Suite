@@ -2,6 +2,7 @@ export const testingSummaryText = {
   eyebrow: "CUESTIONARIOS POR VERSIÓN",
   title: "Tu experiencia cuenta",
   help: "Consulta los cuestionarios publicados y comparte una contribución. Tus respuestas son privadas.",
+  loaded: "Datos confirmados por el servicio",
   newReport: "Nuevo informe",
   pending: "Pendiente para ti",
   pendingHelp:

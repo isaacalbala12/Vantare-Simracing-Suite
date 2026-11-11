@@ -58,6 +58,7 @@ function useReportsState() {
   const [sessionReceipts, setSessionReceipts] = useState<
     { value: ReportReceiptView; title: string; module: string }[]
   >([]);
+  const [participationLoaded, setParticipationLoaded] = useState(false);
   const [participation, setParticipation] = useState<TestingView>({
     reports: [],
     questionnaires: [],
@@ -261,6 +262,7 @@ function useReportsState() {
     setReceipt(undefined);
     setConsent(false);
     setParticipation({ reports: [], questionnaires: [] });
+    setParticipationLoaded(false);
     setSessionReceipts([]);
     setLegacy("none");
     setMessage("");
@@ -284,7 +286,10 @@ function useReportsState() {
   }
   async function refresh() {
     const reply = await request({ method: "testing.refresh" });
-    if (reply.method === "testing.refresh") setParticipation(reply.value);
+    if (reply.method === "testing.refresh") {
+      setParticipation(reply.value);
+      setParticipationLoaded(true);
+    }
   }
   async function contribute() {
     if (!consent) return;
@@ -441,6 +446,7 @@ function useReportsState() {
     consent,
     setConsent,
     participation,
+    participationLoaded,
   };
 }
 const Context = createContext<ReturnType<typeof useReportsState> | undefined>(

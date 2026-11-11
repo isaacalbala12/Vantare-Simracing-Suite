@@ -94,3 +94,11 @@ it("preserves the reports subview across tabs and diagnostics, while New report 
   ).toBe("true");
   expect(screen.queryByRole("heading", { name: "Mis informes" })).toBeNull();
 });
+
+it("acknowledges a successful refresh even when there are no reports", async () => {
+  window.history.replaceState(null, "", "/?escena=testing-tester-reports");
+  await mount();
+  fireEvent.click(screen.getByRole("button", { name: /^Recargar$/ }));
+  await screen.findByText("Datos confirmados por el servicio");
+  expect(screen.getByText("Aún no hay informes cargados")).toBeTruthy();
+});

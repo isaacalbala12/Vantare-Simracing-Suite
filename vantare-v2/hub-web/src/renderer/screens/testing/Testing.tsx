@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { reportModules } from "../../../contract/generated/contract";
+import { testingSummaryText } from "../../i18n/testing-summary";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
 import { DiscardReportDialog } from "../../ui/DiscardReportDialog";
@@ -134,7 +135,11 @@ export function Reports({
       ) : view === "local" ? (
         <>
           <TestingCard title={text.helpTitle}>
-            <p>{text.reloadHelp}</p>
+            <p>
+              {state.participationLoaded
+                ? testingSummaryText.loaded
+                : text.reloadHelp}
+            </p>
             <Button disabled={blocked} onClick={() => run(state.refresh)}>
               {text.reload}
             </Button>
@@ -282,7 +287,11 @@ export function ReportsPanel() {
   return (
     <TestingCard title={text.listTitle}>
       <TestingFinePrint>{text.listHelp}</TestingFinePrint>
-      <p>{text.reloadHelp}</p>
+      <p>
+        {state.participationLoaded
+          ? testingSummaryText.loaded
+          : text.reloadHelp}
+      </p>
       {state.error && (
         <Callout
           tone="err"

@@ -23,8 +23,10 @@ import {
 } from "../contract/generated/contract";
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
+import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
 import { createHost } from "./host";
+import { executablePicker } from "./launcher-picker";
 import {
   assetPath,
   CSP,
@@ -188,6 +190,19 @@ async function start() {
       request: { method: "window.close" },
     });
   });
+  const pickExecutable = executablePicker(
+    async () => {
+      if (!window || window.isDestroyed())
+        throw new Error("Window unavailable");
+      const picked = await dialog.showOpenDialog(window, {
+        title: appText.dialogTitle,
+        properties: ["openFile"],
+        filters: [{ name: appText.dialogFilter, extensions: ["exe"] }],
+      });
+      return picked.canceled ? undefined : picked.filePaths[0];
+    },
+    (message) => host.send(message),
+  );
   const connectRenderer = (event: IpcMainEvent) => {
     const frame = event.senderFrame;
     if (
@@ -205,6 +220,7 @@ async function start() {
     let portAlive = true;
     const copies = new Set<number>();
     const unsubscribe = host.listen((message) => {
+      if (pickExecutable.receive(message)) return;
       if (
         message.kind === "response" &&
         message.result.method === "diagnostics.copy" &&
@@ -226,12 +242,25 @@ async function start() {
     });
     disconnect = () => {
       unsubscribe();
+      pickExecutable.cancel();
       port1.close();
       copies.clear();
       portAlive = false;
     };
     port1.on("message", ({ data }: { data: unknown }) => {
       if (!compatible || !isRendererMessage(data) || !bounded(data)) return;
+      if (
+        data.kind === "request" &&
+        data.request.method === "launcher.app.pick"
+      ) {
+        pickExecutable.request(
+          data.id,
+          data.request.id,
+          (message) => port1.postMessage(message),
+          () => portAlive,
+        );
+        return;
+      }
       if (data.kind === "request" && data.request.method === "privacy.policy") {
         void shell
           .openExternal(privacyPolicyUrl)

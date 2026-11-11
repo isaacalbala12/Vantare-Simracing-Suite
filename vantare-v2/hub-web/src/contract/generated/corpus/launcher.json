@@ -237,6 +237,116 @@
         "accepted": false,
         "method": "launcher.favorite"
       }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.catalog",
+        "value": {
+          "apps": [],
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.scan",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.app.get",
+        "value": {
+          "customProfiles": 0,
+          "draft": {
+            "favorite": false,
+            "id": null,
+            "name": "",
+            "useDiscovery": false
+          },
+          "hasCustomArguments": false,
+          "hasExecutable": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.app.pick",
+        "value": {
+          "name": "QA",
+          "token": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.app.save",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.app.remove",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.app.favorite",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      }
     }
   ],
   "ui": [
@@ -333,6 +443,75 @@
       "request": {
         "method": "launcher.favorite"
       }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.catalog"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.scan"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": null,
+        "method": "launcher.app.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": null,
+        "method": "launcher.app.pick"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "draft": {
+          "favorite": false,
+          "id": null,
+          "name": "QA",
+          "useDiscovery": false
+        },
+        "method": "launcher.app.save",
+        "pickToken": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "custom:qa",
+        "method": "launcher.app.remove"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "favorite": true,
+        "id": "lmu",
+        "method": "launcher.app.favorite"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "pickedExecutable",
+      "path": null
     }
   ]
 }

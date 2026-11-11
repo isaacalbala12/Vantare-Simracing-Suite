@@ -2,6 +2,13 @@ use super::{Event, HostError, HostToUi, Pipe, Reply, Request, Session, frame, io
 impl Session {
     fn launcher_dispatch(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::LauncherCatalog {}
+            | Request::LauncherScan {}
+            | Request::LauncherAppGet { .. }
+            | Request::LauncherAppPick { .. }
+            | Request::LauncherAppSave { .. }
+            | Request::LauncherAppRemove { .. }
+            | Request::LauncherAppFavorite { .. } => self.application_request(pipe, id, request),
             Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
                 self.profile_request(pipe, id, request)
             }
@@ -174,5 +181,157 @@ impl Session {
                 },
             },
         )
+    }
+}
+
+impl Session {
+    fn application_request(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        request: &Request,
+    ) -> io::Result<()> {
+        match request {
+            Request::LauncherCatalog {} => {
+                let view = self.launcher_reader.view();
+                let result = crate::launcher::apps::catalog(
+                    &self.launcher,
+                    self.launcher_reader.discovered(&view.revision),
+                );
+                frame::write(
+                    pipe,
+                    &match result {
+                        Ok(value) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherCatalog { value },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            Request::LauncherScan {} => frame::write(
+                pipe,
+                &match self.launcher_reader.scan() {
+                    Ok(value) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherScan { value },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                },
+            ),
+            Request::LauncherAppGet { id: app_id } => frame::write(
+                pipe,
+                &match crate::launcher::apps::get(&self.launcher, app_id.as_deref()) {
+                    Ok(value) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherAppGet { value },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                },
+            ),
+            // Main consumes this null acknowledgement and opens its own dialog.
+            // The final result uses the same request id and is accepted only once.
+            Request::LauncherAppPick { id: target } => frame::write(
+                pipe,
+                &match crate::launcher::apps::get(&self.launcher, target.as_deref()).and_then(
+                    |_| {
+                        self.app_picker.request_dialog(
+                            id,
+                            target.clone(),
+                            std::time::Instant::now(),
+                        )
+                    },
+                ) {
+                    Ok(()) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherAppPick { value: None },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                },
+            ),
+            Request::LauncherAppSave { .. }
+            | Request::LauncherAppRemove { .. }
+            | Request::LauncherAppFavorite { .. } => {
+                self.application_write_request(pipe, id, request)
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
+        }
+    }
+    fn application_write_request(
+        &mut self,
+        pipe: &mut Pipe,
+        id: u32,
+        request: &Request,
+    ) -> io::Result<()> {
+        match request {
+            Request::LauncherAppSave {
+                draft,
+                pick_token,
+                base_revision,
+            } => {
+                let saved = self.app_picker.save(
+                    &self.launcher,
+                    draft,
+                    pick_token.as_deref(),
+                    base_revision,
+                    std::time::Instant::now(),
+                );
+                frame::write(
+                    pipe,
+                    &match saved {
+                        Ok(()) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherAppSave {
+                                value: self.launcher_reader.view(),
+                            },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            Request::LauncherAppRemove {
+                id: app_id,
+                base_revision,
+            } => {
+                let saved = crate::launcher::apps::remove(&self.launcher, app_id, base_revision);
+                frame::write(
+                    pipe,
+                    &match saved {
+                        Ok(()) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherAppRemove {
+                                value: self.launcher_reader.view(),
+                            },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            Request::LauncherAppFavorite {
+                id: app_id,
+                favorite,
+                base_revision,
+            } => {
+                let saved = crate::launcher::apps::favorite(
+                    &self.launcher,
+                    app_id,
+                    *favorite,
+                    base_revision,
+                );
+                frame::write(
+                    pipe,
+                    &match saved {
+                        Ok(()) => HostToUi::Response {
+                            id,
+                            result: Reply::LauncherAppFavorite {
+                                value: self.launcher_reader.view(),
+                            },
+                        },
+                        Err(error) => HostToUi::Failure { id, error },
+                    },
+                )
+            }
+            _ => Err(io::ErrorKind::InvalidInput.into()),
+        }
     }
 }

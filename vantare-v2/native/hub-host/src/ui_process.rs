@@ -300,6 +300,9 @@ impl Session {
                     confirmation.publish()?;
                 }
             }
+            UiToHost::PickedExecutable(selection) => {
+                crate::launcher::apps::picked_executable(&mut self.app_picker, pipe, selection)?;
+            }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic } => {
                 self.subscriptions.insert(*topic);

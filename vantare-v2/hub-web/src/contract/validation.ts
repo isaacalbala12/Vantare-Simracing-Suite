@@ -1,3 +1,4 @@
+import { isPickedExecutable } from "./apps-validation";
 import type { HostToUi, UiToHost } from "./generated/contract";
 import { palettes, schemes, topics } from "./generated/contract";
 import { validators } from "./generated/validators";
@@ -7,6 +8,8 @@ export const FRAME_LIMIT = 1024 * 1024;
 export function isUiMessage(value: unknown): value is UiToHost {
   if (!record(value)) return false;
   switch (value.kind) {
+    case "pickedExecutable":
+      return isPickedExecutable(value);
     case "hello":
       return exact(value, ["kind", "version"]) && integer(value.version);
     case "ready":

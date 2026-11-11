@@ -1,3 +1,7 @@
+use crate::launcher::LauncherView;
+use crate::launcher::apps::{
+    AppDraft, AppEditor, CatalogApp, CatalogView, ExecutableSelection, PickedApp,
+};
 use crate::launcher::editor::{
     ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
     ProfileRunning, ProfileStep,
@@ -9,6 +13,13 @@ use std::fmt::Write as _;
 
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<ExecutableSelection>(&mut text);
+    declare::<AppDraft>(&mut text);
+    declare::<AppEditor>(&mut text);
+    declare::<CatalogApp>(&mut text);
+    declare::<CatalogView>(&mut text);
+    declare::<PickedApp>(&mut text);
+    append_apps_constants(&mut text);
     declare::<ProfileRunning>(&mut text);
     declare::<ProfileFailure>(&mut text);
     declare::<ProfileClose>(&mut text);
@@ -27,99 +38,23 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    let host: Vec<HostToUi> = vec![
-        HostToUi::Response {
-            id: 1,
-            result: profile_keys_sample(),
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherProfileGet {
-                value: ProfileEditorView {
-                    revision: "0".repeat(64),
-                    draft: crate::launcher::editor::new_draft(),
-                },
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherProfileSave {
-                value: crate::launcher::LauncherView::default(),
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherGet {
-                value: serde_json::from_str(include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../../hub-web/fixtures/launcher-base.json"
-                )))
-                .expect("launcher fixture"),
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherLaunch { accepted: true },
-        },
-        HostToUi::Failure {
-            id: 1,
-            error: crate::protocol::HostError::LauncherConflict {
-                current: crate::launcher::LauncherView::default(),
-            },
-        },
-        HostToUi::Event {
-            event: crate::protocol::Event::Launcher {
-                value: crate::launcher::LauncherView::default(),
-            },
-        },
-        HostToUi::Response {
-            id: 1,
-            result: Reply::LauncherFavorite { accepted: false },
-        },
-    ];
-    let ui: Vec<UiToHost> = vec![
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherProfileGet { id: None },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherProfileGet {
-                id: Some("creator".into()),
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherProfileSave {
-                draft: crate::launcher::editor::draft(
-                    &vantare_launcher::Document::fresh_install().profiles[0],
-                ),
-                base_revision: "0".repeat(64),
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherGet {},
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherLaunch {
-                profile: "creator".into(),
-                base_revision: "0".repeat(64),
-            },
-        },
-        UiToHost::Subscribe {
-            topic: crate::protocol::Topic::Launcher,
-        },
-        UiToHost::Unsubscribe {
-            topic: crate::protocol::Topic::Launcher,
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::LauncherFavorite {},
-        },
-    ];
+    let mut host = launcher_host_samples();
+    let mut ui = launcher_ui_samples();
 
+    host.extend(
+        application_reply_samples()
+            .into_iter()
+            .map(|result| HostToUi::Response { id: 1, result }),
+    );
+    ui.extend(
+        application_request_samples()
+            .into_iter()
+            .map(|request| UiToHost::Request { id: 1, request }),
+    );
+    ui.push(UiToHost::PickedExecutable(ExecutableSelection {
+        id: 1,
+        path: None,
+    }));
     serde_json::json!({"host":host,"ui":ui})
 }
 
@@ -174,4 +109,178 @@ fn profile_keys_sample() -> Reply {
             draft,
         },
     }
+}
+
+fn append_apps_constants(text: &mut String) {
+    writeln!(text, "export const launcherPickPathMax = {} as const;\nexport const launcherPickLifetimeSeconds = {} as const;", crate::launcher::apps::PICK_PATH_MAX, crate::launcher::apps::PICK_LIFETIME_SECONDS).expect("String write");
+}
+
+fn application_reply_samples() -> [Reply; 7] {
+    [
+        Reply::LauncherCatalog {
+            value: CatalogView {
+                revision: "0".repeat(64),
+                scanning: false,
+                apps: vec![],
+            },
+        },
+        Reply::LauncherScan {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppGet {
+            value: AppEditor {
+                revision: "0".repeat(64),
+                draft: AppDraft {
+                    id: None,
+                    name: String::new(),
+                    favorite: false,
+                    use_discovery: false,
+                },
+                has_executable: false,
+                has_custom_arguments: false,
+                custom_profiles: 0,
+            },
+        },
+        Reply::LauncherAppPick {
+            value: Some(PickedApp {
+                token: "0".repeat(64),
+                name: "QA".into(),
+            }),
+        },
+        Reply::LauncherAppSave {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppRemove {
+            value: LauncherView::default(),
+        },
+        Reply::LauncherAppFavorite {
+            value: LauncherView::default(),
+        },
+    ]
+}
+
+fn application_request_samples() -> [Request; 7] {
+    [
+        Request::LauncherCatalog {},
+        Request::LauncherScan {},
+        Request::LauncherAppGet { id: None },
+        Request::LauncherAppPick { id: None },
+        Request::LauncherAppSave {
+            draft: AppDraft {
+                id: None,
+                name: "QA".into(),
+                favorite: false,
+                use_discovery: false,
+            },
+            pick_token: Some("0".repeat(64)),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherAppRemove {
+            id: "custom:qa".into(),
+            base_revision: "0".repeat(64),
+        },
+        Request::LauncherAppFavorite {
+            id: "lmu".into(),
+            favorite: true,
+            base_revision: "0".repeat(64),
+        },
+    ]
+}
+
+fn launcher_host_samples() -> Vec<HostToUi> {
+    vec![
+        HostToUi::Response {
+            id: 1,
+            result: profile_keys_sample(),
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherProfileGet {
+                value: ProfileEditorView {
+                    revision: "0".repeat(64),
+                    draft: crate::launcher::editor::new_draft(),
+                },
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherProfileSave {
+                value: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherGet {
+                value: serde_json::from_str(include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../hub-web/fixtures/launcher-base.json"
+                )))
+                .expect("launcher fixture"),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherLaunch { accepted: true },
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: crate::protocol::HostError::LauncherConflict {
+                current: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Event {
+            event: crate::protocol::Event::Launcher {
+                value: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherFavorite { accepted: false },
+        },
+    ]
+}
+
+fn launcher_ui_samples() -> Vec<UiToHost> {
+    vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileGet { id: None },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileGet {
+                id: Some("creator".into()),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileSave {
+                draft: crate::launcher::editor::draft(
+                    &vantare_launcher::Document::fresh_install().profiles[0],
+                ),
+                base_revision: "0".repeat(64),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherGet {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherLaunch {
+                profile: "creator".into(),
+                base_revision: "0".repeat(64),
+            },
+        },
+        UiToHost::Subscribe {
+            topic: crate::protocol::Topic::Launcher,
+        },
+        UiToHost::Unsubscribe {
+            topic: crate::protocol::Topic::Launcher,
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherFavorite {},
+        },
+    ]
 }

@@ -100,6 +100,7 @@ pub enum HostToUi {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum UiToHost {
+    PickedExecutable(crate::launcher::apps::ExecutableSelection),
     Hello { version: u32 },
     Request { id: u32, request: Request },
     Subscribe { topic: Topic },

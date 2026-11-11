@@ -1,0 +1,216 @@
+import { describe, expect, it, vi } from "vitest";
+import { isAppEditor } from "../src/contract/apps-validation";
+import type { UiToHost } from "../src/contract/generated/contract";
+import {
+  launcherLimits,
+  launcherPickLifetimeSeconds,
+} from "../src/contract/generated/contract";
+import { isReply, isRequest } from "../src/contract/modules/launcher";
+import { isUiMessage } from "../src/contract/validation";
+import { executablePicker } from "../src/main/launcher-picker";
+import { isRendererMessage } from "../src/main/security";
+
+type Guarded<T> = T extends (value: unknown) => value is infer V ? V : never;
+const excludesTrustedSelection: Extract<
+  Guarded<typeof isRendererMessage>,
+  Extract<UiToHost, { kind: "pickedExecutable" }>
+> extends never
+  ? true
+  : false = true;
+describe("executable picker boundary", () => {
+  it("bounds the private-argument affected-profile count from Rust", () => {
+    const editor = {
+      revision: "0".repeat(64),
+      draft: { id: "obs", name: "OBS", favorite: false, useDiscovery: false },
+      hasExecutable: true,
+      hasCustomArguments: true,
+      customProfiles: 1,
+    };
+    expect(isAppEditor(editor)).toBe(true);
+    for (const count of [-1, launcherLimits.profiles + 1, "1", null])
+      expect(isAppEditor({ ...editor, customProfiles: count })).toBe(false);
+    const { customProfiles: _count, ...missing } = editor;
+    expect(isAppEditor(missing)).toBe(false);
+  });
+  it("excludes trusted selections in the type predicate and sends the app destination to Rust", () => {
+    expect(excludesTrustedSelection).toBe(true);
+    const host = vi.fn();
+    executablePicker(async () => undefined, host).request(
+      7,
+      "obs",
+      vi.fn(),
+      () => true,
+    );
+    expect(host).toHaveBeenCalledWith({
+      kind: "request",
+      id: 7,
+      request: { method: "launcher.app.pick", id: "obs" },
+    });
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 8,
+        request: {
+          method: "launcher.app.pick",
+          id: "obs",
+          path: "D:/QA/chosen.exe",
+        },
+      }),
+    ).toBe(false);
+  });
+  it("rejects unregistered methods even at the screen validator", () => {
+    expect(isRequest({ method: "pickedExecutable" })).toBe(false);
+    expect(isReply({ method: "pickedExecutable", accepted: true })).toBe(false);
+  });
+  it("accepts the trusted main-process envelope and denies it from the renderer", () => {
+    const picked = {
+      kind: "pickedExecutable",
+      id: 1,
+      path: "D:/QA/chosen.exe",
+    };
+    expect(isUiMessage(picked)).toBe(true);
+    expect(isRendererMessage(picked)).toBe(false);
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 1,
+        request: { method: "pickedExecutable", path: picked.path },
+      }),
+    ).toBe(false);
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 1,
+        request: { method: "launcher.app.pick", path: picked.path },
+      }),
+    ).toBe(false);
+    expect(
+      isUiMessage({
+        kind: "request",
+        id: 1,
+        request: {
+          method: "launcher.app.save",
+          baseRevision: "0".repeat(64),
+          pickToken: null,
+          draft: {
+            id: "obs",
+            name: "OBS",
+            favorite: false,
+            useDiscovery: false,
+            args: ["--renderer-cmd-prefix=untrusted"],
+          },
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 1,
+        request: { method: "launcher.app.pick", id: null },
+      }),
+    ).toBe(true);
+  });
+  const ack = (id: number) => ({
+    kind: "response" as const,
+    id,
+    result: { method: "launcher.app.pick" as const, value: null },
+  });
+  it("waits for the host's matching request acknowledgement and opens once", async () => {
+    let choose: (path: string | undefined) => void = () => {};
+    const open = vi.fn(
+      () =>
+        new Promise<string | undefined>((resolve) => {
+          choose = resolve;
+        }),
+    );
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = executablePicker(open, host);
+    expect(pick.receive(ack(1))).toBe(false);
+    pick.request(1, null, renderer, () => true);
+    expect(host).toHaveBeenCalledWith({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.app.pick", id: null },
+    });
+    expect(open).not.toHaveBeenCalled();
+    expect(pick.receive(ack(2))).toBe(false);
+    expect(open).not.toHaveBeenCalled();
+    expect(pick.receive(ack(1))).toBe(true);
+    expect(pick.receive(ack(1))).toBe(true);
+    expect(open).toHaveBeenCalledTimes(1);
+    pick.request(2, null, renderer, () => true);
+    expect(renderer).toHaveBeenCalledWith({
+      kind: "failure",
+      id: 2,
+      error: { kind: "busy" },
+    });
+    choose("D:/QA/chosen.exe");
+    await Promise.resolve();
+    expect(host).toHaveBeenCalledWith({
+      kind: "pickedExecutable",
+      id: 1,
+      path: "D:/QA/chosen.exe",
+    });
+    expect(JSON.stringify(renderer.mock.calls)).not.toContain("chosen.exe");
+    expect(pick.receive(ack(1))).toBe(false);
+    expect(pick.receive(ack(1))).toBe(false);
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+  it("rejects stale acknowledgements and results after disconnection or expiry", async () => {
+    let now = 0,
+      connected = true;
+    const host = vi.fn(),
+      renderer = vi.fn();
+    let finish: (path: string) => void = () => {};
+    const open = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pick = executablePicker(open, host, () => now);
+    pick.request(1, null, renderer, () => connected);
+    now = launcherPickLifetimeSeconds * 1000;
+    expect(pick.receive(ack(1))).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+    pick.request(2, null, renderer, () => connected);
+    pick.receive(ack(2));
+    connected = false;
+    finish("D:/QA/chosen.exe");
+    await Promise.resolve();
+    expect(
+      host.mock.calls.filter(
+        ([message]) => message.path === "D:/QA/chosen.exe",
+      ),
+    ).toHaveLength(0);
+    expect(host).toHaveBeenCalledWith({
+      kind: "pickedExecutable",
+      id: 2,
+      path: null,
+    });
+    expect(renderer).not.toHaveBeenCalled();
+  });
+  it("cancels a dialog once and ignores a late result", async () => {
+    let finish: (path: string) => void = () => {};
+    const host = vi.fn();
+    const pick = executablePicker(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+      host,
+    );
+    pick.request(7, null, vi.fn(), () => true);
+    pick.receive(ack(7));
+    pick.cancel();
+    pick.cancel();
+    finish("D:/QA/chosen.exe");
+    await Promise.resolve();
+    expect(
+      host.mock.calls.filter(
+        ([message]) => message.kind === "pickedExecutable",
+      ),
+    ).toEqual([[{ kind: "pickedExecutable", id: 7, path: null }]]);
+  });
+});

@@ -99,12 +99,18 @@
   flex: none;
 }
 .v-palette-orb {
-  width: 24px;
-  height: 24px;
+  --orb-size: 24px;
+  width: var(--orb-size);
+  height: var(--orb-size);
   flex: none;
   border-radius: 50%;
   border: 1px solid var(--orb-ring);
-  background: linear-gradient(135deg, var(--accent), var(--bg-window));
+  /* GPUI's ramp spans the diameter; CSS's default spans the box diagonal. */
+  background: linear-gradient(
+    135deg,
+    var(--accent) calc(50% - var(--orb-size) / 2),
+    var(--bg-window) calc(50% + var(--orb-size) / 2)
+  );
 }
 .v-scheme-card[data-checked],
 .v-palette-card[data-checked] {
@@ -158,8 +164,7 @@
     height: 88px;
   }
   .v-palette-orb {
-    width: 26px;
-    height: 26px;
+    --orb-size: 26px;
   }
 }
 @media (max-height: 819px) {
@@ -262,7 +267,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--text-1);
-  font: 600 16px / 24px var(--font-sans);
+  font: 600 16px / 22px var(--font-sans);
 }
 .v-appearance-preview-hero small {
   color: var(--text-2);
@@ -295,4 +300,8 @@
     var(--text-1) calc(7 / 255 * 100%),
     transparent
   );
+}
+
+.v-context:has(.v-appearance-preview) .v-rail-block-body p {
+  line-height: 19px;
 }

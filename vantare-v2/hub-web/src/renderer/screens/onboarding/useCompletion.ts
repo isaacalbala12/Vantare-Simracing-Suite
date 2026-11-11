@@ -126,6 +126,18 @@ export function useCompletion(
       onComplete?.(true, true);
     });
   }
+  function continueProtected() {
+    run(async () => {
+      const reply = await client?.request({ method: "privacy.get" });
+      if (reply?.method !== "privacy.get")
+        throw new HostFailure({ kind: "io" });
+      publish(reply.value);
+      if (!reply.value.protected) throw new HostFailure({ kind: "denied" });
+      // Match PrivacyGate: leave this renderer's gate without changing the
+      // protected file or claiming a host private session or persisted completion.
+      onComplete?.(false, true);
+    });
+  }
   function policy() {
     run(async () => {
       const reply = await client?.request({ method: "privacy.policy" });
@@ -141,6 +153,7 @@ export function useCompletion(
     finish,
     policy,
     enterPrivate,
+    continueProtected,
     privateAllowed: canEnterPrivate(saveFailure, privacy.data),
     error: failure
       ? failure instanceof HostFailure &&

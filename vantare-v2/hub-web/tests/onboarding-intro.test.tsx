@@ -320,3 +320,36 @@ it("requires a nonempty kit after skipping from an empty style selection", async
     ),
   ).toBe(false);
 });
+
+it("continues from a protected privacy file without deciding, private escape or persisting completion", async () => {
+  respond("onboarding-privacidad-protegida");
+  const { complete } = mount(true, true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name: "Saltar" }));
+  const proceed = await screen.findByRole("button", {
+    name: "Continuar sin enviar datos",
+  });
+  expect(
+    screen.getByText(/El archivo de privacidad está protegido/),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Terminar" }).hasAttribute("disabled"),
+  ).toBe(true);
+  for (const control of screen.getAllByRole("switch"))
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+  expect(
+    screen.queryByRole("button", { name: "Entrar sin guardar" }),
+  ).toBeNull();
+  fireEvent.click(proceed);
+  await waitFor(() => expect(complete).toHaveBeenCalledWith(false, true));
+  expect(
+    fake.request.mock.calls.filter(([request]) =>
+      [
+        "privacy.update",
+        "onboarding.skipPrivate",
+        "onboarding.finish",
+      ].includes(request.method),
+    ),
+  ).toHaveLength(0);
+});

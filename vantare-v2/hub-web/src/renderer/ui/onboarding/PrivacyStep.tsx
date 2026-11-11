@@ -1,4 +1,7 @@
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
+import { onboardingSummaryText } from "../../i18n/onboarding-summary";
+import { privacyGateText } from "../../i18n/privacy-gate.es";
+import { Button } from "../Button";
 import { Switch } from "../Forms";
 import { PrivacyDetails } from "../PrivacyPresentation";
 import "./privacy-step.css";
@@ -46,6 +49,8 @@ export function PrivacyStep({
   usage,
   pending,
   configured,
+  protected: protectedFile = false,
+  onContinueProtected,
   mail,
   onCrashes,
   onUsage,
@@ -55,6 +60,8 @@ export function PrivacyStep({
   usage: boolean;
   pending: boolean;
   configured: boolean;
+  protected?: boolean;
+  onContinueProtected?: () => void;
   mail?: OnboardingMailStatus;
   onCrashes: (value: boolean) => void;
   onUsage: (value: boolean) => void;
@@ -62,11 +69,24 @@ export function PrivacyStep({
 }) {
   return (
     <div className="v-ob-consent">
+      {protectedFile && (
+        <div role="status">
+          <p>{onboardingSummaryText.privacyProtected}</p>
+          <Button
+            className="v-ob-button v-ob-button--primary"
+            disabled={pending}
+            onClick={onContinueProtected}
+          >
+            {privacyGateText.skip}
+          </Button>
+        </div>
+      )}
       <ConsentCard
         label={text.crashes}
         hint={text.crashesHint}
-        checked={crashes}
+        checked={!protectedFile && crashes}
         pending={pending}
+        disabled={protectedFile}
         onChange={onCrashes}
       />
       <PrivacyDetails
@@ -79,8 +99,9 @@ export function PrivacyStep({
       <ConsentCard
         label={text.usage}
         hint={text.usageHint}
-        checked={usage}
+        checked={!protectedFile && usage}
         pending={pending}
+        disabled={protectedFile}
         onChange={onUsage}
       />
       <ConsentCard

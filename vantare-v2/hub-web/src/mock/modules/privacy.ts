@@ -39,6 +39,7 @@ export function create(context: MockContext): MockHandler {
     privacy.usageDecided = false;
     if (context.visual) privacy.reportingConfigured = true;
   }
+  if (sceneName === "onboarding-privacidad-protegida") privacy.protected = true;
   if (sceneName === "privacidad-protegida") privacy.protected = true;
   if (sceneName === "privacidad-puerta-protegida") privacy.protected = true;
   if (sceneName === "privacidad-limpieza-ocupada") {

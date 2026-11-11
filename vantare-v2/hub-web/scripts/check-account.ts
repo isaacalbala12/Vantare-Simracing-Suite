@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
 import { accessText } from "../src/renderer/i18n/access.es.ts";
-import { accountText as text } from "../src/renderer/i18n/account.es.ts";
+import {
+  foundersCopy,
+  accountText as text,
+} from "../src/renderer/i18n/account.es.ts";
 import { accountScenes } from "./visual-diff/account.ts";
 export async function checkAccount(page: Page, base: string, evidence: string) {
   const reports = [];
@@ -40,39 +43,100 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
       );
     }
   }
-  await page.goto(`${base}?escena=cuenta-sesion`);
-  await page.locator(".v-sidebar").waitFor();
-  await page.keyboard.press("Control+b");
-  await page.getByRole("region", { name: "Perfiles", exact: true }).waitFor();
-  await page.getByRole("button", { name: text.title, exact: true }).click();
-  await page
-    .getByRole("heading", { name: "Isaac Albalá", exact: true })
-    .waitFor();
-  await page.getByRole("button", { name: text.monthly, exact: true }).click();
-  await page
-    .getByText("Compra abierta. Los derechos se comprobarán automáticamente.", {
+  const safety: { scheme: string; state: string; violations: unknown[] }[] = [];
+  const check = async (scheme: string, state: string) => {
+    const report = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    safety.push({ scheme, state, violations: report.violations });
+    await writeFile(
+      resolve(evidence, "account-safety-axe.json"),
+      JSON.stringify(safety, null, 2),
+    );
+    assert.deepEqual(
+      report.violations,
+      [],
+      `account safety ${scheme}/${state}`,
+    );
+  };
+  for (const scheme of ["dark", "light"]) {
+    await page.goto(`${base}?escena=visual-${scheme}:cuenta-sesion`);
+    await page.locator(".v-sidebar").waitFor();
+    await page.keyboard.press("Control+b");
+    await page.getByRole("region", { name: "Perfiles", exact: true }).waitFor();
+    await page.getByRole("button", { name: text.title, exact: true }).click();
+    await page
+      .getByRole("heading", { name: "Isaac Albalá", exact: true })
+      .waitFor();
+    await page.getByText(text.checkoutNotice, { exact: true }).waitFor();
+    await page.waitForFunction(
+      (expected) => document.documentElement.dataset.scheme === expected,
+      scheme,
+    );
+    await page.evaluate(() => document.fonts.ready);
+    await check(scheme, "signedIn");
+    await page.screenshot({
+      path: resolve(evidence, `account-live-${scheme}.png`),
+    });
+    await page.getByRole("button", { name: text.monthly, exact: true }).click();
+    await page.getByText(text.purchaseWaiting, { exact: true }).waitFor();
+    for (const name of [text.monthly, text.annual, foundersCopy.ES.button])
+      assert.equal(
+        await page.getByRole("button", { name, exact: true }).isDisabled(),
+        true,
+      );
+    await check(scheme, "purchaseWaiting");
+    await page
+      .getByRole("button", { name: text.stopPurchase, exact: true })
+      .click();
+    await page
+      .getByText("Espera detenida. Puedes comprobar el acceso manualmente.", {
+        exact: true,
+      })
+      .waitFor();
+    await page.getByRole("button", { name: text.reset, exact: true }).click();
+    const dialog = page.getByRole("alertdialog", {
+      name: text.reset,
       exact: true,
-    })
-    .waitFor();
-  await page
-    .getByRole("button", { name: text.stopPurchase, exact: true })
-    .click();
-  await page
-    .getByText("Espera detenida. Puedes comprobar el acceso manualmente.", {
-      exact: true,
-    })
-    .waitFor();
-  await page.getByRole("button", { name: "EN", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: "Founders · €50 · founder price",
-      exact: true,
-    })
-    .waitFor();
-  await page.getByRole("button", { name: text.logout, exact: true }).click();
-  await page
-    .getByRole("button", { name: accessText.email, exact: true })
-    .waitFor();
+    });
+    await dialog.getByText(text.resetDescription, { exact: true }).waitFor();
+    await check(scheme, "deviceResetConfirmation");
+    await page.screenshot({
+      path: resolve(evidence, `account-reset-${scheme}.png`),
+    });
+    await dialog
+      .getByRole("button", { name: text.cancel, exact: true })
+      .click();
+    await dialog.waitFor({ state: "detached" });
+    await page.getByRole("button", { name: text.reset, exact: true }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: text.resetConfirm, exact: true })
+      .click();
+    await page.getByRole("alertdialog").waitFor({ state: "detached" });
+    await page.getByRole("button", { name: "EN", exact: true }).click();
+    await page
+      .getByRole("button", { name: foundersCopy.EN.button, exact: true })
+      .waitFor();
+    await page.getByRole("button", { name: text.logout, exact: true }).click();
+    await page
+      .getByRole("button", { name: accessText.email, exact: true })
+      .waitFor();
+    await page.goto(`${base}?escena=visual-${scheme}:cuenta-founders`);
+    await page.getByRole("button", { name: text.title, exact: true }).click();
+    await page.getByText(text.foundersOwned, { exact: true }).waitFor();
+    await page.waitForFunction(
+      (expected) => document.documentElement.dataset.scheme === expected,
+      scheme,
+    );
+    await page.evaluate(() => document.fonts.ready);
+    for (const name of [text.monthly, text.annual, foundersCopy.ES.button])
+      assert.equal(
+        await page.getByRole("button", { name, exact: true }).isDisabled(),
+        true,
+      );
+    await check(scheme, "founders");
+  }
   await writeFile(
     resolve(evidence, "account-interactions.json"),
     JSON.stringify({
@@ -81,6 +145,10 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
       stopPurchase: true,
       localLanguage: true,
       logoutGate: true,
+      purchaseWaitingGuard: true,
+      foundersGuard: true,
+      checkoutNotice: true,
+      deviceResetCancelAndConfirm: true,
     }),
   );
 }

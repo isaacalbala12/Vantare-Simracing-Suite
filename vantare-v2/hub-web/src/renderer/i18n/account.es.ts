@@ -12,8 +12,13 @@ export const accountText = {
   check: "Comprobar acceso",
   checking: "Comprobando…",
   logout: "Cerrar sesión",
+  loggingOut: "Cerrando sesión…",
   login: "Iniciar sesión",
   waiting: "Esperando…",
+  checkoutNotice: "Se abrirá tu navegador en la página de pago de Polar",
+  purchaseWaiting: "Ya hay una compra en espera de comprobación.",
+  foundersOwned: "Tu cuenta ya tiene Founders; no necesitas otra compra.",
+  notConfigured: "El acceso no está configurado en esta versión.",
   buySignedOut: "Inicia sesión para comprar",
   busy: "Operación en curso",
   beta: "Acceso beta",
@@ -28,6 +33,8 @@ export const accountText = {
   included: "Incluido",
   soon: "Próximamente",
   news: "Novedades de la beta",
+  newsFailed: "No se pudieron cargar las novedades. Vuelve a intentarlo.",
+  newsLoading: "Cargando novedades…",
   noNews: "Sin notas publicadas para este canal",
   failed: "No se pudo cargar la cuenta.",
   reload: "Volver a cargar",
@@ -49,6 +56,11 @@ export const accountText = {
   deviceHelp:
     "Restablecer libera la activación de este equipo (una vez cada 24 h). La lista de otros dispositivos no está disponible aquí.",
   reset: "Restablecer dispositivo",
+  resetSignIn: "Inicia sesión para restablecer este dispositivo.",
+  resetConfirm: "Restablecer",
+  cancel: "Cancelar",
+  resetDescription:
+    "Restablecer libera la activación de este equipo y solo se puede hacer una vez cada 24 h. ¿Quieres continuar?",
   mail: "Avisos por email",
   mailSoon: "Preferencias de email · Próximamente",
   data: "Tus datos",
@@ -58,6 +70,7 @@ export const accountText = {
   pc: "PC",
   unknown: "—",
   demoDisabled: "Datos de demostración; acciones deshabilitadas",
+  // Fuente: docs/vantare-program/product-contract.md:81,102,170 y native/hub/src/services/view/founders.rs:26,151-152.
   monthly: "Pro · 5,99 €/mes",
   annual: "Pro · 59,99 €/año",
 } as const;
@@ -88,6 +101,7 @@ export const accountModules = {
     icon: "v-engineer",
   },
 } as const;
+// Precios y copia: native/hub/src/services/view/founders.rs; catálogo futuro en el contrato.
 export const foundersCopy = {
   ES: {
     button: "Founders · 50 € · precio de fundador",
@@ -123,3 +137,10 @@ export const foundersCopy = {
   },
 } as const;
 export type FoundersLanguage = keyof typeof foundersCopy;
+
+export const foundersLanguages = {
+  ES: "es",
+  EN: "en",
+  IT: "it",
+  "PT-BR": "pt-BR",
+} as const;

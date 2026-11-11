@@ -28,7 +28,8 @@ export function create(context: MockContext): MockHandler {
   };
   if (
     context.sceneName === "cuenta-base" ||
-    context.sceneName === "cuenta-sesion"
+    context.sceneName === "cuenta-sesion" ||
+    context.sceneName === "cuenta-founders"
   ) {
     current = {
       ...current,
@@ -37,7 +38,10 @@ export function create(context: MockContext): MockHandler {
       gate: "none",
       verified: true,
       blocked: false,
-      plan: { kind: "verified" },
+      plan:
+        context.sceneName === "cuenta-founders"
+          ? { kind: "founders" }
+          : { kind: "verified" },
       channel: "development",
       modules: current.modules.map((module) => ({
         ...module,

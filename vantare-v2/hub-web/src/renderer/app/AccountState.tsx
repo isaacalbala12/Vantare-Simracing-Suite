@@ -24,6 +24,7 @@ import { useHost } from "./Host";
 interface AccountState {
   value?: AccountView;
   pending: boolean;
+  pendingMethod?: AccountRequest["method"];
   error?: string;
   act: (request: AccountRequest, onSent?: () => void) => Promise<void>;
   reload: () => void;
@@ -38,6 +39,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const { client } = useHost();
   const [value, setValue] = useState<AccountView>();
   const [pending, setPending] = useState(false);
+  const [pendingMethod, setPendingMethod] =
+    useState<AccountRequest["method"]>();
   const [error, setError] = useState<string>();
   const active = useRef(true);
   const running = useRef(0);
@@ -88,6 +91,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       intents.current.add(key);
       running.current++;
       setPending(true);
+      setPendingMethod(method);
       setError(undefined);
       try {
         let response: Promise<Reply>;
@@ -125,7 +129,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       } finally {
         intents.current.delete(key);
         running.current--;
-        if (active.current) setPending(running.current > 0);
+        if (active.current) {
+          setPending(running.current > 0);
+          if (sequence.current === current) setPendingMethod(undefined);
+        }
       }
     },
     [client],
@@ -140,8 +147,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         current &&
         message.kind === "event" &&
         message.event.topic === "account"
-      )
+      ) {
         setValue(message.event.value);
+        setError(undefined);
+      }
     });
     const unsubscribe = client.subscribe("account");
     void client
@@ -167,6 +176,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const state = {
     value,
     pending: pending || !!value?.working,
+    pendingMethod,
     error,
     act,
     reload: () => {

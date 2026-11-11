@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import type {
   AccountRequest,
   AccountView,
@@ -11,6 +11,7 @@ import {
   accountModules,
   type FoundersLanguage,
   foundersCopy,
+  foundersLanguages,
   accountText as text,
 } from "../i18n/account.es";
 import { Button } from "./Button";
@@ -21,6 +22,7 @@ import "./account-panel.css";
 export interface AccountPanelProps {
   value: AccountView;
   pending: boolean;
+  pendingMethod?: AccountRequest["method"];
   demo: boolean;
   act: (request: AccountRequest) => Promise<void>;
   error?: string;
@@ -35,11 +37,22 @@ export function AccountNotice({ children }: { children: ReactNode }) {
 export function AccountPanel({
   value,
   pending,
+  pendingMethod,
   demo,
   act,
   error,
   news = [],
-}: { news?: readonly ReleaseNote[] } & AccountPanelProps) {
+  newsError,
+  newsLoading = false,
+  onNewsReload,
+}: {
+  news?: readonly ReleaseNote[];
+  newsError?: string;
+  newsLoading?: boolean;
+  onNewsReload?: () => void;
+} & AccountPanelProps) {
+  const actionDescription = useId();
+  const purchaseDescription = useId();
   const [language, setLanguage] = useState<FoundersLanguage>("ES");
   const copy = foundersCopy[language];
   const signedIn = value.session === "signedIn";
@@ -54,6 +67,22 @@ export function AccountPanel({
           ? text.verified
           : text.unverified;
   const label = value.name || (known ? text.connected : text.signedOut);
+  const purchaseReason = !signedIn
+    ? text.buySignedOut
+    : value.plan.kind === "founders"
+      ? text.foundersOwned
+      : value.purchase.waiting
+        ? text.purchaseWaiting
+        : pending
+          ? text.busy
+          : undefined;
+  const actionReason = demo
+    ? text.demoDisabled
+    : pending
+      ? text.busy
+      : !value.configured
+        ? text.notConfigured
+        : "";
   const purchases: Record<Product, string> = {
     proMonthly: text.monthly,
     proAnnual: text.annual,
@@ -64,6 +93,9 @@ export function AccountPanel({
   };
   return (
     <div className={`v-account-page${demo ? " is-demo" : ""}`}>
+      <span className="v-sr-only" id={actionDescription}>
+        {actionReason}
+      </span>
       {error && <AccountNotice>{error}</AccountNotice>}
       {value.error && value.error !== error && (
         <AccountNotice>{value.error}</AccountNotice>
@@ -92,6 +124,7 @@ export function AccountPanel({
                   <Button
                     size="sm"
                     disabled={pending}
+                    aria-describedby={actionDescription}
                     onClick={() =>
                       action({ method: "account.portal", page: "profile" })
                     }
@@ -102,6 +135,7 @@ export function AccountPanel({
                 <Button
                   size="sm"
                   disabled={pending}
+                  aria-describedby={actionDescription}
                   onClick={() => action({ method: "account.photoRefresh" })}
                 >
                   {text.refreshPhoto}
@@ -114,6 +148,7 @@ export function AccountPanel({
           <Button
             size="sm"
             disabled={pending}
+            aria-describedby={actionDescription}
             aria-disabled={demo || undefined}
             tabIndex={demo ? -1 : undefined}
             onClick={() => action({ method: "account.check" })}
@@ -125,33 +160,37 @@ export function AccountPanel({
               <Button
                 key={product}
                 size="sm"
-                disabled={pending || !signedIn}
-                title={
-                  !signedIn
-                    ? text.buySignedOut
-                    : pending
-                      ? text.busy
-                      : undefined
-                }
+                disabled={Boolean(purchaseReason)}
+                aria-describedby={purchaseDescription}
                 onClick={() => action({ method: "account.purchase", product })}
               >
                 {purchases[product]}
               </Button>
             ))}
+          {!demo && (
+            <div className="v-account-checkout-note" id={purchaseDescription}>
+              <p>{text.checkoutNotice}</p>
+              {purchaseReason && <p>{purchaseReason}</p>}
+            </div>
+          )}
           {known || demo ? (
             <Button
               size="sm"
               disabled={pending}
+              aria-describedby={actionDescription}
               aria-disabled={demo || undefined}
               tabIndex={demo ? -1 : undefined}
               onClick={() => action({ method: "account.logout" })}
             >
-              {text.logout}
+              {pendingMethod === "account.logout" || value.gate === "loggingOut"
+                ? text.loggingOut
+                : text.logout}
             </Button>
           ) : (
             <Button
               size="sm"
               disabled={pending || !value.configured}
+              aria-describedby={actionDescription}
               onClick={() => action({ method: "account.choose" })}
             >
               {text.login}
@@ -167,6 +206,7 @@ export function AccountPanel({
               <Button
                 size="sm"
                 disabled={pending}
+                aria-describedby={actionDescription}
                 onClick={() => action({ method: "account.purchaseStop" })}
               >
                 {text.stopPurchase}
@@ -180,13 +220,22 @@ export function AccountPanel({
           <h2>{text.beta}</h2>
           <p>{text.betaHelp}</p>
           <span className="v-account-pill">{plan}</span>
-          <div className="v-account-founders">
+          <div
+            className="v-account-founders"
+            lang={foundersLanguages[language]}
+          >
             <strong>{copy.button}</strong>
             <p>{copy.included}</p>
             <p>{copy.subscription}</p>
             <div>
               {(Object.keys(foundersCopy) as FoundersLanguage[]).map((lang) => (
-                <Button key={lang} size="sm" onClick={() => setLanguage(lang)}>
+                <Button
+                  key={lang}
+                  size="sm"
+                  lang={foundersLanguages[lang]}
+                  aria-pressed={language === lang}
+                  onClick={() => setLanguage(lang)}
+                >
                   {lang}
                 </Button>
               ))}
@@ -236,7 +285,16 @@ export function AccountPanel({
           <Icon name="v-download" />
           <TrackedCaps>{text.news}</TrackedCaps>
         </h2>
-        {news.length ? (
+        {newsError ? (
+          <>
+            <AccountNotice>{newsError}</AccountNotice>
+            {onNewsReload && (
+              <Button onClick={onNewsReload}>{text.reload}</Button>
+            )}
+          </>
+        ) : newsLoading ? (
+          <p role="status">{text.newsLoading}</p>
+        ) : news.length ? (
           news.map((note) => (
             <div className="v-account-news" key={`${note.channel}:${note.tag}`}>
               <strong>{note.title}</strong>

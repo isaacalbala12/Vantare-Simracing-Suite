@@ -397,3 +397,8 @@
   min-height: 42px;
   border-bottom: 1px solid var(--line-1);
 }
+
+.v-account-checkout-note {
+  font: 400 11.5px / 18px var(--font-sans);
+  color: var(--text-3);
+}

@@ -25,6 +25,7 @@ export function AccountScreen() {
     ? {
         value: state.value,
         pending: state.pending,
+        pendingMethod: state.pendingMethod,
         demo: !!hello?.demo,
         act: state.act,
         error: state.error,
@@ -37,7 +38,13 @@ export function AccountScreen() {
         rail={props ? <AccountRail {...props} /> : undefined}
       />
       {props ? (
-        <AccountPanel {...props} news={news.data} />
+        <AccountPanel
+          {...props}
+          news={news.data}
+          newsError={news.isError ? text.newsFailed : undefined}
+          newsLoading={news.isFetching}
+          onNewsReload={() => void news.refetch()}
+        />
       ) : state.error ? (
         <Callout title={state.error}>
           <Button onClick={state.reload}>{text.reload}</Button>

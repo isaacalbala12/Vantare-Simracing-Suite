@@ -1,10 +1,26 @@
+import { useEffect, useId, useRef, useState } from "react";
 import { accountText as text } from "../i18n/account.es";
 import { AccountNotice, type AccountPanelProps } from "./AccountPanel";
 import { Button } from "./Button";
+import { DeviceResetDialog } from "./DeviceResetDialog";
 import { RailBlock } from "./Frame";
 export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
   const verified = value.verified && !value.blocked;
   const signedIn = value.session === "signedIn";
+  const [resetOpen, setResetOpen] = useState(false);
+  const resetTrigger = useRef<HTMLButtonElement>(null);
+  const resetDescription = useId();
+  const resetDisabled = pending || demo || !signedIn;
+  useEffect(() => {
+    if (resetDisabled) setResetOpen(false);
+  }, [resetDisabled]);
+  const resetReason = demo
+    ? text.demoDisabled
+    : !signedIn
+      ? text.resetSignIn
+      : pending
+        ? text.busy
+        : "";
   const rows = [
     [
       text.state,
@@ -50,15 +66,31 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
         </div>
         {!demo && <AccountNotice>{text.deviceHelp}</AccountNotice>}
         <Button
+          ref={resetTrigger}
           size="sm"
           variant={value.deviceLimit ? "primary" : "neutral"}
-          disabled={pending || demo}
+          disabled={resetDisabled}
+          aria-describedby={resetDescription}
           onClick={() => {
-            if (!pending && !demo) void act({ method: "account.deviceReset" });
+            if (!resetDisabled) setResetOpen(true);
           }}
         >
           {text.reset}
         </Button>
+        <span className="v-sr-only" id={resetDescription}>
+          {resetReason}
+        </span>
+        <DeviceResetDialog
+          open={resetOpen && !resetDisabled}
+          disabled={resetDisabled}
+          returnFocus={resetTrigger}
+          onCancel={() => setResetOpen(false)}
+          onConfirm={() => {
+            if (resetDisabled) return;
+            setResetOpen(false);
+            void act({ method: "account.deviceReset" });
+          }}
+        />
       </RailBlock>
       <RailBlock title={text.mail} icon="v-bell">
         <p>{text.mailSoon}</p>

@@ -266,7 +266,9 @@ export function OnboardingIntroPreview({
       <OnboardingFrame
         step={step}
         message={
-          step === 3
+          step === 6 && completion.privacy.data?.protected
+            ? summaryText.privacyProtectedSay
+            : step === 3
             ? account.blocked
               ? stepsText.accountBlocked
               : account.failed

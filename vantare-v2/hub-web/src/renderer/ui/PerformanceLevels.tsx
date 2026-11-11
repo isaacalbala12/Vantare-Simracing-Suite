@@ -8,10 +8,9 @@ import {
   widgetHz,
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
-
 import { t } from "../i18n/es";
-
 import { performanceText as text } from "../i18n/performance.es";
+import { TrackedCaps } from "./TrackedCaps";
 
 import "./performance.css";
 
@@ -160,7 +159,7 @@ export function PerformancePanel({
         <header className="v-performance-header">
           <h2>
             <Icon name="pulse" />
-            {t("track.level")}
+            <TrackedCaps>{t("track.level")}</TrackedCaps>
           </h2>
           <span>
             {text.applied} {t(`track.${track.level}`)}
@@ -175,7 +174,7 @@ export function PerformancePanel({
         <header className="v-performance-header">
           <h2>
             <Icon name="v-sliders" />
-            {text.table}
+            <TrackedCaps>{text.table}</TrackedCaps>
           </h2>
         </header>
         <FrequencyTable value={track.level} />

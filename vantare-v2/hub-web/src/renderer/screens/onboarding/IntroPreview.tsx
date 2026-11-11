@@ -8,6 +8,7 @@ import { accountText } from "../../i18n/account.es";
 import { t as translate } from "../../i18n/es";
 import { onboardingText as t } from "../../i18n/onboarding";
 import { onboardingStepsText as stepsText } from "../../i18n/onboarding-pasos";
+import { onboardingSummaryText as summaryText } from "../../i18n/onboarding-summary";
 import { Button } from "../../ui/Button";
 import {
   AccountStep,
@@ -24,24 +25,41 @@ import {
   IntroBody,
   IntroLayoutNotice,
   type IntroStep,
+  kitForStyles,
   OnboardingViewport,
   type Simulators,
   type Styles,
 } from "../../ui/onboarding/Intro";
+import { KitArt } from "../../ui/onboarding/KitArt";
 import { canAdvance, onboardingMotion } from "../../ui/onboarding/navigation";
 import {
   PerformanceArt,
   PerformanceStep,
 } from "../../ui/onboarding/PerformanceStep";
 import { PlansArt } from "../../ui/onboarding/PlansArt";
+import {
+  type OnboardingMailStatus,
+  PrivacyArt,
+  PrivacyStep,
+} from "../../ui/onboarding/PrivacyStep";
+import { SummaryStep } from "../../ui/onboarding/SummaryStep";
+import { useCompletion } from "./useCompletion";
 
 /** Component-catalog entry only; the complete first-run gate belongs to block 7c. */
 export function OnboardingIntroPreview({
   onLeave,
   extended = false,
   account = signedOutAccount,
+  full = false,
+  mail,
+  studioReason,
+  onComplete,
 }: {
   extended?: boolean;
+  full?: boolean;
+  mail?: OnboardingMailStatus;
+  studioReason?: string;
+  onComplete?: (privateSession: boolean, show: boolean) => void;
   account?: OnboardingAccountStatus;
   onLeave: (step: 3 | 6) => void;
 }) {
@@ -71,7 +89,8 @@ export function OnboardingIntroPreview({
       return reply.value;
     },
   });
-  const [step, setStep] = useState<IntroStep | 3 | 4 | 5>(0);
+  const [step, setStep] = useState<IntroStep | 3 | 4 | 5 | 6 | 7>(0);
+  const completion = useCompletion(full && step >= 6, onComplete);
   const [simulators, setSimulators] = useState<Simulators>([true, false]);
   const [styles, setStyles] = useState<Styles>([true, false, false, false]);
   const [touched, setTouched] = useState(false);
@@ -109,15 +128,35 @@ export function OnboardingIntroPreview({
     !query.error &&
     canAdvance(step, simulators, styles) &&
     !settings.pending &&
+    !completion.pending &&
+    !(
+      full &&
+      step >= 6 &&
+      (completion.privacy.isPending || completion.privacy.error)
+    ) &&
     !(step === 5 && settings.error);
   function move(action: "next" | "back" | "skip") {
     const result = onboardingMotion(action, step, allowed);
+    if (result.kind === "finish") {
+      finish(true);
+      return;
+    }
     if (result.kind !== "page") return;
-    if ((!extended && result.step === 3) || result.step === 6) {
+    if (full && step === 6 && action === "next") {
+      completion.consent(() => {
+        setStep(7);
+        say(summaryText.complete);
+      });
+      return;
+    }
+    if (
+      (!extended && !full && result.step === 3) ||
+      (!full && result.step === 6)
+    ) {
       onLeave(result.step === 6 ? 6 : 3);
       return;
     }
-    if (result.step === 7) return;
+
     setStep(result.step);
     setPricesError(false);
     say(
@@ -131,7 +170,9 @@ export function OnboardingIntroPreview({
             ? automatic
               ? stepsText.automaticSay
               : stepsText.fixedSay(translate(`track.${level}`))
-            : stepsText.lookSay,
+            : result.step === 5
+              ? stepsText.lookSay
+              : stepsText.usageOffSay,
     );
   }
   function toggleSimulator(id: 0 | 1) {
@@ -177,6 +218,16 @@ export function OnboardingIntroPreview({
       setPricesPending(false);
     }
   }
+  function finish(show: boolean) {
+    if (!full || !query.data || !allowed || (show === false && studioReason))
+      return;
+    completion.finish({
+      kit: kitForStyles(styles),
+      level,
+      show,
+      layoutRevision: query.data.layoutRevision,
+    });
+  }
   const introStep = step === 0 || step === 1 || step === 2 ? step : undefined;
   return (
     <OnboardingViewport>
@@ -206,14 +257,27 @@ export function OnboardingIntroPreview({
         error={
           query.error
             ? t.unavailable
-            : settings.error
-              ? translate("settings.failed")
-              : step === 3 && pricesError
-                ? stepsText.pricesFailed
-                : undefined
+            : full && completion.error
+              ? completion.error
+              : settings.error
+                ? translate("settings.failed")
+                : step === 3 && pricesError
+                  ? stepsText.pricesFailed
+                  : undefined
         }
         signed={account.signedIn}
-        pending={settings.pending}
+        pending={settings.pending || completion.pending}
+        usage={completion.intent.usage}
+        lead={
+          step === 7 && !query.data?.layoutReady
+            ? summaryText.notPrepared
+            : undefined
+        }
+        enterPrivate={
+          full && completion.privateAllowed
+            ? completion.enterPrivate
+            : undefined
+        }
         reducedMotion={reducedMotion}
         canContinue={allowed}
         back={() => move("back")}
@@ -233,6 +297,16 @@ export function OnboardingIntroPreview({
             <PlansArt onPrices={() => void prices()} pending={pricesPending} />
           ) : step === 4 ? (
             <PerformanceArt automatic={automatic} level={level} />
+          ) : step === 6 ? (
+            <PrivacyArt
+              crashes={completion.intent.crashes}
+              usage={completion.intent.usage}
+            />
+          ) : step === 7 ? (
+            <KitArt
+              kit={kitForStyles(styles)}
+              summary={query.data?.layoutReady}
+            />
           ) : settings.view ? (
             <AppearanceArt appearance={settings.view.appearance} />
           ) : null
@@ -271,11 +345,38 @@ export function OnboardingIntroPreview({
               );
             }}
           />
+        ) : step === 6 ? (
+          <PrivacyStep
+            crashes={completion.intent.crashes}
+            usage={completion.intent.usage}
+            pending={completion.pending}
+            configured={completion.privacy.data?.reportingConfigured ?? false}
+            mail={mail}
+            onCrashes={(value) => completion.choose("crashes", value)}
+            onUsage={(value) => completion.choose("usage", value)}
+            onPolicy={completion.policy}
+          />
+        ) : step === 7 ? (
+          <SummaryStep
+            simulators={simulators}
+            styles={styles}
+            kit={kitForStyles(styles)}
+            automatic={automatic}
+            level={level}
+            crashes={completion.intent.crashes}
+            usage={completion.intent.usage}
+            account={account}
+            mail={mail}
+            layoutReady={query.data?.layoutReady ?? false}
+            pending={settings.pending || completion.pending}
+            studioReason={studioReason}
+            onFinish={finish}
+          />
         ) : settings.view ? (
           <AppearanceStep
             appearance={settings.view.appearance}
             disabled={settings.view.protected || !!settings.error}
-            pending={settings.pending}
+            pending={settings.pending || completion.pending}
             update={settings.update}
           />
         ) : null}
@@ -284,6 +385,11 @@ export function OnboardingIntroPreview({
         )}
         {query.error && (
           <Button onClick={() => void query.refetch()}>{t.retry}</Button>
+        )}
+        {full && step >= 6 && completion.privacy.error && (
+          <Button onClick={() => void completion.privacy.refetch()}>
+            {t.retry}
+          </Button>
         )}
         {settings.error && <Button onClick={settings.retry}>{t.retry}</Button>}
       </OnboardingFrame>

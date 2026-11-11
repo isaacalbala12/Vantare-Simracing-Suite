@@ -75,4 +75,42 @@ export const onboardingStepsText = {
   accountBlocked: "Acceso bloqueado",
   accountUnconfirmed: "Cuenta conectada · plan sin confirmar",
   accountPlan: (label: string) => `Tu plan: ${label}`,
+  crashes: "Enviar informes de fallos",
+  crashesHint: "Ayúdanos a corregir errores.",
+  usage: "Enviar datos de uso anónimos",
+  usageHint: "Lo cambias cuando quieras en Ajustes.",
+  mail: "Recibir novedades y ofertas por correo",
+  mailHint: "Opcional. Requiere cuenta y correo principal verificado.",
+  mailOff: "Sin cuenta: no se activa el envío de correos.",
+  mailUnconfirmed:
+    "El permiso se confirma en el servidor. Se cambia en Ajustes › Privacidad.",
+  mailSaving: "Guardando permiso de correos…",
+  crashNotice:
+    "Si está encendido, Vantare envía a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.. Puedes apagarlo aquí mismo o más tarde en Ajustes › Privacidad.",
+  usageOnSay: "Datos de uso activados. Son anónimos.",
+  usageOffSay:
+    "Los datos de uso están desactivados. Puedes activarlos si quieres.",
+  crashOnSay: "Informes de fallos activados. Nos ayudan a corregir errores.",
+  crashOffSay: "Informes de fallos desactivados.",
+  feedTitle: "LO QUE ENVIARÍA VANTARE",
+  feedBoth: "ESTO Y FALLOS, CON PERMISO.",
+  feedUsage: "SOLO ESTO, Y ANÓNIMO.",
+  feedCrashes: "SOLO FALLOS, CON PERMISO.",
+  feedNothing: "NADA. ESTÁ APAGADO.",
+  anonymous: "Identificador aleatorio de instalación · sin nombre",
+  feedRows: [
+    ["Páginas y funciones", "Uso de la app"],
+    ["Tipos de widgets", "Sin contenido"],
+    ["Tiempo de uso", "Solo con permiso"],
+    ["Versión, canal y simulador", "Instalación, cuenta y licencia"],
+  ] as const,
+  crashFeed:
+    "Fallos: versión, sistema y código del fallo; se cambia aquí o en Ajustes. No se mide fluidez.",
+  neverTitle: "ESTOS DATOS NO SE ENVÍAN EN LA ANALÍTICA",
+  neverRows: [
+    "Tu nombre y tu email",
+    "Tus vueltas y tu telemetría",
+    "Tus archivos",
+  ] as const,
+  neverSend: "NO SE ENVÍA",
 };

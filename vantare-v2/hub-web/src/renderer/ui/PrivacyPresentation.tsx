@@ -11,29 +11,35 @@ export function PrivacyDetails({
   configured,
   pending,
   onPolicy,
+  note = text.note,
+  showPolicy = true,
 }: {
   configured: boolean;
+  note?: string;
+  showPolicy?: boolean;
   pending: boolean;
   onPolicy: () => void;
 }) {
   return (
     <>
-      <p className="v-privacy-note">{text.note}</p>
+      <p className="v-privacy-note">{note}</p>
       {!configured && (
         <p className="v-privacy-send-note">{text.notConfigured}</p>
       )}
-      <div className="v-privacy-policy">
-        <Button
-          variant="ghost"
-          aria-busy={pending || undefined}
-          aria-disabled={pending || undefined}
-          onClick={() => {
-            if (!pending) onPolicy();
-          }}
-        >
-          {t("privacy.policy")}
-        </Button>
-      </div>
+      {showPolicy && (
+        <div className="v-privacy-policy">
+          <Button
+            variant="ghost"
+            aria-busy={pending || undefined}
+            aria-disabled={pending || undefined}
+            onClick={() => {
+              if (!pending) onPolicy();
+            }}
+          >
+            {t("privacy.policy")}
+          </Button>
+        </div>
+      )}
     </>
   );
 }

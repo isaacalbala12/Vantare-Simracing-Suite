@@ -5,6 +5,7 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -93,6 +94,33 @@ export function SectionChrome({
     };
   }, [active, hidden, setActive, setHidden]);
   const visibleTabs = tabs?.filter((tab) => tab.visible) ?? [];
+  const tabList = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!targets.tabs || !tabs?.length) return;
+    const list = tabList.current;
+    if (!list || typeof ResizeObserver === "undefined") return;
+    // Keep clipped tabs in the keyboard order; focusing one scrolls it fully into view.
+    const observedTabs = list.querySelectorAll('[role="tab"]');
+    const update = () => {
+      const bounds = list.getBoundingClientRect();
+      for (const tab of observedTabs) {
+        const box = tab.getBoundingClientRect();
+        tab.toggleAttribute(
+          "data-clipped",
+          box.left < bounds.left - 0.25 || box.right > bounds.right + 0.25,
+        );
+      }
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(list);
+    for (const tab of observedTabs) observer.observe(tab);
+    list.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => {
+      observer.disconnect();
+      list.removeEventListener("scroll", update);
+    };
+  }, [targets.tabs, tabs]);
   return (
     <>
       {targets.tabs && visibleTabs.length
@@ -105,9 +133,17 @@ export function SectionChrome({
               className="v-section-tabs"
             >
               <Tabs.List
+                ref={tabList}
                 activateOnFocus
                 className="v-section-tab-list"
                 aria-label={title ?? shellText.sectionTabs}
+                onFocusCapture={(event) => {
+                  if (event.target instanceof HTMLElement)
+                    event.target.closest('[role="tab"]')?.scrollIntoView?.({
+                      block: "nearest",
+                      inline: "nearest",
+                    });
+                }}
               >
                 {visibleTabs.map((tab) => (
                   <Tabs.Tab

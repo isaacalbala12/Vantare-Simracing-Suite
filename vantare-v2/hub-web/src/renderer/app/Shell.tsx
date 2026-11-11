@@ -297,7 +297,7 @@ function ShellContent() {
                 aria-expanded={!ui.railCollapsed}
                 onClick={ui.toggleRail}
               >
-                <Icon name="i-panel" />
+                <Icon name="v-side" />
               </IconButton>
               <CommandPalette
                 title={t("shell.commands")}
@@ -434,7 +434,7 @@ function ShellContent() {
                     onClick={ui.toggleSidebar}
                     aria-expanded={!ui.sidebarCollapsed}
                   >
-                    <Icon name="i-panel" />
+                    <Icon name="v-side" />
                   </IconButton>
                   <IconButton
                     label={t("shell.toggleTheme")}

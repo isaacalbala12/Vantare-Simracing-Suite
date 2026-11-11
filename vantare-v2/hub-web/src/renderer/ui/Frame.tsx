@@ -196,7 +196,7 @@ export function ContextRail({
           onClick={onToggle}
           aria-expanded={!collapsed}
         >
-          <Icon name="i-panel" />
+          <Icon name="v-side" />
         </IconButton>
       )}
       {!collapsed && <SectionRailSlot fallback={children} />}

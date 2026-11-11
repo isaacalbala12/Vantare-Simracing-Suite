@@ -10,6 +10,7 @@ import {
   captureUncompared,
 } from "./visual-diff/capture-only.ts";
 import { auditFontSources } from "./visual-diff/fonts.ts";
+import { checkFrameParity } from "./visual-diff/frame-parity-check.ts";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
 import { visualScenes } from "./visual-diff/scenes.ts";
@@ -361,6 +362,7 @@ async function capture(
       const nav = page.locator(".v-sidebar");
       const applicable = (await nav.count()) > 0;
       const matrix = [];
+      const frameChecks = [];
       for (const expanded of [false, true]) {
         if (applicable) {
           const current = await nav.evaluate(
@@ -384,6 +386,8 @@ async function capture(
         const filename = expanded
           ? "sidebar-expanded.png"
           : "sidebar-collapsed.png";
+        if (process.env.VANTARE_HUB_FRAME_ASSERT === "1")
+          frameChecks.push(await checkFrameParity(page, expanded));
         saveWindow(filename);
         matrix.push({
           expanded,
@@ -392,6 +396,10 @@ async function capture(
           width: applicable ? (await nav.boundingBox())?.width : null,
         });
       }
+      await writeFile(
+        join(destination, "frame-checks.json"),
+        JSON.stringify(frameChecks, null, 2),
+      );
       await writeFile(
         join(destination, "sidebar-matrix.json"),
         JSON.stringify(matrix, null, 2),

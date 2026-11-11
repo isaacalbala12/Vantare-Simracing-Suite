@@ -6,6 +6,7 @@ import { frameScenes } from "./frame.ts";
 import { homeScenes } from "./home.ts";
 import { launcherScenes } from "./launcher.ts";
 import { notificationScenes } from "./notifications.ts";
+import { onboardingScenes } from "./onboarding.ts";
 import { pilotScenes } from "./pilot.ts";
 import { privacyScenes } from "./privacy.ts";
 import { roadmapScenes } from "./roadmap.ts";
@@ -35,6 +36,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...frameScenes,
   ...homeScenes,
   ...calendarScenes,
+  ...onboardingScenes,
   ...pilotScenes,
   ...privacyScenes,
   ...testingScenes,

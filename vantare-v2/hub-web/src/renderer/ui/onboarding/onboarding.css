@@ -9,7 +9,7 @@
   height: 100%;
   overflow: hidden;
   background: var(--ob-c-0a0909);
-  color: var(--ob-c-f3eeee);
+  color: var(--text-1);
   isolation: isolate;
 }
 .v-ob-backdrop {
@@ -57,7 +57,7 @@
   display: flex;
   align-items: center;
   gap: calc(8 * var(--ob-unit));
-  color: var(--ob-c-887f82);
+  color: var(--text-3);
   font-size: calc(10.9 * var(--ob-unit));
   font-weight: 600;
   letter-spacing: calc(1.5 * var(--ob-unit));
@@ -98,7 +98,7 @@
   margin: 0;
   font-size: calc(18.4 * var(--ob-unit));
   line-height: calc(27.6 * var(--ob-unit));
-  color: var(--ob-c-ded9db);
+  color: var(--text-2);
 }
 .v-ob-art {
   flex: 1;
@@ -126,14 +126,14 @@
   border: 1px solid var(--ob-c-3e3538);
   border-radius: calc(10 * var(--ob-unit));
   background: var(--ob-c-121011);
-  color: var(--ob-c-f3eeee);
+  color: var(--text-1);
   box-shadow: none;
   font-size: calc(16 * var(--ob-unit));
   font-weight: 600;
 }
 .v-onboarding .v-ob-button--primary {
   background: var(--ob-c-f3eeee);
-  border-color: var(--ob-c-f3eeee);
+  border-color: var(--text-1);
   color: var(--ob-c-1c1719);
 }
 .v-onboarding .v-ob-skip {
@@ -193,7 +193,7 @@
   font-size: calc(11 * var(--ob-unit));
   line-height: 1;
   font-weight: 600;
-  color: var(--ob-c-887f82);
+  color: var(--text-3);
 }
 .v-ob-radio {
   display: flex;
@@ -224,7 +224,7 @@
   display: flex;
   align-items: center;
   gap: calc(8 * var(--ob-unit));
-  color: var(--ob-c-887f82);
+  color: var(--text-3);
   font-size: calc(9.6 * var(--ob-unit));
   font-weight: 700;
   letter-spacing: calc(1.7 * var(--ob-unit));
@@ -346,7 +346,7 @@
   border: 1px solid var(--ob-c-292325);
   border-radius: calc(14 * var(--ob-unit));
   background: var(--ob-c-121011);
-  color: var(--ob-c-f3eeee);
+  color: var(--text-1);
 }
 .v-onboarding .v-ob-simulator {
   height: calc(98 * var(--ob-unit));
@@ -369,7 +369,7 @@
   justify-content: center;
   border-radius: calc(12 * var(--ob-unit));
   background: var(--ob-c-221d1f);
-  color: var(--ob-c-887f82);
+  color: var(--text-3);
   font-size: calc(20 * var(--ob-unit));
   font-weight: 600;
 }
@@ -385,7 +385,7 @@
   display: flex;
   align-items: center;
   gap: calc(8 * var(--ob-unit));
-  color: var(--ob-c-887f82);
+  color: var(--text-3);
   font-size: calc(13 * var(--ob-unit));
   font-weight: 400;
 }
@@ -463,7 +463,7 @@
   font-weight: 700;
 }
 .v-ob-style-description {
-  color: var(--ob-c-887f82);
+  color: var(--text-3);
   font-size: calc(13 * var(--ob-unit));
   font-weight: 400;
 }
@@ -618,8 +618,9 @@
 
 .v-onboarding > .v-window-controls {
   position: absolute;
-  top: 0;
+  top: 6px;
   right: 0;
+  height: 24px;
 }
 .v-ob-header {
   -webkit-app-region: drag;
@@ -700,4 +701,25 @@
   color: var(--ob-raw-b3101d);
   font-size: calc(8.32 * var(--ob-unit));
   font-weight: 700;
+}
+
+.v-ob-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+.v-ob-change-later {
+  margin: 0;
+  color: var(--text-3);
+  font-size: calc(13.6 * var(--ob-unit));
+}
+/* Keep the existing caption glyph centers at y=18 while leaving the lower
+   header's Skip target clear, as in the native full-window assistant. */
+.v-onboarding > .v-window-controls .v-window-button {
+  height: 24px;
+  min-height: 24px;
+}
+
+.v-ob-helmet[data-surprised="true"] .v-ob-eye--second {
+  left: 56.190476%;
 }

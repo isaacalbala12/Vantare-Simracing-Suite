@@ -13,6 +13,9 @@ use std::{collections::HashSet, path::PathBuf};
 use ts_rs::TS;
 pub const DOCUMENT_LIMIT: usize = 64 * 1024;
 pub const SERIES_LIMIT: usize = 256;
+// Same bounded expansion used by the frozen GPUI calendar model.
+#[cfg(any(test, feature = "bindings"))]
+pub const STARTS_LIMIT: usize = 10_000;
 pub const DATE_LIMIT: usize = 40;
 pub const TEXT_LIMIT: usize = 300;
 pub const LIST_LIMIT: usize = 64;

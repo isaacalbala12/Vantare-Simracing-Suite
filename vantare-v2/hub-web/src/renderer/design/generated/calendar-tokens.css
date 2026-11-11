@@ -79,3 +79,9 @@
   --calendar-class-lmgt3: #f08a2c;
   --calendar-class-gte: #d6b83a;
 }
+
+:is(.v-calendar, .v-calendar-rail) {
+  --calendar-filter-beginner: #cd7f32;
+  --calendar-filter-intermediate: #b8c0c8;
+  --calendar-filter-advanced: #e2b93b;
+}

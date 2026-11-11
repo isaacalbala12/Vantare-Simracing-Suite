@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 
+const filtersPath = "../native/hub/src/calendar/ui/proximas.rs";
 const sourcePath = "../native/hub/src/calendar/chrome.rs";
 const fields: Record<string, string> = {
   l1: "surface-1",
@@ -34,7 +35,7 @@ const classes: Record<string, string> = {
   GTE: "gte",
 };
 const color = (hex: string) => `#${hex.replaceAll("_", "").toLowerCase()}`;
-export function calendarTokens(source: string) {
+export function calendarTokens(source: string, filters: string) {
   const branches = source.split("if light(cx) {")[1]?.split("} else {");
   if (!branches || branches.length < 2)
     throw new Error("Calendar palette branches missing");
@@ -97,10 +98,21 @@ export function calendarTokens(source: string) {
       `[data-scheme="${scheme}"] :is(.v-calendar, .v-calendar-rail) {\n${classValues.join("\n")}\n}`,
     );
   }
+  const filterValues = ["beginner", "intermediate", "advanced"].map((tier) => {
+    const match = filters.match(new RegExp(`"${tier}" => 0x([A-Fa-f0-9_]+),`));
+    if (!match) throw new Error(`Calendar filter color missing: ${tier}`);
+    return `  --calendar-filter-${tier}: ${color(match[1])};`;
+  });
+  css.push(
+    `:is(.v-calendar, .v-calendar-rail) {\n${filterValues.join("\n")}\n}`,
+  );
   return `${css.join("\n\n")}\n`;
 }
 if (import.meta.main)
   await writeFile(
     "src/renderer/design/generated/calendar-tokens.css",
-    calendarTokens(await readFile(sourcePath, "utf8")),
+    calendarTokens(
+      await readFile(sourcePath, "utf8"),
+      await readFile(filtersPath, "utf8"),
+    ),
   );

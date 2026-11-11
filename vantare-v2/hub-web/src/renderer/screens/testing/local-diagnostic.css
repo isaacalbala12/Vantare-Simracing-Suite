@@ -1,0 +1,83 @@
+.v-testing-diagnostic {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.v-testing-diagnostic-note {
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+.v-testing-diagnostic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.v-testing-diagnostic-status {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+.v-testing-diagnostic-card {
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+.v-testing-diagnostic-card header {
+  min-height: 60px;
+  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-testing-diagnostic-card h2,
+.v-testing-diagnostic-card h3 {
+  margin: 0;
+  font: 600 15px / 15px var(--font-display);
+}
+.v-testing-diagnostic-body {
+  padding: 12px 20px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 21px;
+}
+.v-testing-diagnostic-body p,
+.v-testing-diagnostic-body dl,
+.v-testing-diagnostic-body dd {
+  margin: 0;
+}
+.v-testing-diagnostic-binary {
+  min-height: 49px;
+  padding: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-testing-diagnostic-binary dt {
+  display: flex;
+  flex-direction: column;
+}
+.v-testing-diagnostic-binary dt span,
+.v-testing-diagnostic-uninstrumented {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.v-testing-diagnostic-binary dd {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.v-testing-diagnostic-body pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 400 11px / 17px var(--font-sans);
+  color: var(--text-3);
+}

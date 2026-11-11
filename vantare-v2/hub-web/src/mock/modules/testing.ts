@@ -9,9 +9,14 @@ export function create({ sceneName, core }: MockContext): MockHandler {
       verified: true,
       blocked: false,
       tester: sceneName.startsWith("testing-tester"),
+      calendar:
+        sceneName === "testing-tester-reference" ? true : core.access.calendar,
     };
-    core.services =
-      sceneName === "testing-reference" ? "unavailable" : "connected";
+    core.services = ["testing-reference", "testing-tester-reference"].includes(
+      sceneName,
+    )
+      ? "unavailable"
+      : "connected";
   }
   const reply = createTestingMock(sceneName, core);
   return (value) =>

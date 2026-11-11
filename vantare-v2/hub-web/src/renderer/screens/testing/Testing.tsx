@@ -12,8 +12,8 @@ import {
   TestingNotes,
   TestingToolbar,
 } from "../../ui/TestingLayout";
-import { Diagnostics } from "../settings/Diagnostics";
 import { testingText as text } from "./es";
+import { LocalDiagnostic } from "./LocalDiagnostic";
 import { useReports } from "./ReportsState";
 
 export function Reports() {
@@ -108,7 +108,7 @@ export function Reports() {
         />
       )}
       {view === "diagnostic" ? (
-        <Diagnostics />
+        <LocalDiagnostic />
       ) : view === "list" ? (
         <TestingCard title={text.listTitle}>
           <TestingFinePrint>{text.listHelp}</TestingFinePrint>

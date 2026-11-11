@@ -20,6 +20,7 @@ pub struct PrivacyView {
     pub protected: bool,
     pub cleanup_pending: bool,
     pub cleanup_busy: bool,
+    pub reporting_configured: bool,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -162,6 +163,7 @@ impl State {
             protected: self.protected,
             cleanup_pending: self.cleanup_pending,
             cleanup_busy: self.cleanup_busy,
+            reporting_configured: vantare_services::diagnostics::configured(),
         }
     }
     pub fn refresh(&mut self) -> PrivacyView {
@@ -401,5 +403,18 @@ mod tests {
         adopt(&data, &shared).expect("marker");
         assert!(!shared.join(PRIVACY_FILE).exists());
         assert!(source.exists());
+    }
+}
+
+#[cfg(test)]
+mod reporting_tests {
+    use super::{HostError, State};
+    #[test]
+    fn configuration_projection_uses_the_service_build_without_exposing_its_key() {
+        let state = State::at(Err(HostError::Io));
+        assert_eq!(state.view().reporting_configured, vantare_services::diagnostics::configured());
+        let view = serde_json::to_value(state.view()).expect("view");
+        assert!(view["reportingConfigured"].is_boolean());
+        assert!(view.as_object().expect("view object").keys().all(|key| !key.to_ascii_lowercase().contains("key")));
     }
 }

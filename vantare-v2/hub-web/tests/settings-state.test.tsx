@@ -28,6 +28,7 @@ import { WindowControls } from "../src/renderer/app/WindowControls";
 import { Client } from "../src/renderer/bridge/client";
 import { appearanceText } from "../src/renderer/i18n/appearance.es";
 import { t } from "../src/renderer/i18n/es";
+import { privacyText } from "../src/renderer/i18n/privacy.es";
 import { Account } from "../src/renderer/screens/settings/Account";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
 import { AppearanceRail } from "../src/renderer/screens/settings/AppearanceRail";
@@ -599,10 +600,14 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
         .getByRole("switch", { name: t("privacy.usage") })
         .getAttribute("aria-checked"),
     ).toBe("false");
-    const mail = screen.getByRole("switch", { name: t("privacy.mail") });
-    await waitFor(() => expect(mail.hasAttribute("disabled")).toBe(false));
+    const mail = await screen.findByRole("button", {
+      name: privacyText.enable,
+    });
+    await waitFor(() =>
+      expect(mail.getAttribute("aria-disabled")).not.toBe("true"),
+    );
     await user.click(mail);
-    await waitFor(() => expect(mail.getAttribute("aria-checked")).toBe("true"));
+    await screen.findByRole("button", { name: privacyText.disable });
   });
   it("retries only the failed privacy field after a conflict", async () => {
     const hook = mount("privacidad-conflicto", <Privacy />);
@@ -646,15 +651,48 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
       ).toBeNull(),
     );
   });
+  it("retries the same email choice after failure and keeps the error visible", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("privacidad-mail-error", <Privacy />);
+    await loaded(hook);
+    const enable = await screen.findByRole("button", {
+      name: privacyText.enable,
+    });
+    await waitFor(() =>
+      expect(enable.getAttribute("aria-disabled")).not.toBe("true"),
+    );
+    await userEvent.setup().click(enable);
+    await screen.findByText(t("privacy.mailFailed"));
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: privacyText.retry }));
+    await waitFor(() =>
+      expect(
+        request.mock.calls.filter(([value]) => value.method === "mail.set"),
+      ).toHaveLength(2),
+    );
+    for (const [value] of request.mock.calls.filter(
+      ([value]) => value.method === "mail.set",
+    ))
+      expect(value).toEqual({ method: "mail.set", consent: true });
+  });
+  it("shows a refused privacy policy action inline", async () => {
+    const hook = mount("ajustes-base", <Privacy />);
+    await loaded(hook);
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: t("privacy.policy") }));
+    await screen.findByText(t("privacy.policyFailed"));
+  });
   it("does not infer email permission while services are unavailable", async () => {
     const request = vi.spyOn(Client.prototype, "request");
     const hook = mount("ajustes-base", <Privacy />);
     await loaded(hook);
     await screen.findByText(t("privacy.mailUnavailable"));
-    const control = screen.getByRole("switch", { name: t("privacy.mail") });
+    const control = screen.getByRole("button", { name: privacyText.enable });
     expect(control.getAttribute("aria-disabled")).toBe("true");
     await userEvent.setup().click(control);
-    expect(control.getAttribute("aria-checked")).toBe("false");
+    expect(control.textContent).toBe(privacyText.enable);
     expect(
       request.mock.calls.filter(([value]) => value.method === "mail.set"),
     ).toHaveLength(0);

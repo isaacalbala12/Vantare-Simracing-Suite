@@ -1,6 +1,6 @@
 {
   "kind": "hello",
-  "version": 8,
+  "version": 9,
   "demo": true,
   "theme": {
     "window": "#161314",

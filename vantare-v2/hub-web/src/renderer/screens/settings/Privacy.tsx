@@ -7,17 +7,24 @@ import type {
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { t } from "../../i18n/es";
+import { privacyText as text } from "../../i18n/privacy.es";
 import { Button } from "../../ui/Button";
-import { Callout, Card, SettingRow, Skeleton } from "../../ui/Data";
+import { Callout, SettingGroup, SettingRow, Skeleton } from "../../ui/Data";
 import { Switch } from "../../ui/Forms";
-import { useToastManager } from "../../ui/Layers";
+import {
+  MailConsent,
+  PrivacyDetails,
+  PrivacyLayout,
+} from "../../ui/PrivacyPresentation";
 import { ActionGroup } from "../../ui/ShellLayout";
 
 const key = ["privacy"] as const;
 export function Privacy() {
   const { client } = useHost();
   const cache = useQueryClient();
-  const toast = useToastManager();
+  const [mailIntent, setMailIntent] = useState<boolean>();
+  const [mailRequested, setMailRequested] = useState(false);
+  const mailBusy = useRef(false);
   const [failure, setFailure] = useState<HostFailure>();
   const failed = useRef<PrivacyPatch | undefined>(undefined);
   const inFlight = useRef<Promise<void> | undefined>(undefined);
@@ -65,11 +72,9 @@ export function Privacy() {
         cache.setQueryData(key, failure.detail.current);
         failed.current = undefined;
         setFailure(undefined);
-        toast.add({ title: t("privacy.cleanup"), type: "warn" });
         return;
       }
       setFailure(failure);
-      toast.add({ title: t("privacy.failed"), type: "err" });
     },
   });
   useEffect(() => {
@@ -114,8 +119,10 @@ export function Privacy() {
       if (reply?.method !== "mail.set") throw new HostFailure({ kind: "io" });
       return reply.value;
     },
-    onSuccess: (value) => cache.setQueryData(["mail", core.services], value),
-    onError: () => toast.add({ title: t("privacy.mailFailed"), type: "err" }),
+    onSuccess: (value) => {
+      cache.setQueryData(["mail", core.services], value);
+      setMailIntent(undefined);
+    },
   });
   const policy = useMutation({
     mutationFn: async () => {
@@ -123,8 +130,26 @@ export function Privacy() {
       if (reply?.method !== "privacy.policy" || !reply.accepted)
         throw new Error("policy unavailable");
     },
-    onError: () => toast.add({ title: t("privacy.policyFailed"), type: "err" }),
   });
+  function runMail(value: boolean) {
+    if (mailBusy.current || mail.isFetching) return;
+    mailBusy.current = true;
+    setMailIntent(value);
+    void changeMail
+      .mutateAsync(value)
+      .catch(() => {})
+      .finally(() => {
+        mailBusy.current = false;
+      });
+  }
+  function refreshMail() {
+    if (mailBusy.current || mail.isFetching) return;
+    mailBusy.current = true;
+    setMailRequested(true);
+    void mail.refetch().finally(() => {
+      mailBusy.current = false;
+    });
+  }
   if (query.isPending) return <Skeleton label={t("settings.loading")} />;
   if (!query.data)
     return (
@@ -142,7 +167,7 @@ export function Privacy() {
   const blocked =
     view.protected || (view.cleanupPending && !view.cleanupBusy) || !!failure;
   return (
-    <>
+    <PrivacyLayout>
       {view.protected && (
         <Callout tone="warn" title={t("settings.protected")}>
           {t("settings.protectedHelp")}
@@ -194,7 +219,7 @@ export function Privacy() {
           {t("privacy.conflictHelp")}
         </Callout>
       )}
-      <Card title={t("privacy.local")}>
+      <SettingGroup number={1} title={text.shared}>
         <SettingRow
           label={t("privacy.crashes")}
           description={t("privacy.crashesHelp")}
@@ -221,44 +246,35 @@ export function Privacy() {
             onCheckedChange={(value) => run({ field: "usage", value })}
           />
         </SettingRow>
-      </Card>
-      <Card title={t("privacy.mail")}>
-        <SettingRow
-          label={t("privacy.mail")}
-          description={t("privacy.mailHelp")}
-        >
-          <Switch
-            hideLabel
-            label={t("privacy.mail")}
-            checked={mail.data?.consent ?? false}
-            disabled={!mail.data || mail.isError}
-            pending={changeMail.isPending}
-            onCheckedChange={(value) => changeMail.mutate(value)}
-          />
-        </SettingRow>
-        {(!mail.data || mail.isError) && (
-          <Callout
-            title={t("privacy.mailUnavailable")}
-            actions={
-              core.services === "connected" ? (
-                <Button onClick={() => void mail.refetch()}>
-                  {t("settings.reload")}
-                </Button>
-              ) : undefined
-            }
-          />
-        )}
-        {changeMail.isError && (
-          <Callout tone="err" title={t("privacy.mailFailed")} />
-        )}
-      </Card>
-      <Card title={t("privacy.policy")}>
-        <Callout title={t("privacy.whatNot")}>
-          <Button busy={policy.isPending} onClick={() => policy.mutate()}>
-            {t("privacy.policy")}
-          </Button>
-        </Callout>
-      </Card>
-    </>
+        <PrivacyDetails
+          configured={view.reportingConfigured}
+          pending={policy.isPending}
+          onPolicy={() => policy.mutate()}
+        />
+      </SettingGroup>
+      {policy.isError && (
+        <Callout tone="err" title={t("privacy.policyFailed")} />
+      )}
+      <MailConsent
+        message={
+          changeMail.isPending
+            ? text.saving
+            : mail.data
+              ? text.optional
+              : core.services === "connected"
+                ? text.signIn
+                : t("privacy.mailUnavailable")
+        }
+        consent={mail.data?.consent ?? false}
+        intent={mailIntent}
+        pending={changeMail.isPending || mail.isFetching}
+        available={core.services === "connected"}
+        onChange={runMail}
+        onRefresh={refreshMail}
+      />
+      {(changeMail.isError || (mailRequested && mail.isError)) && (
+        <Callout tone="err" title={t("privacy.mailFailed")} />
+      )}
+    </PrivacyLayout>
   );
 }

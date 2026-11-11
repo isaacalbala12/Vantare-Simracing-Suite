@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 import { t } from "../src/renderer/i18n/es.ts";
+import { privacyText } from "../src/renderer/i18n/privacy.es";
 import { until } from "./wait-for.ts";
 import { webQaPreview } from "./web-qa";
 
@@ -42,16 +43,12 @@ try {
     5000,
     "privacy ACK",
   );
-  const mail = page.getByRole("switch", {
-    name: t("privacy.mail"),
-    exact: true,
-  });
-  await mail.click();
-  await until(
-    async () => (await mail.getAttribute("aria-checked")) === "true",
-    5000,
-    "mail ACK",
-  );
+  await page
+    .getByRole("button", { name: privacyText.enable, exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: privacyText.disable, exact: true })
+    .waitFor();
   for (const scheme of ["dark", "light"]) {
     if (
       (await page.evaluate(() => document.documentElement.dataset.scheme)) !==

@@ -164,12 +164,12 @@ export const settingsText = {
   "settings.privacy": "Privacidad",
   "settings.diagnostics": "Diagnóstico",
   "privacy.local": "Privacidad en este equipo",
-  "privacy.crashes": "Informes de fallos",
+  "privacy.crashes": "Enviar informes de fallos",
   "privacy.crashesHelp":
-    "La versión, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.",
-  "privacy.usage": "Datos de uso",
+    "Versión, sistema operativo, código de fallo y direcciones numéricas de la pila. Sin mensajes, rutas ni identificador personal.",
+  "privacy.usage": "Enviar datos de uso",
   "privacy.usageHelp":
-    "Ayuda a mejorar Vantare con eventos anónimos. Puedes retirar el permiso y borrar los envíos pendientes.",
+    "Páginas, funciones, tipos de widgets y tiempo de uso; instalación, sesión y licencia observadas. Sin contenido, rutas, nombres ni telemetría. Identificador aleatorio de instalación.",
   "privacy.mail": "Permiso de correos",
   "privacy.mailHelp":
     "Recibir novedades de Vantare. Es independiente de los informes de fallos y los datos de uso.",

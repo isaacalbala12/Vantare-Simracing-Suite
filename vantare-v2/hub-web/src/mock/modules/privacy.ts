@@ -3,7 +3,8 @@ import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const { sceneName, core, note } = context;
-  if (sceneName === "privacidad-mail") core.services = "connected";
+  if (sceneName === "privacidad-mail" || sceneName === "privacidad-mail-error")
+    core.services = "connected";
   let privacy = structuredClone(
     privacyFixture,
   ) as import("../../contract/generated/contract").PrivacyView;
@@ -79,6 +80,8 @@ export function create(context: MockContext): MockHandler {
         };
       }
       case "mail.get":
+        if (context.visual)
+          return { kind: "failure", id, error: { kind: "denied" } };
         return core.services === "connected"
           ? {
               kind: "response",
@@ -86,16 +89,19 @@ export function create(context: MockContext): MockHandler {
               result: { method: request.method, value: { consent } },
             }
           : { kind: "failure", id, error: { kind: "coreUnavailable" } };
-      case "mail.set": {
-        if (core.services !== "connected")
-          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
-        consent = request.consent;
-        return {
-          kind: "response",
-          id,
-          result: { method: request.method, value: { consent } },
-        };
-      }
+      case "mail.set":
+        if (sceneName === "privacidad-mail-error")
+          return { kind: "failure", id, error: { kind: "io" } };
+        {
+          if (core.services !== "connected")
+            return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+          consent = request.consent;
+          return {
+            kind: "response",
+            id,
+            result: { method: request.method, value: { consent } },
+          };
+        }
 
       default:
         return undefined;

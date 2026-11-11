@@ -18,6 +18,7 @@ export function isPrivacy(value: unknown): boolean {
       "protected",
       "cleanupPending",
       "cleanupBusy",
+      "reportingConfigured",
     ]) &&
     [
       value.crashes,
@@ -27,6 +28,7 @@ export function isPrivacy(value: unknown): boolean {
       value.protected,
       value.cleanupPending,
       value.cleanupBusy,
+      value.reportingConfigured,
     ].every((item) => typeof item === "boolean") &&
     typeof value.revision === "string" &&
     /^[0-9a-f]{64}$/.test(value.revision)

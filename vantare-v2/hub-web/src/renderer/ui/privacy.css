@@ -1,0 +1,74 @@
+.v-privacy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+.v-privacy .v-setting-group-title,
+.v-privacy .v-setting-group-title > span:first-child {
+  line-height: 15px;
+}
+.v-privacy-note {
+  margin: 0;
+  padding: 12px 20px;
+  color: var(--text-3);
+  font: 400 12px / 18px var(--font-sans);
+}
+.v-privacy-send-note {
+  margin: 0;
+  padding: 13px 17px;
+  min-height: 46px;
+  border: 1px solid color-mix(in srgb, var(--warn) 12.941176%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--warn) 5.882353%, transparent),
+    color-mix(in srgb, var(--accent-bright) 1.960784%, transparent)
+  );
+  color: var(--text-3);
+  font: 400 12px / 18px var(--font-sans);
+}
+.v-privacy-policy {
+  margin: 0 0 12px 20px;
+}
+.v-privacy-policy .v-button {
+  padding: 0 16px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-1);
+  font: 500 14px / 21px var(--font-sans);
+}
+.v-privacy-mail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+.v-privacy-mail p {
+  margin: 0;
+  font: 400 13px / 19.5px var(--font-sans);
+  color: var(--text-2);
+}
+.v-privacy-mail .v-button {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line-3);
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  font: 500 14px / 21px var(--font-sans);
+  color: var(--text-1);
+}
+.v-context:has(.v-privacy-rail) .v-rail-block-body p {
+  line-height: 19px;
+}
+.v-privacy-rail .v-rail-block:last-child {
+  border-bottom: 0;
+}
+
+.v-privacy .v-button[aria-busy="true"] .v-button-label {
+  opacity: 1;
+}

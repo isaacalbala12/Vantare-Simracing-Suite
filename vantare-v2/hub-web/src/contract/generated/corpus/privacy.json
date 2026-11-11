@@ -19,6 +19,7 @@
           "crashes": false,
           "crashesDecided": false,
           "protected": false,
+          "reportingConfigured": false,
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
           "usage": false,
           "usageDecided": false
@@ -36,6 +37,7 @@
           "crashes": false,
           "crashesDecided": false,
           "protected": false,
+          "reportingConfigured": false,
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
           "usage": false,
           "usageDecided": false
@@ -70,6 +72,7 @@
           "crashes": false,
           "crashesDecided": false,
           "protected": false,
+          "reportingConfigured": false,
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
           "usage": false,
           "usageDecided": false
@@ -87,6 +90,7 @@
           "crashes": false,
           "crashesDecided": false,
           "protected": false,
+          "reportingConfigured": false,
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
           "usage": false,
           "usageDecided": false

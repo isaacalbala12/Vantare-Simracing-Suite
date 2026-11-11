@@ -196,7 +196,7 @@ export function CalendarLiveView({
             <p>
               <strong>{hero.series.track.split(" (")[0]}</strong>
               <span className="v-calendar-license">
-                {hero.series.licenseLabel}
+                {hero.series.track.split(" (")[1]?.replace(/\)$/u, "") ?? ""}
               </span>
               <span
                 className="v-calendar-hero-class"
@@ -243,6 +243,7 @@ export function CalendarLiveView({
                 disabled={!onDetail}
                 onClick={() => onDetail?.(hero.series.id, hero.at)}
               >
+                <Icon name="info" />
                 {text.detail}
               </Button>
               <Button

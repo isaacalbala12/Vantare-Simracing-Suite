@@ -74,6 +74,8 @@ it("filters live sessions and routes favorite changes without mutating the publi
       onLaunch={() => {}}
     />,
   );
+  expect(screen.queryByRole("searchbox")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: text.search }));
   fireEvent.change(screen.getByRole("searchbox"), {
     target: { value: fixture.series[0].name },
   });

@@ -30,6 +30,7 @@
   font-size: 10.5px;
   letter-spacing: 2px;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--accent);
 }
 .v-calendar-tier {
@@ -89,6 +90,7 @@
   line-height: 17px;
 }
 .v-calendar-after {
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -98,6 +100,7 @@
   white-space: nowrap;
 }
 .v-calendar-after span {
+  flex: none;
   padding: 4px 9px;
   border: 1px solid var(--line-2);
   border-radius: 6px;

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import { calendarText as text } from "../src/renderer/i18n/calendar";
+import { CalendarLiveView } from "../src/renderer/ui/CalendarLiveView";
 import { CalendarUpcomingView } from "../src/renderer/ui/CalendarUpcomingView";
 
 afterEach(cleanup);
@@ -47,4 +48,45 @@ it("keeps expired rows read-only and exposes refresh and next-week preference", 
   expect(refresh).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("switch", { name: text.notifyWeek }));
   expect(notify).toHaveBeenCalledOnce();
+});
+
+it("filters live sessions and routes favorite changes without mutating the publication", () => {
+  const follow = vi.fn(),
+    detail = vi.fn();
+  const snapshot = JSON.stringify(fixture);
+  render(
+    <CalendarLiveView
+      schedule={fixture}
+      alerts={{
+        leadMin: 10,
+        bands: [],
+        slots: [],
+        channels: { windows: true, inTrack: true, sound: false },
+        autoLaunch: false,
+        notifyWeek: true,
+      }}
+      following={[]}
+      utc
+      now={Date.parse(fixture.validFrom)}
+      limit={1000}
+      onFollow={follow}
+      onDetail={detail}
+      onLaunch={() => {}}
+      onArm={() => {}}
+    />,
+  );
+  fireEvent.change(screen.getByRole("searchbox"), {
+    target: { value: fixture.series[0].name },
+  });
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: text.toggleFavorite(fixture.series[0].name),
+    }),
+  );
+  expect(follow).toHaveBeenCalledWith(fixture.series[0].id, true);
+  expect(JSON.stringify(fixture)).toBe(snapshot);
+  fireEvent.change(screen.getByRole("searchbox"), {
+    target: { value: "no-matching-calendar-series" },
+  });
+  expect(screen.getByText(text.noResults)).toBeTruthy();
 });

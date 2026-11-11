@@ -9,6 +9,7 @@ import {
 } from "../../contract/generated/calendar";
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/calendar.json";
+import { calendarReference } from "../calendar-reference";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const value: CalendarView = {
@@ -34,11 +35,13 @@ export function create(context: MockContext): MockHandler {
     context.core.access.calendar = true;
     context.core.access.blocked = false;
   }
-  if (context.sceneName === "calendar-reference") {
+  if (context.sceneName === "calendar-reference" || context.sceneName === "calendar-live-reference") {
     context.core.access.verified = true;
     context.core.access.blocked = false;
     context.core.access.calendar = true;
-    value.official = structuredClone(fixture);
+    if (context.sceneName === "calendar-live-reference")
+      Object.assign(value, calendarReference());
+    else value.official = structuredClone(fixture);
   }
   const config: CalendarConfigView = {
     utc: false,

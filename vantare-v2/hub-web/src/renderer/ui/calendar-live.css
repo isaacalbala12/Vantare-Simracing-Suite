@@ -108,9 +108,8 @@
 .v-calendar-hero-time {
   display: flex;
   flex: none;
-  align-items: center;
   flex-direction: column;
-  width: 216px;
+  align-items: flex-end;
 }
 .v-calendar-hero-time > small {
   color: var(--text-caption);
@@ -145,7 +144,7 @@
   flex: none;
   flex-direction: column;
   gap: 8px;
-  min-width: 238px;
+  min-width: 212px;
 }
 .v-calendar-hero-actions .v-button {
   min-height: 34px;
@@ -209,7 +208,7 @@
   gap: 10px;
   width: 100%;
 }
-.v-calendar-no-favorites .v-button {
+.v-calendar-live .v-calendar-no-favorites .v-button {
   flex: 1;
 }
 .v-calendar-live-board {

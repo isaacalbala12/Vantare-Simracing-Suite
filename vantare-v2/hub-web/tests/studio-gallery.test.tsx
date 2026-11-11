@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -9,6 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   afterEach,
   beforeAll,
@@ -183,5 +185,51 @@ describe("Studio gallery", () => {
     expect(
       requests.mock.calls.find(([r]) => r.method === "studio.track")?.[0],
     ).toEqual({ method: "studio.track", show: true });
+  });
+  it("saves session and off-track choices as closed patches", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: t.practice }));
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([r]) => r.method === "studio.instance" && r.patch.field === "showIn",
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: t.offTrack })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: t.offTrack }));
+    await user.click(await screen.findByRole("option", { name: t.always }));
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([r]) =>
+            r.method === "studio.instance" &&
+            r.patch.field === "offTrack" &&
+            r.patch.value === "alwaysVisible",
+        ),
+      ).toBe(true),
+    );
+    expect(
+      requests.mock.calls.find(
+        ([r]) => r.method === "studio.instance" && r.patch.field === "showIn",
+      )?.[0],
+    ).toMatchObject({
+      id: "widget-1",
+      patch: {
+        field: "showIn",
+        value: { practice: false, qualifying: true, race: true },
+      },
+      baseRevision: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
   });
 });

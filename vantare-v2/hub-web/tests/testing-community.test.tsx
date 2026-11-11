@@ -9,6 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createMockHost } from "../src/mock/host";
 import { HostProvider } from "../src/renderer/app/Host";
 import { testingCommunityText as text } from "../src/renderer/i18n/testing-community";
 import { testingTriageText as triageText } from "../src/renderer/i18n/testing-triage";
@@ -122,4 +123,24 @@ it("uses the GPUI feminine contribution states without exposing receipt identifi
   for (const [i, label] of Object.values(text.states).entries())
     expect(screen.getByText(`Informe ${i} · ${label}`)).toBeTruthy();
   expect(document.body.textContent).not.toContain("private-id");
+});
+
+it("normalizes the closed visual scene before checking tester rights", () => {
+  for (const scheme of ["dark", "light"]) {
+    const host = createMockHost(
+      `visual-${scheme}:testing-tester-community-reference`,
+    );
+    const reply = host({
+      kind: "request",
+      id: 1,
+      request: { method: "testing.refresh" },
+    });
+    expect(reply).toMatchObject({
+      kind: "response",
+      result: {
+        method: "testing.refresh",
+        value: { reports: [{ title: "QA · documentación de una prueba" }] },
+      },
+    });
+  }
 });

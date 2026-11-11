@@ -37,7 +37,6 @@ const currentOnly = option("--current");
 const captureOnly = args.includes("--capture-only");
 const invalidReason = option("--invalid-reference-reason");
 const selected = option("--scene");
-const captureOnly = args.includes("--capture-only");
 assert.ok(
   !captureOnly || (selected && !currentOnly),
   "Capture-only requires a live named scene",

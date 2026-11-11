@@ -13,26 +13,6 @@ import { exact, record } from "../validation-common";
 
 export { calendarMethods as methods } from "../generated/calendar";
 
-<<<<<<< HEAD
-const text = (v: unknown): v is string =>
-  typeof v === "string" &&
-  new TextEncoder().encode(v).length <= calendarTextLimit &&
-  Array.from(v).every((c) => {
-    const n = c.codePointAt(0) ?? 0;
-    return n >= 32 && (n < 127 || n > 159);
-  });
-const number = (v: unknown, max: number): v is number =>
-  typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max;
-const list = (
-  v: unknown,
-  max: number,
-  test: (item: unknown) => boolean,
-): v is unknown[] => Array.isArray(v) && v.length <= max && v.every(test);
-const strings = (v: unknown, max: number): v is string[] =>
-  list(v, max, text) &&
-  v.every((s) => typeof s === "string" && s.trim().length > 0) &&
-  new Set(v).size === v.length;
-const duration = (v: unknown) => v === null || number(v, calendarMinuteLimit);
 export function isCalendarDate(v: unknown): v is string {
   if (typeof v !== "string" || v.length > calendarDateLimit) return false;
   const parts =
@@ -54,17 +34,6 @@ export function isCalendarDate(v: unknown): v is string {
     checked.getUTCDate() === day
   );
 }
-=======
-const date = (v: unknown): v is string =>
-  typeof v === "string" &&
-  v.length <= calendarDateLimit &&
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(
-    v,
-  ) &&
-  Number.isFinite(Date.parse(v)) &&
-  Date.parse(v) >= 0 &&
-  Date.parse(v) <= calendarTimestampLimit * 1000;
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
 function recurrence(v: unknown) {
   if (
     !record(v) ||
@@ -124,9 +93,9 @@ function series(v: unknown) {
     ]) &&
     texts.every((k) => text(v[k])) &&
     typeof v.id === "string" &&
-    v.id.trim().length > 0 &&
+    v.id.replace(/\uFEFF/gu, "").trim().length > 0 &&
     typeof v.name === "string" &&
-    v.name.trim().length > 0 &&
+    v.name.replace(/\uFEFF/gu, "").trim().length > 0 &&
     durations.every((k) => duration(v[k])) &&
     typeof v.tyreWarmers === "boolean" &&
     typeof v.startOffsetMinute === "number" &&
@@ -215,7 +184,7 @@ export function isRequest(v: Record<string, unknown>) {
       return (
         exact(v, ["method", "seriesId", "followed", "expectedRevision"]) &&
         text(v.seriesId) &&
-        v.seriesId.trim().length > 0 &&
+        v.seriesId.replace(/\uFEFF/gu, "").trim().length > 0 &&
         typeof v.followed === "boolean" &&
         revision(v.expectedRevision)
       );

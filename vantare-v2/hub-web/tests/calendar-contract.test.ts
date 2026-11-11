@@ -5,51 +5,32 @@ import {
   calendarMinuteLimit,
   calendarTextLimit,
 } from "../src/contract/generated/calendar";
-import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
+import type { CoreStatus } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus/calendar.json";
 import {
   isCalendarDate,
   isCalendarSchedule,
   isCalendarView,
-  isError,
   isReply,
   isRequest,
 } from "../src/contract/modules/calendar";
 import { create } from "../src/mock/modules/calendar";
 
-const samples = corpus.host as unknown as HostToUi[];
-function readSample(method: "calendar.load" | "calendar.refresh") {
-  const item = samples.find(
-    (s) => s.kind === "response" && s.result.method === method,
-  );
-  if (
-    item?.kind !== "response" ||
-    (item.result.method !== "calendar.load" &&
-      item.result.method !== "calendar.refresh")
-  )
-    throw new Error("missing Rust calendar sample");
-  return item.result.value;
-}
-describe("calendar closed contract", () => {
+describe("calendar closed read-only contract", () => {
   it("accepts every Rust reply and rejects unknown renderer arguments", () => {
-    for (const sample of samples) {
-      if (sample.kind === "response") expect(isReply(sample.result)).toBe(true);
-      else if (sample.kind === "failure")
-        expect(isError(sample.error)).toBe(true);
-      else throw new Error("unexpected calendar corpus kind");
-    }
+    for (const sample of corpus.host) expect(isReply(sample.result)).toBe(true);
     expect(isRequest({ method: "calendar.load", path: "C:/private" })).toBe(
       false,
     );
     expect(isRequest({ method: "calendar.load" })).toBe(true);
   });
   it("rejects unknown view keys and invalid timestamps", () => {
-    const value = readSample("calendar.load");
+    const value = corpus.host[0].result.value;
     expect(isCalendarView({ ...value, token: "secret" })).toBe(false);
     expect(isCalendarView({ ...value, checked: -1 })).toBe(false);
   });
   it("rejects oversized text, duration, duplicated identity and invalid recurrence", () => {
-    const schedule = readSample("calendar.refresh").official;
+    const schedule = corpus.host[1].result.value.official;
     expect(schedule).not.toBeNull();
     for (const change of [
       { name: "x".repeat(calendarTextLimit + 1) },
@@ -109,7 +90,6 @@ it("local double checks capability and connection before answering", () => {
   expect(host(refresh)).toMatchObject({ error: { kind: "denied" } });
 });
 
-<<<<<<< HEAD
 it("matches the shared strict date and Unicode identity corpus", () => {
   for (const row of validationCorpus.dates)
     expect(isCalendarDate(row.value), row.value).toBe(row.valid);
@@ -127,7 +107,21 @@ it("mock can return a populated schedule while preserving permission checks", ()
   const host = create({
     core,
     sceneName: "calendar-data",
-=======
+    visual: null,
+    notes: [],
+    note: () => {},
+  });
+  expect(
+    host({ kind: "request", id: 1, request: { method: "calendar.load" } }),
+  ).toMatchObject({
+    result: { value: { official: { series: expect.any(Array) } } },
+  });
+  core.access.calendar = false;
+  expect(
+    host({ kind: "request", id: 2, request: { method: "calendar.load" } }),
+  ).toMatchObject({ error: { kind: "denied" } });
+});
+
 it("rejects revisions, extra keys and wrong config values before dispatch", () => {
   expect(
     isRequest({
@@ -171,21 +165,10 @@ it("mock writes use revisions and refuse the previous revision without changing 
   const host = create({
     core,
     sceneName: "calendar-test",
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
     visual: null,
     notes: [],
     note: () => {},
   });
-<<<<<<< HEAD
-  expect(
-    host({ kind: "request", id: 1, request: { method: "calendar.load" } }),
-  ).toMatchObject({
-    result: { value: { official: { series: expect.any(Array) } } },
-  });
-  core.access.calendar = false;
-  expect(
-    host({ kind: "request", id: 2, request: { method: "calendar.load" } }),
-=======
   const loaded = host({
     kind: "request",
     id: 1,
@@ -232,6 +215,5 @@ it("mock writes use revisions and refuse the previous revision without changing 
         expectedRevision: revision,
       },
     }),
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
   ).toMatchObject({ error: { kind: "denied" } });
 });

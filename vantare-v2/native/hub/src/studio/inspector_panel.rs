@@ -1,5 +1,6 @@
 //! Inspector del widget seleccionado: controles, pestañas y su sincronización con `Editor`. Mapa: `README.md`.
 use super::*;
+use vantare_ui::standings::SessionSettings as _;
 
 impl Studio {
     fn color_settings(&self, tab: Tab, mut panel: gpui::Div, cx: &mut Context<Self>) -> gpui::Div {

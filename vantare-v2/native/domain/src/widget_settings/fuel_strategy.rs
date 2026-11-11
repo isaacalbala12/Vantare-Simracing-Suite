@@ -1,0 +1,94 @@
+//! Stored widget settings; extracted without changing serialization or normalization.
+use crate::fuel_strategy;
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
+    pub design_system: crate::look::Look,
+    pub style: crate::look::Tone,
+    pub accent: crate::look::Accent,
+    /// Tamaño Vantare: `compact` (230), `standard` (300) o `expanded` (460).
+    pub size: String,
+    /// Marca Vantare: decisión inyectada por el host según la licencia.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
+    #[serde(default)]
+    pub content_version: u8,
+    pub history_rows: u8,
+    pub show_projection: bool,
+    pub source: String,
+    pub units: String,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self::for_look(crate::look::Look::default())
+    }
+}
+
+impl Settings {
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
+        Self {
+            design_system,
+            style: crate::look::Tone::Neo,
+            accent: crate::look::Accent::Red,
+            size: "standard".into(),
+            brand_visible: None,
+            content_version: 1,
+            history_rows: fuel_strategy::Config::default().history_rows,
+            show_projection: fuel_strategy::Config::default().show_projection,
+            source: "fuel".into(),
+            units: "liters".into(),
+        }
+    }
+}
+
+impl Settings {
+    /// Ajustes por defecto del sistema Eficiencia heredado.
+    #[must_use]
+    pub fn eficiencia() -> Self {
+        Self::for_look(crate::look::Look::Eficiencia)
+    }
+}
+
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "source=virtual-energy:live",
+        "El Look Eficiencia conserva el estado histórico no disponible",
+    )];
+}
+
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        let legacy_rich =
+            self.content_version == 0 && self.design_system == crate::look::Look::Vantare;
+        Self {
+            content_version: 1,
+            history_rows: if legacy_rich {
+                4
+            } else {
+                self.history_rows.clamp(1, 8)
+            },
+            show_projection: if legacy_rich {
+                true
+            } else {
+                self.show_projection
+            },
+            source: if !legacy_rich && self.source == "virtual-energy" {
+                "virtual-energy"
+            } else {
+                "fuel"
+            }
+            .into(),
+            units: "liters".into(),
+            size: match self.size.as_str() {
+                "compact" | "expanded" => self.size.clone(),
+                _ => "standard".into(),
+            },
+            ..self.clone()
+        }
+    }
+}

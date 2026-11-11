@@ -1,5 +1,6 @@
 //! Ajustes consumidos por los renderizadores productivos; no persiste ni dibuja widgets.
 use crate::orbit::NumberRange;
+use vantare_ui::standings::SessionSettings as _;
 use vantare_ui::{
     Settings,
     look::{Accent, Tone},

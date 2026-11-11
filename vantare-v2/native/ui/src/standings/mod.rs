@@ -19,6 +19,9 @@
 //! let _ = (Settings::default(), ColumnSetting::default(), Format::default(), PIT_RAIL_WIDTH);
 //! ```
 
+use self::options::ColumnPresentation as _;
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
 #[cfg(test)]
 mod contract_tests;
 mod eficiencia;
@@ -37,41 +40,7 @@ use motion::Wake;
 use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, standings};
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-#[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
-pub struct Settings {
-    pub design_system: Look,
-    /// V1: contenido normalizado antes de separar su Look (layouts antiguos migran en memoria).
-    #[serde(default)]
-    pub content_version: u8,
-    pub style: Tone,
-    pub accent: Accent,
-    pub row_count: usize,
-    /// Columnas de carrera y, en layouts anteriores a #1564, de todas las sesiones.
-    pub columns: Option<Vec<options::ColumnSetting>>,
-    /// Pestañas Práctica y Qualy (#1564); `None` usa `columns`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub practice_columns: Option<Vec<options::ColumnSetting>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub qualifying_columns: Option<Vec<options::ColumnSetting>>,
-    pub class_scope: String,
-    pub classification_mode: String,
-    pub player_window: bool,
-    pub window_around: usize,
-    pub show_session_header: bool,
-    pub template_id: String,
-    pub header_first: String,
-    pub header_second: String,
-    pub show_session_footer: bool,
-    pub footer_first: String,
-    pub footer_second: String,
-    pub show_brand: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub brand_visible: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub footer_slots: Option<Vec<String>>,
-}
+pub use vantare_domain::widget_settings::standings::Settings;
 
 /// Métricas de Standings Vantare que ocupan un hueco propio (P es fija).
 const MOVABLE: &[&str] = &[
@@ -236,259 +205,11 @@ pub fn session_preset(session: Session) -> Vec<options::ColumnSetting> {
     columns
 }
 
-impl Default for Settings {
-    fn default() -> Self {
-        Self::for_look(crate::look::Look::default())
-    }
-}
 
-impl Settings {
-    /// Ejemplo nativo del inspector con los presets de sesión.
-    #[cfg(feature = "parity-capture")]
-    pub fn apply_session_preview(&mut self) {
-        self.design_system = Look::Vantare;
-        self.apply_session_presets();
-    }
 
-    /// Widgets nuevos: cada pestaña con su preset.
-    pub fn apply_session_presets(&mut self) {
-        for session in Session::ALL {
-            *self.session_columns_slot(session) = Some(session_preset(session));
-        }
-    }
 
-    /// Columnas guardadas de una pestaña, con la herencia de `columns`.
-    #[must_use]
-    pub fn session_columns(&self, session: Session) -> Option<&Vec<options::ColumnSetting>> {
-        match session {
-            Session::Practice => self.practice_columns.as_ref(),
-            Session::Qualifying => self.qualifying_columns.as_ref(),
-            Session::Race => None,
-        }
-        .or(self.columns.as_ref())
-    }
 
-    /// Editar una pestaña la independiza: copia antes lo que heredaba.
-    pub fn session_columns_mut(&mut self, session: Session) -> &mut Vec<options::ColumnSetting> {
-        // Editing Race must first detach the other tabs from legacy `columns`.
-        if session == Session::Race {
-            let inherited = self
-                .columns
-                .clone()
-                .unwrap_or_else(|| self.legacy_columns());
-            if self.practice_columns.is_none() {
-                self.practice_columns = Some(inherited.clone());
-            }
-            if self.qualifying_columns.is_none() {
-                self.qualifying_columns = Some(inherited);
-            }
-        }
-        let inherited = self
-            .session_columns(session)
-            .cloned()
-            .unwrap_or_else(|| self.legacy_columns());
-        self.session_columns_slot(session).get_or_insert(inherited)
-    }
 
-    fn legacy_columns(&self) -> Vec<options::ColumnSetting> {
-        if self.design_system == Look::Vantare {
-            return vantare_template("standard");
-        }
-        // Eficiencia Signature without explicit columns: the existing config.
-        [
-            ("position", "xs"),
-            ("driverNumber", "sm"),
-            ("driverName", "lg"),
-            ("gap", "md"),
-            ("lastLap", "lg"),
-        ]
-        .into_iter()
-        .map(|(metric, width)| options::ColumnSetting {
-            id: metric.into(),
-            metric_id: metric.into(),
-            width_preset: width.into(),
-            ..options::ColumnSetting::default()
-        })
-        .collect()
-    }
-
-    fn session_columns_slot(
-        &mut self,
-        session: Session,
-    ) -> &mut Option<Vec<options::ColumnSetting>> {
-        match session {
-            Session::Practice => &mut self.practice_columns,
-            Session::Qualifying => &mut self.qualifying_columns,
-            Session::Race => &mut self.columns,
-        }
-    }
-
-    /// Ajustes efectivos de una pestaña: sus columnas en `columns`.
-    #[must_use]
-    pub fn for_session(&self, session: Session) -> Self {
-        let mut settings = self.clone();
-        settings.columns = self.session_columns(session).cloned();
-        settings.practice_columns = None;
-        settings.qualifying_columns = None;
-        settings
-    }
-}
-
-impl Settings {
-    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
-        let mut s = Self::for_look(look);
-        s.brand_visible = Some(true);
-        match look {
-            crate::look::Look::Vantare => {
-                s.row_count = 8;
-                s.columns = Some(vantare_template("standard"));
-            }
-            crate::look::Look::Eficiencia => {
-                s.row_count = 10;
-                s.columns = Some(crate::workshop::default_columns(crate::Kind::Standings));
-                s.player_window = true;
-                s.class_scope = "all-classes".into();
-            }
-        }
-        s
-    }
-
-    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
-    #[must_use]
-    pub fn for_look(design_system: crate::look::Look) -> Self {
-        Self {
-            design_system,
-            content_version: 1,
-            style: Tone::Neo,
-            accent: Accent::Red,
-            row_count: 20,
-            columns: None,
-            practice_columns: None,
-            qualifying_columns: None,
-            class_scope: "player-class".into(),
-            classification_mode: "normal".into(),
-            player_window: false,
-            window_around: 4,
-            show_session_header: true,
-            template_id: "signature".into(),
-            header_first: "none".into(),
-            header_second: "none".into(),
-            show_session_footer: true,
-            footer_first: "track".into(),
-            footer_second: "estimatedLaps".into(),
-            show_brand: false,
-            brand_visible: None,
-            footer_slots: None,
-        }
-    }
-
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "headerFirst/headerSecond",
-        "claves legacy: Eficiencia eliminó la segunda banda de información",
-    )];
-    /// Standings del sistema Eficiencia heredado (Signature por defecto).
-    #[must_use]
-    pub fn eficiencia() -> Self {
-        Self::for_look(crate::look::Look::Eficiencia)
-    }
-
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let mut settings = self.clone();
-        settings.row_count = settings.row_count.clamp(1, 30);
-        if settings.class_scope != "all-classes" {
-            settings.class_scope = "player-class".into();
-        }
-        if settings.classification_mode != "multiclass" {
-            settings.classification_mode = "normal".into();
-        }
-        if settings.content_version == 0 && settings.design_system == Look::Vantare {
-            settings.class_scope = if settings.classification_mode == "multiclass" {
-                "all-classes"
-            } else {
-                "player-class"
-            }
-            .into();
-        }
-        settings.content_version = 1;
-        if ![0, 2, 4, 6, 8].contains(&settings.window_around) {
-            settings.window_around = 4;
-        }
-        for columns in [
-            &mut settings.columns,
-            &mut settings.practice_columns,
-            &mut settings.qualifying_columns,
-        ]
-        .into_iter()
-        .flatten()
-        {
-            columns.truncate(12);
-        }
-        if let Some(slots) = &mut settings.footer_slots {
-            slots.truncate(9);
-        }
-
-        if !["signature", "broadcast"].contains(&settings.template_id.as_str()) {
-            settings.template_id = "signature".into();
-        }
-        let choices = [
-            "none",
-            "trackTemperature",
-            "airTemperature",
-            "estimatedLaps",
-            "totalLaps",
-            "track",
-            "remaining",
-            "rain",
-            "wetness",
-        ];
-        for (value, fallback) in [
-            (&mut settings.header_first, "none"),
-            (&mut settings.header_second, "none"),
-            (&mut settings.footer_first, "track"),
-            (&mut settings.footer_second, "estimatedLaps"),
-        ] {
-            if !choices.contains(&value.as_str()) {
-                *value = fallback.into();
-            }
-        }
-        settings
-    }
-
-    fn config(&self) -> Config {
-        let mut config = Config::reference();
-        config.broadcast = self.template_id == "broadcast";
-        config.multiclass = self.classification_mode == "multiclass";
-        config.footer_slots = self.footer_slots.clone().unwrap_or_default();
-        config.footer_ids = vec![self.footer_first.clone(), self.footer_second.clone()];
-        config.show_session_header = self.show_session_header;
-        config.show_session_footer = self.show_session_footer;
-        config.brand_visible = self.brand_visible.or(self.show_brand.then_some(true));
-        let info = |value: &str| match value {
-            "track" => model::InfoMetric::Track,
-            "estimatedLaps" => model::InfoMetric::EstimatedLaps,
-            _ => model::InfoMetric::None,
-        };
-        config.footer_first = info(&self.footer_first);
-        config.footer_second = info(&self.footer_second);
-        // Signature de la referencia de fase 2: 20 filas reservadas, sin columna
-        // de boxes y con la última vuelta en lugar de la mejor.
-        config.row_count = self.row_count;
-        config.columns.retain(|column| column.metric != Metric::Pit);
-        for column in &mut config.columns {
-            if column.metric == Metric::BestLap {
-                column.metric = Metric::LastLap;
-            }
-        }
-        if let Some(columns) = &self.columns {
-            config.columns = columns
-                .iter()
-                .filter_map(options::ColumnSetting::column)
-                .collect();
-        }
-        config
-    }
-}
 
 /// Un Board y un Motion activo; los pintores no poseen historial.
 pub(crate) struct Widget {
@@ -543,51 +264,7 @@ impl Presentation {
         }
     }
 }
-impl Settings {
-    fn content(&self) -> standings::Content {
-        let config = self.config();
-        let lap_format = |metric: &str| {
-            self.columns
-                .as_ref()
-                .and_then(|columns| columns.iter().find(|c| c.enabled && c.metric_id == metric))
-                .map(|c| standings::LapFormat {
-                    compact: c.format.display.as_deref() == Some("compact"),
-                    decimals: c.format.decimals.unwrap_or(3),
-                })
-                .filter(|f| f.compact || f.decimals != 3)
-        };
-        standings::Content {
-            row_count: self.row_count,
-            player_window: self.player_window,
-            window_around: self.window_around,
-            multiclass: self.classification_mode == "multiclass",
-            last_lap_format: lap_format("lastLap"),
-            best_lap_format: lap_format("bestLap"),
-            lap_visible: config
-                .columns
-                .iter()
-                .any(|c| c.metric == Metric::CurrentLap),
-            interval_visible: config.columns.iter().any(|c| c.metric == Metric::Interval),
-            footer_visible: self.show_session_footer,
-            legacy_track_visible: self.show_session_footer
-                && config.footer_slots.is_empty()
-                && config
-                    .footer_ids
-                    .iter()
-                    .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
-                && [config.footer_first, config.footer_second].contains(&model::InfoMetric::Track),
-            player_class: self.class_scope != "all-classes",
-            class_gaps: self.class_scope != "all-classes"
-                || self.classification_mode == "multiclass",
-            footer_ids: if self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()) {
-                self.footer_slots.clone().unwrap_or_default()
-            } else {
-                vec![self.footer_first.clone(), self.footer_second.clone()]
-            },
-            footer_slots: self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()),
-        }
-    }
-}
+
 impl Widget {
     fn presentation(
         settings: &Settings,
@@ -812,8 +489,225 @@ impl std::ops::Deref for Widget {
         }
     }
 }
-impl Settings {
-    pub fn demand(&self) -> vantare_ipc::Demand {
+
+
+trait SettingsPresentation {
+
+
+    fn config(&self) -> Config;
+    fn content(&self) -> standings::Content;
+}
+impl SettingsPresentation for Settings {
+    fn config(&self) -> Config {
+        let mut config = Config::reference();
+        config.broadcast = self.template_id == "broadcast";
+        config.multiclass = self.classification_mode == "multiclass";
+        config.footer_slots = self.footer_slots.clone().unwrap_or_default();
+        config.footer_ids = vec![self.footer_first.clone(), self.footer_second.clone()];
+        config.show_session_header = self.show_session_header;
+        config.show_session_footer = self.show_session_footer;
+        config.brand_visible = self.brand_visible.or(self.show_brand.then_some(true));
+        let info = |value: &str| match value {
+            "track" => model::InfoMetric::Track,
+            "estimatedLaps" => model::InfoMetric::EstimatedLaps,
+            _ => model::InfoMetric::None,
+        };
+        config.footer_first = info(&self.footer_first);
+        config.footer_second = info(&self.footer_second);
+        // Signature de la referencia de fase 2: 20 filas reservadas, sin columna
+        // de boxes y con la última vuelta en lugar de la mejor.
+        config.row_count = self.row_count;
+        config.columns.retain(|column| column.metric != Metric::Pit);
+        for column in &mut config.columns {
+            if column.metric == Metric::BestLap {
+                column.metric = Metric::LastLap;
+            }
+        }
+        if let Some(columns) = &self.columns {
+            config.columns = columns
+                .iter()
+                .filter_map(options::ColumnSetting::column)
+                .collect();
+        }
+        config
+    }
+    fn content(&self) -> standings::Content {
+        let config = self.config();
+        let lap_format = |metric: &str| {
+            self.columns
+                .as_ref()
+                .and_then(|columns| columns.iter().find(|c| c.enabled && c.metric_id == metric))
+                .map(|c| standings::LapFormat {
+                    compact: c.format.display.as_deref() == Some("compact"),
+                    decimals: c.format.decimals.unwrap_or(3),
+                })
+                .filter(|f| f.compact || f.decimals != 3)
+        };
+        standings::Content {
+            row_count: self.row_count,
+            player_window: self.player_window,
+            window_around: self.window_around,
+            multiclass: self.classification_mode == "multiclass",
+            last_lap_format: lap_format("lastLap"),
+            best_lap_format: lap_format("bestLap"),
+            lap_visible: config
+                .columns
+                .iter()
+                .any(|c| c.metric == Metric::CurrentLap),
+            interval_visible: config.columns.iter().any(|c| c.metric == Metric::Interval),
+            footer_visible: self.show_session_footer,
+            legacy_track_visible: self.show_session_footer
+                && config.footer_slots.is_empty()
+                && config
+                    .footer_ids
+                    .iter()
+                    .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
+                && [config.footer_first, config.footer_second].contains(&model::InfoMetric::Track),
+            player_class: self.class_scope != "all-classes",
+            class_gaps: self.class_scope != "all-classes"
+                || self.classification_mode == "multiclass",
+            footer_ids: if self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()) {
+                self.footer_slots.clone().unwrap_or_default()
+            } else {
+                vec![self.footer_first.clone(), self.footer_second.clone()]
+            },
+            footer_slots: self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()),
+        }
+    }
+}
+trait SessionColumns {
+
+
+    fn legacy_columns(&self) -> Vec<options::ColumnSetting>;
+
+    fn session_columns_slot(
+        &mut self,
+        session: Session,
+    ) -> &mut Option<Vec<options::ColumnSetting>>;
+}
+impl SessionColumns for Settings {
+    fn legacy_columns(&self) -> Vec<options::ColumnSetting> {
+        if self.design_system == Look::Vantare {
+            return vantare_template("standard");
+        }
+        // Eficiencia Signature without explicit columns: the existing config.
+        [
+            ("position", "xs"),
+            ("driverNumber", "sm"),
+            ("driverName", "lg"),
+            ("gap", "md"),
+            ("lastLap", "lg"),
+        ]
+        .into_iter()
+        .map(|(metric, width)| options::ColumnSetting {
+            id: metric.into(),
+            metric_id: metric.into(),
+            width_preset: width.into(),
+            ..options::ColumnSetting::default()
+        })
+        .collect()
+    }
+    fn session_columns_slot(
+        &mut self,
+        session: Session,
+    ) -> &mut Option<Vec<options::ColumnSetting>> {
+        match session {
+            Session::Practice => &mut self.practice_columns,
+            Session::Qualifying => &mut self.qualifying_columns,
+            Session::Race => &mut self.columns,
+        }
+    }
+}
+pub trait SessionSettings {
+
+    /// Ejemplo nativo del inspector con los presets de sesión.
+    #[cfg(feature = "parity-capture")]
+    fn apply_session_preview(&mut self);
+
+    /// Widgets nuevos: cada pestaña con su preset.
+    fn apply_session_presets(&mut self);
+
+    /// Columnas guardadas de una pestaña, con la herencia de `columns`.
+    #[must_use]
+    fn session_columns(&self, session: Session) -> Option<&Vec<options::ColumnSetting>>;
+
+    /// Editar una pestaña la independiza: copia antes lo que heredaba.
+    fn session_columns_mut(&mut self, session: Session) -> &mut Vec<options::ColumnSetting>;
+
+    /// Ajustes efectivos de una pestaña: sus columnas en `columns`.
+    #[must_use]
+    fn for_session(&self, session: Session) -> Self;
+}
+impl SessionSettings for Settings {
+    #[cfg(feature = "parity-capture")]
+    fn apply_session_preview(&mut self) {
+        self.design_system = Look::Vantare;
+        self.apply_session_presets();
+    }
+    fn apply_session_presets(&mut self) {
+        for session in Session::ALL {
+            *self.session_columns_slot(session) = Some(session_preset(session));
+        }
+    }
+    fn session_columns(&self, session: Session) -> Option<&Vec<options::ColumnSetting>> {
+        match session {
+            Session::Practice => self.practice_columns.as_ref(),
+            Session::Qualifying => self.qualifying_columns.as_ref(),
+            Session::Race => None,
+        }
+        .or(self.columns.as_ref())
+    }
+    fn session_columns_mut(&mut self, session: Session) -> &mut Vec<options::ColumnSetting> {
+        // Editing Race must first detach the other tabs from legacy `columns`.
+        if session == Session::Race {
+            let inherited = self
+                .columns
+                .clone()
+                .unwrap_or_else(|| self.legacy_columns());
+            if self.practice_columns.is_none() {
+                self.practice_columns = Some(inherited.clone());
+            }
+            if self.qualifying_columns.is_none() {
+                self.qualifying_columns = Some(inherited);
+            }
+        }
+        let inherited = self
+            .session_columns(session)
+            .cloned()
+            .unwrap_or_else(|| self.legacy_columns());
+        self.session_columns_slot(session).get_or_insert(inherited)
+    }
+    fn for_session(&self, session: Session) -> Self {
+        let mut settings = self.clone();
+        settings.columns = self.session_columns(session).cloned();
+        settings.practice_columns = None;
+        settings.qualifying_columns = None;
+        settings
+    }
+}
+impl crate::widget_settings::WorkshopSettings for Settings {
+
+    fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        s.brand_visible = Some(true);
+        match look {
+            crate::look::Look::Vantare => {
+                s.row_count = 8;
+                s.columns = Some(vantare_template("standard"));
+            }
+            crate::look::Look::Eficiencia => {
+                s.row_count = 10;
+                s.columns = Some(crate::workshop::default_columns(crate::Kind::Standings));
+                s.player_window = true;
+                s.class_scope = "all-classes".into();
+            }
+        }
+        s
+    }
+}
+impl crate::widget_settings::SettingsDemand for Settings {
+
+    fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
             ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
             SessionInfo,
@@ -893,7 +787,6 @@ impl Settings {
         demand
     }
 }
-
 #[cfg(test)]
 mod tests {
 

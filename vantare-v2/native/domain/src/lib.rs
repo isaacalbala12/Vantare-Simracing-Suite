@@ -7,6 +7,10 @@
 
 #![forbid(unsafe_code)]
 
+extern crate self as vantare_domain;
+pub mod widget_settings;
+pub(crate) use widget_settings::look;
+
 mod adapter;
 mod banner;
 pub mod broadcast_tower;

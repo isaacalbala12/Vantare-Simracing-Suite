@@ -4,6 +4,9 @@
 //! 2 px); con el ajuste histórico de 8 px el ancho es 120 px. El Look Vantare
 //! (`pedals/vantare.rs`, #1566) pinta el mismo ViewModel en columnas más juntas.
 
+use crate::look::WorkshopLook as _;
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::pedals::ViewModel;
@@ -23,10 +26,10 @@ const PAD_BOTTOM: f32 = 10.0;
 /// la separación, así el widget se estrecha en proporción.
 const COLUMN_W: f32 = 28.0;
 /// Separación por defecto entre barras: casi pegadas.
-pub const DEFAULT_GAP: f32 = 2.0;
+pub use vantare_domain::widget_settings::pedals::DEFAULT_GAP;
 /// Rango del ajuste en Studio: de pegadas (0) a más aire que el 8 original.
-pub const GAP_MIN: f32 = 0.0;
-pub const GAP_MAX: f32 = 12.0;
+pub use vantare_domain::widget_settings::pedals::GAP_MIN;
+pub use vantare_domain::widget_settings::pedals::GAP_MAX;
 const TRACK_W: f32 = 14.0;
 const LABEL_H: f32 = 11.0;
 const VALUE_H: f32 = 11.0;
@@ -185,82 +188,10 @@ fn fill_height(value: f64, inner_h: f32) -> f32 {
 use crate::app::{Paint, Wake, replace_if_changed};
 use vantare_domain::{Snapshot, format::Preferences};
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    /// Look: los layouts anteriores a #1566 no lo guardan y siguen en Eficiencia.
-    #[serde(default = "eficiencia")]
-    pub design_system: crate::look::Look,
-    pub style: crate::look::Tone,
-    pub accent: crate::look::Accent,
-    /// Marca Vantare: decisión inyectada por el host según la licencia.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub brand_visible: Option<bool>,
-    pub transparent_background: bool,
-    pub show_brake_peak: bool,
-    pub gap: f32,
-}
-fn eficiencia() -> crate::look::Look {
-    crate::look::Look::Eficiencia
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self::for_look(crate::look::Look::default())
-    }
-}
-impl Settings {
-    /// El pico de frenada solo existe en el diseño Vantare.
-    #[must_use]
-    pub fn supports_brake_peak(&self) -> bool {
-        self.design_system == crate::look::Look::Vantare
-    }
+pub use vantare_domain::widget_settings::pedals::Settings;
 
-    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
-        Self {
-            brand_visible: (look == crate::look::Look::Vantare).then_some(true),
-            ..Self::for_look(look)
-        }
-    }
 
-    /// Ajustes del sistema Eficiencia (captura de paridad y layouts anteriores).
-    #[must_use]
-    pub fn eficiencia() -> Self {
-        Self::for_look(eficiencia())
-    }
 
-    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
-    #[must_use]
-    pub fn for_look(design_system: crate::look::Look) -> Self {
-        Self {
-            design_system,
-            style: crate::look::Tone::Neo,
-            accent: crate::look::Accent::Red,
-            brand_visible: None,
-            transparent_background: false,
-            show_brake_peak: true,
-            gap: DEFAULT_GAP,
-        }
-    }
-
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-        let mut vm = vantare_domain::pedals::project(snapshot, prefs);
-        vm.transparent_background = self.transparent_background;
-        vm
-    }
-
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        Self {
-            gap: if self.gap.is_finite() {
-                self.gap.clamp(GAP_MIN, GAP_MAX)
-            } else {
-                DEFAULT_GAP
-            },
-            ..self.clone()
-        }
-    }
-}
 
 /// Solo existe el pintor activo; el ViewModel es común a los dos Looks.
 enum Presentation {
@@ -406,14 +337,37 @@ impl Widget {
     }
 }
 
-impl Settings {
+
+
+trait SettingsPresentation {
+
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
+}
+impl SettingsPresentation for Settings {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = vantare_domain::pedals::project(snapshot, prefs);
+        vm.transparent_background = self.transparent_background;
+        vm
+    }
+}
+impl crate::widget_settings::WorkshopSettings for Settings {
+
+
+    fn workshop_defaults(look: crate::look::Look) -> Self {
+        Self {
+            brand_visible: (look == crate::look::Look::Vantare).then_some(true),
+            ..Self::for_look(look)
+        }
+    }
+}
+impl crate::widget_settings::SettingsDemand for Settings {
+
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
+    fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{Clutch, Pedals, PitStatus, Powertrain};
         crate::demand::signals(16, &[Pedals, Clutch, Powertrain, PitStatus])
     }
 }
-
 #[cfg(test)]
 mod tests {
     #[test]

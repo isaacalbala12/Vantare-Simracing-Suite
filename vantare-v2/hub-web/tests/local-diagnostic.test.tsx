@@ -12,8 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Reply } from "../src/contract/generated/contract";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
-import { LocalDiagnostic } from "../src/renderer/screens/testing/LocalDiagnostic";
 import { localDiagnosticText as text } from "../src/renderer/i18n/testing-local";
+import { LocalDiagnostic } from "../src/renderer/screens/testing/LocalDiagnostic";
 import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
 
 const caches: QueryClient[] = [];

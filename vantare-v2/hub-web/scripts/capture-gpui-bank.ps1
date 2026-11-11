@@ -47,7 +47,12 @@ try {
         if ($deadline.Elapsed.TotalSeconds -ge 30) { throw "No se pudo capturar el HWND QA: $captured. QA: $run" }
         Start-Sleep -Milliseconds 50
     } while ($true)
-    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;palette='vantare';zoom=100;dpi=96;replies_sha256=(Get-FileHash -LiteralPath $replies -Algorithm SHA256).Hash.ToLowerInvariant();png_sha256=(Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
+    $repliesHash = (Get-FileHash -LiteralPath $replies -Algorithm SHA256).Hash.ToLowerInvariant()
+    $pngHash = (Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()
+    [ordered]@{scene=$Scene;theme=$Theme;size=@(1440,900);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
+    $inputs = [ordered]@{scene=$Scene;appearance="vantare-$Theme";size=@(1440,900);zoom=100;bank=$inventory.sha256;replies=$repliesHash} | ConvertTo-Json -Compress
+    $inputHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($inputs))).ToLowerInvariant()
+    [ordered]@{inputs=$inputHash;png=$pngHash} | ConvertTo-Json -Compress | Set-Content -LiteralPath "$Output.capture.json" -Encoding utf8
 } finally {
     $process.StandardInput.Close()
     if (-not $process.WaitForExit(10000)) { $process.Kill($true); $process.WaitForExit() }

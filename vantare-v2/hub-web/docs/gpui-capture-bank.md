@@ -28,7 +28,6 @@ Validado con `ajustes-aplicacion` oscuro: PNG real, 1440×900, ventana sin foco,
 SHA del banco `9463f44a518139469ebfa68471dd7411c5c013e3d5231f81c56830a4530db116`.
 Evidencia: `D:/VantareServer/evidence/hub-web/bank-reusable-test/`.
 
-
 Escenas adicionales del banco QA (sin ampliar el catálogo del Hub productivo):
 `strategy-proximamente` muestra la página real «Próximamente», sin forzar el viejo
 planificador; `notificaciones-completa` muestra la sección completa, sin popup.
@@ -37,7 +36,8 @@ añaden automáticamente `--qa-testing` y replies locales de tester, con el cues
 y la contribución públicos de QA. No usan una cuenta real. La selección de pestaña
 conserva el directorio propio con PID que verifica el banco.
 
-Cada `.bank.json` conserva escena, tema, paleta, zoom, DPI, tamaño, SHA del binario,
+Cada `.capture.json` conserva el hash de las entradas y del PNG para la herramienta
+de diferencias. Cada `.bank.json` conserva escena, tema, paleta, zoom, DPI, tamaño, SHA del binario,
 commit, SHA de replies y PNG y la raíz QA. Para repetir exactamente los datos se
 conserva esa raíz; los replies originales de la plantilla compartida no se modifican.
 El alias de Notificaciones conserva el reloj de su escena QA de panel, pero abre

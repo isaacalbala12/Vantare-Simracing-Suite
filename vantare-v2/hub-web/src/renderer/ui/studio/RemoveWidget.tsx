@@ -29,7 +29,7 @@ export function RemoveWidget() {
       <Dialog.Portal>
         <Dialog.Backdrop className="v-backdrop" />
         <Dialog.Popup
-          className="v-studio-remove"
+          className="v-dialog v-studio-remove"
           finalFocus={() => !completed.current}
         >
           <Dialog.Title>{t.removeTitle}</Dialog.Title>

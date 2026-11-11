@@ -1,0 +1,51 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": true,
+        "method": "window.minimize"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "window.toggleMaximize"
+      }
+    },
+    {
+      "event": {
+        "maximized": false,
+        "topic": "windowState"
+      },
+      "kind": "event"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "window.minimize"
+      }
+    },
+    {
+      "id": 2,
+      "kind": "request",
+      "request": {
+        "method": "window.toggleMaximize"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "windowState"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "windowState"
+    }
+  ]
+}

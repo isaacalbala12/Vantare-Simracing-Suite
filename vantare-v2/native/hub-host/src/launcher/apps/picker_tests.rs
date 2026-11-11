@@ -5,8 +5,9 @@ fn save_new_selection(
     selected: &PickedApp,
     now: Instant,
 ) -> PathBuf {
-    let bytes = serde_json::to_vec(&Document::fresh_install()).unwrap();
-    std::fs::write(path, &bytes).unwrap();
+    let bytes =
+        serde_json::to_vec(&Document::fresh_install()).expect("canonical selection fixture");
+    std::fs::write(path, &bytes).expect("canonical selection fixture");
     let draft = AppDraft {
         use_discovery: false,
         id: None,
@@ -21,9 +22,16 @@ fn save_new_selection(
             &vantare_services::content_hash(&bytes),
             now,
         )
-        .unwrap();
-    let saved = Document::from_bytes(&std::fs::read(path).unwrap()).unwrap();
-    saved.apps.last().unwrap().executable.clone().unwrap()
+        .expect("canonical selection fixture");
+    let saved = Document::from_bytes(&std::fs::read(path).expect("canonical selection fixture"))
+        .expect("canonical selection fixture");
+    saved
+        .apps
+        .last()
+        .expect("canonical selection fixture")
+        .executable
+        .clone()
+        .expect("canonical selection fixture")
 }
 #[test]
 fn junction_choice_is_saved_canonical_and_cannot_be_retargeted_afterwards() {

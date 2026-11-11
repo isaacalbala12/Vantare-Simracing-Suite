@@ -469,6 +469,7 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "id": null,
         "method": "launcher.app.pick"
       }
     },

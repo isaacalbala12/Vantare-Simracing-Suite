@@ -133,3 +133,21 @@ fn the_renderer_cannot_supply_an_answer_or_extra_read_parameters() {
         );
     }
 }
+
+#[test]
+fn question_kinds_follow_only_the_existing_action_set() {
+    for (action, expected) in [
+        (mailbox::Action::Trust, ResidentQuestionKind::Authorization),
+        (mailbox::Action::Reuse, ResidentQuestionKind::AlreadyRunning),
+        (mailbox::Action::Stop, ResidentQuestionKind::Failure),
+        (mailbox::Action::Leave, ResidentQuestionKind::Closing),
+        (mailbox::Action::Cancel, ResidentQuestionKind::Generic),
+    ] {
+        let mut decision = status().decision.expect("decision");
+        decision.actions = vec![action];
+        assert_eq!(
+            question(&decision).expect("closed projection").kind,
+            expected
+        );
+    }
+}

@@ -75,6 +75,8 @@
   gap: calc(40 * var(--ob-unit));
 }
 .v-ob-column {
+  position: relative;
+  z-index: 1;
   flex: 0 0 calc(600 * var(--ob-unit));
   display: flex;
   align-items: center;
@@ -107,7 +109,8 @@
   overflow: hidden;
   border-radius: calc(22 * var(--ob-unit));
   background: var(--ob-art-gradient);
-  box-shadow: 0 calc(40 * var(--ob-unit)) calc(100 * var(--ob-unit))
+  /* CSS blur diameter matches GPUI BoxShadow blur radius. */
+  box-shadow: 0 calc(40 * var(--ob-unit)) calc(200 * var(--ob-unit))
     color-mix(in srgb, var(--ob-raw-280008) 45%, transparent);
 }
 .v-ob-footer {
@@ -218,7 +221,7 @@
   border: 1px solid color-mix(in srgb, var(--ob-c-faf7f7) 14%, transparent);
   border-radius: calc(18 * var(--ob-unit));
   background: linear-gradient(var(--ob-c-201e1f), var(--ob-c-171516));
-  box-shadow: 0 calc(24 * var(--ob-unit)) calc(50 * var(--ob-unit))
+  box-shadow: 0 calc(24 * var(--ob-unit)) calc(100 * var(--ob-unit))
     color-mix(in srgb, var(--ob-c-000000) 35%, transparent);
 }
 .v-ob-assistant-label {
@@ -752,9 +755,6 @@
   background: var(--ob-c-190d0e);
 }
 
-[data-scheme="light"] .v-ob-bubble {
-  box-shadow: none;
-}
 .v-ob-assistant-label .v-tracked-caps-letters {
   gap: calc(1.7 * var(--ob-unit));
 }

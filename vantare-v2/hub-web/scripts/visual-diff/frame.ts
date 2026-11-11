@@ -63,21 +63,31 @@ export const frameScenes: Record<string, VisualScene> = {
     },
   },
   "frame-calendario-expandida": {
-    mock: "ajustes-con-diseno",
+    mock: "calendar-live-reference",
     async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
       await sidebar(page, true);
       await page
         .getByRole("button", { name: "Calendario", exact: true })
         .click();
+      await page
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 890);
     },
   },
   "frame-calendario-contraida": {
-    mock: "ajustes-con-diseno",
+    mock: "calendar-live-reference",
     async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
       await sidebar(page, false);
       await page
         .getByRole("button", { name: "Calendario", exact: true })
         .click();
+      await page
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 890);
     },
   },
 };

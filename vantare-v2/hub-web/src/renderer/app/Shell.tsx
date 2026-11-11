@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import {
+  type AccountView,
   defaultZoom,
   type LauncherView,
   type Palette,
@@ -50,8 +51,6 @@ export function Shell() {
 function ShellContent() {
   const host = useHost();
   const query = useQueryClient();
-  // QA identity is separate from the editable pilot draft. Production remains anonymous until Access.
-  const profileName = host.hello?.demo ? (host.hello.demoName ?? "") : "";
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);
@@ -65,6 +64,44 @@ function ShellContent() {
     queryFn: async () => offline,
     enabled: false,
   });
+  const { data: account } = useQuery<
+    Pick<AccountView, "name" | "photo" | "session">
+  >({
+    queryKey: ["frame", "account"],
+    enabled: !!host.client && !core.live,
+    queryFn: async () => {
+      if (!host.client) throw new Error("Host unavailable");
+      const reply = await host.client.request({ method: "account.get" });
+      if (reply.method !== "account.get")
+        throw new Error("Unexpected account reply");
+      return {
+        name: reply.value.name,
+        photo: reply.value.photo,
+        session: reply.value.session,
+      };
+    },
+  });
+  useEffect(() => {
+    const off = host.client?.listen((message) => {
+      if (message.kind === "event" && message.event.topic === "account") {
+        const { name, photo, session } = message.event.value;
+        query.setQueryData(["frame", "account"], { name, photo, session });
+      }
+    });
+    return () => {
+      off?.();
+    };
+  }, [host.client, query]);
+  // QA identity stays separate from both account data and the editable pilot draft.
+  const profileName = host.hello?.demo
+    ? (host.hello.demoName ?? "")
+    : account?.session === "signedIn"
+      ? account.name
+      : "";
+  const profilePhoto =
+    !host.hello?.demo && account?.session === "signedIn"
+      ? (account.photo ?? undefined)
+      : undefined;
   const ui = useUi((state) => state);
   // Read the existing launcher snapshot for the expanded frame. The screen owns
   // its subscription; this reader never unsubscribes it or writes a profile.
@@ -419,6 +456,7 @@ function ShellContent() {
                   <Avatar
                     label={profileName || t("shell.anonymous")}
                     initials={initials(profileName)}
+                    src={profilePhoto}
                   />
                   {!ui.sidebarCollapsed &&
                     (profileName || t("shell.anonymous"))}
@@ -479,6 +517,7 @@ function ShellContent() {
                   <Avatar
                     label={profileName || t("shell.anonymous")}
                     initials={initials(profileName)}
+                    src={profilePhoto}
                   />
                   <span className="v-sidebar-account-copy">
                     <span>{profileName || t("shell.anonymous")}</span>

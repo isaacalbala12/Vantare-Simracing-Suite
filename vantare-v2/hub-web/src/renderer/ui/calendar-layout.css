@@ -326,3 +326,175 @@
   font-size: 13px;
   line-height: 18px;
 }
+
+.v-shell-main > .v-content-stack:has(.v-calendar) {
+  height: 100%;
+  min-height: 0;
+}
+.v-shell-main [role="tabpanel"]:has(.v-calendar) {
+  flex: 1;
+  min-height: 0;
+}
+.v-calendar {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-calendar-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 57px;
+}
+.v-calendar-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 30px;
+  font-weight: 600;
+}
+.v-calendar-header p {
+  margin: 6px 0 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 17px;
+}
+.v-calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-calendar-header-actions .v-button {
+  height: 34px;
+  min-height: 34px;
+  font-size: 13px;
+}
+.v-calendar-header-actions .v-button-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-calendar-header-actions svg {
+  width: 16px;
+  height: 16px;
+}
+.v-calendar-pill--accent {
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+.v-calendar-rail {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 17px;
+}
+.v-calendar-rail section {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-calendar-rail section:first-child {
+  padding-top: 20px;
+}
+.v-calendar-rail section:last-child {
+  border-bottom: 0;
+}
+.v-calendar-rail h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+}
+.v-calendar-rail h2 svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-caption);
+}
+.v-calendar-rail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.v-calendar-rail-heading > span {
+  font-size: 12px;
+}
+.v-calendar-rail .v-calendar-status {
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--warn);
+  background: var(--warn-tint);
+}
+.v-calendar-status[data-health="ok"] {
+  color: var(--ok);
+  background: var(--ok-tint);
+}
+.v-calendar-rail dl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.v-calendar-rail dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 17px;
+}
+.v-calendar-rail dt {
+  flex: none;
+  font-size: 12px;
+}
+.v-calendar-rail dd {
+  margin: 0;
+  text-align: right;
+  color: var(--text-1);
+  font-size: 12px;
+}
+.v-calendar-rail .v-segmented {
+  min-height: 34px;
+}
+.v-calendar-rail p {
+  margin: 14px 0 10px;
+}
+.v-calendar-rail section > .v-button {
+  width: 100%;
+  height: 28px;
+  min-height: 28px;
+  font-size: 12px;
+}
+.v-calendar-rail .v-button-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.v-calendar-rail .v-button-label svg {
+  width: 14px;
+  height: 14px;
+}
+.v-calendar-export-providers {
+  display: flex;
+  gap: 6px;
+}
+.v-calendar-rail .v-calendar-export-providers .v-button {
+  flex: 1;
+  min-height: 28px;
+  height: 28px;
+  padding-inline: 10px;
+  font-size: 12px;
+}

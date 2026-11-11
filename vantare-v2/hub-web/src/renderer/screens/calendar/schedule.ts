@@ -71,13 +71,16 @@ export function publication(view: CalendarView, now: number, limit: number) {
   if (official && fallback) {
     const ids = new Set(official.series.map((s) => s.id));
     const names = new Set(official.series.map((s) => normalized(s.name)));
-    const extra = fallback.series
-      .filter((s) => !ids.has(s.id) && !names.has(normalized(s.name)))
-      .map((s) => ({ ...s, source: "racecontrol" }));
-    schedule = {
-      ...official,
-      series: [...official.series, ...extra].slice(0, limit),
-    };
+    const merged = [...official.series];
+    for (const series of fallback.series) {
+      if (merged.length === limit) break;
+      const name = normalized(series.name);
+      if (ids.has(series.id) || names.has(name)) continue;
+      merged.push({ ...series, source: "racecontrol" });
+      ids.add(series.id);
+      names.add(name);
+    }
+    schedule = { ...official, series: merged };
   }
   const previous =
     [view.official, view.previous]

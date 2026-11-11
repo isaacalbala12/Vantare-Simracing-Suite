@@ -37,7 +37,51 @@ pub struct WidgetInfo {
     pub allowed: bool,
 }
 impl WidgetKind {
- pub const ALL: &'static [Self]=&[Self::Standings,Self::Radar,Self::Pedals,Self::Delta,Self::CarDamageVisual,Self::InputTelemetry,Self::MulticlassRelative,Self::BroadcastTower,Self::DeltaTrace,Self::TrackMap,Self::TrackWeather,Self::CarDamageNumbers,Self::HeadToHead,Self::FuelStrategy,Self::PedalsTelemetry,Self::Relative,Self::RacingFlags,Self::FastestLap,Self::SessionAlerts];
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Standings => "standings",
+            Self::Radar => "radar",
+            Self::Pedals => "pedals",
+            Self::Delta => "delta",
+            Self::CarDamageVisual => "car-damage-visual",
+            Self::InputTelemetry => "input-telemetry",
+            Self::MulticlassRelative => "multiclass-relative",
+            Self::BroadcastTower => "broadcast-tower",
+            Self::DeltaTrace => "delta-trace",
+            Self::TrackMap => "track-map",
+            Self::TrackWeather => "track-weather",
+            Self::CarDamageNumbers => "car-damage-numbers",
+            Self::HeadToHead => "head-to-head",
+            Self::FuelStrategy => "fuel-strategy",
+            Self::PedalsTelemetry => "pedals-telemetry",
+            Self::Relative => "relative",
+            Self::RacingFlags => "racing-flags",
+            Self::FastestLap => "fastest-lap",
+            Self::SessionAlerts => "session-alerts",
+        }
+    }
+
+    pub const ALL: &'static [Self] = &[
+        Self::Standings,
+        Self::Radar,
+        Self::Pedals,
+        Self::Delta,
+        Self::CarDamageVisual,
+        Self::InputTelemetry,
+        Self::MulticlassRelative,
+        Self::BroadcastTower,
+        Self::DeltaTrace,
+        Self::TrackMap,
+        Self::TrackWeather,
+        Self::CarDamageNumbers,
+        Self::HeadToHead,
+        Self::FuelStrategy,
+        Self::PedalsTelemetry,
+        Self::Relative,
+        Self::RacingFlags,
+        Self::FastestLap,
+        Self::SessionAlerts,
+    ];
     pub const CATALOG: &'static [Self] = &[
         Self::Standings,
         Self::Relative,

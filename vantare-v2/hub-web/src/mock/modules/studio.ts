@@ -1,5 +1,5 @@
 import type {HostToUi,OverlayInstance,StudioView} from "../../contract/generated/contract";
-import {studioCatalog,studioLimits,studioAddAvailable} from "../../contract/generated/studio";
+import {studioCatalog,studioLimits,studioAddAvailable,studioSizes} from "../../contract/generated/studio";
 import type {MockContext,MockHandler} from "../context";
 export function create(context:MockContext):MockHandler{
  const {sceneName}=context;
@@ -32,7 +32,7 @@ export function create(context:MockContext):MockHandler{
  if(!studioAddAvailable)return fail("protected");
  const widget=view.catalog.find(w=>w.kind===request.kind);if(!widget?.allowed||view.instances.length>=studioLimits.instances)return fail("denied");
  let n=1;while(view.instances.some(w=>w.id===`widget-${n}`))n++;
- view.instances.push({id:`widget-${n}`,kind:request.kind,visible:true,locked:false,opacity:100,showIn:{practice:true,qualifying:true,race:true},offTrack:"inherit",size:null});break;}
+ view.instances.push({id:`widget-${n}`,kind:request.kind,visible:true,locked:false,opacity:100,showIn:{practice:true,qualifying:true,race:true},offTrack:"inherit",size:{width:Math.round(studioSizes[request.kind].width),height:Math.round(studioSizes[request.kind].height)}});break;}
  case "studio.remove":view.instances=view.instances.filter(w=>w.id!==request.id);break;
  case "studio.visibility":{const item=view.instances.find(w=>w.id===request.id);if(!item)return fail("denied");item.visible=request.visible;break;}
  case "studio.instance":{const item=view.instances.find(w=>w.id===request.id);if(!item)return fail("denied");switch(request.patch.field){case "opacity":item.opacity=request.patch.value;break;case "offTrack":item.offTrack=request.patch.value;break;case "showIn":item.showIn=request.patch.value;break;}break;}

@@ -62,7 +62,7 @@ pub struct OverlayInstance {
     pub opacity: u8,
     pub show_in: ShowIn,
     pub off_track: OffTrack,
-    pub size: Option<OverlaySize>,
+    pub size: OverlaySize,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

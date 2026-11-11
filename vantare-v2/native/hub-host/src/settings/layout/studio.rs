@@ -87,9 +87,14 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     }
     let geometry: Fields = optional(fields, "geometry", Fields::default())?;
     let size: Option<Fields> = optional(&geometry, "size", None)?;
-    let (width, height) = size.as_ref().map_or(Ok((320.0, 160.0)), |f| {
-        Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?))
-    })?;
+    let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
+    let (width, height) = size.as_ref().map_or(
+        Ok((
+            f64::from(defaults.size.width),
+            f64::from(defaults.size.height),
+        )),
+        |f| Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?)),
+    )?;
     if ![width, height]
         .iter()
         .all(|v| v.is_finite() && (1.0..=32768.0).contains(v))
@@ -119,11 +124,59 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
             },
         )?,
         off_track,
-        size: size.map(|_| OverlaySize {
+        size: OverlaySize {
             width: width.round() as u32,
             height: height.round() as u32,
-        }),
+        },
     })
+}
+fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
+    let canvas: Option<Fields> = optional(&opened.document.fields, "canvasResolution", None)?;
+    let (width, height) = canvas.as_ref().map_or(Ok((1920.0, 1080.0)), |f| {
+        Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?))
+    })?;
+    if ![width, height]
+        .iter()
+        .all(|v| v.is_finite() && (64.0..=32768.0).contains(v))
+    {
+        return Err(HostError::Protected);
+    }
+    let taken: Vec<_> = opened
+        .instances
+        .iter()
+        .map(|f| {
+            let item = instance(f, None)?;
+            Ok::<_, HostError>((
+                read::<f64>(f, "x")?,
+                read::<f64>(f, "y")?,
+                f64::from(item.size.width),
+                f64::from(item.size.height),
+            ))
+        })
+        .collect::<Result<_, _>>()?;
+    let margin = width * 0.02;
+    let step = width * 0.01;
+    let gap = 12.0;
+    let mut y = margin;
+    while y + size.1 <= height - margin {
+        let mut x = margin;
+        while x + size.0 <= width - margin {
+            if !taken.iter().any(|r| {
+                x < r.0 + r.2 + gap
+                    && x + size.0 + gap > r.0
+                    && y < r.1 + r.3 + gap
+                    && y + size.1 + gap > r.1
+            }) {
+                return Ok((x, y));
+            }
+            x += step;
+        }
+        y += step;
+    }
+    Ok((
+        (width - size.0).max(0.0) / 2.0,
+        (height - size.1).max(0.0) / 2.0,
+    ))
 }
 fn save(path: &Path, before: &[u8], after: &[u8]) -> Result<(), HostError> {
     files::save(
@@ -242,12 +295,38 @@ pub(crate) fn edit(
             opened.bytes()?
         }
         Edit::Add(kind) => {
-            if !kind.info(access).allowed {
+            if !kind.info(access).allowed
+                || !WidgetKind::CATALOG.contains(&kind)
+                || opened.instances.len() >= INSTANCE_LIMIT
+            {
                 return Err(HostError::Denied);
             }
-            // Pending the native widget-defaults artifact from screen 07.
-            // Never substitute invented geometry or a renderer-authored settings object.
-            return Err(HostError::Protected);
+            let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
+            let id = (1..=INSTANCE_LIMIT + 1)
+                .map(|n| format!("widget-{n}"))
+                .find(|id| {
+                    !opened
+                        .instances
+                        .iter()
+                        .any(|f| read::<String>(f, "id").as_deref() == Ok(id.as_str()))
+                })
+                .ok_or(HostError::Denied)?;
+            let (x, y) = free_spot(
+                &opened,
+                (
+                    f64::from(defaults.size.width),
+                    f64::from(defaults.size.height),
+                ),
+            )?;
+            let mut fields = Fields::default();
+            put(&mut fields, "id", &id)?;
+            put(&mut fields, "x", &x)?;
+            put(&mut fields, "y", &y)?;
+            put(&mut fields, "visible", &true)?;
+            put(&mut fields, "opacity", &1.0)?;
+            fields.0.insert("settings".into(), defaults.settings);
+            opened.instances.push(fields);
+            opened.bytes()?
         }
     };
     save(&state.path, &before, &after)?;

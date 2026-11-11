@@ -13,7 +13,7 @@ fn visibility_undo_redo_preserves_opaque_fields_and_never_projects_position() {
     let access = Some(CatalogAccess::Pro);
     let view = state.view(access);
     assert_eq!(view.state, StudioState::Ready);
-    assert_eq!(view.instances[0].size.as_ref().unwrap().width, 338);
+    assert_eq!(view.instances[0].size.width, 338);
     let projected = serde_json::to_string(&view).unwrap();
     for private in ["Users", "futureRoot", "aspectLocked", "\"x\":", "\"y\":"] {
         assert!(!projected.contains(private));
@@ -108,16 +108,27 @@ fn stale_revision_and_denied_pro_widget_never_change_the_layout() {
     assert_eq!(std::fs::read(path).unwrap(), bytes);
 }
 #[test]
-fn adding_waits_for_native_defaults_without_creating_placeholder_settings() {
-    let (_root, path, bytes) = fixture();
+fn adding_uses_versioned_native_settings_and_a_free_identity() {
+    let (_root, path, _) = fixture();
     let mut state = State::new(path.clone());
     let access = Some(CatalogAccess::Pro);
     let view = state.view(access);
+    let added = state
+        .edit(Edit::Add(WidgetKind::Delta), &view.revision, access)
+        .unwrap();
+    assert_eq!(added.instances.len(), 2);
+    assert_eq!(added.instances[1].id, "widget-2");
+    let opened = Open::read(&path).unwrap();
+    let settings: Fields = read(&opened.instances[1], "settings").unwrap();
+    let native = crate::widget_defaults::get("delta").unwrap();
     assert_eq!(
-        state.edit(Edit::Add(WidgetKind::Delta), &view.revision, access),
-        Err(HostError::Protected)
+        serde_json::from_str::<serde_json::Value>(native.settings.get()).unwrap(),
+        serde_json::to_value(&settings.0).unwrap()
     );
-    assert_eq!(std::fs::read(path).unwrap(), bytes);
+    let removed = state
+        .edit(Edit::Remove("widget-2".into()), &added.revision, access)
+        .unwrap();
+    assert_eq!(removed.instances.len(), 1);
 }
 #[test]
 fn an_external_write_invalidates_history_instead_of_overwriting_the_winner() {

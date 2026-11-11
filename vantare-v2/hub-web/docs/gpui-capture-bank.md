@@ -42,8 +42,13 @@ conserva el directorio propio con PID que verifica el banco. Antes de capturar s
 esperan las lecturas de política y cuenta en los logs QA, con plazo de 15 s; no se
 confunde el subrayado de una pestaña con la admisión real del tester.
 
-Cada `.capture.json` conserva el hash de las entradas y del PNG para la herramienta
-de diferencias. Cada `.bank.json` conserva escena, tema, paleta, zoom, DPI, tamaño, SHA del binario,
+Cada `.capture.json` conserva el hash de las entradas y el recibo nativo del PNG
+(SHA-256 de la concatenación hexadecimal de los SHA-256 de bloques de 1 MiB),
+calculado con la misma función que la herramienta de diferencias. El SHA-256 simple
+del fichero queda en `png_sha256` de `.bank.json`. Para reparar un recibo antiguo
+sin recapturar, calcula `node --experimental-strip-types scripts/reference-receipt.ts <png>`
+y sustituye únicamente `png` en su `.capture.json`, tras verificar el SHA simple
+contra `.bank.json`. Cada `.bank.json` conserva escena, tema, paleta, zoom, DPI, tamaño, SHA del binario,
 commit, SHA de replies y PNG y la raíz QA. Para repetir exactamente los datos se
 conserva esa raíz; los replies originales de la plantilla compartida no se modifican.
 El alias de Notificaciones conserva el reloj de su escena QA de panel, pero abre

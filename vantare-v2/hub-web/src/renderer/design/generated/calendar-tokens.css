@@ -33,6 +33,17 @@
 }
 
 [data-scheme="light"] :is(.v-calendar, .v-calendar-rail) {
+  --calendar-tier-beginner: #8a4a16;
+  --calendar-tier-beginner-bg: #f6e6d8;
+  --calendar-tier-intermediate: #4a525c;
+  --calendar-tier-intermediate-bg: #e9ecef;
+  --calendar-tier-advanced: #7a5a00;
+  --calendar-tier-advanced-bg: #f8eecb;
+  --calendar-tier-event: #a61b26;
+  --calendar-tier-event-bg: #fbe2e4;
+}
+
+[data-scheme="light"] :is(.v-calendar, .v-calendar-rail) {
   --calendar-class-hypercar: #d2333e;
   --calendar-class-lmp2: #2f6bd8;
   --calendar-class-lmp3: #8b4fe0;
@@ -70,6 +81,17 @@
   --grad-button: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
   --grad-button-hover: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
   --text-on-accent: #ffffff;
+}
+
+[data-scheme="dark"] :is(.v-calendar, .v-calendar-rail) {
+  --calendar-tier-beginner: #e8ae7e;
+  --calendar-tier-beginner-bg: #cd7f3229;
+  --calendar-tier-intermediate: #d3d8de;
+  --calendar-tier-intermediate-bg: #c9ced421;
+  --calendar-tier-advanced: #ebcb6e;
+  --calendar-tier-advanced-bg: #e7c86a24;
+  --calendar-tier-event: #ff8a91;
+  --calendar-tier-event-bg: #e14a5426;
 }
 
 [data-scheme="dark"] :is(.v-calendar, .v-calendar-rail) {

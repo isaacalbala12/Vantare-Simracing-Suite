@@ -34,31 +34,3 @@ impl Default for ColumnSetting {
         }
     }
 }
-
-impl ColumnSetting {
-    pub fn relative_width(&self) -> f32 {
-        match self.width_preset.as_str() {
-            "xs" => 20.0,
-            "sm" => 36.0,
-            "md" => 60.0,
-            "lg" => 90.0,
-            _ => match self.metric_id.as_str() {
-                "position" => 24.0,
-                "class" => 6.0,
-                "carNumber" => 28.0,
-                "driverName" => 120.0,
-                "gap" => 48.0,
-                _ => 62.0,
-            },
-        }
-    }
-}
-impl ColumnSetting {
-    pub fn driver_name(&self, value: &str) -> String {
-        vantare_domain::standings::driver_name(
-            value,
-            &self.format.mode,
-            self.format.max_chars.unwrap_or(16).min(64),
-        )
-    }
-}

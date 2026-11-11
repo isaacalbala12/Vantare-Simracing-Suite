@@ -8,7 +8,7 @@ pub struct Settings {
     pub content_version: u8,
     pub style: crate::look::Tone,
     pub accent: crate::look::Accent,
-    pub columns: Option<Vec<crate::standings::options::ColumnSetting>>,
+    pub columns: Option<Vec<super::columns::ColumnSetting>>,
     pub range_ahead: usize,
     pub range_behind: usize,
     pub class_scope: String,

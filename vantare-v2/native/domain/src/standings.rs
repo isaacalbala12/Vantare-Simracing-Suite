@@ -6,7 +6,6 @@
 //! fuente no publica es `—` o se omite, nunca un valor inventado.
 
 use crate::format::{self, Language, PLACEHOLDER, Preferences};
-pub use crate::widget_settings::columns as options;
 use crate::{
     Capability, Car, CarId, FlagKind, FlagScope, Gap, Quality, SessionKind, Snapshot, SourceState,
     TyreCompound,

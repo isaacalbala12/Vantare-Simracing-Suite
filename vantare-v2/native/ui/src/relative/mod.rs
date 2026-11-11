@@ -3,6 +3,8 @@
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
 #[cfg(test)]
+use crate::standings::options::ColumnFormat as _;
+#[cfg(test)]
 mod contract_tests;
 mod eficiencia;
 mod motion;

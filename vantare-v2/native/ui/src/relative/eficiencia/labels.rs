@@ -1,4 +1,5 @@
 //! Textos derivados del Board en ingest; medidas de fuente una vez por presentación.
+use crate::standings::options::ColumnFormat as _;
 use super::{
     Arc, EDGES, Ink, Language, RowVisual, SCALE, SIZE, Settings, Side, ViewModel, Window, col, ink,
     item_width, text, tokens,

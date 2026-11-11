@@ -218,4 +218,57 @@ mod tests {
         assert!(after.lmu_trigger_profile.is_none());
         assert!(!after.profiles.iter().any(|profile| &profile.id == id));
     }
+    #[test]
+    fn protected_documents_are_never_created_or_rewritten_by_actions() {
+        for bytes in [
+            None,
+            Some(b"{".as_slice()),
+            Some(br#"{"version":999}"#.as_slice()),
+        ] {
+            let root = crate::test_support::Root::new();
+            let path = root.path.join("launcher.json");
+            if let Some(bytes) = bytes {
+                std::fs::write(&path, bytes).expect("fixture");
+            }
+            let revision = "0".repeat(64);
+            for result in [
+                remove(&path, "creator", &revision),
+                duplicate(&path, "creator", &revision),
+                favorite(&path, "creator", false, &revision),
+                option(&path, "creator", ProfileOption::Startup(true), &revision),
+                trigger(&path, Some("creator"), &revision),
+            ] {
+                assert_eq!(result, Err(HostError::Protected));
+            }
+            match bytes {
+                None => assert!(!path.exists()),
+                Some(bytes) => assert_eq!(std::fs::read(path).expect("untouched"), bytes),
+            }
+        }
+    }
+    #[test]
+    fn favorite_action_keeps_other_favorites_and_startup_stays_exclusive() {
+        let (_root, path, bytes, revision) = fixture();
+        let document = Document::from_bytes(&bytes).expect("document");
+        favorite(&path, &document.profiles[1].id, true, &revision).expect("favorite");
+        let bytes = std::fs::read(&path).expect("saved");
+        let after = Document::from_bytes(&bytes).expect("saved document");
+        assert!(after.profiles.iter().all(|profile| profile.favorite));
+        option(
+            &path,
+            &document.profiles[1].id,
+            ProfileOption::Startup(true),
+            &vantare_services::content_hash(&bytes),
+        )
+        .expect("startup");
+        let after = Document::from_bytes(&std::fs::read(&path).expect("saved")).expect("document");
+        assert_eq!(
+            after
+                .profiles
+                .iter()
+                .filter(|profile| profile.launch_on_windows_startup)
+                .count(),
+            1
+        );
+    }
 }

@@ -110,5 +110,8 @@ export function isLauncher(value: unknown): boolean {
       return false;
     profiles.add(profile.id);
   }
-  return true;
+  return (
+    value.lmuTrigger === null ||
+    (typeof value.lmuTrigger === "string" && profiles.has(value.lmuTrigger))
+  );
 }

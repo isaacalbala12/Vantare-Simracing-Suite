@@ -273,4 +273,25 @@ describe("profile editor", () => {
       expect(within(pro).getByText(launcherText.favorite)).toBeTruthy(),
     );
   });
+  it("duplicates from a saved profile and toggles its LMU trigger", async () => {
+    mount();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.duplicate }),
+    );
+    await screen.findByRole("button", { name: "Creador de Contenido (copia)" });
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.trigger }),
+    );
+    fireEvent.contextMenu(creator);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: actionText.triggered }),
+    );
+    fireEvent.contextMenu(creator);
+    await screen.findByRole("menuitem", { name: actionText.trigger });
+  });
 });

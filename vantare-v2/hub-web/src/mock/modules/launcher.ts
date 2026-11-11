@@ -34,6 +34,12 @@ export function create(context: MockContext): MockHandler {
       profile.launchable = true;
     });
   }
+  if (sceneName === "calendar-live-reference") {
+    core.rights = "connected";
+    launcher.profiles[0].name = "Carrera LMU";
+    launcher.profiles[0].favorite = true;
+    launcher.profiles[0].launchable = true;
+  }
   if (sceneName === "launcher-protected") {
     launcher.protected = true;
     launcher.profiles = [];

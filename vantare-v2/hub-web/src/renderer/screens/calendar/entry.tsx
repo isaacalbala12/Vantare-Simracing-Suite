@@ -37,7 +37,12 @@ export default function CalendarEntry() {
   const { schedule, previous } = view
     ? publication(view, state.now, calendarSeriesLimit)
     : { schedule: null, previous: null };
-  const alerts = preferences.config?.alerts ?? calendarDefaultAlerts;
+  const alerts = preferences.config?.alerts ?? {
+    ...calendarDefaultAlerts,
+    bands: [],
+    slots: [],
+    channels: { ...calendarDefaultAlerts.channels },
+  };
   const health: CalendarHealth = !state.loaded
     ? "loading"
     : schedule

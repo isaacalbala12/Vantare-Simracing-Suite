@@ -96,6 +96,8 @@ export function createMockHost(sceneName = "ajustes-base") {
   }
 
   const appReply = createLauncherAppsMock(launcher, sceneName);
+  launcher.residentState.online = launcher.resident;
+  launcher.residentState.running = launcher.running;
   const drafts = new Map<string, ProfileDraft>(
     launcher.profiles.map((profile) => [
       profile.id,
@@ -483,6 +485,12 @@ export function createMockHost(sceneName = "ajustes-base") {
           id,
           result: { method: request.method, value: structuredClone(launcher) },
         };
+      case "launcher.answer": {
+        const question = launcher.residentState.decision;
+        if (!question || question.id !== request.decision || (!question.actions.some((choice) => choice.id === request.action) && !(request.action === "cancel" && !question.actions.some((choice) => choice.id === "leave")))) return { kind: "failure", id, error: { kind: "denied" } };
+        launcher.residentState.decision = null;
+        return { kind: "response", id, result: { method: request.method, accepted: true } };
+      }
       case "launcher.launch": {
         if (request.baseRevision !== launcher.revision)
           return {

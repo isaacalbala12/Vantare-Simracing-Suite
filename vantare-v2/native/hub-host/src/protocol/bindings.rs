@@ -1,4 +1,3 @@
-use crate::launcher::resident::{LauncherAnswerAction, ResidentChoice, ResidentQuestion, ResidentQuestionKind, ResidentView};
 //! Build/test tooling only. Distribution does not depend on ts-rs.
 use super::{
     AccessView, CloseReason, CoreStatus, Event, HostError, HostToUi, LinkState, METHODS, Palette,
@@ -10,6 +9,9 @@ use crate::launcher::apps::{AppDraft, AppEditor, CatalogApp, CatalogView, Picked
 use crate::launcher::editor::{
     ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
     ProfileRunning, ProfileStep,
+};
+use crate::launcher::resident::{
+    LauncherAnswerAction, ResidentChoice, ResidentQuestion, ResidentQuestionKind, ResidentView,
 };
 use crate::launcher::{LauncherApp, LauncherOptions, LauncherProfile, LauncherView};
 use crate::pilot::{PilotFields, PilotView};
@@ -156,13 +158,33 @@ fn append_notification_constants(text: &mut String) {
     }
 }
 fn append_launcher_constants(text: &mut String) {
-    let choices: Vec<_> = LauncherAnswerAction::ALL.into_iter().map(|id| ResidentChoice { id, label: id.label().into() }).collect();
+    let choices: Vec<_> = LauncherAnswerAction::ALL
+        .into_iter()
+        .map(|id| ResidentChoice {
+            id,
+            label: id.label().into(),
+        })
+        .collect();
     for (name, value) in [
-        ("launcherAnswerChoices", serde_json::to_string(&choices).expect("choices")),
-        ("launcherQuestionKinds", serde_json::to_string(&ResidentQuestionKind::ALL).expect("kinds")),
-        ("launcherDecisionIdLimit", crate::launcher::resident::DECISION_ID_MAX.to_string()),
-        ("launcherDecisionMax", serde_json::to_string(&u64::MAX.to_string()).expect("maximum")),
-    ] { writeln!(text, "export const {name} = {value} as const;").expect("constants"); }
+        (
+            "launcherAnswerChoices",
+            serde_json::to_string(&choices).expect("choices"),
+        ),
+        (
+            "launcherQuestionKinds",
+            serde_json::to_string(&ResidentQuestionKind::ALL).expect("kinds"),
+        ),
+        (
+            "launcherDecisionIdLimit",
+            crate::launcher::resident::DECISION_ID_MAX.to_string(),
+        ),
+        (
+            "launcherDecisionMax",
+            serde_json::to_string(&u64::MAX.to_string()).expect("maximum"),
+        ),
+    ] {
+        writeln!(text, "export const {name} = {value} as const;").expect("constants");
+    }
 
     text.push_str("export const launcherLimits = ");
     text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
@@ -368,7 +390,9 @@ pub fn corpus() -> serde_json::Value {
     let settings = settings_sample();
     let mut host = vec![hello(&settings).expect("boot view")];
     host.extend(core_samples());
-    for result in resident_reply_samples() { host.push(HostToUi::Response { id: 1, result }); }
+    for result in resident_reply_samples() {
+        host.push(HostToUi::Response { id: 1, result });
+    }
 
     for result in profile_action_reply_samples() {
         host.push(HostToUi::Response { id: 1, result });
@@ -673,8 +697,11 @@ fn ui_samples() -> Vec<UiToHost> {
         .into_iter()
         .chain(profile_action_request_samples())
         .chain([
-            Request::LauncherAnswer { decision: "7".into(), action: LauncherAnswerAction::Cancel },
-        Request::RoadmapCached {},
+            Request::LauncherAnswer {
+                decision: "7".into(),
+                action: LauncherAnswerAction::Cancel,
+            },
+            Request::RoadmapCached {},
             Request::RoadmapRefresh {},
             Request::PilotLoad {},
             Request::PilotSave {
@@ -939,17 +966,40 @@ fn resident_reply_samples() -> Vec<Reply> {
     let document = vantare_launcher::Document::fresh_install();
     let cases = [
         vec![mailbox::Action::Trust, mailbox::Action::Cancel],
-        vec![mailbox::Action::Reuse, mailbox::Action::Restart, mailbox::Action::Cancel],
+        vec![
+            mailbox::Action::Reuse,
+            mailbox::Action::Restart,
+            mailbox::Action::Cancel,
+        ],
         vec![mailbox::Action::Stop, mailbox::Action::Continue],
         vec![mailbox::Action::Leave, mailbox::Action::CloseStarted],
         vec![mailbox::Action::Cancel],
     ];
-    let mut replies: Vec<_> = cases.into_iter().map(|actions| {
-        let status = mailbox::Status { version: mailbox::VERSION, updated_ms: mailbox::now_ms(), running: true,
-            decision: Some(mailbox::Decision { id: u64::MAX, message: "private native-only QA text".into(), actions }), ..Default::default() };
-        Reply::LauncherGet { value: LauncherView { resident: true, running: true,
-            resident_state: crate::launcher::resident::Reader::default().view(&document, Some(&status)), ..Default::default() } }
-    }).collect();
+    let mut replies: Vec<_> = cases
+        .into_iter()
+        .map(|actions| {
+            let status = mailbox::Status {
+                version: mailbox::VERSION,
+                updated_ms: mailbox::now_ms(),
+                running: true,
+                decision: Some(mailbox::Decision {
+                    id: u64::MAX,
+                    message: "private native-only QA text".into(),
+                    actions,
+                }),
+                ..Default::default()
+            };
+            Reply::LauncherGet {
+                value: LauncherView {
+                    resident: true,
+                    running: true,
+                    resident_state: crate::launcher::resident::Reader::default()
+                        .view(&document, Some(&status)),
+                    ..Default::default()
+                },
+            }
+        })
+        .collect();
     replies.push(Reply::LauncherAnswer { accepted: true });
     replies
 }

@@ -1,3 +1,4 @@
+import { isResidentAnswer } from "./resident-validation";
 import {
   isAppEditor,
   isAppRequest,
@@ -69,6 +70,8 @@ export function isUiMessage(value: unknown): value is UiToHost {
             : value.request.method === "launcher.profile.get" ||
                 value.request.method === "launcher.profile.save"
               ? isProfileRequest(value.request)
+              : value.request.method === "launcher.answer"
+                ? isResidentAnswer(value.request)
               : value.request.method === "launcher.launch"
                 ? isLauncherLaunch(value.request)
                 : value.request.method === "testing.answer"

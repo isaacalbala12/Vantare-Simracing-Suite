@@ -1,3 +1,4 @@
+import { isResident } from "./resident-validation";
 import { launcherLimits } from "./generated/contract";
 import { exact, integer, oneOf, record } from "./validation-common";
 
@@ -25,6 +26,7 @@ export function isLauncher(value: unknown): boolean {
       "protected",
       "revision",
       "resident",
+      "residentState",
       "running",
       "scanning",
       "lmuTrigger",
@@ -44,6 +46,7 @@ export function isLauncher(value: unknown): boolean {
       /^[0-9a-f]{64}$/.test(value.revision)
     ) ||
     !(value.lmuTrigger === null || id(value.lmuTrigger)) ||
+    !isResident(value.residentState) ||
     !Array.isArray(value.apps) ||
     value.apps.length > launcherLimits.apps ||
     !Array.isArray(value.profiles) ||

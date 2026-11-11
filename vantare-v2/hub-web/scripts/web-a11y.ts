@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Locator } from "playwright-core";
+import { checkAccessGate } from "./check-access-gate.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { until } from "./wait-for";
 
@@ -141,6 +142,7 @@ try {
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
   await checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({
@@ -151,6 +153,7 @@ try {
       commandPalette: true,
       toast: true,
       privacyGate: true,
+      accessGate: true,
     }),
   );
 } finally {

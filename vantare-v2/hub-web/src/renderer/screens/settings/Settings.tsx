@@ -9,6 +9,7 @@ import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { SearchInput } from "../../ui/Forms";
 import { SectionPageHeader, StatusAnnouncement } from "../../ui/Frame";
+import { PrivacyRail } from "../../ui/PrivacyPresentation";
 import { ShortcutGroups } from "../../ui/SettingActions";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import { AppearanceRail } from "./AppearanceRail";
@@ -184,6 +185,8 @@ export function Settings() {
             <PerformanceRail />
           ) : selected === "shortcuts" ? (
             <ShortcutsRail />
+          ) : selected === "privacy" ? (
+            <PrivacyRail />
           ) : undefined
         }
       />

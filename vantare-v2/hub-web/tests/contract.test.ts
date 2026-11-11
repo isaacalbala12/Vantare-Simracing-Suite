@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import scene from "../fixtures/ajustes-base.json";
 import status from "../fixtures/core-offline.json";
+import privacy from "../fixtures/privacy-base.json";
 import settings from "../fixtures/settings-base.json";
 import {
   maxWidgetOverrides,
   pilotLimits,
 } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
+import { isPrivacy } from "../src/contract/privacy-validation";
 import { isSettings } from "../src/contract/settings-validation";
 import {
   bounded,
@@ -288,4 +290,12 @@ describe("track customization projection", () => {
     const { customWidgets: _count, ...track } = settings.track;
     expect(isSettings({ ...settings, track })).toBe(false);
   });
+});
+
+it("requires an explicit boolean for the observed reporting configuration", () => {
+  expect(isPrivacy({ ...privacy, reportingConfigured: true })).toBe(true);
+  expect(isPrivacy({ ...privacy, reportingConfigured: false })).toBe(true);
+  for (const value of [null, 1, "true", undefined])
+    expect(isPrivacy({ ...privacy, reportingConfigured: value })).toBe(false);
+  expect(isPrivacy({ ...privacy, apiKey: "forbidden" })).toBe(false);
 });

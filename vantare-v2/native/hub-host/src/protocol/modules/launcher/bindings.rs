@@ -112,6 +112,12 @@ fn profile_keys_sample() -> Reply {
 }
 
 fn append_apps_constants(text: &mut String) {
+    writeln!(
+        text,
+        "export const launcherPickCooldownMs = {} as const;",
+        crate::launcher::apps::PICK_COOLDOWN_MS
+    )
+    .expect("String write");
     writeln!(text, "export const launcherPickPathMax = {} as const;\nexport const launcherPickLifetimeSeconds = {} as const;", crate::launcher::apps::PICK_PATH_MAX, crate::launcher::apps::PICK_LIFETIME_SECONDS).expect("String write");
 }
 
@@ -145,6 +151,7 @@ fn application_reply_samples() -> [Reply; 7] {
             value: Some(PickedApp {
                 token: "0".repeat(64),
                 name: "QA".into(),
+                file_name: "QA.exe".into(),
             }),
         },
         Reply::LauncherAppSave {

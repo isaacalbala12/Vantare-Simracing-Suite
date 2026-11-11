@@ -56,21 +56,31 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
   const customProfiles = new Map<string, number>(
     scene === "launcher-aplicaciones-args" ? [["obs", 1]] : [],
   );
+  let dialogId: number | undefined;
   let selectionTarget: string | null | undefined;
   let serial = 0;
   let conflictOnce = scene.endsWith("-conflicto");
-  let selection: { token: string; name: string } | null = null;
+  let selection: { token: string; name: string; fileName: string } | null =
+    null;
   const bump = () => {
     view.revision = (BigInt(`0x${view.revision}`) + 1n)
       .toString(16)
       .padStart(64, "0");
   };
-  function picked(name: string) {
-    selection = { token: (++serial).toString(16).padStart(64, "0"), name };
+  function picked(fileName: string) {
+    const name = fileName.replace(/\.exe$/i, "");
+    selection = {
+      token: (++serial).toString(16).padStart(64, "0"),
+      name,
+      fileName,
+    };
     return structuredClone(selection);
   }
   return (message: UiToHost): HostToUi | undefined => {
-    if (message.kind === "pickedExecutable")
+    if (message.kind === "pickedExecutable") {
+      if (dialogId !== message.id)
+        return { kind: "failure", id: message.id, error: { kind: "denied" } };
+      dialogId = undefined;
       return {
         kind: "response",
         id: message.id,
@@ -80,13 +90,11 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
             message.path === null
               ? null
               : picked(
-                  message.path
-                    .split(/[\\/]/)
-                    .pop()
-                    ?.replace(/\.exe$/i, "") || "Aplicación QA",
+                  message.path.split(/[\\/]/).pop() || "Aplicación QA.exe",
                 ),
         },
       };
+    }
     if (message.kind !== "request") return;
     const { id, request } = message;
     const fail = (kind: "denied" | "protected"): HostToUi => ({
@@ -121,11 +129,14 @@ export function createLauncherAppsMock(view: LauncherView, scene: string) {
         result: { method: request.method, value: structuredClone(view) },
       };
     if (request.method === "launcher.app.pick") {
+      if (dialogId !== undefined)
+        return { kind: "failure", id, error: { kind: "busy" } };
+      dialogId = id;
       selectionTarget = request.id;
       return {
         kind: "response",
         id,
-        result: { method: request.method, value: picked("Aplicación QA") },
+        result: { method: request.method, value: null },
       };
     }
     if (request.method === "launcher.app.get") {

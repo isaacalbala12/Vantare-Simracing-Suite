@@ -60,6 +60,7 @@ pub struct Reader {
     scanned_revision: Option<String>,
     scan: Option<Scan>,
     last_check: Option<Instant>,
+    last_scan: Option<Instant>,
     last_view: Option<LauncherView>,
 }
 impl Reader {
@@ -71,6 +72,7 @@ impl Reader {
             scanned_revision: None,
             scan: None,
             last_check: None,
+            last_scan: None,
             last_view: None,
         }
     }
@@ -117,12 +119,27 @@ impl Reader {
     }
     pub fn rescan(&mut self) {
         // An explicit reload refreshes availability without launching a second worker.
-        self.scanned_revision = None;
+        let now = Instant::now();
+        if self
+            .last_scan
+            .is_none_or(|last| now.saturating_duration_since(last).as_secs() >= 2)
+        {
+            self.last_scan = Some(now);
+            self.scanned_revision = None;
+        }
     }
     pub fn scan(&mut self) -> Result<LauncherView, HostError> {
-        if self.scan.is_some() {
+        self.scan_at(Instant::now())
+    }
+    fn scan_at(&mut self, now: Instant) -> Result<LauncherView, HostError> {
+        if self.scan.is_some()
+            || self
+                .last_scan
+                .is_some_and(|last| now.saturating_duration_since(last).as_secs() < 2)
+        {
             return Err(HostError::Busy);
         }
+        self.last_scan = Some(now);
         self.scanned_revision = None;
         Ok(self.view())
     }
@@ -162,6 +179,26 @@ impl Drop for Reader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn explicit_scans_are_rate_limited_without_waiting_or_starting_workers() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        std::fs::write(&path, b"{").unwrap();
+        let mut reader = Reader::new(path);
+        let now = Instant::now();
+        assert!(reader.scan_at(now).is_ok());
+        assert_eq!(
+            reader.scan_at(now + std::time::Duration::from_millis(1999)),
+            Err(HostError::Busy)
+        );
+        assert!(
+            reader
+                .scan_at(now + std::time::Duration::from_secs(2))
+                .is_ok()
+        );
+    }
+
     #[test]
     fn no_subscription_means_no_discovery_or_status_watch() {
         let mut reader = Reader::new(PathBuf::from("absent-launcher-fixture.json"));

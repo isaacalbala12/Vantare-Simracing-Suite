@@ -43,7 +43,7 @@ describe("executable picker boundary", () => {
     );
     expect(host).toHaveBeenCalledWith({
       kind: "request",
-      id: 7,
+      id: 0x80000000,
       request: { method: "launcher.app.pick", id: "obs" },
     });
     expect(
@@ -110,107 +110,170 @@ describe("executable picker boundary", () => {
       }),
     ).toBe(true);
   });
+
   const ack = (id: number) => ({
     kind: "response" as const,
     id,
     result: { method: "launcher.app.pick" as const, value: null },
   });
-  it("waits for the host's matching request acknowledgement and opens once", async () => {
-    let choose: (path: string | undefined) => void = () => {};
+  it("opens once after its internal acknowledgement and translates the final response", async () => {
+    let finish: (path: string | undefined) => void = () => {};
     const open = vi.fn(
       () =>
         new Promise<string | undefined>((resolve) => {
-          choose = resolve;
+          finish = resolve;
         }),
     );
     const host = vi.fn(),
       renderer = vi.fn();
     const pick = executablePicker(open, host);
-    expect(pick.receive(ack(1))).toBe(false);
-    pick.request(1, null, renderer, () => true);
-    expect(host).toHaveBeenCalledWith({
+    pick.request(7, "obs", renderer, () => true);
+    expect(host.mock.calls[0][0]).toEqual({
       kind: "request",
-      id: 1,
-      request: { method: "launcher.app.pick", id: null },
+      id: 0x80000000,
+      request: { method: "launcher.app.pick", id: "obs" },
     });
+    expect(pick.receive(ack(7))).toBe(false);
     expect(open).not.toHaveBeenCalled();
-    expect(pick.receive(ack(2))).toBe(false);
-    expect(open).not.toHaveBeenCalled();
-    expect(pick.receive(ack(1))).toBe(true);
-    expect(pick.receive(ack(1))).toBe(true);
+    expect(pick.receive(ack(0x80000000))).toBe(true);
+    pick.receive(ack(0x80000000));
     expect(open).toHaveBeenCalledTimes(1);
-    pick.request(2, null, renderer, () => true);
+    pick.request(8, null, renderer, () => true);
     expect(renderer).toHaveBeenCalledWith({
+      kind: "failure",
+      id: 8,
+      error: { kind: "busy" },
+    });
+    finish("D:/private/chosen.exe");
+    await Promise.resolve();
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "pickedExecutable",
+      id: 0x80000000,
+      path: "D:/private/chosen.exe",
+    });
+    const result = {
+      kind: "response" as const,
+      id: 0x80000000,
+      result: {
+        method: "launcher.app.pick" as const,
+        value: {
+          token: "a".repeat(64),
+          name: "chosen",
+          fileName: "chosen.exe",
+        },
+      },
+    };
+    expect(pick.receive(result)).toBe(true);
+    expect(renderer).toHaveBeenLastCalledWith({ ...result, id: 7 });
+    expect(JSON.stringify(renderer.mock.calls)).not.toContain("private");
+    pick.receive(result);
+    expect(
+      renderer.mock.calls.filter(([v]) => v.kind === "response"),
+    ).toHaveLength(1);
+  });
+  it("reserves internal ids from the renderer and translates host failures", () => {
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = executablePicker(async () => undefined, host);
+    expect(
+      isRendererMessage({
+        kind: "request",
+        id: 0x80000000,
+        request: { method: "launcher.app.pick", id: null },
+      }),
+    ).toBe(false);
+    pick.request(9, null, renderer, () => true);
+    expect(
+      pick.receive({
+        kind: "failure",
+        id: 0x80000000,
+        error: { kind: "denied" },
+      }),
+    ).toBe(true);
+    expect(renderer).toHaveBeenCalledWith({
+      kind: "failure",
+      id: 9,
+      error: { kind: "denied" },
+    });
+  });
+  it("cools down for 1500 ms after cancellation and ignores a late dialog result", async () => {
+    let now = 0;
+    let finish: (path: string | undefined) => void = () => {};
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = executablePicker(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      host,
+      () => now,
+    );
+    pick.request(1, null, renderer, () => true);
+    pick.receive(ack(0x80000000));
+    pick.cancel();
+    pick.cancel();
+    finish("D:/private/late.exe");
+    await Promise.resolve();
+    expect(
+      host.mock.calls.filter(([v]) => v.kind === "pickedExecutable"),
+    ).toEqual([[{ kind: "pickedExecutable", id: 0x80000000, path: null }]]);
+    now = 1499;
+    pick.request(2, null, renderer, () => true);
+    expect(renderer).toHaveBeenLastCalledWith({
       kind: "failure",
       id: 2,
       error: { kind: "busy" },
     });
-    choose("D:/QA/chosen.exe");
-    await Promise.resolve();
-    expect(host).toHaveBeenCalledWith({
-      kind: "pickedExecutable",
-      id: 1,
-      path: "D:/QA/chosen.exe",
+    now = 1500;
+    pick.request(3, null, renderer, () => true);
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "request",
+      id: 0x80000001,
+      request: { method: "launcher.app.pick", id: null },
     });
-    expect(JSON.stringify(renderer.mock.calls)).not.toContain("chosen.exe");
-    expect(pick.receive(ack(1))).toBe(false);
-    expect(pick.receive(ack(1))).toBe(false);
-    expect(open).toHaveBeenCalledTimes(1);
   });
-  it("rejects stale acknowledgements and results after disconnection or expiry", async () => {
+  it("cools down after the native dialog cancels and rejects expired or disconnected selections", async () => {
     let now = 0,
       connected = true;
+    let finish: (path: string | undefined) => void = () => {};
     const host = vi.fn(),
-      renderer = vi.fn();
-    let finish: (path: string) => void = () => {};
-    const open = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          finish = resolve;
-        }),
-    );
+      renderer = vi.fn(),
+      open = vi.fn(
+        () =>
+          new Promise<string | undefined>((resolve) => {
+            finish = resolve;
+          }),
+      );
     const pick = executablePicker(open, host, () => now);
     pick.request(1, null, renderer, () => connected);
     now = launcherPickLifetimeSeconds * 1000;
-    expect(pick.receive(ack(1))).toBe(true);
+    pick.receive(ack(0x80000000));
     expect(open).not.toHaveBeenCalled();
+    now += 1500;
     pick.request(2, null, renderer, () => connected);
-    pick.receive(ack(2));
+    pick.receive(ack(0x80000001));
     connected = false;
-    finish("D:/QA/chosen.exe");
+    finish("D:/private/chosen.exe");
     await Promise.resolve();
-    expect(
-      host.mock.calls.filter(
-        ([message]) => message.path === "D:/QA/chosen.exe",
-      ),
-    ).toHaveLength(0);
-    expect(host).toHaveBeenCalledWith({
+    expect(host).toHaveBeenLastCalledWith({
       kind: "pickedExecutable",
-      id: 2,
+      id: 0x80000001,
       path: null,
     });
     expect(renderer).not.toHaveBeenCalled();
-  });
-  it("cancels a dialog once and ignores a late result", async () => {
-    let finish: (path: string) => void = () => {};
-    const host = vi.fn();
-    const pick = executablePicker(
-      () =>
-        new Promise<string>((resolve) => {
-          finish = resolve;
-        }),
-      host,
-    );
-    pick.request(7, null, vi.fn(), () => true);
-    pick.receive(ack(7));
-    pick.cancel();
-    pick.cancel();
-    finish("D:/QA/chosen.exe");
+    connected = true;
+    now += 1500;
+    pick.request(3, null, renderer, () => connected);
+    pick.receive(ack(0x80000002));
+    finish(undefined);
     await Promise.resolve();
-    expect(
-      host.mock.calls.filter(
-        ([message]) => message.kind === "pickedExecutable",
-      ),
-    ).toEqual([[{ kind: "pickedExecutable", id: 7, path: null }]]);
+    pick.receive(ack(0x80000002));
+    pick.request(4, null, renderer, () => connected);
+    expect(renderer).toHaveBeenLastCalledWith({
+      kind: "failure",
+      id: 4,
+      error: { kind: "busy" },
+    });
   });
 });

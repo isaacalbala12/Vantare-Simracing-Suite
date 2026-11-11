@@ -18,6 +18,7 @@ pub struct ExecutableSelection {
     pub path: Option<String>,
 }
 pub const PICK_LIFETIME_SECONDS: u64 = 600;
+pub const PICK_COOLDOWN_MS: u64 = 1500;
 pub const PICK_PATH_MAX: usize = 32768;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -25,6 +26,7 @@ pub const PICK_PATH_MAX: usize = 32768;
 pub struct PickedApp {
     pub token: String,
     pub name: String,
+    pub file_name: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -83,8 +85,24 @@ pub struct Picker {
     pending: Option<Pick>,
     dialog: Option<Dialog>,
 }
+fn unambiguous_path(path: &Path) -> bool {
+    let Some(raw) = path.to_str() else {
+        return false;
+    };
+    let raw = raw.strip_prefix(r"\\?\").unwrap_or(raw);
+    let rest = if raw.as_bytes().get(1) == Some(&b':') {
+        &raw[2..]
+    } else {
+        raw
+    };
+    !rest.contains(':')
+        && !rest
+            .split(['\\', '/'])
+            .any(|part| part.ends_with(['.', ' ']))
+}
 fn canonical_executable(path: &Path) -> Result<PathBuf, HostError> {
-    if !vantare_launcher::is_local_path(path)
+    if !unambiguous_path(path)
+        || !vantare_launcher::is_local_path(path)
         || !path
             .extension()
             .and_then(|value| value.to_str())
@@ -93,7 +111,8 @@ fn canonical_executable(path: &Path) -> Result<PathBuf, HostError> {
         return Err(HostError::Denied);
     }
     let canonical = std::fs::canonicalize(path).map_err(|_| HostError::Denied)?;
-    if !vantare_launcher::is_local_path(&canonical)
+    if !unambiguous_path(&canonical)
+        || !vantare_launcher::is_local_path(&canonical)
         || !canonical.is_file()
         || !canonical
             .extension()
@@ -174,6 +193,12 @@ impl Picker {
             .filter(|name| !name.is_empty() && name.len() <= editor::NAME_MAX)
             .ok_or(HostError::Denied)?
             .to_owned();
+        let file_name = chosen
+            .file_name()
+            .and_then(|value| value.to_str())
+            .filter(|value| value.len() <= editor::NAME_MAX + 4)
+            .ok_or(HostError::Denied)?
+            .to_owned();
         let token = vantare_services::random_id().map_err(|_| HostError::Io)?;
         self.pending = Some(Pick {
             token: token.clone(),
@@ -181,7 +206,11 @@ impl Picker {
             expires: now + Duration::from_secs(PICK_LIFETIME_SECONDS),
             target,
         });
-        Ok(Some(PickedApp { token, name }))
+        Ok(Some(PickedApp {
+            token,
+            name,
+            file_name,
+        }))
     }
     fn path(&self, token: &str, target: Option<&str>, now: Instant) -> Result<&Path, HostError> {
         let pick = self
@@ -668,6 +697,15 @@ mod dialog_wire_tests {
             .next(&mut std::io::Cursor::new(pipe))
             .unwrap()
             .unwrap()
+    }
+    #[test]
+    fn trusted_selection_rejects_unknown_fields() {
+        assert!(
+            serde_json::from_value::<ExecutableSelection>(
+                serde_json::json!({"id":1,"path":null,"command":"x"})
+            )
+            .is_err()
+        );
     }
     #[test]
     fn trusted_result_handler_requires_an_outstanding_request_and_consumes_it() {

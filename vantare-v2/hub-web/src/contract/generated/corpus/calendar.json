@@ -1,6 +1,30 @@
 {
   "host": [
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.historyLoad",
+        "value": {
+          "invalidCache": false,
+          "weeks": [
+            {
+              "from": 1791244800,
+              "seenAt": 1791187200,
+              "tracks": [
+                {
+                  "name": "WEC Weekly",
+                  "seriesId": "weekly-wec-weekly",
+                  "track": "Sebring"
+                }
+              ],
+              "until": 1791849600
+            }
+          ]
+        }
+      }
+    },
+    {
       "error": {
         "kind": "calendarScheduleUnavailable"
       },
@@ -846,6 +870,13 @@
     }
   ],
   "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "calendar.historyLoad"
+      }
+    },
     {
       "id": 1,
       "kind": "request",

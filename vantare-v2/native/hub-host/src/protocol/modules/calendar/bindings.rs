@@ -2,6 +2,14 @@ use crate::protocol::bindings::{constants, declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<crate::calendar::CalendarHistoryTrack>(&mut text);
+    declare::<crate::calendar::CalendarHistoryWeek>(&mut text);
+    declare::<crate::calendar::CalendarHistoryView>(&mut text);
+    constants!(
+        &mut text,
+        "calendarHistoryWeeksLimit",
+        crate::calendar::HISTORY_WEEKS_LIMIT
+    );
     declare::<crate::calendar::CalendarDays>(&mut text);
     declare::<crate::calendar::CalendarBandMode>(&mut text);
     declare::<crate::calendar::CalendarBand>(&mut text);
@@ -119,8 +127,25 @@ fn config_constants(text: &mut String) {
         ]
     );
 }
-fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
-    let config = crate::calendar::CalendarConfigView {
+fn history_sample() -> HostToUi {
+    sample_response(Reply::CalendarHistoryLoad {
+        value: Box::new(crate::calendar::CalendarHistoryView {
+            weeks: vec![crate::calendar::CalendarHistoryWeek {
+                from: 1_791_244_800,
+                until: 1_791_849_600,
+                seen_at: 1_791_187_200,
+                tracks: vec![crate::calendar::CalendarHistoryTrack {
+                    series_id: "weekly-wec-weekly".into(),
+                    name: "WEC Weekly".into(),
+                    track: "Sebring".into(),
+                }],
+            }],
+            invalid_cache: false,
+        }),
+    })
+}
+fn sample_config() -> crate::calendar::CalendarConfigView {
+    crate::calendar::CalendarConfigView {
         utc: false,
         prefs_revision: Some(vantare_services::content_hash(&[0])),
         following: vec![],
@@ -132,8 +157,12 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             following: crate::calendar::CalendarDocumentState::Ready,
             alerts: crate::calendar::CalendarDocumentState::Ready,
         },
-    };
+    }
+}
+fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
+    let config = sample_config();
     let host = vec![
+        history_sample(),
         HostToUi::Failure {
             id: 1,
             error: HostError::CalendarScheduleUnavailable,
@@ -182,6 +211,10 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
         }),
     ];
     let ui = vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::CalendarHistoryLoad {},
+        },
         UiToHost::Request {
             id: 1,
             request: Request::CalendarConfigLoad {},

@@ -233,3 +233,45 @@ fn calendar_follow_reports_the_missing_current_schedule_without_calling_services
     );
     assert_eq!(session.core.requests, 0);
 }
+
+#[test]
+fn history_dispatch_requires_calendar_rights_and_does_not_contact_services() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    for (verified, blocked, calendar) in [
+        (false, false, true),
+        (true, true, true),
+        (true, false, false),
+    ] {
+        session.current.access.verified = verified;
+        session.current.access.blocked = blocked;
+        session.current.access.calendar = calendar;
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(&mut pipe, 31, &Request::CalendarHistoryLoad {})
+            .unwrap();
+        assert_eq!(
+            response(&mut pipe),
+            HostToUi::Failure {
+                id: 31,
+                error: HostError::Denied
+            }
+        );
+    }
+    session.current.access.verified = true;
+    session.current.access.blocked = false;
+    session.current.access.calendar = true;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 32, &Request::CalendarHistoryLoad {})
+        .unwrap();
+    assert!(matches!(
+        response(&mut pipe),
+        HostToUi::Response {
+            id: 32,
+            result: Reply::CalendarHistoryLoad { .. }
+        }
+    ));
+    assert_eq!(session.core.requests, 0);
+    assert!(!fixture.0.join("hub/calendar-history.json").exists());
+}

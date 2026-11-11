@@ -29,6 +29,7 @@ it("keeps the current publication and routes favorite actions by series id", asy
   const original = JSON.stringify(view);
   render(
     <CalendarWeekView
+      spans={["day", "week", "month"]}
       view={view}
       alerts={alerts}
       now={Date.parse("2026-10-08T17:47:13Z")}

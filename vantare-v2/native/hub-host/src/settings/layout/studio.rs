@@ -43,6 +43,7 @@ impl Open {
         if document.observed.is_none() {
             return Err(HostError::Protected);
         }
+        canvas(&document.fields)?;
         let instances: Vec<Fields> = read(&document.fields, "instances")?;
         if instances.len() > INSTANCE_LIMIT {
             return Err(HostError::Protected);
@@ -151,16 +152,7 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     })
 }
 fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
-    let canvas: Option<Fields> = optional(&opened.document.fields, "canvasResolution", None)?;
-    let (width, height) = canvas.as_ref().map_or(Ok((1920.0, 1080.0)), |f| {
-        Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?))
-    })?;
-    if ![width, height]
-        .iter()
-        .all(|v| v.is_finite() && (64.0..=f64::from(SIZE_LIMIT)).contains(v))
-    {
-        return Err(HostError::Protected);
-    }
+    let (width, height) = canvas(&opened.document.fields)?;
     let taken: Vec<_> = opened
         .instances
         .iter()
@@ -517,4 +509,18 @@ fn remove(opened: &mut Open, id: &str) -> Result<Vec<u8>, HostError> {
     });
     ordered::remove_rates(&mut opened.document.fields, &removed)?;
     opened.bytes()
+}
+
+fn canvas(fields: &Fields) -> Result<(f64, f64), HostError> {
+    let canvas: Option<Fields> = optional(fields, "canvasResolution", None)?;
+    let (width, height) = canvas.as_ref().map_or(Ok((1920.0, 1080.0)), |f| {
+        Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?))
+    })?;
+    if ![width, height]
+        .iter()
+        .all(|v| v.is_finite() && (64.0..=f64::from(SIZE_LIMIT)).contains(v))
+    {
+        return Err(HostError::Protected);
+    }
+    Ok((width, height))
 }

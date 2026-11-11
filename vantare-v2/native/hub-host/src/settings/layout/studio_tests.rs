@@ -504,6 +504,7 @@ fn a_full_canvas_uses_the_native_fallback_and_invalid_canvas_does_not_write() {
         replace_layout(&path, &invalid);
         let bytes = std::fs::read(&path).unwrap();
         let view = state.view(access);
+        assert_eq!(view.state, StudioState::Protected);
         assert_eq!(
             state.add(WidgetKind::Delta, &view.revision, access),
             Err(HostError::Protected)

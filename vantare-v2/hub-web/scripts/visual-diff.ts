@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
+import { PNG } from "pngjs";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
 import { auditFontSources } from "./visual-diff/fonts.ts";
 import { compareImages } from "./visual-diff/image.ts";
@@ -33,6 +34,8 @@ assert.ok(
   "--output is required",
 );
 const currentOnly = option("--current");
+const captureOnly = args.includes("--capture-only");
+const invalidReason = option("--invalid-reference-reason");
 const selected = option("--scene");
 const schemes =
   option("--theme", "both") === "both"
@@ -43,6 +46,10 @@ assert.ok(selected || args.includes("--all"), "Use --scene <name> or --all");
 assert.ok(
   !currentOnly || (selected && schemes.length === 1),
   "--current requires one scene and theme",
+);
+assert.ok(
+  !captureOnly || (selected && schemes.length === 1 && invalidReason?.trim()),
+  "--capture-only requires one scene, one theme and --invalid-reference-reason",
 );
 await mkdir(output, { recursive: true });
 await writeFile(
@@ -101,6 +108,21 @@ for (const scheme of schemes) {
       const current = currentOnly
         ? await readFile(resolve(currentOnly))
         : await capture(adapter, scheme, destination);
+      if (captureOnly) {
+        const png = PNG.sync.read(current);
+        assert.deepEqual([png.width, png.height], [1440, 900]);
+        await writeFile(join(destination, "current.png"), current);
+        report.push({
+          scene,
+          scheme,
+          status: "captured",
+          referenceStatus: "invalid",
+          reason: invalidReason,
+          currentPngSha256: digest(current),
+          suppliedCapture: Boolean(currentOnly),
+        });
+        continue;
+      }
       await writeFile(join(destination, "reference.png"), old);
       await writeFile(join(destination, "current.png"), current);
       const { diff, ...metrics } = compareImages(old, current);
@@ -127,13 +149,16 @@ for (const scheme of schemes) {
   }
 }
 await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2));
-const rows = report.map(
-  (item) =>
-    `| ${item.scheme} | ${item.scene} | ${item.status} | ${typeof item.exactPercent === "number" ? item.exactPercent.toFixed(4) : "—"} | ${typeof item.perceptualPercent === "number" ? item.perceptualPercent.toFixed(4) : "—"} |`,
+const rows = report.map((item) =>
+  captureOnly
+    ? `| ${item.scheme} | ${item.scene} | ${item.status} |`
+    : `| ${item.scheme} | ${item.scene} | ${item.status} | ${typeof item.exactPercent === "number" ? item.exactPercent.toFixed(4) : "—"} | ${typeof item.perceptualPercent === "number" ? item.perceptualPercent.toFixed(4) : "—"} |`,
 );
 await writeFile(
   join(output, "report.md"),
-  `# Paridad visual\n\nPíxeles RGBA distintos, sin máscaras ni alineado, es la cifra principal. Pixelmatch (umbral 0,1, antialias incluido) es complementario. La revisión humana sigue siendo obligatoria.\n\n| Tema | Escena | Estado | Exacto % | Perceptual % |\n|---|---|---|---:|---:|\n${rows.join("\n")}\n`,
+  captureOnly
+    ? `# Captura sin comparación\n\nReferencia no válida: ${invalidReason}. No se calculan porcentajes ni diferencias.\n\n| Tema | Escena | Estado |\n|---|---|---|\n${rows.join("\n")}\n`
+    : `# Paridad visual\n\nPíxeles RGBA distintos, sin máscaras ni alineado, es la cifra principal. Pixelmatch (umbral 0,1, antialias incluido) es complementario. La revisión humana sigue siendo obligatoria.\n\n| Tema | Escena | Estado | Exacto % | Perceptual % |\n|---|---|---|---:|---:|\n${rows.join("\n")}\n`,
 );
 console.log(join(output, "report.json"));
 if (report.some((item) => item.status === "failed")) process.exitCode = 1;

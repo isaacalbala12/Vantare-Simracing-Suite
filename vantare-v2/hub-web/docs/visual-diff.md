@@ -22,3 +22,7 @@ Fuentes: GPUI registra siete TTF Inter estáticas (`Inter W400…W800`), Rajdhan
 Dependencias exclusivamente de desarrollo autorizadas: `pixelmatch` 8.0.0, `pngjs` 7.0.0 y `@types/pngjs` 6.0.5. Se usan para decodificar y comparar PNG de forma reproducible también fuera de Windows; la captura real del HWND sí exige Windows.
 
 Referencia inicial aportada por Isaac: `privacy-followup-native-smoke/general-native.png` frente a `dark/ajustes-aplicacion.png`: **79,0900 % exacto**, **9,8441 % perceptual**. Sus estados de datos difieren: es la comparación solicitada del aspecto previo, no una nueva captura controlada. Resultado completo en `D:/VantareServer/evidence/hub-web/visual-before/report.json`.
+
+## Referencia declarada no válida
+
+Si el orquestador descarta una referencia, `--capture-only --invalid-reference-reason "motivo"` admite una única escena y tema. Conserva `current.png` y un informe `captured/referenceStatus:invalid`, sin copia de referencia, diferencias ni porcentajes. Sigue comprobando los recibos del banco y las dimensiones 1440×900; no convierte la referencia en válida. Requiere el mismo cerrojo global para capturas reales. `--current` permite probar este modo con una imagen ya tomada sin abrir Electron.

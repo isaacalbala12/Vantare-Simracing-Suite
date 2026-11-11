@@ -48,6 +48,8 @@ export const onboardingText = {
   usageOn:
     "¿Nos ayudas a mejorar Vantare con datos de uso anónimos? Está activado.",
   welcome: "Soy Vanta. Te ayudo a configurar Vantare en menos de un minuto.",
+  layoutUnavailable:
+    "El diseño aún no está preparado. El kit y el nivel no se aplicarán; podrás prepararlo desde Inicio al terminar.",
   changeLater: "Puedes cambiarlo todo después en Ajustes.",
   helmet: "Vanta",
   unavailable: "No se ha podido leer la configuración inicial.",

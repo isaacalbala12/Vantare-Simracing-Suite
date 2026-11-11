@@ -723,3 +723,10 @@
 .v-ob-helmet[data-surprised="true"] .v-ob-eye--second {
   left: 56.190476%;
 }
+
+.v-ob-layout-unavailable {
+  color: var(--text-2);
+  font-size: calc(13px * var(--ob-s));
+  margin-top: calc(16px * var(--ob-s));
+  max-width: calc(530px * var(--ob-s));
+}

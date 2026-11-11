@@ -175,7 +175,8 @@ impl Core {
                     if let Ok(
                         vantare_ipc::services_protocol::Reply::Account { session, .. }
                         | vantare_ipc::services_protocol::Reply::LicenseStatus {
-                            session: Some(session), ..
+                            session: Some(session),
+                            ..
                         },
                     ) = &value.1
                     {

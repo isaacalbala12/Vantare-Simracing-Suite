@@ -737,7 +737,6 @@ textarea.v-input:read-only {
 .v-section-tabs-slot {
   min-width: 0;
 }
-.v-section-tabs-slot:empty,
 .v-section-rail-slot:empty {
   display: none;
 }

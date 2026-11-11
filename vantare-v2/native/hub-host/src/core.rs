@@ -47,6 +47,8 @@ pub struct Core {
     last_photo: Option<Instant>,
     authority: Option<AccessView>,
     account_session: Option<vantare_ipc::services_protocol::Session>,
+    home_demand: crate::home::demand::State,
+    home_sim: crate::home::HomeSim,
 }
 impl Core {
     pub fn start(photo: &str, directory: &Path) -> io::Result<Self> {
@@ -83,7 +85,37 @@ impl Core {
             last_photo: None,
             authority: None,
             account_session: None,
+            home_demand: crate::home::demand::State::default(),
+            home_sim: crate::home::HomeSim::default(),
         })
+    }
+    /// `SessionInfo` and `TrackName` are requested only for a visible, non-Live Home.
+    pub fn home_status(&mut self, active: bool) -> crate::home::HomeSim {
+        self.home_status_at(active, Instant::now())
+    }
+    fn home_status_at(&mut self, active: bool, now: Instant) -> crate::home::HomeSim {
+        let live = self.rights.policy().live;
+        if let Some(action) = self.home_demand.action(active, live, now) {
+            let succeeded = self.photos.set_demand(action.demand()).is_ok();
+            self.home_demand.complete(action, now, succeeded);
+            if succeeded {
+                self.home_sim = crate::home::HomeSim::default();
+            }
+        }
+        if !active || live || !self.home_demand.active {
+            return crate::home::HomeSim::default();
+        }
+        if let Some(photo) = self.photos.next_photo(Duration::ZERO) {
+            self.home_sim = crate::home::HomeSim::from_photo(&photo);
+        }
+        if self
+            .last_photo
+            .is_some_and(|last| now.saturating_duration_since(last) < Duration::from_secs(2))
+        {
+            self.home_sim.clone()
+        } else {
+            crate::home::HomeSim::default()
+        }
     }
     pub fn request(
         &mut self,

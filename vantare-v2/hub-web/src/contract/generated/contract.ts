@@ -78,6 +78,7 @@ export const reportFieldLimits = [2048,2048,2048,4096] as const;
 export const reportModules = [["unknown","Sin determinar"],["hub","Hub"],["launcher","Launcher"],["settings","Ajustes"],["overlay_studio","Overlay Studio"],["overlay_runtime","Overlays en pista"],["telemetry","Telemetría"],["telemetry_analysis","Análisis de telemetría"],["engineer","Ingeniero"],["strategy","Estrategia"],["calendar","Calendario"],["billing","Facturación"],["account","Cuenta"],["updater","Actualizaciones"],["testing_center","Testing Center"]] as const;
 export const reportAutosaveMs = 2000 as const;
 export const reportScreenshotsAvailable = false as const;
+export const launcherFirstDelays = [0, 5, 10, 20, 30, 60] as const;
 export const launcherLimits = {"apps":256,"id":256,"profiles":128} as const;
 export const profileRunning = ["ask","reuse","restart"] as const;
 export const profileFailures = ["ask","stop","continue"] as const;

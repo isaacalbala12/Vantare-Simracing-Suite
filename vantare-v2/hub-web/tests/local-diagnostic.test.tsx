@@ -16,6 +16,7 @@ import { Client } from "../src/renderer/bridge/client";
 import { localDiagnosticText as text } from "../src/renderer/i18n/testing-local";
 import { LocalDiagnostic } from "../src/renderer/screens/testing/LocalDiagnostic";
 import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
+import { ToastProvider } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
 beforeEach(() => {
@@ -42,9 +43,11 @@ async function mount() {
   const result = render(
     <QueryClientProvider client={cache}>
       <HostProvider>
-        <ReportsProvider>
-          <LocalDiagnostic />
-        </ReportsProvider>
+        <ToastProvider>
+          <ReportsProvider>
+            <LocalDiagnostic />
+          </ReportsProvider>
+        </ToastProvider>
       </HostProvider>
     </QueryClientProvider>,
   );

@@ -387,7 +387,7 @@ Diferencia conocida (P3-6): la respuesta de guardado actualiza el documento de
 avisos dentro de la vista de preferencias ya observada; los otros documentos
 pueden conservar su lectura anterior hasta el siguiente `configLoad`.
 
-## Calendario: descarga ICS (versión provisional 25)
+## Calendario: descarga ICS (wire v25)
 
 `calendar.icsPrepare { scope, alarm }` admite solo `favs`, `events` y `all`.
 El anfitrión expande el horario vigente (oficial y respaldo), nunca `previous`,
@@ -408,4 +408,4 @@ El archivo nunca sobrescribe un destino existente y usa creación exclusiva
 si el sistema de archivos no admite enlaces duros. No publica suscripciones,
 URLs ni conexiones a Google, Apple o Microsoft. El límite de ICS es un cuarto
 del frame para que su JSON y la vista previa quepan en el protocolo.
-La versión definitiva se asigna al aprobar el PR.
+La versión v25 sigue al contrato de avisos (v24).

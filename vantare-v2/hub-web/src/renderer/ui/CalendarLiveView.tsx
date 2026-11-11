@@ -236,7 +236,7 @@ export function CalendarLiveView({
               )}
             </div>
             <h2>{hero.series.name}</h2>
-            <p>
+            <p className="v-calendar-hero-meta">
               <strong>{hero.series.track.split(" (")[0]}</strong>
               <span className="v-calendar-license">
                 {hero.series.track.split(" (")[1]?.replace(/\)$/u, "") ?? ""}
@@ -249,16 +249,17 @@ export function CalendarLiveView({
               >
                 {classLabel(hero.series.vehicleClass)}
               </span>
+              <span className="v-calendar-hero-duration">
+                {text.raceDuration(raceMinutes(hero.series))}
+              </span>
             </p>
-            <p>{text.raceDuration(raceMinutes(hero.series))}</p>
             <div className="v-calendar-after">
               {text.after}
               {hero.after.slice(0, 3).map((r) => (
                 <span key={`${r.series.id}:${r.time}`}>
-                  <Icon name="star" />
+                  {r.time === hero.at && <Icon name="star" />}
                   {clock(r.time, utc)}
-                  {text.separator}
-                  {r.series.name}
+                  {r.series.id !== hero.series.id && r.series.name}
                 </span>
               ))}
             </div>

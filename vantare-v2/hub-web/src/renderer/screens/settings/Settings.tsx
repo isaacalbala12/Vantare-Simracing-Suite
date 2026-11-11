@@ -215,9 +215,10 @@ export function Settings() {
         }
       />
       <StatusAnnouncement>{`${t("settings.results")}: ${visible.length}`}</StatusAnnouncement>
-      {pilot.dirty && selected !== "account" && (
+      {(pilot.dirty || pilot.error || pilot.closeVeto) && selected !== "account" && (
         <Callout
-          title={t("pilot.unsaved")}
+          tone={pilot.error ? "err" : "warn"}
+          title={t(pilot.error ? "pilot.failed" : "pilot.unsaved")}
           actions={
             <Button
               onClick={() => {

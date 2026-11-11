@@ -8,8 +8,6 @@ import {
 } from "react";
 import type { PilotFields, PilotView } from "../../contract/generated/contract";
 import { isPilotFields } from "../../contract/pilot-validation";
-import { t } from "../i18n/es";
-import { useToastManager } from "../ui/Layers";
 import { useHost } from "./Host";
 
 interface State {
@@ -18,6 +16,8 @@ interface State {
   busy: boolean;
   error: boolean;
   dirty: boolean;
+  lastSaved: boolean;
+  closeVeto: boolean;
   load(): Promise<void>;
   save(): Promise<void>;
   retry(): Promise<void>;
@@ -32,7 +32,8 @@ export function usePilot() {
 }
 export function PilotProvider({ children }: { children: ReactNode }) {
   const { client } = useHost();
-  const toast = useToastManager();
+  const [lastSaved, setLastSaved] = useState(false);
+  const [closeVeto, setCloseVeto] = useState(false);
   const [view, setView] = useState<PilotView>();
   const [draft, setDraft] = useState<PilotFields>();
   const [busy, setBusy] = useState(false);
@@ -50,14 +51,16 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         setDraft(undefined);
         setView(undefined);
         setError(false);
+        setCloseVeto(false);
+        setLastSaved(false);
         return true;
       }
       await operation.current;
       if (!unsaved.current) return true;
-      toast.add({ title: t("pilot.unsaved"), type: "warn" });
+      setCloseVeto(true);
       return false;
     });
-  }, [client, toast]);
+  }, [client]);
   async function run(action: () => Promise<void>) {
     if (saving.current) return;
     saving.current = true;
@@ -66,7 +69,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
     operation.current = action()
       .catch(() => {
         setError(true);
-        toast.add({ title: t("pilot.failed"), type: "err" });
+        setLastSaved(false);
       })
       .finally(() => {
         saving.current = false;
@@ -81,6 +84,8 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       setView(reply.value);
       setDraft(structuredClone(reply.value.fields));
       unsaved.current = false;
+      setCloseVeto(false);
+      setLastSaved(false);
     });
   }
   async function save() {
@@ -96,7 +101,8 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       setView(reply.value);
       setDraft(structuredClone(reply.value.fields));
       unsaved.current = false;
-      toast.add({ title: t("pilot.saved") });
+      setLastSaved(true);
+      setCloseVeto(false);
     });
   }
   async function retry() {
@@ -123,7 +129,8 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       setView(saved.value);
       setDraft(structuredClone(saved.value.fields));
       unsaved.current = false;
-      toast.add({ title: t("pilot.saved") });
+      setLastSaved(true);
+      setCloseVeto(false);
     });
   }
   return (
@@ -134,20 +141,26 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         busy,
         error,
         dirty,
+        lastSaved,
+        closeVeto,
         load,
         save,
         retry,
         discard: () => {
           setDraft(view && structuredClone(view.fields));
           setError(false);
+          setLastSaved(false);
+          setCloseVeto(false);
         },
         edit: (fields) => {
-          if (!saving.current)
+          if (!saving.current) {
+            setLastSaved(false);
             setDraft((current) =>
               typeof fields === "function"
                 ? current && fields(current)
                 : fields,
             );
+          }
         },
       }}
     >

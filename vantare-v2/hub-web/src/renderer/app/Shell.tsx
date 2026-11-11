@@ -24,6 +24,7 @@ import {
   InfoList,
   ShellLayout,
 } from "../ui/ShellLayout";
+import { SaveWarnings } from "../ui/SaveWarnings";
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
@@ -363,38 +364,19 @@ function ShellContent() {
         )
       }
     >
+      <ContentStack>
+      {ui.section !== "settings" && <SaveWarnings onSettings={()=>ui.navigate("settings")} />}
       <RegisteredScreen
         section={ui.section}
         loading={t("settings.loading")}
         fallback={
           <ContentStack>
-            {settings.error && (
-              <Callout
-                tone="err"
-                title={t("settings.failed")}
-                actions={
-                  <ActionGroup>
-                    <Button busy={settings.pending} onClick={settings.retry}>
-                      {t("settings.retry")}
-                    </Button>
-                    <Button
-                      disabled={settings.pending}
-                      variant="ghost"
-                      onClick={settings.discard}
-                    >
-                      {t("settings.discard")}
-                    </Button>
-                  </ActionGroup>
-                }
-              >
-                {t("settings.failedHelp")}
-              </Callout>
-            )}
             <PageHeader title={title} />
             <Callout title={t("shell.soon")} />
           </ContentStack>
         }
       />
+      </ContentStack>
     </ShellLayout>
   );
 }

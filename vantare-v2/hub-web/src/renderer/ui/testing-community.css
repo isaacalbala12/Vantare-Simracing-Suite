@@ -1,0 +1,48 @@
+.v-testing-community {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-testing-community > section:first-child,
+.v-testing-community > .v-testing-triage {
+  flex: none;
+}
+.v-testing-community > section:last-child {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.v-testing-community .v-testing-community-row {
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.v-testing-community .v-testing-community-empty {
+  font-size: 14px;
+  color: var(--text-3);
+}
+.v-testing-community-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-shell-main > [role="tabpanel"]:has(.v-testing-community),
+.v-testing:has(> .v-testing-community) {
+  height: 100%;
+}
+@media (max-height: 819px) {
+  .v-testing-community-rail .v-rail-block:not(:first-child) {
+    display: none;
+  }
+  .v-testing-community {
+    gap: 10px;
+  }
+}
+@media (min-height: 1000px) {
+  .v-testing-community {
+    gap: 16px;
+  }
+}

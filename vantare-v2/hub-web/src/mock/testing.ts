@@ -46,7 +46,7 @@ export function createTestingMock(
       question: "¿Cómo funciona el Hub?",
       score: null,
     });
-  if (scene === "testing-tester-questionnaires-reference") {
+  if (["testing-tester-questionnaires-reference", "testing-tester-community-reference"].includes(scene)) {
     participation.questionnaires = [
       {
         id: "15350000-0000-0000-0000-000000000001",
@@ -58,6 +58,16 @@ export function createTestingMock(
       },
     ];
   }
+  if (scene === "testing-tester-community-reference")
+    participation.reports.push({
+      id: "15350000-0000-0000-0000-000000000002",
+      title: "QA · documentación de una prueba",
+      state: "reviewing",
+      credit: false,
+      updatedAt: null,
+      fixedVersion: null,
+      notice: false,
+    });
   return (id: number, request: Request): HostToUi => {
     if (!core.access.verified || core.access.blocked)
       return { kind: "failure", id, error: { kind: "denied" } };

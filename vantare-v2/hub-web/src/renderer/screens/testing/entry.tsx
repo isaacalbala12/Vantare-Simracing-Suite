@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { TestingQuestionnairesRail } from "../../ui/TestingQuestionnairesView";
 import { TestingSummaryRail } from "../../ui/TestingSummaryView";
+import { TestingCommunity } from "./Community";
 import { testingText as text } from "./es";
 import { TestingQuestionnaires } from "./Questionnaires";
 import { useReports } from "./ReportsState";
@@ -36,7 +37,7 @@ export default function TestingEntry() {
         activeTab={active}
         onTabChange={change}
         rail={
-          active === "summary" ? (
+          active === "summary" || active === "community" ? (
             <TestingSummaryRail count={railCount} receipts={railCount} />
           ) : active === "questionnaires" ? (
             <TestingQuestionnairesRail
@@ -60,6 +61,8 @@ export default function TestingEntry() {
           />
         ) : active === "questionnaires" ? (
           <TestingQuestionnaires onDiagnostic={() => setDiagnosticOpen(true)} />
+        ) : active === "community" ? (
+          <TestingCommunity onDiagnostic={() => setDiagnosticOpen(true)} />
         ) : null}
       </SectionPanel>
     </>

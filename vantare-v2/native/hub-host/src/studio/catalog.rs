@@ -103,123 +103,32 @@ impl WidgetKind {
         Self::TrackMap,
         Self::TrackWeather,
     ];
+    #[rustfmt::skip]
+    fn metadata(self) -> (&'static str, &'static str, &'static str, &'static str) {
+        match self {
+            Self::Standings => ("standings", "Standings", "Carrera", "ClasificaciÃ³n completa con huecos por clase"),
+            Self::Radar => ("radar", "Radar", "Pilotaje", "Coches a tu alrededor, vistos desde arriba"),
+            Self::Pedals => ("pedals", "Pedales", "Pilotaje", "Acelerador, freno y embrague al instante"),
+            Self::Delta => ("delta", "Delta", "Pilotaje", "Ganas o pierdes contra tu mejor vuelta"),
+            Self::CarDamageVisual => ("car-damage-visual", "DaÃ±os del coche", "Coche", "Silueta con las zonas daÃ±adas"),
+            Self::InputTelemetry => ("input-telemetry", "TelemetrÃ­a de entrada", "Pilotaje", "Volante y pedales superpuestos"),
+            Self::MulticlassRelative => ("multiclass-relative", "Relative multiclase", "Carrera", "Relative con el color de cada clase"),
+            Self::BroadcastTower => ("broadcast-tower", "Torre de posiciones", "Carrera", "Torre compacta estilo retransmisiÃ³n"),
+            Self::DeltaTrace => ("delta-trace", "Historial de delta", "Pilotaje", "DÃ³nde ganas y pierdes a lo largo de la vuelta"),
+            Self::TrackMap => ("track-map", "Mapa del circuito", "Pista", "Trazado con todos los coches en vivo"),
+            Self::TrackWeather => ("track-weather", "Tiempo en pista", "Pista", "Temperatura, lluvia y agarre"),
+            Self::CarDamageNumbers => ("car-damage-numbers", "DaÃ±os detallados", "Coche", "DaÃ±o por zona, en porcentaje"),
+            Self::HeadToHead => ("head-to-head", "Cara a cara", "Carrera", "TÃº contra un rival, vuelta a vuelta"),
+            Self::FuelStrategy => ("fuel-strategy", "Fuel y stint", "Coche", "Combustible, consumo y vuelta de parada"),
+            Self::PedalsTelemetry => ("pedals-telemetry", "TelemetrÃ­a de pedales", "Pilotaje", "Trazas de acelerador y freno en el tiempo"),
+            Self::Relative => ("relative", "Relative", "Carrera", "QuiÃ©n va justo delante y detrÃ¡s en pista"),
+            Self::RacingFlags => ("racing-flags", "Banderas", "Carrera", "Bandera activa, sector y motivo"),
+            Self::FastestLap => ("fastest-lap", "Vuelta rÃ¡pida", "Carrera", "Mejor vuelta de la sesiÃ³n y la tuya"),
+            Self::SessionAlerts => ("session-alerts", "Avisos de sesiÃ³n", "Carrera", "Cuenta atrÃ¡s y cambios de sesiÃ³n LMU; carreras marcadas del calendario"),
+        }
+    }
     pub fn info(self, access: Option<vantare_ipc::control::CatalogAccess>) -> WidgetInfo {
-        let (id, name, category, about) = match self {
-            Self::Standings => (
-                "standings",
-                "Standings",
-                "Carrera",
-                "Clasificación completa con huecos por clase",
-            ),
-            Self::Radar => (
-                "radar",
-                "Radar",
-                "Pilotaje",
-                "Coches a tu alrededor, vistos desde arriba",
-            ),
-            Self::Pedals => (
-                "pedals",
-                "Pedales",
-                "Pilotaje",
-                "Acelerador, freno y embrague al instante",
-            ),
-            Self::Delta => (
-                "delta",
-                "Delta",
-                "Pilotaje",
-                "Ganas o pierdes contra tu mejor vuelta",
-            ),
-            Self::CarDamageVisual => (
-                "car-damage-visual",
-                "Daños del coche",
-                "Coche",
-                "Silueta con las zonas dañadas",
-            ),
-            Self::InputTelemetry => (
-                "input-telemetry",
-                "Telemetría de entrada",
-                "Pilotaje",
-                "Volante y pedales superpuestos",
-            ),
-            Self::MulticlassRelative => (
-                "multiclass-relative",
-                "Relative multiclase",
-                "Carrera",
-                "Relative con el color de cada clase",
-            ),
-            Self::BroadcastTower => (
-                "broadcast-tower",
-                "Torre de posiciones",
-                "Carrera",
-                "Torre compacta estilo retransmisión",
-            ),
-            Self::DeltaTrace => (
-                "delta-trace",
-                "Historial de delta",
-                "Pilotaje",
-                "Dónde ganas y pierdes a lo largo de la vuelta",
-            ),
-            Self::TrackMap => (
-                "track-map",
-                "Mapa del circuito",
-                "Pista",
-                "Trazado con todos los coches en vivo",
-            ),
-            Self::TrackWeather => (
-                "track-weather",
-                "Tiempo en pista",
-                "Pista",
-                "Temperatura, lluvia y agarre",
-            ),
-            Self::CarDamageNumbers => (
-                "car-damage-numbers",
-                "Daños detallados",
-                "Coche",
-                "Daño por zona, en porcentaje",
-            ),
-            Self::HeadToHead => (
-                "head-to-head",
-                "Cara a cara",
-                "Carrera",
-                "Tú contra un rival, vuelta a vuelta",
-            ),
-            Self::FuelStrategy => (
-                "fuel-strategy",
-                "Fuel y stint",
-                "Coche",
-                "Combustible, consumo y vuelta de parada",
-            ),
-            Self::PedalsTelemetry => (
-                "pedals-telemetry",
-                "Telemetría de pedales",
-                "Pilotaje",
-                "Trazas de acelerador y freno en el tiempo",
-            ),
-            Self::Relative => (
-                "relative",
-                "Relative",
-                "Carrera",
-                "Quién va justo delante y detrás en pista",
-            ),
-            Self::RacingFlags => (
-                "racing-flags",
-                "Banderas",
-                "Carrera",
-                "Bandera activa, sector y motivo",
-            ),
-            Self::FastestLap => (
-                "fastest-lap",
-                "Vuelta rápida",
-                "Carrera",
-                "Mejor vuelta de la sesión y la tuya",
-            ),
-            Self::SessionAlerts => (
-                "session-alerts",
-                "Avisos de sesión",
-                "Carrera",
-                "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
-            ),
-        };
+        let (id, name, category, about) = self.metadata();
         WidgetInfo {
             kind: self,
             name: name.into(),

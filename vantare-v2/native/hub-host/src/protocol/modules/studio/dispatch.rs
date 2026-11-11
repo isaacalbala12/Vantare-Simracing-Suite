@@ -1,4 +1,5 @@
 use super::{Event, HostError, HostToUi, Pipe, Reply, Request, Session, Topic, frame, io};
+use crate::studio::Edit;
 pub(super) fn access(session: &Session) -> Option<vantare_ipc::control::CatalogAccess> {
     if !session.current.access.verified || session.current.access.blocked {
         return None;
@@ -25,7 +26,6 @@ pub(super) fn dispatch(
         {
             return Err(HostError::Denied);
         }
-        use crate::studio::Edit;
         let value = match request {
             Request::StudioGet {} => session.studio.view(catalog),
             Request::StudioVisibility {

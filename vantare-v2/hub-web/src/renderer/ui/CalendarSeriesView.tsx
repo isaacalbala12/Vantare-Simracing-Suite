@@ -131,7 +131,7 @@ export function CalendarSeriesView({
       .sort((a, b) => a.from - b.from)
       .slice(-2)
       .map((w) => ({ ...w, current: false })),
-    { from, track: series.track, current: true },
+    { from, track: series.track.split(" (")[0], current: true },
     { from: until, track: text.unpublished, current: false },
   ];
   return (
@@ -176,9 +176,21 @@ export function CalendarSeriesView({
           <div>
             <strong>{series.track.split(" (")[0]}</strong>
             <span>{series.track.split(" (")[1]?.replace(/\)$/u, "")}</span>
-            <span>
-              {series.classes.map((c) => c.name).join(" · ") ||
-                series.vehicleClass}
+            <span className="v-calendar-serie-classes">
+              {(series.classes.length
+                ? series.classes.map((item) => item.name)
+                : [series.vehicleClass]
+              ).map((name) => (
+                <span key={name}>
+                  <i
+                    aria-hidden="true"
+                    data-class={["Hypercar", "LMP2", "LMP3", "LMGT3", "GTE"]
+                      .find((kind) => name.includes(kind))
+                      ?.toLowerCase()}
+                  />
+                  {name.replace(" Class", "")}
+                </span>
+              ))}
             </span>
           </div>
         </div>

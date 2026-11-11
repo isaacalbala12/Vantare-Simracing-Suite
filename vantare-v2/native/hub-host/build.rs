@@ -102,7 +102,8 @@ fn main() {
 
 fn write_bindings(output: &std::path::Path, modules: &[PathBuf], sources: &[String]) {
     let mut bindings = String::from(
-        "pub fn module_outputs()->Vec<(&'static str,String,serde_json::Value)>{let mut modules=vec![\n",
+        "#[allow(clippy::too_many_lines, reason = \"generated enumeration grows with the closed screen modules\")]\n\
+        pub fn module_outputs()->Vec<(&'static str,String,serde_json::Value)>{let mut modules=vec![\n",
     );
     for (path, source) in modules.iter().zip(sources) {
         let id = path.file_name().expect("id").to_str().expect("UTF-8");

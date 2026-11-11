@@ -13,6 +13,8 @@ const anonymous: AccessView = {
 describe("navigation from core access", () => {
   it("keeps settings usable, hides restricted routes, and locks product sections without a fresh grant", () => {
     expect(lock("settings", anonymous)).toBeUndefined();
+    expect(lock("home", anonymous)).toBeUndefined();
+    expect(lock("home", { ...anonymous, blocked: true })).toBeUndefined();
     expect(lock("launcher", anonymous)).toBeTruthy();
     expect(visible("testing", anonymous)).toBe(false);
     expect(visible("calendar", anonymous)).toBe(false);

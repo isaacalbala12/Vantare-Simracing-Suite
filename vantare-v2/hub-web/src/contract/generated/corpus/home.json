@@ -1,0 +1,74 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "home.get",
+        "value": {
+          "favorite": null,
+          "launch": {
+            "kind": "idle"
+          },
+          "layout": {
+            "height": 1080,
+            "state": "missing",
+            "widgets": [],
+            "width": 1920
+          },
+          "profiles": [],
+          "protected": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sim": {
+            "connected": false,
+            "track": null
+          },
+          "version": "0.0.0"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "home",
+        "value": {
+          "favorite": null,
+          "launch": {
+            "kind": "idle"
+          },
+          "layout": {
+            "height": 1080,
+            "state": "missing",
+            "widgets": [],
+            "width": 1920
+          },
+          "profiles": [],
+          "protected": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sim": {
+            "connected": false,
+            "track": null
+          },
+          "version": "0.0.0"
+        }
+      },
+      "kind": "event"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "home.get"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "home"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "home"
+    }
+  ]
+}

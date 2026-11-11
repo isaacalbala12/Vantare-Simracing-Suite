@@ -6596,6 +6596,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ts-rs",
+ "vantare-domain",
  "vantare-installer",
  "vantare-ipc",
  "vantare-launcher",

@@ -2,7 +2,7 @@ mod appearance;
 pub mod track;
 use track::{PerformanceLevel, TrackView};
 #[cfg(windows)]
-mod layout;
+pub(crate) mod layout;
 pub mod model;
 mod store;
 use crate::args::Args;

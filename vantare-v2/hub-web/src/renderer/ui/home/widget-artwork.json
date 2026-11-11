@@ -1,0 +1,97 @@
+{
+  "standings": {
+    "source": [0, 0, 160, 80],
+    "content": [52, 4, 56, 76],
+    "sha256": "7707c803216ee93ef6871c3dd967daa59e3e89e706de272b7cd0e37d99841d65"
+  },
+  "radar": {
+    "source": [0, 0, 160, 80],
+    "content": [50, 4, 60, 72],
+    "sha256": "6f8e46427f18641bcdde65dcb19a02fd15d6d7802418c5df06a7c0b32e3edaff"
+  },
+  "pedals": {
+    "source": [0, 0, 160, 80],
+    "content": [64, 6, 32, 68],
+    "sha256": "f3eeaa4e0daba16860bf6d80c9dcd5feb22862612440703d592b475e42f6f9e5"
+  },
+  "delta": {
+    "source": [0, 0, 160, 80],
+    "content": [36, 20, 88, 40],
+    "sha256": "b321925e8c7de26f4e753505890d3a830d1719477da484d69162a4c6dee9a5ab"
+  },
+  "car-damage-visual": {
+    "source": [0, 0, 160, 80],
+    "content": [56, 4, 48, 72],
+    "sha256": "62074c2b8bf4c2f170477ae38b3e190d72372a30c1d95fc2a16b278412943f30"
+  },
+  "input-telemetry": {
+    "source": [0, 0, 160, 80],
+    "content": [14, 22, 132, 36],
+    "sha256": "f03c4fb7513d651fcf3c55da679ca94f514704a79e26e985d0e5d6ef0d2471e4"
+  },
+  "multiclass-relative": {
+    "source": [0, 0, 160, 80],
+    "content": [28, 14, 104, 52],
+    "sha256": "d0c7c0119e8320996badafb6aea061e084d4c23ac2736e374d8780ef77960a36"
+  },
+  "broadcast-tower": {
+    "source": [0, 0, 160, 80],
+    "content": [4, 30, 152, 20],
+    "sha256": "65ec12bd470576edde514444cef4cd7e15146c2dfda1b160cb7b623f67cf1947"
+  },
+  "delta-trace": {
+    "source": [0, 0, 160, 80],
+    "content": [4, 18, 152, 44],
+    "sha256": "1d0a9e922774443ee9e9e2828c1842f22fdb5584e4b4d58c85982363d8cd4beb"
+  },
+  "track-map": {
+    "source": [0, 0, 160, 80],
+    "content": [26, 6, 108, 68],
+    "sha256": "aa7746dcfd8d549e372f2d5bc1dafa25b4ac2775a9fcbc0b2851c45e0b5e395a"
+  },
+  "track-weather": {
+    "source": [0, 0, 160, 80],
+    "content": [48, 12, 64, 56],
+    "sha256": "81865a2202f7bab6d2cc5c4a69cb71f108002f1ca6413b58bc6f2b6869951e61"
+  },
+  "car-damage-numbers": {
+    "source": [0, 0, 160, 80],
+    "content": [56, 6, 48, 68],
+    "sha256": "96ba64370f31ded5b6b5f686385cac67056037c4b0536522e00b4ca1e7755d98"
+  },
+  "head-to-head": {
+    "source": [0, 0, 160, 80],
+    "content": [36, 9, 88, 62],
+    "sha256": "46a66ec3e67a7d02010f9a554670fb1c2037ac881226734e9ab67386748f9017"
+  },
+  "fuel-strategy": {
+    "source": [0, 0, 160, 80],
+    "content": [22, 8, 116, 64],
+    "sha256": "6d9e1147f773447eafa9fe9c8d5e0be0564a589030272ae3644fe4d13e2ab1d6"
+  },
+  "pedals-telemetry": {
+    "source": [0, 0, 160, 80],
+    "content": [28, 21, 104, 38],
+    "sha256": "91e5cb843bb777530b1e449fa3dc3e4bba99e056520b07623b9cbf16c036e336"
+  },
+  "relative": {
+    "source": [0, 0, 160, 80],
+    "content": [28, 10, 104, 60],
+    "sha256": "773aba8737b699700bc2b58cba12efa20dbbbf3c951e2be797d20d22f9a871f2"
+  },
+  "racing-flags": {
+    "source": [0, 0, 160, 80],
+    "content": [44, 26, 72, 28],
+    "sha256": "44c29a91de70530c8327000b85e28a9e445f21f80aec4bae8af074b3d16bd96a"
+  },
+  "fastest-lap": {
+    "source": [0, 0, 160, 80],
+    "content": [12, 26, 136, 29.5],
+    "sha256": "8be39a8168c7526b06d4b8f20ec1b4256bc7a2cd79b7818ba6d16fe9c6e7e908"
+  },
+  "session-alerts": {
+    "source": [0, 0, 160, 90],
+    "content": [4, 22, 152, 49],
+    "sha256": "b44ffbddbe55d37599eb7953e5eaf0a4bae2fb6cd271ce1fe173078ccd6a8d0d"
+  }
+}

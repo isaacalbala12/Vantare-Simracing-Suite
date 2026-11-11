@@ -3,7 +3,7 @@ use crate::protocol::{CoreStatus, HostError, LinkState};
 use std::path::Path;
 use vantare_ipc::{files, launcher};
 use vantare_launcher::Document;
-fn selected(document: &Document) -> Option<&str> {
+pub(crate) fn selected(document: &Document) -> Option<&str> {
     document
         .profiles
         .iter()

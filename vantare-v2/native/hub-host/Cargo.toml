@@ -17,6 +17,7 @@ qa-e2e = ["vantare-installer/test-installer"]
 bindings = ["dep:ts-rs"]
 
 [dependencies]
+vantare-domain.workspace = true
 vantare-ipc.workspace = true
 vantare-services.workspace = true
 # Existing Services version/features; no new package (VANTA-138 calendar).

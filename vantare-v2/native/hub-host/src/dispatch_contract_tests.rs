@@ -42,6 +42,10 @@ impl Core {
     ) -> Result<(), HostError> {
         self.request(id, command)
     }
+    #[allow(clippy::unused_self)] // Same method signature as production Core.
+    fn home_status(&mut self, _active: bool) -> crate::home::HomeSim {
+        crate::home::HomeSim::default()
+    }
     fn request(
         &mut self,
         _id: u32,

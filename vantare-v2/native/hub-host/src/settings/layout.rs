@@ -1,5 +1,6 @@
 //! Minimal layout adapter. Only existing motion is interpreted/edited;
 //! other values retain their original JSON representation. No GPUI dependency.
+pub mod preview;
 use super::track::{PerformanceLevel, TrackView};
 use serde::{
     Deserialize, Deserializer,

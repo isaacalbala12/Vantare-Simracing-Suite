@@ -119,6 +119,11 @@ fn adding_uses_versioned_native_settings_and_a_free_identity() {
     assert_eq!(added.instances.len(), 2);
     assert_eq!(added.instances[1].id, "widget-2");
     let opened = Open::read(&path).unwrap();
+    let x: f64 = read(&opened.instances[1], "x").unwrap();
+    let y: f64 = read(&opened.instances[1], "y").unwrap();
+    // GPUI free_spot: 2% margin, 1% steps and 12 px between occupied rectangles.
+    assert!((x - 403.2).abs() < 0.001);
+    assert!((y - 38.4).abs() < 0.001);
     let settings: Fields = read(&opened.instances[1], "settings").unwrap();
     let native = crate::widget_defaults::get("delta").unwrap();
     assert_eq!(
@@ -190,4 +195,44 @@ fn redo_cannot_restore_a_pro_addition_after_access_is_downgraded() {
     );
     assert_eq!(std::fs::read(&path).unwrap(), before);
     assert!(state.edit(Edit::Redo, &undone.revision, pro).is_ok());
+}
+
+#[test]
+fn partial_session_defaults_and_opaque_session_fields_survive_a_patch() {
+    let (_root, path, _) = fixture();
+    let mut root: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    root["instances"][0]["showIn"] = serde_json::json!({"practice":false,"future":{"a":1}});
+    std::fs::write(&path, serde_json::to_vec(&root).unwrap()).unwrap();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    assert_eq!(
+        view.instances[0].show_in,
+        ShowIn {
+            practice: false,
+            qualifying: true,
+            race: true
+        }
+    );
+    state
+        .edit(
+            Edit::Instance(
+                "widget-1".into(),
+                InstancePatch::ShowIn(ShowIn {
+                    practice: true,
+                    qualifying: false,
+                    race: true,
+                }),
+            ),
+            &view.revision,
+            access,
+        )
+        .unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    assert_eq!(
+        saved["instances"][0]["showIn"]["future"],
+        serde_json::json!({"a":1})
+    );
+    assert_eq!(saved["instances"][0]["showIn"]["qualifying"], false);
 }

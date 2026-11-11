@@ -95,8 +95,8 @@ export function create(context: MockContext): MockHandler {
       "baseRevision" in request &&
       (request.baseRevision !== view.revision || conflict)
     ) {
+      if (conflict) bump();
       conflict = false;
-      bump();
       return {
         kind: "failure",
         id,

@@ -1,4 +1,4 @@
-//! Studio uses the Settings adapter's duplicate-safe RawValue document and writer.
+//! Studio uses the Settings adapter's duplicate-safe `RawValue` document and writer.
 use super::{Document, Fields, LIMIT};
 use crate::{
     protocol::HostError,
@@ -37,7 +37,7 @@ impl Open {
         if !vantare_launcher::is_local_path(path) {
             return Err(HostError::Denied);
         }
-        let document = Document::open(path).map_err(|_| HostError::Protected)?;
+        let document = Document::open(path).map_err(|()| HostError::Protected)?;
         if document.observed.is_none() {
             return Err(HostError::Protected);
         }
@@ -118,15 +118,14 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
         visible: optional(fields, "visible", true)?,
         locked: !kind.info(access).allowed,
         opacity: (opacity * 100.0).round() as u8,
-        show_in: optional(
-            fields,
-            "showIn",
+        show_in: {
+            let stored: Fields = optional(fields, "showIn", Fields::default())?;
             ShowIn {
-                practice: true,
-                qualifying: true,
-                race: true,
-            },
-        )?,
+                practice: optional(&stored, "practice", true)?,
+                qualifying: optional(&stored, "qualifying", true)?,
+                race: optional(&stored, "race", true)?,
+            }
+        },
         off_track,
         size: OverlaySize {
             width: width.round() as u32,
@@ -186,10 +185,10 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
     let opened = Open::read(&state.path);
     let Ok(opened) = opened else {
         return State::unavailable(
-            if !state.path.try_exists().unwrap_or(true) {
-                StudioState::Missing
-            } else {
+            if state.path.try_exists().unwrap_or(true) {
                 StudioState::Protected
+            } else {
+                StudioState::Missing
             },
             access,
         );
@@ -247,78 +246,7 @@ pub(crate) fn edit(
         .as_deref()
         .expect("existing layout")
         .to_vec();
-    let after = match edit {
-        Edit::Undo => state.undo.last().cloned().ok_or(HostError::Denied)?,
-        Edit::Redo => state.redo.last().cloned().ok_or(HostError::Denied)?,
-        Edit::Visibility(ref id, visible) => {
-            put(opened.find(id)?, "visible", &visible)?;
-            opened.bytes()?
-        }
-        Edit::Remove(ref id) => {
-            let length = opened.instances.len();
-            opened
-                .instances
-                .retain(|f| read::<String>(f, "id").as_deref() != Ok(id.as_str()));
-            if opened.instances.len() == length {
-                return Err(HostError::Denied);
-            }
-            opened.bytes()?
-        }
-        Edit::Instance(ref id, ref patch) => {
-            let fields = opened.find(id)?;
-            match patch {
-                InstancePatch::Opacity(value) if (20..=100).contains(value) => {
-                    put(fields, "opacity", &(f64::from(*value) / 100.0))?
-                }
-                InstancePatch::Opacity(_) => return Err(HostError::Denied),
-                InstancePatch::ShowIn(value) => put(fields, "showIn", value)?,
-                InstancePatch::OffTrack(value) => put(
-                    fields,
-                    "offTrack",
-                    &match value {
-                        OffTrack::Inherit => "inherit",
-                        OffTrack::AlwaysVisible => "always_visible",
-                        OffTrack::Hide => "hide",
-                    },
-                )?,
-            };
-            opened.bytes()?
-        }
-        Edit::Add(kind) => {
-            if !kind.info(access).allowed
-                || !WidgetKind::CATALOG.contains(&kind)
-                || opened.instances.len() >= INSTANCE_LIMIT
-            {
-                return Err(HostError::Denied);
-            }
-            let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
-            let id = (1..=INSTANCE_LIMIT + 1)
-                .map(|n| format!("widget-{n}"))
-                .find(|id| {
-                    !opened
-                        .instances
-                        .iter()
-                        .any(|f| read::<String>(f, "id").as_deref() == Ok(id.as_str()))
-                })
-                .ok_or(HostError::Denied)?;
-            let (x, y) = free_spot(
-                &opened,
-                (
-                    f64::from(defaults.size.width),
-                    f64::from(defaults.size.height),
-                ),
-            )?;
-            let mut fields = Fields::default();
-            put(&mut fields, "id", &id)?;
-            put(&mut fields, "x", &x)?;
-            put(&mut fields, "y", &y)?;
-            put(&mut fields, "visible", &true)?;
-            put(&mut fields, "opacity", &1.0)?;
-            fields.0.insert("settings".into(), defaults.settings);
-            opened.instances.push(fields);
-            opened.bytes()?
-        }
-    };
+    let after = apply(&mut opened, state, &edit, access)?;
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
     let restored: Vec<Fields> = read(&root, "instances")?;
@@ -368,7 +296,60 @@ pub(crate) fn edit(
         }
     }
     state.revision = Some(vantare_services::content_hash(&after));
+    drop(edit);
     Ok(view(state, access))
+}
+fn apply(
+    opened: &mut Open,
+    state: &State,
+    edit: &Edit,
+    access: Option<CatalogAccess>,
+) -> Result<Vec<u8>, HostError> {
+    Ok(match edit {
+        Edit::Undo => state.undo.last().cloned().ok_or(HostError::Denied)?,
+        Edit::Redo => state.redo.last().cloned().ok_or(HostError::Denied)?,
+        Edit::Visibility(id, visible) => {
+            put(opened.find(id)?, "visible", visible)?;
+            opened.bytes()?
+        }
+        Edit::Remove(id) => {
+            let length = opened.instances.len();
+            opened
+                .instances
+                .retain(|f| read::<String>(f, "id").as_deref() != Ok(id.as_str()));
+            if opened.instances.len() == length {
+                return Err(HostError::Denied);
+            }
+            opened.bytes()?
+        }
+        Edit::Instance(id, patch) => {
+            let fields = opened.find(id)?;
+            match patch {
+                InstancePatch::Opacity(value) if (20..=100).contains(value) => {
+                    put(fields, "opacity", &(f64::from(*value) / 100.0))?;
+                }
+                InstancePatch::Opacity(_) => return Err(HostError::Denied),
+                InstancePatch::ShowIn(value) => {
+                    let mut stored: Fields = optional(fields, "showIn", Fields::default())?;
+                    put(&mut stored, "practice", &value.practice)?;
+                    put(&mut stored, "qualifying", &value.qualifying)?;
+                    put(&mut stored, "race", &value.race)?;
+                    put(fields, "showIn", &stored.0)?;
+                }
+                InstancePatch::OffTrack(value) => put(
+                    fields,
+                    "offTrack",
+                    &match value {
+                        OffTrack::Inherit => "inherit",
+                        OffTrack::AlwaysVisible => "always_visible",
+                        OffTrack::Hide => "hide",
+                    },
+                )?,
+            }
+            opened.bytes()?
+        }
+        Edit::Add(kind) => add(opened, *kind, access)?,
+    })
 }
 fn showing(path: &Path) -> bool {
     files::read_optional(&path.with_extension("show.json"), LIMIT)
@@ -401,7 +382,6 @@ pub(crate) fn track(
                 limit: LIMIT,
                 backup: false,
                 sibling_base: Some(state.path.clone()),
-                ..Default::default()
             },
         )
         .map_err(|e| {
@@ -433,3 +413,42 @@ pub(crate) fn track(
 #[cfg(test)]
 #[path = "studio_tests.rs"]
 mod tests;
+
+fn add(
+    opened: &mut Open,
+    kind: WidgetKind,
+    access: Option<CatalogAccess>,
+) -> Result<Vec<u8>, HostError> {
+    if !kind.info(access).allowed
+        || !WidgetKind::CATALOG.contains(&kind)
+        || opened.instances.len() >= INSTANCE_LIMIT
+    {
+        return Err(HostError::Denied);
+    }
+    let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
+    let id = (1..=INSTANCE_LIMIT + 1)
+        .map(|n| format!("widget-{n}"))
+        .find(|id| {
+            !opened
+                .instances
+                .iter()
+                .any(|f| read::<String>(f, "id").as_deref() == Ok(id.as_str()))
+        })
+        .ok_or(HostError::Denied)?;
+    let (x, y) = free_spot(
+        opened,
+        (
+            f64::from(defaults.size.width),
+            f64::from(defaults.size.height),
+        ),
+    )?;
+    let mut fields = Fields::default();
+    put(&mut fields, "id", &id)?;
+    put(&mut fields, "x", &x)?;
+    put(&mut fields, "y", &y)?;
+    put(&mut fields, "visible", &true)?;
+    put(&mut fields, "opacity", &1.0)?;
+    fields.0.insert("settings".into(), defaults.settings);
+    opened.instances.push(fields);
+    opened.bytes()
+}

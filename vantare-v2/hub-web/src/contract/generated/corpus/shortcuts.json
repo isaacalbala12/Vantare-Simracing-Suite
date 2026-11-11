@@ -1,0 +1,37 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "shortcuts.get",
+        "value": {
+          "profiles": [
+            {
+              "hotkey": "Ctrl Alt F8",
+              "id": "qa-profile-0",
+              "name": "Carrera QA",
+              "state": "registered"
+            },
+            {
+              "hotkey": "Ctrl Alt F9",
+              "id": "qa-profile-1",
+              "name": "Streaming QA",
+              "state": "unconfirmed"
+            }
+          ],
+          "protected": false
+        }
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "shortcuts.get"
+      }
+    }
+  ]
+}

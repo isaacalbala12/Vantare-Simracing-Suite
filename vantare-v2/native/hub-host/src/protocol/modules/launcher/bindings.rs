@@ -1,0 +1,159 @@
+use crate::launcher::editor::{
+    ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
+    ProfileRunning, ProfileStep,
+};
+use crate::protocol::bindings::{canonical, declare};
+use crate::protocol::{HostToUi, Reply, Request, UiToHost};
+use std::fmt::Write as _;
+// Bindings and Rust-serialized examples owned by this screen.
+
+pub(crate) fn typescript() -> String {
+    let mut text = String::new();
+    declare::<ProfileRunning>(&mut text);
+    declare::<ProfileFailure>(&mut text);
+    declare::<ProfileClose>(&mut text);
+    declare::<ProfileRetry>(&mut text);
+    declare::<ProfileStep>(&mut text);
+    declare::<ProfilePolicy>(&mut text);
+    declare::<ProfileDraft>(&mut text);
+    declare::<ProfileEditorView>(&mut text);
+
+    declare::<crate::launcher::LauncherApp>(&mut text);
+    declare::<crate::launcher::LauncherOptions>(&mut text);
+    declare::<crate::launcher::LauncherProfile>(&mut text);
+    declare::<crate::launcher::LauncherView>(&mut text);
+    append_launcher_constants(&mut text);
+    append_profile_constants(&mut text);
+    text
+}
+pub(crate) fn corpus() -> serde_json::Value {
+    let host: Vec<HostToUi> = vec![
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherProfileGet {
+                value: ProfileEditorView {
+                    revision: "0".repeat(64),
+                    draft: crate::launcher::editor::new_draft(),
+                },
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherProfileSave {
+                value: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherGet {
+                value: serde_json::from_str(include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../hub-web/fixtures/launcher-base.json"
+                )))
+                .expect("launcher fixture"),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherLaunch { accepted: true },
+        },
+        HostToUi::Failure {
+            id: 1,
+            error: crate::protocol::HostError::LauncherConflict {
+                current: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Event {
+            event: crate::protocol::Event::Launcher {
+                value: crate::launcher::LauncherView::default(),
+            },
+        },
+        HostToUi::Response {
+            id: 1,
+            result: Reply::LauncherFavorite { accepted: false },
+        },
+    ];
+    let ui: Vec<UiToHost> = vec![
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileGet { id: None },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileGet {
+                id: Some("creator".into()),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherProfileSave {
+                draft: crate::launcher::editor::draft(
+                    &vantare_launcher::Document::fresh_install().profiles[0],
+                ),
+                base_revision: "0".repeat(64),
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherGet {},
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherLaunch {
+                profile: "creator".into(),
+                base_revision: "0".repeat(64),
+            },
+        },
+        UiToHost::Subscribe {
+            topic: crate::protocol::Topic::Launcher,
+        },
+        UiToHost::Unsubscribe {
+            topic: crate::protocol::Topic::Launcher,
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherFavorite {},
+        },
+    ];
+
+    serde_json::json!({"host":host,"ui":ui})
+}
+
+fn append_launcher_constants(text: &mut String) {
+    text.push_str("export const launcherLimits = ");
+    text.push_str(&serde_json::to_string(&canonical(serde_json::json!({"id":crate::launcher::ID_LIMIT,"profiles":crate::launcher::PROFILE_LIMIT,"apps":crate::launcher::APP_LIMIT}))).expect("launcher constants"));
+    text.push_str(" as const;\n");
+}
+
+fn append_profile_constants(text: &mut String) {
+    let values = [
+        (
+            "profileRunning",
+            serde_json::to_value(ProfileRunning::ALL).expect("enum"),
+        ),
+        (
+            "profileFailures",
+            serde_json::to_value(ProfileFailure::ALL).expect("enum"),
+        ),
+        (
+            "profileCloses",
+            serde_json::to_value(ProfileClose::ALL).expect("enum"),
+        ),
+        (
+            "profileRetries",
+            serde_json::to_value(ProfileRetry::ALL).expect("enum"),
+        ),
+        (
+            "profileLimits",
+            serde_json::json!({"name":crate::launcher::editor::NAME_MAX,"description":crate::launcher::editor::DESCRIPTION_MAX,"notes":crate::launcher::editor::NOTES_MAX,"hotkey":crate::launcher::editor::HOTKEY_MAX,"steps":crate::launcher::editor::STEPS_MAX,"retries":crate::launcher::editor::RETRIES_MAX,"delay":crate::launcher::editor::DELAY_MAX}),
+        ),
+    ];
+    for (name, value) in values {
+        writeln!(
+            text,
+            "export const {name} = {} as const;",
+            serde_json::to_string(&canonical(value)).expect("constants JSON")
+        )
+        .expect("String write");
+    }
+}

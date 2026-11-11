@@ -1,9 +1,11 @@
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "electron-vite";
+import { contractIndex } from "./scripts/contract-index.ts";
 
 const qa = process.env.VANTARE_HUB_QA_BUILD === "1";
 const output = qa ? "out-qa" : "out";
+contractIndex();
 export default defineConfig({
   main: {
     define: { __VANTARE_QA_DRIVER__: JSON.stringify(qa) },

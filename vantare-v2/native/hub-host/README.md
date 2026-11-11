@@ -21,9 +21,13 @@ usa un valor aleatorio de un solo arranque que Electron elimina del entorno
 antes de crear el renderer. No se registra el valor.
 
 El formato es JSON precedido por longitud u32 little endian, máximo 1 MiB.
-`protocol.rs` genera `hub-web/src/contract/generated/contract.ts` mediante
-`ts-rs = 12.0.1`. El test de bindings compara el archivo completo y falla si
-alguien cambia Rust sin regenerar TypeScript. Los dos extremos validan mensajes.
+Cada pantalla aporta su contrato en `src/protocol/modules/<id>/`.
+`build.rs` descubre los módulos y ensambla enums, modelos, estado y tabla de
+despacho sin índices versionados. El exportador usa `ts-rs = 12.0.1` y escribe
+un TypeScript y un corpus por módulo; los tests comparan esos archivos con Rust
+(y rechazan módulos sobrantes), comprueban la cobertura del wire y un único
+handler por solicitud. Los dos extremos validan los mensajes. Instrucciones y
+firmas en [screen-contracts.md](../../hub-web/docs/screen-contracts.md).
 El núcleo simulado comparte el contrato y solo se activa explícitamente en una
 interfaz sin empaquetar o en la copia QA. `hello` y `ready` pertenecen al proceso
 principal: el renderer solo puede enviar solicitudes, suscripciones y respuestas
@@ -156,3 +160,28 @@ Win32 del adaptador de ficheros y del consent lock. El corpus de privacidad y la
 validación de proyecciones se comprueban también en Vitest, sin esa restricción.
 La corrupción después de un permiso afirmativo borra la proyección anterior y
 muestra valores denegados/protegidos sin reescribir el documento dañado.
+
+
+## Contrato modular: cobertura portable
+
+Cada módulo aporta sus variantes y muestras; `build.rs` rechaza los ids reservados
+`contract`/`validators`, renombres duplicados de Request/Reply y desajustes entre
+variantes y líneas de renombre. `wire.rs` acaba con el submódulo `bindings` bajo
+`#[cfg(any(test, feature = "bindings"))]`. Los archivos propios incluidos desde
+OUT_DIR no son recorridos por cargo fmt: el test `wire_source_tests` los comprueba
+explícitamente con rustfmt (wire, bindings, dispatch y tick).
+
+`dispatch_contract_tests` compila los mismos dispatch de producción con un pipe
+en memoria y un núcleo desconectado: ejecuta cada muestra UI de cada pantalla,
+por el handler real y por la tabla agregada. Usa exclusivamente ficheros temporales
+y consentimiento aislado; no lanza servicios ni aplicaciones. Se ejecuta en la CI
+Windows existente y en el workflow Linux `Hub contract portable`. La dependencia
+del instalador ya existente también se declara en dev-dependencies, sin defaults,
+para compilar la proyección de Actualizaciones en estos tests portables; no añade
+GPUI ni soporte productivo a macOS/Linux. La doble compilación intencional de los
+mismos fuentes contra ambos tipos de pipe lleva una excepción localizada de
+`clippy::duplicate_mod`, sin omitir los demás lints.
+
+El exportador Rust escribe solo módulos/corpus propios; el índice agregado tiene
+un único generador: `hub-web/scripts/contract-index.ts`. La guía y migración están
+en `hub-web/docs/screen-contracts.md`.

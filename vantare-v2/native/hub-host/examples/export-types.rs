@@ -7,12 +7,13 @@ fn main() -> std::io::Result<()> {
         std::path::PathBuf::from,
     );
     std::fs::create_dir_all(&path)?;
-    std::fs::write(
-        path.join("contract.ts"),
-        vantare_hub_host::protocol::typescript(),
-    )?;
-    std::fs::write(
-        path.join("corpus.json"),
-        vantare_hub_host::protocol::bindings::corpus_json(),
-    )
+    std::fs::create_dir_all(path.join("corpus"))?;
+    for (id, typescript, corpus) in vantare_hub_host::protocol::bindings::module_outputs() {
+        std::fs::write(path.join(format!("{id}.ts")), typescript)?;
+        std::fs::write(
+            path.join("corpus").join(format!("{id}.json")),
+            serde_json::to_string_pretty(&corpus).expect("corpus") + "\n",
+        )?;
+    }
+    Ok(())
 }

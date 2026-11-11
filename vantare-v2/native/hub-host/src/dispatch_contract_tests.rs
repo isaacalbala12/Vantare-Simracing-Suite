@@ -1,0 +1,126 @@
+//! Runs the production dispatch sources on every platform, with isolated files
+//! and an unavailable service double. No application, browser or IPC is started.
+use crate::{
+    args::Args,
+    frame,
+    protocol::{self, CloseReason, Event, HostError, HostToUi, Reply, Request, Topic, UiToHost},
+    settings::{SaveError, Settings},
+};
+use std::{
+    io,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
+type Pipe = io::Cursor<Vec<u8>>;
+mod ready {
+    pub struct Ready;
+}
+#[derive(Default)]
+struct Core {
+    requests: usize,
+}
+impl Core {
+    fn request(
+        &mut self,
+        _id: u32,
+        _command: vantare_ipc::services_protocol::Command,
+    ) -> Result<(), HostError> {
+        self.requests += 1;
+        Err(HostError::CoreUnavailable)
+    }
+}
+include!(concat!(env!("OUT_DIR"), "/session.rs"));
+#[cfg_attr(
+    test,
+    allow(
+        clippy::duplicate_mod,
+        reason = "portable tests use the production session effects with in-memory IO"
+    )
+)]
+#[path = "session_effects.rs"]
+mod session_effects;
+use session_effects::settings_response;
+
+struct Fixture(PathBuf);
+impl Fixture {
+    fn new() -> Self {
+        static SEQUENCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let path = std::env::temp_dir().join(format!(
+            "vantare-dispatch-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&path).expect("exclusive QA directory");
+        Self(path)
+    }
+    fn session(&self) -> Session {
+        let args = Args {
+            controlled: false,
+            pipe: String::new(),
+            data: self.0.join("hub"),
+            layout: self.0.join("layout.json"),
+            launcher: self.0.join("launcher.json"),
+            engineer: self.0.join("engineer.json"),
+        };
+        Session::new(
+            &args,
+            Core::default(),
+            Settings::load(&args),
+            None,
+            crate::privacy::State::isolated(&self.0),
+        )
+    }
+}
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        std::fs::remove_dir_all(&self.0).expect("remove isolated QA data");
+    }
+}
+fn run_corpus(
+    module: &str,
+    corpus: &serde_json::Value,
+    dispatch: fn(&mut Session, &mut Pipe, u32, &Request) -> io::Result<()>,
+) {
+    let mut requests = 0;
+    for sample in corpus["ui"].as_array().expect("module UI corpus") {
+        let message: UiToHost =
+            serde_json::from_value(sample.clone()).expect("Rust serialized message");
+        if let UiToHost::Request { id, request } = message {
+            let fixture = Fixture::new();
+            let mut session = fixture.session();
+            let mut pipe = Pipe::new(Vec::new());
+            let result = dispatch(&mut session, &mut pipe, id, &request);
+            assert!(
+                result.is_ok(),
+                "{module}: real dispatch rejected {request:?}: {result:?}"
+            );
+            assert!(
+                !pipe.get_ref().is_empty(),
+                "handled or denied locally without real services"
+            );
+            // Also exercise the generated routing table, not just its predicate.
+            let mut session = fixture.session();
+            session
+                .request(&mut pipe, id, &request)
+                .expect("generated route reaches real handler");
+            requests += 1;
+        }
+    }
+    assert!(requests > 0, "{module} must have Request samples");
+}
+#[test]
+fn generated_session_has_no_implicit_lifecycle_or_external_services() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    assert!(session.confirmation.is_none());
+    assert!(session.last.is_none() && session.last_event.is_none());
+    assert!(!session.handshaken && session.closing.is_none());
+    assert_eq!(session.exit_code, 0);
+    assert!(session.subscriptions.is_empty());
+    assert!(!SCREEN_TICKS.is_empty() && !SCREEN_SUBSCRIPTIONS.is_empty());
+    assert_eq!(
+        session.service_reply(1, Err(HostError::CoreUnavailable)),
+        Err(HostError::CoreUnavailable)
+    );
+}
+include!(concat!(env!("OUT_DIR"), "/dispatch_case_tests.rs"));

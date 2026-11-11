@@ -7,3 +7,9 @@
 /AGENTS.md @isaacalbala12
 /vantare-v2/docs/vantare-program/notion-transition.md @isaacalbala12
 /vantare-v2/docs/vantare-program/notion-document-audit.md @isaacalbala12
+
+# Closed Hub protocol and generator
+/vantare-v2/native/hub-host/build.rs @isaacalbala12
+/vantare-v2/native/hub-host/build_support.rs @isaacalbala12
+/vantare-v2/native/hub-host/src/protocol/modules/ @isaacalbala12
+/vantare-v2/hub-web/src/contract/ @isaacalbala12

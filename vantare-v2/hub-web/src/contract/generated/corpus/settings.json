@@ -1,0 +1,434 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "settings.get",
+        "value": {
+          "appearance": {
+            "contrast": 100,
+            "glassOpacity": 80,
+            "interfaceFont": "inter",
+            "monoFont": "cascadia",
+            "palette": "vantare",
+            "reducedMotion": false,
+            "scheme": "dark"
+          },
+          "canRetry": false,
+          "general": {
+            "density": "balanced",
+            "launcher": true,
+            "minimized": false,
+            "onboarding_completed": true,
+            "toasts": false,
+            "updates": true
+          },
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "startup": {
+            "enabled": false,
+            "supported": false
+          },
+          "track": {
+            "customized": false,
+            "exists": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
+          "version": "0.0.0",
+          "warning": false,
+          "zoom": 100
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "settings.update",
+        "value": {
+          "appearance": {
+            "contrast": 100,
+            "glassOpacity": 80,
+            "interfaceFont": "inter",
+            "monoFont": "cascadia",
+            "palette": "vantare",
+            "reducedMotion": false,
+            "scheme": "dark"
+          },
+          "canRetry": false,
+          "general": {
+            "density": "balanced",
+            "launcher": true,
+            "minimized": false,
+            "onboarding_completed": true,
+            "toasts": false,
+            "updates": true
+          },
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "startup": {
+            "enabled": false,
+            "supported": false
+          },
+          "track": {
+            "customized": false,
+            "exists": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
+          "version": "0.0.0",
+          "warning": false,
+          "zoom": 100
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "settings.retry",
+        "value": {
+          "appearance": {
+            "contrast": 100,
+            "glassOpacity": 80,
+            "interfaceFont": "inter",
+            "monoFont": "cascadia",
+            "palette": "vantare",
+            "reducedMotion": false,
+            "scheme": "dark"
+          },
+          "canRetry": false,
+          "general": {
+            "density": "balanced",
+            "launcher": true,
+            "minimized": false,
+            "onboarding_completed": true,
+            "toasts": false,
+            "updates": true
+          },
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "startup": {
+            "enabled": false,
+            "supported": false
+          },
+          "track": {
+            "customized": false,
+            "exists": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
+          "version": "0.0.0",
+          "warning": false,
+          "zoom": 100
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "settings.discard",
+        "value": {
+          "appearance": {
+            "contrast": 100,
+            "glassOpacity": 80,
+            "interfaceFont": "inter",
+            "monoFont": "cascadia",
+            "palette": "vantare",
+            "reducedMotion": false,
+            "scheme": "dark"
+          },
+          "canRetry": false,
+          "general": {
+            "density": "balanced",
+            "launcher": true,
+            "minimized": false,
+            "onboarding_completed": true,
+            "toasts": false,
+            "updates": true
+          },
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "startup": {
+            "enabled": false,
+            "supported": false
+          },
+          "track": {
+            "customized": false,
+            "exists": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
+          "version": "0.0.0",
+          "warning": false,
+          "zoom": 100
+        }
+      }
+    },
+    {
+      "error": {
+        "current": {
+          "appearance": {
+            "contrast": 100,
+            "glassOpacity": 80,
+            "interfaceFont": "inter",
+            "monoFont": "cascadia",
+            "palette": "vantare",
+            "reducedMotion": false,
+            "scheme": "dark"
+          },
+          "canRetry": true,
+          "general": {
+            "density": "balanced",
+            "launcher": true,
+            "minimized": false,
+            "onboarding_completed": true,
+            "toasts": false,
+            "updates": true
+          },
+          "protected": false,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "startup": {
+            "enabled": false,
+            "supported": false
+          },
+          "track": {
+            "customized": false,
+            "exists": false,
+            "hideOffTrack": false,
+            "level": "balanced",
+            "protected": false
+          },
+          "version": "0.0.0",
+          "warning": false,
+          "zoom": 100
+        },
+        "kind": "conflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "settings.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "settings.retry"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "settings.discard"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "density",
+          "value": "balanced"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "minimized",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "updates",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "launcher",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "toasts",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "palette",
+          "value": "vantare"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "scheme",
+          "value": "system"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "contrast",
+          "value": 80
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "glassOpacity",
+          "value": 100
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "interfaceFont",
+          "value": "segoe"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "monoFont",
+          "value": "consolas"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "reducedMotion",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "zoom",
+          "value": 100
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "startup",
+          "value": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "performance",
+          "value": "economy"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "hideOffTrack",
+          "value": true
+        }
+      }
+    }
+  ]
+}

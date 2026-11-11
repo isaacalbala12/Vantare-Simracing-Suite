@@ -446,7 +446,9 @@ mod windows_tests {
     }
 }
 
+#[path = "launcher/reader.rs"]
 mod reader;
 pub use reader::Reader;
 
+#[path = "launcher/editor.rs"]
 pub mod editor;

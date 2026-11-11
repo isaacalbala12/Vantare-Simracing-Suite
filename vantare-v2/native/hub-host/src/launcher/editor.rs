@@ -753,5 +753,6 @@ mod tests {
     }
 }
 
+#[path = "editor/steps.rs"]
 mod steps;
 pub use steps::StepKeys;

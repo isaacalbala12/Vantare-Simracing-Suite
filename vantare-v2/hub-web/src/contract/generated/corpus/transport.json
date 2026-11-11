@@ -1,0 +1,273 @@
+{
+  "host": [
+    {
+      "error": {
+        "kind": "rejected"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "busy"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "coreUnavailable"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "unsupported"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "expected": 6,
+        "found": 7,
+        "kind": "incompatible"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "denied"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "protected"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "io"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "demo": false,
+      "kind": "hello",
+      "theme": {
+        "palette": "vantare",
+        "scheme": "dark",
+        "sidebar": "#1b1718",
+        "text1": "#faf7f7",
+        "window": "#161314"
+      },
+      "version": 6,
+      "window": {
+        "height": 900,
+        "minimized": false,
+        "width": 1440,
+        "zoom": 100
+      }
+    },
+    {
+      "event": {
+        "live": true,
+        "topic": "simStatus"
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "core.get",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "connected",
+          "rights": "connected",
+          "services": "connected"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "core",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "connected",
+          "rights": "connected",
+          "services": "connected"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "core.get",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "incompatible",
+          "rights": "incompatible",
+          "services": "incompatible"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "core",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "incompatible",
+          "rights": "incompatible",
+          "services": "incompatible"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "core.get",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "unavailable",
+          "rights": "unavailable",
+          "services": "unavailable"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "core",
+        "value": {
+          "access": {
+            "blocked": false,
+            "calendar": false,
+            "engineer": false,
+            "strategy": false,
+            "tester": false,
+            "verified": false
+          },
+          "live": false,
+          "photos": "unavailable",
+          "rights": "unavailable",
+          "services": "unavailable"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "kind": "closeRequested",
+      "reason": "restart"
+    },
+    {
+      "kind": "closeRequested",
+      "reason": "window"
+    },
+    {
+      "kind": "closeRequested",
+      "reason": "live"
+    },
+    {
+      "kind": "closeRequested",
+      "reason": "controlEof"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "core.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "window.close"
+      }
+    },
+    {
+      "kind": "hello",
+      "version": 6
+    },
+    {
+      "kind": "ready"
+    },
+    {
+      "allow": true,
+      "kind": "closeAnswer"
+    },
+    {
+      "allow": false,
+      "kind": "closeAnswer"
+    },
+    {
+      "kind": "subscribe",
+      "topic": "core"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "core"
+    },
+    {
+      "kind": "subscribe",
+      "topic": "simStatus"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "simStatus"
+    }
+  ]
+}

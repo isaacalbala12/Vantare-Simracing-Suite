@@ -1,0 +1,289 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.profile.get",
+        "value": {
+          "draft": {
+            "advanced": false,
+            "description": "",
+            "favorite": false,
+            "hotkey": "",
+            "id": null,
+            "name": "Nuevo perfil",
+            "notes": "",
+            "policy": {
+              "alreadyRunning": "ask",
+              "cancel": "ask",
+              "exit": "ask",
+              "failure": "ask",
+              "firstStepDelay": 0,
+              "retries": 0,
+              "retry": "ask"
+            },
+            "startup": false,
+            "steps": []
+          },
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.profile.save",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.get",
+        "value": {
+          "apps": [
+            {
+              "available": false,
+              "id": "lmu",
+              "name": "Le Mans Ultimate"
+            },
+            {
+              "available": false,
+              "id": "obs",
+              "name": "OBS Studio"
+            },
+            {
+              "available": false,
+              "id": "crewchief",
+              "name": "CrewChief"
+            },
+            {
+              "available": false,
+              "id": "discord",
+              "name": "Discord"
+            },
+            {
+              "available": false,
+              "id": "spotify",
+              "name": "Spotify"
+            },
+            {
+              "available": false,
+              "id": "motec",
+              "name": "MoTeC"
+            },
+            {
+              "available": false,
+              "id": "simhub",
+              "name": "SimHub"
+            }
+          ],
+          "exists": true,
+          "profiles": [
+            {
+              "apps": [
+                "lmu",
+                "obs",
+                "spotify"
+              ],
+              "description": "Simulador, captura y música en tres pasos. Reintenta el paso fallido y deja el resto abierto al salir.",
+              "favorite": true,
+              "id": "creator",
+              "launchable": false,
+              "name": "Creador de Contenido",
+              "options": {
+                "alreadyRunning": "reuse",
+                "failure": "continue",
+                "firstStepDelay": 0,
+                "retries": 2,
+                "startup": false
+              }
+            },
+            {
+              "apps": [
+                "lmu",
+                "crewchief",
+                "spotify",
+                "motec"
+              ],
+              "description": "",
+              "favorite": false,
+              "id": "pro",
+              "launchable": false,
+              "name": "Pro",
+              "options": {
+                "alreadyRunning": "reuse",
+                "failure": "continue",
+                "firstStepDelay": 0,
+                "retries": 2,
+                "startup": false
+              }
+            }
+          ],
+          "protected": false,
+          "resident": true,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "running": false,
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": true,
+        "method": "launcher.launch"
+      }
+    },
+    {
+      "error": {
+        "current": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        },
+        "kind": "launcherConflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "event": {
+        "topic": "launcher",
+        "value": {
+          "apps": [],
+          "exists": false,
+          "profiles": [],
+          "protected": false,
+          "resident": false,
+          "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "running": false,
+          "scanning": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "accepted": false,
+        "method": "launcher.favorite"
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": null,
+        "method": "launcher.profile.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "creator",
+        "method": "launcher.profile.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "draft": {
+          "advanced": false,
+          "description": "",
+          "favorite": false,
+          "hotkey": "",
+          "id": "creator",
+          "name": "Creator",
+          "notes": "",
+          "policy": {
+            "alreadyRunning": "ask",
+            "cancel": "ask",
+            "exit": "ask",
+            "failure": "ask",
+            "firstStepDelay": 0,
+            "retries": 0,
+            "retry": "ask"
+          },
+          "startup": false,
+          "steps": [
+            {
+              "appId": "lmu",
+              "delaySeconds": 0,
+              "hasCustomArguments": false,
+              "key": null
+            },
+            {
+              "appId": "obs",
+              "delaySeconds": 2,
+              "hasCustomArguments": false,
+              "key": null
+            },
+            {
+              "appId": "spotify",
+              "delaySeconds": 2,
+              "hasCustomArguments": false,
+              "key": null
+            }
+          ]
+        },
+        "method": "launcher.profile.save"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.get"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "launcher.launch",
+        "profile": "creator"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "launcher"
+    },
+    {
+      "kind": "unsubscribe",
+      "topic": "launcher"
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "launcher.favorite"
+      }
+    }
+  ]
+}

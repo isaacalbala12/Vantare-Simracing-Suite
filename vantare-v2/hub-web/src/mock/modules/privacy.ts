@@ -1,0 +1,104 @@
+import privacyFixture from "../../../fixtures/privacy-base.json";
+import type { HostToUi, UiToHost } from "../../contract/generated/contract";
+import type { MockContext, MockHandler } from "../context";
+export function create(context: MockContext): MockHandler {
+  const { sceneName, core, note } = context;
+  if (sceneName === "privacidad-mail") core.services = "connected";
+  let privacy = structuredClone(
+    privacyFixture,
+  ) as import("../../contract/generated/contract").PrivacyView;
+  let consent = false;
+  let privacyRevision = 0;
+  let privacyConflict = false;
+  if (sceneName === "privacidad-protegida") privacy.protected = true;
+  if (sceneName === "privacidad-limpieza-ocupada") {
+    privacy.cleanupPending = true;
+    privacy.cleanupBusy = true;
+  }
+  return (value: UiToHost): HostToUi | null | undefined => {
+    if (value.kind !== "request") return undefined;
+    const { id, request } = value;
+    switch (request.method) {
+      case "privacy.policy":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, accepted: false },
+        };
+      case "privacy.get":
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: privacy },
+        };
+      case "privacy.update": {
+        if (privacy.protected)
+          return { kind: "failure", id, error: { kind: "protected" } };
+        if (sceneName === "privacidad-ocupada") {
+          note("privacy", "busy");
+          return { kind: "failure", id, error: { kind: "busy" } };
+        }
+        if (
+          request.baseRevision !== privacy.revision ||
+          (sceneName === "privacidad-conflicto" && !privacyConflict)
+        ) {
+          privacyConflict = true;
+          privacy = {
+            ...privacy,
+            usage: true,
+            usageDecided: true,
+            revision: (++privacyRevision).toString(16).padStart(64, "0"),
+          };
+          note("privacy", "conflict");
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "privacyConflict", current: privacy },
+          };
+        }
+        privacy = {
+          ...privacy,
+          [request.patch.field]: request.patch.value,
+          crashesDecided:
+            privacy.crashesDecided || request.patch.field === "crashes",
+          usageDecided: privacy.usageDecided || request.patch.field === "usage",
+          revision: (++privacyRevision).toString(16).padStart(64, "0"),
+        };
+        privacy.cleanupBusy = false;
+        privacy.cleanupPending = sceneName === "privacidad-limpieza-error";
+        if (privacy.cleanupPending)
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "privacyCleanup", current: privacy },
+          };
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: privacy },
+        };
+      }
+      case "mail.get":
+        return core.services === "connected"
+          ? {
+              kind: "response",
+              id,
+              result: { method: request.method, value: { consent } },
+            }
+          : { kind: "failure", id, error: { kind: "coreUnavailable" } };
+      case "mail.set": {
+        if (core.services !== "connected")
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        consent = request.consent;
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, value: { consent } },
+        };
+      }
+
+      default:
+        return undefined;
+    }
+  };
+}

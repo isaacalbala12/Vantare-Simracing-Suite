@@ -6,7 +6,7 @@ use vantare_ipc::{
     transport::{Event, Listener},
 };
 
-fn rights(root: &Path, name: &str, stop: Arc<Event>) -> io::Result<()> {
+fn rights(root: &Path, name: &str, stop: &Arc<Event>) -> io::Result<()> {
     let script: serde_json::Value = serde_json::from_slice(&fs::read(root.join("replies.json"))?)?;
     let host = root.join("bin/vantare-hub.exe");
     let mut listener = Listener::new(
@@ -48,7 +48,21 @@ fn rights(root: &Path, name: &str, stop: Arc<Event>) -> io::Result<()> {
     Ok(())
 }
 
-fn service(root: &Path, name: &str, stop: Arc<Event>) -> io::Result<()> {
+fn read_only(key: &str) -> bool {
+    [
+        "Probe",
+        "Status",
+        "AccountPoll",
+        "AccountProfileRefresh",
+        "LicenseStatus",
+        "PilotLoad",
+        "MailGet",
+        "RoadmapGet",
+        "TestingRefresh",
+    ]
+    .contains(&key)
+}
+fn service(root: &Path, name: &str, stop: &Arc<Event>) -> io::Result<()> {
     let script: serde_json::Value = serde_json::from_slice(&fs::read(root.join("replies.json"))?)?;
     let host = root.join("bin/vantare-hub.exe");
     let mut listener = Listener::new(
@@ -88,18 +102,7 @@ fn service(root: &Path, name: &str, stop: Arc<Event>) -> io::Result<()> {
             let key = command["command"]
                 .as_str()
                 .ok_or(io::ErrorKind::InvalidData)?;
-            let permitted = [
-                "Probe",
-                "Status",
-                "AccountPoll",
-                "AccountProfileRefresh",
-                "LicenseStatus",
-                "PilotLoad",
-                "MailGet",
-                "RoadmapGet",
-                "TestingRefresh",
-            ]
-            .contains(&key);
+            let permitted = read_only(key);
             let mut reply = if permitted && !script[key].is_null() {
                 serde_json::from_value::<Reply>(script[key].clone())?
             } else {
@@ -128,7 +131,31 @@ fn service(root: &Path, name: &str, stop: Arc<Event>) -> io::Result<()> {
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn measurement_never_accepts_effects_or_unknown_commands() {
+        for key in [
+            "PilotSave",
+            "MailSet",
+            "TriageSubmit",
+            "Logout",
+            "AccountPurchase",
+            "Unknown",
+            "",
+        ] {
+            assert!(!super::read_only(key));
+        }
+    }
+    #[test]
+    fn admission_and_read_only_account_queries_are_available() {
+        for key in ["Probe", "Status", "AccountPoll", "LicenseStatus"] {
+            assert!(super::read_only(key));
+        }
+    }
+}
+
+fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let value = |key: &str| {
         args.windows(2)
@@ -148,16 +175,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err(io::ErrorKind::InvalidInput.into());
     }
-    let stop = Arc::new(Event::new()?);
-    let closed = stop.clone();
-    std::thread::spawn(move || {
-        let _eof = io::copy(&mut io::stdin(), &mut io::sink());
-        closed.set();
-    });
-    match value("--role")?.as_str() {
-        "rights" => rights(&root, &pipe, stop)?,
-        "services" => service(&root, &pipe, stop)?,
-        _ => return Err(io::ErrorKind::InvalidInput.into()),
+    let role = value("--role")?;
+    if !["rights", "services"].contains(&role.as_str()) {
+        return Err(io::ErrorKind::InvalidInput.into());
     }
+    let stop = Arc::new(Event::new()?);
+    let worker_stop = Arc::clone(&stop);
+    let worker = std::thread::spawn(move || match role.as_str() {
+        "rights" => rights(&root, &pipe, &worker_stop),
+        _ => service(&root, &pipe, &worker_stop),
+    });
+    let eof = io::copy(&mut io::stdin(), &mut io::sink());
+    stop.set();
+    worker
+        .join()
+        .map_err(|_| io::Error::other("QA peer worker failed"))??;
+    eof?;
     Ok(())
 }

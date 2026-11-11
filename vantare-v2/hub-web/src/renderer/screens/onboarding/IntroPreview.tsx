@@ -303,9 +303,11 @@ export function OnboardingIntroPreview({
         pending={settings.pending || completion.pending}
         usage={completion.intent.usage}
         lead={
-          step === 7 && !query.data?.layoutReady
-            ? summaryText.notPrepared
-            : undefined
+          step === 6 && completion.privacy.data?.protected
+            ? summaryText.privacyProtectedLead
+            : step === 7 && !query.data?.layoutReady
+              ? summaryText.notPrepared
+              : undefined
         }
         enterPrivate={
           full && completion.privateAllowed

@@ -501,8 +501,7 @@ it("continues from a protected privacy file without deciding, private escape or 
   expect(
     screen.getByRole("button", { name: "Terminar" }).hasAttribute("disabled"),
   ).toBe(true);
-  for (const control of screen.getAllByRole("switch"))
-    expect(control.getAttribute("aria-disabled")).toBe("true");
+  expect(screen.queryAllByRole("switch")).toHaveLength(0);
   expect(
     screen.queryByRole("button", { name: "Entrar sin guardar" }),
   ).toBeNull();

@@ -1,4 +1,6 @@
 export const onboardingSummaryText = {
+  privacyProtectedLead:
+    "No podemos leer los permisos de privacidad con seguridad.",
   privacyProtected:
     "El archivo de privacidad está protegido. No se pueden guardar permisos y no se enviarán datos mientras siga protegido. Puedes continuar sin modificarlo; el asistente volverá a aparecer al abrir el Hub.",
   simulators: "Simuladores",

@@ -13,6 +13,7 @@ import {
   nextPickerRequestId,
 } from "../src/main/launcher-picker";
 import { isRendererMessage } from "../src/main/security";
+import { HOST_BACKGROUND_ID } from "../src/main/transport-ids";
 
 type Guarded<T> = T extends (value: unknown) => value is infer V ? V : never;
 const excludesTrustedSelection: Extract<
@@ -283,8 +284,9 @@ describe("executable picker boundary", () => {
 });
 
 it("never allocates the host background request id when the picker wraps", () => {
-  expect(nextPickerRequestId(accountLimits.backgroundId - 2)).toBe(
-    accountLimits.backgroundId - 1,
+  expect(HOST_BACKGROUND_ID).toBe(accountLimits.backgroundId);
+  expect(nextPickerRequestId(HOST_BACKGROUND_ID - 2)).toBe(
+    HOST_BACKGROUND_ID - 1,
   );
-  expect(nextPickerRequestId(accountLimits.backgroundId - 1)).toBe(0x80000000);
+  expect(nextPickerRequestId(HOST_BACKGROUND_ID - 1)).toBe(0x80000000);
 });

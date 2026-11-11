@@ -1,13 +1,13 @@
-import { accountLimits } from "../contract/generated/account";
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import {
   launcherPickCooldownMs,
   launcherPickLifetimeSeconds,
 } from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
+import { HOST_BACKGROUND_ID } from "./transport-ids";
 
 export function nextPickerRequestId(current: number) {
-  return current >= accountLimits.backgroundId - 1 ? 0x80000000 : current + 1;
+  return current >= HOST_BACKGROUND_ID - 1 ? 0x80000000 : current + 1;
 }
 
 /** The host must acknowledge a pending request before main opens a dialog. */

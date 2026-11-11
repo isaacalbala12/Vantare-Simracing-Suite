@@ -236,3 +236,29 @@ fn partial_session_defaults_and_opaque_session_fields_survive_a_patch() {
     );
     assert_eq!(saved["instances"][0]["showIn"]["qualifying"], false);
 }
+
+#[test]
+fn showing_and_hiding_share_the_native_presentation_lock() {
+    let (_root, path, bytes) = fixture();
+    let mut state = State::new(path.clone());
+    let show = path.with_extension("show.json");
+    let lock = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(show.with_extension("json.lock"))
+        .unwrap();
+    lock.try_lock().unwrap();
+    assert_eq!(
+        state.track(true, Some(CatalogAccess::Pro)),
+        Err(HostError::Busy)
+    );
+    assert_eq!(
+        state.track(false, Some(CatalogAccess::Pro)),
+        Err(HostError::Busy)
+    );
+    assert!(!show.exists());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    drop(lock);
+    assert!(state.track(true, Some(CatalogAccess::Pro)).unwrap().showing);
+}

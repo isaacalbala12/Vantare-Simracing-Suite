@@ -10,6 +10,10 @@ pub const INSTANCE_LIMIT: usize = 256;
 pub const HISTORY_LIMIT: usize = 50;
 pub const OPACITY_MIN: u8 = 20;
 pub const OPACITY_MAX: u8 = 100;
+pub const ID_LIMIT: usize = 256;
+pub const SIZE_LIMIT: u32 = 32768;
+pub const LABEL_LIMIT: usize = 256;
+pub const ABOUT_LIMIT: usize = 512;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]

@@ -23,7 +23,8 @@
   font: 500 19px / 21px var(--font-display);
 }
 .v-calendar-week-live-caption {
-  flex: 1;
+  flex: none;
+  width: 92px;
   min-width: 92px;
   margin: 0;
   font-size: 12px;
@@ -390,4 +391,31 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
+}
+
+.v-calendar-week-full-toggle {
+  margin-left: auto;
+}
+.v-calendar-week-live > header .v-segmented:nth-last-child(2) {
+  width: 176px;
+  flex: none;
+}
+.v-calendar-week-live > header .v-segmented:last-child {
+  width: 180px;
+  flex: none;
+}
+.v-calendar-week-live > header .v-segmented:last-child .v-segment:first-child {
+  width: 66px;
+  flex: none;
+}
+.v-calendar-week-live > header .v-segmented:last-child .v-segment:last-child {
+  flex: 1;
+}
+.v-calendar-week-live
+  > header
+  .v-segmented:last-child
+  .v-segment:last-child::before {
+  content: "★" / "";
+  margin-right: 6px;
+  color: var(--accent);
 }

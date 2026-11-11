@@ -127,6 +127,7 @@ export function CalendarWeekView({
         <p className="v-calendar-week-live-caption">{text.publication}</p>
         <Button
           variant="ghost"
+          className="v-calendar-week-full-toggle"
           aria-label={text.full}
           aria-pressed={full}
           onClick={() => {

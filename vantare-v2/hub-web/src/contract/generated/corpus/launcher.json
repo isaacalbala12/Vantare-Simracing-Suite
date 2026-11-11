@@ -292,6 +292,7 @@
       "result": {
         "method": "launcher.app.pick",
         "value": {
+          "fileName": "QA.exe",
           "name": "QA",
           "token": "0000000000000000000000000000000000000000000000000000000000000000"
         }

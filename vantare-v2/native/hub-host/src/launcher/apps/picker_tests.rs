@@ -321,7 +321,7 @@ fn an_approved_selection_cannot_exceed_the_application_limit() {
     std::fs::write(&path, &bytes).unwrap();
     let now = Instant::now();
     let mut picker = Picker::default();
-    let picked = picker
+    let selection = picker
         .selected(executable.to_str(), None, now)
         .unwrap()
         .unwrap();
@@ -335,7 +335,7 @@ fn an_approved_selection_cannot_exceed_the_application_limit() {
         picker.save(
             &path,
             &draft,
-            Some(&picked.token),
+            Some(&selection.token),
             &vantare_services::content_hash(&bytes),
             now
         ),

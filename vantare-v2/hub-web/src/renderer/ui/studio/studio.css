@@ -1,3 +1,10 @@
+.v-studio-disabled-hint {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .v-studio {
   display: flex;
   flex-direction: column;
@@ -666,6 +673,10 @@
 .v-studio-suggestions > div {
   display: contents;
 }
+.v-studio-catalog-grid > .v-studio-disabled-hint > button {
+  width: 100%;
+}
+
 .v-studio-action-notice {
   display: flex;
   align-items: center;
@@ -688,14 +699,4 @@
   width: auto;
   border-color: var(--text-3);
   background: transparent;
-}
-.v-studio-disabled-hint {
-  display: inline-flex;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.v-studio-catalog-grid > .v-studio-disabled-hint > button {
-  width: 100%;
 }

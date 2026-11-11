@@ -24,6 +24,54 @@ export const studioScenes: Record<string, VisualScene> = {
   },
 };
 
+studioScenes["studio-catalogo-teclado"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: "Añadir", exact: true }).click();
+    await page
+      .getByRole("searchbox", { name: "Buscar widget", exact: true })
+      .waitFor();
+    const groups = page.locator(".v-studio-catalog-grid");
+    const index = await groups.evaluateAll((nodes) =>
+      nodes.findIndex(
+        (node) =>
+          node.querySelectorAll("[data-kind]:not(:disabled)").length >= 4,
+      ),
+    );
+    assert.ok(index >= 0, "Missing populated catalog group");
+    const buttons = groups.nth(index).locator("[data-kind]:not(:disabled)");
+    for (let count = 0; count < 80; count++) {
+      if (
+        await buttons
+          .first()
+          .evaluate((node) => node === document.activeElement)
+      )
+        break;
+      await page.keyboard.press("Tab");
+    }
+    assert.equal(
+      await buttons.first().evaluate((node) => node === document.activeElement),
+      true,
+    );
+    const columns = await groups
+      .nth(index)
+      .evaluate(
+        (node) =>
+          getComputedStyle(node)
+            .gridTemplateColumns.split(/\s+/)
+            .filter(Boolean).length,
+      );
+    await page.keyboard.press("ArrowDown");
+    assert.equal(
+      await buttons
+        .nth(columns)
+        .evaluate((node) => node === document.activeElement),
+      true,
+    );
+  },
+};
+
 studioScenes["studio-ayuda-teclado"] = {
   mock: "studio-base",
   async prepare(page) {

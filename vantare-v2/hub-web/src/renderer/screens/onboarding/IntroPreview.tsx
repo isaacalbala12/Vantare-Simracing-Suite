@@ -148,6 +148,7 @@ export function OnboardingIntroPreview({
     !(full && step >= 6 && !styles.some(Boolean)) &&
     !settings.pending &&
     !completion.pending &&
+    !(full && step >= 6 && completion.privacy.data?.protected) &&
     !(
       full &&
       step >= 6 &&
@@ -338,8 +339,12 @@ export function OnboardingIntroPreview({
             <PerformanceArt automatic={automatic} level={level} />
           ) : step === 6 ? (
             <PrivacyArt
-              crashes={completion.intent.crashes}
-              usage={completion.intent.usage}
+              crashes={
+                !completion.privacy.data?.protected && completion.intent.crashes
+              }
+              usage={
+                !completion.privacy.data?.protected && completion.intent.usage
+              }
             />
           ) : step === 7 ? (
             <KitArt
@@ -386,6 +391,8 @@ export function OnboardingIntroPreview({
           />
         ) : step === 6 ? (
           <PrivacyStep
+            protected={completion.privacy.data?.protected}
+            onContinueProtected={completion.continueProtected}
             crashes={completion.intent.crashes}
             usage={completion.intent.usage}
             pending={completion.pending}

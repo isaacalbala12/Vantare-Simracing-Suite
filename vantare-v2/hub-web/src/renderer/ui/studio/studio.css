@@ -489,3 +489,10 @@
 .v-studio-catalog .v-search > .v-button::after {
   transform: rotate(-45deg);
 }
+
+.v-studio-footer .v-button:disabled {
+  opacity: 1;
+}
+.v-studio .v-studio-obs-button {
+  color: var(--text-3);
+}

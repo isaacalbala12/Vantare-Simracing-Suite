@@ -29,7 +29,7 @@ un cierre al proceso) y exige la salida con 0 dentro del mismo plazo de 10 s.
 Mantener el depurador adjunto bloqueaba la terminación en el banco; no se amplía
 el plazo ni se desactiva el ahorro en segundo plano del producto.
 
-Comprobaciones realizadas:
+Comprobaciones de la entrega inicial (antes de migrar a módulos):
 
 - 273 tests web, TypeScript, Biome y lint de diseño. Casos negativos de parámetros,
   identidad de destino, estado falseado, error nativo, ventana destruida y recarga.
@@ -51,13 +51,25 @@ $env:VANTARE_HUB_EVIDENCE = 'D:/VantareServer/evidence/hub-web/<worker>'
 node --experimental-strip-types scripts/check-window-controls.ts
 ```
 
-Mac: exportación de tipos/corpus y seis tests de protocolo, más arquitectura,
-correctos. `updates.rs` ya usaba la lectura portable del instalador pero su
-dependencia se declaraba solo para Windows: se declara para ambos destinos,
-con defaults desactivados, sin editar el instalador ni añadir GPUI. El lint y la
-suite completa del Mac siguen teniendo casos previos dependientes de Windows
-en settings/privacy/updates; no se dan por superados ni se han desactivado.
-La validación completa de este cambio es la de Windows.
+## Contrato modular
+
+El módulo `native/hub-host/src/protocol/modules/window/` aporta las solicitudes
+sin parámetros, respuestas, tema, evento y muestras. Sus validadores y núcleo
+simulado están en `src/contract/modules/window.ts` y `src/mock/modules/window.ts`;
+los tipos/corpus se generan únicamente en los archivos `generated/window.*`.
+La versión 7 y su bootstrap se mantienen como en el PR original. El cierre sigue
+en `transport`, con su guardia existente. No se cambia el dispatcher central ni
+el mecanismo de respuestas diferidas de servicios.
+
+El anfitrión rechaza minimizar/maximizar con `Unsupported`: son operaciones del
+main de Electron sobre su propia ventana, antes de reenviar al anfitrión. El
+estado se publica solo desde ese main; el renderer no puede anunciarlo. El
+núcleo simulado usa el emisor opcional de su contexto y conserva el estado por
+sesión. Los textos de los controles viven en `i18n/window.es.ts`.
+
+Se conserva la dependencia de producción del instalador solo en Windows y la de
+test portátil que ya aporta nightly; no se añade soporte de producto a macOS.
+Las validaciones de cada SHA y sus rutas se detallan en el cuerpo del PR #2045.
 
 Evidencia local: `window-native-recheck.log`, `window-web-tests-final.log`,
 `window-controls-smoke/result.json`, `window-host-smoke-final/host-smoke.json`

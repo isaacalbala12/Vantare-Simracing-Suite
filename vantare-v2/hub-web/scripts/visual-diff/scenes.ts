@@ -10,6 +10,7 @@ import { pilotScenes } from "./pilot.ts";
 import { privacyScenes } from "./privacy.ts";
 import { roadmapScenes } from "./roadmap.ts";
 import { studioScenes } from "./studio.ts";
+import { sweepScenes } from "./sweep.ts";
 import { testingScenes } from "./testing-scenes.ts";
 import { upcomingScenes } from "./upcoming.ts";
 
@@ -43,6 +44,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...notificationScenes,
   ...launcherScenes,
   ...studioScenes,
+  ...sweepScenes,
   ...Object.fromEntries(
     Object.entries(settingsTabs).map(([scene, tab]) => [
       scene,

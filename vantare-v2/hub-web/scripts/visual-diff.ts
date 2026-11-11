@@ -34,6 +34,11 @@ assert.ok(
 );
 const currentOnly = option("--current");
 const selected = option("--scene");
+const captureOnly = args.includes("--capture-only");
+assert.ok(
+  !captureOnly || (selected && !currentOnly),
+  "Capture-only requires a live named scene",
+);
 assert.ok(
   !args.includes("--capture-expanded-sidebar") || !currentOnly,
   "Expanded sidebar requires a live capture",
@@ -58,7 +63,9 @@ for (const scheme of schemes) {
   assert.ok(scheme === "dark" || scheme === "light");
   const directory = join(reference, scheme);
   const batch = JSON.parse(
-    await readFile(join(directory, "capture-batch.json"), "utf8"),
+    captureOnly
+      ? "[]"
+      : await readFile(join(directory, "capture-batch.json"), "utf8"),
   ) as {
     scene: string;
     appearance: string;
@@ -72,6 +79,21 @@ for (const scheme of schemes) {
   for (const scene of scenes) {
     try {
       assert.match(scene, /^[a-z0-9-]+$/);
+      if (captureOnly) {
+        const adapter = visualScenes[scene];
+        assert.ok(adapter, `No explicit adapter for ${scene}`);
+        const destination = join(output, scheme, scene);
+        await mkdir(destination, { recursive: true });
+        const current = await capture(adapter, scheme, destination);
+        await writeFile(join(destination, "current.png"), current);
+        report.push({
+          scene,
+          scheme,
+          status: "captured-without-comparison",
+          currentPngSha256: digest(current),
+        });
+        continue;
+      }
       const entry = batch.find((item) => item.scene === scene);
       assert.ok(entry, `Reference manifest missing scene ${scene}`);
       assert.deepEqual(entry.size, [1440, 900]);
@@ -312,6 +334,40 @@ async function capture(
         { windowsHide: true },
       );
     saveWindow("current.png");
+    if (args.includes("--capture-sidebar-matrix")) {
+      const nav = page.locator(".v-sidebar");
+      const applicable = (await nav.count()) > 0;
+      const matrix = [];
+      for (const expanded of [false, true]) {
+        if (applicable) {
+          const current = await nav.evaluate(
+            (node) => !node.classList.contains("v-sidebar--collapsed"),
+          );
+          if (current !== expanded) await page.keyboard.press("Control+b");
+          await until(
+            async () =>
+              (await nav.boundingBox())?.width === (expanded ? 272 : 76),
+            5000,
+            "sidebar matrix width",
+          );
+          await page.mouse.move(1000, 890);
+        }
+        const filename = expanded
+          ? "sidebar-expanded.png"
+          : "sidebar-collapsed.png";
+        saveWindow(filename);
+        matrix.push({
+          expanded,
+          applicable,
+          filename,
+          width: applicable ? (await nav.boundingBox())?.width : null,
+        });
+      }
+      await writeFile(
+        join(destination, "sidebar-matrix.json"),
+        JSON.stringify(matrix, null, 2),
+      );
+    }
     if (args.includes("--capture-expanded-sidebar")) {
       const nav = page.locator(".v-sidebar");
       await nav.waitFor();

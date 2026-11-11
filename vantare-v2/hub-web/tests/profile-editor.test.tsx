@@ -13,6 +13,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { profileLimits } from "../src/contract/generated/contract";
 import { HostProvider } from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
@@ -558,4 +559,71 @@ describe("profile editor", () => {
         );
     },
   );
+  it.each(["launcher-actions-limit", "launcher-actions-long-name"])(
+    "disables duplicate when its native bounds cannot be met (%s)",
+    async (scene) => {
+      mount(scene);
+      const name = scene.endsWith("long-name")
+        ? "a".repeat(profileLimits.name)
+        : "Creador de Contenido";
+      fireEvent.contextMenu(await screen.findByRole("button", { name }));
+      const item = await screen.findByRole("menuitem", {
+        name: actionText.duplicate,
+      });
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+    },
+  );
+  it("shares the rail's in-flight action lock with profile-card actions", async () => {
+    const request = Client.prototype.request;
+    let release = () => {};
+    const calls = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(function (this: Client, value) {
+        const result = request.call(this, value);
+        if (value.method !== "launcher.profile.option") return result;
+        return new Promise<import("../src/contract/generated/contract").Reply>(
+          (resolve) => {
+            release = () => void result.then(resolve);
+          },
+        );
+      });
+    mount();
+    const user = userEvent.setup();
+    const creator = await screen.findByRole("button", {
+      name: "Creador de Contenido",
+    });
+    await user.click(
+      screen.getByRole("combobox", { name: launcherText.retries }),
+    );
+    await user.click(await screen.findByRole("option", { name: "3" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: launcherText.retries })
+          .getAttribute("aria-disabled"),
+      ).toBe("true"),
+    );
+    fireEvent.contextMenu(creator);
+    const favorite = await screen.findByRole("menuitem", {
+      name: actionText.unfavorite,
+    });
+    expect(favorite.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(favorite);
+    expect(
+      calls.mock.calls.filter(([v]) => v.method === "launcher.profile.option"),
+    ).toHaveLength(1);
+    expect(
+      calls.mock.calls.filter(
+        ([v]) => v.method === "launcher.profile.favorite",
+      ),
+    ).toHaveLength(0);
+    release();
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: launcherText.retries })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
+  });
 });

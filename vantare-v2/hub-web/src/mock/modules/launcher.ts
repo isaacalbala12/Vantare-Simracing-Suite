@@ -5,6 +5,10 @@ import type {
   ProfileDraft,
   UiToHost,
 } from "../../contract/generated/contract";
+import {
+  launcherLimits,
+  profileLimits,
+} from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 import { createLauncherAppsMock } from "../launcher-apps";
 import { profileActionReply } from "../profile-actions";
@@ -39,6 +43,16 @@ export function create(context: MockContext): MockHandler {
     launcher.resident = false;
   }
 
+  if (sceneName === "launcher-actions-limit")
+    while (launcher.profiles.length < launcherLimits.profiles) {
+      const profile = structuredClone(launcher.profiles[0]);
+      profile.id = `qa-${launcher.profiles.length}`;
+      profile.name = `QA ${launcher.profiles.length}`;
+      profile.favorite = false;
+      launcher.profiles.push(profile);
+    }
+  if (sceneName === "launcher-actions-long-name")
+    launcher.profiles[0].name = "a".repeat(profileLimits.name);
   const appReply = createLauncherAppsMock(launcher, sceneName);
   if (sceneName === "launcher-options-custom")
     launcher.profiles[0].options.firstStepDelay = 17;

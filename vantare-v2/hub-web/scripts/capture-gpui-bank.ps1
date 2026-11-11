@@ -15,7 +15,22 @@ $run = Join-Path ([IO.Path]::GetFullPath($QaRoot)) ('gpui-' + [Guid]::NewGuid().
 [void][IO.Directory]::CreateDirectory($run)
 Copy-Item -Path (Join-Path $bankRoot 'template/*') -Destination $run -Recurse
 $testing = $Scene.StartsWith('testing-center-', [StringComparison]::Ordinal)
+$gate = $Scene -in @('privacidad-pendiente','privacidad-uso','acceso-base')
 $replies = Join-Path $run 'replies.json'
+if ($gate) {
+    $scripted = Get-Content -LiteralPath $replies -Raw | ConvertFrom-Json -AsHashtable
+    foreach ($method in @('AccountPoll', 'AccountProfileRefresh')) {
+        $scripted[$method]['session'] = 'SignedOut'
+        $scripted[$method]['signed_in'] = $false
+        $scripted[$method]['profile'] = $null
+        $scripted[$method]['pending'] = $false
+    }
+    $scripted | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $replies -Encoding utf8
+    $privacyRoot = Join-Path $run 'Vantare/native'
+    [void][IO.Directory]::CreateDirectory($privacyRoot)
+    # All permissions stay denied: these references never opt into collection.
+    @{generation=0;crashes=$false;usage=$false;crashes_decided=($Scene -ne 'privacidad-pendiente');usage_decided=($Scene -eq 'acceso-base')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $privacyRoot 'privacy.json') -Encoding utf8
+}
 if ($testing) {
     # Local contract fixtures grant tester access, never a real account or license.
     $fixtures = Join-Path $PSScriptRoot '../../native/hub/reference/fixtures'
@@ -45,7 +60,14 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
-foreach ($argument in @('--qa-root',$run,'--capture',$Scene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--demo','--control-stdin')) { $start.ArgumentList.Add($argument) }
+$nativeScene = if ($gate) { 'ajustes-privacidad' } else { $Scene }
+foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size','1440x900','--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
+if ($gate) {
+    $start.ArgumentList.Add('--qa-measure')
+    $start.Environment['VANTARE_BACKGROUND_STARTUP'] = '1'
+} else {
+    $start.ArgumentList.Add('--demo')
+}
 if ($testing) {
     $start.ArgumentList.Add('--qa-testing')
     # The existing frozen QA hook validates the rights peer against this bank,

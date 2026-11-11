@@ -25,6 +25,7 @@ import { CalendarDayView } from "../../ui/CalendarDayView";
 import { CalendarDetail } from "../../ui/CalendarDetail";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
+import { CalendarIcsDialog } from "../../ui/CalendarIcsDialog";
 import {
   type CalendarLiveFilters,
   CalendarLiveView,
@@ -41,6 +42,7 @@ import {
 } from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
 import { useCalendarHistory } from "./CalendarHistory";
+import { useCalendarIcs } from "./CalendarIcsState";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarPreferences } from "./CalendarPreferences";
 import { useCalendarQARuns } from "./CalendarQARuns";
@@ -134,12 +136,15 @@ export default function CalendarEntry() {
     )?.focus({ preventScroll: true });
   }, [selectedSerie]);
 
+  const [icsOpen, setIcsOpen] = useState(false);
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
+  const ics = useCalendarIcs(icsOpen, state.allowed);
   useEffect(() => {
     if (!state.allowed) {
       setAlertsOpen(false);
+      setIcsOpen(false);
       setSelectedSerie(undefined);
       setDetail(undefined);
       liveFilters.current = {
@@ -268,6 +273,7 @@ export default function CalendarEntry() {
               onAlerts={openAlerts}
               onUtc={(utc) => void preferences.utc(utc)}
               utcDisabled={!preferences.canUtc}
+              onExport={() => setIcsOpen(true)}
             />
           ) : undefined
         }
@@ -375,6 +381,7 @@ export default function CalendarEntry() {
             subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
+            onExport={() => setIcsOpen(true)}
             onRefresh={() => void state.refresh()}
           >
             {state.failure && (
@@ -407,6 +414,7 @@ export default function CalendarEntry() {
             ) : activeTab === "mine" && schedule && view ? (
               <CalendarMineView
                 onDetail={openDetail}
+                onExport={() => setIcsOpen(true)}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -422,6 +430,7 @@ export default function CalendarEntry() {
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
                 alertsBusy={preferences.busy}
+                onExport={() => setIcsOpen(true)}
                 onSerie={openSerie}
                 onToggleSlot={toggleSlot}
                 onDetail={openDetail}
@@ -523,6 +532,7 @@ export default function CalendarEntry() {
       </SectionPanel>
       {detail && state.allowed && schedule && view && (
         <CalendarDetail
+          onExport={() => setIcsOpen(true)}
           schedule={schedule}
           seriesId={detail.id}
           initialAt={detail.at}
@@ -597,6 +607,27 @@ export default function CalendarEntry() {
               ? preferencesFailure
               : undefined
           }
+        />
+      )}
+      {icsOpen && state.allowed && (
+        <CalendarIcsDialog
+          scope={ics.scope}
+          alarm={ics.alarm}
+          lead={alerts.leadMin}
+          utc={view?.utc ?? false}
+          view={ics.view}
+          busy={ics.busy}
+          failure={ics.failure}
+          status={ics.status}
+          onScope={ics.setScope}
+          onAlarm={ics.setAlarm}
+          onRetry={ics.retry}
+          onClose={() => setIcsOpen(false)}
+          onDownload={() => {
+            void ics.download().then((saved) => {
+              if (saved) setIcsOpen(false);
+            });
+          }}
         />
       )}
     </>

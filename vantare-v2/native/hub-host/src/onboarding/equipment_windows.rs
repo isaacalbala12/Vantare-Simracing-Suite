@@ -118,6 +118,108 @@ fn cores() -> Option<u32> {
     })
 }
 
+#[repr(C)]
+struct Guid {
+    first: u32,
+    second: u16,
+    third: u16,
+    last: [u8; 8],
+}
+const FACTORY_IID: Guid = Guid {
+    first: 0x770a_ae78,
+    second: 0xf26f,
+    third: 0x4dba,
+    last: [0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87],
+};
+#[repr(C)]
+struct AdapterDesc {
+    name: [u16; super::super::GPU_UTF16_LIMIT],
+    vendor: u32,
+    device: u32,
+    subsystem: u32,
+    revision: u32,
+    video_memory: usize,
+    system_memory: usize,
+    shared_memory: usize,
+    luid_low: u32,
+    luid_high: i32,
+    flags: u32,
+}
+#[repr(C)]
+struct FactoryVtable {
+    unknown: [usize; 2],
+    release: unsafe extern "system" fn(*mut c_void) -> u32,
+    object_and_factory: [usize; 9],
+    enumerate: unsafe extern "system" fn(*mut Factory, u32, *mut *mut Adapter) -> i32,
+}
+#[repr(C)]
+struct AdapterVtable {
+    unknown: [usize; 2],
+    release: unsafe extern "system" fn(*mut c_void) -> u32,
+    object_and_adapter: [usize; 7],
+    description: unsafe extern "system" fn(*mut Adapter, *mut AdapterDesc) -> i32,
+}
+#[repr(C)]
+struct Factory {
+    vtable: *const FactoryVtable,
+}
+#[repr(C)]
+struct Adapter {
+    vtable: *const AdapterVtable,
+}
+#[link(name = "dxgi")]
+// SAFETY: HRESULT / REFIID / void** según SDK; solo IID_IDXGIFactory1.
+unsafe extern "system" {
+    fn CreateDXGIFactory1(iid: *const Guid, factory: *mut *mut Factory) -> i32;
+}
+struct OwnedFactory(*mut Factory);
+impl Drop for OwnedFactory {
+    fn drop(&mut self) {
+        // SAFETY: interfaz no nula creada por DXGI, una referencia propia; último uso antes de Release.
+        unsafe {
+            ((*(*self.0).vtable).release)(self.0.cast());
+        }
+    }
+}
+struct OwnedAdapter(*mut Adapter);
+impl Drop for OwnedAdapter {
+    fn drop(&mut self) {
+        // SAFETY: EnumAdapters1 añade una referencia propia; liberarla una sola vez al salir del ámbito.
+        unsafe {
+            ((*(*self.0).vtable).release)(self.0.cast());
+        }
+    }
+}
+fn gpu_name() -> Option<String> {
+    let mut factory = std::ptr::null_mut();
+    // SAFETY: IID válida, salida válida; DXGI no requiere CoInitialize para su factory.
+    if unsafe { CreateDXGIFactory1(&FACTORY_IID, &raw mut factory) } < 0 || factory.is_null() {
+        return None;
+    }
+    let factory = OwnedFactory(factory);
+    for index in 0..32 {
+        let mut adapter = std::ptr::null_mut();
+        // SAFETY: factory viva, slot 12 de IDXGIFactory1, salida válida sin alias con la factory.
+        if unsafe { ((*(*factory.0).vtable).enumerate)(factory.0, index, &raw mut adapter) } < 0
+            || adapter.is_null()
+        {
+            break;
+        }
+        let adapter = OwnedAdapter(adapter);
+        let mut description = std::mem::MaybeUninit::<AdapterDesc>::uninit();
+        // SAFETY: slot 10 de IDXGIAdapter1, memoria alineada del tamaño DXGI_ADAPTER_DESC1.
+        if unsafe { ((*(*adapter.0).vtable).description)(adapter.0, description.as_mut_ptr()) } < 0
+        {
+            continue;
+        }
+        // SAFETY: GetDesc1 completó la estructura; ningún campo tiene representaciones inválidas.
+        let description = unsafe { description.assume_init() };
+        if let Some(name) = super::gpu_label(description.flags, &description.name).ok()? {
+            return Some(name);
+        }
+    }
+    None
+}
 pub(super) fn detect() -> Equipment {
     let mut memory = MemoryStatus {
         length: 64,
@@ -130,6 +232,7 @@ pub(super) fn detect() -> Equipment {
     Equipment {
         cpu: cpu_name().and_then(|name| super::cpu_label(&name)),
         cores: cores(),
+        gpu: gpu_name(),
         ram_bytes,
         ram_gb: ram_bytes.and_then(|n| u32::try_from(n.div_ceil(1024 * 1024 * 1024)).ok()),
     }
@@ -150,5 +253,15 @@ mod tests {
     #[test]
     fn sdk_layouts_match_windows_abi() {
         assert_eq!(std::mem::size_of::<MemoryStatus>(), 64);
+        assert_eq!(
+            std::mem::offset_of!(FactoryVtable, enumerate),
+            12 * std::mem::size_of::<usize>()
+        );
+        assert_eq!(
+            std::mem::offset_of!(AdapterVtable, description),
+            10 * std::mem::size_of::<usize>()
+        );
+        #[cfg(target_pointer_width = "64")]
+        assert_eq!(std::mem::size_of::<AdapterDesc>(), 312);
     }
 }

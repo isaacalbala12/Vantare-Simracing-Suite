@@ -3,6 +3,7 @@ import corpus from "../src/contract/generated/corpus/onboarding.json";
 import {
   onboardingCpuLimit,
   onboardingEquipmentCountMax,
+  onboardingGpuUtf16Limit,
 } from "../src/contract/generated/onboarding";
 import { isOnboarding } from "../src/contract/modules/onboarding";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
@@ -356,3 +357,42 @@ it.each(["onboarding-3", "onboarding-5"])(
     });
   },
 );
+it("bounds the GPU name by the native DXGI UTF-16 buffer and rejects identifiers", () => {
+  const message = createMockHost("onboarding-base")({
+    kind: "request",
+    id: 1,
+    request: { method: "onboarding.get" },
+  });
+  if (
+    message?.kind !== "response" ||
+    message.result.method !== "onboarding.get"
+  )
+    throw new Error("view");
+  const view = message.result.value;
+  for (const gpu of [
+    null,
+    "RTX 3070",
+    "x".repeat(onboardingGpuUtf16Limit),
+    "🏎".repeat(onboardingGpuUtf16Limit / 2),
+  ])
+    expect(
+      isOnboarding({ ...view, equipment: { ...view.equipment, gpu } }),
+    ).toBe(true);
+  for (const gpu of [
+    "",
+    " ",
+    "x".repeat(onboardingGpuUtf16Limit + 1),
+    "🏎".repeat(onboardingGpuUtf16Limit / 2 + 1),
+    "\ud800",
+    42,
+  ])
+    expect(
+      isOnboarding({ ...view, equipment: { ...view.equipment, gpu } }),
+    ).toBe(false);
+  expect(
+    isOnboarding({
+      ...view,
+      equipment: { ...view.equipment, luid: "device-id" },
+    }),
+  ).toBe(false);
+});

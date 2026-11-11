@@ -17,6 +17,8 @@ pub fn layout_revision<'de, D: serde::Deserializer<'de>>(
 pub const PRICES_URL: &str = "https://vantare.app/#precios";
 pub const KIT_LIMIT: usize = 10;
 pub const CPU_LIMIT: usize = 128;
+// DXGI_ADAPTER_DESC1.Description, as in the frozen GPUI detector.
+pub const GPU_UTF16_LIMIT: usize = 128;
 pub const EQUIPMENT_COUNT_MAX: u32 = u32::MAX;
 pub const REVISION_PATTERN: &str = "^[0-9a-f]{64}$";
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -126,6 +128,7 @@ pub fn kits() -> [&'static [WidgetKind]; 4] {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Equipment {
     pub cpu: Option<String>,
+    pub gpu: Option<String>,
     pub cores: Option<u32>,
     pub ram_gb: Option<u32>,
     #[serde(skip)]

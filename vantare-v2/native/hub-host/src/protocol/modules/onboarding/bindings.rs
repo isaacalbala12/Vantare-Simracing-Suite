@@ -12,6 +12,11 @@ pub(crate) fn typescript() -> String {
     );
     constants!(
         &mut text,
+        "onboardingGpuUtf16Limit",
+        crate::onboarding::GPU_UTF16_LIMIT
+    );
+    constants!(
+        &mut text,
         "onboardingEquipmentCountMax",
         crate::onboarding::EQUIPMENT_COUNT_MAX
     );

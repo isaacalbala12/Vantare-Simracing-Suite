@@ -14,10 +14,17 @@ Una actualización desde sesión privada persiste también `crashes=false, crash
 
 Los kits Pro conservan el comportamiento de GPUI sin guarda de licencia en el asistente; #2096 sigue la verificación del bloqueo efectivo del overlay sin derecho. No se cambia el núcleo en este bloque.
 
-La GPU está omitida conforme a §c.4 de `07-onboarding.md`, pero el código GPUI `shell/onboarding/view.rs` sí muestra `Equipment::labels()[1]`. Es una contradicción del diseño señalada al orquestador; no se añade una detección nueva sin resolverla.
+La decisión del orquestador es seguir la paridad del GPUI: el equipo incluye también la GPU; prevalece sobre la omisión de §c.4 de `07-onboarding.md`.
 
 El número definitivo es v21, confirmado por el orquestador tras la segunda review de consentimiento, sobre nightly v20. `OnboardingView.privateSession` y `pending` permiten al dueño de Acceso ordenar onboarding → privacidad → acceso: salir en privado no equivale a completar ajustes y se vuelve a ofrecer el asistente al reiniciar.
 
 El equipo local no se envía a servicios: CPU acotada y sin controles, núcleos y GiB redondeados. Rust conserva los bytes exactos de RAM para recomendar Ahorro con menos de 8 GiB o cuatro núcleos o menos; un dato ausente no inventa insuficiencia. El descubrimiento reutiliza el Reader de Launcher. `mail.set` conserva el origen cerrado onboarding/settings y la cola `Session::request_remote`.
 
 La fixture `native/hub-host/data/onboarding-presentation.json` sigue ligada al API real de `vantare_ui::layout::Presentation::show` mediante exportador y test de UI sin App ni ventana; el anfitrión compara los mismos bytes sin depender de UI. Las referencias de los ocho pasos permanecen en la evidencia de `isa-1995-b-onboarding-datos/references`, con sus recibos. 7b entrega marco y pasos 0–2; 7c reutilizará Apariencia, Privacidad y Cuenta para 3–7. No se incorporan mejoras de §g.
+
+
+GPU: el anfitrión porta la misma detección local del GPUI: CreateDXGIFactory1,
+EnumAdapters1 (hasta 32), GetDesc1 y primer adaptador no software con nombre no
+vacío. El búfer contiene 128 unidades UTF-16, termina en NUL y recorta los extremos.
+No salen identificadores de adaptador, números de serie, rutas ni memoria de vídeo.
+No requiere GPUI, vantare-ui ni una dependencia Cargo nueva; enlaza DXGI del SDK.

@@ -34,6 +34,10 @@ assert.ok(
 );
 const currentOnly = option("--current");
 const selected = option("--scene");
+assert.ok(
+  !args.includes("--capture-expanded-sidebar") || !currentOnly,
+  "Expanded sidebar requires a live capture",
+);
 const schemes =
   option("--theme", "both") === "both"
     ? ["dark", "light"]
@@ -116,6 +120,9 @@ for (const scheme of schemes) {
         capture: entry,
         currentPngSha256: digest(current),
         suppliedCapture: Boolean(currentOnly),
+        additionalCaptures: args.includes("--capture-expanded-sidebar")
+          ? ["expanded-sidebar.png"]
+          : [],
       });
     } catch (error) {
       report.push({ scene, scheme, status: "failed", reason: String(error) });
@@ -288,21 +295,57 @@ async function capture(
     );
     await session.detach();
     // PrintWindow includes window controls; CDP screenshots omit native titleBarOverlay.
-    execFileSync(
-      "pwsh",
-      [
-        "-NoProfile",
-        "-File",
-        resolve("scripts/visual-diff/capture.ps1"),
-        "-ProcessId",
-        String(child.pid),
-        "-Executable",
-        executable,
-        "-Output",
-        join(destination, "current.png"),
-      ],
-      { windowsHide: true },
-    );
+    const saveWindow = (filename: string) =>
+      execFileSync(
+        "pwsh",
+        [
+          "-NoProfile",
+          "-File",
+          resolve("scripts/visual-diff/capture.ps1"),
+          "-ProcessId",
+          String(child.pid),
+          "-Executable",
+          executable,
+          "-Output",
+          join(destination, filename),
+        ],
+        { windowsHide: true },
+      );
+    saveWindow("current.png");
+    if (args.includes("--capture-expanded-sidebar")) {
+      const nav = page.locator(".v-sidebar");
+      await nav.waitFor();
+      if (
+        await nav.evaluate((node) =>
+          node.classList.contains("v-sidebar--collapsed"),
+        )
+      )
+        await page.keyboard.press("Control+b");
+      await until(
+        async () => (await nav.boundingBox())?.width === 272,
+        5000,
+        "expanded sidebar",
+      );
+      await page
+        .getByRole("region", { name: "Perfiles", exact: true })
+        .waitFor();
+      await page.mouse.move(600, 890);
+      saveWindow("expanded-sidebar.png");
+      await writeFile(
+        join(destination, "expanded-sidebar.json"),
+        JSON.stringify(
+          {
+            sidebarWidth: 272,
+            viewport: [1440, 900],
+            reference: null,
+            comparison:
+              "Not compared: the scene reference has a collapsed sidebar",
+          },
+          null,
+          2,
+        ),
+      );
+    }
     return await readFile(join(destination, "current.png"));
   } finally {
     // A dirty native close guard can veto Browser.close. Bound QA teardown and

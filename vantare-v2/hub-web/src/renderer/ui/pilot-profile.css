@@ -3,6 +3,7 @@
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 20px;
   align-items: start;
+  overflow: hidden;
   padding-bottom: 14px;
 }
 .v-pilot-editor {
@@ -20,7 +21,9 @@
   background: var(--grad-neo);
   border: 1px solid var(--line-1);
   border-radius: 14px;
-  box-shadow: var(--shadow-neo);
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-neo);
 }
 .v-pilot-card {
   padding: 20px;

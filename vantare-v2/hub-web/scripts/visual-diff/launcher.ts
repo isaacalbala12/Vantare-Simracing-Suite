@@ -130,3 +130,21 @@ launcherScenes["launcher-decision"] = {
     assert.ok(reachable, "Window controls must stay uncovered");
   },
 };
+
+launcherScenes["launcher-decision-sidebar"] = {
+  mock: "launcher-decision",
+  async prepare(page) {
+    await launcherScenes["launcher-decision"].prepare(page);
+    await page.keyboard.press("Control+b");
+    await page.locator(".v-sidebar--collapsed").waitFor({ state: "detached" });
+    assert.equal(
+      await page
+        .locator(".v-sidebar")
+        .evaluate((node) => node.getBoundingClientRect().width),
+      272,
+    );
+    await page
+      .getByRole("dialog", { name: "Decisión de lanzamiento", exact: true })
+      .waitFor();
+  },
+};

@@ -297,3 +297,26 @@ it("enters privately only after a failed durable save and an accepted host respo
     ),
   ).toBe(false);
 });
+
+it("requires a nonempty kit after skipping from an empty style selection", async () => {
+  respond("onboarding-sin-diseno");
+  mount(true, true);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(start);
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Carreras online" }));
+  fireEvent.click(screen.getByRole("button", { name: "Saltar" }));
+  expect(await screen.findByRole("alert")).toHaveProperty(
+    "textContent",
+    "Selecciona al menos un estilo.",
+  );
+  expect(
+    screen.getByRole("button", { name: "Terminar" }).hasAttribute("disabled"),
+  ).toBe(true);
+  expect(
+    fake.request.mock.calls.some(
+      ([request]) => request.method === "privacy.update",
+    ),
+  ).toBe(false);
+});

@@ -4,7 +4,7 @@ import type { VisualScene } from "./scenes.ts";
 // Navigation belongs to the QA adapter. The actual Intro components never read
 // capture scene names, query strings, clocks, or reference image state.
 export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
-  [0, 1, 2].map((step) => [
+  [0, 1, 2, 3, 4, 5].map((step) => [
     `onboarding-${step}`,
     {
       mock: `onboarding-${step}`,
@@ -21,12 +21,24 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
           await page
             .getByRole("button", { name: "Empezar", exact: true })
             .click();
-        if (step === 2)
+        if (step >= 2)
+          await page
+            .getByRole("button", { name: "Continuar", exact: true })
+            .click();
+        if (step >= 3)
+          await page
+            .getByRole("button", { name: "Continuar", exact: true })
+            .click();
+        if (step >= 4)
+          await page
+            .getByRole("button", { name: "Ahora no", exact: true })
+            .click();
+        if (step >= 5)
           await page
             .getByRole("button", { name: "Continuar", exact: true })
             .click();
         const primary = page.getByRole("button", {
-          name: step === 0 ? "Empezar" : "Continuar",
+          name: step === 0 ? "Empezar" : step === 3 ? "Ahora no" : "Continuar",
           exact: true,
         });
         await primary.hover();

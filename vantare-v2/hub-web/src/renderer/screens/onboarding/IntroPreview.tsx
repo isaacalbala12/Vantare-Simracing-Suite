@@ -145,6 +145,7 @@ export function OnboardingIntroPreview({
     !!query.data &&
     !query.error &&
     canAdvance(step, simulators, styles) &&
+    !(full && step >= 6 && !styles.some(Boolean)) &&
     !settings.pending &&
     !completion.pending &&
     !(
@@ -285,15 +286,17 @@ export function OnboardingIntroPreview({
         }
         loading={!query.data && !query.error}
         error={
-          query.error
-            ? t.unavailable
-            : full && completion.error
-              ? completion.error
-              : settings.error
-                ? translate("settings.failed")
-                : step === 3 && pricesError
-                  ? stepsText.pricesFailed
-                  : undefined
+          full && step >= 6 && !styles.some(Boolean)
+            ? t.noStyle
+            : query.error
+              ? t.unavailable
+              : full && completion.error
+                ? completion.error
+                : settings.error
+                  ? translate("settings.failed")
+                  : step === 3 && pricesError
+                    ? stepsText.pricesFailed
+                    : undefined
         }
         signed={account.signedIn}
         pending={settings.pending || completion.pending}

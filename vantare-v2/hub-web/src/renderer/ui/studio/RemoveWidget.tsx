@@ -8,6 +8,11 @@ export function RemoveWidget() {
     view = state.view;
   const item = view?.instances.find((item) => item.id === state.removing);
   if (!view || !item) return null;
+  const disabled =
+    state.pending ||
+    view.state !== "ready" ||
+    view.plan === "unverified" ||
+    item.locked;
   return (
     <Dialog.Root
       open={!!item}
@@ -33,6 +38,7 @@ export function RemoveWidget() {
             <Button
               variant="danger"
               busy={state.pending}
+              disabled={disabled}
               onClick={() => {
                 state.setRemoving(null);
                 void state

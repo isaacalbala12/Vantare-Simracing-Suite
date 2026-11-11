@@ -118,7 +118,7 @@ export function CalendarAlertsDialog(p: Props) {
                   <div className="v-calendar-alerts-auto">
                     <Switch
                       hideLabel
-                      label={text.auto(p.profile ?? "Perfil")}
+                      label={text.auto(p.profile ?? text.defaultProfile)}
                       checked={p.alerts.autoLaunch}
                       disabled={disabled || !p.alerts.autoLaunch}
                       onCheckedChange={(value) => {
@@ -126,7 +126,7 @@ export function CalendarAlertsDialog(p: Props) {
                       }}
                     />
                     <div>
-                      <strong>{text.auto(p.profile ?? "Perfil")}</strong>
+                      <strong>{text.auto(p.profile ?? text.defaultProfile)}</strong>
                       <p>{text.autoHint}</p>
                     </div>
                   </div>
@@ -292,6 +292,8 @@ function Channel({
     >
       <BaseCheckbox.Root
         id={id}
+        aria-labelledby={`${id}-title`}
+        aria-describedby={`${id}-hint`}
         className="v-checkbox"
         checked={value}
         disabled={disabled}
@@ -302,8 +304,8 @@ function Channel({
         </BaseCheckbox.Indicator>
       </BaseCheckbox.Root>
       <div>
-        <strong>{label}</strong>
-        <p>{hint}</p>
+        <strong id={`${id}-title`}>{label}</strong>
+        <p id={`${id}-hint`}>{hint}</p>
       </div>
     </label>
   );

@@ -1,4 +1,5 @@
 export const calendarAlertsText = {
+  defaultProfile: "Perfil",
   title: "Avisos",
   subtitle: "Te avisamos antes de que salga la carrera que elijas.",
   close: "Cerrar (Esc)",

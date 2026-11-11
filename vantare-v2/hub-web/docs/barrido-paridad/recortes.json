@@ -1,5 +1,37 @@
 [
   {
+    "id": "M03",
+    "owner": "marco compartido",
+    "priority": "P2 visual",
+    "theme": "light",
+    "scene": "launcher-base",
+    "expanded": false,
+    "rect": [0, 52, 76, 115],
+    "description": "En claro, la entrada activa del raíl pierde la sombra suave que sí aparece en GPUI.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\light\\launcher-base-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\launcher-base\\light\\launcher-base\\sidebar-collapsed.png",
+    "sha256": [
+      "173c0348819e3ba57c4ca5b188d49f22e77159b582743a3fc07ddf49c229e42b",
+      "229523b56a9c4ea123dc0f0c330b0603a9a513d061c72f7010af30ebc4a92528"
+    ]
+  },
+  {
+    "id": "C01",
+    "owner": "pantalla de C · Launcher",
+    "priority": "P2 visual",
+    "theme": "light",
+    "scene": "launcher-base",
+    "expanded": false,
+    "rect": [100, 350, 996, 395],
+    "description": "En claro, los pasos del perfil favorito quedan mucho más transparentes y las tarjetas de perfiles pierden la sombra inferior; se distinguen a simple vista.",
+    "reference": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\references\\light\\launcher-base-collapsed.png",
+    "current": "D:\\VantareServer\\evidence\\hub-web\\barrido-paridad\\captures\\launcher-base\\light\\launcher-base\\sidebar-collapsed.png",
+    "sha256": [
+      "173c0348819e3ba57c4ca5b188d49f22e77159b582743a3fc07ddf49c229e42b",
+      "229523b56a9c4ea123dc0f0c330b0603a9a513d061c72f7010af30ebc4a92528"
+    ]
+  },
+  {
     "id": "M01",
     "owner": "marco compartido",
     "priority": "P2 visual",

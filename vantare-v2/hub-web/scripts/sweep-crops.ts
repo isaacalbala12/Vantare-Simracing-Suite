@@ -7,6 +7,28 @@ const root =
   process.argv[2] ?? "D:/VantareServer/evidence/hub-web/barrido-paridad";
 const specifications = [
   {
+    id: "M03",
+    owner: "marco compartido",
+    priority: "P2 visual",
+    theme: "light",
+    scene: "launcher-base",
+    expanded: false,
+    rect: [0, 52, 76, 115],
+    description:
+      "En claro, la entrada activa del raíl pierde la sombra suave que sí aparece en GPUI.",
+  },
+  {
+    id: "C01",
+    owner: "pantalla de C · Launcher",
+    priority: "P2 visual",
+    theme: "light",
+    scene: "launcher-base",
+    expanded: false,
+    rect: [100, 350, 996, 395],
+    description:
+      "En claro, los pasos del perfil favorito quedan mucho más transparentes y las tarjetas de perfiles pierden la sombra inferior; se distinguen a simple vista.",
+  },
+  {
     id: "M01",
     owner: "marco compartido",
     priority: "P2 visual",
@@ -72,13 +94,14 @@ await mkdir(join(root, "recortes"), { recursive: true });
 await mkdir("docs/barrido-paridad/recortes", { recursive: true });
 for (const specification of specifications) {
   const { scene, expanded, rect, id } = specification;
+  const theme = specification.theme ?? "dark";
   const mode = expanded ? "expanded" : "collapsed";
-  let reference = join(root, "references", "dark", `${scene}-${mode}.png`);
+  let reference = join(root, "references", theme, `${scene}-${mode}.png`);
   try {
     await readFile(reference);
   } catch {
     reference = join(
-      "D:/VantareServer/evidence/hub-web/referencia-gpui/dark",
+      `D:/VantareServer/evidence/hub-web/referencia-gpui/${theme}`,
       `${scene}.png`,
     );
   }
@@ -86,7 +109,7 @@ for (const specification of specifications) {
     root,
     "captures",
     scene,
-    "dark",
+    theme,
     scene,
     `sidebar-${mode}.png`,
   );

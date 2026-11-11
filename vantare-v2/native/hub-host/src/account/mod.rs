@@ -160,8 +160,8 @@ impl State {
             modules,
             email: form.map(|f| f.view(now)),
             copy_link: CopyLinkView {
-                available: self.can_copy(),
-                copied: self.can_copy() && self.reducer.manual.copied,
+                available: self.can_copy() && clipboard::configured(),
+                copied: self.can_copy() && clipboard::configured() && self.reducer.manual.copied,
             },
             error: self.reducer.error.as_deref().map(clean),
             notice: self.notice.clone(),
@@ -241,8 +241,7 @@ impl State {
         self.reducer.logout_requested() || self.pending.contains(&Operation::Logout)
     }
     pub fn can_copy(&self) -> bool {
-        clipboard::configured()
-            && self.reducer.manual.available
+        self.reducer.manual.available
             && self.reducer.login_requested
             && !self.canceling()
             && !self.logging_out()

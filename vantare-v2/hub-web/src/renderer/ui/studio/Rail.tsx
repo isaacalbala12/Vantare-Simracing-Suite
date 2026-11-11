@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { OverlayInstance } from "../../../contract/generated/contract";
 import {
   studioAddAvailable,
+  studioCategories,
   studioLimits,
 } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
@@ -256,7 +257,7 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
         onChange={setSearch}
       />
       <div className="v-studio-categories">
-        {t.categories.map((value) => (
+        {studioCategories.map((value) => (
           <Button
             size="sm"
             variant="ghost"

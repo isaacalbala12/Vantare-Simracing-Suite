@@ -144,6 +144,13 @@
   width: 16px;
   height: 16px;
   object-fit: contain;
+
+  display: inline-block;
+  flex: none;
+  background: var(--text-2);
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
 }
 .v-studio-overlay strong {
   display: block;
@@ -425,13 +432,4 @@
   border: 0;
   margin: 0;
   padding: 0;
-}
-
-.v-studio-widget-icon {
-  display: inline-block;
-  flex: none;
-  background: var(--text-2);
-  mask-size: contain;
-  mask-position: center;
-  mask-repeat: no-repeat;
 }

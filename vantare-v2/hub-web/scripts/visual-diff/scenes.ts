@@ -9,6 +9,7 @@ import { notificationScenes } from "./notifications.ts";
 import { pilotScenes } from "./pilot.ts";
 import { privacyScenes } from "./privacy.ts";
 import { roadmapScenes } from "./roadmap.ts";
+import { studioScenes } from "./studio.ts";
 import { testingScenes } from "./testing-scenes.ts";
 import { upcomingScenes } from "./upcoming.ts";
 
@@ -25,7 +26,7 @@ const settingsTabs: Record<string, string> = {
   "ajustes-atajos": "Atajos",
   "ajustes-actualizaciones": "Actualizaciones",
   "ajustes-privacidad": "Privacidad",
-  "ajustes-diagnostico": "Diagnóstico",
+  "ajustes-diagnostico": "DiagnÃ³stico",
 };
 // Each screen worker adds its own module, imported here. No fallback to another scene.
 export const visualScenes: Record<string, VisualScene> = {
@@ -41,6 +42,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...roadmapScenes,
   ...notificationScenes,
   ...launcherScenes,
+  ...studioScenes,
   ...Object.fromEntries(
     Object.entries(settingsTabs).map(([scene, tab]) => [
       scene,

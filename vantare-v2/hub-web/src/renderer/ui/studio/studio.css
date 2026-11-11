@@ -649,7 +649,7 @@
 [data-scheme="light"]
   .v-studio-topbar
   :is(.v-studio-obs-button, .v-studio-edit-button) {
-  border: 1px solid var(--line-2);
+  border: 1px solid color-mix(in srgb, var(--text-3) 45%, transparent);
   background: var(--surface-1);
 }
 

@@ -264,7 +264,7 @@ Wire 19. Esta entrega solo modifica UTC,
 seguimiento y `notifyWeek`; editor de avisos, ICS y feed van aparte. Lanzamiento
 diferido pendiente en #2089. Sin cambios en IPC, services, runtime o derechos.
 
-## Studio (`studio`, v17)
+## Studio (`studio`, v18)
 
 El módulo ofrece `studio.get`, tema `studio`, `visibility`, `add`, `remove`,
 `instance`, `undo`, `redo` y `track`. Todas las escrituras del diseño requieren

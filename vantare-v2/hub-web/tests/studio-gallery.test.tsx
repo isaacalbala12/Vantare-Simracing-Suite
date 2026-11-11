@@ -1,0 +1,205 @@
+// @vitest-environment jsdom
+
+import { CSPProvider } from "@base-ui/react/csp-provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { HostProvider } from "../src/renderer/app/Host";
+import { Client } from "../src/renderer/bridge/client";
+import { studioText as t } from "../src/renderer/i18n/studio";
+import { StudioProvider } from "../src/renderer/screens/studio/state";
+import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { Gallery } from "../src/renderer/ui/studio/Gallery";
+import { StudioRail } from "../src/renderer/ui/studio/Rail";
+
+const caches: QueryClient[] = [];
+beforeAll(async () => {
+  await import("../src/mock/host");
+});
+beforeEach(() =>
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  })),
+);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  caches.forEach((c) => {
+    c.clear();
+  });
+  caches.length = 0;
+  vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/");
+});
+function mount(scene = "studio-base") {
+  window.history.replaceState(null, "", `/?escena=${scene}`);
+  const cache = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  caches.push(cache);
+  render(
+    <QueryClientProvider client={cache}>
+      <HostProvider>
+        <CSPProvider disableStyleElements>
+          <TooltipProvider>
+            <StudioProvider>
+              <Gallery />
+              <StudioRail />
+            </StudioProvider>
+          </TooltipProvider>
+        </CSPProvider>
+      </HostProvider>
+    </QueryClientProvider>,
+  );
+}
+describe("Studio gallery", () => {
+  it("toggles membership with a revision and offers no geometry controls", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const card = await screen.findByRole("button", {
+      name: "Standings",
+    });
+    const article = card.closest("article");
+    if (!article) throw new Error("Missing card");
+    fireEvent.click(
+      within(article).getByRole("button", { name: t.hideWidget }),
+    );
+    await waitFor(() =>
+      expect(
+        within(article).getByText(new RegExp(`^${t.hidden}`)),
+      ).toBeTruthy(),
+    );
+    const call = requests.mock.calls.find(
+      ([r]) => r.method === "studio.visibility",
+    )?.[0];
+    expect(call).toMatchObject({
+      method: "studio.visibility",
+      id: "widget-1",
+      visible: false,
+      baseRevision: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: t.edit }).hasAttribute("disabled"),
+    ).toBe(true);
+  });
+  it("adds from the catalog and undoes only that addition", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-vacio");
+    await screen.findByText(t.empty);
+    const catalogButton = await screen.findByRole("button", {
+      name: /Standings/,
+    });
+    fireEvent.click(catalogButton);
+    await screen.findByText(t.added);
+    expect(
+      await screen.findByRole("button", { name: "Standings" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: t.undo }));
+    await screen.findByText(t.empty);
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === "studio.add"),
+    ).toHaveLength(1);
+  });
+  it("keeps protected and missing layouts read-only", async () => {
+    mount("studio-missing");
+    await screen.findByText(t.missingHelp);
+    expect(
+      screen.getByRole("button", { name: t.show }).hasAttribute("disabled"),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Standings" })).toBeNull();
+  });
+  it("searches descriptions without accents and blocks locked choices", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-pro-bloqueado");
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("button", { name: t.addShort }));
+    const search = await screen.findByRole("searchbox", { name: t.search });
+    fireEvent.change(search, { target: { value: "clasificacion" } });
+    expect(
+      screen.getByRole("button", { name: "Añadir Standings" }),
+    ).toBeTruthy();
+    fireEvent.change(search, { target: { value: "telemetria de entrada" } });
+    const widget = screen.getByRole("button", {
+      name: "Añadir Telemetría de entrada",
+    });
+    expect(widget.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(widget);
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === "studio.add"),
+    ).toHaveLength(0);
+    fireEvent.change(search, { target: { value: "no existe este widget" } });
+    expect(screen.getByText(t.noResults)).toBeTruthy();
+  });
+  it("keeps visibility keyboard actions and track requests independent of geometry", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const card = await screen.findByRole("button", {
+      name: "Standings",
+    });
+    card.focus();
+    fireEvent.keyDown(card, { key: " " });
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(([r]) => r.method === "studio.visibility"),
+      ).toBe(true),
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      await screen.findByRole("searchbox", { name: t.search }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: t.show }));
+    await screen.findByRole("button", { name: t.hide });
+    expect(
+      requests.mock.calls.find(([r]) => r.method === "studio.track")?.[0],
+    ).toEqual({ method: "studio.track", show: true });
+  });
+  it("moves between cards with arrows and returns from the inspector with Escape", async () => {
+    mount();
+    const first = await screen.findByRole("button", { name: "Standings" });
+    const next = screen.getByRole("button", { name: "Delta" });
+    first.focus();
+    fireEvent.keyDown(first, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(next);
+    fireEvent.click(next);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Delta" }),
+      ),
+    );
+    fireEvent.keyDown(document.activeElement ?? window, { key: "Escape" });
+    await screen.findByRole("searchbox", { name: t.search });
+    expect(document.activeElement).toBe(
+      screen.getByRole("searchbox", { name: t.search }),
+    );
+  });
+  it("can withdraw overlays even when the layout is protected and rights expired", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-protegido-mostrando");
+    const hide = await screen.findByRole("button", { name: t.hide });
+    expect(hide.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(hide);
+    const show = await screen.findByRole("button", { name: t.show });
+    expect(show.hasAttribute("disabled")).toBe(true);
+    expect(
+      requests.mock.calls.find(([r]) => r.method === "studio.track")?.[0],
+    ).toEqual({ method: "studio.track", show: false });
+  });
+});

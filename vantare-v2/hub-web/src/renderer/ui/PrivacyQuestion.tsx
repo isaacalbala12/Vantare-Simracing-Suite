@@ -22,61 +22,69 @@ export function PrivacyQuestion({
   onPolicy: () => void;
 }) {
   const reject = useRef<HTMLButtonElement>(null);
+  const container = useRef<HTMLDivElement>(null);
   return (
-    <Dialog.Root
-      open
-      modal="trap-focus"
-      disablePointerDismissal
-      onOpenChange={(_open, event) => event.cancel()}
-    >
-      <Dialog.Popup
-        className="v-privacy-question"
-        initialFocus={reject}
-        aria-label={usage ? text.usageLabel : text.crashesLabel}
+    <div ref={container} className="v-privacy-question-anchor">
+      <Dialog.Root
+        open
+        modal="trap-focus"
+        disablePointerDismissal
+        onOpenChange={(_open, event) => event.cancel()}
       >
-        <Dialog.Title className="v-privacy-question-title">
-          <TrackedCaps>{text.title}</TrackedCaps>
-        </Dialog.Title>
-        <div className="v-privacy-question-body">
-          <h2>{usage ? text.usageQuestion : text.crashesQuestion}</h2>
-          <Dialog.Description>
-            {usage ? text.usageDescription : text.crashesDescription}
-          </Dialog.Description>
-          <p>{text.optional}</p>
-          {error && <p role="alert">{error}</p>}
-          <div className="v-privacy-question-actions">
-            <Button
-              ref={reject}
-              aria-busy={pending || undefined}
-              onClick={() => {
-                if (!pending) onDecide(false);
-              }}
-            >
-              {text.reject}
-            </Button>
-            <Button
-              aria-busy={pending || undefined}
-              onClick={() => {
-                if (!pending) onDecide(usage ? checked : true);
-              }}
-            >
-              {usage ? text.continue : text.accept}
-            </Button>
-          </div>
-          <div className="v-privacy-question-policy">
-            <Button onClick={onPolicy}>{text.policy}</Button>
-          </div>
-          {usage && (
-            <div className="v-privacy-question-check">
-              <Checkbox
-                label={text.usage}
-                checked={checked}
-                onCheckedChange={onChecked}
-              />
+        <Dialog.Portal
+          container={container}
+          className="v-privacy-question-portal"
+        >
+          <Dialog.Popup
+            className="v-privacy-question"
+            initialFocus={reject}
+            aria-label={usage ? text.usageLabel : text.crashesLabel}
+          >
+            <Dialog.Title className="v-privacy-question-title">
+              <TrackedCaps>{text.title}</TrackedCaps>
+            </Dialog.Title>
+            <div className="v-privacy-question-body">
+              <h2>{usage ? text.usageQuestion : text.crashesQuestion}</h2>
+              <Dialog.Description>
+                {usage ? text.usageDescription : text.crashesDescription}
+              </Dialog.Description>
+              <p>{text.optional}</p>
+              {error && <p role="alert">{error}</p>}
+              <div className="v-privacy-question-actions">
+                <Button
+                  ref={reject}
+                  aria-busy={pending || undefined}
+                  onClick={() => {
+                    if (!pending) onDecide(false);
+                  }}
+                >
+                  {text.reject}
+                </Button>
+                <Button
+                  aria-busy={pending || undefined}
+                  onClick={() => {
+                    if (!pending) onDecide(usage ? checked : true);
+                  }}
+                >
+                  {usage ? text.continue : text.accept}
+                </Button>
+              </div>
+              <div className="v-privacy-question-policy">
+                <Button onClick={onPolicy}>{text.policy}</Button>
+              </div>
+              {usage && (
+                <div className="v-privacy-question-check">
+                  <Checkbox
+                    label={text.usage}
+                    checked={checked}
+                    onCheckedChange={onChecked}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </Dialog.Popup>
-    </Dialog.Root>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </div>
   );
 }

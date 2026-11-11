@@ -4,6 +4,7 @@ import type { PerformanceLevel } from "../../../contract/generated/settings";
 import { useHost } from "../../app/Host";
 import { useSettings } from "../../app/SettingsState";
 import { WindowControls } from "../../app/WindowControls";
+import { accountText } from "../../i18n/account.es";
 import { t as translate } from "../../i18n/es";
 import { onboardingText as t } from "../../i18n/onboarding";
 import { onboardingStepsText as stepsText } from "../../i18n/onboarding-pasos";
@@ -181,7 +182,19 @@ export function OnboardingIntroPreview({
     <OnboardingViewport>
       <OnboardingFrame
         step={step}
-        message={voice.text}
+        message={
+          step === 3
+            ? account.blocked
+              ? stepsText.accountBlocked
+              : account.failed
+                ? accountText.failed
+                : account.checking
+                  ? stepsText.accountChecking
+                  : account.signedIn
+                    ? stepsText.signedSay
+                    : stepsText.accountSay
+            : voice.text
+        }
         messageRevision={voice.revision}
         emotion={
           (step === 1 && !simulators.some(Boolean)) ||

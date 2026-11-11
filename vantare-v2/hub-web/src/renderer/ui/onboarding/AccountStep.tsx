@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { accountText } from "../../i18n/account.es";
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import "./account-step.css";
@@ -17,8 +18,10 @@ export const signedOutAccount: OnboardingAccountStatus = {
 };
 export function AccountStep({
   value = signedOutAccount,
+  actions,
 }: {
   value?: OnboardingAccountStatus;
+  actions?: ReactNode;
 }) {
   const message = value.blocked
     ? text.accountBlocked
@@ -34,7 +37,8 @@ export function AccountStep({
           : text.accountUnavailable;
   return (
     <div className="v-ob-account" data-guest={!value.signedIn}>
-      <p>{message}</p>
+      {(value.signedIn || !actions) && <p>{message}</p>}
+      {actions}
       <p className="v-ob-account-note">{text.accountLocal}</p>
     </div>
   );

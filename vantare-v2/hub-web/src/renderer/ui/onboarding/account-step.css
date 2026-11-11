@@ -20,3 +20,40 @@
 .v-ob-account[data-guest="true"] .v-ob-account-note {
   margin-top: auto;
 }
+
+.v-onboarding .v-ob-account-action {
+  height: calc(52 * var(--ob-unit));
+  min-height: 0;
+  padding: 0 calc(26 * var(--ob-unit));
+  border: 1px solid var(--ob-c-3e3538);
+  border-radius: calc(10 * var(--ob-unit));
+  background: var(--ob-c-121011);
+  color: var(--text-1);
+  box-shadow: none;
+  font-size: calc(16 * var(--ob-unit));
+  font-weight: 600;
+}
+.v-ob-account-action > .v-button-label {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--ob-unit));
+  width: 100%;
+  text-align: left;
+}
+.v-ob-account-action img {
+  width: calc(18 * var(--ob-unit));
+  height: calc(18 * var(--ob-unit));
+}
+.v-ob-account-action .v-button-label > span {
+  margin-left: auto;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.v-onboarding .v-ob-account-action:is(:hover, :active):not(:disabled) {
+  background: var(--ob-c-121011);
+}
+.v-ob-account-action:focus-visible {
+  outline: 2px solid var(--ob-c-faf7f7);
+  outline-offset: -2px;
+}

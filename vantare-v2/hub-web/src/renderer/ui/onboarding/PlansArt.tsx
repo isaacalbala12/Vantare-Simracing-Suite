@@ -7,9 +7,13 @@ import { Button } from "../Button";
 import "./plans-art.css";
 export function PlansArt({
   onPrices,
+  onPro,
+  proDescription,
   pending = false,
 }: {
   onPrices: () => void;
+  onPro?: () => void;
+  proDescription?: string;
   pending?: boolean;
 }) {
   const cards = [
@@ -62,9 +66,13 @@ export function PlansArt({
             ))}
             <Button
               className="v-ob-plan-select"
-              aria-description={text.externalPage}
+              aria-description={
+                card.id === "pro"
+                  ? (proDescription ?? text.externalPage)
+                  : text.externalPage
+              }
               disabled={pending}
-              onClick={onPrices}
+              onClick={card.id === "pro" ? (onPro ?? onPrices) : onPrices}
             >
               {card.action}
             </Button>

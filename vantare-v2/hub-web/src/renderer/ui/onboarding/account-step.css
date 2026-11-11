@@ -1,0 +1,22 @@
+.v-ob-account {
+  display: flex;
+  flex-direction: column;
+  gap: calc(12 * var(--ob-unit));
+  width: calc(440 * var(--ob-unit));
+}
+.v-ob-account p {
+  margin: 0;
+  font-size: calc(16 * var(--ob-unit));
+}
+.v-ob-account .v-ob-account-note {
+  color: var(--text-3);
+  font-size: calc(13.6 * var(--ob-unit));
+  line-height: calc(22 * var(--ob-unit));
+}
+
+.v-ob-account[data-guest="true"] {
+  min-height: calc(232 * var(--ob-unit));
+}
+.v-ob-account[data-guest="true"] .v-ob-account-note {
+  margin-top: auto;
+}

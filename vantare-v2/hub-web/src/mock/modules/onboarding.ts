@@ -20,7 +20,9 @@ export function create(context: MockContext): MockHandler {
     pending: active,
     simulators: [true, false],
     scanning: false,
-    equipment: { cpu: "Intel Core i5", cores: 6, ramGb: 16 },
+    equipment: context.visual
+      ? { cpu: "Ryzen 7 5800X", cores: 8, ramGb: 32 }
+      : { cpu: "Intel Core i5", cores: 6, ramGb: 16 },
     recommendedLevel: "balanced",
     layoutReady: context.sceneName !== "onboarding-sin-diseno",
     layoutRevision:

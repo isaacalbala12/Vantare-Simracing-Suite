@@ -3,7 +3,7 @@ import { contrastRange } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { paletteNames, specimen as t } from "../i18n/es";
 import { onboardingText } from "../i18n/onboarding";
-import { OnboardingIntroPreview } from "../screens/onboarding/IntroPreview";
+import { OnboardingAccountIntro } from "../screens/onboarding/AccountIntro";
 import { Button, IconButton } from "../ui/Button";
 import {
   Avatar,
@@ -52,7 +52,10 @@ export function Specimen() {
   if (onboardingOpen)
     return (
       <SettingsProvider>
-        <OnboardingIntroPreview onLeave={() => setOnboardingOpen(false)} />
+        <OnboardingAccountIntro
+          extended
+          onLeave={() => setOnboardingOpen(false)}
+        />
       </SettingsProvider>
     );
   const options = [

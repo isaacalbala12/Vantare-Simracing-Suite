@@ -7,7 +7,15 @@ const destination = new URL(
   import.meta.url,
 );
 await mkdir(destination, { recursive: true });
-for (const name of ["backdrop.svg", "helmet.svg", "panel.svg", "track.svg"]) {
+for (const name of [
+  "backdrop.svg",
+  "helmet.svg",
+  "panel.svg",
+  "track.svg",
+  "pro.png",
+  "plus.png",
+  "launch.png",
+]) {
   await cp(new URL(name, source), new URL(name, destination));
 }
 await cp(

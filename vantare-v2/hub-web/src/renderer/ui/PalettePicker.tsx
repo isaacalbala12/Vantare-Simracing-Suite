@@ -1,5 +1,7 @@
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
+import type { ReactNode } from "react";
+import { Icon } from "../assets/icons/Icon";
 import "./appearance-controls.css";
 import type { Palette } from "../../contract/generated/contract";
 export function PalettePicker({
@@ -9,8 +11,10 @@ export function PalettePicker({
   value,
   onChange,
   disabled,
+  preview,
 }: {
   label: string;
+  preview?: (palette: Palette) => ReactNode;
   pending?: boolean;
   options: { value: Palette; label: string }[];
   value: Palette;
@@ -39,18 +43,27 @@ export function PalettePicker({
           aria-label={option.label}
         >
           <span>{option.label}</span>
-          <span className="v-palette-orbs" aria-hidden="true">
-            <span
-              className="v-palette-orb"
-              data-palette={option.value}
-              data-scheme="light"
-            />
-            <span
-              className="v-palette-orb"
-              data-palette={option.value}
-              data-scheme="dark"
-            />
-          </span>
+          {preview ? (
+            preview(option.value)
+          ) : (
+            <span className="v-palette-orbs" aria-hidden="true">
+              <span
+                className="v-palette-orb"
+                data-palette={option.value}
+                data-scheme="light"
+              />
+              <span
+                className="v-palette-orb"
+                data-palette={option.value}
+                data-scheme="dark"
+              />
+            </span>
+          )}
+          {preview && (
+            <span className="v-palette-preview-check" aria-hidden="true">
+              {option.value === value && <Icon name="check" />}
+            </span>
+          )}
         </Radio.Root>
       ))}
     </RadioGroup>

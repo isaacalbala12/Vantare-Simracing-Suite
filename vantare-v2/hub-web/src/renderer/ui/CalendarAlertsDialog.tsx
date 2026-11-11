@@ -1,6 +1,7 @@
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { Dialog } from "@base-ui/react/dialog";
 import { type ReactNode, useId, useState } from "react";
+import { isCalendarAlerts } from "../../contract/calendar-config-validation";
 import {
   type CalendarAlerts,
   type CalendarBand,
@@ -71,6 +72,7 @@ export function CalendarAlertsDialog(p: Props) {
           </header>
           <div className="v-calendar-alerts-body">
             {p.failure}
+            {!isCalendarAlerts(p.alerts) && <p role="status">{text.legacy}</p>}
             <div className="v-calendar-alerts-columns">
               <section>
                 <Caption>{text.lead}</Caption>
@@ -156,67 +158,87 @@ export function CalendarAlertsDialog(p: Props) {
                   {text.yours}
                 </Caption>
                 <div className="v-calendar-alerts-list">
-                  {p.alerts.bands.map((band) => (
-                    <BandRow
-                      key={band.seriesId}
-                      band={band}
-                      name={name(band.seriesId)}
-                      canEdit={
-                        !disabled &&
-                        !!p.schedule?.series.some(
-                          (s) => s.id === band.seriesId && daily(s),
-                        )
-                      }
-                      canRemove={!disabled}
-                      editing={editing === band.seriesId}
-                      onEdit={() =>
-                        setEditing(
-                          editing === band.seriesId ? undefined : band.seriesId,
-                        )
-                      }
-                      onChange={p.onChange}
-                    />
-                  ))}
-                  {p.alerts.slots.map((slot) => (
-                    <div
-                      className="v-calendar-alerts-item"
-                      key={`${slot.seriesId}:${slot.at}`}
-                    >
-                      <i />
-                      <div>
-                        <strong>{name(slot.seriesId)}</strong>
-                        <p>
-                          {text.slot(
-                            relativeDay(
-                              civilDay(slot.at * 1000, 0, p.utc),
-                              p.now,
-                              p.utc,
-                            ),
-                            clock(slot.at * 1000, p.utc),
-                            clock(
-                              slot.at * 1000 - p.alerts.leadMin * 60_000,
-                              p.utc,
-                            ),
-                          )}
-                        </p>
-                      </div>
-                      <IconButton
-                        label={text.removeSlot}
-                        variant="ghost"
-                        disabled={disabled}
-                        onClick={() =>
-                          p.onChange({
-                            kind: "slot",
-                            id: slot.seriesId,
-                            at: slot.at,
-                            enabled: false,
-                          })
+                  {p.alerts.bands
+                    .filter(
+                      (band, index, all) =>
+                        all.findIndex(
+                          (candidate) => candidate.seriesId === band.seriesId,
+                        ) === index,
+                    )
+                    .map((band) => (
+                      <BandRow
+                        key={band.seriesId}
+                        band={band}
+                        name={name(band.seriesId)}
+                        canEdit={
+                          !disabled &&
+                          !!p.schedule?.series.some(
+                            (s) => s.id === band.seriesId && daily(s),
+                          )
                         }
+                        canRemove={!disabled}
+                        editing={editing === band.seriesId}
+                        onEdit={() =>
+                          setEditing(
+                            editing === band.seriesId
+                              ? undefined
+                              : band.seriesId,
+                          )
+                        }
+                        onChange={p.onChange}
+                      />
+                    ))}
+                  {p.alerts.slots
+                    .filter(
+                      (slot, index, all) =>
+                        all.findIndex(
+                          (candidate) =>
+                            candidate.seriesId === slot.seriesId &&
+                            candidate.at === slot.at,
+                        ) === index,
+                    )
+                    .map((slot) => (
+                      <div
+                        className="v-calendar-alerts-item"
+                        key={`${slot.seriesId}:${slot.at}`}
                       >
-                        <Icon name="x" />
-                      </IconButton>
-                    </div>
-                  ))}
+                        <i />
+                        <div>
+                          <strong>{name(slot.seriesId)}</strong>
+                          <p>
+                            {Number.isFinite(new Date(slot.at * 1000).getTime())
+                              ? text.slot(
+                                  relativeDay(
+                                    civilDay(slot.at * 1000, 0, p.utc),
+                                    p.now,
+                                    p.utc,
+                                  ),
+                                  clock(slot.at * 1000, p.utc),
+                                  clock(
+                                    slot.at * 1000 - p.alerts.leadMin * 60_000,
+                                    p.utc,
+                                  ),
+                                )
+                              : text.invalidSlot}
+                          </p>
+                        </div>
+                        <IconButton
+                          label={text.removeSlot}
+                          variant="ghost"
+                          disabled={disabled}
+                          onClick={() =>
+                            p.onChange({
+                              kind: "slot",
+                              id: slot.seriesId,
+                              at: slot.at,
+                              enabled: false,
+                            })
+                          }
+                        >
+                          <Icon name="x" />
+                        </IconButton>
+                      </div>
+                    ))}
                   {p.schedule?.series
                     .filter(
                       (s) =>

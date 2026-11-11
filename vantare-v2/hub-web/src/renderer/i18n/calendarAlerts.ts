@@ -63,5 +63,8 @@ export const calendarAlertsText = {
   launch: "Lanzar perfil",
   detail: "Ver ficha",
   snooze: "Posponer 5′",
+  legacy:
+    "Hay avisos antiguos que debes revisar antes de guardarlos. Puedes quitar los avisos que ya no necesites.",
+  invalidSlot: "Fecha no válida · puedes quitar este aviso.",
   previewLabel: "Ejemplo visual de notificación",
 };

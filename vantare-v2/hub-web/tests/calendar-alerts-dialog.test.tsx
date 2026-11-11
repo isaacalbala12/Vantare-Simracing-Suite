@@ -122,3 +122,24 @@ it("adds a missing favorite band by intent without overwriting a concurrent winn
     patch: {},
   });
 });
+
+it("shows legacy duplicate alerts safely and lets the user remove an unrepresentable date", () => {
+  const band = props.alerts.bands[0];
+  const slot = { seriesId: "retired", at: 2 ** 63 };
+  const alerts = { ...props.alerts, bands: [band, band], slots: [slot, slot] };
+  const before = JSON.stringify(alerts);
+  show({ ...props, alerts });
+  expect(screen.getByText(text.legacy)).toBeTruthy();
+  expect(screen.getByText(text.invalidSlot)).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: text.removeSlot })).toHaveLength(
+    1,
+  );
+  fireEvent.click(screen.getByRole("button", { name: text.removeSlot }));
+  expect(props.onChange).toHaveBeenLastCalledWith({
+    kind: "slot",
+    id: slot.seriesId,
+    at: slot.at,
+    enabled: false,
+  });
+  expect(JSON.stringify(alerts)).toBe(before);
+});

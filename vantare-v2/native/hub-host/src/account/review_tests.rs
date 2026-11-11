@@ -184,5 +184,65 @@ fn cancel_cannot_be_overridden_by_an_old_background_reply_after_its_ack() {
 #[test]
 fn profile_names_are_valid_for_the_ts_contract_even_with_url_delimiters() {
     assert_eq!(safe_name("Pilot://qa"), "Pilot qa");
+    assert_eq!(safe_name("Pilot:\n//qa"), "Pilot qa");
+    assert!(!clean("message:\n//qa").contains("://"));
     assert!(!safe_name("https://issuer.invalid").contains("://"));
+}
+
+#[test]
+fn checkout_cooldown_starts_at_the_open_not_at_the_earlier_service_request() {
+    let now = Instant::now();
+    let mut state = state(Session::SignedIn);
+    state.browser_available(now, true).unwrap();
+    state
+        .reserve_browser(now + Duration::from_secs(30), true)
+        .unwrap();
+    assert_eq!(
+        state.browser_available(now + Duration::from_secs(31), false),
+        Err(HostError::Busy)
+    );
+    state
+        .browser_available(now + Duration::from_secs(35), false)
+        .unwrap();
+}
+
+#[test]
+fn needs_sign_in_can_open_email_as_in_the_frozen_login_guard() {
+    let now = Instant::now();
+    let mut state = state(Session::NeedsSignIn);
+    state.open_email(EmailMode::SignInCode, now).unwrap();
+    assert_eq!(state.view(&AccessView::default(), now, 0).gate, Gate::Email);
+}
+
+#[test]
+fn the_authorizing_poll_closes_email_only_after_confirmed_sign_in() {
+    let now = Instant::now();
+    let mut state = state(Session::SignedOut);
+    state.open_email(EmailMode::SignInCode, now).unwrap();
+    state.accepted(
+        Operation::Email,
+        &Command::AccountEmail {
+            action: vantare_ipc::services_protocol::EmailAction::Finish {},
+        },
+    );
+    state
+        .complete(
+            Operation::Email,
+            &CoreReply::Email {
+                stage: vantare_ipc::services_protocol::EmailStage::Authorizing,
+                retry_after_seconds: 0,
+                message: String::new(),
+                error: None,
+            },
+            false,
+            now,
+        )
+        .unwrap();
+    assert!(state.form.is_some());
+    state.background_accepted(Operation::Poll, now);
+    state
+        .complete(Operation::Poll, &account(Session::SignedIn), true, now)
+        .unwrap();
+    assert!(state.form.is_none());
+    assert_eq!(state.view(&AccessView::default(), now, 0).gate, Gate::None);
 }

@@ -146,3 +146,14 @@ describe("closed account contract", () => {
     });
   });
 });
+
+it("accepts the hostile profile name sanitized by Rust in the shared corpus", () => {
+  const sample = corpus.host.find(
+    (value) =>
+      value.kind === "response" &&
+      value.result?.method === "account.get" &&
+      value.result.value.name === "Pilot qa",
+  );
+  expect(sample).toBeDefined();
+  expect(isHostMessage(sample)).toBe(true);
+});

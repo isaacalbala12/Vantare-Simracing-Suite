@@ -47,6 +47,12 @@ impl Session {
         }
         Ok(())
     }
+    fn open_account_portal(&mut self, now: Instant) -> Result<Reply, HostError> {
+        self.account.can_start(Operation::Profile)?;
+        self.account.reserve_browser(now, false)?;
+        crate::account::platform::open_portal()?;
+        Ok(reply(ResponseKind::Portal, self.account_view()))
+    }
     fn account_request(&mut self, id: u32, request: &Request) -> Result<Option<Reply>, HostError> {
         let now = Instant::now();
         let (operation, kind) = match request {
@@ -69,10 +75,7 @@ impl Session {
             Request::AccountPortal {
                 page: crate::account::PortalPage::Profile,
             } => {
-                self.account.can_start(Operation::Profile)?;
-                self.account.reserve_browser(now, false)?;
-                crate::account::platform::open_portal()?;
-                return Ok(Some(reply(ResponseKind::Portal, self.account_view())));
+                return self.open_account_portal(now).map(Some);
             }
             Request::AccountEmail {
                 action: EmailIntent::Open { mode },
@@ -102,7 +105,7 @@ impl Session {
             }
             Request::AccountPurchase { product } => {
                 self.account.can_start(Operation::Purchase)?;
-                self.account.reserve_browser(now, true)?;
+                self.account.browser_available(now, true)?;
                 let product = match product {
                     crate::account::Product::ProMonthly => {
                         vantare_ipc::services_protocol::BillingProduct::ProMonthly
@@ -225,6 +228,7 @@ pub(super) fn complete(
         session.account.copied(true);
     }
     if let CoreReply::Checkout { url, .. } = &value {
+        session.account.reserve_browser(now, true)?;
         crate::account::platform::open_checkout(url)?;
         session.account.checkout_opened(now);
     }

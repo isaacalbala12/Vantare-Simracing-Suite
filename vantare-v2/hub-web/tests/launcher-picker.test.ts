@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { isAppEditor } from "../src/contract/apps-validation";
+import { accountLimits } from "../src/contract/generated/account";
 import type { UiToHost } from "../src/contract/generated/contract";
 import {
   launcherLimits,
@@ -7,7 +8,10 @@ import {
 } from "../src/contract/generated/contract";
 import { isReply, isRequest } from "../src/contract/modules/launcher";
 import { isUiMessage } from "../src/contract/validation";
-import { executablePicker } from "../src/main/launcher-picker";
+import {
+  executablePicker,
+  nextPickerRequestId,
+} from "../src/main/launcher-picker";
 import { isRendererMessage } from "../src/main/security";
 
 type Guarded<T> = T extends (value: unknown) => value is infer V ? V : never;
@@ -276,4 +280,11 @@ describe("executable picker boundary", () => {
       error: { kind: "busy" },
     });
   });
+});
+
+it("never allocates the host background request id when the picker wraps", () => {
+  expect(nextPickerRequestId(accountLimits.backgroundId - 2)).toBe(
+    accountLimits.backgroundId - 1,
+  );
+  expect(nextPickerRequestId(accountLimits.backgroundId - 1)).toBe(0x80000000);
 });

@@ -91,7 +91,6 @@ impl State {
         }
     }
 
-    #[cfg(test)]
     pub(super) fn requested(&mut self, command: &Command) {
         self.requested_observation(RequestObservation::from(command));
     }

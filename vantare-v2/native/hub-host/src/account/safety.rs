@@ -2,22 +2,24 @@ pub const TEXT_MAX: usize = 300;
 pub const NAME_MAX: usize = 128;
 pub const PHOTO_BASE64_MAX: usize = 32 * 1024;
 pub fn clean(value: &str) -> String {
-    if value.contains("://") {
-        return "No se pudo completar el acceso.".into();
-    }
-    value
+    let value: String = value
         .chars()
         .filter(|c| !c.is_control())
         .take(TEXT_MAX)
-        .collect()
+        .collect();
+    if value.contains("://") {
+        "No se pudo completar el acceso.".into()
+    } else {
+        value
+    }
 }
 pub fn name(value: &str) -> String {
-    let value = value.replace("://", " ");
     value
         .chars()
         .filter(|c| !c.is_control())
         .take(NAME_MAX)
-        .collect()
+        .collect::<String>()
+        .replace("://", " ")
 }
 pub fn photo(value: Option<&str>) -> Option<String> {
     let value = value?;

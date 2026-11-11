@@ -236,3 +236,22 @@ fn a_manual_retry_cannot_duplicate_an_active_login_even_with_a_different_reply_m
     account_tick::tick(&mut session, &mut pipe).unwrap();
     assert_eq!(session.core.sent.len(), 1);
 }
+
+#[test]
+fn live_feed_never_starts_an_account_background_request() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.core.available = true;
+    session.current.services = protocol::LinkState::Connected;
+    session.current.live = true;
+    session.subscriptions.insert(Topic::Account);
+    let mut pipe = Pipe::new(Vec::new());
+    account_tick::tick(&mut session, &mut pipe).unwrap();
+    assert!(session.core.sent.is_empty());
+    session.current.live = false;
+    account_tick::tick(&mut session, &mut pipe).unwrap();
+    assert!(matches!(
+        session.core.sent.first(),
+        Some((crate::account::BACKGROUND_ID, Command::Status))
+    ));
+}

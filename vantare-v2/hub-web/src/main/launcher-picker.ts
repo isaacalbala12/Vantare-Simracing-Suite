@@ -1,4 +1,4 @@
-import {accountLimits} from "../contract/generated/account";
+import { accountLimits } from "../contract/generated/account";
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import {
   launcherPickCooldownMs,
@@ -6,7 +6,9 @@ import {
 } from "../contract/generated/contract";
 import { bounded, isUiMessage } from "../contract/validation";
 
-export function nextPickerRequestId(current:number){return current>=accountLimits.backgroundId-1?0x80000000:current+1;}
+export function nextPickerRequestId(current: number) {
+  return current >= accountLimits.backgroundId - 1 ? 0x80000000 : current + 1;
+}
 
 /** The host must acknowledge a pending request before main opens a dialog. */
 export function executablePicker(
@@ -79,7 +81,7 @@ export function executablePicker(
         return;
       }
       const internalId = internalSequence;
-      internalSequence=nextPickerRequestId(internalSequence);
+      internalSequence = nextPickerRequestId(internalSequence);
       pending = {
         id: internalId,
         rendererId: id,

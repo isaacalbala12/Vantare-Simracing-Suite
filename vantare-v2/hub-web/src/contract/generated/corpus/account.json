@@ -928,6 +928,64 @@
       "kind": "event"
     },
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "account.get",
+        "value": {
+          "blocked": false,
+          "canReturnAfterLogout": false,
+          "channel": "nightly",
+          "configured": true,
+          "copyLink": {
+            "available": false,
+            "copied": false
+          },
+          "deviceLimit": false,
+          "email": null,
+          "error": null,
+          "gate": "choose",
+          "modules": [
+            {
+              "id": "studio",
+              "status": "unverified"
+            },
+            {
+              "id": "launcher",
+              "status": "unverified"
+            },
+            {
+              "id": "calendar",
+              "status": "unverified"
+            },
+            {
+              "id": "strategy",
+              "status": "soon"
+            },
+            {
+              "id": "engineer",
+              "status": "soon"
+            }
+          ],
+          "name": "Pilot qa",
+          "notice": null,
+          "photo": null,
+          "plan": {
+            "kind": "unverified"
+          },
+          "portal": false,
+          "purchase": {
+            "message": null,
+            "waiting": false
+          },
+          "session": "signedOut",
+          "sessionNotice": false,
+          "verified": false,
+          "working": false
+        }
+      }
+    },
+    {
       "error": {
         "kind": "accountInvalid"
       },

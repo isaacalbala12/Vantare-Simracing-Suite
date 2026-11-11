@@ -300,7 +300,7 @@ impl State {
     }
     pub fn open_email(&mut self, mode: EmailMode, now: Instant) -> Result<(), HostError> {
         self.can_start(Operation::Email)?;
-        if self.reducer.session_known() {
+        if self.reducer.signed_in() {
             return Err(HostError::Denied);
         }
         let mut form = email::Form::new(mode, now);
@@ -352,12 +352,17 @@ impl State {
             Operation::Status
         }
     }
-    pub fn reserve_browser(&mut self, now: Instant, purchase: bool) -> Result<(), HostError> {
+    pub fn browser_available(&self, now: Instant, purchase: bool) -> Result<(), HostError> {
         if self.browser_after.is_some_and(|after| now < after)
             || (purchase && self.purchase_until.is_some_and(|until| now < until))
         {
-            return Err(HostError::Busy);
+            Err(HostError::Busy)
+        } else {
+            Ok(())
         }
+    }
+    pub fn reserve_browser(&mut self, now: Instant, purchase: bool) -> Result<(), HostError> {
+        self.browser_available(now, purchase)?;
         self.browser_after = Some(now + Duration::from_secs(5));
         Ok(())
     }
@@ -421,6 +426,35 @@ impl State {
             self.pending.remove(&op);
         }
     }
+    fn observe_account(&mut self, reply: &CoreReply, op: Operation) {
+        if let CoreReply::Account {
+            session,
+            profile,
+            message,
+            ..
+        } = reply
+        {
+            self.need_poll = *session == Session::Pending;
+            if *session == Session::SignedIn
+                || (*session == Session::SignedOut && op == Operation::Logout)
+            {
+                self.form = None;
+                self.email_retry_at = None;
+            }
+            if *session == Session::SignedOut {
+                self.name.clear();
+                self.photo = None;
+                self.logout_uncertain = false;
+            }
+            if matches!(session, Session::SignedIn | Session::NeedsSignIn)
+                && let Some(profile) = profile
+            {
+                self.name = safe_name(&profile.name);
+                self.photo = safety::photo(profile.image_jpeg.as_deref());
+            }
+            self.notice = (!message.is_empty()).then(|| message.clone());
+        }
+    }
     pub fn complete(
         &mut self,
         op: Operation,
@@ -462,31 +496,7 @@ impl State {
                 self.need_poll = self.reducer.configured;
                 self.notice = (!message.is_empty()).then(|| message.clone());
             }
-            CoreReply::Account {
-                session,
-                profile,
-                message,
-                ..
-            } if accepted => {
-                self.need_poll = *session == Session::Pending;
-                if *session == Session::SignedIn
-                    || (*session == Session::SignedOut && op == Operation::Logout)
-                {
-                    self.form = None;
-                }
-                if *session == Session::SignedOut {
-                    self.name.clear();
-                    self.photo = None;
-                    self.logout_uncertain = false;
-                }
-                if matches!(session, Session::SignedIn | Session::NeedsSignIn)
-                    && let Some(profile) = profile
-                {
-                    self.name = safe_name(&profile.name);
-                    self.photo = safety::photo(profile.image_jpeg.as_deref());
-                }
-                self.notice = (!message.is_empty()).then(|| message.clone());
-            }
+            CoreReply::Account { .. } if accepted => self.observe_account(&sanitized, op),
             CoreReply::Email {
                 stage,
                 retry_after_seconds,

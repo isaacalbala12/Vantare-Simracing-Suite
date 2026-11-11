@@ -204,3 +204,15 @@ fn plan(access: Option<vantare_ipc::control::CatalogAccess>) -> StudioPlan {
         Some(A::Founders) => StudioPlan::Founders,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn geometry_and_free_settings_are_absent_from_the_edit_contract() {
+        for field in ["x", "y", "geometry", "size", "settings", "executable"] {
+            let patch = serde_json::json!({"field":field,"value":1});
+            let request = serde_json::json!({"kind":"request","id":1,"request":{"method":"studio.instance","id":"widget-1","patch":patch,"baseRevision":"0".repeat(64)}});
+            assert!(serde_json::from_value::<crate::protocol::UiToHost>(request).is_err());
+        }
+    }
+}

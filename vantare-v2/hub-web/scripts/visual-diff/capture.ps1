@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[string]$Output,[switch]$Prepare,[ValidateRange(1,330000)][int]$TimeoutMilliseconds=15000)
+param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[string]$Output,[switch]$Prepare,[switch]$Offscreen,[ValidateRange(1,330000)][int]$TimeoutMilliseconds=15000)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../../../native/hub/reference/tools/capture-bitmap.ps1')
 Add-Type @'
@@ -32,14 +32,20 @@ public static class VisualWindow {
   }
  }
  public static void Check(IntPtr h) {Rect r;GetClientRect(h,out r);if(r.r!=1440||r.b!=900)throw new InvalidOperationException("Expected 1440x900 physical client pixels");}
- public static void Resize(IntPtr h) {Rect client,outer;GetClientRect(h,out client);GetWindowRect(h,out outer);if(!SetWindowPos(h,IntPtr.Zero,0,0,1440+outer.r-outer.l-client.r,900+outer.b-outer.t-client.b,2|4|16|64))throw new InvalidOperationException("Could not prepare QA client");}
+ public static void Resize(IntPtr h,int x,int y,bool move) {Rect client,outer;GetClientRect(h,out client);GetWindowRect(h,out outer);if(!SetWindowPos(h,IntPtr.Zero,x,y,1440+outer.r-outer.l-client.r,900+outer.b-outer.t-client.b,(move?0u:2u)|4u|16u|64u))throw new InvalidOperationException("Could not prepare QA client");}
 }
 '@
 $process=Get-Process -Id $ProcessId
 if($process.Path -ne [IO.Path]::GetFullPath($Executable)){throw 'Unexpected process image'}
 $window=[VisualWindow]::Find($ProcessId,(-not $Prepare),$TimeoutMilliseconds)
 # SWP_SHOWWINDOW + NOACTIVATE prepares only the verified QA process, never the desktop.
-if($Prepare){[VisualWindow]::Resize($window);[VisualWindow]::Check($window);$window=[VisualWindow]::Find($ProcessId,$true,$TimeoutMilliseconds)}
+$offscreenX=0
+if($Offscreen){
+ if(-not $Prepare){throw 'Offscreen requires Prepare'}
+ Add-Type -AssemblyName System.Windows.Forms
+ $offscreenX=([Windows.Forms.Screen]::AllScreens | ForEach-Object {$_.Bounds.Left} | Measure-Object -Minimum).Minimum - 2880
+}
+if($Prepare){[VisualWindow]::Resize($window,$offscreenX,0,[bool]$Offscreen);[VisualWindow]::Check($window);$window=[VisualWindow]::Find($ProcessId,$true,$TimeoutMilliseconds)}
 if($Prepare){@{pid=$ProcessId;hwnd=$window.ToInt64();visible=[VisualWindow]::Visible($window);foreground=([VisualWindow]::GetForegroundWindow() -eq $window);session=$process.SessionId;width=1440;height=900}|ConvertTo-Json -Compress;return}
 if(-not $Output){throw 'Output required for capture'}
 [VisualWindow]::Check($window)

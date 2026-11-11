@@ -93,6 +93,14 @@ try {
             Start-Sleep -Milliseconds 50
         } while ($true)
     }
+    if ($gate) {
+        # Normal QA gates use the real shell; prepare only their verified HWND.
+        $prepared = & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'visual-diff/capture.ps1') -ProcessId $process.Id -Executable $binary -Prepare -Offscreen
+        if ($LASTEXITCODE) { throw "No se pudo preparar la ventana QA: $run" }
+        $window = $prepared | ConvertFrom-Json
+        if ($window.foreground -or -not $window.visible) { throw "Ventana QA sin aislamiento: $prepared" }
+        $prepared | Set-Content -LiteralPath "$Output.window.json" -Encoding utf8
+    }
     $helper = Join-Path $PSScriptRoot '../../native/hub/reference/tools/capture-window.ps1'
     $deadline = [Diagnostics.Stopwatch]::StartNew()
     do {

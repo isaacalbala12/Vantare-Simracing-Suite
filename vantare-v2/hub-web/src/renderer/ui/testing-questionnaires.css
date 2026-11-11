@@ -55,6 +55,24 @@
   border-radius: 8px;
   font-size: 14px;
 }
+.v-testing .v-testing-questionnaires > section > .v-button--primary:disabled {
+  background: color-mix(
+    in srgb,
+    var(--text-1) var(--testing-disabled),
+    transparent
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--text-1) var(--testing-disabled),
+    transparent
+  );
+  color: color-mix(
+    in srgb,
+    var(--text-on-primary) var(--testing-disabled),
+    transparent
+  );
+  opacity: 1;
+}
 .v-shell-main > [role="tabpanel"]:has(.v-testing-questionnaires),
 .v-testing:has(> .v-testing-questionnaires) {
   height: 100%;

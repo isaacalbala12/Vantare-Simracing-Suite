@@ -188,7 +188,13 @@ impl State {
             Err(_) => view.protected = true,
         }
         // A large saved hotkey/name must never close the host frame/session.
-        if !serde_json::to_vec(&view).is_ok_and(|bytes| bytes.len() < crate::frame::LIMIT / 2) {
+        let envelope = crate::protocol::HostToUi::Response {
+            id: u32::MAX,
+            result: crate::protocol::Reply::LauncherResidentGet {
+                value: view.clone(),
+            },
+        };
+        if !serde_json::to_vec(&envelope).is_ok_and(|bytes| bytes.len() <= crate::frame::LIMIT) {
             view.protected = true;
             view.registrations.clear();
         }

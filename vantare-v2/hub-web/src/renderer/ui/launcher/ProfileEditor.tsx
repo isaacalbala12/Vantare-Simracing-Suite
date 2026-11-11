@@ -241,6 +241,7 @@ export function ProfileEditorRailFields({
   apps,
   pending,
   resident,
+  registration,
   onChange,
   onPolicy,
 }: {
@@ -248,6 +249,7 @@ export function ProfileEditorRailFields({
   apps: LauncherApp[];
   pending: boolean;
   resident: boolean;
+  registration?: string;
   onChange: (patch: Partial<ProfileDraft>) => void;
   onPolicy: (patch: Partial<ProfilePolicy>) => void;
 }) {
@@ -429,7 +431,7 @@ export function ProfileEditorRailFields({
                 onPolicy({ firstStepDelay });
             }}
           />
-          <p>{resident ? text.resident : text.noResident}</p>
+          <p>{registration ?? (resident ? text.resident : text.noResident)}</p>
         </div>
       </section>
     </div>

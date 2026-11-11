@@ -244,3 +244,23 @@ La suscripción emite una vez y sondea cada 500 ms; al desuscribirse o entrar en
 Live no lee el diseño. Deshacer/rehacer vuelve a comprobar los derechos al
 restaurar un widget Pro. Posición/tamaño se editan sobre los overlays, no en el Hub;
 la entrada a ese modo está inactiva hasta #2025.
+## Launcher: buzón y registro (`launcher_resident`, v21 reservada)
+
+`launcher.resident.get {}` y el tema `launcherResident` leen los formatos ya
+publicados por el residente. No crean launcher.json ni escriben en el buzón:
+no existe método de respuesta. Esc y cerrar el cajón solo cierran su vista local;
+la decisión continúa pendiente y puede volver a consultarse. Sus acciones se
+muestran inactivas con ese motivo, conforme al alcance de solo lectura.
+
+Solo se proyectan frescura, ejecución, presencia de error, identidad decimal
+exacta de la decisión, su tipo cerrado, acciones/etiquetas nativas y estados de
+registro de atajos. Los mensajes, progreso libre, rutas, argumentos y PIDs no
+llegan al renderer. Los atajos reutilizan la proyección de Ajustes: solo se
+confirman si coinciden perfil y combinación en un estado fresco (menos de 3 s).
+El sondeo es de 500 ms, solo suscrito y fuera de Live; subscribe registra la
+primera vista para no repetirla. No se crean hilos ni se piden servicios.
+
+No se muestra un contador n/total: Status contiene progress como texto libre y
+el residente copia progress.message (resident.rs:426), sin publicar ese par de
+campos. Los textos del cajón son cerrados por tipo de decisión para no reenviar
+rutas que pueda contener el mensaje nativo. Es una diferencia conocida con GPUI.

@@ -11,7 +11,7 @@ pub(crate) fn typescript() -> String {
         "calendarIcsLimit",
         crate::calendar::ics::ICS_LIMIT
     );
-    constants!(&mut text, "calendarIcsName", "vantare-calendar.ics");
+    constants!(&mut text, "calendarIcsName", "vantare-calendario-lmu.ics");
     declare::<crate::calendar::CalendarHistoryTrack>(&mut text);
     declare::<crate::calendar::CalendarHistoryWeek>(&mut text);
     declare::<crate::calendar::CalendarHistoryView>(&mut text);
@@ -172,28 +172,6 @@ fn sample_config() -> crate::calendar::CalendarConfigView {
 fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
     let config = sample_config();
     let host = vec![
-        sample_response(Reply::CalendarIcsPrepare {
-            value: Box::new(crate::calendar::CalendarIcsView {
-                calendar: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n".into(),
-                prepared_hash: "a".repeat(64),
-                entries: vec![],
-                total: 0,
-                valid_until: "2026-10-13T00:00:00Z".into(),
-            }),
-        }),
-        sample_response(Reply::CalendarIcsExport {
-            status: crate::calendar::CalendarIcsStatus::Saved,
-        }),
-        sample_response(Reply::CalendarIcsExport {
-            status: crate::calendar::CalendarIcsStatus::Cancelled,
-        }),
-        sample_response(Reply::CalendarIcsExport {
-            status: crate::calendar::CalendarIcsStatus::Conflict,
-        }),
-        HostToUi::Failure {
-            id: 1,
-            error: HostError::CalendarExportTooLarge,
-        },
         history_sample(),
         HostToUi::Failure {
             id: 1,
@@ -243,33 +221,6 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
         }),
     ];
     let ui = vec![
-        UiToHost::Request {
-            id: 1,
-            request: Request::CalendarIcsPrepare {
-                scope: crate::calendar::CalendarIcsScope::Favs,
-                alarm: true,
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::CalendarIcsPrepare {
-                scope: crate::calendar::CalendarIcsScope::Events,
-                alarm: false,
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::CalendarIcsPrepare {
-                scope: crate::calendar::CalendarIcsScope::All,
-                alarm: true,
-            },
-        },
-        UiToHost::Request {
-            id: 1,
-            request: Request::CalendarIcsExport {
-                prepared_hash: "a".repeat(64),
-            },
-        },
         UiToHost::Request {
             id: 1,
             request: Request::CalendarHistoryLoad {},
@@ -328,6 +279,9 @@ pub(crate) fn corpus() -> serde_json::Value {
             expected_revision: config.alerts_revision.expect("sample alerts revision"),
         },
     });
+    let (ics_host, ics_ui) = ics_samples();
+    host.extend(ics_host);
+    ui.extend(ics_ui);
     serde_json::json!({"host":host,"ui":ui})
 }
 
@@ -345,4 +299,62 @@ fn sample_alerts() -> crate::calendar::CalendarAlerts {
         at: 1_791_489_600,
     });
     alerts
+}
+
+fn ics_samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
+    (
+        vec![
+            sample_response(Reply::CalendarIcsPrepare {
+                value: Box::new(crate::calendar::CalendarIcsView {
+                    calendar: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n".into(),
+                    prepared_hash: "a".repeat(64),
+                    entries: vec![],
+                    total: 0,
+                    valid_until: "2026-10-13T00:00:00Z".into(),
+                }),
+            }),
+            sample_response(Reply::CalendarIcsExport {
+                status: crate::calendar::CalendarIcsStatus::Saved,
+            }),
+            sample_response(Reply::CalendarIcsExport {
+                status: crate::calendar::CalendarIcsStatus::Cancelled,
+            }),
+            sample_response(Reply::CalendarIcsExport {
+                status: crate::calendar::CalendarIcsStatus::Conflict,
+            }),
+            HostToUi::Failure {
+                id: 1,
+                error: HostError::CalendarExportTooLarge,
+            },
+        ],
+        vec![
+            UiToHost::Request {
+                id: 1,
+                request: Request::CalendarIcsPrepare {
+                    scope: crate::calendar::CalendarIcsScope::Favs,
+                    alarm: true,
+                },
+            },
+            UiToHost::Request {
+                id: 1,
+                request: Request::CalendarIcsPrepare {
+                    scope: crate::calendar::CalendarIcsScope::Events,
+                    alarm: false,
+                },
+            },
+            UiToHost::Request {
+                id: 1,
+                request: Request::CalendarIcsPrepare {
+                    scope: crate::calendar::CalendarIcsScope::All,
+                    alarm: true,
+                },
+            },
+            UiToHost::Request {
+                id: 1,
+                request: Request::CalendarIcsExport {
+                    prepared_hash: "a".repeat(64),
+                },
+            },
+        ],
+    )
 }

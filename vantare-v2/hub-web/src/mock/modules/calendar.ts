@@ -108,6 +108,7 @@ export function create(context: MockContext): MockHandler {
   let counter = 1;
   const next = () =>
     String((counter++).toString(16)).padStart(calendarRevisionLength, "0");
+  let icsHash: string | undefined;
   return (message: UiToHost): HostToUi | undefined => {
     if (
       message.kind !== "request" ||
@@ -125,6 +126,7 @@ export function create(context: MockContext): MockHandler {
     });
     switch (request.method) {
       case "calendar.icsPrepare": {
+        icsHash = undefined;
         const prepared = mockCalendarIcs(
           value,
           config,
@@ -132,6 +134,7 @@ export function create(context: MockContext): MockHandler {
           request.alarm,
           Date.now(),
         );
+        if (typeof prepared !== "string") icsHash = prepared.preparedHash;
         return typeof prepared === "string"
           ? { kind: "failure", id, error: { kind: prepared } }
           : {
@@ -141,6 +144,9 @@ export function create(context: MockContext): MockHandler {
             };
       }
       case "calendar.icsExport":
+        if (icsHash === undefined || request.preparedHash !== icsHash)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        icsHash = undefined;
         return {
           kind: "response",
           id,

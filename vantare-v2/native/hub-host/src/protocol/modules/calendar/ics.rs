@@ -103,11 +103,14 @@ pub fn prepare(
                 .find(|p| p.name == name)
                 .map_or(default, |p| p.duration_min)
         };
-        let minutes = series.event_duration_min.map(i64::from).unwrap_or_else(|| {
-            i64::from(phase("practice", 3))
-                + i64::from(phase("qualifying", 8))
-                + i64::from(phase("race", series.race_duration_min.unwrap_or(0)))
-        });
+        let minutes = series.event_duration_min.map_or_else(
+            || {
+                i64::from(phase("practice", 3))
+                    + i64::from(phase("qualifying", 8))
+                    + i64::from(phase("race", series.race_duration_min.unwrap_or(0)))
+            },
+            i64::from,
+        );
         for start in agenda::starts(schedule, series, now, until).map_err(|_| Error::Invalid)? {
             if daily
                 && agenda::cause(schedule, series, start, alerts)

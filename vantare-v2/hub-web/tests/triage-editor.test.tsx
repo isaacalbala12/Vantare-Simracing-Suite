@@ -128,3 +128,24 @@ it("revokes preview and consent immediately when the local note or selected evid
       .getAttribute("aria-checked"),
   ).toBe("false");
 });
+
+it("retries Busy through the Testing queue without losing the reviewed selection", async () => {
+  window.history.replaceState(null, "", "/?escena=testing-tester-triage-busy");
+  const hook = await mount();
+  const calls = vi.spyOn(Client.prototype, "request");
+  fireEvent.click(screen.getByRole("checkbox", { name: text.choices.system }));
+  fireEvent.click(screen.getByRole("checkbox", { name: text.consent }));
+  fireEvent.click(screen.getByRole("button", { name: text.prepare }));
+  await screen.findByRole("region", { name: text.preview });
+  const requests = calls.mock.calls.filter(
+    ([request]) => request.method === "triage.prepare",
+  );
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toEqual(requests[1]);
+  expect(requests[0][0]).toEqual({
+    method: "triage.prepare",
+    selection: { items: triageItems.filter((item) => item !== "system") },
+    consent: true,
+  });
+  expect(hook.result.current.busy).toBe(false);
+});

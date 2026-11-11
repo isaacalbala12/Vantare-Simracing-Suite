@@ -84,7 +84,7 @@
 .v-diagnostics .v-setting-group-title > span:first-child {
   line-height: 15px;
 }
-.v-diagnostics .v-button[aria-busy="true"] .v-button-label {
+.v-diagnostics .v-button--primary[aria-busy="true"] .v-button-label {
   opacity: 1;
 }
 .v-diagnostic-log {
@@ -125,7 +125,7 @@
   min-height: 29px;
   padding: 0 12px;
   border-radius: 6px;
-  font: 600 12px / 18px var(--font-sans);
+  font: 650 12px / 18px var(--font-sans);
 }
 .v-diagnostic-log-filters .v-button {
   flex: none;
@@ -165,4 +165,14 @@
   color: var(--text-3);
   opacity: 1;
   font-weight: 400;
+}
+
+.v-diagnostics .v-setting-control {
+  align-self: flex-start;
+}
+.v-diagnostic-log-filters .v-button {
+  padding-inline: 16px;
+}
+.v-diagnostic-log-filters .v-segment[data-pressed] {
+  background: var(--surface-elevated);
 }

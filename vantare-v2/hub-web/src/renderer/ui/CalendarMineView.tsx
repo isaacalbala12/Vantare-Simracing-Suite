@@ -4,7 +4,9 @@ import type {
   CalendarSchedule,
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
+import { calendarText } from "../i18n/calendar";
 import { calendarMineText as text } from "../i18n/calendarMine";
+import type { CalendarRun } from "../screens/calendar/CalendarRun";
 import { days } from "../screens/calendar/days";
 import { alertAt, nextRace, raceMinutes } from "../screens/calendar/rows";
 import { Button } from "./Button";
@@ -19,6 +21,8 @@ export function CalendarMineView({
   now,
   utc,
   limit,
+  runs = [],
+  canLaunch = true,
   onUpcoming,
   onSeries,
   onExport,
@@ -32,12 +36,14 @@ export function CalendarMineView({
   now: number;
   utc: boolean;
   limit: number;
+  runs?: readonly CalendarRun[];
+  canLaunch?: boolean;
   onUpcoming: () => void;
   onSeries: () => void;
-  onExport: () => void;
+  onExport?: () => void;
   onLaunch: () => void;
-  onDetail: (id: string, at: number) => void;
-  onAlert: (id: string, at: number) => void;
+  onDetail?: (id: string, at: number) => void;
+  onAlert?: (id: string, at: number) => void;
 }) {
   const [filter, setFilter] = useState("all");
   const hero = nextRace(schedule, now, following, limit);
@@ -72,6 +78,24 @@ export function CalendarMineView({
     (b) =>
       `${schedule.series.find((s) => s.id === b.seriesId)?.name ?? b.seriesId} ${String(Math.floor(b.from / 60)).padStart(2, "0")}:${String(b.from % 60).padStart(2, "0")}–${String(Math.floor(b.to / 60)).padStart(2, "0")}:${String(b.to % 60).padStart(2, "0")}`,
   );
+  const date = new Date(now);
+  const weekFrom = Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate() - ((date.getUTCDay() + 5) % 7),
+  );
+  const ran = runs
+    .filter((run) => run.at >= weekFrom)
+    .sort((a, b) => b.at - a.at);
+  const best = ran
+    .filter((run) => run.bestLap !== null)
+    .sort((a, b) =>
+      (a.bestLap ?? "") < (b.bestLap ?? "")
+        ? -1
+        : (a.bestLap ?? "") > (b.bestLap ?? "")
+          ? 1
+          : 0,
+    )[0];
   const stats = [
     {
       label: text.yourNext,
@@ -85,7 +109,13 @@ export function CalendarMineView({
       value: String(alerts.bands.length),
       hint: bandHints.join(" · ") || "—",
     },
-    { label: text.ran, value: text.none, hint: text.noRecordings },
+    {
+      label: text.ran,
+      value: ran.length ? text.races(ran.length) : text.none,
+      hint: best?.bestLap
+        ? text.best(best.bestLap, best.circuit)
+        : text.noRecordings,
+    },
     { label: text.calendar, value: ".ics", hint: text.download },
   ];
   let first = true;
@@ -113,7 +143,7 @@ export function CalendarMineView({
               { value: "alerted", label: text.alerted },
             ]}
           />
-          <Button onClick={onExport}>
+          <Button onClick={onExport} disabled={!onExport}>
             <Icon name="v-calendar" />
             {text.export}
           </Button>
@@ -138,15 +168,28 @@ export function CalendarMineView({
                   <div className="v-calendar-mine-row" key={s.id}>
                     <div className="v-calendar-mine-at">
                       <strong>{clock(at, utc)}</strong>
-                      {launch && (
+                      {at - now < 6 * 60 * 60_000 && (
                         <small>
                           {text.inMinutes(Math.ceil((at - now) / 60000))}
                         </small>
                       )}
                     </div>
-                    <div className="v-calendar-mine-series" data-tier={s.tier}>
+                    <div
+                      className="v-calendar-mine-series"
+                      data-tier={s.tier}
+                      data-class={(
+                        s.classes[0]?.name ?? s.vehicleClass
+                      ).toLowerCase()}
+                    >
                       <strong>{s.name}</strong>
                       <p>
+                        <b data-tier={s.tier}>
+                          {s.eventKind === "special"
+                            ? calendarText.specialty
+                            : (calendarText.tiers[
+                                s.tier as keyof typeof calendarText.tiers
+                              ] ?? s.tier)}
+                        </b>
                         {s.track.split(" (")[0]}
                         {text.separator}
                         {text.race(raceMinutes(s))}
@@ -162,7 +205,27 @@ export function CalendarMineView({
                               `${String(Math.floor(entry.to / 60)).padStart(2, "0")}:${String(entry.to % 60).padStart(2, "0")}`,
                             )}
                           </span>
-                          <small>{text.departures(entry.starts.length)}</small>
+                          <small>
+                            {text.bandDepartures(
+                              entry.starts.length,
+                              s.recurrence.intervalMinutes,
+                              clock(entry.starts[0], utc),
+                              clock(
+                                entry.starts.at(-1) ?? entry.starts[0],
+                                utc,
+                              ),
+                            )}
+                          </small>
+                        </>
+                      ) : entry.kind === "open" ? (
+                        <>
+                          <span className="v-calendar-mine-favorite">
+                            <Icon name="star" />
+                            {text.favoriteWithoutAlert}
+                          </span>
+                          <small>
+                            {text.every(s.recurrence.intervalMinutes)}
+                          </small>
                         </>
                       ) : (
                         <>
@@ -178,8 +241,12 @@ export function CalendarMineView({
                                 alertAt(schedule, s, time, alerts, limit) ||
                                 undefined
                               }
-                              onClick={() => onDetail(s.id, time)}
+                              disabled={!onDetail}
+                              onClick={() => onDetail?.(s.id, time)}
                             >
+                              {alertAt(schedule, s, time, alerts, limit) && (
+                                <Icon name="bell-fill" />
+                              )}
                               {clock(time, utc)}
                             </button>
                           ))}
@@ -187,7 +254,11 @@ export function CalendarMineView({
                       )}
                     </div>
                     {launch ? (
-                      <Button variant="primary" onClick={onLaunch}>
+                      <Button
+                        variant="primary"
+                        onClick={onLaunch}
+                        disabled={!canLaunch}
+                      >
                         <Icon name="play" />
                         {text.launch}
                       </Button>
@@ -195,7 +266,8 @@ export function CalendarMineView({
                       <Button
                         variant="ghost"
                         aria-label={text.alert}
-                        onClick={() => onAlert(s.id, at)}
+                        disabled={!onAlert}
+                        onClick={() => onAlert?.(s.id, at)}
                       >
                         <Icon name="clock" />
                       </Button>
@@ -203,7 +275,8 @@ export function CalendarMineView({
                     <Button
                       variant="ghost"
                       aria-label={text.detail}
-                      onClick={() => onDetail(s.id, at)}
+                      disabled={!onDetail}
+                      onClick={() => onDetail?.(s.id, at)}
                     >
                       <Icon name="info" />
                     </Button>
@@ -212,7 +285,49 @@ export function CalendarMineView({
               })}
             </section>
           ))}
-          {!groups.length && (
+          {filter !== "alerted" && ran.length > 0 && (
+            <section>
+              <h3>{text.alreadyRan}</h3>
+              {ran.map((run) => (
+                <div
+                  key={`${run.seriesId}:${run.at}`}
+                  className="v-calendar-mine-row v-calendar-mine-done"
+                >
+                  <div className="v-calendar-mine-at">
+                    <strong>{clock(run.at, utc)}</strong>
+                    <small>
+                      {civilDay(run.at, 0, utc) === civilDay(now, -1, utc)
+                        ? text.yesterday
+                        : datePart(run.at, "weekday", utc)}
+                    </small>
+                  </div>
+                  <div className="v-calendar-mine-series">
+                    <strong>
+                      {schedule.series.find((s) => s.id === run.seriesId)
+                        ?.name ?? run.seriesId}
+                    </strong>
+                    <p>{text.fromTelemetry(run.circuit)}</p>
+                  </div>
+                  <span className="v-calendar-mine-result">
+                    <Icon name="check" />
+                    {text.runSummary(
+                      run.position,
+                      run.safetyTenths,
+                      run.bestLap,
+                    )}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    aria-label={text.openSession}
+                    disabled
+                  >
+                    <Icon name="right" />
+                  </Button>
+                </div>
+              ))}
+            </section>
+          )}
+          {!groups.length && ran.length === 0 && (
             <p className="v-calendar-mine-no-departures">{text.noDepartures}</p>
           )}
         </div>

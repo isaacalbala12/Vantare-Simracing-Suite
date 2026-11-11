@@ -1,4 +1,16 @@
 export const calendarMineText = {
+  races: (n: number) => `${n} carrera${n === 1 ? "" : "s"}`,
+  best: (lap: string, circuit: string) => `mejor: ${lap} en ${circuit}`,
+  alreadyRan: "Ya corriste esta semana",
+  yesterday: "ayer",
+  fromTelemetry: (circuit: string) => `${circuit} · desde tu telemetría`,
+  openSession: "Abrir sesión",
+  favoriteWithoutAlert: "Favorita · sin aviso",
+  every: (minutes: number) => `sale cada ${minutes} min`,
+  bandDepartures: (n: number, minutes: number, first: string, last: string) =>
+    `${n} salidas, cada ${minutes} min · ${first} → ${last}`,
+  runSummary: (position: number, safety: number, lap: string | null) =>
+    `P${position} · ${safety < 0 ? "−" : "+"}${Math.floor(Math.abs(safety) / 10)},${Math.abs(safety) % 10} SR${lap ? ` · ${lap}` : ""}`,
   separator: " · ",
   emptyTitle: "Aquí aparecerán tus carreras",
   emptyHelp:

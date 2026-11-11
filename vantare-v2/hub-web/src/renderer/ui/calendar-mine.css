@@ -28,10 +28,11 @@
 .v-calendar-mine-stats strong {
   display: block;
   margin-top: 4px;
-  font: 500 22px / 26px var(--font-display);
+  font: 500 22px / 22px var(--font-display);
 }
 .v-calendar-mine-stats p {
   margin: 0;
+  line-height: 14px;
   font-size: 11.5px;
   color: var(--text-3);
   white-space: nowrap;
@@ -305,4 +306,27 @@
 
 .v-calendar-mine-series[data-class="gte"]::before {
   background: var(--calendar-class-gte);
+}
+
+.v-calendar-mine-list header .v-button {
+  height: 32px;
+  min-height: 32px;
+  font-size: 13px;
+}
+.v-calendar-mine-row > .v-button {
+  height: 30px;
+  min-height: 30px;
+  font-size: 13px;
+  padding-inline: 10px;
+}
+.v-calendar-mine-row > .v-button--primary {
+  min-width: 88px;
+}
+.v-calendar-mine-row > .v-button svg {
+  width: 14px;
+  height: 14px;
+}
+.v-calendar-mine-slots button:disabled {
+  opacity: 1;
+  cursor: default;
 }

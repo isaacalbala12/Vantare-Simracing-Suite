@@ -37,12 +37,17 @@ export const calendarMineText = {
   each: "cada salida",
   noDepartures: "No hay salidas de tus series lo que queda de semana.",
   entries: (n: number) => `· ${n} entrada${n === 1 ? "" : "s"}`,
-  inMinutes: (n: number) => `en ${n} min`,
+  inMinutes: (n: number) =>
+    n < 60
+      ? `en ${n} min`
+      : n < 1440
+        ? `en ${Math.floor(n / 60)} h ${String(n % 60).padStart(2, "0")} min`
+        : `en ${Math.floor(n / 1440)} d ${Math.floor((n % 1440) / 60)} h`,
   bandLabel: (from: string, to: string) => `Franja ${from}–${to}`,
   departures: (count: number) => `${count} salidas`,
   launch: "Lanzar",
   detail: "Ficha",
   alert: "Configurar aviso",
   minutes: (n: number) => `${n} min`,
-  race: (n: number) => `carrera ${n} min`,
+  race: (duration: string) => `carrera ${duration}`,
 };

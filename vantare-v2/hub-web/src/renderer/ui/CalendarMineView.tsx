@@ -11,6 +11,7 @@ import { days } from "../screens/calendar/days";
 import { alertAt, nextRace, raceMinutes } from "../screens/calendar/rows";
 import { Button } from "./Button";
 import { civilDay, clock, datePart } from "./calendarDate";
+import { zoneLabel } from "./calendarZone";
 import { Segmented } from "./Forms";
 import "./calendar-mine.css";
 
@@ -133,7 +134,11 @@ export function CalendarMineView({
       <section className="v-calendar-mine-list">
         <header>
           <h2 className="v-calendar-mine-header-title">{text.week}</h2>
-          <p className="v-calendar-mine-header-caption">{text.subtitle}</p>
+          <p className="v-calendar-mine-header-caption">
+            {text.subtitle}
+            {text.separator}
+            {utc ? calendarText.utc : zoneLabel(now, true)}
+          </p>
           <Segmented
             label={text.week}
             value={filter}
@@ -192,7 +197,7 @@ export function CalendarMineView({
                         </b>
                         {s.track.split(" (")[0]}
                         {text.separator}
-                        {text.race(raceMinutes(s))}
+                        {text.race(calendarText.minutes(raceMinutes(s)))}
                       </p>
                     </div>
                     <div className="v-calendar-mine-slots">

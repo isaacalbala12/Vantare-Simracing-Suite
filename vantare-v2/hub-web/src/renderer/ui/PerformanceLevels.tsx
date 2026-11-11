@@ -189,7 +189,10 @@ export function PerformanceStatus({ track }: { track: TrackView }) {
     <>
       <span className="v-performance-pill">{t(`track.${track.level}`)}</span>
       <p className="v-performance-count">
-        {track.customWidgets} {text.ownFrequency}
+        {track.customWidgets}{" "}
+        {track.customWidgets === 1
+          ? text.ownFrequencySingular
+          : text.ownFrequency}
       </p>
     </>
   );

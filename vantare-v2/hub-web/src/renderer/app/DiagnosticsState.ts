@@ -4,7 +4,10 @@ import { useToastManager } from "../ui/Layers";
 import { useHost } from "./Host";
 
 const key = ["diagnostics"] as const;
-export function useDiagnostics({ notifyCopied = true } = {}) {
+export function useDiagnostics({
+  notifyCopied = true,
+  notifyErrors = true,
+} = {}) {
   const { client } = useHost();
   const cache = useQueryClient();
   const toast = useToastManager();
@@ -27,7 +30,10 @@ export function useDiagnostics({ notifyCopied = true } = {}) {
       return reply.value;
     },
     onSuccess: (value) => cache.setQueryData(key, value),
-    onError: () => toast.add({ title: t("diagnostics.failed"), type: "err" }),
+    onError: () => {
+      if (notifyErrors)
+        toast.add({ title: t("diagnostics.failed"), type: "err" });
+    },
   });
   const copy = useMutation({
     mutationFn: async () => {
@@ -38,7 +44,10 @@ export function useDiagnostics({ notifyCopied = true } = {}) {
     onSuccess: () => {
       if (notifyCopied) toast.add({ title: t("diagnostics.copied") });
     },
-    onError: () => toast.add({ title: t("diagnostics.failed"), type: "err" }),
+    onError: () => {
+      if (notifyErrors)
+        toast.add({ title: t("diagnostics.failed"), type: "err" });
+    },
   });
   return { query, prepare, copy };
 }

@@ -1,0 +1,168 @@
+.v-diagnostics {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: calc(100dvh - 138px);
+  padding-bottom: 14px;
+  overflow: hidden;
+}
+.v-diagnostic-health,
+.v-diagnostic-health-item,
+.v-diagnostic-log {
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--grad-neo);
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-neo);
+}
+.v-diagnostic-health {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+.v-diagnostic-health h2,
+.v-diagnostic-log h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font: 600 15px / 15px var(--font-display);
+  color: var(--text-1);
+}
+.v-diagnostic-health h2 svg,
+.v-diagnostic-log h2 svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+.v-diagnostic-health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.v-diagnostic-health-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 67px;
+  min-width: 0;
+  padding: 12px;
+}
+.v-diagnostic-health-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--text-3);
+}
+.v-diagnostic-health .v-diagnostic-health-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.v-diagnostic-health-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.v-diagnostic-health-item strong {
+  font: 600 13px / 19px var(--font-sans);
+  color: var(--text-1);
+}
+.v-diagnostic-health-item > div > span {
+  font: 400 12px / 18px var(--font-sans);
+  color: var(--text-3);
+}
+.v-diagnostics .v-setting-group-title,
+.v-diagnostics .v-setting-group-title > span:first-child {
+  line-height: 15px;
+}
+.v-diagnostics .v-button[aria-busy="true"] .v-button-label {
+  opacity: 1;
+}
+.v-diagnostic-log {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 16px;
+  min-height: 220px;
+  overflow: hidden;
+}
+.v-diagnostic-log h2 {
+  padding: 14px 20px;
+}
+.v-diagnostic-log-body {
+  flex: 1;
+  min-height: 0;
+  padding: 20px;
+  background: var(--bg-base);
+}
+.v-diagnostic-log-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-diagnostic-log-filters .v-input {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+}
+.v-diagnostic-log-filters .v-segmented {
+  flex: none;
+  padding: 3px;
+  gap: 2.5px;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+.v-diagnostic-log-filters .v-segment {
+  min-height: 29px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font: 600 12px / 18px var(--font-sans);
+}
+.v-diagnostic-log-filters .v-button {
+  flex: none;
+  min-height: 36px;
+  border: 1px solid var(--line-3);
+  border-radius: 8px;
+  box-shadow: none;
+  background: transparent;
+  font: 500 14px / 21px var(--font-sans);
+}
+.v-diagnostic-empty {
+  margin: 0;
+  padding: 16px;
+  font: 400 13px / 19.5px var(--font-sans);
+  color: var(--text-3);
+}
+.v-context:has(.v-diagnostic-rail) .v-rail-block-body p {
+  line-height: 19px;
+}
+.v-diagnostic-rail .v-rail-block:last-child {
+  border-bottom: 0;
+}
+.v-diagnostic-rail textarea {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  font: 400 11px / 16px var(--font-mono);
+}
+/* GPUI center >= 1100; main content excludes its two 24px insets. */
+@container (min-width: 1052px) {
+  .v-diagnostic-health-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.v-diagnostic-log-filters .v-input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+  font-weight: 400;
+}

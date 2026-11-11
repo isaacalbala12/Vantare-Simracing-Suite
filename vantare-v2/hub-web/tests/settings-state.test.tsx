@@ -33,6 +33,7 @@ import { Account } from "../src/renderer/screens/settings/Account";
 import { Appearance } from "../src/renderer/screens/settings/Appearance";
 import { AppearanceRail } from "../src/renderer/screens/settings/AppearanceRail";
 import { Diagnostics } from "../src/renderer/screens/settings/Diagnostics";
+import { DiagnosticsRail } from "../src/renderer/screens/settings/DiagnosticsRail";
 import { General } from "../src/renderer/screens/settings/General";
 import { GeneralRail } from "../src/renderer/screens/settings/GeneralRail";
 import { Performance } from "../src/renderer/screens/settings/Performance";
@@ -711,17 +712,21 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
   });
   it("prepares an allow-listed report then requests copy", async () => {
     const request = vi.spyOn(Client.prototype, "request");
-    const hook = mount("diagnostico-observado", <Diagnostics />);
+    const hook = mount(
+      "diagnostico-observado",
+      <>
+        <Diagnostics />
+        <DiagnosticsRail />
+      </>,
+    );
     await loaded(hook);
     const user = userEvent.setup();
     const prepare = await screen.findByRole("button", {
       name: t("diagnostics.prepare"),
     });
     expect(
-      screen
-        .getByRole("button", { name: t("diagnostics.copy") })
-        .hasAttribute("disabled"),
-    ).toBe(true);
+      screen.queryByRole("button", { name: t("diagnostics.copy") }),
+    ).toBeNull();
     await user.click(prepare);
     await screen.findByRole("textbox", { name: t("diagnostics.preview") });
     await user.click(

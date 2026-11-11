@@ -196,7 +196,8 @@ function TrackInspector({ item }: { item: OverlayInstance }) {
               <Button
                 variant="danger"
                 busy={state.pending}
-                onClick={() =>
+                onClick={() => {
+                  setRemoving(false);
                   void state
                     .execute({
                       method: "studio.remove",
@@ -204,12 +205,9 @@ function TrackInspector({ item }: { item: OverlayInstance }) {
                       baseRevision: view.revision,
                     })
                     .then((value) => {
-                      if (value) {
-                        setRemoving(false);
-                        state.setSelected(null);
-                      }
-                    })
-                }
+                      if (value) state.setSelected(null);
+                    });
+                }}
               >
                 {t.remove}
               </Button>

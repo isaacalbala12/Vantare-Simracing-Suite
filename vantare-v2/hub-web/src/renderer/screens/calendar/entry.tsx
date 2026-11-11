@@ -201,7 +201,10 @@ export default function CalendarEntry() {
                 }
                 onLaunch={() => void launcher.launch()}
               />
-            ) : activeTab === "calendar" && schedule && view && calendarSpan === "day" ? (
+            ) : activeTab === "calendar" &&
+              schedule &&
+              view &&
+              calendarSpan === "day" ? (
               <CalendarDayView
                 schedule={schedule}
                 alerts={alerts}

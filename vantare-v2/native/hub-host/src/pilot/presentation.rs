@@ -2,8 +2,8 @@
 pub const NAME_MAX: usize = 32;
 pub const DESCRIPTION_MAX: usize = 160;
 pub const FAVORITE_MAX: usize = 48;
-pub const SIMULATORS: &[(&str,&str)] = &[
-
+pub const CROP_MIN_SIDE: f32 = 0.25;
+pub const SIMULATORS: &[(&str, &str)] = &[
     ("lmu", "Le Mans Ultimate"),
     ("iracing", "iRacing"),
     ("acc", "Assetto Corsa Competizione"),
@@ -15,8 +15,7 @@ pub const SIMULATORS: &[(&str,&str)] = &[
     ("f1", "EA SPORTS F1"),
     ("gt7", "Gran Turismo 7"),
 ];
-pub const COUNTRIES: &[(&str,&str)] = &[
-
+pub const COUNTRIES: &[(&str, &str)] = &[
     ("DE", "Alemania"),
     ("AR", "Argentina"),
     ("AU", "Australia"),
@@ -72,22 +71,56 @@ mod tests {
     const FROZEN: &str = include_str!("../../../hub/src/pilot.rs");
     fn catalog(name: &str) -> Vec<&'static str> {
         let declaration = format!("pub const {name}:");
-        let initializer = FROZEN.split_once(&declaration).expect("catalog").1.split_once("= &[").expect("initializer").1;
+        let initializer = FROZEN
+            .split_once(&declaration)
+            .expect("catalog")
+            .1
+            .split_once("= &[")
+            .expect("initializer")
+            .1;
         let body = initializer.split_once("];").expect("end").0;
-        assert!(!body.contains("\\\""), "escaped literals require an updated parity reader");
-        body.split('"').enumerate().filter_map(|(index,value)| (index % 2 == 1).then_some(value)).collect()
+        assert!(
+            !body.contains("\\\""),
+            "escaped literals require an updated parity reader"
+        );
+        body.split('"')
+            .enumerate()
+            .filter_map(|(index, value)| (index % 2 == 1).then_some(value))
+            .collect()
     }
     #[test]
     fn visual_catalogs_and_limits_match_the_frozen_editor_without_linking_gpui() {
-        for (name, own) in [("SIMULATORS",SIMULATORS),("COUNTRIES",COUNTRIES)] {
-            let strings:Vec<_> = own.iter().flat_map(|(id,label)| [*id,*label]).collect();
-            assert_eq!(catalog(name),strings);
+        for (name, own) in [("SIMULATORS", SIMULATORS), ("COUNTRIES", COUNTRIES)] {
+            let strings: Vec<_> = own.iter().flat_map(|(id, label)| [*id, *label]).collect();
+            assert_eq!(catalog(name), strings);
         }
-        let compact:String = FROZEN.chars().filter(|c| !c.is_whitespace()).collect();
-        for (name,value) in [("NAME_MAX",NAME_MAX),("DESCRIPTION_MAX",DESCRIPTION_MAX),("FAVORITE_MAX",FAVORITE_MAX)] {
-            let declaration=format!("pubconst{name}:usize=");
-            let observed=compact.split_once(&declaration).expect("limit").1.split(';').next().expect("value").parse::<usize>().expect("integer");
-            assert_eq!(observed,value);
+        let compact: String = FROZEN.chars().filter(|c| !c.is_whitespace()).collect();
+        for (name, value) in [
+            ("NAME_MAX", NAME_MAX),
+            ("DESCRIPTION_MAX", DESCRIPTION_MAX),
+            ("FAVORITE_MAX", FAVORITE_MAX),
+        ] {
+            let declaration = format!("pubconst{name}:usize=");
+            let observed = compact
+                .split_once(&declaration)
+                .expect("limit")
+                .1
+                .split(';')
+                .next()
+                .expect("value")
+                .parse::<usize>()
+                .expect("integer");
+            assert_eq!(observed, value);
         }
+        let crop = compact
+            .split_once("pubconstCROP_MIN_SIDE:f32=")
+            .expect("crop limit")
+            .1
+            .split(';')
+            .next()
+            .expect("crop value")
+            .parse::<f32>()
+            .expect("float");
+        assert_eq!(crop.to_bits(), CROP_MIN_SIDE.to_bits());
     }
 }

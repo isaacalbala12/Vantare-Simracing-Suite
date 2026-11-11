@@ -1,4 +1,5 @@
 //! Editable presentation fields only. Opaque profile extensions stay in Rust.
+#[path = "pilot/presentation.rs"]
 pub mod presentation;
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};

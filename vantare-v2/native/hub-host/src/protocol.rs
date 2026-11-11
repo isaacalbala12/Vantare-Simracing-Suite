@@ -81,6 +81,7 @@ pub enum HostToUi {
         theme: ThemeBoot,
         window: WindowBoot,
         demo: bool,
+        #[serde(rename = "demoName")]
         demo_name: Option<String>,
     },
     Response {

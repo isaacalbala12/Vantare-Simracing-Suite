@@ -9,11 +9,13 @@ export function PlansArt({
   onPrices,
   onPro,
   proDescription,
+  proPending = false,
   pending = false,
 }: {
   onPrices: () => void;
   onPro?: () => void;
   proDescription?: string;
+  proPending?: boolean;
   pending?: boolean;
 }) {
   const cards = [
@@ -71,7 +73,7 @@ export function PlansArt({
                   ? (proDescription ?? text.externalPage)
                   : text.externalPage
               }
-              disabled={pending}
+              disabled={pending || (card.id === "pro" && proPending)}
               onClick={card.id === "pro" ? (onPro ?? onPrices) : onPrices}
             >
               {card.action}

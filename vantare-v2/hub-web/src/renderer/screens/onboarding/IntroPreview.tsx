@@ -264,7 +264,8 @@ export function OnboardingIntroPreview({
               onPrices={() => void prices()}
               onPro={onPro}
               proDescription={proDescription}
-              pending={pricesPending || accountPending}
+              pending={pricesPending}
+              proPending={accountPending}
             />
           ) : step === 4 ? (
             <PerformanceArt automatic={automatic} level={level} />

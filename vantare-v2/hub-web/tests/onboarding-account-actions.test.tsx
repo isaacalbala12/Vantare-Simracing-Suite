@@ -60,7 +60,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-async function mount(signedIn = false) {
+async function mount(signedIn = false, configured = true) {
   let id = 0;
   const account = createMockHost(signedIn ? "cuenta-base" : "onboarding-3");
   const onboarding = createMockHost("onboarding-3");
@@ -72,6 +72,11 @@ async function mount(signedIn = false) {
     )({ kind: "request", id: ++id, request });
     if (reply?.kind === "failure") throw new HostFailure(reply.error);
     if (reply?.kind !== "response") throw new Error("response missing");
+    if (reply.result.method === "account.get" && !configured)
+      return {
+        ...reply.result,
+        value: { ...reply.result.value, configured: false },
+      };
     return reply.result;
   });
   const query = new QueryClient({
@@ -93,13 +98,16 @@ async function mount(signedIn = false) {
   fireEvent.click(start);
   fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
   fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
-  await waitFor(() =>
-    expect(
-      screen
-        .getByRole("button", { name: "Elegir Pro" })
-        .hasAttribute("disabled"),
-    ).toBe(false),
-  );
+  if (configured) {
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Elegir Pro" })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+  } else
+    await screen.findByText("El acceso no está configurado en esta versión.");
 }
 it("shows the three native sign-in choices and reuses Access's hosted browser flow", async () => {
   await mount();
@@ -173,6 +181,24 @@ it("Plus and Launch open prices instead of a purchase", async () => {
   expect(
     fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
   ).toHaveLength(2);
+  expect(
+    fake.request.mock.calls.some(([r]) => r.method === "account.purchase"),
+  ).toBe(false);
+});
+
+it("keeps public prices usable when account access is not configured", async () => {
+  await mount(false, false);
+  expect(
+    screen.getByRole("button", { name: "Elegir Pro" }).hasAttribute("disabled"),
+  ).toBe(true);
+  const plus = screen.getByRole("button", { name: "Elegir Pro Plus" });
+  expect(plus.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(plus);
+  await waitFor(() =>
+    expect(
+      fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
+    ).toHaveLength(1),
+  );
   expect(
     fake.request.mock.calls.some(([r]) => r.method === "account.purchase"),
   ).toBe(false);

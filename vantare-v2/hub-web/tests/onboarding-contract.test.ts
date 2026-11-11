@@ -338,3 +338,21 @@ it("keeps the requested appearance and pending onboarding in every intro capture
       expect(onboarding.result.value.pending).toBe(true);
     }
 });
+
+it.each(["onboarding-3", "onboarding-5"])(
+  "preserves the light capture theme for %s",
+  (scene) => {
+    const reply = createMockHost(`visual-light:${scene}`)({
+      kind: "request",
+      id: 1,
+      request: { method: "settings.get" },
+    });
+    expect(reply).toMatchObject({
+      kind: "response",
+      result: {
+        method: "settings.get",
+        value: { appearance: { scheme: "light" } },
+      },
+    });
+  },
+);

@@ -50,6 +50,9 @@
   transform: translateX(calc(26 * var(--ob-unit)));
   background: var(--ob-raw-ffffff);
 }
+.v-ob-consent .v-privacy-note {
+  padding: 0;
+}
 .v-ob-consent .v-privacy-note,
 .v-ob-consent .v-privacy-send-note,
 .v-ob-consent .v-ob-mail-note {
@@ -81,6 +84,7 @@
   color: var(--ob-raw-faf7f7);
 }
 .v-ob-feed > p {
+  font-weight: 400;
   margin: 0;
   font-size: calc(14 * var(--ob-unit));
 }
@@ -121,6 +125,7 @@
 }
 .v-ob-feed-yes span,
 .v-ob-feed-no s {
+  font-weight: 400;
   flex: 1;
   font-size: calc(15 * var(--ob-unit));
 }

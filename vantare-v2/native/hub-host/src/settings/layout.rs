@@ -269,3 +269,6 @@ impl Layout {
         self.pending.map(|intent| self.save(intent))
     }
 }
+
+#[path="layout/studio.rs"]
+pub(crate) mod studio;

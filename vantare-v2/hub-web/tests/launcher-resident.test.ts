@@ -3,6 +3,7 @@ import type { ResidentView } from "../src/contract/generated/contract";
 import { residentActionLabels } from "../src/contract/generated/launcher_resident";
 import { isResident } from "../src/contract/modules/launcher_resident";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
+import { createMockHost } from "../src/mock/host";
 
 const view: ResidentView = {
   protected: false,
@@ -77,4 +78,29 @@ describe("read-only resident mailbox", () => {
     ])
       expect(isResident({ ...view, registrations: [item] })).toBe(false);
   });
+});
+
+it("resolves themed QA decisions without exposing a reply command", () => {
+  for (const theme of ["dark", "light"]) {
+    const host = createMockHost(`visual-${theme}:launcher-decision`);
+    const reply = host({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.resident.get" },
+    });
+    expect(reply).toMatchObject({
+      kind: "response",
+      result: {
+        method: "launcher.resident.get",
+        value: { online: true, decision: { kind: "authorization" } },
+      },
+    });
+    expect(
+      host({
+        kind: "request",
+        id: 2,
+        request: { method: "launcher.resident.answer", action: "trust" },
+      }),
+    ).toBeNull();
+  }
 });

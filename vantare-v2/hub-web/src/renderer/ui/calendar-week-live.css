@@ -231,3 +231,28 @@
   gap: 12px;
   padding: 20px;
 }
+
+.v-calendar-week-full-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--canvas);
+}
+.v-calendar-week-full {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  padding: 12px;
+  background: var(--canvas);
+  outline: none;
+}
+.v-calendar-week-band {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.v-calendar-week-live :disabled {
+  opacity: 1;
+}

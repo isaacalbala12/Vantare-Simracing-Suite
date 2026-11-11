@@ -1,3 +1,4 @@
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 import type {
   CalendarAlerts,
@@ -7,7 +8,7 @@ import type {
 import { Icon } from "../assets/icons/Icon";
 import { calendarText } from "../i18n/calendar";
 import { calendarWeekText as text } from "../i18n/calendarWeek";
-import { weekDates } from "../screens/calendar/grid";
+import { bandSegments, weekDates } from "../screens/calendar/grid";
 import {
   alertAt,
   daily,
@@ -26,6 +27,7 @@ export function CalendarWeekView({
   now,
   limit,
   onSpan,
+  canFollow = true,
   onFull,
   onFollow,
   onDetail,
@@ -34,11 +36,13 @@ export function CalendarWeekView({
   alerts: CalendarAlerts;
   now: number;
   limit: number;
-  onSpan: (span: string) => void;
-  onFull: () => void;
+  onSpan?: (span: string) => void;
+  canFollow?: boolean;
+  onFull?: () => void;
   onFollow: (id: string, followed: boolean) => void;
-  onDetail: (id: string, at?: number) => void;
+  onDetail?: (id: string, at?: number) => void;
 }) {
+  const [full, setFull] = useState(false);
   const [offset, setOffset] = useState(0),
     [filter, setFilter] = useState("all");
   const date = new Date(now),
@@ -63,11 +67,16 @@ export function CalendarWeekView({
       <Button
         variant="ghost"
         aria-label={text.favorite(s.name)}
+        disabled={!canFollow}
         onClick={() => onFollow(s.id, !view.following.includes(s.id))}
       >
         <Icon name={view.following.includes(s.id) ? "star" : "star-line"} />
       </Button>
-      <button type="button" onClick={() => onDetail(s.id)}>
+      <button
+        type="button"
+        disabled={!onDetail}
+        onClick={() => onDetail?.(s.id)}
+      >
         <strong>{s.name}</strong>
         <p>
           <b data-tier={s.tier}>
@@ -84,7 +93,7 @@ export function CalendarWeekView({
       </button>
     </div>
   );
-  return (
+  const body = (
     <section className="v-calendar-week-live">
       <header>
         <Button
@@ -107,17 +116,25 @@ export function CalendarWeekView({
           {text.today}
         </Button>
         <p className="v-calendar-week-live-caption">{text.publication}</p>
-        <Button variant="ghost" aria-label={text.full} onClick={onFull}>
+        <Button
+          variant="ghost"
+          aria-label={text.full}
+          aria-pressed={full}
+          onClick={() => {
+            setFull(!full);
+            onFull?.();
+          }}
+        >
           <Icon name="expand" />
         </Button>
         <Segmented
           label={text.calendar}
           value="week"
-          onChange={onSpan}
+          onChange={(span) => onSpan?.(span)}
           options={[
-            { value: "day", label: text.day },
+            { value: "day", label: text.day, disabled: !onSpan },
             { value: "week", label: text.weekTab },
-            { value: "month", label: text.month },
+            { value: "month", label: text.month, disabled: !onSpan },
           ]}
         />
         <Segmented
@@ -206,7 +223,8 @@ export function CalendarWeekView({
                               alertAt(schedule, s, chosen, alerts, limit) ||
                               undefined
                             }
-                            onClick={() => onDetail(s.id, chosen)}
+                            disabled={!onDetail}
+                            onClick={() => onDetail?.(s.id, chosen)}
                           >
                             {clock(chosen, view.utc)}
                             {highlighted.length > 1 && (
@@ -230,7 +248,25 @@ export function CalendarWeekView({
               return (
                 <div className="v-calendar-week-live-daily" key={s.id}>
                   {identity(s)}
-                  <button type="button" onClick={() => onDetail(s.id, next)}>
+                  <button
+                    type="button"
+                    disabled={!onDetail}
+                    onClick={() => onDetail?.(s.id, next)}
+                  >
+                    {alerts.bands
+                      .filter((band) => band.seriesId === s.id)
+                      .slice(0, 1)
+                      .flatMap((band) => bandSegments(dates, band, view.utc))
+                      .map((segment) => (
+                        <span
+                          key={segment.from}
+                          className="v-calendar-week-band"
+                          style={{
+                            left: `${(100 * (segment.from - dates[0])) / (end - dates[0])}%`,
+                            width: `${(100 * (segment.until - segment.from)) / (end - dates[0])}%`,
+                          }}
+                        />
+                      ))}
                     <span
                       className="v-calendar-week-live-past"
                       style={{
@@ -270,5 +306,22 @@ export function CalendarWeekView({
         </>
       )}
     </section>
+  );
+  return (
+    <BaseDialog.Root open={full} onOpenChange={setFull}>
+      {full ? (
+        <BaseDialog.Portal>
+          <BaseDialog.Backdrop className="v-calendar-week-full-backdrop" />
+          <BaseDialog.Popup className="v-calendar v-calendar-week-full">
+            <BaseDialog.Title className="v-sr-only">
+              {text.calendar}
+            </BaseDialog.Title>
+            {body}
+          </BaseDialog.Popup>
+        </BaseDialog.Portal>
+      ) : (
+        body
+      )}
+    </BaseDialog.Root>
   );
 }

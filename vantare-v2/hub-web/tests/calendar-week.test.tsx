@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { calendarReference } from "../src/mock/calendar-reference";
 import { calendarWeekText as text } from "../src/renderer/i18n/calendarWeek";
@@ -14,7 +20,7 @@ const alerts = {
   autoLaunch: false,
   notifyWeek: true,
 };
-it("keeps the current publication and routes favorite actions by series id", () => {
+it("keeps the current publication and routes favorite actions by series id", async () => {
   const follow = vi.fn(),
     span = vi.fn(),
     full = vi.fn();
@@ -42,6 +48,13 @@ it("keeps the current publication and routes favorite actions by series id", () 
   expect(span).toHaveBeenCalledWith("day");
   fireEvent.click(screen.getByRole("button", { name: text.full }));
   expect(full).toHaveBeenCalledOnce();
+  expect(screen.getByRole("dialog", { name: text.calendar })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: text.previous }));
+  fireEvent.click(screen.getByRole("button", { name: text.full }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(
+    screen.getByRole("heading", { name: "Semana pasada · 29 sep–5 oct" }),
+  ).toBeTruthy();
 });
 it("shows an unpublished week without inventing departures and permits returning to today", () => {
   const view = calendarReference();

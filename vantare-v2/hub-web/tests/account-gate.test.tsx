@@ -350,3 +350,53 @@ it("wipes detached password inputs when the form is unmounted", async () => {
   cleanup();
   expect(input.value).toBe("");
 });
+
+it("discards a password before the pending RPC replies and never caches it", async () => {
+  let rejectPending: ((reason: unknown) => void) | undefined;
+  const calls = intercept((request) =>
+    request.method === "account.email" && request.action.action === "begin"
+      ? new Promise<Reply>((_resolve, reject) => {
+          rejectPending = reject;
+        })
+      : undefined,
+  );
+  const user = mount();
+  await user.click(await screen.findByRole("button", { name: text.email }));
+  await user.click(
+    screen.getByRole("button", { name: text.modes.signInPassword }),
+  );
+  await user.type(screen.getByLabelText(text.emailLabel), "qa@example.invalid");
+  const marker = `qa-form-only-${crypto.randomUUID()}`;
+  const input = screen.getByLabelText(text.password) as HTMLInputElement;
+  await user.type(input, marker);
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  await screen.findByRole("button", { name: text.submit.waiting });
+  expect(input.value).toBe("");
+  const request = calls.mock.calls
+    .map(([request]) => request)
+    .find(
+      (request) =>
+        request.method === "account.email" && request.action.action === "begin",
+    );
+  expect(
+    request?.method === "account.email" && request.action.action === "begin"
+      ? request.action.password
+      : undefined,
+  ).toBe("");
+  const data = caches.flatMap((cache) =>
+    cache
+      .getQueryCache()
+      .getAll()
+      .map((query) => query.state.data),
+  );
+  const variables = caches.flatMap((cache) =>
+    cache
+      .getMutationCache()
+      .getAll()
+      .map((mutation) => mutation.state.variables),
+  );
+  expect(JSON.stringify({ data, variables })).not.toContain(marker);
+  await act(async () => {
+    rejectPending?.(new HostFailure({ kind: "busy" }));
+  });
+});

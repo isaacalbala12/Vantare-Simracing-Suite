@@ -180,8 +180,13 @@
     0 12px 28px color-mix(in srgb, var(--text-1) 35%, transparent);
 }
 
-.v-shell-main > [role="tabpanel"]:has(> .v-roadmap) {
+.v-shell-main > .v-content-stack:has(.v-roadmap) {
   height: 100%;
+  min-height: 0;
+}
+.v-shell-main [role="tabpanel"]:has(> .v-roadmap) {
+  flex: 1;
+  min-height: 0;
 }
 
 .v-roadmap-hero {

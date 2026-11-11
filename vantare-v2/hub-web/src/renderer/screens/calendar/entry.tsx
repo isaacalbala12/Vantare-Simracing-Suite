@@ -218,6 +218,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "calendar" && view && calendarSpan === "month" ? (
               <CalendarMonthView
+                expired={health === "expired"}
                 view={{ ...view, official: schedule ?? view.official }}
                 alerts={alerts}
                 now={state.now}

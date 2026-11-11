@@ -482,3 +482,6 @@ fn stale_profile_revision_is_a_conflict_even_before_discovery_finishes() {
 
 #[path = "testing_bridge_tests.rs"]
 mod testing;
+
+#[path = "service_queue_bridge_tests.rs"]
+mod service_queue;

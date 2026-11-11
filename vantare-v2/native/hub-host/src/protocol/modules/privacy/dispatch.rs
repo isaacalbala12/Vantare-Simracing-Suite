@@ -33,11 +33,8 @@ impl Session {
             ),
             _ => return Err(io::ErrorKind::InvalidInput.into()),
         };
-        match self.core.request(id, command) {
-            Ok(()) => {
-                self.remote = Some((id, kind));
-                Ok(())
-            }
+        match self.request_remote(id, kind, command) {
+            Ok(()) => Ok(()),
             Err(error) => self.respond(
                 pipe,
                 id,

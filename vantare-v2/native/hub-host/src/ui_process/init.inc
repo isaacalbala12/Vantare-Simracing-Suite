@@ -1,4 +1,4 @@
-        remote: None,
+        remotes: std::collections::BTreeMap::new(),
         deferred: None,
         abandoned_deferred: None,
         subscriptions: std::collections::BTreeSet::new(),

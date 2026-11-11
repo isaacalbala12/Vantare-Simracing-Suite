@@ -26,9 +26,17 @@ impl Session {
     ) -> io::Result<()> {
         let result = crate::testing::intent(request, &self.current.access).and_then(
             |(operation, command)| {
-                self.core.request(id, command)?;
+                // This reducer owns one draft import at a time. A queued request
+                // from another screen must not reset its in-progress transaction.
+                if self
+                    .remotes
+                    .values()
+                    .any(|kind| matches!(kind, RemoteKind::Testing(_)))
+                {
+                    return Err(HostError::Busy);
+                }
+                self.request_remote(id, RemoteKind::Testing(operation), command)?;
                 self.testing_state.begin(operation);
-                self.remote = Some((id, RemoteKind::Testing(operation)));
                 Ok(())
             },
         );
@@ -91,8 +99,7 @@ impl Session {
                     &self.current.access,
                     &crate::testing::ReportFields::from(&fields),
                 )?;
-                self.core.request(id, command)?;
-                self.remote = Some((id, RemoteKind::Testing(operation)));
+                self.request_remote(id, RemoteKind::Testing(operation), command)?;
                 self.deferred = Some((id, std::time::Instant::now()));
                 Ok(None)
             }

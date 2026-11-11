@@ -27,7 +27,7 @@ pub struct Core {
     rights: control::Feed,
     requests: std::sync::mpsc::SyncSender<ServiceRequest>,
     replies: std::sync::mpsc::Receiver<ServiceReply>,
-    pending: Option<u32>,
+    queue: crate::service_queue::Queue,
     service_ok: Arc<AtomicBool>,
     stop: Arc<Event>,
     worker: Option<JoinHandle<()>>,
@@ -59,7 +59,7 @@ impl Core {
         Ok(Self {
             requests,
             replies,
-            pending: None,
+            queue: crate::service_queue::Queue::default(),
             photos,
             rights,
             service_ok,
@@ -74,33 +74,56 @@ impl Core {
         id: u32,
         command: vantare_ipc::services_protocol::Command,
     ) -> Result<(), crate::protocol::HostError> {
-        if self.pending.is_some() {
-            return Err(crate::protocol::HostError::Busy);
-        }
         if !self.service_ok.load(Ordering::Acquire) {
             return Err(crate::protocol::HostError::CoreUnavailable);
         }
-        self.requests
-            .try_send((id, command))
-            .map_err(|_| crate::protocol::HostError::Busy)?;
-        self.pending = Some(id);
+        self.queue.submit(id, command)?;
+        self.dispatch_waiting();
         Ok(())
     }
+    pub(crate) fn cancel_queued(&mut self, id: u32) {
+        self.queue.cancel_waiting(id);
+    }
+    fn dispatch_waiting(&mut self) {
+        while let Some((id, command)) = self.queue.start_next() {
+            if !self.service_ok.load(Ordering::Acquire) {
+                self.queue
+                    .fail_active(id, crate::protocol::HostError::CoreUnavailable);
+                self.queue.fail_all();
+                break;
+            }
+            match self.requests.try_send((id, command)) {
+                Ok(()) => break,
+                Err(std::sync::mpsc::TrySendError::Full(_)) => {
+                    self.queue.fail_active(id, crate::protocol::HostError::Busy);
+                }
+                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                    self.service_ok.store(false, Ordering::Release);
+                    self.queue
+                        .fail_active(id, crate::protocol::HostError::CoreUnavailable);
+                    self.queue.fail_all();
+                    break;
+                }
+            }
+        }
+    }
     pub fn reply(&mut self) -> Option<ServiceReply> {
+        self.dispatch_waiting();
+        if let Some((id, error)) = self.queue.failure() {
+            return Some((id, Err(error)));
+        }
         loop {
             match self.replies.try_recv() {
-                Ok(value) if self.pending == Some(value.0) => {
-                    self.pending = None;
+                Ok(value) if self.queue.finish(value.0) => {
+                    self.dispatch_waiting();
                     return Some(value);
                 }
                 Ok(_) => {}
                 Err(std::sync::mpsc::TryRecvError::Empty) => return None,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     self.service_ok.store(false, Ordering::Release);
-                    return self
-                        .pending
-                        .take()
-                        .map(|id| (id, Err(crate::protocol::HostError::CoreUnavailable)));
+                    self.queue.fail_all();
+                    return self.queue.failure().map(|(id, error)| (id, Err(error)));
                 }
             }
         }

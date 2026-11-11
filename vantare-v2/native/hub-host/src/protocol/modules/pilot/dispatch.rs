@@ -27,8 +27,7 @@ impl Session {
             _ => Err(HostError::Denied),
         };
         let result = intent.and_then(|(kind, command)| {
-            self.core.request(id, command)?;
-            self.remote = Some((id, kind));
+            self.request_remote(id, kind, command)?;
             Ok(())
         });
         match result {

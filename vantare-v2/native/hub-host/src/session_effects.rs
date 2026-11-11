@@ -1,5 +1,6 @@
 use super::{
-    CloseReason, Event, HostError, HostToUi, Instant, Pipe, Reply, SaveError, Session, frame, io,
+    CloseReason, Event, HostError, HostToUi, Instant, Pipe, RemoteKind, Reply, SaveError, Session,
+    frame, io,
 };
 pub(super) fn settings_response(
     observed: &mut crate::diagnostics::Observed,
@@ -34,17 +35,36 @@ pub(super) fn finish_session(exit_code: u8, cancel: impl FnOnce() -> io::Result<
     exit_code
 }
 impl Session {
+    pub(super) fn request_remote(
+        &mut self,
+        id: u32,
+        kind: RemoteKind,
+        command: vantare_ipc::services_protocol::Command,
+    ) -> Result<(), HostError> {
+        if self.abandoned_deferred == Some(id) || self.remotes.contains_key(&id) {
+            return Err(HostError::Busy);
+        }
+        self.core.request(id, command)?;
+        self.remotes.insert(id, kind);
+        Ok(())
+    }
+
     pub(super) fn validate_service_completion(
         &mut self,
+        id: u32,
         result: Result<Option<Reply>, HostError>,
     ) -> Result<Option<Reply>, HostError> {
         let result = match result {
-            Ok(None) if self.deferred.is_none() || self.remote.is_none() => {
+            Ok(None)
+                if !self.deferred.is_some_and(|(expected, _)| expected == id)
+                    || !matches!(self.remotes.get(&id), Some(RemoteKind::Testing(_))) =>
+            {
                 Err(HostError::Rejected)
             }
             other => other,
         };
-        if !matches!(&result, Ok(None)) {
+        if !matches!(&result, Ok(None)) && self.deferred.is_some_and(|(expected, _)| expected == id)
+        {
             self.deferred = None;
         }
         result
@@ -78,7 +98,8 @@ impl Session {
     }
     pub(super) fn cancel_deferred(&mut self, pipe: &mut Pipe) -> io::Result<()> {
         if let Some((id, _)) = self.deferred.take() {
-            self.remote = None;
+            self.remotes.remove(&id);
+            self.core.cancel_queued(id);
             self.abandoned_deferred = Some(id);
             self.respond_service(pipe, id, Err(HostError::CoreUnavailable))?;
         }

@@ -22,6 +22,7 @@ struct Core {
     busy: bool,
 }
 impl Core {
+    fn cancel_queued(&mut self, _id: u32) {}
     fn request(
         &mut self,
         _id: u32,

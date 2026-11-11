@@ -1,7 +1,7 @@
 struct Session {
     deferred: Option<(u32, Instant)>,
     abandoned_deferred: Option<u32>,
-    remote: Option<(u32, RemoteKind)>,
+    remotes: std::collections::BTreeMap<u32, RemoteKind>,
     subscriptions: std::collections::BTreeSet<Topic>,
     exit_code: u8,
     launcher: PathBuf,

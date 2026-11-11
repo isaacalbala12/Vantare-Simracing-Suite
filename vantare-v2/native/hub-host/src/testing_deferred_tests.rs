@@ -19,7 +19,9 @@ fn begin(session: &mut Session, pipe: &mut Pipe) {
     session.current.services = protocol::LinkState::Connected;
     session.current.access.verified = true;
     session.testing_state.begin(Operation::Load);
-    session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
+    session
+        .remotes
+        .insert(7, RemoteKind::Testing(Operation::Load));
     let result = session.service_reply(7, Ok(empty()));
     assert_eq!(result, Ok(None));
     session.respond_service(pipe, 7, result).unwrap();
@@ -163,14 +165,18 @@ fn import_dispatch_busy_and_unavailable_never_archive_unseen_sources() {
         session.core.busy = busy;
         session.current.access.verified = true;
         session.testing_state.begin(Operation::Load);
-        session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
+        session
+            .remotes
+            .insert(7, RemoteKind::Testing(Operation::Load));
         let result = session.service_reply(7, Ok(empty()));
         assert!(matches!(
             (busy, result),
             (true, Err(HostError::Busy)) | (false, Err(HostError::CoreUnavailable))
         ));
         session.testing_state.begin(Operation::Discard);
-        session.remote = Some((8, RemoteKind::Testing(Operation::Discard)));
+        session
+            .remotes
+            .insert(8, RemoteKind::Testing(Operation::Discard));
         assert!(
             matches!(session.service_reply(8, Ok(empty())), Ok(Some(Reply::DraftDiscard { value })) if value.legacy == LegacyMigration::Preserved)
         );
@@ -182,12 +188,12 @@ fn import_dispatch_busy_and_unavailable_never_archive_unseen_sources() {
 fn another_module_keeps_its_immediate_reply_and_closed_error() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
-    session.remote = Some((9, RemoteKind::MailGet));
+    session.remotes.insert(9, RemoteKind::MailGet);
     assert!(
         matches!(session.service_reply(9, Ok(CoreReply::MailConsent { consent: true, locale: None, revision: 1 })), Ok(Some(Reply::MailGet { value })) if value.consent)
     );
     assert!(session.deferred.is_none());
-    session.remote = Some((10, RemoteKind::MailGet));
+    session.remotes.insert(10, RemoteKind::MailGet);
     assert_eq!(
         session.service_reply(10, Err(HostError::CoreUnavailable)),
         Err(HostError::CoreUnavailable)
@@ -200,17 +206,23 @@ fn a_module_cannot_leave_a_request_unregistered_when_it_defers() {
     for (deferred, remote) in [(false, false), (false, true), (true, false)] {
         let mut session = fixture.session();
         session.deferred = deferred.then_some((7, Instant::now()));
-        session.remote = remote.then_some((7, RemoteKind::Testing(Operation::Load)));
+        if remote {
+            session
+                .remotes
+                .insert(7, RemoteKind::Testing(Operation::Load));
+        }
         assert_eq!(
-            session.validate_service_completion(Ok(None)),
+            session.validate_service_completion(7, Ok(None)),
             Err(HostError::Rejected)
         );
         assert!(session.deferred.is_none());
     }
     let mut session = fixture.session();
     session.deferred = Some((7, Instant::now()));
-    session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
-    assert_eq!(session.validate_service_completion(Ok(None)), Ok(None));
+    session
+        .remotes
+        .insert(7, RemoteKind::Testing(Operation::Load));
+    assert_eq!(session.validate_service_completion(7, Ok(None)), Ok(None));
 }
 #[test]
 fn a_closed_pipe_during_cleanup_keeps_the_restart_exit_code() {
@@ -243,8 +255,8 @@ fn busy_during_a_deferred_import_preserves_the_original_request() {
         }
     ));
     assert!(matches!(
-        session.remote,
-        Some((7, RemoteKind::Testing(Operation::Load)))
+        session.remotes.get(&7),
+        Some(RemoteKind::Testing(Operation::Load))
     ));
     assert_eq!(session.deferred.map(|(id, _)| id), Some(7));
     let result = session.service_reply(7, Err(HostError::CoreUnavailable));
@@ -265,11 +277,86 @@ fn revoked_access_prevents_the_import_save_before_core_dispatch() {
     let mut session = fixture.session();
     session.core.available = true;
     session.testing_state.begin(Operation::Load);
-    session.remote = Some((7, RemoteKind::Testing(Operation::Load)));
+    session
+        .remotes
+        .insert(7, RemoteKind::Testing(Operation::Load));
     assert_eq!(
         session.service_reply(7, Ok(empty())),
         Err(HostError::Denied)
     );
     assert_eq!(session.core.requests, 0);
     assert!(path.exists() && !path.with_extension("json.imported").exists());
+}
+
+#[test]
+fn another_screen_completion_never_retires_a_deferred_import() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.deferred = Some((7, Instant::now()));
+    session
+        .remotes
+        .insert(7, RemoteKind::Testing(Operation::Load));
+    session.remotes.insert(9, RemoteKind::MailGet);
+    assert!(matches!(
+        session.service_reply(
+            9,
+            Ok(CoreReply::MailConsent {
+                consent: true,
+                locale: None,
+                revision: 1
+            })
+        ),
+        Ok(Some(Reply::MailGet { .. }))
+    ));
+    assert_eq!(session.deferred.map(|(id, _)| id), Some(7));
+    assert!(session.remotes.contains_key(&7));
+    assert_eq!(
+        session.service_reply(7, Err(HostError::CoreUnavailable)),
+        Err(HostError::CoreUnavailable)
+    );
+    assert!(session.deferred.is_none());
+}
+#[test]
+fn cancelling_an_import_preserves_another_screens_correlation() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.deferred = Some((7, Instant::now()));
+    session
+        .remotes
+        .insert(7, RemoteKind::Testing(Operation::Load));
+    session.remotes.insert(9, RemoteKind::MailGet);
+    let mut pipe = Pipe::new(Vec::new());
+    session.cancel_deferred(&mut pipe).unwrap();
+    assert!(!session.remotes.contains_key(&7));
+    assert!(session.remotes.contains_key(&9));
+    assert!(matches!(
+        session.service_reply(
+            9,
+            Ok(CoreReply::MailConsent {
+                consent: false,
+                locale: None,
+                revision: 1
+            })
+        ),
+        Ok(Some(Reply::MailGet { .. }))
+    ));
+    assert_eq!(session.abandoned_deferred, Some(7));
+    assert_eq!(session.service_reply(7, Ok(empty())), Ok(None));
+    assert!(session.abandoned_deferred.is_none());
+}
+#[test]
+fn a_deferred_reply_requires_its_exact_id_and_testing_owner() {
+    let fixture = Fixture::new();
+    for (id, kind) in [
+        (8, RemoteKind::Testing(Operation::Load)),
+        (7, RemoteKind::MailGet),
+    ] {
+        let mut session = fixture.session();
+        session.deferred = Some((7, Instant::now()));
+        session.remotes.insert(id, kind);
+        assert_eq!(
+            session.validate_service_completion(7, Ok(None)),
+            Err(HostError::Rejected)
+        );
+    }
 }

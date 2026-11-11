@@ -10,6 +10,7 @@ export function create(context: MockContext): MockHandler {
       observedText: "",
       contextText: "",
     },
+    legacy: "none",
     exists: false,
     screenshots: [],
   };
@@ -76,6 +77,7 @@ export function create(context: MockContext): MockHandler {
         if (request.method === "draft.save")
           draft = {
             fields: structuredClone(request.fields),
+            legacy: "none",
             exists: true,
             screenshots: [],
           };
@@ -88,7 +90,8 @@ export function create(context: MockContext): MockHandler {
               observedText: "",
               contextText: "",
             },
-            exists: false,
+            legacy: "none",
+    exists: false,
             screenshots: [],
           };
         return {

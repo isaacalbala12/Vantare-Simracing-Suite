@@ -240,13 +240,9 @@ impl Session {
         self.current = self.core.status();
         if let Some((id, result)) = self.core.reply() {
             let result = self.service_reply(id, result);
-            self.respond(
-                pipe,
-                id,
-                result,
-                crate::diagnostics::DiagnosticSection::Services,
-            )?;
+            self.respond_service(pipe, id, result)?;
         }
+        self.expire_deferred(pipe, Instant::now())?;
         for tick in SCREEN_TICKS {
             tick(self, pipe)?;
         }
@@ -400,6 +396,7 @@ pub fn run(args: &Args) -> io::Result<u8> {
             break;
         }
     }
+    session.cancel_deferred(&mut pipe)?;
     if child.0.try_wait()?.is_some_and(|status| !status.success()) {
         return Err(io::ErrorKind::BrokenPipe.into());
     }

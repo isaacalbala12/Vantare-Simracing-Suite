@@ -12,6 +12,12 @@ pub(crate) fn typescript() -> String {
     declare::<crate::testing::ReportFields>(&mut text);
     declare::<crate::testing::TestingReport>(&mut text);
     declare::<crate::testing::TestingView>(&mut text);
+    declare::<crate::testing::LegacyMigration>(&mut text);
+    constants!(
+        &mut text,
+        "reportLegacyStates",
+        ["none", "imported", "importedTrimmed", "preserved"]
+    );
     declare::<crate::testing::ReportDraftView>(&mut text);
     constants!(&mut text, "reportFieldLimits", crate::testing::FIELD_LIMITS);
     constants!(&mut text, "reportModules", crate::testing::MODULES);

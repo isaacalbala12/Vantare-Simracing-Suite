@@ -49,8 +49,14 @@ export function isRequest(value: Record<string, unknown>): boolean {
     case "report.capture":
     case "draft.save":
       return exact(value, ["method", "fields"]) && isReportFields(value.fields);
-    default:
+    case "report.prepare":
+    case "report.retryPrepare":
+    case "testing.refresh":
+    case "draft.load":
+    case "draft.discard":
       return exact(value, ["method"]);
+    default:
+      return false;
   }
 }
 export function isReply(value: Record<string, unknown>): boolean {

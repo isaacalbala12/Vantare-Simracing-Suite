@@ -1,4 +1,6 @@
 //! Closed presentation contract for Testing Center. Services owns persistence.
+#[path = "testing_legacy.rs"]
+pub(crate) mod legacy;
 use crate::protocol::{AccessView, HostError};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "bindings"))]

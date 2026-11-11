@@ -27,6 +27,7 @@ impl Session {
         let result = crate::testing::intent(request, &self.current.access).and_then(
             |(operation, command)| {
                 self.core.request(id, command)?;
+                self.testing_state.begin(operation);
                 self.remote = Some((id, RemoteKind::Testing(operation)));
                 Ok(())
             },
@@ -51,16 +52,43 @@ pub(super) fn dispatch(
     session.testing_dispatch(pipe, id, request)
 }
 pub(super) fn complete(
-    _session: &mut Session,
+    session: &mut Session,
     remote: Option<(u32, RemoteKind)>,
     id: u32,
     result: Result<vantare_ipc::services_protocol::Reply, HostError>,
-) -> Result<Reply, HostError> {
+) -> Result<Option<Reply>, HostError> {
     match (remote, result) {
         (Some((expected, RemoteKind::Testing(operation))), Ok(reply)) if expected == id => {
-            crate::testing::complete(operation, reply)
+            session.complete_testing(id, operation, reply)
         }
         (_, Err(error)) => Err(error),
-        _ => Err(HostError::Denied),
+        _ => Err(HostError::Rejected),
+    }
+}
+impl Session {
+    fn complete_testing(
+        &mut self,
+        id: u32,
+        operation: crate::testing::Operation,
+        reply: vantare_ipc::services_protocol::Reply,
+    ) -> Result<Option<Reply>, HostError> {
+        match self.testing_state.complete(operation, reply)? {
+            crate::testing::legacy::Next::Complete(reply) => {
+                let mut result = crate::testing::complete(operation, reply)?;
+                match &mut result {
+                    Reply::DraftLoad { value }
+                    | Reply::DraftSave { value }
+                    | Reply::DraftDiscard { value } => value.legacy = self.testing_state.legacy,
+                    _ => {}
+                }
+                Ok(Some(result))
+            }
+            crate::testing::legacy::Next::Import(command) => {
+                self.core.request(id, command)?;
+                self.remote = Some((id, RemoteKind::Testing(operation)));
+                self.deferred = Some((id, std::time::Instant::now()));
+                Ok(None)
+            }
+        }
     }
 }

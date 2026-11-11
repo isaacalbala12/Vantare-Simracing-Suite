@@ -55,7 +55,9 @@ function useReportsState() {
   const [failure, setFailure] = useState<HostError["kind"]>();
   const [preview, setPreview] = useState<ReportPreviewView>();
   const [receipt, setReceipt] = useState<ReportReceiptView>();
-  const [sessionReceipts, setSessionReceipts] = useState<{ value: ReportReceiptView; title: string; module: string }[]>([]);
+  const [sessionReceipts, setSessionReceipts] = useState<
+    { value: ReportReceiptView; title: string; module: string }[]
+  >([]);
   const [participation, setParticipation] = useState<TestingView>({
     reports: [],
     questionnaires: [],
@@ -350,7 +352,15 @@ function useReportsState() {
       if (reply.method !== "report.send")
         throw new Error("unexpected report reply");
       setReceipt(reply.value);
-      setSessionReceipts(current => current.some(item => item.value.id === reply.value.id) ? current.map(item => item.value.id === reply.value.id ? { ...item, value: reply.value } : item) : [...current, { value: reply.value, title, module }]);
+      setSessionReceipts((current) =>
+        current.some((item) => item.value.id === reply.value.id)
+          ? current.map((item) =>
+              item.value.id === reply.value.id
+                ? { ...item, value: reply.value }
+                : item,
+            )
+          : [...current, { value: reply.value, title, module }],
+      );
       setPreview(undefined);
       if (reply.value.draftState === "cleared") {
         if (JSON.stringify(state.current.fields) === sentFields)

@@ -53,6 +53,11 @@ impl Failure {
         }
     }
 }
+#[derive(Clone, Copy)]
+enum ArchiveRetry {
+    Allowed,
+    NextLoad,
+}
 pub(crate) struct State {
     base: PathBuf,
     sources: Vec<Source>,
@@ -61,7 +66,7 @@ pub(crate) struct State {
     importing: bool,
     scanned: bool,
     surfaced: bool,
-    archive_failed: bool,
+    archive_retry: ArchiveRetry,
     pub(crate) legacy: LegacyMigration,
 }
 pub(crate) enum Next {
@@ -204,7 +209,7 @@ impl State {
             importing: false,
             scanned: false,
             surfaced: false,
-            archive_failed: false,
+            archive_retry: ArchiveRetry::Allowed,
             legacy: LegacyMigration::None,
         }
     }
@@ -296,13 +301,14 @@ impl State {
                 self.surfaced = true;
             }
             if self.surfaced
-                && (!self.archive_failed || matches!(operation, Operation::Load))
+                && (matches!(self.archive_retry, ArchiveRetry::Allowed)
+                    || matches!(operation, Operation::Load))
                 && !self.sources.is_empty()
                 && (draft.is_some() || matches!(operation, Operation::Discard))
             {
                 match self.archive() {
                     Ok(()) => {
-                        self.archive_failed = false;
+                        self.archive_retry = ArchiveRetry::Allowed;
                         self.legacy = if imported {
                             if self.sources[self.selected].trimmed {
                                 LegacyMigration::ImportedTrimmed
@@ -317,7 +323,7 @@ impl State {
                             .push_str(" · borradores antiguos archivados; prevalece el protegido");
                     }
                     Err(error) => {
-                        self.archive_failed = true;
+                        self.archive_retry = ArchiveRetry::NextLoad;
                         self.warning = Some(error);
                     }
                 }

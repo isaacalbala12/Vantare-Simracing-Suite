@@ -420,7 +420,6 @@ fn failed_archiving_is_not_retried_by_autosave_or_discard_until_load() {
     state
         .complete(Operation::Load, reply(Some(fields("protected"))))
         .unwrap();
-    assert!(state.archive_failed);
     fs::remove_file(&archive).unwrap();
     for operation in [Operation::Save, Operation::Save, Operation::Discard] {
         state.begin(operation);

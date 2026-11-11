@@ -295,9 +295,9 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                       className="v-studio-catalog-widget"
                       data-kind={widget.kind}
                       aria-label={`${t.addShort} ${widget.name}`}
+                      aria-disabled={!widget.allowed}
                       disabled={
                         state.pending ||
-                        !widget.allowed ||
                         !studioAddAvailable ||
                         view.state !== "ready"
                       }
@@ -326,7 +326,8 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                           ]?.focus();
                         }
                       }}
-                      onClick={() =>
+                      onClick={() => {
+                        if (!widget.allowed) return;
                         void state
                           .execute({
                             method: "studio.add",
@@ -335,8 +336,8 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
                           })
                           .then((value) => {
                             if (value) setAdded(value.revision);
-                          })
-                      }
+                          });
+                      }}
                     >
                       <WidgetThumb kind={widget.kind} />
                       <strong>
@@ -351,7 +352,19 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
             </section>
           ),
       )}
-      {view.plan === "unverified" && <p>{t.verify}</p>}
+      {view.plan === "unverified" ? (
+        <p>{t.verify}</p>
+      ) : view.catalog.some((w) => !w.allowed) ? (
+        <p>
+          {t.planNote(
+            t.planNames[view.plan],
+            t.included(
+              view.catalog.filter((w) => w.allowed).map((w) => w.name),
+            ),
+            view.catalog.filter((w) => !w.allowed).length,
+          )}
+        </p>
+      ) : null}
       {view.catalog.some((w) => !w.allowed) && (
         <Button onClick={onPlans}>{t.plans}</Button>
       )}

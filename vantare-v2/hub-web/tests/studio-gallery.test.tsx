@@ -74,7 +74,6 @@ describe("Studio gallery", () => {
     mount();
     const card = await screen.findByRole("button", {
       name: "Standings",
-      exact: true,
     });
     const article = card.closest("article");
     if (!article) throw new Error("Missing card");
@@ -101,24 +100,18 @@ describe("Studio gallery", () => {
   it("requires confirmation again after a removal conflict", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-error");
-    await screen.findByRole("button", { name: "Standings", exact: true });
-    fireEvent.click(screen.getByRole("tab", { name: t.track, exact: true }));
-    fireEvent.click(
-      await screen.findByRole("button", { name: t.remove, exact: true }),
-    );
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    fireEvent.click(await screen.findByRole("button", { name: t.remove }));
     const dialog = await screen.findByRole("dialog", { name: t.removeTitle });
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: t.remove, exact: true }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: t.remove }));
     await screen.findByText(t.reconfirm);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByRole("button", { name: t.retry })).toBeNull();
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.remove"),
     ).toHaveLength(1);
-    expect(
-      screen.getByRole("button", { name: "Standings", exact: true }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Standings" })).toBeTruthy();
   });
   it("adds from the catalog and undoes only that addition", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
@@ -130,9 +123,9 @@ describe("Studio gallery", () => {
     fireEvent.click(catalogButton);
     await screen.findByText(t.added);
     expect(
-      await screen.findByRole("button", { name: "Standings", exact: true }),
+      await screen.findByRole("button", { name: "Standings" }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: t.undo, exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: t.undo }));
     await screen.findByText(t.empty);
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.add"),
@@ -142,12 +135,49 @@ describe("Studio gallery", () => {
     mount("studio-missing");
     await screen.findByText(t.missingHelp);
     expect(
-      screen
-        .getByRole("button", { name: t.show, exact: true })
-        .hasAttribute("disabled"),
+      screen.getByRole("button", { name: t.show }).hasAttribute("disabled"),
     ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Standings" })).toBeNull();
+  });
+  it("searches descriptions without accents and blocks locked choices", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-pro-bloqueado");
+    await screen.findByRole("button", { name: "Standings" });
+    fireEvent.click(screen.getByRole("button", { name: t.addShort }));
+    const search = await screen.findByRole("searchbox", { name: t.search });
+    fireEvent.change(search, { target: { value: "clasificacion" } });
+    const widget = screen.getByRole("button", {
+      name: "Añadir Standings",
+    });
+    expect(widget.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(widget);
     expect(
-      screen.queryByRole("button", { name: "Standings", exact: true }),
-    ).toBeNull();
+      requests.mock.calls.filter(([r]) => r.method === "studio.add"),
+    ).toHaveLength(0);
+    fireEvent.change(search, { target: { value: "no existe este widget" } });
+    expect(screen.getByText(t.noResults)).toBeTruthy();
+  });
+  it("keeps visibility keyboard actions and track requests independent of geometry", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const card = await screen.findByRole("button", {
+      name: "Standings",
+    });
+    card.focus();
+    fireEvent.keyDown(card, { key: " " });
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(([r]) => r.method === "studio.visibility"),
+      ).toBe(true),
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      await screen.findByRole("searchbox", { name: t.search }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: t.show }));
+    await screen.findByRole("button", { name: t.hide });
+    expect(
+      requests.mock.calls.find(([r]) => r.method === "studio.track")?.[0],
+    ).toEqual({ method: "studio.track", show: true });
   });
 });

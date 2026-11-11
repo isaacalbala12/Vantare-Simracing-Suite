@@ -21,6 +21,10 @@ contrato de preferencias de #2088: usa sus tipos generados y errores cerrados.
 - `CalendarPreferences.ts`: acciones CAS serializadas, conflicto visible sin
   sobrescritura autom√°tica, reintento y descarte expl√≠citos. Un cambio de cliente
   o derechos invalida las respuestas anteriores y libera el estado ocupado.
+  Cada documento expone su estado por separado: protegido o inaccesible implica
+  revisiÛn nula y bloquea solo sus propias acciones. Recargar permite recuperar
+  un documento reparado. `calendarScheduleUnavailable` explica que todavÌa no
+  hay horario vigente para aÒadir una serie a favoritas.
 
 Las pruebas solo usan fixtures p√∫blicos y dobles locales. La publicaci√≥n de
 referencia de octubre se obtiene del corpus generado por Rust y aplica los

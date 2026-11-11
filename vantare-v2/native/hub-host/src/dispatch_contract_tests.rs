@@ -15,17 +15,28 @@ type Pipe = io::Cursor<Vec<u8>>;
 mod ready {
     pub struct Ready;
 }
-struct Core;
+#[derive(Default)]
+struct Core {
+    requests: usize,
+}
 impl Core {
     fn request(
         &mut self,
         _id: u32,
         _command: vantare_ipc::services_protocol::Command,
     ) -> Result<(), HostError> {
+        self.requests += 1;
         Err(HostError::CoreUnavailable)
     }
 }
 include!(concat!(env!("OUT_DIR"), "/session.rs"));
+#[cfg_attr(
+    test,
+    allow(
+        clippy::duplicate_mod,
+        reason = "portable tests use the production session effects with in-memory IO"
+    )
+)]
 #[path = "session_effects.rs"]
 mod session_effects;
 use session_effects::settings_response;
@@ -53,7 +64,7 @@ impl Fixture {
         };
         Session::new(
             &args,
-            Core,
+            Core::default(),
             Settings::load(&args),
             None,
             crate::privacy::State::isolated(&self.0),
@@ -67,7 +78,7 @@ impl Drop for Fixture {
 }
 fn run_corpus(
     module: &str,
-    corpus: serde_json::Value,
+    corpus: &serde_json::Value,
     dispatch: fn(&mut Session, &mut Pipe, u32, &Request) -> io::Result<()>,
 ) {
     let mut requests = 0;

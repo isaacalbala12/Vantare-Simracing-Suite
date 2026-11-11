@@ -163,7 +163,7 @@ fn write_session(
         remote.push_str(&operations);
         writeln!(
             registry,
-            "#[path={:?}] mod {id};",
+            "#[cfg_attr(test, allow(clippy::duplicate_mod, reason = \"portable tests compile the production dispatch against an in-memory pipe\"))] #[path={:?}] mod {id};",
             path.join("dispatch.rs").to_str().expect("UTF-8")
         )
         .expect("String write");
@@ -215,7 +215,7 @@ fn write_session(
         if path.join("tick.rs").exists() {
             writeln!(
                 registry,
-                "#[path={:?}] mod {id}_tick;",
+                "#[cfg_attr(test, allow(clippy::duplicate_mod, reason = \"portable tests compile production ticks against an in-memory pipe\"))] #[path={:?}] mod {id}_tick;",
                 path.join("tick.rs").to_str().expect("UTF-8")
             )
             .expect("String write");
@@ -274,7 +274,7 @@ fn write_dispatch_tests(output: &std::path::Path, modules: &[PathBuf], sources: 
     for (path, source) in modules.iter().zip(sources) {
         if enum_body(source, "Request").is_some() {
             let id = path.file_name().expect("id").to_str().expect("UTF-8");
-            writeln!(tests, "#[test] fn {id}_corpus_reaches_real_dispatch() {{ run_corpus({id:?}, crate::protocol::modules::{id}::bindings::corpus(), {id}::dispatch); }}").expect("String write");
+            writeln!(tests, "#[test] fn {id}_corpus_reaches_real_dispatch() {{ run_corpus({id:?}, &crate::protocol::modules::{id}::bindings::corpus(), {id}::dispatch); }}").expect("String write");
         }
     }
     fs::write(output.join("dispatch_case_tests.rs"), tests).expect("dispatch tests");

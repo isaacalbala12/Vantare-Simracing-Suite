@@ -1,7 +1,7 @@
 # Contrato por pantalla · VANTA-138
 
 Cada pantalla mantiene su contrato en
-`native/hub-host/src/protocol/modules/<id>/`. El identificador usa minúsculas y
+`native/hub-host/src/protocol/modules/<id>/`. Los ids reservados `contract` y `validators` se rechazan. El identificador usa solo letras minúsculas y
 guiones bajos entre palabras (`testing`, `roadmap`, `studio`). El build descubre
 las carpetas por orden alfabético. No hay un registro que editar a mano.
 
@@ -12,7 +12,7 @@ las carpetas por orden alfabético. No hay un registro que editar a mano.
 | `wire.rs`               | Enums `Request`, `Reply`, `HostError`, `Topic`, `Event` que aporte la pantalla. Omitir los que no aporte. Derivar serde y, en tests/feature `bindings`, `TS`. Mantener el formato de rustfmt.                                                                                |
 | `bindings.rs`           | `pub(crate) fn typescript() -> String` para DTO y constantes; `pub(crate) fn corpus() -> serde_json::Value` con `{host, ui}`, serializando variantes Rust reales. Los aliases de los cinco enums y las listas de métodos/temas se exportan automáticamente.                  |
 | `dispatch.rs`           | `pub(super) fn dispatch(session: &mut Session, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()>`. Solo recibe solicitudes de sus variantes, por tabla cerrada. Tests de la pantalla en este archivo o en un submódulo propio.                                  |
-| `state.inc`, `init.inc` | Opcionales: campos e inicializadores Rust de la sesión. Para estado nuevo, preferir un campo `<id>_state` con un tipo concreto de la pantalla. El constructor aporta `args`, `core`, `settings`, `confirmation`. No usar estado global ni `Any`.                             |
+| `state.inc`, `init.inc` | Opcionales: campos e inicializadores Rust de la sesión. Para estado nuevo, preferir un campo `<id>_state` con un tipo concreto de la pantalla. El constructor aporta `args`, `core`, `settings`, `confirmation`, `privacy`. No usar estado global ni `Any`.                             |
 | `remote.inc`            | Opcional: variantes de la operación pendiente. Si existe, `dispatch.rs` aporta `complete(&mut Session, Option<(u32, RemoteKind)>, u32, Result<services_protocol::Reply, HostError>) -> Result<Reply, HostError>`. Validar ID y tipo de respuesta antes de actualizar estado. |
 | `tick.rs`               | Opcional: `pub(super) fn tick(&mut Session, &mut Pipe) -> io::Result<()>`, sin bloqueos ni esperas.                                                                                                                                                                          |
 | `model.rs`              | Opcional: modelo público como `crate::<id>`. `model.path` conserva la ruta de los modelos anteriores; no duplicarlos.                                                                                                                                                        |
@@ -58,8 +58,10 @@ pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/h
 Esto exporta y comprueba `src/contract/generated/<id>.ts` y
 `src/contract/generated/corpus/<id>.json`. **Versionar solo esos archivos propios.**
 Un test Rust rechaza módulos generados sobrantes o ausentes, compara cada archivo
-con Rust y exige muestras de todas las variantes del wire. La prueba Windows
-comprueba además que cada solicitud tiene exactamente un handler.
+con Rust y exige muestras de todas las variantes del wire. Un test por módulo ejecuta todas sus muestras de solicitud contra el `dispatch.rs`
+real, con pipe en memoria, ficheros temporales y servicios desconectados. Corre en
+Windows y Linux; detecta un brazo omitido aunque exista el handler en la tabla.
+Las suscripciones mantienen además la comprobación de ruta única.
 
 ```text
 cd hub-web
@@ -79,8 +81,23 @@ Los tests del índice comprueban la incorporación de otro módulo, la unión ce
 y que los módulos anteriores no cambian. Los aliases se extraen únicamente de los
 cinco enums de cada módulo, no de otros DTO con nombres parecidos.
 
-Antes de validar Rust, formatear los `.rs` propios con rustfmt; la agregación
-automática no hace que `cargo fmt` descubra por sí solo todos los archivos.
+Cada `wire.rs` debe terminar exactamente con:
+
+```rust
+#[cfg(any(test, feature = "bindings"))]
+pub(crate) mod bindings;
+```
+
+`wire.rs`, `dispatch.rs`, `bindings.rs` y `tick.rs` no son recorridos por
+`cargo fmt`, porque los módulos se incluyen desde `OUT_DIR`. Formatearlos
+explícitamente con `rustfmt --edition 2024 --config skip_children=true <archivos>`.
+Un test invoca `rustfmt --check` sobre todos ellos y falla si no están formateados.
+El build rechaza variantes/renombres en la misma línea, temas agrupados y nombres
+serializados duplicados entre solicitudes o entre respuestas de distintos módulos.
+
+El exportador Rust escribe exclusivamente módulos y corpus propios. El único
+generador del índice agregado es `scripts/contract-index.ts`; tras ejecutar el
+exportador, usar `bun run contract:index` antes de consumir el índice.
 No editar los índices, `protocol.rs`, `protocol/bindings.rs`, `lib.rs` ni
 `ui_process.rs` para añadir una pantalla. Un cambio del transporte compartido
 (versión, autenticación, cierre, cola de servicios) sigue requiriendo coordinación.

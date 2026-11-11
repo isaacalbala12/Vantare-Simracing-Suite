@@ -1,0 +1,31 @@
+name: Hub contract portable
+on:
+  pull_request:
+    branches: [nightly]
+    paths: ['vantare-v2/native/hub-host/**', 'vantare-v2/native/ipc/**', 'vantare-v2/native/services/**', '.github/workflows/hub-contract-portable.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hub-contract-portable-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  portable-dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_DIR: ${{ runner.temp }}/hub-contract-target
+    defaults:
+      run:
+        working-directory: vantare-v2/native
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install repository Rust toolchain
+        run: rustup show active-toolchain
+      - name: Exercise production dispatch with every module corpus on Linux
+        run: cargo test --locked -p vantare-hub-host --lib dispatch_contract_tests
+      - name: Check parser rejection cases and rustfmt of owned sources
+        run: cargo test --locked -p vantare-hub-host --lib wire_source_tests

@@ -219,6 +219,13 @@ fn entered_live(previous: Option<&protocol::CoreStatus>, current: &protocol::Cor
 }
 
 include!(concat!(env!("OUT_DIR"), "/session.rs"));
+#[cfg_attr(
+    test,
+    allow(
+        clippy::duplicate_mod,
+        reason = "portable tests use the production session effects with in-memory IO"
+    )
+)]
 #[path = "session_effects.rs"]
 mod session_effects;
 use session_effects::settings_response;

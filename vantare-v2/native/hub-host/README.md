@@ -160,3 +160,28 @@ Win32 del adaptador de ficheros y del consent lock. El corpus de privacidad y la
 validación de proyecciones se comprueban también en Vitest, sin esa restricción.
 La corrupción después de un permiso afirmativo borra la proyección anterior y
 muestra valores denegados/protegidos sin reescribir el documento dañado.
+
+
+## Contrato modular: cobertura portable
+
+Cada módulo aporta sus variantes y muestras; `build.rs` rechaza los ids reservados
+`contract`/`validators`, renombres duplicados de Request/Reply y desajustes entre
+variantes y líneas de renombre. `wire.rs` acaba con el submódulo `bindings` bajo
+`#[cfg(any(test, feature = "bindings"))]`. Los archivos propios incluidos desde
+OUT_DIR no son recorridos por cargo fmt: el test `wire_source_tests` los comprueba
+explícitamente con rustfmt (wire, bindings, dispatch y tick).
+
+`dispatch_contract_tests` compila los mismos dispatch de producción con un pipe
+en memoria y un núcleo desconectado: ejecuta cada muestra UI de cada pantalla,
+por el handler real y por la tabla agregada. Usa exclusivamente ficheros temporales
+y consentimiento aislado; no lanza servicios ni aplicaciones. Se ejecuta en la CI
+Windows existente y en el workflow Linux `Hub contract portable`. La dependencia
+del instalador ya existente también se declara en dev-dependencies, sin defaults,
+para compilar la proyección de Actualizaciones en estos tests portables; no añade
+GPUI ni soporte productivo a macOS/Linux. La doble compilación intencional de los
+mismos fuentes contra ambos tipos de pipe lleva una excepción localizada de
+`clippy::duplicate_mod`, sin omitir los demás lints.
+
+El exportador Rust escribe solo módulos/corpus propios; el índice agregado tiene
+un único generador: `hub-web/scripts/contract-index.ts`. La guía y migración están
+en `hub-web/docs/screen-contracts.md`.

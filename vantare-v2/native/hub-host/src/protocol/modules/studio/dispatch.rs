@@ -1,5 +1,5 @@
 use super::{Event, HostError, HostToUi, Pipe, Reply, Request, Session, Topic, frame, io};
-fn access(session: &Session) -> Option<vantare_ipc::control::CatalogAccess> {
+pub(super) fn access(session: &Session) -> Option<vantare_ipc::control::CatalogAccess> {
     if !session.current.access.verified || session.current.access.blocked {
         return None;
     }
@@ -94,20 +94,4 @@ pub(super) fn subscribe(session: &mut Session, pipe: &mut Pipe, _topic: Topic) -
             event: Event::Studio { value },
         },
     )
-}
-pub(super) fn tick(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
-    let access = access(session);
-    if let Some(value) = session.studio.changed(
-        session.subscriptions.contains(&Topic::Studio),
-        std::time::Instant::now(),
-        access,
-    ) {
-        frame::write(
-            pipe,
-            &HostToUi::Event {
-                event: Event::Studio { value },
-            },
-        )?;
-    }
-    Ok(())
 }

@@ -1,4 +1,6 @@
 export const calendarDayText = {
+  separator: " · ",
+  utc: "UTC",
   today: "Hoy",
   day: "Día",
   week: "Semana",

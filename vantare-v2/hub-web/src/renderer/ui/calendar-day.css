@@ -169,7 +169,7 @@
 }
 .v-calendar-day-hour button[data-alert] {
   background: var(--accent);
-  color: var(--on-accent);
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 .v-calendar-day-now {
@@ -221,7 +221,7 @@
 .v-calendar-day-alert {
   background: var(--accent);
   border-radius: 4px;
-  color: var(--on-accent);
+  color: var(--text-on-accent);
 }
 .v-calendar-day footer i {
   width: 18px;
@@ -236,4 +236,22 @@
   justify-content: center;
   flex-direction: column;
   gap: 12px;
+}
+
+.v-calendar-day-hour > div[data-band] {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+.v-calendar-day-full-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--canvas);
+}
+.v-calendar-day-full {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  padding: 12px;
+  outline: none;
 }

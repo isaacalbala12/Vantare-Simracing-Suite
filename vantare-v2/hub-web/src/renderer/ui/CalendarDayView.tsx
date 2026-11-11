@@ -1,3 +1,4 @@
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { useLayoutEffect, useRef, useState } from "react";
 import type {
   CalendarAlerts,
@@ -10,6 +11,7 @@ import { alertAt, daily, nextStart } from "../screens/calendar/rows";
 import { starts } from "../screens/calendar/schedule";
 import { Button } from "./Button";
 import { civilDay, clock, datePart, dayHours } from "./calendarDate";
+import { zoneLabel } from "./calendarZone";
 import { Segmented } from "./Forms";
 import "./calendar-day.css";
 export function CalendarDayView({
@@ -20,6 +22,7 @@ export function CalendarDayView({
   utc,
   limit,
   onSpan,
+  spans = ["day", "week"],
   onFull,
   onDetail,
 }: {
@@ -30,9 +33,11 @@ export function CalendarDayView({
   utc: boolean;
   limit: number;
   onSpan: (span: string) => void;
-  onFull: () => void;
-  onDetail: (id: string, at: number) => void;
+  spans?: readonly string[];
+  onFull?: () => void;
+  onDetail?: (id: string, at: number) => void;
 }) {
+  const [full, setFull] = useState(false);
   const dates = weekDates(now, utc),
     today = dates.indexOf(civilDay(now, 0, utc));
   const [chosen, setSelected] = useState<number | null>(null),
@@ -69,7 +74,7 @@ export function CalendarDayView({
           )
         : 5) * 30;
   }, [selected, today, utc, now, at, filter]);
-  return (
+  const body = (
     <section className="v-calendar-day">
       <header className="v-calendar-day-tools">
         <div className="v-calendar-day-dates">
@@ -88,8 +93,20 @@ export function CalendarDayView({
             </button>
           ))}
         </div>
-        <p>{text.count(slots.reduce((n, all) => n + all.length, 0))}</p>
-        <Button variant="ghost" aria-label={text.full} onClick={onFull}>
+        <p>
+          {text.count(slots.reduce((n, all) => n + all.length, 0))}
+          {text.separator}
+          {utc ? text.utc : zoneLabel(now, true)}
+        </p>
+        <Button
+          variant="ghost"
+          aria-label={text.full}
+          aria-pressed={full}
+          onClick={() => {
+            setFull(!full);
+            onFull?.();
+          }}
+        >
           <Icon name="expand" />
         </Button>
         <Segmented
@@ -97,9 +114,17 @@ export function CalendarDayView({
           value="day"
           onChange={onSpan}
           options={[
-            { value: "day", label: text.day },
-            { value: "week", label: text.week },
-            { value: "month", label: text.month },
+            { value: "day", label: text.day, disabled: !spans.includes("day") },
+            {
+              value: "week",
+              label: text.week,
+              disabled: !spans.includes("week"),
+            },
+            {
+              value: "month",
+              label: text.month,
+              disabled: !spans.includes("month"),
+            },
           ]}
         />
         <Segmented
@@ -149,7 +174,21 @@ export function CalendarDayView({
                     data-now={(now >= h.from && now < h.until) || undefined}
                   >{`${String(h.hour).padStart(2, "0")}h`}</strong>
                   {series.map((s, index) => (
-                    <div key={s.id}>
+                    <div
+                      key={s.id}
+                      data-band={
+                        alerts.bands.some((band) => {
+                          const date = new Date(h.from);
+                          const minute =
+                            date.getHours() * 60 + date.getMinutes();
+                          return (
+                            band.seriesId === s.id &&
+                            minute >= band.from &&
+                            minute < band.to
+                          );
+                        }) || undefined
+                      }
+                    >
                       {slots[index]
                         .filter((start) => start >= h.from && start < h.until)
                         .map((start) => (
@@ -163,7 +202,8 @@ export function CalendarDayView({
                               undefined
                             }
                             data-gone={start < now || undefined}
-                            onClick={() => onDetail(s.id, start)}
+                            disabled={!onDetail}
+                            onClick={() => onDetail?.(s.id, start)}
                           >
                             {daily(s)
                               ? clock(start, utc).slice(-2)
@@ -204,5 +244,22 @@ export function CalendarDayView({
         </>
       )}
     </section>
+  );
+  return (
+    <BaseDialog.Root open={full} onOpenChange={setFull}>
+      {full ? (
+        <BaseDialog.Portal>
+          <BaseDialog.Backdrop className="v-calendar-day-full-backdrop" />
+          <BaseDialog.Popup className="v-calendar v-calendar-day-full">
+            <BaseDialog.Title className="v-sr-only">
+              {text.calendar}
+            </BaseDialog.Title>
+            {body}
+          </BaseDialog.Popup>
+        </BaseDialog.Portal>
+      ) : (
+        body
+      )}
+    </BaseDialog.Root>
   );
 }

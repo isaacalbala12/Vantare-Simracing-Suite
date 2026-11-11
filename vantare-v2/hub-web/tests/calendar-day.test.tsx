@@ -61,3 +61,40 @@ it("shows the empty favorites state without replacing the date controls", () => 
     screen.getByRole("button", { name: new RegExp(`${text.today}\\s*2`) }),
   ).toBeTruthy();
 });
+
+it("paints bands in local hours even in UTC and disables undelivered actions", () => {
+  const now = Date.parse("2026-07-02T12:00:00Z");
+  const local = new Date(now),
+    minute = local.getHours() * 60 + local.getMinutes();
+  const { container } = render(
+    <CalendarDayView
+      schedule={fixture}
+      alerts={{
+        ...alerts,
+        bands: [
+          {
+            seriesId: fixture.series[0].id,
+            from: minute,
+            to: minute + 60,
+            days: "weekend",
+            mode: "first",
+          },
+        ],
+      }}
+      following={[]}
+      now={now}
+      utc
+      limit={1000}
+      onSpan={() => {}}
+    />,
+  );
+  expect(container.querySelectorAll("[data-band]").length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: text.month })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  expect(container.querySelector(".v-calendar-day-hour button")).toHaveProperty(
+    "disabled",
+    true,
+  );
+});

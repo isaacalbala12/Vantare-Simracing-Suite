@@ -27,6 +27,7 @@ export function CalendarWeekView({
   now,
   limit,
   onSpan,
+  spans = ["week"],
   canFollow = true,
   onFull,
   onFollow,
@@ -37,6 +38,7 @@ export function CalendarWeekView({
   now: number;
   limit: number;
   onSpan?: (span: string) => void;
+  spans?: readonly string[];
   canFollow?: boolean;
   onFull?: () => void;
   onFollow: (id: string, followed: boolean) => void;
@@ -142,9 +144,17 @@ export function CalendarWeekView({
           value="week"
           onChange={(span) => onSpan?.(span)}
           options={[
-            { value: "day", label: text.day, disabled: !onSpan },
+            {
+              value: "day",
+              label: text.day,
+              disabled: !onSpan || !spans.includes("day"),
+            },
             { value: "week", label: text.weekTab },
-            { value: "month", label: text.month, disabled: !onSpan },
+            {
+              value: "month",
+              label: text.month,
+              disabled: !onSpan || !spans.includes("month"),
+            },
           ]}
         />
         <Segmented

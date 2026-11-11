@@ -265,18 +265,55 @@ fn publishing_never_overwrites_an_oversized_or_non_file_destination() {
 
 #[test]
 fn an_oversized_serialized_feed_is_not_written() {
- let root=Root::new();let mut feed=build(&view(),&alerts(),now(),true,false).unwrap();feed.events=vec![feed.events[0].clone();256];for event in &mut feed.events {event.label="x".repeat(300);}
- assert_eq!(publish(&root.layout(),&feed),Err(FeedError::Limit));assert!(!root.0.join("session-alerts-feed.json").exists());
+    let root = Root::new();
+    let mut feed = build(&view(), &alerts(), now(), true, false).unwrap();
+    feed.events = vec![feed.events[0].clone(); 256];
+    for event in &mut feed.events {
+        event.label = "x".repeat(300);
+    }
+    assert_eq!(publish(&root.layout(), &feed), Err(FeedError::Limit));
+    assert!(!root.0.join("session-alerts-feed.json").exists());
 }
 #[test]
 fn a_busy_writer_preserves_the_old_feed_and_can_retry_without_waiting() {
- let root=Root::new();let mut feed=build(&view(),&alerts(),now(),true,false).unwrap();publish(&root.layout(),&feed).unwrap();let original=root.saved();
- let lock=std::fs::OpenOptions::new().write(true).open(root.0.join("session-alerts-feed.json.lock")).unwrap();lock.try_lock().unwrap();feed.events.clear();assert_eq!(publish(&root.layout(),&feed),Err(FeedError::Io));assert_eq!(root.saved(),original);drop(lock);assert!(publish(&root.layout(),&feed).unwrap());assert!(root.saved().events.is_empty());
+    let root = Root::new();
+    let mut feed = build(&view(), &alerts(), now(), true, false).unwrap();
+    publish(&root.layout(), &feed).unwrap();
+    let original = root.saved();
+    let lock = std::fs::OpenOptions::new()
+        .write(true)
+        .open(root.0.join("session-alerts-feed.json.lock"))
+        .unwrap();
+    lock.try_lock().unwrap();
+    feed.events.clear();
+    assert_eq!(publish(&root.layout(), &feed), Err(FeedError::Io));
+    assert_eq!(root.saved(), original);
+    drop(lock);
+    assert!(publish(&root.layout(), &feed).unwrap());
+    assert!(root.saved().events.is_empty());
 }
 #[cfg(windows)]
 #[test]
 fn a_symbolic_feed_destination_never_changes_its_target() {
- let root=Root::new();let target=root.0.join("other.json");std::fs::write(&target,b"keep").unwrap();let link=root.0.join("session-alerts-feed.json");
- if let Err(error)=std::os::windows::fs::symlink_file(&target,&link) {if error.kind()==std::io::ErrorKind::PermissionDenied || error.raw_os_error()==Some(1314) {eprintln!("QA symlink privilege unavailable; case skipped");return;}panic!("QA symlink setup: {error:?}");}
- assert_eq!(publish(&root.layout(),&build(&view(),&alerts(),now(),true,false).unwrap()),Err(FeedError::Protected));assert_eq!(std::fs::read(&target).unwrap(),b"keep");
+    let root = Root::new();
+    let target = root.0.join("other.json");
+    std::fs::write(&target, b"keep").unwrap();
+    let link = root.0.join("session-alerts-feed.json");
+    if let Err(error) = std::os::windows::fs::symlink_file(&target, &link) {
+        if error.kind() == std::io::ErrorKind::PermissionDenied
+            || error.raw_os_error() == Some(1314)
+        {
+            eprintln!("QA symlink privilege unavailable; case skipped");
+            return;
+        }
+        panic!("QA symlink setup: {error:?}");
+    }
+    assert_eq!(
+        publish(
+            &root.layout(),
+            &build(&view(), &alerts(), now(), true, false).unwrap()
+        ),
+        Err(FeedError::Protected)
+    );
+    assert_eq!(std::fs::read(&target).unwrap(), b"keep");
 }

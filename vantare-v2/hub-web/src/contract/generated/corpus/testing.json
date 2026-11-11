@@ -1,14 +1,21 @@
 {
   "host": [
     {
+      "error": {
+        "kind": "evidencePending"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {
         "method": "report.send",
         "value": {
           "createdAt": "2026-11-10T12:00:00Z",
-          "draftCleared": true,
-          "id": "qa",
+          "draftState": "cleared",
+          "id": "15350000-0000-0000-0000-000000000001",
           "state": "submitted"
         }
       }
@@ -74,6 +81,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -93,6 +101,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -167,6 +176,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -186,6 +196,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }
@@ -205,6 +216,7 @@
             "observedText": ""
           },
           "legacy": "none",
+          "message": "",
           "screenshots": []
         }
       }

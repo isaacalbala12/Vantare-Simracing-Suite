@@ -17,7 +17,12 @@ const config = (): CalendarConfigView => ({
   prefsRevision: calendarEmptyRevision,
   following: [],
   followingRevision: calendarEmptyRevision,
-  alerts: structuredClone(calendarDefaultAlerts),
+  alerts: {
+    ...calendarDefaultAlerts,
+    bands: [],
+    slots: [],
+    channels: { ...calendarDefaultAlerts.channels },
+  },
   alertsRevision: calendarEmptyRevision,
   documents: { prefs: "ready", following: "ready", alerts: "ready" },
 });

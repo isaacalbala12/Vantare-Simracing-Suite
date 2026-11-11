@@ -72,9 +72,12 @@ async function mount(scene = "testing-reports") {
   await act(async () => {
     await hook.result.current.load();
   });
+  if (!client || !peer) throw new Error("missing report port");
   return {
     ...hook,
     cache,
+    host: peer,
+    connection: client,
     close: (reason: CloseReason): Promise<boolean> => {
       if (!client || !peer) throw new Error("missing report port");
       const connected = client;
@@ -390,4 +393,45 @@ it("flushes a draft when the document becomes hidden before a close request", as
   vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
   act(() => document.dispatchEvent(new Event("visibilitychange")));
   await waitFor(() => expect(hook.result.current.dirty).toBe(false));
+});
+
+it("waits for an already dispatched save before answering close through the port", async () => {
+  const hook = await mount();
+  const port = hook.host;
+  const receive = port.onmessage;
+  if (!receive) throw new Error("missing local host");
+  let held: MessageEvent | undefined;
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "draft.save"
+    )
+      held = event;
+    else receive.call(port, event);
+  };
+  act(() => hook.result.current.edit({ actionText: "Guardado ya en vuelo" }));
+  let saving!: Promise<void>;
+  act(() => {
+    saving = hook.result.current.save();
+  });
+  await waitFor(() => expect(held).toBeDefined());
+  const requested = new Promise<void>((resolve) =>
+    hook.connection.listen((message) => {
+      if (message.kind === "closeRequested") resolve();
+    }),
+  );
+  let answered = false;
+  const closing = hook.close("window").then((allow) => {
+    answered = true;
+    return allow;
+  });
+  await requested;
+  expect(answered).toBe(false);
+  await act(async () => {
+    if (!held) throw new Error("missing held save");
+    receive.call(port, held);
+    await saving;
+    expect(await closing).toBe(true);
+  });
+  expect(hook.result.current.dirty).toBe(false);
 });

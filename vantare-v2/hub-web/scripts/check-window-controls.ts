@@ -105,25 +105,27 @@ try {
     { windowsHide: true },
   );
   const snapshots = [state()];
-  const caption = await page.locator(".v-section-title").boundingBox();
-  assert.ok(caption);
-  const titlePoint = [
-    Math.round(caption.x + caption.width / 2),
-    Math.round(caption.y + caption.height / 2),
-  ] as const;
-  state("drag", ...titlePoint);
+  async function titlePoint() {
+    const caption = await page.locator(".v-section-title").boundingBox();
+    assert.ok(caption);
+    return [
+      Math.round(caption.x + caption.width / 2),
+      Math.round(caption.y + caption.height / 2),
+    ] as const;
+  }
+  state("drag", ...(await titlePoint()));
   const dragged = state();
   assert.ok(
     dragged.left !== snapshots[0].left || dragged.top !== snapshots[0].top,
     "real caption dragging moves the HWND",
   );
-  state("doubleClick", ...titlePoint);
+  state("doubleClick", ...(await titlePoint()));
   await until(
     () => state().maximized,
     10000,
     "native title double click maximizes",
   );
-  state("doubleClick", ...titlePoint);
+  state("doubleClick", ...(await titlePoint()));
   await until(
     () => !state().maximized,
     10000,
@@ -144,7 +146,6 @@ try {
         String(child.pid),
         "-Executable",
         executable,
-        "-Prepare",
         "-Output",
         join(evidence, "error.png"),
       ],

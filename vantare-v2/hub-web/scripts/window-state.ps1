@@ -35,7 +35,14 @@ public static class QaWindowState {
    } else {
     var before=Bounds(h);mouse_event(2,0,0,0,UIntPtr.Zero);
     try {
-     if(!System.Threading.SpinWait.SpinUntil(()=>Moving(thread),5000))throw new Exception("Native caption move loop did not start");
+     // Windows starts caption dragging after the pointer crosses its drag threshold.
+     var start=System.Diagnostics.Stopwatch.StartNew();
+     int step=0;
+     while(!Moving(thread)&&start.ElapsedMilliseconds<5000) {
+      SetCursorPos(point.x+10+(step++%2)*10,point.y+10);
+      System.Threading.Thread.Sleep(10); // Bounded polling of native move-loop readiness.
+     }
+     if(!Moving(thread))throw new Exception("Native caption move loop did not start");
      SetCursorPos(point.x+80,point.y+50);
      if(!System.Threading.SpinWait.SpinUntil(()=>{var r=Bounds(h);return r.l!=before.l||r.t!=before.t;},5000))throw new Exception("Dragging did not move the HWND");
     } finally {mouse_event(4,0,0,0,UIntPtr.Zero);}

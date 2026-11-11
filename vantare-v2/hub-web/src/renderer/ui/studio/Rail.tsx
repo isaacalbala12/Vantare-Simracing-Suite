@@ -12,7 +12,7 @@ import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
-import { Checkbox, SearchInput, Select, Slider, Switch } from "../../ui/Forms";
+import { SearchInput, Select, Slider, Switch } from "../../ui/Forms";
 import { Tooltip } from "../../ui/Layers";
 import { WidgetThumb } from "./Widgets";
 
@@ -128,7 +128,7 @@ function TrackInspector({ item }: { item: OverlayInstance }) {
         onValueCommitted={(value) => patch({ field: "opacity", value })}
       />
       <fieldset>
-        <legend>{t.showIn}</legend>
+        <legend className="v-sr-only">{t.showIn}</legend>
         {(
           [
             ["practice", t.practice],
@@ -136,7 +136,7 @@ function TrackInspector({ item }: { item: OverlayInstance }) {
             ["race", t.race],
           ] as const
         ).map(([key, label]) => (
-          <Checkbox
+          <Switch
             key={key}
             label={label}
             checked={item.showIn[key]}

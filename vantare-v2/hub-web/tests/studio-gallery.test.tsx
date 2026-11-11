@@ -191,7 +191,7 @@ describe("Studio gallery", () => {
     mount();
     await screen.findByRole("button", { name: "Standings" });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
-    fireEvent.click(await screen.findByRole("checkbox", { name: t.practice }));
+    fireEvent.click(await screen.findByRole("switch", { name: t.practice }));
     await waitFor(() =>
       expect(
         requests.mock.calls.some(

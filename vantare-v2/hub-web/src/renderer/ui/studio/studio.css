@@ -496,3 +496,8 @@
 .v-studio .v-studio-obs-button {
   color: var(--text-3);
 }
+
+.v-studio-inspector-fields .v-switch-field {
+  width: 100%;
+  justify-content: space-between;
+}

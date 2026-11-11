@@ -80,7 +80,7 @@ for (const count of [4, 30]) {
         });
         if ((await toggle.getAttribute("aria-expanded")) !== String(!collapsed))
           await toggle.click();
-        const cards = page.locator(".v-studio-card");
+        const cards = page.locator(".v-studio-overlay");
         await cards.first().waitFor();
         if ((await cards.count()) !== count)
           throw new Error("Studio QA instance count differs");

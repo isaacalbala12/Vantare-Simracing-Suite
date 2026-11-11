@@ -81,6 +81,19 @@ impl Core {
         self.dispatch_waiting();
         Ok(())
     }
+    /// Polling uses a separate waiting slot; manual actions always use request().
+    pub fn request_background(
+        &mut self,
+        id: u32,
+        command: vantare_ipc::services_protocol::Command,
+    ) -> Result<(), crate::protocol::HostError> {
+        if !self.service_ok.load(Ordering::Acquire) {
+            return Err(crate::protocol::HostError::CoreUnavailable);
+        }
+        self.queue.submit_background(id, command)?;
+        self.dispatch_waiting();
+        Ok(())
+    }
     pub(crate) fn cancel_queued(&mut self, id: u32) {
         self.queue.cancel_waiting(id);
     }

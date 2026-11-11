@@ -12,17 +12,21 @@ pub(crate) struct Queue {
     waiting: [Option<Request>; PRIORITIES],
     failures: VecDeque<(u32, HostError)>,
 }
-fn priority(command: &Command) -> usize {
+enum Origin {
+    User,
+    Background,
+}
+fn priority(command: &Command, origin: Origin) -> usize {
     match command {
         Command::Logout => 0,
         Command::AccountCancel => 1,
-        Command::Status
-        | Command::AccountPoll
-        | Command::LicenseStatus
-        | Command::AccountProfileRefresh => 3,
-        _ => 2,
+        _ => match origin {
+            Origin::User => 2,
+            Origin::Background => 3,
+        },
     }
 }
+
 impl Queue {
     fn len(&self) -> usize {
         usize::from(self.active.is_some())
@@ -39,7 +43,13 @@ impl Queue {
             || self.failures.iter().any(|(pending, _)| *pending == id)
     }
     pub(crate) fn submit(&mut self, id: u32, command: Command) -> Result<(), HostError> {
-        let slot = priority(&command);
+        self.enqueue(id, command, Origin::User)
+    }
+    pub(crate) fn submit_background(&mut self, id: u32, command: Command) -> Result<(), HostError> {
+        self.enqueue(id, command, Origin::Background)
+    }
+    fn enqueue(&mut self, id: u32, command: Command, origin: Origin) -> Result<(), HostError> {
+        let slot = priority(&command, origin);
         if self.len() >= MAX_PENDING || self.contains(id) || self.waiting[slot].is_some() {
             return Err(HostError::Busy);
         }
@@ -101,8 +111,8 @@ mod tests {
     fn logout_then_cancel_then_user_then_background_without_preempting_an_effect() {
         let mut queue = Queue::default();
         start(&mut queue, 1, Command::AccountPoll);
+        queue.submit_background(2, Command::Status).unwrap();
         for (id, command) in [
-            (2, Command::Status),
             (3, Command::PilotLoad),
             (4, Command::AccountCancel),
             (5, Command::Logout),
@@ -197,5 +207,20 @@ mod tests {
             Some((2, Command::MailConsentGet))
         ));
         assert!(!queue.finish(1));
+    }
+
+    #[test]
+    fn a_manual_refresh_is_an_intent_even_when_the_same_command_is_also_polled() {
+        for command in [Command::Status, Command::AccountProfileRefresh] {
+            let mut queue = Queue::default();
+            queue.submit_background(1, Command::AccountPoll).unwrap();
+            assert!(queue.start_next().is_some());
+            queue.submit_background(2, Command::LicenseStatus).unwrap();
+            queue.submit(3, command).unwrap();
+            assert!(queue.finish(1));
+            assert_eq!(queue.start_next().map(|(id, _)| id), Some(3));
+            assert!(queue.finish(3));
+            assert_eq!(queue.start_next().map(|(id, _)| id), Some(2));
+        }
     }
 }

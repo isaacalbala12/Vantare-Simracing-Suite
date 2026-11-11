@@ -83,14 +83,17 @@ fn the_core_dispatches_waiting_commands_in_priority_order_without_replaying() {
     let local = session.core.isolate_services(true);
     session
         .core
-        .request(1, ServiceCommand::AccountPoll)
+        .request_background(1, ServiceCommand::AccountPoll)
         .unwrap();
     assert!(matches!(
         local.incoming.try_recv().unwrap(),
         (1, ServiceCommand::AccountPoll)
     ));
+    session
+        .core
+        .request_background(2, ServiceCommand::Status)
+        .unwrap();
     for (id, command) in [
-        (2, ServiceCommand::Status),
         (3, ServiceCommand::PilotLoad),
         (4, ServiceCommand::AccountCancel),
         (5, ServiceCommand::Logout),

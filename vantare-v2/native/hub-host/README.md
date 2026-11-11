@@ -52,6 +52,26 @@ la intención pendiente y permite cerrar. En EOF el
 anfitrión aplica un límite de dos segundos para un renderer bloqueado. Una
 entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la ventana.
 
+## Cola de servicios
+
+Un efecto activo, sin preempción ni reenvío automático. Puede esperar una petición
+por nivel: Logout, Cancel, intención del usuario y fondo, en ese orden. La segunda
+intención en espera devuelve Busy sin sustituir la primera. Como máximo quedan
+cinco IDs pendientes, incluidas las respuestas de cancelación no retiradas.
+
+`Session::request_remote(id, kind, command)` registra la correlación por ID para
+las pantallas. `Core::request` es intención del usuario; `request_background` es
+para sondeo. El origen es explícito: Status o refrescar el perfil manualmente no
+pierden prioridad por compartir comando con el sondeo. Los futuros ticks de
+Acceso usarán el origen de fondo y registrarán su RemoteKind correspondiente.
+No se cambia la autoridad del Feed de derechos ni se añade sondeo en este PR.
+
+Testing Center conserva una sola transacción de borrador. Las respuestas de otras
+pantallas no la retiran; la importación solo responde y archiva tras su ACK.
+Cancelar elimina un guardado que aún espera, preserva las otras correlaciones y
+reserva el ID abandonado hasta retirar su respuesta. La cola se comprueba con
+mensajes y canales controlados, sin temporizadores en los tests.
+
 ## Comprobaciones locales
 
 Desde `vantare-v2`, usando los slots persistentes en D: del README nativo:

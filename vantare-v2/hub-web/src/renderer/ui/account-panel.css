@@ -166,15 +166,15 @@
   font: 600 15px / 15px var(--font-display);
   color: var(--text-2);
 }
-.v-account-card-title > .v-icon {
-  width: 14px;
-  height: 14px;
+.v-account-card-title > svg {
+  width: 16px;
+  height: 16px;
 }
 .v-account-module {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 55.25px;
+  min-height: 58px;
   border-bottom: 1px solid var(--line-1);
 }
 .v-account-module + .v-account-module {
@@ -190,7 +190,7 @@
   background: var(--surface-3);
   color: var(--text-3);
 }
-.v-account-module-icon .v-icon {
+.v-account-module-icon > svg {
   width: 18px;
   height: 18px;
 }
@@ -328,9 +328,9 @@
   line-height: 17.25px;
   color: var(--text-3);
 }
-.v-account-rail .v-rail-block-body > p {
-  font-size: 12px;
-  line-height: 18px;
+.v-account-rail .v-rail-block-body > p:not(.v-account-notice) {
+  font-size: 13px;
+  line-height: 19.5px;
   color: var(--text-3);
 }
 @media (max-height: 780px) {

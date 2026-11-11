@@ -1,7 +1,7 @@
 # Banco GPUI compartido (QA)
 
 El inventario fijo es `D:/VantareServer/qa/referencia-gpui-bin/bank.json`; apunta al
-ejecutable compilado `versions/1d8614ed4/vantare.exe` dentro de ese banco.
+ejecutable compilado `versions/12ff03f49/vantare.exe` dentro de ese banco.
 `bank.json` fija SHA256, commit de origen y perfil Release. El script comprueba
 ese hash antes de abrirlo. Sus replies son locales; no usa cuentas ni servicios reales.
 El banco incluye los recursos públicos y una plantilla QA propia.
@@ -56,8 +56,8 @@ la sección completa. Cada captura acaba su proceso antes de comenzar otra.
 
 ## Puertas reales de privacidad y acceso
 
-El banco actual, fuente `1d8614ed4`, SHA-256
-`d88d5e5a55c24ca1705e953012774dc29e4f49a475f3e03216dba455f77a2564`,
+El banco actual, fuente `12ff03f49`, SHA-256
+`41ef53c062b63c74a4527d525390d5a2e7966605477ea92d06a21309ffd2f9a9`,
 añade el flag autorizado `--qa-measure` al ejemplo QA. Este modo conserva las
 puertas reales y rechaza `--demo` y `--qa-testing`; exige que tanto
 `VANTARE_NATIVE_DATA_ROOT` como `LOCALAPPDATA` sean la raíz QA explícita.
@@ -72,8 +72,30 @@ el resultado de la preparación. No se maneja el escritorio ni se abre el navega
 La opción nueva `-Offscreen` de `scripts/visual-diff/capture.ps1` solo sirve con
 `-Prepare`; las llamadas existentes conservan su comportamiento.
 
-Las seis referencias dark/light están en `referencia-gpui/{dark,light}` con sus
-recibos. Informe: `D:/VantareServer/evidence/hub-web/acceso-referencias/reference-report.json`.
-Dos tests del ejemplo y build Release pasan en Windows; cada captura cerró su PID
-antes de la siguiente. El Clippy del crate GPUI congelado conserva sus errores
-previos (17 hallazgos en código fuera del ejemplo); no se modifica ni se silencia.
+La apariencia QA se serializa con `paletteVersion: 1`, igual que el almacén
+productivo: sin esa versión, el lector legado intercambia Vantare y Classic.
+El capturador verifica la paleta, el esquema y el zoom efectivos antes del recibo.
+Las seis primeras referencias sin esa versión se retiraron del catálogo y se
+conservan en `acceso-referencias-invalid-palette/`; no se usan para comparar.
+
+El banco reutiliza también las escenas de email existentes, sin ampliar el Hub
+congelado: `email-formulario` (form), `email-codigo` (code),
+`email-crear-contrasena` (password: crear cuenta), `email-consentimiento` (consent),
+`email-autorizando` (pending), `email-reiniciado` (expired), `email-ocupado` (queue)
+y `email-espera` (waiting). Son datos ficticios; el hook detiene las peticiones.
+No ofrece una escena de nueva contraseña o de acceso alojado.
+
+Validación parcial: tres tests del ejemplo y build Release pasan en Windows.
+Hay 12 capturas válidas 1440×900/DPI 96: las tres puertas y ocho escenas de email en
+oscuro, y privacidad-pendiente en claro. Sus recibos y entradas están en el
+catálogo. Informe: `D:/VantareServer/evidence/hub-web/acceso-referencias-v2/reference-report.json`.
+Faltan privacidad-uso, acceso-base y las ocho escenas de email en claro.
+
+La sesión de captura se detuvo al fallar el helper PowerShell de privacidad-uso
+claro con `Fatal error. Internal CLR error (0x80131506)` en Roslyn/Add-Type.
+Los procesos propios se cerraron. Diagnóstico: `acceso-referencias-v2/capture-stall.json`
+y `acceso-referencias-v2/light-privacidad-uso.log`. No ejecutar más capturas o
+smokes en el servidor hasta que el orquestador indique que se puede reanudar.
+
+El Clippy del crate GPUI congelado conserva 17 hallazgos previos fuera del ejemplo;
+no se modifica ni se silencia. No se distribuye este banco.

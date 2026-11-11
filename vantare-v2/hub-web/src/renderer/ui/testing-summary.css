@@ -1,0 +1,64 @@
+.v-testing-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+.v-testing-summary-hero {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--hero-ring);
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 7.485px,
+      var(--line-1) 7.485px 8.485px
+    ),
+    var(--grad-hero-wash), var(--grad-hero);
+  box-shadow: inset 0 1px var(--hero-light);
+}
+.v-testing-summary-hero h2 {
+  margin: 0;
+  font: 600 28px / 32px var(--font-display);
+}
+.v-testing-summary-hero p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-2);
+}
+.v-testing-summary-hero .v-testing-summary-eyebrow {
+  font: 400 11px / 15px var(--font-mono);
+  color: var(--text-3);
+}
+.v-testing-summary-hero > .v-button {
+  align-self: flex-start;
+}
+.v-testing-summary-pending {
+  display: flex;
+  flex: none;
+  gap: 12px;
+}
+.v-testing-summary-pending > section {
+  flex: 1;
+}
+.v-testing-summary-pending p {
+  font-size: 14px;
+  line-height: 23px;
+  margin-top: 8px;
+}
+.v-testing-summary-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 1100px) {
+  .v-testing-summary-pending {
+    flex-direction: column;
+  }
+}

@@ -198,7 +198,10 @@ fn selection_is_bound_to_its_app_and_replacement_clears_old_arguments() {
             .filter(|step| step.app_id == document.apps[0].id)
             .all(|step| step.args_override.is_none())
     );
-    assert_eq!(saved.profiles[0].steps[1], document.profiles[0].steps[1]);
+    assert_eq!(
+        serde_json::to_value(&saved.profiles[0].steps[1]).unwrap(),
+        serde_json::to_value(&document.profiles[0].steps[1]).unwrap()
+    );
     let editor = get(&path, Some(&document.apps[0].id)).unwrap();
     assert!(!editor.has_custom_arguments);
     assert_eq!(editor.custom_profiles, 0);
@@ -236,5 +239,8 @@ fn discovery_reset_clears_only_the_app_and_its_profile_overrides_in_one_cas() {
     let saved = Document::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
     assert!(saved.apps[0].executable.is_none());
     assert!(saved.profiles[0].steps[0].args_override.is_none());
-    assert_eq!(saved.profiles[0].steps[1], document.profiles[0].steps[1]);
+    assert_eq!(
+        serde_json::to_value(&saved.profiles[0].steps[1]).unwrap(),
+        serde_json::to_value(&document.profiles[0].steps[1]).unwrap()
+    );
 }

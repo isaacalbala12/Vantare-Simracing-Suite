@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { isAppEditor } from "../src/contract/apps-validation";
 import type { UiToHost } from "../src/contract/generated/contract";
-import { launcherPickLifetimeSeconds } from "../src/contract/generated/contract";
+import {
+  launcherLimits,
+  launcherPickLifetimeSeconds,
+} from "../src/contract/generated/contract";
 import { isReply, isRequest } from "../src/contract/modules/launcher";
 import { isUiMessage } from "../src/contract/validation";
 import { executablePicker } from "../src/main/launcher-picker";
@@ -14,6 +18,20 @@ const excludesTrustedSelection: Extract<
   ? true
   : false = true;
 describe("executable picker boundary", () => {
+  it("bounds the private-argument affected-profile count from Rust", () => {
+    const editor = {
+      revision: "0".repeat(64),
+      draft: { id: "obs", name: "OBS", favorite: false, useDiscovery: false },
+      hasExecutable: true,
+      hasCustomArguments: true,
+      customProfiles: 1,
+    };
+    expect(isAppEditor(editor)).toBe(true);
+    for (const count of [-1, launcherLimits.profiles + 1, "1", null])
+      expect(isAppEditor({ ...editor, customProfiles: count })).toBe(false);
+    const { customProfiles: _count, ...missing } = editor;
+    expect(isAppEditor(missing)).toBe(false);
+  });
   it("excludes trusted selections in the type predicate and sends the app destination to Rust", () => {
     expect(excludesTrustedSelection).toBe(true);
     const host = vi.fn();

@@ -273,6 +273,7 @@
       "result": {
         "method": "launcher.app.get",
         "value": {
+          "customProfiles": 0,
           "draft": {
             "favorite": false,
             "id": null,

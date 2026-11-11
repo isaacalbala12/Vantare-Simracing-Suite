@@ -20,7 +20,6 @@ export function create(context: MockContext): MockHandler {
     updated: 0,
     invalidCache: false,
   };
-<<<<<<< HEAD
   if (context.sceneName === "calendar-data") {
     const sample = (corpus.host as unknown as HostToUi[]).find(
       (m) => m.kind === "response" && m.result.method === "calendar.refresh",
@@ -34,7 +33,6 @@ export function create(context: MockContext): MockHandler {
     context.core.access.calendar = true;
     context.core.access.blocked = false;
   }
-=======
   const config: CalendarConfigView = {
     utc: false,
     prefsRevision: calendarEmptyRevision,
@@ -48,10 +46,11 @@ export function create(context: MockContext): MockHandler {
     },
     alertsRevision: calendarEmptyRevision,
   };
+  config.utc = value.utc;
+  config.following = [...value.following];
   let counter = 1;
   const next = () =>
     String((counter++).toString(16)).padStart(calendarRevisionLength, "0");
->>>>>>> 251205087 (wip: añade preferencias y favoritas de Calendario con CAS)
   return (message: UiToHost): HostToUi | undefined => {
     if (
       message.kind !== "request" ||

@@ -393,7 +393,7 @@ impl State {
         let prior = self.disk.previous.take();
         self.disk.previous = self.read_publication("official-schedule-previous.json", prior);
         match self.read("calendar-following.json") {
-            Read::Missing => self.view.following.clear(),
+            Read::Missing | Read::Invalid => self.view.following.clear(),
             Read::Bytes(bytes) => match serde_json::from_slice::<Following>(&bytes) {
                 Ok(f) if unique(&f.series_ids, SERIES_LIMIT) => self.view.following = f.series_ids,
                 _ => {
@@ -401,18 +401,17 @@ impl State {
                     self.view.invalid_cache = true;
                 }
             },
-            Read::Invalid => self.view.following.clear(),
         }
         match self.read("calendar-prefs.json") {
-            Read::Missing => self.view.utc = false,
-            Read::Bytes(bytes) => match serde_json::from_slice::<Prefs>(&bytes) {
-                Ok(p) => self.view.utc = p.utc,
-                _ => {
+            Read::Missing | Read::Invalid => self.view.utc = false,
+            Read::Bytes(bytes) => {
+                if let Ok(p) = serde_json::from_slice::<Prefs>(&bytes) {
+                    self.view.utc = p.utc;
+                } else {
                     self.view.utc = false;
                     self.view.invalid_cache = true;
                 }
-            },
-            Read::Invalid => self.view.utc = false,
+            }
         }
         match self.read("calendar-stamps.json") {
             Read::Missing => {

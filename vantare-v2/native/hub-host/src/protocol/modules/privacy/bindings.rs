@@ -7,6 +7,12 @@ pub(crate) fn typescript() -> String {
     declare::<crate::privacy::PrivacyView>(&mut text);
     declare::<crate::privacy::PrivacyPatch>(&mut text);
     declare::<crate::privacy::MailView>(&mut text);
+    declare::<crate::privacy::MailOrigin>(&mut text);
+    constants!(
+        &mut text,
+        "privacyMailSources",
+        crate::privacy::MailOrigin::ALL
+    );
     constants!(&mut text, "privacyPolicyUrl", crate::privacy::POLICY_URL);
     constants!(&mut text, "privacyFields", ["crashes", "usage"]);
     text
@@ -82,7 +88,10 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
         UiToHost::Request {
             id: 1,
-            request: Request::MailSet { consent: false },
+            request: Request::MailSet {
+                consent: false,
+                source: crate::privacy::MailOrigin::Settings,
+            },
         },
     ];
 

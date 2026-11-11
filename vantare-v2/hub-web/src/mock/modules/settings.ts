@@ -63,11 +63,22 @@ export function create(context: MockContext): MockHandler {
       canRetry: false,
     };
     pending = undefined;
+    if (context.onboarding)
+      context.onboarding.settingsRevision = settings.revision;
     return settings;
   }
   return (value: UiToHost): HostToUi | null | undefined => {
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
+    if (context.onboarding)
+      settings = {
+        ...settings,
+        revision: context.onboarding.settingsRevision,
+        general: {
+          ...settings.general,
+          onboarding_completed: context.onboarding.completed,
+        },
+      };
     switch (request.method) {
       case "settings.get":
         return {

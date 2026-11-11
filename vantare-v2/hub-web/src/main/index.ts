@@ -19,6 +19,7 @@ import {
 import type { SettingsView } from "../contract/generated/contract";
 import {
   HOST_PROTOCOL_VERSION,
+  onboardingPricesUrl,
   privacyPolicyUrl,
   reportExportName,
 } from "../contract/generated/contract";
@@ -328,9 +329,18 @@ async function start() {
         });
         return;
       }
-      if (data.kind === "request" && data.request.method === "privacy.policy") {
+      if (
+        data.kind === "request" &&
+        (data.request.method === "privacy.policy" ||
+          data.request.method === "onboarding.prices")
+      ) {
+        const method = data.request.method;
         void shell
-          .openExternal(privacyPolicyUrl)
+          .openExternal(
+            method === "privacy.policy"
+              ? privacyPolicyUrl
+              : onboardingPricesUrl,
+          )
           .then(
             () => true,
             () => false,
@@ -340,7 +350,7 @@ async function start() {
               port1.postMessage({
                 kind: "response",
                 id: data.id,
-                result: { method: "privacy.policy", accepted },
+                result: { method, accepted },
               });
           });
         return;

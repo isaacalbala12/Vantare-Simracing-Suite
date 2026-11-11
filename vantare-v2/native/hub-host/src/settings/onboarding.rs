@@ -1,0 +1,124 @@
+//! Finalization writes completion only after layout and presentation succeed.
+use super::{SaveError, Settings};
+use crate::protocol::HostError;
+use std::path::Path;
+impl Settings {
+    pub(crate) fn onboarding_layout(path: &Path) -> Result<(bool, String), HostError> {
+        super::layout::onboarding::state(path)
+    }
+    pub(crate) fn finish_onboarding(
+        &mut self,
+        path: &Path,
+        choice: &crate::onboarding::Finish,
+    ) -> Result<(), HostError> {
+        self.finish_onboarding_with(path, choice, crate::onboarding::show)
+    }
+    fn finish_onboarding_with(
+        &mut self,
+        path: &Path,
+        choice: &crate::onboarding::Finish,
+        present: impl FnOnce(&Path) -> Result<(), HostError>,
+    ) -> Result<(), HostError> {
+        let current = self.refresh();
+        if current.protected {
+            return Err(HostError::Protected);
+        }
+        if current.revision != choice.base_revision {
+            return Err(HostError::OnboardingConflict {});
+        }
+        if current.general.onboarding_completed {
+            return Err(HostError::Denied);
+        }
+        let layout_ready = super::layout::onboarding::apply(
+            path,
+            &choice.kit,
+            choice.level,
+            &choice.layout_revision,
+        )?;
+        if layout_ready && choice.show {
+            present(path)?;
+        }
+        let mut general = self.store.value.general;
+        general.onboarding_completed = true;
+        let result = self.store.save_general(general);
+        self.saved(&result)
+            .map(|_| ())
+            .map_err(|error| match error {
+                SaveError::Conflict(_) => HostError::OnboardingConflict {},
+                SaveError::Protected => HostError::Protected,
+                SaveError::Busy => HostError::Busy,
+                SaveError::Unsupported => HostError::Unsupported,
+                SaveError::Io => HostError::Io,
+            })
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::Root;
+    use crate::{onboarding::WidgetKind, settings::track::PerformanceLevel};
+    #[test]
+    fn absent_design_completes_without_creating_layout_or_presentation_and_cannot_finish_twice() {
+        let root = Root::new();
+        let path = root.path.join("layout.json");
+        let args = crate::args::Args {
+            controlled: false,
+            pipe: "test".into(),
+            data: root.path.clone(),
+            layout: path.clone(),
+            launcher: root.path.join("launcher.json"),
+            engineer: root.path.join("engineer.json"),
+        };
+        let mut settings = Settings::load(&args);
+        let (_, layout_revision) = Settings::onboarding_layout(&path).unwrap();
+        let mut choice = crate::onboarding::Finish {
+            kit: vec![WidgetKind::Delta],
+            level: PerformanceLevel::Balanced,
+            show: true,
+            base_revision: settings.view().revision,
+            layout_revision,
+        };
+        settings.finish_onboarding(&path, &choice).unwrap();
+        assert!(settings.view().general.onboarding_completed);
+        assert!(!path.exists());
+        assert!(!path.with_extension("show.json").exists());
+        choice.base_revision = settings.view().revision;
+        assert!(matches!(
+            settings.finish_onboarding(&path, &choice),
+            Err(HostError::Denied)
+        ));
+    }
+    #[test]
+    fn presentation_failure_leaves_onboarding_unfinished_after_the_kit_is_saved() {
+        let root = Root::new();
+        let path = root.path.join("layout.json");
+        let args = crate::args::Args {
+            controlled: false,
+            pipe: "test".into(),
+            data: root.path.clone(),
+            layout: path.clone(),
+            launcher: root.path.join("launcher.json"),
+            engineer: root.path.join("engineer.json"),
+        };
+        let mut settings = Settings::load(&args);
+        std::fs::write(&path, r#"{"version":1,"instances":[]}"#).unwrap();
+        let (_, layout_revision) = Settings::onboarding_layout(&path).unwrap();
+        let base = settings.view().revision;
+        assert!(matches!(
+            settings.finish_onboarding_with(
+                &path,
+                &crate::onboarding::Finish {
+                    kit: vec![WidgetKind::Delta],
+                    level: PerformanceLevel::Balanced,
+                    show: true,
+                    base_revision: base,
+                    layout_revision
+                },
+                |_| Err(HostError::Io)
+            ),
+            Err(HostError::Io)
+        ));
+        assert!(!settings.view().general.onboarding_completed);
+        assert!(!Settings::load(&args).view().general.onboarding_completed);
+    }
+}

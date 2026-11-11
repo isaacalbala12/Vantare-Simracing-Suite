@@ -679,7 +679,11 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
     for (const [value] of request.mock.calls.filter(
       ([value]) => value.method === "mail.set",
     ))
-      expect(value).toEqual({ method: "mail.set", consent: true });
+      expect(value).toEqual({
+        method: "mail.set",
+        consent: true,
+        source: "settings",
+      });
   });
   it("shows a refused privacy policy action inline", async () => {
     const hook = mount("ajustes-base", <Privacy />);

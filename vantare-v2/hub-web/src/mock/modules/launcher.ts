@@ -1,7 +1,10 @@
-import editorFixture from "../../../fixtures/launcher-editor.json";
-import type {ProfileDraft} from "../../contract/generated/contract";
 import launcherFixture from "../../../fixtures/launcher-base.json";
-import type { HostToUi, UiToHost } from "../../contract/generated/contract";
+import editorFixture from "../../../fixtures/launcher-editor.json";
+import type {
+  HostToUi,
+  ProfileDraft,
+  UiToHost,
+} from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const { sceneName, core } = context;

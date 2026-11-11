@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import {
   onboardingKits,
   onboardingWidgetKinds,
-  type WidgetKind,
+  type OnboardingWidgetKind as WidgetKind,
 } from "../../../contract/generated/onboarding";
 import { onboardingText as t } from "../../i18n/onboarding";
 import { SimulatorArt, WelcomeArt } from "./Art";

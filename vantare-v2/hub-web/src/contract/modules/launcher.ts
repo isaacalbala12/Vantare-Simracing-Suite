@@ -24,7 +24,9 @@ export function isRequest(value: Record<string, unknown>): boolean {
     return isProfileRequest(value);
   return value.method === "launcher.launch"
     ? isLauncherLaunch(value)
-    : exact(value, ["method"]);
+    : (value.method === "launcher.get" ||
+        value.method === "launcher.favorite") &&
+        exact(value, ["method"]);
 }
 export function isReply(value: Record<string, unknown>): boolean {
   if (value.method === "launcher.catalog")
@@ -47,7 +49,9 @@ export function isReply(value: Record<string, unknown>): boolean {
   return value.method === "launcher.get" ||
     value.method === "launcher.profile.save"
     ? exact(value, ["method", "value"]) && isLauncher(value.value)
-    : exact(value, ["method", "accepted"]) &&
+    : (value.method === "launcher.launch" ||
+        value.method === "launcher.favorite") &&
+        exact(value, ["method", "accepted"]) &&
         typeof value.accepted === "boolean";
 }
 export function isError(value: Record<string, unknown>): boolean {

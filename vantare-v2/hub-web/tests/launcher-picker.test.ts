@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { launcherPickLifetimeSeconds } from "../src/contract/generated/contract";
+import { isReply, isRequest } from "../src/contract/modules/launcher";
 import { isUiMessage } from "../src/contract/validation";
 import { executablePicker } from "../src/main/launcher-picker";
 import { isRendererMessage } from "../src/main/security";
 
 describe("executable picker boundary", () => {
+  it("rejects unregistered methods even at the screen validator", () => {
+    expect(isRequest({ method: "pickedExecutable" })).toBe(false);
+    expect(isReply({ method: "pickedExecutable", accepted: true })).toBe(false);
+  });
   it("accepts the trusted main-process envelope and denies it from the renderer", () => {
     const picked = {
       kind: "pickedExecutable",

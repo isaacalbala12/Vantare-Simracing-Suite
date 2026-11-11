@@ -1,6 +1,23 @@
 import type { VisualScene } from "./scenes.ts";
 
 export const testingScenes: Record<string, VisualScene> = {
+  "testing-center-comunidad": {
+    mock: "testing-tester-community-reference",
+    async prepare(page) {
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Testing Center", exact: true })
+        .click();
+      await page.getByRole("tab", { name: "Comunidad", exact: true }).click();
+      await page.getByRole("button", { name: "Recargar", exact: true }).click();
+      await page
+        .getByText("QA · documentación de una prueba · En revisión", {
+          exact: true,
+        })
+        .waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
   "testing-center-triage": {
     mock: "testing-tester-reference",
     async prepare(page) {

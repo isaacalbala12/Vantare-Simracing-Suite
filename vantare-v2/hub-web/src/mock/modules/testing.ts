@@ -13,6 +13,7 @@ export function create(context: MockContext): MockHandler {
       calendar: [
         "testing-tester-reference",
         "testing-tester-questionnaires-reference",
+        "testing-tester-community-reference",
       ].includes(sceneName)
         ? true
         : core.access.calendar,
@@ -35,7 +36,10 @@ export function create(context: MockContext): MockHandler {
     // Reproduce GPUI's cached QA participation with the service subsequently offline.
     // The initial refresh still passes the same rights/connection checks as every request.
     if (
-      sceneName === "testing-tester-questionnaires-reference" &&
+      [
+        "testing-tester-questionnaires-reference",
+        "testing-tester-community-reference",
+      ].includes(sceneName) &&
       result.kind === "response" &&
       result.result.method === "testing.refresh"
     ) {

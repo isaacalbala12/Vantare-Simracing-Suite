@@ -11,7 +11,11 @@ import {
   testingIdLimits,
 } from "../contract/generated/contract";
 
-export function createTestingMock(scene: string, core: CoreStatus) {
+export function createTestingMock(
+  scene: string,
+  core: CoreStatus,
+  participation: TestingView = { reports: [], questionnaires: [] },
+) {
   const empty = (): ReportDraftView => ({
     fields: {
       module: "unknown",
@@ -33,7 +37,6 @@ export function createTestingMock(scene: string, core: CoreStatus) {
 
   let preview: ReportPreviewView | undefined;
   let previewSequence = 0;
-  const participation: TestingView = { reports: [], questionnaires: [] };
   let busy = scene === "testing-busy";
   if (core.access.tester)
     participation.questionnaires.push({

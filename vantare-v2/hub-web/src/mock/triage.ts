@@ -2,12 +2,18 @@ import type {
   CoreStatus,
   HostToUi,
   Request,
+  TestingView,
 } from "../contract/generated/contract";
 import { testingIdLimits } from "../contract/generated/contract";
 
-export function createTriageMock(scene: string, core: CoreStatus) {
+export function createTriageMock(
+  scene: string,
+  core: CoreStatus,
+  participation: TestingView = { reports: [], questionnaires: [] },
+) {
   let sequence = 0;
   let preview: string | undefined;
+  let reportId: string | undefined;
   let busy = scene === "testing-tester-triage-busy";
   return (
     id: number,
@@ -29,6 +35,7 @@ export function createTriageMock(scene: string, core: CoreStatus) {
       preview = (++sequence)
         .toString(16)
         .padStart(testingIdLimits.previewId, "0");
+      reportId = `15350000-0000-0000-0000-${sequence.toString(16).padStart(12, "0")}`;
       return {
         kind: "response",
         id,
@@ -38,7 +45,7 @@ export function createTriageMock(scene: string, core: CoreStatus) {
             id: preview,
             payload: JSON.stringify(
               {
-                p_id: "15350000-0000-0000-0000-000000000001",
+                p_id: reportId,
                 p_channel: "nightly",
                 p_title: "[contenido retirado por privacidad]",
                 p_body: "[contenido retirado por privacidad]",
@@ -67,14 +74,27 @@ export function createTriageMock(scene: string, core: CoreStatus) {
         },
       };
     }
-    if (request.previewId !== preview) return fail("rejected");
+    if (request.previewId !== preview || !reportId) return fail("rejected");
     preview = undefined;
+    participation.reports = [
+      ...participation.reports,
+      {
+        id: reportId,
+        title: "[contenido retirado por privacidad]",
+        state: "received",
+        credit: false,
+        updatedAt: null,
+        fixedVersion: null,
+        notice: false,
+      },
+    ].slice(-20);
+    reportId = undefined;
     return {
       kind: "response",
       id,
       result: {
         method: request.method,
-        value: { reports: [], questionnaires: [] },
+        value: structuredClone(participation),
       },
     };
   };

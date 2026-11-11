@@ -2,7 +2,8 @@ import { testingMethods } from "../../contract/generated/testing";
 import type { MockContext, MockHandler } from "../context";
 import { createTestingMock } from "../testing";
 
-export function create({ sceneName, core, emit }: MockContext): MockHandler {
+export function create(context: MockContext): MockHandler {
+  const { sceneName, core, emit } = context;
   if (sceneName.startsWith("testing-")) {
     core.access = {
       ...core.access,
@@ -22,7 +23,8 @@ export function create({ sceneName, core, emit }: MockContext): MockHandler {
       ? "unavailable"
       : "connected";
   }
-  const reply = createTestingMock(sceneName, core);
+  context.testingData ??= { reports: [], questionnaires: [] };
+  const reply = createTestingMock(sceneName, core, context.testingData);
   return (value) => {
     if (
       value.kind !== "request" ||

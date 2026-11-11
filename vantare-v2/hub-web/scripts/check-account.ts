@@ -12,17 +12,38 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
     await page.goto(`${base}?escena=visual-${scheme}:cuenta-base`);
     await accountScenes["cuenta-base"].prepare(page);
     await page.evaluate(() => document.fonts.ready);
-    const report = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-      .analyze();
-    reports.push({ scheme, violations: report.violations });
-    await writeFile(
-      resolve(evidence, "account-axe.json"),
-      JSON.stringify(reports, null, 2),
-    );
-    assert.deepEqual(report.violations, [], `account ${scheme}`);
+    for (const expanded of [false, true]) {
+      const nav = page.locator(".v-sidebar");
+      if (
+        (await nav.evaluate(
+          (node) => !node.classList.contains("v-sidebar--collapsed"),
+        )) !== expanded
+      )
+        await page.keyboard.press("Control+b");
+      if (expanded)
+        await page
+          .getByRole("region", { name: "Perfiles", exact: true })
+          .waitFor();
+      assert.equal((await nav.boundingBox())?.width, expanded ? 272 : 76);
+      const report = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze();
+      reports.push({ scheme, expanded, violations: report.violations });
+      await writeFile(
+        resolve(evidence, "account-axe.json"),
+        JSON.stringify(reports, null, 2),
+      );
+      assert.deepEqual(
+        report.violations,
+        [],
+        `account ${scheme}, expanded=${expanded}`,
+      );
+    }
   }
   await page.goto(`${base}?escena=cuenta-sesion`);
+  await page.locator(".v-sidebar").waitFor();
+  await page.keyboard.press("Control+b");
+  await page.getByRole("region", { name: "Perfiles", exact: true }).waitFor();
   await page.getByRole("button", { name: text.title, exact: true }).click();
   await page
     .getByRole("heading", { name: "Isaac Albalá", exact: true })

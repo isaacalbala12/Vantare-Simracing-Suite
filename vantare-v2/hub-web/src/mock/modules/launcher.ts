@@ -1,4 +1,3 @@
-import { createLauncherAppsMock } from "../launcher-apps";
 import launcherFixture from "../../../fixtures/launcher-base.json";
 import editorFixture from "../../../fixtures/launcher-editor.json";
 import type {
@@ -7,6 +6,7 @@ import type {
   UiToHost,
 } from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
+import { createLauncherAppsMock } from "../launcher-apps";
 export function create(context: MockContext): MockHandler {
   const { sceneName, core } = context;
   if (sceneName.startsWith("launcher-")) {

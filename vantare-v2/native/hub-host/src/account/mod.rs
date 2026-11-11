@@ -340,7 +340,11 @@ impl State {
         }
     }
     pub fn failed(&mut self, op: Operation, error: &HostError, background: bool, now: Instant) {
+        let current = self.accepts_completion(op);
         self.retire(op, background);
+        if !current {
+            return;
+        }
         if background && *error == HostError::Busy {
             return;
         }
@@ -364,6 +368,12 @@ impl State {
             self.due = now;
         }
     }
+    fn accepts_completion(&self, op: Operation) -> bool {
+        if self.pending.contains(&Operation::Logout) {
+            return op == Operation::Logout;
+        }
+        !self.pending.contains(&Operation::Cancel) || op == Operation::Cancel
+    }
     fn retire(&mut self, op: Operation, background: bool) {
         if background {
             self.background = None;
@@ -378,10 +388,17 @@ impl State {
         background: bool,
         now: Instant,
     ) -> Result<(), HostError> {
-        self.retire(op, background);
-        if !expected(op, reply) {
+        if !self.accepts_completion(op) {
+            self.retire(op, background);
             return Err(HostError::Denied);
         }
+        let unconfirmed_logout = op == Operation::Logout
+            && matches!(reply,CoreReply::Account {session,error:None,..} if *session != Session::SignedOut);
+        if !expected(op, reply) || unconfirmed_logout {
+            self.failed(op, &HostError::Denied, background, now);
+            return Err(HostError::Denied);
+        }
+        self.retire(op, background);
         if self.logout_uncertain
             && background
             && op == Operation::Poll

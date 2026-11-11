@@ -157,12 +157,85 @@ fn late_browser_callback_cannot_confirm_a_requested_logout() {
     let now = Instant::now();
     let mut state = configured(Session::SignedIn);
     state.accepted(Operation::Logout, &Command::Logout);
-    state
-        .complete(Operation::Poll, &account(Session::SignedIn), true, now)
-        .unwrap();
+    assert_eq!(
+        state.complete(Operation::Poll, &account(Session::SignedIn), true, now),
+        Err(HostError::Denied)
+    );
     assert_eq!(
         state.view(&AccessView::default(), now, 0).gate,
         Gate::LoggingOut
     );
     assert!(state.pending.contains(&Operation::Logout));
+}
+
+#[test]
+fn cancel_is_not_consumed_by_a_late_browser_login_reply_or_error() {
+    let now = Instant::now();
+    let mut state = configured(Session::SignedOut);
+    state.accepted(Operation::Begin, &Command::AccountBegin);
+    state.accepted(Operation::Cancel, &Command::AccountCancel);
+    assert_eq!(
+        state.complete(Operation::Begin, &account(Session::Pending), false, now),
+        Err(HostError::Denied)
+    );
+    assert_eq!(
+        state.view(&AccessView::default(), now, 0).gate,
+        Gate::Canceling
+    );
+    state.failed(Operation::Poll, &HostError::CoreUnavailable, true, now);
+    assert_eq!(
+        state.view(&AccessView::default(), now, 0).gate,
+        Gate::Canceling
+    );
+    assert!(state.view(&AccessView::default(), now, 0).error.is_none());
+    state
+        .complete(Operation::Cancel, &account(Session::SignedOut), false, now)
+        .unwrap();
+    assert_eq!(
+        state.view(&AccessView::default(), now, 0).gate,
+        Gate::Choose
+    );
+}
+#[test]
+fn an_active_checkout_is_discarded_after_logout_is_accepted() {
+    let now = Instant::now();
+    let mut state = configured(Session::SignedIn);
+    let command = Command::Purchase {
+        product: vantare_ipc::services_protocol::BillingProduct::Founders,
+    };
+    state.accepted(Operation::Purchase, &command);
+    state.accepted(Operation::Logout, &Command::Logout);
+    assert_eq!(
+        state.complete(
+            Operation::Purchase,
+            &CoreReply::Checkout {
+                url: "https://polar.sh/checkout/qa".into()
+            },
+            false,
+            now
+        ),
+        Err(HostError::Denied)
+    );
+    assert_eq!(
+        state.view(&AccessView::default(), now, 0).gate,
+        Gate::LoggingOut
+    );
+    assert!(!state.view(&AccessView::default(), now, 0).purchase.waiting);
+}
+
+#[test]
+fn only_a_matching_signed_out_ack_can_finish_logout() {
+    let now = Instant::now();
+    let mut state = configured(Session::SignedIn);
+    state.accepted(Operation::Logout, &Command::Logout);
+    assert_eq!(
+        state.complete(Operation::Logout, &account(Session::SignedIn), false, now),
+        Err(HostError::Denied)
+    );
+    assert_eq!(
+        state.view(&AccessView::default(), now, 0).gate,
+        Gate::LogoutFailed
+    );
+    assert!(state.pending.is_empty());
+    assert_eq!(state.next_background(now), Some(Operation::Poll));
 }

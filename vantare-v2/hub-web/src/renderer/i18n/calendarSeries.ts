@@ -17,6 +17,9 @@ export const calendarSeriesText = {
   outings: "Todas sus salidas",
   slots: "Todas sus tandas",
   minutes: "Sale a los minutos",
+  everyMinutes: (n: number) => `Sale cada ${n} min, todo el día.`,
+  mapSummary: (name: string, zone: string) =>
+    `${name}: salidas durante la semana publicada; sombreado para las horas pasadas y tu franja de aviso. ${zone}.`,
   everyHour: "de cada hora, todo el día y toda la semana.",
   past: "Ya pasó",
   band: "Tu franja de aviso",

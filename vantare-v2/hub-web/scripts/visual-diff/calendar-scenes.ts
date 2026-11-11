@@ -199,4 +199,56 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-serie-contraida": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page
+        .locator(".v-calendar-live-series")
+        .filter({ hasText: "LMGT3 Fixed" })
+        .first()
+        .click();
+      await page
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await page.getByText("Imola", { exact: true }).waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-serie-desplegada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "false")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page
+        .locator(".v-calendar-live-series")
+        .filter({ hasText: "LMGT3 Fixed" })
+        .first()
+        .click();
+      await page
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await page.getByText("Imola", { exact: true }).waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
 };

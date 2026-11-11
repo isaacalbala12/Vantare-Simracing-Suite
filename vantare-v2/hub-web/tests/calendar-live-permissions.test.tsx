@@ -5,7 +5,10 @@ import alerts from "../fixtures/calendar-alerts-reference.json";
 import type { CalendarAlerts } from "../src/contract/generated/calendar";
 import { calendarReference } from "../src/mock/calendar-reference";
 import { calendarText } from "../src/renderer/i18n/calendar";
-import { CalendarLiveView } from "../src/renderer/ui/CalendarLiveView";
+import {
+  type CalendarLiveFilters,
+  CalendarLiveView,
+} from "../src/renderer/ui/CalendarLiveView";
 
 afterEach(cleanup);
 it("keeps the profile visible while launch and protected favorite writes are disabled", () => {
@@ -55,4 +58,76 @@ it("keeps the profile visible while launch and protected favorite writes are dis
     (screen.getByRole("button", { name: "Ficha" }) as HTMLButtonElement)
       .disabled,
   ).toBe(true);
+});
+
+it("routes series names separately from a departure Ficha", () => {
+  const value = calendarReference(),
+    onSerie = vi.fn(),
+    onDetail = vi.fn();
+  if (!value.official) throw new Error("Missing public reference schedule");
+  const { container } = render(
+    <CalendarLiveView
+      schedule={value.official}
+      alerts={alerts as CalendarAlerts}
+      following={value.following}
+      utc
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      limit={10000}
+      onFollow={vi.fn()}
+      onLaunch={vi.fn()}
+      onSerie={onSerie}
+      onDetail={onDetail}
+    />,
+  );
+  const series = [
+    ...container.querySelectorAll<HTMLButtonElement>(".v-calendar-live-series"),
+  ].find((button) => button.textContent?.includes("LMGT3 Fixed"));
+  if (!series) throw new Error("Missing series name");
+  fireEvent.click(series);
+  expect(onSerie).toHaveBeenCalledWith("beginner-lmgt3-fixed");
+  expect(onDetail).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+  expect(onDetail).toHaveBeenCalledOnce();
+  expect(onSerie).toHaveBeenCalledOnce();
+});
+
+it("restores the favorite filter after returning from a series", () => {
+  const value = calendarReference();
+  if (!value.official) throw new Error("Missing publication");
+  const schedule = value.official;
+  let saved: CalendarLiveFilters = {
+    searchOpen: false,
+    query: "",
+    tier: "all",
+    only: "all",
+    vehicle: "all",
+  };
+  const remember = (next: CalendarLiveFilters) => {
+    saved = next;
+  };
+  const mount = () =>
+    render(
+      <CalendarLiveView
+        schedule={schedule}
+        alerts={alerts as CalendarAlerts}
+        following={value.following}
+        utc
+        now={Date.parse("2026-10-08T17:47:13Z")}
+        limit={10000}
+        onFollow={vi.fn()}
+        onLaunch={vi.fn()}
+        initialFilters={saved}
+        onFiltersChange={remember}
+      />,
+    );
+  const first = mount();
+  fireEvent.click(screen.getByRole("button", { name: /^Favoritas/ }));
+  first.unmount();
+  mount();
+  expect(
+    screen
+      .getByRole("button", { name: /^Favoritas/ })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(document.querySelectorAll(".v-calendar-live-series")).toHaveLength(3);
 });

@@ -114,6 +114,7 @@ export function CalendarEventsView({
                   className="v-calendar-event-title"
                   type="button"
                   disabled={!onSerie}
+                  data-calendar-series={series.id}
                   onClick={() => onSerie?.(series.id)}
                 >
                   {series.name}

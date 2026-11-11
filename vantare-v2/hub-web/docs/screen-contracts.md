@@ -190,3 +190,34 @@ petición cancelada se descartan. No se introducen variantes en el wire v6.
 `ReportDraftView` gana el campo `legacy` sin subir la versión del wire (v6).
 Distingue `archived` (se archivó el antiguo y ganó el borrador protegido) de
 `preserved` (el origen sigue conservado por un fallo o por no poder importarlo).
+
+## Calendario (`calendar`): datos de solo lectura
+
+`calendar.load {}` lee los documentos existentes del GPUI sin crearlos ni modificarlos:
+`official-schedule.json`, `fallback-schedule.json`, `official-schedule-previous.json`,
+`calendar-following.json`, `calendar-prefs.json` y `calendar-stamps.json`.
+`calendar.refresh {}` solicita únicamente `CalendarRefresh` al núcleo; conserva en
+memoria la última publicación válida. La persistencia con CAS se incorpora junto
+con las acciones de Calendario, no con esta primera lectura. Cachés inválidas se
+señalan mediante `invalidCache`, sin rutas ni mensajes libres y sin retirar el original.
+
+Ambos métodos requieren `verified && !blocked && AccessView.calendar` en el
+anfitrión. La finalización vuelve a comprobar el permiso, la familia y el ID de
+respuesta; rechaza una respuesta inválida antes de sustituir ningún snapshot.
+El refresco usa la cola compartida de servicios; otra solicitud de refresco en
+vuelo devuelve `busy`. La capa de memoria del núcleo prevalece sobre una caché
+de disco anterior durante la sesión. Sin esa capa, retirar un fichero retira su
+publicación. Ningún refresco inventa sellos de comprobación: se conservan los
+sellos válidos del núcleo leídos del documento de caché.
+Las fechas exigen `T`/`Z` mayúsculas, segundos de 00 a 59 y, si hay fracción,
+de una a tres cifras; Rust y TypeScript comparten el corpus de casos límite.
+Errores del servicio sin clasificación tipada se agrupan en `rejected`; transporte
+y ocupación conservan `coreUnavailable` y `busy`. No hay método genérico, URL,
+ruta ni JSON abierto del renderer. Se proyectan los campos públicos conocidos y
+se exportan desde Rust los límites y días admitidos para los validadores TS.
+
+Añadir ambos métodos usa el protocolo v16, reservado tras Inicio (v15). `chrono` es dependencia directa con las mismas opciones
+que Services y reutiliza `chrono 0.4.45` del lock; no se añade paquete nuevo.
+No se modifica IPC/Services, runtime, derechos, supervisor ni el GPUI congelado.
+Las vistas, favoritos/avisos, ICS y publicación de `session-alerts-feed.json` se
+entregan por separado. El feed conserva el esquema IPC existente.

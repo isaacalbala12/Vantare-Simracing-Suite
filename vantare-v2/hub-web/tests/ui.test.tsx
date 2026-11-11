@@ -304,3 +304,41 @@ it("keeps tracked captions readable as complete accessible headings", () => {
   expect(screen.getByRole("heading", { name: "01 Interfaz" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Diagnóstico" })).toBeTruthy();
 });
+
+it("keeps a decorative Soon lock navigable while protecting a restricted item", async () => {
+  const select = vi.fn();
+  render(
+    <TooltipProvider delay={0}>
+      <Sidebar
+        label="Navegación"
+        footer={null}
+        collapsed
+        active="soon"
+        onSelect={select}
+        groups={[
+          {
+            label: "Módulos",
+            items: [
+              {
+                id: "soon",
+                label: "Próximamente",
+                icon: "v-gauge",
+                lockBadge: true,
+              },
+              {
+                id: "restricted",
+                label: "Restringido",
+                icon: "v-lock",
+                locked: "Sin acceso",
+              },
+            ],
+          },
+        ]}
+      />
+    </TooltipProvider>,
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Próximamente" }));
+  await user.click(screen.getByRole("button", { name: "Restringido" }));
+  expect(select.mock.calls).toEqual([["soon"]]);
+});

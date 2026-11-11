@@ -1,4 +1,5 @@
 import pilotFixture from "../../../fixtures/pilot-base.json";
+import visualPilot from "../../../fixtures/pilot-visual.json";
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
@@ -6,6 +7,7 @@ export function create(context: MockContext): MockHandler {
   let pilot = structuredClone(
     pilotFixture,
   ) as import("../../contract/generated/contract").PilotView;
+  if (context.visual) pilot.fields.publicName = visualPilot.publicName;
   let pilotConflicted = false;
   if (sceneName.startsWith("cuenta-") && sceneName !== "cuenta-desconectada")
     core.services = "connected";

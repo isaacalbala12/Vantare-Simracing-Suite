@@ -16,6 +16,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
+import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
 import {
   ActionGroup,
@@ -26,6 +27,7 @@ import {
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
+import { usePilotName } from "./PilotState";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
@@ -40,6 +42,9 @@ export function Shell() {
 }
 function ShellContent() {
   const host = useHost();
+  const pilotName = usePilotName();
+  // No account identity is exposed yet: production stays anonymous until Access.
+  const profileName = host.hello?.demo ? pilotName : "";
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);
@@ -62,7 +67,8 @@ function ShellContent() {
           ...item,
           locked: undefined,
           label: upcoming[item.id as "strategy" | "engineer"].title,
-          badge: <Icon name="i-lock" />,
+          lockBadge: true,
+          badge: <Badge tone="locked">{upcoming.soon}</Badge>,
         }
       : item,
   );
@@ -323,10 +329,10 @@ function ShellContent() {
               </Button>
               <ActionGroup>
                 <Avatar
-                  label={t("shell.anonymous")}
-                  initials={t("shell.initials")}
+                  label={profileName || t("shell.anonymous")}
+                  initials={initials(profileName)}
                 />
-                {!ui.sidebarCollapsed && t("shell.anonymous")}
+                {!ui.sidebarCollapsed && (profileName || t("shell.anonymous"))}
                 <Badge>{t("shell.beta")}</Badge>
               </ActionGroup>
             </ContentStack>

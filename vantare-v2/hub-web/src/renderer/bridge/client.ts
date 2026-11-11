@@ -9,7 +9,8 @@ import type {
 } from "../../contract/generated/contract";
 import { requestTimeoutMs } from "../../contract/generated/contract";
 import { bounded, isHostMessage } from "../../contract/validation";
-import { createMockHost, helloForScene } from "../../mock/host";
+
+declare const __VANTARE_RENDERER_MOCK__: boolean;
 export class HostFailure extends Error {
   constructor(readonly detail: HostError) {
     super(detail.kind);
@@ -71,7 +72,8 @@ export class Client {
     port.start();
   }
   static async connect(): Promise<Client> {
-    if (!window.vantare) {
+    if (__VANTARE_RENDERER_MOCK__ && !window.vantare) {
+      const { createMockHost, helloForScene } = await import("../../mock/host");
       const { port1, port2 } = new MessageChannel();
       const mockReply = createMockHost(
         new URLSearchParams(window.location.search).get("escena") ?? undefined,
@@ -103,6 +105,7 @@ export class Client {
           ),
       );
     }
+    if (!window.vantare) throw new Error("Host preload unavailable");
     const port = await new Promise<MessagePort>((resolve, reject) => {
       const timeout = setTimeout(() => {
         window.removeEventListener("message", receive);

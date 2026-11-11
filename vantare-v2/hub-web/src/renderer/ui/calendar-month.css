@@ -214,3 +214,25 @@
   font-size: 11.5px;
   color: var(--text-3);
 }
+
+.v-calendar-month-full-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--canvas);
+}
+.v-calendar-month-full {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  padding: 12px;
+  outline: none;
+}
+.v-calendar-month-event:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.v-calendar-month-event[data-past]:disabled {
+  opacity: 0.55;
+}

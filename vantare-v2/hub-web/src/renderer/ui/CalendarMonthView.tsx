@@ -1,3 +1,4 @@
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { useMemo, useState } from "react";
 import type {
   CalendarAlerts,
@@ -26,9 +27,10 @@ export function CalendarMonthView({
   limit: number;
   runs?: readonly { at: number }[];
   onSpan: (span: string) => void;
-  onFull: () => void;
-  onDetail: (id: string) => void;
+  onFull?: () => void;
+  onDetail?: (id: string) => void;
 }) {
+  const [full, setFull] = useState(false);
   const [offset, setOffset] = useState(0),
     minute = Math.floor(now / 60000);
   const model = useMemo(
@@ -37,7 +39,7 @@ export function CalendarMonthView({
   );
   const first = new Date(model.first),
     today = civilDay(now, 0, view.utc);
-  return (
+  const body = (
     <section className="v-calendar-month">
       <header>
         <Button
@@ -57,7 +59,15 @@ export function CalendarMonthView({
         </Button>
         <Button onClick={() => setOffset(0)}>{text.today}</Button>
         <p>{text.weeks}</p>
-        <Button variant="ghost" aria-label={text.full} onClick={onFull}>
+        <Button
+          variant="ghost"
+          aria-label={text.full}
+          aria-pressed={full}
+          onClick={() => {
+            setFull(!full);
+            onFull?.();
+          }}
+        >
           <Icon name="expand" />
         </Button>
         <Segmented
@@ -172,7 +182,8 @@ export function CalendarMonthView({
                       width: `calc((100% - 132px) * ${(bar.to - bar.from + 1) / 7} - 12px)`,
                       top: `${31 + bar.lane * 23}px`,
                     }}
-                    onClick={() => onDetail(series.id)}
+                    disabled={!onDetail}
+                    onClick={() => onDetail?.(series.id)}
                   >
                     {series.name}
                     {series.eventKind !== "special"
@@ -192,5 +203,22 @@ export function CalendarMonthView({
         <span>{text.alerts}</span>
       </footer>
     </section>
+  );
+  return (
+    <BaseDialog.Root open={full} onOpenChange={setFull}>
+      {full ? (
+        <BaseDialog.Portal>
+          <BaseDialog.Backdrop className="v-calendar-month-full-backdrop" />
+          <BaseDialog.Popup className="v-calendar v-calendar-month-full">
+            <BaseDialog.Title className="v-sr-only">
+              {text.calendar}
+            </BaseDialog.Title>
+            {body}
+          </BaseDialog.Popup>
+        </BaseDialog.Portal>
+      ) : (
+        body
+      )}
+    </BaseDialog.Root>
   );
 }

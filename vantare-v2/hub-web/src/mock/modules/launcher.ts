@@ -113,7 +113,8 @@ export function create(context: MockContext): MockHandler {
         const readKeys = new Map(stepKeys);
         stepKeys.clear();
         if (
-          (sceneName === "launcher-conflicto" || sceneName === "launcher-editor-custom-conflicto") &&
+          (sceneName === "launcher-conflicto" ||
+            sceneName === "launcher-editor-custom-conflicto") &&
           launcher.revision === "0".repeat(64)
         )
           launcher.revision = "1".repeat(64);
@@ -139,7 +140,11 @@ export function create(context: MockContext): MockHandler {
         if (request.draft.id === null)
           return { kind: "failure", id, error: { kind: "denied" } };
         const profileId = request.draft.id;
-        if (!consumed || consumed.profile !== profileId || consumed.revision !== request.baseRevision)
+        if (
+          !consumed ||
+          consumed.profile !== profileId ||
+          consumed.revision !== request.baseRevision
+        )
           return { kind: "failure", id, error: { kind: "denied" } };
         if (
           request.draft.id !== null &&

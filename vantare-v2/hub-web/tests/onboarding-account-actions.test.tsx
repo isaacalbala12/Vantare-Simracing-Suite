@@ -203,3 +203,25 @@ it("keeps public prices usable when account access is not configured", async () 
     fake.request.mock.calls.some(([r]) => r.method === "account.purchase"),
   ).toBe(false);
 });
+
+it("provides closed QA account states without touching authentication services", () => {
+  for (const [scene, session, gate] of [
+    ["sesion", "signedIn", "none"],
+    ["cargando", "pending", "checking"],
+    ["error", "signedOut", "none"],
+  ]) {
+    const host = createMockHost(`visual-light:onboarding-cuenta-${scene}`);
+    const event = host({ kind: "subscribe", topic: "account" });
+    expect(event?.kind).toBe("event");
+    if (event?.kind !== "event" || event.event.topic !== "account")
+      throw new Error("account event missing");
+    expect(event.event.value.session).toBe(session);
+    expect(event.event.value.gate).toBe(gate);
+    const response = host({
+      kind: "request",
+      id: 1,
+      request: { method: "account.get" },
+    });
+    expect(response?.kind).toBe(scene === "error" ? "failure" : "response");
+  }
+});

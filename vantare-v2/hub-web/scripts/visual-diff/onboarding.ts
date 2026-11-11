@@ -86,3 +86,33 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
     },
   ]),
 );
+
+// Additional account states have no matching frozen GPUI bank scene: capture
+// them without percentages, preserving onboarding-3 as the comparable guest.
+for (const state of ["sesion", "cargando", "error"] as const) {
+  const scene = `onboarding-cuenta-${state}`;
+  onboardingScenes[scene] = {
+    mock: scene,
+    async prepare(page: Page) {
+      await onboardingScenes["onboarding-3"].prepare(page);
+      const pro = page.getByRole("button", { name: "Elegir Pro", exact: true });
+      if (state === "sesion") {
+        await page.getByText("Acceso verificado", { exact: true }).waitFor();
+        assert.equal(
+          await page
+            .getByRole("button", { name: "Continuar con email" })
+            .count(),
+          0,
+        );
+        assert.equal(await pro.isEnabled(), true);
+      } else if (state === "cargando") {
+        await page.getByText("Comprobando cuenta…", { exact: true }).waitFor();
+        assert.equal(await pro.isDisabled(), true);
+      } else {
+        await page
+          .getByText("No se pudo cargar la cuenta.", { exact: true })
+          .waitFor();
+      }
+    },
+  };
+}

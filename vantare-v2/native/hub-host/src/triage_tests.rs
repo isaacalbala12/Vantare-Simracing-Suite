@@ -281,7 +281,7 @@ fn rejects_attachment_with_wrong_hash() {
 #[test]
 fn rejects_more_than_one_attachment() {
     rejects(|preview| {
-        preview.packet.attachments = vec![app_log("[]".into()), app_log("[]".into())]
+        preview.packet.attachments = vec![app_log("[]".into()), app_log("[]".into())];
     });
 }
 #[test]
@@ -298,7 +298,7 @@ fn rejects_attachment_over_content_limit_even_with_valid_hash() {
         preview
             .packet
             .attachments
-            .push(app_log(format!("[{}]", " ".repeat(PREVIEW_LIMIT - 1))))
+            .push(app_log(format!("[{}]", " ".repeat(PREVIEW_LIMIT - 1))));
     });
 }
 #[test]

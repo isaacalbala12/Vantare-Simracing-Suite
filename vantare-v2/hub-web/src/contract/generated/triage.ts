@@ -3,6 +3,7 @@ import type { TestingView } from "./contract";
 export type TriageItem = "system" | "session" | "app_log" | "telemetry_fragment" | "posthog_session";
 export type TriageSelection = { items: Array<TriageItem>, };
 export type TriagePreview = { id: string, payload: string, };
+export const triageConsentKeys = ["system","telemetry_summary","app_log","telemetry_fragment","posthog_session"] as const;
 export const triageItems = ["system","session","app_log","telemetry_fragment","posthog_session"] as const;
 export const triagePreviewLimit = 131072 as const;
 export const triageLocalTitleMaxChars = 120 as const;

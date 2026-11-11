@@ -185,7 +185,9 @@ it("rejects repeated consent items in a core preview", () => {
   if (source.kind !== "response" || source.result.method !== "triage.prepare")
     throw new Error("missing preview");
   const message = structuredClone(source);
-  const payload = JSON.parse(message.result.value.payload);
+  const payloadText = message.result.value.payload;
+  if (typeof payloadText !== "string") throw new Error("missing payload");
+  const payload = JSON.parse(payloadText);
   payload.p_context.consent.items = ["system", "system"];
   message.result.value.payload = JSON.stringify(payload);
   expect(isHostMessage(message)).toBe(false);

@@ -11,7 +11,8 @@ pub(crate) fn typescript() -> String {
         (
             "triageConsentKeys",
             serde_json::json!(
-                vantare_ipc::services_protocol::triage_document::Item::ALL.map(|item| item.key())
+                vantare_ipc::services_protocol::triage_document::Item::ALL
+                    .map(vantare_ipc::services_protocol::triage_document::Item::key)
             ),
         ),
         (

@@ -39,6 +39,9 @@ it("keeps the profile visible while launch and protected favorite writes are dis
       ?.textContent,
   ).toBe(calendarText.launchPending);
   expect(screen.getByText(/\d{2}:\d{2} WEC Weekly/)).toBeTruthy();
+  expect(
+    document.querySelector(".v-calendar-time[data-alert] svg"),
+  ).toBeTruthy();
   const axis = document.querySelectorAll(".v-calendar-timeline-axis time");
   expect(axis.length).toBe(7);
   expect(axis[0].getAttribute("style")).toContain("left:");

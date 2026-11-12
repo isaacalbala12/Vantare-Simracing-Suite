@@ -193,31 +193,32 @@ export function CalendarLiveView({
         </div>
         <div className="v-calendar-live-line">
           <i className="v-calendar-now" />
-          {visibleStarts.map((at) => (
-            <button
-              type="button"
-              key={at}
-              className="v-calendar-time"
-              data-next={row.next === at || undefined}
-              data-gone={at < now || undefined}
-              data-alert={
-                (alerts.bands.some((band) => band.seriesId === s.id)
-                  ? (row.next === at &&
-                      alertAt(schedule, s, at, alerts, limit)) ||
-                    alerts.slots.some(
-                      (slot) => slot.seriesId === s.id && slot.at * 1000 === at,
-                    )
-                  : alertAt(schedule, s, at, alerts, limit)) || undefined
-              }
-              style={{
-                left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
-              }}
-              disabled={!onDetail}
-              onClick={() => onDetail?.(s.id, at)}
-            >
-              {clock(at, utc)}
-            </button>
-          ))}
+          {visibleStarts.map((at) => {
+            const marked = alerts.bands.some((band) => band.seriesId === s.id)
+              ? (row.next === at && alertAt(schedule, s, at, alerts, limit)) ||
+                alerts.slots.some(
+                  (slot) => slot.seriesId === s.id && slot.at * 1000 === at,
+                )
+              : alertAt(schedule, s, at, alerts, limit);
+            return (
+              <button
+                type="button"
+                key={at}
+                className="v-calendar-time"
+                data-next={row.next === at || undefined}
+                data-gone={at < now || undefined}
+                data-alert={marked || undefined}
+                style={{
+                  left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
+                }}
+                disabled={!onDetail}
+                onClick={() => onDetail?.(s.id, at)}
+              >
+                {marked && <Icon name="bell-fill" />}
+                {clock(at, utc)}
+              </button>
+            );
+          })}
           {!future && row.next !== undefined && (
             <button
               type="button"

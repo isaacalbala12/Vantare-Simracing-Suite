@@ -707,3 +707,26 @@
   width: 16px;
   height: 16px;
 }
+
+.v-calendar-time[data-alert] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.v-calendar-time svg {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+.v-calendar-timeline-axis::after {
+  content: "";
+  position: absolute;
+  left: calc(10% - 3.5px);
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  z-index: 1;
+}

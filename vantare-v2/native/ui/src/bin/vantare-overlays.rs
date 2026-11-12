@@ -211,7 +211,7 @@ fn measurement_main(args: &[String], controlled: bool) -> ExitCode {
     };
     let result = (|| -> Result<(), Box<dyn std::error::Error>> {
         let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
-        let demand = vantare_ui::Settings::default_for(vantare_ui::Kind::Relative).demand();
+        let demand = vantare_ipc::relative_measurement_demand();
         let handle = vantare_ui::source::DemandHandle::new(demand);
         let connection = handle.connection();
         let photos = vantare_ui::source::pipe_feed_observed(&name, Some(handle))?;

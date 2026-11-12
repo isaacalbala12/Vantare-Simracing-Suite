@@ -1560,6 +1560,10 @@ mod tests {
     fn measurement_is_relative_vantare_without_overlap_and_every_photo() {
         for copies in [1, 4, 10] {
             let layout = relative_measurement_layout(copies);
+            assert_eq!(
+                layout.instances[0].settings.demand(),
+                vantare_ipc::relative_measurement_demand()
+            );
             assert_eq!(layout.instances.len(), copies);
             for (index, instance) in layout.instances.iter().enumerate() {
                 assert_eq!(instance.settings.kind(), Kind::Relative);

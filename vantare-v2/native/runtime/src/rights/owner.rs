@@ -115,6 +115,16 @@ impl Owner {
         epoch: u64,
         now: DateTime<Utc>,
     ) -> Result<Self> {
+        Self::open_with_generation(root, keys, devices, epoch, now, new_account_generation)
+    }
+    fn open_with_generation(
+        root: &Path,
+        keys: Option<&str>,
+        devices: Devices,
+        epoch: u64,
+        now: DateTime<Utc>,
+        generation: impl FnOnce() -> Result<vantare_ipc::account_session::AccountGeneration>,
+    ) -> Result<Self> {
         let store = Store::open(root, "core-rights-v1")?;
         let authority = Authority::restore(&store, now.timestamp_millis())?;
         let trust_roots = keys.map(Verifier::public_keys).transpose()?;
@@ -125,7 +135,7 @@ impl Owner {
             authority,
             devices,
             binding: None,
-            account_generation: Some(new_account_generation()?),
+            account_generation: generation().ok(),
             game: None,
             policy: Policy {
                 version: VERSION,

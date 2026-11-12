@@ -2595,3 +2595,69 @@ fn failed_durable_logout_still_removes_the_old_account_scope() {
     drop(owner);
     clean(&root);
 }
+
+#[test]
+fn failed_logout_reinstalling_same_account_gets_a_new_generation() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = test_root();
+    let (credential, keys) = signed_v1(100, vec![]);
+    let (renewed, renewed_keys) = signed_v1_named(112, vec![], devices().legacy, "renewed");
+    let keys = format!("{keys},{renewed_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).unwrap();
+    owner
+        .install(credential, wall(110), Duration::ZERO)
+        .unwrap();
+    let first = owner.account_generation().unwrap();
+    let namespace = std::fs::read_dir(&root)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .open(namespace.join("authority.dpapi"))
+        .unwrap();
+    assert_eq!(
+        owner.invalidate(wall(111), Duration::from_secs(1)),
+        Err(Error::Storage)
+    );
+    assert!(
+        owner.binding.is_some(),
+        "failed durable ACK retains old binding"
+    );
+    assert!(owner.account_generation().is_none());
+    drop(lock);
+    owner
+        .install_online(renewed, wall(113), Duration::from_secs(3))
+        .unwrap();
+    assert_ne!(owner.account_generation().unwrap(), first);
+    drop(owner);
+    clean(&root);
+}
+#[test]
+fn entropy_failure_at_open_only_disables_account_observation() {
+    let root = test_root();
+    let (credential, keys) = signed_v1(100, vec![]);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).unwrap();
+    owner
+        .install(credential, wall(110), Duration::ZERO)
+        .unwrap();
+    drop(owner);
+    let mut owner =
+        Owner::open_with_generation(&root, Some(&keys), devices(), 2, wall(110), || {
+            Err(Error::Protocol)
+        })
+        .expect("rights remain available without account observation");
+    assert!(owner.account_generation().is_none());
+    assert!(
+        owner
+            .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+            .unwrap()
+            .state
+            .permits_access()
+    );
+    drop(owner);
+    clean(&root);
+}

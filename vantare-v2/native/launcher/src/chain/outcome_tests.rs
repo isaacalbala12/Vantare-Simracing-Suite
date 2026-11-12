@@ -47,10 +47,7 @@ fn fixture() -> Fixture {
     }
 }
 fn root() -> std::path::PathBuf {
-    let base = std::path::PathBuf::from(
-        std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("isolated QA root"),
-    );
-    assert!(base.is_absolute());
+    let base = std::env::temp_dir();
     base.join(format!(
         "terminal-{}",
         vantare_services::random_id().expect("isolated fixture id")
@@ -63,10 +60,9 @@ fn completed_and_failed_continue_are_decided_by_the_actual_step_pipeline() {
         let executed = Cell::new(0);
         let discovery = Discovery::default();
         let outcome = run_with(
-            &f.document,
             &f.profile,
-            &discovery,
             &f.context,
+            || panic!("non-imported profile needs no trust root"),
             || {
                 run_pass_with(
                     &f.document,
@@ -125,10 +121,9 @@ fn both_retry_policies_can_recover_without_sleeping_or_launching_apps() {
         let waits = RefCell::new(Vec::new());
         let discovery = Discovery::default();
         let outcome = run_with(
-            &f.document,
             &f.profile,
-            &discovery,
             &f.context,
+            || panic!("non-imported profile needs no trust root"),
             || {
                 run_pass_with(
                     &f.document,
@@ -176,10 +171,9 @@ fn cancellation_before_or_between_steps_never_completes() {
         let calls = Cell::new(0);
         let discovery = Discovery::default();
         let outcome = run_with(
-            &f.document,
             &f.profile,
-            &discovery,
             &f.context,
+            || panic!("non-imported profile needs no trust root"),
             || {
                 run_pass_with(
                     &f.document,
@@ -245,10 +239,9 @@ fn trust_decline_is_distinct_from_a_step_failure() {
     });
     f.answers.send((1, Action::Cancel)).unwrap();
     let outcome = run_with(
-        &f.document,
         &f.profile,
-        &discovery,
         &f.context,
+        || review_at(&f.document, &f.profile, &discovery, &f.context, &root()),
         || panic!("trust declined before step pipeline"),
         |_| panic!("no retry"),
     );
@@ -381,4 +374,40 @@ fn worker_panic_is_terminal_and_shutdown_keeps_its_legacy_one_time_error() {
     );
     drop(chain);
     std::fs::remove_dir_all(path).unwrap();
+}
+
+#[test]
+fn disconnected_progress_is_an_internal_failure_before_or_after_execution() {
+    for disconnect_before in [true, false] {
+        let f = fixture();
+        let receiver = RefCell::new(Some(f.events));
+        if disconnect_before {
+            receiver.borrow_mut().take();
+        }
+        let outcome = run_with(
+            &f.profile,
+            &f.context,
+            || panic!("non-imported profile needs no trust root"),
+            || {
+                run_pass_with(
+                    &f.document,
+                    &f.profile,
+                    &Discovery::default(),
+                    &f.context,
+                    |_, _, _, _, _, _| {
+                        receiver.borrow_mut().take();
+                        Ok(1)
+                    },
+                    |_| false,
+                )
+            },
+            |_| false,
+        );
+        assert_eq!(
+            outcome,
+            ChainOutcome::Failed {
+                reason: ChainFailure::Internal
+            }
+        );
+    }
 }

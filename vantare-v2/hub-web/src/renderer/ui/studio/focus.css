@@ -9,13 +9,13 @@
 .v-studio-focus {
   height: calc(100dvh - var(--topbar-h));
   container: studio-main / inline-size;
+  padding: 20px 24px 22px;
 }
 .v-studio-focus-layout {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   gap: 20px;
   height: 100%;
-  padding: 20px 24px 22px;
   min-height: 0;
 }
 .v-focus-strip {

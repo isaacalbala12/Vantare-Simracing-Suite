@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import {
   type AccountView,
   defaultZoom,
@@ -42,6 +42,10 @@ import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
 import { WindowControls } from "./WindowControls";
 
+declare const __VANTARE_RENDERER_MOCK__: boolean;
+const DialogAuditFixtures = __VANTARE_RENDERER_MOCK__
+  ? lazy(() => import("./DialogAuditFixtures"))
+  : null;
 export function Shell() {
   return (
     <NotificationsProvider>
@@ -584,6 +588,12 @@ function ShellContent() {
             </ContentStack>
           }
         />
+        {DialogAuditFixtures &&
+          new URLSearchParams(location.search).has("dialog-fixture") && (
+            <Suspense fallback={null}>
+              <DialogAuditFixtures />
+            </Suspense>
+          )}
       </ContentStack>
     </ShellLayout>
   );

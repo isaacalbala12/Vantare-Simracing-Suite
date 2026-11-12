@@ -1,3 +1,6 @@
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import type { VisualScene } from "./scenes.ts";
 export const homeScenes: Record<string, VisualScene> = Object.fromEntries(
   [
@@ -74,3 +77,33 @@ export const homeScenes: Record<string, VisualScene> = Object.fromEntries(
     },
   ]),
 );
+homeScenes["inicio-base"].cleanup = async (page) => {
+  await page.setViewportSize({ width: 1800, height: 1100 });
+  try {
+    const apps = page.getByRole("list", {
+      name: "Aplicaciones del perfil favorito",
+    });
+    await apps.waitFor();
+    assert.deepEqual(
+      await apps
+        .locator("li")
+        .evaluateAll((items) =>
+          items.map((item) => item.getAttribute("data-app")),
+        ),
+      ["lmu", "crewchief", "simhub", "custom:vantare"],
+    );
+    const output = process.env.VANTARE_HUB_EVIDENCE;
+    if (output) {
+      await mkdir(output, { recursive: true });
+      const scheme = await page.evaluate(
+        () => document.documentElement.dataset.scheme,
+      );
+      // Supplementary CDP image; the primary remains a 1440x900 HWND capture.
+      await page.screenshot({
+        path: join(output, `inicio-favorito-amplio-${scheme}.png`),
+      });
+    }
+  } finally {
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+};

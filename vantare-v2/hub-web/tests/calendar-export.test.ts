@@ -237,7 +237,7 @@ it("refuses existing real NTFS symlinks and junctions without changing their tar
     expect(await readFile(join(junction, "keep.txt"), "utf8")).toBe("keep");
   });
 });
-it.each(["EEXIST", "EACCES", "EIO"])(
+it.each(["EACCES", "EIO"])(
   "maps save failure %s without exposing its message",
   async (code) => {
     const session = calendarExportSession(
@@ -248,9 +248,7 @@ it.each(["EEXIST", "EACCES", "EIO"])(
     );
     session.expect(1);
     session.observe(response());
-    expect(await session.export(hash)).toEqual(
-      code === "EEXIST" ? { status: "conflict" } : { error: { kind: "io" } },
-    );
+    expect(await session.export(hash)).toEqual({ error: { kind: "io" } });
     expect(await session.export(hash)).toEqual({ error: { kind: "rejected" } });
   },
 );

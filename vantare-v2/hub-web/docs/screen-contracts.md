@@ -191,6 +191,32 @@ petición cancelada se descartan. No se introducen variantes en el wire v6.
 Distingue `archived` (se archivó el antiguo y ganó el borrador protegido) de
 `preserved` (el origen sigue conservado por un fallo o por no poder importarlo).
 
+### Cierre con borrador de Informes (sin método nuevo)
+
+La X intenta guardar mediante `draft.save` durante un plazo total de 5 s, con reloj
+monotónico inyectable. El cliente mantiene `request()` cerrado con `busy` después
+de `closeRequested`; únicamente la preparación del propietario de Informes tiene
+una función cerrada que admite `ReportFields`, nunca un método libre. Después del
+guardado se ejecutan los guards de cierre habituales, que no hacen peticiones.
+Si no hay ediciones de informe ni notas/respuesta/triage locales, no se espera
+a operaciones de Testing en vuelo ni se muestra el aviso de texto sin guardar.
+Las esperas abandonadas terminan también para los observadores de peticiones.
+
+Un fallo o vencimiento veta ese cierre y abre WindowDialog con Reintentar / Cerrar
+sin guardar; Escape vuelve a la edición. La segunda X no duplica la preparación.
+Un cambio de sesión cancela la espera antes de otro guardado; las respuestas tardías
+no cierran la ventana ni restituyen texto de la cuenta anterior. Un comando ya
+enviado al núcleo no se puede retirar mediante el wire actual.
+
+Live, Restart, EOF y cierre del propietario cancelan la preparación inmediatamente.
+Restart omite solo la preparación de Informes: conserva los demás guards, sus
+esperas y el aviso de veto de Actualizaciones. Live, EOF y cierre del propietario
+cierran sin esos vetos. Tras invalidar la cuenta, un estado ya limpio permite
+ese primer cierre y nunca despacha otro guardado de la sesión anterior.
+En el anfitrión la razón solo sube: Window < Restart < Live/EOF. Una razón forzada
+en curso no se sustituye ni vuelve a emitir; el renderer ignora razones iguales o
+inferiores. No se añade protocolo, ni cambia IPC, derechos, runtime o supervisor.
+
 ## Calendario (`calendar`): datos de solo lectura
 
 `calendar.load {}` lee los documentos existentes del GPUI sin crearlos ni modificarlos:
@@ -406,8 +432,8 @@ Su plazo está exento únicamente en la lista cerrada de métodos del cliente;
 no existe un parámetro de timeout controlado por el renderer. El anfitrión Rust
 rechaza la exportación directa con `unsupported`.
 
-El archivo nunca sobrescribe un destino existente y usa creación exclusiva
-si el sistema de archivos no admite enlaces duros. No publica suscripciones,
+Para un destino nuevo se usa creación exclusiva, también si el sistema de
+archivos no admite enlaces duros. La confirmación de reemplazo se describe abajo. No publica suscripciones,
 URLs ni conexiones a Google, Apple o Microsoft. El límite de ICS es un cuarto
 del frame para que su JSON y la vista previa quepan en el protocolo.
 La versión v25 sigue al contrato de avisos (v24).
@@ -423,12 +449,111 @@ al iniciar la exportación, nunca después de la espera en el diálogo.
 
 Sin extensión se añade `.ics`. Otra extensión produce el error cerrado
 `calendarExportExtension`. UNC, rutas relativas, ADS, dispositivos reservados y
-rutas excesivas se rechazan. Un destino existente siempre da `conflict`, incluso
-si el diálogo de Windows había preguntado por sobrescribir: hay que elegir otro
-nombre. No se cambia esa decisión de producto.
+rutas excesivas se rechazan. Un destino existente pide confirmación propia mediante
+`WindowAlertDialog`, sin comunicar su ruta al renderer.
 
 La selección de series replica `Series::every().is_some()` de GPUI para ICS;
 no reutiliza la clasificación diaria de los avisos. El fixture
 `calendar-ics-gpui.json` se mantiene desde el ejemplo y test del propio crate
 GPUI, con el corpus compartido y la publicación real de octubre. El anfitrión
 solo consume los valores esperados; no enlaza GPUI ni cruza crates con `#[path]`.
+
+## Calendario: avisos de escritorio con el Hub abierto (wire v28)
+
+El tick existente del anfitrión replica `Alerts::due` (GPUI
+`native/hub/src/calendar/alerts.rs:266`): salida futura, disparo en `(since, now]`,
+antelación del documento, causa de franja/tanda y zona local. La primera lectura
+no recupera avisos pasados. Las franjas se callan en pista; una tanda explícita
+puede avisar, siempre en silencio en pista. Fuera de pista, `channels.sound`
+controla el sonido del sistema, sin reproductor ni dependencia adicional.
+Decisión de Isaac (12-11): `general.toasts` gobierna también las notificaciones
+de Windows del Calendario. El anfitrión consulta el valor confirmado de Settings
+en cada tick y al completar un refresh; una actualización de General surte efecto
+sin reiniciar. No se reescribe `calendar-alerts.json` ni se alteran sus canales.
+El sondeo, el feed y los avisos en pista no dependen de este interruptor.
+Es una desviación deliberada respecto a la independencia del GPUI.
+
+`calendarNotice` es un evento privado host→main, unión cerrada `start|week|test`
+con `deny_unknown_fields`. No acepta texto, URL, ruta ni fecha del renderer.
+Main lo consume antes del puerto del renderer y presenta texto localizado con
+la API `Notification`; no ejecuta acciones al pulsarlo. El presentador es reutilizable
+por otras fuentes, pero este PR no conecta Launcher, actualizaciones ni informes.
+
+Solo se emite tras aceptar el protocolo, con cuenta verificada, no bloqueada, derecho Calendar y vínculo de
+derechos conectado, documento de avisos legible, horario vigente y canal Windows.
+El reloj y el instante monotónico son inyectables. La deduplicación dura hasta
+la salida/final de semana y está acotada; no hay cola persistente ni hilos nuevos.
+La presentación caduca en 60 s y main deduplica una segunda vez. El cierre del
+Hub detiene el tick. Los avisos ya entregados al sistema pueden permanecer allí.
+No existe garantía de que Windows muestre o reproduzca sonido: depende del SO.
+
+`calendar.noticeTest {}` solo genera un ejemplo fijo, con los mismos derechos,
+documento legible y un límite de una prueba cada 5 s. No requiere horario ni que
+el canal esté marcado: prueba el canal, como el GPUI. Sí exige `general.toasts`;
+con el ajuste apagado devuelve `accepted:false`, sin evento ni consumo del plazo.
+Main proyecta `accepted`
+a partir del resultado real de invocar el presentador, sin afirmar que el usuario
+lo haya visto. El evento precede a la respuesta; una presentación ausente o
+rechazada da `accepted:false`. Nunca se envían notificaciones reales en tests.
+
+La nueva semana se anuncia una vez tras observar que la publicación vigente
+avanza, con `notifyWeek` y Windows habilitados. Abrir el Hub por primera vez no
+anuncia retrospectivamente la semana. El lanzamiento automático sigue pendiente
+de #2089 y no cambia en este contrato. Las casillas siguen con la explicación de
+«aún no» hasta el PR de activación posterior a la revisión del emisor.
+
+Límites de entrega: hasta 256 avisos por tick y 16 384 claves vivas en el anfitrión;
+main conserva hasta 1 024 claves dentro del TTL. Un exceso se descarta, no se
+acumula para otro arranque. No se modifica el feed en pista ni su consumidor.
+
+### Refresh del anfitrión y publicación de semana (v28)
+
+El tick sondea por la cola de servicios ya existente aunque Calendario no esté
+montado: cada 15 minutos, o 5 minutos los lunes antes de las 12:00 UTC, como
+GPUI. Comparte el identificador reservado de tareas de fondo con Cuenta; no
+solapa refrescos manuales o automáticos y reintenta una cola ocupada como máximo
+una vez por segundo. Requiere los mismos derechos y servicios conectados. No
+escribe el horario en disco ni crea hilos. `calendarRefreshed` publica la vista
+y un error cerrado opcional; el renderer escucha el resultado y ya no sondea.
+
+La semana nueva solo nace de una publicación vigente recibida por refresh;
+una transición de reloj o una publicación futura no avisa. Si la base inicial
+del disco está caducada, el primer refresh válido establece la base silenciosamente,
+aunque no devuelva horario vigente. Una publicación posterior puede avisar usando
+la última semana caducada como comparación.
+No se persiste una última semana avisada. Un fallo breve de autoridad cancela
+la entrega pendiente, sin borrar la base de refresh ni la deduplicación.
+Main tolera hasta 5 segundos de adelanto del reloj del host y usa ciclo h23.
+La prueba de Ajustes y los avisos comparten el doble solo en QA o mock autorizado.
+
+La primera evaluación habilitada del emisor carga horario y preferencias locales
+solo para lectura, aunque el refresh falle por falta de red. Un sello checked
+futuro o un retroceso del reloj no suspende el sondeo: se considera vencido.
+
+## Calendario: confirmar reemplazo ICS (wire v30 provisional)
+
+Decisión de Isaac del 12-11: `calendar.icsExport` puede responder
+`replacementRequired {confirmationId}`. `calendar.icsReplace {confirmationId,
+replace}` confirma o cancela. Ambos resultados son cerrados y main es su único
+emisor; Rust rechaza su ejecución directa. Los identificadores tienen 64 hex
+minúsculos, son aleatorios, de un solo uso y caducan a los 60 s con reloj inyectado.
+Main conserva en privado destino, contenido revisado y huella (identidad,
+tamaño, mtime, ctime y SHA-256 leído por bloques). Ninguna ruta cruza el puente.
+
+Cancelar no escribe. Confirmar comprueba la huella; un cambio solicita otra
+confirmación con id nuevo. Se escribe y sincroniza un temporal hermano y se
+recomprueba la huella inmediatamente antes de `rename`. Un fallo de escritura o
+publicación conserva el archivo original y retira el temporal en mejor esfuerzo.
+Un destino eliminado no se convierte en creación sin confirmar. Enlaces y
+directorios se rechazan. Un nuevo prepare o la desconexión invalida la confirmación.
+No se cambia la limitación anterior sobre recomprobar derechos al exportar.
+
+El método nuevo también está en la lista cerrada de plazos de main: no se
+notifica timeout mientras una publicación aún podría terminar. La caducidad del
+id se comprueba antes y después de escribir el temporal. No hay timeout configurable
+por el renderer. La pantalla bloquea envíos duplicados y mantiene los controles
+de ventana operativos; cancelar devuelve al calendario preparado de nuevo.
+
+La huella se comprueba justo antes de renombrar; no bloquea editores externos.
+La reutilización con report-export y la longitud de su temporal anterior siguen
+fuera de este cambio. Sin IPC/runtime/rights/supervisor, red ni dependencias nuevas.

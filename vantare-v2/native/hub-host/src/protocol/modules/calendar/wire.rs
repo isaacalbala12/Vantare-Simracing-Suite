@@ -5,6 +5,8 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "calendar.noticeTest")]
+    CalendarNoticeTest {},
     #[serde(rename = "calendar.alertsSave")]
     CalendarAlertsSave {
         #[serde(deserialize_with = "crate::calendar::config::deserialize_complete_alerts")]
@@ -21,6 +23,15 @@ pub enum Request {
     CalendarIcsExport {
         #[serde(rename = "preparedHash")]
         prepared_hash: String,
+    },
+    #[serde(rename = "calendar.icsReplace")]
+    CalendarIcsReplace {
+        #[serde(
+            rename = "confirmationId",
+            deserialize_with = "crate::calendar::ics::deserialize_confirmation_id"
+        )]
+        confirmation_id: String,
+        replace: bool,
     },
     #[serde(rename = "calendar.historyLoad")]
     CalendarHistoryLoad {},
@@ -55,6 +66,8 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "calendar.noticeTest")]
+    CalendarNoticeTest { accepted: bool },
     #[serde(rename = "calendar.alertsSave")]
     CalendarAlertsSave {
         value: Box<crate::calendar::CalendarConfigView>,
@@ -66,6 +79,22 @@ pub enum Reply {
     #[serde(rename = "calendar.icsExport")]
     CalendarIcsExport {
         status: crate::calendar::CalendarIcsStatus,
+        #[serde(
+            rename = "confirmationId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        confirmation_id: Option<String>,
+    },
+    #[serde(rename = "calendar.icsReplace")]
+    CalendarIcsReplace {
+        status: crate::calendar::CalendarIcsStatus,
+        #[serde(
+            rename = "confirmationId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        confirmation_id: Option<String>,
     },
     #[serde(rename = "calendar.historyLoad")]
     CalendarHistoryLoad {
@@ -109,6 +138,20 @@ pub enum HostError {
     #[serde(rename = "calendarConflict")]
     CalendarConflict {
         current: Box<crate::calendar::CalendarConfigView>,
+    },
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
+pub enum Event {
+    #[serde(rename = "calendarRefreshed")]
+    CalendarRefreshed {
+        value: Box<crate::calendar::CalendarView>,
+        error: Option<crate::calendar::CalendarRefreshFailure>,
+    },
+    #[serde(rename = "calendarNotice")]
+    CalendarNotice {
+        value: crate::calendar::CalendarNotice,
     },
 }
 #[cfg(any(test, feature = "bindings"))]

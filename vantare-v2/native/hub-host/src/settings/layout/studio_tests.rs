@@ -1,4 +1,87 @@
 use super::*;
+
+#[test]
+fn driving_content_writer_matches_native_normalization_and_undo_bytes() {
+    use serde_json::{Value, json};
+    use vantare_domain::widget_settings as native;
+    for legacy in [false, true] {
+        for patch in [
+            json!({"kind":"delta","reference":"leader"}),
+            json!({"kind":"delta","showSectors":false}),
+            json!({"kind":"pedals","showBrakePeak":false}),
+            json!({"kind":"pedals","gap":2.7}),
+        ] {
+            let root = crate::test_support::Root::new();
+            let path = root.path.join("layout.json");
+            let kind = patch["kind"].as_str().unwrap();
+            let mut settings = if kind == "delta" {
+                json!({"kind":"delta","designSystem":"vantare","size":"expanded",
+                    "reference":"optimal","showSectors":true})
+            } else {
+                json!({"kind":"pedals","designSystem":"vantare","gap":2.7,
+                    "showBrakePeak":true})
+            };
+            if !legacy && kind == "delta" {
+                settings["contentVersion"] = json!(1);
+            }
+            if patch.get("gap").is_some() {
+                settings["gap"] = json!(1.5);
+            }
+            if legacy && kind == "pedals" {
+                settings.as_object_mut().unwrap().remove("designSystem");
+            }
+            settings["future"] = json!({"z":1,"a":[2,3]});
+            let before = serde_json::to_vec(&json!({"version":1,"futureRoot":42,
+                "instances":[{"id":"widget-1","x":12,"y":24,"settings":settings}]})).unwrap();
+            std::fs::write(&path, &before).unwrap();
+            // Independent GPUI operation: normalize, assign the chosen field,
+            // normalize again and serialize through the native struct.
+            let mut expected: Value = if kind == "delta" {
+                let mut data: native::delta::Settings = serde_json::from_value(settings.clone()).unwrap();
+                data = data.normalized();
+                if patch.get("reference").is_some() {
+                    data.reference = "leader".into();
+                } else {
+                    data.show_sectors = false;
+                }
+                serde_json::from_str(&serde_json::to_string(&data.normalized()).unwrap()).unwrap()
+            } else {
+                let mut data: native::pedals::Settings = serde_json::from_value(settings.clone()).unwrap();
+                data = data.normalized();
+                if patch.get("gap").is_some() {
+                    data.gap = 2.7;
+                } else {
+                    data.show_brake_peak = false;
+                }
+                serde_json::from_str(&serde_json::to_string(&data.normalized()).unwrap()).unwrap()
+            };
+            expected["kind"] = json!(kind);
+            expected["future"] = settings["future"].clone();
+            let access = Some(CatalogAccess::Pro);
+            let mut state = State::new(path.clone());
+            let current = state.view(access);
+            let edit = || Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(
+                serde_json::from_value(patch.clone()).unwrap(),
+            )));
+            let changed = state.edit(edit(), &current.revision, access).unwrap();
+            let saved = std::fs::read(&path).unwrap();
+            let actual: Value = serde_json::from_slice(&saved).unwrap();
+            assert_eq!(actual["instances"][0]["settings"], expected, "{patch}, legacy={legacy}");
+            assert_eq!(actual["futureRoot"], 42);
+            assert_eq!(actual["instances"][0]["x"], 12);
+            if kind == "pedals" {
+                assert!(std::str::from_utf8(&saved).unwrap().contains("\"gap\":2.7"));
+            }
+            assert!(state.edit(edit(), &current.revision, access).is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), saved);
+            let noop = state.edit(edit(), &changed.revision, access).unwrap();
+            assert_eq!(std::fs::read(&path).unwrap(), saved);
+            state.edit(Edit::Undo, &noop.revision, access).unwrap();
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+    }
+}
+
 fn fixture() -> (crate::test_support::Root, std::path::PathBuf, Vec<u8>) {
     let root = crate::test_support::Root::new();
     let path = root.path.join("layout.json");

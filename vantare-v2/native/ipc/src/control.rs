@@ -219,8 +219,12 @@ impl Policy {
             )
             && self.effective_until_ms().is_none_or(|end| now_ms < end)
     }
-    fn observable_at(&self, now_ms: u64) -> bool {
+    pub(crate) fn observable_at(&self, now_ms: u64) -> bool {
         self.fresh_at(now_ms) && (!self.state.permits_access() || self.current_at(now_ms))
+    }
+    /// Same permission for the host and the resident, at the consumption boundary.
+    pub fn permits_launch(&self, now_ms: u64) -> bool {
+        self.epoch > 0 && self.current_at(now_ms) && self.state.permits_access() && !self.live
     }
     pub fn current(&self) -> bool {
         wall_ms().is_ok_and(|now| self.current_at(now))
@@ -244,6 +248,8 @@ pub struct Bootstrap {
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Read,
+    /// Opt-in response uses `account_session::ControlResponse`, never legacy Response.
+    ReadAccountSession {},
     // Retained solely for control v7 compatibility. Services no longer emits
     // this command; do not wire it to disk credentials or legacy candidates.
     Install {
@@ -490,9 +496,54 @@ fn retryable_connect(error: &io::Error) -> bool {
     )
 }
 
+// Unknown-command disconnects are indistinguishable from transient I/O failures.
+// Require three consecutive failed probes while legacy Read still confirms the epoch.
+#[cfg(any(windows, unix))]
+#[derive(Default)]
+struct AccountProbe {
+    epoch: Option<u64>,
+    failures: u8,
+}
+#[cfg(any(windows, unix))]
+impl AccountProbe {
+    fn observe(
+        &mut self,
+        epoch: Option<u64>,
+        read: impl FnOnce() -> io::Result<Option<crate::account_session::AccountObservation>>,
+    ) -> Option<crate::account_session::AccountObservation> {
+        if epoch != self.epoch {
+            self.epoch = epoch;
+            self.failures = 0;
+        }
+        if epoch.is_none() || self.failures >= 3 {
+            return None;
+        }
+        match read() {
+            Ok(observation) => {
+                self.failures = 0;
+                observation
+            }
+            Err(error) => {
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::InvalidData
+                        | io::ErrorKind::UnexpectedEof
+                        | io::ErrorKind::BrokenPipe
+                ) {
+                    self.failures += 1;
+                } else {
+                    self.failures = 0;
+                }
+                None
+            }
+        }
+    }
+}
+
 #[cfg(any(windows, unix))]
 pub struct Feed {
     latest: std::sync::Arc<std::sync::Mutex<Option<Policy>>>,
+    account: std::sync::Arc<std::sync::Mutex<Option<crate::account_session::AccountObservation>>>,
     stop: std::sync::Arc<crate::transport::Event>,
     initial: std::sync::Arc<crate::transport::Event>,
     thread: Option<std::thread::JoinHandle<()>>,
@@ -500,8 +551,21 @@ pub struct Feed {
 #[cfg(any(windows, unix))]
 impl Feed {
     pub fn connect(photo: &str, core_image: std::path::PathBuf) -> io::Result<Self> {
+        Self::connect_inner(photo, core_image, false)
+    }
+    /// Account-aware consumers opt in; existing Feed users send only Read.
+    pub fn connect_account(photo: &str, core_image: std::path::PathBuf) -> io::Result<Self> {
+        Self::connect_inner(photo, core_image, true)
+    }
+    fn connect_inner(
+        photo: &str,
+        core_image: std::path::PathBuf,
+        observe_account: bool,
+    ) -> io::Result<Self> {
         use crate::transport::Event;
         let latest = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let account = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let account_target = std::sync::Arc::clone(&account);
         let stop = std::sync::Arc::new(Event::new()?);
         let initial = std::sync::Arc::new(Event::new()?);
         let ready = std::sync::Arc::clone(&initial);
@@ -516,8 +580,22 @@ impl Feed {
             .name("rights-feed".into())
             .spawn(move || {
                 let mut cursor = (0, 0);
+                let mut account_probe = AccountProbe::default();
                 while !cancel.is_set() {
                     let result = request_cancelled(&link, Command::Read, &cancel);
+                    if observe_account {
+                        let epoch = result.as_ref().ok().map(|p| p.epoch);
+                        let observation = account_probe.observe(epoch, || {
+                            let authority = crate::account_session::AuthorityLink {
+                                pipe: link.pipe.clone(),
+                                image: link.image.clone(),
+                            };
+                            crate::account_session::request_cancelled(&authority, &cancel)
+                        });
+                        if let Ok(mut slot) = account_target.lock() {
+                            *slot = observation;
+                        }
+                    }
                     if let Ok(mut slot) = target.lock() {
                         *slot = feed_observation(
                             result,
@@ -536,10 +614,18 @@ impl Feed {
             })?;
         Ok(Self {
             latest,
+            account,
             stop,
             initial,
             thread: Some(thread),
         })
+    }
+    pub fn account_observation(&self) -> Option<crate::account_session::AccountObservation> {
+        self.account
+            .lock()
+            .ok()
+            .and_then(|slot| slot.clone())
+            .filter(|o| wall_ms().is_ok_and(|now| o.policy.observable_at(now)))
     }
     pub fn policy(&self) -> Policy {
         self.latest
@@ -996,5 +1082,47 @@ mod legacy_v7_reader {
         .expect_err("old reader preserves unknown error");
         assert_eq!(Failure::classify(&error), Failure::UnknownLegacy);
         server.join().expect("server");
+    }
+}
+
+#[cfg(all(test, any(windows, unix)))]
+mod account_probe_tests {
+    use super::*;
+    use crate::account_session::AccountObservation;
+    #[test]
+    fn single_disconnect_recovers_and_only_consecutive_failures_disable_old_core() {
+        let mut probe = AccountProbe::default();
+        assert!(
+            probe
+                .observe(Some(1), || Err(io::ErrorKind::UnexpectedEof.into()))
+                .is_none()
+        );
+        let observation = AccountObservation {
+            generation: "a".repeat(64).try_into().unwrap(),
+            policy: Policy::denied(AccessState::NoCredential),
+        };
+        assert_eq!(
+            probe.observe(Some(1), || Ok(Some(observation.clone()))),
+            Some(observation)
+        );
+        assert_eq!(probe.failures, 0);
+        let calls = std::cell::Cell::new(0);
+        for _ in 0..8 {
+            assert!(
+                probe
+                    .observe(Some(1), || {
+                        calls.set(calls.get() + 1);
+                        Err(io::ErrorKind::UnexpectedEof.into())
+                    })
+                    .is_none()
+            );
+        }
+        assert_eq!(
+            calls.get(),
+            3,
+            "legacy core stops receiving unknown commands"
+        );
+        assert!(probe.observe(Some(2), || Ok(None)).is_none());
+        assert_eq!(probe.failures, 0, "new authority can be probed again");
     }
 }

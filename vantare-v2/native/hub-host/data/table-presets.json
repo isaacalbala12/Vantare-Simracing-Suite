@@ -1,0 +1,1011 @@
+{
+  "recipes": {
+    "relative": {
+      "compact": [
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "position",
+          "metricId": "position",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "carNumber",
+          "metricId": "carNumber",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverName",
+          "metricId": "driverName",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "sm"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "vehicle",
+          "metricId": "vehicle",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "lapDelta",
+          "metricId": "lapDelta",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverRating",
+          "metricId": "driverRating",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "safetyRating",
+          "metricId": "safetyRating",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "trend",
+          "metricId": "trend",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "gap",
+          "metricId": "gap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "trackStrip",
+          "metricId": "trackStrip",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        }
+      ],
+      "expanded": [
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "position",
+          "metricId": "position",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "carNumber",
+          "metricId": "carNumber",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverName",
+          "metricId": "driverName",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "md"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "vehicle",
+          "metricId": "vehicle",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "lapDelta",
+          "metricId": "lapDelta",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverRating",
+          "metricId": "driverRating",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "safetyRating",
+          "metricId": "safetyRating",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "trend",
+          "metricId": "trend",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "gap",
+          "metricId": "gap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "trackStrip",
+          "metricId": "trackStrip",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        }
+      ],
+      "standard": [
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "position",
+          "metricId": "position",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "carNumber",
+          "metricId": "carNumber",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverName",
+          "metricId": "driverName",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "lg"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "vehicle",
+          "metricId": "vehicle",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "lapDelta",
+          "metricId": "lapDelta",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverRating",
+          "metricId": "driverRating",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "safetyRating",
+          "metricId": "safetyRating",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "trend",
+          "metricId": "trend",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "gap",
+          "metricId": "gap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "trackStrip",
+          "metricId": "trackStrip",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        }
+      ]
+    },
+    "standings": {
+      "compact": [
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "position",
+          "metricId": "position",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "positionsGained",
+          "metricId": "positionsGained",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverNumber",
+          "metricId": "driverNumber",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverName",
+          "metricId": "driverName",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "sm"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "vehicle",
+          "metricId": "vehicle",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "tireCompound",
+          "metricId": "tireCompound",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "pit",
+          "metricId": "pit",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "sectors",
+          "metricId": "sectors",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "lastLap",
+          "metricId": "lastLap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "bestLap",
+          "metricId": "bestLap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "interval",
+          "metricId": "interval",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "gap",
+          "metricId": "gap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        }
+      ],
+      "expanded": [
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "position",
+          "metricId": "position",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "positionsGained",
+          "metricId": "positionsGained",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverNumber",
+          "metricId": "driverNumber",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverName",
+          "metricId": "driverName",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "lg"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "vehicle",
+          "metricId": "vehicle",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "tireCompound",
+          "metricId": "tireCompound",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "pit",
+          "metricId": "pit",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "sectors",
+          "metricId": "sectors",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "lastLap",
+          "metricId": "lastLap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "bestLap",
+          "metricId": "bestLap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "interval",
+          "metricId": "interval",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "gap",
+          "metricId": "gap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        }
+      ],
+      "standard": [
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "position",
+          "metricId": "position",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "positionsGained",
+          "metricId": "positionsGained",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverNumber",
+          "metricId": "driverNumber",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "driverName",
+          "metricId": "driverName",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "md"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "vehicle",
+          "metricId": "vehicle",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "tireCompound",
+          "metricId": "tireCompound",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "pit",
+          "metricId": "pit",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "sectors",
+          "metricId": "sectors",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "lastLap",
+          "metricId": "lastLap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "bestLap",
+          "metricId": "bestLap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": false,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "interval",
+          "metricId": "interval",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        },
+        {
+          "enabled": true,
+          "format": {
+            "decimals": null,
+            "display": null,
+            "maxChars": null,
+            "mode": ""
+          },
+          "id": "gap",
+          "metricId": "gap",
+          "style": {
+            "align": null
+          },
+          "widthPreset": "auto"
+        }
+      ]
+    }
+  },
+  "version": 1
+}

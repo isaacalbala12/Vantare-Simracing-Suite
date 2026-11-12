@@ -8,10 +8,12 @@ import {
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import type { HostError } from "../../../contract/generated/contract";
+import { useAccountSession } from "../../app/AccountSession";
 import { useHost } from "../../app/Host";
 import { notices as text } from "../../i18n/notifications";
 import { seedNotificationScene } from "../../qa/notifications-scene";
 import { type Center, type Filter, type NoticeInput, publish } from "./center";
+import { connectEmitters } from "./emitters";
 
 const notifiableFailures = [
   "io",
@@ -25,22 +27,41 @@ interface State extends Center {
   add: (input: NoticeInput, at?: number, muted?: boolean) => void;
   read: (id?: string) => void;
   clear: () => void;
+  resetReports: () => void;
 }
 export function createNotifications() {
-  const store = createStore<State>((set) => ({
+  const dismissed = new Set<string>();
+  const store = createStore<State>((set, get) => ({
     filter: "all",
     setFilter: (filter) => set({ filter }),
     records: [],
     sequence: 0,
     add: (input, at = Date.now(), muted = false) =>
-      set((state) => publish(state, input, at, muted)),
+      set((state) =>
+        dismissed.has(input.dedupeKey)
+          ? state
+          : publish(state, input, at, muted),
+      ),
     read: (id) =>
       set((state) => ({
         records: state.records.map((record) =>
           !id || record.id === id ? { ...record, unread: false } : record,
         ),
       })),
-    clear: () => set({ records: [] }),
+    clear: () => {
+      for (const record of get().records) {
+        if (record.source === "report" || record.source === "updater")
+          dismissed.add(record.dedupeKey);
+      }
+      set({ records: [] });
+    },
+    resetReports: () => {
+      for (const key of dismissed)
+        if (key.startsWith("report:")) dismissed.delete(key);
+      set({
+        records: get().records.filter((record) => record.source !== "report"),
+      });
+    },
   }));
   seedNotificationScene(store.getState().add);
   return store;
@@ -48,10 +69,23 @@ export function createNotifications() {
 const Context = createContext<
   ReturnType<typeof createNotifications> | undefined
 >(undefined);
+// Mount under AccountProvider: report notices share its synchronous access generation.
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createNotifications);
   const { client } = useHost();
+  const session = useAccountSession();
   useEffect(() => {
+    if (!client) return;
+    const emitters = connectEmitters(
+      client,
+      {
+        resetReports: () => store.getState().resetReports(),
+        add: (input) => store.getState().add(input),
+        changeReports: (update) =>
+          store.setState((state) => ({ records: update(state.records) })),
+      },
+      session,
+    );
     const dispose = client?.listen((message) => {
       if (
         message.kind === "response" &&
@@ -66,6 +100,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         });
       if (
         message.kind === "failure" &&
+        !emitters.ownsFailure(message.id) &&
         notifiableFailures.some((kind) => kind === message.error.kind)
       )
         store.getState().add({
@@ -77,9 +112,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         });
     });
     return () => {
+      emitters.dispose();
       dispose?.();
     };
-  }, [client, store]);
+  }, [client, store, session]);
   return <Context.Provider value={store}>{children}</Context.Provider>;
 }
 export function useNotifications() {

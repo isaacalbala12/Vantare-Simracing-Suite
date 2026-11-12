@@ -2453,3 +2453,211 @@ fn missing_core_fingerprint_is_unavailable_and_preserves_a_valid_binding() {
         clean(&root);
     }
 }
+
+#[test]
+fn account_generation_survives_renewal_but_not_logout_account_switch_or_restart() {
+    let root = test_root();
+    let (a, keys_a) = signed_v1(100, vec![]);
+    let (b, keys_b) = signed_v1_identity(
+        112,
+        vec![],
+        devices().legacy,
+        "b",
+        "550e8400-e29b-41d4-a716-446655440001",
+    );
+    let (a2, keys_a2) = signed_v1_named(114, vec![], devices().legacy, "a2");
+    let keys = format!("{keys_a},{keys_b},{keys_a2}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).unwrap();
+    assert!(owner.account_generation().is_none());
+    owner.install(a.clone(), wall(110), Duration::ZERO).unwrap();
+    let first = owner.account_generation().unwrap();
+    owner
+        .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+        .unwrap();
+    owner.install_online(a, wall(110), Duration::ZERO).unwrap();
+    assert_eq!(owner.account_generation(), Some(first.clone()));
+    assert_eq!(
+        owner.install_online(b.clone(), wall(113), Duration::from_secs(3)),
+        Err(Error::Denied)
+    );
+    assert_eq!(owner.account_generation(), Some(first.clone()));
+    owner.invalidate(wall(111), Duration::from_secs(1)).unwrap();
+    assert!(owner.account_generation().is_none());
+    owner
+        .install_online(b, wall(113), Duration::from_secs(3))
+        .unwrap();
+    let second = owner.account_generation().unwrap();
+    assert_ne!(first, second);
+    owner.invalidate(wall(113), Duration::from_secs(3)).unwrap();
+    owner
+        .install_online(a2, wall(115), Duration::from_secs(5))
+        .unwrap();
+    let third = owner.account_generation().unwrap();
+    assert_ne!(first, third);
+    assert_ne!(second, third);
+    drop(owner);
+    let owner = Owner::open(&root, Some(&keys), devices(), 2, wall(115)).unwrap();
+    assert_ne!(owner.account_generation(), Some(third));
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn account_session_opt_in_uses_real_authenticated_pipe_without_mutator_nonce() {
+    use vantare_ipc::{
+        account_session::{self, AuthorityLink},
+        control,
+        transport::Event,
+    };
+    let root = test_root();
+    let now = wall_now();
+    let (credential, keys) = signed(now.timestamp() + 120, now.timestamp() - 10);
+    let (host, link) = candidate_control_fixture(&root, keys, devices());
+    let stop = std::sync::Arc::new(Event::new().unwrap());
+    let read_only = AuthorityLink {
+        pipe: link.pipe.clone(),
+        image: link.image.clone(),
+    };
+    assert!(
+        account_session::request_cancelled(&read_only, &stop)
+            .unwrap()
+            .is_none()
+    );
+    control::request(
+        &link,
+        control::Command::Install {
+            credential: credential.clone(),
+        },
+    )
+    .unwrap();
+    let first = account_session::request_cancelled(&read_only, &stop)
+        .unwrap()
+        .unwrap();
+    control::request(&link, control::Command::InstallOnline { credential }).unwrap();
+    let renewed = account_session::request_cancelled(&read_only, &stop)
+        .unwrap()
+        .unwrap();
+    assert_eq!(first.generation, renewed.generation);
+    assert!(renewed.policy.revision > first.policy.revision);
+    let wrong_image = AuthorityLink {
+        image: root.join("wrong-image.exe"),
+        ..read_only.clone()
+    };
+    assert_eq!(
+        account_session::request_cancelled(&wrong_image, &stop)
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::PermissionDenied
+    );
+    control::request(&link, control::Command::Invalidate).unwrap();
+    assert!(
+        account_session::request_cancelled(&read_only, &stop)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(
+        control::request(&link, control::Command::Read)
+            .unwrap()
+            .state,
+        control::AccessState::Revoked
+    );
+    drop(host);
+    clean(&root);
+}
+
+#[test]
+fn failed_durable_logout_still_removes_the_old_account_scope() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = test_root();
+    let (credential, keys) = signed_v1(100, vec![]);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).unwrap();
+    owner
+        .install(credential, wall(110), Duration::ZERO)
+        .unwrap();
+    assert!(owner.account_generation().is_some());
+    let namespace = std::fs::read_dir(&root)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .open(namespace.join("authority.dpapi"))
+        .unwrap();
+    assert_eq!(
+        owner.invalidate(wall(111), Duration::from_secs(1)),
+        Err(Error::Storage)
+    );
+    assert!(owner.account_generation().is_none());
+    drop(lock);
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn failed_logout_reinstalling_same_account_gets_a_new_generation() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = test_root();
+    let (credential, keys) = signed_v1(100, vec![]);
+    let (renewed, renewed_keys) = signed_v1_named(112, vec![], devices().legacy, "renewed");
+    let keys = format!("{keys},{renewed_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).unwrap();
+    owner
+        .install(credential, wall(110), Duration::ZERO)
+        .unwrap();
+    let first = owner.account_generation().unwrap();
+    let namespace = std::fs::read_dir(&root)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .open(namespace.join("authority.dpapi"))
+        .unwrap();
+    assert_eq!(
+        owner.invalidate(wall(111), Duration::from_secs(1)),
+        Err(Error::Storage)
+    );
+    assert!(
+        owner.binding.is_some(),
+        "failed durable ACK retains old binding"
+    );
+    assert!(owner.account_generation().is_none());
+    drop(lock);
+    owner
+        .install_online(renewed, wall(113), Duration::from_secs(3))
+        .unwrap();
+    assert_ne!(owner.account_generation().unwrap(), first);
+    drop(owner);
+    clean(&root);
+}
+#[test]
+fn entropy_failure_at_open_only_disables_account_observation() {
+    let root = test_root();
+    let (credential, keys) = signed_v1(100, vec![]);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).unwrap();
+    owner
+        .install(credential, wall(110), Duration::ZERO)
+        .unwrap();
+    drop(owner);
+    let mut owner =
+        Owner::open_with_generation(&root, Some(&keys), devices(), 2, wall(110), || {
+            Err(Error::Protocol)
+        })
+        .expect("rights remain available without account observation");
+    assert!(owner.account_generation().is_none());
+    assert!(
+        owner
+            .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+            .unwrap()
+            .state
+            .permits_access()
+    );
+    drop(owner);
+    clean(&root);
+}

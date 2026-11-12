@@ -9,6 +9,9 @@ import {
   type CalendarView,
   calendarDefaultAlerts,
   calendarEmptyRevision,
+  calendarIcsConfirmationMaxAgeMs,
+  calendarNoticeTestIntervalMs,
+  calendarNoticeTtlMs,
   calendarRevisionLength,
   calendarSeriesLimit,
   calendarStartsLimit,
@@ -43,6 +46,12 @@ function alertValue(alerts: CalendarAlerts) {
   ]);
 }
 export function create(context: MockContext): MockHandler {
+  const liveReference =
+    context.sceneName === "calendar-live-reference" ||
+    context.sceneName === "calendar-ics-replace-reference";
+  let replacementId: string | undefined;
+  let replacementAt = 0;
+  let replacementSequence = 0;
   const value: CalendarView = {
     official: null,
     fallback: null,
@@ -76,17 +85,24 @@ export function create(context: MockContext): MockHandler {
     context.core.access.calendar = true;
     context.core.access.blocked = false;
   }
-  if (
-    context.sceneName === "calendar-reference" ||
-    context.sceneName === "calendar-live-reference"
-  ) {
+  if (context.sceneName === "calendar-reference" || liveReference) {
     context.core.access.verified = true;
     context.core.access.blocked = false;
     context.core.access.calendar = true;
-    if (context.sceneName === "calendar-live-reference") {
+    if (liveReference) {
+      context.core.rights = "connected";
       Object.assign(value, calendarReference());
       Object.assign(history, calendarHistoryReference());
     } else value.official = structuredClone(fixture);
+  }
+  if (context.sceneName === "calendar-notice-reference") {
+    context.core.access.verified = true;
+    context.core.access.blocked = false;
+    context.core.access.calendar = true;
+    context.core.rights = "connected";
+    context.core.services = "connected";
+    Object.assign(value, calendarReference());
+    Object.assign(history, calendarHistoryReference());
   }
   const config: CalendarConfigView = {
     utc: false,
@@ -102,7 +118,7 @@ export function create(context: MockContext): MockHandler {
     alertsRevision: calendarEmptyRevision,
     documents: { prefs: "ready", following: "ready", alerts: "ready" },
   };
-  if (context.sceneName === "calendar-live-reference")
+  if (liveReference || context.sceneName === "calendar-notice-reference")
     config.alerts = structuredClone(alertsReference) as CalendarAlerts;
   config.utc = value.utc;
   config.following = [...value.following];
@@ -112,9 +128,11 @@ export function create(context: MockContext): MockHandler {
   // Main and renderer have separate clocks. Only this fixed visual QA scene
   // uses the bank date; ordinary mocks and production keep the actual clock.
   const clock = () =>
-    context.visual && context.sceneName === "calendar-live-reference"
+    context.visual &&
+    (liveReference || context.sceneName === "calendar-notice-reference")
       ? calendarReferenceNow
       : Date.now();
+  let lastNoticeTest = -Infinity;
   let icsHash: string | undefined;
   return (message: UiToHost): HostToUi | undefined => {
     if (
@@ -132,7 +150,53 @@ export function create(context: MockContext): MockHandler {
       error: { kind: "calendarConflict", current: structuredClone(config) },
     });
     switch (request.method) {
+      case "calendar.noticeTest": {
+        if (context.core.rights !== "connected")
+          return { kind: "failure", id, error: { kind: "denied" } };
+        if (!context.windowsNotificationsEnabled)
+          return {
+            kind: "response",
+            id,
+            result: { method: request.method, accepted: false },
+          };
+        if (config.documents.alerts !== "ready")
+          return {
+            kind: "failure",
+            id,
+            error: {
+              kind:
+                config.documents.alerts === "protected"
+                  ? "protected"
+                  : "coreUnavailable",
+            },
+          };
+        const now = Date.now();
+        if (now - lastNoticeTest < calendarNoticeTestIntervalMs)
+          return { kind: "failure", id, error: { kind: "busy" } };
+        lastNoticeTest = now;
+        context.emit?.({
+          kind: "event",
+          event: {
+            topic: "calendarNotice",
+            value: {
+              kind: "test",
+              id: next(),
+              requestId: id,
+              issuedAt: now,
+              expiresAt: now + calendarNoticeTtlMs,
+              silent: !config.alerts.channels.sound || context.core.live,
+            },
+          },
+        });
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, accepted: true },
+        };
+      }
+
       case "calendar.icsPrepare": {
+        replacementId = undefined;
         icsHash = undefined;
         const prepared = mockCalendarIcs(
           value,
@@ -150,10 +214,43 @@ export function create(context: MockContext): MockHandler {
               result: { method: request.method, value: prepared },
             };
       }
+      case "calendar.icsReplace": {
+        if (
+          !replacementId ||
+          request.confirmationId !== replacementId ||
+          clock() < replacementAt ||
+          clock() - replacementAt >= calendarIcsConfirmationMaxAgeMs
+        )
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        replacementId = undefined;
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            status: request.replace ? "saved" : "cancelled",
+          },
+        };
+      }
       case "calendar.icsExport":
         if (icsHash === undefined || request.preparedHash !== icsHash)
           return { kind: "failure", id, error: { kind: "rejected" } };
         icsHash = undefined;
+        if (context.sceneName === "calendar-ics-replace-reference") {
+          replacementId = (++replacementSequence)
+            .toString(16)
+            .padStart(calendarRevisionLength, "0");
+          replacementAt = clock();
+          return {
+            kind: "response",
+            id,
+            result: {
+              method: request.method,
+              status: "replacementRequired",
+              confirmationId: replacementId,
+            },
+          };
+        }
         return {
           kind: "response",
           id,
@@ -172,6 +269,15 @@ export function create(context: MockContext): MockHandler {
           context.core.services !== "connected"
         )
           return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        if (request.method === "calendar.refresh")
+          context.emit?.({
+            kind: "event",
+            event: {
+              topic: "calendarRefreshed",
+              value: structuredClone(value),
+              error: null,
+            },
+          });
         return {
           kind: "response",
           id,

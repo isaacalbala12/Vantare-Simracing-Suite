@@ -220,6 +220,12 @@ function columns(value: unknown, kind: "standings" | "relative"): boolean {
 }
 export function isWidgetSettingsPatch(value: unknown): boolean {
   if (!record(value)) return false;
+  if (
+    Object.hasOwn(value, "tablePreset") &&
+    (Object.keys(value).length !== 2 ||
+      (value.kind !== "standings" && value.kind !== "relative"))
+  )
+    return false;
   const common = {
     designSystem: choices(o.looks),
     style: choices(o.tones),
@@ -233,6 +239,7 @@ export function isWidgetSettingsPatch(value: unknown): boolean {
         { kind: choices(["standings"]) },
         {
           ...common,
+          tablePreset: choices(o.tableSizes),
           rowCount: range(o.standings.rowsMin, o.standings.rowsMax),
           columns: (v) => columns(v, "standings"),
           practiceColumns: (v) => columns(v, "standings"),
@@ -257,6 +264,7 @@ export function isWidgetSettingsPatch(value: unknown): boolean {
         { kind: choices(["relative"]) },
         {
           ...common,
+          tablePreset: choices(o.tableSizes),
           columns: (v) => columns(v, "relative"),
           rangeAhead: range(o.relative.rangeMin, o.relative.rangeMax),
           rangeBehind: range(o.relative.rangeMin, o.relative.rangeMax),

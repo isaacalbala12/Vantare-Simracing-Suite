@@ -1,14 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  type AccountView,
+  type CoreStatus,
   defaultZoom,
   type LauncherView,
   type Palette,
   palettes,
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
+import { HostFailure } from "../bridge/client";
 import { accountText } from "../i18n/account.es";
+import { commandsText } from "../i18n/commands.es";
 import { paletteNames, t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
@@ -37,8 +39,11 @@ import {
 } from "../ui/ShellLayout";
 import { TrackedCaps } from "../ui/TrackedCaps";
 import { zoomLevels } from "../ui/ZoomControl";
+import { useAccountSession } from "./AccountSession";
+import { useAccount } from "./AccountState";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
+import { profileCommands } from "./profile-commands";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
@@ -57,6 +62,15 @@ function ShellContent() {
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);
+  const profilePending = useRef(false);
+  const [profileWaiting, setProfileWaiting] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const editBlocked =
     !settings.view ||
     settings.pending ||
@@ -67,29 +81,19 @@ function ShellContent() {
     queryFn: async () => offline,
     enabled: false,
   });
-  const { data: account } = useQuery<
-    Pick<AccountView, "name" | "photo" | "session">
-  >({
-    queryKey: ["frame", "account"],
-    enabled: !!host.client && !core.live,
-    queryFn: async () => {
-      if (!host.client) throw new Error("Host unavailable");
-      const reply = await host.client.request({ method: "account.get" });
-      if (reply.method !== "account.get")
-        throw new Error("Unexpected account reply");
-      return {
-        name: reply.value.name,
-        photo: reply.value.photo,
-        session: reply.value.session,
-      };
-    },
-  });
+  // AccountProvider already sequences reads against publications and access intents.
+  // A second cache here could let an old GET overwrite the new account's identity.
+  const session = useAccountSession();
+  const { confirmed } = useSyncExternalStore(
+    session.subscribe,
+    session.getSnapshot,
+  );
+  const { value } = useAccount();
+  const account = confirmed ? value : undefined;
   useEffect(() => {
     const off = host.client?.listen((message) => {
-      if (message.kind === "event" && message.event.topic === "account") {
-        const { name, photo, session } = message.event.value;
-        query.setQueryData(["frame", "account"], { name, photo, session });
-      }
+      if (message.kind === "event" && message.event.topic === "launcher")
+        query.setQueryData(["launcher"], message.event.value);
     });
     return () => {
       off?.();
@@ -108,12 +112,17 @@ function ShellContent() {
   const ui = useUi((state) => state);
   // Read the existing launcher snapshot for the expanded frame. The screen owns
   // its subscription; this reader never unsubscribes it or writes a profile.
-  const { data: launcher } = useQuery<LauncherView>({
+  const {
+    data: launcher,
+    isFetching: launcherLoading,
+    isError: launcherFailed,
+    refetch: refreshLauncher,
+  } = useQuery<LauncherView>({
     queryKey: ["launcher"],
     enabled:
       !!host.client &&
-      !ui.sidebarCollapsed &&
-      ui.section !== "launcher" &&
+      (ui.commandsOpen ||
+        (!ui.sidebarCollapsed && ui.section !== "launcher")) &&
       !core.live,
     queryFn: async () => {
       if (!host.client) throw new Error("Host unavailable");
@@ -123,6 +132,10 @@ function ShellContent() {
       return reply.value;
     },
   });
+  useEffect(() => {
+    if (ui.commandsOpen && host.client && !core.live)
+      void refreshLauncher({ cancelRefetch: false });
+  }, [ui.commandsOpen, host.client, core.live, refreshLauncher]);
   const isUpcoming = (section: Section) =>
     section === "strategy" || section === "engineer";
   const items = navigation(core.access).map((item) =>
@@ -160,20 +173,110 @@ function ShellContent() {
     )
       ui.navigate(section);
   }
+  function launchWarning(message: string) {
+    ui.navigate("launcher");
+    toast.add({ title: message, type: "warn" });
+  }
+  function launchAccess(status: CoreStatus) {
+    return (
+      lock("launcher", status.access) ??
+      (status.rights !== "connected"
+        ? commandsText.accessUnavailable
+        : undefined)
+    );
+  }
   async function launchFavorite() {
-    if (!host.client || favoritePending.current) return;
+    const latestCore = query.getQueryData<CoreStatus>(coreKey) ?? core;
+    const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
+    const reason = !host.client
+      ? commandsText.failed
+      : (launchAccess(latestCore) ??
+        (latestCore.live
+          ? commandsText.live
+          : favoritePending.current || profilePending.current
+            ? commandsText.pending
+            : current?.running
+              ? commandsText.running
+              : undefined));
+    if (reason || !host.client) {
+      launchWarning(reason ?? commandsText.failed);
+      return;
+    }
     favoritePending.current = true;
     try {
       const reply = await host.client.request({ method: "launcher.favorite" });
-      if (reply.method !== "launcher.favorite") return;
-      if (!reply.accepted) {
-        navigate("launcher");
-        toast.add({ title: t("shell.profileNeeded") });
-      } else toast.add({ title: t("shell.favoriteSent") });
+      if (!alive.current || reply.method !== "launcher.favorite") return;
+      ui.navigate("launcher");
+      toast.add({
+        title: reply.accepted
+          ? t("shell.favoriteSent")
+          : t("shell.profileNeeded"),
+      });
     } catch {
-      toast.add({ title: t("shell.favoriteFailed"), type: "err" });
+      if (alive.current) launchWarning(t("shell.favoriteFailed"));
     } finally {
       favoritePending.current = false;
+    }
+  }
+  async function launchProfile(profile: string, baseRevision: string) {
+    const latestCore = query.getQueryData<CoreStatus>(coreKey) ?? core;
+    const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
+    const selected = current?.profiles.find((item) => item.id === profile);
+    if (
+      !current ||
+      current.revision !== baseRevision ||
+      !selected?.launchable
+    ) {
+      launchWarning(commandsText.changed);
+      return;
+    }
+    const reason = !host.client
+      ? commandsText.failed
+      : (launchAccess(latestCore) ??
+        (latestCore.live
+          ? commandsText.live
+          : query.getQueryState(["launcher"])?.fetchStatus === "fetching"
+            ? commandsText.loading
+            : query.getQueryState(["launcher"])?.status === "error"
+              ? commandsText.readFailed
+              : profilePending.current || favoritePending.current
+                ? commandsText.pending
+                : current.scanning
+                  ? commandsText.scanning
+                  : !current.resident
+                    ? commandsText.noResident
+                    : current.running
+                      ? commandsText.running
+                      : undefined));
+    if (reason || !host.client) {
+      launchWarning(reason ?? commandsText.failed);
+      return;
+    }
+    profilePending.current = true;
+    setProfileWaiting(true);
+    try {
+      const reply = await host.client.request({
+        method: "launcher.launch",
+        profile,
+        baseRevision,
+      });
+      if (!alive.current) return;
+      if (reply.method === "launcher.launch" && reply.accepted) {
+        ui.navigate("launcher");
+        toast.add({ title: commandsText.sent });
+      } else launchWarning(commandsText.failed);
+    } catch (failure) {
+      if (!alive.current) return;
+      if (
+        failure instanceof HostFailure &&
+        failure.detail.kind === "launcherConflict"
+      ) {
+        query.setQueryData(["launcher"], failure.detail.current);
+        launchWarning(commandsText.changed);
+      } else launchWarning(commandsText.failed);
+    } finally {
+      profilePending.current = false;
+      if (alive.current) setProfileWaiting(false);
     }
   }
   function zoom(direction: -1 | 0 | 1) {
@@ -262,6 +365,26 @@ function ShellContent() {
   const status = core.live
     ? shellText.simulatorConnected
     : shellText.waitingSimulator;
+  const launchBlocked =
+    launchAccess(core) ??
+    (core.live
+      ? commandsText.live
+      : launcherFailed
+        ? commandsText.readFailed
+        : launcherLoading
+          ? commandsText.loading
+          : profileWaiting
+            ? commandsText.pending
+            : undefined);
+  const settingsBlocked = !editBlocked
+    ? undefined
+    : settings.pending
+      ? commandsText.settingsSaving
+      : settings.error
+        ? commandsText.settingsError
+        : settings.view?.protected
+          ? commandsText.settingsProtected
+          : commandsText.settingsLoading;
   const title =
     items.find((item) => item.id === ui.section)?.label ??
     (ui.section === "account" ? accountText.title : t("settings.title"));
@@ -305,65 +428,155 @@ function ShellContent() {
                 title={t("shell.commands")}
                 description={t("shell.commandsHelp")}
                 trigger={null}
-                closeLabel={t("shell.close")}
                 empty={t("shell.emptyCommands")}
+                notice={launcherFailed ? commandsText.readFailed : undefined}
                 commands={[
-                  ...items.map((item) => ({
-                    id: item.id,
-                    label: item.label,
-                    disabled: !!item.locked,
+                  ...[
+                    "home",
+                    "studio",
+                    "launcher",
+                    "calendar",
+                    "strategy",
+                    "engineer",
+                    "roadmap",
+                    "testing",
+                    "settings",
+                  ]
+                    .flatMap((id) => items.filter((item) => item.id === id))
+                    .map((item) => ({
+                      id: item.id,
+                      label:
+                        item.id === "strategy"
+                          ? commandsText.strategy
+                          : item.id === "engineer"
+                            ? commandsText.engineer
+                            : item.label,
+                      group: "navigation" as const,
+                      icon: item.icon,
+                      meta: isUpcoming(item.id)
+                        ? core.access.verified &&
+                          !core.access.blocked &&
+                          // PlanView::Founders is Rust's projection of the
+                          // verified LaunchV1 catalog (account/mod.rs).
+                          account?.plan?.kind === "founders"
+                          ? commandsText.included
+                          : commandsText.soon
+                        : (item.locked ??
+                          commandsText.meta[
+                            item.id as keyof typeof commandsText.meta
+                          ]),
+                      trail:
+                        commandsText.meta[
+                          item.id as keyof typeof commandsText.meta
+                        ],
+                      locked: isUpcoming(item.id),
+                      disabled: isUpcoming(item.id)
+                        ? false
+                        : !!lock(item.id, core.access),
+                      run: () => navigate(item.id),
+                    })),
+                  ...(
+                    [
+                      {
+                        id: "account",
+                        label: commandsText.account,
+                        meta: commandsText.accountMeta,
+                        icon: "i-cuenta",
+                      },
+                      {
+                        id: "notifications",
+                        label: commandsText.notifications,
+                        meta: commandsText.notificationsMeta,
+                        icon: "v-bell",
+                      },
+                    ] as const
+                  ).map((item) => ({
+                    ...item,
+                    trail: item.meta,
+                    meta: lock(item.id, core.access) ?? item.meta,
+                    group: "navigation" as const,
+                    disabled: !!lock(item.id, core.access),
                     run: () => navigate(item.id),
                   })),
                   {
                     id: "theme",
                     label: t("shell.toggleTheme"),
+                    icon: "v-palette",
+                    meta: settingsBlocked,
                     disabled: editBlocked,
                     run: toggleTheme,
                   },
                   {
                     id: "sidebar",
                     label: t("shell.sidebar"),
+                    icon: "v-side",
+                    shortcut: commandsText.shortcut.sidebar,
                     run: ui.toggleSidebar,
                   },
                   {
                     id: "rail",
-                    label: t("shell.railToggle"),
+                    label: commandsText.context,
+                    meta: commandsText.contextMeta,
+                    icon: "v-side",
+                    shortcut: commandsText.shortcut.context,
                     run: ui.toggleRail,
                   },
                   {
                     id: "notices",
                     label: t("shell.notices"),
+                    icon: "v-bell",
+                    shortcut: commandsText.shortcut.notices,
                     run: () => ui.notices(true),
                   },
                   {
                     id: "zoom-less",
                     label: t("general.zoomLess"),
+                    meta: settingsBlocked,
+                    shortcut: commandsText.shortcut.zoomOut,
                     disabled: editBlocked,
                     run: () => zoom(-1),
                   },
                   {
                     id: "zoom-more",
                     label: t("general.zoomMore"),
+                    meta: settingsBlocked,
+                    shortcut: commandsText.shortcut.zoomIn,
                     disabled: editBlocked,
                     run: () => zoom(1),
                   },
                   {
                     id: "zoom-reset",
                     label: t("general.zoomReset"),
+                    meta: settingsBlocked,
+                    shortcut: commandsText.shortcut.zoomReset,
                     disabled: editBlocked,
                     run: () => zoom(0),
                   },
                   {
                     id: "favorite",
                     label: t("shell.favorite"),
-                    disabled: !!lock("launcher", core.access),
+                    icon: "v-launch",
+                    shortcut: commandsText.shortcut.launch,
+                    meta:
+                      launchBlocked ??
+                      (launcher?.running
+                        ? commandsText.running
+                        : commandsText.profile),
+                    disabled: !!launchBlocked || !!launcher?.running,
                     run: () => void launchFavorite(),
                   },
                   {
                     id: "close",
                     label: t("shell.closeHub"),
+                    icon: "i-ajustes",
                     run: () => host.client?.closeWindow(),
                   },
+                  ...profileCommands(
+                    launcher,
+                    launchBlocked,
+                    (profile, revision) =>
+                      void launchProfile(profile, revision),
+                  ),
                 ]}
                 open={ui.commandsOpen}
                 onOpenChange={ui.commands}

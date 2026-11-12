@@ -5,12 +5,15 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   type HostError,
   type LegacyMigration,
+  type Reply,
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
@@ -21,11 +24,14 @@ import {
   type TestingView,
 } from "../../../contract/generated/contract";
 import { isReportFields } from "../../../contract/testing-validation";
+import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
-import { Button } from "../../ui/Button";
-import { CloseUnsavedReportDialog } from "../../ui/DiscardReportDialog";
-import { useToastManager } from "../../ui/Layers";
+import type { CloseDraftSave } from "../../bridge/report-close";
+import {
+  CloseReportSaveFailureDialog,
+  CloseUnsavedReportDialog,
+} from "../../ui/DiscardReportDialog";
 import { testingText as text } from "./es";
 import { reportSuggestion, withReportKind } from "./report-kind";
 import { testingRequest } from "./TestingRequests";
@@ -40,13 +46,27 @@ const empty = (): ReportFields => ({
 });
 function useReportsState() {
   const { client } = useHost();
-  const toast = useToastManager();
+  const accountSession = useAccountSession();
+  const session = useSyncExternalStore(
+    accountSession.subscribe,
+    accountSession.getSnapshot,
+  );
+  const observedGeneration = useRef(session.generation);
+  const clearTriage = useRef<(() => void) | undefined>(undefined);
+  const triageHasText = useRef<(() => boolean) | undefined>(undefined);
+  const [sessionDiscarded, setSessionDiscarded] = useState(false);
+  const dismissSessionDiscarded = useCallback(
+    () => setSessionDiscarded(false),
+    [],
+  );
+
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
     queryFn: async () => offline,
     enabled: false,
   });
   const available =
+    session.confirmed &&
     core.access.verified &&
     !core.access.blocked &&
     core.services === "connected";
@@ -87,8 +107,17 @@ function useReportsState() {
   );
   const [closeBlocked, setCloseBlocked] = useState(false);
   const [closeConfirmation, setCloseConfirmation] = useState(false);
-  const state = useRef({ fields, saved, loaded, available });
-  state.current = { fields, saved, loaded, available };
+  const [closeSaveFailed, setCloseSaveFailed] = useState(false);
+  const closeEpoch = useRef<number | undefined>(undefined);
+  const state = useRef({
+    fields,
+    saved,
+    loaded,
+    available,
+    localNotes,
+    answerDraft,
+  });
+  state.current = { fields, saved, loaded, available, localNotes, answerDraft };
   const inflight = useRef<Promise<unknown> | undefined>(undefined);
   const attempt = useRef<string | undefined>(undefined);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -158,7 +187,12 @@ function useReportsState() {
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
   }
-  async function save() {
+  async function saveWith(
+    closeSave?: CloseDraftSave,
+    closeSignal?: AbortSignal,
+  ) {
+    const epoch = generation.current;
+    const sessionSignal = cancellation.current.signal;
     if (!state.current.loaded) return;
     const snapshot = JSON.stringify(state.current.fields);
     if (snapshot === state.current.saved) return;
@@ -179,7 +213,27 @@ function useReportsState() {
       setFailure("rejected");
       throw new HostFailure({ kind: "rejected" });
     }
-    const reply = await request({ method: "draft.save", fields });
+    let reply: Reply;
+    if (closeSave) {
+      if (
+        !state.current.available ||
+        closeSignal?.aborted ||
+        sessionSignal.aborted
+      )
+        throw new HostFailure({ kind: "coreUnavailable" });
+      setBusy(true);
+      try {
+        reply = await closeSave(fields, sessionSignal);
+      } finally {
+        if (epoch === generation.current) setBusy(false);
+      }
+    } else reply = await request({ method: "draft.save", fields });
+    if (
+      epoch !== generation.current ||
+      closeSignal?.aborted ||
+      sessionSignal.aborted
+    )
+      throw new HostFailure({ kind: "coreUnavailable" });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
     setScreenshots(reply.value.screenshots);
@@ -195,31 +249,95 @@ function useReportsState() {
     setPreview(undefined);
     setConsent(false);
   }
-  const saveCurrent = useRef(save);
-  saveCurrent.current = save;
+  const save = () => saveWith();
+  const saveCurrent = useRef(saveWith);
+  saveCurrent.current = saveWith;
   useEffect(() => {
     if (!loaded || !dirty || busy || error || !available) return;
     const snapshot = JSON.stringify(fields);
+    const epoch = generation.current;
     const timer = setTimeout(() => {
       if (JSON.stringify(state.current.fields) !== snapshot) return;
-      void saveCurrent.current().catch(() => setMessage(text.autosaveFailed));
+      void saveCurrent.current().catch(() => {
+        if (epoch === generation.current) setMessage(text.autosaveFailed);
+      });
     }, reportAutosaveMs);
     return () => clearTimeout(timer);
   }, [loaded, dirty, busy, error, available, fields]);
   useEffect(
     () =>
-      client?.onCloseSettled(() => {
+      client?.onCloseSettled((reason, allow) => {
         closePermit.current = undefined;
+        if (allow && reason !== "window") {
+          setCloseConfirmation(false);
+          setCloseSaveFailed(false);
+          setCloseBlocked(false);
+        }
       }),
     [client],
   );
   useEffect(() => {
     if (!client) return;
-    return client.addCloseGuard(async (reason) => {
+    return client.setReportClosePreparation({
+      async prepare(send, signal) {
+        const epoch = generation.current;
+        closeEpoch.current = epoch;
+        const permitted = closePermit.current;
+        if (
+          permitted?.epoch === epoch &&
+          permitted.fields === JSON.stringify(state.current.fields)
+        )
+          return "discard";
+        const clean = () =>
+          JSON.stringify(state.current.fields) === state.current.saved &&
+          !state.current.localNotes.title &&
+          !state.current.localNotes.body &&
+          !state.current.answerDraft.note &&
+          state.current.answerDraft.score === 3 &&
+          !triageHasText.current?.();
+        // No text to preserve: abandon only Testing's waits, not other screens.
+        if (clean()) return "discard";
+        const pending = inflight.current;
+        if (pending) {
+          const cancelled = AbortSignal.any([
+            signal,
+            cancellation.current.signal,
+          ]);
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              cancelled.removeEventListener("abort", done);
+              resolve();
+            };
+            if (cancelled.aborted) done();
+            else {
+              cancelled.addEventListener("abort", done, { once: true });
+              void pending.then(done, done);
+            }
+          });
+        }
+        if (!signal.aborted && clean()) return "discard";
+        if (epoch !== generation.current || signal.aborted) return false;
+        await saveCurrent.current(send, signal);
+        return epoch === generation.current &&
+          !signal.aborted &&
+          JSON.stringify(state.current.fields) === state.current.saved
+          ? "saved"
+          : false;
+      },
+      failed() {
+        if (closeEpoch.current !== generation.current) return;
+        setCloseBlocked(true);
+        setMessage(text.closeUnsaved);
+        setCloseSaveFailed(true);
+      },
+    });
+  }, [client]);
+  useEffect(() => {
+    if (!client) return;
+    return client.addCloseGuard((reason) => {
+      if (reason !== "window") return true;
       const permitted = closePermit.current;
       closePermit.current = undefined;
-      if (reason === "live" || reason === "controlEof") return true;
-      await inflight.current?.catch(() => {});
       if (
         permitted?.epoch === generation.current &&
         permitted.fields === JSON.stringify(state.current.fields)
@@ -230,28 +348,18 @@ function useReportsState() {
       if (!clean) {
         setCloseBlocked(true);
         setMessage(text.closeUnsaved);
-        const epoch = generation.current;
-        toast.add({
-          title: text.closeUnsaved,
-          type: "warn",
-          description: (
-            <Button
-              onClick={() => {
-                if (epoch === generation.current) askCloseWithoutSave();
-              }}
-            >
-              {text.closeWithoutSave}
-            </Button>
-          ),
-        });
+        setCloseSaveFailed(true);
       }
       return clean;
     });
-  }, [client, toast, askCloseWithoutSave]);
+  }, [client]);
   useEffect(() => {
     const flush = () => {
       if (!state.current.available || !state.current.loaded) return;
-      void saveCurrent.current().catch(() => setMessage(text.autosaveFailed));
+      const epoch = generation.current;
+      void saveCurrent.current().catch(() => {
+        if (epoch === generation.current) setMessage(text.autosaveFailed);
+      });
     };
     const hidden = () => {
       if (document.visibilityState === "hidden") flush();
@@ -263,23 +371,42 @@ function useReportsState() {
       document.removeEventListener("visibilitychange", hidden);
     };
   }, []);
-  useEffect(() => {
+  const invalidate = useCallback(() => {
+    const previous = state.current;
     if (
-      identity.current === client &&
-      core.access.verified &&
-      !core.access.blocked
+      JSON.stringify(previous.fields) !== previous.saved ||
+      previous.localNotes.title ||
+      previous.localNotes.body ||
+      previous.answerDraft.note ||
+      triageHasText.current?.()
     )
-      return;
+      setSessionDiscarded(true);
     cancellation.current.abort();
     cancellation.current = new AbortController();
-    identity.current = client;
+
     generation.current++;
+    state.current = {
+      fields: empty(),
+      saved: JSON.stringify(empty()),
+      loaded: false,
+      available: false,
+      localNotes: { title: "", body: "" },
+      answerDraft: { score: 3, note: "" },
+    };
+    queue.current = Promise.resolve();
+    inflight.current = undefined;
+    attempt.current = undefined;
+    removingScreenshot.current = false;
+    clearTriage.current?.();
+    setFailure(undefined);
     sending.current = false;
     answering.current = false;
     setAnswerDraft({ score: 3, note: "" });
     closePermit.current = undefined;
     setCloseBlocked(false);
     setCloseConfirmation(false);
+    setCloseSaveFailed(false);
+    closeEpoch.current = undefined;
     failedRequest.current = undefined;
     setBusy(false);
     setLocalNotes({ title: "", body: "" });
@@ -297,20 +424,45 @@ function useReportsState() {
     setLegacy("none");
     setMessage("");
     setError(false);
-  }, [client, core.access.verified, core.access.blocked]);
+  }, []);
+  useLayoutEffect(() => {
+    const observe = () => {
+      const next = accountSession.getSnapshot();
+      if (observedGeneration.current !== next.generation || !next.confirmed) {
+        observedGeneration.current = next.generation;
+        invalidate();
+      }
+    };
+    observe();
+    return accountSession.subscribe(observe);
+  }, [accountSession, invalidate]);
+  useLayoutEffect(() => {
+    if (
+      identity.current !== client ||
+      !core.access.verified ||
+      core.access.blocked
+    ) {
+      identity.current = client;
+      invalidate();
+    }
+  }, [client, core.access.verified, core.access.blocked, invalidate]);
   useEffect(() => () => cancellation.current.abort(), []);
   function edit(patch: Partial<ReportFields>) {
+    setSessionDiscarded(false);
     closePermit.current = undefined;
     attempt.current = undefined;
     failedRequest.current = undefined;
     setError(false);
-    setFields((current) => ({ ...current, ...patch }));
+    state.current.fields = { ...state.current.fields, ...patch };
+    setFields(state.current.fields);
     setPreview(undefined);
     setConsent(false);
     setReceipt(undefined);
   }
   function editLocal(patch: Partial<typeof localNotes>) {
-    setLocalNotes((current) => ({ ...current, ...patch }));
+    setSessionDiscarded(false);
+    state.current.localNotes = { ...state.current.localNotes, ...patch };
+    setLocalNotes(state.current.localNotes);
     attempt.current = undefined;
     setConsent(false);
   }
@@ -378,6 +530,7 @@ function useReportsState() {
     const reply = await request({ method: "draft.discard" });
     if (reply.method !== "draft.discard")
       throw new Error("unexpected report reply");
+    dismissSessionDiscarded();
     setScreenshots(reply.value.screenshots);
     setDraftExists(reply.value.exists);
     setFields(reply.value.fields);
@@ -392,6 +545,7 @@ function useReportsState() {
       !screenshots.some((shot) => shot.id === id)
     )
       return;
+    const epoch = generation.current;
     removingScreenshot.current = true;
     setPreview(undefined);
     setConsent(false);
@@ -417,11 +571,13 @@ function useReportsState() {
       setPreview(undefined);
       setConsent(false);
     } finally {
-      removingScreenshot.current = false;
+      if (epoch === generation.current) removingScreenshot.current = false;
     }
   }
   async function prepare(retry = false) {
+    const epoch = generation.current;
     await save();
+    if (epoch !== generation.current) throw new Error("report session changed");
     const reply = await request({
       method: retry ? "report.retryPrepare" : "report.prepare",
     });
@@ -488,6 +644,7 @@ function useReportsState() {
       fields: JSON.stringify(state.current.fields),
     };
     setCloseConfirmation(false);
+    setCloseSaveFailed(false);
     // Start a new close negotiation after the veto. The guard only consumes this one-shot permission.
     client.closeWindow();
   }
@@ -516,7 +673,11 @@ function useReportsState() {
 
   const triage = useTriageState({
     session: client,
-    allowed: core.access.verified && !core.access.blocked && core.access.tester,
+    allowed:
+      session.confirmed &&
+      core.access.verified &&
+      !core.access.blocked &&
+      core.access.tester,
     available,
     async prepare(selection) {
       const reply = await request({
@@ -540,11 +701,23 @@ function useReportsState() {
       setParticipationLoaded(true);
     },
   });
+  clearTriage.current = triage.reset;
+  triageHasText.current = triage.hasLocalText;
   return {
+    sessionDiscarded,
+    dismissSessionDiscarded,
+    sessionGeneration: session.generation,
+    sessionConfirmed: session.confirmed,
     triage,
     access: core.access,
     closeBlocked,
     closeConfirmation,
+    closeSaveFailed,
+    retryCloseSave: () => {
+      setCloseSaveFailed(false);
+      client?.closeWindow();
+    },
+    dismissCloseSaveFailure: () => setCloseSaveFailed(false),
     askCloseWithoutSave,
     confirmCloseWithoutSave,
     cancelCloseWithoutSave: () => setCloseConfirmation(false),
@@ -594,6 +767,12 @@ export function ReportsProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={state}>
       {children}
+      <CloseReportSaveFailureDialog
+        open={state.closeSaveFailed}
+        onRetry={state.retryCloseSave}
+        onDiscard={state.confirmCloseWithoutSave}
+        onDismiss={state.dismissCloseSaveFailure}
+      />
       <CloseUnsavedReportDialog
         open={state.closeConfirmation}
         disabled={state.busy}

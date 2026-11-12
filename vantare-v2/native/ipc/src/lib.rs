@@ -36,6 +36,8 @@ pub mod services_protocol;
 mod codec;
 mod demand;
 pub use demand::{Demand, Photo, Signal, SignalState};
+/// Opt-in account scope observation; legacy response envelopes remain unchanged.
+pub mod account_session;
 pub mod control;
 mod dto;
 pub mod freshness;

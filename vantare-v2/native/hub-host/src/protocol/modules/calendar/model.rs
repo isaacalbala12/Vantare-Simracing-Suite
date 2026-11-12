@@ -1,3 +1,12 @@
+#[path = "notice.rs"]
+mod notice;
+#[path = "poll.rs"]
+mod poll;
+pub use notice::{
+    CalendarNotice, NOTICE_BATCH_LIMIT, NOTICE_CLOCK_SKEW_MS, NOTICE_HISTORY_LIMIT,
+    NOTICE_PRESENTATION_LIMIT, NOTICE_TEST_INTERVAL_MS, NOTICE_TTL_MS,
+};
+pub use poll::{CalendarRefreshFailure, POLL_MONDAY_MS, POLL_NORMAL_MS};
 #[path = "agenda.rs"]
 mod agenda;
 #[path = "feed.rs"]
@@ -350,6 +359,11 @@ pub struct State {
     memory: Publications,
     config_view: CalendarConfigView,
     feed: feed::Publisher,
+    notices: notice::Scheduler,
+    notices_loaded: bool,
+    poll: poll::Poll,
+    cached_at: Option<(i64, i64)>,
+    cached_current: Option<CalendarSchedule>,
 }
 impl State {
     pub fn new(base: PathBuf) -> Self {
@@ -360,6 +374,11 @@ impl State {
             memory: Publications::default(),
             config_view: CalendarConfigView::default(),
             feed: feed::Publisher::default(),
+            notices: notice::Scheduler::default(),
+            notices_loaded: false,
+            poll: poll::Poll::default(),
+            cached_at: None,
+            cached_current: None,
         }
     }
     fn read(&mut self, name: &str) -> Read {
@@ -395,10 +414,31 @@ impl State {
         }
     }
     fn project(&mut self) -> CalendarView {
+        self.cached_at = None;
         self.view.official = newest(self.disk.official.clone(), self.memory.official.clone());
         self.view.fallback = newest(self.disk.fallback.clone(), self.memory.fallback.clone());
         self.view.previous = newest(self.disk.previous.clone(), self.memory.previous.clone());
         self.view.clone()
+    }
+    fn cache_current(&mut self, now: i64) {
+        if self
+            .cached_at
+            .is_none_or(|(sampled, until)| now < sampled || now >= until)
+        {
+            let until = [
+                &self.view.official,
+                &self.view.previous,
+                &self.view.fallback,
+            ]
+            .into_iter()
+            .flatten()
+            .flat_map(|s| [&s.valid_from, &s.valid_until])
+            .filter_map(|date| date_millis(date))
+            .filter(|boundary| *boundary > now)
+            .fold(now.saturating_add(1000), i64::min);
+            self.cached_current = agenda::current(&self.view, now);
+            self.cached_at = Some((now, until));
+        }
     }
     pub fn load(&mut self) -> CalendarView {
         self.view.invalid_cache = false;

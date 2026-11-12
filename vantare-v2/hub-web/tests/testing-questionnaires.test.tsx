@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -10,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { CoreStatus } from "../src/contract/generated/contract";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
 import { testingQuestionnairesText as text } from "../src/renderer/i18n/testing-questionnaires";
@@ -41,9 +43,11 @@ async function mount() {
     <QueryClientProvider client={cache}>
       <HostProvider>
         <ToastProvider>
-          <ReportsProvider>
-            <TestingQuestionnaires onDiagnostic={() => {}} />
-          </ReportsProvider>
+          <AccountProvider>
+            <ReportsProvider>
+              <TestingQuestionnaires onDiagnostic={() => {}} />
+            </ReportsProvider>
+          </AccountProvider>
         </ToastProvider>
       </HostProvider>
     </QueryClientProvider>,

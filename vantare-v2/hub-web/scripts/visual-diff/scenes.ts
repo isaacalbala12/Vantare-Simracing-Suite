@@ -2,7 +2,9 @@ import type { Page } from "playwright-core";
 import { privacyText } from "../../src/renderer/i18n/privacy.es.ts";
 import { accessScenes } from "./access.ts";
 import { accountScenes } from "./account.ts";
+import { calendarNoticeScenes } from "./calendar-notices.ts";
 import { calendarScenes } from "./calendar-scenes.ts";
+import { commandScenes } from "./commands.ts";
 import { dialogTopbarScenes } from "./dialog-topbar.ts";
 import { frameScenes } from "./frame.ts";
 import { homeScenes } from "./home.ts";
@@ -42,6 +44,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...frameScenes,
   ...homeScenes,
   ...calendarScenes,
+  ...commandScenes,
   ...onboardingScenes,
   ...pilotScenes,
   ...privacyScenes,
@@ -92,4 +95,5 @@ export const visualScenes: Record<string, VisualScene> = {
   ),
   ...palettePreviewScenes,
   ...notificationHonestyScenes,
+  ...calendarNoticeScenes,
 };

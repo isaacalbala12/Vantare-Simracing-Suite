@@ -916,6 +916,145 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "accepted": true,
+        "method": "calendar.noticeTest"
+      }
+    },
+    {
+      "event": {
+        "topic": "calendarNotice",
+        "value": {
+          "at": 1791489600000,
+          "expiresAt": 1791489060000,
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "issuedAt": 1791489000000,
+          "kind": "start",
+          "raceMinutes": 100,
+          "series": "WEC Weekly",
+          "silent": true,
+          "track": "Sebring"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "topic": "calendarNotice",
+        "value": {
+          "expiresAt": 1791849660000,
+          "from": 1791849600000,
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "issuedAt": 1791849600000,
+          "kind": "week",
+          "silent": false,
+          "until": 1792454400000
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "topic": "calendarNotice",
+        "value": {
+          "expiresAt": 1791489060000,
+          "id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "issuedAt": 1791489000000,
+          "kind": "test",
+          "requestId": 1,
+          "silent": true
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": null,
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "busy",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "coreUnavailable",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "denied",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "rejected",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "calendar.icsPrepare",
         "value": {
           "calendar": "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
@@ -940,6 +1079,15 @@
       "result": {
         "method": "calendar.icsExport",
         "status": "cancelled"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "confirmationId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "method": "calendar.icsReplace",
+        "status": "replacementRequired"
       }
     },
     {
@@ -1059,6 +1207,13 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "method": "calendar.noticeTest"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
         "alarm": true,
         "method": "calendar.icsPrepare",
         "scope": "favs"
@@ -1080,6 +1235,15 @@
         "alarm": true,
         "method": "calendar.icsPrepare",
         "scope": "all"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "confirmationId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "method": "calendar.icsReplace",
+        "replace": true
       }
     },
     {

@@ -11,6 +11,7 @@ import type { HostError } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { calendarIcsText as text } from "../i18n/calendarIcs";
 import { Button, IconButton } from "./Button";
+import { CalendarIcsReplacement } from "./CalendarIcsReplacement";
 import { clock } from "./calendarDate";
 import { WindowDialog as Dialog } from "./WindowDialog";
 import "../assets/calendar-ics.css";
@@ -25,7 +26,10 @@ type Props = {
   busy: boolean;
   exporting?: boolean;
   failure?: HostError["kind"];
+  confirmationFailed?: boolean;
   status?: CalendarIcsStatus;
+  confirmationId?: string;
+  onReplace?: (replace: boolean) => void;
   onScope: (scope: CalendarIcsScope) => void;
   onAlarm: (value: boolean) => void;
   onRetry: () => void;
@@ -37,7 +41,7 @@ export function CalendarIcsDialog(p: Props) {
   const id = useId();
   const download = useRef<HTMLButtonElement>(null);
   const close = () => {
-    if (!p.exporting) p.onClose();
+    if (!p.exporting && !p.confirmationId) p.onClose();
   };
   const day = (at: number) =>
     new Intl.DateTimeFormat("es", {
@@ -81,7 +85,7 @@ export function CalendarIcsDialog(p: Props) {
           <div className="v-calendar-ics-body">
             {p.failure && (
               <div role="alert" className="v-calendar-ics-error">
-                <span>{text.error(p.failure)}</span>
+                <span>{text.error(p.failure, p.confirmationFailed)}</span>
                 <Button
                   size="sm"
                   aria-disabled={p.busy}
@@ -230,6 +234,13 @@ export function CalendarIcsDialog(p: Props) {
           </footer>
         </Dialog.Popup>
       </Dialog.Portal>
+      {p.confirmationId && (
+        <CalendarIcsReplacement
+          busy={!!p.exporting}
+          onReplace={p.onReplace}
+          returnFocus={() => download.current ?? false}
+        />
+      )}
     </Dialog.Root>
   );
 }

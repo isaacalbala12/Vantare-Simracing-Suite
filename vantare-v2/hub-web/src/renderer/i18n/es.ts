@@ -352,13 +352,13 @@ export const settingsText = {
   "general.notices": "Avisos",
   "general.updates": "Avisos de actualización",
   "general.updatesHelp":
-    "Preferencia conservada, de solo lectura: este Hub aún no emite avisos de actualización.",
+    "Avisa en el centro del Hub cuando una actualización Beta queda preparada.",
   "general.launcher": "Avisos del Launcher",
   "general.launcherHelp":
-    "Preferencia conservada, de solo lectura: este Hub aún no emite avisos al terminar el Launcher.",
+    "Avisa de fallos de lanzamiento en el centro del Hub. El aviso de aplicaciones listas aún no está disponible.",
   "general.toasts": "Notificaciones de Windows",
   "general.toastsHelp":
-    "Habilita únicamente «Enviar prueba», que sí muestra una notificación de Windows. Los avisos automáticos aún no están disponibles en este Hub.",
+    "Este interruptor gobierna todas las notificaciones de Windows del Hub, incluido el Calendario. Puedes comprobarlo con «Enviar prueba»; los canales del Calendario se configuran en Calendario › Avisos.",
   "general.testNotice": "Enviar prueba",
   "general.noticeSent": "Notificación de prueba enviada",
   "general.noticeUnavailable": "No se pudo mostrar la notificación de Windows",

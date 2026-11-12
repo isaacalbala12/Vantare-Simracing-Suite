@@ -4,7 +4,7 @@ import type {
   CalendarIcsStatus,
   CalendarIcsView,
 } from "../../../contract/generated/calendar";
-import type { HostError } from "../../../contract/generated/contract";
+import type { HostError, Request } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 
@@ -19,7 +19,10 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   const [busy, setBusy] = useState(false);
   const [isExporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
+  const [confirmationFailed, setConfirmationFailed] = useState(false);
   const [status, setStatus] = useState<CalendarIcsStatus>();
+  const [confirmationId, setConfirmationId] = useState<string>();
+  const confirmation = useRef<string | undefined>(undefined);
   const prepared = useRef<CalendarIcsView | undefined>(undefined);
   const epoch = useRef(0),
     exporting = useRef(false),
@@ -28,8 +31,11 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   useEffect(() => {
     const generation = ++epoch.current;
     prepared.current = undefined;
+    confirmation.current = undefined;
+    setConfirmationId(undefined);
     setView(undefined);
     setFailure(undefined);
+    setConfirmationFailed(false);
     setBusy(exporting.current);
     if (exporting.current || !open || !allowed || !client) return;
     setBusy(true);
@@ -70,24 +76,62 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     const snapshot = prepared.current;
     if (!client || !authority.current || !snapshot || busy || exporting.current)
       return false;
+    return await exportRequest({
+      method: "calendar.icsExport",
+      preparedHash: snapshot.preparedHash,
+    });
+  }
+  async function replace(replace: boolean) {
+    const id = confirmation.current;
+    if (!client || !authority.current || !id || exporting.current) return false;
+    confirmation.current = undefined;
+    setConfirmationId(undefined);
+    return await exportRequest({
+      method: "calendar.icsReplace",
+      confirmationId: id,
+      replace,
+    });
+  }
+  async function exportRequest(
+    request: Extract<
+      Request,
+      { method: "calendar.icsExport" | "calendar.icsReplace" }
+    >,
+  ) {
+    if (!client) return false;
+    const owner = client;
+    const generation = epoch.current;
     exporting.current = true;
     setExporting(true);
     prepared.current = undefined;
     setBusy(true);
     setFailure(undefined);
     setStatus(undefined);
+    setConfirmationFailed(request.method === "calendar.icsReplace");
     try {
-      const reply = await client.request({
-        method: "calendar.icsExport",
-        preparedHash: snapshot.preparedHash,
-      });
+      const reply = await owner.request(request);
       setView(undefined);
-      if (reply.method !== "calendar.icsExport") {
+      if (
+        reply.method !== request.method ||
+        (reply.method !== "calendar.icsExport" &&
+          reply.method !== "calendar.icsReplace")
+      ) {
         setFailure("rejected");
         return false;
       }
       setStatus(reply.status);
-      if (reply.status !== "saved")
+      if (
+        reply.status === "replacementRequired" &&
+        typeof reply.confirmationId === "string"
+      ) {
+        if (!authority.current || generation !== epoch.current) {
+          setStatus(undefined);
+          if (authority.current) setFailure("rejected");
+          return false;
+        }
+        confirmation.current = reply.confirmationId;
+        setConfirmationId(reply.confirmationId);
+      } else if (reply.status !== "saved")
         setOptions((value) => ({ ...value, attempt: value.attempt + 1 }));
       return reply.status === "saved";
     } catch (error: unknown) {
@@ -108,12 +152,15 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     view: allowed && open ? view : undefined,
     busy,
     exporting: isExporting,
-    canClose: () => !exporting.current,
+    canClose: () => !exporting.current && !confirmation.current,
+    confirmationId: allowed && open ? confirmationId : undefined,
+    replace,
     failure,
+    confirmationFailed,
     status,
     download,
     setScope(value: CalendarIcsScope) {
-      if (!exporting.current) {
+      if (!exporting.current && !confirmation.current) {
         prepared.current = undefined;
         setView(undefined);
         setStatus(undefined);
@@ -121,7 +168,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
       }
     },
     setAlarm(value: boolean) {
-      if (!exporting.current) {
+      if (!exporting.current && !confirmation.current) {
         prepared.current = undefined;
         setView(undefined);
         setStatus(undefined);
@@ -129,7 +176,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
       }
     },
     retry() {
-      if (!busy && !exporting.current)
+      if (!busy && !exporting.current && !confirmation.current)
         setOptions((value) => ({ ...value, attempt: value.attempt + 1 }));
     },
   };

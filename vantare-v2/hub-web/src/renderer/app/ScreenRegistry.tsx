@@ -11,6 +11,7 @@ const screens = new Map(
     return isSection(id) ? [[id, lazy(load)] as const] : [];
   }),
 );
+export const registeredSections: readonly Section[] = [...screens.keys()];
 export function RegisteredScreen({
   section,
   loading,

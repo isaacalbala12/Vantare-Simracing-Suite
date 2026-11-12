@@ -62,6 +62,7 @@ export function create(context: MockContext): MockHandler {
   }
   if (
     context.sceneName === "cuenta-base" ||
+    context.sceneName === "cuenta-cambio-sesion" ||
     context.sceneName === "cuenta-sesion" ||
     context.sceneName === "cuenta-founders"
   ) {
@@ -87,6 +88,10 @@ export function create(context: MockContext): MockHandler {
     };
   }
   current = accountScene(context.sceneName, current);
+  // These mail fixtures represent an authenticated account, independent of
+  // the startup core snapshot used while mock modules are being constructed.
+  if (context.sceneName.startsWith("privacidad-mail"))
+    current = { ...current, session: "signedIn", gate: "none", blocked: false };
   if (context.sceneName.startsWith("email-")) {
     const scene = context.sceneName;
     current = {
@@ -123,7 +128,21 @@ export function create(context: MockContext): MockHandler {
     id: number,
     kind: "busy" | "accountInvalid" | "coreUnavailable" | "denied",
   ) => ({ kind: "failure" as const, id, error: { kind } });
+  let initializedTestingSession = false;
   return (value) => {
+    // Testing fixtures finish configuring the shared core after handlers are created.
+    if (
+      !initializedTestingSession &&
+      context.sceneName.startsWith("testing-")
+    ) {
+      initializedTestingSession = true;
+      current = {
+        ...current,
+        session: context.core.access.verified ? "signedIn" : "signedOut",
+        verified: context.core.access.verified,
+        blocked: context.core.access.blocked,
+      };
+    }
     if (value.kind === "subscribe" && value.topic === "account") {
       return {
         kind: "event",
@@ -307,10 +326,13 @@ export function create(context: MockContext): MockHandler {
         };
         break;
     }
-    context.emit?.({
-      kind: "event",
-      event: { topic: "account", value: structuredClone(current) },
-    });
+    // The real host publishes changed AccountView snapshots (tick.rs:29).
+    // A read-only get must not fabricate a new account publication.
+    if (request.method !== "account.get")
+      context.emit?.({
+        kind: "event",
+        event: { topic: "account", value: structuredClone(current) },
+      });
     return {
       kind: "response",
       id,

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -10,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createMockHost } from "../src/mock/host";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider } from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
@@ -50,10 +52,12 @@ async function mount(scene: string) {
       <QueryClientProvider client={cache}>
         <HostProvider>
           <ToastProvider>
-            <ReportsProvider>
-              {children}
-              <TestingCommunity onDiagnostic={() => {}} />
-            </ReportsProvider>
+            <AccountProvider>
+              <ReportsProvider>
+                {children}
+                <TestingCommunity onDiagnostic={() => {}} />
+              </ReportsProvider>
+            </AccountProvider>
           </ToastProvider>
         </HostProvider>
       </QueryClientProvider>
@@ -167,14 +171,16 @@ it("shares the local editor across Community and Reports while keeping Diagnosti
     <QueryClientProvider client={cache}>
       <HostProvider>
         <ToastProvider>
-          <ReportsProvider>
-            <UiProvider>
-              <SectionChromeProvider>
-                <SectionTabsSlot />
-                <TestingEntry />
-              </SectionChromeProvider>
-            </UiProvider>
-          </ReportsProvider>
+          <AccountProvider>
+            <ReportsProvider>
+              <UiProvider>
+                <SectionChromeProvider>
+                  <SectionTabsSlot />
+                  <TestingEntry />
+                </SectionChromeProvider>
+              </UiProvider>
+            </ReportsProvider>
+          </AccountProvider>
         </ToastProvider>
       </HostProvider>
     </QueryClientProvider>,

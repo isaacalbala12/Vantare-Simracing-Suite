@@ -6,6 +6,7 @@
   --color-accent-tint: var(--accent-tint);
   --color-active: var(--active);
   --color-bg-base: var(--bg-base);
+  --color-command-backdrop: var(--command-backdrop);
   --color-bg-sidebar: var(--bg-sidebar);
   --color-bg-window: var(--bg-window);
   --color-err: var(--err);

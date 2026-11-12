@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useUi } from "../../app/UiState";
+import { Callout } from "../../ui/Data";
 import { TestingQuestionnairesRail } from "../../ui/TestingQuestionnairesView";
 import { TestingSummaryRail } from "../../ui/TestingSummaryView";
 import { TestingCommunity } from "./Community";
@@ -13,7 +14,16 @@ import { TestingRail } from "./TestingRail";
 import { useTestingTabs } from "./TestingTabs";
 
 export default function TestingEntry() {
-  const { access, participation, refresh, available, busy } = useReports();
+  const {
+    access,
+    participation,
+    refresh,
+    available,
+    busy,
+    sessionDiscarded,
+    dismissSessionDiscarded,
+  } = useReports();
+  useEffect(() => () => dismissSessionDiscarded(), [dismissSessionDiscarded]);
   const requested = useUi((state) => state.testingReportsRequested);
   const consume = useUi((state) => state.consumeTestingReports);
   // GPUI's rail uses its loaded-contribution count for both captions.
@@ -61,6 +71,11 @@ export default function TestingEntry() {
         }
       />
       <SectionPanel activeTab={active}>
+        {sessionDiscarded && (
+          <div role="status">
+            <Callout tone="warn" title={text.sessionDiscarded} />
+          </div>
+        )}
         {diagnosticOpen || active === "reports" ? (
           <Reports
             view={

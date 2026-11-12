@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub const VERSION: u32 = 2;
+pub const MAX_STATUS_BYTES: usize = 128 * 1024;
+pub mod checked;
+pub mod execution;
+pub use checked::{LaunchChecked, RequestId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
@@ -71,6 +75,8 @@ impl From<Action> for String {
 pub enum Request {
     #[serde(rename = "launch-v1")]
     Launch { profile: String },
+    #[serde(rename = "launch-v2")]
+    LaunchChecked(LaunchChecked),
     #[serde(rename = "answer-v2")]
     Answer { decision: u64, action: Action },
 }
@@ -93,6 +99,12 @@ pub struct Status {
     pub progress: String,
     pub running: bool,
     pub decision: Option<Decision>,
+    #[serde(
+        default,
+        deserialize_with = "execution::deserialize_extension",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub extension: Option<execution::ExecutionStatus>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -118,21 +130,42 @@ pub fn now_ms() -> u64 {
         })
 }
 
+/// Keep a legal legacy frame readable when the optional extension would exceed its limit.
+pub fn status_bytes(status: &Status) -> serde_json::Result<Vec<u8>> {
+    let bytes = serde_json::to_vec(status)?;
+    if bytes.len() > MAX_STATUS_BYTES && status.extension.is_some() {
+        let legacy = Status {
+            extension: None,
+            ..status.clone()
+        };
+        return serde_json::to_vec(&legacy);
+    }
+    Ok(bytes)
+}
+
 pub fn read_status(settings: &Path) -> Option<Status> {
+    read_status_at(settings, now_ms())
+}
+pub fn read_status_at(settings: &Path, observed_ms: u64) -> Option<Status> {
     use std::io::Read;
     let file = std::fs::File::open(status_path(settings)).ok()?;
     let mut bytes = Vec::new();
-    file.take(128 * 1024 + 1).read_to_end(&mut bytes).ok()?;
-    if bytes.len() > 128 * 1024 {
+    file.take(u64::try_from(MAX_STATUS_BYTES).ok()? + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    if bytes.len() > MAX_STATUS_BYTES {
         return None;
     }
     let status: Status = serde_json::from_slice(&bytes).ok()?;
-    is_fresh(&status).then_some(status)
+    is_fresh_at(&status, observed_ms).then_some(status)
 }
 
 pub fn is_fresh(status: &Status) -> bool {
+    is_fresh_at(status, now_ms())
+}
+pub fn is_fresh_at(status: &Status, observed_ms: u64) -> bool {
     status.version == VERSION
-        && now_ms()
+        && observed_ms
             .checked_sub(status.updated_ms)
             .is_some_and(|age| age < 3_000)
 }

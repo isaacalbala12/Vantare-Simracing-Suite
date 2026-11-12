@@ -3,6 +3,10 @@ import type { CalendarSchedule } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
 import { Button } from "./Button";
+import {
+  type AlertsDocumentState,
+  CalendarAlertsStatus,
+} from "./CalendarAlertsStatus";
 import { WeekBoard } from "./CalendarWeekBoard";
 import { weekTitle } from "./calendarDate";
 import { Switch } from "./Forms";
@@ -13,6 +17,11 @@ export function CalendarUpcomingView({
   following,
   limit,
   notifyWeek,
+  alertsState = "ready",
+  notifyDisabled,
+  notifyDisabledReason,
+  notifyBusy,
+  onNotifyWeek,
   onRefresh,
   busy,
 }: {
@@ -21,6 +30,11 @@ export function CalendarUpcomingView({
   following: number;
   limit: number;
   notifyWeek: boolean;
+  alertsState?: AlertsDocumentState;
+  notifyDisabled: boolean;
+  notifyDisabledReason?: string;
+  notifyBusy: boolean;
+  onNotifyWeek: (value: boolean) => void;
   onRefresh: () => void;
   busy: boolean;
 }) {
@@ -53,17 +67,27 @@ export function CalendarUpcomingView({
             {text.searchNow}
             <Icon name="refresh" />
           </Button>
-          <div className="v-calendar-notify">
-            <Switch
-              disabled
-              label={text.notifyWeek}
-              checked={notifyWeek}
-              aria-describedby={notifyHint}
-            />
-          </div>
-          <p id={notifyHint} role="status">
-            {text.notifyWeekPending}
-          </p>
+          {alertsState === "ready" ? (
+            <>
+              <div className="v-calendar-notify">
+                <Switch
+                  disabled={notifyDisabled}
+                  pending={notifyBusy}
+                  onCheckedChange={(value) => {
+                    if (!notifyDisabled) onNotifyWeek(value);
+                  }}
+                  label={text.notifyWeek}
+                  checked={notifyWeek}
+                  aria-describedby={notifyHint}
+                />
+              </div>
+              <p id={notifyHint} role="status">
+                {notifyDisabledReason ?? text.notifyWeekHelp}
+              </p>
+            </>
+          ) : (
+            <CalendarAlertsStatus state={alertsState} />
+          )}
         </div>
       </section>
       <WeekBoard schedule={previous} utc={utc} limit={limit} />

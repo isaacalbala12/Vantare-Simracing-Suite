@@ -12,6 +12,7 @@ import {
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText } from "../i18n/calendar";
+import { calendarStartNoticeText } from "../i18n/calendar-notices";
 import { calendarAlertsText as text } from "../i18n/calendarAlerts";
 import { calendarBandText as bandText } from "../i18n/calendarBands";
 import type { CalendarAlertChange } from "../screens/calendar/AlertChange";
@@ -35,6 +36,7 @@ const hm = (n: number) =>
 type Props = {
   schedule: CalendarSchedule | null;
   alertsState?: AlertsDocumentState;
+  windowsDisabledReason?: string;
   returnFocus?: () => HTMLElement | false;
   alerts: CalendarAlerts;
   following: readonly string[];
@@ -47,9 +49,13 @@ type Props = {
   onChange: (change: CalendarAlertChange) => void;
   onClose: () => void;
   onTest?: () => void;
+  testBusy?: boolean;
+  testCooling?: boolean;
+  testFeedback?: ReactNode;
   failure?: ReactNode;
 };
 export function CalendarAlertsDialog(p: Props) {
+  const testHint = useId();
   const [editing, setEditing] = useState<string>();
   const name = (id: string) =>
     p.schedule?.series.find((s) => s.id === id)?.name ?? text.missing(id);
@@ -85,6 +91,7 @@ export function CalendarAlertsDialog(p: Props) {
           </header>
           <div className="v-calendar-alerts-body">
             {p.failure}
+            {p.testFeedback}
             <CalendarAlertsStatus state={p.alertsState ?? "ready"} />
             {ready && legacy && <p role="status">{text.duplicates}</p>}
             {p.busy && <p role="status">{text.saving}</p>}
@@ -111,7 +118,7 @@ export function CalendarAlertsDialog(p: Props) {
                     }}
                   />
                   <Caption>{text.where}</Caption>
-                  <p role="status">{text.deliveryPending}</p>
+                  <p role="status">{text.deliveryScope}</p>
                   {(
                     [
                       ["windows", text.windows, text.windowsHint],
@@ -122,12 +129,26 @@ export function CalendarAlertsDialog(p: Props) {
                     <Channel
                       key={channel}
                       label={label}
-                      hint={hint}
+                      hint={
+                        channel !== "inTrack" && p.windowsDisabledReason
+                          ? p.windowsDisabledReason
+                          : channel === "sound" && !p.alerts.channels.windows
+                            ? text.soundRequiresWindows
+                            : hint
+                      }
                       value={p.alerts.channels[channel]}
-                      disabled={disabled || legacy || channel !== "inTrack"}
+                      disabled={
+                        disabled ||
+                        legacy ||
+                        (channel !== "inTrack" && !!p.windowsDisabledReason) ||
+                        (channel === "sound" && !p.alerts.channels.windows)
+                      }
                       pending={p.busy}
                       onChange={(value) => {
-                        if (channel !== "inTrack") return;
+                        if (channel !== "inTrack" && p.windowsDisabledReason)
+                          return;
+                        if (channel === "sound" && !p.alerts.channels.windows)
+                          return;
                         change({
                           kind: "channel",
                           channel: channel as keyof CalendarChannels,
@@ -170,7 +191,7 @@ export function CalendarAlertsDialog(p: Props) {
                 </section>
                 <section>
                   <Caption>{text.sample}</Caption>
-                  <p>{text.previewPending}</p>
+                  <p>{text.previewScope}</p>
                   <Preview {...p} />
                   <Caption
                     hint={text.count(
@@ -303,13 +324,34 @@ export function CalendarAlertsDialog(p: Props) {
             )}
           </div>
           <footer>
-            <Tooltip label={text.testPending}>
+            <Tooltip label={p.windowsDisabledReason ?? text.testHint}>
               <span>
+                <span id={testHint} className="v-sr-only">
+                  {p.windowsDisabledReason ?? text.testHint}
+                </span>
                 <Button
-                  disabled={!p.onTest}
+                  disabled={!p.onTest || !ready || !!p.windowsDisabledReason}
                   focusableWhenDisabled
-                  onClick={p.onTest}
-                  aria-description={!p.onTest ? text.testPending : undefined}
+                  aria-disabled={
+                    !p.onTest ||
+                    !ready ||
+                    !!p.windowsDisabledReason ||
+                    p.testBusy ||
+                    p.testCooling ||
+                    p.busy
+                  }
+                  aria-busy={p.testBusy || undefined}
+                  onClick={() => {
+                    if (
+                      !p.windowsDisabledReason &&
+                      !p.testBusy &&
+                      !p.testCooling &&
+                      !p.busy &&
+                      ready
+                    )
+                      p.onTest?.();
+                  }}
+                  aria-describedby={testHint}
                 >
                   {text.test}
                 </Button>
@@ -524,13 +566,18 @@ function Preview(p: Props) {
     series && p.schedule
       ? nextStart(p.schedule, series, p.now, p.limit)
       : undefined;
-  const next =
-    series && p.schedule && first !== undefined
-      ? nextStart(p.schedule, series, first + 1000, p.limit)
+  const sample =
+    series && first !== undefined
+      ? calendarStartNoticeText(
+          {
+            series: series.name,
+            track: series.track,
+            at: first,
+            raceMinutes: raceMinutes(series),
+          },
+          first - p.alerts.leadMin * 60000,
+        )
       : undefined;
-  const band = series
-    ? p.alerts.bands.find((b) => b.seriesId === series.id)
-    : undefined;
   return (
     <section
       className="v-calendar-alerts-preview"
@@ -545,27 +592,10 @@ function Preview(p: Props) {
         <div className="v-calendar-alerts-toast-body">
           <b>{`${p.alerts.leadMin}′`}</b>
           <div>
-            <strong>
-              {text.previewTitle(
-                series?.name ?? "—",
-                first === undefined ? "—" : clock(first, p.utc),
-              )}
-            </strong>
-            <p>
-              {text.previewBody(
-                series?.track.split(" (")[0] ?? "—",
-                series ? raceMinutes(series) : 0,
-                band ? text.previewBand(hm(band.from), hm(band.to)) : "",
-                next === undefined ? undefined : clock(next, p.utc),
-              )}
-            </p>
+            <strong>{sample?.title ?? text.previewMissing}</strong>
+            <p>{sample?.body ?? text.previewMissingHelp}</p>
           </div>
         </div>
-        <footer aria-hidden="true">
-          <span>{text.launch}</span>
-          <span>{text.detail}</span>
-          <span>{text.snooze}</span>
-        </footer>
       </div>
     </section>
   );

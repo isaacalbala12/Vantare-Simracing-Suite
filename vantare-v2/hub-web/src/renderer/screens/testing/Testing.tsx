@@ -32,19 +32,20 @@ export function Reports({
   const [discardOpen, setDiscardOpen] = useState(false);
   const [internalView, setInternalView] = useState<ReportsView>("local");
   const view = selectedView ?? internalView;
-  const { available, loaded, load } = state;
-  const loadCurrent = useRef(load);
-  loadCurrent.current = load;
+  const { available, loaded, load, sessionGeneration } = state;
+  const loadCurrent = useRef({ load, generation: sessionGeneration });
+  loadCurrent.current = { load, generation: sessionGeneration };
   useEffect(() => {
     let active = true;
     if (available && !loaded)
       queueMicrotask(() => {
-        if (active) void loadCurrent.current().catch(() => {});
+        if (active && loadCurrent.current.generation === sessionGeneration)
+          void loadCurrent.current.load().catch(() => {});
       });
     return () => {
       active = false;
     };
-  }, [available, loaded]);
+  }, [available, loaded, sessionGeneration]);
   function choose(value: typeof view) {
     state.setConsent(false);
     setInternalView(value);

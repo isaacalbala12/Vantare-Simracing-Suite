@@ -102,6 +102,7 @@ pub struct Owner {
     authority: Authority,
     devices: Devices,
     binding: Option<Binding>,
+    account_generation: Option<vantare_ipc::account_session::AccountGeneration>,
     game: Option<u64>,
     policy: Policy,
     denial: Option<AccessState>,
@@ -114,6 +115,16 @@ impl Owner {
         epoch: u64,
         now: DateTime<Utc>,
     ) -> Result<Self> {
+        Self::open_with_generation(root, keys, devices, epoch, now, new_account_generation)
+    }
+    fn open_with_generation(
+        root: &Path,
+        keys: Option<&str>,
+        devices: Devices,
+        epoch: u64,
+        now: DateTime<Utc>,
+        generation: impl FnOnce() -> Result<vantare_ipc::account_session::AccountGeneration>,
+    ) -> Result<Self> {
         let store = Store::open(root, "core-rights-v1")?;
         let authority = Authority::restore(&store, now.timestamp_millis())?;
         let trust_roots = keys.map(Verifier::public_keys).transpose()?;
@@ -124,6 +135,7 @@ impl Owner {
             authority,
             devices,
             binding: None,
+            account_generation: generation().ok(),
             game: None,
             policy: Policy {
                 version: VERSION,
@@ -182,6 +194,12 @@ impl Owner {
             }
         }
         Ok(owner)
+    }
+    /// A scope is observable only for a durably confirmed binding. Never an access grant.
+    pub fn account_generation(&self) -> Option<vantare_ipc::account_session::AccountGeneration> {
+        (self.binding.is_some() && self.denial.is_none())
+            .then(|| self.account_generation.clone())
+            .flatten()
     }
     fn quarantine_binding(&mut self, issue: CacheIssue, now: DateTime<Utc>) -> Result<()> {
         self.verifier.as_ref().ok_or(Error::Unconfigured)?;
@@ -243,6 +261,11 @@ impl Owner {
             {
                 return Err(Error::Denied); // Cambio de cuenta exige invalidación durable previa.
             }
+            let generation = if self.binding.is_none() || self.account_generation.is_none() {
+                Some(new_account_generation()?)
+            } else {
+                self.account_generation.clone()
+            };
             let binding = Binding {
                 version: 1,
                 credential: text,
@@ -257,6 +280,7 @@ impl Owner {
             self.store.save("binding", &binding)?;
             self.authority.persist(&self.store)?;
             self.binding = Some(binding);
+            self.account_generation = generation;
             Ok(())
         })();
         // An untrusted renewal is not revocation. Preserve the previous verified
@@ -279,6 +303,7 @@ impl Owner {
         result
     }
     pub fn invalidate(&mut self, now: DateTime<Utc>, tick: Duration) -> Result<()> {
+        self.account_generation = None;
         self.denial = Some(AccessState::Revoked);
         self.deny(AccessState::Revoked);
         self.authority.invalidate(now, tick)?;
@@ -470,6 +495,12 @@ fn session_identity(snapshot: &Snapshot, started: Option<&str>) -> Option<Sessio
         kind,
         started: started?.into(),
     })
+}
+
+fn new_account_generation() -> Result<vantare_ipc::account_session::AccountGeneration> {
+    vantare_services::random_id()?
+        .try_into()
+        .map_err(|_| Error::Protocol)
 }
 
 #[cfg(test)]

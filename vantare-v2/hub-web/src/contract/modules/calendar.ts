@@ -11,11 +11,13 @@ import {
   isCalendarConfig,
 } from "../calendar-config-validation";
 import { isCalendarHistory } from "../calendar-history-validation";
+import { isCalendarNotice } from "../calendar-notice-validation";
 import {
   calendarDateLimit,
   calendarIcsLimit,
   calendarListLimit,
   calendarMinuteLimit,
+  calendarRefreshFailures,
   calendarSeriesLimit,
   calendarTextLimit,
   calendarTimestampLimit,
@@ -218,11 +220,18 @@ export function isRequest(v: Record<string, unknown>) {
         (v.scope === "favs" || v.scope === "events" || v.scope === "all") &&
         typeof v.alarm === "boolean"
       );
+    case "calendar.icsReplace":
+      return (
+        exact(v, ["method", "confirmationId", "replace"]) &&
+        isCalendarRevision(v.confirmationId) &&
+        typeof v.replace === "boolean"
+      );
     case "calendar.icsExport":
       return (
         exact(v, ["method", "preparedHash"]) &&
         isCalendarRevision(v.preparedHash)
       );
+    case "calendar.noticeTest":
     case "calendar.load":
     case "calendar.refresh":
     case "calendar.configLoad":
@@ -253,13 +262,16 @@ export function isRequest(v: Record<string, unknown>) {
   }
 }
 export function isReply(v: Record<string, unknown>) {
-  if (v.method === "calendar.icsExport")
-    return (
-      exact(v, ["method", "status"]) &&
-      (v.status === "saved" ||
-        v.status === "cancelled" ||
-        v.status === "conflict")
-    );
+  if (v.method === "calendar.noticeTest")
+    return exact(v, ["method", "accepted"]) && typeof v.accepted === "boolean";
+  if (v.method === "calendar.icsExport" || v.method === "calendar.icsReplace")
+    return v.status === "replacementRequired"
+      ? exact(v, ["method", "status", "confirmationId"]) &&
+          isCalendarRevision(v.confirmationId)
+      : exact(v, ["method", "status"]) &&
+          (v.status === "saved" ||
+            v.status === "cancelled" ||
+            v.status === "conflict");
   if (!exact(v, ["method", "value"])) return false;
   switch (v.method) {
     case "calendar.icsPrepare":
@@ -287,4 +299,12 @@ export const isError = (v: Record<string, unknown>) =>
     : v.kind === "calendarConflict" &&
       exact(v, ["kind", "current"]) &&
       isCalendarConfig(v.current);
-export const isEvent = (_v: Record<string, unknown>) => false;
+export const isEvent = (v: Record<string, unknown>) =>
+  v.topic === "calendarRefreshed"
+    ? exact(v, ["topic", "value", "error"]) &&
+      isCalendarView(v.value) &&
+      (v.error === null ||
+        calendarRefreshFailures.some((error) => error === v.error))
+    : v.topic === "calendarNotice" &&
+      exact(v, ["topic", "value"]) &&
+      isCalendarNotice(v.value);

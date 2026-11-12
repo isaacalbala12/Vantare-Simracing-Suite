@@ -11,14 +11,16 @@ export function AnalysisPreview() {
   const navigate = useUi((s) => s.navigate);
   useLayoutEffect(() => navigate("analysis"), [navigate]);
   return (
-    <SettingsProvider>
-      <AccountProvider>
-        <PilotProvider>
-          <ReportsProvider>
-            <Shell />
-          </ReportsProvider>
-        </PilotProvider>
-      </AccountProvider>
-    </SettingsProvider>
+    <div className="v-analysis-qa-frame">
+      <SettingsProvider>
+        <AccountProvider>
+          <PilotProvider>
+            <ReportsProvider>
+              <Shell />
+            </ReportsProvider>
+          </PilotProvider>
+        </AccountProvider>
+      </SettingsProvider>
+    </div>
   );
 }

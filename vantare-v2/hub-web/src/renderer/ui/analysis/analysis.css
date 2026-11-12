@@ -286,3 +286,10 @@
     min-height: 350px;
   }
 }
+
+/* The QA catalogue has explanatory siblings; preview the real Shell at viewport size. */
+.v-analysis-qa-frame {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}

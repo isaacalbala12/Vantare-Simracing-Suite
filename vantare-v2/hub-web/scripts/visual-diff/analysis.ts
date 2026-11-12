@@ -38,6 +38,12 @@ for (const expanded of [false, true]) {
         await page
           .getByText("Sin sesiones indexadas.", { exact: true })
           .waitFor();
+        assert.ok(
+          await page.evaluate(
+            () => document.documentElement.scrollHeight <= innerHeight,
+          ),
+          "QA Shell must not create a document scrollbar",
+        );
         await page.mouse.move(1000, 890);
         await page.evaluate(
           () =>

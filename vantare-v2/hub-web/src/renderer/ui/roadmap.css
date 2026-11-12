@@ -190,5 +190,9 @@
 }
 
 .v-roadmap-hero {
-  gap: 14px;
+  gap: 16px;
+}
+.v-roadmap-hero > strong,
+.v-roadmap-hero > p {
+  line-height: 1.618;
 }

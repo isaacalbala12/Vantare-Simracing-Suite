@@ -59,6 +59,11 @@ impl WidgetSettings {
                 | WidgetKind::FuelStrategy
         )
     }
+    pub(crate) fn unnormalized_json(json: &str) -> Result<serde_json::Value, HostError> {
+        serde_json::from_str::<Data>(json)
+            .and_then(serde_json::to_value)
+            .map_err(|_| HostError::Protected)
+    }
     pub(crate) fn from_json(kind: WidgetKind, json: &str) -> Result<Option<Self>, HostError> {
         if !Self::supports(kind) {
             return Ok(None);
@@ -331,5 +336,168 @@ impl WidgetSettingsPatch {
             Self::Pedals(_) => WidgetKind::Pedals,
             Self::FuelStrategy(_) => WidgetKind::FuelStrategy,
         }
+    }
+}
+
+// Compute the maximum envelope overhead from the real transport, not a second
+// copy of its JSON schema. Only the tiny empty view is cloned once.
+pub(crate) fn fits_view(view: &super::StudioView) -> bool {
+    use crate::protocol::{Event, HostToUi, Reply};
+    use std::sync::OnceLock;
+    static OVERHEAD: OnceLock<usize> = OnceLock::new();
+    let overhead = *OVERHEAD.get_or_init(|| {
+        let empty = super::State::unavailable(super::StudioState::Missing, None);
+        let size = serde_json::to_vec(&empty).expect("empty view").len();
+        let messages = [
+            HostToUi::Failure {
+                id: u32::MAX,
+                error: HostError::StudioConflict {
+                    current: empty.clone(),
+                },
+            },
+            HostToUi::Response {
+                id: u32::MAX,
+                result: Reply::StudioVisibility {
+                    value: empty.clone(),
+                },
+            },
+            HostToUi::Response {
+                id: u32::MAX,
+                result: Reply::StudioAdd {
+                    value: empty.clone(),
+                    added: "\u{1}".repeat(super::ID_LIMIT),
+                },
+            },
+            HostToUi::Event {
+                event: Event::Studio { value: empty },
+            },
+        ];
+        messages
+            .iter()
+            .map(|m| serde_json::to_vec(m).expect("empty envelope").len() - size)
+            .max()
+            .expect("envelopes")
+    });
+    struct Counter {
+        remaining: usize,
+    }
+    impl std::io::Write for Counter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.remaining = self
+                .remaining
+                .checked_sub(bytes.len())
+                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut counter = Counter {
+        remaining: crate::frame::LIMIT.saturating_sub(overhead),
+    };
+    serde_json::to_writer(&mut counter, view).is_ok()
+}
+
+impl WidgetSettingsPatch {
+    pub(crate) fn validate(&self) -> Result<(), HostError> {
+        fn range(value: Option<usize>, min: usize, max: usize) -> Result<(), HostError> {
+            if value.is_some_and(|v| !(min..=max).contains(&v)) {
+                Err(HostError::Denied)
+            } else {
+                Ok(())
+            }
+        }
+        fn columns(
+            kind: WidgetKind,
+            value: &Option<Option<Vec<WidgetColumnPatch>>>,
+        ) -> Result<(), HostError> {
+            let Some(Some(items)) = value else {
+                return Ok(());
+            };
+            if kind == WidgetKind::Standings
+                && items.len() > native::standings::STANDINGS_COLUMNS_MAX
+            {
+                return Err(HostError::Denied);
+            }
+            let mut seen = std::collections::HashSet::new();
+            for item in items {
+                let metric = item.metric.as_str();
+                let accepted = native::columns::LEGACY_TABLE_COLUMNS.contains(&metric)
+                    || match kind {
+                        WidgetKind::Standings => {
+                            native::standings::STANDINGS_VANTARE_COLUMNS.contains(&metric)
+                        }
+                        WidgetKind::Relative => {
+                            native::relative::RELATIVE_VANTARE_COLUMNS.contains(&metric)
+                        }
+                        _ => false,
+                    };
+                if !accepted
+                    || !seen.insert(metric)
+                    || item.format.as_ref().is_some_and(|v| {
+                        v.max_chars
+                            .flatten()
+                            .is_some_and(|n| n > native::columns::MAX_CHARS_LIMIT)
+                    })
+                {
+                    return Err(HostError::Denied);
+                }
+            }
+            Ok(())
+        }
+        fn footer(items: &[FooterKey]) -> Result<(), HostError> {
+            let mut seen = std::collections::HashSet::new();
+            if items.len() > native::FOOTER_ITEMS_MAX
+                || items.iter().any(|v| !seen.insert(v.as_str()))
+            {
+                Err(HostError::Denied)
+            } else {
+                Ok(())
+            }
+        }
+        match self {
+            Self::Standings(p) => {
+                range(
+                    p.row_count,
+                    native::standings::STANDINGS_ROWS_MIN,
+                    native::standings::STANDINGS_ROWS_MAX,
+                )?;
+                if p.window_around
+                    .is_some_and(|v| !native::standings::STANDINGS_WINDOW_AROUND.contains(&v))
+                {
+                    return Err(HostError::Denied);
+                }
+                for value in [&p.columns, &p.practice_columns, &p.qualifying_columns] {
+                    columns(self.kind(), value)?;
+                }
+                if let Some(Some(items)) = &p.footer_slots {
+                    footer(items)?;
+                }
+            }
+            Self::Relative(p) => {
+                range(
+                    p.range_ahead,
+                    native::relative::RELATIVE_RANGE_MIN,
+                    native::relative::RELATIVE_RANGE_MAX,
+                )?;
+                range(
+                    p.range_behind,
+                    native::relative::RELATIVE_RANGE_MIN,
+                    native::relative::RELATIVE_RANGE_MAX,
+                )?;
+                columns(self.kind(), &p.columns)?;
+                if let Some(items) = &p.footer_slots {
+                    footer(items)?;
+                }
+            }
+            Self::FuelStrategy(p) => range(
+                p.history_rows.map(usize::from),
+                usize::from(native::fuel_strategy::FUEL_HISTORY_MIN),
+                usize::from(native::fuel_strategy::FUEL_HISTORY_MAX),
+            )?,
+            Self::Delta(_) | Self::Pedals(_) => {}
+        }
+        Ok(())
     }
 }

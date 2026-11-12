@@ -30,9 +30,12 @@ fn put<T: Serialize>(fields: &mut Fields, key: &str, value: &T) -> Result<(), Ho
 }
 #[path = "studio_fields.rs"]
 mod ordered;
+#[path = "studio_settings.rs"]
+mod setting_edit;
 struct Open {
     document: Document,
     instances: Vec<Fields>,
+    projected: Vec<OverlayInstance>,
 }
 impl Open {
     fn read(path: &Path) -> Result<Self, HostError> {
@@ -49,16 +52,19 @@ impl Open {
             return Err(HostError::Protected);
         }
         let mut ids = HashSet::new();
+        let mut projected = Vec::with_capacity(instances.len());
         for fields in &instances {
             let item = instance(fields, None)?;
             companion(fields)?;
-            if !ids.insert(item.id) {
+            if !ids.insert(item.id.clone()) {
                 return Err(HostError::Protected);
             }
+            projected.push(item);
         }
         Ok(Self {
             document,
             instances,
+            projected,
         })
     }
     fn bytes(&self) -> Result<Vec<u8>, HostError> {
@@ -133,6 +139,7 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     Ok(OverlayInstance {
         id,
         kind,
+        settings: typed_settings(kind, &settings)?,
         visible: optional(fields, "visible", true)?,
         locked: !kind.info(access).allowed,
         opacity: (opacity * 100.0).round() as u8,
@@ -151,6 +158,32 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
         },
     })
 }
+fn merged_settings(kind: WidgetKind, stored: &Fields) -> Result<Fields, HostError> {
+    let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
+    let mut merged: Fields =
+        serde_json::from_str(defaults.settings.get()).map_err(|_| HostError::Protected)?;
+    merged.0.extend(stored.0.clone());
+    // This is migration metadata, not a user setting. Domain/GPUI deserialize
+    // its absence as legacy zero before normalizing the projected value to one.
+    if kind != WidgetKind::Pedals && !stored.0.contains_key("contentVersion") {
+        put(&mut merged, "contentVersion", &0u8)?;
+    }
+    Ok(merged)
+}
+fn typed_settings(
+    kind: WidgetKind,
+    stored: &Fields,
+) -> Result<Option<crate::studio::WidgetSettings>, HostError> {
+    if !crate::studio::WidgetSettings::supports(kind) {
+        return Ok(None);
+    }
+    let merged = merged_settings(kind, stored)?;
+    crate::studio::WidgetSettings::from_json(
+        kind,
+        &serde_json::to_string(&merged.0).map_err(|_| HostError::Protected)?,
+    )
+}
+
 fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
     let (width, height) = canvas(&opened.document.fields)?;
     let taken: Vec<_> = opened
@@ -214,18 +247,30 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
         state.redo.clear();
     }
     state.revision = Some(revision.clone());
-    StudioView {
+    let value = StudioView {
         revision,
         instances: opened
-            .instances
-            .iter()
-            .filter(|f| companion(f).expect("validated companion").is_none())
-            .map(|f| instance(f, access).expect("validated instance"))
+            .projected
+            .into_iter()
+            .zip(&opened.instances)
+            .filter(|(_, fields)| companion(fields).expect("validated companion").is_none())
+            .map(|(mut item, _)| {
+                item.locked = !item.kind.info(access).allowed;
+                item
+            })
             .collect(),
         showing: showing(&state.path),
         can_undo: !state.undo.is_empty(),
         can_redo: !state.redo.is_empty(),
         ..State::unavailable(StudioState::Ready, access)
+    };
+    if crate::studio::widget_settings::fits_view(&value) {
+        value
+    } else {
+        let mut protected = State::unavailable(StudioState::Protected, access);
+        protected.revision = value.revision;
+        protected.showing = value.showing;
+        protected
     }
 }
 pub(crate) fn edit(
@@ -267,6 +312,9 @@ pub(crate) fn edit_result(
         .expect("existing layout")
         .to_vec();
     let after = apply(&mut opened, state, &edit, access)?;
+    if matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_))) && after == before {
+        return Ok((view(state, access), None));
+    }
     let adding = matches!(edit, Edit::Add(_));
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
@@ -365,6 +413,11 @@ fn apply(
                     put(&mut stored, "qualifying", &value.qualifying)?;
                     put(&mut stored, "race", &value.race)?;
                     put(fields, "showIn", &stored.0)?;
+                }
+                InstancePatch::Settings(patch) => {
+                    if !setting_edit::apply(fields, patch, access)? {
+                        return Ok(opened.document.observed.clone().expect("existing layout"));
+                    }
                 }
                 InstancePatch::OffTrack(value) => put(
                     fields,

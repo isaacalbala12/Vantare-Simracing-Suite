@@ -9,6 +9,7 @@ import {
   studioFreeKinds,
   studioLimits,
   studioSizes,
+  studioWidgetDefaults,
 } from "../../contract/generated/studio";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
@@ -28,6 +29,7 @@ export function create(context: MockContext): MockHandler {
     },
   ].map((item) => ({
     ...item,
+    settings: structuredClone(studioWidgetDefaults[item.kind as keyof typeof studioWidgetDefaults]),
     visible: true,
     locked: false,
     opacity: 100,
@@ -167,6 +169,7 @@ export function create(context: MockContext): MockHandler {
         view.instances.push({
           id: added,
           kind: request.kind,
+          settings: structuredClone(studioWidgetDefaults[request.kind]),
           visible: true,
           locked: false,
           opacity: 100,
@@ -190,8 +193,13 @@ export function create(context: MockContext): MockHandler {
       }
       case "studio.instance": {
         const item = view.instances.find((w) => w.id === request.id);
-        if (!item) return fail("denied");
+        if (!item || item.locked) return fail("denied");
         switch (request.patch.field) {
+          case "settings": {
+            if (!item.settings || item.kind !== request.patch.value.kind) return fail("denied");
+            item.settings = applyWidgetSettings(item.settings, request.patch.value);
+            break;
+          }
           case "opacity":
             item.opacity = request.patch.value;
             break;
@@ -232,4 +240,21 @@ export function create(context: MockContext): MockHandler {
       result: { method: request.method, value: structuredClone(view) },
     };
   };
+}
+
+function applyWidgetSettings(current: NonNullable<OverlayInstance["settings"]>, patch: import("../../contract/generated/studio").WidgetSettingsPatch): NonNullable<OverlayInstance["settings"]> {
+  const result = structuredClone(current) as unknown as Record<string, unknown>;
+  for (const [key,value] of Object.entries(patch)) {
+    if (["columns","practiceColumns","qualifyingColumns"].includes(key) && Array.isArray(value)) {
+      const previous = Array.isArray(result[key]) ? result[key] as Record<string,unknown>[] : [];
+      result[key] = value.map((entry) => {
+        const {metric,...fields} = entry;
+        const old = previous.find((c)=>c.metricId === metric) ?? { id:metric, metricId:metric, enabled:true, widthPreset:"md",format:{mode:"full",maxChars:null,display:null,decimals:null},style:{align:null} };
+        return {...old,...fields,format:{...(old.format as object),...fields.format},style:{...(old.style as object),...fields.style}};
+      });
+    } else if(value === null && ["practiceColumns","qualifyingColumns","footerSlots"].includes(key)) {
+      delete result[key];
+    } else result[key] = value;
+  }
+  return result as unknown as NonNullable<OverlayInstance["settings"]>;
 }

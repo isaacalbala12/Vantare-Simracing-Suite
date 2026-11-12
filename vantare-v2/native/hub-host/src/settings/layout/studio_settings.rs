@@ -165,3 +165,75 @@ pub(super) fn apply(
     put(fields, "settings", &stored.0)?;
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    fn fields(settings: Value) -> Fields {
+        serde_json::from_value(json!({"settings":settings})).unwrap()
+    }
+    fn edit(fields: &mut Fields, patch: Value) -> Result<bool, HostError> {
+        apply(
+            fields,
+            &serde_json::from_value(patch).unwrap(),
+            Some(CatalogAccess::Pro),
+        )
+    }
+    fn saved(fields: &Fields) -> Value {
+        serde_json::from_str(fields.0["settings"].get()).unwrap()
+    }
+    #[test]
+    fn sparse_write_preserves_unknown_members_and_uses_domain_disk_format() {
+        let mut doc = fields(json!({"kind":"pedals","gap":2,"vendor":{"raw":42}}));
+        assert!(edit(&mut doc, json!({"kind":"pedals","gap":3})).unwrap());
+        let value = saved(&doc);
+        assert_eq!(value["gap"], 3.0);
+        assert_eq!(value["vendor"], json!({"raw":42}));
+        assert!(value.get("brandVisible").is_none());
+        let native: vantare_domain::widget_settings::pedals::Settings =
+            serde_json::from_value(value).unwrap();
+        assert_eq!(native.gap, 3.0);
+    }
+    #[test]
+    fn unchanged_patch_neither_seeds_defaults_nor_changes_bytes() {
+        let mut doc = fields(json!({"kind":"pedals","gap":2,"extra":"untouched"}));
+        let before = doc.0["settings"].get().to_owned();
+        assert!(!edit(&mut doc, json!({"kind":"pedals","gap":2})).unwrap());
+        assert_eq!(doc.0["settings"].get(), before);
+    }
+    #[test]
+    fn a_different_kind_and_unverified_access_cannot_write() {
+        let mut doc = fields(json!({"kind":"pedals"}));
+        let before = doc.0["settings"].get().to_owned();
+        assert!(matches!(
+            edit(&mut doc, json!({"kind":"delta","size":"compact"})),
+            Err(HostError::Denied)
+        ));
+        assert!(matches!(
+            apply(
+                &mut doc,
+                &serde_json::from_value(json!({"kind":"pedals","gap":3})).unwrap(),
+                None
+            ),
+            Err(HostError::Denied)
+        ));
+        assert_eq!(doc.0["settings"].get(), before);
+    }
+    #[test]
+    fn column_edits_keep_opaque_nested_fields_and_native_identity() {
+        let mut doc = fields(json!({"kind":"relative","contentVersion":1,"columns":[{
+            "id":"native-id","metricId":"driverName","enabled":true,"widthPreset":"lg",
+            "format":{"mode":"full","maxChars":20,"extension":{"bytes":7}},
+            "style":{"align":"left","future":true},"vendor":12
+        }]}));
+        assert!(edit(&mut doc,json!({"kind":"relative","columns":[{"metric":"driverName","format":{"maxChars":21}}]})).unwrap());
+        let column = &saved(&doc)["columns"][0];
+        assert_eq!(column["id"], "native-id");
+        assert_eq!(column["format"]["maxChars"], 21);
+        assert_eq!(column["format"]["extension"], json!({"bytes":7}));
+        assert_eq!(column["style"]["future"], true);
+        assert_eq!(column["vendor"], 12);
+        assert_eq!(column["widthPreset"], "lg");
+    }
+}

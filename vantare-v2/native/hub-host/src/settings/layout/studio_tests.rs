@@ -565,3 +565,58 @@ fn off_track_is_saved_in_native_spelling_and_projection_clamps_without_rewriting
     assert_eq!(changed.instances[0].off_track, OffTrack::AlwaysVisible);
     assert_eq!(layout(&path)["instances"][0]["offTrack"], "always_visible");
 }
+
+#[test]
+fn typed_settings_read_never_seeds_and_sparse_write_uses_existing_cas() {
+    let (_root, path, before) = fixture();
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    let view = state.view(access);
+    assert!(view.instances[0].settings.is_some());
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let patch = InstancePatch::Settings(
+        serde_json::from_value(serde_json::json!({"kind":"standings","rowCount":21})).unwrap(),
+    );
+    assert!(matches!(
+        state.edit(
+            Edit::Instance("widget-1".into(), patch.clone()),
+            &"f".repeat(64),
+            access
+        ),
+        Err(HostError::StudioConflict { .. })
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let changed = state
+        .edit(
+            Edit::Instance("widget-1".into(), patch),
+            &view.revision,
+            access,
+        )
+        .unwrap();
+    assert_ne!(changed.revision, view.revision);
+    let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let settings = &saved["instances"][0]["settings"];
+    let native: vantare_domain::widget_settings::standings::Settings =
+        serde_json::from_value(settings.clone()).unwrap();
+    assert_eq!(native.row_count, 21);
+    assert_eq!(settings["private"]["a"], 1.0);
+    assert!(settings.get("brandVisible").is_none());
+    let undo = state.edit(Edit::Undo, &changed.revision, access).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert_eq!(undo.revision, view.revision);
+}
+#[test]
+fn projected_settings_that_exceed_the_transport_become_protected() {
+    let (_root, path, _) = fixture();
+    let mut document: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    document["instances"][0]["settings"]["headerFirst"] =
+        serde_json::Value::String("x".repeat(crate::frame::LIMIT + 1));
+    let bytes = serde_json::to_vec(&document).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let view = State::new(path.clone()).view(Some(CatalogAccess::Pro));
+    assert_eq!(view.state, StudioState::Protected);
+    assert!(view.instances.is_empty());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    assert!(crate::studio::widget_settings::fits_view(&view));
+}

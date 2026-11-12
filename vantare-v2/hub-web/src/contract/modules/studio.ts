@@ -1,3 +1,4 @@
+import { isWidgetSettings, isWidgetSettingsPatch } from "./studio-widget-settings";
 import {
   studioAddKinds,
   studioKinds,
@@ -38,7 +39,9 @@ function instance(v: unknown) {
       "showIn",
       "offTrack",
       "size",
+      "settings",
     ]) &&
+    isWidgetSettings(v.settings, v.kind) &&
     id(v.id) &&
     oneOf(v.kind, studioKinds) &&
     typeof v.visible === "boolean" &&
@@ -142,7 +145,9 @@ export function isRequest(v: Record<string, unknown>): boolean {
             p.value <= studioLimits.opacityMax
         : p.field === "showIn"
           ? showIn(p.value)
-          : p.field === "offTrack" && oneOf(p.value, studioOffTracks);
+          : p.field === "settings"
+            ? isWidgetSettingsPatch(p.value)
+            : p.field === "offTrack" && oneOf(p.value, studioOffTracks);
     }
     default:
       return false;

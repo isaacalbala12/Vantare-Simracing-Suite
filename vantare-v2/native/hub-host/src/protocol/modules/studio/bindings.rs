@@ -201,6 +201,39 @@ pub(crate) fn corpus() -> serde_json::Value {
         .into_iter()
         .map(|request| UiToHost::Request { id: 1, request })
         .collect();
+    for kind in [
+        WidgetKind::Standings,
+        WidgetKind::Relative,
+        WidgetKind::Delta,
+        WidgetKind::Pedals,
+        WidgetKind::FuelStrategy,
+    ] {
+        let source = crate::widget_defaults::get(kind.id()).expect("defaults");
+        let mut sample = value_for_settings(kind, source.settings.get());
+        sample.revision = "0".repeat(64);
+        host.push(HostToUi::Response {
+            id: 1,
+            result: Reply::StudioGet { value: sample },
+        });
+    }
+    for value in [
+        serde_json::json!({"kind":"standings","rowCount":30}),
+        serde_json::json!({"kind":"relative","columns":[{"metric":"driverName","format":{"mode":"full","maxChars":64}}]}),
+        serde_json::json!({"kind":"delta","showBar":false}),
+        serde_json::json!({"kind":"pedals","gap":12}),
+        serde_json::json!({"kind":"fuel-strategy","historyRows":8}),
+    ] {
+        ui.push(UiToHost::Request {
+            id: 1,
+            request: Request::StudioInstance {
+                id: "widget-1".into(),
+                patch: InstancePatch::Settings(
+                    serde_json::from_value(value).expect("sample settings patch"),
+                ),
+                base_revision: "0".repeat(64),
+            },
+        });
+    }
     ui.push(UiToHost::Subscribe {
         topic: crate::protocol::Topic::Studio,
     });
@@ -281,6 +314,11 @@ fn widget_settings_types(text: &mut String) {
             "names": native::columns::COLUMN_NAME_MODES, "aligns": native::columns::COLUMN_ALIGNS,
             "metrics": metrics, "legacy": native::columns::LEGACY_TABLE_COLUMNS,
             "maxChars": native::columns::MAX_CHARS_LIMIT },
+        "looks": native::look::Look::ALL,
+        "tones": [native::look::Tone::Neo, native::look::Tone::Neutro],
+        "accents": [native::look::Accent::Red, native::look::Accent::Amber, native::look::Accent::Green, native::look::Accent::White],
+        "pedals": {"gapMin":native::pedals::GAP_MIN,"gapMax":native::pedals::GAP_MAX,"gapStep":native::pedals::GAP_STEP},
+        "fuel": {"historyMin":native::fuel_strategy::FUEL_HISTORY_MIN,"historyMax":native::fuel_strategy::FUEL_HISTORY_MAX,"historyStep":native::fuel_strategy::FUEL_HISTORY_STEP},
         "tableSizes": native::TABLE_SIZES, "footerKeys": native::FOOTER_KEYS,
         "footerMax": native::FOOTER_ITEMS_MAX
     });
@@ -304,4 +342,30 @@ fn widget_settings_types(text: &mut String) {
         serde_json::to_string(&defaults).expect("defaults")
     )
     .expect("defaults");
+}
+
+fn value_for_settings(kind: WidgetKind, source: &str) -> StudioView {
+    let mut value = State::unavailable(
+        StudioState::Ready,
+        Some(vantare_ipc::control::CatalogAccess::Pro),
+    );
+    value.instances.push(OverlayInstance {
+        id: "widget-1".into(),
+        kind,
+        visible: true,
+        locked: false,
+        opacity: 100,
+        show_in: ShowIn {
+            practice: true,
+            qualifying: true,
+            race: true,
+        },
+        off_track: OffTrack::Inherit,
+        size: OverlaySize {
+            width: 300,
+            height: 200,
+        },
+        settings: WidgetSettings::from_json(kind, source).expect("settings sample"),
+    });
+    value
 }

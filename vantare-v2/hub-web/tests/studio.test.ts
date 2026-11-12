@@ -108,7 +108,6 @@ describe("Studio document contract", () => {
     for (const forbidden of [
       '"x":',
       '"y":',
-      '"settings":',
       "Users",
       ":/",
       "executable",

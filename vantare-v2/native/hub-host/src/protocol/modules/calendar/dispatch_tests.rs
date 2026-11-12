@@ -570,6 +570,16 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         } else {
             assert!(pipe.get_ref().is_empty(), "{blocked}");
         }
+        if matches!(blocked, "general" | "both") {
+            let feed: vantare_ipc::session_alerts::Feed = serde_json::from_slice(
+                &std::fs::read(fixture.0.join("session-alerts-feed.json")).unwrap(),
+            )
+            .unwrap();
+            assert!(
+                !feed.events.is_empty(),
+                "overlay feed must ignore General: {blocked}"
+            );
+        }
         assert_eq!(session.core.requests, 0);
     }
 }

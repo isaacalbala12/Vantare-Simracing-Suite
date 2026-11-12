@@ -150,6 +150,30 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertNotIn("--skip", workflow)
         self.assertNotIn("continue-on-error", workflow)
 
+    def test_native_test_matrix_covers_every_partition(self) -> None:
+        workflow = (Path(__file__).resolve().parents[1] / 'workflows/branch-channel-gates.yml').read_text(encoding='utf-8')
+        block = workflow.split('  native_tests:', 1)[1].split('\n  native_lifecycle_build:', 1)[0]
+        self.assertIn("-Suite '${{ matrix.suite }}'", block)
+        self.assertIn("-Partition '${{ matrix.partition }}'", block)
+        entries = re.findall(
+            r"- suite: (\w+)[^\n]*\n\s+label: [^\n]*\n\s+partition: '?([^'\n]*)'?",
+            block,
+        )
+        test_parts = [partition for suite, partition in entries if suite == 'test']
+        self.assertEqual(block.count('- suite: test'), len(test_parts),
+                         'algún leg de suite: test no declara partición')
+        self.assertGreaterEqual(len(test_parts), 2)
+        parsed = []
+        for partition in test_parts:
+            match = re.fullmatch(r'hash:(\d+)/(\d+)', partition)
+            self.assertIsNotNone(match, partition)
+            parsed.append((int(match.group(1)), int(match.group(2))))
+        denominators = {denominator for _, denominator in parsed}
+        self.assertEqual(len(denominators), 1, test_parts)
+        denominator = denominators.pop()
+        self.assertEqual(sorted(numerator for numerator, _ in parsed),
+                         list(range(1, denominator + 1)))
+
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(
             validate("pull_request", "refs/pull/1/merge", "nightly", "vantareapp/isa-121"),

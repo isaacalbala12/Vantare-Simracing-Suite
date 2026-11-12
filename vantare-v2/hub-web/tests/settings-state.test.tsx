@@ -598,7 +598,11 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     const hook = mount("launcher-ready", <Shell />);
     await loaded(hook);
     fireEvent.keyDown(window, { key: "l", ctrlKey: true });
-    await screen.findByText(t("shell.favoriteFailed"));
+    await waitFor(() =>
+      expect(document.querySelector(".v-toast")?.textContent).toContain(
+        t("shell.favoriteFailed"),
+      ),
+    );
   });
   it("retries only the losing intent and preserves the winner", async () => {
     const hook = mount("ajustes-conflicto");

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   AppDraft,
   AppEditor,
@@ -17,6 +18,39 @@ import {
 } from "../WindowDialog";
 import { AppMark } from "./Profiles";
 import "./applications.css";
+
+export function ApplicationEditorDrawer({
+  children,
+  pending,
+  onClose,
+  returnFocus,
+}: {
+  children: ReactNode;
+  pending: boolean;
+  onClose: () => void;
+  returnFocus: () => HTMLElement | false;
+}) {
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !pending) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="v-backdrop" />
+        <Dialog.Popup
+          className="v-launcher-app-drawer"
+          aria-label={text.editor}
+          aria-describedby={undefined}
+          finalFocus={returnFocus}
+        >
+          {children}
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
 
 export function ApplicationCatalog({
   value,
@@ -235,10 +269,7 @@ export function ApplicationFields({
   onDiscard: () => void;
 }) {
   return (
-    <section
-      className="v-launcher-catalog v-launcher-app-editor"
-      aria-label={text.editor}
-    >
+    <div className="v-launcher-catalog v-launcher-app-editor">
       <header>
         <h2>{text.editor}</h2>
       </header>
@@ -303,7 +334,7 @@ export function ApplicationFields({
           </Button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 export function ApplicationRemoval({

@@ -1,5 +1,4 @@
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
-import { Dialog } from "@base-ui/react/dialog";
 import { type ReactNode, useId, useState } from "react";
 import { isCalendarAlerts } from "../../contract/calendar-config-validation";
 import {
@@ -26,6 +25,7 @@ import {
 import { civilDay, clock } from "./calendarDate";
 import { Segmented, Switch } from "./Forms";
 import { Tooltip } from "./Layers";
+import { WindowDialog as Dialog } from "./WindowDialog";
 import "../assets/calendar-alerts.css";
 import "../design/generated/calendar-tokens.css";
 import "./calendar-alerts.css";

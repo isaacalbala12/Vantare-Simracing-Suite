@@ -1,5 +1,4 @@
 import { Checkbox } from "@base-ui/react/checkbox";
-import { Dialog } from "@base-ui/react/dialog";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { useId, useRef } from "react";
@@ -13,6 +12,7 @@ import { Icon } from "../assets/icons/Icon";
 import { calendarIcsText as text } from "../i18n/calendarIcs";
 import { Button, IconButton } from "./Button";
 import { clock } from "./calendarDate";
+import { WindowDialog as Dialog } from "./WindowDialog";
 import "../assets/calendar-ics.css";
 import "./calendar-ics.css";
 

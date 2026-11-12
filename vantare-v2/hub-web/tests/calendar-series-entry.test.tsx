@@ -19,8 +19,16 @@ import {
   ToastViewport,
   TooltipProvider,
 } from "../src/renderer/ui/Layers";
+import { WindowDialogProvider } from "../src/renderer/ui/WindowDialog";
 
-const render = (ui: ReactNode) => renderTree(ui, { wrapper: ToastProvider });
+const render = (ui: ReactNode) =>
+  renderTree(ui, {
+    wrapper: ({ children }) => (
+      <WindowDialogProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </WindowDialogProvider>
+    ),
+  });
 const model = vi.hoisted(() => ({
   client: { request: vi.fn() },
   view: undefined as CalendarView | undefined,
@@ -404,7 +412,7 @@ it("opens the ICS dialog from the real detail drawer and returns to it on cancel
   await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
 });
 
-it("keeps only one calendar dialog open when switching between alerts and ICS", () => {
+it("blocks background switches until the active calendar dialog is closed", () => {
   render(
     <TooltipProvider>
       <CalendarEntry />
@@ -413,10 +421,20 @@ it("keeps only one calendar dialog open when switching between alerts and ICS", 
   fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
   expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
+  expect(
+    screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeNull();
+  fireEvent.keyDown(screen.getByRole("dialog", { name: "Avisos" }), {
+    key: "Escape",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
   expect(screen.queryByRole("dialog", { name: "Avisos" })).toBeNull();
   expect(
     screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  expect(screen.queryByRole("dialog", { name: "Avisos" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
   fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
   expect(
     screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),

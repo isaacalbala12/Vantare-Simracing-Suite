@@ -1,4 +1,3 @@
-import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -22,6 +21,7 @@ import { Button } from "./Button";
 import { WeekBoard } from "./CalendarWeekBoard";
 import { civilDay, clock, datePart, weekTitle } from "./calendarDate";
 import { Segmented } from "./Forms";
+import { WindowDialog as BaseDialog } from "./WindowDialog";
 import "./calendar-week-live.css";
 export interface CalendarWeekState {
   offset: number;

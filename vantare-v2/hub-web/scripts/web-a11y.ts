@@ -6,6 +6,7 @@ import { chromium, type Locator } from "playwright-core";
 import { checkAccessGate } from "./check-access-gate.ts";
 import { checkAccessStates } from "./check-access-states.ts";
 import { checkAccount } from "./check-account.ts";
+import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import {
@@ -151,6 +152,7 @@ try {
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccount(page, server.resolvedUrls?.local[0] ?? "", evidence);

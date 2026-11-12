@@ -133,7 +133,7 @@ pub(super) fn apply(
     patch.validate()?;
     let old = serde_json::to_value(typed_settings(kind, &stored)?.ok_or(HostError::Denied)?)
         .map_err(|_| HostError::Io)?;
-    let preset = patch.table_preset().map(|size| size.as_str());
+    let preset = patch.table_preset();
     let patch = serde_json::to_value(patch).map_err(|_| HostError::Io)?;
     let requested = patch.as_object().ok_or(HostError::Denied)?;
     let mut candidate = old.clone();

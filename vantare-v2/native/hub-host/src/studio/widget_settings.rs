@@ -449,10 +449,10 @@ pub enum WidgetSettingsPatch {
     FuelStrategy(FuelStrategyWidgetPatch),
 }
 impl WidgetSettingsPatch {
-    pub(crate) fn table_preset(&self) -> Option<&TableSize> {
+    pub(crate) fn table_preset(&self) -> Option<&str> {
         match self {
-            Self::Standings(patch) => patch.table_preset.as_ref(),
-            Self::Relative(patch) => patch.table_preset.as_ref(),
+            Self::Standings(patch) => patch.table_preset.as_ref().map(TableSize::as_str),
+            Self::Relative(patch) => patch.table_preset.as_ref().map(TableSize::as_str),
             _ => None,
         }
     }
@@ -528,15 +528,16 @@ pub(crate) fn fits_view(view: &super::StudioView) -> bool {
 }
 
 impl WidgetSettingsPatch {
-    pub(crate) fn validate(&self) -> Result<(), HostError> {
-        // A recipe replaces the whole native column configuration; mixing it
-        // with a field patch would make ordering decide the user's result.
-        if self.table_preset().is_some()
-            && serde_json::to_value(self).map_err(|_| HostError::Io)?
-                .as_object().is_none_or(|fields| fields.len() != 2)
-        {
-            return Err(HostError::Denied);
+    fn validate_table_preset(&self) -> Result<(), HostError> {
+        // A recipe is exclusive: serialization retains even explicit null fields.
+        let value = serde_json::to_value(self).map_err(|_| HostError::Io)?;
+        if value.as_object().is_none_or(|fields| fields.len() != 2) {
+            Err(HostError::Denied)
+        } else {
+            Ok(())
         }
+    }
+    pub(crate) fn validate(&self) -> Result<(), HostError> {
         fn range(value: Option<usize>, min: usize, max: usize) -> Result<(), HostError> {
             if value.is_some_and(|v| !(min..=max).contains(&v)) {
                 Err(HostError::Denied)
@@ -588,6 +589,9 @@ impl WidgetSettingsPatch {
             } else {
                 Ok(())
             }
+        }
+        if self.table_preset().is_some() {
+            return self.validate_table_preset();
         }
         match self {
             Self::Standings(p) => {

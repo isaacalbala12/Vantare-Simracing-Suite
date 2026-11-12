@@ -14,7 +14,9 @@ struct Recipes {
 fn columns(kind: WidgetKind, size: &str) -> Result<Value, HostError> {
     static DATA: OnceLock<Result<Recipes, ()>> = OnceLock::new();
     let data = DATA
-        .get_or_init(|| serde_json::from_str(include_str!("../../../data/table-presets.json")).map_err(|_| ()))
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("../../../data/table-presets.json")).map_err(|_| ())
+        })
         .as_ref()
         .map_err(|()| HostError::Protected)?;
     if data.version != 1 {
@@ -25,7 +27,10 @@ fn columns(kind: WidgetKind, size: &str) -> Result<Value, HostError> {
         WidgetKind::Relative => "relative",
         _ => return Err(HostError::Denied),
     };
-    let recipe = data.recipes.get(name).and_then(|sizes| sizes.get(size))
+    let recipe = data
+        .recipes
+        .get(name)
+        .and_then(|sizes| sizes.get(size))
         .ok_or(HostError::Protected)?;
     serde_json::to_value(recipe).map_err(|_| HostError::Io)
 }

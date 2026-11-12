@@ -277,7 +277,9 @@ export function applyWidgetSettings(
       unknown
     >;
     const recipes = tablePresets.recipes[current.kind];
-    const selected = recipes[patch.tablePreset];
+    const size = patch.tablePreset;
+    if (!size) return null;
+    const selected = recipes[size];
     if (!selected) return null;
     if (current.kind === "standings") {
       for (const key of ["practiceColumns", "qualifyingColumns"]) {

@@ -41,6 +41,14 @@ foreach($case in $statistics.results) {
             $checks+=Compare-Median "$app.$section.privateMiB" @($rows|ForEach-Object {[double]$_.privateBytes/1MB}) $reported.privateMiB.median
             $checks+=Compare-Median "$app.$section.cpuOneCorePercent" @($rows|ForEach-Object {[double]$_.cpuOneCorePercent}) $reported.cpuOneCorePercent.median
             $checks+=Compare-Median "$app.$section.gpuCount" @($rows|ForEach-Object {@($_.processMetrics|Where-Object role -eq 'gpu-process').Count}) $reported.gpuCount.median
+            $heaps=@()
+            foreach($row in $rows) {
+                $detail=Get-Content -LiteralPath (Join-Path $directory "$app-$section-$($row.iteration).json") -Raw|ConvertFrom-Json
+                Assert-Measurement ($null -ne $detail.heap.usedSize) 'Missing renderer heap'
+                Assert-Measurement (@($detail.startup.deniedSchemes).Count -eq 0) 'Unexpected external network attempt'
+                $heaps+=[double]$detail.heap.usedSize/1MB
+            }
+            $checks+=Compare-Median "$app.$section.heapUsedMiB" $heaps $reported.heapUsedMiB.median
         }
     }
     $deltas=@()

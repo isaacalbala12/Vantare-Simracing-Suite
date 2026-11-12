@@ -15,6 +15,7 @@ import type {
   CoreStatus,
   LauncherView,
 } from "../src/contract/generated/contract";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import { registeredSections } from "../src/renderer/app/ScreenRegistry";
@@ -72,13 +73,15 @@ async function mount() {
           <CSPProvider disableStyleElements>
             <TooltipProvider delay={0}>
               <ToastProvider>
-                <PilotProvider>
-                  <SettingsProvider>
-                    <WindowDialogProvider>
-                      <Shell />
-                    </WindowDialogProvider>
-                  </SettingsProvider>
-                </PilotProvider>
+                <AccountProvider>
+                  <PilotProvider>
+                    <SettingsProvider>
+                      <WindowDialogProvider>
+                        <Shell />
+                      </WindowDialogProvider>
+                    </SettingsProvider>
+                  </PilotProvider>
+                </AccountProvider>
               </ToastProvider>
             </TooltipProvider>
           </CSPProvider>

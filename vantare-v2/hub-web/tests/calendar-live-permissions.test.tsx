@@ -31,6 +31,7 @@ it("keeps the profile visible while launch and protected favorite writes are dis
       onLaunch={launch}
     />,
   );
+  expect(screen.getAllByText(/Sebring WEC/)).toHaveLength(2);
   const deferred = screen.getByRole("button", { name: /Lanzar a las/ });
   expect(deferred).toHaveProperty("disabled", true);
   expect(

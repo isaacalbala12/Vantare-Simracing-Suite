@@ -154,7 +154,7 @@ export function CalendarLiveView({
           <strong>{s.name}</strong>
           <span>
             <Tier series={s} />
-            {s.track.split(" (")[0]}
+            {s.track.replace(/\s*\(([^)]+)\)/gu, " $1")}
             {text.separator}
             {text.minutes(raceMinutes(s))}
           </span>

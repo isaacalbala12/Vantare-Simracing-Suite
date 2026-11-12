@@ -29,6 +29,8 @@
   --grad-neo: linear-gradient(145deg, #ffffff 0%, #faf7f7 100%);
   --grad-button: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
   --grad-button-hover: linear-gradient(180deg, #c42b36 0%, #ae1f2b 100%);
+  --calendar-proximas-hero: linear-gradient(110deg, #fbe4e6 0%, #ffffff 78%);
+  --calendar-proximas-wash-from: #c42b361a;
   --calendar-detail-neo: linear-gradient(180deg, #ffffff 0%, #faf7f7 100%);
   --text-on-accent: #ffffff;
 }
@@ -81,6 +83,8 @@
   --grad-neo: linear-gradient(145deg, #262022 0%, #1f1a1c 100%);
   --grad-button: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
   --grad-button-hover: linear-gradient(180deg, #c52f3b 0%, #b92a35 100%);
+  --calendar-proximas-hero: linear-gradient(110deg, #5c1720 0%, #1e1517 78%);
+  --calendar-proximas-wash-from: #ff525c42;
   --calendar-detail-neo: linear-gradient(180deg, #262022 0%, #1f1a1c 100%);
   --text-on-accent: #ffffff;
 }
@@ -103,6 +107,10 @@
   --calendar-class-lmgt3: #f08a2c;
   --calendar-class-gte: #d6b83a;
 }
+
+[data-palette="vantare"] .v-calendar { --calendar-proximas-wash-end: 50%; }
+
+[data-palette="classic"] .v-calendar { --calendar-proximas-wash-end: 46%; }
 
 :is(.v-calendar, .v-calendar-rail) {
   --calendar-filter-beginner: #cd7f32;

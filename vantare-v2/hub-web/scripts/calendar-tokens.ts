@@ -77,6 +77,16 @@ export function calendarTokens(source: string, filters: string) {
       values[token] =
         `linear-gradient(${angle}deg, ${color(match[1])} 0%, ${color(match[2])} 100%)`;
     }
+    // chrome.rs::hero_plain uses 110 degrees, an end stop at 78%, and a wash.
+    const heroRamp = values["grad-hero"]
+      .replace("118deg", "110deg")
+      .replace("100%", "78%");
+    if (heroRamp === values["grad-hero"])
+      throw new Error("Calendar upcoming hero ramp missing");
+    const wash = branch.match(/s\.hero_wash\.from = 0x([A-Fa-f0-9_]+);/);
+    if (!wash) throw new Error("Calendar upcoming hero wash missing");
+    values["calendar-proximas-hero"] = heroRamp;
+    values["calendar-proximas-wash-from"] = color(wash[1]);
     // Frozen ficha.rs uses the same neo ramp at 180 degrees.
     values["calendar-detail-neo"] = detailGradient(values["grad-neo"]);
     const white = source.match(/s\.on_primary = 0x([A-Fa-f0-9_]+);/);
@@ -141,6 +151,10 @@ export function calendarTokens(source: string, filters: string) {
       `[data-scheme="${scheme}"] :is(.v-calendar, .v-calendar-rail) {\n${classValues.join("\n")}\n}`,
     );
   }
+  css.push(
+    '[data-palette="vantare"] .v-calendar { --calendar-proximas-wash-end: 50%; }',
+    '[data-palette="classic"] .v-calendar { --calendar-proximas-wash-end: 46%; }',
+  );
   const filterValues = ["beginner", "intermediate", "advanced"].map((tier) => {
     const match = filters.match(new RegExp(`"${tier}" => 0x([A-Fa-f0-9_]+),`));
     if (!match) throw new Error(`Calendar filter color missing: ${tier}`);

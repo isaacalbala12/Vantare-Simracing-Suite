@@ -32,3 +32,12 @@
 :root {
   --launcher-profile-tools: #40207a;
 }
+
+/* orbit::app_badge fallback (kit.rs): fixed neutral badge, independent of theme. */
+:root {
+  --launcher-app-fallback-bg: linear-gradient(135deg, #3a3a40, #252529);
+  --launcher-app-fallback-ink: #ffffff;
+  /* GPUI neo_shadow blur is sigma; CSS blur is twice sigma. Viewport clips it. */
+  --launcher-profile-shadow: 0 12px 56px #00000059;
+  --launcher-profile-shadow-classic: 0 14px 64px #00000080;
+}

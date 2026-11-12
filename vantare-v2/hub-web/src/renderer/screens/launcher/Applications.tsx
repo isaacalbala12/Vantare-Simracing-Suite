@@ -314,6 +314,13 @@ export function Applications() {
       void mutate({ ...value.request, baseRevision: value.revision });
     else void load().catch(() => setError(text.failed));
   };
+  const closeEditor = () => {
+    if (pending) return;
+    retry.current = undefined;
+    setEditor(undefined);
+    setSelected(null);
+    setError(undefined);
+  };
   if (!catalog)
     return error ? (
       <Callout
@@ -335,13 +342,13 @@ export function Applications() {
       {editor ? (
         <ApplicationEditorDrawer
           pending={pending}
-          onClose={() => {
-            setEditor(undefined);
-            setSelected(null);
-            setError(undefined);
-          }}
+          onClose={closeEditor}
           returnFocus={() =>
-            editorOrigin.current?.isConnected ? editorOrigin.current : false
+            editorOrigin.current?.isConnected
+              ? editorOrigin.current
+              : (document.querySelector<HTMLElement>(
+                  '.v-launcher-applications input[type="search"]',
+                ) ?? false)
           }
         >
           <ApplicationFields
@@ -362,14 +369,10 @@ export function Applications() {
               });
             }}
             onSave={() => save()}
-            onCancel={() => {
-              setEditor(undefined);
-              setSelected(null);
-              setError(undefined);
-            }}
+            onCancel={closeEditor}
             onRetry={again}
             onDiscard={discard}
-          />{" "}
+          />
         </ApplicationEditorDrawer>
       ) : null}
       <ApplicationCatalog

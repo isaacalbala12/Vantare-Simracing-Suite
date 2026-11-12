@@ -152,7 +152,7 @@ function fullCover(body: string) {
     )
   );
 }
-describe("dialog architecture outside Calendar", () => {
+describe("dialog architecture for every screen", () => {
   it("finds namespace, combined, dynamic and native bypasses with an AST", () => {
     for (const source of [
       'import * as D from "@base-ui/react/dialog";',

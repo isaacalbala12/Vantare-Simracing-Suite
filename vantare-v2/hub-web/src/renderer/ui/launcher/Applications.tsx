@@ -269,10 +269,7 @@ export function ApplicationFields({
   onDiscard: () => void;
 }) {
   return (
-    <section
-      className="v-launcher-catalog v-launcher-app-editor"
-      aria-label={text.editor}
-    >
+    <div className="v-launcher-catalog v-launcher-app-editor">
       <header>
         <h2>{text.editor}</h2>
       </header>
@@ -337,7 +334,7 @@ export function ApplicationFields({
           </Button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 export function ApplicationRemoval({

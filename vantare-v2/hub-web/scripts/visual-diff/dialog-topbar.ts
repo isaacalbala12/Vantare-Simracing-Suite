@@ -248,7 +248,7 @@ scenes["dialog-topbar-app-edit"] = {
       .getByRole("button", { name: "Editar OBS Studio", exact: true })
       .click();
     await page
-      .getByRole("region", {
+      .getByRole("dialog", {
         name: "Aplicación · borrador sin guardar",
         exact: true,
       })

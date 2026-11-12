@@ -11,7 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { appText as text } from "../src/renderer/i18n/launcher-apps";
 import { Applications } from "../src/renderer/screens/launcher/Applications";
 import { ProfileEditorProvider } from "../src/renderer/screens/launcher/editor-state";
@@ -91,6 +91,50 @@ function mount(scene = "launcher-aplicaciones") {
 }
 
 describe("application catalog", () => {
+  it("restores the catalog search when the editor origin disappears", async () => {
+    mount();
+    const trigger = await screen.findByRole("button", {
+      name: text.edit("OBS Studio"),
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog", { name: text.editor });
+    trigger.remove();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("searchbox", { name: text.search }),
+      ),
+    );
+  });
+  it("cannot replay a closed conflicted editor save through the catalog retry", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("launcher-aplicaciones-conflicto");
+    fireEvent.click(
+      await screen.findByRole("button", { name: text.edit("OBS Studio") }),
+    );
+    const editor = await screen.findByRole("dialog", { name: text.editor });
+    fireEvent.change(within(editor).getByRole("textbox", { name: text.name }), {
+      target: { value: "Borrador que se descarta" },
+    });
+    fireEvent.click(within(editor).getByRole("button", { name: text.save }));
+    await screen.findByText(text.conflict);
+    fireEvent.keyDown(editor, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: text.editor })).toBeNull(),
+    );
+    requests.mockRejectedValueOnce(new HostFailure({ kind: "io" }));
+    fireEvent.click(screen.getByRole("button", { name: text.reload }));
+    await screen.findByText(text.failed);
+    fireEvent.click(screen.getByRole("button", { name: text.retry }));
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.app.save",
+      ),
+    ).toHaveLength(1);
+    expect(requests.mock.calls.at(-1)?.[0].method).toBe("launcher.catalog");
+  });
   it("closes the application drawer with Escape without saving and restores its origin", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
@@ -207,7 +251,7 @@ describe("application catalog", () => {
       name: /Añadir aplicación/,
     });
     fireEvent.click(add);
-    const form = await screen.findByRole("region", { name: text.editor });
+    const form = await screen.findByRole("dialog", { name: text.editor });
     fireEvent.change(within(form).getByRole("textbox", { name: text.name }), {
       target: { value: "Nueva app QA" },
     });
@@ -226,7 +270,7 @@ describe("application catalog", () => {
     });
     fireEvent.click(within(form).getByRole("button", { name: text.retry }));
     await screen.findByRole("button", { name: "Editar Último cambio QA" });
-    expect(screen.queryByRole("region", { name: text.editor })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: text.editor })).toBeNull();
   });
   it("asks before removing a custom app and leaves official apps without a delete action", async () => {
     mount();

@@ -40,5 +40,18 @@ accesibles, Escape y retirada de `inert`; Avisos añade el bloqueo de Ctrl L y
 la restauración del foco. También comprueba el cajón de aplicaciones y su foco
 de retorno. No usa jsdom como prueba de `inert`.
 
+El contador incluye `launcher.favorite` y `launcher.launch`. Cada escena cierra
+su capa y prueba Ctrl L en la pantalla normal como control positivo. El límite
+del ciclo se comprueba desde el primer control: Mayús Tab lleva al último botón
+de ventana y Tab devuelve al primero, sin suponer que veinte pulsaciones bastan
+en un calendario ampliado. También se ejecutan Ampliar → Ficha → Escape y
+Ficha → ICS → Cancelar, con sus padres inertes y foco en los orígenes reales.
+
+El intercambio directo de Avisos/ICS desde el fondo se ha retirado: el ámbito
+modal ya no permite accionarlo. El cajón de aplicaciones vuelve al buscador si
+desaparece el origen y descarta su intención de reintento al cerrarse.
+La política del zoom dentro de diálogos queda para la decisión de accesibilidad
+de [#2183](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2183).
+
 No cambia el contrato, el proceso principal, CSP, preload, canales de avisos ni
 la vista previa que mantiene el worker D.

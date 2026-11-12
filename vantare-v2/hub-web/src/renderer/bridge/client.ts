@@ -8,6 +8,12 @@ import type {
   UiToHost,
 } from "../../contract/generated/contract";
 import { bounded, isHostMessage } from "../../contract/validation";
+import {
+  type CloseClock,
+  type ReportCloseHandler,
+  ReportClosePreparation,
+  reportCloseMethods,
+} from "./report-close";
 import { requestDeadline } from "./request-deadlines";
 
 declare const __VANTARE_RENDERER_MOCK__: boolean;
@@ -43,6 +49,7 @@ export class Client {
   private closeAnswered = false;
   private closeSequence = 0;
   private closeReason: CloseReason = "window";
+  private reportClose: ReportClosePreparation;
   private extraGuards = new Set<
     (reason: CloseReason) => boolean | Promise<boolean>
   >();
@@ -58,6 +65,7 @@ export class Client {
       resolve: (reply: Reply) => void;
       reject: (error: HostFailure) => void;
       timer: ReturnType<typeof setTimeout> | undefined;
+      dispose?: () => void;
     }
   >();
   private listeners = new Set<(message: HostToUi) => void>();
@@ -65,13 +73,21 @@ export class Client {
     private port: MessagePort,
     private cleanup: () => void = () => {},
     private bootstrap?: () => void,
+    clock?: CloseClock,
   ) {
+    this.reportClose = new ReportClosePreparation(clock);
     port.onmessage = ({ data }: MessageEvent<unknown>) => {
       if (!isHostMessage(data) || !bounded(data)) return;
+      if (data.kind === "closeRequested") {
+        this.beginClose(data.reason);
+        for (const receive of this.listeners) receive(data);
+        return;
+      }
       if (data.kind === "response" || data.kind === "failure") {
         const request = this.pending.get(data.id);
         if (request) {
           clearTimeout(request.timer);
+          request.dispose?.();
           this.pending.delete(data.id);
           this.observed({
             id: data.id,
@@ -87,20 +103,6 @@ export class Client {
       }
       this.answerWhenIdle();
       for (const receive of this.listeners) receive(data);
-      if (data.kind === "closeRequested") {
-        this.closing = true;
-        this.closeAnswered = false;
-        this.closeReason = data.reason;
-        if (data.reason === "live") {
-          for (const pending of this.pending.values()) {
-            clearTimeout(pending.timer);
-            pending.reject(new HostFailure({ kind: "busy" }));
-          }
-          this.pending.clear();
-        }
-        this.closeSequence++;
-        this.answerWhenIdle();
-      }
     };
     port.start();
   }
@@ -192,6 +194,81 @@ export class Client {
       this.extraGuards.delete(guard);
     };
   }
+  setReportClosePreparation(handler: ReportCloseHandler) {
+    return this.reportClose.register(handler);
+  }
+  private beginClose(reason: CloseReason) {
+    const rank = (reason: CloseReason) =>
+      reason === "window" ? 0 : reason === "restart" ? 1 : 2;
+    if (this.closing && rank(reason) <= rank(this.closeReason)) return;
+    this.closing = true;
+    this.closeAnswered = true;
+    this.closeReason = reason;
+    const sequence = ++this.closeSequence;
+    this.reportClose.cancel();
+    if (reason !== "window") {
+      for (const pending of this.pending.values()) {
+        clearTimeout(pending.timer);
+        pending.dispose?.();
+        pending.reject(new HostFailure({ kind: "busy" }));
+      }
+      this.pending.clear();
+      this.finishClose(true, sequence, reason);
+      return;
+    }
+    const started = this.reportClose.start(
+      async (fields, signal) => {
+        const reply = await this.issue(
+          { method: reportCloseMethods[0], fields },
+          undefined,
+          signal,
+        );
+        if (reply.method !== "draft.save")
+          throw new HostFailure({ kind: "rejected" });
+        return reply;
+      },
+      (allow) => {
+        if (sequence !== this.closeSequence) return;
+        if (!allow) this.finishClose(false, sequence, reason);
+        else {
+          if (allow === "discard") {
+            for (const [id, pending] of this.pending) {
+              if (
+                ["draft.", "report.", "testing.", "triage."].some((prefix) =>
+                  pending.method.startsWith(prefix),
+                )
+              ) {
+                clearTimeout(pending.timer);
+                pending.dispose?.();
+                this.pending.delete(id);
+                pending.reject(new HostFailure({ kind: "busy" }));
+              }
+            }
+          }
+          this.closeAnswered = false;
+          this.answerWhenIdle();
+        }
+      },
+    );
+    if (!started) {
+      this.closeAnswered = false;
+      this.answerWhenIdle();
+    }
+  }
+  private finishClose(allow: boolean, sequence: number, reason: CloseReason) {
+    if (sequence !== this.closeSequence) return;
+    if (!allow) {
+      this.closeSequence++;
+      this.closing = false;
+      this.closeAnswered = false;
+    }
+    try {
+      this.send({ kind: "closeAnswer", allow });
+    } finally {
+      for (const receive of this.closeListeners) receive(reason, allow);
+    }
+    if (!allow) for (const receive of this.vetoListeners) receive(reason);
+  }
   private answerWhenIdle() {
     if (!this.closing || this.closeAnswered || this.pending.size > 0) return;
     this.closeAnswered = true;
@@ -208,25 +285,23 @@ export class Client {
         return reason === "live" || answers.every(Boolean);
       })
       .catch(() => reason === "live")
-      .then((allow) => {
-        if (sequence !== this.closeSequence) return;
-        if (!allow && reason !== "controlEof") {
-          this.closing = false;
-          this.closeAnswered = false;
-        }
-        try {
-          this.send({ kind: "closeAnswer", allow });
-        } finally {
-          for (const receive of this.closeListeners) receive(reason, allow);
-        }
-        if (!allow) for (const receive of this.vetoListeners) receive(reason);
-      });
+      .then((allow) => this.finishClose(allow, sequence, reason));
   }
+
   request(
     request: Exclude<Request, { method: "window.close" }>,
     onSent?: () => void,
   ): Promise<Reply> {
     if (this.closing) return Promise.reject(new HostFailure({ kind: "busy" }));
+    return this.issue(request, onSent);
+  }
+  private issue(
+    request: Exclude<Request, { method: "window.close" }>,
+    onSent?: () => void,
+    signal?: AbortSignal,
+  ): Promise<Reply> {
+    if (signal?.aborted)
+      return Promise.reject(new HostFailure({ kind: "coreUnavailable" }));
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
       const deadline = requestDeadline(request.method);
@@ -234,6 +309,7 @@ export class Client {
         deadline === undefined
           ? undefined
           : setTimeout(() => {
+              this.pending.get(id)?.dispose?.();
               this.pending.delete(id);
               this.observed({
                 id,
@@ -244,10 +320,36 @@ export class Client {
               this.answerWhenIdle();
               reject(new HostFailure({ kind: "coreUnavailable" }));
             }, deadline);
-      this.pending.set(id, { method: request.method, resolve, reject, timer });
+      const abort = () => {
+        const entry = this.pending.get(id);
+        if (!entry) return;
+        clearTimeout(timer);
+        entry.dispose?.();
+        this.pending.delete(id);
+        this.observed({ id, method: request.method, phase: "done", error: { kind: "coreUnavailable" } });
+        reject(new HostFailure({ kind: "coreUnavailable" }));
+        this.answerWhenIdle();
+      };
+      const dispose = () => signal?.removeEventListener("abort", abort);
+      this.pending.set(id, {
+        resolve,
+        reject,
+        timer,
+        dispose,
+        method: request.method,
+      });
+      signal?.addEventListener("abort", abort, { once: true });
       this.observed({ id, method: request.method, phase: "start" });
-      this.send({ kind: "request", id, request });
-      onSent?.();
+      try {
+        this.send({ kind: "request", id, request });
+        onSent?.();
+      } catch {
+        clearTimeout(timer);
+        dispose();
+        this.pending.delete(id);
+        this.observed({ id, method: request.method, phase: "done", error: { kind: "coreUnavailable" } });
+        reject(new HostFailure({ kind: "coreUnavailable" }));
+      }
     });
   }
   closeWindow() {
@@ -276,8 +378,11 @@ export class Client {
   close() {
     this.closeSequence++;
     this.closing = true;
+    this.closeAnswered = true;
+    this.reportClose.cancel();
     for (const value of this.pending.values()) {
       clearTimeout(value.timer);
+      value.dispose?.();
       value.reject(new HostFailure({ kind: "coreUnavailable" }));
     }
     this.pending.clear();

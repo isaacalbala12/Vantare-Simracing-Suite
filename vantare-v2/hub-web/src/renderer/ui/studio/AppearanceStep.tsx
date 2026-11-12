@@ -21,11 +21,11 @@ const formats: Record<TableSize, string> = {
 export function AppearanceStep({ item }: { item: OverlayInstance }) {
   const model = useAppearance(item);
   const s = item.settings;
-  if (!s) return <p>{t.appearanceUnavailable}</p>;
+  if (!s || !model.readable) return <p>{t.appearanceUnavailable}</p>;
   const { disabled, pending, saving, patch } = model;
   const brand =
     s.kind === "standings" ? (
-      <dl className="v-appearance-brand">
+      <dl className="v-studio-appearance-brand">
         <dt>{t.widgetBrand}</dt>
         <dd>
           {s.brandVisible === undefined
@@ -43,7 +43,7 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
         title={t.colorGroup}
         active={["style", "accent", "transparent"].includes(saving ?? "")}
       >
-        <div className="v-appearance-row">
+        <div className="v-studio-appearance-row">
           <span>{t.styleLabel}</span>
           <Segmented
             label={t.widgetStyle}
@@ -60,7 +60,7 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
             }}
           />
         </div>
-        <div className="v-appearance-row">
+        <div className="v-studio-appearance-row">
           <span>{t.accentLabel}</span>
           <AccentSwatches
             value={s.accent}
@@ -245,7 +245,7 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
   }
   return (
     <div
-      className="v-appearance-groups"
+      className="v-studio-appearance-groups"
       aria-disabled={disabled || pending || undefined}
       data-pending={pending}
     >
@@ -294,7 +294,7 @@ function Group({
 }) {
   return (
     <section
-      className="v-appearance-group"
+      className="v-studio-appearance-group"
       aria-label={title}
       data-active={active}
     >

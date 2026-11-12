@@ -25,5 +25,11 @@ export function useAppearance(item: OverlayInstance) {
       setSaving(null);
     }
   };
-  return { disabled, pending: state.pending, saving, patch };
+  return {
+    readable: view?.state === "ready",
+    disabled,
+    pending: state.pending,
+    saving,
+    patch,
+  };
 }

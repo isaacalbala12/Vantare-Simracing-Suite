@@ -1,5 +1,7 @@
 use super::*;
-use crate::calendar::{CalendarBand, CalendarBandMode, CalendarDays, CalendarSlot};
+use crate::calendar::{
+    CalendarBand, CalendarBandMode, CalendarDays, CalendarSlot, POLL_MONDAY_MS, POLL_NORMAL_MS,
+};
 use chrono::Utc;
 fn setup() -> (CalendarView, CalendarAlerts, i64) {
     let schedule=CalendarSchedule::parse(br#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#).unwrap();
@@ -181,39 +183,6 @@ fn test_notice_has_fixed_shape_clock_limits_and_rate_limit() {
     assert!(serde_json::from_value::<CalendarNotice>(json).is_err());
 }
 #[test]
-fn new_week_requires_observed_transition_and_only_emits_once() {
-    let (mut view, mut alerts, now) = setup();
-    alerts.notify_week = true;
-    alerts.bands.clear(); // Isolate the publication notice from departure notices.
-    let mut s = Scheduler::default();
-    let clock = Instant::now();
-    s.tick(&view, &alerts, (now, clock), true, false, &Utc);
-    let schedule = view.official.as_mut().unwrap();
-    schedule.valid_from = "2026-11-16T00:00:00Z".into();
-    schedule.valid_until = "2026-11-23T00:00:00Z".into();
-    let next = date_millis("2026-11-16T00:00:00Z").unwrap();
-    let events = s.tick(
-        &view,
-        &alerts,
-        (next, clock + Duration::from_secs(1)),
-        true,
-        false,
-        &Utc,
-    );
-    assert!(matches!(events.as_slice(), [CalendarNotice::Week { .. }]));
-    assert!(
-        s.tick(
-            &view,
-            &alerts,
-            (next + 1000, clock + Duration::from_secs(2)),
-            true,
-            false,
-            &Utc
-        )
-        .is_empty()
-    );
-}
-#[test]
 fn bands_use_injected_local_zone_days_and_first_departure() {
     let (view, mut alerts, now) = setup();
     let schedule = view.official.as_ref().unwrap();
@@ -264,34 +233,252 @@ fn protected_or_unavailable_documents_cannot_emit_default_notifications() {
         );
     }
 }
+struct Root(std::path::PathBuf);
+impl Root {
+    fn new() -> Self {
+        let base = std::env::var_os("VANTARE_HUB_QA_ROOT")
+            .map_or_else(std::env::temp_dir, std::path::PathBuf::from);
+        std::fs::create_dir_all(&base).unwrap();
+        let path = base.join(format!(
+            "calendar-notices-{}",
+            vantare_services::random_id().unwrap()
+        ));
+        std::fs::create_dir(&path).unwrap();
+        Self(path)
+    }
+    fn state(&self) -> State {
+        State::new(self.0.clone())
+    }
+}
+impl Drop for Root {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+fn raw(schedule: &CalendarSchedule) -> String {
+    serde_json::to_string(schedule).unwrap()
+}
 #[test]
-fn expired_fallback_does_not_hide_an_advancing_current_official_week() {
-    let (mut view, mut alerts, _) = setup();
-    alerts.bands.clear();
-    alerts.notify_week = true;
-    view.official.as_mut().unwrap().valid_until = "2026-11-23T00:00:00Z".into();
-    let mut fallback = view.official.clone().unwrap();
-    fallback.valid_from = "2026-11-16T00:00:00Z".into();
-    fallback.valid_until = "2026-11-17T00:00:00Z".into();
-    view.fallback = Some(fallback);
-    let now = date_millis("2026-11-18T12:00:00Z").unwrap();
+fn stale_disk_bootstrap_is_quiet_but_a_later_refresh_announces_once_without_persistence() {
+    let root = Root::new();
+    let (view, _, now) = setup();
+    let current = view.official.unwrap();
+    let mut old = current.clone();
+    old.valid_from = "2026-11-02T00:00:00Z".into();
+    old.valid_until = "2026-11-09T00:00:00Z".into();
+    let bytes = raw(&old);
+    std::fs::write(root.0.join("official-schedule.json"), &bytes).unwrap();
     let clock = Instant::now();
-    let mut s = Scheduler::default();
+    let mut state = root.state();
+    state.load();
+    state.config();
+    state.notice_tick(now - 1000, clock, true, false);
+    state
+        .refresh_notices(Some(raw(&current)), None, now, true, false)
+        .unwrap();
     assert!(
-        s.tick(&view, &alerts, (now, clock), true, false, &Utc)
+        state
+            .notice_tick(now, clock + Duration::from_secs(1), true, false)
             .is_empty()
     );
-    view.official.as_mut().unwrap().valid_from = "2026-11-16T00:00:00Z".into();
+    let mut next = current.clone();
+    next.valid_from = "2026-11-16T00:00:00Z".into();
+    next.valid_until = "2026-11-23T00:00:00Z".into();
+    let arrival = date_millis("2026-11-16T00:00:01Z").unwrap();
+    state
+        .refresh_notices(Some(raw(&next)), None, arrival, true, false)
+        .unwrap();
     assert!(matches!(
+        state
+            .notice_tick(arrival, clock + Duration::from_secs(2), true, false)
+            .as_slice(),
+        [CalendarNotice::Week { .. }]
+    ));
+    state
+        .refresh_notices(Some(raw(&next)), None, arrival + 1000, true, false)
+        .unwrap();
+    assert!(
+        state
+            .notice_tick(arrival + 1000, clock + Duration::from_secs(3), true, false)
+            .is_empty()
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.0.join("official-schedule.json")).unwrap(),
+        bytes
+    );
+    let mut restarted = root.state();
+    restarted
+        .refresh_notices(Some(raw(&current)), None, now, true, false)
+        .unwrap();
+    restarted.notice_tick(now, clock, true, false);
+    assert!(
+        restarted
+            .notice_tick(now + 1000, clock + Duration::from_secs(1), true, false)
+            .is_empty()
+    );
+}
+#[test]
+fn future_publications_and_clock_crossings_never_create_week_notices() {
+    let root = Root::new();
+    let (view, _, now) = setup();
+    let current = view.official.unwrap();
+    std::fs::write(root.0.join("official-schedule.json"), raw(&current)).unwrap();
+    let mut state = root.state();
+    let mut future = current.clone();
+    future.valid_from = "2026-11-16T00:00:00Z".into();
+    future.valid_until = "2026-11-23T00:00:00Z".into();
+    let result = state
+        .refresh_notices(Some(raw(&future)), None, now, true, false)
+        .unwrap();
+    assert_eq!(result.official, Some(current));
+    let clock = Instant::now();
+    state.notice_tick(now, clock, true, false);
+    let crossed = date_millis("2026-11-16T00:00:01Z").unwrap();
+    assert!(
+        state
+            .notice_tick(crossed, clock + Duration::from_secs(1), true, false)
+            .is_empty()
+    );
+    state
+        .refresh_notices(Some(raw(&future)), None, crossed, true, false)
+        .unwrap();
+    assert!(matches!(
+        state
+            .notice_tick(crossed + 1000, clock + Duration::from_secs(2), true, false)
+            .as_slice(),
+        [CalendarNotice::Week { .. }]
+    ));
+}
+#[test]
+fn pruning_removes_expired_keys_and_preserves_live_keys() {
+    let (view, alerts, now) = setup();
+    let mut s = Scheduler::default();
+    let clock = Instant::now();
+    s.accept("expired", now - 1);
+    s.accept("live", now + 1000);
+    s.tick(&view, &alerts, (now, clock), true, false, &Utc);
+    assert!(!s.seen.contains_key("expired"));
+    assert!(s.seen.contains_key("live"));
+    s.tick(
+        &view,
+        &alerts,
+        (now + 1001, clock + Duration::from_secs(1)),
+        false,
+        false,
+        &Utc,
+    );
+    assert!(!s.seen.contains_key("live"));
+}
+#[test]
+fn a_transient_authority_drop_before_the_due_instant_does_not_erase_the_window() {
+    let (view, alerts, now) = setup();
+    let mut s = Scheduler::default();
+    let clock = Instant::now();
+    s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
+    s.tick(
+        &view,
+        &alerts,
+        (now - 500, clock + Duration::from_millis(500)),
+        false,
+        false,
+        &Utc,
+    );
+    assert_eq!(
         s.tick(
             &view,
             &alerts,
-            (now + 1000, clock + Duration::from_secs(1)),
+            (now, clock + Duration::from_secs(1)),
             true,
             false,
             &Utc
         )
-        .as_slice(),
-        [CalendarNotice::Week { .. }]
-    ));
+        .len(),
+        1
+    );
+}
+#[test]
+fn a_suspension_only_delivers_departures_that_are_still_future() {
+    let (view, alerts, _) = setup();
+    let now = date_millis("2026-11-12T11:55:00Z").unwrap();
+    let mut s = Scheduler::default();
+    let clock = Instant::now();
+    s.tick(&view, &alerts, (now, clock), true, false, &Utc);
+    let events = s.tick(
+        &view,
+        &alerts,
+        (now + 3_600_000, clock + Duration::from_secs(1)),
+        true,
+        false,
+        &Utc,
+    );
+    assert!(matches!(events.as_slice(),[CalendarNotice::Start{at,..}] if *at==now+3_900_000));
+}
+#[test]
+fn each_tick_is_capped_and_continuous_overflow_is_reported_once() {
+    let (mut view, mut alerts, now) = setup();
+    alerts.lead_min = 30;
+    let base = view.official.as_ref().unwrap().series[0].clone();
+    view.official.as_mut().unwrap().series.clear();
+    alerts.bands.clear();
+    for n in 0..9 {
+        let mut series = base.clone();
+        series.id = format!("qa{n}");
+        series.recurrence.interval_minutes = 1;
+        alerts.bands.push(CalendarBand {
+            series_id: series.id.clone(),
+            from: 0,
+            to: 1440,
+            days: CalendarDays::All,
+            mode: CalendarBandMode::Each,
+        });
+        view.official.as_mut().unwrap().series.push(series);
+    }
+    let clock = Instant::now();
+    let mut s = Scheduler::default();
+    s.tick(&view, &alerts, (now - 3_600_000, clock), true, false, &Utc);
+    assert_eq!(
+        s.tick(
+            &view,
+            &alerts,
+            (now, clock + Duration::from_secs(1)),
+            true,
+            false,
+            &Utc
+        )
+        .len(),
+        NOTICE_BATCH_LIMIT
+    );
+    assert!(s.limit_reported);
+    assert_eq!(
+        s.tick(
+            &view,
+            &alerts,
+            (now + 3_600_000, clock + Duration::from_secs(2)),
+            true,
+            false,
+            &Utc
+        )
+        .len(),
+        NOTICE_BATCH_LIMIT
+    );
+    assert!(s.limit_reported);
+}
+#[test]
+fn host_poll_cadence_is_utc_and_backoff_is_injected() {
+    let mut state = State::new(std::path::PathBuf::new());
+    let monday = date_millis("2026-11-09T11:00:00Z").unwrap();
+    let clock = Instant::now();
+    assert!(state.poll_due(monday));
+    state.poll_started(monday);
+    assert!(!state.poll_due(monday + POLL_MONDAY_MS - 1));
+    assert!(state.poll_due(monday + POLL_MONDAY_MS));
+    let afternoon = date_millis("2026-11-09T12:00:00Z").unwrap();
+    state.poll_started(afternoon);
+    assert!(!state.poll_due(afternoon + POLL_NORMAL_MS - 1));
+    assert!(state.poll_due(afternoon + POLL_NORMAL_MS));
+    assert!(!state.poll_due(-1));
+    assert!(state.poll_retry_ready(clock));
+    state.poll_attempted(clock);
+    assert!(!state.poll_retry_ready(clock + Duration::from_millis(999)));
+    assert!(state.poll_retry_ready(clock + Duration::from_secs(1)));
 }

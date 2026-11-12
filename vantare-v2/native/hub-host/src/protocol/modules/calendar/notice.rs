@@ -14,6 +14,7 @@ use std::{
 use ts_rs::TS;
 
 pub const NOTICE_TTL_MS: i64 = 60_000;
+pub const NOTICE_CLOCK_SKEW_MS: i64 = 5_000;
 pub const NOTICE_HISTORY_LIMIT: usize = 16_384;
 pub const NOTICE_PRESENTATION_LIMIT: usize = 1024;
 pub const NOTICE_BATCH_LIMIT: usize = 256;
@@ -75,7 +76,9 @@ impl CalendarNotice {
 #[derive(Default)]
 pub(super) struct Scheduler {
     since: Option<i64>,
-    week: Option<i64>,
+    refresh_initialized: bool,
+    pending_week: Option<CalendarNotice>,
+    limit_reported: bool,
     last_tick: Option<Instant>,
     last_enabled: bool,
     last_track: bool,
@@ -135,9 +138,28 @@ impl Scheduler {
         self.seen.insert(id.to_owned(), until);
         true
     }
+    #[cfg(test)]
     fn tick<Z: TimeZone>(
         &mut self,
         view: &CalendarView,
+        alerts: &CalendarAlerts,
+        time: (i64, Instant),
+        enabled: bool,
+        in_track: bool,
+        zone: &Z,
+    ) -> Vec<CalendarNotice> {
+        self.tick_current(
+            agenda::current(view, time.0).as_ref(),
+            alerts,
+            time,
+            enabled,
+            in_track,
+            zone,
+        )
+    }
+    fn tick_current<Z: TimeZone>(
+        &mut self,
+        current: Option<&CalendarSchedule>,
         alerts: &CalendarAlerts,
         time: (i64, Instant),
         enabled: bool,
@@ -156,22 +178,18 @@ impl Scheduler {
             return vec![];
         }
         self.last_tick = Some(clock);
-        if !enabled || !valid_clock(now) {
+        if !valid_clock(now) {
             self.since = None;
-            self.week = None;
+            self.pending_week = None;
             return vec![];
         }
         self.seen.retain(|_, end| *end >= now);
-        let current = agenda::current(view, now);
-        let since = self.since.replace(now);
-        let previous_week = self.week;
-        if let Some(week) = current
-            .as_ref()
-            .and_then(|schedule| date_millis(&schedule.valid_from))
-            .or_else(|| known_week(view, now))
-        {
-            self.week = Some(self.week.map_or(week, |old| old.max(week)));
+        if !enabled {
+            self.since = Some(now);
+            self.pending_week = None;
+            return vec![];
         }
+        let since = self.since.replace(now);
         let Some(since) = since.filter(|since| *since <= now) else {
             return vec![];
         };
@@ -179,30 +197,25 @@ impl Scheduler {
             return vec![];
         };
         if !alerts.channels.windows {
+            self.pending_week = None;
             return vec![];
         }
         let silent = !alerts.channels.sound || in_track;
         let mut notices = Vec::new();
-        if alerts.notify_week
-            && let Some(from) = date_millis(&schedule.valid_from)
-            && previous_week.is_some_and(|old| from > old)
-            && let Some(until) = date_millis(&schedule.valid_until)
-        {
-            let id = vantare_services::content_hash(format!("calendar-week:{from}").as_bytes());
-            if self.accept(&id, until) {
-                notices.push(CalendarNotice::Week {
-                    id,
-                    issued_at: now,
-                    expires_at: now + NOTICE_TTL_MS,
-                    from,
-                    until,
-                    silent,
-                });
+        if let Some(value) = self.pending_week.take() {
+            if alerts.notify_week
+                && matches!(&value,CalendarNotice::Week{from,expires_at,..} if Some(*from)==date_millis(&schedule.valid_from) && *expires_at>=now)
+            {
+                notices.push(value);
             }
         }
-        for (at, i) in due_in(&schedule, alerts, now, since, in_track, zone) {
+        let mut limited = false;
+        for (at, i) in due_in(schedule, alerts, now, since, in_track, zone) {
             if notices.len() >= NOTICE_BATCH_LIMIT {
-                eprintln!("calendar notice: due batch limit");
+                limited = true;
+                if !self.limit_reported {
+                    eprintln!("calendar notice: due batch limit");
+                }
                 break;
             }
             let series = &schedule.series[i];
@@ -228,6 +241,7 @@ impl Scheduler {
                 silent,
             });
         }
+        self.limit_reported = limited;
         notices
     }
     fn test(
@@ -268,14 +282,74 @@ impl State {
         in_track: bool,
     ) -> Vec<CalendarNotice> {
         let safe = enabled && self.config_view.documents.alerts == CalendarDocumentState::Ready;
-        self.notices.tick(
-            &self.view,
+        self.cache_current(now);
+        self.notices.tick_current(
+            self.cached_current.as_ref(),
             &self.config_view.alerts,
             (now, clock),
             safe,
             in_track,
             &Local,
         )
+    }
+    pub fn refresh_notices(
+        &mut self,
+        official: Option<String>,
+        fallback: Option<String>,
+        now: i64,
+        enabled: bool,
+        in_track: bool,
+    ) -> Result<CalendarView, HostError> {
+        self.load();
+        self.config();
+        self.cache_current(now);
+        let was_current = self.cached_current.is_some();
+        let before = self
+            .cached_current
+            .as_ref()
+            .and_then(|s| date_millis(&s.valid_from))
+            .or_else(|| known_week(&self.view, now));
+        let current_publication = |value: Option<String>| -> Result<Option<String>, HostError> {
+            let Some(raw) = value else { return Ok(None) };
+            let parsed = CalendarSchedule::parse(raw.as_bytes())?;
+            Ok(date_millis(&parsed.valid_from)
+                .zip(date_millis(&parsed.valid_until))
+                .filter(|(from, until)| *from <= now && now < *until)
+                .map(|_| raw))
+        };
+        let official = current_publication(official)?;
+        let fallback = current_publication(fallback)?;
+        let arrived = official.is_some() || fallback.is_some();
+        let value = self.refreshed(official, fallback)?;
+        self.cache_current(now);
+        let announce = self.notices.refresh_initialized || was_current;
+        if let Some(schedule) = self.cached_current.as_ref() {
+            self.notices.refresh_initialized = true;
+            if arrived
+                && announce
+                && enabled
+                && valid_clock(now)
+                && self.config_view.documents.alerts == CalendarDocumentState::Ready
+                && self.config_view.alerts.notify_week
+                && self.config_view.alerts.channels.windows
+                && let Some(from) = date_millis(&schedule.valid_from)
+                && before.is_some_and(|old| from > old)
+                && let Some(until) = date_millis(&schedule.valid_until)
+            {
+                let id = vantare_services::content_hash(format!("calendar-week:{from}").as_bytes());
+                if self.notices.accept(&id, until) {
+                    self.notices.pending_week = Some(CalendarNotice::Week {
+                        id,
+                        issued_at: now,
+                        expires_at: now + NOTICE_TTL_MS,
+                        from,
+                        until,
+                        silent: !self.config_view.alerts.channels.sound || in_track,
+                    });
+                }
+            }
+        }
+        Ok(value)
     }
     pub fn notice_test(
         &mut self,

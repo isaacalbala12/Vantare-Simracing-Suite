@@ -65,6 +65,21 @@ pub(super) fn build(
     enabled: bool,
     in_track: bool,
 ) -> Result<Feed, FeedError> {
+    build_current(
+        agenda::current(view, now).as_ref(),
+        alerts,
+        now,
+        enabled,
+        in_track,
+    )
+}
+fn build_current(
+    current: Option<&super::CalendarSchedule>,
+    alerts: &CalendarAlerts,
+    now: i64,
+    enabled: bool,
+    in_track: bool,
+) -> Result<Feed, FeedError> {
     let mut feed = Feed {
         version: 1,
         updated_at_ms: u64::try_from(now).map_err(|_| FeedError::Clock)?,
@@ -73,19 +88,19 @@ pub(super) fn build(
     if !enabled || !alerts.channels.in_track {
         return Ok(feed);
     }
-    let Some(schedule) = agenda::current(view, now) else {
+    let Some(schedule) = current else {
         return Ok(feed);
     };
     for series in &schedule.series {
         for at in agenda::starts(
-            &schedule,
+            schedule,
             series,
             now.saturating_sub(2000),
             now.saturating_add(61 * 60_000),
         )
         .map_err(|_| FeedError::Agenda)?
         {
-            match agenda::cause(&schedule, series, at, alerts).map_err(|_| FeedError::Agenda)? {
+            match agenda::cause(schedule, series, at, alerts).map_err(|_| FeedError::Agenda)? {
                 Some(agenda::Cause::Band) if in_track => continue,
                 Some(_) => {}
                 None => continue,
@@ -190,8 +205,15 @@ impl State {
             }
         }
         let safe = enabled && self.config_view.documents.alerts == CalendarDocumentState::Ready;
-        let result = build(&self.view, &self.config_view.alerts, now, safe, in_track)
-            .and_then(|feed| publish(&layout, &feed));
+        self.cache_current(now);
+        let result = build_current(
+            self.cached_current.as_ref(),
+            &self.config_view.alerts,
+            now,
+            safe,
+            in_track,
+        )
+        .and_then(|feed| publish(&layout, &feed));
         self.feed.record(result, || {
             if let Ok(empty) = build(
                 &self.view,

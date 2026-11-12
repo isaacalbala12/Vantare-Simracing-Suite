@@ -119,6 +119,11 @@ pub enum HostError {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
+    #[serde(rename = "calendarRefreshed")]
+    CalendarRefreshed {
+        value: Box<crate::calendar::CalendarView>,
+        error: Option<crate::calendar::CalendarRefreshFailure>,
+    },
     #[serde(rename = "calendarNotice")]
     CalendarNotice {
         value: crate::calendar::CalendarNotice,

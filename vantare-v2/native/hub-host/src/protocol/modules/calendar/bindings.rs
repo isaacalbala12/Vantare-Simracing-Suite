@@ -3,6 +3,27 @@ use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<crate::calendar::CalendarNotice>(&mut text);
+    declare::<crate::calendar::CalendarRefreshFailure>(&mut text);
+    constants!(
+        &mut text,
+        "calendarNoticeClockSkewMs",
+        crate::calendar::NOTICE_CLOCK_SKEW_MS
+    );
+    constants!(
+        &mut text,
+        "calendarPollNormalMs",
+        crate::calendar::POLL_NORMAL_MS
+    );
+    constants!(
+        &mut text,
+        "calendarPollMondayMs",
+        crate::calendar::POLL_MONDAY_MS
+    );
+    constants!(
+        &mut text,
+        "calendarRefreshFailures",
+        ["busy", "coreUnavailable", "denied", "rejected"]
+    );
     constants!(
         &mut text,
         "calendarNoticeTtlMs",
@@ -346,6 +367,20 @@ pub(crate) fn corpus() -> serde_json::Value {
     ] {
         host.push(HostToUi::Event {
             event: crate::protocol::Event::CalendarNotice { value },
+        });
+    }
+    for error in [
+        None,
+        Some(crate::calendar::CalendarRefreshFailure::Busy),
+        Some(crate::calendar::CalendarRefreshFailure::CoreUnavailable),
+        Some(crate::calendar::CalendarRefreshFailure::Denied),
+        Some(crate::calendar::CalendarRefreshFailure::Rejected),
+    ] {
+        host.push(HostToUi::Event {
+            event: crate::protocol::Event::CalendarRefreshed {
+                value: Box::default(),
+                error,
+            },
         });
     }
     let (ics_host, ics_ui) = ics_samples();

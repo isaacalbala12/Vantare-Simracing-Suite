@@ -1,3 +1,6 @@
+.v-studio-catalog-backdrop {
+  backdrop-filter: blur(3px);
+}
 .v-studio-catalog-dialog {
   width: min(920px, calc(100% - 64px));
   height: min(720px, calc(100dvh - var(--topbar-h) - 48px));

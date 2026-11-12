@@ -49,7 +49,7 @@ export function CatalogDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="v-backdrop" />
+        <Dialog.Backdrop className="v-backdrop v-studio-catalog-backdrop" />
         <Dialog.Popup
           ref={popup}
           className="v-dialog v-studio-catalog-dialog"

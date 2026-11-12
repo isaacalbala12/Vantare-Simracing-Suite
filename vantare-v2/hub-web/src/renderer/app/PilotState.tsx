@@ -305,7 +305,9 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         photoBusy,
         photoError,
         choosePhoto,
-        cancelPhoto,
+        cancelPhoto: () => {
+          if (currentSession()) cancelPhoto();
+        },
         applyPhoto,
         cropPhoto: (crop) => {
           if (currentSession() && !saving.current)

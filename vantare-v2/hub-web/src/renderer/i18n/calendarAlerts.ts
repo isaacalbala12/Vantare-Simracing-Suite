@@ -51,7 +51,7 @@ export const calendarAlertsText = {
   save: "Guardar",
   test: "Probar aviso",
   testHint:
-    "Solicita un ejemplo fijo de aviso con el Hub abierto, también con el canal Windows apagado. Requiere derechos vigentes y avisos legibles.",
+    "Solicita un ejemplo fijo con el Hub abierto. Necesita «Notificaciones de Windows» activado en Ajustes › General, derechos vigentes y avisos legibles. Se puede solicitar aunque desmarques el canal del Calendario.",
   testSending: "Solicitando el aviso de prueba…",
   testAccepted: "Aviso de prueba solicitado.",
   testUnavailable:

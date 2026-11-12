@@ -53,7 +53,16 @@ let showAccountIdentity = false;
 let accountState: ReturnType<typeof useAccount>;
 function AccountProbe() {
   accountState = useAccount();
-  return null;
+  return showAccountIdentity ? (
+    <button
+      type="button"
+      onClick={() => {
+        void accountState.act({ method: "account.logout" });
+      }}
+    >
+      Iniciar transición de cierre
+    </button>
+  ) : null;
 }
 function publishAccount(patch: Partial<AccountView>) {
   const sample = (corpus.host as HostToUi[]).find(
@@ -236,14 +245,15 @@ it("hides A immediately after logout starts while its signed-in value is still p
   });
   await mount();
   const photo = "data:image/png;base64,cGhvdG8=";
+  await userEvent.setup().keyboard("{Escape}");
   act(() => publishAccount({ name: "Cuenta A", photo }));
   await screen.findByLabelText("Cuenta A");
   await waitFor(() =>
     expect(document.querySelector(`img[src="${photo}"]`)).not.toBeNull(),
   );
-  act(() => {
-    void accountState.act({ method: "account.logout" });
-  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Iniciar transición de cierre" }),
+  );
   expect(accountState.value?.name).toBe("Cuenta A");
   expect(accountState.value?.session).toBe("signedIn");
   expect(accountState.value?.gate).toBe("none");

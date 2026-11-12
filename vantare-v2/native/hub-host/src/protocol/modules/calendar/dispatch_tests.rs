@@ -916,7 +916,10 @@ fn calendar_test_follows_general_live_without_changing_calendar_channels() {
                     result: Reply::CalendarNoticeTest { accepted: general }
                 }
             );
-            assert_eq!(pipe.position() as usize, pipe.get_ref().len());
+            assert_eq!(
+                usize::try_from(pipe.position()).unwrap(),
+                pipe.get_ref().len()
+            );
             assert_eq!(
                 std::fs::read(base.join("calendar-alerts.json")).unwrap(),
                 bytes

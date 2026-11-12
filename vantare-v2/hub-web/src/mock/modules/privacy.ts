@@ -139,7 +139,8 @@ export function create(context: MockContext): MockHandler {
           sceneName !== "onboarding-cuenta-sesion"
         )
           return { kind: "failure", id, error: { kind: "denied" } };
-        return core.services === "connected"
+        return core.services === "connected" ||
+          sceneName === "onboarding-cuenta-sesion"
           ? {
               kind: "response",
               id,

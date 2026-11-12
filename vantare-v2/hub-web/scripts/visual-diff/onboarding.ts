@@ -31,7 +31,10 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
             .click();
         if (step >= 4)
           await page
-            .getByRole("button", { name: "Ahora no", exact: true })
+            .getByRole("button", {
+              name: /^(Ahora no|Continuar)$/,
+              exact: true,
+            })
             .click();
         if (step >= 5)
           await page

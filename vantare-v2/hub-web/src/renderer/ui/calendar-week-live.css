@@ -551,3 +551,9 @@
   padding-inline: 4px;
   font-weight: 400;
 }
+.v-calendar-week-favorites {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}

@@ -33,11 +33,36 @@ async function assertDetailWindowControls(page: Page) {
   await page.getByRole("dialog").focus();
 }
 
+// GPUI calendar/ui.rs:670 routes all three providers to Modal::Ics.
+async function checkCalendarExportProviders(page: Page) {
+  for (const label of ["Google", "Apple", "Outlook"]) {
+    const button = page
+      .locator(".v-calendar-rail")
+      .getByRole("button", { name: label, exact: true });
+    await button.click();
+    const dialog = page.getByRole("dialog", {
+      name: "Añadir a mi calendario",
+      exact: true,
+    });
+    await dialog.waitFor();
+    await page
+      .getByText("Vista previa · 75 eventos esta semana", { exact: true })
+      .waitFor();
+    await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    await page.waitForFunction(
+      (name) => document.activeElement?.textContent?.endsWith(name),
+      label,
+    );
+  }
+}
+
 export const calendarScenes: Record<string, VisualScene> = {
   "calendario-ics-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {
       await calendarScenes["calendario-proximas-contraida"].prepare(page);
+      await checkCalendarExportProviders(page);
       await page
         .getByRole("button", { name: "Añadir a mi calendario", exact: true })
         .click();
@@ -55,6 +80,7 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await calendarScenes["calendario-r6-proximas"].prepare(page);
+      await checkCalendarExportProviders(page);
       await page
         .getByRole("button", { name: "Añadir a mi calendario", exact: true })
         .click();

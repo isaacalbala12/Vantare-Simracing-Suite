@@ -1,11 +1,19 @@
-import type {
-  OverlayInstance,
-  WidgetSettingsPatch,
+import {
+  type DeltaSize,
+  type OverlayInstance,
+  studioWidgetOptions,
+  type WidgetSettingsPatch,
 } from "../../../contract/generated/studio";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Select, Switch } from "../Forms";
 import "./appearance.css";
+
+const deltaFormats: Record<DeltaSize, string> = {
+  pill: t.deltaPill,
+  bar: t.deltaBarFormat,
+  expanded: t.deltaExpanded,
+};
 
 export function AppearanceInspector({ item }: { item: OverlayInstance }) {
   const state = useStudio();
@@ -34,6 +42,24 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
             : t.lockedWidget
           : t.appearancePreviewNote}
       </p>
+      {settings.kind === "delta" && settings.designSystem === "vantare" && (
+        <Select
+          label={t.deltaFormat}
+          value={settings.size}
+          disabled={disabled}
+          pending={state.pending}
+          options={studioWidgetOptions.delta.sizes.map((value) => ({
+            value,
+            label: deltaFormats[value],
+          }))}
+          onChange={(value) => {
+            const size = studioWidgetOptions.delta.sizes.find(
+              (option) => option === value,
+            );
+            if (size) patch({ kind: "delta", size });
+          }}
+        />
+      )}
       {settings.kind === "standings" && (
         <dl className="v-field">
           <dt>{t.widgetBrand}</dt>
@@ -59,6 +85,17 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           }
         />
       )}
+      {settings.kind === "delta" &&
+        settings.designSystem === "vantare" &&
+        settings.size !== "pill" && (
+          <Switch
+            label={t.deltaDifferenceBar}
+            checked={settings.showBar}
+            disabled={disabled}
+            pending={state.pending}
+            onCheckedChange={(showBar) => patch({ kind: "delta", showBar })}
+          />
+        )}
       <Select
         label={t.widgetLook}
         value={settings.designSystem}

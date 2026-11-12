@@ -318,3 +318,19 @@ studioScenes["studio-fondo-delta"] = {
       .waitFor();
   },
 };
+
+studioScenes["studio-formato-delta"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: "Delta", exact: true }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page
+      .getByRole("combobox", { name: "Formato Delta", exact: true })
+      .click();
+    await page.getByRole("option", { name: "Ampliado", exact: true }).click();
+    await page
+      .getByRole("switch", { name: "Barra de diferencia", exact: true })
+      .waitFor();
+  },
+};

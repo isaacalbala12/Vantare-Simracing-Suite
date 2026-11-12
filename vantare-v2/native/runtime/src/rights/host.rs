@@ -285,15 +285,17 @@ fn serve(
         if request.sequence != 1 {
             return Err(io::ErrorKind::InvalidData.into());
         }
-        if !matches!(request.command, Command::Read | Command::ReadAccountSession)
-            && (!mutator || nonce.is_none_or(|n| n.is_empty() || n != request.nonce))
+        if !matches!(
+            request.command,
+            Command::Read | Command::ReadAccountSession { .. }
+        ) && (!mutator || nonce.is_none_or(|n| n.is_empty() || n != request.nonce))
         {
             return Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
                 control::Failure::CommandNotAllowed,
             ));
         }
-        if matches!(request.command, Command::ReadAccountSession) {
+        if matches!(request.command, Command::ReadAccountSession { .. }) {
             return observe_account(state, latest, start, |observation| {
                 control::write(
                     pipe,
@@ -342,7 +344,7 @@ fn respond(
     let cached_install = matches!(request.command, Command::Install { .. });
     let result = match request.command {
         Command::Read => Ok(()),
-        Command::ReadAccountSession => return Err(io::ErrorKind::InvalidInput.into()),
+        Command::ReadAccountSession { .. } => return Err(io::ErrorKind::InvalidInput.into()),
         Command::Install { credential } => state
             .owner
             .as_mut()

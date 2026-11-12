@@ -89,7 +89,7 @@ pub fn request_cancelled(
             version: control::VERSION,
             sequence: 1,
             nonce: String::new(),
-            command: control::Command::ReadAccountSession,
+            command: control::Command::ReadAccountSession {},
         },
     )?;
     let response: ControlResponse = control::read(&mut pipe)?;

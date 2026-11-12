@@ -205,7 +205,7 @@ fn new_operations_are_opt_in_and_never_legacy_response_fields() {
             version: 7,
             sequence: 1,
             nonce: String::new(),
-            command: control::Command::ReadAccountSession,
+            command: control::Command::ReadAccountSession {},
         },
     )
     .unwrap();
@@ -213,7 +213,7 @@ fn new_operations_are_opt_in_and_never_legacy_response_fields() {
         control::read_request(&mut bytes.as_slice())
             .unwrap()
             .command,
-        control::Command::ReadAccountSession
+        control::Command::ReadAccountSession { .. }
     ));
 }
 
@@ -233,7 +233,7 @@ fn account_feed_probes_an_old_core_only_once_per_epoch_and_preserves_legacy_poli
             let mut pipe = first.take().unwrap_or_else(|| listener.instance().unwrap());
             pipe.accept().unwrap();
             let request = control::read_request(&mut pipe).unwrap();
-            if matches!(request.command, control::Command::ReadAccountSession) {
+            if matches!(request.command, control::Command::ReadAccountSession { .. }) {
                 probes += 1;
                 assert_eq!(index, 1);
                 // Frozen core: unknown operation closes this connection without a reply.
@@ -292,7 +292,7 @@ fn legacy_requests_are_byte_identical_and_old_decoder_rejects_new_operation() {
         version: 7,
         sequence: 1,
         nonce: String::new(),
-        command: control::Command::ReadAccountSession,
+        command: control::Command::ReadAccountSession {},
     };
     let mut value = serde_json::to_value(new).unwrap();
     assert!(serde_json::from_value::<frozen::Request>(value.clone()).is_err());

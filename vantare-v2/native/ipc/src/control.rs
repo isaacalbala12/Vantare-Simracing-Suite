@@ -245,7 +245,7 @@ pub struct Bootstrap {
 pub enum Command {
     Read,
     /// Opt-in response uses `account_session::ControlResponse`, never legacy Response.
-    ReadAccountSession,
+    ReadAccountSession {},
     // Retained solely for control v7 compatibility. Services no longer emits
     // this command; do not wire it to disk credentials or legacy candidates.
     Install {

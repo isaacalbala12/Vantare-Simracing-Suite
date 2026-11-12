@@ -214,13 +214,13 @@ Es c贸digo puro movido desde runtime sin cambios de formato, topes ni c谩lculo.
 feed y procesos siguen en runtime. `serde_json/float_roundtrip` se activa aqu铆
 para conservar los f64 del golden LMU, incluido el caso de un ULP.
 
-## Observaci髇 opt-in de cuenta (#2089)
+## Observaci贸n opt-in de cuenta (#2089)
 
 `Feed::connect` y los sobres de control v7 permanecen iguales. Solo
-`Feed::connect_account` consulta adem醩 `ReadAccountSession`, en el mismo hilo
-existente, y recibe `account_session::ControlResponse`. La generaci髇 aleatoria
+`Feed::connect_account` consulta adem谩s `ReadAccountSession`, en el mismo hilo
+existente, y recibe `account_session::ControlResponse`. La generaci贸n aleatoria
 procede de Owner, no de Services, de la cuenta presentada o de Policy.revision.
 No concede derechos ni persiste entre reinicios. Ausencia/fallo retira la
-observaci髇; un n鷆leo antiguo se consulta una vez por 閜oca y conserva Read.
+observaci贸n; un n煤cleo antiguo se consulta una vez por 茅poca y conserva Read.
 `AuthorityLink` solo contiene pipe e imagen, nunca el nonce mutador.
 Los DTO congelados en tests verifican los bytes legacy de control y Services.

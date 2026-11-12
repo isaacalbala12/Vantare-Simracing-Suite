@@ -5,7 +5,7 @@
   height: 156px;
   display: grid;
   place-items: center;
-  background: var(--stage);
+  background: var(--ill-ground);
   padding: 12px;
 }
 .v-widget-preview[data-small="true"] {
@@ -27,9 +27,6 @@
   height: 100%;
   object-fit: contain;
   image-rendering: auto;
-}
-.v-widget-thumbnail[data-fallback="true"] {
-  opacity: 0.6;
 }
 .v-widget-thumb-frame {
   display: block;
@@ -66,5 +63,5 @@
   top: 8px;
 }
 [data-scheme="light"] .v-widget-thumb-image {
-  filter: drop-shadow(0 6px 14px var(--flag-edge));
+  filter: drop-shadow(0 6px 14px var(--ill-shadow));
 }

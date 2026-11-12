@@ -4,49 +4,15 @@ import type { WidgetKind } from "../../../contract/generated/contract";
 import { studioSizes } from "../../../contract/generated/studio";
 import { widgetThumbText as t } from "../../i18n/widget-thumbnails";
 import { Badge, Skeleton } from "../Data";
+import { illustrationSizes, widgetIllustrations } from "./illustrations";
+import { widgetIcons, widgetRasters } from "./widget-assets";
 
-const vectors = import.meta.glob<string>("../../assets/widgets/*.svg", {
-  eager: true,
-  query: "?url",
-  import: "default",
-});
-const rasters = import.meta.glob<string>("../../assets/widgets/thumbs/*.png", {
-  eager: true,
-  query: "?url",
-  import: "default",
-});
-// Tight drawing bounds of the frozen 160×80 SVG illustrations, including their stroke.
-// They are schematic fallbacks, not captures at the overlays' natural dimensions.
-const fallbackBounds: Record<
-  WidgetKind,
-  readonly [number, number, number, number]
-> = {
-  standings: [51, 3, 58, 77],
-  radar: [49, 3, 62, 74],
-  pedals: [63, 5, 34, 70],
-  delta: [35, 19, 90, 42],
-  "car-damage-visual": [55, 3, 50, 74],
-  "input-telemetry": [13, 21, 134, 38],
-  "multiclass-relative": [27, 13, 106, 54],
-  "broadcast-tower": [3, 29, 154, 22],
-  "delta-trace": [3, 17, 154, 46],
-  "track-map": [25, 5, 110, 70],
-  "track-weather": [47, 11, 66, 58],
-  "car-damage-numbers": [55, 5, 50, 70],
-  "head-to-head": [35, 8, 90, 64],
-  "fuel-strategy": [21, 7, 118, 66],
-  "pedals-telemetry": [27, 20, 106, 40],
-  relative: [27, 9, 106, 62],
-  "racing-flags": [43, 25, 74, 30],
-  "fastest-lap": [11, 25, 138, 31.5],
-  "session-alerts": [3, 21, 154, 51],
-};
 export function fallbackGeometry(
   kind: WidgetKind,
   width: number,
   height: number,
 ) {
-  const [, , w, h] = fallbackBounds[kind];
+  const { width: w, height: h } = illustrationSizes[kind];
   // Allow enlargement. Keep at least 60% of useful height for the drawing itself;
   // 65% includes its small stroke margin. Wide drawings crop rather than distort.
   const scale = Math.max(Math.min(width / w, height / h), (height * 0.65) / h);
@@ -84,21 +50,19 @@ export function WidgetThumb({
   onFallback?: (fallback: boolean) => void;
   fit?: "contain" | "fill";
 }) {
-  const fallback =
-    vectors[`../../assets/widgets/${icon ? "w-" : ""}${kind}.svg`];
-  const source = rasters[`../../assets/widgets/thumbs/${kind}.png`];
+  const iconSource = widgetIcons[`../../assets/widgets/w-${kind}.svg`];
+  const source = widgetRasters[`../../assets/widgets/thumbs/${kind}.png`];
   return icon ? (
     <span
       aria-hidden="true"
       className="v-widget-icon"
-      style={{ maskImage: `url("${fallback}")` }}
+      style={{ maskImage: `url("${iconSource}")` }}
     />
   ) : (
     <WidgetImage
-      key={source ?? fallback}
+      key={source ?? kind}
       kind={kind}
       source={source}
-      fallback={fallback}
       onFallback={onFallback}
       fit={fit}
     />
@@ -106,19 +70,18 @@ export function WidgetThumb({
 }
 function WidgetImage({
   source,
-  fallback,
   kind,
   onFallback,
   fit,
 }: {
   source?: string;
-  fallback: string;
   kind: WidgetKind;
   onFallback?: (fallback: boolean) => void;
   fit: "contain" | "fill";
 }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const raster = !!source && state !== "error";
+  const Illustration = widgetIllustrations[kind];
   useEffect(() => onFallback?.(!raster), [onFallback, raster]);
   return (
     <>
@@ -144,15 +107,12 @@ function WidgetImage({
           }}
         />
       ) : (
-        <svg
+        <Illustration
           aria-hidden="true"
           className="v-widget-thumbnail"
           data-fallback="true"
           preserveAspectRatio={fit === "fill" ? "none" : undefined}
-          viewBox={fallbackBounds[kind].join(" ")}
-        >
-          <image href={fallback} x={0} y={0} width={160} height={80} />
-        </svg>
+        />
       )}
     </>
   );
@@ -174,7 +134,7 @@ export function WidgetPreview({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [fallback, setFallback] = useState(
-    !rasters[`../../assets/widgets/thumbs/${kind}.png`],
+    !widgetRasters[`../../assets/widgets/thumbs/${kind}.png`],
   );
   const [area, setArea] = useState({ width: 293, height: 132 });
   useLayoutEffect(() => {

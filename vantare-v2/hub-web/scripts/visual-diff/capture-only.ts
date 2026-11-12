@@ -47,6 +47,7 @@ export async function captureUncompared({
   capture,
   invalidReason,
   suppliedCapture = false,
+  dimensions = [1440, 900],
 }: {
   scene: string;
   scheme: string;
@@ -54,11 +55,12 @@ export async function captureUncompared({
   capture: () => Promise<Buffer>;
   invalidReason?: string;
   suppliedCapture?: boolean;
+  dimensions?: readonly [number, number];
 }) {
   await mkdir(destination, { recursive: true });
   const current = await capture();
   const png = PNG.sync.read(current);
-  assert.deepEqual([png.width, png.height], [1440, 900]);
+  assert.deepEqual([png.width, png.height], dimensions);
   await writeFile(join(destination, "current.png"), current);
   return {
     scene,

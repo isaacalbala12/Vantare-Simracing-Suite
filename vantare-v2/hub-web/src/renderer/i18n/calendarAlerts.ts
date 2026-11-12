@@ -30,6 +30,8 @@ export const calendarAlertsText = {
   sound: "Sonido",
   windowsDisabled:
     "Las notificaciones de Windows están desactivadas en Ajustes › General",
+  windowsUnavailable:
+    "No se han podido leer las notificaciones de Windows de Ajustes › General.",
   windowsLoading: "Leyendo las notificaciones de Windows de Ajustes › General…",
   soundRequiresWindows: "Requiere la notificación de Windows",
   soundHint: "Sonido de los avisos de Windows, solo fuera del simulador.",

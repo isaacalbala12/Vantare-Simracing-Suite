@@ -69,9 +69,11 @@ export default function CalendarEntry() {
     settings.view?.general.toasts === true && !settings.view.protected;
   const windowsDisabledReason = windowsEnabled
     ? undefined
-    : settings.view
-      ? calendarAlertsText.windowsDisabled
-      : calendarAlertsText.windowsLoading;
+    : settings.view?.protected
+      ? calendarAlertsText.windowsUnavailable
+      : settings.view
+        ? calendarAlertsText.windowsDisabled
+        : calendarAlertsText.windowsLoading;
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertsOrigin = useRef<HTMLElement | null>(null);
   const openAlerts = () => {

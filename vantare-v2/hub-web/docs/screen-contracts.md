@@ -441,7 +441,12 @@ antelación del documento, causa de franja/tanda y zona local. La primera lectur
 no recupera avisos pasados. Las franjas se callan en pista; una tanda explícita
 puede avisar, siempre en silencio en pista. Fuera de pista, `channels.sound`
 controla el sonido del sistema, sin reproductor ni dependencia adicional.
-Calendar no depende de `general.toasts`, como el GPUI.
+Decisión de Isaac (12-11): `general.toasts` gobierna también las notificaciones
+de Windows del Calendario. El anfitrión consulta el valor confirmado de Settings
+en cada tick y al completar un refresh; una actualización de General surte efecto
+sin reiniciar. No se reescribe `calendar-alerts.json` ni se alteran sus canales.
+El sondeo, el feed y los avisos en pista no dependen de este interruptor.
+Es una desviación deliberada respecto a la independencia del GPUI.
 
 `calendarNotice` es un evento privado host→main, unión cerrada `start|week|test`
 con `deny_unknown_fields`. No acepta texto, URL, ruta ni fecha del renderer.
@@ -459,7 +464,9 @@ No existe garantía de que Windows muestre o reproduzca sonido: depende del SO.
 
 `calendar.noticeTest {}` solo genera un ejemplo fijo, con los mismos derechos,
 documento legible y un límite de una prueba cada 5 s. No requiere horario ni que
-el canal esté marcado: prueba el canal, como el GPUI. Main proyecta `accepted`
+el canal esté marcado: prueba el canal, como el GPUI. Sí exige `general.toasts`;
+con el ajuste apagado devuelve `accepted:false`, sin evento ni consumo del plazo.
+Main proyecta `accepted`
 a partir del resultado real de invocar el presentador, sin afirmar que el usuario
 lo haya visto. El evento precede a la respuesta; una presentación ausente o
 rechazada da `accepted:false`. Nunca se envían notificaciones reales en tests.

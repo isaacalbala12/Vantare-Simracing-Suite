@@ -12,10 +12,31 @@ async function sidebar(page: Page, expanded: boolean) {
   if (((await control.getAttribute("aria-expanded")) === "true") !== expanded)
     await control.click();
 }
-function alerts(expanded: boolean): VisualScene {
+async function masterWindows(page: Page, enabled: boolean) {
+  await page
+    .getByRole("navigation", { name: "Navegación principal" })
+    .getByRole("button", { name: "Ajustes", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "General", exact: true }).click();
+  const control = page.getByRole("switch", {
+    name: "Notificaciones de Windows",
+    exact: true,
+  });
+  await control.waitFor();
+  if (((await control.getAttribute("aria-checked")) === "true") !== enabled)
+    await control.click();
+  await page.waitForFunction(
+    ({ node, enabled }) =>
+      node?.getAttribute("aria-checked") === String(enabled) &&
+      node?.getAttribute("aria-disabled") !== "true",
+    { node: await control.elementHandle(), enabled },
+  );
+}
+function alerts(expanded: boolean, enabled = true): VisualScene {
   return {
     mock: "calendar-live-reference",
     async prepare(page) {
+      await masterWindows(page, enabled);
       await calendarScenes[
         expanded
           ? "calendario-avisos-desplegada"
@@ -36,10 +57,21 @@ function alerts(expanded: boolean): VisualScene {
         )
           ink++;
       if (ink < 50) throw Error("Calendar preview text was not painted");
+      if (!enabled)
+        await page
+          .getByText(
+            "Las notificaciones de Windows están desactivadas en Ajustes › General",
+            { exact: true },
+          )
+          .first()
+          .waitFor();
       for (const name of ["Notificación de Windows", "Sonido"]) {
         const control = page.getByRole("checkbox", { name, exact: true });
-        if ((await control.getAttribute("aria-disabled")) === "true")
-          throw Error(`Calendar delivery still disabled: ${name}`);
+        if (
+          ((await control.getAttribute("aria-disabled")) === "true") !==
+          !enabled
+        )
+          throw Error(`General-off Calendar delivery still enabled: ${name}`);
       }
     },
   };
@@ -48,6 +80,7 @@ function week(expanded: boolean): VisualScene {
   return {
     mock: "calendar-live-reference",
     async prepare(page) {
+      await masterWindows(page, true);
       await sidebar(page, expanded);
       await notificationHonestyScenes["calendario-semana-pendiente"].prepare(
         page,
@@ -93,6 +126,8 @@ function weeklyDetail(expanded: boolean): VisualScene {
   };
 }
 export const calendarNoticeScenes: Record<string, VisualScene> = {
+  "calendario-general-avisos-contraida": alerts(false, false),
+  "calendario-general-avisos-desplegada": alerts(true, false),
   "calendario-emisor-ficha-semanal-contraida": weeklyDetail(false),
   "calendario-emisor-ficha-semanal-desplegada": weeklyDetail(true),
   "calendario-emisor-avisos-contraida": alerts(false),

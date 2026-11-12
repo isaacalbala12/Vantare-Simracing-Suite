@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CoreStatus,
   HomeView,
+  LauncherView,
 } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { lock } from "../../app/navigation";
@@ -13,6 +14,7 @@ import { HomeLayout, HomeRail } from "../../ui/home/HomeLayout";
 import { profileChoice } from "../../ui/home/model";
 import { snapshot } from "../launcher/editor-state";
 import { useNotifications } from "../notifications/NotificationsState";
+import { favoriteApps } from "./favorite-apps";
 export default function Home() {
   const { client, hello } = useHost();
   const query = useQueryClient();
@@ -21,6 +23,27 @@ export default function Home() {
     queryFn: skipToken,
   });
   const [view, setView] = useState<HomeView>();
+  const appsAllowed =
+    !!view?.favorite &&
+    !view.protected &&
+    core.access.verified &&
+    !core.access.blocked &&
+    !core.live;
+  const applications = useQuery({
+    queryKey: ["home", "favorite-apps", view?.revision],
+    enabled: !!client && appsAllowed,
+    retry: false,
+    queryFn: async () => {
+      const reply = await client?.request({ method: "launcher.get" });
+      if (reply?.method !== "launcher.get" || !reply.value)
+        throw new Error("launcher unavailable");
+      return reply.value;
+    },
+    initialData: () => {
+      const existing = query.getQueryData<LauncherView>(["launcher"]);
+      return existing?.revision === view?.revision ? existing : undefined;
+    },
+  });
   const [name, setName] = useState(hello?.demoName ?? "");
   const [selected, select] = useState("");
   const launching = useRef(false);
@@ -161,6 +184,11 @@ export default function Home() {
       <HomeLayout
         view={view}
         core={core}
+        favoriteApps={appsAllowed ? favoriteApps(view, applications.data) : []}
+        appsError={appsAllowed && applications.isError}
+        retryApps={() => {
+          void applications.refetch();
+        }}
         name={name}
         now={now}
         selected={choice}

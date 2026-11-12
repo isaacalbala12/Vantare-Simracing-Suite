@@ -118,7 +118,7 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   await userEvent.click(
     screen.getByRole("button", { name: "Lanzar perfil seleccionado" }),
   );
-  expect(request).toHaveBeenLastCalledWith({ method: "home.get" });
+  expect(request).toHaveBeenCalledWith({ method: "home.get" });
   expect(request).toHaveBeenCalledWith({
     method: "launcher.launch",
     profile: "profile-a",

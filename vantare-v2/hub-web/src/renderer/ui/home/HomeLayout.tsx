@@ -5,6 +5,7 @@ import type {
 import type { Section } from "../../app/sections";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import { homeText as t } from "../../i18n/home";
+import type { FavoriteApp } from "../../screens/home/favorite-apps";
 import type { Notice } from "../../screens/notifications/center";
 import { Button } from "../Button";
 import { Skeleton } from "../Data";
@@ -17,6 +18,9 @@ import { activityDate, greeting } from "./model";
 import "./home.css";
 export interface HomeProps {
   view?: HomeView;
+  favoriteApps?: FavoriteApp[];
+  appsError?: boolean;
+  retryApps?: () => void;
   core: CoreStatus;
   name: string;
   now: Date;
@@ -200,6 +204,27 @@ export function HomeLayout(p: HomeProps) {
               <span>{t.favorite}</span>
               <strong>{favorite?.name ?? t.noFavorite}</strong>
               <p>{favorite ? t.steps(favorite.steps) : t.createProfileHint}</p>
+              {allowed && !!p.favoriteApps?.length && (
+                <ul className="v-home-apps" aria-label={t.favoriteApps}>
+                  {p.favoriteApps.map((app) => (
+                    <li
+                      key={app.key}
+                      className="v-home-app-tile v-launcher-app-mark"
+                      data-app={app.id}
+                      aria-label={app.name}
+                      title={app.name}
+                    >
+                      {t.appLabels[app.id] ?? app.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {allowed && p.appsError && (
+                <p role="status">
+                  {t.appsFailed}{" "}
+                  <Button onClick={p.retryApps}>{t.retry}</Button>
+                </p>
+              )}
               <small>
                 {running
                   ? v.launch.kind === "running" && v.launch.text

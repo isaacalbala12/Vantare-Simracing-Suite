@@ -1,3 +1,4 @@
+@import "../launcher/generated/apps.css";
 .v-home {
   height: 100%;
   min-height: 0;
@@ -764,4 +765,30 @@
   padding-inline: 16px;
   font-size: 14px;
   font-weight: 600;
+}
+
+.v-home-apps {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.v-home-app-tile {
+  background: var(--launcher-app-fallback-bg);
+  color: var(--launcher-app-fallback-ink);
+}
+.v-home-apps > .v-home-app-tile {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  height: 28px;
+  border-radius: 4px;
+  font: 600 10px / 1.618 var(--font-sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

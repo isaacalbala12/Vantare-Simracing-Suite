@@ -22,7 +22,7 @@ export const calendarDetailText = {
   alert: "Avisarme de esta salida",
   alertAt: (s: string) => `Aviso configurado para las ${s}`,
   alertHelp: (n: number) =>
-    `${n} min antes · avisos en pista; Windows y sonido aún no disponibles en este Hub`,
+    `${n} min antes en Windows y el calendario (.ics), con el Hub abierto y según tus canales. El overlay conserva sus propios umbrales.`,
   rules: "Reglas",
   format: "Formato",
   team: "Equipos",

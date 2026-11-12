@@ -159,3 +159,41 @@ it.each(["protected", "unavailable"] as const)(
     ]);
   },
 );
+
+it.each([true, false])(
+  "reports the main presentation outcome (%s) without claiming delivery",
+  async (accepted) => {
+    const config: CalendarConfigView = {
+      utc: true,
+      prefsRevision: "a".repeat(64),
+      following: [],
+      followingRevision: "b".repeat(64),
+      alerts: {
+        ...calendarDefaultAlerts,
+        bands: [],
+        slots: [],
+        channels: { ...calendarDefaultAlerts.channels },
+      },
+      alertsRevision: "c".repeat(64),
+      documents: { prefs: "ready", following: "ready", alerts: "ready" },
+    };
+    api.request.mockImplementation(async (request) =>
+      request.method === "calendar.noticeTest"
+        ? { method: request.method, accepted }
+        : { method: "calendar.configLoad", value: config },
+    );
+    render(content());
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: text.test }));
+    });
+    expect(api.request.mock.calls.map(([request]) => request)).toEqual([
+      { method: "calendar.configLoad" },
+      { method: "calendar.noticeTest" },
+    ]);
+    expect(
+      screen.getByText(accepted ? text.testAccepted : text.testUnavailable),
+    ).toBeTruthy();
+  },
+);

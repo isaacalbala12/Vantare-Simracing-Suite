@@ -18,6 +18,7 @@ import {
 import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
+import { calendarAlertsText } from "../../i18n/calendarAlerts";
 import { calendarIcsText } from "../../i18n/calendarIcs";
 import { useCalendarQARuns } from "../../qa/calendar-runs";
 import { Button } from "../../ui/Button";
@@ -47,6 +48,7 @@ import { useToastManager } from "../../ui/Layers";
 import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarIcs } from "./CalendarIcsState";
 import { useCalendarLauncher } from "./CalendarLauncher";
+import { useCalendarNoticeTest } from "./CalendarNoticeTest";
 import { useCalendarPreferences } from "./CalendarPreferences";
 import { useCalendar } from "./CalendarState";
 import { publication } from "./schedule";
@@ -193,6 +195,9 @@ export default function CalendarEntry() {
   const alertsState =
     preferences.config?.documents.alerts ??
     (preferences.failure ? "unavailable" : "loading");
+  const noticeTest = useCalendarNoticeTest(
+    alertsOpen && state.allowed && alertsState === "ready",
+  );
   const alertsValid = isCalendarAlerts(alerts);
   const preferencesFailure = preferences.failure ? (
     <CalendarPreferencesFailure
@@ -532,6 +537,13 @@ export default function CalendarEntry() {
                 following={view?.following.length ?? 0}
                 limit={calendarStartsLimit}
                 notifyWeek={alerts.notifyWeek}
+                notifyDisabled={
+                  !state.allowed ||
+                  alertsState !== "ready" ||
+                  preferences.config?.alertsRevision == null
+                }
+                notifyBusy={preferences.busy}
+                onNotifyWeek={(value) => void preferences.notifyWeek(value)}
                 onRefresh={() => void state.refresh()}
                 busy={state.busy}
               />
@@ -614,6 +626,27 @@ export default function CalendarEntry() {
           busy={preferences.busy}
           onChange={(change) => void preferences.alert(change)}
           onClose={() => setAlertsOpen(false)}
+          onTest={
+            alertsState === "ready" ? () => void noticeTest.test() : undefined
+          }
+          testBusy={noticeTest.busy}
+          testFeedback={
+            noticeTest.busy ? (
+              <p role="status">{calendarAlertsText.testSending}</p>
+            ) : noticeTest.failure ? (
+              <p role="alert">
+                {noticeTest.failure === "busy"
+                  ? calendarAlertsText.testBusy
+                  : calendarAlertsText.testFailure}
+              </p>
+            ) : noticeTest.status ? (
+              <p role="status">
+                {noticeTest.status === "accepted"
+                  ? calendarAlertsText.testAccepted
+                  : calendarAlertsText.testUnavailable}
+              </p>
+            ) : undefined
+          }
           failure={
             preferences.failureIntent === "alerts"
               ? preferencesFailure

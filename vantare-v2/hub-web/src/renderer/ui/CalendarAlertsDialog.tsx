@@ -47,9 +47,12 @@ type Props = {
   onChange: (change: CalendarAlertChange) => void;
   onClose: () => void;
   onTest?: () => void;
+  testBusy?: boolean;
+  testFeedback?: ReactNode;
   failure?: ReactNode;
 };
 export function CalendarAlertsDialog(p: Props) {
+  const testHint = useId();
   const [editing, setEditing] = useState<string>();
   const name = (id: string) =>
     p.schedule?.series.find((s) => s.id === id)?.name ?? text.missing(id);
@@ -85,6 +88,8 @@ export function CalendarAlertsDialog(p: Props) {
           </header>
           <div className="v-calendar-alerts-body">
             {p.failure}
+            {p.testFeedback}
+            <p id={testHint}>{text.testHint}</p>
             <CalendarAlertsStatus state={p.alertsState ?? "ready"} />
             {ready && legacy && <p role="status">{text.duplicates}</p>}
             {p.busy && <p role="status">{text.saving}</p>}
@@ -111,7 +116,7 @@ export function CalendarAlertsDialog(p: Props) {
                     }}
                   />
                   <Caption>{text.where}</Caption>
-                  <p role="status">{text.deliveryPending}</p>
+                  <p role="status">{text.deliveryScope}</p>
                   {(
                     [
                       ["windows", text.windows, text.windowsHint],
@@ -124,10 +129,9 @@ export function CalendarAlertsDialog(p: Props) {
                       label={label}
                       hint={hint}
                       value={p.alerts.channels[channel]}
-                      disabled={disabled || legacy || channel !== "inTrack"}
+                      disabled={disabled || legacy}
                       pending={p.busy}
                       onChange={(value) => {
-                        if (channel !== "inTrack") return;
                         change({
                           kind: "channel",
                           channel: channel as keyof CalendarChannels,
@@ -170,7 +174,7 @@ export function CalendarAlertsDialog(p: Props) {
                 </section>
                 <section>
                   <Caption>{text.sample}</Caption>
-                  <p>{text.previewPending}</p>
+                  <p>{text.previewScope}</p>
                   <Preview {...p} />
                   <Caption
                     hint={text.count(
@@ -303,13 +307,17 @@ export function CalendarAlertsDialog(p: Props) {
             )}
           </div>
           <footer>
-            <Tooltip label={text.testPending}>
+            <Tooltip label={text.testHint}>
               <span>
                 <Button
-                  disabled={!p.onTest}
+                  disabled={!p.onTest || !ready}
                   focusableWhenDisabled
-                  onClick={p.onTest}
-                  aria-description={!p.onTest ? text.testPending : undefined}
+                  aria-disabled={!p.onTest || !ready || p.testBusy || p.busy}
+                  aria-busy={p.testBusy || undefined}
+                  onClick={() => {
+                    if (!p.testBusy && !p.busy && ready) p.onTest?.();
+                  }}
+                  aria-describedby={testHint}
                 >
                   {text.test}
                 </Button>

@@ -78,6 +78,18 @@ fn native_table_presets_match_the_ui_writer_and_undo_recovers_custom_columns() {
             assert_eq!(driver["futureColumn"], json!({"keep":23}));
             assert_eq!(driver["format"]["futureFormat"], json!({"keep":29}));
             assert_eq!(driver["style"]["futureStyle"], json!({"keep":31}));
+            if case["kind"] == "standings" {
+                for key in ["practiceColumns", "qualifyingColumns"] {
+                    let inherited = settings[key]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .find(|column| column["metricId"] == "driverName")
+                        .unwrap();
+                    assert_eq!(inherited["futureColumn"], json!({"keep":23}));
+                    assert_eq!(inherited["format"]["futureFormat"], json!({"keep":29}));
+                }
+            }
             assert!(
                 !settings["columns"]
                     .as_array()

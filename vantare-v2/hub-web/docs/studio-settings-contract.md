@@ -59,7 +59,6 @@ como valores por defecto con skip_serializing_if y opcionales nulos.
 Un parche que solicita exactamente el valor ya normalizado no escribe aunque
 el documento almacenado todavía contenga un valor sin normalizar.
 
-
 ## Aplicar formato de tabla
 
 Solo los parches de Standings y Relative admiten `tablePreset?: TableSize`

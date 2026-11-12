@@ -55,10 +55,14 @@ pub(super) fn tick_with_clock(
             },
         )?;
     }
+    let windows_enabled = session.settings.windows_notifications_enabled();
+    session
+        .calendar_state
+        .observe_windows_notifications(now, windows_enabled);
     for value in session.calendar_state.notice_tick(
         now,
         monotonic,
-        enabled && session.settings.windows_notifications_enabled(),
+        enabled && windows_enabled,
         session.current.live,
     ) {
         super::frame::write(

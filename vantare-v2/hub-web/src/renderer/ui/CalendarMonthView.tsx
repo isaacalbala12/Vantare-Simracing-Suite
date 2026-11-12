@@ -1,5 +1,5 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarView,
@@ -35,6 +35,13 @@ export function CalendarMonthView({
   onDetail?: (id: string) => void;
 }) {
   const [full, setFull] = useState(false);
+  const fullToggle = useRef<HTMLButtonElement>(null);
+  const previousFull = useRef(false);
+  useLayoutEffect(() => {
+    if (previousFull.current && !full)
+      fullToggle.current?.focus({ preventScroll: true });
+    previousFull.current = full;
+  }, [full]);
   const [offset, setOffset] = useState(0),
     minute = Math.floor(now / 60000);
   const model = useMemo(
@@ -74,14 +81,16 @@ export function CalendarMonthView({
         <p>{text.weeks}</p>
         <Button
           variant="ghost"
-          aria-label={text.full}
+          ref={fullToggle}
+          className="v-calendar-month-full-toggle"
+          aria-label={full ? text.exitFull : text.full}
           aria-pressed={full}
           onClick={() => {
             setFull(!full);
             onFull?.();
           }}
         >
-          <Icon name="expand" />
+          <Icon name={full ? "shrink" : "expand"} />
         </Button>
         <Segmented
           label={text.calendar}
@@ -166,7 +175,7 @@ export function CalendarMonthView({
                             key={`${at}:${hour}`}
                             data-event={event || undefined}
                             style={{
-                              height: `${Math.max(1, Math.min(100, (100 * count) / 40))}%`,
+                              height: `${Math.max(10, Math.min(100, (100 * count) / 40))}%`,
                             }}
                           />
                         ))}
@@ -218,15 +227,19 @@ export function CalendarMonthView({
           {text.special}
         </span>
         <span>
-          <i className="v-calendar-month-legend-density" />
-          {text.density}
+          <span className="v-calendar-month-legend-density" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="v-calendar-month-legend-copy">{text.density}</span>
         </span>
         <span>
           <b data-ran>
             <Icon name="check" />
             {text.legendRuns}
           </b>
-          {text.ran}
+          <span className="v-calendar-month-legend-copy">{text.ran}</span>
         </span>
         <span>
           <b data-alert>
@@ -239,11 +252,16 @@ export function CalendarMonthView({
     </section>
   );
   return (
-    <BaseDialog.Root open={full} onOpenChange={setFull}>
+    <BaseDialog.Root modal={false} open={full} onOpenChange={setFull}>
       {full ? (
         <BaseDialog.Portal>
           <BaseDialog.Backdrop className="v-calendar-month-full-backdrop" />
-          <BaseDialog.Popup className="v-calendar v-calendar-month-full">
+          <BaseDialog.Popup
+            className="v-calendar v-calendar-month-full"
+            finalFocus={() =>
+              fullToggle.current?.isConnected ? fullToggle.current : false
+            }
+          >
             <BaseDialog.Title className="v-sr-only">
               {text.calendar}
             </BaseDialog.Title>

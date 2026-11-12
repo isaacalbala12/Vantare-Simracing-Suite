@@ -4,6 +4,7 @@ export const calendarMonthText = {
   today: "Hoy",
   weeks: "semanas LMU, de martes a lunes",
   full: "Pantalla completa",
+  exitFull: "Salir de pantalla completa (Esc)",
   calendar: "Calendario",
   day: "Día",
   week: "Semana",

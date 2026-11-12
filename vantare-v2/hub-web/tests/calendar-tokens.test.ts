@@ -43,3 +43,18 @@ it("preserves the native upcoming hero end stop and wash instead of the generic 
     ),
   ).toThrow("hero wash missing");
 });
+
+it("treats native stripe tint colors as RGB even when the literal starts with 00", async () => {
+  const source = await readFile("../native/hub/src/calendar/chrome.rs", "utf8");
+  const filters = await readFile(
+    "../native/hub/src/calendar/ui/proximas.rs",
+    "utf8",
+  );
+  const css = calendarTokens(source, filters);
+  expect(css).toContain(
+    "--calendar-month-stripe: color-mix(in srgb, #ffffff 3.5%, transparent)",
+  );
+  expect(css).toContain(
+    "--calendar-month-stripe: color-mix(in srgb, #3c1920 4.5%, transparent)",
+  );
+});

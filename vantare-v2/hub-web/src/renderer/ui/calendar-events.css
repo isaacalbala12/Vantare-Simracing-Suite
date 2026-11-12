@@ -371,3 +371,11 @@
 .v-calendar-event-hint {
   font-weight: 500;
 }
+
+.v-calendar-event-detail > footer .v-button {
+  flex: none;
+  white-space: nowrap;
+}
+.v-calendar-event-hint {
+  line-height: 15px;
+}

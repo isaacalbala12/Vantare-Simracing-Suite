@@ -183,8 +183,7 @@ try {
     dimensions,
     "Prototype window dimensions differ",
   );
-  // A hidden QA window does not run the animation frames used by locator
-  // stability checks. Capture its rendered pixels at the verified window bounds.
+  // Capture only the verified prototype window, excluding its external toolbar.
   await page.screenshot({
     clip: rectangle,
     path: join(output, "reference.png"),

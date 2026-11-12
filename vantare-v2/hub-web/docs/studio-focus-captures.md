@@ -30,3 +30,9 @@ Cada comparaciÃ³n guarda `reference.png`, `diff.png`,
 de la maqueta, versiones del motor, hashes de fuentes y cierre del visor.
 Los porcentajes describen la ventana completa; durante los PR parciales no
 certifican que las fases de disposiciÃ³n aÃºn pendientes estÃ©n terminadas.
+
+El visor abre una ventana QA visible y desactiva solo su throttling de fondo: una
+ventana oculta puede cargar el DOM y las fuentes sin entregar frames a Chromium.
+En este servidor se puede ejecutar con `bun scripts/visual-diff.ts` y
+`bun scripts/studio-reference.ts` (mismos argumentos); el runtime de control no
+cambia el Chromium del candidato ni el del visor, cuyas versiones se verifican.

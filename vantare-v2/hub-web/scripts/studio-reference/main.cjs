@@ -12,8 +12,9 @@ app.whenReady().then(async () => {
     height: Number(height),
     useContentSize: true,
     frame: false,
-    show: false,
+    show: true,
     webPreferences: {
+      backgroundThrottling: false,
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,

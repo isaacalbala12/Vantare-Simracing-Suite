@@ -196,8 +196,8 @@
 .v-choice-card:disabled {
   cursor: not-allowed;
 }
-.v-choice-card:disabled .v-choice-picture,
-.v-choice-card:disabled strong {
+.v-choice-card[data-disabled] .v-choice-picture,
+.v-choice-card[data-disabled] strong {
   opacity: 0.45;
 }
 .v-choice-apply {
@@ -240,14 +240,14 @@
 .v-accent-swatches {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
 }
 .v-accent-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid var(--edge);
-  background: var(--swatch);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: none;
+  position: relative;
   cursor: pointer;
 }
 .v-accent-swatch[data-accent="red"] {
@@ -262,11 +262,19 @@
 .v-accent-swatch[data-accent="white"] {
   --swatch: var(--ill-ink);
 }
-.v-accent-swatch[aria-checked="true"] {
+.v-accent-swatch::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--swatch);
+  border: 2px solid var(--edge);
+}
+.v-accent-swatch[aria-checked="true"]::before {
   outline: 2px solid var(--text-1);
   outline-offset: 3px;
 }
-.v-accent-swatch:disabled {
+.v-accent-swatch[data-disabled] {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -293,7 +301,7 @@
 .v-appearance-groups[data-pending="true"] > section {
   opacity: 0.7;
 }
-.v-appearance-groups[data-pending="true"] > section:has([aria-busy="true"]) {
+.v-appearance-groups[data-pending="true"] > section[data-active="true"] {
   opacity: 1;
 }
 @container studio-focus (max-width: 820px) {

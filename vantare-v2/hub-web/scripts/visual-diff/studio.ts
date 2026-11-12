@@ -423,3 +423,68 @@ studioScenes["studio-a-estructura"] = {
     await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
   },
 };
+
+// Appearance cards use the real controls and the same sample layout as the prototype.
+studioScenes["studio-a-apariencia"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: /^Relative, / }).click();
+    await page.getByRole("tab", { name: "En pista", exact: true }).click();
+    await page.getByRole("switch", { name: "Visible", exact: true }).click();
+    await page.getByRole("button", { name: /^Relative, Oculto/ }).waitFor();
+    await page.getByRole("button", { name: /^Fuel y stint, / }).click();
+    await page.getByRole("tab", { name: "En pista", exact: true }).click();
+    for (const name of ["Mostrar en práctica", "Mostrar en qualy"]) {
+      await page.getByRole("switch", { name, exact: true }).click();
+      await page
+        .getByRole("switch", { name, exact: true, checked: false })
+        .waitFor();
+    }
+    await page.getByRole("button", { name: /^Delta, / }).click();
+    await page.getByRole("tab", { name: "En pista", exact: true }).click();
+    await page.getByRole("slider", { name: "Opacidad", exact: true }).focus();
+    for (let value = 99; value >= 85; value--) {
+      await page.keyboard.press("ArrowLeft");
+      await page
+        .getByRole("button", {
+          name: new RegExp(`^Delta, Visible · ${value} %`),
+        })
+        .waitFor();
+    }
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page.getByRole("radio", { name: "Barra", exact: true }).click();
+    await page
+      .getByRole("radio", { name: "Barra", exact: true, checked: true })
+      .waitFor();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+  },
+};
+for (const [scene, widget, look] of [
+  ["studio-a-tabla", "Standings", "Vantare"],
+  ["studio-a-clasico", "Standings", "Eficiencia"],
+  ["studio-a-fuel", "Fuel y stint", "Vantare"],
+] as const) {
+  studioScenes[scene] = {
+    mock: "studio-base",
+    async prepare(page) {
+      await studioScenes["studio-a-apariencia"].prepare(page);
+      await page
+        .getByRole("button", { name: new RegExp(`^${widget}, `) })
+        .click();
+      await page.getByRole("radio", { name: look, exact: true }).click();
+      await page
+        .getByRole("radio", { name: look, exact: true, checked: true })
+        .waitFor();
+      if (widget === "Fuel y stint") {
+        await page
+          .getByRole("radio", { name: "Estándar", exact: true })
+          .click();
+        await page
+          .getByRole("radio", { name: "Estándar", exact: true, checked: true })
+          .waitFor();
+      }
+      await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    },
+  };
+}

@@ -1,6 +1,6 @@
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Spinner } from "../Data";
@@ -29,6 +29,9 @@ export function ChoiceCards<T extends string>({
   action?: boolean;
 }) {
   const [requested, setRequested] = useState<T>();
+  useEffect(() => {
+    if (!pending) setRequested(undefined);
+  }, [pending]);
   const root = useRef<HTMLFieldSetElement>(null);
   const [index, setIndex] = useState(0);
   const content = (option: (typeof options)[number]) => {
@@ -58,7 +61,7 @@ export function ChoiceCards<T extends string>({
         className={classes}
         data-count={options.length}
         aria-label={label}
-        aria-busy={pending || undefined}
+        aria-busy={(pending && requested !== undefined) || undefined}
       >
         {options.map((option, n) => (
           <button
@@ -67,7 +70,7 @@ export function ChoiceCards<T extends string>({
             className="v-choice-card"
             data-action="true"
             disabled={disabled}
-            aria-disabled={pending || undefined}
+            aria-disabled={disabled || pending || undefined}
             aria-busy={
               (pending && (active ?? requested) === option.value) || undefined
             }
@@ -110,8 +113,8 @@ export function ChoiceCards<T extends string>({
       aria-label={label}
       value={value}
       disabled={disabled}
-      aria-disabled={pending || undefined}
-      aria-busy={pending || undefined}
+      aria-disabled={disabled || pending || undefined}
+      aria-busy={(pending && requested !== undefined) || undefined}
       onValueChange={(next) => {
         const option = options.find((option) => option.value === next);
         if (!pending && option) {
@@ -126,7 +129,7 @@ export function ChoiceCards<T extends string>({
           value={option.value}
           className="v-choice-card"
           aria-label={option.label}
-          aria-disabled={pending || undefined}
+          aria-disabled={disabled || pending || undefined}
           aria-busy={
             (pending && (active ?? requested) === option.value) || undefined
           }

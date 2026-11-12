@@ -9,21 +9,37 @@ import { Tooltip } from "../Layers";
 import { AppearanceStep } from "./AppearanceStep";
 import { TrackInspector } from "./TrackInspector";
 import "./studio-steps.css";
-export function StudioSteps({ item }: { item: OverlayInstance }) {
-  return <Steps key={item.id} item={item} />;
+export function StudioSteps({
+  item,
+  readOnly = false,
+}: {
+  item: OverlayInstance;
+  readOnly?: boolean;
+}) {
+  return <Steps key={item.id} item={item} readOnly={readOnly} />;
 }
-function Steps({ item }: { item: OverlayInstance }) {
+function Steps({
+  item,
+  readOnly,
+}: {
+  item: OverlayInstance;
+  readOnly: boolean;
+}) {
   const state = useStudio();
   const [step, setStep] = useState(item.settings ? "appearance" : "track");
   const track = useRef<HTMLButtonElement>(null);
-  if (state.view?.state !== "ready") return <p>{t.appearanceUnavailable}</p>;
-  const disabled = item.locked || state.view.plan === "unverified";
+  if (state.view?.state !== "ready" && !readOnly)
+    return <p>{t.appearanceUnavailable}</p>;
+  const disabled = readOnly || item.locked || state.view?.plan === "unverified";
   return (
     <Tabs.Root
       className="v-studio-steps"
       value={step}
       onValueChange={(value) => {
-        if (value === "track" || (value === "appearance" && item.settings))
+        if (
+          !readOnly &&
+          (value === "track" || (value === "appearance" && item.settings))
+        )
           setStep(String(value));
       }}
     >
@@ -32,26 +48,38 @@ function Steps({ item }: { item: OverlayInstance }) {
           <Tooltip label={item.settings ? t.appearance : t.soonTooltip}>
             <Tabs.Tab
               value="appearance"
-              aria-disabled={!item.settings || undefined}
+              aria-disabled={readOnly || !item.settings || undefined}
             >
-              <span className="v-step-number">1</span>
+              <span className="v-step-number" aria-hidden="true">
+                {t.stepNumbers[0]}
+              </span>
               {t.appearance}
             </Tabs.Tab>
           </Tooltip>
-          <Tabs.Tab value="track" ref={track}>
-            <span className="v-step-number">2</span>
+          <Tabs.Tab
+            value="track"
+            ref={track}
+            aria-disabled={readOnly || undefined}
+          >
+            <span className="v-step-number" aria-hidden="true">
+              {t.stepNumbers[1]}
+            </span>
             {t.track}
           </Tabs.Tab>
           <Tooltip label={t.contentSoonHelp}>
             <Tabs.Tab value="content" aria-disabled="true">
-              <span className="v-step-number">3</span>
+              <span className="v-step-number" aria-hidden="true">
+                {t.stepNumbers[2]}
+              </span>
               {t.content}
-              <small>{t.contentSoonBadge}</small>
+              <small aria-hidden="true">{t.contentSoonBadge}</small>
             </Tabs.Tab>
           </Tooltip>
         </Tabs.List>
         <div role="status" className="v-step-save">
-          {state.pending ? (
+          {readOnly ? (
+            t.readOnly
+          ) : state.pending ? (
             <>
               <Spinner label={t.saving} />
               {t.saving}
@@ -59,7 +87,7 @@ function Steps({ item }: { item: OverlayInstance }) {
           ) : state.failure ? (
             t.notSaved
           ) : disabled ? (
-            state.view.plan === "unverified" ? (
+            state.view?.plan === "unverified" ? (
               t.verifyWidget
             ) : (
               t.lockedWidget
@@ -68,7 +96,7 @@ function Steps({ item }: { item: OverlayInstance }) {
             t.autoSaved
           )}
         </div>
-        {step === "appearance" && (
+        {!readOnly && step === "appearance" && (
           <Button
             variant="ghost"
             size="sm"
@@ -81,12 +109,18 @@ function Steps({ item }: { item: OverlayInstance }) {
           </Button>
         )}
       </div>
-      <Tabs.Panel value="appearance">
-        <AppearanceStep item={item} />
-      </Tabs.Panel>
-      <Tabs.Panel value="track">
-        <TrackInspector item={item} />
-      </Tabs.Panel>
+      {readOnly ? (
+        <p className="v-studio-readonly-note">{t.appearanceUnavailable}</p>
+      ) : (
+        <>
+          <Tabs.Panel value="appearance">
+            <AppearanceStep item={item} />
+          </Tabs.Panel>
+          <Tabs.Panel value="track">
+            <TrackInspector item={item} />
+          </Tabs.Panel>
+        </>
+      )}
     </Tabs.Root>
   );
 }

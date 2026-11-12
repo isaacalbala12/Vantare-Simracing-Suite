@@ -29,7 +29,7 @@ export function AccentSwatches({
       aria-label={t.accentLabel}
       value={value}
       disabled={disabled}
-      aria-disabled={pending || undefined}
+      aria-disabled={disabled || pending || undefined}
       aria-busy={pending || undefined}
       onValueChange={(next) => {
         const value = studioWidgetOptions.accents.find((v) => v === next);
@@ -43,7 +43,7 @@ export function AccentSwatches({
           className="v-accent-swatch"
           data-accent={value}
           aria-label={labels[value]}
-          aria-disabled={pending || undefined}
+          aria-disabled={disabled || pending || undefined}
         />
       ))}
     </RadioGroup>

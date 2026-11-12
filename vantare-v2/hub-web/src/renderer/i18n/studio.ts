@@ -1,4 +1,5 @@
 export const studioText = {
+  stepNumbers: ["1", "2", "3"],
   contentSoonBadge: "Próximamente",
   next: "Siguiente: En pista",
   autoSaved: "Se guarda solo · el dibujo aún no refleja los cambios",

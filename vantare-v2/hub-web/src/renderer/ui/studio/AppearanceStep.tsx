@@ -39,7 +39,10 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
     ) : null;
   const color =
     s.designSystem === "vantare" ? (
-      <Group title={t.colorGroup}>
+      <Group
+        title={t.colorGroup}
+        active={["style", "accent", "transparent"].includes(saving ?? "")}
+      >
         <div className="v-appearance-row">
           <span>{t.styleLabel}</span>
           <Segmented
@@ -91,7 +94,11 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
     (s.kind === "standings" || s.kind === "delta")
   ) {
     middle = (
-      <Group title={t.widgetDesign} help={t.designHelp}>
+      <Group
+        title={t.widgetDesign}
+        help={t.designHelp}
+        active={saving === "design"}
+      >
         {s.kind === "standings" ? (
           <ChoiceCards<StandingsTemplate>
             label={t.widgetDesign}
@@ -106,7 +113,6 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
             }))}
             disabled={disabled}
             pending={pending}
-            active={saving === "design" ? s.templateId : null}
             onChange={(templateId) =>
               void patch({ kind: "standings", templateId }, "design")
             }
@@ -139,7 +145,11 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
   ) {
     const kind = s.kind;
     middle = (
-      <Group title={t.tablePreset} help={t.tablePresetHint}>
+      <Group
+        title={t.tablePreset}
+        help={t.tablePresetHint}
+        active={saving === "preset"}
+      >
         <ChoiceCards
           action
           label={t.tablePreset}
@@ -164,7 +174,11 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
       expanded: t.deltaExpanded,
     };
     middle = (
-      <Group title={t.formatGroup} help={t.formatHelp}>
+      <Group
+        title={t.formatGroup}
+        help={t.formatHelp}
+        active={saving === "format" || saving === "bar"}
+      >
         <ChoiceCards<DeltaSize>
           label={t.deltaFormat}
           value={studioWidgetOptions.delta.sizes.find((v) => v === s.size)}
@@ -192,7 +206,11 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
     );
   } else if (s.kind === "fuel-strategy" && s.designSystem === "vantare") {
     middle = (
-      <Group title={t.formatGroup} help={t.formatHelp}>
+      <Group
+        title={t.formatGroup}
+        help={t.formatHelp}
+        active={saving === "format" || saving === "bar"}
+      >
         <ChoiceCards<TableSize>
           label={t.fuelFormat}
           value={studioWidgetOptions.tableSizes.find((v) => v === s.size)}
@@ -212,7 +230,7 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
     );
   } else if (s.kind === "pedals") {
     middle = (
-      <Group title={t.backgroundGroup}>
+      <Group title={t.backgroundGroup} active={saving === "transparent"}>
         <Switch
           label={t.transparentBackground}
           checked={s.transparentBackground ?? false}
@@ -231,7 +249,7 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
       aria-disabled={disabled || pending || undefined}
       data-pending={pending}
     >
-      <Group title={t.widgetLook} help={t.lookHelp}>
+      <Group title={t.widgetLook} help={t.lookHelp} active={saving === "look"}>
         <ChoiceCards
           label={t.widgetLook}
           value={s.designSystem}
@@ -267,13 +285,19 @@ function Group({
   title,
   help,
   children,
+  active,
 }: {
+  active?: boolean;
   title: string;
   help?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="v-appearance-group" aria-label={title}>
+    <section
+      className="v-appearance-group"
+      aria-label={title}
+      data-active={active}
+    >
       <h3>
         {title}
         {help && <small>{help}</small>}

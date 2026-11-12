@@ -19,7 +19,10 @@ import { UiProvider } from "../src/renderer/app/UiState";
 import { Client } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { initialStudioSelection } from "../src/renderer/screens/studio/selection";
-import { StudioProvider } from "../src/renderer/screens/studio/state";
+import {
+  StudioProvider,
+  useStudio,
+} from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
 import { illustrationSizes } from "../src/renderer/ui/widgets/illustrations";
@@ -56,9 +59,18 @@ function ToggleScreen() {
       {open && (
         <StudioProvider>
           <StudioFocus />
+          <NoticeProbe />
         </StudioProvider>
       )}
     </>
+  );
+}
+function NoticeProbe() {
+  const state = useStudio();
+  return (
+    <button type="button" onClick={() => state.setNotice(undefined)}>
+      Clear notice
+    </button>
   );
 }
 function mount(scene = "studio-base") {
@@ -141,7 +153,7 @@ describe("Studio Foco structure", () => {
     expect(document.activeElement).toBe(first);
     await user.keyboard("{Enter}");
     expect(document.activeElement).toBe(
-      screen.getByRole("tab", { name: t.track }),
+      screen.getByRole("tab", { name: /Apariencia/ }),
     );
     await user.click(delta);
     expect(document.activeElement).toBe(delta);
@@ -221,5 +233,71 @@ describe("Studio Foco structure", () => {
     await waitFor(() => expect(document.activeElement).toBe(radar));
     expect(radar.getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("searchbox", { name: t.search })).toBeNull();
+  });
+  it("applies a table recipe once, announces it and Undo restores the original settings", async () => {
+    const native = Client.prototype.request;
+    const views: import("../src/contract/generated/studio").StudioView[] = [];
+    const requests = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request) {
+        const response = await native.call(this, request);
+        if (response.method.startsWith("studio.") && "value" in response)
+          views.push(
+            structuredClone(
+              response.value as import("../src/contract/generated/studio").StudioView,
+            ),
+          );
+        return response;
+      });
+    mount();
+    const user = userEvent.setup();
+    await listRow("Standings");
+    const original = JSON.stringify(views[0].instances[0].settings);
+    await user.click(
+      screen.getByRole("button", { name: t.applyFormat(t.formatCompact) }),
+    );
+    await screen.findByText(t.presetApplied(t.formatCompact));
+    expect(
+      requests.mock.calls.some(
+        ([request]) =>
+          request.method === "studio.instance" &&
+          request.patch.field === "settings" &&
+          JSON.stringify(request.patch.value) ===
+            JSON.stringify({ kind: "standings", tablePreset: "compact" }),
+      ),
+    ).toBe(true);
+    await user.click(screen.getByRole("button", { name: t.undo }));
+    await waitFor(() =>
+      expect(JSON.stringify(views.at(-1)?.instances[0].settings)).toBe(
+        original,
+      ),
+    );
+    expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull();
+  });
+  it("does not announce a no-op preset and never announces a conflicted write", async () => {
+    mount();
+    const user = userEvent.setup();
+    await listRow("Standings");
+    const apply = screen.getByRole("button", {
+      name: t.applyFormat(t.formatCompact),
+    });
+    await user.click(apply);
+    await screen.findByText(t.presetApplied(t.formatCompact));
+    await user.click(screen.getByRole("button", { name: "Clear notice" }));
+    expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull();
+    const requests = vi.spyOn(Client.prototype, "request");
+    await user.click(apply);
+    await waitFor(() => expect(requests).toHaveBeenCalled());
+    const response = await requests.mock.results[0].value;
+    expect(response.method).toBe("studio.instance");
+    expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull();
+    cleanup();
+    mount("studio-error");
+    await listRow("Standings");
+    await user.click(
+      screen.getByRole("button", { name: t.applyFormat(t.formatCompact) }),
+    );
+    await screen.findByText(t.conflict);
+    expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull();
   });
 });

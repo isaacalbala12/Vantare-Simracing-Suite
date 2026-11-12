@@ -1,5 +1,5 @@
 //! Sparse settings writes over the existing duplicate-safe `RawValue` adapter.
-use super::{Fields, HostError, WidgetKind, merged_settings, put, read, typed_settings};
+use super::{Fields, HostError, WidgetKind, put, read, typed_settings};
 use crate::studio::{WidgetSettings, WidgetSettingsPatch};
 use serde_json::{Value, value::RawValue};
 use vantare_ipc::control::CatalogAccess;
@@ -73,6 +73,13 @@ fn column_edits(
             };
             serde_json::from_str(encode(&default)?.get()).map_err(|_| HostError::Io)?
         };
+        if existing.is_none()
+            && old
+                .iter()
+                .any(|old| read::<String>(old, "id").as_deref() == Ok(metric))
+        {
+            return Err(HostError::Denied);
+        }
         for (key, value) in entry.as_object().ok_or(HostError::Denied)? {
             if key == "metric" {
                 continue;
@@ -120,9 +127,6 @@ pub(super) fn apply(
         return Err(HostError::Denied);
     }
     patch.validate()?;
-    let merged = merged_settings(kind, &stored)?;
-    let source = serde_json::to_string(&merged.0).map_err(|_| HostError::Io)?;
-    let old_raw = WidgetSettings::unnormalized_json(&source)?;
     let old = serde_json::to_value(typed_settings(kind, &stored)?.ok_or(HostError::Denied)?)
         .map_err(|_| HostError::Io)?;
     let patch = serde_json::to_value(patch).map_err(|_| HostError::Io)?;
@@ -144,39 +148,25 @@ pub(super) fn apply(
         &serde_json::to_string(&candidate).map_err(|_| HostError::Io)?,
     )?
     .ok_or(HostError::Denied)?;
-    let next = serde_json::to_value(projected).map_err(|_| HostError::Io)?;
+    let next = serde_json::to_value(&projected).map_err(|_| HostError::Io)?;
     if old == next {
         return Ok(false);
     }
-    let mut keys: std::collections::BTreeSet<_> = requested.keys().cloned().collect();
-    keys.extend(
-        old.as_object()
-            .ok_or(HostError::Protected)?
-            .keys()
-            .filter(|key| stored.0.contains_key(*key) && old_raw[*key] != old[*key])
-            .cloned(),
-    );
-    if kind != WidgetKind::Pedals {
-        keys.insert("contentVersion".into());
-    }
-    for key in keys {
-        if key == "kind" || key == "brandVisible" {
-            continue;
-        }
-        let Some(value) = next.get(&key) else {
+    // Persist exactly domain's normalized struct, retaining unknown members.
+    // Raw serialization is essential: to_value(f32) widens the number to f64.
+    let normalized: Fields =
+        serde_json::from_str(projected.raw()?.get()).map_err(|_| HostError::Io)?;
+    for key in WidgetSettings::keys(kind) {
+        let Some(raw) = normalized.0.get(&key) else {
             stored.0.remove(&key);
             continue;
         };
-        if ["columns", "practiceColumns", "qualifyingColumns"].contains(&key.as_str()) {
-            stored
-                .0
-                .insert(key.clone(), normalized_columns(&stored, &key, value)?);
+        let value = if ["columns", "practiceColumns", "qualifyingColumns"].contains(&key.as_str()) {
+            normalized_columns(&stored, &key, &next[&key])?
         } else {
-            stored.0.insert(
-                key.clone(),
-                known_object(stored.0.get(&key).map(Box::as_ref), value)?,
-            );
-        }
+            raw.clone()
+        };
+        stored.0.insert(key, value);
     }
     put(fields, "settings", &stored.0)?;
     Ok(true)
@@ -294,5 +284,116 @@ mod inheritance_tests {
         let view =
             serde_json::to_value(typed_settings(WidgetKind::Standings, &stored).unwrap()).unwrap();
         assert!(view.get("practiceColumns").is_none());
+    }
+}
+
+#[cfg(test)]
+mod review_tests {
+    use super::*;
+    use serde_json::json;
+    use vantare_domain::widget_settings as native;
+    fn write(input: Value, update: Value) -> Value {
+        let mut fields: Fields = serde_json::from_value(json!({"settings":input})).unwrap();
+        let update = serde_json::from_value(update).unwrap();
+        assert!(apply(&mut fields, &update, Some(CatalogAccess::Pro)).unwrap());
+        serde_json::from_str(fields.0["settings"].get()).unwrap()
+    }
+    #[test]
+    fn legacy_and_out_of_range_settings_save_the_complete_normalized_struct() {
+        let columns: Vec<_> = (0..13)
+            .map(|i| json!({"id":i.to_string(),"metricId":"gap"}))
+            .collect();
+        let cases = [
+            json!({"kind":"standings","rowCount":99,"windowAround":3,"columns":columns}),
+            json!({"kind":"standings","designSystem":"vantare","classificationMode":"multiclass"}),
+            json!({"kind":"relative","designSystem":"eficiencia","columns":(0..9).map(|i|json!({"id":i.to_string(),"metricId":"gap"})).collect::<Vec<_>>()}),
+            json!({"kind":"fuel-strategy","designSystem":"vantare"}),
+        ];
+        for input in cases {
+            let kind = input["kind"].as_str().unwrap();
+            let expected = match kind {
+                "standings" => {
+                    let mut data =
+                        serde_json::from_value::<native::standings::Settings>(input.clone())
+                            .unwrap()
+                            .normalized();
+                    data.accent = native::look::Accent::White;
+                    serde_json::to_value(data.normalized()).unwrap()
+                }
+                "relative" => {
+                    let mut data =
+                        serde_json::from_value::<native::relative::Settings>(input.clone())
+                            .unwrap()
+                            .normalized();
+                    data.accent = native::look::Accent::White;
+                    serde_json::to_value(data.normalized()).unwrap()
+                }
+                "fuel-strategy" => {
+                    let mut data =
+                        serde_json::from_value::<native::fuel_strategy::Settings>(input.clone())
+                            .unwrap()
+                            .normalized();
+                    data.accent = native::look::Accent::White;
+                    serde_json::to_value(data.normalized()).unwrap()
+                }
+                _ => unreachable!(),
+            };
+            let mut actual = write(input.clone(), json!({"kind":kind,"accent":"white"}));
+            actual.as_object_mut().unwrap().remove("kind");
+            assert_eq!(actual, expected, "{input}");
+        }
+    }
+    #[test]
+    fn fractional_gap_uses_the_native_number_bytes_and_negative_zero_is_noop() {
+        let mut fields: Fields =
+            serde_json::from_str(r#"{"settings":{"kind":"pedals","gap":0.0}}"#).unwrap();
+        let before = fields.0["settings"].get().to_owned();
+        assert!(
+            !apply(
+                &mut fields,
+                &serde_json::from_str(r#"{"kind":"pedals","gap":-0.0}"#).unwrap(),
+                Some(CatalogAccess::Pro)
+            )
+            .unwrap()
+        );
+        assert_eq!(fields.0["settings"].get(), before);
+        assert!(
+            apply(
+                &mut fields,
+                &serde_json::from_str(r#"{"kind":"pedals","gap":2.7}"#).unwrap(),
+                Some(CatalogAccess::Pro)
+            )
+            .unwrap()
+        );
+        let stored: Fields = read(&fields, "settings").unwrap();
+        let native = native::pedals::Settings {
+            gap: 2.7,
+            ..Default::default()
+        };
+        let expected: Fields =
+            serde_json::from_str(&serde_json::to_string(&native).unwrap()).unwrap();
+        assert_eq!(stored.0["gap"].get(), expected.0["gap"].get());
+        assert_eq!(stored.0["gap"].get(), "2.7");
+    }
+    #[test]
+    fn complete_column_lists_delete_reorder_and_reject_new_id_collisions() {
+        let input = json!({"kind":"relative","contentVersion":1,"columns":[{"id":"gap","metricId":"driverName"},{"id":"old","metricId":"position"}]});
+        let mut fields: Fields = serde_json::from_value(json!({"settings":input})).unwrap();
+        let update =
+            serde_json::from_value(json!({"kind":"relative","columns":[{"metric":"gap"}]}))
+                .unwrap();
+        let before = fields.0["settings"].get().to_owned();
+        assert!(matches!(
+            apply(&mut fields, &update, Some(CatalogAccess::Pro)),
+            Err(HostError::Denied)
+        ));
+        assert_eq!(fields.0["settings"].get(), before);
+        let actual = write(
+            json!({"kind":"relative","contentVersion":1,"columns":[{"id":"p","metricId":"position"},{"id":"d","metricId":"driverName"},{"id":"g","metricId":"gap"}]}),
+            json!({"kind":"relative","columns":[{"metric":"gap"},{"metric":"driverName","format":{"maxChars":0}}]}),
+        );
+        assert_eq!(actual["columns"].as_array().unwrap().len(), 2);
+        assert_eq!(actual["columns"][0]["id"], "g");
+        assert_eq!(actual["columns"][1]["format"]["maxChars"], 0);
     }
 }

@@ -132,11 +132,11 @@ fn number(
     }
 }
 const METRICS: &[(&str, &str)] = &[
-    ("Ninguna", widget::standings::STANDINGS_INFO_NONE),
-    ("Circuito", widget::standings::STANDINGS_INFO_TRACK),
+    ("Ninguna", widget::standings::STANDINGS_FOOTER_METRICS[0]),
+    ("Circuito", widget::standings::STANDINGS_FOOTER_METRICS[1]),
     (
         "Vueltas estimadas",
-        widget::standings::STANDINGS_INFO_ESTIMATED_LAPS,
+        widget::standings::STANDINGS_FOOTER_METRICS[2],
     ),
 ];
 
@@ -1129,6 +1129,17 @@ mod tests {
             pending(&settings)
                 .iter()
                 .all(|row| row.contains("pendiente"))
+        );
+    }
+}
+
+#[cfg(test)]
+mod studio_contract_metrics {
+    #[test]
+    fn inspector_footer_choices_match_shared_ids() {
+        assert_eq!(
+            super::METRICS.iter().map(|(_, id)| *id).collect::<Vec<_>>(),
+            vantare_domain::widget_settings::standings::STANDINGS_FOOTER_METRICS
         );
     }
 }

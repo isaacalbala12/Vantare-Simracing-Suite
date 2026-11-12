@@ -268,9 +268,8 @@ function applyWidgetSettings(
       ["columns", "practiceColumns", "qualifyingColumns"].includes(key) &&
       Array.isArray(value)
     ) {
-      const previous = Array.isArray(result[key])
-        ? (result[key] as Record<string, unknown>[])
-        : [];
+      const inherited = key !== "columns" && result[key] == null ? result.columns : result[key];
+      const previous = Array.isArray(inherited) ? inherited as Record<string,unknown>[] : [];
       result[key] = value.map((entry) => {
         const { metric, ...fields } = entry;
         const old = previous.find((c) => c.metricId === metric) ?? {

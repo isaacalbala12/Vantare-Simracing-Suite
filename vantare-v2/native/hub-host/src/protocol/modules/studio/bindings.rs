@@ -212,7 +212,7 @@ pub(crate) fn corpus() -> serde_json::Value {
     ui.push(UiToHost::Unsubscribe {
         topic: crate::protocol::Topic::Studio,
     });
-    serde_json::json!({"host":host,"ui":ui})
+    serde_json::json!({"host":host,"ui":ui,"invalidSettings":invalid_settings()})
 }
 
 fn widget_settings_types(text: &mut String) {
@@ -229,6 +229,7 @@ fn widget_settings_types(text: &mut String) {
     declare::<native::delta::Settings>(text);
     declare::<native::pedals::Settings>(text);
     declare::<native::fuel_strategy::Settings>(text);
+    crate::protocol::bindings::constants!(text, "studioWidgetKeys", WidgetSettings::schema_keys());
     declare::<WidgetSettings>(text);
     declare::<WidgetGap>(text);
     declare::<StandingsScope>(text);
@@ -371,5 +372,32 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
                 base_revision: "0".repeat(64),
             },
         });
+    }
+}
+
+fn invalid_settings() -> Vec<serde_json::Value> {
+    use serde_json::json;
+    vec![
+        json!({"kind":"delta","brandVisible":false}),
+        json!({"kind":"delta","size":"unknown"}),
+        json!({"kind":"pedals","gap":13}),
+        json!({"kind":"pedals","gap":null}),
+        json!({"kind":"standings","rowCount":0}),
+        json!({"kind":"standings","windowAround":3}),
+        json!({"kind":"relative","columns":[{"metric":"driverName"},{"metric":"driverName"}]}),
+        json!({"kind":"relative","columns":[{"metric":"driverName","format":{"maxChars":65}}]}),
+        json!({"kind":"delta","executable":"x"}),
+    ]
+}
+#[cfg(test)]
+mod invalid_tests {
+    #[test]
+    fn shared_negative_settings_corpus_is_rejected_by_rust() {
+        for input in super::invalid_settings() {
+            let rejected =
+                serde_json::from_value::<crate::studio::WidgetSettingsPatch>(input.clone())
+                    .map_or(true, |patch| patch.validate().is_err());
+            assert!(rejected, "{input}");
+        }
     }
 }

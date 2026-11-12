@@ -2401,3 +2401,53 @@ mod class_text_render_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod contract_set_parity {
+    use super::*;
+    #[test]
+    fn canonical_columns_match_the_real_template_and_parsers() {
+        use vantare_domain::widget_settings as native;
+        fn cover(value: Kind) {
+            match value {
+                Kind::Gained
+                | Kind::Number
+                | Kind::Driver
+                | Kind::Compound
+                | Kind::Pit
+                | Kind::Laps
+                | Kind::Sectors
+                | Kind::Last
+                | Kind::Best
+                | Kind::Interval
+                | Kind::Gap => {}
+            }
+        }
+        fn cover_preset(value: Preset) {
+            match value {
+                Preset::Xs | Preset::Sm | Preset::Md | Preset::Lg => {}
+            }
+        }
+        let columns = super::super::vantare_template("expanded");
+        let actual: std::collections::BTreeSet<_> =
+            columns.iter().map(|c| c.metric_id.as_str()).collect();
+        let expected: std::collections::BTreeSet<_> = native::standings::STANDINGS_VANTARE_COLUMNS
+            .iter()
+            .copied()
+            .collect();
+        assert_eq!(actual, expected);
+        for metric in expected {
+            if ["position", "vehicle"].contains(&metric) {
+                continue;
+            }
+            let kind = Kind::from_metric(metric).expect("real parser supports canonical column");
+            cover(kind);
+            assert!(
+                native::columns::LEGACY_TABLE_COLUMNS.contains(&kind.metric())
+                    || native::standings::STANDINGS_VANTARE_COLUMNS.contains(&kind.metric())
+            );
+        }
+        assert!(Kind::from_metric("not-a-column").is_none());
+        cover_preset(Cols::from_settings(&columns).driver);
+    }
+}

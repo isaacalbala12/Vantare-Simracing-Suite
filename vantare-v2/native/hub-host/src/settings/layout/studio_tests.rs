@@ -690,3 +690,113 @@ fn absence_preserves_session_inheritance_and_the_native_legacy_pedals_look() {
         serde_json::to_value(native.design_system).unwrap()
     );
 }
+
+#[test]
+fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
+    use vantare_domain::widget_settings as native;
+    for fixture in [
+        include_str!("../../../../ui/fixtures/layouts/native-beta-v0.0.975.json"),
+        include_str!("../../../../packaging/fixtures/layout.golden.json"),
+        include_str!("../../../../ui/fixtures/layouts/widget-settings-families.json"),
+    ] {
+        let document: serde_json::Value = serde_json::from_str(fixture).unwrap();
+        for index in 0..document["instances"].as_array().unwrap().len() {
+            let settings = &document["instances"][index]["settings"];
+            let kind: WidgetKind = serde_json::from_value(settings["kind"].clone()).unwrap();
+            if !crate::studio::WidgetSettings::supports(kind) {
+                continue;
+            }
+            let root = crate::test_support::Root::new();
+            let path = root.path.join("layout.json");
+            std::fs::write(&path, fixture).unwrap();
+            let mut state = State::new(path.clone());
+            let access = Some(CatalogAccess::Pro);
+            let current = state.view(access);
+            assert_eq!(current.state, StudioState::Ready);
+            let id = document["instances"][index]["id"].as_str().unwrap();
+            let empty = serde_json::from_value(serde_json::json!({"kind":kind})).unwrap();
+            let noop = state
+                .edit(
+                    Edit::Instance(id.into(), InstancePatch::Settings(Box::new(empty))),
+                    &current.revision,
+                    access,
+                )
+                .unwrap();
+            assert_eq!(std::fs::read(&path).unwrap(), fixture.as_bytes());
+            assert!(!noop.can_undo);
+            assert!(!noop.can_redo);
+            let accent = if settings["accent"] == "white" {
+                native::look::Accent::Red
+            } else {
+                native::look::Accent::White
+            };
+            macro_rules! oracle {
+                ($ty:ty) => {{
+                    let mut data = serde_json::from_value::<$ty>(settings.clone())
+                        .unwrap()
+                        .normalized();
+                    data.accent = accent;
+                    serde_json::to_value(data.normalized()).unwrap()
+                }};
+            }
+            let mut expected = match kind {
+                WidgetKind::Standings => oracle!(native::standings::Settings),
+                WidgetKind::Relative => oracle!(native::relative::Settings),
+                WidgetKind::Delta => oracle!(native::delta::Settings),
+                WidgetKind::Pedals => oracle!(native::pedals::Settings),
+                WidgetKind::FuelStrategy => oracle!(native::fuel_strategy::Settings),
+                _ => unreachable!(),
+            };
+            expected["kind"] = settings["kind"].clone();
+            let update =
+                serde_json::from_value(serde_json::json!({"kind":kind,"accent":accent})).unwrap();
+            state
+                .edit(
+                    Edit::Instance(id.into(), InstancePatch::Settings(Box::new(update))),
+                    &current.revision,
+                    access,
+                )
+                .unwrap();
+            let mut actual: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+            assert_eq!(actual["instances"][index]["settings"], expected);
+            actual["instances"][index]["settings"] = settings.clone();
+            assert_eq!(actual, document);
+        }
+    }
+}
+#[test]
+fn unreadable_supported_settings_protect_the_whole_document_without_creating_files() {
+    for bytes in [br#"{"version":1,"instances":[{"id":"widget-1","x":0,"y":0,"settings":{"kind":"pedals","gap":"broken"}}]}"#.as_slice(),br#"{"version":1,"instances":[],"instances":[]}"#.as_slice()] {
+        let root=crate::test_support::Root::new();let path=root.path.join("layout.json");std::fs::write(&path,bytes).unwrap();
+        let before:Vec<_>=std::fs::read_dir(&root.path).unwrap().map(|e|e.unwrap().file_name()).collect();
+        let view=State::new(path.clone()).view(Some(CatalogAccess::Pro));assert_eq!(view.state,StudioState::Protected);assert!(view.instances.is_empty());
+        assert_eq!(std::fs::read(&path).unwrap(),bytes);
+        let after:Vec<_>=std::fs::read_dir(&root.path).unwrap().map(|e|e.unwrap().file_name()).collect();assert_eq!(before,after);
+    }
+}
+
+#[test]
+fn free_plan_cannot_edit_paid_fuel_settings() {
+    let (_root, path, _) = fixture();
+    let mut doc: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    doc["instances"][0]["settings"] = serde_json::json!({"kind":"fuel-strategy"});
+    let bytes = serde_json::to_vec(&doc).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let mut state = State::new(path.clone());
+    let view = state.view(Some(CatalogAccess::Free));
+    assert!(view.instances[0].locked);
+    let update =
+        serde_json::from_value(serde_json::json!({"kind":"fuel-strategy","historyRows":3}))
+            .unwrap();
+    assert!(matches!(
+        state.edit(
+            Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
+            &view.revision,
+            Some(CatalogAccess::Free)
+        ),
+        Err(HostError::Denied)
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+}

@@ -1,5 +1,5 @@
 import type { WidgetSettings } from "./generated/studio";
-import { studioWidgetOptions as o } from "./generated/studio";
+import { studioWidgetKeys, studioWidgetOptions as o } from "./generated/studio";
 import { integer, oneOf, record } from "./validation-common";
 
 type Check = (value: unknown) => boolean;
@@ -66,6 +66,12 @@ const base = {
   style: choices(o.tones),
   accent: choices(o.accents),
 };
+function settingObject(value: unknown, kind: unknown, required: Record<string,Check>, optional: Record<string,Check> = {}): boolean {
+  const schema = studioWidgetKeys[kind as keyof typeof studioWidgetKeys];
+  if (!schema || !record(value)) return false;
+  const checks = {...required,...optional};
+  return schema.required.every(key=>Object.hasOwn(value,key)) && Object.keys(value).every(key=>(schema.all as readonly string[]).includes(key) && checks[key]?.(value[key]));
+}
 export function isWidgetSettings(
   value: unknown,
   kind: unknown,
@@ -73,17 +79,15 @@ export function isWidgetSettings(
   if (!record(value))
     return (
       value === null &&
-      !["standings", "relative", "delta", "pedals", "fuel-strategy"].includes(
-        String(kind),
-      )
+      !Object.hasOwn(studioWidgetKeys,String(kind))
     );
   if (value.kind !== kind) return false;
   const common = { ...base, contentVersion: integer };
   const brand = { brandVisible: bool };
   switch (kind) {
     case "standings":
-      return object(
-        value,
+      return settingObject(
+        value,kind,
         {
           ...common,
           rowCount: integer,
@@ -109,8 +113,8 @@ export function isWidgetSettings(
         },
       );
     case "relative":
-      return object(
-        value,
+      return settingObject(
+        value,kind,
         {
           ...common,
           columns: nullable(list(columnRead)),
@@ -124,8 +128,8 @@ export function isWidgetSettings(
         brand,
       );
     case "delta":
-      return object(
-        value,
+      return settingObject(
+        value,kind,
         {
           ...common,
           size: text,
@@ -137,8 +141,8 @@ export function isWidgetSettings(
         { ...brand, transparentBackground: bool },
       );
     case "pedals":
-      return object(
-        value,
+      return settingObject(
+        value,kind,
         {
           ...base,
           transparentBackground: bool,
@@ -148,8 +152,8 @@ export function isWidgetSettings(
         brand,
       );
     case "fuel-strategy":
-      return object(
-        value,
+      return settingObject(
+        value,kind,
         {
           ...common,
           size: text,

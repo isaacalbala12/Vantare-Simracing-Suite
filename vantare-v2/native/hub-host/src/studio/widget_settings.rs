@@ -39,6 +39,80 @@ impl<'de> Deserialize<'de> for WidgetSettings {
     }
 }
 impl WidgetSettings {
+    pub(crate) fn raw(&self) -> Result<Box<serde_json::value::RawValue>, HostError> {
+        serde_json::value::to_raw_value(self).map_err(|_| HostError::Io)
+    }
+    pub(crate) fn schema_samples() -> Vec<(WidgetKind, serde_json::Value)> {
+        use native::{delta, fuel_strategy, pedals, relative, standings};
+        let table = standings::Settings {
+            practice_columns: Some(vec![]),
+            qualifying_columns: Some(vec![]),
+            brand_visible: Some(false),
+            footer_slots: Some(vec![]),
+            ..Default::default()
+        };
+        let values = [
+            (WidgetKind::Standings, Data::Standings(table)),
+            (
+                WidgetKind::Relative,
+                Data::Relative(relative::Settings {
+                    brand_visible: Some(false),
+                    ..Default::default()
+                }),
+            ),
+            (
+                WidgetKind::Delta,
+                Data::Delta(delta::Settings {
+                    brand_visible: Some(false),
+                    transparent_background: true,
+                    ..Default::default()
+                }),
+            ),
+            (
+                WidgetKind::Pedals,
+                Data::Pedals(pedals::Settings {
+                    brand_visible: Some(false),
+                    ..Default::default()
+                }),
+            ),
+            (
+                WidgetKind::FuelStrategy,
+                Data::FuelStrategy(fuel_strategy::Settings {
+                    brand_visible: Some(false),
+                    ..Default::default()
+                }),
+            ),
+        ];
+        values
+            .into_iter()
+            .map(|(kind, data)| (kind, serde_json::to_value(data).expect("settings schema")))
+            .collect()
+    }
+    pub(crate) fn schema_keys() -> std::collections::BTreeMap<String, serde_json::Value> {
+        let bare = [
+            Data::Standings(Default::default()),
+            Data::Relative(Default::default()),
+            Data::Delta(Default::default()),
+            Data::Pedals(Default::default()),
+            Data::FuelStrategy(Default::default()),
+        ];
+        Self::schema_samples().into_iter().zip(bare).map(|((kind,full),data)|{
+            let plain=serde_json::to_value(data).expect("native keys");
+            (kind.id().to_owned(),serde_json::json!({"all":full.as_object().expect("object").keys().collect::<Vec<_>>(),"required":plain.as_object().expect("object").keys().collect::<Vec<_>>()}))
+        }).collect()
+    }
+    pub(crate) fn keys(kind: WidgetKind) -> Vec<String> {
+        Self::schema_samples()
+            .into_iter()
+            .find(|(k, _)| *k == kind)
+            .expect("supported settings")
+            .1
+            .as_object()
+            .expect("settings object")
+            .keys()
+            .cloned()
+            .collect()
+    }
     pub fn kind(&self) -> WidgetKind {
         match self.0 {
             Data::Standings(_) => WidgetKind::Standings,

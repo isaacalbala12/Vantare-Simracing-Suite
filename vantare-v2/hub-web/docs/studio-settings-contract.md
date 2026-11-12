@@ -12,7 +12,7 @@ valor legacy de su propio serde. El resto se completa con `widget-defaults`.
 principales, como GPUI; no aplica de nuevo los presets de alta.
 
 `studio.instance` acepta `patch: { field: "settings", value: { kind, ... } }`.
-Solo los campos tipados presentes cambian; un campo ausente conserva su valor.
+El parche cambia únicamente los valores solicitados en memoria. Si hay un cambio real, el guardado persiste el struct completo normalizado exactamente como GPUI, más los miembros desconocidos. Un parche vacío o sin cambio no escribe.
 Los campos anulables de columnas permiten `null` para volver al valor heredado.
 El `kind` debe coincidir con el de la instancia. No se admiten campos desconocidos,
 rutas, ficheros, URLs ni comandos. `brandVisible` solo se proyecta: cualquier
@@ -35,3 +35,22 @@ la dependencia de desarrollo de hub-host. El workspace usa resolver 3: durante
 `nextest --workspace` se unifica esa feature para los tests de otros crates, de
 forma esperada. Los grafos de producción excluyen dependencias de desarrollo y
 no incorporan `ts-rs`; el archivo de tests sí puede incluirlo.
+
+
+Las listas `columns`, `practiceColumns` y `qualifyingColumns` son listas COMPLETAS:
+el orden recibido sustituye al anterior y las columnas omitidas se eliminan.
+Los detalles omitidos de una columna existente se conservan por `metricId`;
+una columna nueva no puede generar un `id` que choque con uno ya existente.
+Los números, incluido `gap`, se serializan por el camino nativo de `domain`,
+sin ensanchar f32 a f64 al escribir.
+
+Diferencia deliberada con GPUI, pendiente de decisión de Isaac: el Hub nuevo
+mantiene TODO el documento protegido si sus ajustes son ilegibles. Nunca lo
+reescribe, archiva, sustituye ni siembra; no crea archivos durante la lectura.
+GPUI rechaza también el layout completo, pero `Editor::open` archiva el original
+y permite editar un layout vacío si la copia durable tuvo éxito.
+
+Las entradas de transporte malformadas cortan la sesión durante la decodificación,
+según el patrón existente del anfitrión. El renderer y el proceso principal validan
+antes de enviarlas. `brandVisible` sigue solo lectura; GPUI sí permite elegir
+Marca auto/show/hide, diferencia pendiente de decisión de Isaac.

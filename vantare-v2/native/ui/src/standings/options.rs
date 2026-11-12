@@ -95,6 +95,44 @@ impl ColumnFormat for ColumnSetting {
 mod contract_parity_tests {
     use super::*;
 
+    fn preset_key(value: Preset) -> &'static str {
+        match value {
+            Preset::Xs => "xs",
+            Preset::Sm => "sm",
+            Preset::Md => "md",
+            Preset::Lg => "lg",
+            Preset::Auto => "auto",
+        }
+    }
+    fn name_key(value: NameMode) -> &'static str {
+        match value {
+            NameMode::Full => "full",
+            NameMode::Initial => "initial",
+            NameMode::Surname => "surname",
+            NameMode::Truncate => "truncate",
+        }
+    }
+    fn align_key(value: Align) -> &'static str {
+        match value {
+            Align::Left => "left",
+            Align::Center => "center",
+            Align::Right => "right",
+        }
+    }
+    fn metric_coverage(value: Metric) {
+        match value {
+            Metric::Position
+            | Metric::DriverNumber
+            | Metric::DriverName
+            | Metric::VehicleClass
+            | Metric::Gap
+            | Metric::Interval
+            | Metric::CurrentLap
+            | Metric::LastLap
+            | Metric::BestLap
+            | Metric::Pit => {}
+        }
+    }
     fn column() -> ColumnSetting {
         ColumnSetting {
             metric_id: "driverName".into(),
@@ -117,6 +155,7 @@ mod contract_parity_tests {
             let mut value = column();
             value.width_preset = name.into();
             assert_eq!(value.column().unwrap().preset, expected);
+            assert_eq!(preset_key(value.column().unwrap().preset), name);
         }
         assert_eq!(keys::COLUMN_WIDTHS.len(), 5);
         for (name, expected) in [
@@ -129,6 +168,7 @@ mod contract_parity_tests {
             let mut value = column();
             value.format.mode = name.into();
             assert_eq!(value.column().unwrap().name_mode, expected);
+            assert_eq!(name_key(value.column().unwrap().name_mode), name);
         }
         assert_eq!(keys::COLUMN_NAME_MODES.len(), 4);
         for (name, expected) in [
@@ -140,6 +180,7 @@ mod contract_parity_tests {
             let mut value = column();
             value.style.align = Some(name.into());
             assert_eq!(value.column().unwrap().align, Some(expected));
+            assert_eq!(align_key(value.column().unwrap().align.unwrap()), name);
         }
         assert_eq!(keys::COLUMN_ALIGNS.len(), 3);
         assert_eq!(keys::LEGACY_TABLE_COLUMNS.len(), 12);
@@ -154,6 +195,7 @@ mod contract_parity_tests {
             let mut value = column();
             value.metric_id = (*name).into();
             assert!(value.column().is_some(), "{name}");
+            metric_coverage(value.column().unwrap().metric);
         }
         let mut unknown = column();
         unknown.metric_id = "unknown".into();
@@ -162,5 +204,88 @@ mod contract_parity_tests {
         assert!(!keys::COLUMN_WIDTHS.contains(&"unknown"));
         assert!(!keys::COLUMN_ALIGNS.contains(&"unknown"));
         assert!(!keys::COLUMN_NAME_MODES.contains(&"unknown"));
+    }
+}
+
+#[cfg(test)]
+mod settings_set_parity {
+    use super::*;
+    use vantare_domain::widget_settings as n;
+    #[test]
+    fn shared_choices_survive_native_normalization_and_real_footer_rendering() {
+        for value in n::standings::STANDINGS_SCOPES {
+            let data = n::standings::Settings {
+                class_scope: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().class_scope, *value);
+        }
+        for value in n::standings::STANDINGS_CLASSIFICATION_MODES {
+            let data = n::standings::Settings {
+                classification_mode: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().classification_mode, *value);
+        }
+        for value in n::relative::RELATIVE_SCOPES {
+            let data = n::relative::Settings {
+                class_scope: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().class_scope, *value);
+        }
+        for value in n::TABLE_SIZES {
+            let data = n::fuel_strategy::Settings {
+                size: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().size, *value);
+        }
+        for value in n::delta::DELTA_SIZES {
+            let data = n::delta::Settings {
+                size: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().size, *value);
+        }
+        for value in n::delta::DELTA_REFERENCES {
+            let data = n::delta::Settings {
+                reference: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().reference, *value);
+        }
+        for value in n::delta::DELTA_TEMPLATES {
+            let data = n::delta::Settings {
+                template_id: (*value).into(),
+                ..Default::default()
+            };
+            assert_eq!(data.normalized().template_id, *value);
+        }
+        let source = crate::source::synthetic(0);
+        let ids: Vec<_> = n::FOOTER_KEYS.iter().map(|s| (*s).to_owned()).collect();
+        let cells =
+            vantare_domain::standings::information(&source, Default::default(), &ids, true, None);
+        assert_eq!(cells.len(), ids.len());
+        for cell in cells {
+            assert_ne!(
+                cell.label,
+                cell.id.to_uppercase(),
+                "unrecognized footer {}",
+                cell.id
+            );
+        }
+        let view = include_str!("../workshop/view.rs");
+        let picker = view
+            .split("group(\"Pie de datos\")")
+            .nth(1)
+            .unwrap()
+            .split(".into_iter()")
+            .next()
+            .unwrap();
+        assert_eq!(
+            picker.matches("(widget::FOOTER_").count(),
+            n::FOOTER_KEYS.len()
+        );
     }
 }

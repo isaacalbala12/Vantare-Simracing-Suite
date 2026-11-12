@@ -169,6 +169,7 @@ impl Scheduler {
         zone: &Z,
     ) -> Vec<CalendarNotice> {
         let (now, clock) = time;
+        let resumed = enabled && !self.last_enabled;
         let changed = self.last_enabled != enabled || self.last_track != in_track;
         self.last_enabled = enabled;
         self.last_track = in_track;
@@ -186,7 +187,8 @@ impl Scheduler {
             return vec![];
         }
         self.seen.retain(|_, end| *end >= now);
-        if !enabled {
+        if !enabled || resumed {
+            // Re-enabling starts a new observation window, never a catch-up batch.
             self.since = Some(now);
             self.pending_week = None;
             return vec![];

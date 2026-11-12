@@ -124,3 +124,34 @@ it("cannot launch when the host snapshot disallows it", () => {
   fireEvent.click(button);
   expect(launch).not.toHaveBeenCalled();
 });
+it("explains unavailable scheduled launch on each inactive clock", () => {
+  const view = calendarReference();
+  const schedule = view.official;
+  if (!schedule) throw new Error("Missing reference schedule");
+  render(
+    <CalendarMineView
+      schedule={schedule}
+      alerts={alerts}
+      following={schedule.series.map((series) => series.id)}
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      utc
+      limit={1000}
+      onUpcoming={() => {}}
+      onSeries={() => {}}
+      onLaunch={() => {}}
+    />,
+  );
+  const clocks = screen.getAllByRole("button", { name: text.launchBefore });
+  expect(clocks.length).toBeGreaterThan(0);
+  const descriptions = new Set<string>();
+  for (const clock of clocks) {
+    expect((clock as HTMLButtonElement).disabled).toBe(true);
+    const id = clock.getAttribute("aria-describedby");
+    if (!id) throw new Error("Missing launch explanation");
+    expect(document.getElementById(id)?.textContent).toBe(
+      clock.getAttribute("title"),
+    );
+    descriptions.add(id);
+  }
+  expect(descriptions.size).toBe(clocks.length);
+});

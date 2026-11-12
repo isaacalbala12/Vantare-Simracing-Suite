@@ -159,7 +159,7 @@
 }
 .v-calendar-mine-slots button,
 .v-calendar-mine-band {
-  border: 1px solid var(--accent-ring);
+  border: 1px solid var(--hero-ring);
   border-radius: 4px;
   background: var(--accent-tint);
   padding: 3px 5px;
@@ -452,4 +452,8 @@
 .v-calendar-mine .v-calendar-mine-actions svg {
   width: 14px;
   height: 14px;
+}
+
+.v-calendar-mine-actions .v-calendar-mine-launch-pending:disabled {
+  opacity: 0.45;
 }

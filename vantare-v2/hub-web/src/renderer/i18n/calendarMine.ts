@@ -48,6 +48,7 @@ export const calendarMineText = {
   launch: "Lanzar",
   detail: "Ficha",
   alert: "Configurar aviso",
+  launchBefore: "Lanzar 3 min antes",
   minutes: (n: number) => `${n} min`,
   race: (duration: string) => `carrera ${duration}`,
 };

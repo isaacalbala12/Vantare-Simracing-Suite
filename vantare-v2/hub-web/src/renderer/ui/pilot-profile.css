@@ -476,3 +476,40 @@
 .v-pilot-preview dd {
   color: var(--text-1);
 }
+
+/* gpui::TextStyle::default uses phi() = 1.618034 (pinned GPUI 72d28c3).
+   orbit::text inherits it; settings/view.rs's separate helper uses 1.5 instead. */
+.v-pilot-photo-description {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.v-pilot-photo-description strong {
+  line-height: 1.618034;
+}
+.v-pilot-photo-description p {
+  margin: 0;
+  line-height: 1.618034;
+}
+.v-pilot-simulators > p,
+.v-pilot-simulator {
+  line-height: 1.618034;
+}
+.v-pilot-preview {
+  padding: 22px;
+  line-height: 1.618034;
+}
+.v-pilot-preview-avatar {
+  margin-bottom: 0;
+}
+.v-pilot-preview > p,
+.v-pilot-preview dd {
+  line-height: 1.618034;
+}
+.v-pilot-preview dl > div {
+  align-items: stretch;
+}
+.v-pilot-preview dt {
+  display: flex;
+  align-items: center;
+}

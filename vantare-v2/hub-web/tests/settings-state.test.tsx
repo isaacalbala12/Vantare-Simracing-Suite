@@ -13,11 +13,11 @@ import {
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AccountProvider } from "../src/renderer/app/AccountState";
 import type {
   CoreStatus,
   LauncherView,
 } from "../src/contract/generated/contract";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider, useHost } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import {

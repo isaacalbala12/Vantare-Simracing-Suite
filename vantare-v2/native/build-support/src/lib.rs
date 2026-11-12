@@ -27,6 +27,8 @@ pub fn measurement_provenance() -> Result<(), Box<dyn std::error::Error>> {
         let path = measurement_git(&manifest, &["rev-parse", "--git-path", reference.trim()])?;
         println!("cargo:rerun-if-changed={}", manifest.join(path).display());
     }
+    println!("cargo:rerun-if-env-changed=CARGO_PROFILE_RELEASE_LTO");
+    println!("cargo:rerun-if-env-changed=CARGO_PROFILE_RELEASE_CODEGEN_UNITS");
     let mut features: Vec<_> = env::vars()
         .filter_map(|(key, _)| key.strip_prefix("CARGO_FEATURE_").map(str::to_owned))
         .collect();
@@ -38,6 +40,14 @@ pub fn measurement_provenance() -> Result<(), Box<dyn std::error::Error>> {
         ("OPT_LEVEL", env::var("OPT_LEVEL")?),
         ("DEBUG", env::var("DEBUG")?),
         ("FEATURES", features.join(",")),
+        (
+            "LTO",
+            env::var("CARGO_PROFILE_RELEASE_LTO").unwrap_or_else(|_| "false".into()),
+        ),
+        (
+            "CODEGEN_UNITS",
+            env::var("CARGO_PROFILE_RELEASE_CODEGEN_UNITS").unwrap_or_else(|_| "16".into()),
+        ),
     ] {
         println!("cargo:rustc-env=VANTARE_MEASUREMENT_{name}={value}");
     }

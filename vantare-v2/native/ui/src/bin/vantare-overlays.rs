@@ -274,6 +274,10 @@ fn main() -> ExitCode {
         env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
         ";features=",
         env!("VANTARE_MEASUREMENT_FEATURES"),
+        ";lto=",
+        env!("VANTARE_MEASUREMENT_LTO"),
+        ";codegen_units=",
+        env!("VANTARE_MEASUREMENT_CODEGEN_UNITS"),
         ";lto=false;codegen-units=16;incremental=false"
     ));
 

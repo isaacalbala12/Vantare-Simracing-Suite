@@ -1,5 +1,5 @@
 import type { WidgetSettings } from "./generated/studio";
-import { studioWidgetKeys, studioWidgetOptions as o } from "./generated/studio";
+import { studioWidgetOptions as o, studioWidgetKeys } from "./generated/studio";
 import { integer, oneOf, record } from "./validation-common";
 
 type Check = (value: unknown) => boolean;
@@ -66,28 +66,38 @@ const base = {
   style: choices(o.tones),
   accent: choices(o.accents),
 };
-function settingObject(value: unknown, kind: unknown, required: Record<string,Check>, optional: Record<string,Check> = {}): boolean {
+function settingObject(
+  value: unknown,
+  kind: unknown,
+  required: Record<string, Check>,
+  optional: Record<string, Check> = {},
+): boolean {
   const schema = studioWidgetKeys[kind as keyof typeof studioWidgetKeys];
   if (!schema || !record(value)) return false;
-  const checks = {...required,...optional};
-  return schema.required.every(key=>Object.hasOwn(value,key)) && Object.keys(value).every(key=>(schema.all as readonly string[]).includes(key) && checks[key]?.(value[key]));
+  const checks = { ...required, ...optional };
+  return (
+    schema.required.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every(
+      (key) =>
+        (schema.all as readonly string[]).includes(key) &&
+        checks[key]?.(value[key]),
+    )
+  );
 }
 export function isWidgetSettings(
   value: unknown,
   kind: unknown,
 ): value is WidgetSettings | null {
   if (!record(value))
-    return (
-      value === null &&
-      !Object.hasOwn(studioWidgetKeys,String(kind))
-    );
+    return value === null && !Object.hasOwn(studioWidgetKeys, String(kind));
   if (value.kind !== kind) return false;
   const common = { ...base, contentVersion: integer };
   const brand = { brandVisible: bool };
   switch (kind) {
     case "standings":
       return settingObject(
-        value,kind,
+        value,
+        kind,
         {
           ...common,
           rowCount: integer,
@@ -114,7 +124,8 @@ export function isWidgetSettings(
       );
     case "relative":
       return settingObject(
-        value,kind,
+        value,
+        kind,
         {
           ...common,
           columns: nullable(list(columnRead)),
@@ -129,7 +140,8 @@ export function isWidgetSettings(
       );
     case "delta":
       return settingObject(
-        value,kind,
+        value,
+        kind,
         {
           ...common,
           size: text,
@@ -142,7 +154,8 @@ export function isWidgetSettings(
       );
     case "pedals":
       return settingObject(
-        value,kind,
+        value,
+        kind,
         {
           ...base,
           transparentBackground: bool,
@@ -153,7 +166,8 @@ export function isWidgetSettings(
       );
     case "fuel-strategy":
       return settingObject(
-        value,kind,
+        value,
+        kind,
         {
           ...common,
           size: text,

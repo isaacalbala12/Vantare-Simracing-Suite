@@ -736,7 +736,10 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
                         .unwrap()
                         .normalized();
                     data.accent = accent;
-                    serde_json::to_value(data.normalized()).unwrap()
+                    serde_json::from_str::<serde_json::Value>(
+                        &serde_json::to_string(&data.normalized()).unwrap(),
+                    )
+                    .unwrap()
                 }};
             }
             let mut expected = match kind {

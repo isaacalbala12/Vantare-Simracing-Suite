@@ -209,8 +209,15 @@ mod contract_parity_tests {
 
 #[cfg(test)]
 mod settings_set_parity {
-    use super::*;
     use vantare_domain::widget_settings as n;
+    fn info_key(value: crate::standings::model::InfoMetric) -> &'static str {
+        use crate::standings::model::InfoMetric;
+        match value {
+            InfoMetric::None => "none",
+            InfoMetric::Track => "track",
+            InfoMetric::EstimatedLaps => "estimatedLaps",
+        }
+    }
     #[test]
     fn shared_choices_survive_native_normalization_and_real_footer_rendering() {
         for value in n::standings::STANDINGS_SCOPES {
@@ -261,6 +268,14 @@ mod settings_set_parity {
                 ..Default::default()
             };
             assert_eq!(data.normalized().template_id, *value);
+        }
+        for metric in n::standings::STANDINGS_FOOTER_METRICS {
+            let settings = crate::standings::Settings {
+                footer_first: (*metric).into(),
+                ..crate::standings::Settings::eficiencia()
+            };
+            let config = crate::standings::SettingsPresentation::config(&settings);
+            assert_eq!(info_key(config.footer_first), *metric);
         }
         let source = crate::source::synthetic(0);
         let ids: Vec<_> = n::FOOTER_KEYS.iter().map(|s| (*s).to_owned()).collect();

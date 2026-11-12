@@ -231,10 +231,45 @@ describe("typed Studio settings writes", () => {
   });
 });
 
-it("session columns inherit main formatting when an override is absent",()=>{
-  const host=createMockHost("studio-base");let current=view(host);
-  send(host,"studio.instance",{id:"widget-1",baseRevision:current.revision,patch:{field:"settings",value:{kind:"standings",columns:[{metric:"driverName",widthPreset:"lg",format:{mode:"surname"}}],practiceColumns:null,qualifyingColumns:null}}});
-  current=view(host);
-  send(host,"studio.instance",{id:"widget-1",baseRevision:current.revision,patch:{field:"settings",value:{kind:"standings",practiceColumns:[{metric:"driverName",format:{maxChars:0}}],qualifyingColumns:[{metric:"driverName"}]}}});
-  expect(view(host).instances[0].settings).toMatchObject({practiceColumns:[{widthPreset:"lg",format:{mode:"surname",maxChars:0}}],qualifyingColumns:[{widthPreset:"lg",format:{mode:"surname"}}]});
+it("session columns inherit main formatting when an override is absent", () => {
+  const host = createMockHost("studio-base");
+  let current = view(host);
+  send(host, "studio.instance", {
+    id: "widget-1",
+    baseRevision: current.revision,
+    patch: {
+      field: "settings",
+      value: {
+        kind: "standings",
+        columns: [
+          {
+            metric: "driverName",
+            widthPreset: "lg",
+            format: { mode: "surname" },
+          },
+        ],
+        practiceColumns: null,
+        qualifyingColumns: null,
+      },
+    },
+  });
+  current = view(host);
+  send(host, "studio.instance", {
+    id: "widget-1",
+    baseRevision: current.revision,
+    patch: {
+      field: "settings",
+      value: {
+        kind: "standings",
+        practiceColumns: [{ metric: "driverName", format: { maxChars: 0 } }],
+        qualifyingColumns: [{ metric: "driverName" }],
+      },
+    },
+  });
+  expect(view(host).instances[0].settings).toMatchObject({
+    practiceColumns: [
+      { widthPreset: "lg", format: { mode: "surname", maxChars: 0 } },
+    ],
+    qualifyingColumns: [{ widthPreset: "lg", format: { mode: "surname" } }],
+  });
 });

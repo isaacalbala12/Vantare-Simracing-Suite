@@ -1,5 +1,5 @@
-import corpus from "../src/contract/generated/corpus/studio.json";
 import { describe, expect, it } from "vitest";
+import corpus from "../src/contract/generated/corpus/studio.json";
 import {
   studioWidgetDefaults as defaults,
   studioWidgetOptions as o,
@@ -80,6 +80,7 @@ describe("closed Studio settings", () => {
   });
 });
 
-it("rejects the same negative settings corpus as Rust",()=>{
-  for (const input of corpus.invalidSettings) expect(isWidgetSettingsPatch(input),JSON.stringify(input)).toBe(false);
+it("rejects the same negative settings corpus as Rust", () => {
+  for (const input of corpus.invalidSettings)
+    expect(isWidgetSettingsPatch(input), JSON.stringify(input)).toBe(false);
 });

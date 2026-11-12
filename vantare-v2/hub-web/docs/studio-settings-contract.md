@@ -36,7 +36,6 @@ la dependencia de desarrollo de hub-host. El workspace usa resolver 3: durante
 forma esperada. Los grafos de producción excluyen dependencias de desarrollo y
 no incorporan `ts-rs`; el archivo de tests sí puede incluirlo.
 
-
 Las listas `columns`, `practiceColumns` y `qualifyingColumns` son listas COMPLETAS:
 el orden recibido sustituye al anterior y las columnas omitidas se eliminan.
 Los detalles omitidos de una columna existente se conservan por `metricId`;

@@ -3134,6 +3134,58 @@
       }
     }
   ],
+  "invalidSettings": [
+    {
+      "brandVisible": false,
+      "kind": "delta"
+    },
+    {
+      "kind": "delta",
+      "size": "unknown"
+    },
+    {
+      "gap": 13,
+      "kind": "pedals"
+    },
+    {
+      "gap": null,
+      "kind": "pedals"
+    },
+    {
+      "kind": "standings",
+      "rowCount": 0
+    },
+    {
+      "kind": "standings",
+      "windowAround": 3
+    },
+    {
+      "columns": [
+        {
+          "metric": "driverName"
+        },
+        {
+          "metric": "driverName"
+        }
+      ],
+      "kind": "relative"
+    },
+    {
+      "columns": [
+        {
+          "format": {
+            "maxChars": 65
+          },
+          "metric": "driverName"
+        }
+      ],
+      "kind": "relative"
+    },
+    {
+      "executable": "x",
+      "kind": "delta"
+    }
+  ],
   "ui": [
     {
       "id": 1,

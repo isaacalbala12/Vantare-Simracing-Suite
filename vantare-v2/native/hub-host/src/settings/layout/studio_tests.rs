@@ -619,6 +619,19 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
     assert!(view.instances.is_empty());
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
     assert!(crate::studio::widget_settings::fits_view(&view));
+    let mut state = State::new(path.clone());
+    let update = InstancePatch::Settings(Box::new(
+        serde_json::from_value(serde_json::json!({"kind":"standings","rowCount":21})).unwrap(),
+    ));
+    assert!(matches!(
+        state.edit(
+            Edit::Instance("widget-1".into(), update),
+            &view.revision,
+            Some(CatalogAccess::Pro)
+        ),
+        Err(HostError::Protected)
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
 }
 
 #[test]

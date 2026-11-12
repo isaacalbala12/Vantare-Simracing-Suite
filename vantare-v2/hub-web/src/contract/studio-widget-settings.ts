@@ -60,7 +60,12 @@ const columnRead: Check = (v) =>
       }),
     style: (s) => object(s, { align: nullable(text) }),
   });
-const base = { kind: text, designSystem: text, style: text, accent: text };
+const base = {
+  kind: text,
+  designSystem: choices(o.looks),
+  style: choices(o.tones),
+  accent: choices(o.accents),
+};
 export function isWidgetSettings(
   value: unknown,
   kind: unknown,

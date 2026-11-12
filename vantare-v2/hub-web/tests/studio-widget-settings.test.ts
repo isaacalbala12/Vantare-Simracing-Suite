@@ -13,6 +13,17 @@ describe("closed Studio settings", () => {
     for (const [kind, value] of Object.entries(defaults))
       expect(isWidgetSettings(value, kind), kind).toBe(true);
   });
+  it("rejects unknown native enum values in host projections too", () => {
+    expect(
+      isWidgetSettings({ ...defaults.delta, designSystem: "unknown" }, "delta"),
+    ).toBe(false);
+    expect(
+      isWidgetSettings({ ...defaults.delta, style: "unknown" }, "delta"),
+    ).toBe(false);
+    expect(
+      isWidgetSettings({ ...defaults.delta, accent: "unknown" }, "delta"),
+    ).toBe(false);
+  });
   it("rejects renderer paths, unknown enums and readonly branding", () => {
     for (const value of [
       { kind: "delta", brandVisible: false },

@@ -67,6 +67,21 @@ impl Open {
             projected,
         })
     }
+    fn fits_frame(&self, access: Option<CatalogAccess>) -> bool {
+        fits_instances(
+            self.projected
+                .iter()
+                .zip(&self.instances)
+                .filter(|(_, fields)| companion(fields).expect("validated companion").is_none())
+                .map(|(item, _)| {
+                    let mut item = item.clone();
+                    item.locked = !item.kind.info(access).allowed;
+                    item
+                })
+                .collect(),
+            access,
+        )
+    }
     fn bytes(&self) -> Result<Vec<u8>, HostError> {
         let mut root = Fields(self.document.fields.0.clone());
         let instances: Vec<_> = self.instances.iter().map(|fields| &fields.0).collect();
@@ -288,14 +303,9 @@ pub(crate) fn edit_result(
     access: Option<CatalogAccess>,
 ) -> Result<(StudioView, Option<String>), HostError> {
     let mut opened = Open::read(&state.path)?;
-    if matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_))) {
-        let projected = StudioView {
-            instances: opened.projected.clone(),
-            ..State::unavailable(StudioState::Ready, access)
-        };
-        if !crate::studio::widget_settings::fits_view(&projected) {
-            return Err(HostError::Protected);
-        }
+    let settings_edit = matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_)));
+    if settings_edit && !opened.fits_frame(access) {
+        return Err(HostError::Protected);
     }
     if opened.revision() != revision {
         return Err(HostError::StudioConflict {
@@ -321,7 +331,7 @@ pub(crate) fn edit_result(
         .expect("existing layout")
         .to_vec();
     let after = apply(&mut opened, state, &edit, access)?;
-    if matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_))) && after == before {
+    if settings_edit && after == before {
         return Ok((view(state, access), None));
     }
     let adding = matches!(edit, Edit::Add(_));
@@ -329,6 +339,7 @@ pub(crate) fn edit_result(
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
     let restored: Vec<Fields> = read(&root, "instances")?;
     let mut added = None;
+    let mut projected = Vec::new();
     for fields in &restored {
         let item = instance(fields, access)?;
         let existed = known
@@ -340,6 +351,12 @@ pub(crate) fn edit_result(
         if !existed && item.locked {
             return Err(HostError::Denied);
         }
+        if settings_edit && companion(fields)?.is_none() {
+            projected.push(item);
+        }
+    }
+    if settings_edit && !fits_instances(projected, access) {
+        return Err(HostError::Protected);
     }
     if let Err(error) = files::save(
         &state.path,
@@ -585,4 +602,11 @@ fn canvas(fields: &Fields) -> Result<(f64, f64), HostError> {
         return Err(HostError::Protected);
     }
     Ok((width, height))
+}
+
+fn fits_instances(instances: Vec<OverlayInstance>, access: Option<CatalogAccess>) -> bool {
+    crate::studio::widget_settings::fits_view(&StudioView {
+        instances,
+        ..State::unavailable(StudioState::Ready, access)
+    })
 }

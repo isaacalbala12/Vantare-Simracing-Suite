@@ -1,0 +1,10 @@
+[package]
+name = "vantare-overlays-rune"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+rune.workspace = true
+vantare-domain = { path = "../../domain" }
+vantare-ipc = { path = "../../ipc", features = ["medir-latencia"] }
+vantare-profiling = { path = "../../profiling", features = ["medir-latencia"] }

@@ -400,7 +400,7 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         shell: pwsh
         env:
-          CARGO_BUILD_JOBS: '4'
+          CARGO_BUILD_JOBS: '6'
           # Decisión del clasificador de rutas (trabajo `policy`). Vacío o
           # distinto de «false» ⇒ corre el corpus: fail-closed.
           TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}

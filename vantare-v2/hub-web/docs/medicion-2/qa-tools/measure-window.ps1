@@ -169,7 +169,21 @@ for($iteration=0;$iteration -lt $configuration.runs;$iteration++) {
             }
             $process.StandardInput.Close()
             if(-not $process.WaitForExit(10000)){throw 'Controlled close deadline'}
-            @{phase='closed';app=$application.name;iteration=$iteration;stderr=$stderr.GetAwaiter().GetResult();survivors=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Compress | Write-Output
+            # Closing a Job Object terminates children asynchronously. Wait on
+            # the observed descendants' process handles, never assume that the
+            # parent's exit means their exit has already completed.
+            $closeClock=[Diagnostics.Stopwatch]::StartNew()
+            foreach($childId in @([FirstHubMeasure]::Family($process.Id))) {
+                $child=$null
+                try {
+                    $child=[Diagnostics.Process]::GetProcessById($childId)
+                    $remaining=[Math]::Max(0,5000-[int]$closeClock.ElapsedMilliseconds)
+                    if(-not $child.WaitForExit($remaining)){throw 'Descendant close deadline'}
+                } catch [ArgumentException] {
+                    # It completed before the handle could be opened.
+                } finally { if($null -ne $child){$child.Dispose()} }
+            }
+            @{phase='closed';app=$application.name;iteration=$iteration;descendantWaitMs=$closeClock.Elapsed.TotalMilliseconds;stderr=$stderr.GetAwaiter().GetResult();survivors=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Compress | Write-Output
         } catch {
             if($window -and -not $process.HasExited) { Save-Window $window (Join-Path $configuration.evidence "$($application.name)-unavailable-$iteration.png") }
             throw

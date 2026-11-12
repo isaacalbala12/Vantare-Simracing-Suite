@@ -402,8 +402,3 @@
   font: 400 11.5px / 18px var(--font-sans);
   color: var(--text-3);
 }
-
-/* Frozen GPUI keeps demo actions inert without dimming their presentation. */
-.v-account-rail[data-demo] .v-button:disabled {
-  opacity: 1;
-}

@@ -7,15 +7,18 @@ import { dialogShortcut, hubBindings } from "../src/renderer/ui/hub-shortcuts";
 
 it("only lets the three exact zoom actions cross partial-window modality", () => {
   for (const binding of hubBindings) {
-    const event = new KeyboardEvent("keydown", {
-      key: binding.key,
-      ctrlKey: binding.ctrl,
-      altKey: binding.alt,
-      metaKey: binding.meta,
-      shiftKey: binding.shift,
-    });
-    const zoom = ["zoomIn", "zoomOut", "zoomReset"].includes(binding.action);
-    expect(dialogShortcut(event), binding.action).toBe(!zoom);
+    for (const repeat of [false, true]) {
+      const event = new KeyboardEvent("keydown", {
+        key: binding.key,
+        ctrlKey: binding.ctrl,
+        altKey: binding.alt,
+        metaKey: binding.meta,
+        shiftKey: binding.shift,
+        repeat,
+      });
+      const zoom = ["zoomIn", "zoomOut", "zoomReset"].includes(binding.action);
+      expect(dialogShortcut(event), binding.action).toBe(!zoom);
+    }
   }
   for (const key of ["s", "r", "p", "z"])
     expect(

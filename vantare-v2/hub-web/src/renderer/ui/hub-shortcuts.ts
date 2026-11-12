@@ -33,7 +33,10 @@ type Action =
   | "zoomReset";
 const control = { ctrl: true, alt: false, meta: false, shift: false };
 /** GPUI shell/shortcuts.rs and shell/chrome.rs: shell_zoom_key. */
-export const hubBindings: readonly (Binding & { action: Action })[] = [
+export const hubBindings: readonly (Binding & {
+  action: Action;
+  repeat?: boolean;
+})[] = [
   { ...control, key: hubKeys.commands, action: "commands" },
   { ...control, key: hubKeys.sidebar, action: "sidebar" },
   { ...control, alt: true, key: hubKeys.sidebar, action: "context" },
@@ -49,6 +52,7 @@ export const hubBindings: readonly (Binding & { action: Action })[] = [
       ...control,
       key,
       shift,
+      repeat: true,
       action: (key === hubKeys.zoomReset
         ? "zoomReset"
         : key === hubKeys.zoomOut
@@ -67,17 +71,18 @@ function matches(binding: Binding, event: KeyboardEvent) {
   );
 }
 export function hubShortcut(event: KeyboardEvent): Action | undefined {
-  if (event.repeat || event.isComposing || event.getModifierState("AltGraph"))
-    return;
-  return hubBindings.find((binding) => matches(binding, event))?.action;
+  if (event.isComposing || event.getModifierState("AltGraph")) return;
+  return hubBindings.find(
+    (binding) => matches(binding, event) && (!event.repeat || binding.repeat),
+  )?.action;
 }
 export function isZoomAction(action: Action | undefined) {
   return action === "zoomIn" || action === "zoomOut" || action === "zoomReset";
 }
-// Chromium's built-in print/reload must not act on the document behind a dialog.
-const browserKeys = ["p", "r"];
+// Chromium's print/reload/save/undo must not act on the document behind a dialog.
+const browserKeys = ["p", "r", "s", "z"];
 const keys = new Set<string>([
-  ...Object.values(hubKeys).flat(),
+  ...hubBindings.map((binding) => binding.key),
   ...browserKeys,
 ]);
 // Windows may report Spanish AltGr as Control+Alt without AltGraph. Match

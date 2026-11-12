@@ -17,9 +17,28 @@ it.each([
   [{ key: "0", ctrlKey: true, altKey: true }, undefined],
   [{ key: "k", ctrlKey: true, repeat: true }, undefined],
   [{ key: "b", ctrlKey: true, repeat: true }, undefined],
+  [{ key: "b", ctrlKey: true, altKey: true, repeat: true }, undefined],
+  [{ key: "l", ctrlKey: true, repeat: true }, undefined],
+  [{ key: "n", ctrlKey: true, shiftKey: true, repeat: true }, undefined],
+  [{ key: "+", ctrlKey: true, shiftKey: true, repeat: true }, "zoomIn"],
+  [{ key: "=", ctrlKey: true, repeat: true }, "zoomIn"],
+  [{ key: "-", ctrlKey: true, repeat: true }, "zoomOut"],
+  [{ key: "0", ctrlKey: true, repeat: true }, "zoomReset"],
   [{ key: "k", ctrlKey: true, isComposing: true }, undefined],
 ])("resolves exact modifiers and repetition: %j", (init, action) => {
   expect(hubShortcut(new KeyboardEvent("keydown", init))).toBe(action);
+});
+it("ignores a real AltGraph state even when the logical chord matches a Hub action", () => {
+  const event = new KeyboardEvent("keydown", {
+    key: "b",
+    ctrlKey: true,
+    altKey: true,
+  });
+  expect(hubShortcut(event)).toBe("context");
+  Object.defineProperty(event, "getModifierState", {
+    value: (modifier: string) => modifier === "AltGraph",
+  });
+  expect(hubShortcut(event)).toBeUndefined();
 });
 it.each(["@", "#", "\\", "[", "]", "{", "}", "|", "~"])(
   "leaves AltGr %s untouched, including Chromium's Ctrl+Alt representation",

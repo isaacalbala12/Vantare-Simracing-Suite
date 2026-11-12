@@ -46,3 +46,7 @@ it("derives the ceiling from both dimensions", () => {
   expect(windowZoomLimit(1920, 720)).toBe(100);
   expect(windowZoomLimit(1280, 1080)).toBe(100);
 });
+it("accepts sub-thousandth rounding at the ceiling but not a genuinely unreachable level", () => {
+  expect(zoomStep(100, 1, 109.9995)).toBe(110);
+  expect(zoomStep(100, 1, 109.998)).toBe(100);
+});

@@ -25,7 +25,7 @@ import {
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
-import { paintWindow, resolveTheme } from "./appearance";
+import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
 import { calendarExportSession } from "./calendar-export";
 import { calendarExportQa } from "./calendar-export-qa";
 import { externalPages } from "./external-pages";
@@ -133,8 +133,10 @@ async function start() {
         settings?.zoom ?? hello.window.zoom,
       );
   };
+  const resize = () =>
+    zoomWindow(currentWindow, settings?.zoom ?? hello.window.zoom);
   repaint();
-  currentWindow.on("resize", repaint);
+  currentWindow.on("resize", resize);
   nativeTheme.on("updated", repaint);
   const devUrl = !app.isPackaged
     ? developmentUrl(process.env.ELECTRON_RENDERER_URL)
@@ -195,6 +197,7 @@ async function start() {
       window?.destroy();
   });
   contents.once("destroyed", () => {
+    currentWindow.removeListener("resize", resize);
     nativeTheme.removeListener("updated", repaint);
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);

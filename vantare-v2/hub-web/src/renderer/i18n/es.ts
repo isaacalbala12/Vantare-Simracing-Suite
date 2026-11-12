@@ -303,6 +303,9 @@ export const settingsText = {
   "shortcuts.keysMove": "Flechas / Mayús flechas",
   "shortcuts.ctrlL": "Ctrl L",
   "shortcuts.ctrlShiftN": "Ctrl Mayús N",
+  "shortcuts.zoomIn": "Ctrl +",
+  "shortcuts.zoomOut": "Ctrl −",
+  "shortcuts.zoomReset": "Ctrl 0",
 
   "settings.title": "Ajustes",
   "settings.description": "Haz que Vantare trabaje a tu manera",

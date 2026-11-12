@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { assertRendererIsolation } from "../scripts/preload-surface";
 
 const mocks = vi.hoisted(() => ({
   expose: vi.fn(),
@@ -23,6 +24,34 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 describe("preload connection", () => {
+  it("satisfies the same closed surface checked by the Windows smoke, regardless of insertion order", async () => {
+    await import("../src/preload/index");
+    const bridge = Object.keys(mocks.expose.mock.calls[0][1]);
+    expect(() =>
+      assertRendererIsolation({ node: "undefined", bridge }),
+    ).not.toThrow();
+    expect(() =>
+      assertRendererIsolation({
+        node: "undefined",
+        bridge: [...bridge].reverse(),
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertRendererIsolation({
+        node: "undefined",
+        bridge: bridge.filter((key) => key !== "viewport"),
+      }),
+    ).toThrow();
+    expect(() =>
+      assertRendererIsolation({
+        node: "undefined",
+        bridge: [...bridge, "execute"],
+      }),
+    ).toThrow();
+    expect(() =>
+      assertRendererIsolation({ node: "function", bridge }),
+    ).toThrow();
+  });
   it("reports the precise DIP client area without the invisible Windows frame or an IPC request", async () => {
     vi.stubGlobal("outerWidth", 1936);
     vi.stubGlobal("outerHeight", 1088);

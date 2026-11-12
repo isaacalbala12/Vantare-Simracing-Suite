@@ -23,6 +23,10 @@ export function paintWindow(
     nativeTheme.themeSource = theme.scheme;
   const colors = resolveTheme(theme);
   window.setBackgroundColor(colors["bg-window"]);
+  zoomWindow(window, zoom);
+}
+export function zoomWindow(window: BrowserWindow, zoom: number) {
+  if (window.isDestroyed()) return;
   const [width, height] = window.getContentSize();
   const factor = effectiveZoom(zoom, width, height) / 100;
   if (Math.abs(window.webContents.getZoomFactor() - factor) > 0.00001)

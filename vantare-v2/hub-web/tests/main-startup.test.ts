@@ -23,9 +23,13 @@ async function boot(minimized: boolean) {
     focusable = true;
     active = false;
     minimized = false;
+    size = [1440, 900];
+    zoomFactor = 1;
     webContents = Object.assign(new EventEmitter(), {
-      setZoomFactor: vi.fn(),
-      getZoomFactor: () => 1,
+      setZoomFactor: vi.fn((factor: number) => {
+        this.zoomFactor = factor;
+      }),
+      getZoomFactor: () => this.zoomFactor,
       setWindowOpenHandler: vi.fn(),
       isDestroyed: () => false,
     });
@@ -44,7 +48,7 @@ async function boot(minimized: boolean) {
       return this.minimized;
     }
     getContentSize() {
-      return [1440, 900];
+      return this.size;
     }
     setBackgroundColor = vi.fn();
     loadURL = vi.fn(async () => {
@@ -164,4 +168,18 @@ it("does not show or acknowledge a window destroyed before its first paint", asy
   window.emit("ready-to-show");
   expect(calls).toEqual(["create:hidden", "load"]);
   window.webContents.emit("destroyed");
+}, 15000);
+it("recalculates only zoom on resize and removes the resize listener when contents are destroyed", async () => {
+  const { window } = await boot(false);
+  window.setBackgroundColor.mockClear();
+  window.webContents.setZoomFactor.mockClear();
+  window.size = [800, 600];
+  window.emit("resize");
+  window.emit("resize");
+  window.size = [1920, 1080];
+  window.emit("resize");
+  expect(window.webContents.setZoomFactor.mock.calls).toEqual([[0.9], [1]]);
+  expect(window.setBackgroundColor).not.toHaveBeenCalled();
+  window.webContents.emit("destroyed");
+  expect(window.listenerCount("resize")).toBe(0);
 }, 15000);

@@ -172,6 +172,29 @@ function Outside() {
 }
 
 describe("SettingsState through createMockHost and a real MessageChannel", () => {
+  it("continues zooming on held-key repeats after each write completes", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-con-diseno", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "+", ctrlKey: true });
+    await waitFor(() => {
+      expect(hook.result.current.view?.zoom).toBe(110);
+      expect(hook.result.current.pending).toBe(false);
+    });
+    fireEvent.keyDown(window, { key: "+", ctrlKey: true, repeat: true });
+    await waitFor(() => {
+      expect(hook.result.current.view?.zoom).toBe(125);
+      expect(hook.result.current.pending).toBe(false);
+    });
+    fireEvent.keyDown(window, { key: "+", ctrlKey: true, repeat: true });
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "settings.update",
+      ),
+    ).toHaveLength(2);
+    fireEvent.keyDown(window, { key: "0", ctrlKey: true, repeat: true });
+    await waitFor(() => expect(hook.result.current.view?.zoom).toBe(100));
+  });
   it("zooms from an editable dialog without moving focus or bypassing the pending write guard", async () => {
     const pending = hold("settings.update");
     const hook = mount("ajustes-con-diseno", <Shell />);
@@ -565,6 +588,8 @@ describe("Rendimiento y atajos over the simulated host", () => {
     expect(screen.getByRole("heading", { name: "02 En el Hub" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "03 En Studio" })).toBeTruthy();
     expect(screen.getByText("Buscar en Vantare")).toBeTruthy();
+    for (const label of ["Ctrl +", "Ctrl −", "Ctrl 0", "Ctrl Mayús N"])
+      expect(screen.getByText(label)).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: t("settings.reload") }),
     ).toBeNull();

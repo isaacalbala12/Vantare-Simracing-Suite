@@ -226,6 +226,19 @@ export async function checkDialogZoom(page: Page, base: string) {
   await page.keyboard.press("Control+Shift+Numpad0");
   await settled("100%");
   assert.deepEqual(await writes(), [110, 100, 110, 100]);
+  await page.keyboard.press("Control+-");
+  await settled("90%");
+  await page.keyboard.down("Control");
+  try {
+    await page.keyboard.down("=");
+    await settled("100%");
+    await page.keyboard.down("=");
+    await settled("110%");
+  } finally {
+    await page.keyboard.up("=");
+    await page.keyboard.up("Control");
+  }
+  assert.deepEqual(await writes(), [110, 100, 110, 100, 90, 100, 110]);
   assert.ok(await list.isVisible());
   assert.ok(await nestedFocus());
   const sidebar = await page.locator(".v-sidebar").getAttribute("class");

@@ -38,6 +38,10 @@ export function Shortcuts() {
     ["search", "shell.ctrlK"],
     ["sidebar", "shell.ctrlB"],
     ["rail", "shell.ctrlAltB"],
+    ["notifications", "shortcuts.ctrlShiftN"],
+    ["zoomIn", "shortcuts.zoomIn"],
+    ["zoomOut", "shortcuts.zoomOut"],
+    ["zoomReset", "shortcuts.zoomReset"],
   ] as const;
   const studio = [
     ["shortcuts.save", "shortcuts.keysSave"],

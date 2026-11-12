@@ -30,7 +30,7 @@ VANTA-138 / #1995. Base: c1ee50e45, protocolo v26. Calendario está fuera del ca
 
 ## Criterio común
 
-`ui/WindowDialog.tsx` exporta `WindowDialog`, `WindowAlertDialog` y `WindowDialogProvider`. Las partes y props existentes se conservan; Root impone modal false. El provider vive en el renderer y aplica inert a `.v-shell-body` y `.v-sidebar`, nunca a la barra de título ni a sus controles. Los diálogos anidados mantienen la protección y restauran el inert anterior al desmontar. Los portales secundarios de Select/Menu del diálogo siguen utilizables.
+`ui/WindowDialog.tsx` exporta `WindowDialog`, `WindowAlertDialog` y `WindowDialogProvider`. Las partes y props existentes se conservan; Root impone modal false. El provider vive en el renderer y aplica inert a `.v-shell-main`, `.v-context` y `.v-sidebar`, nunca a la barra de título ni a sus controles. Los diálogos anidados mantienen la protección y restauran el inert anterior al desmontar. Los portales secundarios de Select/Menu del diálogo siguen utilizables.
 
 Tab recorre el diálogo y minimizar/maximizar/cerrar; Escape actúa sobre la capa superior y no cae en atajos del editor. Ctrl L/S/K se interceptan antes de los listeners de ventana, conservando los atajos de edición de texto. Los clics sobre acciones interactivas de detrás se bloquean sin cubrir ni hacer inerte la franja de arrastre. Las confirmaciones mantienen sus callbacks, pending, CAS y destinos de foco explícitos. En el descarte del perfil se vuelve al campo del editor en vez de enfocar una pestaña que se autoactivaría y reabriría la intención de navegación.
 
@@ -54,12 +54,14 @@ Los recortes [oscuro](D:/VantareServer/evidence/hub-web/dialog-topbar/barras-dar
 
 ## Arreglos de revisión
 
-AltGr (AltGraph o Ctrl+Alt) no se bloquea; solo los atajos registrados en hub-shortcuts.ts, compartidos con Shell/editor/Studio, y los comandos nativos de imprimir/recargar. Ctrl K cierra únicamente la paleta superior. Escape durante composición no actúa. El foco de rescate prefiere el diálogo y Tab llega a los controles al final.
+AltGr se distingue por la tecla lógica y la combinación exacta de modificadores; solo los atajos registrados en hub-shortcuts.ts, compartidos con Shell/editor/Studio, y los comandos nativos de imprimir/recargar. Ctrl K cierra únicamente la paleta superior. Escape durante composición no actúa. El foco de rescate prefiere el diálogo y Tab llega a los controles al final.
 
-Los hijos de la barra, salvo WindowControls, quedan inertes; el encabezado sigue siendo una zona de arrastre. El viewport de toasts vive fuera de la zona inerte y sus acciones siguen accesibles. Un buzón de lectura bajo la confirmación queda inerte y atenuado, incluso si llega después de abrirla. El backdrop solo admite clic izquierdo; la confirmación destructiva del perfil exige Cancelar/Escape o una decisión explícita.
+Los hijos de la barra, salvo WindowControls, quedan inertes; el encabezado sigue siendo una zona de arrastre. El viewport de toasts vive en la columna de contenido, fuera de main inerte, y sus acciones siguen accesibles. Un buzón de lectura bajo la confirmación queda inerte y atenuado, incluso si llega después de abrirla. El backdrop solo admite clic izquierdo; la confirmación destructiva del perfil exige Cancelar/Escape o una decisión explícita.
 
 Select no modal global en Forms.tsx es intencionado: su backdrop interno no debe bloquear los controles de ventana. Dentro de un diálogo sigue bajo la modalidad de pantalla común y Escape cierra primero la lista. Fuera de él conserva el comportamiento de un desplegable no modal.
 
 La entrada única de QA es src/renderer/qa/entry.tsx. Shell solo compone RendererQa; las fixtures, textos y CSS de auditoría viven en qa/. El guard AST de imports cubre app con una lista cerrada y la prueba de bundle rechaza los tres marcadores de auditoría. El guard de diálogos analiza imports/JSX con Babel y admite solo AccessBoundary para dialog/showModal; comprueba también cero px y los cuatro bordes en CSS.
 
 El job web existente llama checkDialogSafety en Chromium: borrado de perfil con Tab, clics reales sobre fondo inerte y Ctrl L sin petición de lanzamiento; AltGr simulado escribiendo @ en Ctrl K; Escape anidado en Select. ContextMenu y Mayús F10 se prueban con pulsaciones reales y la acción nativa cancelada. No se añaden dependencias ni se altera el workflow.
+
+Segunda revisión: el portal de las capas de pantalla y del buzón comparte el contexto de apilado del Shell; los toasts recuperan su ancla original en la columna de contenido. Ctrl Alt B se bloquea con una tabla de modificadores exactos. Se verificó AltGr nativo con distribución española en Electron Windows. La comprobación de CI tiene control positivo de lanzamiento, foco inicial Cancelar, orden completo de Tab y una página aislada que elimina toda instrumentación al cerrar. El guard de deriva analiza registros globales con Babel y exige que sus teclas estén en hubKeys. El guard productivo inspecciona también assets CSS.

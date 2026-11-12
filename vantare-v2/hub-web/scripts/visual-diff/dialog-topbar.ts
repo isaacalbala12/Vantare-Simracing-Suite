@@ -490,7 +490,22 @@ scenes["dialog-topbar-toast-covered"] = {
   },
   async cleanup(page) {
     if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      const toastBox = await page.locator(".v-toast").boundingBox();
+      const columnBox = await page.locator(".v-content-column").boundingBox();
+      const railBox = await page.locator(".v-context").boundingBox();
+      assert.ok(toastBox && columnBox && railBox);
+      assert.ok(
+        Math.abs(
+          toastBox.x + toastBox.width - (columnBox.x + columnBox.width - 20),
+        ) < 1,
+        "toast stays 20px inside the content column",
+      );
+      assert.ok(
+        toastBox.x + toastBox.width <= railBox.x,
+        "toast never overlaps the visible right rail",
+      );
       if (process.env.VANTARE_VERIFY_SPANISH_ALTGR === "1") {
+        await page.locator(".v-toast").hover();
         const { checkSpanishAltGr } = await import("../check-spanish-altgr.ts");
         await checkSpanishAltGr(page);
       }

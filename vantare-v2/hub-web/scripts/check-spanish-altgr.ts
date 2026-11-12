@@ -115,7 +115,7 @@ export async function checkSpanishAltGr(page: Page) {
     );
   } finally {
     if (child.exitCode === null) {
-      child.stdin.end("ACK\n");
+      if (!child.stdin.writableEnded) child.stdin.end("ACK\n");
       await closed;
     }
     await page.evaluate(() => Reflect.get(window, "stopSpanishAltGr")());

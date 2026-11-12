@@ -64,7 +64,16 @@ export function dialogSafety(doc: Document) {
           ...root.querySelectorAll<HTMLElement>(focusable),
         ]),
       ),
-    ].filter((node) => node.tabIndex >= 0 && usable(node));
+    ].filter((node) => {
+      // Base UI's non-modal focus manager temporarily removes tab stops while
+      // focus is in the caption. Its saved tabindex preserves roving controls.
+      const saved = node.getAttribute("data-tabindex");
+      return (
+        !node.matches(":disabled") &&
+        usable(node) &&
+        (node.tabIndex >= 0 || (saved !== null && Number(saved) >= 0))
+      );
+    });
   }
   function focus() {
     (top()?.node ?? targets()[0])?.focus({ preventScroll: true });

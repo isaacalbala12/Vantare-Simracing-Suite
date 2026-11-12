@@ -176,7 +176,7 @@ async function checkIsolatedDialogs(
   await page.keyboard.press("Tab");
   assert.ok(
     await dialog.evaluate((node) => node.contains(document.activeElement)),
-    "dialog is first in Tab order",
+    `dialog is first in Tab order; active=${await page.evaluate(() => document.activeElement?.outerHTML)}`,
   );
   for (let i = 0; i < 24; i++) {
     await page.keyboard.press("Tab");
@@ -212,6 +212,16 @@ async function checkIsolatedDialogs(
     (await behind.count()) > 0,
     "background actions fixture is nonempty",
   );
+  for (const selector of [
+    ".v-sidebar button",
+    '.v-section-tabs-slot [role="tab"]',
+    ".v-notification-bell",
+    ".v-titlebar-actions button",
+  ])
+    assert.ok(
+      await page.locator(selector).count(),
+      `${selector}: nonempty fixture`,
+    );
   await page.evaluate(() => {
     document.documentElement.dataset.behindClicks = "0";
     for (const node of document.querySelectorAll(
@@ -352,6 +362,12 @@ async function checkIsolatedDialogs(
         noLaunch: true,
         dialogFirst: true,
         captionControls: true,
+        captionControlsLast: true,
+        positiveLaunch: true,
+        ctrlAltB: true,
+        nonEmptyBackground: true,
+        initialFocusFirstButton: true,
+        isolatedInstrumentation: true,
         contextMenuDefaultsCanceled: true,
         altGr: true,
         ctrlKToggle: true,
@@ -374,10 +390,11 @@ if (import.meta.main) {
   const server = await webQaPreview();
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage({
+    const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       reducedMotion: "reduce",
     });
+    const page = await context.newPage();
     page.setDefaultTimeout(15000);
     await checkDialogSafety(
       page,

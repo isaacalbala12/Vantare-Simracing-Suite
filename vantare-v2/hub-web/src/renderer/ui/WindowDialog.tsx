@@ -109,11 +109,11 @@ function Backdrop(props: Base.Backdrop.Props) {
 }
 function Portal(props: Base.Portal.Props) {
   const mode = useContext(Mode);
-  // Keep screen dialogs in the shell's stacking context: its content-column
+  // Keep screen layers in the shell's stacking context: its content-column
   // toast can then sit above the backdrop without crossing the right rail.
   const container =
     props.container ??
-    (mode.scope === "screen"
+    (mode.scope !== "gate"
       ? document.querySelector<HTMLElement>(".v-shell-column")
       : null);
   return <Base.Portal {...props} container={container ?? undefined} />;

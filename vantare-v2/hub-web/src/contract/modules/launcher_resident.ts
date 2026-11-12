@@ -48,7 +48,8 @@ export function isResident(value: unknown): boolean {
       "decision",
       "registrations",
     ]) &&
-    (value.execution === null || (value.online === true && isResidentExecution(value.execution))) &&
+    (value.execution === null ||
+      (value.online === true && isResidentExecution(value.execution))) &&
     typeof value.protected === "boolean" &&
     typeof value.online === "boolean" &&
     typeof value.running === "boolean" &&

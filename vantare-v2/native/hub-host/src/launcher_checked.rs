@@ -164,7 +164,7 @@ mod tests {
                 mailbox::status_path(&path),
                 serde_json::to_vec(status).unwrap(),
             )
-            .unwrap()
+            .unwrap();
         };
         save(&status);
         assert_eq!(

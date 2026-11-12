@@ -52,11 +52,21 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
-    use vantare_ipc::launcher::{execution as native, RequestId};
-    let mut execution=native::ExecutionStatus::new("b".repeat(64).try_into().expect("instance fixture"));
-    execution.capabilities.push(native::Capability::RevisionCheckedLaunch);
-    let run=execution.accept(RequestId::try_from("a".repeat(32)).expect("request fixture")).expect("run fixture");
-    execution.record(native::EventKind::Finished{run,outcome:native::ChainOutcome::Completed}).expect("terminal fixture");
+    use vantare_ipc::launcher::{RequestId, execution as native};
+    let mut execution =
+        native::ExecutionStatus::new("b".repeat(64).try_into().expect("instance fixture"));
+    execution
+        .capabilities
+        .push(native::Capability::RevisionCheckedLaunch);
+    let run = execution
+        .accept(RequestId::try_from("a".repeat(32)).expect("request fixture"))
+        .expect("run fixture");
+    execution
+        .record(native::EventKind::Finished {
+            run,
+            outcome: native::ChainOutcome::Completed,
+        })
+        .expect("terminal fixture");
     let value = ResidentView {
         execution: Some((&execution).into()),
         online: true,

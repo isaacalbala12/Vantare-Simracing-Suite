@@ -1,6 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { testingBusyRetry } from "../src/contract/generated/contract";
-import { type Client, HostFailure } from "../src/renderer/bridge/client";
+import {
+  type Client,
+  HostFailure,
+  ReportCloseDiscarded,
+} from "../src/renderer/bridge/client";
 import { testingRequest } from "../src/renderer/screens/testing/TestingRequests";
 
 afterEach(() => {
@@ -76,4 +80,17 @@ it("ignores a response after its screen session has been cancelled", async () =>
   finish({ method: "draft.load" });
   await expect(result).rejects.toBeDefined();
   expect(request).toHaveBeenCalledTimes(1);
+});
+
+it("never retries a request abandoned by a clean report close", async () => {
+  const discarded = new ReportCloseDiscarded();
+  const request = vi.fn().mockRejectedValue(discarded);
+  await expect(
+    testingRequest(
+      { request } as unknown as Client,
+      { method: "testing.refresh" },
+      new AbortController().signal,
+    ),
+  ).rejects.toBe(discarded);
+  expect(request).toHaveBeenCalledOnce();
 });

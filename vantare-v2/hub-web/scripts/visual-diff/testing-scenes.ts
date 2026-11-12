@@ -73,7 +73,10 @@ export const testingScenes: Record<string, VisualScene> = {
       // Electron seeds the host from its environment; renderer-only QA copy
       // receives the same explicit scene through the local URL, as Notifications does.
       const target = new URL(page.url());
-      target.searchParams.set("escena", "testing-tester-questionnaires-reference");
+      target.searchParams.set(
+        "escena",
+        "testing-tester-questionnaires-reference",
+      );
       await page.goto(target.href);
       await page
         .getByRole("navigation", { name: "Navegación principal" })

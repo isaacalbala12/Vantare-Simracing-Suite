@@ -259,7 +259,6 @@ export function CalendarEventsView({
                   {text.export}
                 </Button>
                 <Button
-                  variant="ghost"
                   disabled={!onDetail}
                   onClick={() => onDetail?.(series.id)}
                 >

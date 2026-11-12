@@ -105,6 +105,31 @@ async function checkExpandedCalendarWeek(page: Page) {
         ),
     );
   if (!belowTopbar) throw new Error("Expanded calendar week covers the topbar");
+  const weekStyle = await page
+    .locator(".v-calendar-week-full")
+    .evaluate((root) => {
+      const line = root.querySelector(".v-calendar-week-live-now");
+      const legend = root.querySelector(".v-calendar-week-legend-now");
+      const band = root.querySelector(
+        ".v-calendar-week-live-daily[data-favorite] > button",
+      );
+      if (!line || !legend || !band) return false;
+      const now = getComputedStyle(line),
+        outline = getComputedStyle(band);
+      const red = outline.borderTopColor.match(/[\d.]+/g)?.map(Number) ?? [];
+      return (
+        now.width === "2px" &&
+        now.backgroundColor === getComputedStyle(legend).backgroundColor &&
+        outline.borderTopStyle === "solid" &&
+        Number.parseFloat(outline.borderTopWidth) >= 1 &&
+        red[0] > red[1] &&
+        red[0] > red[2]
+      );
+    });
+  if (!weekStyle)
+    throw new Error(
+      "Calendar week lost its red Now line or favorite band outline",
+    );
   await page
     .getByRole("button", {
       name: "Salir de pantalla completa (Esc)",
@@ -309,6 +334,19 @@ export const calendarScenes: Record<string, VisualScene> = {
         .waitFor();
       await page.getByText("4 carreras", { exact: true }).waitFor();
       await assertCalendarMineControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-eventos-desplegada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-eventos-contraida"].prepare(page);
+      await page
+        .getByRole("button", {
+          name: "Contraer o ampliar navegación",
+          exact: true,
+        })
+        .click();
       await page.mouse.move(600, 890);
     },
   },

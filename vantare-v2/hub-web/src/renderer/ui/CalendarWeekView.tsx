@@ -243,6 +243,14 @@ export function CalendarWeekView({
             ))}
           </div>
           <div className="v-calendar-week-live-body">
+            {offset === 0 && (
+              <i
+                className="v-calendar-week-live-now"
+                style={{
+                  left: `calc(240px + (100% - 240px) * ${(now - dates[0]) / (end - dates[0])})`,
+                }}
+              />
+            )}
             <div className="v-calendar-group">
               {text.events}
               <span>{text.fixed}</span>
@@ -403,14 +411,6 @@ export function CalendarWeekView({
                   </div>
                 );
               })}
-            {offset === 0 && (
-              <i
-                className="v-calendar-week-live-now"
-                style={{
-                  left: `calc(240px + (100% - 240px) * ${(now - dates[0]) / (end - dates[0])})`,
-                }}
-              />
-            )}
           </div>
           <footer>
             <span>

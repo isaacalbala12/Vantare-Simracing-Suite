@@ -429,7 +429,7 @@ jobs:
           retention-days: 1
 
   native_tests:
-    name: Run native ${{ matrix.suite }}
+    name: Run native ${{ matrix.label }}
     timeout-minutes: 20
     needs: [policy, native_build]
     if: needs.policy.outputs.native != 'false'
@@ -437,7 +437,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [test, telemetria]
+        # La suite general se reparte en dos shards disjuntos y exhaustivos
+        # (`hash:1/2` + `hash:2/2`); telemetría conserva una sola ejecución
+        # porque ya cabe en la ruta crítica. La cobertura no cambia.
+        include:
+          - suite: test
+            label: test 1/2
+            partition: hash:1/2
+          - suite: test
+            label: test 2/2
+            partition: hash:2/2
+          - suite: telemetria
+            label: telemetria
+            partition: ''
     defaults:
       run:
         shell: pwsh
@@ -466,7 +478,7 @@ jobs:
           name: native-tests-${{ github.sha }}
           path: ${{ runner.temp }}/vantare-test-archive
       - name: Run compiled tests without rebuilding
-        run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}'
+        run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}' -Partition '${{ matrix.partition }}'
 
   native_lifecycle_build:
     name: Build lifecycle overlays in parallel

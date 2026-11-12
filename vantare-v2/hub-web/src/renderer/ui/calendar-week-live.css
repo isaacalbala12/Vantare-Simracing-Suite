@@ -225,7 +225,8 @@
   position: absolute;
   top: 26px;
   bottom: 0;
-  width: 1px;
+  width: 2px;
+  margin-left: -1px;
   background: var(--accent);
   pointer-events: none;
 }
@@ -556,4 +557,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+.v-calendar-week-live-daily[data-favorite] > button {
+  border-color: var(--hero-ring);
+  background: var(--accent-tint);
 }

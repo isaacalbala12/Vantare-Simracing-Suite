@@ -22,6 +22,9 @@
   background: var(--surface-1);
 }
 .v-home-search {
+  position: relative;
+  height: 36px;
+  padding-left: 36px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -34,6 +37,9 @@
   cursor: pointer;
 }
 .v-home-search svg {
+  position: absolute;
+  left: 8px;
+  top: 10px;
   width: 16px;
   height: 16px;
   flex: none;
@@ -277,6 +283,9 @@
   color: var(--text-2);
   font: 12px / 16px var(--font-sans);
   white-space: nowrap;
+  font-weight: 500;
+  height: 28px;
+  padding-block: 0;
 }
 .v-home-muted {
   font-size: 12px;
@@ -336,22 +345,25 @@
 .v-home-activity-list > div {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 0;
+  gap: 8px;
+  padding: 8px 0 8px 48px;
   border-bottom: 1px solid var(--line-1);
+  position: relative;
+  min-height: 58px;
 }
 .v-home-activity-list > div > span:nth-child(2) {
   flex: 1;
   min-width: 0;
 }
 .v-home-activity-list strong {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 650;
 }
 .v-home-activity-list small {
   display: block;
   color: var(--text-3);
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: 12px;
+  margin-top: 0;
 }
 .v-home-rail {
   font-size: 13px;
@@ -402,6 +414,7 @@
 }
 .v-home-template-section > .v-home-heading {
   margin-bottom: 8px;
+  height: 20px;
 }
 .v-home-templates {
   display: grid;
@@ -460,6 +473,33 @@
   border-radius: 8px;
   padding: 12px;
   color: var(--text-2);
+}
+.v-home-card:nth-child(2) {
+  padding: 20px;
+  gap: 12px;
+}
+.v-home-card:nth-child(2) .v-home-empty {
+  gap: 12px;
+}
+.v-home-activity-list > div > svg {
+  position: absolute;
+  left: 6px;
+  top: 11px;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 5px;
+  background: var(--surface-3);
+  color: var(--text-3);
+}
+.v-home-activity-list .v-home-badge {
+  align-self: flex-start;
+  margin-top: -8px;
+}
+.v-home-activity-list .v-home-badge[data-launcher="true"] {
+  background: var(--accent-tint);
+  color: var(--accent-bright);
+  border-color: transparent;
 }
 @media (min-height: 1000px) {
   .v-home-hero {
@@ -541,7 +581,9 @@
   height: 58px;
   min-height: 58px;
   background: var(--grad-neo);
-  font-size: 13px;
+  font-size: 12px;
+  padding: 10px;
+  border-radius: 10px;
 }
 .v-home-rail-status {
   height: 298px;
@@ -549,6 +591,10 @@
 }
 .v-home-rail-status > .v-home-heading {
   margin-bottom: 8px;
+}
+
+.v-home-card:nth-child(2) > .v-home-heading {
+  height: 16px;
 }
 
 .v-home-loading-overlay {
@@ -649,8 +695,16 @@
     var(--grad-hero-wash), var(--grad-hero);
   box-shadow: inset 0 0 0 1px var(--hero-light);
 }
+/* GPUI blur_radius is Gaussian sigma; this existing recipe uses CSS 2*sigma. */
 .v-home-card {
-  box-shadow: var(--shadow-neo);
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-account);
+}
+[data-palette="classic"] .v-home-card {
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-account-classic);
 }
 
 .v-home .v-skeleton,
@@ -698,4 +752,12 @@
 .v-home-widget > .v-widget-thumbnail[data-fallback="true"],
 .v-home-templates .v-widget-thumbnail[data-fallback="true"] {
   opacity: 1;
+}
+
+.v-home-error .v-button {
+  height: 36px;
+  border-radius: 8px;
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 600;
 }

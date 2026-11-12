@@ -20,9 +20,9 @@ export const calendarDetailText = {
   followedHelp: "Sale primero en Próximas, en Semana y en Inicio.",
   followHelp: "La verás primero en Próximas, en Semana y en Inicio.",
   alert: "Avisarme de esta salida",
-  alertAt: (s: string) => `Te avisaremos a las ${s}`,
+  alertAt: (s: string) => `Aviso configurado para las ${s}`,
   alertHelp: (n: number) =>
-    `${n} min antes · notificación de Windows con botón para lanzar`,
+    `${n} min antes · avisos en pista; Windows y sonido aún no disponibles en este Hub`,
   rules: "Reglas",
   format: "Formato",
   team: "Equipos",

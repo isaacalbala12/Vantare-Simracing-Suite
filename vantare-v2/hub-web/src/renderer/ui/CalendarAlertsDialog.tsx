@@ -110,6 +110,7 @@ export function CalendarAlertsDialog(p: Props) {
                     }}
                   />
                   <Caption>{text.where}</Caption>
+                  <p role="status">{text.deliveryPending}</p>
                   {(
                     [
                       ["windows", text.windows, text.windowsHint],
@@ -122,15 +123,16 @@ export function CalendarAlertsDialog(p: Props) {
                       label={label}
                       hint={hint}
                       value={p.alerts.channels[channel]}
-                      disabled={disabled || legacy}
+                      disabled={disabled || legacy || channel !== "inTrack"}
                       pending={p.busy}
-                      onChange={(value) =>
+                      onChange={(value) => {
+                        if (channel !== "inTrack") return;
                         change({
                           kind: "channel",
                           channel: channel as keyof CalendarChannels,
                           value,
-                        })
-                      }
+                        });
+                      }}
                     />
                   ))}
                   <Caption>{text.when}</Caption>
@@ -167,6 +169,7 @@ export function CalendarAlertsDialog(p: Props) {
                 </section>
                 <section>
                   <Caption>{text.sample}</Caption>
+                  <p>{text.previewPending}</p>
                   <Preview {...p} />
                   <Caption
                     hint={text.count(

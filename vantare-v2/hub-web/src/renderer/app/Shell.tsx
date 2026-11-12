@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type AccountView,
   defaultZoom,
@@ -8,7 +8,9 @@ import {
   palettes,
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
+import { HostFailure } from "../bridge/client";
 import { accountText } from "../i18n/account.es";
+import { commandsText } from "../i18n/commands.es";
 import { paletteNames, t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
@@ -39,6 +41,7 @@ import { TrackedCaps } from "../ui/TrackedCaps";
 import { zoomLevels } from "../ui/ZoomControl";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
+import { profileCommands } from "./profile-commands";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
@@ -57,6 +60,15 @@ function ShellContent() {
   const toast = useToastManager();
   const settings = useSettings();
   const favoritePending = useRef(false);
+  const profilePending = useRef(false);
+  const [profileWaiting, setProfileWaiting] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const editBlocked =
     !settings.view ||
     settings.pending ||
@@ -90,6 +102,8 @@ function ShellContent() {
         const { name, photo, session } = message.event.value;
         query.setQueryData(["frame", "account"], { name, photo, session });
       }
+      if (message.kind === "event" && message.event.topic === "launcher")
+        query.setQueryData(["launcher"], message.event.value);
     });
     return () => {
       off?.();
@@ -108,12 +122,16 @@ function ShellContent() {
   const ui = useUi((state) => state);
   // Read the existing launcher snapshot for the expanded frame. The screen owns
   // its subscription; this reader never unsubscribes it or writes a profile.
-  const { data: launcher } = useQuery<LauncherView>({
+  const {
+    data: launcher,
+    isFetching: launcherLoading,
+    refetch: refreshLauncher,
+  } = useQuery<LauncherView>({
     queryKey: ["launcher"],
     enabled:
       !!host.client &&
-      !ui.sidebarCollapsed &&
-      ui.section !== "launcher" &&
+      (ui.commandsOpen ||
+        (!ui.sidebarCollapsed && ui.section !== "launcher")) &&
       !core.live,
     queryFn: async () => {
       if (!host.client) throw new Error("Host unavailable");
@@ -123,6 +141,10 @@ function ShellContent() {
       return reply.value;
     },
   });
+  useEffect(() => {
+    if (ui.commandsOpen && host.client && !core.live)
+      void refreshLauncher({ cancelRefetch: false });
+  }, [ui.commandsOpen, host.client, core.live, refreshLauncher]);
   const isUpcoming = (section: Section) =>
     section === "strategy" || section === "engineer";
   const items = navigation(core.access).map((item) =>
@@ -161,7 +183,15 @@ function ShellContent() {
       ui.navigate(section);
   }
   async function launchFavorite() {
-    if (!host.client || favoritePending.current) return;
+    if (
+      !host.client ||
+      favoritePending.current ||
+      profilePending.current ||
+      core.live ||
+      launcher?.running ||
+      lock("launcher", core.access)
+    )
+      return;
     favoritePending.current = true;
     try {
       const reply = await host.client.request({ method: "launcher.favorite" });
@@ -174,6 +204,52 @@ function ShellContent() {
       toast.add({ title: t("shell.favoriteFailed"), type: "err" });
     } finally {
       favoritePending.current = false;
+    }
+  }
+  async function launchProfile(profile: string, baseRevision: string) {
+    const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
+    if (
+      !host.client ||
+      launcherLoading ||
+      profilePending.current ||
+      favoritePending.current ||
+      core.live ||
+      lock("launcher", core.access) ||
+      current?.running ||
+      !current?.profiles.some((item) => item.id === profile && item.launchable)
+    )
+      return;
+    if (current.revision !== baseRevision) {
+      toast.add({ title: commandsText.changed, type: "warn" });
+      return;
+    }
+    profilePending.current = true;
+    setProfileWaiting(true);
+    try {
+      const reply = await host.client.request({
+        method: "launcher.launch",
+        profile,
+        baseRevision,
+      });
+      if (!alive.current) return;
+      toast.add({
+        title:
+          reply.method === "launcher.launch" && reply.accepted
+            ? commandsText.sent
+            : commandsText.failed,
+      });
+    } catch (failure) {
+      if (!alive.current) return;
+      if (
+        failure instanceof HostFailure &&
+        failure.detail.kind === "launcherConflict"
+      ) {
+        query.setQueryData(["launcher"], failure.detail.current);
+        toast.add({ title: commandsText.changed, type: "warn" });
+      } else toast.add({ title: commandsText.failed, type: "err" });
+    } finally {
+      profilePending.current = false;
+      if (alive.current) setProfileWaiting(false);
     }
   }
   function zoom(direction: -1 | 0 | 1) {
@@ -308,62 +384,143 @@ function ShellContent() {
                 closeLabel={t("shell.close")}
                 empty={t("shell.emptyCommands")}
                 commands={[
-                  ...items.map((item) => ({
-                    id: item.id,
-                    label: item.label,
-                    disabled: !!item.locked,
+                  ...[
+                    "home",
+                    "studio",
+                    "launcher",
+                    "calendar",
+                    "strategy",
+                    "engineer",
+                    "roadmap",
+                    "testing",
+                    "settings",
+                  ]
+                    .flatMap((id) => items.filter((item) => item.id === id))
+                    .map((item) => ({
+                      id: item.id,
+                      label:
+                        item.id === "strategy"
+                          ? commandsText.strategy
+                          : item.id === "engineer"
+                            ? commandsText.engineer
+                            : item.label,
+                      group: "navigation" as const,
+                      icon: item.icon,
+                      meta:
+                        item.locked ??
+                        commandsText.meta[
+                          item.id as keyof typeof commandsText.meta
+                        ],
+                      disabled: !!lock(item.id, core.access),
+                      run: () => navigate(item.id),
+                    })),
+                  ...(
+                    [
+                      {
+                        id: "account",
+                        label: commandsText.account,
+                        meta: commandsText.accountMeta,
+                        icon: "i-cuenta",
+                      },
+                      {
+                        id: "workshop",
+                        label: commandsText.workshop,
+                        meta: commandsText.workshopMeta,
+                        icon: "v-studio",
+                      },
+                      {
+                        id: "notifications",
+                        label: commandsText.notifications,
+                        meta: commandsText.notificationsMeta,
+                        icon: "v-bell",
+                      },
+                    ] as const
+                  ).map((item) => ({
+                    ...item,
+                    group: "navigation" as const,
+                    disabled: !!lock(item.id, core.access),
                     run: () => navigate(item.id),
                   })),
                   {
                     id: "theme",
                     label: t("shell.toggleTheme"),
+                    icon: "v-palette",
                     disabled: editBlocked,
                     run: toggleTheme,
                   },
                   {
                     id: "sidebar",
                     label: t("shell.sidebar"),
+                    icon: "v-side",
+                    shortcut: "Ctrl B",
                     run: ui.toggleSidebar,
                   },
                   {
                     id: "rail",
                     label: t("shell.railToggle"),
+                    icon: "v-side",
+                    shortcut: "Ctrl Alt B",
                     run: ui.toggleRail,
                   },
                   {
                     id: "notices",
                     label: t("shell.notices"),
+                    icon: "v-bell",
+                    shortcut: "Ctrl Mayús N",
                     run: () => ui.notices(true),
                   },
                   {
                     id: "zoom-less",
                     label: t("general.zoomLess"),
+                    shortcut: "Ctrl −",
                     disabled: editBlocked,
                     run: () => zoom(-1),
                   },
                   {
                     id: "zoom-more",
                     label: t("general.zoomMore"),
+                    shortcut: "Ctrl +",
                     disabled: editBlocked,
                     run: () => zoom(1),
                   },
                   {
                     id: "zoom-reset",
                     label: t("general.zoomReset"),
+                    shortcut: "Ctrl 0",
                     disabled: editBlocked,
                     run: () => zoom(0),
                   },
                   {
                     id: "favorite",
                     label: t("shell.favorite"),
-                    disabled: !!lock("launcher", core.access),
+                    icon: "v-launch",
+                    shortcut: "Ctrl L",
+                    disabled:
+                      !!lock("launcher", core.access) ||
+                      core.live ||
+                      !!launcher?.running ||
+                      profileWaiting,
                     run: () => void launchFavorite(),
                   },
                   {
                     id: "close",
                     label: t("shell.closeHub"),
+                    icon: "i-ajustes",
                     run: () => host.client?.closeWindow(),
                   },
+                  ...profileCommands(
+                    launcher,
+                    lock("launcher", core.access) ??
+                      (core.live
+                        ? commandsText.live
+                        : launcherLoading
+                          ? commandsText.loading
+                          : profileWaiting
+                            ? commandsText.running
+                            : undefined),
+                    (profile, revision) =>
+                      void launchProfile(profile, revision),
+                  ),
                 ]}
                 open={ui.commandsOpen}
                 onOpenChange={ui.commands}

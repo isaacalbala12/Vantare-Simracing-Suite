@@ -10,6 +10,7 @@
   --sidebar-w: 272px;
   --sidebar-w-collapsed: 76px;
   --palette-w: 640px;
+  --command-radius: 25px;
   --popover-w: 360px;
   --option-h: 38px;
   --segment-h: 29px;
@@ -60,6 +61,7 @@
   --orb-ring: #ffffff24;
   --hero-stripe: #ffffff12;
   --crop-veil: #0000008c;
+  --command-backdrop: #0404069e;
   --crop-square: #ffffff66;
   --crop-circle: #ffffffe6;
   --flag-edge: #0000002e;

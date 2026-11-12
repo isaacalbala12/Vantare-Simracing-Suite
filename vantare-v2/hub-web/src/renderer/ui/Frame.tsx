@@ -1,5 +1,4 @@
 import "./sidebar-expanded.css";
-import { Combobox } from "@base-ui/react/combobox";
 import { type ReactNode, useRef, useState } from "react";
 import {
   SectionRailSlot,
@@ -9,7 +8,6 @@ import {
 import { Icon, type IconName } from "../assets/icons/Icon";
 import { shellText } from "../i18n/shell.es";
 import { Button, IconButton } from "./Button";
-import { Dialog } from "./Layers";
 import { TrackedCaps } from "./TrackedCaps";
 export function TitleBar({
   title,
@@ -245,73 +243,7 @@ export function StatusAnnouncement({ children }: { children: ReactNode }) {
     </p>
   );
 }
-export function CommandPalette({
-  title,
-  description,
-  trigger,
-  closeLabel,
-  empty,
-  commands,
-  open,
-  onOpenChange,
-}: {
-  title: string;
-  description: string;
-  trigger: ReactNode;
-  closeLabel: string;
-  empty: string;
-  commands: {
-    id: string;
-    label: string;
-    disabled?: boolean;
-    run: () => void;
-  }[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog
-      title={title}
-      description={description}
-      trigger={trigger}
-      closeLabel={closeLabel}
-      open={open}
-      onOpenChange={onOpenChange}
-    >
-      <Combobox.Root<(typeof commands)[number]>
-        items={commands}
-        autoHighlight
-        itemToStringLabel={(item) => item.label}
-        onValueChange={(item) => {
-          if (item && !item.disabled) {
-            item.run();
-            onOpenChange(false);
-          }
-        }}
-        inline
-      >
-        <Combobox.Input
-          data-command-palette=""
-          className="v-input"
-          aria-label={title}
-        />
-        <Combobox.Empty className="v-muted">{empty}</Combobox.Empty>
-        <Combobox.List>
-          {(item: (typeof commands)[number]) => (
-            <Combobox.Item
-              className="v-option"
-              key={item.id}
-              value={item}
-              disabled={item.disabled}
-            >
-              {item.label}
-            </Combobox.Item>
-          )}
-        </Combobox.List>
-      </Combobox.Root>
-    </Dialog>
-  );
-}
+export { CommandPalette } from "./CommandPalette";
 
 export function RailBlock({
   title,

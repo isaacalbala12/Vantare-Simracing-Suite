@@ -1,7 +1,7 @@
 // Loaded ONLY by the instrumented ASAR under the dedicated QA root. No TLA,
 // browser capabilities, authentication values, or product defaults are changed.
 import { app, contentTracing } from 'electron';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, watch } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join, sep } from 'node:path';
 
 const data = resolve(process.env.VANTARE_HUB_DATA_DIR ?? '');
@@ -31,13 +31,18 @@ if (options.variant === 'trace') {
     tracePromise = app.whenReady().then(() => contentTracing.startRecording({ included_categories: ['v8', 'devtools.timeline', 'blink.user_timing', 'loading', 'disabled-by-default-v8.compile'], recording_mode: 'record-until-full', trace_buffer_size_in_kb: 32768 }));
     tracePromise.then(() => { mark('trace-started'); flush(); }, error => { events.push({ name: 'trace-failed', message: String(error) }); flush(); });
   } catch(error) { events.push({ name: 'trace-failed', message: String(error) }); }
-  const monitor = watch(data, (_event, name) => {
-    if (name !== 'measurement-stop-trace' || !existsSync(join(data, 'measurement-stop-trace'))) return;
-    monitor.close();
+  // Directory notifications can be coalesced amid Chromium profile writes.
+  // Poll only this closed QA marker; cancel on completion or app shutdown.
+  const monitor = setInterval(() => {
+    if (!existsSync(join(data, 'measurement-stop-trace'))) return;
+    clearInterval(monitor);
+    mark('trace-stop-requested'); flush();
     Promise.resolve(tracePromise).then(() => contentTracing.stopRecording(join(data, 'startup-trace.json'))).then(() => {
       mark('trace-stopped'); flush(); writeFileSync(join(data, 'trace-complete'), 'ok');
     }, error => { events.push({ name: 'trace-stop-failed', message: String(error) }); flush(); writeFileSync(join(data, 'trace-complete'), 'failed'); });
-  });
+  }, 100);
+  monitor.unref();
+  app.once('before-quit', () => clearInterval(monitor));
 }
 app.once('ready', () => mark('app-ready'));
 app.on('web-contents-created', (_event, contents) => {

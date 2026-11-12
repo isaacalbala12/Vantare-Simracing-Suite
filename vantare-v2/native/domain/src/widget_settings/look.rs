@@ -1,5 +1,7 @@
 //! Data-only widget design-system, tone and accent identifiers.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "WidgetLook"))]
 #[serde(rename_all = "lowercase")]
 pub enum Look {
     Eficiencia,
@@ -9,6 +11,8 @@ pub enum Look {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "WidgetTone"))]
 #[serde(rename_all = "lowercase")]
 pub enum Tone {
     /// Neo con fondos en escala de grises, sin subtono rojo.
@@ -19,6 +23,8 @@ pub enum Tone {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "WidgetAccent"))]
 #[serde(rename_all = "lowercase")]
 pub enum Accent {
     Amber,

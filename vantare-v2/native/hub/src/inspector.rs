@@ -1,5 +1,6 @@
 //! Ajustes consumidos por los renderizadores productivos; no persiste ni dibuja widgets.
 use crate::orbit::NumberRange;
+use vantare_domain::widget_settings as widget;
 use vantare_ui::standings::SessionSettings as _;
 use vantare_ui::{
     Settings,
@@ -131,9 +132,12 @@ fn number(
     }
 }
 const METRICS: &[(&str, &str)] = &[
-    ("Ninguna", "none"),
-    ("Circuito", "track"),
-    ("Vueltas estimadas", "estimatedLaps"),
+    ("Ninguna", widget::standings::STANDINGS_INFO_NONE),
+    ("Circuito", widget::standings::STANDINGS_INFO_TRACK),
+    (
+        "Vueltas estimadas",
+        widget::standings::STANDINGS_INFO_ESTIMATED_LAPS,
+    ),
 ];
 
 // Solo elimina la repetición del setter; cada fila sigue nombrando su Settings tipado.
@@ -175,16 +179,22 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 number(
                     "Filas",
                     value.row_count as f64,
-                    1.0,
-                    30.0,
-                    1.0,
+                    widget::standings::STANDINGS_ROWS_MIN as f64,
+                    widget::standings::STANDINGS_ROWS_MAX as f64,
+                    widget::standings::STANDINGS_ROWS_STEP as f64,
                     set!(Standings.row_count as usize),
                 ),
                 choice(
                     "Clasificación",
                     Tab::Content,
                     &value.classification_mode,
-                    &[("Normal", "normal"), ("Multiclase", "multiclass")],
+                    &[
+                        ("Normal", widget::standings::STANDINGS_CLASSIFICATION_NORMAL),
+                        (
+                            "Multiclase",
+                            widget::standings::STANDINGS_CLASSIFICATION_MULTICLASS,
+                        ),
+                    ],
                     |settings, key| {
                         if let Settings::Standings(value) = settings {
                             value.classification_mode = key.into();
@@ -208,7 +218,10 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     "Diseño",
                     Tab::Appearance,
                     &value.template_id,
-                    &[("Signature", "signature"), ("Broadcast", "broadcast")],
+                    &[
+                        ("Signature", widget::standings::STANDINGS_TEMPLATE_SIGNATURE),
+                        ("Broadcast", widget::standings::STANDINGS_TEMPLATE_BROADCAST),
+                    ],
                     set!(Standings.template_id string),
                 ),
                 choice(
@@ -258,9 +271,9 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     Tab::Appearance,
                     &value.size,
                     &[
-                        ("Cápsula", "pill"),
-                        ("Barra", "bar"),
-                        ("Ampliado", "expanded"),
+                        ("Cápsula", widget::delta::DELTA_SIZE_PILL),
+                        ("Barra", widget::delta::DELTA_SIZE_BAR),
+                        ("Ampliado", widget::delta::DELTA_SIZE_EXPANDED),
                     ],
                     set!(Delta.size string),
                 ),
@@ -269,9 +282,15 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     Tab::Content,
                     &value.reference,
                     &[
-                        ("Mejor vuelta propia", "best"),
-                        ("Óptima (mejores sectores)", "optimal"),
-                        ("Mejor del líder de clase", "leader"),
+                        ("Mejor vuelta propia", widget::delta::DELTA_REFERENCE_BEST),
+                        (
+                            "Óptima (mejores sectores)",
+                            widget::delta::DELTA_REFERENCE_OPTIMAL,
+                        ),
+                        (
+                            "Mejor del líder de clase",
+                            widget::delta::DELTA_REFERENCE_LEADER,
+                        ),
                     ],
                     set!(Delta.reference string),
                 ),
@@ -282,7 +301,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 value.transparent_background,
                 set!(Delta.transparent_background),
             ));
-            if value.size != "pill" {
+            if value.size != widget::delta::DELTA_SIZE_PILL {
                 rows.push(boolean(
                     "Barra de diferencia",
                     Tab::Appearance,
@@ -290,7 +309,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     set!(Delta.show_bar),
                 ));
             }
-            if value.size == "expanded" {
+            if value.size == widget::delta::DELTA_SIZE_EXPANDED {
                 rows.push(boolean(
                     "Comparación de sectores",
                     Tab::Content,
@@ -304,7 +323,10 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             "Diseño",
             Tab::Appearance,
             &value.template_id,
-            &[("Instrumento", "instrument"), ("Cápsula", "capsule")],
+            &[
+                ("Instrumento", widget::delta::DELTA_TEMPLATE_INSTRUMENT),
+                ("Cápsula", widget::delta::DELTA_TEMPLATE_CAPSULE),
+            ],
             set!(Delta.template_id string),
         )],
         Settings::Pedals(value) => {
@@ -314,7 +336,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     f64::from(value.gap),
                     f64::from(vantare_ui::pedals::GAP_MIN),
                     f64::from(vantare_ui::pedals::GAP_MAX),
-                    1.0,
+                    f64::from(widget::pedals::GAP_STEP),
                     set!(Pedals.gap as f32),
                 ),
                 boolean(
@@ -453,9 +475,9 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             number(
                 "Filas del historial",
                 f64::from(value.history_rows),
-                1.0,
-                8.0,
-                1.0,
+                f64::from(widget::fuel_strategy::FUEL_HISTORY_MIN),
+                f64::from(widget::fuel_strategy::FUEL_HISTORY_MAX),
+                f64::from(widget::fuel_strategy::FUEL_HISTORY_STEP),
                 set!(FuelStrategy.history_rows as u8),
             ),
             boolean(
@@ -561,17 +583,17 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             number(
                 "Filas alrededor · delante",
                 value.range_ahead as f64,
-                0.0,
-                8.0,
-                1.0,
+                widget::relative::RELATIVE_RANGE_MIN as f64,
+                widget::relative::RELATIVE_RANGE_MAX as f64,
+                widget::relative::RELATIVE_RANGE_STEP as f64,
                 set!(Relative.range_ahead as usize),
             ),
             number(
                 "Filas alrededor · detrás",
                 value.range_behind as f64,
-                0.0,
-                8.0,
-                1.0,
+                widget::relative::RELATIVE_RANGE_MIN as f64,
+                widget::relative::RELATIVE_RANGE_MAX as f64,
+                widget::relative::RELATIVE_RANGE_STEP as f64,
                 set!(Relative.range_behind as usize),
             ),
         ],
@@ -702,9 +724,9 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
 }
 
 const TABLE_FORMATS: &[(&str, &str)] = &[
-    ("Compacto", "compact"),
-    ("Estándar", "standard"),
-    ("Ampliado", "expanded"),
+    ("Compacto", widget::TABLE_SIZE_COMPACT),
+    ("Estándar", widget::TABLE_SIZE_STANDARD),
+    ("Ampliado", widget::TABLE_SIZE_EXPANDED),
 ];
 
 fn table_template(
@@ -712,19 +734,23 @@ fn table_template(
     relative: bool,
 ) -> &'static str {
     let Some(columns) = columns else {
-        return "standard";
+        return widget::TABLE_SIZE_STANDARD;
     };
-    ["compact", "standard", "expanded"]
-        .into_iter()
-        .find(|name| {
-            *columns
-                == if relative {
-                    vantare_ui::relative::vantare_template(name)
-                } else {
-                    vantare_ui::standings::vantare_template(name)
-                }
-        })
-        .unwrap_or("") // Columnas personalizadas: no afirmar una plantilla que no coincide.
+    [
+        widget::TABLE_SIZE_COMPACT,
+        widget::TABLE_SIZE_STANDARD,
+        widget::TABLE_SIZE_EXPANDED,
+    ]
+    .into_iter()
+    .find(|name| {
+        *columns
+            == if relative {
+                vantare_ui::relative::vantare_template(name)
+            } else {
+                vantare_ui::standings::vantare_template(name)
+            }
+    })
+    .unwrap_or("") // Columnas personalizadas: no afirmar una plantilla que no coincide.
 }
 
 pub fn appearance(

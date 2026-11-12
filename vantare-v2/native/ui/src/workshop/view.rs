@@ -1,5 +1,6 @@
 //! Chrome del Workshop; el widget sigue siendo el Overlay productivo.
 use super::*;
+use vantare_domain::widget_settings as widget;
 
 impl Workshop {
     /// Grupos Aspecto (estilo y acento) y Marca de los widgets Vantare.
@@ -580,7 +581,10 @@ impl Render for Workshop {
                     .child(Self::segments(
                         Control::Setting("classScope"),
                         &current("classScope"),
-                        &[("all", "Todas las clases"), ("sameClass", "Mi clase")],
+                        &[
+                            (widget::relative::RELATIVE_SCOPE_ALL, "Todas las clases"),
+                            (widget::relative::RELATIVE_SCOPE_SAME_CLASS, "Mi clase"),
+                        ],
                         cx,
                     ))
                     .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
@@ -597,7 +601,10 @@ impl Render for Workshop {
                 modes = modes.child(div().mt(px(6.0)).child(Self::segments(
                     Control::Setting("classScope"),
                     &current("classScope"),
-                    &[("player-class", "Mi clase"), ("all-classes", "Todas")],
+                    &[
+                        (widget::standings::STANDINGS_SCOPE_PLAYER_CLASS, "Mi clase"),
+                        (widget::standings::STANDINGS_SCOPE_ALL_CLASSES, "Todas"),
+                    ],
                     cx,
                 )));
             }
@@ -836,15 +843,15 @@ impl Render for Workshop {
                 .child(
                     group("Pie de datos").children(
                         [
-                            ("time", "Tiempo"),
-                            ("lap", "Vuelta"),
-                            ("position", "Posición"),
-                            ("gap", "Diferencia"),
-                            ("bestLap", "Mejor vuelta"),
-                            ("lastLap", "Última vuelta"),
-                            ("track", "Pista"),
-                            ("ambient", "Aire"),
-                            ("wind", "Viento"),
+                            (widget::FOOTER_TIME, "Tiempo"),
+                            (widget::FOOTER_LAP, "Vuelta"),
+                            (widget::FOOTER_POSITION, "Posición"),
+                            (widget::FOOTER_GAP, "Diferencia"),
+                            (widget::FOOTER_BEST_LAP, "Mejor vuelta"),
+                            (widget::FOOTER_LAST_LAP, "Última vuelta"),
+                            (widget::FOOTER_TRACK, "Pista"),
+                            (widget::FOOTER_AMBIENT, "Aire"),
+                            (widget::FOOTER_WIND, "Viento"),
                         ]
                         .into_iter()
                         .map(|(id, label)| {

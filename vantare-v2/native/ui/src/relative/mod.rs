@@ -4,6 +4,7 @@
 use crate::standings::options::ColumnFormat as _;
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
+use vantare_domain::widget_settings::columns as column_keys;
 #[cfg(test)]
 mod contract_tests;
 mod eficiencia;
@@ -54,48 +55,61 @@ const MOVABLE: &[&str] = &[
 #[must_use]
 pub fn vantare_template(name: &str) -> Vec<crate::standings::options::ColumnSetting> {
     let (driver, on): (&str, &[&str]) = match name {
-        "compact" => ("sm", &["carNumber", "driverName", "gap"]),
-        "expanded" => (
-            "md",
+        "compact" => (
+            column_keys::COLUMN_WIDTH_SM,
             &[
-                "position",
-                "carNumber",
-                "driverName",
-                "vehicle",
-                "lapDelta",
-                "driverRating",
-                "safetyRating",
-                "trend",
-                "gap",
-                "trackStrip",
+                column_keys::COLUMN_METRIC_CAR_NUMBER,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_GAP,
+            ],
+        ),
+        "expanded" => (
+            column_keys::COLUMN_WIDTH_MD,
+            &[
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_CAR_NUMBER,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_VEHICLE,
+                column_keys::COLUMN_METRIC_LAP_DELTA,
+                column_keys::COLUMN_METRIC_DRIVER_RATING,
+                column_keys::COLUMN_METRIC_SAFETY_RATING,
+                column_keys::COLUMN_METRIC_TREND,
+                column_keys::COLUMN_METRIC_GAP,
+                column_keys::COLUMN_METRIC_TRACK_STRIP,
             ],
         ),
         _ => (
-            "lg",
-            &["position", "driverName", "vehicle", "lapDelta", "gap"],
+            column_keys::COLUMN_WIDTH_LG,
+            &[
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_VEHICLE,
+                column_keys::COLUMN_METRIC_LAP_DELTA,
+                column_keys::COLUMN_METRIC_GAP,
+            ],
         ),
     };
     [
-        "position",
-        "carNumber",
-        "driverName",
-        "vehicle",
-        "lapDelta",
-        "driverRating",
-        "safetyRating",
-        "trend",
-        "gap",
-        "trackStrip",
+        column_keys::COLUMN_METRIC_POSITION,
+        column_keys::COLUMN_METRIC_CAR_NUMBER,
+        column_keys::COLUMN_METRIC_DRIVER_NAME,
+        column_keys::COLUMN_METRIC_VEHICLE,
+        column_keys::COLUMN_METRIC_LAP_DELTA,
+        column_keys::COLUMN_METRIC_DRIVER_RATING,
+        column_keys::COLUMN_METRIC_SAFETY_RATING,
+        column_keys::COLUMN_METRIC_TREND,
+        column_keys::COLUMN_METRIC_GAP,
+        column_keys::COLUMN_METRIC_TRACK_STRIP,
     ]
     .iter()
     .map(|metric| crate::standings::options::ColumnSetting {
         id: (*metric).into(),
         metric_id: (*metric).into(),
         enabled: on.contains(metric),
-        width_preset: if *metric == "driverName" {
+        width_preset: if *metric == column_keys::COLUMN_METRIC_DRIVER_NAME {
             driver.into()
         } else {
-            "auto".into()
+            column_keys::COLUMN_WIDTH_AUTO.into()
         },
         ..crate::standings::options::ColumnSetting::default()
     })

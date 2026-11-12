@@ -332,5 +332,7 @@ studioScenes["studio-formato-delta"] = {
     await page
       .getByRole("switch", { name: "Barra de diferencia", exact: true })
       .waitFor();
+    // Global Ctrl+B intentionally ignores events from a combobox.
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
   },
 };

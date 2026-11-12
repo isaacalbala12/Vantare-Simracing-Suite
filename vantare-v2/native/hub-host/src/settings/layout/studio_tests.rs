@@ -752,8 +752,7 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
                 )
                 .unwrap();
             assert_eq!(std::fs::read(&path).unwrap(), input.as_bytes());
-            assert!(!noop.can_undo);
-            assert!(!noop.can_redo);
+            assert!(!noop.can_undo && !noop.can_redo);
             let accent = if settings["accent"] == "white" {
                 native::look::Accent::Red
             } else {

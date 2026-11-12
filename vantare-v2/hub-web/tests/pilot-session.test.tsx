@@ -204,3 +204,22 @@ it("preserves the stable guest's local profile without authenticating reports or
   await load(h);
   expect(h.result.current.draft).toEqual(view.fields);
 });
+it("an old cancel callback cannot discard B's newly chosen photo", async () => {
+  const h = mount();
+  const cancelA = h.result.current.cancelPhoto;
+  nextAccount();
+  const image = {
+    width: 500,
+    height: 500,
+    close: vi.fn(),
+  } as unknown as ImageBitmap;
+  vi.mocked(openPilotPhoto).mockResolvedValue(image);
+  await act(async () => {
+    await h.result.current.choosePhoto(new File(["QA"], "qa.png"));
+  });
+  act(cancelA);
+  expect(h.result.current.photo?.image).toBe(image);
+  expect(image.close).not.toHaveBeenCalled();
+  act(() => h.result.current.cancelPhoto());
+  expect(image.close).toHaveBeenCalledTimes(1);
+});

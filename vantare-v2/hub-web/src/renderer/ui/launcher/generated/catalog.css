@@ -1,0 +1,4 @@
+/* Native launcher/presentation.rs::star_mark and trash_mark; theme independent SVG stroke. */
+:root {
+  --launcher-catalog-icon: #8a858b;
+}

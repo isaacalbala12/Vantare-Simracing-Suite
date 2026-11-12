@@ -57,7 +57,55 @@ async function checkCalendarExportProviders(page: Page) {
   }
 }
 
+async function checkExpandedCalendarWeek(page: Page) {
+  await page
+    .getByRole("button", { name: "Pantalla completa", exact: true })
+    .click();
+  await page.getByRole("dialog", { name: "Calendario", exact: true }).waitFor();
+  await assertDetailWindowControls(page);
+  const belowTopbar = await page
+    .locator(".v-calendar-week-full")
+    .evaluate(
+      (popup) =>
+        popup.getBoundingClientRect().top >=
+        Number.parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--topbar-h",
+          ),
+        ),
+    );
+  if (!belowTopbar) throw new Error("Expanded calendar week covers the topbar");
+  await page
+    .getByRole("button", {
+      name: "Salir de pantalla completa (Esc)",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Calendario", exact: true })
+    .waitFor({ state: "hidden" });
+  await page.waitForFunction(
+    () =>
+      document.activeElement?.getAttribute("aria-label") ===
+      "Pantalla completa",
+  );
+}
+
 export const calendarScenes: Record<string, VisualScene> = {
+  "calendario-semana-ampliada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-semana-contraida"].prepare(page);
+      await page
+        .getByRole("button", { name: "Pantalla completa", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Calendario", exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-ics-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {
@@ -136,6 +184,7 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Semana 6–12 oct", exact: true })
         .waitFor();
+      await checkExpandedCalendarWeek(page);
       await page.mouse.move(600, 890);
     },
   },
@@ -203,6 +252,7 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Semana 6–12 oct", exact: true })
         .waitFor();
+      await checkExpandedCalendarWeek(page);
       await page.mouse.move(600, 890);
     },
   },

@@ -818,11 +818,11 @@ fn unreadable_supported_settings_protect_the_whole_document_without_creating_fil
         let view = state.view(access);
         assert_eq!(view.state, StudioState::Protected);
         assert!(view.instances.is_empty());
-        let patch = serde_json::from_value(serde_json::json!({"kind":"pedals","gap":2.7}))
+        let update = serde_json::from_value(serde_json::json!({"kind":"pedals","gap":2.7}))
             .unwrap();
         assert!(matches!(
             state.edit(
-                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(patch))),
+                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
                 &view.revision,
                 access,
             ),

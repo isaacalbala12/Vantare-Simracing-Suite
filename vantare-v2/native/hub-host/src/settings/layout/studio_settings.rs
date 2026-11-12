@@ -292,7 +292,7 @@ mod review_tests {
     use super::*;
     use serde_json::json;
     use vantare_domain::widget_settings as native;
-    fn write(input: Value, update: Value) -> Value {
+    fn write(input: &Value, update: Value) -> Value {
         let mut fields: Fields = serde_json::from_value(json!({"settings":input})).unwrap();
         let update = serde_json::from_value(update).unwrap();
         assert!(apply(&mut fields, &update, Some(CatalogAccess::Pro)).unwrap());
@@ -338,7 +338,7 @@ mod review_tests {
                 }
                 _ => unreachable!(),
             };
-            let mut actual = write(input.clone(), json!({"kind":kind,"accent":"white"}));
+            let mut actual = write(&input, json!({"kind":kind,"accent":"white"}));
             actual.as_object_mut().unwrap().remove("kind");
             assert_eq!(actual, expected, "{input}");
         }
@@ -389,7 +389,7 @@ mod review_tests {
         ));
         assert_eq!(fields.0["settings"].get(), before);
         let actual = write(
-            json!({"kind":"relative","contentVersion":1,"columns":[{"id":"p","metricId":"position"},{"id":"d","metricId":"driverName"},{"id":"g","metricId":"gap"}]}),
+            &json!({"kind":"relative","contentVersion":1,"columns":[{"id":"p","metricId":"position"},{"id":"d","metricId":"driverName"},{"id":"g","metricId":"gap"}]}),
             json!({"kind":"relative","columns":[{"metric":"gap"},{"metric":"driverName","format":{"maxChars":0}}]}),
         );
         assert_eq!(actual["columns"].as_array().unwrap().len(), 2);

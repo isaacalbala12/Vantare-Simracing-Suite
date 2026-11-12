@@ -91,11 +91,11 @@ impl WidgetSettings {
     #[cfg(any(test, feature = "bindings"))]
     pub(crate) fn schema_keys() -> std::collections::BTreeMap<String, serde_json::Value> {
         let bare = [
-            Data::Standings(Default::default()),
-            Data::Relative(Default::default()),
-            Data::Delta(Default::default()),
-            Data::Pedals(Default::default()),
-            Data::FuelStrategy(Default::default()),
+            Data::Standings(native::standings::Settings::default()),
+            Data::Relative(native::relative::Settings::default()),
+            Data::Delta(native::delta::Settings::default()),
+            Data::Pedals(native::pedals::Settings::default()),
+            Data::FuelStrategy(native::fuel_strategy::Settings::default()),
         ];
         let mut keys: std::collections::BTreeMap<String, serde_json::Value> =
             Self::schema_samples()

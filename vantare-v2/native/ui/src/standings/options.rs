@@ -279,8 +279,13 @@ mod settings_set_parity {
         }
         let source = crate::source::synthetic(0);
         let ids: Vec<_> = n::FOOTER_KEYS.iter().map(|s| (*s).to_owned()).collect();
-        let cells =
-            vantare_domain::standings::information(&source, Default::default(), &ids, true, None);
+        let cells = vantare_domain::standings::information(
+            &source,
+            vantare_domain::format::Preferences::default(),
+            &ids,
+            true,
+            None,
+        );
         assert_eq!(cells.len(), ids.len());
         for cell in cells {
             assert_ne!(

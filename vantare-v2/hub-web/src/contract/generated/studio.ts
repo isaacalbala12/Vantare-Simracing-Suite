@@ -5,72 +5,72 @@ export type WidgetAccent = "amber" | "green" | "white" | "red";
 export type WidgetColumnFormat = { mode: string, maxChars: number | null, display: string | null, decimals: number | null, };
 export type WidgetColumnStyle = { align: string | null, };
 export type WidgetColumnSetting = { id: string, metricId: string, enabled: boolean, widthPreset: string, format: WidgetColumnFormat, style: WidgetColumnStyle, };
-export type StandingsWidgetSettings = { designSystem: WidgetLook, 
+export type StandingsWidgetSettings = { designSystem: WidgetLook,
 /**
  * V1: contenido normalizado antes de separar su Look (layouts antiguos migran en memoria).
  */
-contentVersion: number, style: WidgetTone, accent: WidgetAccent, rowCount: number, 
+contentVersion: number, style: WidgetTone, accent: WidgetAccent, rowCount: number,
 /**
  * Columnas de carrera y, en layouts anteriores a #1564, de todas las sesiones.
  */
-columns: Array<WidgetColumnSetting> | null, 
+columns: Array<WidgetColumnSetting> | null,
 /**
  * Pestañas Práctica y Qualy (#1564); `None` usa `columns`.
  */
-practiceColumns: Array<WidgetColumnSetting> | null, qualifyingColumns: Array<WidgetColumnSetting> | null, classScope: string, classificationMode: string, playerWindow: boolean, windowAround: number, showSessionHeader: boolean, templateId: string, headerFirst: string, headerSecond: string, showSessionFooter: boolean, footerFirst: string, footerSecond: string, showBrand: boolean, brandVisible: boolean | null, footerSlots: Array<string> | null, };
-export type RelativeWidgetSettings = { 
+practiceColumns?: Array<WidgetColumnSetting>, qualifyingColumns?: Array<WidgetColumnSetting>, classScope: string, classificationMode: string, playerWindow: boolean, windowAround: number, showSessionHeader: boolean, templateId: string, headerFirst: string, headerSecond: string, showSessionFooter: boolean, footerFirst: string, footerSecond: string, showBrand: boolean, brandVisible?: boolean, footerSlots?: Array<string>, };
+export type RelativeWidgetSettings = {
 /**
  * Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
  */
-designSystem: WidgetLook, contentVersion: number, style: WidgetTone, accent: WidgetAccent, columns: Array<WidgetColumnSetting> | null, rangeAhead: number, rangeBehind: number, classScope: string, includePlayer: boolean, rowHeightMode: string, footerSlots: Array<string>, 
+designSystem: WidgetLook, contentVersion: number, style: WidgetTone, accent: WidgetAccent, columns: Array<WidgetColumnSetting> | null, rangeAhead: number, rangeBehind: number, classScope: string, includePlayer: boolean, rowHeightMode: string, footerSlots: Array<string>,
 /**
  * Marca Vantare: decisión inyectada por el host según la licencia
  * (como en Standings). Sin decisión no se pinta.
  */
-brandVisible: boolean | null, };
-export type DeltaWidgetSettings = { 
+brandVisible?: boolean, };
+export type DeltaWidgetSettings = {
 /**
  * Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
  */
-designSystem: WidgetLook, contentVersion: number, style: WidgetTone, accent: WidgetAccent, 
+designSystem: WidgetLook, contentVersion: number, style: WidgetTone, accent: WidgetAccent,
 /**
  * Formato Vantare: `pill` (el del Studio), `bar` (380) o `expanded` (768).
  */
-size: string, 
+size: string,
 /**
  * Referencia Vantare: `best`, `optimal` o `leader`.
  */
-reference: string, showBar: boolean, showSectors: boolean, 
+reference: string, showBar: boolean, showSectors: boolean,
 /**
  * Solo se guarda cuando está activo: los layouts anteriores no cambian de bytes.
  */
-transparentBackground: boolean, 
+transparentBackground?: boolean,
 /**
  * Marca Vantare: decisión inyectada por el host según la licencia.
  */
-brandVisible: boolean | null, templateId: string, };
-export type PedalsWidgetSettings = { 
+brandVisible?: boolean, templateId: string, };
+export type PedalsWidgetSettings = {
 /**
  * Look: los layouts anteriores a #1566 no lo guardan y siguen en Eficiencia.
  */
-designSystem: WidgetLook, style: WidgetTone, accent: WidgetAccent, 
+designSystem: WidgetLook, style: WidgetTone, accent: WidgetAccent,
 /**
  * Marca Vantare: decisión inyectada por el host según la licencia.
  */
-brandVisible: boolean | null, transparentBackground: boolean, showBrakePeak: boolean, gap: number, };
-export type FuelStrategyWidgetSettings = { 
+brandVisible?: boolean, transparentBackground: boolean, showBrakePeak: boolean, gap: number, };
+export type FuelStrategyWidgetSettings = {
 /**
  * Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
  */
-designSystem: WidgetLook, style: WidgetTone, accent: WidgetAccent, 
+designSystem: WidgetLook, style: WidgetTone, accent: WidgetAccent,
 /**
  * Tamaño Vantare: `compact` (230), `standard` (300) o `expanded` (460).
  */
-size: string, 
+size: string,
 /**
  * Marca Vantare: decisión inyectada por el host según la licencia.
  */
-brandVisible: boolean | null, contentVersion: number, historyRows: number, showProjection: boolean, source: string, units: string, };
+brandVisible?: boolean, contentVersion: number, historyRows: number, showProjection: boolean, source: string, units: string, };
 export type WidgetSettings = { "kind": "standings" } & StandingsWidgetSettings | { "kind": "relative" } & RelativeWidgetSettings | { "kind": "delta" } & DeltaWidgetSettings | { "kind": "pedals" } & PedalsWidgetSettings | { "kind": "fuel-strategy" } & FuelStrategyWidgetSettings;
 export type WidgetGap = number;
 export type StandingsScope = typeof studioWidgetOptions.standings.scopes[number];
@@ -87,14 +87,14 @@ export type ColumnNameMode = typeof studioWidgetOptions.columns.names[number];
 export type ColumnAlign = typeof studioWidgetOptions.columns.aligns[number];
 export type ColumnMetric = typeof studioWidgetOptions.columns.metrics[number];
 export type FooterMetric = typeof studioWidgetOptions.standings.footerMetrics[number];
-export type WidgetColumnFormatPatch = { mode?: ColumnNameMode | null, maxChars?: number | null | null, };
-export type WidgetColumnStylePatch = { align?: ColumnAlign | null | null, };
-export type WidgetColumnPatch = { metric: ColumnMetric, enabled?: boolean | null, widthPreset?: ColumnWidth | null, format?: WidgetColumnFormatPatch | null, style?: WidgetColumnStylePatch | null, };
-export type StandingsWidgetPatch = { designSystem?: WidgetLook | null, style?: WidgetTone | null, accent?: WidgetAccent | null, rowCount?: number | null, columns?: Array<WidgetColumnPatch> | null | null, practiceColumns?: Array<WidgetColumnPatch> | null | null, qualifyingColumns?: Array<WidgetColumnPatch> | null | null, classScope?: StandingsScope | null, classificationMode?: StandingsClassification | null, playerWindow?: boolean | null, windowAround?: number | null, showSessionHeader?: boolean | null, templateId?: StandingsTemplate | null, showSessionFooter?: boolean | null, footerFirst?: FooterMetric | null, footerSecond?: FooterMetric | null, footerSlots?: Array<FooterKey> | null | null, };
-export type RelativeWidgetPatch = { designSystem?: WidgetLook | null, style?: WidgetTone | null, accent?: WidgetAccent | null, columns?: Array<WidgetColumnPatch> | null | null, rangeAhead?: number | null, rangeBehind?: number | null, classScope?: RelativeScope | null, footerSlots?: Array<FooterKey> | null, };
-export type DeltaWidgetPatch = { designSystem?: WidgetLook | null, style?: WidgetTone | null, accent?: WidgetAccent | null, size?: DeltaSize | null, reference?: DeltaReference | null, templateId?: DeltaTemplate | null, transparentBackground?: boolean | null, showBar?: boolean | null, showSectors?: boolean | null, };
-export type PedalsWidgetPatch = { designSystem?: WidgetLook | null, style?: WidgetTone | null, accent?: WidgetAccent | null, gap?: WidgetGap | null, transparentBackground?: boolean | null, showBrakePeak?: boolean | null, };
-export type FuelStrategyWidgetPatch = { designSystem?: WidgetLook | null, style?: WidgetTone | null, accent?: WidgetAccent | null, size?: TableSize | null, historyRows?: number | null, showProjection?: boolean | null, };
+export type WidgetColumnFormatPatch = { mode?: ColumnNameMode, maxChars?: number | null, };
+export type WidgetColumnStylePatch = { align?: ColumnAlign | null, };
+export type WidgetColumnPatch = { metric: ColumnMetric, enabled?: boolean, widthPreset?: ColumnWidth, format?: WidgetColumnFormatPatch, style?: WidgetColumnStylePatch, };
+export type StandingsWidgetPatch = { designSystem?: WidgetLook, style?: WidgetTone, accent?: WidgetAccent, rowCount?: number, columns?: Array<WidgetColumnPatch> | null, practiceColumns?: Array<WidgetColumnPatch> | null, qualifyingColumns?: Array<WidgetColumnPatch> | null, classScope?: StandingsScope, classificationMode?: StandingsClassification, playerWindow?: boolean, windowAround?: number, showSessionHeader?: boolean, templateId?: StandingsTemplate, showSessionFooter?: boolean, footerFirst?: FooterMetric, footerSecond?: FooterMetric, footerSlots?: Array<FooterKey> | null, };
+export type RelativeWidgetPatch = { designSystem?: WidgetLook, style?: WidgetTone, accent?: WidgetAccent, columns?: Array<WidgetColumnPatch> | null, rangeAhead?: number, rangeBehind?: number, classScope?: RelativeScope, footerSlots?: Array<FooterKey>, };
+export type DeltaWidgetPatch = { designSystem?: WidgetLook, style?: WidgetTone, accent?: WidgetAccent, size?: DeltaSize, reference?: DeltaReference, templateId?: DeltaTemplate, transparentBackground?: boolean, showBar?: boolean, showSectors?: boolean, };
+export type PedalsWidgetPatch = { designSystem?: WidgetLook, style?: WidgetTone, accent?: WidgetAccent, gap?: WidgetGap, transparentBackground?: boolean, showBrakePeak?: boolean, };
+export type FuelStrategyWidgetPatch = { designSystem?: WidgetLook, style?: WidgetTone, accent?: WidgetAccent, size?: TableSize, historyRows?: number, showProjection?: boolean, };
 export type WidgetSettingsPatch = { "kind": "standings" } & StandingsWidgetPatch | { "kind": "relative" } & RelativeWidgetPatch | { "kind": "delta" } & DeltaWidgetPatch | { "kind": "pedals" } & PedalsWidgetPatch | { "kind": "fuel-strategy" } & FuelStrategyWidgetPatch;
 export const studioWidgetOptions = {"accents":["red","amber","green","white"],"columns":{"aligns":["left","center","right"],"legacy":["position","driverNumber","carNumber","driverName","vehicleClass","class","gap","interval","currentLap","lastLap","bestLap","pit"],"maxChars":64,"metrics":["bestLap","carNumber","class","currentLap","driverName","driverNumber","driverRating","gap","interval","lapDelta","lastLap","pit","position","positionsGained","safetyRating","sectors","tireCompound","trackStrip","trend","vehicle","vehicleClass"],"names":["full","initial","surname","truncate"],"widths":["xs","sm","md","lg","auto"]},"delta":{"references":["best","optimal","leader"],"sizes":["pill","bar","expanded"],"templates":["instrument","capsule"]},"footerKeys":["time","lap","position","gap","bestLap","lastLap","track","ambient","wind"],"footerMax":9,"fuel":{"historyMax":8,"historyMin":1,"historyStep":1},"looks":["eficiencia","vantare"],"pedals":{"gapMax":12.0,"gapMin":0.0,"gapStep":1.0},"relative":{"columns":["position","carNumber","driverName","vehicle","lapDelta","driverRating","safetyRating","trend","gap","trackStrip"],"rangeMax":8,"rangeMin":0,"rangeStep":1,"scopes":["all","sameClass"]},"standings":{"classifications":["normal","multiclass"],"columns":["position","positionsGained","driverNumber","driverName","vehicle","tireCompound","pit","sectors","lastLap","bestLap","interval","gap"],"columnsMax":12,"footerMetrics":["none","track","estimatedLaps"],"rowsMax":30,"rowsMin":1,"rowsStep":1,"scopes":["player-class","all-classes"],"templates":["signature","broadcast"],"windowAround":[0,2,4,6,8]},"tableSizes":["compact","standard","expanded"],"tones":["neo","neutro"]} as const;
 export const studioWidgetDefaults = {"broadcast-tower":null,"car-damage-numbers":null,"car-damage-visual":null,"delta":{"kind":"delta","designSystem":"vantare","contentVersion":1,"style":"neo","accent":"red","size":"pill","reference":"best","showBar":true,"showSectors":true,"templateId":"instrument"},"delta-trace":null,"fastest-lap":null,"fuel-strategy":{"kind":"fuel-strategy","designSystem":"vantare","style":"neo","accent":"red","size":"standard","contentVersion":1,"historyRows":4,"showProjection":true,"source":"fuel","units":"liters"},"head-to-head":null,"input-telemetry":null,"multiclass-relative":null,"pedals":{"kind":"pedals","designSystem":"vantare","style":"neo","accent":"red","transparentBackground":false,"showBrakePeak":true,"gap":2.0},"pedals-telemetry":null,"racing-flags":null,"radar":null,"relative":{"kind":"relative","designSystem":"vantare","contentVersion":1,"style":"neo","accent":"red","columns":null,"rangeAhead":3,"rangeBehind":3,"classScope":"sameClass","includePlayer":true,"rowHeightMode":"compact","footerSlots":[]},"session-alerts":null,"standings":{"kind":"standings","designSystem":"vantare","contentVersion":1,"style":"neo","accent":"red","rowCount":20,"columns":[{"id":"position","metricId":"position","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"driverNumber","metricId":"driverNumber","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"driverName","metricId":"driverName","enabled":true,"widthPreset":"md","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"gap","metricId":"gap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"interval","metricId":"interval","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"lastLap","metricId":"lastLap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"pit","metricId":"pit","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"positionsGained","metricId":"positionsGained","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"tireCompound","metricId":"tireCompound","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"vehicle","metricId":"vehicle","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"sectors","metricId":"sectors","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"bestLap","metricId":"bestLap","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}}],"practiceColumns":[{"id":"position","metricId":"position","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"driverNumber","metricId":"driverNumber","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"driverName","metricId":"driverName","enabled":true,"widthPreset":"md","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"bestLap","metricId":"bestLap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"gap","metricId":"gap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"lastLap","metricId":"lastLap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"sectors","metricId":"sectors","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"positionsGained","metricId":"positionsGained","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"vehicle","metricId":"vehicle","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"tireCompound","metricId":"tireCompound","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"pit","metricId":"pit","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"interval","metricId":"interval","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}}],"qualifyingColumns":[{"id":"position","metricId":"position","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"driverNumber","metricId":"driverNumber","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"driverName","metricId":"driverName","enabled":true,"widthPreset":"md","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"bestLap","metricId":"bestLap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"gap","metricId":"gap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"lastLap","metricId":"lastLap","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"sectors","metricId":"sectors","enabled":true,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"positionsGained","metricId":"positionsGained","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"vehicle","metricId":"vehicle","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"tireCompound","metricId":"tireCompound","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"pit","metricId":"pit","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}},{"id":"interval","metricId":"interval","enabled":false,"widthPreset":"auto","format":{"mode":"","maxChars":null,"display":null,"decimals":null},"style":{"align":null}}],"classScope":"player-class","classificationMode":"normal","playerWindow":false,"windowAround":4,"showSessionHeader":true,"templateId":"signature","headerFirst":"none","headerSecond":"none","showSessionFooter":true,"footerFirst":"track","footerSecond":"estimatedLaps","showBrand":false},"track-map":null,"track-weather":null} as const;

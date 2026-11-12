@@ -6,7 +6,7 @@ import {
 import {
   isWidgetSettings,
   isWidgetSettingsPatch,
-} from "../src/contract/modules/studio-widget-settings";
+} from "../src/contract/studio-widget-settings";
 
 describe("closed Studio settings", () => {
   it("accepts every projected native default, including unsupported nulls", () => {

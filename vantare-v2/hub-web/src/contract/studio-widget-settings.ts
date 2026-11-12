@@ -1,5 +1,6 @@
-import { studioWidgetOptions as o } from "../generated/studio";
-import { integer, oneOf, record } from "../validation-common";
+import type { WidgetSettings } from "./generated/studio";
+import { studioWidgetOptions as o } from "./generated/studio";
+import { integer, oneOf, record } from "./validation-common";
 
 type Check = (value: unknown) => boolean;
 const bool: Check = (v) => typeof v === "boolean";
@@ -51,14 +52,19 @@ const columnRead: Check = (v) =>
     format: (f) =>
       object(f, {
         mode: text,
-        maxChars: nullable((v) => typeof v === "number" && Number.isInteger(v) && v >= 0),
+        maxChars: nullable(
+          (v) => typeof v === "number" && Number.isInteger(v) && v >= 0,
+        ),
         display: nullable(text),
         decimals: nullable(integer),
       }),
     style: (s) => object(s, { align: nullable(text) }),
   });
 const base = { kind: text, designSystem: text, style: text, accent: text };
-export function isWidgetSettings(value: unknown, kind: unknown): boolean {
+export function isWidgetSettings(
+  value: unknown,
+  kind: unknown,
+): value is WidgetSettings | null {
   if (!record(value))
     return (
       value === null &&

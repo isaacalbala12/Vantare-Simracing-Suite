@@ -2,6 +2,7 @@ import type {
   HostToUi,
   OverlayInstance,
   StudioView,
+  WidgetKind,
 } from "../../contract/generated/contract";
 import {
   studioAddAvailable,
@@ -11,6 +12,7 @@ import {
   studioSizes,
   studioWidgetDefaults,
 } from "../../contract/generated/studio";
+import { isWidgetSettings } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const { sceneName } = context;
@@ -29,9 +31,7 @@ export function create(context: MockContext): MockHandler {
     },
   ].map((item) => ({
     ...item,
-    settings: structuredClone(
-      studioWidgetDefaults[item.kind as keyof typeof studioWidgetDefaults],
-    ),
+    settings: widgetDefault(item.kind as WidgetKind),
     visible: true,
     locked: false,
     opacity: 100,
@@ -171,7 +171,7 @@ export function create(context: MockContext): MockHandler {
         view.instances.push({
           id: added,
           kind: request.kind,
-          settings: structuredClone(studioWidgetDefaults[request.kind]),
+          settings: widgetDefault(request.kind),
           visible: true,
           locked: false,
           opacity: 100,
@@ -200,10 +200,20 @@ export function create(context: MockContext): MockHandler {
           case "settings": {
             if (!item.settings || item.kind !== request.patch.value.kind)
               return fail("denied");
-            item.settings = applyWidgetSettings(
+            const next = applyWidgetSettings(
               item.settings,
               request.patch.value,
             );
+            if (JSON.stringify(next) === JSON.stringify(item.settings))
+              return {
+                kind: "response",
+                id,
+                result: {
+                  method: "studio.instance",
+                  value: structuredClone(view),
+                },
+              };
+            item.settings = next;
             break;
           }
           case "opacity":
@@ -267,9 +277,9 @@ function applyWidgetSettings(
           id: metric,
           metricId: metric,
           enabled: true,
-          widthPreset: "md",
+          widthPreset: "auto",
           format: {
-            mode: "full",
+            mode: "",
             maxChars: null,
             display: null,
             decimals: null,
@@ -291,4 +301,11 @@ function applyWidgetSettings(
     } else result[key] = value;
   }
   return result as unknown as NonNullable<OverlayInstance["settings"]>;
+}
+
+function widgetDefault(kind: WidgetKind): OverlayInstance["settings"] {
+  const value: unknown = structuredClone(studioWidgetDefaults[kind]);
+  if (!isWidgetSettings(value, kind))
+    throw new Error("Invalid generated widget default");
+  return value;
 }

@@ -8,11 +8,11 @@ import {
   studioRevisionPattern,
   studioStates,
 } from "../generated/studio";
-import { exact, integer, oneOf, record } from "../validation-common";
 import {
   isWidgetSettings,
   isWidgetSettingsPatch,
-} from "./studio-widget-settings";
+} from "../studio-widget-settings";
+import { exact, integer, oneOf, record } from "../validation-common";
 
 export { studioMethods as methods };
 

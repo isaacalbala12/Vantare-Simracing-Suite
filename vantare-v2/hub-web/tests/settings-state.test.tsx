@@ -319,6 +319,42 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     fireEvent.keyDown(window, { key: "l", ctrlKey: true });
     expect(pending.calls()).toBe(0);
   });
+  it("never launches with extended modifiers or AltGr, with a positive Ctrl L control", async () => {
+    const pending = hold("launcher.favorite");
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true, altKey: true });
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true, shiftKey: true });
+    const altGr = new KeyboardEvent("keydown", {
+      key: "@",
+      ctrlKey: true,
+      altKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(altGr);
+    expect(altGr.defaultPrevented).toBe(false);
+    expect(pending.calls()).toBe(0);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+  });
+  it("does not toggle the sidebar or palette again when a key is held", async () => {
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    const sidebar = () => document.querySelector(".v-sidebar")?.className;
+    const before = sidebar();
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    const after = sidebar();
+    expect(after).not.toBe(before);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true, repeat: true });
+    expect(sidebar()).toBe(after);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await waitFor(() =>
+      expect(document.querySelector("[data-command-palette]")).toBeTruthy(),
+    );
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true, repeat: true });
+    expect(document.querySelector("[data-command-palette]")).toBeTruthy();
+  });
 });
 
 describe("saving keeps keyboard controls focusable", () => {

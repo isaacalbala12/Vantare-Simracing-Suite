@@ -159,6 +159,7 @@ it("paints the clipped notice band without making it an interactive control", ()
       now={Date.parse("2026-10-08T17:47:13Z")}
       limit={10000}
       onFollow={vi.fn()}
+      onLaunch={vi.fn()}
     />,
   );
   const band = document.querySelector<HTMLElement>(".v-calendar-time-band");

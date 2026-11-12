@@ -42,7 +42,7 @@ export function connectEmitters(
     }
   });
   function launcherFailed(residentError = false) {
-    if (launcherFailure) return;
+    if (launcherFailure || !preferences?.launcher) return;
     launcherFailure = true;
     if (preferences?.launcher)
       sink.add({
@@ -138,11 +138,7 @@ export function connectEmitters(
   const unobserve = client.observeRequests((event: RequestObservation) => {
     if (!active) return;
     if (event.phase === "start") {
-      if (
-        event.method.startsWith("testing.") ||
-        event.method.startsWith("account.") ||
-        event.method === "triage.send"
-      )
+      if (event.method.startsWith("testing.") || event.method === "triage.send")
         requests.set(event.id, session.getSnapshot());
       return;
     }

@@ -592,3 +592,25 @@ it("repeated healthy resident photos do not declare a failed launch recovered", 
   expect(h.records()[0].unread).toBe(true);
   h.connection.dispose();
 });
+it.each(["disabled", "loading"])(
+  "does not consume a launch failure episode while preferences are %s",
+  (state) => {
+    const h = harness();
+    if (state === "disabled") h.preferences(false);
+    const fail = (id: number) =>
+      h.observe({
+        phase: "done",
+        id,
+        method: "launcher.launch",
+        error: { kind: "io" },
+      });
+    fail(1);
+    expect(h.records()).toHaveLength(0);
+    h.preferences(true);
+    fail(2);
+    expect(h.records()).toHaveLength(1);
+    fail(3);
+    expect(h.records()).toHaveLength(1);
+    h.connection.dispose();
+  },
+);

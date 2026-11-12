@@ -361,7 +361,7 @@ pub struct State {
     feed: feed::Publisher,
     notices: notice::Scheduler,
     poll: poll::Poll,
-    cached_at: Option<i64>,
+    cached_at: Option<(i64, i64)>,
     cached_current: Option<CalendarSchedule>,
 }
 impl State {
@@ -419,9 +419,23 @@ impl State {
         self.view.clone()
     }
     fn cache_current(&mut self, now: i64) {
-        if self.cached_at != Some(now) {
+        if self
+            .cached_at
+            .is_none_or(|(sampled, until)| now < sampled || now >= until)
+        {
+            let until = [
+                &self.view.official,
+                &self.view.previous,
+                &self.view.fallback,
+            ]
+            .into_iter()
+            .flatten()
+            .flat_map(|s| [&s.valid_from, &s.valid_until])
+            .filter_map(|date| date_millis(date))
+            .filter(|boundary| *boundary > now)
+            .fold(now.saturating_add(1000), i64::min);
             self.cached_current = agenda::current(&self.view, now);
-            self.cached_at = Some(now);
+            self.cached_at = Some((now, until));
         }
     }
     pub fn load(&mut self) -> CalendarView {

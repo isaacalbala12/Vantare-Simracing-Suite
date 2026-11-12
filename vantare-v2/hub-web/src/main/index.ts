@@ -25,12 +25,12 @@ import {
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
-import { paintWindow, resolveTheme, testNotification } from "./appearance";
+import { paintWindow, resolveTheme } from "./appearance";
 import { calendarExportSession } from "./calendar-export";
-import { calendarNoticeSession } from "./calendar-notices";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
+import { notificationDelivery } from "./notification-delivery";
 import { reportExportSession } from "./report-export";
 import {
   assetPath,
@@ -45,7 +45,6 @@ import {
   requireDataDirectory,
   webPreferences,
 } from "./security";
-import { presentSystemNotice } from "./system-notifications";
 import { bindWindowControls } from "./window-controls";
 
 const openPublicPage = externalPages((url) => shell.openExternal(url));
@@ -159,11 +158,12 @@ async function start() {
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
   // The same closed QA bootstrap as createHost; captures never emit OS notices.
-  const calendarNotices = calendarNoticeSession(
-    process.env.VANTARE_HUB_HOST === "mock" && mockAllowed(app.isPackaged)
-      ? () => true
-      : presentSystemNotice,
-  );
+  const notices = notificationDelivery({
+    mockRequested: process.env.VANTARE_HUB_HOST === "mock",
+    mockAllowed: mockAllowed(app.isPackaged),
+    qa: QA_DRIVER,
+  });
+  const calendarNotices = notices.calendar;
   const removeHostFailure = host.listen((message) => {
     if (
       message.kind === "event" &&
@@ -422,7 +422,7 @@ async function start() {
           id: data.id,
           result: {
             method: "notifications.test",
-            accepted: testNotification(settings),
+            accepted: notices.test(settings),
           },
         });
         return;

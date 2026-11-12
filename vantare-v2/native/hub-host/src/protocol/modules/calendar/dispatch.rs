@@ -191,9 +191,7 @@ pub(super) fn complete_at(
     let allowed = crate::calendar::allowed(&session.current.access)
         && session.current.rights == crate::protocol::LinkState::Connected
         && session.closing.is_none();
-    let result = if !crate::calendar::allowed(&session.current.access) {
-        Err(HostError::Denied)
-    } else {
+    let result = if crate::calendar::allowed(&session.current.access) {
         match result {
             Ok(vantare_ipc::services_protocol::Reply::Calendar { schedule, fallback }) => session
                 .calendar_state
@@ -204,6 +202,8 @@ pub(super) fn complete_at(
             Ok(_) => Err(HostError::Rejected),
             Err(error) => Err(error),
         }
+    } else {
+        Err(HostError::Denied)
     };
     let failure = result.as_ref().err().map(|error| match error {
         HostError::Busy => crate::calendar::CalendarRefreshFailure::Busy,

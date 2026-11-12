@@ -2,53 +2,7 @@ use crate::protocol::bindings::{constants, declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
-    declare::<crate::calendar::CalendarNotice>(&mut text);
-    declare::<crate::calendar::CalendarRefreshFailure>(&mut text);
-    constants!(
-        &mut text,
-        "calendarNoticeClockSkewMs",
-        crate::calendar::NOTICE_CLOCK_SKEW_MS
-    );
-    constants!(
-        &mut text,
-        "calendarPollNormalMs",
-        crate::calendar::POLL_NORMAL_MS
-    );
-    constants!(
-        &mut text,
-        "calendarPollMondayMs",
-        crate::calendar::POLL_MONDAY_MS
-    );
-    constants!(
-        &mut text,
-        "calendarRefreshFailures",
-        ["busy", "coreUnavailable", "denied", "rejected"]
-    );
-    constants!(
-        &mut text,
-        "calendarNoticeTtlMs",
-        crate::calendar::NOTICE_TTL_MS
-    );
-    constants!(
-        &mut text,
-        "calendarNoticeHistoryLimit",
-        crate::calendar::NOTICE_HISTORY_LIMIT
-    );
-    constants!(
-        &mut text,
-        "calendarNoticePresentationLimit",
-        crate::calendar::NOTICE_PRESENTATION_LIMIT
-    );
-    constants!(
-        &mut text,
-        "calendarNoticeBatchLimit",
-        crate::calendar::NOTICE_BATCH_LIMIT
-    );
-    constants!(
-        &mut text,
-        "calendarNoticeTestIntervalMs",
-        crate::calendar::NOTICE_TEST_INTERVAL_MS
-    );
+    notice_types(&mut text);
     declare::<crate::calendar::CalendarIcsScope>(&mut text);
     declare::<crate::calendar::CalendarIcsStatus>(&mut text);
     declare::<crate::calendar::CalendarIcsEntry>(&mut text);
@@ -465,4 +419,50 @@ fn ics_samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             },
         ],
     )
+}
+
+fn notice_types(text: &mut String) {
+    declare::<crate::calendar::CalendarNotice>(text);
+    declare::<crate::calendar::CalendarRefreshFailure>(text);
+    constants!(
+        text,
+        "calendarNoticeClockSkewMs",
+        crate::calendar::NOTICE_CLOCK_SKEW_MS
+    );
+    constants!(
+        text,
+        "calendarPollNormalMs",
+        crate::calendar::POLL_NORMAL_MS
+    );
+    constants!(
+        text,
+        "calendarPollMondayMs",
+        crate::calendar::POLL_MONDAY_MS
+    );
+    constants!(
+        text,
+        "calendarRefreshFailures",
+        ["busy", "coreUnavailable", "denied", "rejected"]
+    );
+    constants!(text, "calendarNoticeTtlMs", crate::calendar::NOTICE_TTL_MS);
+    constants!(
+        text,
+        "calendarNoticeHistoryLimit",
+        crate::calendar::NOTICE_HISTORY_LIMIT
+    );
+    constants!(
+        text,
+        "calendarNoticePresentationLimit",
+        crate::calendar::NOTICE_PRESENTATION_LIMIT
+    );
+    constants!(
+        text,
+        "calendarNoticeBatchLimit",
+        crate::calendar::NOTICE_BATCH_LIMIT
+    );
+    constants!(
+        text,
+        "calendarNoticeTestIntervalMs",
+        crate::calendar::NOTICE_TEST_INTERVAL_MS
+    );
 }

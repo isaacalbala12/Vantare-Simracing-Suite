@@ -473,3 +473,21 @@ de #2089 y no cambia en este contrato. Las casillas siguen con la explicación d
 Límites de entrega: hasta 256 avisos por tick y 16 384 claves vivas en el anfitrión;
 main conserva hasta 1 024 claves dentro del TTL. Un exceso se descarta, no se
 acumula para otro arranque. No se modifica el feed en pista ni su consumidor.
+
+### Refresh del anfitrión y publicación de semana (v28)
+
+El tick sondea por la cola de servicios ya existente aunque Calendario no esté
+montado: cada 15 minutos, o 5 minutos los lunes antes de las 12:00 UTC, como
+GPUI. Comparte el identificador reservado de tareas de fondo con Cuenta; no
+solapa refrescos manuales o automáticos y reintenta una cola ocupada como máximo
+una vez por segundo. Requiere los mismos derechos y servicios conectados. No
+escribe el horario en disco ni crea hilos. `calendarRefreshed` publica la vista
+y un error cerrado opcional; el renderer escucha el resultado y ya no sondea.
+
+La semana nueva solo nace de una publicación vigente recibida por refresh;
+una transición de reloj o una publicación futura no avisa. Si la base inicial
+del disco está caducada, el primer refresh establece la base silenciosamente.
+No se persiste una última semana avisada. Un fallo breve de autoridad cancela
+la entrega pendiente, sin borrar la base de refresh ni la deduplicación.
+Main tolera hasta 5 segundos de adelanto del reloj del host y usa ciclo h23.
+La prueba de Ajustes y los avisos comparten el doble solo en QA o mock autorizado.

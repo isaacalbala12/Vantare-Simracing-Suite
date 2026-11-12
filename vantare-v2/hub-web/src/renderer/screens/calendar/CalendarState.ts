@@ -22,19 +22,24 @@ export function useCalendar() {
   const generation = useRef(0),
     pending = useRef(false),
     access = useRef(allowed),
-    lastAttempt = useRef(0);
+    updates = useRef(0);
   access.current = allowed;
   const read = useCallback(
     async (method: "calendar.load" | "calendar.refresh") => {
       if (!client || !access.current || pending.current) return;
-      const sequence = generation.current;
-      if (method === "calendar.refresh") lastAttempt.current = Date.now();
+      const sequence = generation.current,
+        update = updates.current;
       pending.current = true;
       setBusy(true);
       setFailure(undefined);
       try {
         const reply = await client.request({ method });
-        if (sequence !== generation.current || !access.current) return;
+        if (
+          sequence !== generation.current ||
+          update !== updates.current ||
+          !access.current
+        )
+          return;
         if (
           reply.method !== method ||
           (reply.method !== "calendar.load" &&
@@ -44,7 +49,11 @@ export function useCalendar() {
         setView(reply.value);
         setLoaded(true);
       } catch (error) {
-        if (sequence === generation.current && access.current)
+        if (
+          sequence === generation.current &&
+          update === updates.current &&
+          access.current
+        )
           setFailure(
             error instanceof HostFailure
               ? error.detail.kind
@@ -62,7 +71,7 @@ export function useCalendar() {
   useEffect(() => {
     generation.current++;
     pending.current = false;
-    lastAttempt.current = 0;
+    updates.current++;
     setView(undefined);
     setLoaded(false);
     setFailure(undefined);
@@ -73,20 +82,28 @@ export function useCalendar() {
     };
   }, [allowed, read]);
   useEffect(() => {
-    if (allowed && connected && loaded) void read("calendar.refresh");
-  }, [allowed, connected, loaded, read]);
-  useEffect(() => {
     if (!allowed) return;
     const clock = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(clock);
   }, [allowed]);
   useEffect(() => {
-    const date = new Date(now);
-    const interval =
-      (date.getUTCDay() === 1 && date.getUTCHours() < 12 ? 5 : 15) * 60_000;
-    if (allowed && connected && loaded && now - lastAttempt.current >= interval)
-      void read("calendar.refresh");
-  }, [allowed, connected, loaded, now, read]);
+    if (!client || !allowed) return;
+    const unlisten = client.listen((message) => {
+      if (
+        message.kind !== "event" ||
+        message.event.topic !== "calendarRefreshed" ||
+        !access.current
+      )
+        return;
+      updates.current++;
+      setView(message.event.value);
+      setLoaded(true);
+      setFailure(message.event.error ?? undefined);
+    });
+    return () => {
+      unlisten();
+    };
+  }, [client, allowed]);
   return {
     view,
     allowed,

@@ -24,9 +24,12 @@ export function paintWindow(
   window.setBackgroundColor(colors["bg-window"]);
   window.webContents.setZoomFactor(zoom / 100);
 }
-export function testNotification(view?: SettingsView): boolean {
+export function testNotification(
+  view?: SettingsView,
+  present = presentSystemNotice,
+): boolean {
   if (!view?.general.toasts) return false;
-  return presentSystemNotice({
+  return present({
     title: t("shell.noticeTestTitle"),
     body: t("shell.noticeTestBody"),
     silent: true,

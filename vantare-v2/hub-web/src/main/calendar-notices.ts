@@ -1,5 +1,8 @@
 import type { CalendarNotice } from "../contract/generated/calendar";
-import { calendarNoticePresentationLimit } from "../contract/generated/calendar";
+import {
+  calendarNoticeClockSkewMs,
+  calendarNoticePresentationLimit,
+} from "../contract/generated/calendar";
 import type { HostToUi } from "../contract/generated/contract";
 import { calendarNoticeText } from "../renderer/i18n/calendar-notices";
 import type { SystemNotice } from "./system-notifications";
@@ -15,12 +18,16 @@ export function calendarNoticeSession(
     if (closed) return;
     const now = clock();
     for (const [id, until] of seen) if (until < now) seen.delete(id);
-    if (value.issuedAt > now || value.expiresAt < now || seen.has(value.id))
+    if (
+      value.issuedAt > now + calendarNoticeClockSkewMs ||
+      value.expiresAt < now ||
+      seen.has(value.id)
+    )
       return;
     if (seen.size >= calendarNoticePresentationLimit) return;
     seen.set(value.id, value.expiresAt);
     const accepted = present({
-      ...calendarNoticeText(value, now),
+      ...calendarNoticeText(value, Math.max(now, value.issuedAt)),
       silent: value.silent,
     });
     if (value.kind === "test") {

@@ -17,6 +17,7 @@ import {
   calendarIcsLimit,
   calendarListLimit,
   calendarMinuteLimit,
+  calendarRefreshFailures,
   calendarSeriesLimit,
   calendarTextLimit,
   calendarTimestampLimit,
@@ -292,6 +293,11 @@ export const isError = (v: Record<string, unknown>) =>
       exact(v, ["kind", "current"]) &&
       isCalendarConfig(v.current);
 export const isEvent = (v: Record<string, unknown>) =>
-  v.topic === "calendarNotice" &&
-  exact(v, ["topic", "value"]) &&
-  isCalendarNotice(v.value);
+  v.topic === "calendarRefreshed"
+    ? exact(v, ["topic", "value", "error"]) &&
+      isCalendarView(v.value) &&
+      (v.error === null ||
+        calendarRefreshFailures.some((error) => error === v.error))
+    : v.topic === "calendarNotice" &&
+      exact(v, ["topic", "value"]) &&
+      isCalendarNotice(v.value);

@@ -564,3 +564,175 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         assert_eq!(session.core.requests, 0);
     }
 }
+
+#[test]
+fn calendar_host_poll_uses_the_shared_background_lane_without_a_mounted_screen() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.handshaken = true;
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.rights = protocol::LinkState::Connected;
+    session.current.services = protocol::LinkState::Connected;
+    session.core.available = true;
+    let now = chrono::DateTime::parse_from_rfc3339("2026-11-12T12:00:00Z")
+        .unwrap()
+        .timestamp_millis();
+    let clock = Instant::now();
+    let mut pipe = Pipe::new(Vec::new());
+    assert!(session.subscriptions.is_empty());
+    super::calendar_tick::tick_with_clock(&mut session, &mut pipe, now, clock).unwrap();
+    assert!(
+        matches!(session.core.sent.as_slice(),[(id,vantare_ipc::services_protocol::Command::CalendarRefresh)] if *id==crate::account::BACKGROUND_ID)
+    );
+    assert!(matches!(
+        session.remotes.get(&crate::account::BACKGROUND_ID),
+        Some(RemoteKind::CalendarBackground)
+    ));
+    let mut duplicate = Pipe::new(Vec::new());
+    session
+        .request(&mut duplicate, 101, &Request::CalendarRefresh {})
+        .unwrap();
+    assert_eq!(
+        response(&mut duplicate),
+        HostToUi::Failure {
+            id: 101,
+            error: HostError::Busy
+        }
+    );
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        now + crate::calendar::POLL_NORMAL_MS,
+        clock + Duration::from_mins(15),
+    )
+    .unwrap();
+    assert_eq!(session.core.requests, 1);
+    let remote = session
+        .remotes
+        .remove(&crate::account::BACKGROUND_ID)
+        .map(|kind| (crate::account::BACKGROUND_ID, kind));
+    let result = super::calendar::complete_at(
+        &mut session,
+        remote,
+        crate::account::BACKGROUND_ID,
+        Ok(vantare_ipc::services_protocol::Reply::Calendar {
+            schedule: None,
+            fallback: None,
+        }),
+        now + 1000,
+    )
+    .map(Some);
+    session
+        .respond_service(&mut pipe, crate::account::BACKGROUND_ID, result)
+        .unwrap();
+    assert!(pipe.get_ref().is_empty());
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        now + 2000,
+        clock + Duration::from_secs(901),
+    )
+    .unwrap();
+    assert!(matches!(
+        response(&mut pipe),
+        HostToUi::Event {
+            event: Event::CalendarRefreshed { error: None, .. }
+        }
+    ));
+}
+#[test]
+fn calendar_poll_obeys_guards_and_user_refresh_exclusion_and_retries_busy_without_flooding() {
+    let now = chrono::DateTime::parse_from_rfc3339("2026-11-12T12:00:00Z")
+        .unwrap()
+        .timestamp_millis();
+    let clock = Instant::now();
+    for missing in [
+        "calendar",
+        "verified",
+        "blocked",
+        "rights",
+        "services",
+        "handshake",
+    ] {
+        let fixture = Fixture::new();
+        let mut s = fixture.session();
+        s.handshaken = true;
+        s.current.access.verified = true;
+        s.current.access.calendar = true;
+        s.current.rights = protocol::LinkState::Connected;
+        s.current.services = protocol::LinkState::Connected;
+        s.core.available = true;
+        match missing {
+            "calendar" => s.current.access.calendar = false,
+            "verified" => s.current.access.verified = false,
+            "blocked" => s.current.access.blocked = true,
+            "rights" => s.current.rights = protocol::LinkState::Unavailable,
+            "services" => s.current.services = protocol::LinkState::Unavailable,
+            "handshake" => s.handshaken = false,
+            _ => unreachable!(),
+        }
+        super::calendar_tick::tick_with_clock(&mut s, &mut Pipe::new(Vec::new()), now, clock)
+            .unwrap();
+        assert_eq!(s.core.requests, 0, "{missing}");
+    }
+    let fixture = Fixture::new();
+    let mut s = fixture.session();
+    s.handshaken = true;
+    s.current.access.verified = true;
+    s.current.access.calendar = true;
+    s.current.rights = protocol::LinkState::Connected;
+    s.current.services = protocol::LinkState::Connected;
+    s.core.available = true;
+    s.core.busy = true;
+    super::calendar_tick::tick_with_clock(&mut s, &mut Pipe::new(Vec::new()), now, clock).unwrap();
+    assert_eq!(s.core.requests, 1);
+    assert!(s.remotes.is_empty());
+    super::calendar_tick::tick_with_clock(
+        &mut s,
+        &mut Pipe::new(Vec::new()),
+        now + 100,
+        clock + Duration::from_millis(100),
+    )
+    .unwrap();
+    assert_eq!(s.core.requests, 1);
+    s.core.busy = false;
+    super::calendar_tick::tick_with_clock(
+        &mut s,
+        &mut Pipe::new(Vec::new()),
+        now + 1000,
+        clock + Duration::from_secs(1),
+    )
+    .unwrap();
+    assert_eq!(s.core.requests, 2);
+}
+#[test]
+fn calendar_refresh_failures_are_closed_events_and_do_not_make_background_responses_public() {
+    let fixture = Fixture::new();
+    let mut s = fixture.session();
+    s.current.access.verified = true;
+    s.current.access.calendar = true;
+    s.current.rights = protocol::LinkState::Connected;
+    let result = super::calendar::complete_at(
+        &mut s,
+        Some((
+            crate::account::BACKGROUND_ID,
+            RemoteKind::CalendarBackground,
+        )),
+        crate::account::BACKGROUND_ID,
+        Err(HostError::CoreUnavailable),
+        1_000,
+    )
+    .map(Some);
+    let mut pipe = Pipe::new(Vec::new());
+    s.respond_service(&mut pipe, crate::account::BACKGROUND_ID, result)
+        .unwrap();
+    assert!(pipe.get_ref().is_empty());
+    assert!(matches!(
+        s.calendar_state.take_refresh(),
+        Some((
+            _,
+            Some(crate::calendar::CalendarRefreshFailure::CoreUnavailable)
+        ))
+    ));
+}

@@ -92,7 +92,7 @@ describe("main Calendar presenter", () => {
       ),
       session = calendarNoticeSession(present, () => 1000);
 
-    session.receive(testNotice({ issuedAt: 1001 }));
+    session.receive(testNotice({ issuedAt: 6001 }));
     session.receive(testNotice({ issuedAt: 0, expiresAt: 999 }));
 
     expect(present).not.toHaveBeenCalled();
@@ -365,4 +365,59 @@ it("keeps Calendar independent of general.toasts while preserving the settings t
   settings.general.toasts = true;
   expect(testNotification(settings)).toBe(true);
   expect(electron.show).toHaveBeenCalledTimes(2);
+});
+
+import { notificationDelivery } from "../src/main/notification-delivery";
+
+it.each([
+  { mockRequested: false, mockAllowed: false, qa: false, doubled: false },
+  { mockRequested: true, mockAllowed: false, qa: false, doubled: false },
+  { mockRequested: false, mockAllowed: true, qa: false, doubled: false },
+  { mockRequested: true, mockAllowed: true, qa: false, doubled: true },
+  { mockRequested: false, mockAllowed: true, qa: true, doubled: true },
+])(
+  "wires both notification paths to the trusted bootstrap presenter: %j",
+  (mode) => {
+    vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    const sample = (settingsCorpus.host as unknown as HostToUi[]).find(
+      (m) => m.kind === "response" && m.result.method === "settings.get",
+    );
+    if (sample?.kind !== "response" || sample.result.method !== "settings.get")
+      throw Error("settings corpus");
+    const settings = structuredClone(sample.result.value);
+    settings.general.toasts = true;
+    const delivery = notificationDelivery(mode, () => 1000);
+    delivery.calendar.receive(testNotice());
+    expect(delivery.test(settings)).toBe(true);
+    expect(electron.show).toHaveBeenCalledTimes(mode.doubled ? 0 : 2);
+  },
+);
+it("accepts a host clock up to five seconds ahead and rejects anything beyond", () => {
+  const present = vi.fn(() => true),
+    session = calendarNoticeSession(present, () => 1000);
+  session.receive(testNotice({ issuedAt: 6000, expiresAt: 66000 }));
+  expect(present).toHaveBeenCalledOnce();
+  session.receive(
+    testNotice({ id: "b".repeat(64), issuedAt: 6001, expiresAt: 66001 }),
+  );
+  expect(present).toHaveBeenCalledOnce();
+});
+it("formats local midnight as 00:00 with the h23 hour cycle", () => {
+  const at = new Date(2026, 0, 5, 0, 0, 0).getTime();
+  expect(
+    calendarNoticeText(
+      {
+        kind: "start",
+        id: "a".repeat(64),
+        issuedAt: at - 600000,
+        expiresAt: at,
+        series: "QA",
+        track: "Spa",
+        at,
+        raceMinutes: 20,
+        silent: true,
+      },
+      at - 600000,
+    ).title,
+  ).toBe("QA sale a las 00:00");
 });

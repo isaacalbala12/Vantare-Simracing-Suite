@@ -45,7 +45,7 @@ export function calendarNoticeText(value: CalendarNotice, now: number) {
       const time = new Intl.DateTimeFormat("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false,
+        hourCycle: "h23",
       }).format(new Date(value.at));
       const minutes = Math.floor(
         (Math.max(0, Math.floor((value.at - now) / 1000)) + 59) / 60,

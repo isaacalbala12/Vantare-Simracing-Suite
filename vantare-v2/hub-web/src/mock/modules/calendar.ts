@@ -214,6 +214,15 @@ export function create(context: MockContext): MockHandler {
           context.core.services !== "connected"
         )
           return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        if (request.method === "calendar.refresh")
+          context.emit?.({
+            kind: "event",
+            event: {
+              topic: "calendarRefreshed",
+              value: structuredClone(value),
+              error: null,
+            },
+          });
         return {
           kind: "response",
           id,

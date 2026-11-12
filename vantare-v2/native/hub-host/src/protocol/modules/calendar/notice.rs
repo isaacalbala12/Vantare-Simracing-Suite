@@ -73,6 +73,8 @@ impl CalendarNotice {
         }
     }
 }
+// Independent transport, authority, track and overflow state; none is a mode.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Default)]
 pub(super) struct Scheduler {
     since: Option<i64>,
@@ -202,12 +204,11 @@ impl Scheduler {
         }
         let silent = !alerts.channels.sound || in_track;
         let mut notices = Vec::new();
-        if let Some(value) = self.pending_week.take() {
-            if alerts.notify_week
-                && matches!(&value,CalendarNotice::Week{from,expires_at,..} if Some(*from)==date_millis(&schedule.valid_from) && *expires_at>=now)
-            {
-                notices.push(value);
-            }
+        if let Some(value) = self.pending_week.take()
+            && alerts.notify_week
+            && matches!(&value,CalendarNotice::Week{from,expires_at,..} if Some(*from)==date_millis(&schedule.valid_from) && *expires_at>=now)
+        {
+            notices.push(value);
         }
         let mut limited = false;
         for (at, i) in due_in(schedule, alerts, now, since, in_track, zone) {

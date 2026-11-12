@@ -967,6 +967,91 @@
       "kind": "event"
     },
     {
+      "event": {
+        "error": null,
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "busy",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "coreUnavailable",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "denied",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "error": "rejected",
+        "topic": "calendarRefreshed",
+        "value": {
+          "checked": 0,
+          "fallback": null,
+          "following": [],
+          "invalidCache": false,
+          "official": null,
+          "previous": null,
+          "updated": 0,
+          "utc": false
+        }
+      },
+      "kind": "event"
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {

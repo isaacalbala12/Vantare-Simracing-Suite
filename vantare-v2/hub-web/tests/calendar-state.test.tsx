@@ -3,13 +3,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import coreFixture from "../fixtures/core-offline.json";
-import type { CoreStatus } from "../src/contract/generated/contract";
+import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
 import { calendarReference } from "../src/mock/calendar-reference";
 import { coreKey } from "../src/renderer/app/Host";
 import { HostFailure } from "../src/renderer/bridge/client";
 import { useCalendar } from "../src/renderer/screens/calendar/CalendarState";
 
-const host = vi.hoisted(() => ({ client: { request: vi.fn() } }));
+const host = vi.hoisted(() => ({
+  client: { request: vi.fn(), listen: vi.fn(() => () => {}) },
+}));
 vi.mock("../src/renderer/app/Host", async (original) => ({
   ...(await original<typeof import("../src/renderer/app/Host")>()),
   useHost: () => host,
@@ -20,7 +22,7 @@ afterEach(() => {
   vi.useRealTimers();
   for (const cache of caches) cache.clear();
   caches.length = 0;
-  host.client = { request: vi.fn() };
+  host.client = { request: vi.fn(), listen: vi.fn(() => () => {}) };
 });
 function mount(allowed = true, connected = false) {
   const core = structuredClone(coreFixture) as CoreStatus;
@@ -113,6 +115,7 @@ it("ignores a reply from the previous client after reconnecting", async () => {
   const hook = mount(),
     next = { ...calendarReference(), following: [] };
   host.client = {
+    listen: vi.fn(() => () => {}),
     request: vi
       .fn()
       .mockResolvedValue({ method: "calendar.load", value: next }),
@@ -128,12 +131,9 @@ it("ignores a reply from the previous client after reconnecting", async () => {
   expect(hook.result.current.busy).toBe(false);
 });
 
-it.each([
-  ["2026-11-09T09:00:00Z", true],
-  ["2026-11-08T09:00:00Z", false],
-] as const)(
-  "polls after five minutes only on Monday morning: %s",
-  async (date, fast) => {
+it.each(["2026-11-09T09:00:00Z", "2026-11-08T09:00:00Z"])(
+  "leaves periodic refresh to the host on %s",
+  async (date) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(date));
     const value = calendarReference();
@@ -145,11 +145,64 @@ it.each([
     );
     const hook = mount(true, true);
     await act(async () => {});
-    expect(host.client.request).toHaveBeenCalledTimes(2);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5 * 60_000);
+    expect(host.client.request).toHaveBeenCalledExactlyOnceWith({
+      method: "calendar.load",
     });
-    expect(host.client.request).toHaveBeenCalledTimes(fast ? 3 : 2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15 * 60_000);
+    });
+    expect(host.client.request).toHaveBeenCalledTimes(1);
     expect(hook.result.current.busy).toBe(false);
   },
 );
+it("consumes closed background updates and ignores a load that resolves after them", async () => {
+  let receive!: (message: HostToUi) => void;
+  host.client.listen.mockImplementation((listener) => {
+    receive = listener;
+    return () => {};
+  });
+  let finish!: (reply: unknown) => void;
+  host.client.request.mockImplementation(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  const hook = mount();
+  const next = calendarReference();
+  next.checked = 1234;
+  await act(async () => {
+    finish({ method: "calendar.load", value: calendarReference() });
+    receive({
+      kind: "event",
+      event: { topic: "calendarRefreshed", value: next, error: null },
+    });
+  });
+  expect(hook.result.current.view).toEqual(next);
+  expect(hook.result.current.loaded).toBe(true);
+  expect(hook.result.current.busy).toBe(false);
+  await act(async () => {
+    receive({
+      kind: "event",
+      event: {
+        topic: "calendarRefreshed",
+        value: next,
+        error: "coreUnavailable",
+      },
+    });
+  });
+  expect(hook.result.current.failure).toBe("coreUnavailable");
+  await act(async () => {
+    hook.cache.setQueryData(coreKey, {
+      ...hook.core,
+      access: { ...hook.core.access, calendar: false },
+    });
+  });
+  await act(async () => {
+    receive({
+      kind: "event",
+      event: { topic: "calendarRefreshed", value: next, error: null },
+    });
+  });
+  expect(hook.result.current.view).toBeUndefined();
+});

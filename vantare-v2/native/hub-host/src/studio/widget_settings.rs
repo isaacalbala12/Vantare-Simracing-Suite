@@ -349,6 +349,21 @@ pub(crate) fn fits_view(view: &super::StudioView) -> bool {
     use crate::protocol::{Event, HostToUi, Reply};
     use std::sync::OnceLock;
     static OVERHEAD: OnceLock<usize> = OnceLock::new();
+    struct Counter {
+        remaining: usize,
+    }
+    impl std::io::Write for Counter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.remaining = self
+                .remaining
+                .checked_sub(bytes.len())
+                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
     let overhead = *OVERHEAD.get_or_init(|| {
         let empty = super::State::unavailable(super::StudioState::Missing, None);
         let size = serde_json::to_vec(&empty).expect("empty view").len();
@@ -382,21 +397,6 @@ pub(crate) fn fits_view(view: &super::StudioView) -> bool {
             .max()
             .expect("envelopes")
     });
-    struct Counter {
-        remaining: usize,
-    }
-    impl std::io::Write for Counter {
-        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-            self.remaining = self
-                .remaining
-                .checked_sub(bytes.len())
-                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
-            Ok(bytes.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
     let mut counter = Counter {
         remaining: crate::frame::LIMIT.saturating_sub(overhead),
     };
@@ -412,11 +412,8 @@ impl WidgetSettingsPatch {
                 Ok(())
             }
         }
-        fn columns(
-            kind: WidgetKind,
-            value: &Option<Option<Vec<WidgetColumnPatch>>>,
-        ) -> Result<(), HostError> {
-            let Some(Some(items)) = value else {
+        fn columns(kind: WidgetKind, value: Option<&[WidgetColumnPatch]>) -> Result<(), HostError> {
+            let Some(items) = value else {
                 return Ok(());
             };
             if kind == WidgetKind::Standings
@@ -473,7 +470,7 @@ impl WidgetSettingsPatch {
                     return Err(HostError::Denied);
                 }
                 for value in [&p.columns, &p.practice_columns, &p.qualifying_columns] {
-                    columns(self.kind(), value)?;
+                    columns(self.kind(), value.as_ref().and_then(Option::as_deref))?;
                 }
                 if let Some(Some(items)) = &p.footer_slots {
                     footer(items)?;
@@ -490,7 +487,7 @@ impl WidgetSettingsPatch {
                     native::relative::RELATIVE_RANGE_MIN,
                     native::relative::RELATIVE_RANGE_MAX,
                 )?;
-                columns(self.kind(), &p.columns)?;
+                columns(self.kind(), p.columns.as_ref().and_then(Option::as_deref))?;
                 if let Some(items) = &p.footer_slots {
                     footer(items)?;
                 }

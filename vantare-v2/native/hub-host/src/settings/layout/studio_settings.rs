@@ -1,4 +1,4 @@
-//! Sparse settings writes over the existing duplicate-safe RawValue adapter.
+//! Sparse settings writes over the existing duplicate-safe `RawValue` adapter.
 use super::{Fields, HostError, WidgetKind, merged_settings, put, read, typed_settings};
 use crate::studio::{WidgetSettings, WidgetSettingsPatch};
 use serde_json::{Value, value::RawValue};
@@ -181,7 +181,7 @@ pub(super) fn apply(
 mod tests {
     use super::*;
     use serde_json::json;
-    fn fields(settings: Value) -> Fields {
+    fn fields(settings: &Value) -> Fields {
         serde_json::from_value(json!({"settings":settings})).unwrap()
     }
     fn edit(fields: &mut Fields, patch: Value) -> Result<bool, HostError> {
@@ -196,7 +196,7 @@ mod tests {
     }
     #[test]
     fn sparse_write_preserves_unknown_members_and_uses_domain_disk_format() {
-        let mut doc = fields(json!({"kind":"pedals","gap":2,"vendor":{"raw":42}}));
+        let mut doc = fields(&json!({"kind":"pedals","gap":2,"vendor":{"raw":42}}));
         assert!(edit(&mut doc, json!({"kind":"pedals","gap":3})).unwrap());
         let value = saved(&doc);
         assert_eq!(value["gap"], 3.0);
@@ -204,18 +204,18 @@ mod tests {
         assert!(value.get("brandVisible").is_none());
         let native: vantare_domain::widget_settings::pedals::Settings =
             serde_json::from_value(value).unwrap();
-        assert_eq!(native.gap, 3.0);
+        assert_eq!(native.gap.to_bits(), 3.0f32.to_bits());
     }
     #[test]
     fn unchanged_patch_neither_seeds_defaults_nor_changes_bytes() {
-        let mut doc = fields(json!({"kind":"pedals","gap":2,"extra":"untouched"}));
+        let mut doc = fields(&json!({"kind":"pedals","gap":2,"extra":"untouched"}));
         let before = doc.0["settings"].get().to_owned();
         assert!(!edit(&mut doc, json!({"kind":"pedals","gap":2})).unwrap());
         assert_eq!(doc.0["settings"].get(), before);
     }
     #[test]
     fn a_different_kind_and_unverified_access_cannot_write() {
-        let mut doc = fields(json!({"kind":"pedals"}));
+        let mut doc = fields(&json!({"kind":"pedals"}));
         let before = doc.0["settings"].get().to_owned();
         assert!(matches!(
             edit(&mut doc, json!({"kind":"delta","size":"pill"})),
@@ -233,7 +233,7 @@ mod tests {
     }
     #[test]
     fn column_edits_keep_opaque_nested_fields_and_native_identity() {
-        let mut doc = fields(json!({"kind":"relative","contentVersion":1,"columns":[{
+        let mut doc = fields(&json!({"kind":"relative","contentVersion":1,"columns":[{
             "id":"native-id","metricId":"driverName","enabled":true,"widthPreset":"lg",
             "format":{"mode":"full","maxChars":20,"extension":{"bytes":7}},
             "style":{"align":"left","future":true},"vendor":12

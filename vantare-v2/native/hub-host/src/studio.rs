@@ -100,7 +100,7 @@ pub enum InstancePatch {
     Opacity(u8),
     ShowIn(ShowIn),
     OffTrack(OffTrack),
-    Settings(WidgetSettingsPatch),
+    Settings(Box<WidgetSettingsPatch>),
 }
 pub enum Edit {
     Visibility(String, bool),

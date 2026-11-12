@@ -205,39 +205,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         .into_iter()
         .map(|request| UiToHost::Request { id: 1, request })
         .collect();
-    for kind in [
-        WidgetKind::Standings,
-        WidgetKind::Relative,
-        WidgetKind::Delta,
-        WidgetKind::Pedals,
-        WidgetKind::FuelStrategy,
-    ] {
-        let source = crate::widget_defaults::get(kind.id()).expect("defaults");
-        let mut sample = value_for_settings(kind, source.settings.get());
-        sample.revision = "0".repeat(64);
-        host.push(HostToUi::Response {
-            id: 1,
-            result: Reply::StudioGet { value: sample },
-        });
-    }
-    for value in [
-        serde_json::json!({"kind":"standings","rowCount":30}),
-        serde_json::json!({"kind":"relative","columns":[{"metric":"driverName","format":{"mode":"full","maxChars":64}}]}),
-        serde_json::json!({"kind":"delta","showBar":false}),
-        serde_json::json!({"kind":"pedals","gap":12}),
-        serde_json::json!({"kind":"fuel-strategy","historyRows":8}),
-    ] {
-        ui.push(UiToHost::Request {
-            id: 1,
-            request: Request::StudioInstance {
-                id: "widget-1".into(),
-                patch: InstancePatch::Settings(
-                    serde_json::from_value(value).expect("sample settings patch"),
-                ),
-                base_revision: "0".repeat(64),
-            },
-        });
-    }
+    settings_samples(&mut host, &mut ui);
     ui.push(UiToHost::Subscribe {
         topic: crate::protocol::Topic::Studio,
     });
@@ -368,4 +336,40 @@ fn value_for_settings(kind: WidgetKind, source: &str) -> StudioView {
         settings: WidgetSettings::from_json(kind, source).expect("settings sample"),
     });
     value
+}
+
+fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    for kind in [
+        WidgetKind::Standings,
+        WidgetKind::Relative,
+        WidgetKind::Delta,
+        WidgetKind::Pedals,
+        WidgetKind::FuelStrategy,
+    ] {
+        let source = crate::widget_defaults::get(kind.id()).expect("defaults");
+        let mut sample = value_for_settings(kind, source.settings.get());
+        sample.revision = "0".repeat(64);
+        host.push(HostToUi::Response {
+            id: 1,
+            result: Reply::StudioGet { value: sample },
+        });
+    }
+    for value in [
+        serde_json::json!({"kind":"standings","rowCount":30}),
+        serde_json::json!({"kind":"relative","columns":[{"metric":"driverName","format":{"mode":"full","maxChars":64}}]}),
+        serde_json::json!({"kind":"delta","showBar":false}),
+        serde_json::json!({"kind":"pedals","gap":12}),
+        serde_json::json!({"kind":"fuel-strategy","historyRows":8}),
+    ] {
+        ui.push(UiToHost::Request {
+            id: 1,
+            request: Request::StudioInstance {
+                id: "widget-1".into(),
+                patch: InstancePatch::Settings(Box::new(
+                    serde_json::from_value(value).expect("sample settings patch"),
+                )),
+                base_revision: "0".repeat(64),
+            },
+        });
+    }
 }

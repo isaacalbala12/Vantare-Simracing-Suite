@@ -574,12 +574,12 @@ fn typed_settings_read_never_seeds_and_sparse_write_uses_existing_cas() {
     let view = state.view(access);
     assert!(view.instances[0].settings.is_some());
     assert_eq!(std::fs::read(&path).unwrap(), before);
-    let patch = InstancePatch::Settings(
+    let update = InstancePatch::Settings(Box::new(
         serde_json::from_value(serde_json::json!({"kind":"standings","rowCount":21})).unwrap(),
-    );
+    ));
     assert!(matches!(
         state.edit(
-            Edit::Instance("widget-1".into(), patch.clone()),
+            Edit::Instance("widget-1".into(), update.clone()),
             &"f".repeat(64),
             access
         ),
@@ -588,7 +588,7 @@ fn typed_settings_read_never_seeds_and_sparse_write_uses_existing_cas() {
     assert_eq!(std::fs::read(&path).unwrap(), before);
     let changed = state
         .edit(
-            Edit::Instance("widget-1".into(), patch),
+            Edit::Instance("widget-1".into(), update),
             &view.revision,
             access,
         )

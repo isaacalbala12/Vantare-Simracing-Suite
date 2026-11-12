@@ -91,7 +91,7 @@ export function Applications() {
   useEffect(() => {
     if (!client || !editor) return;
     return client.addCloseGuard((reason) => {
-      if (reason !== "window") {
+      if (reason !== "window" && reason !== "restart") {
         setEditor(undefined);
         setSelected(null);
         return true;

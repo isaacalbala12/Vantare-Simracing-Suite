@@ -33,6 +33,7 @@ export type RequestObservation = {
   method: Request["method"];
 } & ({ phase: "start" } | { phase: "done"; reply?: Reply; error?: HostError });
 export class Client {
+  private disposed = false;
   private requestListeners = new Set<(event: RequestObservation) => void>();
   private subscriptions = new Map<Topic, number>();
   observeRequests(receive: (event: RequestObservation) => void) {
@@ -389,12 +390,13 @@ export class Client {
     this.send({ kind: "request", id: 0, request: { method: "window.close" } });
   }
   subscribe(topic: Topic) {
+    if (this.disposed) return () => {};
     const count = this.subscriptions.get(topic) ?? 0;
     this.subscriptions.set(topic, count + 1);
     if (count === 0) this.send({ kind: "subscribe", topic });
     let active = true;
     return () => {
-      if (!active) return;
+      if (!active || this.disposed) return;
       active = false;
       const remaining = (this.subscriptions.get(topic) ?? 1) - 1;
       if (remaining > 0) this.subscriptions.set(topic, remaining);
@@ -409,6 +411,8 @@ export class Client {
     this.bootstrap = undefined;
   }
   close() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.closeSequence++;
     this.closing = true;
     this.closeAnswered = true;

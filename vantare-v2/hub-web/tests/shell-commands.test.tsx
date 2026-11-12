@@ -295,7 +295,11 @@ it.each(["revision", "deleted", "unlaunchable"])(
       command.run();
     });
     expect(launchCalls(spy)).toHaveLength(0);
-    expect(await screen.findByText(text.changed)).toBeTruthy();
+    expect(
+      await screen.findByText(
+        change === "unlaunchable" ? text.unavailable : text.changed,
+      ),
+    ).toBeTruthy();
   },
 );
 it.each(["live", "unverified", "blocked", "disconnected"])(

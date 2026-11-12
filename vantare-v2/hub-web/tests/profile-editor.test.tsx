@@ -226,18 +226,26 @@ describe("profile editor", () => {
     await screen.findByRole("heading", { name: "Creador de Contenido" });
     const request = Client.prototype.request;
     let response: ReturnType<Client["request"]> | undefined;
+    let notifySent!: () => void;
+    const sent = new Promise<void>((resolve) => {
+      notifySent = resolve;
+    });
     vi.spyOn(Client.prototype, "request").mockImplementation(function (
       this: Client,
       value,
     ) {
       const result = request.call(this, value);
-      if (value.method === "launcher.launch") response = result;
+      if (value.method === "launcher.launch") {
+        response = result;
+        notifySent();
+      }
       return result;
     });
     vi.useFakeTimers();
     try {
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /Lanzar/ }));
+        await sent;
         expect(response).toBeDefined();
         await response;
       });

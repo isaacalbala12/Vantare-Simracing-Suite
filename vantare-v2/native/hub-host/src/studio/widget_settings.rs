@@ -641,6 +641,19 @@ mod tests {
         }
     }
     #[test]
+    fn duplicate_patch_fields_are_rejected_during_decoding() {
+        for input in [
+            r#"{"kind":"pedals","gap":1,"gap":2}"#,
+            r#"{"kind":"relative","columns":[{"metric":"driverName","metric":"gap"}]}"#,
+            r#"{"kind":"relative","columns":[{"metric":"driverName","format":{"maxChars":0,"maxChars":1}}]}"#,
+        ] {
+            assert!(
+                serde_json::from_str::<WidgetSettingsPatch>(input).is_err(),
+                "{input}"
+            );
+        }
+    }
+    #[test]
     fn bounds_are_rejected_instead_of_normalized_on_write() {
         for rows in [
             native::standings::STANDINGS_ROWS_MIN,

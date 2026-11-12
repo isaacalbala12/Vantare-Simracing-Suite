@@ -123,6 +123,8 @@
 }
 .v-testing-report .v-testing-report-send.v-button--primary {
   height: 38px;
+  font-size: 15px;
+  font-weight: 600;
   border-radius: 10px;
   border-color: transparent;
   background: var(--grad-button);
